@@ -1,0 +1,23 @@
+{
+  "name": "@donecollectively/coco",
+  "version": "0.1",
+  "description": "A community coin dApp for Cardano",
+  "main": "tbd.ts",
+  "scripts": {
+    "test": "vitest",
+    "test:debug": "vitest --inspect --threads false",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run"
+  },
+  "author": "Done Collectively",
+  "license": "none",
+  "dependencies": {
+    "@hyperionbt/helios": "^0.14.0"
+},
+"devDependencies": {
+    "@vitest/browser": "^0.31.4",
+    "@vitest/ui": "^0.30.1",
+    "vitest": "^0.30.1",
+    "webdriverio": "^8.10.7"
+  }
+}

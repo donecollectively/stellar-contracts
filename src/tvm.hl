@@ -1,0 +1,18 @@
+minting tokenVendingMachine
+
+enum Redeemer { 
+    Mint
+    Burn
+}
+
+func main(_, ctx: ScriptContext) -> Bool {
+    tx: Tx = ctx.tx;
+    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
+
+    tt_assetclass: AssetClass = AssetClass::new(
+        mph, 
+        "REP".encode_utf8()
+    );
+
+}
+
