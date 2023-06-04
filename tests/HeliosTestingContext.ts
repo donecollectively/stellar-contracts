@@ -35,26 +35,27 @@ export async function addTestContext(
 }
 
 type mkContextArgs = [scriptFile: string, related?: contractMap];
+type enhancedNetworkParams = NetworkParams & {
+        slotToTimestamp: typeof slotToTimestamp
+}
+function slotToTimestamp(s: bigint) {
+    const num = parseInt(BigInt.asIntN(52, s * 1000n).toString());
+    return new Date(num);
+}
 
 const preProdParams = JSON.parse(await fs.readFile("./src/preprod.json", "utf8"));
 // emuParams.liveSlot;
 
-export function mkNetwork() {
+export function mkNetwork() : [NetworkEmulator, enhancedNetworkParams] {
     const theNetwork = new NetworkEmulator();
 
-    const emuParams = theNetwork.initNetworkParams(preProdParams) as NetworkParams & {
-        slotToTimestamp: typeof slotToTimestamp;
-    };
+    const emuParams = theNetwork.initNetworkParams(preProdParams) as enhancedNetworkParams ;
 
     emuParams.timeToSlot = function (t) {
         const seconds = BigInt(t / 1000n);
         return seconds;
     };
     emuParams.slotToTimestamp = slotToTimestamp;
-    function slotToTimestamp(s: bigint) {
-        const num = parseInt(BigInt.asIntN(52, s * 1000n).toString());
-        return new Date(num);
-    }
 
     return [theNetwork, emuParams];
 }
@@ -130,7 +131,7 @@ function waitUntil(this: HeliosTestingContext, time: Date) {
     if (slotsToWait < 1) {
         throw new Error(`the indicated time is not in the future`);
     }
-    console.warn(`waiting ${slotsToWait} until ${time}`);
+    console.warn(`waiting ${slotsToWait} slots -> ${time}`);
 
     this.network.tick(slotsToWait);
     return slotsToWait;
