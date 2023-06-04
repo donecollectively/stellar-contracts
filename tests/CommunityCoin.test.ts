@@ -2,27 +2,26 @@ import {
     describe as descrWithContext,
     expect,
     it as itWithContext,
-    expectTypeOf,
     beforeEach,
-    vi,
 } from "vitest";
-import { promises as fs } from "fs";
-import {
-    Address,
-    Assets,
-    ByteArrayData,
-    ConstrData,
-    Datum,
-    hexToBytes,
-    IntData,
-    ListData,
-    NetworkEmulator,
-    NetworkParams,
-    Program,
-    Tx,
-    TxOutput,
-    Value,
-} from "@hyperionbt/helios";
+import { CommunityCoin } from "../src/CommunityCoin"
+
+// import {
+//     Address,
+//     Assets,
+//     ByteArrayData,
+//     ConstrData,
+//     Datum,
+//     hexToBytes,
+//     IntData,
+//     ListData,
+//     NetworkEmulator,
+//     NetworkParams,
+//     Program,
+//     Tx,
+//     TxOutput,
+//     Value,
+// } from "@hyperionbt/helios";
 
 import {
     ADA,
@@ -31,15 +30,16 @@ import {
     mkContext,
 } from "./HeliosTestingContext.js";
 
+console.log(CommunityCoin)
 const it = itWithContext<HeliosTestingContext>;
-const xit = it.skip;
+const xit = it.skip
 const describe = descrWithContext<HeliosTestingContext>;
 
 const minAda = 2n * ADA; // minimum needed to send an NFT
 
 describe("token vending machine", async () => {
     beforeEach<HeliosTestingContext>(async (context) => {
-        await addTestContext(context, "./src/tvm.hl");
+        await addTestContext(context, "./src/CommunityCoin.hl");
 
         context.addActor("issuer", 42n * ADA);
         context.addActor("alice", 13n * ADA);
@@ -72,6 +72,24 @@ describe("token vending machine", async () => {
         // .dump().lovelace).toBe('5000000')
     });
 
+    if (0) it("doesn't let randos issue tokens", async ({
+        network,
+        actors: { alice, bob },
+        address,
+    }) => {
+
+    });
+
+    if (0) it("lets the owner issue tokens", async ({
+        network,
+        actors: { owner },
+    }) => {
+        // expect(something...).toBe();
+    });
+
+    xit("rewards the first 256 buyers with 2.56x bonus credit", async () => {
+        
+    });
 
 });
 

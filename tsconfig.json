@@ -1,0 +1,26 @@
+{
+    "compilerOptions": {
+        "lib": ["esnext", "dom"],
+        "target": "ES2016",
+        "module": "es2015",
+        "moduleResolution": "nodenext",
+
+        "importHelpers": true,
+        "baseUrl": ".",
+        "strict": true,
+        // "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "noEmit": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "types": ["node"],
+        "allowSyntheticDefaultImports": true,
+        "allowJs": true,
+        "noImplicitAny": false,
+        "rootDir": ".",
+        "sourceMap": true
+    },
+    "include": ["src/**/*.ts", "src/**/*.js", "lib/**/*.ts", "lib/**/*.js"],
+    "exclude": ["**/node_modules/"]
+}
