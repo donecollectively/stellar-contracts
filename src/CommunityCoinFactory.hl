@@ -1,0 +1,52 @@
+minting tokenVendingMachine
+
+const TREASURY_CONTRACT : Address = ""
+const OWNER: Address = ""
+
+enum Redeemer { 
+    Charter {
+        f: string
+    }
+    Mint {
+        tokenName: string
+    }
+    Burn
+}
+
+func main(r : Redeemer, ctx: ScriptContext) -> Bool {
+    tx: Tx = ctx.tx;
+    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
+    value_minted: Value = tx.minted;
+
+    charterToken: AssetClass = AssetClass::new(
+        ctx.get_current_minting_policy_hash(),
+        "charter".encode_utf8()
+    );
+
+    ok : Bool = r.switch {
+        c: Charter => {
+            value_minted == Value::new(charterToken, 1)
+        },
+        m: Mint => {
+            tx.inputs
+                .any((input: TxInput) -> Bool {
+                    foundCharter : Int = input.value.get_safe(charterToken);
+                    1 == foundCharter
+                })
+    
+        },
+        Burn => {
+            true
+        },
+        _ => true
+    };
+
+    expectedCoin: AssetClass = AssetClass::new(
+        mph, 
+        "REP".encode_utf8()
+    );
+
+    value_minted: Value = tx.minted;
+    (value_minted == Value::new(expectedCoin, 1)).trace("minted 1 ok!")
+}
+

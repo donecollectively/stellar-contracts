@@ -6,50 +6,100 @@ import {
     UplcProgram,
     WalletEmulator,
 } from "@hyperionbt/helios";
+import * as helios from "@hyperionbt/helios";
+
 import { promises as fs } from "fs";
 import { Vitest, vitest, TestContext } from "vitest";
+import { StellarContract } from "../lib/StellarContract";
 
-type contractMap = Record<string, HeliosTestingContext>;
+type paramsBase = Record<string, any>;
+type contractMap<
+    S extends StellarContract<any, P>,
+    P extends paramsBase
+> = Record<string, HeliosTestingContext<S, P>>;
 type actorMap = Record<string, WalletEmulator>;
 
+type subclassOf<
+    S extends StellarContract<S, P>,
+    P extends paramsBase
+> = new (args: { params: P; isTest: boolean }) => S & StellarContract<S, any>;
+//     // (withParams(params:any) => S)
+
 export const ADA = 1_000_000n; // lovelace
-export interface HeliosTestingContext {
-    contract: UplcProgram;
-    actors: actorMap;
-    related: contractMap;
-    address: Address;
+export interface HeliosTestingContext<
+    StellarType extends StellarContract<any, any>,
+    P extends paramsBase
+> {
+    stellarClass: subclassOf<StellarContract<any, P>, P>;
+    helios: typeof helios;
     network: NetworkEmulator;
     params: NetworkParams;
     addActor: typeof addActor;
     waitUntil: typeof waitUntil;
     currentSlot: typeof currentSlot;
+    actors: actorMap;
+    // contract: UplcProgram;
+    instantiateWithParams: typeof instantiateWithParams<StellarType, P>;
+    mkRandomBytes: typeof mkRandomBytes;
+    //! it has a seed for mkRandomBytes, which must be set by caller
+    randomSeed?: number;
+    //! it makes a rand() function based on the randomSeed after first call to mkRandomBytes
+    rand?: () => number;
+
+    //! it manifests some details only after createContract()
+    related?: contractMap<StellarType, P>;
+    strella?: StellarType;
+    address?: Address;
+}
+
+function instantiateWithParams<
+    StellarType extends StellarContract<any, P>,
+    P extends paramsBase
+>(
+    this: HeliosTestingContext<StellarType, P>,
+    params: any //!!! todo: make this fit params that work with the helios contract
+): StellarType {
+    const TargetClass = this.stellarClass;
+    const strella = new TargetClass({ params, isTest: true });
+    //@ts-expect-error - is this type error actually correct?  fixes welcome
+    this.strella = strella;
+    //@ts-expect-error - is this type error actually correct?  fixes welcome
+    return strella;
 }
 
 export async function addTestContext(
     context: TestContext,
-    ...args: mkContextArgs
+    stellarClass: subclassOf<StellarContract<any, any>, any>
 ) {
-    const tc = await mkContext(...args);
+    const tc = await mkContext(stellarClass);
 
     Object.assign(context, tc);
 }
 
-type mkContextArgs = [scriptFile: string, related?: contractMap];
 type enhancedNetworkParams = NetworkParams & {
-        slotToTimestamp: typeof slotToTimestamp
-}
+    slotToTimestamp: typeof slotToTimestamp;
+};
 function slotToTimestamp(s: bigint) {
     const num = parseInt(BigInt.asIntN(52, s * 1000n).toString());
     return new Date(num);
 }
 
-const preProdParams = JSON.parse(await fs.readFile("./src/preprod.json", "utf8"));
+// function mkRandom(s: bigint) {
+//     const num = parseInt(BigInt.asIntN(52, s * 1000n).toString());
+//     return new Date(num);
+// }
+
+const preProdParams = JSON.parse(
+    await fs.readFile("./src/preprod.json", "utf8")
+);
 // emuParams.liveSlot;
 
-export function mkNetwork() : [NetworkEmulator, enhancedNetworkParams] {
+export function mkNetwork(): [NetworkEmulator, enhancedNetworkParams] {
     const theNetwork = new NetworkEmulator();
 
-    const emuParams = theNetwork.initNetworkParams(preProdParams) as enhancedNetworkParams ;
+    const emuParams = theNetwork.initNetworkParams(
+        preProdParams
+    ) as enhancedNetworkParams;
 
     emuParams.timeToSlot = function (t) {
         const seconds = BigInt(t / 1000n);
@@ -60,44 +110,62 @@ export function mkNetwork() : [NetworkEmulator, enhancedNetworkParams] {
     return [theNetwork, emuParams];
 }
 
-export async function mkContext(
-    ...args: mkContextArgs
-): Promise<HeliosTestingContext> {
-    const [scriptFile, related = {}] = args;
-
-    const script = await fs.readFile(scriptFile, "utf8");
+export async function mkContext<
+    S extends StellarContract<any, P>,
+    P extends paramsBase
+>(
+    stellarClass: subclassOf<StellarContract<any, P>, P>
+): Promise<HeliosTestingContext<S, P>> {
     const optimize = false;
 
-    const contract = Program.new(script).compile(optimize);
-    let address;
-    try {
-        address = Address.fromValidatorHash(contract.validatorHash);
-    } catch (e) {
-        if (e.message !== "unexpected") throw e;
+    // let address;
+    // try {
+    //     address = Address.fromValidatorHash(uplc.validatorHash);
+    // } catch (e) {
+    //     if (e.message !== "unexpected") throw e;
 
-        address = Address.fromValidatorHash(contract.mintingPolicyHash);
-    }
+    //     address = Address.fromValidatorHash(uplc.mintingPolicyHash);
+    // }
     const [theNetwork, emuParams] = mkNetwork();
 
     const context = {
-        contract,
+        helios,
+        stellarClass,
         actors: {},
-        address,
-        related,
+        // address,
+        // related,
         network: theNetwork,
         params: emuParams,
         // addRelatedContract,
         addActor,
         waitUntil,
         currentSlot,
+        mkRandomBytes,
+        instantiateWithParams,
     };
     const now = new Date();
     context.waitUntil(now);
     return context;
 }
+function mkRandomBytes(
+    this: HeliosTestingContext<any, any>,
+    length: number
+): number[] {
+    if (!this.randomSeed)
+        throw new Error(
+            `test must set context.randomSeed for deterministic randomness in tests`
+        );
+    if (!this.rand) this.rand = helios.Crypto.rand(this.randomSeed);
+
+    const bytes: number[] = [];
+    for (let i = 0; i < length; i++) {
+        bytes.push(Math.floor(this.rand() * 256));
+    }
+    return bytes;
+}
 
 function addActor(
-    this: HeliosTestingContext,
+    this: HeliosTestingContext<any, any>,
     roleName: string,
     walletBalance: bigint
 ) {
@@ -118,11 +186,11 @@ function addActor(
     return a;
 }
 
-function currentSlot(this: HeliosTestingContext) {
+function currentSlot(this: HeliosTestingContext<any, any>) {
     return this.params.liveSlot;
 }
 
-function waitUntil(this: HeliosTestingContext, time: Date) {
+function waitUntil(this: HeliosTestingContext<any, any>, time: Date) {
     const targetTimeMillis = BigInt(time.getTime());
     const targetSlot = this.params.timeToSlot(targetTimeMillis);
     const c = this.currentSlot();
