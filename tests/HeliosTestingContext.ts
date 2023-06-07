@@ -10,36 +10,46 @@ import * as helios from "@hyperionbt/helios";
 
 import { promises as fs } from "fs";
 import { Vitest, vitest, TestContext } from "vitest";
-import { StellarContract } from "../lib/StellarContract";
+import {
+    StellarConstructorArgs,
+    StellarContract,
+} from "../lib/StellarContract";
 
 type paramsBase = Record<string, any>;
-type contractMap<
-    S extends StellarContract<any, P>,
-    P extends paramsBase
-> = Record<string, HeliosTestingContext<S, P>>;
+type contractMap<S extends StellarContract<P>, P extends paramsBase> = Record<
+    string,
+    HeliosTestingContext<S, P>
+>;
 type actorMap = Record<string, WalletEmulator>;
 
-type subclassOf<
-    S extends StellarContract<S, P>,
-    P extends paramsBase
-> = new (args: { params: P; isTest: boolean }) => S & StellarContract<S, any>;
+type subclassOf<S extends StellarContract<P>, P extends paramsBase> = new (
+    args: StellarConstructorArgs<P>
+) => S & StellarContract<P>;
 //     // (withParams(params:any) => S)
 
 export const ADA = 1_000_000n; // lovelace
 export interface HeliosTestingContext<
-    StellarType extends StellarContract<any, any>,
+    StellarType extends StellarContract<P>,
     P extends paramsBase
 > {
-    stellarClass: subclassOf<StellarContract<any, P>, P>;
+    stellarClass: subclassOf<StellarContract<P>, P>;
     helios: typeof helios;
     network: NetworkEmulator;
-    params: NetworkParams;
+    liveSlotParams: NetworkParams;
+    networkParams: NetworkParams;
+    delay: typeof delay,
     addActor: typeof addActor;
     waitUntil: typeof waitUntil;
     currentSlot: typeof currentSlot;
     actors: actorMap;
     // contract: UplcProgram;
     instantiateWithParams: typeof instantiateWithParams<StellarType, P>;
+    setupFunc: typeof setupFunc;
+    //! it has an optional no-args setup() function, 
+    //  ... which instantiates the contract using params arranged by that func.
+    //  ...  setupFunc(func) is used to assign it.
+
+    setup?: () => Promise<StellarType>
     mkRandomBytes: typeof mkRandomBytes;
     //! it has a seed for mkRandomBytes, which must be set by caller
     randomSeed?: number;
@@ -52,24 +62,39 @@ export interface HeliosTestingContext<
     address?: Address;
 }
 
-function instantiateWithParams<
-    StellarType extends StellarContract<any, P>,
+async function delay(ms) { 
+    return new Promise((res) => setTimeout(res, ms)) 
+}
+
+async function instantiateWithParams<
+    StellarType extends StellarContract<P>,
     P extends paramsBase
 >(
     this: HeliosTestingContext<StellarType, P>,
-    params: any //!!! todo: make this fit params that work with the helios contract
-): StellarType {
+    params: P //!!! todo: make this fit params that work with the helios contract
+): Promise<StellarType> {
     const TargetClass = this.stellarClass;
-    const strella = new TargetClass({ params, isTest: true });
+
+    const strella = new TargetClass({
+        params,
+        network: this.network,
+        networkParams: this.networkParams,
+        isTest: true,
+    });
     //@ts-expect-error - is this type error actually correct?  fixes welcome
     this.strella = strella;
     //@ts-expect-error - is this type error actually correct?  fixes welcome
     return strella;
 }
+function setupFunc<
+    P extends paramsBase
+>(func : () => Promise<StellarContract<P>>) : void {
+    this.setup = func;
+}
 
-export async function addTestContext(
+export async function addTestContext<P extends paramsBase>(
     context: TestContext,
-    stellarClass: subclassOf<StellarContract<any, any>, any>
+    stellarClass: subclassOf<StellarContract<P>, P>
 ) {
     const tc = await mkContext(stellarClass);
 
@@ -111,10 +136,10 @@ export function mkNetwork(): [NetworkEmulator, enhancedNetworkParams] {
 }
 
 export async function mkContext<
-    S extends StellarContract<any, P>,
+    S extends StellarContract<P>,
     P extends paramsBase
 >(
-    stellarClass: subclassOf<StellarContract<any, P>, P>
+    stellarClass: subclassOf<StellarContract<P>, P>
 ): Promise<HeliosTestingContext<S, P>> {
     const optimize = false;
 
@@ -127,6 +152,7 @@ export async function mkContext<
     //     address = Address.fromValidatorHash(uplc.mintingPolicyHash);
     // }
     const [theNetwork, emuParams] = mkNetwork();
+    const networkParams = new NetworkParams(preProdParams);
 
     const context = {
         helios,
@@ -135,8 +161,11 @@ export async function mkContext<
         // address,
         // related,
         network: theNetwork,
-        params: emuParams,
+        delay,
+        liveSlotParams: emuParams,
+        networkParams,
         // addRelatedContract,
+        setupFunc,
         addActor,
         waitUntil,
         currentSlot,
@@ -187,19 +216,19 @@ function addActor(
 }
 
 function currentSlot(this: HeliosTestingContext<any, any>) {
-    return this.params.liveSlot;
+    return this.liveSlotParams.liveSlot;
 }
 
 function waitUntil(this: HeliosTestingContext<any, any>, time: Date) {
     const targetTimeMillis = BigInt(time.getTime());
-    const targetSlot = this.params.timeToSlot(targetTimeMillis);
+    const targetSlot = this.liveSlotParams.timeToSlot(targetTimeMillis);
     const c = this.currentSlot();
 
     const slotsToWait = targetSlot - c;
     if (slotsToWait < 1) {
         throw new Error(`the indicated time is not in the future`);
     }
-    console.warn(`waiting ${slotsToWait} slots -> ${time}`);
+    // console.warn(`waiting ${slotsToWait} slots -> ${time}`);
 
     this.network.tick(slotsToWait);
     return slotsToWait;

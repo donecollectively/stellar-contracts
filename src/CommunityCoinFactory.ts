@@ -5,12 +5,6 @@ import { StellarContract } from "../lib/StellarContract.js";
 import contract from "./CommunityCoinFactory.hl";
 
 export class CommunityCoinFactory extends StellarContract<CommunityCoinFactory> {
-    constructor({params:{
-
-    }}) {
-        super()
-
-    }
 
     contractSource() { return contract }
 

@@ -1,0 +1,77 @@
+spending CommunityTreasury
+
+// needed in helios 0.13
+// const trustees: []Address 
+// = []Address{
+//         Address::new(Credential::new_pubkey(
+//             PubKeyHash::new(#1234)
+//         ), Option[StakingCredential]::None)
+// }
+
+
+const nonce: ByteArray   // = #34323432
+const initialTrustees: []Address
+
+enum Datum {
+    CharterUtxo {
+        nce: ByteArray
+    }
+    CharterToken {
+        uniq: ByteArray
+        nce: []Credential
+        minSigs: Int
+    }
+    // creator: PubKeyHash
+    // deadline: Time
+}
+
+// }
+
+enum Redeemer {
+    charterMint
+    
+    authorizeTreasuryMint {
+        tokenName: String
+    }
+}
+
+func main(datum: Datum, redeemer: Redeemer, context: ScriptContext) -> Bool {
+    tx: Tx = context.tx;
+    // now: Time = tx.time_range.start;
+    
+    redeemer.switch {
+        charterMint => {
+            initialTrustees.all( ( t : Address) -> Bool {
+                // c: Credential = t.credential;
+                // Credential::PubKey{hash} = c;
+                t.credential.switch{
+                    pubKey: PubKey => {
+                        tx.is_signed_by(pubKey.hash)
+                    },
+                    // contract:
+                     Validator => {
+                        error("invalid address in initialTrustees list: can't expect a contract addr to sign a transaction")
+
+                        // tx.is_signed_by(contract.hash)
+                    },
+                    _ => false
+                }                
+            })
+            // print(hash.show());
+        },
+        x: authorizeTreasuryMint => {
+            nonce != datum.serialize() &&
+            !initialTrustees.is_empty() &&
+            initialTrustees.head != initialTrustees.head &&
+            x.tokenName == x.tokenName 
+            // now < datum.deadline &&
+            // tx.is_signed_by(datum.creator)
+        }
+    }
+}
+
+func nce() -> ByteArray {
+    nonce.slice(nonce.length-4,nonce.length-1)
+}
+
+const CHARTER: Datum::CharterUtxo = Datum::CharterUtxo{nce: nce()}
