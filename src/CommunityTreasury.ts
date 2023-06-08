@@ -22,31 +22,37 @@ export class CommunityTreasury extends StellarContract<CCTParams> {
     contractSource() {
         return contract;
     }
+    get charterSeedDatum() {
+        return Datum.inline(this.configuredContract.evalParam("CHARTER").data);
+    }
 
-    async buildCharterSeed(tx: Tx, wallet: Wallet) {
-        // const dType = this.configuredContract.mainArgTypes[0];
-        // console.log({ dType });
+    async buildCharterSeed(tx : Tx = new Tx()) {
+        //! EXPECTS myself to be set
+        if (!this.myself)
+            throw new Error(
+                `missing required 'myself' attribute on ${this.constructor.name}`
+            );
 
         //! deposits one ADA into the contract for use with the CoinFactory charter.
-        //! deposits the minimum 
+        //! deposits the minimum
         const txValue = new Value(this.ADA(1));
-        // console.error(this.configuredContract.mainArgTypes[0])
-        
+
         const output = new TxOutput(
             this.address,
             txValue,
             // Datum.inline(new this.datumType.CharterSeed([42]))
-            Datum.inline(this.configuredContract.evalParam("CHARTER").data)
+            this.charterSeedDatum
         );
 
-        // const addresses : Address[] = []; 
-        const input = await this.findInputsInWallets(txValue, { wallets: [wallet] });
+        const input = await this.findInputsInWallets(txValue, {
+            wallets: [this.myself],
+        });
 
         // prettier-ignore
         tx.addOutput(output)
             .addInput(input)
 
-        return { tx, input, output};
+        return { tx, input, output };
     }
 
     // buildCharterTxn() {

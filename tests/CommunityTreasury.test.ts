@@ -69,9 +69,7 @@ const CCTHelpers :  hasHelpers = {
         const { tina, tom, tracy } = this.actors;
 
         const treasury = await this.h.setup!();
-        const {tx, input, output} = await treasury.buildCharterSeed(
-            new Tx(), tina 
-        );
+        const {tx, input, output} = await treasury.buildCharterSeed();
         expect(treasury.network).toBe(this.network)
         await treasury.submit(tx)
 
