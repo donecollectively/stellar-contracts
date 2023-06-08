@@ -1,16 +1,14 @@
 spending CommunityTreasury
 
 // needed in helios 0.13
-// const trustees: []Address 
-// = []Address{
-//         Address::new(Credential::new_pubkey(
-//             PubKeyHash::new(#1234)
-//         ), Option[StakingCredential]::None)
-// }
 
 
-const nonce: ByteArray   // = #34323432
-const initialTrustees: []Address
+const nonce: ByteArray = #34323432
+const initialTrustees: []Address = []Address{
+        Address::new(Credential::new_pubkey(
+            PubKeyHash::new(#1234)
+        ), Option[StakingCredential]::None)
+}
 
 enum Datum {
     CharterUtxo {
