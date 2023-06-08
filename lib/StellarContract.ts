@@ -3,6 +3,7 @@ import {
     Network,
     NetworkParams,
     Program,
+    Tx,
     UTxO,
     UplcProgram,
     Value,
@@ -19,6 +20,7 @@ export type StellarConstructorArgs<P> = {
     network: Network;
     networkParams: NetworkParams;
     isTest: boolean;
+    myself?: Wallet
 };
 //<CT extends Program>
 export class StellarContract<
@@ -32,15 +34,19 @@ export class StellarContract<
     network: Network;
     networkParams: NetworkParams;
     _template?: Program;
+    myself?: Wallet;
 
     constructor({
         params,
         network,
         networkParams,        
         isTest,
+        myself,
     }: StellarConstructorArgs<ParamsType>) {
         this.network = network
         this.networkParams = networkParams;
+        if (myself) this.myself = myself;
+
         const configured = (this.configuredContract = this.contractTemplate());
         configured.parameters = params;
         const simplify = !!isTest;
@@ -53,6 +59,17 @@ export class StellarContract<
     }
     get datumType() {
         return this.configuredContract.types.Datum
+    }
+    async submit(tx: Tx, {sign=true} = {}) {        
+        if (this.myself) {
+            const [a] = await this.myself.usedAddresses;        
+            await tx.finalize(this.networkParams, a);
+            if (sign) {
+                const s = await this.myself.signTx(tx);
+                tx.addSignatures(s, true)
+            }
+        }
+        this.network.submitTx(tx)
     }
 
     ADA(n: bigint | number): bigint {
@@ -71,7 +88,13 @@ export class StellarContract<
         const {wallets, addresses} = searchIn;
 
         const lovelaceOnly = v.assets.isZero();
+        console.warn("finding inputs",{
+            lovelaceOnly
+        });
+
         for (const w of wallets) {
+            const [a] = await w.usedAddresses;
+            console.log("finding funds in wallet", a.toBech32())
             const utxos = await w.utxos;
             for (const u of utxos) {
                 if (lovelaceOnly) {
@@ -81,6 +104,7 @@ export class StellarContract<
                     ) {
                         return u;
                     }
+                    console.log("insufficient: ", u.value.dump())
                 } else {
                     if (u.value.ge(v)) {
                         return u;
