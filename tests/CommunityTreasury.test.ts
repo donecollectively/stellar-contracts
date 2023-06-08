@@ -26,13 +26,18 @@ import { CCTParams, CommunityTreasury } from "../src/CommunityTreasury";
 import {
     ADA,
     HeliosTestingContext,
+    HelperFunctions,
     addTestContext,
     mkContext,
 } from "./HeliosTestingContext.js";
 import { Tx } from "@hyperionbt/helios";
 
 // console.log(CommunityTreasury);
-type localTC = HeliosTestingContext<CommunityTreasury, CCTParams>;
+interface localTC extends HeliosTestingContext<
+    CommunityTreasury, 
+    typeof CCTHelpers, 
+    CCTParams
+> {}
 const it = itWithContext<localTC>;
 
 const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTestingContext>
@@ -42,25 +47,47 @@ const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTes
 const describe = descrWithContext<localTC>;
 
 const minAda = 2n * ADA; // minimum needed to send an NFT
+type hasHelpers =  HelperFunctions<CommunityTreasury>
+const CCTHelpers :  hasHelpers = {
+    async setup(this: localTC) {
+        if (this.strella) return this.strella;
+
+        this.randomSeed = 42;
+        this.myself = this.actors.tina;
+        return this.instantiateWithParams({
+            nonce: this.mkRandomBytes(16),
+            initialTrustees: [
+                this.actors.tina.address,
+                this.actors.tom.address,
+                this.actors.tracy.address,
+            ],
+        });
+    },
+
+    async charterSeed(this: localTC) {
+        const {delay} = this;
+        const { tina, tom, tracy } = this.actors;
+
+        const treasury = await this.h.setup!();
+        const {tx, input, output} = await treasury.buildCharterSeed(
+            new Tx(), tina 
+        );
+        expect(treasury.network).toBe(this.network)
+        await treasury.submit(tx)
+
+        this.network.tick(1n);   
+        return {tx, input, output}
+    },
+
+}
 
 describe("community treasury manager", async () => {
     beforeEach<localTC>(async (context) => {
-        await addTestContext(context, CommunityTreasury);
+        await addTestContext(context, CommunityTreasury, CCTHelpers);
         context.addActor("tina", 1300n * ADA);
         context.addActor("tom", 130n * ADA);
         context.addActor("tracy", 13n * ADA);
 
-        context.setupFunc(async function (this: localTC) {
-            this.randomSeed = 42;
-            return this.instantiateWithParams({
-                nonce: this.mkRandomBytes(16),
-                initialTrustees: [
-                    this.actors.tina.address,
-                    this.actors.tom.address,
-                    this.actors.tracy.address,
-                ],
-            });
-        });
     });
 
     describe("baseline capabilities", () => {
@@ -105,8 +132,8 @@ describe("community treasury manager", async () => {
             const {
                 types: { Redeemer },
             } = cc;
-            // console.log({ Redeemer });
-            expect( Redeemer?.charterMint ).toBeTruthy()
+
+            expect(Redeemer?.charterMint).toBeTruthy();
         });
     });
     describe("params", () => {
@@ -156,60 +183,44 @@ describe("community treasury manager", async () => {
         });
     });
     describe("chartering the treasury", () => {
-        it(
-            "allocates an address for a community treasury",
-            async (context: localTC) => {
-                const { tina, tom, tracy } = context.actors;
-                context.randomSeed = 42;
-                const nonce = context.mkRandomBytes(16);
-
-                const treasury = await context.instantiateWithParams({
-                    nonce,
-                    initialTrustees: [tina.address, tom.address, tracy.address],
-                });
-                // console.log(treasury.address.toHex());
-                expect(treasury.address).toBeTruthy();
-
-                const found = await context.network.getUtxos(treasury.address)
-                expect(found.length).toBe(0);
-            }
-        );
-        it("creates an initial 'charter utxo' in the treasury contract", async (context: localTC) => {
-            const {delay} = context;
+        it("allocates an address for a community treasury", async (context: localTC) => {
             const { tina, tom, tracy } = context.actors;
+            context.randomSeed = 42;
+            const nonce = context.mkRandomBytes(16);
 
-            const treasury = await context.setup!();
-            const {tx, input, output} = await treasury.buildCharterUtxo(
-                new Tx(), [ tina, tom, tracy ]
-            );
+            const treasury = await context.instantiateWithParams({
+                nonce,
+                initialTrustees: [tina.address, tom.address, tracy.address],
+            });
+            // console.log(treasury.address.toHex());
+            expect(treasury.address).toBeTruthy();
 
-            // console.warn("network params", context.networkParams)
-            await tx.finalize(context.networkParams, input.origOutput.address);
-
-            context.network.submitTx(tx)
-            context.network.tick(1n);
-            const found = await context.network.getUtxos(treasury.address)
-            expect(found.length).toBe(1);
-            const d =  found[0].origOutput.datum
-            expect(d.hash).toEqual(output.datum.hash)
+            const found = await context.network.getUtxos(treasury.address);
+            expect(found.length).toBe(0);
         });
-        it.todo(
-            "allocates a unique address for the community coin-factory (minting contract) based on the charter utxo",
-            async () => {
-                throw new Error(`todo`);
-            }
-        );
-        it.todo(
-            "mints a singular unique charter token using the charter utxo",
-            async () => {
-                throw new Error(`todo`);
-            }
-        );
-    });
+        // await tx.finalize(context.networkParams, input.origOutput.address);
+        // const [sig] = await tom.signTx(tx)
+        // tx.addSignature(sig, true);
 
-    it("has expected setup", async (context: localTC) => {
-        // console.log(aliceMoney[1]?.value.dump())
-        // .dump().lovelace).toBe('5000000')
+        // await delay(500);
+        // debugger
+        it("creates a 'charter seed' utxo in the treasury contract", async (context: localTC) => {
+            const h : typeof CCTHelpers = context.h;
+            
+            const { tina, tom, tracy } = context.actors;
+            
+            const treasury = await context.h.setup();
+            const { tx, input, output } = await h.charterSeed()
+            
+            // await context.delay(1500)
+            // debugger
+            const found = await context.network.getUtxos(treasury.address);
+            expect(found.length).toBe(1);
+            const onChainDatum = found[0].origOutput.datum;
+            expect(onChainDatum.hash).toEqual(output.datum.hash);
+        });
+
+        it.todo("mints a singular unique charter token using the charter utxo", async () => {});
     });
 
     if (0)

@@ -23,9 +23,9 @@ export class CommunityTreasury extends StellarContract<CCTParams> {
         return contract;
     }
 
-    async buildCharterUtxo(tx: Tx, wallets: Wallet[]) {
-        const dType = this.configuredContract.mainArgTypes[0];
-        console.log({ dType });
+    async buildCharterSeed(tx: Tx, wallet: Wallet) {
+        // const dType = this.configuredContract.mainArgTypes[0];
+        // console.log({ dType });
 
         //! deposits one ADA into the contract for use with the CoinFactory charter.
         //! deposits the minimum 
@@ -35,12 +35,12 @@ export class CommunityTreasury extends StellarContract<CCTParams> {
         const output = new TxOutput(
             this.address,
             txValue,
-            // Datum.inline(new this.datumType.CharterUtxo([42]))
+            // Datum.inline(new this.datumType.CharterSeed([42]))
             Datum.inline(this.configuredContract.evalParam("CHARTER").data)
         );
 
         // const addresses : Address[] = []; 
-        const input = await this.findInputsInWallets(txValue, { wallets });
+        const input = await this.findInputsInWallets(txValue, { wallets: [wallet] });
 
         // prettier-ignore
         tx.addOutput(output)

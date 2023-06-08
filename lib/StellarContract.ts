@@ -69,7 +69,7 @@ export class StellarContract<
                 tx.addSignatures(s, true)
             }
         }
-        this.network.submitTx(tx)
+        return this.network.submitTx(tx)
     }
 
     ADA(n: bigint | number): bigint {

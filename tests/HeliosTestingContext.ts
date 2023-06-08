@@ -4,6 +4,7 @@ import {
     NetworkParams,
     Program,
     UplcProgram,
+    Wallet,
     WalletEmulator,
 } from "@hyperionbt/helios";
 import * as helios from "@hyperionbt/helios";
@@ -16,12 +17,19 @@ import {
 } from "../lib/StellarContract";
 
 type paramsBase = Record<string, any>;
-type contractMap<S extends StellarContract<P>, P extends paramsBase> = Record<
+type contractMap<
+    S extends StellarContract<P>, 
+    H extends HelperFunctions<S>,  
+    P extends paramsBase
+> = Record<
     string,
-    HeliosTestingContext<S, P>
+    HeliosTestingContext<S, H, P>
 >;
 type actorMap = Record<string, WalletEmulator>;
 
+export type HelperFunctions<
+    S  extends StellarContract<any>
+> = Record<string, (...args:any) => Promise<any>>
 type subclassOf<S extends StellarContract<P>, P extends paramsBase> = new (
     args: StellarConstructorArgs<P>
 ) => S & StellarContract<P>;
@@ -30,21 +38,24 @@ type subclassOf<S extends StellarContract<P>, P extends paramsBase> = new (
 export const ADA = 1_000_000n; // lovelace
 export interface HeliosTestingContext<
     StellarType extends StellarContract<P>,
+    H extends HelperFunctions<StellarType>,
     P extends paramsBase
 > {
     stellarClass: subclassOf<StellarContract<P>, P>;
     helios: typeof helios;
+    myself?: Wallet;
     network: NetworkEmulator;
     liveSlotParams: NetworkParams;
     networkParams: NetworkParams;
+    h: H, // alias for helpers
+    helpers: H, 
     delay: typeof delay,
     addActor: typeof addActor;
     waitUntil: typeof waitUntil;
     currentSlot: typeof currentSlot;
     actors: actorMap;
     // contract: UplcProgram;
-    instantiateWithParams: typeof instantiateWithParams<StellarType, P>;
-    setupFunc: typeof setupFunc;
+    instantiateWithParams: typeof instantiateWithParams<StellarType, H, P>;
     //! it has an optional no-args setup() function, 
     //  ... which instantiates the contract using params arranged by that func.
     //  ...  setupFunc(func) is used to assign it.
@@ -57,7 +68,7 @@ export interface HeliosTestingContext<
     rand?: () => number;
 
     //! it manifests some details only after createContract()
-    related?: contractMap<StellarType, P>;
+    related?: contractMap<StellarType, H, P>;
     strella?: StellarType;
     address?: Address;
 }
@@ -68,9 +79,10 @@ async function delay(ms) {
 
 async function instantiateWithParams<
     StellarType extends StellarContract<P>,
+    H extends HelperFunctions<StellarType>,
     P extends paramsBase
 >(
-    this: HeliosTestingContext<StellarType, P>,
+    this: HeliosTestingContext<StellarType, H, P>,
     params: P //!!! todo: make this fit params that work with the helios contract
 ): Promise<StellarType> {
     const TargetClass = this.stellarClass;
@@ -78,6 +90,7 @@ async function instantiateWithParams<
     const strella = new TargetClass({
         params,
         network: this.network,
+        myself: this.myself,
         networkParams: this.networkParams,
         isTest: true,
     });
@@ -86,17 +99,13 @@ async function instantiateWithParams<
     //@ts-expect-error - is this type error actually correct?  fixes welcome
     return strella;
 }
-function setupFunc<
-    P extends paramsBase
->(func : () => Promise<StellarContract<P>>) : void {
-    this.setup = func;
-}
 
-export async function addTestContext<P extends paramsBase>(
+export async function addTestContext<P extends paramsBase, H extends HelperFunctions<any>>(
     context: TestContext,
-    stellarClass: subclassOf<StellarContract<P>, P>
+    stellarClass: subclassOf<StellarContract<P>, P>,
+    helpers: H
 ) {
-    const tc = await mkContext(stellarClass);
+    const tc = await mkContext(stellarClass, helpers, context);
 
     Object.assign(context, tc);
 }
@@ -137,12 +146,22 @@ export function mkNetwork(): [NetworkEmulator, enhancedNetworkParams] {
 
 export async function mkContext<
     S extends StellarContract<P>,
+    H extends HelperFunctions<S>,
     P extends paramsBase
 >(
-    stellarClass: subclassOf<StellarContract<P>, P>
-): Promise<HeliosTestingContext<S, P>> {
+    stellarClass: subclassOf<StellarContract<P>, P>,
+    helpers: H,
+    ctx
+): Promise<HeliosTestingContext<S, H, P>> {
     const optimize = false;
 
+    //! it explicitly binds the helper functions' `this` to the context object,
+    //   to match the type-hints
+    const h : HelperFunctions<S> = Object.fromEntries(
+        Object.entries(helpers).map(
+            ([name, func]) => [name, func.bind(ctx)] 
+        )
+    );
     // let address;
     // try {
     //     address = Address.fromValidatorHash(uplc.validatorHash);
@@ -156,6 +175,8 @@ export async function mkContext<
 
     const context = {
         helios,
+        h, // alias
+        helpers: h, //formal name
         stellarClass,
         actors: {},
         // address,
@@ -165,7 +186,6 @@ export async function mkContext<
         liveSlotParams: emuParams,
         networkParams,
         // addRelatedContract,
-        setupFunc,
         addActor,
         waitUntil,
         currentSlot,
@@ -174,10 +194,11 @@ export async function mkContext<
     };
     const now = new Date();
     context.waitUntil(now);
+    //@ts-expect-error - TODO verify whether the warning "could be instantiated with a different subtype" actually is a practical problem
     return context;
 }
 function mkRandomBytes(
-    this: HeliosTestingContext<any, any>,
+    this: HeliosTestingContext<any, any, any>,
     length: number
 ): number[] {
     if (!this.randomSeed)
@@ -194,7 +215,7 @@ function mkRandomBytes(
 }
 
 function addActor(
-    this: HeliosTestingContext<any, any>,
+    this: HeliosTestingContext<any, any, any>,
     roleName: string,
     walletBalance: bigint
 ) {
@@ -215,11 +236,11 @@ function addActor(
     return a;
 }
 
-function currentSlot(this: HeliosTestingContext<any, any>) {
+function currentSlot(this: HeliosTestingContext<any, any, any>) {
     return this.liveSlotParams.liveSlot;
 }
 
-function waitUntil(this: HeliosTestingContext<any, any>, time: Date) {
+function waitUntil(this: HeliosTestingContext<any, any, any>, time: Date) {
     const targetTimeMillis = BigInt(time.getTime());
     const targetSlot = this.liveSlotParams.timeToSlot(targetTimeMillis);
     const c = this.currentSlot();
