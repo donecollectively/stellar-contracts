@@ -544,4 +544,80 @@ export class StellarContract<
 
         return (this._template = this._template || Program.new(src));
     }
+
+    async getMyActorAddress() {
+        if (!this.myself)
+            throw new Error(
+                `missing required 'myself' attribute on ${this.constructor.name}`
+            );
+
+        const [addr] = await this.myself.usedAddresses;
+
+        return addr;
+    }
+
+    async mustFindActorUtxo(
+        name: string, 
+        predicate: (u: UTxO) => UTxO | undefined,
+        extraErrorHint : string = ""
+    ) : Promise<UTxO | never>{
+        const address = await this.getMyActorAddress()
+
+        return this.mustFindUtxo(name, predicate, {address}, extraErrorHint);
+    }
+
+    async hasActorUtxo(
+        name: string, 
+        predicate: (u: UTxO) => UTxO | undefined,
+        extraErrorHint : string = ""
+    ) : Promise<UTxO | undefined>{
+        const address = await this.getMyActorAddress()
+
+        return this.hasUtxo(name, predicate, {address});
+    }
+
+
+    async mustFindMyUtxo(
+        name: string, 
+        predicate: (u: UTxO) => UTxO | undefined,
+        extraErrorHint : string = ""
+    ) : Promise<UTxO | never>{
+        const {address} = this
+        return this.mustFindUtxo(name, predicate, {address}, extraErrorHint);
+    }
+    
+    async mustFindUtxo(
+        name: string, 
+        predicate: (u: UTxO) => UTxO | undefined,
+        {address} : {address: Address},
+        extraErrorHint : string = ""
+    ) : Promise<UTxO | never>{
+        const found = await this.hasUtxo(name, predicate, {address});
+        if (!found) {
+            throw new Error(
+                `${this.constructor.name}: '${name}' utxo not found (${extraErrorHint}) in address`
+            );
+        }
+
+        return found
+    }
+    
+    async hasUtxo(
+        name: string, 
+        predicate: (u: UTxO) => UTxO | undefined,
+        {address} : {address: Address}
+    ) : Promise<UTxO | undefined>{ 
+        const utxos = await this.network.getUtxos(address);
+        console.log(`finding '${name}' utxo in set: `, utxosAsString(utxos));
+
+        return utxos.find(predicate);
+    }
+
+    async hasMyUtxo(
+        name: string, 
+        predicate: (u: UTxO) => UTxO | undefined,
+    ) : Promise<UTxO | undefined>{ 
+        return this.hasUtxo(name, predicate, {address: this.address})
+    }
+
 }

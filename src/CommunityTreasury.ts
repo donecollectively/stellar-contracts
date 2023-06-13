@@ -40,7 +40,10 @@ type CtConstellation = Record<string, typeof StellarContract<any>>;
 type paramsForStar<S2 extends StellarContract<any>> =
     S2 extends StellarContract<infer P> ? P : never;
 
-export type CharterDatumArgs = { trustees: Address[]; minSigs: number | bigint };
+export type CharterDatumArgs = {
+    trustees: Address[];
+    minSigs: number | bigint;
+};
 
 export class CommunityTreasury extends StellarContract<CtParams> {
     contractSource() {
@@ -76,9 +79,9 @@ export class CommunityTreasury extends StellarContract<CtParams> {
     }
 
     mkContractParams(params: CtParams) {
-        const {mph} = this
+        const { mph } = this;
         console.log("this treasury uses mph", mph?.hex);
-        
+
         return {
             mph,
         };
@@ -139,13 +142,13 @@ export class CommunityTreasury extends StellarContract<CtParams> {
 
         return tcx;
     }
-    stringToNumberArray(str: string) : number[] {
+    stringToNumberArray(str: string): number[] {
         let encoder = new TextEncoder();
         let byteArray = encoder.encode(str);
-        return [...byteArray].map(x => parseInt(x.toString()))
+        return [...byteArray].map((x) => parseInt(x.toString()));
     }
-    get charterTokenAsValuesEntry() : [number[], bigint]{
-        return [this.stringToNumberArray("charter"), BigInt(1)]
+    get charterTokenAsValuesEntry(): [number[], bigint] {
+        return [this.stringToNumberArray("charter"), BigInt(1)];
     }
     get charterTokenAsValue() {
         const minter = this.mkMintingScript();
@@ -153,14 +156,37 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         return new Value(
             this.ADA(1.7),
             new Assets([
-                [minter.compiledContract.mintingPolicyHash, [
-                    this.charterTokenAsValuesEntry
-                ]],
+                [
+                    minter.compiledContract.mintingPolicyHash,
+                    [this.charterTokenAsValuesEntry],
+                ],
             ])
         );
     }
 
-    async getSeedUtxo() : Promise<UTxO> {
+    async mustGetSeedUtxo(): Promise<UTxO | never> {
+        // const [address] = await this.myself.usedAddresses;
+        const { seedTxn, seedIndex } = this.paramsIn;
+
+        return this.mustFindActorUtxo("seed", (u) => {
+            const { txId, utxoIdx } = u;
+            
+            if ( txId.eq(seedTxn) && BigInt(utxoIdx) == seedIndex ) {
+                return u
+            }
+        }, "already spent?");
+    }
+
+    async mustGetCharterUtxo(): Promise<UTxO | never> {
+        const ctVal = this.charterTokenAsValue;
+
+        return this.mustFindActorUtxo("seed", (u) => {
+            if (u.value.ge(ctVal)) return u;
+        }, "has it been minted?");
+    }
+
+
+    async XgetSeedUtxo(): Promise<UTxO> {
         //! EXPECTS myself to be set
         if (!this.myself)
             throw new Error(
@@ -170,21 +196,19 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         const [addr] = await this.myself.usedAddresses;
         const utxos = await this.network.getUtxos(addr);
         const { seedTxn, seedIndex } = this.paramsIn;
-        console.log("utxos held by actor (\"myself\"): ", utxosAsString(utxos))
+        console.log('utxos held by actor ("myself"): ', utxosAsString(utxos));
 
-        const seedUtxo = utxos.find(
-            (u) => {
-                const {txId, utxoIdx} = u;
-                const t = (txId.eq(seedTxn) && BigInt(utxoIdx) == seedIndex)
-                return t;
-            }
-        );
+        const seedUtxo = utxos.find((u) => {
+            const { txId, utxoIdx } = u;
+            const t = txId.eq(seedTxn) && BigInt(utxoIdx) == seedIndex;
+            return t;
+        });
         if (!seedUtxo)
             throw new Error(
                 `seed utxo not found / already spent: ${seedTxn.hex}@${seedIndex}`
             );
 
-            return seedUtxo
+        return seedUtxo;
     }
 
     async txMintCharterToken(
@@ -193,17 +217,17 @@ export class CommunityTreasury extends StellarContract<CtParams> {
     ) {
         let seedUtxo;
         try {
-            seedUtxo = await this.getSeedUtxo()
-        } catch(e) {
-            throw(e);
+            seedUtxo = await this.mustGetSeedUtxo();
+        } catch (e) {
+            throw e;
         }
 
-        const v= this.charterTokenAsValue
-       // this.charterTokenDatum
+        const v = this.charterTokenAsValue;
+        // this.charterTokenDatum
         const datum = this.mkCharterTokenDatum({
             trustees,
             minSigs: BigInt(minSigs),
-        })
+        });
 
         const outputs = [
             new TxOutput(
@@ -216,13 +240,14 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         ];
 
         // debugger
-        tcx.addInput(seedUtxo).addOutputs(outputs).mintTokens(
-            this.mph!,
-            [
-                this.charterTokenAsValuesEntry   
-            ], 
-            this.minter!.mkCharterRedeemer({treasury: this.address})
-        ).attachScript(this.minter!.compiledContract)
+        tcx.addInput(seedUtxo)
+            .addOutputs(outputs)
+            .mintTokens(
+                this.mph!,
+                [this.charterTokenAsValuesEntry],
+                this.minter!.mkCharterRedeemer({ treasury: this.address })
+            )
+            .attachScript(this.minter!.compiledContract);
         return tcx;
     }
 

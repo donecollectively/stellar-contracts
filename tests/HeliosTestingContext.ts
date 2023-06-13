@@ -60,13 +60,7 @@ export interface HeliosTestingContext<
     waitUntil: typeof waitUntil;
     currentSlot: typeof currentSlot;
     actors: actorMap;
-    // contract: UplcProgram;
     instantiateWithParams: typeof instantiateWithParams<StellarType, H, P>;
-    //! it has an optional no-args setup() function, 
-    //  ... which instantiates the contract using params arranged by that func.
-    //  ...  setupFunc(func) is used to assign it.
-
-    setup?: () => Promise<StellarType>
     mkRandomBytes: typeof mkRandomBytes;
     //! it has a seed for mkRandomBytes, which must be set by caller
     randomSeed?: number;

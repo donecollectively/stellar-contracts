@@ -293,7 +293,7 @@ describe("community treasury manager", async () => {
 
                 const wrongUtxo = (await tracy.utxos).at(-1);
 
-                vi.spyOn(treasury, "getSeedUtxo").mockImplementation(() => {return wrongUtxo})
+                vi.spyOn(treasury, "mustGetSeedUtxo").mockImplementation(() => {return wrongUtxo})
 
                 try {
                     await h.mintCharterToken()
