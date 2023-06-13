@@ -296,24 +296,8 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                 ],
                 requires: [
                     "has a singleton minting policy",
-                    "the charter token is deterministic",
                     "the charter token is always kept in the contract",
                 ],
-            },
-
-            "the charter token is deterministic": {
-                purpose:
-                    "so that every given treasury contract has a charter token that can't possibly be faked",
-                details: [
-                    "Its identity, combined with the Treasury+Minting contract code, causes determinism in the created addresses",
-                    "Because every UTxO can be spent only one time, its identity provides uniqueness",
-                ],
-                mech: [
-                    "The minting scripts's uniqueness (MPH) is based on a utxo, which is only ever spent once",
-                    "The charter token's identity comes from combining MPH + 'charter'",
-                    "The treasury script's uniqueness comes from the MPH",
-                ],
-                requires: [], //no deeper deps
             },
 
             "the charter token is always kept in the contract": {
@@ -327,8 +311,8 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                     "It shouldn't ever be possible to interfere with its spendability, e.g. by bundling it in an inconvenient way with other assets",
                 ],
                 mech: [
-                    "Every spend of any utility- or value-bearing assets in the contract also moves the Charter token to a new utxo in the contract",
-                    "The charter is always be kept separate from other assets held in the contract",
+                    "TODO: Every spend of any utility- or value-bearing assets in the contract also moves the Charter token to a new utxo in the contract",
+                    "TODO: The charter is always kept separate from other assets held in the contract",
                 ],
                 requires: [],
             },
@@ -342,7 +326,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                     "... and simply requires that the charter token is used for minting anything else",
                 ],
                 mech: [
-                    "requires the charter-token to be spent on all non-Charter minting",
+                    "TODO: requires the charter-token to be spent on all non-Charter minting",
                 ],
                 requires: [],
             },
@@ -354,8 +338,8 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                     "This type of administrative action should be explicit and separate from any other administrative activity",
                 ],
                 mech: [
-                    "If the CharterToken's Datum hash is changed, no other tx inputs/outputs are allowed",
-                    "The charter setting changes are approved based on same threshold as any other administrative change",
+                    "TODO: If the CharterToken's Datum hash is being changed, no other tx inputs/outputs are allowed",
+                    "TODO: The charter setting changes are approved based on same threshold as any other administrative change",
                 ],
                 requires: [
                     "the trustee threshold is enforced on all administrative actions",
@@ -372,8 +356,8 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                     "Normal day-to-day administrative activities can also be conducted while a small number of trustees are on vacation or otherwise temporarily unavailable",
                 ],
                 mech: [
-                    "a minSigs setting is included in the CharterToken datum",
-                    "any transaction that spends the CharterToken is deined if it lacks at least 'minSigs' number of trustee signatures",
+                    "TODO: a minSigs setting is included in the CharterToken datum",
+                    "TODO: any transaction that spends the CharterToken is deined if it lacks at least 'minSigs' number of trustee signatures",
                 ],
                 requires: [],
             },
