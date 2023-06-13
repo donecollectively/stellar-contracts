@@ -1,26 +1,22 @@
 spending CommunityTreasury
 
-// needed in helios 0.13
+// needed in helios 0.13: defaults
+// const charterUTxO: TxOutputId = TxOutputId::new(TxId::new(#1213), 1)
+const mph : MintingPolicyHash = MintingPolicyHash::new(#1234)
 
-
-const nonce: ByteArray = #34323432
-const initialTrustees: []Address = []Address{
-        Address::new(Credential::new_pubkey(
-            PubKeyHash::new(#1234)
-        ), Option[StakingCredential]::None)
-}
+// const nonce: ByteArray = #34323432
+// const initialTrustees: []Address = []Address{
+//         Address::new(Credential::new_pubkey(
+//             PubKeyHash::new(#1234)
+//         ), Option[StakingCredential]::None)
+// }
 
 enum Datum {
-    CharterSeed {
-        nce: ByteArray
-    }
     CharterToken {
-        nce: ByteArray
+        // policy: MintingPolicyHash
         trustees: []Address
         minSigs: Int
     }
-    // creator: PubKeyHash
-    // deadline: Time
 }
 
 // }
@@ -37,46 +33,62 @@ func main(datum: Datum, redeemer: Redeemer, context: ScriptContext) -> Bool {
     tx: Tx = context.tx;
     // now: Time = tx.time_range.start;
     
-    redeemer.switch {
+    tt : Bool = redeemer.switch {
         charterMint => {
-            initialTrustees.all( ( t : Address) -> Bool {
-                // c: Credential = t.credential;
-                // Credential::PubKey{hash} = c;
-                t.credential.switch{
-                    pubKey: PubKey => {
-                        tx.is_signed_by(pubKey.hash)
-                    },
-                    // contract:
-                     Validator => {
-                        error("invalid address in initialTrustees list: can't expect a contract addr to sign a transaction")
+            // charterTokenOut : TxOutput = tx.outputs.find(isCharterToken);
+            // if (!charterToken) { error("missing required charter token deposit during charterMint") };
 
-                        // tx.is_signed_by(contract.hash)
-                    },
-                    _ => false
-                }                
-            })
+            // if (charterToken.address != 
+            // trustees.all( ( t : Address) -> Bool {
+            //     // c: Credential = t.credential;
+            //     // Credential::PubKey{hash} = c;
+            //     t.credential.switch{
+            //         pubKey: PubKey => {
+            //             tx.is_signed_by(pubKey.hash)
+            //         },
+            //         // contract:
+            //          Validator => {
+            //             error("invalid address in initialTrustees list: can't expect a contract addr to sign a transaction")
+
+            //             // tx.is_signed_by(contract.hash)
+            //         },
+            //         _ => false
+            //     }                
+            // })
             // print(hash.show());
+            true
         },
         x: authorizeTreasuryMint => {
-            nonce != datum.serialize() &&
-            !initialTrustees.is_empty() &&
-            initialTrustees.head != initialTrustees.head &&
+            //! guards from optimizing mph out of the program, screwing up parameterization
+            mph.serialize() != datum.serialize() &&
+
+            // !initialTrustees.is_empty() &&
+            // initialTrustees.head != initialTrustees.head &&
             x.tokenName == x.tokenName 
             // now < datum.deadline &&
             // tx.is_signed_by(datum.creator)
         }
-    }
+    };
+
+    tt &&
+    tx.serialize() != datum.serialize()
 }
 
-func nce() -> ByteArray {
-    nonce.slice(nonce.length-4,nonce.length-1)
-}
+// func nonceEnding() -> ByteArray {
+//     nonce.slice(nonce.length-4,nonce.length-1)
+// }
+// const NCE : ByteArray = nonceEnding()
+// const CHARTER_SEED: Datum::CharterSeed = Datum::CharterSeed{nce: nonceEnding()}
 
-const CHARTER_SEED: Datum::CharterSeed = Datum::CharterSeed{nce: nce()}
-
-const charterTokenDatum: Datum::CharterToken = Datum::CharterToken{
-    nce: nce(),
+const charterTokenBaseInfo: Datum::CharterToken = Datum::CharterToken{
     trustees: []Address{},
     minSigs: 1
 }
 
+// const mkCharterTokenDatum : (trustees: []Address, minSigs: Int) -> Datum::CharterSeed = (trustees: []Address, minSigs: Int) -> Datum::CharterSeed {
+//      Datum::CharterToken{
+//         nce: nce(),
+//         trustees: trustees,
+//         minSigs: minSigs
+//     }
+// }

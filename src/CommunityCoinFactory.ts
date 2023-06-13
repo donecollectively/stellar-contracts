@@ -1,4 +1,4 @@
-import { Program, Datum, TxId, TxOutputId } from "@hyperionbt/helios";
+import { Program, Datum, TxId, TxOutputId, Address } from "@hyperionbt/helios";
 import { StellarContract } from "../lib/StellarContract.js";
 
 //@ts-expect-error
@@ -6,13 +6,33 @@ import contract from "./CommunityCoinFactory.hl";
 
 export type CcfParams = {
     seedTxn: TxId
-    index: bigint
+    seedIndex: bigint
 };
 
-export class CommunityCoinFactory extends StellarContract<CcfParams> {
+export type CcfCharterRedeemerArgs = {
+    treasury: Address
+}
 
+export class CommunityCoinFactory extends StellarContract<CcfParams> {
     contractSource() { return contract }
 
+    mkCharterRedeemer({
+        treasury,
+    }: CcfCharterRedeemerArgs) {
+        // debugger
+        const t =  new this.configuredContract.types.Redeemer.Charter(
+            treasury
+        );
+        
+        return t._toUplcData();
+        return t;
+    }
+
+    t() {
+        const t = Datum.inline(this.configuredContract.evalParam("seedTxn").data);
+    
+        return t
+    }
     //! its endpoints can be introspected
     // endpoints(
 

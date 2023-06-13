@@ -1,8 +1,11 @@
 import {
     Address,
+    Crypto,
     NetworkEmulator,
     NetworkParams,
     Program,
+    Tx,
+    TxId,
     UplcProgram,
     Wallet,
     WalletEmulator,
@@ -14,6 +17,7 @@ import { Vitest, vitest, TestContext } from "vitest";
 import {
     StellarConstructorArgs,
     StellarContract,
+    txAsString,
 } from "../lib/StellarContract";
 
 type paramsBase = Record<string, any>;
@@ -51,6 +55,7 @@ export interface HeliosTestingContext<
     h: H, // alias for helpers
     helpers: H, 
     delay: typeof delay,
+    state: Record<string, any>
     addActor: typeof addActor;
     waitUntil: typeof waitUntil;
     currentSlot: typeof currentSlot;
@@ -72,11 +77,13 @@ export interface HeliosTestingContext<
     related?: contractMap<StellarType, H, P>;
     strella?: StellarType;
     address?: Address;
+    submitTx: typeof submitTx
 }
 
 async function delay(ms) { 
     return new Promise((res) => setTimeout(res, ms)) 
 }
+
 
 async function instantiateWithParams<
     StellarType extends StellarContract<P>,
@@ -84,7 +91,7 @@ async function instantiateWithParams<
     P extends paramsBase
 >(
     this: HeliosTestingContext<StellarType, H, P>,
-    params: P //!!! todo: make this fit params that work with the helios contract
+    params: P 
 ): Promise<StellarType> {
     const TargetClass = this.stellarClass;
 
@@ -192,12 +199,36 @@ export async function mkContext<
         currentSlot,
         mkRandomBytes,
         instantiateWithParams,
+        submitTx,
+        state:{},
     };
     const now = new Date();
     context.waitUntil(now);
     //@ts-expect-error - TODO verify whether the warning "could be instantiated with a different subtype" actually is a practical problem
     return context;
 }
+
+async function submitTx(
+    this: HeliosTestingContext<any, any, any>,    
+    tx: Tx
+) : Promise<TxId> { 
+    const tina = this.actors.tina.address
+    try {
+        await tx.finalize(this.networkParams, tina);
+    } catch(e) {
+        throw (e)
+    }
+
+    console.log("Test helper submitting tx:\n "+ txAsString(tx))
+
+    const txId = this.network.submitTx(tx);
+    this.network.tick(1n)
+    // await this.delay(1000)
+    // debugger
+    // this.network.dump();
+    return txId
+}
+
 function mkRandomBytes(
     this: HeliosTestingContext<any, any, any>,
     length: number
@@ -206,7 +237,7 @@ function mkRandomBytes(
         throw new Error(
             `test must set context.randomSeed for deterministic randomness in tests`
         );
-    if (!this.rand) this.rand = helios.Crypto.rand(this.randomSeed);
+    if (!this.rand) this.rand = Crypto.rand(this.randomSeed);
 
     const bytes: number[] = [];
     for (let i = 0; i < length; i++) {
@@ -225,7 +256,6 @@ function addActor(
 
     //! it instantiates a wallet with the indicated balance pre-set
     const a = this.network.createWallet(walletBalance);
-
     //! it makes collateral for each actor, above and beyond the initial balance,
     //  ... so that the full balance is spendable and the actor can immediately
     //  ... engage in smart-contract interactions.

@@ -1,9 +1,7 @@
-minting tokenVendingMachine
+minting coinFactory
 
-// const TREASURY_CONTRACT : Address = ""
 const seedTxn : TxId = TxId::new(#1234)
-const index : Int = 42
-// const OWNER: Address = ""
+const seedIndex : Int = 42
 
 enum Redeemer { 
     Charter {
@@ -21,24 +19,27 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
     value_minted: Value = tx.minted;
 
     charterToken: AssetClass = AssetClass::new(
-        ctx.get_current_minting_policy_hash(),
+        mph,
         "charter".encode_utf8()
     );
-
+    // print("hi");
 
     ok : Bool = r.switch {
-        c: Charter => {
-            outputId: TxOutputId = TxOutputId::new(
+        charter: Charter => {       
+            seedUtxo: TxOutputId = TxOutputId::new(
                 seedTxn,
-                index
+                seedIndex
             );
 
             value_minted == Value::new(charterToken, 1) &&
             tx.inputs.any( (input: TxInput) -> Bool {
-                input.output_id == outputId
+                input.output_id == seedUtxo
             }) &&
             tx.outputs.all( (output: TxOutput) -> Bool {
-                output.address == c.treasury
+                output.value != value_minted || (
+                    output.value == value_minted &&
+                    output.address == charter.treasury
+                )
             })
         },
         Mint => {
@@ -65,12 +66,8 @@ true
         _ => true
     };
 
-    expectedCoin: AssetClass = AssetClass::new(
-        mph, 
-        "REP".encode_utf8()
-    );
+    print("coin factory: minting value: " + value_minted.show());
 
-    ok &&
-    (value_minted == Value::new(expectedCoin, 1)).trace("minted 1 ok!")
+    ok
 }
 

@@ -10,102 +10,392 @@ import {
     UTxO,
     DatumHash,
     ByteArray,
+    Assets,
+    TxId,
 } from "@hyperionbt/helios";
 
-import { StellarConstructorArgs, StellarContract } from "../lib/StellarContract.js";
+import {
+    StellarConstructorArgs,
+    StellarContract,
+    StellarTxnContext,
+    utxoAsString,
+    utxosAsString,
+} from "../lib/StellarContract.js";
 
 //@ts-expect-error
 import contract from "./CommunityTreasury.hl";
 import { CommunityCoinFactory } from "./CommunityCoinFactory.js";
 
 export type CtParams = {
-    nonce: number[];
-    initialTrustees: Address[];
+    seedTxn: TxId;
+    seedIndex: bigint;
 };
 
-type paramsFuncForStar<
-    S2 extends StellarContract<any> 
-> = () => S2 extends StellarContract<infer P> ? Promise<P> : never
+type CtConstellation = Record<string, typeof StellarContract<any>>;
 
-type paramsForStar<
-    S2 extends StellarContract<any>
-> = S2 extends StellarContract<infer P> ? P : never
+// type paramsFuncForStar<
+//     S2 extends StellarContract<any>
+// > = () => S2 extends StellarContract<infer P> ? Promise<P> : never
 
+type paramsForStar<S2 extends StellarContract<any>> =
+    S2 extends StellarContract<infer P> ? P : never;
+
+export type CharterDatumArgs = { trustees: Address[]; minSigs: number | bigint };
 
 export class CommunityTreasury extends StellarContract<CtParams> {
-    minter?: CommunityCoinFactory;
-
-    async mkMinter() : Promise<CommunityCoinFactory> {
-        if (this.minter) return this.minter
-        const seedUtxo = (await this.findDatum(this.charterSeedDatum))[0]
-        if (!seedUtxo) throw new Error(`no seed utxo is present in ${this.address.toBech32()}.  Was it deposited?  Was it already transformed to a charterToken?`)
-
-        this.minter = this.addScriptWithParams(CommunityCoinFactory, {
-            seedTxn: seedUtxo.txId,
-            index: seedUtxo.utxoIdx
-        })
-        return this.minter
-    }
-
-    addScriptWithParams<
-        SC extends StellarContract<any>,
-        // P = SC extends StellarContract<infer P> ? P : never
-    >(TargetClass: new(a: SC extends StellarContract<any> ? StellarConstructorArgs<SC> : never) => SC, 
-        params: SC extends StellarContract<infer P> ? P : never
-    ) {
-        const args : StellarConstructorArgs<SC> = {
-            params,
-            network: this.network,
-            myself: this.myself,
-            networkParams: this.networkParams,
-            isTest: true,
-        }
-        //@ts-expect-error todo: why is the conditional type not matching enough?
-        const strella = new TargetClass(args);
-        return strella
-    }
     contractSource() {
         return contract;
     }
-    get charterSeedDatum() {
-        return Datum.inline(this.configuredContract.evalParam("CHARTER_SEED").data);
-    }
+
+    minter?: CommunityCoinFactory;
+    mkMintingScript(): CommunityCoinFactory {
+        if (this.minter) return this.minter;
+        const { seedTxn, seedIndex } = this.paramsIn;
+
+        // const charterToken = (await this.findDatum((u : UTxO) => {
+        //     return this.isCharterToken(u)
+        // }))[0];
+        // const seedUtxo = charterToken ? null : (await this.findDatum(this.charterSeedDatum))[0];
+        // if (!charterToken && !seedUtxo) throw new Error(`seed or charter utxo is present in ${this.address.toBech32()}`)
+        // const seedTxn = seedUtxo?.txId || charterToken.origOutput.datum
+
+        return (this.minter = this.addScriptWithParams(CommunityCoinFactory, {
+            seedTxn,
+            seedIndex,
+        }));
     }
 
+    isCharterToken(u: UTxO) {
+        debugger;
+        return false;
+    }
 
-    async txDepositCharterSeed(tx : Tx = new Tx()) {
+    get mph() {
+        const minter = this.mkMintingScript();
+        return minter.mintingPolicyHash;
+    }
+
+    mkContractParams(params: CtParams) {
+        const {mph} = this
+        console.log("this treasury uses mph", mph?.hex);
+        
+        return {
+            mph,
+        };
+    }
+
+    mkCharterTokenDatum({
+        trustees,
+        minSigs,
+    }: {
+        trustees: Address[];
+        minSigs: bigint;
+    }) {
+        // debugger
+        const t = new this.configuredContract.types.Datum.CharterToken(
+            trustees,
+            minSigs
+        );
+        // debugger
+        return t._toUplcData();
+    }
+
+    // stars = this.constellationProxy({
+    //     minter:  CommunityCoinFactory
+    // });
+
+    mkDependencyStars() {
+        return {};
+    }
+
+    // get charterSeedDatum() {
+    //     return Datum.inline(this.configuredContract.evalParam("CHARTER_SEED").data);
+    // }
+
+    // get nonceEnding() {
+    //     return this.configuredContract.evalParam("NCE");
+    // }
+
+    xxmkCharterTokenDatum(t: any) {
+        // trustees,
+        // minSigs: BigInt(minSigs)
+
+        const tt = this.configuredContract.evalParam("charterTokenBaseInfo");
+        debugger;
+        return tt;
+    }
+
+    async XXtxMintCharterToken(
+        tcx: StellarTxnContext = new StellarTxnContext()
+    ) {
         //! EXPECTS myself to be set
         if (!this.myself)
             throw new Error(
                 `missing required 'myself' attribute on ${this.constructor.name}`
             );
 
+        const [addr] = await this.myself.usedAddresses;
+        const utxos = await this.network.getUtxos(addr);
+        const { seedTxn, seedIndex } = this.paramsIn;
+
+        const seedUtxo = utxos.find(
+            (u) => u.txId == seedTxn && BigInt(u.utxoIdx) == seedIndex
+        );
+        if (!seedUtxo)
+            throw new Error(
+                `seed utxo not found / already spent: ${seedTxn.hex}@${seedIndex}`
+            );
+
         //! deposits one ADA into the contract for use with the CoinFactory charter.
         //! deposits the minimum
         const txValue = new Value(this.ADA(1));
 
-        const outputs =  [new TxOutput(
+        const output = new TxOutput(
             this.address,
             txValue,
-            // Datum.inline(new this.datumType.CharterSeed([42]))
-            this.charterSeedDatum
-        )]
-
-        const inputs = [ await this.findInputsInWallets(txValue, {
-            wallets: [this.myself],
-        }) ]
+            Datum.inline(this.mkCharterTokenDatum({}).data)
+        );
 
         // prettier-ignore
-        tx.addOutputs(outputs)
-            .addInputs(inputs)
+        tcx.addOutput(output)
+            .addInput(seedUtxo)
 
-        return { tx, inputs, outputs };
+        return tcx;
+    }
+    stringToNumberArray(str: string) : number[] {
+        let encoder = new TextEncoder();
+        let byteArray = encoder.encode(str);
+        return [...byteArray].map(x => parseInt(x.toString()))
+    }
+    get charterTokenAsValuesEntry() : [number[], bigint]{
+        return [this.stringToNumberArray("charter"), BigInt(1)]
+    }
+    get charterTokenAsValue() {
+        const minter = this.mkMintingScript();
+
+        return new Value(
+            this.ADA(1.7),
+            new Assets([
+                [minter.compiledContract.mintingPolicyHash, [
+                    this.charterTokenAsValuesEntry
+                ]],
+            ])
+        );
     }
 
-    // buildCharterTxn() {
-    //     const output = new TxOutput(this.address)
-    //         new helios.Value(1_000_000n), // 1 tAda == 1 million lovelace
-    //     )
+    async txMintCharterToken(
+        { trustees, minSigs }: CharterDatumArgs,
+        tcx: StellarTxnContext = new StellarTxnContext()
+    ) {
+        //! EXPECTS myself to be set
+        if (!this.myself)
+            throw new Error(
+                `missing required 'myself' attribute on ${this.constructor.name}`
+            );
 
-    // }
+        const [addr] = await this.myself.usedAddresses;
+        const utxos = await this.network.getUtxos(addr);
+        const { seedTxn, seedIndex } = this.paramsIn;
+        console.log("utxos held by actor (\"myself\"): ", utxosAsString(utxos))
+
+        const seedUtxo = utxos.find(
+            (u) => {
+                const {txId, utxoIdx} = u;
+                const t = (txId.eq(seedTxn) && BigInt(utxoIdx) == seedIndex)
+                return t;
+            }
+        );
+        if (!seedUtxo)
+            throw new Error(
+                `seed utxo not found / already spent: ${seedTxn.hex}@${seedIndex}`
+            );
+
+            const v= this.charterTokenAsValue
+        // this.charterTokenDatum
+        const datum = this.mkCharterTokenDatum({
+            trustees,
+            minSigs: BigInt(minSigs),
+        })
+// debugger        
+        const outputs = [
+            new TxOutput(
+                this.address,
+                v,
+                Datum.inline(datum)
+                // Datum.inline(new this.datumType.CharterToken([42]))
+                // seed.
+            ),
+        ];
+
+        // debugger
+        tcx.addInput(seedUtxo).addOutputs(outputs).mintTokens(
+            this.mph!,
+            [
+                this.charterTokenAsValuesEntry   
+            ], 
+            this.minter!.mkCharterRedeemer({treasury: this.address})
+        ).attachScript(this.minter!.compiledContract)
+        return tcx;
+    }
+
+    requirements() {
+        return {
+            "positively governs all administrative actions": {
+                purpose: "to maintain clear control by a trustee group",
+                details: [
+                    // descriptive details of the requirement (not the tech):
+                    "a trustee group is defined during contract creation",
+                    "the trustee list's signatures provide consent",
+                    "the trustee group can evolve by consent of the trustee group",
+                    "a threshold set of the trustee group can give consent for the whole group",
+                ],
+                mech: [
+                    // descriptive details of the chosen mechanisms for implementing the reqts:
+                    "uses a 'charter' token specialized for this contract",
+                    "the charter token has a trustee list in its Datum structure",
+                    "the charter token has a threshold setting in its Datum structure",
+                    "the charter Datum is updated when needed to reflect new trustees/thresholds",
+                ],
+                requires: [
+                    "has a unique, permanent charter token",
+                    "has a unique, permanent treasury address",
+                    "the trustee threshold is enforced on all administrative actions",
+                    "the trustee group can be changed",
+                    "the charter token is always kept in the contract",
+                    "minting is gated on use of the Charter token",
+                ],
+            },
+
+            "has a singleton minting policy": {
+                purpose: "to mint various tokens authorized by the treasury",
+                details: [
+                    "A chosen minting script is bound deterministically to the contract constellation",
+                    "Its inaugural (aka 'initial Charter' or 'Charter Mint') transaction creates a charter token",
+                    "The minting script can issue further tokens approved by Treasury Trustees",
+                    "The minting script does not need to concern itself with details of Treasury Trustee approval",
+                ],
+                mech: [
+                    "has an initial UTxO chosen arbitrarily, and that UTxO is consumed during initial Charter",
+                    "makes a different address depending on (txId, outputIndex) parameters of the Minting script",
+                ],
+                requires: [],
+            },
+
+            "has a unique, permanent treasury address": {
+                purpose: "to give continuity for its stakeholders",
+                details: [
+                    "One-time creation is ensured by UTxO's unique-spendability property",
+                    "Determinism is transferred from the charter utxo to the MPH and to the treasury address",
+                ],
+                mech: [
+                    "uses the Minting Policy Hash as the sole parameter for the treasury spending script",
+                ],
+                requires: ["has a singleton minting policy"],
+            },
+
+            "has a unique, permanent charter token": {
+                purpose:
+                    "to guarantee permanent identity of a token constraining administrative actions",
+                details: [
+                    "a charter token is uniquely created when bootstrapping the constellation contract",
+                    "the charter token can't ever be recreated (it's non-fungible and can't be re-minted)",
+                    "the treasury address, minting policy hash, and charter token are all deterministic based on input utxo",
+                ],
+                impl: "txMintCharterToken()",
+                mech: [
+                    "creates a unique 'charter' token, with assetId determined from minting-policy-hash+'charter'",
+                    "doesn't work with a different spent utxo",
+                ],
+                requires: [
+                    "has a singleton minting policy",
+                    "the charter token is deterministic",
+                    "the charter token is always kept in the contract",
+                ],
+            },
+
+            "the charter token is deterministic": {
+                purpose:
+                    "so that every given treasury contract has a charter token that can't possibly be faked",
+                details: [
+                    "Its identity, combined with the Treasury+Minting contract code, causes determinism in the created addresses",
+                    "Because every UTxO can be spent only one time, its identity provides uniqueness",
+                ],
+                mech: [
+                    "The minting scripts's uniqueness (MPH) is based on a utxo, which is only ever spent once",
+                    "The charter token's identity comes from combining MPH + 'charter'",
+                    "The treasury script's uniqueness comes from the MPH",
+                ],
+                requires: [], //no deeper deps
+            },
+
+            "the charter token is always kept in the contract": {
+                purpose:
+                    "so that the treasury contract is always in control of administrative changes",
+                details: [
+                    "The charter token being allowed to spend is used as a signal of administrative authority transactions wanting proof of authority",
+                    "Thus, those transactions don't need to express the authority policy, but can simply verify the token's presence in the txn",
+                    "Those other transactions also don't need to express the return of the Charter token to the contract, because that's enforced universally by the treasury script",
+                    "By enforcing that the charter token is always returned to the contract, it has assurance of continuing ability to govern the next activity using that token",
+                    "It shouldn't ever be possible to interfere with its spendability, e.g. by bundling it in an inconvenient way with other assets",
+                ],
+                mech: [
+                    "Every spend of any utility- or value-bearing assets in the contract also moves the Charter token to a new utxo in the contract",
+                    "The charter is always be kept separate from other assets held in the contract",
+                ],
+                requires: [],
+            },
+
+            "minting is gated on use of the Charter token": {
+                purpose:
+                    "to simplify the logic of minting, while being sure of minting authority",
+                details: [
+                    "the minting policy doesn't have to directly enforce the trustee-list policy",
+                    "instead, it delegates that to the treasury spending script, ",
+                    "... and simply requires that the charter token is used for minting anything else",
+                ],
+                mech: [
+                    "requires the charter-token to be spent on all non-Charter minting",
+                ],
+                requires: [],
+            },
+
+            "the trustee group can be changed": {
+                purpose: "to ensure administrative continuity for the group",
+                details: [
+                    "When the needed threshold for administrative modifications is achieved, the Charter Datum can be updated",
+                    "This type of administrative action should be explicit and separate from any other administrative activity",
+                ],
+                mech: [
+                    "If the CharterToken's Datum hash is changed, no other tx inputs/outputs are allowed",
+                    "The charter setting changes are approved based on same threshold as any other administrative change",
+                ],
+                requires: [
+                    "the trustee threshold is enforced on all administrative actions",
+                ],
+            },
+
+            "the trustee threshold is enforced on all administrative actions": {
+                purpose:
+                    "allows progress in case a small fraction of trustees may not be available",
+                details: [
+                    "A group can indicate how many of the trustees are required to provide their explicit approval",
+                    "If a small number of trustees lose their keys, this allows the remaining trustees to directly regroup",
+                    "For example, they can replace the trustee list with a new set of trustees and a new approval threshold",
+                    "Normal day-to-day administrative activities can also be conducted while a small number of trustees are on vacation or otherwise temporarily unavailable",
+                ],
+                mech: [
+                    "a minSigs setting is included in the CharterToken datum",
+                    "any transaction that spends the CharterToken is deined if it lacks at least 'minSigs' number of trustee signatures",
+                ],
+                requires: [],
+            },
+
+            foo: {
+                purpose: "",
+                details: [],
+                mech: [],
+                requires: [],
+            },
+        };
+    }
 }
