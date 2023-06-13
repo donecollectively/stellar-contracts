@@ -83,8 +83,7 @@ const CCTHelpers :  hasHelpers = {
     } = {}) {
         if (this.strella && (this.randomSeed == randomSeed)) return this.strella;
 
-        if (!seedTxn) {
-            
+        if (!seedTxn) {            
             seedTxn = await this.h.mkSeedUtxo();
         }
         this.randomSeed = randomSeed;
@@ -99,6 +98,7 @@ const CCTHelpers :  hasHelpers = {
         const {delay} = this;
         const { tina, tom, tracy } = this.actors;
 
+        await this.h.setup();
         const treasury = this.strella!
         args = args || {
             trustees: [tina.address, tom.address, tracy.address],
@@ -115,29 +115,12 @@ const CCTHelpers :  hasHelpers = {
         return tcx
     },
 
-    // async charter(this: localTC, trusteeNames = ["tina", "tom"], minSigs = undefined) {
-    //     const {delay} = this;
-    //     const { tina, tom, tracy } = this.actors;
-    //     const trustees = trusteeNames.map((name: string) => {
-    //         const trustee = this.actors[name] 
-    //         if (!trustee) {
-    //             const actorNames = Object.keys(this.actors);
-    //             throw new Error(`trustee name ${name} does not map to one of the configured actors in this testing context (${actorNames.join(", ")}`)
-    //         }
-    //         return trustee.address
-    //     });
-    //     if (!minSigs) minSigs = trustees.length;
+    async mkCharterSpendTx(this: localTC) {        
+        await this.h.setup();
+        const treasury = this.strella!
 
-    //     const treasury = this.strella!
-    //     const tcx = await treasury.txMintCharterToken({
-    //         trustees,
-    //         minSigs
-    //     });
-    //     await treasury.submit(tcx)
-    //     this.network.tick(1n);
-
-    //     return tcx
-    // }
+        return treasury.txCharterAuthorization();
+    }
 
 }
 
@@ -309,108 +292,22 @@ describe("community treasury manager", async () => {
             });
         });
     });
-
-    if (0) describe("params", () => {
-    //     it("initialTrustees: helps determine the treasury address", async (context: localTC) => {
-     //         const { tina, tom, tracy } = context.actors;
-    //         context.randomSeed = 42;
-    //         const nonce = context.mkRandomBytes(16);
-
-    //         const treasury1 = await context.instantiateWithParams({
-    //             nonce,
-    //             initialTrustees: [tina.address, tom.address, tracy.address],
-    //         });
-    //         const addr1 = treasury1.address.toHex();
-
-    //         const treasury2 = await context.instantiateWithParams({
-    //             nonce,
-    //             initialTrustees: [tina.address, tom.address],
-    //         });
-    //         const addr2 = treasury2.address.toHex();
-    //         expect(treasury1).not.toBe(treasury2);
-    //         // console.error({addr1, addr2, nonce})
-    //         expect(addr1).not.toEqual(addr2);
-    //     });
-    // });
-    // describe("chartering the treasury", () => {
-    //     it("allocates an address for a community treasury", async (context: localTC) => {
-    //         const { tina, tom, tracy } = context.actors;
-    //         context.randomSeed = 42;
-    //         const nonce = context.mkRandomBytes(16);
-
-    //         const treasury = await context.instantiateWithParams({
-    //             nonce,
-    //             initialTrustees: [tina.address, tom.address, tracy.address],
-    //         });
-    //         expect(treasury.address).toBeTruthy();
-
-    //         const found = await context.network.getUtxos(treasury.address);
-    //         expect(found.length).toBe(0);
-    //     });
-    //     // await tx.finalize(context.networkParams, input.origOutput.address);
-    //     // const [sig] = await tom.signTx(tx)
-    //     // tx.addSignature(sig, true);
-
-    //     // await delay(500);
-    //     // debugger
-    //     // it("creates a 'charter seed' utxo in the treasury contract", async (context: localTC) => {
-    //     //     const h : typeof CCTHelpers = context.h;
+    describe("the charter token is always kept in the contract", () => {
+        it("builds transactions with the charter token returned to the contract", async (context: localTC) => {
+            const {h, network, actors, delay, state, } = context;
+        
+            await h.mintCharterToken()    
+            const treasury = context.strella!
             
-    //     //     const { tina, tom, tracy } = context.actors;
-            
-    //     //     const treasury = await context.h.setup();
-    //     //     const { tx, inputs, outputs } = await h.charterSeed();
-            
-    //     //     // await context.delay(1500)
-    //     //     // debugger
-    //     //     const found = await context.network.getUtxos(treasury.address);
-    //     //     expect(found.length).toBe(1);
-    //     //     const onChainDatum = found[0].origOutput.datum;
-    //     //     expect(onChainDatum.hash).toEqual(outputs[0].datum.hash);
-    //     // });
-
-    //     describe("minting a unique charter token", () => {
-    //         it("determines the minting contract address from the charter seed", async (context: localTC) => {
-    //             const h = context.h
-    //             const treasury = await h.setup();
-    //             console.log("... charter #1")
-    //             await h.charterSeed();
-    //             console.log("... making minter1")
-    //             const minter1 = await treasury.mkMinter();
-                
-    //             const t2 = await h.setup(43) // a different seed                
-    //             console.log("... charter #2")
-    //             await h.charterSeed();
-    //             console.log("... making minter2")
-    //             const minter2 = await t2.mkMinter();
-    //             minter2.t()
-    //             const s1 = minter1.configuredContract.evalParam("seedTxn").toString()
-    //             const s2 = minter2.configuredContract.evalParam("seedTxn").toString()
-
-    //             expect(minter2.identity).not.toEqual(minter1.identity)
-    //         });
-
-    //         it.only("mints a singular unique charter token using the charter utxo", async (context: localTC) => {
-    //             const h : typeof CCTHelpers = context.h;
-                
-    //             const { tina, tom, tracy } = context.actors;
-                
-    //             const treasury = await h.setup();
-    //             await h.charterSeed()
-    //             const { tx, inputs, outputs } = await h.charter()
-                
-    //             // await context.delay(1500)
-
-    //             const found = await context.network.getUtxos(treasury.address);
-    //             expect(found.length).toBe(1);
-    //             const onChainDatum = found[0].origOutput.datum;
-    //             expect(onChainDatum.hash).toEqual(outputs[0].datum.hash);
-    //         });
-
-    //         it("wont work if the token isn't sent back to the treasury", async () => {
-            
-    //         });
-    //     });
+            const tcx = await h.mkCharterSpendTx();
+            expect(tcx.outputs).toHaveLength(1)
+            await delay(1000);
+            debugger
+            expect(tcx.outputs.find((o : TxOutput) => {
+                debugger
+                return o.value.assets.ge(treasury.charterTokenAsValue.assets);
+            })).toBeTruthy()
+                });
 
     });
 

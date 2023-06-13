@@ -180,35 +180,24 @@ export class CommunityTreasury extends StellarContract<CtParams> {
     async mustGetCharterUtxo(): Promise<UTxO | never> {
         const ctVal = this.charterTokenAsValue;
 
-        return this.mustFindActorUtxo("seed", (u) => {
+        return this.mustFindMyUtxo("charter", (u) => {
             if (u.value.ge(ctVal)) return u;
         }, "has it been minted?");
     }
 
+    
+    async txCharterAuthorization(
+        tcx: StellarTxnContext = new StellarTxnContext()
+    ) {
+        return this.mustGetCharterUtxo().then(charterToken => {
+            tcx.addOutput(new TxOutput(
+                this.address, 
+                this.charterTokenAsValue, 
+                charterToken.origOutput.datum
+            ))
 
-    async XgetSeedUtxo(): Promise<UTxO> {
-        //! EXPECTS myself to be set
-        if (!this.myself)
-            throw new Error(
-                `missing required 'myself' attribute on ${this.constructor.name}`
-            );
-
-        const [addr] = await this.myself.usedAddresses;
-        const utxos = await this.network.getUtxos(addr);
-        const { seedTxn, seedIndex } = this.paramsIn;
-        console.log('utxos held by actor ("myself"): ', utxosAsString(utxos));
-
-        const seedUtxo = utxos.find((u) => {
-            const { txId, utxoIdx } = u;
-            const t = txId.eq(seedTxn) && BigInt(utxoIdx) == seedIndex;
-            return t;
-        });
-        if (!seedUtxo)
-            throw new Error(
-                `seed utxo not found / already spent: ${seedTxn.hex}@${seedIndex}`
-            );
-
-        return seedUtxo;
+            return tcx;    
+        })
     }
 
     async txMintCharterToken(
@@ -338,7 +327,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                     "... but we only focus on the case of binding to this treasury contract",
                 ],
                 mech: [
-                    "TODO: builds transactions with the charter token returned to the contract",
+                    "builds transactions with the charter token returned to the contract",
                     "TODO: fails to spend the charter token if it's not returned to the contract",
                     "TODO: keeps the charter token separate from other assets in the contract",
                 ],
