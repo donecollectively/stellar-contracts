@@ -15,8 +15,8 @@ enum Datum {
         nce: ByteArray
     }
     CharterToken {
-        uniq: ByteArray
-        nce: []Credential
+        nce: ByteArray
+        trustees: []Address
         minSigs: Int
     }
     // creator: PubKeyHash
@@ -72,4 +72,11 @@ func nce() -> ByteArray {
     nonce.slice(nonce.length-4,nonce.length-1)
 }
 
-const CHARTER: Datum::CharterSeed = Datum::CharterSeed{nce: nce()}
+const CHARTER_SEED: Datum::CharterSeed = Datum::CharterSeed{nce: nce()}
+
+const charterTokenDatum: Datum::CharterToken = Datum::CharterToken{
+    nce: nce(),
+    trustees: []Address{},
+    minSigs: 1
+}
+

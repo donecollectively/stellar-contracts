@@ -49,10 +49,10 @@ const describe = descrWithContext<localTC>;
 const minAda = 2n * ADA; // minimum needed to send an NFT
 type hasHelpers =  HelperFunctions<CommunityTreasury>
 const CCTHelpers :  hasHelpers = {
-    async setup(this: localTC) {
-        if (this.strella) return this.strella;
+    async setup(this: localTC, randomSeed = 42) {
+        if (this.strella && (this.randomSeed == randomSeed)) return this.strella;
 
-        this.randomSeed = 42;
+        this.randomSeed = randomSeed;
         this.myself = this.actors.tina;
         return this.instantiateWithParams({
             nonce: this.mkRandomBytes(16),
@@ -68,13 +68,13 @@ const CCTHelpers :  hasHelpers = {
         const {delay} = this;
         const { tina, tom, tracy } = this.actors;
 
-        const treasury = await this.h.setup!();
-        const {tx, input, output} = await treasury.buildCharterSeed();
+        const treasury = this.strella!
+        const {tx, inputs, outputs} = await treasury.buildCharterSeed();
         expect(treasury.network).toBe(this.network)
         await treasury.submit(tx)
 
         this.network.tick(1n);   
-        return {tx, input, output}
+        return {tx, inputs, outputs}
     },
 
 }
@@ -82,29 +82,35 @@ const CCTHelpers :  hasHelpers = {
 describe("community treasury manager", async () => {
     beforeEach<localTC>(async (context) => {
         await addTestContext(context, CommunityTreasury, CCTHelpers);
-        context.addActor("tina", 1300n * ADA);
-        context.addActor("tom", 130n * ADA);
+        context.addActor("tina", 1100n * ADA);
+        context.addActor("tom", 120n * ADA);
         context.addActor("tracy", 13n * ADA);
 
     });
 
     describe("baseline capabilities", () => {
-        it("gets expected wallet balances", async (context: localTC) => {
+        it("gets expected wallet balances for TRUSTEE roles", async (context: localTC) => {
             const {
                 network,
                 networkParams: params,
-                actors: { tina },
+                actors: { tina, tom, tracy },
                 address,
             } = context;
-            const aliceUtxos = await network.getUtxos(tina.address);
             const tinaMoney = await tina.utxos;
+            const tomMoney = await tom.utxos;
+            const tracyMoney = await tracy.utxos;
             expect(tinaMoney.length).toBe(2);
             expect(tinaMoney[0].value.assets.nTokenTypes).toBe(0);
             expect(tinaMoney[0].value.assets.isZero).toBeTruthy();
             expect(tinaMoney[1].value.assets.isZero).toBeTruthy();
 
-            expect(tinaMoney[0].value.lovelace).toBe(1300n * ADA);
+            expect(tinaMoney[0].value.lovelace).toBe(1100n * ADA);
             expect(tinaMoney[1].value.lovelace).toBe(5n * ADA);
+
+            expect(tomMoney[0].value.lovelace).toBe(120n * ADA);
+
+            expect(tracyMoney[0].value.lovelace).toBe(13n * ADA);
+
         });
 
         it("can wait for future slots", async (context: localTC) => {
@@ -190,7 +196,6 @@ describe("community treasury manager", async () => {
                 nonce,
                 initialTrustees: [tina.address, tom.address, tracy.address],
             });
-            // console.log(treasury.address.toHex());
             expect(treasury.address).toBeTruthy();
 
             const found = await context.network.getUtxos(treasury.address);
@@ -208,15 +213,36 @@ describe("community treasury manager", async () => {
             const { tina, tom, tracy } = context.actors;
             
             const treasury = await context.h.setup();
-            const { tx, input, output } = await h.charterSeed()
+            const { tx, inputs, outputs } = await h.charterSeed();
             
             // await context.delay(1500)
             // debugger
             const found = await context.network.getUtxos(treasury.address);
             expect(found.length).toBe(1);
             const onChainDatum = found[0].origOutput.datum;
-            expect(onChainDatum.hash).toEqual(output.datum.hash);
+            expect(onChainDatum.hash).toEqual(outputs[0].datum.hash);
         });
+
+        describe("minting a unique charter token", () => {
+            it("determines the minting contract address from the charter seed", async (context: localTC) => {
+                const h = context.h
+                const treasury = await h.setup();
+                console.log("... charter #1")
+                await h.charterSeed();
+                console.log("... making minter1")
+                const minter1 = await treasury.mkMinter();
+                
+                const t2 = await h.setup(43) // a different seed                
+                console.log("... charter #2")
+                await h.charterSeed();
+                console.log("... making minter2")
+                const minter2 = await t2.mkMinter();
+                minter2.t()
+                const s1 = minter1.configuredContract.evalParam("seedTxn").toString()
+                const s2 = minter2.configuredContract.evalParam("seedTxn").toString()
+
+                expect(minter2.identity).not.toEqual(minter1.identity)
+            });
 
         it.todo("mints a singular unique charter token using the charter utxo", async () => {});
     });

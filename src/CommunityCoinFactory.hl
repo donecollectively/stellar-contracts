@@ -1,14 +1,16 @@
 minting tokenVendingMachine
 
-const TREASURY_CONTRACT : Address = ""
-const OWNER: Address = ""
+// const TREASURY_CONTRACT : Address = ""
+const seedTxn : TxId = TxId::new(#1234)
+const index : Int = 42
+// const OWNER: Address = ""
 
 enum Redeemer { 
     Charter {
-        f: string
+        treasury: Address
     }
     Mint {
-        tokenName: string
+        tokenName: String
     }
     Burn
 }
@@ -23,17 +25,39 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
         "charter".encode_utf8()
     );
 
+
     ok : Bool = r.switch {
         c: Charter => {
-            value_minted == Value::new(charterToken, 1)
+            outputId: TxOutputId = TxOutputId::new(
+                seedTxn,
+                index
+            );
+
+            value_minted == Value::new(charterToken, 1) &&
+            tx.inputs.any( (input: TxInput) -> Bool {
+                input.output_id == outputId
+            }) &&
+            tx.outputs.all( (output: TxOutput) -> Bool {
+                output.address == c.treasury
+            })
         },
-        m: Mint => {
-            tx.inputs
-                .any((input: TxInput) -> Bool {
-                    foundCharter : Int = input.value.get_safe(charterToken);
-                    1 == foundCharter
-                })
-    
+        Mint => {
+            // fooToken: AssetClass = AssetClass::new(
+            //     ctx.get_current_minting_policy_hash(),
+            //     tx.output.any((input: TxInput) -> Bool {
+            //         tokenName: string = input.x.y
+            //         tokenName.encode_utf8()
+            //     }
+            // );
+        
+            // tx.inputs
+            //     .any((input: TxInput) -> Bool {
+            //         print ("inp: "+ input.serialize().show() );
+            //         foundCharter : Int = input.value.get_safe(charterToken);
+
+            //         1 == foundCharter
+            //     })
+true    
         },
         Burn => {
             true
@@ -46,7 +70,7 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
         "REP".encode_utf8()
     );
 
-    value_minted: Value = tx.minted;
+    ok &&
     (value_minted == Value::new(expectedCoin, 1)).trace("minted 1 ok!")
 }
 

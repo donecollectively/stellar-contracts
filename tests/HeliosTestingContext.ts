@@ -30,8 +30,9 @@ type actorMap = Record<string, WalletEmulator>;
 export type HelperFunctions<
     S  extends StellarContract<any>
 > = Record<string, (...args:any) => Promise<any>>
+
 type subclassOf<S extends StellarContract<P>, P extends paramsBase> = new (
-    args: StellarConstructorArgs<P>
+    args: StellarConstructorArgs<S, P>
 ) => S & StellarContract<P>;
 //     // (withParams(params:any) => S)
 

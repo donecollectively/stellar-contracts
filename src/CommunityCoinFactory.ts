@@ -1,10 +1,15 @@
-import { Program } from "@hyperionbt/helios";
+import { Program, Datum, TxId, TxOutputId } from "@hyperionbt/helios";
 import { StellarContract } from "../lib/StellarContract.js";
 
 //@ts-expect-error
 import contract from "./CommunityCoinFactory.hl";
 
-export class CommunityCoinFactory extends StellarContract<CommunityCoinFactory> {
+export type CcfParams = {
+    seedTxn: TxId
+    index: bigint
+};
+
+export class CommunityCoinFactory extends StellarContract<CcfParams> {
 
     contractSource() { return contract }
 
