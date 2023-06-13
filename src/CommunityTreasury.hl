@@ -1,25 +1,14 @@
 spending CommunityTreasury
 
 // needed in helios 0.13: defaults
-// const charterUTxO: TxOutputId = TxOutputId::new(TxId::new(#1213), 1)
 const mph : MintingPolicyHash = MintingPolicyHash::new(#1234)
-
-// const nonce: ByteArray = #34323432
-// const initialTrustees: []Address = []Address{
-//         Address::new(Credential::new_pubkey(
-//             PubKeyHash::new(#1234)
-//         ), Option[StakingCredential]::None)
-// }
 
 enum Datum {
     CharterToken {
-        // policy: MintingPolicyHash
         trustees: []Address
         minSigs: Int
     }
 }
-
-// }
 
 enum Redeemer {
     charterMint
@@ -73,12 +62,6 @@ func main(datum: Datum, redeemer: Redeemer, context: ScriptContext) -> Bool {
     tt &&
     tx.serialize() != datum.serialize()
 }
-
-// func nonceEnding() -> ByteArray {
-//     nonce.slice(nonce.length-4,nonce.length-1)
-// }
-// const NCE : ByteArray = nonceEnding()
-// const CHARTER_SEED: Datum::CharterSeed = Datum::CharterSeed{nce: nonceEnding()}
 
 const charterTokenBaseInfo: Datum::CharterToken = Datum::CharterToken{
     trustees: []Address{},

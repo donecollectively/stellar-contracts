@@ -91,38 +91,15 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         trustees: Address[];
         minSigs: bigint;
     }) {
-        // debugger
         const t = new this.configuredContract.types.Datum.CharterToken(
             trustees,
             minSigs
         );
-        // debugger
         return t._toUplcData();
     }
 
-    // stars = this.constellationProxy({
-    //     minter:  CommunityCoinFactory
-    // });
-
     mkDependencyStars() {
         return {};
-    }
-
-    // get charterSeedDatum() {
-    //     return Datum.inline(this.configuredContract.evalParam("CHARTER_SEED").data);
-    // }
-
-    // get nonceEnding() {
-    //     return this.configuredContract.evalParam("NCE");
-    // }
-
-    xxmkCharterTokenDatum(t: any) {
-        // trustees,
-        // minSigs: BigInt(minSigs)
-
-        const tt = this.configuredContract.evalParam("charterTokenBaseInfo");
-        debugger;
-        return tt;
     }
 
     async XXtxMintCharterToken(
@@ -227,7 +204,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
             trustees,
             minSigs: BigInt(minSigs),
         })
-// debugger        
+
         const outputs = [
             new TxOutput(
                 this.address,
