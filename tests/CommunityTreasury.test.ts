@@ -3,6 +3,7 @@ import {
     expect,
     it as itWithContext,
     beforeEach,
+    vi
 } from "vitest";
 import { CtParams, CommunityTreasury, CharterDatumArgs } from "../src/CommunityTreasury";
 
@@ -284,8 +285,27 @@ describe("community treasury manager", async () => {
 
                 return expect(h.mintCharterToken()).rejects.toThrow("already spent")                
             });
+
             it("doesn't work with a different spent utxo", async (context: localTC) => {
-                
+                const {h, actors: {tracy} } = context
+                // await context.delay(1000)
+                const treasury = await h.setup()
+
+                const wrongUtxo = (await tracy.utxos).at(-1);
+
+                vi.spyOn(treasury, "getSeedUtxo").mockImplementation(() => {return wrongUtxo})
+
+                try {
+                    await h.mintCharterToken()
+                    expect(false).toBe("minting should have thrown assertion from contract")
+                } catch(e) {
+                    expect(e.message).not.toMatch("seed utxo required");
+                    expect(e.message).toMatch("assert failed")
+                    //!!! todo: remove this try/catch when the message is improved,
+                    // and use the more explicit rejects... matching below.
+                }
+
+                // await expect(h.mintCharterToken()).rejects.toThrowError("seed utxo required")
             });
         });
     });

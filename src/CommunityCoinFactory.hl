@@ -13,6 +13,18 @@ enum Redeemer {
     Burn
 }
 
+func hasSeedUtxo(tx: Tx) -> Bool {
+    seedUtxo: TxOutputId = TxOutputId::new(
+        seedTxn,
+        seedIndex
+    );
+    assert(tx.inputs.any( (input: TxInput) -> Bool {
+        input.output_id == seedUtxo
+    }),  "seed utxo required for minting the charter token");
+
+    true
+}
+
 func main(r : Redeemer, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
     mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
@@ -26,15 +38,9 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
 
     ok : Bool = r.switch {
         charter: Charter => {       
-            seedUtxo: TxOutputId = TxOutputId::new(
-                seedTxn,
-                seedIndex
-            );
+            assert(value_minted == Value::new(charterToken, 1), "no charter token minted");
 
-            value_minted == Value::new(charterToken, 1) &&
-            tx.inputs.any( (input: TxInput) -> Bool {
-                input.output_id == seedUtxo
-            }) &&
+            hasSeedUtxo(tx) &&
             tx.outputs.all( (output: TxOutput) -> Bool {
                 output.value != value_minted || (
                     output.value == value_minted &&

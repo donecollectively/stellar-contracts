@@ -183,10 +183,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         );
     }
 
-    async txMintCharterToken(
-        { trustees, minSigs }: CharterDatumArgs,
-        tcx: StellarTxnContext = new StellarTxnContext()
-    ) {
+    async getSeedUtxo() : Promise<UTxO> {
         //! EXPECTS myself to be set
         if (!this.myself)
             throw new Error(
@@ -210,8 +207,22 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                 `seed utxo not found / already spent: ${seedTxn.hex}@${seedIndex}`
             );
 
-            const v= this.charterTokenAsValue
-        // this.charterTokenDatum
+            return seedUtxo
+    }
+
+    async txMintCharterToken(
+        { trustees, minSigs }: CharterDatumArgs,
+        tcx: StellarTxnContext = new StellarTxnContext()
+    ) {
+        let seedUtxo;
+        try {
+            seedUtxo = await this.getSeedUtxo()
+        } catch(e) {
+            throw(e);
+        }
+
+        const v= this.charterTokenAsValue
+       // this.charterTokenDatum
         const datum = this.mkCharterTokenDatum({
             trustees,
             minSigs: BigInt(minSigs),
