@@ -60,23 +60,23 @@ export function lovelaceToAda(l: bigint | number) {
 
 export function valueAsString(v: Value) {
     const ada = lovelaceToAda(v.lovelace);
-    const assets = assetsAsString(v.assets.dump());
+    const assets = assetsAsString(v.assets.dump?.() || v.assets);
     return [ada, assets].filter((x) => !!x).join(" + ");
 }
 
 export function txAsString(tx: Tx): string {
     const bodyAttrs = [
         "inputs",
+        "collateral",
         "minted",
         "outputs",
-        "collateral",
+        "collateralReturn",
         "fee",
         "lastValidSlot",
         "firstValidSlot",
         "metadataHash",
         "scriptDataHash",
         "signers",
-        "collateralReturn",
         "refInputs",
     ];
     const witnessAttrs = [
@@ -90,17 +90,21 @@ export function txAsString(tx: Tx): string {
 
     let details = "";
 
-    const d = tx; // .dump()
+    const d = tx.dump()
     // console.log("tx dump", JSON.stringify(d,null, 2))
 
     for (const x of bodyAttrs) {
-        let item = d.body[x] as any;
+        let item = tx.body[x] || d.body[x] as any;
+        let skipLabel = false;
         // console.log(`attr '${x}'`)
         if (Array.isArray(item) && !item.length) continue;
 
         if (!item) continue;
         if ("inputs" == x) {
-            item = `\n     ${item.map((x) => txInputAsString(x)).join("\n  ")}`;
+            item = `\n  ${item.map((x) => txInputAsString(x)).join("\n  ")}`;
+        }
+        if ("collateral" == x) {
+            item = item.map((x) => txInputAsString(x, "🔪")).join("\n    ");
         }
         if ("minted" == x) {
             const assets = item?.dump();
@@ -113,21 +117,25 @@ export function txAsString(tx: Tx): string {
                 .map((x, i) => txOutputAsString(x, `${i}  <-`))
                 .join("\n  ")}`;
         }
+        if ("collateralReturn" == x) {
+            skipLabel = true
+            item = `  ${
+                txOutputAsString(item, `${tx.body.outputs.length}  <-`)
+            }  (collateralReturn)`
+        }
 
         if ("fee" == x) {
             item = parseInt(item);
             item = `${(Math.round(item / 1000) / 1000).toFixed(3)} ADA`;
             // console.log("fee", item)
         }
-        if ("collateral" == x) {
-            item = item.map((x) => txInputAsString(x, "🔪")).join("\n    ");
-        }
-        details += `  ${x}: ${item}\n`;
+
+        details += `${skipLabel ? "" : "  "+ x + ": "}${item}\n`;
     }
     let hasWinfo = false;
     const winfo = {};
     for (const x of witnessAttrs) {
-        let item = d.witnesses[x] as any;
+        let item = tx.witnesses[x] || d.witnesses[x] as any;
         if (Array.isArray(item) && !item.length) continue;
         if ("datums" == x && !Object.entries(item || {}).length) continue;
         if ("signatures" == x) {
@@ -162,7 +170,7 @@ export function txAsString(tx: Tx): string {
                             12
                         )}…`;
                     } catch (e) {
-                        return `📝 ${s.validatorHash.hex.substring(0, 12)}}…`;
+                        return `📝 ${s.validatorHash.hex.substring(0, 12)}…`;
                     }
                 })
                 .join("\n  ");
@@ -234,7 +242,9 @@ export function datumAsString(d: Datum | undefined): string {
 }
 
 export function txOutputAsString(x: TxOutput, prefix = "<-"): string {
-    return `${prefix} ${x.address.toBech32().substring(0, 17)}… ${datumAsString(
+    const bech32 = (x.address as any).bech32 || x.address.toBech32();
+
+    return `${prefix} ${bech32.substring(0, 17)}… ${datumAsString(
         x.datum
     )} ${valueAsString(x.value)}`;
 }
