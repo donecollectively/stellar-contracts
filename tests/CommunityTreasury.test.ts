@@ -138,10 +138,9 @@ const CCTHelpers: hasHelpers = {
 describe("community treasury manager", async () => {
     beforeEach<localTC>(async (context) => {
         await addTestContext(context, CommunityTreasury, CCTHelpers);
+        context.addActor("tracy", 13n * ADA);
         context.addActor("tina", 1100n * ADA);
         context.addActor("tom", 120n * ADA);
-        context.addActor("tracy", 13n * ADA);
-
     });
 
     describe("baseline capabilities", () => {
@@ -166,7 +165,6 @@ describe("community treasury manager", async () => {
             expect(tomMoney[0].value.lovelace).toBe(120n * ADA);
 
             expect(tracyMoney[0].value.lovelace).toBe(13n * ADA);
-
         });
 
         it("can split utxos", async (context: localTC) => {
@@ -329,21 +327,67 @@ describe("community treasury manager", async () => {
     });
     describe("the charter token is always kept in the contract", () => {
         it("builds transactions with the charter token returned to the contract", async (context: localTC) => {
-            const {h, network, actors, delay, state, } = context;
-        
-            await h.mintCharterToken()    
-            const treasury = context.strella!
-            
-            const tcx = await h.mkCharterSpendTx();
-            expect(tcx.outputs).toHaveLength(1)
-            await delay(1000);
-            debugger
-            expect(tcx.outputs.find((o : TxOutput) => {
-                debugger
-                return o.value.assets.ge(treasury.charterTokenAsValue.assets);
-            })).toBeTruthy()
-                });
+            const { h, network, actors, delay, state } = context;
 
+            await h.mintCharterToken();
+            const treasury = context.strella!;
+
+            const tcx = await h.mkCharterSpendTx();
+            expect(tcx.outputs).toHaveLength(1);
+            expect(
+                tcx.outputs.find((o: TxOutput) => {
+                    return o.value.assets.ge(
+                        treasury.charterTokenAsValue.assets
+                    );
+                })
+            ).toBeTruthy();
+        });
+
+        it("fails to spend the charter token if it's not returned to the contract", async (context: localTC) => {
+            const { h, network, actors, delay, state } = context;
+
+            await h.mintCharterToken();
+
+            const treasury = context.strella!;
+            vi.spyOn(treasury, "keepCharterToken").mockImplementation(
+                (tcx) => tcx!
+            );
+
+            const tcx: StellarTxnContext = await h.mkCharterSpendTx();
+            const bogusPlace = (await actors.tina.usedAddresses)[0];
+            tcx.addOutput(
+                new TxOutput(bogusPlace, treasury.charterTokenAsValue)
+            );
+
+            //! temp:
+            await expect(treasury.submit(tcx)).rejects.toThrow(/assert failed/);
+            // await expect(treasury.submit(tcx)).rejects.toThrow(/charter token must be returned/)
+        });
+
+        it.todo(
+            "keeps the charter token separate from other assets in the contract",
+            async (context: localTC) => {
+                //!!! implement this test after making a recipe for minting a different coin
+                const { h, network, actors, delay, state } = context;
+
+                await h.mintCharterToken();
+                const treasury = context.strella!;
+                vi.spyOn(treasury, "keepCharterToken").mockImplementation(
+                    (tcx) => tcx!
+                );
+
+                await delay(1000);
+                const tcx: StellarTxnContext = await h.mkCharterSpendTx();
+                tcx.addOutput(
+                    new TxOutput(treasury.address, treasury.charterTokenAsValue)
+                );
+
+                // await expect(treasury.submit(tcx)).rejects.toThrow(/assert failed/)
+                await expect(treasury.submit(tcx)).rejects.toThrow(
+                    /charter token must be standalone/
+                );
+            }
+        );
     });
 
     if (0)

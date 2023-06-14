@@ -11,18 +11,23 @@ enum Datum {
 }
 
 enum Redeemer {
+    foo
+    bar
     charterMint
-    
+    authorizeByCharter
     authorizeTreasuryMint {
         tokenName: String
     }
 }
 
-func main(datum: Datum, redeemer: Redeemer, context: ScriptContext) -> Bool {
-    tx: Tx = context.tx;
+
+func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
+    tx: Tx = ctx.tx;
     // now: Time = tx.time_range.start;
     
     tt : Bool = redeemer.switch {
+        foo => { true },
+        bar => { true },
         charterMint => {
             // charterTokenOut : TxOutput = tx.outputs.find(isCharterToken);
             // if (!charterToken) { error("missing required charter token deposit during charterMint") };
@@ -45,6 +50,24 @@ func main(datum: Datum, redeemer: Redeemer, context: ScriptContext) -> Bool {
             //     }                
             // })
             // print(hash.show());
+            true
+        },
+        authorizeByCharter => {            
+            charterTokenValue : Value = Value::new(
+                AssetClass::new(mph, "charter".encode_utf8()), 
+                1
+            );
+            myself : Credential = Credential::new_validator(ctx.get_current_validator_hash());
+            
+            assert(tx.outputs.any((txo : TxOutput) -> Bool {
+                txo.value >= charterTokenValue
+            }),"missing required 'charter' token authorization");
+
+            assert(tx.outputs.any((txo : TxOutput) -> Bool {
+                txo.value >= charterTokenValue &&
+                txo.address.credential == myself
+            }),  "charter token must be returned to the contract");
+
             true
         },
         x: authorizeTreasuryMint => {

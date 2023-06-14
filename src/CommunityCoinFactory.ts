@@ -12,6 +12,9 @@ export type CcfParams = {
 export type CcfCharterRedeemerArgs = {
     treasury: Address
 }
+export type CcfMintRedeemerArgs = {
+    tokenName: string
+}
 
 export class CommunityCoinFactory extends StellarContract<CcfParams> {
     contractSource() { return contract }
@@ -25,8 +28,18 @@ export class CommunityCoinFactory extends StellarContract<CcfParams> {
         );
         
         return t._toUplcData();
-        return t;
     }
+
+    mkMintingRedeemer({
+        tokenName,
+    }: CcfMintRedeemerArgs) {
+        const t =  new this.configuredContract.types.Redeemer.Mint(
+            tokenName
+        );
+        
+        return t._toUplcData();
+    }
+
 
     t() {
         const t = Datum.inline(this.configuredContract.evalParam("seedTxn").data);

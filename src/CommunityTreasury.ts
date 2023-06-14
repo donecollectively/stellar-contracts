@@ -169,42 +169,72 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         // const [address] = await this.myself.usedAddresses;
         const { seedTxn, seedIndex } = this.paramsIn;
 
-        return this.mustFindActorUtxo("seed", (u) => {
-            const { txId, utxoIdx } = u;
-            
-            if ( txId.eq(seedTxn) && BigInt(utxoIdx) == seedIndex ) {
-                return u
-            }
-        }, "already spent?");
+        return this.mustFindActorUtxo(
+            "seed",
+            (u) => {
+                const { txId, utxoIdx } = u;
+
+                if (txId.eq(seedTxn) && BigInt(utxoIdx) == seedIndex) {
+                    return u;
+                }
+            },
+            "already spent?"
+        );
     }
 
     async mustGetCharterUtxo(): Promise<UTxO | never> {
         const ctVal = this.charterTokenAsValue;
 
-        return this.mustFindMyUtxo("charter", (u) => {
-            if (u.value.ge(ctVal)) return u;
-        }, "has it been minted?");
+        return this.mustFindMyUtxo(
+            "charter",
+            (u) => {
+                if (u.value.ge(ctVal)) return u;
+            },
+            "has it been minted?"
+        );
     }
 
-    
+    mkAuthorizeByCharterRedeemer() {
+        const t =
+            new this.configuredContract.types.Redeemer.authorizeByCharter();
+
+        return t._toUplcData();
+    }
+
     async txCharterAuthorization(
         tcx: StellarTxnContext = new StellarTxnContext()
-    ) {
-        return this.mustGetCharterUtxo().then(charterToken => {
-            tcx.addOutput(new TxOutput(
-                this.address, 
-                this.charterTokenAsValue, 
-                charterToken.origOutput.datum
-            ))
+    ): Promise<StellarTxnContext | never> {
+        return this.mustGetCharterUtxo().then(async (charterToken) => {
+            tcx.addInput(
+                charterToken,
+                this.mkAuthorizeByCharterRedeemer()
+            ).attachScript(this.compiledContract);
 
-            return tcx;    
-        })
+            this.keepCharterToken(tcx, charterToken);
+
+            return tcx;
+        });
+    }
+
+    keepCharterToken(
+        tcx: StellarTxnContext = new StellarTxnContext(),
+        charterToken: UTxO
+    ) {
+        tcx.addOutput(
+            new TxOutput(
+                this.address,
+                this.charterTokenAsValue,
+                charterToken.origOutput.datum
+            )
+        );
+
+        return tcx;
     }
 
     async txMintCharterToken(
         { trustees, minSigs }: CharterDatumArgs,
         tcx: StellarTxnContext = new StellarTxnContext()
-    ) {
+    ): Promise<StellarTxnContext | never> {
         let seedUtxo;
         try {
             seedUtxo = await this.mustGetSeedUtxo();
@@ -329,7 +359,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                 ],
                 mech: [
                     "builds transactions with the charter token returned to the contract",
-                    "TODO: fails to spend the charter token if it's not returned to the contract",
+                    "fails to spend the charter token if it's not returned to the contract",
                     "TODO: keeps the charter token separate from other assets in the contract",
                 ],
                 requires: [],

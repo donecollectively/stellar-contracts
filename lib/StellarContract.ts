@@ -154,8 +154,8 @@ export function txAsString(tx: Tx): string {
             item = item
                 .map(
                     (x) =>
-                        `🏧 ${x.constructor.name} #${
-                            1 + x.data.index
+                        `🏧  #${
+                            x.data.index ? 1 + x.data.index  : ""
                         } ${x.data.toString()}`
                 )
                 .join("\n  ");
@@ -528,7 +528,10 @@ export class StellarContract<
                 const s = await this.myself.signTx(tx);
                 tx.addSignatures(s, true);
             }
+        } else {
+            console.warn("no 'myself'; not finalizing");
         }
+
         console.log("Submitting tx: ", txc.dump());
 
         return this.network.submitTx(tx);
