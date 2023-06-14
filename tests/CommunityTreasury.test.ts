@@ -3,9 +3,13 @@ import {
     expect,
     it as itWithContext,
     beforeEach,
-    vi
+    vi,
 } from "vitest";
-import { CtParams, CommunityTreasury, CharterDatumArgs } from "../src/CommunityTreasury";
+import {
+    CtParams,
+    CommunityTreasury,
+    CharterDatumArgs,
+} from "../src/CommunityTreasury";
 
 // import {
 //     Address,
@@ -72,7 +76,7 @@ const CCTHelpers :  hasHelpers = {
         tx.addOutput(new TxOutput(tina.address, new Value(10n * ADA)));
         // console.log("s3", new Error("stack").stack)
 
-        const txId = await this.submitTx(tx);
+        const txId = await this.submitTx(tx, "force");
 
         return txId
     },

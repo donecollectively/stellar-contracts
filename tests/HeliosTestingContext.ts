@@ -205,16 +205,21 @@ export async function mkContext<
 
 async function submitTx(
     this: HeliosTestingContext<any, any, any>,    
-    tx: Tx
+    tx: Tx,
+    force? : "force"
 ) : Promise<TxId> { 
     const tina = this.actors.tina.address
+    const isAlreadyInitialized = !!this.strella && !force
     try {
         await tx.finalize(this.networkParams, tina);
     } catch(e) {
         throw (e)
     }
+    if (isAlreadyInitialized) {
+        throw new Error(`use the submitTx from the testing-context's 'strella' object instead`)
+    }
 
-    console.log("Test helper submitting tx:\n "+ txAsString(tx))
+    console.log("Test helper submitting tx prior to instantiateWithParams():\n "+ txAsString(tx))
 
     const txId = this.network.submitTx(tx);
     this.network.tick(1n)
@@ -248,15 +253,16 @@ function addActor(
 ) {
     if (this.actors[roleName])
         throw new Error(`duplicate role name '${roleName}'`);
-
     //! it instantiates a wallet with the indicated balance pre-set
     const a = this.network.createWallet(walletBalance);
+    console.log( `+🎭 Actor: ${roleName}: ${a.address.toBech32().substring(0,18)} ${lovelaceToAda(walletBalance)} `)
+
     //! it makes collateral for each actor, above and beyond the initial balance,
     //  ... so that the full balance is spendable and the actor can immediately
     //  ... engage in smart-contract interactions.
-    this.network.createUtxo(a, 5n * ADA);
-
+    
     this.network.tick(BigInt(2));
+    this.network.createUtxo(a, 5n * ADA);
 
     this.actors[roleName] = a;
     return a;
