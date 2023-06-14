@@ -95,7 +95,7 @@ const CCTHelpers :  hasHelpers = {
         });
     },
 
-    async mintCharterToken(this: localTC, args?: CharterDatumArgs) {
+    async mintCharterToken(this: localTC, args?: CharterDatumArgs) : Promise<StellarTxnContext>{        
         const {delay} = this;
         const { tina, tom, tracy } = this.actors;
 
@@ -116,7 +116,7 @@ const CCTHelpers :  hasHelpers = {
         return tcx
     },
 
-    async mkCharterSpendTx(this: localTC) {        
+    async mkCharterSpendTx(this: localTC) : Promise<StellarTxnContext>{        
         await this.h.setup();
         const treasury = this.strella!
 

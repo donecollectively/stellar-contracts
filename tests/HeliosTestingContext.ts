@@ -17,6 +17,7 @@ import { Vitest, vitest, TestContext } from "vitest";
 import {
     StellarConstructorArgs,
     StellarContract,
+    lovelaceToAda,
     txAsString,
 } from "../lib/StellarContract";
 
