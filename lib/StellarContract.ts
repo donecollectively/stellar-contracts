@@ -23,13 +23,13 @@ export type paramsBase = Record<string, any>;
 type TxInput = Tx["body"]["inputs"][0];
 
 export function hexToPrintableString(hexStr) {
-    let result = '';
-    for(let i=0; i<hexStr.length; i+=2){
-        let hexChar = hexStr.substring(i, i+2);
+    let result = "";
+    for (let i = 0; i < hexStr.length; i += 2) {
+        let hexChar = hexStr.substring(i, i + 2);
         let charCode = parseInt(hexChar, 16);
-        
+
         // ASCII printable characters are in the range 32 (space) to 126 (~)
-        if(charCode >= 32 && charCode <= 126){
+        if (charCode >= 32 && charCode <= 126) {
             result += String.fromCharCode(charCode);
         } else {
             result += `‹${hexChar}›`;
@@ -38,23 +38,29 @@ export function hexToPrintableString(hexStr) {
     return result;
 }
 export function assetsAsString(v: any) {
-    return Object.entries(v).map(
-        ([policyId, tokens]) => {
-            
-            const tokenString = Object.entries(
-                tokens as any
-            ).map( ([name, count]) => 
-                `${count}×💴 ${hexToPrintableString(name)}`
-            ).join(" + ");
-            return `⦑🏦 ${policyId.substring(0,12)}… ${tokenString}⦒`
-        }
-    ).join("\n  ")
+    return Object.entries(v)
+        .map(([policyId, tokens]) => {
+            const tokenString = Object.entries(tokens as any)
+                .map(
+                    ([name, count]) =>
+                        `${count}×💴 ${hexToPrintableString(name)}`
+                )
+                .join(" + ");
+            return `⦑🏦 ${policyId.substring(0, 12)}… ${tokenString}⦒`;
+        })
+        .join("\n  ");
 }
+export function lovelaceToAda(l: bigint | number) {
+    const asNum = parseInt(l.toString());
+    const ada =
+        (asNum && `${(Math.round(asNum / 1000) / 1000).toFixed(3)} ADA`) || "";
+    return ada;
+}
+
 export function valueAsString(v: Value) {
-    const l = parseInt(v.lovelace.toString());
-    const ada = l && `${(Math.round(l / 1000) / 1000).toFixed(3)} ADA ` || ""
-    const assets = assetsAsString(v.assets.dump())
-    return [ ada, assets ].filter(x => !!x).join( " + " )
+    const ada = lovelaceToAda(v.lovelace);
+    const assets = assetsAsString(v.assets.dump());
+    return [ada, assets].filter((x) => !!x).join(" + ");
 }
 
 export function txAsString(tx: Tx): string {
@@ -80,33 +86,35 @@ export function txAsString(tx: Tx): string {
         "redeemers",
         "nativeScripts",
     ];
-    
+
     let details = "";
 
-    const d = tx ;// .dump()
+    const d = tx; // .dump()
     // console.log("tx dump", JSON.stringify(d,null, 2))
 
     for (const x of bodyAttrs) {
         let item = d.body[x] as any;
         // console.log(`attr '${x}'`)
         if (Array.isArray(item) && !item.length) continue;
-      
+
         if (!item) continue;
         if ("inputs" == x) {
-            item =`\n     ${item.map(x => txInputAsString(x)).join("\n  ")}`;
+            item = `\n     ${item.map((x) => txInputAsString(x)).join("\n  ")}`;
         }
         if ("minted" == x) {
-            const assets = item?.dump()
-            if (!Object.entries( assets || {}).length) continue;
-            
+            const assets = item?.dump();
+            if (!Object.entries(assets || {}).length) continue;
+
             item = ` ❇️  ${assetsAsString(assets)}`;
         }
-        if("outputs" == x) {
-            item = `\n  ${item.map((x, i)=> txOutputAsString(x, `${i}  <-`)).join("\n  ")}`;
+        if ("outputs" == x) {
+            item = `\n  ${item
+                .map((x, i) => txOutputAsString(x, `${i}  <-`))
+                .join("\n  ")}`;
         }
 
         if ("fee" == x) {
-            item = parseInt(item)
+            item = parseInt(item);
             item = `${(Math.round(item / 1000) / 1000).toFixed(3)} ADA`;
             // console.log("fee", item)
         }
@@ -115,52 +123,65 @@ export function txAsString(tx: Tx): string {
         }
         details += `  ${x}: ${item}\n`;
     }
-    let hasWinfo = false
-    const winfo = {}
+    let hasWinfo = false;
+    const winfo = {};
     for (const x of witnessAttrs) {
         let item = d.witnesses[x] as any;
         if (Array.isArray(item) && !item.length) continue;
         if ("datums" == x && !Object.entries(item || {}).length) continue;
         if ("signatures" == x) {
-            item = item.map( s => {
-                return `🖊️ ${Address.fromPubKeyHash(
-                    s.pubKeyHash
-                ).toBech32().substring(0,24) }…`
-            }).join("\n  ")
+            if (!item) continue;
+            item = item
+                .map((s) => {
+                    return `🖊️ ${Address.fromPubKeyHash(s.pubKeyHash)
+                        .toBech32()
+                        .substring(0, 24)}…`;
+                })
+                .join("\n  ");
         }
         if ("redeemers" == x) {
+            if (!item) continue;
             //!!! todo: augment with mph when that's available from the Redeemer.
-            item = item.map(
-                x => `🏧 ${x.constructor.name} #${1+x.data.index} ${x.data.toString()}`
-            ).join("\n  ")
+            item = item
+                .map(
+                    (x) =>
+                        `🏧 ${x.constructor.name} #${
+                            1 + x.data.index
+                        } ${x.data.toString()}`
+                )
+                .join("\n  ");
         }
         if ("scripts" == x) {
-            item = item.map(
-                s => {
+            if (!item) continue;
+            item = item
+                .map((s) => {
                     try {
-                        return `🏦 ${s.mintingPolicyHash.hex.substring(0,12)}…`
-                    } catch(e) {
-                        return `📝 ${s.validatorHash.hex.substring(0,12)}}…`
+                        return `🏦 ${s.mintingPolicyHash.hex.substring(
+                            0,
+                            12
+                        )}…`;
+                    } catch (e) {
+                        return `📝 ${s.validatorHash.hex.substring(0, 12)}}…`;
                     }
-                }
-            ).join("\n  ")
+                })
+                .join("\n  ");
         }
 
         if (!item) continue;
-        hasWinfo = true
+        hasWinfo = true;
         winfo[x] = item;
     }
     if (hasWinfo) {
-        details += Object.entries(winfo).map(
-            ([k, v]) => `  ${k}: ${v}\n`
-        ).join("")
+        details += Object.entries(winfo)
+            .map(([k, v]) => `  ${k}: ${v}\n`)
+            .join("");
     }
     try {
-        details = details + `  txId: ${tx.id().dump()}`
-    } catch(e) {
-        details = details + `  (Tx not yet finalized!)`
+        details = details + `  txId: ${tx.id().dump()}`;
+    } catch (e) {
+        details = details + `  (Tx not yet finalized!)`;
     }
-    return details
+    return details;
 
     // body {
     // inputs,
@@ -187,10 +208,10 @@ export function txAsString(tx: Tx): string {
     //   "valid": true,
     //   "metadata": null
 }
-export function txInputAsString(x: TxInput, prefix="-> "): string {
-    return `${prefix}${x.address.toBech32().substring(0, 17)}… ${
-        valueAsString(x.value)
-    } = 📖 ${x.txId.hex.substring(0, 12)}…@${x.utxoIdx}`;
+export function txInputAsString(x: TxInput, prefix = "-> "): string {
+    return `${prefix}${x.address.toBech32().substring(0, 17)}… ${valueAsString(
+        x.value
+    )} = 📖 ${x.txId.hex.substring(0, 12)}…@${x.utxoIdx}`;
 }
 
 export function utxosAsString(utxos: UTxO[]): string {
@@ -198,7 +219,9 @@ export function utxosAsString(utxos: UTxO[]): string {
 }
 
 export function utxoAsString(u: UTxO, prefix = "💵"): string {
-    return ` 📖 ${u.txId.hex.substring(0,12)}…@${u.utxoIdx}: ${txOutputAsString(u.origOutput, prefix)}`; // or 🪙
+    return ` 📖 ${u.txId.hex.substring(0, 12)}…@${
+        u.utxoIdx
+    }: ${txOutputAsString(u.origOutput, prefix)}`; // or 🪙
 }
 
 export function datumAsString(d: Datum | undefined): string {
@@ -210,11 +233,9 @@ export function datumAsString(d: Datum | undefined): string {
 }
 
 export function txOutputAsString(x: TxOutput, prefix = "<-"): string {
-    return `${prefix} ${x.address
-        .toBech32()
-        .substring(0, 17)}… ${datumAsString(x.datum)} ${
-            valueAsString(x.value)
-    }`;
+    return `${prefix} ${x.address.toBech32().substring(0, 17)}… ${datumAsString(
+        x.datum
+    )} ${valueAsString(x.value)}`;
 }
 
 //!!! if we could access the inputs and outputs in a building Tx,
