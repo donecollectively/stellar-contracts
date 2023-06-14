@@ -453,11 +453,67 @@ export class StellarContract<
         return heldUtxos.filter(predicate);
     }
 
+    async findAnySpareUtxos(): Promise<UTxO[] | never> {
+        if (!this.myself) throw this.missingActorError;
+
+        type tempInfo = {
+            u: UTxO;
+            sufficient: boolean;
+            free: bigint;
+            reserved: bigint;
+        };
+        const smallerAndNonReserved = (
+            { free: free1, reserved: r1 }: tempInfo,
+            { free: free2, reserved: r2 }: tempInfo
+        ) => {
+            {
+                //! primary: treats non-reserved utxos as always better
+                if (!r1 && r2) {
+                    return -1;
+                }
+                if (r1 && !r2) {
+                    return 1; //
+                }
+            }
+            //! secondary: smaller utxos are more preferred than larger ones
+            if (free2 > free1) return 1;
+            if (free2 < free1) return -1;
+            return 0;
+        };
+        const countAdaOnly = (c: number, { reserved }: tempInfo): number => {
+            return c + (reserved ? 0 : 1);
+        };
+
+        const notReserved = ({ reserved }: tempInfo) => !reserved;
+        const isSufficient  = ({ sufficient }: tempInfo) => !!sufficient;
+        const backToUtxo = ({ u }: tempInfo) => u;
+
+        const toSortInfo = (u: UTxO): tempInfo => {
+            const reserved = u.origOutput.calcMinLovelace(this.networkParams);
+            const free = u.value.lovelace - reserved;
+            const sufficient = free < this.ADA(10) && free > this.ADA(2);
+            return { u, sufficient, free, reserved };
+        };
+
+        return this.myself.utxos.then((utxos) => {
+            const allSpares = utxos
+                .map(toSortInfo)
+                .filter(isSufficient)
+                .sort(smallerAndNonReserved);
+
+            if (allSpares.reduce(countAdaOnly, 0) > 0) {
+                return allSpares.filter(notReserved).map(backToUtxo);
+            }
+            return allSpares.map(backToUtxo);
+        });
+    }
+
     async submit(txc: StellarTxnContext, { sign = true } = {}) {
         const { tx } = txc;
         if (this.myself) {
             const [a] = await this.myself.usedAddresses;
-            await tx.finalize(this.networkParams, a);
+            const spares = await this.findAnySpareUtxos();
+            await tx.finalize(this.networkParams, a, spares);
             if (sign) {
                 const s = await this.myself.signTx(tx);
                 tx.addSignatures(s, true);
