@@ -17,10 +17,11 @@ import {
 import {
     StellarConstructorArgs,
     StellarContract,
-    StellarTxnContext,
     utxoAsString,
     utxosAsString,
 } from "../lib/StellarContract.js";
+
+import { StellarTxnContext } from "../lib/StellarTxnContext.js";
 
 //@ts-expect-error
 import contract from "./CommunityTreasury.hl";

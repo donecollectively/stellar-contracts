@@ -32,7 +32,8 @@ import {
     mkContext,
 } from "./HeliosTestingContext.js";
 import { Tx, TxOutput, Value } from "@hyperionbt/helios";
-import { StellarTxnContext, findInputsInWallets, utxosAsString } from "../lib/StellarContract";
+import { findInputsInWallets, utxosAsString } from "../lib/StellarContract";
+import { StellarTxnContext } from "../lib/StellarTxnContext";
 
 // console.log(CommunityTreasury);
 interface localTC extends HeliosTestingContext<
