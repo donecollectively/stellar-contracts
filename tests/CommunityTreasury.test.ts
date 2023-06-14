@@ -40,11 +40,12 @@ import { findInputsInWallets, utxosAsString } from "../lib/StellarContract";
 import { StellarTxnContext } from "../lib/StellarTxnContext";
 
 // console.log(CommunityTreasury);
-interface localTC extends HeliosTestingContext<
-    CommunityTreasury, 
-    typeof CCTHelpers, 
-    CtParams
-> {}
+interface localTC
+    extends HeliosTestingContext<
+        CommunityTreasury,
+        typeof CCTHelpers,
+        CtParams
+    > {}
 
 const it = itWithContext<localTC>;
 
@@ -55,19 +56,23 @@ const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTes
 const describe = descrWithContext<localTC>;
 
 const minAda = 2n * ADA; // minimum needed to send an NFT
-type hasHelpers =  HelperFunctions<CommunityTreasury>
-const CCTHelpers :  hasHelpers = {
+type hasHelpers = HelperFunctions<CommunityTreasury>;
+const CCTHelpers: hasHelpers = {
     async mkSeedUtxo(this: localTC, seedIndex = 0) {
-        const {actors: {tina}, network, h} = this
+        const {
+            actors: { tina },
+            network,
+            h,
+        } = this;
 
         const tx = new Tx();
         const tinaMoney = await tina.utxos;
-        console.log("tina has money: \n"+ utxosAsString(tinaMoney))
+        console.log("tina has money: \n" + utxosAsString(tinaMoney));
 
         tx.addInput(
             await findInputsInWallets(
-                new Value(30n * ADA), 
-                {wallets: [tina]},
+                new Value(30n * ADA),
+                { wallets: [tina] },
                 network
             )
         );
@@ -78,17 +83,16 @@ const CCTHelpers :  hasHelpers = {
 
         const txId = await this.submitTx(tx, "force");
 
-        return txId
+        return txId;
     },
 
-    async setup(this: localTC, {
-        randomSeed = 42,
-        seedTxn,
-        seedIndex = 0,
-    } = {}) {
-        if (this.strella && (this.randomSeed == randomSeed)) return this.strella;
+    async setup(
+        this: localTC,
+        { randomSeed = 42, seedTxn, seedIndex = 0 } = {}
+    ) {
+        if (this.strella && this.randomSeed == randomSeed) return this.strella;
 
-        if (!seedTxn) {            
+        if (!seedTxn) {
             seedTxn = await this.h.mkSeedUtxo();
         }
         this.randomSeed = randomSeed;
@@ -99,35 +103,37 @@ const CCTHelpers :  hasHelpers = {
         });
     },
 
-    async mintCharterToken(this: localTC, args?: CharterDatumArgs) : Promise<StellarTxnContext>{        
-        const {delay} = this;
+    async mintCharterToken(
+        this: localTC,
+        args?: CharterDatumArgs
+    ): Promise<StellarTxnContext> {
+        const { delay } = this;
         const { tina, tom, tracy } = this.actors;
 
         await this.h.setup();
-        const treasury = this.strella!
+        const treasury = this.strella!;
         args = args || {
             trustees: [tina.address, tom.address, tracy.address],
-            minSigs: 2
+            minSigs: 2,
         };
         const tcx = await treasury.txMintCharterToken(args);
-        expect(treasury.network).toBe(this.network)
-        
-        console.log("charter token mint: \n"+ tcx.dump())
+        expect(treasury.network).toBe(this.network);
 
-        await treasury.submit(tcx)
+        console.log("charter token mint: \n" + tcx.dump());
 
-        this.network.tick(1n);   
-        return tcx
+        await treasury.submit(tcx);
+
+        this.network.tick(1n);
+        return tcx;
     },
 
-    async mkCharterSpendTx(this: localTC) : Promise<StellarTxnContext>{        
+    async mkCharterSpendTx(this: localTC): Promise<StellarTxnContext> {
         await this.h.setup();
-        const treasury = this.strella!
+        const treasury = this.strella!;
 
         return treasury.txCharterAuthorization();
-    }
-
-}
+    },
+};
 
 describe("community treasury manager", async () => {
     beforeEach<localTC>(async (context) => {
@@ -164,22 +170,29 @@ describe("community treasury manager", async () => {
         });
 
         it("can split utxos", async (context: localTC) => {
-            const {actors: {tom}, network, h} = context
+            const {
+                actors: { tom },
+                network,
+                h,
+            } = context;
             // await h.setup()
             const tx = new Tx();
             const tomMoney = await tom.utxos;
 
             tx.addInput(tomMoney[0]);
             tx.addOutput(new TxOutput(tom.address, new Value(3n * ADA)));
-            tx.addOutput(new TxOutput(tom.address, new Value(
-                tomMoney[0].value.lovelace - (5n * ADA)
-            )));
+            tx.addOutput(
+                new TxOutput(
+                    tom.address,
+                    new Value(tomMoney[0].value.lovelace - 5n * ADA)
+                )
+            );
             // console.log("s2")
 
             await context.submitTx(tx);
-            const tm2 = await network.getUtxos(tom.address)
+            const tm2 = await network.getUtxos(tom.address);
 
-            expect(tomMoney.length).not.toEqual(tm2.length)
+            expect(tomMoney.length).not.toEqual(tm2.length);
         });
 
         it("can wait for future slots", async (context: localTC) => {
@@ -195,105 +208,122 @@ describe("community treasury manager", async () => {
             expect(waitedSlots).toBeLessThan(100);
         });
 
-    //     it("can access types in the contract", async (context: localTC) => {
-    //         context.randomSeed = 42;
-    //         const strella = await context.instantiateWithParams({
-    //             nonce: context.mkRandomBytes(16),
-    //             initialTrustees: [context.actors.tina.address],
-    //         });
-    //         const cc = strella.configuredContract;
-    //         const {
-    //             types: { Redeemer },
-    //         } = cc;
+        //     it("can access types in the contract", async (context: localTC) => {
+        //         context.randomSeed = 42;
+        //         const strella = await context.instantiateWithParams({
+        //             nonce: context.mkRandomBytes(16),
+        //             initialTrustees: [context.actors.tina.address],
+        //         });
+        //         const cc = strella.configuredContract;
+        //         const {
+        //             types: { Redeemer },
+        //         } = cc;
 
-    //         expect(Redeemer?.charterMint).toBeTruthy();
-    //     });
+        //         expect(Redeemer?.charterMint).toBeTruthy();
+        //     });
     });
 
     describe("has a singleton minting policy", () => {
         it("has an initial UTxO chosen arbitrarily, and that UTxO is consumed during initial Charter", async (context: localTC) => {
-            const {h, network, actors: {tina}} = context;
-            const seedTxn = await h.mkSeedUtxo().catch( e => { throw(e) } )
+            const {
+                h,
+                network,
+                actors: { tina },
+            } = context;
+            const seedTxn = await h.mkSeedUtxo().catch((e) => {
+                throw e;
+            });
 
             const treasury = h.setup({
                 seedTxn,
-                seedIndex: 0
+                seedIndex: 0,
             });
 
             const unspent = await network.getUtxos(tina.address);
             const empty = unspent.find((x) => {
-                return (
-                    x.txId == seedTxn &&
-                    BigInt(x.utxoIdx) == 0n
-                )
-            })
-            expect(empty).toBeFalsy()
+                return x.txId == seedTxn && BigInt(x.utxoIdx) == 0n;
+            });
+            expect(empty).toBeFalsy();
         });
 
         it("makes a different address depending on (txId, outputIndex) parameters of the Minting script", async (context: localTC) => {
-            const {h, network} = context;
+            const { h, network } = context;
 
-            const t1 : CommunityTreasury = await h.setup();
-            const t2 : CommunityTreasury = await h.setup({
+            const t1: CommunityTreasury = await h.setup();
+            const t2: CommunityTreasury = await h.setup({
                 randomSeed: 43,
                 seedIndex: 1,
             });
 
-            expect(t1.mkMintingScript().mintingPolicyHash?.hex).
-                not.toEqual(t2.mkMintingScript().mintingPolicyHash?.hex)
+            expect(t1.mkMintingScript().mintingPolicyHash?.hex).not.toEqual(
+                t2.mkMintingScript().mintingPolicyHash?.hex
+            );
         });
-
-
     });
 
     describe("has a unique, permanent treasury address", () => {
         it("uses the Minting Policy Hash as the sole parameter for the treasury spending script", async (context: localTC) => {
-                const {h, network} = context;
-    
-                try {
-                    const t1 : CommunityTreasury = await h.setup();
-                    const t2 : CommunityTreasury = await h.setup({
-                        randomSeed: 43,
-                        seedIndex: 1,
-                    });
-                    expect(t1.address.toBech32()).
-                        not.toEqual(t2.address.toBech32())
-                } catch(e) { throw(e) }
-        });    
+            const { h, network } = context;
+
+            try {
+                const t1: CommunityTreasury = await h.setup();
+                const t2: CommunityTreasury = await h.setup({
+                    randomSeed: 43,
+                    seedIndex: 1,
+                });
+                expect(t1.address.toBech32()).not.toEqual(
+                    t2.address.toBech32()
+                );
+            } catch (e) {
+                throw e;
+            }
+        });
     });
     describe("has a unique, permanent charter token", () => {
         describe("txMintCharterToken()", () => {
             it("creates a unique 'charter' token, with assetId determined from minting-policy-hash+'charter'", async (context: localTC) => {
-                const {h} = context
+                const { h } = context;
                 // await context.delay(1000)
                 try {
-                    await h.setup()
-                    await h.mintCharterToken()
-                } catch(e) { throw(e) }
+                    await h.setup();
+                    await h.mintCharterToken();
+                } catch (e) {
+                    throw e;
+                }
 
-                return expect(h.mintCharterToken()).rejects.toThrow("already spent")                
+                return expect(h.mintCharterToken()).rejects.toThrow(
+                    "already spent"
+                );
             });
 
             it("doesn't work with a different spent utxo", async (context: localTC) => {
-                const {h, actors: {tracy} } = context
+                const {
+                    h,
+                    actors: { tracy },
+                } = context;
                 // await context.delay(1000)
-                const treasury = await h.setup()
+                const treasury = await h.setup();
 
                 const wrongUtxo = (await tracy.utxos).at(-1);
 
-                vi.spyOn(treasury, "mustGetSeedUtxo").mockImplementation(() => {return wrongUtxo})
+                vi.spyOn(treasury, "mustGetSeedUtxo").mockImplementation(() => {
+                    return wrongUtxo;
+                });
 
                 try {
-                    await h.mintCharterToken()
-                    expect(false).toBe("minting should have thrown assertion from contract")
-                } catch(e) {
+                    await h.mintCharterToken();
+                    expect(false).toBe(
+                        "minting should have thrown assertion from contract"
+                    );
+                } catch (e) {
                     expect(e.message).not.toMatch("seed utxo required");
-                    expect(e.message).toMatch("assert failed")
+                    expect(e.message).toMatch("assert failed");
                     //!!! todo: remove this try/catch when the message is improved,
                     // and use the more explicit rejects... matching below.
                 }
 
                 // await expect(h.mintCharterToken()).rejects.toThrowError("seed utxo required")
+                //!!! todo: when this happens, also swap in similar cases below.
             });
         });
     });
