@@ -1,7 +1,9 @@
 import {
     Address,
+    Assets,
     Datum,
     DatumHash,
+    MintingPolicyHash,
     Network,
     NetworkParams,
     Program,
@@ -15,13 +17,15 @@ import {
 } from "@hyperionbt/helios";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 
+type tokenPredicate = ((something: canHaveToken) => boolean) & {value: Value}
+
 type WalletsAndAddresses = {
     wallets: Wallet[];
     addresses?: Address[];
 };
 export type paramsBase = Record<string, any>;
-
-type TxInput = Tx["body"]["inputs"][0];
+export type TxInput = Tx["body"]["inputs"][0];
+export type valuesEntry = [number[], bigint];
 
 export function hexToPrintableString(hexStr) {
     let result = "";
@@ -67,16 +71,16 @@ export function valueAsString(v: Value) {
 export function txAsString(tx: Tx): string {
     const bodyAttrs = [
         "inputs",
-        "collateral",
         "minted",
+        "collateral",
         "outputs",
-        "collateralReturn",
         "fee",
         "lastValidSlot",
         "firstValidSlot",
         "metadataHash",
         "scriptDataHash",
         "signers",
+        "collateralReturn",
         "refInputs",
     ];
     const witnessAttrs = [
@@ -91,7 +95,9 @@ export function txAsString(tx: Tx): string {
     let details = "";
 
     const d = tx.dump()
-    // console.log("tx dump", JSON.stringify(d,null, 2))
+    //!!! todo: improve interface of tx so useful things have a non-private api
+    //!!! todo: get rid of dump()
+    //!!! todo: get back to type-safety in this diagnostic suite
 
     for (const x of bodyAttrs) {
         let item = tx.body[x] || d.body[x] as any;
@@ -104,6 +110,10 @@ export function txAsString(tx: Tx): string {
             item = `\n  ${item.map((x) => txInputAsString(x)).join("\n  ")}`;
         }
         if ("collateral" == x) {
+            //!!! todo: group collateral with inputs and reflect it being spent either way,
+            //     IFF it is also a tx `input`
+            //!!! todo: move collateral to bottom with collateralReturn,
+            //     IFF it is not part of the tx `inputs`
             item = item.map((x) => txInputAsString(x, "🔪")).join("\n    ");
         }
         if ("minted" == x) {
@@ -117,17 +127,18 @@ export function txAsString(tx: Tx): string {
                 .map((x, i) => txOutputAsString(x, `${i}  <-`))
                 .join("\n  ")}`;
         }
-        if ("collateralReturn" == x) {
-            skipLabel = true
-            item = `  ${
-                txOutputAsString(item, `${tx.body.outputs.length}  <-`)
-            }  (collateralReturn)`
-        }
 
         if ("fee" == x) {
             item = parseInt(item);
             item = `${(Math.round(item / 1000) / 1000).toFixed(3)} ADA`;
             // console.log("fee", item)
+        }
+
+        if ("collateralReturn" == x) {
+            skipLabel = true
+            item = `  ${
+                txOutputAsString(item, `0  <- ❓`)
+            } conditional: collateral change (returned in case of txn failure)`
         }
 
         details += `${skipLabel ? "" : "  "+ x + ": "}${item}\n`;
@@ -158,7 +169,8 @@ export function txAsString(tx: Tx): string {
                             x.data.index ? 1 + x.data.index  : ""
                         } ${x.data.toString()}`
                 )
-                .join("\n  ");
+            if (item.length > 1) item.unshift("")
+            item = item.join("\n    ");
         }
         if ("scripts" == x) {
             if (!item) continue;
@@ -168,12 +180,13 @@ export function txAsString(tx: Tx): string {
                         return `🏦 ${s.mintingPolicyHash.hex.substring(
                             0,
                             12
-                        )}…`;
+                        )}… (minting)`;
                     } catch (e) {
-                        return `📝 ${s.validatorHash.hex.substring(0, 12)}…`;
+                        return `📜 ${s.validatorHash.hex.substring(0, 12)}… (validator)`;
                     }
-                })
-                .join("\n  ");
+                });
+            if (item.length > 1) item.unshift("")
+            item = item.join("\n    ");
         }
 
         if (!item) continue;
@@ -324,6 +337,8 @@ type scriptPurpose =
     | "module"
     | "linking";
 
+export type canHaveToken = UTxO | TxInput | TxOutput | Assets;
+
 //<CT extends Program>
 export class StellarContract<
     // SUB extends StellarContract<any, ParamsType>,
@@ -403,6 +418,16 @@ export class StellarContract<
         return this.address.toBech32();
     }
 
+    stringToNumberArray(str: string): number[] {
+        let encoder = new TextEncoder();
+        let byteArray = encoder.encode(str);
+        return [...byteArray].map((x) => parseInt(x.toString()));
+    }
+
+    mkValuesEntry(tokenName: string, count: bigint) : valuesEntry {
+        return [this.stringToNumberArray(tokenName), count];
+    }
+
     addScriptWithParams<
         SC extends StellarContract<any>
         // P = SC extends StellarContract<infer P> ? P : never
@@ -463,6 +488,79 @@ export class StellarContract<
         return heldUtxos.filter(predicate);
     }
 
+    _mkTokenPredicate(
+        vOrMph: Value | MintingPolicyHash , 
+        tokenName? :string, 
+        quantity? : bigint
+    ) : tokenPredicate {
+        if (!vOrMph) throw new Error(`missing required Value or MintingPolicyHash in arg1`)
+        const v = (vOrMph instanceof MintingPolicyHash) ?
+            this.tokenAsValue(vOrMph, tokenName!, quantity!) :
+            vOrMph;
+
+        const predicate = _tokenPredicate.bind(this)  as tokenPredicate
+        predicate.value = v;
+        return predicate;
+
+        function _tokenPredicate(this: StellarContract<ParamsType>, something: canHaveToken) {
+            return this.hasToken(something, v)
+        }
+    }
+
+    hasToken(something: canHaveToken, vOrMph: Value | MintingPolicyHash , tokenName? :string, quantity? : bigint) {
+        if (something instanceof UTxO) return this.utxoHasToken(something, vOrMph, tokenName, quantity);
+        if (something instanceof TxOutput) return this.outputHasToken(something, vOrMph, tokenName, quantity);
+        if (something instanceof Assets) return this.assetsHasToken(something, vOrMph, tokenName, quantity);
+
+        //!!! todo: more explicit match for TxInput, which seems to be a type but not an 'instanceof'-testable thing.
+        return this.inputHasToken(something, vOrMph, tokenName, quantity);
+    }
+
+    utxoHasToken(u: UTxO, vOrMph: Value | MintingPolicyHash, tokenName? :string, quantity? : bigint) {
+        return this.outputHasToken(u.origOutput, vOrMph, tokenName, quantity)
+    }
+    inputHasToken(i: TxInput, vOrMph: Value | MintingPolicyHash, tokenName? :string, quantity? : bigint) {
+        return this.outputHasToken(i.origOutput, vOrMph, tokenName, quantity);
+    }
+
+    assetsHasToken(a: Assets, vOrMph: Value | MintingPolicyHash, tokenName? :string, quantity? : bigint) {
+        const v = (vOrMph instanceof MintingPolicyHash) ?
+        this.tokenAsValue(vOrMph, tokenName!, quantity!) :
+        vOrMph;
+
+        return a.ge(v.assets)
+    }
+
+    outputHasToken(o: TxOutput, vOrMph: Value | MintingPolicyHash, tokenName? :string, quantity? : bigint) {
+        if (vOrMph instanceof MintingPolicyHash && !tokenName) throw new Error(`missing required tokenName (or use a Value in arg2`)
+        if (vOrMph instanceof MintingPolicyHash && !quantity) throw new Error(`missing required quantity (or use a Value in arg2`)
+    
+        const v = (vOrMph instanceof MintingPolicyHash) ?
+            this.tokenAsValue(vOrMph, tokenName!, quantity!) :
+            vOrMph;
+
+            return o.value.ge(v);
+    }
+
+
+    tokenAsValue(mph: MintingPolicyHash, tokenName: string, quantity: bigint) {
+        const v =  new Value(
+                this.ADA(0),
+                new Assets([
+                    [
+                        mph,
+                        [
+                            [this.stringToNumberArray(tokenName), quantity]
+                        ],
+                    ],
+                ])
+            );
+        const o = new TxOutput(this.address, v);
+        v.setLovelace(o.calcMinLovelace(this.networkParams))
+
+        return v;
+    }
+
     async findAnySpareUtxos(): Promise<UTxO[] | never> {
         if (!this.myself) throw this.missingActorError;
 
@@ -518,8 +616,8 @@ export class StellarContract<
         });
     }
 
-    async submit(txc: StellarTxnContext, { sign = true } = {}) {
-        const { tx } = txc;
+    async submit(tcx: StellarTxnContext, { sign = true } = {}) {
+        const { tx } = tcx;
         if (this.myself) {
             const [a] = await this.myself.usedAddresses;
             const spares = await this.findAnySpareUtxos();
@@ -532,7 +630,7 @@ export class StellarContract<
             console.warn("no 'myself'; not finalizing");
         }
 
-        console.log("Submitting tx: ", txc.dump());
+        console.log("Submitting tx: ", tcx.dump());
 
         return this.network.submitTx(tx);
     }

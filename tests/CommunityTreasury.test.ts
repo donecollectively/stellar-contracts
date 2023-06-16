@@ -35,8 +35,8 @@ import {
     addTestContext,
     mkContext,
 } from "./HeliosTestingContext.js";
-import { Tx, TxOutput, Value } from "@hyperionbt/helios";
-import { findInputsInWallets, utxosAsString } from "../lib/StellarContract";
+import { Address, Tx, TxOutput, Value } from "@hyperionbt/helios";
+import { canHaveToken, findInputsInWallets, utxosAsString } from "../lib/StellarContract";
 import { StellarTxnContext } from "../lib/StellarTxnContext";
 
 // console.log(CommunityTreasury);
@@ -119,7 +119,8 @@ const CCTHelpers: hasHelpers = {
         const tcx = await treasury.txMintCharterToken(args);
         expect(treasury.network).toBe(this.network);
 
-        console.log("charter token mint: \n" + tcx.dump());
+        console.log("charter token minted")
+        // console.log("charter token mint: \n" + tcx.dump());
 
         await treasury.submit(tcx);
 
@@ -131,7 +132,7 @@ const CCTHelpers: hasHelpers = {
         await this.h.setup();
         const treasury = this.strella!;
 
-        return treasury.txCharterAuthorization();
+        return treasury.mustAddCharterAuthorization();
     },
 };
 
@@ -304,24 +305,12 @@ describe("community treasury manager", async () => {
 
                 const wrongUtxo = (await tracy.utxos).at(-1);
 
-                vi.spyOn(treasury, "mustGetSeedUtxo").mockImplementation(() => {
+                vi.spyOn(treasury, "mustGetSeedUtxo").mockImplementation(async () => {
                     return wrongUtxo;
                 });
 
-                try {
-                    await h.mintCharterToken();
-                    expect(false).toBe(
-                        "minting should have thrown assertion from contract"
-                    );
-                } catch (e) {
-                    expect(e.message).not.toMatch("seed utxo required");
-                    expect(e.message).toMatch("assert failed");
-                    //!!! todo: remove this try/catch when the message is improved,
-                    // and use the more explicit rejects... matching below.
-                }
 
-                // await expect(h.mintCharterToken()).rejects.toThrowError("seed utxo required")
-                //!!! todo: when this happens, also swap in similar cases below.
+                await expect(h.mintCharterToken()).rejects.toThrow("seed utxo required")
             });
         });
     });
@@ -334,13 +323,17 @@ describe("community treasury manager", async () => {
 
             const tcx = await h.mkCharterSpendTx();
             expect(tcx.outputs).toHaveLength(1);
+            const hasCharterToken = treasury._mkTokenPredicate(treasury.charterTokenAsValue)
             expect(
                 tcx.outputs.find((o: TxOutput) => {
-                    return o.value.assets.ge(
-                        treasury.charterTokenAsValue.assets
-                    );
+                    return hasCharterToken(o) && 
+                        o.address.toBech32() == treasury.address.toBech32()
                 })
             ).toBeTruthy();
+
+            await treasury.submit(tcx)
+            const u = await network.getUtxos(treasury.address);
+            expect(u.find(hasCharterToken)).toBeTruthy()
         });
 
         it("fails to spend the charter token if it's not returned to the contract", async (context: localTC) => {
@@ -359,9 +352,7 @@ describe("community treasury manager", async () => {
                 new TxOutput(bogusPlace, treasury.charterTokenAsValue)
             );
 
-            //! temp:
-            await expect(treasury.submit(tcx)).rejects.toThrow(/assert failed/);
-            // await expect(treasury.submit(tcx)).rejects.toThrow(/charter token must be returned/)
+            await expect(treasury.submit(tcx)).rejects.toThrow(/charter token must be returned/)
         });
 
         it.todo(

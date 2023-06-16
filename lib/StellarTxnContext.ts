@@ -25,9 +25,13 @@ export class StellarTxnContext {
         const { tx } = this;
         return txAsString(tx);
     }
-    mintTokens(...args: Parameters<Tx["mintTokens"]>) {
-        return this.tx.mintTokens(...args);
+
+    mintTokens(...args: Parameters<Tx["mintTokens"]>) : StellarTxnContext {
+        this.tx.mintTokens(...args);
+
+        return this;
     }
+
     addInput(input: UTxO,
         rawRedeemer?: null | UplcDataValue | UplcData | HeliosData
     ) {
@@ -35,7 +39,7 @@ export class StellarTxnContext {
         this.tx.addInput(input, rawRedeemer);
         return this;
     }
-    
+
     addInputs(inputs: UTxO[]) {
         this.inputs.push(...inputs);
         this.tx.addInputs(inputs);
@@ -53,7 +57,9 @@ export class StellarTxnContext {
         return this;
     }
     attachScript(...args: Parameters<Tx["attachScript"]>) {
-        return this.tx.attachScript(...args)
+        this.tx.attachScript(...args)
+
+        return this;
     }
 
     /**

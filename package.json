@@ -14,7 +14,7 @@
   "author": "Done Collectively",
   "license": "none",
   "dependencies": {
-    "@hyperionbt/helios": "^0.14.0",
+    "@hyperionbt/helios": "^0.14.2",
     "@rollup/pluginutils": "^5.0.2",
     "@types/node": "^20.2.5",
     "@vitest/browser": "^0.31.4",

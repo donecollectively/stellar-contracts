@@ -19,6 +19,7 @@ import {
     StellarContract,
     utxoAsString,
     utxosAsString,
+    valuesEntry,
 } from "../lib/StellarContract.js";
 
 import { StellarTxnContext } from "../lib/StellarTxnContext.js";
@@ -76,7 +77,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
 
     get mph() {
         const minter = this.mkMintingScript();
-        return minter.mintingPolicyHash;
+        return minter.mintingPolicyHash!;
     }
 
     mkContractParams(params: CtParams) {
@@ -106,51 +107,48 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         return {};
     }
 
-    async XXtxMintCharterToken(
-        tcx: StellarTxnContext = new StellarTxnContext()
-    ) {
-        //! EXPECTS myself to be set
-        if (!this.myself)
-            throw new Error(
-                `missing required 'myself' attribute on ${this.constructor.name}`
-            );
+    // async XXtxMintCharterToken(
+    //     tcx: StellarTxnContext = new StellarTxnContext()
+    // ) {
+    //     //! EXPECTS myself to be set
+    //     if (!this.myself)
+    //         throw new Error(
+    //             `missing required 'myself' attribute on ${this.constructor.name}`
+    //         );
 
-        const [addr] = await this.myself.usedAddresses;
-        const utxos = await this.network.getUtxos(addr);
-        const { seedTxn, seedIndex } = this.paramsIn;
+    //     const [addr] = await this.myself.usedAddresses;
+    //     const utxos = await this.network.getUtxos(addr);
+    //     const { seedTxn, seedIndex } = this.paramsIn;
 
-        const seedUtxo = utxos.find(
-            (u) => u.txId == seedTxn && BigInt(u.utxoIdx) == seedIndex
-        );
-        if (!seedUtxo)
-            throw new Error(
-                `seed utxo not found / already spent: ${seedTxn.hex}@${seedIndex}`
-            );
+    //     const seedUtxo = utxos.find(
+    //         (u) => u.txId == seedTxn && BigInt(u.utxoIdx) == seedIndex
+    //     );
+    //     if (!seedUtxo)
+    //         throw new Error(
+    //             `seed utxo not found / already spent: ${seedTxn.hex}@${seedIndex}`
+    //         );
 
-        //! deposits one ADA into the contract for use with the CoinFactory charter.
-        //! deposits the minimum
-        const txValue = new Value(this.ADA(1));
+    //     //! deposits one ADA into the contract for use with the CoinFactory charter.
+    //     //! deposits the minimum
+    //     const txValue = new Value(this.ADA(1));
 
-        const output = new TxOutput(
-            this.address,
-            txValue,
-            Datum.inline(this.mkCharterTokenDatum({}).data)
-        );
+    //     const output = new TxOutput(
+    //         this.address,
+    //         txValue,
+    //         Datum.inline(this.mkCharterTokenDatum({}).data)
+    //     );
 
-        // prettier-ignore
-        tcx.addOutput(output)
-            .addInput(seedUtxo)
+    //     // prettier-ignore
+    //     tcx.addOutput(output)
+    //         .addInput(seedUtxo)
 
-        return tcx;
+    //     return tcx;
+    // }
+
+    get charterTokenAsValuesEntry(): valuesEntry {
+        return this.mkValuesEntry("charter", BigInt(1));
     }
-    stringToNumberArray(str: string): number[] {
-        let encoder = new TextEncoder();
-        let byteArray = encoder.encode(str);
-        return [...byteArray].map((x) => parseInt(x.toString()));
-    }
-    get charterTokenAsValuesEntry(): [number[], bigint] {
-        return [this.stringToNumberArray("charter"), BigInt(1)];
-    }
+
     get charterTokenAsValue() {
         const minter = this.mkMintingScript();
 
@@ -182,7 +180,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         );
     }
 
-    async mustGetCharterUtxo(): Promise<UTxO | never> {
+    async mustFindCharterUtxo(): Promise<UTxO | never> {
         const ctVal = this.charterTokenAsValue;
 
         return this.mustFindMyUtxo(
@@ -201,10 +199,10 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         return t._toUplcData();
     }
 
-    async txCharterAuthorization(
+    async mustAddCharterAuthorization(
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
-        return this.mustGetCharterUtxo().then(async (charterToken) => {
+        return this.mustFindCharterUtxo().then(async (charterToken) => {
             tcx.addInput(
                 charterToken,
                 this.mkAuthorizeByCharterRedeemer()
@@ -217,7 +215,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
     }
 
     keepCharterToken(
-        tcx: StellarTxnContext = new StellarTxnContext(),
+        tcx: StellarTxnContext,
         charterToken: UTxO
     ) {
         tcx.addOutput(
