@@ -7,9 +7,7 @@ enum Redeemer {
     Charter {
         treasury: Address
     }
-    Mint {
-        tokenName: String
-    }
+    Mint
     Burn
 }
 
@@ -49,6 +47,15 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
             })
         },
         Mint => {
+            charterTokenValue : Value = Value::new(
+                AssetClass::new(ctx.get_current_minting_policy_hash(), "charter".encode_utf8()), 
+                1
+            );
+            
+            assert(tx.outputs.any((txo : TxOutput) -> Bool {
+                txo.value >= charterTokenValue
+            }),"missing required charter token authorization");
+
             // fooToken: AssetClass = AssetClass::new(
             //     ctx.get_current_minting_policy_hash(),
             //     tx.output.any((input: TxInput) -> Bool {
@@ -57,6 +64,7 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
             //     }
             // );
         
+
             // tx.inputs
             //     .any((input: TxInput) -> Bool {
             //         print ("inp: "+ input.serialize().show() );
@@ -67,7 +75,7 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
 true    
         },
         Burn => {
-            true
+            false
         },
         _ => true
     };

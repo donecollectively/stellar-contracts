@@ -61,7 +61,7 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
             
             assert(tx.outputs.any((txo : TxOutput) -> Bool {
                 txo.value >= charterTokenValue
-            }),"missing required 'charter' token authorization");
+            }),"missing required charter token authorization");
 
             assert(tx.outputs.any((txo : TxOutput) -> Bool {
                 txo.value >= charterTokenValue &&

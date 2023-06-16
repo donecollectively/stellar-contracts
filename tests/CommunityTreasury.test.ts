@@ -128,6 +128,34 @@ const CCTHelpers: hasHelpers = {
         return tcx;
     },
 
+    async mintNamedToken(
+        this: localTC,
+        tokenName: string,
+        count: bigint,
+        destination: Address
+    ): Promise<StellarTxnContext> {
+        const { delay } = this;
+        const { tina, tom, tracy } = this.actors;
+
+        await this.h.mintCharterToken()
+        const treasury = this.strella!;
+
+        const tcx = await treasury.txMintNamedToken(tokenName, count);
+        const v = treasury.tokenAsValue(treasury.mph, tokenName, count)
+        tcx.addOutput(new TxOutput(destination, v))
+
+        console.log("charter token mint: \n" + tcx.dump());
+
+        return treasury.submit(tcx).then(() =>{
+            this.network.tick(1n);
+
+            return tcx;
+        })
+
+    },
+
+    
+
     async mkCharterSpendTx(this: localTC): Promise<StellarTxnContext> {
         await this.h.setup();
         const treasury = this.strella!;
@@ -373,7 +401,6 @@ describe("community treasury manager", async () => {
                     new TxOutput(treasury.address, treasury.charterTokenAsValue)
                 );
 
-                // await expect(treasury.submit(tcx)).rejects.toThrow(/assert failed/)
                 await expect(treasury.submit(tcx)).rejects.toThrow(
                     /charter token must be standalone/
                 );
@@ -381,10 +408,106 @@ describe("community treasury manager", async () => {
         );
     });
 
+    //!!! todo: this (build-txn, check-it, submit-it, check-onchain) 
+    //   ... might be a pattern worth lifting to a helper
+    // await this.txChecker({
+    //     async build() : tcx {  ... },
+    //     async onChain(utxosByAddr) {  
+    //          ...
+    //     }
+    // };
+
+    describe("can mint other tokens, on the authority of the charter token", () => {
+        it("can build transactions that mint non-'charter' tokens", async (context: localTC) => {
+            const { h, network, actors, delay, state } = context;
+
+            await h.setup()
+            const treasury = context.strella!;
+
+            const tokenName = "fooToken";
+            const hasNamedToken = treasury._mkTokenPredicate(
+                treasury.mph, tokenName, 42n
+            )             
+            const mintedBefore = await network.getUtxos(treasury.address);
+            expect(mintedBefore.filter(hasNamedToken)).toHaveLength(0)
+
+            const tcx : StellarTxnContext = await h.mintNamedToken(
+                tokenName, 42n,
+                actors.tom.address
+            );
+            const theTokenValue = hasNamedToken.value
+            expect(
+                hasNamedToken(tcx.tx.body.minted)
+            ).toBeTruthy();
+
+            const u = await network.getUtxos(actors.tom.address);
+            const f = u.find(hasNamedToken)
+            expect(f).toBeTruthy()
+            expect(f?.origOutput.value.ge(theTokenValue)).toBeTruthy()
+        });
+
+        it("requires the charter-token to be spent as proof of authority", async (context: localTC) => {
+            const { h, network, actors, delay, state } = context;
+
+            await h.setup()
+            const treasury = context.strella!;
+
+            const tokenName = "fooToken";
+            const hasNamedToken = treasury._mkTokenPredicate(
+                treasury.mph, tokenName, 42n
+            )             
+            const mintedBefore = await network.getUtxos(treasury.address);
+            expect(mintedBefore.filter(hasNamedToken)).toHaveLength(0)
+
+            vi.spyOn(treasury, "mustAddCharterAuthorization").mockImplementation(async(tcx) => tcx!)
+
+            expect(h.mintNamedToken(
+                tokenName, 42n,
+                actors.tom.address
+            )).rejects.toThrow(
+                /missing required charter token authorization/
+            );
+        });
+
+        it("fails if the charter-token is not returned to the treasury", async (context: localTC) => {
+            const { h, network, actors, delay, state } = context;
+
+            await h.setup()
+            const treasury = context.strella!;
+
+            const tokenName = "fooToken";
+            const hasNamedToken = treasury._mkTokenPredicate(
+                treasury.mph, tokenName, 42n
+            )             
+            const mintedBefore = await network.getUtxos(treasury.address);
+            expect(mintedBefore.filter(hasNamedToken)).toHaveLength(0)
+
+            vi.spyOn(treasury, "keepCharterToken").mockImplementation(
+                (tcx : StellarTxnContext, x: any) => {
+                    tcx.addOutput(
+                        new TxOutput(
+                            actors.tracy.address,
+                            treasury.charterTokenAsValue
+                        )
+                    );
+            
+                    return tcx
+                }
+            );
+
+            expect(h.mintNamedToken(
+                tokenName, 42n,
+                actors.tom.address
+            )).rejects.toThrow(
+                /charter token must be returned to the contract/
+            );
+        });
+    });
+
     if (0)
         it("doesn't let randos issue tokens", async ({
             network,
-            actors: { alice, bob },
+            actors: { alice, bob },     
             address,
         }) => {});
 

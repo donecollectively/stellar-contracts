@@ -47,6 +47,11 @@ export type CharterDatumArgs = {
     minSigs: number | bigint;
 };
 
+export type HeldAssetsArgs = {
+    purposeId?: string;
+    purpose?: string;
+};
+
 export class CommunityTreasury extends StellarContract<CtParams> {
     contractSource() {
         return contract;
@@ -233,40 +238,39 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         { trustees, minSigs }: CharterDatumArgs,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
-        let seedUtxo;
-        try {
-            seedUtxo = await this.mustGetSeedUtxo();
-        } catch (e) {
-            throw e;
-        }
+        return this.mustGetSeedUtxo().then((seedUtxo) => {
+            const v = this.charterTokenAsValue;
+            // this.charterTokenDatum
+            const datum = this.mkCharterTokenDatum({
+                trustees,
+                minSigs: BigInt(minSigs),
+            });
 
-        const v = this.charterTokenAsValue;
-        // this.charterTokenDatum
-        const datum = this.mkCharterTokenDatum({
-            trustees,
-            minSigs: BigInt(minSigs),
+            const outputs = [
+                new TxOutput(
+                    this.address,
+                    v,
+                    Datum.inline(datum)
+                    // Datum.inline(new this.datumType.CharterToken([42]))
+                    // seed.
+                ),
+            ];
+
+            // debugger
+            tcx.addInput(seedUtxo)
+                .addOutputs(outputs);
+            return this.minter!.txpCharterInit(tcx, this.address, this.charterTokenAsValuesEntry)
         });
+    }
 
-        const outputs = [
-            new TxOutput(
-                this.address,
-                v,
-                Datum.inline(datum)
-                // Datum.inline(new this.datumType.CharterToken([42]))
-                // seed.
-            ),
-        ];
-
-        // debugger
-        tcx.addInput(seedUtxo)
-            .addOutputs(outputs)
-            .mintTokens(
-                this.mph!,
-                [this.charterTokenAsValuesEntry],
-                this.minter!.mkCharterRedeemer({ treasury: this.address })
-            )
-            .attachScript(this.minter!.compiledContract);
-        return tcx;
+    async txMintNamedToken(
+        tokenName: string,
+        count: bigint,
+        tcx: StellarTxnContext = new StellarTxnContext()
+    ) : Promise<StellarTxnContext>{
+        return this.mustAddCharterAuthorization(tcx).then(tcx => {
+            return this.minter!.txpMintNamedToken(tcx, tokenName, count)
+        })
     }
 
     requirements() {
@@ -293,7 +297,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                     "the trustee threshold is enforced on all administrative actions",
                     "the trustee group can be changed",
                     "the charter token is always kept in the contract",
-                    "minting is gated on use of the Charter token",
+                    "can mint other tokens, on the authority of the Charter token",
                 ],
             },
 
@@ -363,7 +367,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                 requires: [],
             },
 
-            "minting is gated on use of the Charter token": {
+            "can mint other tokens, on the authority of the charter token": {
                 purpose:
                     "to simplify the logic of minting, while being sure of minting authority",
                 details: [
@@ -372,9 +376,10 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                     "... and simply requires that the charter token is used for minting anything else",
                 ],
                 mech: [
-                    "TODO: requires the charter-token to be spent on all non-Charter minting",
+                    "can build transactions that mint non-'charter' tokens",
+                    "requires the charter-token to be spent as proof of authority",
+                    "fails if the charter-token is not returned to the treasury",
                 ],
-                requires: [],
             },
 
             "the trustee group can be changed": {
