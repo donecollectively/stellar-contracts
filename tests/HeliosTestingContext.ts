@@ -255,7 +255,14 @@ function addActor(
         throw new Error(`duplicate role name '${roleName}'`);
     //! it instantiates a wallet with the indicated balance pre-set
     const a = this.network.createWallet(walletBalance);
-    console.log( `+🎭 Actor: ${roleName}: ${a.address.toBech32().substring(0,18)} ${lovelaceToAda(walletBalance)} `)
+    console.log( `+🎭 Actor: ${roleName}: ${
+        a.address.toBech32().substring(0,18)
+    }… ${
+        lovelaceToAda(walletBalance)
+    } (pkh:${
+        a.address.pubKeyHash.hex.substring(0,8)
+    }…)`
+    )
 
     //! it makes collateral for each actor, above and beyond the initial balance,
     //  ... so that the full balance is spendable and the actor can immediately
