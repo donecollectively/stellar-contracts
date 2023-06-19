@@ -12,7 +12,10 @@ enum Datum {
 
 enum Redeemer {
     foo
-    bar
+    updateCharter{
+        trustees: []Address
+        minSigs: Int
+    }
     charterMint
     authorizeByCharter
     tokenMint {
@@ -20,7 +23,8 @@ enum Redeemer {
     }
 }
 
-func requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {
+
+func requiresAuthorization(ctx: ScriptContext, datum: Datum, newDatum: Datum::CharterToken) -> Bool {
     Datum::CharterToken{trustees, minSigs} = datum;
     tx : Tx = ctx.tx;
 
@@ -66,8 +70,29 @@ func requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {
         )
     };
 
+    Datum::CharterToken{newTrustees, newMinSigs} = Datum::from_data( 
+        charterOutput.datum.get_inline_data() 
+    );
+
+    if ( !(
+        charterOutput.value >= charterTokenValue &&
+        newTrustees == newDatum.trustees &&
+        newMinSigs == newDatum.minSigs
+    )) { 
+        error("invalid update to charter settings") 
+    };
+
     true
 }
+
+func requiresProofOfNewTrustees(
+    // ctx: ScriptContext
+) -> Bool {
+    if (false) { error("needs impl: requiresProofOfNewTrustees") };
+
+    false
+}
+
 
 func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
@@ -75,7 +100,13 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     
     tt : Bool = redeemer.switch {
         foo => { true },
-        bar => { true },
+        updateCharter{trustees, minSigs} => { 
+            assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
+            newDatum : Datum::CharterToken = Datum::CharterToken{trustees, minSigs};
+            //!!! todo: requires ALL of the NEW trustees to sign, regardless of minSigs.
+            requiresProofOfNewTrustees(/*ctx*/) &&
+            requiresAuthorization(ctx, datum, newDatum)
+        },
         charterMint => {
             // charterTokenOut : TxOutput = tx.outputs.find(isCharterToken);
             // if (!charterToken) { error("missing required charter token deposit during charterMint") };
@@ -106,13 +137,13 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
         authorizeByCharter => {
             assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
 
-            requiresAuthorization(ctx, datum)
+            requiresAuthorization(ctx, datum, datum.switch{x: CharterToken => x})
         },
         tokenMint{tokenName} => {
             //! guards from optimizing mph out of the program, screwing up parameterization
             assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
             tokenName == tokenName  &&
-            requiresAuthorization(ctx, datum)
+            requiresAuthorization(ctx, datum, datum.switch{x: CharterToken => x})
 
             // findCharter : Option[TxInput] = tx.inputs.find_safe( (txi : TxInput) -> Bool {
             //     txi.output.value >= charterTokenValue

@@ -192,7 +192,10 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         );
     }
 
-    async mustUseCharterUtxo(tcx: StellarTxnContext): Promise<CharterTokenUTxO | never> {
+    async mustUseCharterUtxo(
+        tcx: StellarTxnContext,
+        newDatum? : any  //!!! todo: types for contract datums
+    ): Promise<CharterTokenUTxO | never> {
         const ctVal = this.charterTokenAsValue;
 
         return this.mustFindMyUtxo(
@@ -203,8 +206,9 @@ export class CommunityTreasury extends StellarContract<CtParams> {
             "has it been minted?"
         ).then((ctUtxo : UTxO) => {
             const charterToken = {[chTok]: ctUtxo};
-            this.keepCharterToken(tcx, charterToken);
+            const datum = newDatum || ctUtxo.origOutput.datum
 
+            this.keepCharterToken(tcx, charterToken, datum);
             return charterToken
         })
     }
@@ -243,13 +247,14 @@ export class CommunityTreasury extends StellarContract<CtParams> {
 
     keepCharterToken(
         tcx: StellarTxnContext,
-        charterToken: CharterTokenUTxO
+        charterToken: CharterTokenUTxO,
+        datum: any 
     ) {
         tcx.addOutput(
             new TxOutput(
                 this.address,
                 this.charterTokenAsValue,
-                charterToken[chTok].origOutput.datum
+                datum
             )
         );
 

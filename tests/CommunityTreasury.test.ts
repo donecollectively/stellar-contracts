@@ -35,7 +35,7 @@ import {
     addTestContext,
     mkContext,
 } from "./HeliosTestingContext.js";
-import { Address, Signature, Tx, TxOutput, Value } from "@hyperionbt/helios";
+import { Address, Datum, Signature, Tx, TxOutput, Value } from "@hyperionbt/helios";
 import {
     canHaveToken,
     findInputsInWallets,
@@ -141,7 +141,7 @@ const CCTHelpers: hasHelpers = {
         await treasury.submit(tcx);
 
         this.network.tick(1n);
-        return tcx;
+        return this.state.mintedCharterToken = tcx ;
     },
 
     async mintNamedToken(
@@ -153,7 +153,7 @@ const CCTHelpers: hasHelpers = {
         const { delay } = this;
         const { tina, tom, tracy } = this.actors;
 
-        await this.h.mintCharterToken();
+        if (!this.state.mintedCharterToken) await this.h.mintCharterToken();
         const treasury = this.strella!;
 
         const tcx = await treasury.txMintNamedToken(tokenName, count);
@@ -548,6 +548,57 @@ describe("community treasury manager", async () => {
                 h.mintNamedToken(tokenName, 42n, actors.tom.address)
             ).rejects.toThrow(/charter token must be returned to the contract/);
         });
+        it("fails if the charter-token changes the charter parameters", async (context: localTC) => {
+            const { h, network, actors, delay, state } = context;
+            const { tina, tom, tracy } = actors;
+
+            await h.setup();
+            const treasury = context.strella!;
+            const tokenName = "fooToken";
+
+            let targetTrustees = [tom.address, tracy.address, tina.address];
+            let targetMinSigs = 97n;
+            vi.spyOn(treasury, "keepCharterToken").mockImplementation(
+                (tcx: StellarTxnContext, x: any) => {
+                    tcx.addOutput(
+                        new TxOutput(
+                            treasury.address,
+                            treasury.charterTokenAsValue,
+                            Datum.inline(treasury.mkCharterTokenDatum({
+                                trustees: targetTrustees,
+                                minSigs: targetMinSigs
+                            }))
+                        )
+                    );
+
+                    return tcx;
+                }
+            );
+
+            const invalidUpdate = /invalid update to charter settings/
+            await expect(
+                h.mintNamedToken(tokenName, 42n, actors.tom.address)
+            ).rejects.toThrow(invalidUpdate);
+
+            targetMinSigs = 2n; // restores original good minSigs
+            await expect(
+                h.mintNamedToken(tokenName, 42n, actors.tom.address)
+            ).rejects.toThrow(invalidUpdate);
+
+            targetMinSigs = 43n; // bad minSigs
+            targetTrustees = [tina.address, tom.address, tracy.address]; // good (= original) trustee list
+            await expect(
+                h.mintNamedToken(tokenName, 42n, actors.tom.address)
+            ).rejects.toThrow(invalidUpdate);
+
+            //! restores original settings including the right order; should pass.
+            targetMinSigs = 2n; 
+            targetTrustees = [tina.address, tom.address, tracy.address]; 
+            expect(
+                h.mintNamedToken(tokenName, 42n, actors.tom.address)
+            ).resolves.toBeTruthy()
+        });
+
     });
 
     describe("the trustee threshold is enforced on all administrative actions", () => {
@@ -555,7 +606,7 @@ describe("community treasury manager", async () => {
             const { h, network, actors, delay, state } = context;
             const { tina, tom, tracy } = actors;
             await h.setup();
-            await delay(1000);
+            // await delay(1000);
             const treasury = context.strella!;
 
             await h.mintCharterToken({
