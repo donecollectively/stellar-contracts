@@ -15,11 +15,59 @@ enum Redeemer {
     bar
     charterMint
     authorizeByCharter
-    authorizeTreasuryMint {
+    tokenMint {
         tokenName: String
     }
 }
 
+func requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {
+    Datum::CharterToken{trustees, minSigs} = datum;
+    tx : Tx = ctx.tx;
+
+    charterTokenValue : Value = Value::new(
+        AssetClass::new(mph, "charter".encode_utf8()), 
+        1
+    );
+
+    foundSigs: Int = trustees.fold[Int](
+        (count: Int, a: Address) -> Int {
+            trusteePkh : PubKeyHash = a.credential.switch{
+                PubKey{h} => h,
+                _ => error("trustee can't be a contract")
+            };
+            print("checking if trustee signed: " + trusteePkh.show());
+
+            count + if (tx.is_signed_by(trusteePkh)) {1} else {0}
+        }, 0
+    );
+    assert(foundSigs >= minSigs, 
+        "not enough trustees ("+foundSigs.show()+ " of " + minSigs.show() + " needed) have signed the tx" 
+    );
+
+    charterOutput : TxOutput = tx.outputs.find_safe(
+        (txo : TxOutput) -> Bool {
+            txo.value >= charterTokenValue
+        }
+    ).switch{
+        None => error("this could only happen if the charter token is burned."),
+        Some{o} => o
+    };
+    
+    cvh : ValidatorHash = ctx.get_current_validator_hash();
+    myself : Credential = Credential::new_validator(cvh);
+    if (charterOutput.address.credential != myself) {
+        actual : String = charterOutput.address.credential.switch{
+            PubKey{pkh} => "pkh:🔑#" + pkh.show(),
+            Validator{vh} => "val:📜#:" + vh.show()
+        };
+        error(
+            "charter token must be returned to the contract " + cvh.show() +
+            "... but was sent to " +actual
+        )
+    };
+
+    true
+}
 
 func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
@@ -52,31 +100,30 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
             // print(hash.show());
             true
         },
-        authorizeByCharter => {            
-            charterTokenValue : Value = Value::new(
-                AssetClass::new(mph, "charter".encode_utf8()), 
-                1
-            );
-            myself : Credential = Credential::new_validator(ctx.get_current_validator_hash());
-            
-            assert(tx.outputs.any((txo : TxOutput) -> Bool {
-                txo.value >= charterTokenValue
-            }),"missing required charter token authorization");
+        // authorizeByCharter{otherRedeemerData, otherSignatures} => {            
+        //     false // todo support authorizing **other** things to be done with this token
+        // },
+        authorizeByCharter => {
+            assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
 
-            assert(tx.outputs.any((txo : TxOutput) -> Bool {
-                txo.value >= charterTokenValue &&
-                txo.address.credential == myself
-            }),  "charter token must be returned to the contract");
-
-            true
+            requiresAuthorization(ctx, datum)
         },
-        x: authorizeTreasuryMint => {
+        tokenMint{tokenName} => {
             //! guards from optimizing mph out of the program, screwing up parameterization
-            mph.serialize() != datum.serialize() &&
+            assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
+            tokenName == tokenName  &&
+            requiresAuthorization(ctx, datum)
 
+            // findCharter : Option[TxInput] = tx.inputs.find_safe( (txi : TxInput) -> Bool {
+            //     txi.output.value >= charterTokenValue
+            // });
+            // charterInput : TxInput = findCharter.switch{
+            //     Some{i} => i,
+            //     _ => error("missing required authorization token")
+            // };
+            
             // !initialTrustees.is_empty() &&
             // initialTrustees.head != initialTrustees.head &&
-            x.tokenName == x.tokenName 
             // now < datum.deadline &&
             // tx.is_signed_by(datum.creator)
         }

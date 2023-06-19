@@ -1,9 +1,13 @@
 import {
-    HeliosData, Tx,
+    HeliosData, Signature, Tx,
     TxOutput,
+    TxWitnesses,
     UTxO,
     UplcData,
-    UplcDataValue
+    UplcDataValue,
+    Wallet,
+    bytesToHex,
+    hexToBytes
 } from "@hyperionbt/helios";
 import { txAsString } from "./StellarContract.js";
 
@@ -60,6 +64,13 @@ export class StellarTxnContext {
         this.tx.attachScript(...args)
 
         return this;
+    }
+
+    async addSignature(wallet: Wallet) {
+        const [sig] = await wallet.signTx(this.tx);
+        
+        this.tx.addSignature(sig)
+
     }
 
     /**

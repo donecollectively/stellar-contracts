@@ -17,7 +17,7 @@ import {
 } from "@hyperionbt/helios";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 
-type tokenPredicate = ((something: canHaveToken) => boolean) & {value: Value}
+type tokenPredicate = ((something: canHaveToken) => boolean) & { value: Value };
 
 type WalletsAndAddresses = {
     wallets: Wallet[];
@@ -94,13 +94,13 @@ export function txAsString(tx: Tx): string {
 
     let details = "";
 
-    const d = tx.dump()
+    const d = tx.dump();
     //!!! todo: improve interface of tx so useful things have a non-private api
     //!!! todo: get rid of dump()
     //!!! todo: get back to type-safety in this diagnostic suite
 
     for (const x of bodyAttrs) {
-        let item = tx.body[x] || d.body[x] as any;
+        let item = tx.body[x] || (d.body[x] as any);
         let skipLabel = false;
         // console.log(`attr '${x}'`)
         if (Array.isArray(item) && !item.length) continue;
@@ -127,6 +127,12 @@ export function txAsString(tx: Tx): string {
                 .map((x, i) => txOutputAsString(x, `${i}  <-`))
                 .join("\n  ")}`;
         }
+        if ("signers" == x) {
+            item = item.map((x) => {
+                if (!x.hex) debugger
+                return `🔑#${x.hex.substring(0,8)}…`
+            })
+        }
 
         if ("fee" == x) {
             item = parseInt(item);
@@ -135,18 +141,19 @@ export function txAsString(tx: Tx): string {
         }
 
         if ("collateralReturn" == x) {
-            skipLabel = true
-            item = `  ${
-                txOutputAsString(item, `0  <- ❓`)
-            } conditional: collateral change (returned in case of txn failure)`
+            skipLabel = true;
+            item = `  ${txOutputAsString(
+                item,
+                `0  <- ❓`
+            )} conditional: collateral change (returned in case of txn failure)`;
         }
 
-        details += `${skipLabel ? "" : "  "+ x + ": "}${item}\n`;
+        details += `${skipLabel ? "" : "  " + x + ": "}${item}\n`;
     }
     let hasWinfo = false;
     const winfo = {};
     for (const x of witnessAttrs) {
-        let item = tx.witnesses[x] || d.witnesses[x] as any;
+        let item = tx.witnesses[x] || (d.witnesses[x] as any);
         if (Array.isArray(item) && !item.length) continue;
         if ("datums" == x && !Object.entries(item || {}).length) continue;
         if ("signatures" == x) {
@@ -157,35 +164,37 @@ export function txAsString(tx: Tx): string {
                         .toBech32()
                         .substring(0, 24)}…`;
                 })
-                .join("\n  ");
-        }
+                if (item.length > 1) item.unshift("");
+                item = item.join("\n    ");
+            }
         if ("redeemers" == x) {
             if (!item) continue;
             //!!! todo: augment with mph when that's available from the Redeemer.
-            item = item
-                .map(
-                    (x) =>
-                        `🏧  #${
-                            x.data.index ? 1 + x.data.index  : ""
-                        } ${x.data.toString()}`
-                )
-            if (item.length > 1) item.unshift("")
+            item = item.map(
+                (x) =>
+                    `🏧  #${
+                        x.data.index ? 1 + x.data.index : ""
+                    } ${x.data.toString()}`
+            );
+            if (item.length > 1) item.unshift("");
             item = item.join("\n    ");
         }
         if ("scripts" == x) {
             if (!item) continue;
-            item = item
-                .map((s) => {
-                    try {
-                        return `🏦 ${s.mintingPolicyHash.hex.substring(
-                            0,
-                            12
-                        )}… (minting)`;
-                    } catch (e) {
-                        return `📜 ${s.validatorHash.hex.substring(0, 12)}… (validator)`;
-                    }
-                });
-            if (item.length > 1) item.unshift("")
+            item = item.map((s) => {
+                try {
+                    return `🏦 ${s.mintingPolicyHash.hex.substring(
+                        0,
+                        12
+                    )}… (minting)`;
+                } catch (e) {
+                    return `📜 ${s.validatorHash.hex.substring(
+                        0,
+                        12
+                    )}… (validator)`;
+                }
+            });
+            if (item.length > 1) item.unshift("");
             item = item.join("\n    ");
         }
 
@@ -231,7 +240,7 @@ export function txAsString(tx: Tx): string {
     //   "metadata": null
 }
 export function txInputAsString(x: TxInput, prefix = "-> "): string {
-    return `${prefix}${x.address.toBech32().substring(0, 17)}… ${valueAsString(
+    return `${prefix}${x.address.toBech32().substring(0, 18)}… ${valueAsString(
         x.value
     )} = 📖 ${x.txId.hex.substring(0, 12)}…@${x.utxoIdx}`;
 }
@@ -257,7 +266,7 @@ export function datumAsString(d: Datum | undefined): string {
 export function txOutputAsString(x: TxOutput, prefix = "<-"): string {
     const bech32 = (x.address as any).bech32 || x.address.toBech32();
 
-    return `${prefix} ${bech32.substring(0, 17)}… ${datumAsString(
+    return `${prefix} ${bech32.substring(0, 18)}… ${datumAsString(
         x.datum
     )} ${valueAsString(x.value)}`;
 }
@@ -276,7 +285,7 @@ export async function findInputsInWallets(
 
     for (const w of wallets) {
         const [a] = await w.usedAddresses;
-        console.log("finding funds in wallet", a.toBech32());
+        console.log("finding funds in wallet", a.toBech32().substring(0,18));
         const utxos = await w.utxos;
         for (const u of utxos) {
             if (lovelaceOnly) {
@@ -424,7 +433,7 @@ export class StellarContract<
         return [...byteArray].map((x) => parseInt(x.toString()));
     }
 
-    mkValuesEntry(tokenName: string, count: bigint) : valuesEntry {
+    mkValuesEntry(tokenName: string, count: bigint): valuesEntry {
         return [this.stringToNumberArray(tokenName), count];
     }
 
@@ -480,7 +489,7 @@ export class StellarContract<
             `finding utxo with datum ${
                 targetHash?.hex.substring(0,12)
             }... in wallet`,
-            this.address.toBech32()
+            this.address.toBech32().substring(0,18)
         );
 
         const heldUtxos = await this.network.getUtxos(this.address);
@@ -489,74 +498,123 @@ export class StellarContract<
     }
 
     _mkTokenPredicate(
-        vOrMph: Value | MintingPolicyHash , 
-        tokenName? :string, 
-        quantity? : bigint
-    ) : tokenPredicate {
-        if (!vOrMph) throw new Error(`missing required Value or MintingPolicyHash in arg1`)
-        const v = (vOrMph instanceof MintingPolicyHash) ?
-            this.tokenAsValue(vOrMph, tokenName!, quantity!) :
-            vOrMph;
+        vOrMph: Value | MintingPolicyHash,
+        tokenName?: string,
+        quantity?: bigint
+    ): tokenPredicate {
+        if (!vOrMph)
+            throw new Error(
+                `missing required Value or MintingPolicyHash in arg1`
+            );
+        const v =
+            vOrMph instanceof MintingPolicyHash
+                ? this.tokenAsValue(tokenName!, quantity!, vOrMph)
+                : vOrMph;
 
-        const predicate = _tokenPredicate.bind(this)  as tokenPredicate
+        const predicate = _tokenPredicate.bind(this) as tokenPredicate;
         predicate.value = v;
         return predicate;
 
-        function _tokenPredicate(this: StellarContract<ParamsType>, something: canHaveToken) {
-            return this.hasToken(something, v)
+        function _tokenPredicate(
+            this: StellarContract<ParamsType>,
+            something: canHaveToken
+        ) {
+            return this.hasToken(something, v);
         }
     }
 
-    hasToken(something: canHaveToken, vOrMph: Value | MintingPolicyHash , tokenName? :string, quantity? : bigint) {
-        if (something instanceof UTxO) return this.utxoHasToken(something, vOrMph, tokenName, quantity);
-        if (something instanceof TxOutput) return this.outputHasToken(something, vOrMph, tokenName, quantity);
-        if (something instanceof Assets) return this.assetsHasToken(something, vOrMph, tokenName, quantity);
+    hasToken(
+        something: canHaveToken,
+        vOrMph: Value | MintingPolicyHash,
+        tokenName?: string,
+        quantity?: bigint
+    ) {
+        if (something instanceof UTxO)
+            return this.utxoHasToken(something, vOrMph, tokenName, quantity);
+        if (something instanceof TxOutput)
+            return this.outputHasToken(something, vOrMph, tokenName, quantity);
+        if (something instanceof Assets)
+            return this.assetsHasToken(something, vOrMph, tokenName, quantity);
 
         //!!! todo: more explicit match for TxInput, which seems to be a type but not an 'instanceof'-testable thing.
         return this.inputHasToken(something, vOrMph, tokenName, quantity);
     }
 
-    utxoHasToken(u: UTxO, vOrMph: Value | MintingPolicyHash, tokenName? :string, quantity? : bigint) {
-        return this.outputHasToken(u.origOutput, vOrMph, tokenName, quantity)
+    utxoHasToken(
+        u: UTxO,
+        vOrMph: Value | MintingPolicyHash,
+        tokenName?: string,
+        quantity?: bigint
+    ) {
+        return this.outputHasToken(u.origOutput, vOrMph, tokenName, quantity);
     }
-    inputHasToken(i: TxInput, vOrMph: Value | MintingPolicyHash, tokenName? :string, quantity? : bigint) {
+    inputHasToken(
+        i: TxInput,
+        vOrMph: Value | MintingPolicyHash,
+        tokenName?: string,
+        quantity?: bigint
+    ) {
         return this.outputHasToken(i.origOutput, vOrMph, tokenName, quantity);
     }
 
-    assetsHasToken(a: Assets, vOrMph: Value | MintingPolicyHash, tokenName? :string, quantity? : bigint) {
-        const v = (vOrMph instanceof MintingPolicyHash) ?
-        this.tokenAsValue(vOrMph, tokenName!, quantity!) :
-        vOrMph;
+    assetsHasToken(
+        a: Assets,
+        vOrMph: Value | MintingPolicyHash,
+        tokenName?: string,
+        quantity?: bigint
+    ) {
+        const v =
+            vOrMph instanceof MintingPolicyHash
+                ? this.tokenAsValue(tokenName!, quantity!, vOrMph)
+                : vOrMph;
 
-        return a.ge(v.assets)
+        return a.ge(v.assets);
     }
 
-    outputHasToken(o: TxOutput, vOrMph: Value | MintingPolicyHash, tokenName? :string, quantity? : bigint) {
-        if (vOrMph instanceof MintingPolicyHash && !tokenName) throw new Error(`missing required tokenName (or use a Value in arg2`)
-        if (vOrMph instanceof MintingPolicyHash && !quantity) throw new Error(`missing required quantity (or use a Value in arg2`)
-    
-        const v = (vOrMph instanceof MintingPolicyHash) ?
-            this.tokenAsValue(vOrMph, tokenName!, quantity!) :
-            vOrMph;
-
-            return o.value.ge(v);
-    }
-
-
-    tokenAsValue(mph: MintingPolicyHash, tokenName: string, quantity: bigint) {
-        const v =  new Value(
-                this.ADA(0),
-                new Assets([
-                    [
-                        mph,
-                        [
-                            [this.stringToNumberArray(tokenName), quantity]
-                        ],
-                    ],
-                ])
+    outputHasToken(
+        o: TxOutput,
+        vOrMph: Value | MintingPolicyHash,
+        tokenName?: string,
+        quantity?: bigint
+    ) {
+        if (vOrMph instanceof MintingPolicyHash && !tokenName)
+            throw new Error(
+                `missing required tokenName (or use a Value in arg2`
             );
+        if (vOrMph instanceof MintingPolicyHash && !quantity)
+            throw new Error(
+                `missing required quantity (or use a Value in arg2`
+            );
+
+        const v =
+            vOrMph instanceof MintingPolicyHash
+                ? this.tokenAsValue(tokenName!, quantity!, vOrMph)
+                : vOrMph;
+
+        return o.value.ge(v);
+    }
+
+    tokenAsValue(
+        tokenName: string,
+        quantity: bigint,
+        mph?: MintingPolicyHash
+    ): Value {
+        if (!mph) {
+            mph = (this as any).mph;
+            if (!mph)
+                throw new Error(
+                    `tokenAsValue: mph in arg3 required unless the stellar contract (${this.constructor.name}) has an 'mph' getter.`
+                );
+        }
+
+        const v = new Value(
+            this.ADA(0),
+            new Assets([
+                [mph, [[this.stringToNumberArray(tokenName), quantity]]],
+            ])
+        );
         const o = new TxOutput(this.address, v);
-        v.setLovelace(o.calcMinLovelace(this.networkParams))
+        v.setLovelace(o.calcMinLovelace(this.networkParams));
 
         return v;
     }
@@ -593,7 +651,7 @@ export class StellarContract<
         };
 
         const notReserved = ({ reserved }: tempInfo) => !reserved;
-        const isSufficient  = ({ sufficient }: tempInfo) => !!sufficient;
+        const isSufficient = ({ sufficient }: tempInfo) => !!sufficient;
         const backToUtxo = ({ u }: tempInfo) => u;
 
         const toSortInfo = (u: UTxO): tempInfo => {
@@ -616,15 +674,31 @@ export class StellarContract<
         });
     }
 
-    async submit(tcx: StellarTxnContext, { sign = true } = {}) {
-        const { tx } = tcx;
-        if (this.myself) {
-            const [a] = await this.myself.usedAddresses;
+    async submit(tcx: StellarTxnContext, 
+        { 
+            sign = true, 
+            signers = [] 
+        } : {
+            sign? : boolean,
+            signers?: Wallet[]
+        } = { }
+    ) {
+        let { tx } = tcx;
+        if (this.myself || signers.length) {
+            const [a] = ( await this.myself?.usedAddresses ) || []
             const spares = await this.findAnySpareUtxos();
+            const willSign = [ ...signers ]
+            if (sign && this.myself) { 
+                willSign.push(this.myself);
+            }
+            for (const s of willSign) {
+                const [a] = await s.usedAddresses;
+                tx.addSigner(a.pubKeyHash)
+            }
             await tx.finalize(this.networkParams, a, spares);
-            if (sign) {
-                const s = await this.myself.signTx(tx);
-                tx.addSignatures(s, true);
+            for (const s of willSign) {
+                const sig = await s.signTx(tx);
+                tx.addSignatures(sig, true);
             }
         } else {
             console.warn("no 'myself'; not finalizing");

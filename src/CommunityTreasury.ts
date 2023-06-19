@@ -12,6 +12,8 @@ import {
     ByteArray,
     Assets,
     TxId,
+    UplcData,
+    Signature,
 } from "@hyperionbt/helios";
 
 import {
@@ -52,6 +54,11 @@ export type HeldAssetsArgs = {
     purpose?: string;
 };
 
+export const chTok = Symbol("charterToken")
+export type CharterTokenUTxO = {
+    [chTok]: UTxO;
+};
+
 export class CommunityTreasury extends StellarContract<CtParams> {
     contractSource() {
         return contract;
@@ -87,7 +94,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
 
     mkContractParams(params: CtParams) {
         const { mph } = this;
-        console.log("this treasury uses mph", mph?.hex);
+        // console.log("this treasury uses mph", mph?.hex);
 
         return {
             mph,
@@ -185,7 +192,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         );
     }
 
-    async mustFindCharterUtxo(): Promise<UTxO | never> {
+    async mustUseCharterUtxo(tcx: StellarTxnContext): Promise<CharterTokenUTxO | never> {
         const ctVal = this.charterTokenAsValue;
 
         return this.mustFindMyUtxo(
@@ -194,26 +201,41 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                 if (u.value.ge(ctVal)) return u;
             },
             "has it been minted?"
-        );
+        ).then((ctUtxo : UTxO) => {
+            const charterToken = {[chTok]: ctUtxo};
+            this.keepCharterToken(tcx, charterToken);
+
+            return charterToken
+        })
     }
 
-    mkAuthorizeByCharterRedeemer() {
+    mkTokenMintRedeemer() {
         const t =
+            new this.configuredContract.types.Redeemer.tokenMint("foo");
+
+        return t._toUplcData();
+    }
+
+    //!!! consider making trustee-sigs only need to cover the otherRedeemerData
+    //       new this.configuredContract.types.Redeemer.authorizeByCharter(otherRedeemerData, otherSignatures);
+    // mkAuthorizeByCharterRedeemer(otherRedeemerData: UplcData, otherSignatures: Signature[]) {
+    mkAuthorizeByCharterRedeemer() {
+            const t =
             new this.configuredContract.types.Redeemer.authorizeByCharter();
 
         return t._toUplcData();
     }
 
     async mustAddCharterAuthorization(
-        tcx: StellarTxnContext = new StellarTxnContext()
+        tcx: StellarTxnContext = new StellarTxnContext(),
+        forOtherRedeemer: UplcData,
+        otherSignatures: Signature[]
     ): Promise<StellarTxnContext | never> {
-        return this.mustFindCharterUtxo().then(async (charterToken) => {
+        return this.mustUseCharterUtxo(tcx).then(async (charterToken) => {
             tcx.addInput(
-                charterToken,
+                charterToken[chTok],
                 this.mkAuthorizeByCharterRedeemer()
             ).attachScript(this.compiledContract);
-
-            this.keepCharterToken(tcx, charterToken);
 
             return tcx;
         });
@@ -221,13 +243,13 @@ export class CommunityTreasury extends StellarContract<CtParams> {
 
     keepCharterToken(
         tcx: StellarTxnContext,
-        charterToken: UTxO
+        charterToken: CharterTokenUTxO
     ) {
         tcx.addOutput(
             new TxOutput(
                 this.address,
                 this.charterTokenAsValue,
-                charterToken.origOutput.datum
+                charterToken[chTok].origOutput.datum
             )
         );
 
@@ -268,8 +290,14 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         count: bigint,
         tcx: StellarTxnContext = new StellarTxnContext()
     ) : Promise<StellarTxnContext>{
-        return this.mustAddCharterAuthorization(tcx).then(tcx => {
-            return this.minter!.txpMintNamedToken(tcx, tokenName, count)
+        return this.mustUseCharterUtxo(tcx).then(async (charterToken) => {
+            const t = this.mkTokenMintRedeemer();
+            tcx.addInput(
+                charterToken[chTok],
+                this.mkTokenMintRedeemer()
+            ).attachScript(this.compiledContract);
+
+            return this.minter!.txpMintNamedToken(tcx, charterToken, tokenName, count)
         })
     }
 
@@ -407,8 +435,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                     "Normal day-to-day administrative activities can also be conducted while a small number of trustees are on vacation or otherwise temporarily unavailable",
                 ],
                 mech: [
-                    "TODO: a minSigs setting is included in the CharterToken datum",
-                    "TODO: any transaction that spends the CharterToken is deined if it lacks at least 'minSigs' number of trustee signatures",
+                    "doesn't allow the charterToken to be sent without enough minSigs from the trustee list",
                 ],
                 requires: [],
             },

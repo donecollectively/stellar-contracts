@@ -4,6 +4,7 @@ import { StellarContract, valuesEntry } from "../lib/StellarContract.js";
 //@ts-expect-error
 import contract from "./CommunityCoinFactory.hl";
 import { StellarTxnContext } from "../lib/StellarTxnContext.js";
+import { CharterTokenUTxO } from "./CommunityTreasury.js";
 
 export type CcfParams = {
     seedTxn: TxId;
@@ -56,6 +57,7 @@ export class CommunityCoinFactory extends StellarContract<CcfParams> {
 
     async txpMintNamedToken(
         tcx: StellarTxnContext,
+        charterToken: CharterTokenUTxO,
         tokenName: string,
         count: bigint
     ) : Promise<StellarTxnContext> {

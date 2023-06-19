@@ -259,7 +259,7 @@ function addActor(
         a.address.toBech32().substring(0,18)
     }… ${
         lovelaceToAda(walletBalance)
-    } (pkh:${
+    } (🔑#${
         a.address.pubKeyHash.hex.substring(0,8)
     }…)`
     )
