@@ -422,7 +422,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                     "This type of administrative action should be explicit and separate from any other administrative activity",
                 ],
                 mech: [
-                    "TODO: If the CharterToken's Datum hash is being changed, no other tx inputs/outputs are allowed",
+                    "If the CharterToken's Datum is being changed, no other redeemer activities are allowed",
                     "TODO: The charter setting changes are approved based on same threshold as any other administrative change",
                 ],
                 requires: [
