@@ -19,7 +19,10 @@ import {
 import {
     StellarConstructorArgs,
     StellarContract,
+    datum,
+    partialTxn,
     redeem,
+    txn,
     utxoAsString,
     utxosAsString,
     valuesEntry,
@@ -102,6 +105,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         };
     }
 
+    @datum
     mkDatumCharterToken({
         trustees,
         minSigs,
@@ -116,60 +120,47 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         return t._toUplcData();
     }
 
-    mkDependencyStars() {
-        return {};
+    @redeem
+    mintingToken(tokenName: string) {
+        const t =
+            new this.configuredContract.types.Redeemer.mintingToken(tokenName);
+
+        return t._toUplcData();
     }
 
-    // async XXtxMintCharterToken(
-    //     tcx: StellarTxnContext = new StellarTxnContext()
-    // ) {
-    //     //! EXPECTS myself to be set
-    //     if (!this.myself)
-    //         throw new Error(
-    //             `missing required 'myself' attribute on ${this.constructor.name}`
-    //         );
+    @redeem 
+    updatingCharter({trustees, minSigs} : {
+        trustees: Address[], minSigs: bigint
+    }) {
+        const t =
+            new this.configuredContract.types.Redeemer.updatingCharter(trustees, minSigs)
 
-    //     const [addr] = await this.myself.usedAddresses;
-    //     const utxos = await this.network.getUtxos(addr);
-    //     const { seedTxn, seedIndex } = this.paramsIn;
+        return t._toUplcData();
+    }
 
-    //     const seedUtxo = utxos.find(
-    //         (u) => u.txId == seedTxn && BigInt(u.utxoIdx) == seedIndex
-    //     );
-    //     if (!seedUtxo)
-    //         throw new Error(
-    //             `seed utxo not found / already spent: ${seedTxn.hex}@${seedIndex}`
-    //         );
+    //!!! consider making trustee-sigs only need to cover the otherRedeemerData
+    //       new this.configuredContract.types.Redeemer.authorizeByCharter(otherRedeemerData, otherSignatures);
+    // mkAuthorizeByCharterRedeemer(otherRedeemerData: UplcData, otherSignatures: Signature[]) {   
+    @redeem
+    usingAuthority() {
+            const t =
+            new this.configuredContract.types.Redeemer.usingAuthority();
 
-    //     //! deposits one ADA into the contract for use with the CoinFactory charter.
-    //     //! deposits the minimum
-    //     const txValue = new Value(this.ADA(1));
-
-    //     const output = new TxOutput(
-    //         this.address,
-    //         txValue,
-    //         Datum.inline(this.mkCharterTokenDatum({}).data)
-    //     );
-
-    //     // prettier-ignore
-    //     tcx.addOutput(output)
-    //         .addInput(seedUtxo)
-
-    //     return tcx;
-    // }
+        return t._toUplcData();
+    }
 
     get charterTokenAsValuesEntry(): valuesEntry {
         return this.mkValuesEntry("charter", BigInt(1));
     }
 
     get charterTokenAsValue() {
-        const minter = this.connectMintingScript();
+        const {mph} = this;
 
         return new Value(
             this.ADA(1.7),
             new Assets([
                 [
-                    minter.compiledContract.mintingPolicyHash,
+                    mph,
                     [this.charterTokenAsValuesEntry],
                 ],
             ])
@@ -193,7 +184,8 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         );
     }
 
-    async mustUseCharterUtxo(
+    @partialTxn
+    async txnMustUseCharterUtxo(
         tcx: StellarTxnContext,
         newDatum? : any  //!!! todo: types for contract datums
     ): Promise<CharterTokenUTxO | never> {
@@ -209,59 +201,17 @@ export class CommunityTreasury extends StellarContract<CtParams> {
             const charterToken = {[chTok]: ctUtxo};
             const datum = newDatum || ctUtxo.origOutput.datum
 
-            this.keepCharterToken(tcx, charterToken, datum);
+            this.txnKeepCharterToken(tcx, datum);
             return charterToken
         })
-    }
-
-    @redeem
-    mintingToken(tokenName) {
-        const t =
-            new this.configuredContract.types.Redeemer.mintingToken(tokenName);
-
-        return t._toUplcData();
-    }
-
-    @redeem 
-    updatingCharter() {
-        const t =
-            new this.configuredContract.types.Redeemer.updatingCharter()
-
-        return t._toUplcData();
-    }
-
-    //!!! consider making trustee-sigs only need to cover the otherRedeemerData
-    //       new this.configuredContract.types.Redeemer.authorizeByCharter(otherRedeemerData, otherSignatures);
-    // mkAuthorizeByCharterRedeemer(otherRedeemerData: UplcData, otherSignatures: Signature[]) {   
-    @redeem
-    usingAuthority() {
-            const t =
-            new this.configuredContract.types.Redeemer.usingAuthority();
-
-        return t._toUplcData();
-    }
-
-    async mustAddCharterAuthorization(
-        tcx: StellarTxnContext
-        // forOtherRedeemer: UplcData,
-        // otherSignatures: Signature[]
-    ): Promise<StellarTxnContext | never> {
-        return this.mustUseCharterUtxo(tcx).then(async (charterToken) => {
-            tcx.addInput(
-                charterToken[chTok],
-                this.usingAuthority()
-            ).attachScript(this.compiledContract);
-
-            return tcx;
-        });
     }
 
     modifiedCharterDatum() {
     }
 
-    keepCharterToken(
+    @partialTxn
+    txnKeepCharterToken(
         tcx: StellarTxnContext,
-        charterToken: CharterTokenUTxO,
         datum: any 
     ) {
         tcx.addOutput(
@@ -275,7 +225,8 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         return tcx;
     }
 
-    async txMintCharterToken(
+    @txn
+    async mkTxnMintCharterToken(
         { trustees, minSigs }: CharterDatumArgs,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
@@ -300,22 +251,51 @@ export class CommunityTreasury extends StellarContract<CtParams> {
             // debugger
             tcx.addInput(seedUtxo)
                 .addOutputs(outputs);
-            return this.minter!.txpCharterInit(tcx, this.address, this.charterTokenAsValuesEntry)
+            return this.minter!.txnAddCharterInit(tcx, this.address, this.charterTokenAsValuesEntry)
         });
     }
 
-    async txMintNamedToken(
+    @txn
+    async mkTxnMintNamedToken(
         tokenName: string,
         count: bigint,
         tcx: StellarTxnContext = new StellarTxnContext()
     ) : Promise<StellarTxnContext>{
-        return this.mustUseCharterUtxo(tcx).then(async (charterToken) => {
+        return this.txnMustUseCharterUtxo(tcx).then(async (charterToken) => {
             tcx.addInput(
                 charterToken[chTok],
                 this.mintingToken(tokenName)
             ).attachScript(this.compiledContract);
 
-            return this.minter!.txpMintNamedToken(tcx, charterToken, tokenName, count)
+            return this.minter!.txnMintingNamedToken(tcx, charterToken, tokenName, count)
+        })
+    }
+
+    @txn
+    async mkTxnUpdateCharter(
+        trustees: Address[],
+        minSigs: bigint,
+        tcx: StellarTxnContext = new StellarTxnContext()
+    ) : Promise<StellarTxnContext>{
+        return this.txnMustUseCharterUtxo(tcx, 
+            this.mkDatumCharterToken({trustees, minSigs})
+        ).then(async (charterToken) => {
+            tcx.addInput(
+                charterToken[chTok],
+                this.updatingCharter({trustees, minSigs})
+            ).attachScript(this.compiledContract);
+
+            return tcx
+        })
+    }
+
+    @partialTxn
+    async txnAddAuthority(tcx : StellarTxnContext) {
+        return this.txnMustUseCharterUtxo(tcx).then(async (charterToken) => {
+            return tcx.addInput(
+                charterToken[chTok],
+                this.usingAuthority()
+            ).attachScript(this.compiledContract);
         })
     }
 
@@ -437,7 +417,8 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                 ],
                 mech: [
                     "If the CharterToken's Datum is being changed, no other redeemer activities are allowed",
-                    "TODO: The charter setting changes are approved based on same threshold as any other administrative change",
+                    "TODO: requires the existing threshold of existing trustees to be met",
+                    "TODO: requires all of the new trustees to sign the transaction",
                 ],
                 requires: [
                     "the trustee threshold is enforced on all administrative actions",

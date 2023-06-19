@@ -1,5 +1,10 @@
 import { Program, Datum, TxId, TxOutputId, Address } from "@hyperionbt/helios";
-import { StellarContract, redeem, valuesEntry } from "../lib/StellarContract.js";
+import {
+    StellarContract,
+    partialTxn,
+    redeem,
+    valuesEntry,
+} from "../lib/StellarContract.js";
 
 //@ts-expect-error
 import contract from "./CommunityCoinFactory.hl";
@@ -26,14 +31,18 @@ export class CommunityCoinFactory extends StellarContract<CcfParams> {
     @redeem
     mintingCharterToken({ treasury }: CcfCharterRedeemerArgs) {
         // debugger
-        const t = new this.configuredContract.types.Redeemer.mintingCharterToken(treasury);
+        const t =
+            new this.configuredContract.types.Redeemer.mintingCharterToken(
+                treasury
+            );
 
         return t._toUplcData();
     }
 
     @redeem
     mintingNamedToken() {
-        const t = new this.configuredContract.types.Redeemer.mintingNamedToken();
+        const t =
+            new this.configuredContract.types.Redeemer.mintingNamedToken();
 
         return t._toUplcData();
     }
@@ -43,10 +52,11 @@ export class CommunityCoinFactory extends StellarContract<CcfParams> {
     //
     //     return t
     // }
-    async txpCharterInit(
+    @partialTxn
+    async txnAddCharterInit(
         tcx: StellarTxnContext,
         treasury: Address,
-        tVal: valuesEntry,
+        tVal: valuesEntry
     ): Promise<StellarTxnContext> {
         return tcx
             .mintTokens(
@@ -57,20 +67,20 @@ export class CommunityCoinFactory extends StellarContract<CcfParams> {
             .attachScript(this.compiledContract);
     }
 
-    async txpMintNamedToken(
+    @partialTxn
+    async txnMintingNamedToken(
         tcx: StellarTxnContext,
         charterToken: CharterTokenUTxO,
         tokenName: string,
         count: bigint
-    ) : Promise<StellarTxnContext> {
+    ): Promise<StellarTxnContext> {
         return tcx
-        .mintTokens(
-            this.mintingPolicyHash!,
-            [this.mkValuesEntry(tokenName, count)],
-            this.mintingNamedToken()
+            .mintTokens(
+                this.mintingPolicyHash!,
+                [this.mkValuesEntry(tokenName, count)],
+                this.mintingNamedToken()
             )
-        .attachScript(this.compiledContract);
-
+            .attachScript(this.compiledContract);
     }
 
     //! its endpoints can be introspected

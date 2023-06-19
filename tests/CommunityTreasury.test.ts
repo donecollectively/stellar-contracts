@@ -9,6 +9,7 @@ import {
     CtParams,
     CommunityTreasury,
     CharterDatumArgs,
+    chTok,
 } from "../src/CommunityTreasury";
 
 // import {
@@ -132,7 +133,7 @@ const CCTHelpers: hasHelpers = {
             trustees: [tina.address, tom.address, tracy.address],
             minSigs: 2,
         };
-        const tcx = await treasury.txMintCharterToken(args);
+        const tcx = await treasury.mkTxnMintCharterToken(args);
         expect(treasury.network).toBe(this.network);
 
         console.log("charter token minted");
@@ -156,7 +157,7 @@ const CCTHelpers: hasHelpers = {
         if (!this.state.mintedCharterToken) await this.h.mintCharterToken();
         const treasury = this.strella!;
 
-        const tcx = await treasury.txMintNamedToken(tokenName, count);
+        const tcx = await treasury.mkTxnMintNamedToken(tokenName, count);
         const v = treasury.tokenAsValue(tokenName, count);
 
         tcx.addOutput(new TxOutput(destination, v));
@@ -178,7 +179,7 @@ const CCTHelpers: hasHelpers = {
         const treasury = this.strella!;
         const tcx: StellarTxnContext = new StellarTxnContext()
 
-        return treasury.mustAddCharterAuthorization(tcx);
+         return treasury.txnAddAuthority(tcx);
     },
 };
 
@@ -395,7 +396,7 @@ describe("community treasury manager", async () => {
             await h.mintCharterToken();
 
             const treasury = context.strella!;
-            vi.spyOn(treasury, "keepCharterToken").mockImplementation(
+            vi.spyOn(treasury, "txnKeepCharterToken").mockImplementation(
                 (tcx) => tcx!
             );
 
@@ -421,7 +422,7 @@ describe("community treasury manager", async () => {
 
                 await h.mintCharterToken();
                 const treasury = context.strella!;
-                vi.spyOn(treasury, "keepCharterToken").mockImplementation(
+                vi.spyOn(treasury, "txnKeepCharterToken").mockImplementation(
                     (tcx) => tcx!
                 );
 
@@ -494,7 +495,7 @@ describe("community treasury manager", async () => {
 
             // NOTE: this mocks the return-token-to-contract function,
             //   which doesn't satisfy the purpose of the test
-            // vi.spyOn(treasury, "keepCharterToken").mockImplementation(
+            // vi.spyOn(treasury, "txnKeepCharterToken").mockImplementation(
             //     (tcx) => tcx!
             // );
 
@@ -532,7 +533,7 @@ describe("community treasury manager", async () => {
             const mintedBefore = await network.getUtxos(treasury.address);
             expect(mintedBefore.filter(hasNamedToken)).toHaveLength(0);
 
-            vi.spyOn(treasury, "keepCharterToken").mockImplementation(
+            vi.spyOn(treasury, "txnKeepCharterToken").mockImplementation(
                 (tcx: StellarTxnContext, x: any) => {
                     tcx.addOutput(
                         new TxOutput(
@@ -559,7 +560,7 @@ describe("community treasury manager", async () => {
 
             let targetTrustees = [tom.address, tracy.address, tina.address];
             let targetMinSigs = 97n;
-            vi.spyOn(treasury, "keepCharterToken").mockImplementation(
+            vi.spyOn(treasury, "txnKeepCharterToken").mockImplementation(
                 (tcx: StellarTxnContext, x: any) => {
                     tcx.addOutput(
                         new TxOutput(
@@ -618,7 +619,7 @@ describe("community treasury manager", async () => {
             const tokenName = "fooToken";
             const count = 1n;
             const newTokenValue = treasury.tokenAsValue(tokenName, count);
-            const tcx = await treasury.txMintNamedToken(tokenName, count);
+            const tcx = await treasury.mkTxnMintNamedToken(tokenName, count);
 
             tcx.addOutput(new TxOutput(tracy.address, newTokenValue));
             // console.warn(tcx.dump())
@@ -649,7 +650,7 @@ describe("community treasury manager", async () => {
             const tokenName = "fooToken";
             const count = 1n;
             const newTokenValue = treasury.tokenAsValue(tokenName, count);
-            const tcx = await treasury.txMintNamedToken(tokenName, count);
+            const tcx = await treasury.mkTxnMintNamedToken(tokenName, count);
             tcx.addOutput(new TxOutput(tracy.address, newTokenValue));
 
             await expect(treasury.submit(tcx)).rejects.toThrow(
@@ -670,7 +671,7 @@ describe("community treasury manager", async () => {
             const tokenName = "fooToken";
             const count = 1n;
             const newTokenValue = treasury.tokenAsValue(tokenName, count);
-            const tcx = await treasury.txMintNamedToken(tokenName, count);
+            const tcx = await treasury.mkTxnMintNamedToken(tokenName, count);
             tcx.addOutput(new TxOutput(tracy.address, newTokenValue));
 
             await treasury.submit(tcx, {signers: [tina, tom, tracy] });

@@ -27,6 +27,49 @@ export type paramsBase = Record<string, any>;
 export type TxInput = Tx["body"]["inputs"][0];
 export type valuesEntry = [number[], bigint];
 
+export function redeem(proto, thingName, descriptor) {
+    if ( ! thingName.match(/ing/) ) {
+        throw new Error(`@redeem factory: ${thingName}: name should have 'ing' in it (or work around with @redeemerData instead)`)
+    }
+    if ( thingName.match(/^ing/) ) {
+        throw new Error(`@redeem factory: ${thingName}: name shouldn't start with 'ing'`)
+    }
+    return redeemerData(proto, thingName, descriptor) 
+}
+
+export function redeemerData(proto, thingName, descriptor) {
+    //!!! todo: registry and cross-checking for missing redeeming methods
+
+    //!!! todo: develop more patterns of "redeemer uses an input of a certain mph/value"
+    return descriptor
+}
+
+export function datum(proto, thingName, descriptor) {
+    // console.log("+datum", proto.constructor.name, thingName || "none", descriptor.value.name )
+    if ( ! thingName.match(/^mkDatum/) ) {
+        throw new Error(`@datum factory: ${thingName}: name should start with 'mkDatum...'`);
+    }
+    return descriptor
+}
+
+export function txn(proto, thingName, descriptor) {
+    // console.log("+datum", proto.constructor.name, thingName || "none", descriptor.value.name )
+    if ( ! thingName.match(/^mkTxn/) ) {
+        throw new Error(`@txn factory: ${thingName}: name should start with 'mkTxn...'`);
+    }
+    return descriptor
+}
+
+export function partialTxn(proto, thingName, descriptor) {
+    // console.log("+datum", proto.constructor.name, thingName || "none", descriptor.value.name )
+    if ( ! thingName.match(/^txn[A-Z]/) ) {
+        throw new Error(`@partialTxn factory: ${thingName}: should start with 'txn[A-Z]...'`);
+    }
+    return descriptor
+}
+
+
+
 export function hexToPrintableString(hexStr) {
     let result = "";
     for (let i = 0; i < hexStr.length; i += 2) {
@@ -60,10 +103,6 @@ export function lovelaceToAda(l: bigint | number) {
     const ada =
         (asNum && `${(Math.round(asNum / 1000) / 1000).toFixed(3)} ADA`) || "";
     return ada;
-}
-
-export function redeem(proto, thingName, descriptor) {
-    return descriptor
 }
 
 export function valueAsString(v: Value) {
