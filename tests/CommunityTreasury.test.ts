@@ -97,10 +97,22 @@ const CCTHelpers: hasHelpers = {
         }
         this.randomSeed = randomSeed;
         this.myself = this.actors.tina;
-        return this.instantiateWithParams({
+        const treasury = await this.instantiateWithParams({
             seedTxn,
             seedIndex,
         });
+        const { address, mph } = treasury;
+
+        console.log(
+            "treasury",
+            address.toBech32().substring(0,18) + "…",
+            "vHash 📜 " +
+            treasury.compiledContract.validatorHash.hex.substring(0,12)+ "…",
+            "mph 🏦 "+
+            mph?.hex.substring(0,12) + "…",
+        );
+
+        return treasury;
     },
 
     async mintCharterToken(
