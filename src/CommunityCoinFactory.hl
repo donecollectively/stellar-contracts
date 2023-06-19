@@ -4,11 +4,11 @@ const seedTxn : TxId = TxId::new(#1234)
 const seedIndex : Int = 42
 
 enum Redeemer { 
-    Charter {
+    mintingCharterToken {
         treasury: Address
     }
-    Mint
-    Burn
+    mintingNamedToken
+    burningToken
 }
 
 func hasSeedUtxo(tx: Tx) -> Bool {
@@ -35,7 +35,7 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
     // print("hi");
 
     ok : Bool = r.switch {
-        charter: Charter => {       
+        charter: mintingCharterToken => {       
             assert(value_minted == Value::new(charterToken, 1), "no charter token minted");
 
             hasSeedUtxo(tx) &&
@@ -46,7 +46,7 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
                 )
             })
         },
-        Mint => {
+        mintingNamedToken => {
             charterTokenValue : Value = Value::new(
                 AssetClass::new(ctx.get_current_minting_policy_hash(), "charter".encode_utf8()), 
                 1
@@ -74,7 +74,7 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
             //     })
 true    
         },
-        Burn => {
+        burningToken => {
             false
         },
         _ => true

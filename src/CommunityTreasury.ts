@@ -19,6 +19,7 @@ import {
 import {
     StellarConstructorArgs,
     StellarContract,
+    redeem,
     utxoAsString,
     utxosAsString,
     valuesEntry,
@@ -65,7 +66,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
     }
 
     minter?: CommunityCoinFactory;
-    mkMintingScript(): CommunityCoinFactory {
+    connectMintingScript(): CommunityCoinFactory {
         if (this.minter) return this.minter;
         const { seedTxn, seedIndex } = this.paramsIn;
 
@@ -88,7 +89,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
     }
 
     get mph() {
-        const minter = this.mkMintingScript();
+        const minter = this.connectMintingScript();
         return minter.mintingPolicyHash!;
     }
 
@@ -101,7 +102,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         };
     }
 
-    mkCharterTokenDatum({
+    mkDatumCharterToken({
         trustees,
         minSigs,
     }: {
@@ -162,7 +163,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
     }
 
     get charterTokenAsValue() {
-        const minter = this.mkMintingScript();
+        const minter = this.connectMintingScript();
 
         return new Value(
             this.ADA(1.7),
@@ -213,36 +214,49 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         })
     }
 
-    mkTokenMintRedeemer() {
+    @redeem
+    mintingToken(tokenName) {
         const t =
-            new this.configuredContract.types.Redeemer.tokenMint("foo");
+            new this.configuredContract.types.Redeemer.mintingToken(tokenName);
+
+        return t._toUplcData();
+    }
+
+    @redeem 
+    updatingCharter() {
+        const t =
+            new this.configuredContract.types.Redeemer.updatingCharter()
 
         return t._toUplcData();
     }
 
     //!!! consider making trustee-sigs only need to cover the otherRedeemerData
     //       new this.configuredContract.types.Redeemer.authorizeByCharter(otherRedeemerData, otherSignatures);
-    // mkAuthorizeByCharterRedeemer(otherRedeemerData: UplcData, otherSignatures: Signature[]) {
-    mkAuthorizeByCharterRedeemer() {
+    // mkAuthorizeByCharterRedeemer(otherRedeemerData: UplcData, otherSignatures: Signature[]) {   
+    @redeem
+    usingAuthority() {
             const t =
-            new this.configuredContract.types.Redeemer.authorizeByCharter();
+            new this.configuredContract.types.Redeemer.usingAuthority();
 
         return t._toUplcData();
     }
 
     async mustAddCharterAuthorization(
-        tcx: StellarTxnContext = new StellarTxnContext(),
-        forOtherRedeemer: UplcData,
-        otherSignatures: Signature[]
+        tcx: StellarTxnContext
+        // forOtherRedeemer: UplcData,
+        // otherSignatures: Signature[]
     ): Promise<StellarTxnContext | never> {
         return this.mustUseCharterUtxo(tcx).then(async (charterToken) => {
             tcx.addInput(
                 charterToken[chTok],
-                this.mkAuthorizeByCharterRedeemer()
+                this.usingAuthority()
             ).attachScript(this.compiledContract);
 
             return tcx;
         });
+    }
+
+    modifiedCharterDatum() {
     }
 
     keepCharterToken(
@@ -268,7 +282,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         return this.mustGetSeedUtxo().then((seedUtxo) => {
             const v = this.charterTokenAsValue;
             // this.charterTokenDatum
-            const datum = this.mkCharterTokenDatum({
+            const datum = this.mkDatumCharterToken({
                 trustees,
                 minSigs: BigInt(minSigs),
             });
@@ -296,10 +310,9 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         tcx: StellarTxnContext = new StellarTxnContext()
     ) : Promise<StellarTxnContext>{
         return this.mustUseCharterUtxo(tcx).then(async (charterToken) => {
-            const t = this.mkTokenMintRedeemer();
             tcx.addInput(
                 charterToken[chTok],
-                this.mkTokenMintRedeemer()
+                this.mintingToken(tokenName)
             ).attachScript(this.compiledContract);
 
             return this.minter!.txpMintNamedToken(tcx, charterToken, tokenName, count)
@@ -412,6 +425,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                     "can build transactions that mint non-'charter' tokens",
                     "requires the charter-token to be spent as proof of authority",
                     "fails if the charter-token is not returned to the treasury",
+                    "fails if the charter-token parameters are modified",
                 ],
             },
 

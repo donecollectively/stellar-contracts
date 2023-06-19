@@ -12,13 +12,13 @@ enum Datum {
 
 enum Redeemer {
     foo
-    updateCharter{
+    mintingOriginalCharter
+    updatingCharter{
         trustees: []Address
         minSigs: Int
     }
-    charterMint
-    authorizeByCharter
-    tokenMint {
+    usingAuthority
+    mintingToken {
         tokenName: String
     }
 }
@@ -62,7 +62,7 @@ func getCharterOutput(tx: Tx) -> TxOutput {
 
 
 
-func noCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {
+func preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {
     tx: Tx = ctx.tx;
 
     charterOutput : TxOutput = getCharterOutput(tx);
@@ -106,59 +106,46 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
     // now: Time = tx.time_range.start;
     
-    charterChangeAllowable : Bool = redeemer.switch {
-        updateCharter => true,  // actually a 'maybe'
-        _ => noCharterChange(ctx, datum) // throws if it's not kosher
+    notUpdatingCharter : Bool = redeemer.switch {
+        updatingCharter => false,  
+        _ => true
+    };
+    charterChangeAllowable : Bool = if(notUpdatingCharter) { 
+        preventCharterChange(ctx, datum) // throws if it's not kosher
+     } else { 
+        true // "maybe", really
     };
 
     redeemerSpecificChecks : Bool = redeemer.switch {
         foo => { true },
-        updateCharter{trustees, minSigs} => { 
+        mintingOriginalCharter => {
+            true
+        },
+        updatingCharter{trustees, minSigs} => { 
             assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
             assert(trustees.serialize() != trustees.serialize(), "guard failed"); // can't fail.
             assert(minSigs.serialize() != minSigs.serialize(), "guard failed"); // can't fail.
             
             // newDatum : Datum::CharterToken = Datum::CharterToken{trustees, minSigs};
             //!!! todo: requires ALL of the NEW trustees to sign, regardless of minSigs.
+
             requiresProofOfNewTrustees(/*ctx, newDatum */) &&
             requiresAuthorization(ctx, datum)
-        },
-        charterMint => {
-            // charterTokenOut : TxOutput = tx.outputs.find(isCharterToken);
-            // if (!charterToken) { error("missing required charter token deposit during charterMint") };
-
-            // if (charterToken.address != 
-            // trustees.all( ( t : Address) -> Bool {
-            //     // c: Credential = t.credential;
-            //     // Credential::PubKey{hash} = c;
-            //     t.credential.switch{
-            //         pubKey: PubKey => {
-            //             tx.is_signed_by(pubKey.hash)
-            //         },
-            //         // contract:
-            //          Validator => {
-            //             error("invalid address in initialTrustees list: can't expect a contract addr to sign a transaction")
-
-            //             // tx.is_signed_by(contract.hash)
-            //         },
-            //         _ => false
-            //     }                
-            // })
-            // print(hash.show());
-            true
         },
         // authorizeByCharter{otherRedeemerData, otherSignatures} => {            
         //     false // todo support authorizing **other** things to be done with this token
         // },
-        authorizeByCharter => {
+        usingAuthority => {
             assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
 
+            notUpdatingCharter &&
             requiresAuthorization(ctx, datum)
         },
-        tokenMint{tokenName} => {
+        mintingToken{tokenName} => {
             //! guards from optimizing mph out of the program, screwing up parameterization
             assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
             tokenName == tokenName  &&
+            notUpdatingCharter &&
             requiresAuthorization(ctx, datum)
 
             // findCharter : Option[TxInput] = tx.inputs.find_safe( (txi : TxInput) -> Bool {

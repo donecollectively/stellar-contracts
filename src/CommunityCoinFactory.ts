@@ -1,5 +1,5 @@
 import { Program, Datum, TxId, TxOutputId, Address } from "@hyperionbt/helios";
-import { StellarContract, valuesEntry } from "../lib/StellarContract.js";
+import { StellarContract, redeem, valuesEntry } from "../lib/StellarContract.js";
 
 //@ts-expect-error
 import contract from "./CommunityCoinFactory.hl";
@@ -23,15 +23,17 @@ export class CommunityCoinFactory extends StellarContract<CcfParams> {
         return contract;
     }
 
-    mkCharterRedeemer({ treasury }: CcfCharterRedeemerArgs) {
+    @redeem
+    mintingCharterToken({ treasury }: CcfCharterRedeemerArgs) {
         // debugger
-        const t = new this.configuredContract.types.Redeemer.Charter(treasury);
+        const t = new this.configuredContract.types.Redeemer.mintingCharterToken(treasury);
 
         return t._toUplcData();
     }
 
-    mkMintRedeemer() {
-        const t = new this.configuredContract.types.Redeemer.Mint();
+    @redeem
+    mintingNamedToken() {
+        const t = new this.configuredContract.types.Redeemer.mintingNamedToken();
 
         return t._toUplcData();
     }
@@ -50,7 +52,7 @@ export class CommunityCoinFactory extends StellarContract<CcfParams> {
             .mintTokens(
                 this.mintingPolicyHash!,
                 [tVal],
-                this.mkCharterRedeemer({ treasury })
+                this.mintingCharterToken({ treasury })
             )
             .attachScript(this.compiledContract);
     }
@@ -65,7 +67,7 @@ export class CommunityCoinFactory extends StellarContract<CcfParams> {
         .mintTokens(
             this.mintingPolicyHash!,
             [this.mkValuesEntry(tokenName, count)],
-            this.mkMintRedeemer()
+            this.mintingNamedToken()
             )
         .attachScript(this.compiledContract);
 

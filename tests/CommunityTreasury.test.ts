@@ -176,8 +176,9 @@ const CCTHelpers: hasHelpers = {
     async mkCharterSpendTx(this: localTC): Promise<StellarTxnContext> {
         await this.h.setup();
         const treasury = this.strella!;
+        const tcx: StellarTxnContext = new StellarTxnContext()
 
-        return treasury.mustAddCharterAuthorization();
+        return treasury.mustAddCharterAuthorization(tcx);
     },
 };
 
@@ -299,8 +300,8 @@ describe("community treasury manager", async () => {
                 seedIndex: 1,
             });
 
-            expect(t1.mkMintingScript().mintingPolicyHash?.hex).not.toEqual(
-                t2.mkMintingScript().mintingPolicyHash?.hex
+            expect(t1.connectMintingScript().mintingPolicyHash?.hex).not.toEqual(
+                t2.connectMintingScript().mintingPolicyHash?.hex
             );
         });
     });
@@ -564,7 +565,7 @@ describe("community treasury manager", async () => {
                         new TxOutput(
                             treasury.address,
                             treasury.charterTokenAsValue,
-                            Datum.inline(treasury.mkCharterTokenDatum({
+                            Datum.inline(treasury.mkDatumCharterToken({
                                 trustees: targetTrustees,
                                 minSigs: targetMinSigs
                             }))

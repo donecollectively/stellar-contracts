@@ -62,6 +62,10 @@ export function lovelaceToAda(l: bigint | number) {
     return ada;
 }
 
+export function redeem(proto, thingName, descriptor) {
+    return descriptor
+}
+
 export function valueAsString(v: Value) {
     const ada = lovelaceToAda(v.lovelace);
     const assets = assetsAsString(v.assets.dump?.() || v.assets);
@@ -703,7 +707,6 @@ export class StellarContract<
         } else {
             console.warn("no 'myself'; not finalizing");
         }
-
         console.log("Submitting tx: ", tcx.dump());
 
         return this.network.submitTx(tx);
