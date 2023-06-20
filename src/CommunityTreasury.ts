@@ -367,6 +367,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                 impl: "txMintCharterToken()",
                 mech: [
                     "creates a unique 'charter' token, with assetId determined from minting-policy-hash+'charter'",
+                    "TODO: fails if minSigs is longer than trustee list",
                     "doesn't work with a different spent utxo",
                 ],
                 requires: [

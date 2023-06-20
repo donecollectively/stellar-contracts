@@ -213,6 +213,7 @@ const CCTHelpers: hasHelpers = {
 };
 
 const notEnoughSignaturesRegex = /not enough trustees.*have signed/;
+const wrongMinSigs = /minSigs can't be more than the size of the trustee-list/;
 describe("community treasury manager", async () => {
     beforeEach<localTC>(async (context) => {
         await addTestContext(context, CommunityTreasury, CCTHelpers);
@@ -371,6 +372,16 @@ describe("community treasury manager", async () => {
                     "already spent"
                 );
             });
+
+            it.todo("fails if minSigs is longer than trustee list", async (context: localTC) => {
+                const { h, actors: {tina, tom, tracy} } = context;
+
+                await expect( h.mintCharterToken({
+                    trustees: [ tina, tom, tracy].map(t => t.address),
+                    minSigs: 4,
+                })).rejects.toThrow(wrongMinSigs)
+            });
+
 
             it("doesn't work with a different spent utxo", async (context: localTC) => {
                 const {
@@ -742,7 +753,7 @@ describe("community treasury manager", async () => {
 
             await expect(
                 h.updateCharter([actors.tracy.address], 2)
-            ).rejects.toThrow(/minSigs can't be more than the size of the trustee-list/);
+            ).rejects.toThrow(wrongMinSigs);
         });
 
     });

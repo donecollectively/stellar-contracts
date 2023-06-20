@@ -101,22 +101,29 @@ func preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {
 
     true
 }
+func requiresValidMinSigs(datum: Datum) -> Bool {
+    Datum::CharterToken{trustees, minSigs} = datum;
+
+    assert(
+        minSigs <= trustees.length,
+        "minSigs can't be more than the size of the trustee-list"
+    );
+
+    true
+}
 
 func requiresProofOfNewTrustees(
     ctx: ScriptContext,
     datum: Datum
 ) -> Bool {
-    Datum::CharterToken{newTrustees, newMinSigs} = datum;
+    Datum::CharterToken{newTrustees, _} = datum;
 
     assert(
         newTrustees.all(didSignInCtx(ctx)), 
         "all the new trustees must sign"
     );
-    assert(
-        newMinSigs <= newTrustees.length,
-        "minSigs can't be more than the size of the trustee-list"
-    );
-    true
+
+    requiresValidMinSigs(datum)
 }
 
 
