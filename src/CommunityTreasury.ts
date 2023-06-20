@@ -16,8 +16,8 @@ import {
     Signature,
 } from "@hyperionbt/helios";
 
-const DatumInline = Datum.inline
-type InlineDatum = ReturnType<typeof DatumInline>
+const DatumInline = Datum.inline;
+type InlineDatum = ReturnType<typeof DatumInline>;
 
 import {
     StellarConstructorArgs,
@@ -61,7 +61,7 @@ export type HeldAssetsArgs = {
     purpose?: string;
 };
 
-export const chTok = Symbol("charterToken")
+export const chTok = Symbol("charterToken");
 export type CharterTokenUTxO = {
     [chTok]: UTxO;
 };
@@ -115,39 +115,46 @@ export class CommunityTreasury extends StellarContract<CtParams> {
     }: {
         trustees: Address[];
         minSigs: bigint;
-    }) : InlineDatum { //!!! todo: make it possible to type these datum helpers more strongly
+    }): InlineDatum {
+        //!!! todo: make it possible to type these datum helpers more strongly
         const t = new this.configuredContract.types.Datum.CharterToken(
             trustees,
             minSigs
         );
-        return Datum.inline(t._toUplcData())
+        return Datum.inline(t._toUplcData());
     }
 
     @redeem
     mintingToken(tokenName: string) {
-        const t =
-            new this.configuredContract.types.Redeemer.mintingToken(tokenName);
+        const t = new this.configuredContract.types.Redeemer.mintingToken(
+            tokenName
+        );
 
         return t._toUplcData();
     }
 
-    @redeem 
-    updatingCharter({trustees, minSigs} : {
-        trustees: Address[], minSigs: bigint
+    @redeem
+    updatingCharter({
+        trustees,
+        minSigs,
+    }: {
+        trustees: Address[];
+        minSigs: bigint;
     }) {
-        const t =
-            new this.configuredContract.types.Redeemer.updatingCharter(trustees, minSigs)
+        const t = new this.configuredContract.types.Redeemer.updatingCharter(
+            trustees,
+            minSigs
+        );
 
         return t._toUplcData();
     }
 
     //!!! consider making trustee-sigs only need to cover the otherRedeemerData
     //       new this.configuredContract.types.Redeemer.authorizeByCharter(otherRedeemerData, otherSignatures);
-    // mkAuthorizeByCharterRedeemer(otherRedeemerData: UplcData, otherSignatures: Signature[]) {   
+    // mkAuthorizeByCharterRedeemer(otherRedeemerData: UplcData, otherSignatures: Signature[]) {
     @redeem
     usingAuthority() {
-            const t =
-            new this.configuredContract.types.Redeemer.usingAuthority();
+        const t = new this.configuredContract.types.Redeemer.usingAuthority();
 
         return t._toUplcData();
     }
@@ -157,16 +164,11 @@ export class CommunityTreasury extends StellarContract<CtParams> {
     }
 
     get charterTokenAsValue() {
-        const {mph} = this;
+        const { mph } = this;
 
         return new Value(
             this.ADA(1.7),
-            new Assets([
-                [
-                    mph,
-                    [this.charterTokenAsValuesEntry],
-                ],
-            ])
+            new Assets([[mph, [this.charterTokenAsValuesEntry]]])
         );
     }
 
@@ -190,7 +192,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
     @partialTxn
     async txnMustUseCharterUtxo(
         tcx: StellarTxnContext,
-        newDatum? : InlineDatum 
+        newDatum?: InlineDatum
     ): Promise<CharterTokenUTxO | never> {
         const ctVal = this.charterTokenAsValue;
 
@@ -200,30 +202,21 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                 if (u.value.ge(ctVal)) return u;
             },
             "has it been minted?"
-        ).then((ctUtxo : UTxO) => {
-            const charterToken = {[chTok]: ctUtxo};
-            const datum = newDatum || ctUtxo.origOutput.datum as InlineDatum
+        ).then((ctUtxo: UTxO) => {
+            const charterToken = { [chTok]: ctUtxo };
+            const datum = newDatum || (ctUtxo.origOutput.datum as InlineDatum);
 
             this.txnKeepCharterToken(tcx, datum);
-            return charterToken
-        })
+            return charterToken;
+        });
     }
 
-    modifiedCharterDatum() {
-    }
+    modifiedCharterDatum() {}
 
     @partialTxn
-    txnKeepCharterToken(
-        tcx: StellarTxnContext,
-        datum: InlineDatum 
-    ) {
-        debugger
+    txnKeepCharterToken(tcx: StellarTxnContext, datum: InlineDatum) {
         tcx.addOutput(
-            new TxOutput(
-                this.address,
-                this.charterTokenAsValue,
-                datum
-            )
+            new TxOutput(this.address, this.charterTokenAsValue, datum)
         );
 
         return tcx;
@@ -242,18 +235,15 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                 minSigs: BigInt(minSigs),
             });
 
-            const outputs = [
-                new TxOutput(
-                    this.address,
-                    v,
-                    datum
-                ),
-            ];
+            const outputs = [new TxOutput(this.address, v, datum)];
 
             // debugger
-            tcx.addInput(seedUtxo)
-                .addOutputs(outputs);
-            return this.minter!.txnAddCharterInit(tcx, this.address, this.charterTokenAsValuesEntry)
+            tcx.addInput(seedUtxo).addOutputs(outputs);
+            return this.minter!.txnAddCharterInit(
+                tcx,
+                this.address,
+                this.charterTokenAsValuesEntry
+            );
         });
     }
 
@@ -262,15 +252,20 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         tokenName: string,
         count: bigint,
         tcx: StellarTxnContext = new StellarTxnContext()
-    ) : Promise<StellarTxnContext>{
+    ): Promise<StellarTxnContext> {
         return this.txnMustUseCharterUtxo(tcx).then(async (charterToken) => {
             tcx.addInput(
                 charterToken[chTok],
                 this.mintingToken(tokenName)
             ).attachScript(this.compiledContract);
 
-            return this.minter!.txnMintingNamedToken(tcx, charterToken, tokenName, count)
-        })
+            return this.minter!.txnMintingNamedToken(
+                tcx,
+                charterToken,
+                tokenName,
+                count
+            );
+        });
     }
 
     @txn
@@ -278,27 +273,27 @@ export class CommunityTreasury extends StellarContract<CtParams> {
         trustees: Address[],
         minSigs: bigint,
         tcx: StellarTxnContext = new StellarTxnContext()
-    ) : Promise<StellarTxnContext>{
-        return this.txnMustUseCharterUtxo(tcx, 
-            this.mkDatumCharterToken({trustees, minSigs})
+    ): Promise<StellarTxnContext> {
+        return this.txnMustUseCharterUtxo(
+            tcx,
+            this.mkDatumCharterToken({ trustees, minSigs })
         ).then(async (charterToken) => {
             tcx.addInput(
                 charterToken[chTok],
-                this.updatingCharter({trustees, minSigs})
+                this.updatingCharter({ trustees, minSigs })
             ).attachScript(this.compiledContract);
 
-            return tcx
-        })
+            return tcx;
+        });
     }
 
     @partialTxn
-    async txnAddAuthority(tcx : StellarTxnContext) {
+    async txnAddAuthority(tcx: StellarTxnContext) {
         return this.txnMustUseCharterUtxo(tcx).then(async (charterToken) => {
-            return tcx.addInput(
-                charterToken[chTok],
-                this.usingAuthority()
-            ).attachScript(this.compiledContract);
-        })
+            return tcx
+                .addInput(charterToken[chTok], this.usingAuthority())
+                .attachScript(this.compiledContract);
+        });
     }
 
     requirements() {
