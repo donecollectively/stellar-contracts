@@ -36,7 +36,14 @@ import {
     addTestContext,
     mkContext,
 } from "./HeliosTestingContext.js";
-import { Address, Datum, Signature, Tx, TxOutput, Value } from "@hyperionbt/helios";
+import {
+    Address,
+    Datum,
+    Signature,
+    Tx,
+    TxOutput,
+    Value,
+} from "@hyperionbt/helios";
 import {
     canHaveToken,
     findInputsInWallets,
@@ -53,7 +60,7 @@ interface localTC
     > {}
 
 const it = itWithContext<localTC>;
-
+const fit = it.only
 const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTestingContext>
 //!!! until then, we need to use if(0) it(...) : (
 // ... or something we make up that's nicer
@@ -110,11 +117,11 @@ const CCTHelpers: hasHelpers = {
 
         console.log(
             "treasury",
-            address.toBech32().substring(0,18) + "…",
+            address.toBech32().substring(0, 18) + "…",
             "vHash 📜 " +
-            treasury.compiledContract.validatorHash.hex.substring(0,12)+ "…",
-            "mph 🏦 "+
-            mph?.hex.substring(0,12) + "…",
+                treasury.compiledContract.validatorHash.hex.substring(0, 12) +
+                "…",
+            "mph 🏦 " + mph?.hex.substring(0, 12) + "…"
         );
 
         return treasury;
@@ -126,6 +133,12 @@ const CCTHelpers: hasHelpers = {
     ): Promise<StellarTxnContext> {
         const { delay } = this;
         const { tina, tom, tracy } = this.actors;
+        if (this.state.mintedCharterToken) {
+            console.warn(
+                "reusing  minted charter from existing testing-context"
+            );
+            return this.state.mintedCharterToken;
+        }
 
         await this.h.setup();
         const treasury = this.strella!;
@@ -136,13 +149,11 @@ const CCTHelpers: hasHelpers = {
         const tcx = await treasury.mkTxnMintCharterToken(args);
         expect(treasury.network).toBe(this.network);
 
-        console.log("charter token minted");
-        // console.log("charter token mint: \n" + tcx.dump());
-
         await treasury.submit(tcx);
+        console.log("charter token minted");
 
         this.network.tick(1n);
-        return this.state.mintedCharterToken = tcx ;
+        return (this.state.mintedCharterToken = tcx);
     },
 
     async mintNamedToken(
@@ -154,7 +165,7 @@ const CCTHelpers: hasHelpers = {
         const { delay } = this;
         const { tina, tom, tracy } = this.actors;
 
-        if (!this.state.mintedCharterToken) await this.h.mintCharterToken();
+        await this.h.mintCharterToken();
         const treasury = this.strella!;
 
         const tcx = await treasury.mkTxnMintNamedToken(tokenName, count);
@@ -175,14 +186,33 @@ const CCTHelpers: hasHelpers = {
     },
 
     async mkCharterSpendTx(this: localTC): Promise<StellarTxnContext> {
-        await this.h.setup();
-        const treasury = this.strella!;
-        const tcx: StellarTxnContext = new StellarTxnContext()
+        await this.h.mintCharterToken();
 
-         return treasury.txnAddAuthority(tcx);
+        const treasury = this.strella!;
+        const tcx: StellarTxnContext = new StellarTxnContext();
+
+        return treasury.txnAddAuthority(tcx);
+    },
+
+    async updateCharter(
+        this: localTC,
+        trustees: Address[],
+        minSigs: bigint
+    ): Promise<StellarTxnContext> {
+        await this.h.mintCharterToken();
+        const treasury = this.strella!;
+
+        const { signers } = this.state;
+
+        const tcx = await treasury.mkTxnUpdateCharter(trustees, minSigs);
+        return treasury.submit(tcx, { signers }).then(() => {
+            this.network.tick(1n);
+            return tcx;
+        });
     },
 };
 
+const notEnoughSignaturesRegex = /not enough trustees.*have signed/;
 describe("community treasury manager", async () => {
     beforeEach<localTC>(async (context) => {
         await addTestContext(context, CommunityTreasury, CCTHelpers);
@@ -301,9 +331,9 @@ describe("community treasury manager", async () => {
                 seedIndex: 1,
             });
 
-            expect(t1.connectMintingScript().mintingPolicyHash?.hex).not.toEqual(
-                t2.connectMintingScript().mintingPolicyHash?.hex
-            );
+            expect(
+                t1.connectMintingScript().mintingPolicyHash?.hex
+            ).not.toEqual(t2.connectMintingScript().mintingPolicyHash?.hex);
         });
     });
 
@@ -336,7 +366,7 @@ describe("community treasury manager", async () => {
                 } catch (e) {
                     throw e;
                 }
-
+                context.state.mintedCharterToken = null
                 return expect(h.mintCharterToken()).rejects.toThrow(
                     "already spent"
                 );
@@ -500,14 +530,14 @@ describe("community treasury manager", async () => {
             // );
 
             // NOTE: this satisfies the purpose of the test by mocking the addition
-            //    of the charter-token, but doesn't actually trigger any functionality 
+            //    of the charter-token, but doesn't actually trigger any functionality
             //    in the contract, because it takes actually spending the charter token
             //    to trigger the validator to do anything in the first place.
             // vi.spyOn(treasury, "mustAddCharterAuthorization").mockImplementation(
-            //     (tcx) => tcx!        
+            //     (tcx) => tcx!
             // );
 
-            //!!! todo: the only way to actually make a real negative test here 
+            //!!! todo: the only way to actually make a real negative test here
             //  ... involves separating the responsibility for validating "mint named token"
             //  ... from the responsibility for checking that the authority-token can be spent
             //  ... then, we could make the "mint named token" validator run a transaction-check
@@ -566,10 +596,10 @@ describe("community treasury manager", async () => {
                         new TxOutput(
                             treasury.address,
                             treasury.charterTokenAsValue,
-                            Datum.inline(treasury.mkDatumCharterToken({
+                            treasury.mkDatumCharterToken({
                                 trustees: targetTrustees,
-                                minSigs: targetMinSigs
-                            }))
+                                minSigs: targetMinSigs,
+                            })
                         )
                     );
 
@@ -577,7 +607,7 @@ describe("community treasury manager", async () => {
                 }
             );
 
-            const invalidUpdate = /invalid update to charter settings/
+            const invalidUpdate = /invalid update to charter settings/;
             await expect(
                 h.mintNamedToken(tokenName, 42n, actors.tom.address)
             ).rejects.toThrow(invalidUpdate);
@@ -594,13 +624,12 @@ describe("community treasury manager", async () => {
             ).rejects.toThrow(invalidUpdate);
 
             //! restores original settings including the right order; should pass.
-            targetMinSigs = 2n; 
-            targetTrustees = [tina.address, tom.address, tracy.address]; 
+            targetMinSigs = 2n;
+            targetTrustees = [tina.address, tom.address, tracy.address];
             expect(
                 h.mintNamedToken(tokenName, 42n, actors.tom.address)
-            ).resolves.toBeTruthy()
+            ).resolves.toBeTruthy();
         });
-
     });
 
     describe("the trustee threshold is enforced on all administrative actions", () => {
@@ -654,7 +683,7 @@ describe("community treasury manager", async () => {
             tcx.addOutput(new TxOutput(tracy.address, newTokenValue));
 
             await expect(treasury.submit(tcx)).rejects.toThrow(
-                /not enough trustees.*have signed/
+                notEnoughSignaturesRegex
             );
         });
         it("works with a minSigs=2 and three people sign", async (context: localTC) => {
@@ -674,8 +703,8 @@ describe("community treasury manager", async () => {
             const tcx = await treasury.mkTxnMintNamedToken(tokenName, count);
             tcx.addOutput(new TxOutput(tracy.address, newTokenValue));
 
-            await treasury.submit(tcx, {signers: [tina, tom, tracy] });
-            await network.tick(1n);
+            await treasury.submit(tcx, { signers: [tina, tom, tracy] });
+            network.tick(1n);
 
             const balance = await network.getUtxos(tracy.address);
 
@@ -685,20 +714,38 @@ describe("community treasury manager", async () => {
         });
     });
 
-    if (0)
-        it("doesn't let randos issue tokens", async ({
-            network,
-            actors: { alice, bob },
-            address,
-        }) => {});
+    describe("the trustee group can be changed", () => {
+        it("requires the existing threshold of existing trustees to be met", async (context: localTC) => {
+            const { h, network, actors, delay, state } = context;
+            state.signers = [actors.tina];
 
-    if (0)
-        it("lets the owner issue tokens", async ({
-            network,
-            actors: { owner },
-        }) => {
-            // expect(something...).toBe();
+            await expect(
+                h.updateCharter([actors.tina.address], 1)
+            ).rejects.toThrow(notEnoughSignaturesRegex);
         });
+
+        it("requires all of the new trustees to sign the transaction", async (context: localTC) => {
+            const { h, network, actors, delay, state } = context;
+            state.signers = [actors.tina, actors.tom];
+
+            await expect(
+                h.updateCharter([actors.tracy.address], 1)
+            ).rejects.toThrow(/all the new trustees must sign/);
+
+            state.signers = [actors.tina, actors.tom, actors.tracy];
+            return h.updateCharter([actors.tracy.address], 1);
+        });
+
+        it("does not allow minSigs to exceed the number of trustees", async (context: localTC) => {
+            const { h, network, actors, delay, state } = context;
+            state.signers = [actors.tina, actors.tracy];
+
+            await expect(
+                h.updateCharter([actors.tracy.address], 2)
+            ).rejects.toThrow(/minSigs can't be more than the size of the trustee-list/);
+        });
+
+    });
 
     xit("rewards the first 256 buyers with 2.56x bonus credit", async () => {});
 });

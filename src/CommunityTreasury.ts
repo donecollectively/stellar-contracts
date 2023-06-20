@@ -16,6 +16,9 @@ import {
     Signature,
 } from "@hyperionbt/helios";
 
+const DatumInline = Datum.inline
+type InlineDatum = ReturnType<typeof DatumInline>
+
 import {
     StellarConstructorArgs,
     StellarContract,
@@ -112,12 +115,12 @@ export class CommunityTreasury extends StellarContract<CtParams> {
     }: {
         trustees: Address[];
         minSigs: bigint;
-    }) {
+    }) : InlineDatum { //!!! todo: make it possible to type these datum helpers more strongly
         const t = new this.configuredContract.types.Datum.CharterToken(
             trustees,
             minSigs
         );
-        return t._toUplcData();
+        return Datum.inline(t._toUplcData())
     }
 
     @redeem
@@ -187,7 +190,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
     @partialTxn
     async txnMustUseCharterUtxo(
         tcx: StellarTxnContext,
-        newDatum? : any  //!!! todo: types for contract datums
+        newDatum? : InlineDatum 
     ): Promise<CharterTokenUTxO | never> {
         const ctVal = this.charterTokenAsValue;
 
@@ -199,7 +202,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
             "has it been minted?"
         ).then((ctUtxo : UTxO) => {
             const charterToken = {[chTok]: ctUtxo};
-            const datum = newDatum || ctUtxo.origOutput.datum
+            const datum = newDatum || ctUtxo.origOutput.datum as InlineDatum
 
             this.txnKeepCharterToken(tcx, datum);
             return charterToken
@@ -212,8 +215,9 @@ export class CommunityTreasury extends StellarContract<CtParams> {
     @partialTxn
     txnKeepCharterToken(
         tcx: StellarTxnContext,
-        datum: any 
+        datum: InlineDatum 
     ) {
+        debugger
         tcx.addOutput(
             new TxOutput(
                 this.address,
@@ -242,9 +246,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                 new TxOutput(
                     this.address,
                     v,
-                    Datum.inline(datum)
-                    // Datum.inline(new this.datumType.CharterToken([42]))
-                    // seed.
+                    datum
                 ),
             ];
 
@@ -414,11 +416,12 @@ export class CommunityTreasury extends StellarContract<CtParams> {
                 details: [
                     "When the needed threshold for administrative modifications is achieved, the Charter Datum can be updated",
                     "This type of administrative action should be explicit and separate from any other administrative activity",
+                    "If the CharterToken's Datum is being changed, no other redeemer activities are allowed",
                 ],
                 mech: [
-                    "If the CharterToken's Datum is being changed, no other redeemer activities are allowed",
-                    "TODO: requires the existing threshold of existing trustees to be met",
-                    "TODO: requires all of the new trustees to sign the transaction",
+                    "requires the existing threshold of existing trustees to be met",
+                    "requires all of the new trustees to sign the transaction",
+                    "does not allow minSigs to exceed the number of trustees",
                 ],
                 requires: [
                     "the trustee threshold is enforced on all administrative actions",

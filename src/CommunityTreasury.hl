@@ -23,19 +23,29 @@ enum Redeemer {
     }
 }
 
-func requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {
-    Datum::CharterToken{trustees, minSigs} = datum;
+func didSign(ctx : ScriptContext, a: Address) -> Bool {
     tx : Tx = ctx.tx;
 
-    foundSigs: Int = trustees.fold[Int](
-        (count: Int, a: Address) -> Int {
-            trusteePkh : PubKeyHash = a.credential.switch{
-                PubKey{h} => h,
-                _ => error("trustee can't be a contract")
-            };
-            print("checking if trustee signed: " + trusteePkh.show());
+    pkh : PubKeyHash = a.credential.switch{
+        PubKey{h} => h,
+        _ => error("trustee can't be a contract")
+    };
+    print("checking if trustee signed: " + pkh.show());
 
-            count + if (tx.is_signed_by(trusteePkh)) {1} else {0}
+    tx.is_signed_by(pkh)
+}
+func didSignInCtx(ctx: ScriptContext) -> (a: Address) -> Bool {
+    (a : Address) -> Bool {
+        didSign(ctx, a)
+    }
+}
+
+func requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {
+    Datum::CharterToken{trustees, minSigs} = datum;
+
+    foundSigs: Int = trustees.fold[Int](
+        (count: Int, a: Address) -> Int {            
+            count + if (didSign(ctx, a)) {1} else {0}
         }, 0
     );
     assert(foundSigs >= minSigs, 
@@ -60,12 +70,11 @@ func getCharterOutput(tx: Tx) -> TxOutput {
     }
 }
 
-
-
 func preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {
     tx: Tx = ctx.tx;
 
     charterOutput : TxOutput = getCharterOutput(tx);
+
     cvh : ValidatorHash = ctx.get_current_validator_hash();
     myself : Credential = Credential::new_validator(cvh);
     if (charterOutput.address.credential != myself) {
@@ -94,11 +103,20 @@ func preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {
 }
 
 func requiresProofOfNewTrustees(
-    // ctx: ScriptContext
+    ctx: ScriptContext,
+    datum: Datum
 ) -> Bool {
-    if (false) { error("needs impl: requiresProofOfNewTrustees") };
+    Datum::CharterToken{newTrustees, newMinSigs} = datum;
 
-    false
+    assert(
+        newTrustees.all(didSignInCtx(ctx)), 
+        "all the new trustees must sign"
+    );
+    assert(
+        newMinSigs <= newTrustees.length,
+        "minSigs can't be more than the size of the trustee-list"
+    );
+    true
 }
 
 
@@ -123,14 +141,16 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
         },
         updatingCharter{trustees, minSigs} => { 
             assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
-            assert(trustees.serialize() != trustees.serialize(), "guard failed"); // can't fail.
-            assert(minSigs.serialize() != minSigs.serialize(), "guard failed"); // can't fail.
+            assert(trustees.serialize() == trustees.serialize(), "guard failed"); // can't fail.
+            assert(minSigs.serialize() == minSigs.serialize(), "guard failed"); // can't fail.
             
-            // newDatum : Datum::CharterToken = Datum::CharterToken{trustees, minSigs};
-            //!!! todo: requires ALL of the NEW trustees to sign, regardless of minSigs.
-
-            requiresProofOfNewTrustees(/*ctx, newDatum */) &&
-            requiresAuthorization(ctx, datum)
+            charterOutput : TxOutput = getCharterOutput(tx);
+            newDatum = Datum::from_data( 
+                charterOutput.datum.get_inline_data() 
+            );
+            
+            requiresAuthorization(ctx, datum) &&
+            requiresProofOfNewTrustees(ctx, newDatum)
         },
         // authorizeByCharter{otherRedeemerData, otherSignatures} => {            
         //     false // todo support authorizing **other** things to be done with this token

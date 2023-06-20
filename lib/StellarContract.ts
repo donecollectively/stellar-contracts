@@ -738,7 +738,12 @@ export class StellarContract<
                 const [a] = await s.usedAddresses;
                 tx.addSigner(a.pubKeyHash)
             }
-            await tx.finalize(this.networkParams, a, spares);
+            try {
+                await tx.finalize(this.networkParams, a, spares);
+            } catch(e) {
+                console.log("FAILED submitting:", tcx.dump());
+                throw e
+            }
             for (const s of willSign) {
                 const sig = await s.signTx(tx);
                 tx.addSignatures(sig, true);
