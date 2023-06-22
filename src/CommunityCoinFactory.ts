@@ -3,6 +3,7 @@ import {
     StellarContract,
     partialTxn,
     redeem,
+    tokenNamesOrValuesEntry,
     valuesEntry,
 } from "../lib/StellarContract.js";
 
@@ -67,17 +68,43 @@ export class CommunityCoinFactory extends StellarContract<CcfParams> {
             .attachScript(this.compiledContract);
     }
 
-    @partialTxn
     async txnMintingNamedToken(
         tcx: StellarTxnContext,
         charterToken: CharterTokenUTxO,
         tokenName: string,
-        count: bigint
+        count: bigint,
+    ): Promise<StellarTxnContext>
+
+    async txnMintingNamedToken(
+        tcx: StellarTxnContext,
+        charterToken: CharterTokenUTxO,
+        tokenNamesAndCounts: tokenNamesOrValuesEntry[]
+    ): Promise<StellarTxnContext>
+
+    @partialTxn
+    async txnMintingNamedToken(
+        tcx: StellarTxnContext,
+        charterToken: CharterTokenUTxO,
+        tokenNameOrPairs: string | tokenNamesOrValuesEntry[],
+        count?: bigint,
     ): Promise<StellarTxnContext> {
+        let namesAndCounts : tokenNamesOrValuesEntry[];
+        if (!Array.isArray(tokenNameOrPairs)) {
+            const tokenName = tokenNameOrPairs;            
+            if (!count) throw new Error(`missing required 'count' arg when using 'tokenName:string' overload`)
+
+            namesAndCounts = [ [tokenName, count] ]
+        } else {
+            namesAndCounts =  tokenNameOrPairs;
+        }
+        let values : valuesEntry[] = namesAndCounts.map(([name, count]) => {
+            if (Array.isArray(name)) return [name, count] as valuesEntry;
+            return this.mkValuesEntry(name, count)
+        })
         return tcx
             .mintTokens(
                 this.mintingPolicyHash!,
-                [this.mkValuesEntry(tokenName, count)],
+                values,
                 this.mintingNamedToken()
             )
             .attachScript(this.compiledContract);

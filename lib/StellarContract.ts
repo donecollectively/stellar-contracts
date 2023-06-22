@@ -25,6 +25,7 @@ type WalletsAndAddresses = {
 };
 export type paramsBase = Record<string, any>;
 export type TxInput = Tx["body"]["inputs"][0];
+export type tokenNamesOrValuesEntry = [string | number[], bigint];
 export type valuesEntry = [number[], bigint];
 
 export function redeem(proto, thingName, descriptor) {
