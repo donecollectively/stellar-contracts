@@ -379,7 +379,10 @@ export type StellarConstructorArgs<
     isTest: boolean;
     myself?: Wallet;
 };
-type utxoPredicate = (u: UTxO) => UTxO | boolean;
+export type utxoPredicate = 
+| ( (u: UTxO) => UTxO | undefined )
+| ( (u: UTxO) => boolean )
+| ( (u: UTxO) => boolean | undefined )
 
 type scriptPurpose =
     | "testing"
@@ -545,17 +548,23 @@ export class StellarContract<
         tokenName?: string,
         quantity?: bigint
     ): tokenPredicate {
+        let v : Value;
+
         if (!vOrMph)
             throw new Error(
                 `missing required Value or MintingPolicyHash in arg1`
             );
-        const v =
-            vOrMph instanceof MintingPolicyHash
-                ? this.tokenAsValue(tokenName!, quantity!, vOrMph)
-                : vOrMph;
-
         const predicate = _tokenPredicate.bind(this) as tokenPredicate;
-        predicate.value = v;
+
+        const isValue = !( vOrMph instanceof MintingPolicyHash )
+        if (isValue) {
+            v = predicate.value = vOrMph;
+            return predicate
+        }
+        if (!tokenName || !quantity) throw new Error(`missing required tokenName, quantity for this mph`)
+
+        const mph = vOrMph
+        v = predicate.value = this.tokenAsValue(tokenName, quantity, mph)
         return predicate;
 
         function _tokenPredicate(
@@ -871,7 +880,7 @@ export class StellarContract<
 
     async hasUtxo(
         name: string,
-        predicate: (u: UTxO) => UTxO | undefined,
+        predicate: utxoPredicate,
         { address }: { address: Address }
     ): Promise<UTxO | undefined> {
         const utxos = await this.network.getUtxos(address);
@@ -882,7 +891,7 @@ export class StellarContract<
 
     async hasMyUtxo(
         name: string,
-        predicate: (u: UTxO) => UTxO | undefined
+        predicate: utxoPredicate,
     ): Promise<UTxO | undefined> {
         return this.hasUtxo(name, predicate, { address: this.address });
     }
