@@ -79,7 +79,6 @@ export function partialTxn(proto, thingName, descriptor) {
     return descriptor;
 }
 
-
 export function hexToPrintableString(hexStr) {
     let result = "";
     for (let i = 0; i < hexStr.length; i += 2) {
@@ -422,6 +421,7 @@ export class StellarContract<
     mkContractParams(params) {
         return params;
     }
+
     constructor({
         params,
         network,
@@ -440,7 +440,13 @@ export class StellarContract<
 
         configured.parameters = this.contractParams;
         const simplify = !isTest;
+        // const t = new Date().getTime();
         this.compiledContract = configured.compile(simplify);
+        // const t2 = new Date().getTime();
+
+        // Result: ~80ms cold-start or (much) faster on additional compiles
+        // console.log("::::::::::::::::::::::::compile time "+ (t2 - t) + "ms")
+        // -> caching would not improve
 
         // const configured = Program.new(source)
         // configured.parameters = params;
@@ -763,6 +769,12 @@ export class StellarContract<
             try {
                 // const t1 = new Date().getTime();
                 await tx.finalize(this.networkParams, a, spares);
+                // const t2 = new Date().getTime();
+                // const elapsed = t2 - t1;
+                // console.log(`::::::::::::::::::::::::::::::::: tx validation time: ${elapsed}ms`);
+                // result: validations for non-trivial txns can take ~800+ ms
+                //  - validations with simplify:true, ~250ms - but ...
+                //    ... with elided error messages that don't support negative-testing very well
             } catch (e) {
                 console.log("FAILED submitting:", tcx.dump());
                 throw e;
