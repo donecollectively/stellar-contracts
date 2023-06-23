@@ -29,46 +29,55 @@ export type tokenNamesOrValuesEntry = [string | number[], bigint];
 export type valuesEntry = [number[], bigint];
 
 export function redeem(proto, thingName, descriptor) {
-    if ( ! thingName.match(/ing/) ) {
-        throw new Error(`@redeem factory: ${thingName}: name should have 'ing' in it (or work around with @redeemerData instead)`)
+    if (!thingName.match(/ing/)) {
+        throw new Error(
+            `@redeem factory: ${thingName}: name should have 'ing' in it (or work around with @redeemerData instead)`
+        );
     }
-    if ( thingName.match(/^ing/) ) {
-        throw new Error(`@redeem factory: ${thingName}: name shouldn't start with 'ing'`)
+    if (thingName.match(/^ing/)) {
+        throw new Error(
+            `@redeem factory: ${thingName}: name shouldn't start with 'ing'`
+        );
     }
-    return redeemerData(proto, thingName, descriptor) 
+    return redeemerData(proto, thingName, descriptor);
 }
 
 export function redeemerData(proto, thingName, descriptor) {
     //!!! todo: registry and cross-checking for missing redeeming methods
 
     //!!! todo: develop more patterns of "redeemer uses an input of a certain mph/value"
-    return descriptor
+    return descriptor;
 }
 
 export function datum(proto, thingName, descriptor) {
     // console.log("+datum", proto.constructor.name, thingName || "none", descriptor.value.name )
-    if ( ! thingName.match(/^mkDatum/) ) {
-        throw new Error(`@datum factory: ${thingName}: name should start with 'mkDatum...'`);
+    if (!thingName.match(/^mkDatum/)) {
+        throw new Error(
+            `@datum factory: ${thingName}: name should start with 'mkDatum...'`
+        );
     }
-    return descriptor
+    return descriptor;
 }
 
 export function txn(proto, thingName, descriptor) {
     // console.log("+datum", proto.constructor.name, thingName || "none", descriptor.value.name )
-    if ( ! thingName.match(/^mkTxn/) ) {
-        throw new Error(`@txn factory: ${thingName}: name should start with 'mkTxn...'`);
+    if (!thingName.match(/^mkTxn/)) {
+        throw new Error(
+            `@txn factory: ${thingName}: name should start with 'mkTxn...'`
+        );
     }
-    return descriptor
+    return descriptor;
 }
 
 export function partialTxn(proto, thingName, descriptor) {
     // console.log("+datum", proto.constructor.name, thingName || "none", descriptor.value.name )
-    if ( ! thingName.match(/^txn[A-Z]/) ) {
-        throw new Error(`@partialTxn factory: ${thingName}: should start with 'txn[A-Z]...'`);
+    if (!thingName.match(/^txn[A-Z]/)) {
+        throw new Error(
+            `@partialTxn factory: ${thingName}: should start with 'txn[A-Z]...'`
+        );
     }
-    return descriptor
+    return descriptor;
 }
-
 
 
 export function hexToPrintableString(hexStr) {
@@ -173,9 +182,9 @@ export function txAsString(tx: Tx): string {
         }
         if ("signers" == x) {
             item = item.map((x) => {
-                if (!x.hex) debugger
-                return `🔑#${x.hex.substring(0,8)}…`
-            })
+                if (!x.hex) debugger;
+                return `🔑#${x.hex.substring(0, 8)}…`;
+            });
         }
 
         if ("fee" == x) {
@@ -202,15 +211,14 @@ export function txAsString(tx: Tx): string {
         if ("datums" == x && !Object.entries(item || {}).length) continue;
         if ("signatures" == x) {
             if (!item) continue;
-            item = item
-                .map((s) => {
-                    return `🖊️ ${Address.fromPubKeyHash(s.pubKeyHash)
-                        .toBech32()
-                        .substring(0, 24)}…`;
-                })
-                if (item.length > 1) item.unshift("");
-                item = item.join("\n    ");
-            }
+            item = item.map((s) => {
+                return `🖊️ ${Address.fromPubKeyHash(s.pubKeyHash)
+                    .toBech32()
+                    .substring(0, 24)}…`;
+            });
+            if (item.length > 1) item.unshift("");
+            item = item.join("\n    ");
+        }
         if ("redeemers" == x) {
             if (!item) continue;
             //!!! todo: augment with mph when that's available from the Redeemer.
@@ -329,7 +337,7 @@ export async function findInputsInWallets(
 
     for (const w of wallets) {
         const [a] = await w.usedAddresses;
-        console.log("finding funds in wallet", a.toBech32().substring(0,18));
+        console.log("finding funds in wallet", a.toBech32().substring(0, 18));
         const utxos = await w.utxos;
         for (const u of utxos) {
             if (lovelaceOnly) {
@@ -380,10 +388,10 @@ export type StellarConstructorArgs<
     isTest: boolean;
     myself?: Wallet;
 };
-export type utxoPredicate = 
-| ( (u: UTxO) => UTxO | undefined )
-| ( (u: UTxO) => boolean )
-| ( (u: UTxO) => boolean | undefined )
+export type utxoPredicate =
+    | ((u: UTxO) => UTxO | undefined)
+    | ((u: UTxO) => boolean)
+    | ((u: UTxO) => boolean | undefined);
 
 type scriptPurpose =
     | "testing"
@@ -549,7 +557,7 @@ export class StellarContract<
         tokenName?: string,
         quantity?: bigint
     ): tokenPredicate {
-        let v : Value;
+        let v: Value;
 
         if (!vOrMph)
             throw new Error(
@@ -557,15 +565,18 @@ export class StellarContract<
             );
         const predicate = _tokenPredicate.bind(this) as tokenPredicate;
 
-        const isValue = !( vOrMph instanceof MintingPolicyHash )
+        const isValue = !(vOrMph instanceof MintingPolicyHash);
         if (isValue) {
             v = predicate.value = vOrMph;
-            return predicate
+            return predicate;
         }
-        if (!tokenName || !quantity) throw new Error(`missing required tokenName, quantity for this mph`)
+        if (!tokenName || !quantity)
+            throw new Error(
+                `missing required tokenName, quantity for this mph`
+            );
 
-        const mph = vOrMph
-        v = predicate.value = this.tokenAsValue(tokenName, quantity, mph)
+        const mph = vOrMph;
+        v = predicate.value = this.tokenAsValue(tokenName, quantity, mph);
         return predicate;
 
         function _tokenPredicate(
@@ -727,32 +738,34 @@ export class StellarContract<
         });
     }
 
-    async submit(tcx: StellarTxnContext, 
-        { 
-            sign = true, 
-            signers = [] 
-        } : {
-            sign? : boolean,
-            signers?: Wallet[]
-        } = { }
+    async submit(
+        tcx: StellarTxnContext,
+        {
+            sign = true,
+            signers = [],
+        }: {
+            sign?: boolean;
+            signers?: Wallet[];
+        } = {}
     ) {
         let { tx } = tcx;
         if (this.myself || signers.length) {
-            const [a] = ( await this.myself?.usedAddresses ) || []
+            const [a] = (await this.myself?.usedAddresses) || [];
             const spares = await this.findAnySpareUtxos();
-            const willSign = [ ...signers ]
-            if (sign && this.myself) { 
+            const willSign = [...signers];
+            if (sign && this.myself) {
                 willSign.push(this.myself);
             }
             for (const s of willSign) {
                 const [a] = await s.usedAddresses;
-                tx.addSigner(a.pubKeyHash)
+                tx.addSigner(a.pubKeyHash);
             }
             try {
+                // const t1 = new Date().getTime();
                 await tx.finalize(this.networkParams, a, spares);
-            } catch(e) {
+            } catch (e) {
                 console.log("FAILED submitting:", tcx.dump());
-                throw e
+                throw e;
             }
             for (const s of willSign) {
                 const sig = await s.signTx(tx);
@@ -892,7 +905,7 @@ export class StellarContract<
 
     async hasMyUtxo(
         name: string,
-        predicate: utxoPredicate,
+        predicate: utxoPredicate
     ): Promise<UTxO | undefined> {
         return this.hasUtxo(name, predicate, { address: this.address });
     }
