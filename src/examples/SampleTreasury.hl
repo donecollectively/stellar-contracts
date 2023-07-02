@@ -1,4 +1,4 @@
-spending CommunityTreasury
+spending SampleTreasury
 
 // needed in helios 0.13: defaults
 const mph : MintingPolicyHash = MintingPolicyHash::new(#1234)

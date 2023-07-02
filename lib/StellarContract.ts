@@ -264,32 +264,8 @@ export function txAsString(tx: Tx): string {
         details = details + `  (Tx not yet finalized!)`;
     }
     return details;
-
-    // body {
-    // inputs,
-    // output
-    //     "fee": "168581",
-    //     "lastValidSlot": null,
-    //     "firstValidSlot": null,
-    //     "minted": null,
-    //     "metadataHash": null,
-    //     "scriptDataHash": null,
-    //     "collateral": null,
-    //     "signers": null,
-    //     "collateralReturn": null,
-    //     "refInputs": []
-    //   },
-    //   "witnesses": {
-    //     "signatures": [],
-    //     "datums": [],
-    //     "redeemers": [],
-    //     "nativeScripts": [],
-    //     "scripts": [],
-    //     "refScripts": []
-    //   },
-    //   "valid": true,
-    //   "metadata": null
 }
+
 export function txInputAsString(x: TxInput, prefix = "-> "): string {
     return `${prefix}${x.address.toBech32().substring(0, 18)}… ${valueAsString(
         x.value
@@ -453,15 +429,15 @@ export class StellarContract<
         // const compiledContract = configured.compile(simplify)
         // const addr = Address.fromHashes(compiledContract.validatorHash)
     }
+    
     get datumType() {
         return this.configuredContract.types.Datum;
     }
     _purpose?: scriptPurpose;
     get purpose() {
         if (this._purpose) return this._purpose;
-        const src = this.contractSource();
 
-        const [purpose, name] = extractScriptPurposeAndName(src) || [];
+        const purpose = this.configuredContract.purpose as scriptPurpose;
         return (this._purpose = purpose as scriptPurpose);
     }
 
@@ -521,44 +497,44 @@ export class StellarContract<
         return strella;
     }
 
-    async findDatum(d: Datum | DatumHash): Promise<UTxO[]>;
-    async findDatum(predicate: utxoPredicate): Promise<UTxO[]>;
-    async findDatum(d: Datum | DatumHash | utxoPredicate): Promise<UTxO[]> {
-        let targetHash: DatumHash | undefined =
-            d instanceof Datum
-                ? d.hash
-                : d instanceof DatumHash
-                ? d
-                : undefined;
-        let predicate =
-            "function" === typeof d
-                ? d
-                : (u: UTxO) => {
-                      const match =
-                          u.origOutput?.datum?.hash.hex == targetHash?.hex;
-                      console.log(
-                          txOutputAsString(
-                              u.origOutput,
-                              `    ${match ? "✅ matched " : "❌ no match"}`
-                          )
-                      );
-                      return !!match;
-                  };
+    // async findDatum(d: Datum | DatumHash): Promise<UTxO[]>;
+    // async findDatum(predicate: utxoPredicate): Promise<UTxO[]>;
+    // async findDatum(d: Datum | DatumHash | utxoPredicate): Promise<UTxO[]> {
+    //     let targetHash: DatumHash | undefined =
+    //         d instanceof Datum
+    //             ? d.hash
+    //             : d instanceof DatumHash
+    //             ? d
+    //             : undefined;
+    //     let predicate =
+    //         "function" === typeof d
+    //             ? d
+    //             : (u: UTxO) => {
+    //                   const match =
+    //                       u.origOutput?.datum?.hash.hex == targetHash?.hex;
+    //                   console.log(
+    //                       txOutputAsString(
+    //                           u.origOutput,
+    //                           `    ${match ? "✅ matched " : "❌ no match"}`
+    //                       )
+    //                   );
+    //                   return !!match;
+    //               };
 
-        //prettier-ignore
-        console.log(
-            `finding utxo with datum ${
-                targetHash?.hex.substring(0,12)
-            }... in wallet`,
-            this.address.toBech32().substring(0,18)
-        );
+    //     //prettier-ignore
+    //     console.log(
+    //         `finding utxo with datum ${
+    //             targetHash?.hex.substring(0,12)
+    //         }... in wallet`,
+    //         this.address.toBech32().substring(0,18)
+    //     );
 
-        const heldUtxos = await this.network.getUtxos(this.address);
-        console.log(`    - found ${heldUtxos.length} utxo:`);
-        return heldUtxos.filter(predicate);
-    }
+    //     const heldUtxos = await this.network.getUtxos(this.address);
+    //     console.log(`    - found ${heldUtxos.length} utxo:`);
+    //     return heldUtxos.filter(predicate);
+    // }
 
-    _mkTokenPredicate(
+    mkTokenPredicate(
         vOrMph: Value | MintingPolicyHash,
         tokenName?: string,
         quantity?: bigint
@@ -593,7 +569,7 @@ export class StellarContract<
         }
     }
 
-    hasToken(
+    private hasToken(
         something: canHaveToken,
         vOrMph: Value | MintingPolicyHash,
         tokenName?: string,
@@ -610,7 +586,7 @@ export class StellarContract<
         return this.inputHasToken(something, vOrMph, tokenName, quantity);
     }
 
-    utxoHasToken(
+    private utxoHasToken(
         u: UTxO,
         vOrMph: Value | MintingPolicyHash,
         tokenName?: string,
@@ -618,7 +594,7 @@ export class StellarContract<
     ) {
         return this.outputHasToken(u.origOutput, vOrMph, tokenName, quantity);
     }
-    inputHasToken(
+    private inputHasToken(
         i: TxInput,
         vOrMph: Value | MintingPolicyHash,
         tokenName?: string,
@@ -627,7 +603,7 @@ export class StellarContract<
         return this.outputHasToken(i.origOutput, vOrMph, tokenName, quantity);
     }
 
-    assetsHasToken(
+    private assetsHasToken(
         a: Assets,
         vOrMph: Value | MintingPolicyHash,
         tokenName?: string,
@@ -641,7 +617,7 @@ export class StellarContract<
         return a.ge(v.assets);
     }
 
-    outputHasToken(
+    private outputHasToken(
         o: TxOutput,
         vOrMph: Value | MintingPolicyHash,
         tokenName?: string,
@@ -680,7 +656,7 @@ export class StellarContract<
         const v = new Value(
             this.ADA(0),
             new Assets([
-                [mph, [[this.stringToNumberArray(tokenName), quantity]]],
+                [mph, [this.mkValuesEntry(tokenName, quantity)]],
             ])
         );
         const o = new TxOutput(this.address, v);
@@ -698,6 +674,7 @@ export class StellarContract<
             free: bigint;
             reserved: bigint;
         };
+
         const smallerAndNonReserved = (
             { free: free1, reserved: r1 }: tempInfo,
             { free: free2, reserved: r2 }: tempInfo
@@ -805,33 +782,35 @@ export class StellarContract<
     }
 
     //!!! todo: implement more and/or test me:
-    async findFreeLovelaceWithTokens(v: Value, w: Wallet) {
-        const utxos = await w.utxos;
-        const lovelaceOnly = v.assets.isZero();
-        //! it finds free lovelace in token bundles, if it can't find free lovelace otherwise
-        if (lovelaceOnly) {
-            let maxFree: UTxO, minToken: UTxO;
-            let minPolicyCount = Infinity;
+    // async findFreeLovelaceWithTokens(v: Value, w: Wallet) {
+        // it.todo("helps find spare lovelace in tokens");
+        // it.todo("will help harvest spare lovelace in the future if minUtxo is changed");
+    //     const utxos = await w.utxos;
+    //     const lovelaceOnly = v.assets.isZero();
+    //     //! it finds free lovelace in token bundles, if it can't find free lovelace otherwise
+    //     if (lovelaceOnly) {
+    //         let maxFree: UTxO, minToken: UTxO;
+    //         let minPolicyCount = Infinity;
 
-            for (const u of utxos) {
-                const policies = u.value.assets.mintingPolicies.length;
-                if (policies < minPolicyCount) {
-                    minPolicyCount = policies;
-                    minToken = u;
-                }
+    //         for (const u of utxos) {
+    //             const policies = u.value.assets.mintingPolicies.length;
+    //             if (policies < minPolicyCount) {
+    //                 minPolicyCount = policies;
+    //                 minToken = u;
+    //             }
 
-                const free =
-                    u.value.lovelace -
-                    u.origOutput.calcMinLovelace(this.networkParams);
-                //@ts-ignore
-                if (!maxFree) {
-                    maxFree = u;
-                } else if (free > maxFree!.value.lovelace) {
-                    maxFree = u;
-                }
-            }
-        }
-    }
+    //             const free =
+    //                 u.value.lovelace -
+    //                 u.origOutput.calcMinLovelace(this.networkParams);
+    //             //@ts-ignore
+    //             if (!maxFree) {
+    //                 maxFree = u;
+    //             } else if (free > maxFree!.value.lovelace) {
+    //                 maxFree = u;
+    //             }
+    //         }
+    //     }
+    // }
 
     // static withParams(this: new () => StellarContract, params: any) : never | StellarContract {
     //     throw new Error(`subclass must implement static withParams`);
@@ -867,16 +846,6 @@ export class StellarContract<
         const address = await this.getMyActorAddress();
 
         return this.mustFindUtxo(name, predicate, { address }, extraErrorHint);
-    }
-
-    async hasActorUtxo(
-        name: string,
-        predicate: (u: UTxO) => UTxO | undefined,
-        extraErrorHint: string = ""
-    ): Promise<UTxO | undefined> {
-        const address = await this.getMyActorAddress();
-
-        return this.hasUtxo(name, predicate, { address });
     }
 
     async mustFindMyUtxo(

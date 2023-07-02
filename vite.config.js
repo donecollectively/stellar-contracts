@@ -12,7 +12,6 @@ export default defineConfig({
             // Required to be specified
             include: "**/*.hl",
         })  
-    //     heliosPlugin()
     ],
   test: {
     // include: ['tests/new*.test.ts', ],

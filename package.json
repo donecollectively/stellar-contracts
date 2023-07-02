@@ -1,7 +1,7 @@
 {
-  "name": "@donecollectively/coco",
+  "name": "@donecollectively/stellar-contracts",
   "version": "0.1",
-  "description": "A community coin dApp for Cardano",
+  "description": "Smart contract fusion for Cardano",
   "main": "tbd.ts",
   "type": "module",
   "scripts": {

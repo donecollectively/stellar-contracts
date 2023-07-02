@@ -32,11 +32,6 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
         mph,
         "charter".encode_utf8()
     );
-    
-    //!!! todo: fails if minSigs < trustees.length in datum of charter
-    //    If this isn't enforced, then it's possible to create a charter that
-    //    can never do anything.  That might be low impact, or it might
-    //    result in a loss of fees & stake needed tor chartering a treasury.
 
     ok : Bool = r.switch {
         charter: mintingCharterToken => {       
@@ -60,23 +55,7 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
                 txo.value >= charterTokenValue
             }),"missing required charter token authorization");
 
-            // fooToken: AssetClass = AssetClass::new(
-            //     ctx.get_current_minting_policy_hash(),
-            //     tx.output.any((input: TxInput) -> Bool {
-            //         tokenName: string = input.x.y
-            //         tokenName.encode_utf8()
-            //     }
-            // );
-        
-
-            // tx.inputs
-            //     .any((input: TxInput) -> Bool {
-            //         print ("inp: "+ input.serialize().show() );
-            //         foundCharter : Int = input.value.get_safe(charterToken);
-
-            //         1 == foundCharter
-            //     })
-true    
+            true    
         },
         burningToken => {
             false

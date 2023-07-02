@@ -29,18 +29,13 @@ import {
     utxoAsString,
     utxosAsString,
     valuesEntry,
-} from "../lib/StellarContract.js";
+} from "../../lib/StellarContract.js";
 
-import { StellarTxnContext } from "../lib/StellarTxnContext.js";
+import { StellarTxnContext } from "../../lib/StellarTxnContext.js";
 
 //@ts-expect-error
-import contract from "./CommunityTreasury.hl";
-import { CommunityCoinFactory } from "./CommunityCoinFactory.js";
-
-export type CtParams = {
-    seedTxn: TxId;
-    seedIndex: bigint;
-};
+import contract from "./SampleTreasury.hl";
+import { DefaultMinter } from "../DefaultMinter.js";
 
 type CtConstellation = Record<string, typeof StellarContract<any>>;
 
@@ -66,24 +61,24 @@ export type CharterTokenUTxO = {
     [chTok]: UTxO;
 };
 
-export class CommunityTreasury extends StellarContract<CtParams> {
+
+
+export type CtParams = {
+    seedTxn: TxId;
+    seedIndex: bigint;
+};
+
+export class SampleTreasury extends StellarContract<CtParams> {
     contractSource() {
         return contract;
     }
 
-    minter?: CommunityCoinFactory;
-    connectMintingScript(): CommunityCoinFactory {
+    minter?: DefaultMinter;
+    connectMintingScript(): DefaultMinter {
         if (this.minter) return this.minter;
         const { seedTxn, seedIndex } = this.paramsIn;
 
-        // const charterToken = (await this.findDatum((u : UTxO) => {
-        //     return this.isCharterToken(u)
-        // }))[0];
-        // const seedUtxo = charterToken ? null : (await this.findDatum(this.charterSeedDatum))[0];
-        // if (!charterToken && !seedUtxo) throw new Error(`seed or charter utxo is present in ${this.address.toBech32()}`)
-        // const seedTxn = seedUtxo?.txId || charterToken.origOutput.datum
-
-        return (this.minter = this.addScriptWithParams(CommunityCoinFactory, {
+        return (this.minter = this.addScriptWithParams(DefaultMinter, {
             seedTxn,
             seedIndex,
         }));
@@ -215,6 +210,7 @@ export class CommunityTreasury extends StellarContract<CtParams> {
 
     @partialTxn
     txnKeepCharterToken(tcx: StellarTxnContext, datum: InlineDatum) {
+        
         tcx.addOutput(
             new TxOutput(this.address, this.charterTokenAsValue, datum)
         );
@@ -261,7 +257,6 @@ export class CommunityTreasury extends StellarContract<CtParams> {
 
             return this.minter!.txnMintingNamedToken(
                 tcx,
-                charterToken,
                 tokenName,
                 count
             );

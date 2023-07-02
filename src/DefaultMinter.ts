@@ -8,29 +8,29 @@ import {
 } from "../lib/StellarContract.js";
 
 //@ts-expect-error
-import contract from "./CommunityCoinFactory.hl";
+import contract from "./DefaultMinter.hl";
 import { StellarTxnContext } from "../lib/StellarTxnContext.js";
-import { CharterTokenUTxO } from "./CommunityTreasury.js";
 
-export type CcfParams = {
+export type SeedTxnParams = {
     seedTxn: TxId;
     seedIndex: bigint;
 };
 
-export type CcfCharterRedeemerArgs = {
+export type MintCharterRedeemerArgs = {
     treasury: Address;
 };
-export type CcfMintRedeemerArgs = {
-    tokenName: string;
+export type MintUUTRedeemerArgs = {
+    seedTxn: TxId;
+    seedIndex: bigint;
 };
 
-export class CommunityCoinFactory extends StellarContract<CcfParams> {
+export class DefaultMinter extends StellarContract<SeedTxnParams> {
     contractSource() {
         return contract;
     }
 
     @redeem
-    mintingCharterToken({ treasury }: CcfCharterRedeemerArgs) {
+    mintingCharterToken({ treasury }: MintCharterRedeemerArgs) {
         // debugger
         const t =
             new this.configuredContract.types.Redeemer.mintingCharterToken(
@@ -48,11 +48,6 @@ export class CommunityCoinFactory extends StellarContract<CcfParams> {
         return t._toUplcData();
     }
 
-    // t() {
-    //     const t = Datum.inline(this.configuredContract.evalParam("seedTxn").data);
-    //
-    //     return t
-    // }
     @partialTxn
     async txnAddCharterInit(
         tcx: StellarTxnContext,
@@ -70,21 +65,18 @@ export class CommunityCoinFactory extends StellarContract<CcfParams> {
 
     async txnMintingNamedToken(
         tcx: StellarTxnContext,
-        charterToken: CharterTokenUTxO,
         tokenName: string,
         count: bigint,
     ): Promise<StellarTxnContext>
 
     async txnMintingNamedToken(
         tcx: StellarTxnContext,
-        charterToken: CharterTokenUTxO,
         tokenNamesAndCounts: tokenNamesOrValuesEntry[]
     ): Promise<StellarTxnContext>
 
     @partialTxn
     async txnMintingNamedToken(
         tcx: StellarTxnContext,
-        charterToken: CharterTokenUTxO,
         tokenNameOrPairs: string | tokenNamesOrValuesEntry[],
         count?: bigint,
     ): Promise<StellarTxnContext> {
@@ -109,18 +101,4 @@ export class CommunityCoinFactory extends StellarContract<CcfParams> {
             )
             .attachScript(this.compiledContract);
     }
-
-    //! its endpoints can be introspected
-    // endpoints(
-
-    //! it must have transaction-builders for each endpoint
-    // buildTxnForEndpoint
-
-    //! Sells the first ones for 30% less (first 205?)
-
-    //! Grants extra weight (2.56x) to next 256.  Back-dated to include first 205.
-
-    //! Next (205+256 = 461) get 1.618x rewards (or 2.05x)
-
-    //! -or- from 461 to 8500, the rewards buff leaks away
 }
