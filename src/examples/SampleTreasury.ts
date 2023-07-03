@@ -17,9 +17,9 @@ import {
 } from "@hyperionbt/helios";
 
 const DatumInline = Datum.inline;
-type InlineDatum = ReturnType<typeof DatumInline>;
 
 import {
+    InlineDatum,
     StellarConstructorArgs,
     StellarContract,
     datum,
@@ -35,16 +35,9 @@ import { StellarTxnContext } from "../../lib/StellarTxnContext.js";
 
 //@ts-expect-error
 import contract from "./SampleTreasury.hl";
-import { DefaultMinter } from "../DefaultMinter.js";
+import { Capo } from "../../lib/Capo.js";
 
 type CtConstellation = Record<string, typeof StellarContract<any>>;
-
-// type paramsFuncForStar<
-//     S2 extends StellarContract<any>
-// > = () => S2 extends StellarContract<infer P> ? Promise<P> : never
-
-type paramsForStar<S2 extends StellarContract<any>> =
-    S2 extends StellarContract<infer P> ? P : never;
 
 export type CharterDatumArgs = {
     trustees: Address[];
@@ -61,62 +54,10 @@ export type CharterTokenUTxO = {
     [chTok]: UTxO;
 };
 
+export class SampleTreasury extends Capo {
 
-
-export type CtParams = {
-    seedTxn: TxId;
-    seedIndex: bigint;
-};
-
-export class SampleTreasury extends StellarContract<CtParams> {
     contractSource() {
         return contract;
-    }
-
-    minter?: DefaultMinter;
-    connectMintingScript(): DefaultMinter {
-        if (this.minter) return this.minter;
-        const { seedTxn, seedIndex } = this.paramsIn;
-
-        return (this.minter = this.addScriptWithParams(DefaultMinter, {
-            seedTxn,
-            seedIndex,
-        }));
-    }
-
-    isCharterToken(u: UTxO) {
-        debugger;
-        return false;
-    }
-
-    get mph() {
-        const minter = this.connectMintingScript();
-        return minter.mintingPolicyHash!;
-    }
-
-    mkContractParams(params: CtParams) {
-        const { mph } = this;
-        // console.log("this treasury uses mph", mph?.hex);
-
-        return {
-            mph,
-        };
-    }
-
-    @datum
-    mkDatumCharterToken({
-        trustees,
-        minSigs,
-    }: {
-        trustees: Address[];
-        minSigs: bigint;
-    }): InlineDatum {
-        //!!! todo: make it possible to type these datum helpers more strongly
-        const t = new this.configuredContract.types.Datum.CharterToken(
-            trustees,
-            minSigs
-        );
-        return Datum.inline(t._toUplcData());
     }
 
     @redeem
@@ -164,23 +105,6 @@ export class SampleTreasury extends StellarContract<CtParams> {
         return new Value(
             this.ADA(1.7),
             new Assets([[mph, [this.charterTokenAsValuesEntry]]])
-        );
-    }
-
-    async mustGetSeedUtxo(): Promise<UTxO | never> {
-        // const [address] = await this.myself.usedAddresses;
-        const { seedTxn, seedIndex } = this.paramsIn;
-
-        return this.mustFindActorUtxo(
-            "seed",
-            (u) => {
-                const { txId, utxoIdx } = u;
-
-                if (txId.eq(seedTxn) && BigInt(utxoIdx) == seedIndex) {
-                    return u;
-                }
-            },
-            "already spent?"
         );
     }
 

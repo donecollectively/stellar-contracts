@@ -557,6 +557,15 @@ describe("StellarContract", async () => {
             );
         });
     });
+
+    describe("Capo", () => {
+        it.todo("is a base class for 'leader'/Capo pattern");
+        it.todo("provides a default minter");
+        it.todo("allows the minter class to be overridden");
+        it.todo("uses seed-utxo pattern by default");
+        it.todo("can use a second type-parameter for a dfferent type of params");
+    });
+
     describe("Integration tests: example subclass", () => {
         describe("has a unique, permanent address", () => {
             it("uses the Minting Policy Hash as the sole parameter for the spending script", async (context: localTC) => {

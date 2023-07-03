@@ -23,6 +23,16 @@ type WalletsAndAddresses = {
     wallets: Wallet[];
     addresses?: Address[];
 };
+const DatumInline = Datum.inline;
+export type InlineDatum = ReturnType<typeof DatumInline>;
+
+export type stellarSubclass<
+    S extends StellarContract<P>, 
+    P extends paramsBase
+> = new (
+    args: StellarConstructorArgs<S, P>
+) => S & StellarContract<P>;
+
 export type paramsBase = Record<string, any>;
 export type TxInput = Tx["body"]["inputs"][0];
 export type tokenNamesOrValuesEntry = [string | number[], bigint];
@@ -394,7 +404,7 @@ export class StellarContract<
     _template?: Program;
     myself?: Wallet;
 
-    mkContractParams(params) {
+    getContractParams(params) {
         return params;
     }
 
@@ -409,7 +419,7 @@ export class StellarContract<
         this.networkParams = networkParams;
         this.paramsIn = params;
 
-        this.contractParams = this.mkContractParams(params);
+        this.contractParams = this.getContractParams(params);
         if (myself) this.myself = myself;
 
         const configured = (this.configuredContract = this.contractTemplate());
