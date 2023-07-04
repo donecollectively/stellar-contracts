@@ -64,7 +64,7 @@ export class Capo<
     }
 
     async mustGetSeedUtxo(): Promise<UTxO | never> {
-        // const [address] = await this.myself.usedAddresses;
+        // const [address] = await this.myActor.usedAddresses;
         const { seedTxn, seedIndex } = this.paramsIn;
 
         return this.mustFindActorUtxo(

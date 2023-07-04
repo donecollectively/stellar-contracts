@@ -105,7 +105,7 @@ const CCTHelpers: hasHelpers = {
             seedTxn = await this.h.mkSeedUtxo();
         }
         this.randomSeed = randomSeed;
-        this.myself = this.actors.tina;
+        this.myActor = this.actors.tina;
         const treasury = await this.instantiateWithParams({
             seedTxn,
             seedIndex,

@@ -49,7 +49,7 @@ export interface HeliosTestingContext<
 > {
     stellarClass: subclassOf<StellarContract<P>, P>;
     helios: typeof helios;
-    myself?: Wallet;
+    myActor?: Wallet;
     network: NetworkEmulator;
     liveSlotParams: NetworkParams;
     networkParams: NetworkParams;
@@ -93,7 +93,7 @@ async function instantiateWithParams<
     const strella = new TargetClass({
         params,
         network: this.network,
-        myself: this.myself,
+        myActor: this.myActor,
         networkParams: this.networkParams,
         isTest: true,
     });

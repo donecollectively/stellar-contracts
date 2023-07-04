@@ -371,7 +371,7 @@ export type StellarConstructorArgs<
     network: Network;
     networkParams: NetworkParams;
     isTest: boolean;
-    myself?: Wallet;
+    myActor?: Wallet;
 };
 export type utxoPredicate =
     | ((u: UTxO) => UTxO | undefined)
@@ -402,7 +402,7 @@ export class StellarContract<
     network: Network;
     networkParams: NetworkParams;
     _template?: Program;
-    myself?: Wallet;
+    myActor?: Wallet;
 
     getContractParams(params) {
         return params;
@@ -413,14 +413,14 @@ export class StellarContract<
         network,
         networkParams,
         isTest,
-        myself,
+        myActor,
     }: StellarConstructorArgs<StellarContract<ParamsType>, ParamsType>) {
         this.network = network;
         this.networkParams = networkParams;
         this.paramsIn = params;
 
         this.contractParams = this.getContractParams(params);
-        if (myself) this.myself = myself;
+        if (myActor) this.myActor = myActor;
 
         const configured = (this.configuredContract = this.contractTemplate());
 
@@ -498,7 +498,7 @@ export class StellarContract<
         const args: StellarConstructorArgs<SC> = {
             params,
             network: this.network,
-            myself: this.myself,
+            myActor: this.myActor,
             networkParams: this.networkParams,
             isTest: true,
         };
@@ -676,7 +676,8 @@ export class StellarContract<
     }
 
     async findAnySpareUtxos(): Promise<UTxO[] | never> {
-        if (!this.myself) throw this.missingActorError;
+        if (!this.myActor) throw this.missingActorError;
+
 
         type tempInfo = {
             u: UTxO;
@@ -718,7 +719,7 @@ export class StellarContract<
             return { u, sufficient, free, reserved };
         };
 
-        return this.myself.utxos.then((utxos) => {
+        return this.myActor.utxos.then((utxos) => {
             const allSpares = utxos
                 .map(toSortInfo)
                 .filter(isSufficient)
@@ -742,12 +743,12 @@ export class StellarContract<
         } = {}
     ) {
         let { tx } = tcx;
-        if (this.myself || signers.length) {
-            const [a] = (await this.myself?.usedAddresses) || [];
+        if (this.myActor || signers.length) {
+            const [a] = (await this.myActor?.usedAddresses) || [];
             const spares = await this.findAnySpareUtxos();
             const willSign = [...signers];
-            if (sign && this.myself) {
-                willSign.push(this.myself);
+            if (sign && this.myActor) {
+                willSign.push(this.myActor);
             }
             for (const s of willSign) {
                 const [a] = await s.usedAddresses;
@@ -771,7 +772,7 @@ export class StellarContract<
                 tx.addSignatures(sig, true);
             }
         } else {
-            console.warn("no 'myself'; not finalizing");
+            console.warn("no 'myActor'; not finalizing");
         }
         console.log("Submitting tx: ", tcx.dump());
 
@@ -837,15 +838,15 @@ export class StellarContract<
     }
 
     async getMyActorAddress() {
-        if (!this.myself) throw this.missingActorError;
+        if (!this.myActor) throw this.missingActorError;
 
-        const [addr] = await this.myself.usedAddresses;
+        const [addr] = await this.myActor.usedAddresses;
 
         return addr;
     }
 
     private get missingActorError(): string | undefined {
-        return `missing required 'myself' property on ${this.constructor.name} instance`;
+        return `missing required 'myActor' property on ${this.constructor.name} instance`;
     }
 
     async mustFindActorUtxo(
