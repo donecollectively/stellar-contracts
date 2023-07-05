@@ -28,7 +28,7 @@ export type SeedTxnParams = {
 };
 
 export type MintCharterRedeemerArgs = {
-    treasury: Address;
+    owner: Address;
 };
 export type MintUUTRedeemerArgs = {
     seedTxn: TxId;
@@ -79,11 +79,11 @@ implements MinterBaseMethods {
     }
 
     @redeem
-    mintingCharterToken({ treasury }: MintCharterRedeemerArgs) {
+    mintingCharterToken({ owner }: MintCharterRedeemerArgs) {
         // debugger
         const t =
             new this.configuredContract.types.Redeemer.mintingCharterToken(
-                treasury
+                owner
             );
 
         return t._toUplcData();
@@ -112,14 +112,14 @@ implements MinterBaseMethods {
     @partialTxn
     async txnAddCharterInit(
         tcx: StellarTxnContext,
-        treasury: Address,
+        owner: Address,
         tVal: valuesEntry
     ): Promise<StellarTxnContext> {
         return tcx
             .mintTokens(
                 this.mintingPolicyHash!,
                 [tVal],
-                this.mintingCharterToken({ treasury })
+                this.mintingCharterToken({ owner  })
             )
             .attachScript(this.compiledContract);
     }

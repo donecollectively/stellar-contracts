@@ -5,7 +5,7 @@ const seedIndex : Int = 42
 
 enum Redeemer { 
     mintingCharterToken {
-        treasury: Address
+        owner: Address
     }
     mintingUUT {
         seedTxn: TxId
@@ -45,11 +45,13 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
             tx.outputs.all( (output: TxOutput) -> Bool {
                 output.value != value_minted || (
                     output.value == value_minted &&
-                    output.address == charter.treasury
+                    output.address == charter.owner
                 )
             })
         },
         mintingNamedToken => {
+            //!!! ensure that ALL and ONLY the tokens named are minted; not any others.
+
             charterTokenValue : Value = Value::new(
                 AssetClass::new(ctx.get_current_minting_policy_hash(), "charter".encode_utf8()), 
                 1
