@@ -1,4 +1,4 @@
-minting defaultMinter
+minting customMinter
 
 const seedTxn : TxId = TxId::new(#1234)
 const seedIndex : Int = 42
@@ -10,14 +10,17 @@ enum Redeemer {
     mintingUUT {
         seedTxn: TxId
         seedIndex: Int
-        assetName: ByteArray
     }
+    mintingNamedToken {
+        value: Value
+    }
+    burningToken
 }
 
-func hasSeedUtxo(tx: Tx, sTxId : TxId, sIdx: Int) -> Bool {
+func hasSeedUtxo(tx: Tx) -> Bool {
     seedUtxo: TxOutputId = TxOutputId::new(
-        sTxId,
-        sIdx
+        seedTxn,
+        seedIndex
     );
     assert(tx.inputs.any( (input: TxInput) -> Bool {
         input.output_id == seedUtxo
@@ -25,11 +28,6 @@ func hasSeedUtxo(tx: Tx, sTxId : TxId, sIdx: Int) -> Bool {
 
     true
 }
-
-func hasContractSeedUtxo(tx: Tx) -> Bool {
-    hasSeedUtxo(tx, seedTxn, seedIndex)
-}
-
 
 func main(r : Redeemer, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
@@ -45,7 +43,7 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
         charter: mintingCharterToken => {       
             assert(value_minted == Value::new(charterToken, 1), "no charter token minted");
 
-            hasContractSeedUtxo(tx) &&
+            hasSeedUtxo(tx) &&
             tx.outputs.all( (output: TxOutput) -> Bool {
                 output.value != value_minted || (
                     output.value == value_minted &&
@@ -53,19 +51,31 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
                 )
             })
         },
-        mintingUUT{sTxId, sIdx, assetName} => {
-            assetClass = AssetClass::new(mph, assetName);
-            value : Value = Value::new(assetClass, 1);
+        mintingNamedToken{value} => {
+
+            charterTokenValue : Value = Value::new(
+                AssetClass::new(ctx.get_current_minting_policy_hash(), "charter".encode_utf8()), 
+                1
+            );
+            
+            assert(tx.outputs.any((txo : TxOutput) -> Bool {
+                txo.value >= charterTokenValue
+            }),"missing required charter token authorization");
+
             expectedMint : Map[ByteArray]Int = value.get_policy(mph);
             actualMint : Map[ByteArray]Int = value_minted.get_policy(mph);
 
-            hasSeedUtxo(tx, sTxId, sIdx) &&
+            //!!! todo: ensure that ALL and ONLY the tokens named in the redeemer are minted; not any others.
+
             expectedMint == actualMint
+        },
+        burningToken => {
+            false
         },
         _ => true
     };
 
-    print("defaultMinter: minting value: " + value_minted.show());
+    print("custom minter: minting value: " + value_minted.show());
 
     ok
 }

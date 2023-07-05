@@ -95,17 +95,8 @@ export class SampleTreasury extends Capo {
         return t._toUplcData();
     }
 
-    get charterTokenAsValuesEntry(): valuesEntry {
-        return this.mkValuesEntry("charter", BigInt(1));
-    }
-
     get charterTokenAsValue() {
-        const { mph } = this;
-
-        return new Value(
-            this.ADA(1.7),
-            new Assets([[mph, [this.charterTokenAsValuesEntry]]])
-        );
+        return this.minter!.charterTokenAsValue
     }
 
     @partialTxn
@@ -114,12 +105,9 @@ export class SampleTreasury extends Capo {
         newDatum?: InlineDatum
     ): Promise<CharterTokenUTxO | never> {
         const ctVal = this.charterTokenAsValue;
-
+        const predicate = this.mkTokenPredicate(ctVal)
         return this.mustFindMyUtxo(
-            "charter",
-            (u) => {
-                if (u.value.ge(ctVal)) return u;
-            },
+            "charter", predicate,
             "has it been minted?"
         ).then((ctUtxo: UTxO) => {
             const charterToken = { [chTok]: ctUtxo };
@@ -147,7 +135,7 @@ export class SampleTreasury extends Capo {
         { trustees, minSigs }: CharterDatumArgs,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
-        return this.mustGetSeedUtxo().then((seedUtxo) => {
+        return this.mustGetContractSeedUtxo().then((seedUtxo) => {
             const v = this.charterTokenAsValue;
             // this.charterTokenDatum
             const datum = this.mkDatumCharterToken({
@@ -161,28 +149,7 @@ export class SampleTreasury extends Capo {
             tcx.addInput(seedUtxo).addOutputs(outputs);
             return this.minter!.txnAddCharterInit(
                 tcx,
-                this.address,
-                this.charterTokenAsValuesEntry
-            );
-        });
-    }
-
-    @txn
-    async mkTxnMintNamedToken(
-        tokenName: string,
-        count: bigint,
-        tcx: StellarTxnContext = new StellarTxnContext()
-    ): Promise<StellarTxnContext> {
-        return this.txnMustUseCharterUtxo(tcx).then(async (charterToken) => {
-            tcx.addInput(
-                charterToken[chTok],
-                this.mintingToken(tokenName)
-            ).attachScript(this.compiledContract);
-
-            return this.minter!.txnMintingNamedToken(
-                tcx,
-                tokenName,
-                count
+                this.address
             );
         });
     }
@@ -310,7 +277,7 @@ export class SampleTreasury extends Capo {
                 requires: [],
             },
 
-            "can mint other tokens, on the authority of the charter token": {
+            "XXX can mint other tokens, on the authority of the charter token": {
                 purpose:
                     "to simplify the logic of minting, while being sure of minting authority",
                 details: [

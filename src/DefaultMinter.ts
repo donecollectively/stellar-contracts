@@ -8,6 +8,8 @@ import {
     TxOutput,
     MintingPolicyHash,
     Assets,
+    Crypto,
+    UTxO,
 } from "@hyperionbt/helios";
 import {
     StellarContract,
@@ -20,20 +22,13 @@ import {
 //@ts-expect-error
 import contract from "./DefaultMinter.hl";
 import { StellarTxnContext } from "../lib/StellarTxnContext.js";
-import { MinterBaseMethods } from "../lib/Capo.js";
+import { MintCharterRedeemerArgs, MintUUTRedeemerArgs, MinterBaseMethods } from "../lib/Capo.js";
 
 export type SeedTxnParams = {
     seedTxn: TxId;
     seedIndex: bigint;
 };
 
-export type MintCharterRedeemerArgs = {
-    owner: Address;
-};
-export type MintUUTRedeemerArgs = {
-    seedTxn: TxId;
-    seedIndex: bigint | number;
-};
 
 export class DefaultMinter 
 extends StellarContract<SeedTxnParams> 
@@ -42,27 +37,37 @@ implements MinterBaseMethods {
         return contract;
     }
 
-    async txnCreateUUT(tcx: StellarTxnContext, l: string): Promise<Value> {
-        const isEnough = this.mkTokenPredicate(
-            new Value({
-                lovelace: 42000,
-            })
-        );
+    async txnCreateUUT(tcx: StellarTxnContext, uutPurpose: string): Promise<Value> {
+        //!!! make it big enough to serve minUtxo for the new UUT
+        const uutSeed = this.mkValuePredicate(BigInt(42_000), tcx);
 
-        return this.mustFindActorUtxo(`for-uut-${l}`, isEnough, tcx).then(
-            async (freeUtxo) => {
-                const vEnt = this.mkValuesEntry(l, BigInt(1));
-                tcx.addInput(freeUtxo);
+        return this.mustFindActorUtxo(`for-uut-${uutPurpose}`, uutSeed, tcx).then(
+            async (freeSeedUtxo) => {
+                tcx.addInput(freeSeedUtxo);
+                const {txId, utxoIdx} = freeSeedUtxo
+                const {encodeBech32, blake2b} = Crypto;
+
+                const assetName = encodeBech32(`${uutPurpose}.`, blake2b(txId.bytes.concat(
+                    [ "@".charCodeAt(0), utxoIdx ]
+                ),8))
+                console.log("--------------", {assetName});
+                await new Promise(res => {setTimeout(res, 1000)})
+                debugger
+                const vEnt = this.mkValuesEntry(uutPurpose, BigInt(1));
 
                 const {
                     txId: seedTxn,
                     utxoIdx: seedIndex
-                } = freeUtxo;
+                } = freeSeedUtxo;
 
                 tcx.mintTokens(
                     this.mintingPolicyHash!,
                     [vEnt],
-                    this.mintingUUT({ seedTxn, seedIndex })
+                    this.mintingUUT({ 
+                        seedTxn, 
+                        seedIndex,
+                        assetName
+                    })
                 );
                 
                 const v =  new Value(undefined, new Assets([ 
@@ -74,12 +79,13 @@ implements MinterBaseMethods {
         );
     }
 
+    //! overrides base getter type with undefined not being allowed
     get mintingPolicyHash(): MintingPolicyHash {
         return super.mintingPolicyHash!;
     }
 
     @redeem
-    mintingCharterToken({ owner }: MintCharterRedeemerArgs) {
+    protected mintingCharterToken({ owner }: MintCharterRedeemerArgs) {
         // debugger
         const t =
             new this.configuredContract.types.Redeemer.mintingCharterToken(
@@ -90,31 +96,39 @@ implements MinterBaseMethods {
     }
 
     @redeem
-    mintingUUT({ seedTxn, seedIndex: sIdx }: MintUUTRedeemerArgs) {
+    protected mintingUUT({ seedTxn, seedIndex: sIdx, assetName }: MintUUTRedeemerArgs) {
         // debugger
         const seedIndex = BigInt(sIdx)
         const t = new this.configuredContract.types.Redeemer.mintingUUT(
             seedTxn,
-            seedIndex
+            seedIndex,
+            assetName
         );
 
         return t._toUplcData();
     }
 
-    @redeem
-    mintingNamedToken() {
-        const t =
-            new this.configuredContract.types.Redeemer.mintingNamedToken();
+    get charterTokenAsValuesEntry(): valuesEntry {
+        return this.mkValuesEntry("charter", BigInt(1));
+    }
 
-        return t._toUplcData();
+    get charterTokenAsValue() {
+        const { mintingPolicyHash } = this;
+
+        const v = new Value(
+            this.ADA(1.7),
+            new Assets([[mintingPolicyHash, [this.charterTokenAsValuesEntry]]])
+        );
+        return v
     }
 
     @partialTxn
     async txnAddCharterInit(
         tcx: StellarTxnContext,
         owner: Address,
-        tVal: valuesEntry
     ): Promise<StellarTxnContext> {
+        const tVal = this.charterTokenAsValuesEntry
+
         return tcx
             .mintTokens(
                 this.mintingPolicyHash!,
@@ -124,45 +138,4 @@ implements MinterBaseMethods {
             .attachScript(this.compiledContract);
     }
 
-    async txnMintingNamedToken(
-        tcx: StellarTxnContext,
-        tokenName: string,
-        count: bigint
-    ): Promise<StellarTxnContext>;
-
-    async txnMintingNamedToken(
-        tcx: StellarTxnContext,
-        tokenNamesAndCounts: tokenNamesOrValuesEntry[]
-    ): Promise<StellarTxnContext>;
-
-    @partialTxn
-    async txnMintingNamedToken(
-        tcx: StellarTxnContext,
-        tokenNameOrPairs: string | tokenNamesOrValuesEntry[],
-        count?: bigint
-    ): Promise<StellarTxnContext> {
-        let namesAndCounts: tokenNamesOrValuesEntry[];
-        if (!Array.isArray(tokenNameOrPairs)) {
-            const tokenName = tokenNameOrPairs;
-            if (!count)
-                throw new Error(
-                    `missing required 'count' arg when using 'tokenName:string' overload`
-                );
-
-            namesAndCounts = [[tokenName, count]];
-        } else {
-            namesAndCounts = tokenNameOrPairs;
-        }
-        let values: valuesEntry[] = namesAndCounts.map(([name, count]) => {
-            if (Array.isArray(name)) return [name, count] as valuesEntry;
-            return this.mkValuesEntry(name, count);
-        });
-        return tcx
-            .mintTokens(
-                this.mintingPolicyHash!,
-                values,
-                this.mintingNamedToken()
-            )
-            .attachScript(this.compiledContract);
-    }
 }
