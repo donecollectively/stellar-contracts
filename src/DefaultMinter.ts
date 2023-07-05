@@ -21,7 +21,7 @@ export type MintCharterRedeemerArgs = {
 };
 export type MintUUTRedeemerArgs = {
     seedTxn: TxId;
-    seedIndex: bigint;
+    seedIndex: bigint | number;
 };
 
 export class DefaultMinter extends StellarContract<SeedTxnParams> {

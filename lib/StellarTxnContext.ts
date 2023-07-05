@@ -19,10 +19,12 @@ import { txAsString } from "./StellarContract.js";
 export class StellarTxnContext {
     tx: Tx;
     inputs: UTxO[];
+    collateral?: UTxO;
     outputs: TxOutput[];
     constructor() {
         this.tx = new Tx();
         this.inputs = [];
+        this.collateral = undefined;
         this.outputs = [];
     }
     dump() {
@@ -33,6 +35,28 @@ export class StellarTxnContext {
     mintTokens(...args: Parameters<Tx["mintTokens"]>) : StellarTxnContext {
         this.tx.mintTokens(...args);
 
+        return this;
+    }
+    reservedUtxos() : UTxO[] {
+        return [
+            ... this.inputs, 
+            this.collateral 
+        ].filter((x) => !!x) as UTxO[]
+    }
+
+    utxoNotReserved(u: UTxO) : UTxO | undefined {
+        if (this.collateral?.eq(u)) return undefined;
+        if (this.inputs.find(i => i.eq(u)) ) return undefined;
+        return u;
+    }
+
+    addCollateral(collateral: UTxO) {
+        if (!collateral.value.assets.isZero()) {
+            throw new Error(`invalid attempt to add non-pure-ADA utxo as collateral`)
+        }
+        this.collateral = collateral;
+
+        this.tx.addCollateral(collateral)
         return this;
     }
 

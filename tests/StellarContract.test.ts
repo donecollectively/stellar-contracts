@@ -6,7 +6,6 @@ import {
     vi,
 } from "vitest";
 import {
-    CtParams,
     SampleTreasury,
     CharterDatumArgs,
     chTok,
@@ -52,9 +51,11 @@ import {
 import { StellarTxnContext } from "../lib/StellarTxnContext";
 import { UTxO } from "@hyperionbt/helios";
 import { MintingPolicyHash } from "@hyperionbt/helios";
+import { ValueProps } from "@hyperionbt/helios";
+import { seedUtxoParams } from "../lib/Capo";
 
 interface localTC
-    extends HeliosTestingContext<SampleTreasury, typeof CCTHelpers, CtParams> {}
+    extends HeliosTestingContext<SampleTreasury, typeof CCTHelpers, seedUtxoParams> {}
 
 const it = itWithContext<localTC>;
 const fit = it.only;
@@ -331,8 +332,8 @@ describe("StellarContract", async () => {
             });
 
             expect(
-                t1.connectMintingScript().mintingPolicyHash?.hex
-            ).not.toEqual(t2.connectMintingScript().mintingPolicyHash?.hex);
+                t1.connectMintingScript(t1.getMinterParams()).mintingPolicyHash?.hex
+            ).not.toEqual(t2.connectMintingScript(t2.getMinterParams()).mintingPolicyHash?.hex);
         });
     });
 
@@ -439,46 +440,113 @@ describe("StellarContract", async () => {
                 it.todo("multiplies by 1_000_000");
             });
 
-            describe("findInputsInWallets", () => {
-                it("can use more tests", async () => {
-                    //!!! todo: bounty: develop tests to better describe & cover this function.
-                });
-
-                it("can find ADA needed for a transaction", async (context: localTC) => {
-                    const { h, network, actors, delay, state } = context;
-                    const { tina } = actors;
-
-                    const treasury = await h.setup();
-
-                    const utxo = await treasury.findInputsInWallets(
-                        new Value(30n * ADA),
-                        { wallets: [tina] },
-                        network
-                    );
-
-                    expect(utxo).toBeInstanceOf(UTxO);
-                });
-            });
-
             describe("mustFindActorUtxo", () => {
                 it.todo(
                     "finds utxos in the current user's wallet, based on a value predicate function"
                 );
-                it.todo("throw an error if no utxo is matched");
+                it.todo("throws an error if no utxo is matched");
+                describe("with tokenPredicate", () => {
+                    it("ignores utxos already in a tcx (inputs/collateral), if provided", async (context: localTC) => {
+                        const {h, network, actors, delay, state, } = context;
+                        // await delay(1000)
+                        const t : SampleTreasury = await h.setup(); 
+                        const tcx = new StellarTxnContext();
+                        const isEnoughT = t.mkTokenPredicate(
+                            new Value({
+                                lovelace: 42000
+                            })
+                        );
+                        const u1 = await t.mustFindActorUtxo("first with token", isEnoughT, tcx);
+                        const u1a = await t.mustFindActorUtxo("t1a", isEnoughT);
+                        const u1b = await t.mustFindActorUtxo("t1b", isEnoughT, tcx);
+    
+                        expect(t.toUtxoId(u1a)).toEqual(t.toUtxoId(u1));
+                        expect(t.toUtxoId(u1b)).toEqual(t.toUtxoId(u1));
+    
+                        tcx.addInput(u1);
+                        const u2 = await t.mustFindActorUtxo("second with token", isEnoughT, tcx);
+                        tcx.addCollateral(u2)
+                        const u3 = await t.mustFindActorUtxo("#3with token", isEnoughT, tcx);
+                        
+                        // yes, but it doesn't mean anything; different refs to same details
+                        //  will also not be === despite being equivalent.
+                        expect(u2 === u1).not.toBeTruthy() 
+                        expect(u3 === u1).not.toBeTruthy() 
+                        expect(u3 === u2).not.toBeTruthy() 
+    
+                        // using the utxo's own eq() logic:
+                        expect(u2.eq(u1)).not.toBeTruthy();
+                        expect(u3.eq(u1)).not.toBeTruthy();
+                        expect(u3.eq(u2)).not.toBeTruthy();
+    
+                        // using stringified forms:
+                        const t1 = t.toUtxoId(u1);
+                        const t2 = t.toUtxoId(u2);
+                        const t3 = t.toUtxoId(u3);
+                        expect(t2).not.toEqual(t1);
+                        expect(t3).not.toEqual(t1);
+                        expect(t3).not.toEqual(t2);
+    
+                        // console.log({t1, t2, eq: u1.eq(u2), identical: u2 === u1});
+                    });
+                    
+                });
+                describe("with valuePredicate for ada-only", () => {
+                    it("ignores utxos already in a tcx (inputs/collateral), if provided", async (context: localTC) => {
+                        const {h, network, actors, delay, state, } = context;
+                        // await delay(1000)
+                        const t : SampleTreasury = await h.setup(); 
+                        const tcx = new StellarTxnContext();
+                        const isEnough = t.mkValuePredicate(42_000n, tcx)
+                        const u1 = await t.mustFindActorUtxo("first", isEnough, tcx);
+                        const u1a = await t.mustFindActorUtxo("1a", isEnough);
+                        const u1b = await t.mustFindActorUtxo("1b", isEnough, tcx);
+    
+                        expect(t.toUtxoId(u1a)).toEqual(t.toUtxoId(u1));
+                        expect(t.toUtxoId(u1b)).toEqual(t.toUtxoId(u1));
+    
+                        tcx.addInput(u1);
+                        const u2 = await t.mustFindActorUtxo("second", isEnough, tcx);
+                        tcx.addCollateral(u2)
+                        const u3 = await t.mustFindActorUtxo("#3with token", isEnough, tcx);
+    
+                        // yes, but it doesn't mean anything; different refs to same details
+                        //  will also not be === despite being equivalent.
+                        expect(u2 === u1).not.toBeTruthy() 
+                        expect(u3 === u1).not.toBeTruthy() 
+                        expect(u3 === u2).not.toBeTruthy() 
+    
+                        // using the utxo's own eq() logic:
+                        expect(u2.eq(u1)).not.toBeTruthy();
+                        expect(u3.eq(u1)).not.toBeTruthy();
+                        expect(u3.eq(u2)).not.toBeTruthy();
+    
+                        // using stringified forms:
+                        const t1 = t.toUtxoId(u1);
+                        const t2 = t.toUtxoId(u2);
+                        const t3 = t.toUtxoId(u3);
+                        expect(t2).not.toEqual(t1);
+                        expect(t3).not.toEqual(t1);
+                        expect(t3).not.toEqual(t2);
+    
+                        // console.log({t1, t2, eq: u1.eq(u2), identical: u2 === u1});
+                    });
+                    
+                });
             });
 
             describe("mustFindMyUtxo", () => {
                 it.todo(
                     "finds utxos in a spending-contract's address, based on a value predicate function"
                 );
-                it.todo("throw an error if no utxo is matched");
+                it.todo("throws an error if no utxo is matched");
             });
 
             describe("mustFindUtxo", () => {
                 it.todo(
                     "finds utxos in a provided address, based on a value predicate function"
                 );
-                it.todo("throw an error if no utxo is matched");
+                it.todo("throws an error if no utxo is matched");
             });
 
             describe("hasUtxo", () => {
@@ -518,7 +586,7 @@ describe("StellarContract", async () => {
                     "implicitly adds the current user's first-used-address, aka primary addr as a signer"
                 );
                 it.todo(
-                    "doesn't add current-user to signers if overridden {sign=false} option is provided"
+                    "doesn't add current-user to signers if overridden {sign:false} option is provided"
                 );
                 it.todo(
                     "throws a console message and an exception if finalize() fails"
@@ -545,9 +613,9 @@ describe("StellarContract", async () => {
             );
         });
 
-        describe("mkTokenPredicate()", () => {
+        describe("mkValuePredicate()", () => {
             it.todo(
-                "makes a predicate function for filtering any kind of token-bearing data"
+                "makes a predicate function for filtering any kind of value-bearing data"
             );
             it.todo(
                 "requires only a mph/token name, or a Value, to make the predicate function"
