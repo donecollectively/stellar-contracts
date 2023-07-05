@@ -1,4 +1,14 @@
-import { Program, Datum, TxId, TxOutputId, Address } from "@hyperionbt/helios";
+import {
+    Program,
+    Datum,
+    TxId,
+    TxOutputId,
+    Address,
+    Value,
+    TxOutput,
+    MintingPolicyHash,
+    Assets,
+} from "@hyperionbt/helios";
 import {
     StellarContract,
     partialTxn,
@@ -10,6 +20,7 @@ import {
 //@ts-expect-error
 import contract from "./DefaultMinter.hl";
 import { StellarTxnContext } from "../lib/StellarTxnContext.js";
+import { MinterBaseMethods } from "../lib/Capo.js";
 
 export type SeedTxnParams = {
     seedTxn: TxId;
@@ -24,9 +35,47 @@ export type MintUUTRedeemerArgs = {
     seedIndex: bigint | number;
 };
 
-export class DefaultMinter extends StellarContract<SeedTxnParams> {
+export class DefaultMinter 
+extends StellarContract<SeedTxnParams> 
+implements MinterBaseMethods {
     contractSource() {
         return contract;
+    }
+
+    async txnCreateUUT(tcx: StellarTxnContext, l: string): Promise<Value> {
+        const isEnough = this.mkTokenPredicate(
+            new Value({
+                lovelace: 42000,
+            })
+        );
+
+        return this.mustFindActorUtxo(`for-uut-${l}`, isEnough, tcx).then(
+            async (freeUtxo) => {
+                const vEnt = this.mkValuesEntry(l, BigInt(1));
+                tcx.addInput(freeUtxo);
+
+                const {
+                    txId: seedTxn,
+                    utxoIdx: seedIndex
+                } = freeUtxo;
+
+                tcx.mintTokens(
+                    this.mintingPolicyHash!,
+                    [vEnt],
+                    this.mintingUUT({ seedTxn, seedIndex })
+                );
+                
+                const v =  new Value(undefined, new Assets([ 
+                    [ this.mintingPolicyHash!, [vEnt]  ]
+                ]))
+
+                return v;
+            }
+        );
+    }
+
+    get mintingPolicyHash(): MintingPolicyHash {
+        return super.mintingPolicyHash!;
     }
 
     @redeem
@@ -36,6 +85,18 @@ export class DefaultMinter extends StellarContract<SeedTxnParams> {
             new this.configuredContract.types.Redeemer.mintingCharterToken(
                 treasury
             );
+
+        return t._toUplcData();
+    }
+
+    @redeem
+    mintingUUT({ seedTxn, seedIndex: sIdx }: MintUUTRedeemerArgs) {
+        // debugger
+        const seedIndex = BigInt(sIdx)
+        const t = new this.configuredContract.types.Redeemer.mintingUUT(
+            seedTxn,
+            seedIndex
+        );
 
         return t._toUplcData();
     }
@@ -66,33 +127,36 @@ export class DefaultMinter extends StellarContract<SeedTxnParams> {
     async txnMintingNamedToken(
         tcx: StellarTxnContext,
         tokenName: string,
-        count: bigint,
-    ): Promise<StellarTxnContext>
+        count: bigint
+    ): Promise<StellarTxnContext>;
 
     async txnMintingNamedToken(
         tcx: StellarTxnContext,
         tokenNamesAndCounts: tokenNamesOrValuesEntry[]
-    ): Promise<StellarTxnContext>
+    ): Promise<StellarTxnContext>;
 
     @partialTxn
     async txnMintingNamedToken(
         tcx: StellarTxnContext,
         tokenNameOrPairs: string | tokenNamesOrValuesEntry[],
-        count?: bigint,
+        count?: bigint
     ): Promise<StellarTxnContext> {
-        let namesAndCounts : tokenNamesOrValuesEntry[];
+        let namesAndCounts: tokenNamesOrValuesEntry[];
         if (!Array.isArray(tokenNameOrPairs)) {
-            const tokenName = tokenNameOrPairs;            
-            if (!count) throw new Error(`missing required 'count' arg when using 'tokenName:string' overload`)
+            const tokenName = tokenNameOrPairs;
+            if (!count)
+                throw new Error(
+                    `missing required 'count' arg when using 'tokenName:string' overload`
+                );
 
-            namesAndCounts = [ [tokenName, count] ]
+            namesAndCounts = [[tokenName, count]];
         } else {
-            namesAndCounts =  tokenNameOrPairs;
+            namesAndCounts = tokenNameOrPairs;
         }
-        let values : valuesEntry[] = namesAndCounts.map(([name, count]) => {
+        let values: valuesEntry[] = namesAndCounts.map(([name, count]) => {
             if (Array.isArray(name)) return [name, count] as valuesEntry;
-            return this.mkValuesEntry(name, count)
-        })
+            return this.mkValuesEntry(name, count);
+        });
         return tcx
             .mintTokens(
                 this.mintingPolicyHash!,

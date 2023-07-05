@@ -7,6 +7,10 @@ enum Redeemer {
     mintingCharterToken {
         treasury: Address
     }
+    mintingUUT {
+        seedTxn: TxId
+        seedIndex: Int
+    }
     mintingNamedToken
     burningToken
 }

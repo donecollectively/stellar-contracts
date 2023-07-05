@@ -1,6 +1,7 @@
-import { Address, Datum, TxId, UTxO } from "@hyperionbt/helios";
+import { Address, Datum, MintingPolicyHash, TxId, UTxO, Value } from "@hyperionbt/helios";
 import { DefaultMinter, SeedTxnParams } from "../src/DefaultMinter.js";
 import { InlineDatum, StellarContract, datum, paramsBase, stellarSubclass } from "./StellarContract.js";
+import { StellarTxnContext } from "./StellarTxnContext.js";
 
 type minterContract<
     T extends paramsBase=any
@@ -12,8 +13,15 @@ export type seedUtxoParams = {
 };
 // P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never
 
+interface hasUUTCreator {
+    txnCreateUUT(tcs: StellarTxnContext, UUTlabel: string) : Promise<Value>;
+}
+
+export interface MinterBaseMethods extends hasUUTCreator {
+    get mintingPolicyHash() : MintingPolicyHash
+}
 export class Capo<
-    minterType__ONLY_DefaultMinter_SUPPORTED_FOR_NOW extends DefaultMinter = DefaultMinter, // extends minterContract<PT> = DefaultMinter,
+    minterType__ONLY_DefaultMinter_SUPPORTED_FOR_NOW extends MinterBaseMethods = DefaultMinter, // extends minterContract<PT> = DefaultMinter,
 
     // PT_ALWAYS_INFERRED extends never = never,
     // //@ts-expect-error PT can specify a different subtype again
@@ -26,12 +34,16 @@ export class Capo<
         > ? minterTypeParamsType 
         : never
     ),
-> extends StellarContract<PT> {
+> extends StellarContract<PT> implements hasUUTCreator {
     get minterClass() : stellarSubclass<DefaultMinter, seedUtxoParams> {
         return  DefaultMinter;
     }
 
     minter? : minterType__ONLY_DefaultMinter_SUPPORTED_FOR_NOW
+
+    async txnCreateUUT(tcx: StellarTxnContext, l : string) : Promise<Value> {
+        return this.minter!.txnCreateUUT(tcx, l);
+    }
 
     //! it can provide minter-targeted params through getMinterParams()
     getMinterParams() {
@@ -46,7 +58,6 @@ export class Capo<
             mph,
         };
     }
-
 
     get mph() {
         const minter = this.connectMintingScript(this.getMinterParams());
