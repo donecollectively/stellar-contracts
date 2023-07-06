@@ -53,6 +53,7 @@ import { UTxO } from "@hyperionbt/helios";
 import { MintingPolicyHash } from "@hyperionbt/helios";
 import { ValueProps } from "@hyperionbt/helios";
 import { seedUtxoParams } from "../lib/Capo";
+import { DefaultMinter } from "../src/DefaultMinter";
 
 interface localTC
     extends HeliosTestingContext<SampleTreasury, typeof CCTHelpers, seedUtxoParams> {}
@@ -152,35 +153,6 @@ const CCTHelpers: hasHelpers = {
 
         this.network.tick(1n);
         return (this.state.mintedCharterToken = tcx);
-    },
-
-    async mintNamedToken(
-        this: localTC,
-        tokenName: string,
-        count: bigint,
-        destination: Address
-    ): Promise<StellarTxnContext> {
-        const { delay } = this;
-        const { tina, tom, tracy } = this.actors;
-
-        await this.h.mintCharterToken();
-        const treasury = this.strella!;
-
-        const tcx = await treasury.mkTxnMintNamedToken(tokenName, count);
-        const v = treasury.tokenAsValue(tokenName, count);
-
-        tcx.addOutput(new TxOutput(destination, v));
-
-        console.log("charter token mint: \n" + tcx.dump());
-
-        const submitting = treasury.submit(tcx, {
-            signers: [tina, tracy, tom],
-        });
-        return submitting.then(() => {
-            this.network.tick(1n);
-
-            return tcx;
-        });
     },
 
     async mkCharterSpendTx(this: localTC): Promise<StellarTxnContext> {
@@ -632,7 +604,7 @@ describe("StellarContract", async () => {
         it.todo("uses seed-utxo pattern by default");
     });
 
-    describe("Integration tests: example subclass", () => {
+    describe("Integration tests: example Capo contract", () => {
         describe("has a unique, permanent address", () => {
             it("uses the Minting Policy Hash as the sole parameter for the spending script", async (context: localTC) => {
                 const { h, network } = context;
@@ -756,7 +728,7 @@ describe("StellarContract", async () => {
                         "txnKeepCharterToken"
                     ).mockImplementation((tcx) => tcx!);
 
-                    await delay(1000);
+                    // await delay(1000);
                     const tcx: StellarTxnContext = await h.mkCharterSpendTx();
                     tcx.addOutput(
                         new TxOutput(
@@ -772,6 +744,57 @@ describe("StellarContract", async () => {
             );
         });
 
+        describe("UUTs for contract utility", () => {
+            it("can create a UUT and send it anywhere", async (context: localTC) => {
+                const {h, network, actors, delay, state, } = context;
+                const { tina, tom, tracy } = actors;
+
+                const t : SampleTreasury = await h.setup(); 
+                await h.mintCharterToken();
+                // await delay(1000);
+                
+                const tcx = new StellarTxnContext();
+                await t.txnAddAuthority(tcx);
+                const uut = await t.txnCreatingUUT(tcx, "something")
+
+                tcx.addOutput(new TxOutput(tina.address, uut));
+                await t.submit(tcx, {signers: [tom, tina, tracy]});
+                network.tick(1n);
+
+                const hasNamedToken = t.mkTokenPredicate(uut);
+                const u = await network.getUtxos(tina.address);
+                const f = u.find(hasNamedToken);
+                expect(f).toBeTruthy();
+                expect(f?.origOutput.value.ge(uut)).toBeTruthy();
+            });
+
+            it("won't mint extra UUTs", async (context: localTC) => {
+                const {h, network, actors, delay, state, } = context;
+                const { tina, tom, tracy } = actors;
+
+                const t : SampleTreasury = await h.setup(); 
+                await h.mintCharterToken();
+                // await delay(1000);
+                
+                const tcx = new StellarTxnContext();
+                await t.txnAddAuthority(tcx);
+                const m : DefaultMinter = t.minter!;
+                vi.spyOn(m, "mkUUTValuesEntries").mockImplementation(function (f:string) {
+                    return [
+                        this.mkValuesEntry(f, BigInt(1)),
+                        this.mkValuesEntry("something-else", BigInt(1))
+                    ]
+                })
+
+                const uut = await t.txnCreatingUUT(tcx, "something")
+
+                tcx.addOutput(new TxOutput(tina.address, uut));
+                await expect(t.submit(tcx, {signers: [tom, tina, tracy]})).rejects.toThrow(
+                    /bad UUT mint/
+                );
+                network.tick(1n);
+            });
+        });
         //!!! todo: this (build-txn, check-it, submit-it, check-onchain)
         //   ... might be a pattern worth lifting to a helper
         // await this.txChecker({

@@ -16,19 +16,11 @@ import {
     Signature,
 } from "@hyperionbt/helios";
 
-const DatumInline = Datum.inline;
-
 import {
     InlineDatum,
-    StellarConstructorArgs,
-    StellarContract,
     datum,
     partialTxn,
-    redeem,
     txn,
-    utxoAsString,
-    utxosAsString,
-    valuesEntry,
 } from "../../lib/StellarContract.js";
 
 import { StellarTxnContext } from "../../lib/StellarTxnContext.js";
@@ -36,8 +28,6 @@ import { StellarTxnContext } from "../../lib/StellarTxnContext.js";
 //@ts-expect-error
 import contract from "./SampleTreasury.hl";
 import { Capo } from "../../lib/Capo.js";
-
-type CtConstellation = Record<string, typeof StellarContract<any>>;
 
 export type CharterDatumArgs = {
     trustees: Address[];
@@ -55,51 +45,36 @@ export type CharterTokenUTxO = {
 };
 
 export class SampleTreasury extends Capo {
-
     contractSource() {
         return contract;
     }
 
-    @redeem
-    mintingToken(tokenName: string) {
-        const t = new this.configuredContract.types.Redeemer.mintingToken(
-            tokenName
-        );
-
-        return t._toUplcData();
-    }
-
-    @redeem
-    updatingCharter({
+    @datum
+    mkDatumCharterToken({
         trustees,
         minSigs,
     }: {
         trustees: Address[];
         minSigs: bigint;
-    }) {
-        const t = new this.configuredContract.types.Redeemer.updatingCharter(
+    }): InlineDatum {
+        //!!! todo: make it possible to type these datum helpers more strongly
+        const t = new this.configuredContract.types.Datum.CharterToken(
             trustees,
             minSigs
         );
-
-        return t._toUplcData();
+        return Datum.inline(t._toUplcData());
     }
+
 
     //!!! consider making trustee-sigs only need to cover the otherRedeemerData
     //       new this.configuredContract.types.Redeemer.authorizeByCharter(otherRedeemerData, otherSignatures);
     // mkAuthorizeByCharterRedeemer(otherRedeemerData: UplcData, otherSignatures: Signature[]) {
-    @redeem
-    usingAuthority() {
-        const t = new this.configuredContract.types.Redeemer.usingAuthority();
-
-        return t._toUplcData();
-    }
 
     get charterTokenAsValue() {
         return this.minter!.charterTokenAsValue
     }
 
-    @partialTxn
+    @partialTxn  // non-activity partial
     async txnMustUseCharterUtxo(
         tcx: StellarTxnContext,
         newDatum?: InlineDatum
@@ -120,7 +95,7 @@ export class SampleTreasury extends Capo {
 
     modifiedCharterDatum() {}
 
-    @partialTxn
+    @partialTxn  // non-activity partial
     txnKeepCharterToken(tcx: StellarTxnContext, datum: InlineDatum) {
         
         tcx.addOutput(
@@ -147,7 +122,7 @@ export class SampleTreasury extends Capo {
 
             // debugger
             tcx.addInput(seedUtxo).addOutputs(outputs);
-            return this.minter!.txnAddCharterInit(
+            return this.minter!.txnMintingCharterToken(
                 tcx,
                 this.address
             );

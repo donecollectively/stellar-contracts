@@ -10,11 +10,13 @@ import {
     Assets,
     Crypto,
     UTxO,
+    ByteArray,
+    ByteArrayData,
 } from "@hyperionbt/helios";
 import {
+    Activity,
     StellarContract,
     partialTxn,
-    redeem,
     tokenNamesOrValuesEntry,
     valuesEntry,
 } from "../lib/StellarContract.js";
@@ -22,61 +24,69 @@ import {
 //@ts-expect-error
 import contract from "./DefaultMinter.hl";
 import { StellarTxnContext } from "../lib/StellarTxnContext.js";
-import { MintCharterRedeemerArgs, MintUUTRedeemerArgs, MinterBaseMethods } from "../lib/Capo.js";
+import {
+    MintCharterRedeemerArgs,
+    MintUUTRedeemerArgs,
+    MinterBaseMethods,
+} from "../lib/Capo.js";
 
 export type SeedTxnParams = {
     seedTxn: TxId;
     seedIndex: bigint;
 };
 
-
-export class DefaultMinter 
-extends StellarContract<SeedTxnParams> 
-implements MinterBaseMethods {
+export class DefaultMinter
+    extends StellarContract<SeedTxnParams>
+    implements MinterBaseMethods
+{
     contractSource() {
         return contract;
     }
 
-    async txnCreateUUT(tcx: StellarTxnContext, uutPurpose: string): Promise<Value> {
+    @Activity.txnPartial
+    async txnCreatingUUT(
+        tcx: StellarTxnContext,
+        uutPurpose: string
+    ): Promise<Value> {
         //!!! make it big enough to serve minUtxo for the new UUT
         const uutSeed = this.mkValuePredicate(BigInt(42_000), tcx);
 
-        return this.mustFindActorUtxo(`for-uut-${uutPurpose}`, uutSeed, tcx).then(
-            async (freeSeedUtxo) => {
-                tcx.addInput(freeSeedUtxo);
-                const {txId, utxoIdx} = freeSeedUtxo
-                const {encodeBech32, blake2b} = Crypto;
+        return this.mustFindActorUtxo(
+            `for-uut-${uutPurpose}`,
+            uutSeed,
+            tcx
+        ).then(async (freeSeedUtxo) => {
+            tcx.addInput(freeSeedUtxo);
+            const { txId, utxoIdx } = freeSeedUtxo;
+            const { encodeBech32, blake2b, encodeBase32 } = Crypto;
 
-                const assetName = encodeBech32(`${uutPurpose}.`, blake2b(txId.bytes.concat(
-                    [ "@".charCodeAt(0), utxoIdx ]
-                ),8))
-                console.log("--------------", {assetName});
-                await new Promise(res => {setTimeout(res, 1000)})
-                debugger
-                const vEnt = this.mkValuesEntry(uutPurpose, BigInt(1));
+            const assetName = `${uutPurpose}.${encodeBase32(
+                blake2b(txId.bytes.concat(["@".charCodeAt(0), utxoIdx]), 6)
+            )}`;
+            const vEntries = this.mkUUTValuesEntries(assetName);
 
-                const {
-                    txId: seedTxn,
-                    utxoIdx: seedIndex
-                } = freeSeedUtxo;
+            const { txId: seedTxn, utxoIdx: seedIndex } = freeSeedUtxo;
 
-                tcx.mintTokens(
-                    this.mintingPolicyHash!,
-                    [vEnt],
-                    this.mintingUUT({ 
-                        seedTxn, 
-                        seedIndex,
-                        assetName
-                    })
-                );
-                
-                const v =  new Value(undefined, new Assets([ 
-                    [ this.mintingPolicyHash!, [vEnt]  ]
-                ]))
+            tcx.attachScript(this.compiledContract).mintTokens(
+                this.mintingPolicyHash!,
+                vEntries,
+                this.mintingUUT({
+                    seedTxn,
+                    seedIndex,
+                    assetName,
+                })
+            );
 
-                return v;
-            }
-        );
+            const v = new Value(
+                undefined,
+                new Assets([[this.mintingPolicyHash!, vEntries]])
+            );
+
+            return v;
+        });
+    }
+    mkUUTValuesEntries(assetName) {
+        return [this.mkValuesEntry(assetName, BigInt(1))];
     }
 
     //! overrides base getter type with undefined not being allowed
@@ -84,7 +94,7 @@ implements MinterBaseMethods {
         return super.mintingPolicyHash!;
     }
 
-    @redeem
+    @Activity.redeemer
     protected mintingCharterToken({ owner }: MintCharterRedeemerArgs) {
         // debugger
         const t =
@@ -95,14 +105,18 @@ implements MinterBaseMethods {
         return t._toUplcData();
     }
 
-    @redeem
-    protected mintingUUT({ seedTxn, seedIndex: sIdx, assetName }: MintUUTRedeemerArgs) {
+    @Activity.redeemer
+    protected mintingUUT({
+        seedTxn,
+        seedIndex: sIdx,
+        assetName,
+    }: MintUUTRedeemerArgs) {
         // debugger
-        const seedIndex = BigInt(sIdx)
+        const seedIndex = BigInt(sIdx);
         const t = new this.configuredContract.types.Redeemer.mintingUUT(
             seedTxn,
             seedIndex,
-            assetName
+            ByteArrayData.fromString(assetName).bytes
         );
 
         return t._toUplcData();
@@ -119,23 +133,22 @@ implements MinterBaseMethods {
             this.ADA(1.7),
             new Assets([[mintingPolicyHash, [this.charterTokenAsValuesEntry]]])
         );
-        return v
+        return v;
     }
 
-    @partialTxn
-    async txnAddCharterInit(
+    @Activity.partialTxn
+    async txnMintingCharterToken(
         tcx: StellarTxnContext,
-        owner: Address,
+        owner: Address
     ): Promise<StellarTxnContext> {
-        const tVal = this.charterTokenAsValuesEntry
+        const tVal = this.charterTokenAsValuesEntry;
 
         return tcx
             .mintTokens(
                 this.mintingPolicyHash!,
                 [tVal],
-                this.mintingCharterToken({ owner  })
+                this.mintingCharterToken({ owner })
             )
             .attachScript(this.compiledContract);
     }
-
 }

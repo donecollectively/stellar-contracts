@@ -1,18 +1,29 @@
 import { seedUtxoParams } from "../../lib/Capo.js";
-import { stellarSubclass, txn } from "../../lib/StellarContract.js";
+import { Activity, stellarSubclass, txn } from "../../lib/StellarContract.js";
 import { StellarTxnContext } from "../../lib/StellarTxnContext.js";
 import { CustomMinter } from "../CustomMinter.js";
 import { SampleTreasury, chTok } from "./SampleTreasury.js";
 
+import contract from "./CustomTreasury.hl";
 
 export class CustomTreasury extends SampleTreasury {
-    //! uses same main code as SampleTreasury
-    //! points to a different minter class, which has a different minter contract-script
+    contractSource() {
+        return contract;
+    }
 
     get minterClass(): stellarSubclass<CustomMinter, seedUtxoParams> {
         return CustomMinter;
     }
     minter!: CustomMinter
+
+    @Activity.redeemer
+    mintingToken(tokenName: string) {
+        const t = new this.configuredContract.types.Redeemer.mintingToken(
+            tokenName
+        );
+
+        return t._toUplcData();
+    }
 
     @txn
     async mkTxnMintNamedToken(

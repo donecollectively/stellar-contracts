@@ -11,9 +11,9 @@ import {
     Crypto,
 } from "@hyperionbt/helios";
 import {
+    Activity,
     StellarContract,
     partialTxn,
-    redeem,
     tokenNamesOrValuesEntry,
     valuesEntry,
 } from "../lib/StellarContract.js";
@@ -37,7 +37,7 @@ implements MinterBaseMethods {
         return contract;
     }
 
-    @redeem
+    @Activity.redeemer
     protected mintingNamedToken(v : Value) {
         const t =
             new this.configuredContract.types.Redeemer.mintingNamedToken(v);
@@ -57,7 +57,7 @@ implements MinterBaseMethods {
         tokenNamesAndCounts: tokenNamesOrValuesEntry[]
     ): Promise<StellarTxnContext>;
 
-    @partialTxn
+    @Activity.partialTxn
     async txnMintingNamedToken(
         tcx: StellarTxnContext,
         tokenNameOrPairs: string | tokenNamesOrValuesEntry[],

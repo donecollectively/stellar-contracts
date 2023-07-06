@@ -46,26 +46,38 @@ export type TxInput = Tx["body"]["inputs"][0];
 export type tokenNamesOrValuesEntry = [string | number[], bigint];
 export type valuesEntry = [number[], bigint];
 
-export function redeem(proto, thingName, descriptor) {
+export const Activity = {
+    partialTxn(proto, thingName, descriptor) {
+        needsActiveVerb(thingName)
+        return partialTxn(proto, thingName, descriptor);
+    },
+    redeemer(proto, thingName, descriptor) {
+        needsActiveVerb(thingName, !!"okwhatever")
+        return Activity.redeemerData(proto, thingName, descriptor);
+    },
+    redeemerData(proto, thingName, descriptor) {
+        //!!! todo: registry and cross-checking for missing redeeming methods
+    
+        //!!! todo: develop more patterns of "redeemer uses an input of a certain mph/value"
+        return descriptor;
+    }    
+};
+
+function needsActiveVerb(thingName : string, okWorkaround? : boolean) {
     if (!thingName.match(/ing/)) {
+        const orWorkaround = okWorkaround  && "(or work around with @Activity.redeemerData instead)";
         throw new Error(
-            `@redeem factory: ${thingName}: name should have 'ing' in it (or work around with @redeemerData instead)`
+            `Activity: ${thingName}: name should have 'ing' in it ${orWorkaround}`
         );
     }
     if (thingName.match(/^ing/)) {
         throw new Error(
-            `@redeem factory: ${thingName}: name shouldn't start with 'ing'`
+            `Activity: ${thingName}: name shouldn't start with 'ing'`
         );
     }
-    return redeemerData(proto, thingName, descriptor);
+
 }
 
-export function redeemerData(proto, thingName, descriptor) {
-    //!!! todo: registry and cross-checking for missing redeeming methods
-
-    //!!! todo: develop more patterns of "redeemer uses an input of a certain mph/value"
-    return descriptor;
-}
 
 export function datum(proto, thingName, descriptor) {
     // console.log("+datum", proto.constructor.name, thingName || "none", descriptor.value.name )
@@ -426,13 +438,13 @@ export class StellarContract<
         this.network = network;
         this.networkParams = networkParams;
         this.paramsIn = params;
-
-        this.contractParams = this.getContractParams(params);
         if (myActor) this.myActor = myActor;
 
-        const configured = (this.configuredContract = this.contractTemplate());
+        this.contractParams = this.getContractParams(params);
 
-        configured.parameters = this.contractParams;
+        const configured = (this.configuredContract = this.contractTemplate());
+        this.configuredContract.parameters = this.contractParams;
+
         const simplify = !isTest;
         // const t = new Date().getTime();
         this.compiledContract = configured.compile(simplify);
@@ -472,6 +484,7 @@ export class StellarContract<
     get identity() {
         if ("minting" == this.purpose) {
             const b32 = this.compiledContract.mintingPolicyHash.toBech32();
+            //!!! todo: verify bech32 checksum isn't messed up by this:
             return b32.replace(/^asset/, "mph");
         }
 
@@ -800,8 +813,6 @@ export class StellarContract<
 
     async findAnySpareUtxos(tcx: StellarTxnContext): Promise<UTxO[] | never> {
         if (!this.myActor) throw this.missingActorError;
-
-        //!!! todo: skips utxos already in the tcx.inputs
 
         const toSortInfo = this._mkUtxoSortInfo(this.ADA(2), this.ADA(10));
         const notReserved = tcx

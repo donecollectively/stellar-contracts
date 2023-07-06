@@ -17,6 +17,10 @@ enum Redeemer {
         minSigs: Int
     }
     usingAuthority
+    mintingToken {
+        tokenName: String
+    }
+        
 }
 
 func didSign(ctx : ScriptContext, a: Address) -> Bool {
@@ -155,9 +159,13 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
             requiresAuthorization(ctx, datum) &&
             requiresProofOfNewTrustees(ctx, newDatum)
         },
-        // authorizeByCharter{otherRedeemerData, otherSignatures} => {            
-        //     false // todo support authorizing **other** things to be done with this token
-        // },
+        mintingToken{tokenName} => {
+            //! guards from optimizing mph out of the program, screwing up parameterization
+            assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
+            tokenName == tokenName  &&
+            notUpdatingCharter &&
+            requiresAuthorization(ctx, datum)
+        },
         usingAuthority => {
             assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
 

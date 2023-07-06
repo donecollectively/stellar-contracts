@@ -59,8 +59,16 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
             expectedMint : Map[ByteArray]Int = value.get_policy(mph);
             actualMint : Map[ByteArray]Int = value_minted.get_policy(mph);
 
-            hasSeedUtxo(tx, sTxId, sIdx) &&
-            expectedMint == actualMint
+            // print("redeemer" + sTxId.show() + " " + sIdx.show() + " asset " + assetName.show());
+            // expectedMint.for_each( (b : ByteArray, i: Int) -> {
+            //     print( "expected: " + b.show() + " " + i.show() )
+            // });
+            // actualMint.for_each( (b : ByteArray, i: Int) -> {
+            //     print( "actual: " + b.show() + " " + i.show() )
+            // });
+            
+            assert(expectedMint == actualMint, "bad UUT mint has mismatch");
+            hasSeedUtxo(tx, sTxId, sIdx)
         },
         _ => true
     };
