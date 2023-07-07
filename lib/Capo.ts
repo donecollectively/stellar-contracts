@@ -48,28 +48,41 @@ export interface MinterBaseMethods extends hasUUTCreator {
         tVal: valuesEntry
     ): Promise<StellarTxnContext>;
 }
+
+export type anyDatumArgs = Record<string, any>;
+
 export abstract class Capo<
         minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter
     >
     extends StellarContract<SeedTxnParams>
     implements hasUUTCreator
 {
-    constructor(args: StellarConstructorArgs<StellarContract<SeedTxnParams>,SeedTxnParams>) {
+    constructor(
+        args: StellarConstructorArgs<
+            StellarContract<SeedTxnParams>,
+            SeedTxnParams
+        >
+    ) {
         super(args);
 
-        const {Datum, Redeemer} = this.configuredContract.types
+        const { Datum, Redeemer } = this.configuredContract.types;
 
-        const {CharterToken} = Datum;
-        const {
-            updatingCharter,
-            usingAuthority
-        } = Redeemer;
+        const { CharterToken } = Datum;
+        const { updatingCharter, usingAuthority } = Redeemer;
 
-        if (!CharterToken) throw new Error("Datum must have a 'CharterToken' variant")
-        if (!updatingCharter) throw new Error("Redeemer must have a 'updatingCharter' variant")
-        if (!usingAuthority) throw new Error("Redeemer must have a 'usingAuthority' variant")
+        if (!CharterToken)
+            throw new Error("Datum must have a 'CharterToken' variant");
+        if (!updatingCharter)
+            throw new Error("Redeemer must have a 'updatingCharter' variant");
+        if (!usingAuthority)
+            throw new Error("Redeemer must have a 'usingAuthority' variant");
     }
-    abstract contractSource() : string;
+    abstract contractSource(): string;
+
+    abstract mkTxnMintCharterToken(
+        args: anyDatumArgs,
+        tcx?: StellarTxnContext
+    ): Promise<StellarTxnContext | never>;
 
     get minterClass(): stellarSubclass<DefaultMinter, seedUtxoParams> {
         return DefaultMinter;
@@ -78,16 +91,21 @@ export abstract class Capo<
     minter?: minterType;
 
     @Activity.partialTxn
-    async txnCreatingUUT(tcx: StellarTxnContext, uutPurpose: string): Promise<Value> {
+    async txnCreatingUUT(
+        tcx: StellarTxnContext,
+        uutPurpose: string
+    ): Promise<Value> {
         return this.minter!.txnCreatingUUT(tcx, uutPurpose);
     }
 
     @Activity.redeemer
     protected usingAuthority() {
-        const r = this.configuredContract.types.Redeemer
-        const {usingAuthority} = r;
+        const r = this.configuredContract.types.Redeemer;
+        const { usingAuthority } = r;
         if (!usingAuthority) {
-            throw new Error(`invalid contract without a usingAuthority redeemer`)
+            throw new Error(
+                `invalid contract without a usingAuthority redeemer`
+            );
         }
 
         const t = new usingAuthority();
@@ -111,7 +129,6 @@ export abstract class Capo<
         return t._toUplcData();
     }
 
-
     //! it can provide minter-targeted params through getMinterParams()
     getMinterParams() {
         return this.paramsIn;
@@ -131,18 +148,27 @@ export abstract class Capo<
         return minter.mintingPolicyHash!;
     }
 
-    connectMintingScript(
-        params: SeedTxnParams
-    ): minterType {
+    get mintingPolicyHash() {
+        return this.mph;
+    }
+
+    connectMintingScript(params: SeedTxnParams): minterType {
         if (this.minter) return this.minter;
         const { minterClass } = this;
         const { seedTxn, seedIndex } = this.paramsIn;
 
         const minter = this.addScriptWithParams(minterClass, params);
-        const {mintingCharterToken, mintingUUT} = minter.configuredContract.types.Redeemer;
-        if (!mintingCharterToken) throw new Error(`minting script doesn't offer required 'mintingCharterToken' activity-redeemer`);
-        if (!mintingUUT) throw new Error(`minting script doesn't offer required 'mintingCharterToken' activity-redeemer`);
-        
+        const { mintingCharterToken, mintingUUT } =
+            minter.configuredContract.types.Redeemer;
+        if (!mintingCharterToken)
+            throw new Error(
+                `minting script doesn't offer required 'mintingCharterToken' activity-redeemer`
+            );
+        if (!mintingUUT)
+            throw new Error(
+                `minting script doesn't offer required 'mintingCharterToken' activity-redeemer`
+            );
+
         //@ts-expect-error - can't seem to indicate to typescript that minter's type can be relied on to be enough
         return (this.minter = minter);
     }
@@ -184,7 +210,8 @@ export abstract class Capo<
                 ],
             },
             "can create unique utility tokens": {
-                purpose: "so the contract can use UUTs for scoped-authority semantics",
+                purpose:
+                    "so the contract can use UUTs for scoped-authority semantics",
                 details: [
                     "Building a txn with a UUT involves using the txnCreatingUUT partial-helper on the Capo.",
                     "That UUT (a Value) is returned, and then should be added to a TxOutput.",
@@ -193,9 +220,9 @@ export abstract class Capo<
                     "   ... so that token-names stay short-ish.",
                     "The uniqueness level can be iterated in future as needed.",
                     "The UUT's token-name combines its textual purpose with a short hash ",
-                    "   ... of the seed UTxO, formatted with bech32"
-                ]
-            }
+                    "   ... of the seed UTxO, formatted with bech32",
+                ],
+            },
         };
     }
 }

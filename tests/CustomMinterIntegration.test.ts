@@ -5,157 +5,42 @@ import {
     beforeEach,
     vi,
 } from "vitest";
-import {
-    CharterDatumArgs,
-    chTok,
-} from "../src/examples/SampleTreasury";
-import {CustomTreasury} from "../src/examples/CustomTreasury";
 
-// import {
-//     Address,
-//     Assets,
-//     ByteArrayData,
-//     ConstrData,
-//     Datum,
-//     hexToBytes,
-//     IntData,
-//     ListData,
-//     NetworkEmulator,
-//     NetworkParams,
-//     Program,
-//     Tx,
-//     TxOutput,
-//     Value,
-// } from "@hyperionbt/helios";
+import { Address, TxId, TxOutput } from "@hyperionbt/helios";
 
+import { CustomTreasury } from "../src/examples/CustomTreasury";
+import { StellarTxnContext } from "../lib/StellarTxnContext";
 import {
     ADA,
-    HeliosTestingContext,
-    HelperFunctions,
+    StellarTestContext,
     addTestContext,
-    mkContext,
-} from "./HeliosTestingContext.js";
-import {
-    Address,
-    Datum,
-    Signature,
-    Tx,
-    TxOutput,
-    Value,
-} from "@hyperionbt/helios";
-import {
-    canHaveToken,
-    findInputsInWallets,
-    utxosAsString,
-} from "../lib/StellarContract";
-import { StellarTxnContext } from "../lib/StellarTxnContext";
-import { UTxO } from "@hyperionbt/helios";
-import { MintingPolicyHash } from "@hyperionbt/helios";
-import { ValueProps } from "@hyperionbt/helios";
-import { seedUtxoParams } from "../lib/Capo";
+    StellarCapoTestHelper,
+} from "./StellarTestHelper";
 
-interface localTC
-    extends HeliosTestingContext<CustomTreasury, typeof CCTHelpers, seedUtxoParams> {}
+type localTC = StellarTestContext<CustomTreasuryTestHelper>;
 
 const it = itWithContext<localTC>;
-const fit = it.only;
-const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTestingContext>
+const fit = itWithContext.only;
+//!!! todo: update this when vitest can have skip<HeliosTestingContext>
 //!!! until then, we need to use if(0) it(...) : (
 // ... or something we make up that's nicer
+const xit = it.skip;
 
 const describe = descrWithContext<localTC>;
 
 const minAda = 2n * ADA; // minimum needed to send an NFT
-type hasHelpers = HelperFunctions<CustomTreasury>;
-const CCTHelpers: hasHelpers = {
-    async mkSeedUtxo(this: localTC, seedIndex = 0) {
-        const {
-            actors: { tina },
-            network,
-            h,
-        } = this;
 
-        const tx = new Tx();
-        const tinaMoney = await tina.utxos;
-        console.log("tina has money: \n" + utxosAsString(tinaMoney));
-
-        tx.addInput(
-            await findInputsInWallets(
-                new Value(30n * ADA),
-                { wallets: [tina] },
-                network
-            )
-        );
-
-        tx.addOutput(new TxOutput(tina.address, new Value(10n * ADA)));
-        tx.addOutput(new TxOutput(tina.address, new Value(10n * ADA)));
-        // console.log("s3", new Error("stack").stack)
-
-        const txId = await this.submitTx(tx, "force");
-
-        return txId;
-    },
-
-    async setup(
-        this: localTC,
-        { randomSeed = 42, seedTxn, seedIndex = 0 } = {}
-    ) {
-        if (this.strella && this.randomSeed == randomSeed) return this.strella;
-
-        if (!seedTxn) {
-            seedTxn = await this.h.mkSeedUtxo();
-        }
-        this.randomSeed = randomSeed;
-        this.myActor = this.actors.tina;
-        const treasury = await this.instantiateWithParams({
-            seedTxn,
-            seedIndex,
-        });
-        const { address, mph } = treasury;
-
-        console.log(
-            "treasury",
-            address.toBech32().substring(0, 18) + "…",
-            "vHash 📜 " +
-                treasury.compiledContract.validatorHash.hex.substring(0, 12) +
-                "…",
-            "mph 🏦 " + mph?.hex.substring(0, 12) + "…"
-        );
-
-        return treasury;
-    },
-
-    async mintCharterToken(
-        this: localTC,
-        args?: CharterDatumArgs
-    ): Promise<StellarTxnContext> {
-        const { delay } = this;
-        const { tina, tom, tracy } = this.actors;
-        if (this.state.mintedCharterToken) {
-            console.warn(
-                "reusing  minted charter from existing testing-context"
-            );
-            return this.state.mintedCharterToken;
-        }
-
-        await this.h.setup();
-        const treasury = this.strella!;
-        args = args || {
-            trustees: [tina.address, tom.address, tracy.address],
-            minSigs: 2,
-        };
-        const tcx = await treasury.mkTxnMintCharterToken(args);
-        expect(treasury.network).toBe(this.network);
-
-        await treasury.submit(tcx);
-        console.log("charter token minted");
-
-        this.network.tick(1n);
-        return (this.state.mintedCharterToken = tcx);
-    },
-
+class CustomTreasuryTestHelper extends StellarCapoTestHelper<CustomTreasury> {
+    get stellarClass() {
+        return CustomTreasury;
+    }
+    setupActors() {
+        this.addActor("tina", 1100n * ADA);
+        this.addActor("tracy", 13n * ADA);
+        this.addActor("tom", 120n * ADA);
+        this.currentActor = "tina";
+    }
     async mintNamedToken(
-        this: localTC,
         tokenName: string,
         count: bigint,
         destination: Address
@@ -163,7 +48,7 @@ const CCTHelpers: hasHelpers = {
         const { delay } = this;
         const { tina, tom, tracy } = this.actors;
 
-        await this.h.mintCharterToken();
+        await this.mintCharterToken();
         const treasury = this.strella!;
 
         const tcx = await treasury.mkTxnMintNamedToken(tokenName, count);
@@ -181,23 +66,22 @@ const CCTHelpers: hasHelpers = {
 
             return tcx;
         });
-    },
+    }
 
-    async mkCharterSpendTx(this: localTC): Promise<StellarTxnContext> {
-        await this.h.mintCharterToken();
+    async mkCharterSpendTx(): Promise<StellarTxnContext> {
+        await this.mintCharterToken();
 
         const treasury = this.strella!;
         const tcx: StellarTxnContext = new StellarTxnContext();
 
         return treasury.txnAddAuthority(tcx);
-    },
+    }
 
     async updateCharter(
-        this: localTC,
         trustees: Address[],
         minSigs: bigint
     ): Promise<StellarTxnContext> {
-        await this.h.mintCharterToken();
+        await this.mintCharterToken();
         const treasury = this.strella!;
 
         const { signers } = this.state;
@@ -207,26 +91,21 @@ const CCTHelpers: hasHelpers = {
             this.network.tick(1n);
             return tcx;
         });
-    },
-};
+    }
+}
 
 describe("StellarContract", async () => {
     beforeEach<localTC>(async (context) => {
-        await addTestContext(context, CustomTreasury, CCTHelpers);
-
-        context.addActor("tracy", 13n * ADA);
-        context.addActor("tina", 1100n * ADA);
-        context.addActor("tom", 120n * ADA);
+        return addTestContext(context, CustomTreasuryTestHelper);
     });
 
     describe("Integration tests: custom Capo, custom minter", () => {
-
         describe("can mint other tokens, on the authority of the charter token", () => {
             it("can build transactions that mint non-'charter' tokens", async (context: localTC) => {
-                const { h, network, actors, delay, state } = context;
+                const {h, h: { network, actors, delay, state }} = context;
 
                 await h.setup();
-                const treasury = context.strella!;
+                const treasury = context.h.strella;
 
                 const tokenName = "fooToken";
                 const hasNamedToken = treasury.mkTokenPredicate(
@@ -252,7 +131,10 @@ describe("StellarContract", async () => {
             });
 
             it.skip("requires the charter-token to be spent as proof of authority", async (context: localTC) => {
-                const { h, network, actors, delay, state } = context;
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
 
                 await h.setup();
                 const treasury = context.strella!;
@@ -294,7 +176,10 @@ describe("StellarContract", async () => {
             });
 
             it("fails if the charter-token is not returned to the treasury", async (context: localTC) => {
-                const { h, network, actors, delay, state } = context;
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
 
                 await h.setup();
                 const treasury = context.strella!;
@@ -329,11 +214,14 @@ describe("StellarContract", async () => {
             });
 
             it("fails if the charter-token changes the charter parameters", async (context: localTC) => {
-                const { h, network, actors, delay, state } = context;
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
                 const { tina, tom, tracy } = actors;
 
                 await h.setup();
-                const treasury = context.strella!;
+                const treasury = context.strella;
                 const tokenName = "fooToken";
 
                 let targetTrustees = [tom.address, tracy.address, tina.address];

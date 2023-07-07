@@ -43,7 +43,7 @@ export class DefaultMinter
         return contract;
     }
 
-    @Activity.txnPartial
+    @Activity.partialTxn
     async txnCreatingUUT(
         tcx: StellarTxnContext,
         uutPurpose: string
