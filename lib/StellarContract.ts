@@ -855,6 +855,7 @@ export class StellarContract<
             }
             for (const s of willSign) {
                 const [a] = await s.usedAddresses;
+                if (tx.body.signers.find(s => a.pubKeyHash.hex === s.hex)) continue;
                 tx.addSigner(a.pubKeyHash);
             }
             try {

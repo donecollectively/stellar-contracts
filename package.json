@@ -1,6 +1,6 @@
 {
   "name": "@donecollectively/stellar-contracts",
-  "version": "0.1",
+  "version": "0.6",
   "description": "Smart contract fusion for Cardano",
   "main": "tbd.ts",
   "type": "module",
@@ -14,7 +14,7 @@
   "author": "Done Collectively",
   "license": "none",
   "dependencies": {
-    "@hyperionbt/helios": "^0.14.2",
+    "@hyperionbt/helios": "^0.14.4",
     "@rollup/pluginutils": "^5.0.2",
     "@types/node": "^20.2.5",
     "@vitest/browser": "^0.31.4",
