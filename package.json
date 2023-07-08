@@ -12,7 +12,7 @@
     "test:run": "vitest run"
   },
   "author": "Done Collectively",
-  "license": "none",
+  "license": "Cardano Community Source License",
   "dependencies": {
     "@hyperionbt/helios": "^0.14.4",
     "@rollup/pluginutils": "^5.0.2",
