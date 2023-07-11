@@ -15,7 +15,7 @@ import {
     StellarTestContext,
     addTestContext,
     StellarCapoTestHelper,
-} from "./StellarTestHelper";
+} from "../lib/StellarTestHelper";
 
 type localTC = StellarTestContext<CustomTreasuryTestHelper>;
 

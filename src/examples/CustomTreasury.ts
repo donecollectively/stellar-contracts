@@ -2,7 +2,7 @@ import { seedUtxoParams } from "../../lib/Capo.js";
 import { Activity, stellarSubclass, txn } from "../../lib/StellarContract.js";
 import { StellarTxnContext } from "../../lib/StellarTxnContext.js";
 import { CustomMinter } from "../CustomMinter.js";
-import { SampleTreasury, chTok } from "./SampleTreasury.js";
+import { SampleTreasury } from "./SampleTreasury.js";
 
 import contract from "./CustomTreasury.hl";
 
@@ -14,7 +14,7 @@ export class CustomTreasury extends SampleTreasury {
     get minterClass(): stellarSubclass<CustomMinter, seedUtxoParams> {
         return CustomMinter;
     }
-    minter!: CustomMinter
+    declare minter: CustomMinter
 
     @Activity.redeemer
     mintingToken(tokenName: string) {
@@ -31,9 +31,10 @@ export class CustomTreasury extends SampleTreasury {
         count: bigint,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext> {
+        console.log("minting named token ")
         return this.txnMustUseCharterUtxo(tcx).then(async (charterToken) => {
             tcx.addInput(
-                charterToken[chTok],
+                charterToken,
                 this.mintingToken(tokenName)
             ).attachScript(this.compiledContract);
 

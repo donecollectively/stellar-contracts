@@ -39,11 +39,6 @@ export type HeldAssetsArgs = {
     purpose?: string;
 };
 
-export const chTok = Symbol("charterToken");
-export type CharterTokenUTxO = {
-    [chTok]: UTxO;
-};
-
 export class SampleTreasury extends Capo {
     contractSource() {
         return contract;
@@ -70,46 +65,14 @@ export class SampleTreasury extends Capo {
     //       new this.configuredContract.types.Redeemer.authorizeByCharter(otherRedeemerData, otherSignatures);
     // mkAuthorizeByCharterRedeemer(otherRedeemerData: UplcData, otherSignatures: Signature[]) {
 
-    get charterTokenAsValue() {
-        return this.minter!.charterTokenAsValue
-    }
 
-    @partialTxn  // non-activity partial
-    async txnMustUseCharterUtxo(
-        tcx: StellarTxnContext,
-        newDatum?: InlineDatum
-    ): Promise<CharterTokenUTxO | never> {
-        const ctVal = this.charterTokenAsValue;
-        const predicate = this.mkTokenPredicate(ctVal)
-        return this.mustFindMyUtxo(
-            "charter", predicate,
-            "has it been minted?"
-        ).then((ctUtxo: UTxO) => {
-            const charterToken = { [chTok]: ctUtxo };
-            const datum = newDatum || (ctUtxo.origOutput.datum as InlineDatum);
-
-            this.txnKeepCharterToken(tcx, datum);
-            return charterToken;
-        });
-    }
-
-    modifiedCharterDatum() {}
-
-    @partialTxn  // non-activity partial
-    txnKeepCharterToken(tcx: StellarTxnContext, datum: InlineDatum) {
-        
-        tcx.addOutput(
-            new TxOutput(this.address, this.charterTokenAsValue, datum)
-        );
-
-        return tcx;
-    }
 
     @txn
     async mkTxnMintCharterToken(
         { trustees, minSigs }: CharterDatumArgs,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
+        console.log("minting charter token", this.paramsIn)
         return this.mustGetContractSeedUtxo().then((seedUtxo) => {
             const v = this.charterTokenAsValue;
             // this.charterTokenDatum
@@ -140,20 +103,11 @@ export class SampleTreasury extends Capo {
             this.mkDatumCharterToken({ trustees, minSigs })
         ).then(async (charterToken) => {
             tcx.addInput(
-                charterToken[chTok],
+                charterToken,
                 this.updatingCharter({ trustees, minSigs })
             ).attachScript(this.compiledContract);
 
             return tcx;
-        });
-    }
-
-    @partialTxn
-    async txnAddAuthority(tcx: StellarTxnContext) {
-        return this.txnMustUseCharterUtxo(tcx).then(async (charterToken) => {
-            return tcx
-                .addInput(charterToken[chTok], this.usingAuthority())
-                .attachScript(this.compiledContract);
         });
     }
 

@@ -25,11 +25,11 @@ import {
     stellarSubclass,
     txAsString,
     utxosAsString,
-} from "../lib/StellarContract";
-import { Capo, anyDatumArgs } from "../lib/Capo";
-import { SeedTxnParams } from "../src/DefaultMinter";
-import { CharterDatumArgs } from "../src/examples/SampleTreasury";
-import { StellarTxnContext } from "../lib/StellarTxnContext";
+} from "./StellarContract.js";
+import { Capo, anyDatumArgs } from "./Capo.js";
+import { SeedTxnParams } from "../src/DefaultMinter.js";
+import { CharterDatumArgs } from "../src/examples/SampleTreasury.js";
+import { StellarTxnContext } from "./StellarTxnContext.js";
 
 const preProdParams = JSON.parse(
     await fs.readFile("./src/preprod.json", "utf8")
@@ -128,13 +128,15 @@ export abstract class StellarTestHelper<
     state: Record<string, any>;
     abstract get stellarClass(): stellarSubclass<SC, any>;
     defaultActor?: string;
-    strella: SC;
+    strella!: SC;
     actors: actorMap;
     optimize = false;
     liveSlotParams: NetworkParams;
     networkParams: NetworkParams;
     network: NetworkEmulator;
     private actorName: string;
+
+    //@ts-ignore type mismatch in getter/setter until ts v5
     get currentActor(): WalletEmulator {
         return this.actors[this.actorName];
     }
@@ -148,7 +150,7 @@ export abstract class StellarTestHelper<
 
     address?: Address;
 
-    setupPending: Promise<any>;
+    setupPending?: Promise<any>;
     setupActors() {
         console.warn(
             `using 'hiro' as default actor because ${this.constructor.name} doesn't define setupActors()`
@@ -165,6 +167,7 @@ export abstract class StellarTestHelper<
         this.networkParams = new NetworkParams(preProdParams);
 
         this.actors = {};
+        this.actorName = ""; //only to make typescript happy
         this.setupActors();
         if (!this.actorName)
             throw new Error(

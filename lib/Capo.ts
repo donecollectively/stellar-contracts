@@ -3,6 +3,7 @@ import {
     Datum,
     MintingPolicyHash,
     TxId,
+    TxOutput,
     UTxO,
     Value,
 } from "@hyperionbt/helios";
@@ -14,6 +15,7 @@ import {
     StellarContract,
     datum,
     paramsBase,
+    partialTxn,
     stellarSubclass,
     valuesEntry,
 } from "./StellarContract.js";
@@ -78,6 +80,11 @@ export abstract class Capo<
             throw new Error("Redeemer must have a 'usingAuthority' variant");
     }
     abstract contractSource(): string;
+    abstract mkDatumCharterToken(args: anyDatumArgs) : InlineDatum;
+    // abstract txnMustUseCharterUtxo(
+    //     tcx: StellarTxnContext,
+    //     newDatum?: InlineDatum
+    // ): Promise<UTxO | never>;
 
     abstract mkTxnMintCharterToken(
         args: anyDatumArgs,
@@ -107,7 +114,6 @@ export abstract class Capo<
                 `invalid contract without a usingAuthority redeemer`
             );
         }
-
         const t = new usingAuthority();
 
         return t._toUplcData();
@@ -128,6 +134,48 @@ export abstract class Capo<
 
         return t._toUplcData();
     }
+
+    get charterTokenAsValue() {
+        return this.minter!.charterTokenAsValue
+    }
+
+    @partialTxn  // non-activity partial
+    async txnMustUseCharterUtxo(
+        tcx: StellarTxnContext,
+        newDatum?: InlineDatum
+    ): Promise<UTxO | never> {
+        const ctVal = this.charterTokenAsValue;
+        const predicate = this.mkTokenPredicate(ctVal)
+        return this.mustFindMyUtxo(
+            "charter", predicate,
+            "has it been minted?"
+        ).then((ctUtxo: UTxO) => {
+            const datum = newDatum || (ctUtxo.origOutput.datum as InlineDatum);
+
+            this.txnKeepCharterToken(tcx, datum);
+            return ctUtxo;
+        });
+    }
+
+    @partialTxn  // non-activity partial
+    txnKeepCharterToken(tcx: StellarTxnContext, datum: InlineDatum) {
+        
+        tcx.addOutput(
+            new TxOutput(this.address, this.charterTokenAsValue, datum)
+        );
+
+        return tcx;
+    }
+    
+    @partialTxn
+    async txnAddAuthority(tcx: StellarTxnContext) {
+        return this.txnMustUseCharterUtxo(tcx).then(async (charterToken) => {
+            return tcx
+                .addInput(charterToken, this.usingAuthority())
+                .attachScript(this.compiledContract);
+        });
+    }
+
 
     //! it can provide minter-targeted params through getMinterParams()
     getMinterParams() {
@@ -169,7 +217,7 @@ export abstract class Capo<
                 `minting script doesn't offer required 'mintingCharterToken' activity-redeemer`
             );
 
-        //@ts-expect-error - can't seem to indicate to typescript that minter's type can be relied on to be enough
+        //@ts-ignore-error - can't seem to indicate to typescript that minter's type can be relied on to be enough
         return (this.minter = minter);
     }
 
@@ -178,7 +226,7 @@ export abstract class Capo<
         //! prior to initial on-chain creation of contract,
         //! it finds that specific UTxO in the current user's wallet.
         const { seedTxn, seedIndex } = this.paramsIn;
-
+        console.log("seeking seed txn", seedTxn.hex, seedIndex);
         return this.mustFindActorUtxo(
             "seed",
             (u) => {

@@ -886,7 +886,7 @@ export class StellarContract<
     ADA(n: bigint | number): bigint {
         const bn =
             "number" == typeof n
-                ? BigInt(Math.floor(1_000_000 * n))
+                ? BigInt(Math.round(1_000_000 * n))
                 : ((BigInt(1_000_000) * n) as bigint);
         return bn;
     }
