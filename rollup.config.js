@@ -1,15 +1,16 @@
 import dts from "rollup-plugin-dts";
-import ts from "rollup-plugin-ts";
+import esbuild from 'rollup-plugin-esbuild'
 import externals from "rollup-plugin-node-externals";
 import resolve from "@rollup/plugin-node-resolve";
 import { string } from "rollup-plugin-string";
 import { platformModulePaths } from "./rollup.lib.js";
+import sourcemaps from 'rollup-plugin-sourcemaps';
 
 import packageJson from "./package.json" assert { type: "json" };
 const name = packageJson.main.replace(/\.m?js$/, "");
 
 const serverBundledModules = [];
-const forcedServerExternals = [];
+const forcedServerExternals = [ "@hyperionbt/helios"];
 
 // import { join } from "path";
 // import alias from "@rollup/plugin-alias";
@@ -21,8 +22,10 @@ const codeBundle = (config) => {
         ...config,
         external: (id) => {
             if (serverBundledModules.includes(id)) return false;
-            if (forcedServerExternals.includes(id)) return true;
-            // console.warn("---ext detect ---", id)
+            if (forcedServerExternals.includes(id)) {
+                console.warn("---ext detect ---", id)
+                return true;
+            }
 
             return !/^[./]/.test(id);
         },
@@ -34,6 +37,7 @@ export default [
     codeBundle({
         input: "lib/index.ts",
         plugins: [
+            sourcemaps(),
             externals(),
             string({
                 // Required to be specified
@@ -43,7 +47,7 @@ export default [
                 ...platformModulePaths("server"),
                 extensions: [".json", ".ts"],
             }),
-            ts(),
+            esbuild()
         ],
         output: [
             {

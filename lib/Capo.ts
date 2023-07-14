@@ -10,15 +10,15 @@ import {
 import { DefaultMinter, SeedTxnParams } from "../src/DefaultMinter.js";
 import {
     Activity,
-    InlineDatum,
     StellarConstructorArgs,
     StellarContract,
     datum,
     paramsBase,
     partialTxn,
     stellarSubclass,
-    valuesEntry,
+    txn,
 } from "./StellarContract.js";
+import { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 
 type minterContract<T extends paramsBase = any> = StellarContract<T>;
@@ -86,11 +86,6 @@ export abstract class Capo<
     //     newDatum?: InlineDatum
     // ): Promise<UTxO | never>;
 
-    abstract mkTxnMintCharterToken(
-        args: anyDatumArgs,
-        tcx?: StellarTxnContext
-    ): Promise<StellarTxnContext | never>;
-
     get minterClass(): stellarSubclass<DefaultMinter, seedUtxoParams> {
         return DefaultMinter;
     }
@@ -139,6 +134,24 @@ export abstract class Capo<
         return this.minter!.charterTokenAsValue
     }
 
+    @txn
+    async mkTxnMintCharterToken(
+        datumArgs: anyDatumArgs,
+        tcx: StellarTxnContext = new StellarTxnContext()
+    ): Promise<StellarTxnContext | never> {
+        console.log("minting charter token", this.paramsIn);
+
+        return this.mustGetContractSeedUtxo().then((seedUtxo) => {
+            const v = this.charterTokenAsValue;
+            
+            const datum = this.mkDatumCharterToken(datumArgs);
+            const outputs = [new TxOutput(this.address, v, datum)];
+
+            tcx.addInput(seedUtxo).addOutputs(outputs);
+            return this.minter!.txnMintingCharterToken(tcx, this.address);
+        });
+    }
+
     @partialTxn  // non-activity partial
     async txnMustUseCharterUtxo(
         tcx: StellarTxnContext,
@@ -166,7 +179,7 @@ export abstract class Capo<
 
         return tcx;
     }
-    
+
     @partialTxn
     async txnAddAuthority(tcx: StellarTxnContext) {
         return this.txnMustUseCharterUtxo(tcx).then(async (charterToken) => {

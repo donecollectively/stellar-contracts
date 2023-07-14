@@ -20,12 +20,13 @@ import {
     StellarConstructorArgs,
     StellarContract,
     findInputsInWallets,
-    lovelaceToAda,
     paramsBase,
     stellarSubclass,
-    txAsString,
-    utxosAsString,
 } from "./StellarContract.js";
+import {
+    lovelaceToAda, txAsString,
+    utxosAsString
+} from "./diagnostics.js";
 import { Capo, anyDatumArgs } from "./Capo.js";
 import { SeedTxnParams } from "../src/DefaultMinter.js";
 import { CharterDatumArgs } from "../src/examples/SampleTreasury.js";

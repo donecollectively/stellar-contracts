@@ -9,7 +9,7 @@ import {
     bytesToHex,
     hexToBytes
 } from "@hyperionbt/helios";
-import { txAsString } from "./StellarContract.js";
+import { txAsString } from "./diagnostics.js";
 
 //!!! if we could access the inputs and outputs in a building Tx,
 //  this might  not be necessary (unless it becomes a

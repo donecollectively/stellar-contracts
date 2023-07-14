@@ -17,11 +17,11 @@ import {
 } from "@hyperionbt/helios";
 
 import {
-    InlineDatum,
     datum,
     partialTxn,
     txn,
 } from "../../lib/StellarContract.js";
+import { InlineDatum } from "../../lib/HeliosPromotedTypes.js";
 
 import { StellarTxnContext } from "../../lib/StellarTxnContext.js";
 
@@ -72,7 +72,8 @@ export class SampleTreasury extends Capo {
         { trustees, minSigs }: CharterDatumArgs,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
-        console.log("minting charter token", this.paramsIn)
+        console.log("minting charter token", this.paramsIn);
+
         return this.mustGetContractSeedUtxo().then((seedUtxo) => {
             const v = this.charterTokenAsValue;
             // this.charterTokenDatum
@@ -83,15 +84,11 @@ export class SampleTreasury extends Capo {
 
             const outputs = [new TxOutput(this.address, v, datum)];
 
-            // debugger
             tcx.addInput(seedUtxo).addOutputs(outputs);
-            return this.minter!.txnMintingCharterToken(
-                tcx,
-                this.address
-            );
+            return this.minter!.txnMintingCharterToken(tcx, this.address);
         });
     }
-
+ 
     @txn
     async mkTxnUpdateCharter(
         trustees: Address[],

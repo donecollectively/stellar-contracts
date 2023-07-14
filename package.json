@@ -1,38 +1,40 @@
 {
-  "name": "@donecollectively/stellar-contracts",
-  "version": "0.6",
-  "description": "Smart contract fusion for Cardano",
-  "main": "dist/stellar-contracts.mjs",
-  "types": "dist/stellar-contracts.d.ts",
-  "type": "module",
-  "scripts": {
-    "build": "rollup -c",
-    "test": "vitest",
-    "test:debug": "vitest --inspect --threads false",
-    "testing": "vitest --inspect --threads false",
-    "test:ui": "vitest --ui",
-    "test:run": "vitest run"
-  },
-  "author": "Done Collectively",
-  "license": "Cardano Community Source License",
-  "dependencies": {
-    "@hyperionbt/helios": "^0.14.4",
-    "@rollup/plugin-node-resolve": "^15.1.0",
-    "@rollup/pluginutils": "^5.0.2",
-    "@types/node": "^20.2.5",
-    "@vitest/browser": "^0.31.4",
-    "@vitest/ui": "^0.30.1",
-    "rollup": "^3.23.1",
-    "rollup-plugin-dts": "^5.3.0",
-    "vitest": "^0.30.1",
-    "webdriverio": "^8.10.7"
-  },
-  "devDependencies": {
-    "rollup-plugin-node-externals": "^6.1.1",
-    "rollup-plugin-string": "^3.0.0",
-    "rollup-plugin-ts": "^3.2.0",
-    "tslib": "^2.5.3",
-    "typescript": "^4.9.4",
-    "vite": "^4.3.9"
-  }
+    "name": "@donecollectively/stellar-contracts",
+    "version": "0.6.1",
+    "description": "Smart contract fusion for Cardano",
+    "main": "dist/stellar-contracts.mjs",
+    "types": "dist/stellar-contracts.d.ts",
+    "type": "module",
+    "scripts": {
+        "build": "rollup -c",
+        "test": "vitest",
+        "test:debug": "vitest --inspect --threads false",
+        "testing": "vitest --inspect --threads false",
+        "test:ui": "vitest --ui",
+        "test:run": "vitest run"
+    },
+    "author": "Done Collectively",
+    "license": "Cardano Community Source License",
+    "dependencies": {
+        "@hyperionbt/helios": "^0.14.4"
+    },
+    "devDependencies": {
+        "@rollup/plugin-node-resolve": "^15.1.0",
+        "@rollup/pluginutils": "^5.0.2",
+        "@types/node": "^20.2.5",
+        "@vitest/browser": "^0.31.4",
+        "@vitest/ui": "^0.30.1",
+        "rollup": "^3.23.1",
+        "rollup-plugin-dts": "^5.3.0",
+        "rollup-plugin-esbuild": "^5.0.0",
+        "rollup-plugin-node-externals": "^6.1.1",
+        "rollup-plugin-sourcemaps": "^0.6.3",
+        "rollup-plugin-string": "^3.0.0",
+        "rollup-plugin-ts": "^3.2.0",
+        "tslib": "^2.5.3",
+        "typescript": "^4.9.4",
+        "vite": "^4.3.9",
+        "vitest": "^0.30.1",
+        "webdriverio": "^8.10.7"
+    }
 }

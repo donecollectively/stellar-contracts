@@ -17,8 +17,6 @@ import {
     Activity,
     StellarContract,
     partialTxn,
-    tokenNamesOrValuesEntry,
-    valuesEntry,
 } from "../lib/StellarContract.js";
 
 //@ts-expect-error
@@ -29,6 +27,7 @@ import {
     MintUUTRedeemerArgs,
     MinterBaseMethods,
 } from "../lib/Capo.js";
+import { valuesEntry } from "../lib/HeliosPromotedTypes.js";
 
 export type SeedTxnParams = {
     seedTxn: TxId;
