@@ -1,12 +1,13 @@
 {
     "name": "@donecollectively/stellar-contracts",
-    "version": "0.6.1",
+    "version": "0.6.2",
     "description": "Smart contract fusion for Cardano",
     "main": "dist/stellar-contracts.mjs",
     "types": "dist/stellar-contracts.d.ts",
     "type": "module",
     "scripts": {
         "build": "rollup -c",
+        "build:watch": "rollup -cw",
         "test": "vitest",
         "test:debug": "vitest --inspect --threads false",
         "testing": "vitest --inspect --threads false",
