@@ -3,12 +3,15 @@ import {
     Assets,
     DatumHash,
     HInt,
+    HeliosData,
     MintingPolicyHash,
     Network,
     NetworkParams,
     Program,
     TxOutput,
     UTxO,
+    UplcData,
+    UplcDataValue,
     UplcProgram,
     Value,
     Wallet,
@@ -21,6 +24,12 @@ import { TxInput, valuesEntry } from "./HeliosPromotedTypes.js";
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer
 ) => tokenBearer | undefined) & { value: Value };
+export type isRedeemer = {
+    redeemer: 
+    // | HeliosData 
+    | UplcDataValue
+    | UplcData
+}
 
 type WalletsAndAddresses = {
     wallets: Wallet[];

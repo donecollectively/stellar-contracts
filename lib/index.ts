@@ -8,6 +8,7 @@ export {
     txn,
     partialTxn,
     datum,
+    isRedeemer 
 } from "./StellarContract.js";
 
 export { StellarTxnContext } from "./StellarTxnContext.js";

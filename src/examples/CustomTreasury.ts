@@ -1,5 +1,5 @@
 import { seedUtxoParams } from "../../lib/Capo.js";
-import { Activity, stellarSubclass, txn } from "../../lib/StellarContract.js";
+import { Activity, isRedeemer, stellarSubclass, txn } from "../../lib/StellarContract.js";
 import { StellarTxnContext } from "../../lib/StellarTxnContext.js";
 import { CustomMinter } from "../CustomMinter.js";
 import { SampleTreasury } from "./SampleTreasury.js";
@@ -14,15 +14,15 @@ export class CustomTreasury extends SampleTreasury {
     get minterClass(): stellarSubclass<CustomMinter, seedUtxoParams> {
         return CustomMinter;
     }
-    declare minter: CustomMinter
+    declare minter: CustomMinter;
 
     @Activity.redeemer
-    mintingToken(tokenName: string) {
+    mintingToken(tokenName: string)  : isRedeemer {
         const t = new this.configuredContract.types.Redeemer.mintingToken(
             tokenName
         );
 
-        return t._toUplcData();
+        return {redeemer: t._toUplcData() }
     }
 
     @txn
@@ -31,18 +31,12 @@ export class CustomTreasury extends SampleTreasury {
         count: bigint,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext> {
-        console.log("minting named token ")
-        return this.txnMustUseCharterUtxo(tcx).then(async (charterToken) => {
-            tcx.addInput(
-                charterToken,
-                this.mintingToken(tokenName)
-            ).attachScript(this.compiledContract);
-
-            return this.minter!.txnMintingNamedToken(
-                tcx,
-                tokenName,
-                count
-            );
+        console.log("minting named token ");
+        return this.txnMustUseCharterUtxo(
+            tcx,
+            this.mintingToken(tokenName)
+        ).then(async (_sameTcx) => {
+            return this.minter!.txnMintingNamedToken(tcx, tokenName, count);
         });
     }
 }

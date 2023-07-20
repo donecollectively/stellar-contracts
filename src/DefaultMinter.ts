@@ -16,6 +16,7 @@ import {
 import {
     Activity,
     StellarContract,
+    isRedeemer,
     partialTxn,
 } from "../lib/StellarContract.js";
 
@@ -73,7 +74,7 @@ export class DefaultMinter
                     seedTxn,
                     seedIndex,
                     assetName,
-                })
+                }).redeemer
             );
 
             const v = new Value(
@@ -94,14 +95,14 @@ export class DefaultMinter
     }
 
     @Activity.redeemer
-    protected mintingCharterToken({ owner }: MintCharterRedeemerArgs) {
+    protected mintingCharterToken({ owner }: MintCharterRedeemerArgs) : isRedeemer {
         // debugger
         const t =
             new this.configuredContract.types.Redeemer.mintingCharterToken(
                 owner
             );
 
-        return t._toUplcData();
+        return { redeemer: t._toUplcData() }
     }
 
     @Activity.redeemer
@@ -109,7 +110,7 @@ export class DefaultMinter
         seedTxn,
         seedIndex: sIdx,
         assetName,
-    }: MintUUTRedeemerArgs) {
+    }: MintUUTRedeemerArgs)  : isRedeemer {
         // debugger
         const seedIndex = BigInt(sIdx);
         const t = new this.configuredContract.types.Redeemer.mintingUUT(
@@ -118,7 +119,7 @@ export class DefaultMinter
             ByteArrayData.fromString(assetName).bytes
         );
 
-        return t._toUplcData();
+        return { redeemer: t._toUplcData() }
     }
 
     get charterTokenAsValuesEntry(): valuesEntry {
@@ -146,7 +147,7 @@ export class DefaultMinter
             .mintTokens(
                 this.mintingPolicyHash!,
                 [tVal],
-                this.mintingCharterToken({ owner })
+                this.mintingCharterToken({ owner }).redeemer
             )
             .attachScript(this.compiledContract);
     }

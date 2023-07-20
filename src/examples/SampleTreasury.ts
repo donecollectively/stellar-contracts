@@ -95,17 +95,11 @@ export class SampleTreasury extends Capo {
         minSigs: bigint,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext> {
-        return this.txnMustUseCharterUtxo(
+        return this.txnUpdateCharterUtxo(
             tcx,
+            this.updatingCharter({ trustees, minSigs }),
             this.mkDatumCharterToken({ trustees, minSigs })
-        ).then(async (charterToken) => {
-            tcx.addInput(
-                charterToken,
-                this.updatingCharter({ trustees, minSigs })
-            ).attachScript(this.compiledContract);
-
-            return tcx;
-        });
+        )
     }
 
     requirements() {

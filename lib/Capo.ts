@@ -13,6 +13,7 @@ import {
     StellarConstructorArgs,
     StellarContract,
     datum,
+    isRedeemer,
     paramsBase,
     partialTxn,
     stellarSubclass,
@@ -101,7 +102,7 @@ export abstract class Capo<
     }
 
     @Activity.redeemer
-    protected usingAuthority() {
+    protected usingAuthority() : isRedeemer {
         const r = this.configuredContract.types.Redeemer;
         const { usingAuthority } = r;
         if (!usingAuthority) {
@@ -111,7 +112,7 @@ export abstract class Capo<
         }
         const t = new usingAuthority();
 
-        return t._toUplcData();
+        return {redeemer: t._toUplcData() }
     }
 
     @Activity.redeemer
@@ -121,13 +122,13 @@ export abstract class Capo<
     }: {
         trustees: Address[];
         minSigs: bigint;
-    }) {
+    }) : isRedeemer {
         const t = new this.configuredContract.types.Redeemer.updatingCharter(
             trustees,
             minSigs
         );
 
-        return t._toUplcData();
+        return {redeemer: t._toUplcData() }
     }
 
     get charterTokenAsValue() {
@@ -165,14 +166,29 @@ export abstract class Capo<
     @partialTxn  // non-activity partial
     async txnMustUseCharterUtxo(
         tcx: StellarTxnContext,
+        redeemer: isRedeemer,
         newDatum?: InlineDatum
-    ): Promise<UTxO | never> {
+    ): Promise<StellarTxnContext | never> {
         return this.mustFindCharterUtxo().then((ctUtxo: UTxO) => {
+            tcx.addInput(
+                ctUtxo,
+                redeemer.redeemer
+            ).attachScript(this.compiledContract);
+
             const datum = newDatum || (ctUtxo.origOutput.datum as InlineDatum);
 
             this.txnKeepCharterToken(tcx, datum);
-            return ctUtxo;
+            return tcx
         });
+    }
+
+    @partialTxn  // non-activity partial
+    async txnUpdateCharterUtxo(
+        tcx: StellarTxnContext,
+        redeemer: isRedeemer,
+        newDatum: InlineDatum
+    ): Promise<StellarTxnContext| never> {
+        return this.txnMustUseCharterUtxo(tcx, redeemer, newDatum );
     }
 
     @partialTxn  // non-activity partial
@@ -187,11 +203,7 @@ export abstract class Capo<
 
     @partialTxn
     async txnAddAuthority(tcx: StellarTxnContext) {
-        return this.txnMustUseCharterUtxo(tcx).then(async (charterToken) => {
-            return tcx
-                .addInput(charterToken, this.usingAuthority())
-                .attachScript(this.compiledContract);
-        });
+        return this.txnMustUseCharterUtxo(tcx, this.usingAuthority())
     }
 
 

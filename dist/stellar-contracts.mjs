@@ -834,7 +834,7 @@ class DefaultMinter extends StellarContract {
           seedTxn,
           seedIndex,
           assetName
-        })
+        }).redeemer
       );
       const v = new Value(
         void 0,
@@ -854,7 +854,7 @@ class DefaultMinter extends StellarContract {
     const t = new this.configuredContract.types.Redeemer.mintingCharterToken(
       owner
     );
-    return t._toUplcData();
+    return { redeemer: t._toUplcData() };
   }
   mintingUUT({
     seedTxn,
@@ -867,7 +867,7 @@ class DefaultMinter extends StellarContract {
       seedIndex,
       ByteArrayData.fromString(assetName).bytes
     );
-    return t._toUplcData();
+    return { redeemer: t._toUplcData() };
   }
   get charterTokenAsValuesEntry() {
     return this.mkValuesEntry("charter", BigInt(1));
@@ -885,7 +885,7 @@ class DefaultMinter extends StellarContract {
     return tcx.mintTokens(
       this.mintingPolicyHash,
       [tVal],
-      this.mintingCharterToken({ owner })
+      this.mintingCharterToken({ owner }).redeemer
     ).attachScript(this.compiledContract);
   }
 }
@@ -946,7 +946,7 @@ class Capo extends StellarContract {
       );
     }
     const t = new usingAuthority();
-    return t._toUplcData();
+    return { redeemer: t._toUplcData() };
   }
   updatingCharter({
     trustees,
@@ -956,7 +956,7 @@ class Capo extends StellarContract {
       trustees,
       minSigs
     );
-    return t._toUplcData();
+    return { redeemer: t._toUplcData() };
   }
   get charterTokenAsValue() {
     return this.minter.charterTokenAsValue;
@@ -981,11 +981,21 @@ class Capo extends StellarContract {
     );
   }
   // non-activity partial
-  async txnMustUseCharterUtxo(tcx, newDatum) {
+  async txnMustUseCharterUtxo(tcx, redeemer) {
     return this.mustFindCharterUtxo().then((ctUtxo) => {
-      const datum2 = newDatum || ctUtxo.origOutput.datum;
+      tcx.addInput(
+        ctUtxo,
+        redeemer.redeemer
+      ).attachScript(this.compiledContract);
+      const datum2 = ctUtxo.origOutput.datum;
       this.txnKeepCharterToken(tcx, datum2);
-      return ctUtxo;
+      return tcx;
+    });
+  }
+  // non-activity partial
+  async txnUpdateCharterUtxo(tcx, redeemer, newDatum) {
+    return this.txnMustUseCharterUtxo(tcx, redeemer).then((_sameTcx) => {
+      return this.txnKeepCharterToken(tcx, newDatum);
     });
   }
   // non-activity partial
@@ -996,9 +1006,7 @@ class Capo extends StellarContract {
     return tcx;
   }
   async txnAddAuthority(tcx) {
-    return this.txnMustUseCharterUtxo(tcx).then(async (charterToken) => {
-      return tcx.addInput(charterToken, this.usingAuthority()).attachScript(this.compiledContract);
-    });
+    return this.txnMustUseCharterUtxo(tcx, this.usingAuthority());
   }
   //! it can provide minter-targeted params through getMinterParams()
   getMinterParams() {
@@ -1098,6 +1106,9 @@ __decorateClass$1([
 __decorateClass$1([
   partialTxn
 ], Capo.prototype, "txnMustUseCharterUtxo", 1);
+__decorateClass$1([
+  partialTxn
+], Capo.prototype, "txnUpdateCharterUtxo", 1);
 __decorateClass$1([
   partialTxn
 ], Capo.prototype, "txnKeepCharterToken", 1);
@@ -1447,16 +1458,11 @@ class SampleTreasury extends Capo {
     });
   }
   async mkTxnUpdateCharter(trustees, minSigs, tcx = new StellarTxnContext()) {
-    return this.txnMustUseCharterUtxo(
+    return this.txnUpdateCharterUtxo(
       tcx,
+      this.updatingCharter({ trustees, minSigs }),
       this.mkDatumCharterToken({ trustees, minSigs })
-    ).then(async (charterToken) => {
-      tcx.addInput(
-        charterToken,
-        this.updatingCharter({ trustees, minSigs })
-      ).attachScript(this.compiledContract);
-      return tcx;
-    });
+    );
   }
   requirements() {
     return {
