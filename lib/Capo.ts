@@ -13,7 +13,7 @@ import {
     StellarConstructorArgs,
     StellarContract,
     datum,
-    isRedeemer,
+    isActivity,
     paramsBase,
     partialTxn,
     stellarSubclass,
@@ -102,7 +102,7 @@ export abstract class Capo<
     }
 
     @Activity.redeemer
-    protected usingAuthority() : isRedeemer {
+    protected usingAuthority() : isActivity {
         const r = this.configuredContract.types.Redeemer;
         const { usingAuthority } = r;
         if (!usingAuthority) {
@@ -122,7 +122,7 @@ export abstract class Capo<
     }: {
         trustees: Address[];
         minSigs: bigint;
-    }) : isRedeemer {
+    }) : isActivity {
         const t = new this.configuredContract.types.Redeemer.updatingCharter(
             trustees,
             minSigs
@@ -166,7 +166,7 @@ export abstract class Capo<
     @partialTxn  // non-activity partial
     async txnMustUseCharterUtxo(
         tcx: StellarTxnContext,
-        redeemer: isRedeemer,
+        redeemer: isActivity,
         newDatum?: InlineDatum
     ): Promise<StellarTxnContext | never> {
         return this.mustFindCharterUtxo().then((ctUtxo: UTxO) => {
@@ -182,12 +182,16 @@ export abstract class Capo<
         });
     }
 
+
     @partialTxn  // non-activity partial
     async txnUpdateCharterUtxo(
         tcx: StellarTxnContext,
-        redeemer: isRedeemer,
+        redeemer: isActivity,
         newDatum: InlineDatum
     ): Promise<StellarTxnContext| never> {
+        // this helper function is very simple.  Why have it?  
+        //   -> its 3rd arg is required,
+        //   -> and its name gives a more specific meaning.
         return this.txnMustUseCharterUtxo(tcx, redeemer, newDatum );
     }
 

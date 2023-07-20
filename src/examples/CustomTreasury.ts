@@ -1,5 +1,5 @@
 import { seedUtxoParams } from "../../lib/Capo.js";
-import { Activity, isRedeemer, stellarSubclass, txn } from "../../lib/StellarContract.js";
+import { Activity, isActivity, stellarSubclass, txn } from "../../lib/StellarContract.js";
 import { StellarTxnContext } from "../../lib/StellarTxnContext.js";
 import { CustomMinter } from "../CustomMinter.js";
 import { SampleTreasury } from "./SampleTreasury.js";
@@ -17,7 +17,7 @@ export class CustomTreasury extends SampleTreasury {
     declare minter: CustomMinter;
 
     @Activity.redeemer
-    mintingToken(tokenName: string)  : isRedeemer {
+    mintingToken(tokenName: string)  : isActivity {
         const t = new this.configuredContract.types.Redeemer.mintingToken(
             tokenName
         );

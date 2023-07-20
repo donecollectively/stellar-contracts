@@ -16,7 +16,7 @@ import {
 import {
     Activity,
     StellarContract,
-    isRedeemer,
+    isActivity,
     partialTxn,
 } from "../lib/StellarContract.js";
 
@@ -95,7 +95,7 @@ export class DefaultMinter
     }
 
     @Activity.redeemer
-    protected mintingCharterToken({ owner }: MintCharterRedeemerArgs) : isRedeemer {
+    protected mintingCharterToken({ owner }: MintCharterRedeemerArgs) : isActivity {
         // debugger
         const t =
             new this.configuredContract.types.Redeemer.mintingCharterToken(
@@ -110,7 +110,7 @@ export class DefaultMinter
         seedTxn,
         seedIndex: sIdx,
         assetName,
-    }: MintUUTRedeemerArgs)  : isRedeemer {
+    }: MintUUTRedeemerArgs)  : isActivity {
         // debugger
         const seedIndex = BigInt(sIdx);
         const t = new this.configuredContract.types.Redeemer.mintingUUT(

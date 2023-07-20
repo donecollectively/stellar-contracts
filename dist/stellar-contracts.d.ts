@@ -36,7 +36,7 @@ type valuesEntry = [number[], bigint];
 type tokenPredicate<tokenBearer extends canHaveToken> = ((something: tokenBearer) => tokenBearer | undefined) & {
     value: Value;
 };
-type isRedeemer = {
+type isActivity = {
     redeemer: UplcDataValue | UplcData;
 };
 type utxoInfo = {
@@ -136,8 +136,8 @@ declare class DefaultMinter extends StellarContract<SeedTxnParams> implements Mi
     txnCreatingUUT(tcx: StellarTxnContext, uutPurpose: string): Promise<Value>;
     mkUUTValuesEntries(assetName: any): valuesEntry[];
     get mintingPolicyHash(): MintingPolicyHash;
-    protected mintingCharterToken({ owner }: MintCharterRedeemerArgs): isRedeemer;
-    protected mintingUUT({ seedTxn, seedIndex: sIdx, assetName, }: MintUUTRedeemerArgs): isRedeemer;
+    protected mintingCharterToken({ owner }: MintCharterRedeemerArgs): isActivity;
+    protected mintingUUT({ seedTxn, seedIndex: sIdx, assetName, }: MintUUTRedeemerArgs): isActivity;
     get charterTokenAsValuesEntry(): valuesEntry;
     get charterTokenAsValue(): Value;
     txnMintingCharterToken(tcx: StellarTxnContext, owner: Address): Promise<StellarTxnContext>;
@@ -170,16 +170,16 @@ declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter
     get minterClass(): stellarSubclass<DefaultMinter, seedUtxoParams>;
     minter?: minterType;
     txnCreatingUUT(tcx: StellarTxnContext, uutPurpose: string): Promise<Value>;
-    protected usingAuthority(): isRedeemer;
+    protected usingAuthority(): isActivity;
     protected updatingCharter({ trustees, minSigs, }: {
         trustees: Address[];
         minSigs: bigint;
-    }): isRedeemer;
+    }): isActivity;
     get charterTokenAsValue(): Value;
     mkTxnMintCharterToken(datumArgs: anyDatumArgs, tcx?: StellarTxnContext): Promise<StellarTxnContext | never>;
     mustFindCharterUtxo(): Promise<UTxO>;
-    txnMustUseCharterUtxo(tcx: StellarTxnContext, redeemer: isRedeemer, newDatum?: InlineDatum): Promise<StellarTxnContext | never>;
-    txnUpdateCharterUtxo(tcx: StellarTxnContext, redeemer: isRedeemer, newDatum: InlineDatum): Promise<StellarTxnContext | never>;
+    txnMustUseCharterUtxo(tcx: StellarTxnContext, redeemer: isActivity, newDatum?: InlineDatum): Promise<StellarTxnContext | never>;
+    txnUpdateCharterUtxo(tcx: StellarTxnContext, redeemer: isActivity, newDatum: InlineDatum): Promise<StellarTxnContext | never>;
     txnKeepCharterToken(tcx: StellarTxnContext, datum: InlineDatum): StellarTxnContext;
     txnAddAuthority(tcx: StellarTxnContext): Promise<StellarTxnContext>;
     getMinterParams(): SeedTxnParams;
@@ -331,4 +331,4 @@ declare class SampleTreasury extends Capo {
     };
 }
 
-export { ADA, Activity, Capo, CharterDatumArgs, DefaultMinter, InlineDatum, SampleTreasury, StellarCapoTestHelper, StellarContract, StellarTestContext, StellarTestHelper, StellarTxnContext, TxInput, addTestContext, datum, isRedeemer, partialTxn, stellarSubclass, tokenNamesOrValuesEntry, txn, valuesEntry };
+export { ADA, Activity, Capo, CharterDatumArgs, DefaultMinter, InlineDatum, SampleTreasury, StellarCapoTestHelper, StellarContract, StellarTestContext, StellarTestHelper, StellarTxnContext, TxInput, addTestContext, datum, isActivity, partialTxn, stellarSubclass, tokenNamesOrValuesEntry, txn, valuesEntry };

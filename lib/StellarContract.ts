@@ -24,11 +24,9 @@ import { TxInput, valuesEntry } from "./HeliosPromotedTypes.js";
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer
 ) => tokenBearer | undefined) & { value: Value };
-export type isRedeemer = {
-    redeemer: 
+export type isActivity = {
+    redeemer:  UplcDataValue | UplcData
     // | HeliosData 
-    | UplcDataValue
-    | UplcData
 }
 
 type WalletsAndAddresses = {
@@ -60,10 +58,10 @@ export const Activity = {
     },
     redeemerData(proto, thingName, descriptor) {
         //!!! todo: registry and cross-checking for missing redeeming methods
-    
+        
         //!!! todo: develop more patterns of "redeemer uses an input of a certain mph/value"
         return descriptor;
-    }    
+    }
 };
 
 function needsActiveVerb(thingName : string, okWorkaround? : boolean) {

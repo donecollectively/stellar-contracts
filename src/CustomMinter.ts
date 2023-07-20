@@ -13,7 +13,7 @@ import {
 import {
     Activity,
     StellarContract,
-    isRedeemer,
+    isActivity,
     partialTxn,
 } from "../lib/StellarContract.js";
 
@@ -38,7 +38,7 @@ implements MinterBaseMethods {
     }
 
     @Activity.redeemer
-    protected mintingNamedToken(v : Value): isRedeemer {
+    protected mintingNamedToken(v : Value): isActivity {
         const t =
             new this.configuredContract.types.Redeemer.mintingNamedToken(v);
 

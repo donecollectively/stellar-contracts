@@ -981,22 +981,20 @@ class Capo extends StellarContract {
     );
   }
   // non-activity partial
-  async txnMustUseCharterUtxo(tcx, redeemer) {
+  async txnMustUseCharterUtxo(tcx, redeemer, newDatum) {
     return this.mustFindCharterUtxo().then((ctUtxo) => {
       tcx.addInput(
         ctUtxo,
         redeemer.redeemer
       ).attachScript(this.compiledContract);
-      const datum2 = ctUtxo.origOutput.datum;
+      const datum2 = newDatum || ctUtxo.origOutput.datum;
       this.txnKeepCharterToken(tcx, datum2);
       return tcx;
     });
   }
   // non-activity partial
   async txnUpdateCharterUtxo(tcx, redeemer, newDatum) {
-    return this.txnMustUseCharterUtxo(tcx, redeemer).then((_sameTcx) => {
-      return this.txnKeepCharterToken(tcx, newDatum);
-    });
+    return this.txnMustUseCharterUtxo(tcx, redeemer, newDatum);
   }
   // non-activity partial
   txnKeepCharterToken(tcx, datum2) {
