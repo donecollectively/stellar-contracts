@@ -971,15 +971,18 @@ class Capo extends StellarContract {
       return this.minter.txnMintingCharterToken(tcx, this.address);
     });
   }
-  // non-activity partial
-  async txnMustUseCharterUtxo(tcx, newDatum) {
+  async mustFindCharterUtxo() {
     const ctVal = this.charterTokenAsValue;
     const predicate = this.mkTokenPredicate(ctVal);
     return this.mustFindMyUtxo(
       "charter",
       predicate,
       "has it been minted?"
-    ).then((ctUtxo) => {
+    );
+  }
+  // non-activity partial
+  async txnMustUseCharterUtxo(tcx, newDatum) {
+    return this.mustFindCharterUtxo().then((ctUtxo) => {
       const datum2 = newDatum || ctUtxo.origOutput.datum;
       this.txnKeepCharterToken(tcx, datum2);
       return ctUtxo;

@@ -174,6 +174,7 @@ declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter
     }): any;
     get charterTokenAsValue(): Value;
     mkTxnMintCharterToken(datumArgs: anyDatumArgs, tcx?: StellarTxnContext): Promise<StellarTxnContext | never>;
+    mustFindCharterUtxo(): Promise<UTxO>;
     txnMustUseCharterUtxo(tcx: StellarTxnContext, newDatum?: InlineDatum): Promise<UTxO | never>;
     txnKeepCharterToken(tcx: StellarTxnContext, datum: InlineDatum): StellarTxnContext;
     txnAddAuthority(tcx: StellarTxnContext): Promise<StellarTxnContext>;

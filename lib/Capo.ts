@@ -152,17 +152,22 @@ export abstract class Capo<
         });
     }
 
+    async mustFindCharterUtxo() {
+        const ctVal = this.charterTokenAsValue;
+        const predicate = this.mkTokenPredicate(ctVal)
+
+        return this.mustFindMyUtxo(
+            "charter", predicate,
+            "has it been minted?"
+        )
+    }
+
     @partialTxn  // non-activity partial
     async txnMustUseCharterUtxo(
         tcx: StellarTxnContext,
         newDatum?: InlineDatum
     ): Promise<UTxO | never> {
-        const ctVal = this.charterTokenAsValue;
-        const predicate = this.mkTokenPredicate(ctVal)
-        return this.mustFindMyUtxo(
-            "charter", predicate,
-            "has it been minted?"
-        ).then((ctUtxo: UTxO) => {
+        return this.mustFindCharterUtxo().then((ctUtxo: UTxO) => {
             const datum = newDatum || (ctUtxo.origOutput.datum as InlineDatum);
 
             this.txnKeepCharterToken(tcx, datum);
