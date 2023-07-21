@@ -627,7 +627,7 @@ export class StellarContract<
             signers?: Wallet[];
         } = {}
     ) {
-        let { tx } = tcx;
+        let { tx, feeLimit = 2_000_000n } = tcx;
         if (this.myActor || signers.length) {
             const [a] = (await this.myActor?.usedAddresses) || [];
             const spares = await this.findAnySpareUtxos(tcx);
@@ -652,6 +652,10 @@ export class StellarContract<
             } catch (e) {
                 console.log("FAILED submitting:", tcx.dump());
                 throw e;
+            }
+            if (tx.body.fee > feeLimit) {
+                console.log("outrageous fee - adjust tcx.feeLimit to get a different threshold")
+                throw new Error(`outrageous fee-computation found - check txn setup for correctness`)
             }
             for (const s of willSign) {
                 const sig = await s.signTx(tx);

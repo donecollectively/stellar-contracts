@@ -21,6 +21,7 @@ export class StellarTxnContext {
     inputs: UTxO[];
     collateral?: UTxO;
     outputs: TxOutput[];
+    feeLimit?: bigint;
     constructor() {
         this.tx = new Tx();
         this.inputs = [];
