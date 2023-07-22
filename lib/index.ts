@@ -11,7 +11,7 @@ export {
 } from "./StellarContract.js";
 
 export { StellarTxnContext } from "./StellarTxnContext.js";
-export type {stellarSubclass,isActivity } from "./StellarContract.js"
+export type {stellarSubclass, isActivity, utxoPredicate } from "./StellarContract.js"
 export {
     ADA,
     StellarTestHelper,

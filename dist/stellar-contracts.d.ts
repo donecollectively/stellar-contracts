@@ -121,6 +121,7 @@ declare class StellarContract<ParamsType extends paramsBase> {
         exceptInTcx?: StellarTxnContext;
     }, extraErrorHint?: string): Promise<UTxO | never>;
     toUtxoId(u: UTxO): string;
+    txnFindUtxo(tcx: StellarTxnContext, name: string, predicate: utxoPredicate, address?: Address): Promise<UTxO | undefined>;
     hasUtxo(name: string, predicate: utxoPredicate, { address, exceptInTcx, }: {
         address: Address;
         exceptInTcx?: StellarTxnContext;
@@ -332,4 +333,4 @@ declare class SampleTreasury extends Capo {
     };
 }
 
-export { ADA, Activity, Capo, CharterDatumArgs, DefaultMinter, InlineDatum, SampleTreasury, StellarCapoTestHelper, StellarContract, StellarTestContext, StellarTestHelper, StellarTxnContext, TxInput, addTestContext, datum, isActivity, partialTxn, stellarSubclass, tokenNamesOrValuesEntry, txn, valuesEntry };
+export { ADA, Activity, Capo, CharterDatumArgs, DefaultMinter, InlineDatum, SampleTreasury, StellarCapoTestHelper, StellarContract, StellarTestContext, StellarTestHelper, StellarTxnContext, TxInput, addTestContext, datum, isActivity, partialTxn, stellarSubclass, tokenNamesOrValuesEntry, txn, utxoPredicate, valuesEntry };

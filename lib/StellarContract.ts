@@ -629,7 +629,7 @@ export class StellarContract<
     ) {
         let { tx, feeLimit = 2_000_000n } = tcx;
         if (this.myActor || signers.length) {
-            const [a] = (await this.myActor?.usedAddresses) || [];
+            const [changeAddress] = (await this.myActor?.usedAddresses) || [];
             const spares = await this.findAnySpareUtxos(tcx);
             const willSign = [...signers];
             if (sign && this.myActor) {
@@ -640,9 +640,14 @@ export class StellarContract<
                 if (tx.body.signers.find(s => a.pubKeyHash.hex === s.hex)) continue;
                 tx.addSigner(a.pubKeyHash);
             }
+            const feeEstimated = tx.estimateCollateralBaseFee(this.networkParams, changeAddress, spares)
+            if (feeEstimated > feeLimit) {
+                console.log("outrageous fee - adjust tcx.feeLimit to get a different threshold")
+                throw new Error(`outrageous fee-computation found - check txn setup for correctness`)
+            }
             try {
                 // const t1 = new Date().getTime();
-                await tx.finalize(this.networkParams, a, spares);
+                await tx.finalize(this.networkParams, changeAddress, spares);
                 // const t2 = new Date().getTime();
                 // const elapsed = t2 - t1;
                 // console.log(`::::::::::::::::::::::::::::::::: tx validation time: ${elapsed}ms`);
@@ -652,10 +657,6 @@ export class StellarContract<
             } catch (e) {
                 console.log("FAILED submitting:", tcx.dump());
                 throw e;
-            }
-            if (tx.body.fee > feeLimit) {
-                console.log("outrageous fee - adjust tcx.feeLimit to get a different threshold")
-                throw new Error(`outrageous fee-computation found - check txn setup for correctness`)
             }
             for (const s of willSign) {
                 const sig = await s.signTx(tx);
@@ -833,6 +834,17 @@ export class StellarContract<
     }
     toUtxoId(u: UTxO) {
         return `${u.txId.hex}@${u.utxoIdx}`;
+    }
+
+    async txnFindUtxo(tcx: StellarTxnContext,
+        name: string,
+        predicate: utxoPredicate,
+        address = this.address
+    ): Promise<UTxO | undefined> {
+        return this.hasUtxo(name, predicate, {
+            address,
+            exceptInTcx: tcx
+        })
     }
 
     async hasUtxo(
