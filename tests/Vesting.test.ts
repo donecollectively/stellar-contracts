@@ -103,7 +103,7 @@ describe("Vesting service", async () => {
 			expect(valUtxos[0].origOutput.value.lovelace).toBe(13000000n);
 
 		});
-		it("can unlock value from validator ", async (context: localTC) => {
+		it("can deposit as tina", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
 			const { tina, tom, tracy } = actors;
 
@@ -112,7 +112,7 @@ describe("Vesting service", async () => {
 			const d = t + BigInt(2*60*60*1000);
 
 			const tcx = await v.mkTxnDepositValueForVesting({
-				sponsor: tracy,   // need tina  
+				sponsor: tina,
 				payee: tom.address, // maybe pkh? 
 				deadline: d
 			});
