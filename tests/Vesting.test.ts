@@ -103,7 +103,7 @@ describe("Vesting service", async () => {
 			expect(valUtxos[0].origOutput.value.lovelace).toBe(13000000n);
 
 		});
-		it("can unlock value from validator ", async (context: localTC) => {
+		it("can deposit ADA and cancel", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
 			const { tina, tom, tracy } = actors;
 
@@ -125,13 +125,14 @@ describe("Vesting service", async () => {
 			const txId = await h.submitTx(tcx.tx, "force");
 
 			expect((txId.hex).length).toBe(64);
+			// notice this:
 			expect((await tracy.utxos).length).toBe(0);
 
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
 
 			const tcxClaim = await v.mkTxnClaimVestedValue(
-				tom, 
+				tracy, 
 				valUtxos[0],
 				h.liveSlotParams.timeToSlot(t)
 			);
