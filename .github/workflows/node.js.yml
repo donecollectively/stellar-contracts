@@ -24,7 +24,7 @@ jobs:
     - name: Setup pnpm
       uses: pnpm/action-setup@v2.2.4
       with:
-          version: 8.6.9
+          version: 5.4
     
     - run: pnpm install
     - run: pnpm test
