@@ -106,6 +106,7 @@ export class Vesting extends StellarContract<VestingParams> {
 		],
                 requires: [
 		// The vision for 'requires' is that it should link to another top-level reqts key.
+			// time to work on these:
 			"can claim as payee",
 			"Tx Rejected as payee",
 			"can retrieve as sponsor",
