@@ -44,10 +44,10 @@ class VestingTestHelper extends StellarCapoTestHelper<SampleTreasury> {
         return SampleTreasury;
     }
     setupActors() {
-        this.addActor("tina", 1100n * ADA);
-        this.addActor("tracy", 13n * ADA);
+        this.addActor("sasha", 1100n * ADA);
+        this.addActor("pavel", 13n * ADA);
         this.addActor("tom", 120n * ADA);
-        this.currentActor = "tina";
+        this.currentActor = "sasha";
     }
 
 };
@@ -62,12 +62,12 @@ describe("Vesting service", async () => {
 	describe("baseline capabilities", () => {
 	        it("gets expected wallet balances for test-scenario actor", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
-		    const { tina, tom, tracy }  = actors;
+		    const { sasha, tom, pavel }  = actors;
 
 
-		    const tinaMoney = await tina.utxos;
+		    const tinaMoney = await sasha.utxos;
 		    const tomMoney = await tom.utxos;
-		    const tracyMoney = await tracy.utxos;
+		    const tracyMoney = await pavel.utxos;
 		    expect(tinaMoney.length).toBe(2);
 		    expect(tinaMoney[0].value.assets.nTokenTypes).toBe(0);
 		    expect(tinaMoney[0].value.assets.isZero).toBeTruthy();
@@ -83,14 +83,14 @@ describe("Vesting service", async () => {
 		});
 		it("can access validator UTXO", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
-			const { tina, tom, tracy } = actors;
+			const { sasha, tom, pavel } = actors;
 
 			const v = new Vesting(context);
 			const t = BigInt(Date.now());
 			const deadline = t + BigInt(2*60*60*1000);
 
 			const tcx = await v.mkTxnDepositValueForVesting({
-				sponsor: tracy, // breaks with tina
+				sponsor: pavel, // breaks with sasha
 				payee: tom.address,
 				deadline: deadline
 			});
@@ -105,14 +105,14 @@ describe("Vesting service", async () => {
 		});
 		it("can unlock value from validator ", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
-			const { tina, tom, tracy } = actors;
+			const { sasha, tom, pavel } = actors;
 
 			const v = new Vesting(context);
 			const t = BigInt(Date.now());
 			const d = t + BigInt(2*60*60*1000);
 
 			const tcx = await v.mkTxnDepositValueForVesting({
-				sponsor: tracy,   // need tina  
+				sponsor: pavel,   // need sasha  
 				payee: tom.address, // maybe pkh? 
 				deadline: d
 			});
@@ -125,7 +125,7 @@ describe("Vesting service", async () => {
 			const txId = await h.submitTx(tcx.tx, "force");
 
 			expect((txId.hex).length).toBe(64);
-			expect((await tracy.utxos).length).toBe(0);
+			expect((await pavel.utxos).length).toBe(0);
 
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
