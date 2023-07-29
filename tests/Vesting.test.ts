@@ -103,7 +103,7 @@ describe("Vesting service", async () => {
 			expect(valUtxos[0].origOutput.value.lovelace).toBeTypeOf('bigint');
 
 		});
-		it("can unlock value from validator ", async (context: localTC) => {
+		it("lock as sasha and claim as pavel", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
 			const { sasha, tom, pavel } = actors;
 
