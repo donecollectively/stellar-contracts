@@ -91,7 +91,7 @@ describe("Vesting service", async () => {
 
 			const tcx = await v.mkTxnDepositValueForVesting({
 				sponsor: sasha, 
-				payee: pavel.address,
+				payee: pavel.address, //TODO: check in valUtxos
 				deadline: deadline
 			});
 
