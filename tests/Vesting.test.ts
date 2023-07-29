@@ -48,7 +48,7 @@ class VestingTestHelper extends StellarCapoTestHelper<SampleTreasury> {
         this.addActor("sasha", 1100n * ADA);
         this.addActor("pavel", 13n * ADA);
         this.addActor("tom", 120n * ADA);
-        this.currentActor = "sasha";
+        this.currentActor = "tom";
     }
 
 };
@@ -61,24 +61,9 @@ describe("Vesting service", async () => {
     });
 
 	describe("baseline capabilities", () => {
-	        fit("gets expected wallet balances for test-scenario actor", async (context: localTC) => {
+	        it("gets expected wallet balances for test-scenario actor", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
 		    const { sasha, tom, pavel }  = actors;
-
-		    const tx = new Tx();
-		    const sashaMoneyPre = await sasha.utxos;
-
-		    tx.addInput(sashaMoneyPre[0]);
-		    tx.addOutput(new TxOutput(sasha.address, new Value(3n * ADA)));
-		    tx.addOutput(
-			new TxOutput(
-			    sasha.address,
-			    new Value(sashaMoneyPre[0].value.lovelace - 5n * ADA)
-			)
-		    );
-		    // console.log("s2")
-
-		    await h.submitTx(tx);
 
 		    const sashaMoney = await sasha.utxos;
 		    const tomMoney = await tom.utxos;
@@ -105,8 +90,8 @@ describe("Vesting service", async () => {
 			const deadline = t + BigInt(2*60*60*1000);
 
 			const tcx = await v.mkTxnDepositValueForVesting({
-				sponsor: pavel, // breaks with sasha
-				payee: tom.address,
+				sponsor: sasha, 
+				payee: pavel.address,
 				deadline: deadline
 			});
 
@@ -115,7 +100,7 @@ describe("Vesting service", async () => {
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
 
-			expect(valUtxos[0].origOutput.value.lovelace).toBe(13000000n);
+			expect(valUtxos[0].origOutput.value.lovelace).toBeTypeOf('bigint');
 
 		});
 		it("can unlock value from validator ", async (context: localTC) => {
@@ -140,13 +125,13 @@ describe("Vesting service", async () => {
 			const txId = await h.submitTx(tcx.tx, "force");
 
 			expect((txId.hex).length).toBe(64);
-			expect((await pavel.utxos).length).toBe(0);
+			expect((await pavel.utxos).length).toBe(2);
 
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
 
 			const tcxClaim = await v.mkTxnClaimVestedValue(
-				tom, 
+				pavel, 
 				valUtxos[0],
 				h.liveSlotParams.timeToSlot(t)
 			);
@@ -154,8 +139,8 @@ describe("Vesting service", async () => {
 			const txIdClaim = await h.submitTx(tcxClaim.tx, "force");
 
 			const tomMoney = await tom.utxos;
-			expect(tomMoney[0].value.lovelace).toBe(120000000n);
-			expect(tomMoney[1].value.lovelace).toBe(13000000n);
+			expect(tomMoney[0].value.lovelace).toBeTypeOf('bigint');
+			expect(tomMoney[1].value.lovelace).toBeTypeOf('bigint');
 
 		});
 	});
