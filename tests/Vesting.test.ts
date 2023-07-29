@@ -112,8 +112,8 @@ describe("Vesting service", async () => {
 			const d = t + BigInt(2*60*60*1000);
 
 			const tcx = await v.mkTxnDepositValueForVesting({
-				sponsor: pavel,   // need sasha  
-				payee: tom.address, // maybe pkh? 
+				sponsor: sasha,   // need sasha  
+				payee: pavel.address, // maybe pkh? 
 				deadline: d
 			});
 
