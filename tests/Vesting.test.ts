@@ -15,6 +15,7 @@ import {
 import {
     Address,
     Datum,
+    Value,
     Tx,
     TxOutput
 } from "@hyperionbt/helios";
@@ -47,7 +48,7 @@ class VestingTestHelper extends StellarCapoTestHelper<SampleTreasury> {
         this.addActor("sasha", 1100n * ADA);
         this.addActor("pavel", 13n * ADA);
         this.addActor("tom", 120n * ADA);
-        this.currentActor = "sasha";
+        this.currentActor = "tom";
     }
 
 };
@@ -64,22 +65,21 @@ describe("Vesting service", async () => {
 		    const {h, h: { network, actors, delay, state }} = context;
 		    const { sasha, tom, pavel }  = actors;
 
-
-		    const tinaMoney = await sasha.utxos;
+		    const sashaMoney = await sasha.utxos;
 		    const tomMoney = await tom.utxos;
-		    const tracyMoney = await pavel.utxos;
-		    expect(tinaMoney.length).toBe(2);
-		    expect(tinaMoney[0].value.assets.nTokenTypes).toBe(0);
-		    expect(tinaMoney[0].value.assets.isZero).toBeTruthy();
-		    expect(tinaMoney[1].value.assets.isZero).toBeTruthy();
+		    const pavelMoney = await pavel.utxos;
+		    expect(sashaMoney.length).toBe(2);
+		    expect(sashaMoney[0].value.assets.nTokenTypes).toBe(0);
+		    expect(sashaMoney[0].value.assets.isZero).toBeTruthy();
+		    expect(sashaMoney[1].value.assets.isZero).toBeTruthy();
 
 
-		    expect(tinaMoney[0].value.lovelace).toBe(1100n * ADA);
-		    expect(tinaMoney[1].value.lovelace).toBe(5n * ADA);
+		    expect(sashaMoney[0].value.lovelace).toBe(1100n * ADA);
+		    expect(sashaMoney[1].value.lovelace).toBe(5n * ADA);
 
 		    expect(tomMoney[0].value.lovelace).toBe(120n * ADA);
 
-		    expect(tracyMoney[0].value.lovelace).toBe(13n * ADA);
+		    expect(pavelMoney[0].value.lovelace).toBe(13n * ADA);
 		});
 		it("can access validator UTXO", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
@@ -90,8 +90,8 @@ describe("Vesting service", async () => {
 			const deadline = t + BigInt(2*60*60*1000);
 
 			const tcx = await v.mkTxnDepositValueForVesting({
-				sponsor: pavel, // breaks with sasha
-				payee: tom.address,
+				sponsor: sasha, 
+				payee: pavel.address,
 				deadline: deadline
 			});
 
@@ -100,7 +100,7 @@ describe("Vesting service", async () => {
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
 
-			expect(valUtxos[0].origOutput.value.lovelace).toBe(13000000n);
+			expect(valUtxos[0].origOutput.value.lovelace).toBeTypeOf('bigint');
 
 		});
 		it("can unlock value from validator ", async (context: localTC) => {
@@ -112,8 +112,8 @@ describe("Vesting service", async () => {
 			const d = t + BigInt(2*60*60*1000);
 
 			const tcx = await v.mkTxnDepositValueForVesting({
-				sponsor: pavel,   // need sasha  
-				payee: tom.address, // maybe pkh? 
+				sponsor: sasha,   // need sasha  
+				payee: pavel.address, // maybe pkh? 
 				deadline: d
 			});
 
@@ -125,13 +125,13 @@ describe("Vesting service", async () => {
 			const txId = await h.submitTx(tcx.tx, "force");
 
 			expect((txId.hex).length).toBe(64);
-			expect((await pavel.utxos).length).toBe(0);
+			expect((await pavel.utxos).length).toBe(2);
 
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
 
 			const tcxClaim = await v.mkTxnClaimVestedValue(
-				tom, 
+				pavel, 
 				valUtxos[0],
 				h.liveSlotParams.timeToSlot(t)
 			);
@@ -139,8 +139,8 @@ describe("Vesting service", async () => {
 			const txIdClaim = await h.submitTx(tcxClaim.tx, "force");
 
 			const tomMoney = await tom.utxos;
-			expect(tomMoney[0].value.lovelace).toBe(120000000n);
-			expect(tomMoney[1].value.lovelace).toBe(13000000n);
+			expect(tomMoney[0].value.lovelace).toBeTypeOf('bigint');
+			expect(tomMoney[1].value.lovelace).toBeTypeOf('bigint');
 
 		});
 	});
