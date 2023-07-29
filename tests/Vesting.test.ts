@@ -15,6 +15,7 @@ import {
 import {
     Address,
     Datum,
+    Value,
     Tx,
     TxOutput
 } from "@hyperionbt/helios";
@@ -60,26 +61,40 @@ describe("Vesting service", async () => {
     });
 
 	describe("baseline capabilities", () => {
-	        it("gets expected wallet balances for test-scenario actor", async (context: localTC) => {
+	        fit("gets expected wallet balances for test-scenario actor", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
 		    const { sasha, tom, pavel }  = actors;
 
+		    const tx = new Tx();
+		    const sashaMoneyPre = await sasha.utxos;
 
-		    const tinaMoney = await sasha.utxos;
+		    tx.addInput(sashaMoneyPre[0]);
+		    tx.addOutput(new TxOutput(sasha.address, new Value(3n * ADA)));
+		    tx.addOutput(
+			new TxOutput(
+			    sasha.address,
+			    new Value(sashaMoneyPre[0].value.lovelace - 5n * ADA)
+			)
+		    );
+		    // console.log("s2")
+
+		    await h.submitTx(tx);
+
+		    const sashaMoney = await sasha.utxos;
 		    const tomMoney = await tom.utxos;
-		    const tracyMoney = await pavel.utxos;
-		    expect(tinaMoney.length).toBe(2);
-		    expect(tinaMoney[0].value.assets.nTokenTypes).toBe(0);
-		    expect(tinaMoney[0].value.assets.isZero).toBeTruthy();
-		    expect(tinaMoney[1].value.assets.isZero).toBeTruthy();
+		    const pavelMoney = await pavel.utxos;
+		    expect(sashaMoney.length).toBe(2);
+		    expect(sashaMoney[0].value.assets.nTokenTypes).toBe(0);
+		    expect(sashaMoney[0].value.assets.isZero).toBeTruthy();
+		    expect(sashaMoney[1].value.assets.isZero).toBeTruthy();
 
 
-		    expect(tinaMoney[0].value.lovelace).toBe(1100n * ADA);
-		    expect(tinaMoney[1].value.lovelace).toBe(5n * ADA);
+		    expect(sashaMoney[0].value.lovelace).toBe(1100n * ADA);
+		    expect(sashaMoney[1].value.lovelace).toBe(5n * ADA);
 
 		    expect(tomMoney[0].value.lovelace).toBe(120n * ADA);
 
-		    expect(tracyMoney[0].value.lovelace).toBe(13n * ADA);
+		    expect(pavelMoney[0].value.lovelace).toBe(13n * ADA);
 		});
 		it("can access validator UTXO", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
