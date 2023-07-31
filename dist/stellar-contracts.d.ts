@@ -1,6 +1,21 @@
 import * as helios from '@hyperionbt/helios';
-import { Tx, UTxO, TxOutput, UplcDataValue, UplcData, HeliosData, Wallet, Datum, Network, NetworkParams, Program, UplcProgram, Address, MintingPolicyHash, Value, Assets, TxId, NetworkEmulator, WalletEmulator } from '@hyperionbt/helios';
+import { Tx, Datum, Value, UTxO, TxOutput, UplcDataValue, UplcData, HeliosData, Wallet, Network, NetworkParams, Program, UplcProgram, Address, MintingPolicyHash, Assets, TxId, NetworkEmulator, WalletEmulator } from '@hyperionbt/helios';
 import { TestContext } from 'vitest';
+
+declare const DatumInline: typeof Datum.inline;
+type TxInput = Tx["body"]["inputs"][0];
+type InlineDatum = ReturnType<typeof DatumInline>;
+type tokenNamesOrValuesEntry = [string | number[], bigint];
+type valuesEntry = [number[], bigint];
+
+declare function assetsAsString(v: any): string;
+declare function lovelaceToAda(l: bigint | number): string;
+declare function valueAsString(v: Value): string;
+declare function txAsString(tx: Tx): string;
+declare function txInputAsString(x: TxInput, prefix?: string): string;
+declare function utxosAsString(utxos: UTxO[], joiner?: string): string;
+declare function utxoAsString(u: UTxO, prefix?: string): string;
+declare function txOutputAsString(x: TxOutput, prefix?: string): string;
 
 declare class StellarTxnContext {
     tx: Tx;
@@ -27,12 +42,6 @@ declare class StellarTxnContext {
      **/
     addScript(): void;
 }
-
-declare const DatumInline: typeof Datum.inline;
-type TxInput = Tx["body"]["inputs"][0];
-type InlineDatum = ReturnType<typeof DatumInline>;
-type tokenNamesOrValuesEntry = [string | number[], bigint];
-type valuesEntry = [number[], bigint];
 
 type tokenPredicate<tokenBearer extends canHaveToken> = ((something: tokenBearer) => tokenBearer | undefined) & {
     value: Value;
@@ -179,6 +188,9 @@ declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter
     }): isActivity;
     get charterTokenAsValue(): Value;
     mkTxnMintCharterToken(datumArgs: anyDatumArgs, tcx?: StellarTxnContext): Promise<StellarTxnContext | never>;
+    get charterTokenPredicate(): ((something: any) => any) & {
+        value: Value;
+    };
     mustFindCharterUtxo(): Promise<UTxO>;
     txnMustUseCharterUtxo(tcx: StellarTxnContext, redeemer: isActivity, newDatum?: InlineDatum): Promise<StellarTxnContext | never>;
     txnUpdateCharterUtxo(tcx: StellarTxnContext, redeemer: isActivity, newDatum: InlineDatum): Promise<StellarTxnContext | never>;
@@ -333,4 +345,4 @@ declare class SampleTreasury extends Capo {
     };
 }
 
-export { ADA, Activity, Capo, CharterDatumArgs, DefaultMinter, InlineDatum, SampleTreasury, StellarCapoTestHelper, StellarContract, StellarTestContext, StellarTestHelper, StellarTxnContext, TxInput, addTestContext, datum, isActivity, partialTxn, stellarSubclass, tokenNamesOrValuesEntry, txn, utxoPredicate, valuesEntry };
+export { ADA, Activity, Capo, CharterDatumArgs, DefaultMinter, InlineDatum, SampleTreasury, StellarCapoTestHelper, StellarContract, StellarTestContext, StellarTestHelper, StellarTxnContext, TxInput, addTestContext, assetsAsString, datum, isActivity, lovelaceToAda, partialTxn, stellarSubclass, tokenNamesOrValuesEntry, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxoPredicate, utxosAsString, valueAsString, valuesEntry };

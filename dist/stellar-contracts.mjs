@@ -983,6 +983,11 @@ class Capo extends StellarContract {
       return this.minter.txnMintingCharterToken(tcx, this.address);
     });
   }
+  get charterTokenPredicate() {
+    const ctVal = this.charterTokenAsValue;
+    const predicate = this.mkTokenPredicate(ctVal);
+    return predicate;
+  }
   async mustFindCharterUtxo() {
     const ctVal = this.charterTokenAsValue;
     const predicate = this.mkTokenPredicate(ctVal);
@@ -1624,5 +1629,5 @@ __decorateClass([
   txn
 ], SampleTreasury.prototype, "mkTxnUpdateCharter", 1);
 
-export { ADA, Activity, Capo, DefaultMinter, SampleTreasury, StellarCapoTestHelper, StellarContract, StellarTestHelper, StellarTxnContext, addTestContext, datum, partialTxn, txn };
+export { ADA, Activity, Capo, DefaultMinter, SampleTreasury, StellarCapoTestHelper, StellarContract, StellarTestHelper, StellarTxnContext, addTestContext, assetsAsString, datum, lovelaceToAda, partialTxn, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString };
 //# sourceMappingURL=stellar-contracts.mjs.map
