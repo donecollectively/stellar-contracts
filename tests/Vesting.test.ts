@@ -124,12 +124,12 @@ describe("Vesting service", async () => {
 
 			const v = new Vesting(context);
 			const t = BigInt(Date.now());
-			const d = t + BigInt(2*60*60*1000);
+			const deadline = t - BigInt(2*60*60*1000);
 
 			const tcx = await v.mkTxnDepositValueForVesting({
 				sponsor: sasha,   
 				payee: pavel.address, // maybe pkh? 
-				deadline: d
+				deadline: deadline
 			});
 
 			const txId = await h.submitTx(tcx.tx, "force");
@@ -137,6 +137,7 @@ describe("Vesting service", async () => {
 			expect(tcx.inputs[0].origOutput.value.lovelace).toBeTypeOf('bigint');
 			expect(tcx.inputs[1].origOutput.value.lovelace).toBeTypeOf('bigint');
 			expect(tcx.outputs[0].datum.data.toSchemaJson().length).toBe(175);
+			expect(tcx.outputs[0].datum.data.list[2].value).toBe(deadline);
 
 			expect((txId.hex).length).toBe(64);
 			// If user has less then 2 utxos, 
@@ -151,7 +152,7 @@ describe("Vesting service", async () => {
 
 			expect(validFrom).toBeTypeOf('object');
 			expect(validTo).toBeTypeOf('object');
-
+			expect(BigInt(validFrom)).toBeGreaterThan(deadline);
 
 			const tcxClaim = await v.mkTxnClaimVestedValue(
 				sasha, 
