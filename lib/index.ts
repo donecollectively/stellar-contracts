@@ -1,4 +1,13 @@
-import { assetsAsString } from "./diagnostics.js";
+export { 
+    assetsAsString,
+    txAsString,
+    utxoAsString,
+    valueAsString,
+    utxosAsString,
+    txOutputAsString,
+    txInputAsString,
+    lovelaceToAda
+ } from "./diagnostics.js";
 
 export { Capo } from "./Capo.js";
 

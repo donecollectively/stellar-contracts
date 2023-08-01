@@ -152,6 +152,12 @@ export abstract class Capo<
             return this.minter!.txnMintingCharterToken(tcx, this.address);
         });
     }
+    get charterTokenPredicate() {
+        const ctVal = this.charterTokenAsValue;
+        const predicate = this.mkTokenPredicate(ctVal)
+
+        return predicate
+    }
 
     async mustFindCharterUtxo() {
         const ctVal = this.charterTokenAsValue;
