@@ -125,7 +125,7 @@ describe("Vesting service", async () => {
 
 			expect((txId.hex).length).toBe(64);
 			// If user has less then 2 utxos, 
-			expect((await pavel.utxos).length).toBe(2);
+			expect((await sasha.utxos).length).toBe(2);
 
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
