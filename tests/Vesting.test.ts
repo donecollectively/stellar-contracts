@@ -145,10 +145,13 @@ describe("Vesting service", async () => {
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
 
+			// I think it comes from here:
+			const validFrom = h.liveSlotParams.timeToSlot(t);
+
 			const tcxClaim = await v.mkTxnClaimVestedValue(
 				sasha, 
 				valUtxos[0],
-				h.liveSlotParams.timeToSlot(t)
+				validFrom
 			);
 
 			const txIdClaim = await h.submitTx(tcxClaim.tx, "force");
