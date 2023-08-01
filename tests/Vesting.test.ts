@@ -107,6 +107,21 @@ describe("Vesting service", async () => {
 			const {h, h: { network, actors, delay, state }} = context;
 			const { sasha, tom, pavel } = actors;
 
+			const txSplit = new Tx();
+			const sashaMoney = await sasha.utxos;
+
+			txSplit.addInput(sashaMoney[0]);
+			txSplit.addOutput(new TxOutput(sasha.address, new Value(3n * ADA)));
+			txSplit.addOutput(new TxOutput(sasha.address, new Value(3n * ADA)));
+			txSplit.addOutput(
+			    new TxOutput(
+			        sasha.address,
+			        new Value(sashaMoney[0].value.lovelace - 10n * ADA)
+			    )
+			);
+
+			await h.submitTx(txSplit);
+
 			const v = new Vesting(context);
 			const t = BigInt(Date.now());
 			const d = t + BigInt(2*60*60*1000);
@@ -125,7 +140,7 @@ describe("Vesting service", async () => {
 
 			expect((txId.hex).length).toBe(64);
 			// If user has less then 2 utxos, 
-			expect((await sasha.utxos).length).toBe(2);
+			expect((await sasha.utxos).length).toBeGreaterThan(1);
 
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
