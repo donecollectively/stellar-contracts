@@ -124,13 +124,14 @@ describe("Vesting service", async () => {
 			expect(tcx.outputs[0].datum.data.toSchemaJson().length).toBe(175);
 
 			expect((txId.hex).length).toBe(64);
+			// If user has less then 2 utxos, 
 			expect((await pavel.utxos).length).toBe(2);
 
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
 
 			const tcxClaim = await v.mkTxnClaimVestedValue(
-				pavel, 
+				sasha, 
 				valUtxos[0],
 				h.liveSlotParams.timeToSlot(t)
 			);
