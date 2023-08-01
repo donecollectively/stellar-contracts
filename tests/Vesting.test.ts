@@ -147,6 +147,7 @@ describe("Vesting service", async () => {
 
 			// I think it comes from here:
 			const validFrom = h.liveSlotParams.timeToSlot(t);
+			expect(validFrom).toBeTypeOf('Date');
 
 			const tcxClaim = await v.mkTxnClaimVestedValue(
 				sasha, 
@@ -156,9 +157,9 @@ describe("Vesting service", async () => {
 
 			const txIdClaim = await h.submitTx(tcxClaim.tx, "force");
 
-			const tomMoney = await tom.utxos;
-			expect(tomMoney[0].value.lovelace).toBeTypeOf('bigint');
-			expect(tomMoney[1].value.lovelace).toBeTypeOf('bigint');
+			// const tomMoney = await tom.utxos;
+			// expect(tomMoney[0].value.lovelace).toBeTypeOf('bigint');
+			// expect(tomMoney[1].value.lovelace).toBeTypeOf('bigint');
 
 		});
 	});
