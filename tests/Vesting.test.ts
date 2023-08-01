@@ -146,13 +146,18 @@ describe("Vesting service", async () => {
 			const valUtxos = await network.getUtxos(validatorAddress)
 
 			// I think it comes from here:
-			const validFrom = h.liveSlotParams.timeToSlot(t);
-			expect(validFrom).toBeTypeOf('Date');
+			const validFrom = new Date(Number(t));
+			const validTo = new Date (validFrom + (1000*60));
+
+			expect(validFrom).toBeTypeOf('object');
+			expect(validTo).toBeTypeOf('object');
+
 
 			const tcxClaim = await v.mkTxnClaimVestedValue(
 				sasha, 
 				valUtxos[0],
-				validFrom
+				validFrom,
+				validTo
 			);
 
 			const txIdClaim = await h.submitTx(tcxClaim.tx, "force");
