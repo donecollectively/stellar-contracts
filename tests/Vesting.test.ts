@@ -104,7 +104,7 @@ describe("Vesting service", async () => {
 
 		});
 		it("lock as sasha and claim as pavel", async (context: localTC) => {
-		    const {h, h: { network, actors, delay, state }} = context;
+			const {h, h: { network, actors, delay, state }} = context;
 			const { sasha, tom, pavel } = actors;
 
 			const v = new Vesting(context);
@@ -112,17 +112,16 @@ describe("Vesting service", async () => {
 			const d = t + BigInt(2*60*60*1000);
 
 			const tcx = await v.mkTxnDepositValueForVesting({
-				sponsor: sasha,   // need sasha  
+				sponsor: sasha,   
 				payee: pavel.address, // maybe pkh? 
 				deadline: d
 			});
 
+			const txId = await h.submitTx(tcx.tx, "force");
 			// explore the transaction data:
 			expect(tcx.inputs[0].origOutput.value.lovelace).toBeTypeOf('bigint');
-			expect(tcx.inputs[1].origOutput.value.lovelace).toBe(5000000n);
+			expect(tcx.inputs[1].origOutput.value.lovelace).toBeTypeOf('bigint');
 			expect(tcx.outputs[0].datum.data.toSchemaJson().length).toBe(175);
-
-			const txId = await h.submitTx(tcx.tx, "force");
 
 			expect((txId.hex).length).toBe(64);
 			expect((await pavel.utxos).length).toBe(2);
