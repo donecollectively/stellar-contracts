@@ -132,7 +132,10 @@ function txAsString(tx) {
         continue;
       //!!! todo: augment with mph when that's available from the Redeemer.
       item = item.map(
-        (x2) => `\u{1F3E7}  #${x2.data.index ? 1 + x2.data.index : ""} ${x2.data.toString()}`
+        (x2) => {
+          const indexInfo = x2.inputIndex == -1 ? `txin #\u2039tbd\u203A` : "inputIndex" in x2 ? `txin #${1 + x2.inputIndex}` : `mph #${1 + x2.mphIndex}`;
+          return `\u{1F3E7}  ${indexInfo} ${x2.data.toString()}`;
+        }
       );
       if (item.length > 1)
         item.unshift("");
@@ -1184,10 +1187,13 @@ class StellarTestHelper {
     return this.actors[this.actorName];
   }
   set currentActor(actorName) {
-    if (!this.actors[actorName])
+    const thisActor = this.actors[actorName];
+    if (!thisActor)
       throw new Error(
         `setCurrentActor: invalid actor name '${actorName}'`
       );
+    if (this.strella)
+      this.strella.myActor = thisActor;
     this.actorName = actorName;
   }
   address;

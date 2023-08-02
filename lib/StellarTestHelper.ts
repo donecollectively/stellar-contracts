@@ -142,10 +142,12 @@ export abstract class StellarTestHelper<
         return this.actors[this.actorName];
     }
     set currentActor(actorName: string) {
-        if (!this.actors[actorName])
+        const thisActor = this.actors[actorName];
+        if (!thisActor)
             throw new Error(
                 `setCurrentActor: invalid actor name '${actorName}'`
             );
+        if (this.strella) this.strella.myActor = thisActor
         this.actorName = actorName;
     }
 
