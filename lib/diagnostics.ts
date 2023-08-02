@@ -148,8 +148,8 @@ export function txAsString(tx: Tx): string {
             item = item.map(                
                 (x) => {
                     // console.log("redeemer keys", ...[ ...Object.keys(x2) ], x2.dump());
-                    const indexInfo = (x.inputIndex == -1) ? `txin #‹tbd›` : 
-                        'inputIndex' in x ? `txin #${1+x.inputIndex}` : `mph #${1+x.mphIndex}`;
+                    const indexInfo = (x.inputIndex == -1) ? `spend txin #‹tbd›` : 
+                        'inputIndex' in x ? `spend txin #${1+x.inputIndex}` : `mint policy#${1+x.mphIndex}`;
         
                     return `🏧  ${indexInfo} ${x.data.toString()}`
                 }

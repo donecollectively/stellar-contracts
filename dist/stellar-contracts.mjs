@@ -133,7 +133,7 @@ function txAsString(tx) {
       //!!! todo: augment with mph when that's available from the Redeemer.
       item = item.map(
         (x2) => {
-          const indexInfo = x2.inputIndex == -1 ? `txin #\u2039tbd\u203A` : "inputIndex" in x2 ? `txin #${1 + x2.inputIndex}` : `mph #${1 + x2.mphIndex}`;
+          const indexInfo = x2.inputIndex == -1 ? `spend txin #\u2039tbd\u203A` : "inputIndex" in x2 ? `spend txin #${1 + x2.inputIndex}` : `mint policy#${1 + x2.mphIndex}`;
           return `\u{1F3E7}  ${indexInfo} ${x2.data.toString()}`;
         }
       );
