@@ -62,30 +62,35 @@ export class StellarTxnContext {
         return this;
     }
 
-    addInput(input: UTxO,
-        rawRedeemer?: null | UplcDataValue | UplcData | HeliosData
-    ) {
+    addInput(...args: Parameters<Tx["addInput"]>) : StellarTxnContext {
+        const [input, ..._otherArgs] = args;
         this.inputs.push(input);
-        this.tx.addInput(input, rawRedeemer);
+        this.tx.addInput(...args);
         return this;
     }
 
-    addInputs(inputs: UTxO[]) {
+    addInputs(...args: Parameters<Tx["addInputs"]>) : StellarTxnContext {
+        const [inputs, ..._otherArgs] = args;
         this.inputs.push(...inputs);
-        this.tx.addInputs(inputs);
+        this.tx.addInputs(...args);
         return this;
     }
 
-    addOutput(output: TxOutput) {
+    addOutput(...args: Parameters<Tx["addOutput"]>) : StellarTxnContext {
+        const [output, ..._otherArgs] = args;
         this.outputs.push(output);
-        this.tx.addOutput(output);
+        this.tx.addOutput(...args);
         return this;
     }
-    addOutputs(outputs: TxOutput[]) {
+
+    addOutputs(...args: Parameters<Tx["addOutputs"]>) : StellarTxnContext {
+        const [outputs, ..._otherArgs] = args;
         this.outputs.push(...outputs);
-        this.tx.addOutputs(outputs);
+        this.tx.addOutputs(...args);
+
         return this;
     }
+
     attachScript(...args: Parameters<Tx["attachScript"]>) {
         this.tx.attachScript(...args)
 

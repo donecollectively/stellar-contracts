@@ -421,7 +421,7 @@ export abstract class StellarCapoTestHelper<
         const { tina, tom, tracy } = this.actors;
         if (this.state.mintedCharterToken) {
             console.warn(
-                "reusing  minted charter from existing testing-context"
+                "reusing minted charter from existing testing-context"
             );
             return this.state.mintedCharterToken;
         }

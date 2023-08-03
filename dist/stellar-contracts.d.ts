@@ -1,5 +1,5 @@
 import * as helios from '@hyperionbt/helios';
-import { Tx, Datum, Value, UTxO, TxOutput, UplcDataValue, UplcData, HeliosData, Wallet, Network, NetworkParams, Program, UplcProgram, Address, MintingPolicyHash, Assets, TxId, NetworkEmulator, WalletEmulator } from '@hyperionbt/helios';
+import { Tx, Datum, Value, UTxO, TxOutput, Wallet, UplcDataValue, UplcData, Network, NetworkParams, Program, UplcProgram, Address, MintingPolicyHash, Assets, TxId, NetworkEmulator, WalletEmulator } from '@hyperionbt/helios';
 import { TestContext } from 'vitest';
 
 declare const DatumInline: typeof Datum.inline;
@@ -29,10 +29,10 @@ declare class StellarTxnContext {
     reservedUtxos(): UTxO[];
     utxoNotReserved(u: UTxO): UTxO | undefined;
     addCollateral(collateral: UTxO): this;
-    addInput(input: UTxO, rawRedeemer?: null | UplcDataValue | UplcData | HeliosData): this;
-    addInputs(inputs: UTxO[]): this;
-    addOutput(output: TxOutput): this;
-    addOutputs(outputs: TxOutput[]): this;
+    addInput(...args: Parameters<Tx["addInput"]>): StellarTxnContext;
+    addInputs(...args: Parameters<Tx["addInputs"]>): StellarTxnContext;
+    addOutput(...args: Parameters<Tx["addOutput"]>): StellarTxnContext;
+    addOutputs(...args: Parameters<Tx["addOutputs"]>): StellarTxnContext;
     attachScript(...args: Parameters<Tx["attachScript"]>): this;
     addSignature(wallet: Wallet): Promise<void>;
     /**

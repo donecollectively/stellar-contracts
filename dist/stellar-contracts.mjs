@@ -245,24 +245,28 @@ class StellarTxnContext {
     this.tx.addCollateral(collateral);
     return this;
   }
-  addInput(input, rawRedeemer) {
+  addInput(...args) {
+    const [input, ..._otherArgs] = args;
     this.inputs.push(input);
-    this.tx.addInput(input, rawRedeemer);
+    this.tx.addInput(...args);
     return this;
   }
-  addInputs(inputs) {
+  addInputs(...args) {
+    const [inputs, ..._otherArgs] = args;
     this.inputs.push(...inputs);
-    this.tx.addInputs(inputs);
+    this.tx.addInputs(...args);
     return this;
   }
-  addOutput(output) {
+  addOutput(...args) {
+    const [output, ..._otherArgs] = args;
     this.outputs.push(output);
-    this.tx.addOutput(output);
+    this.tx.addOutput(...args);
     return this;
   }
-  addOutputs(outputs) {
+  addOutputs(...args) {
+    const [outputs, ..._otherArgs] = args;
     this.outputs.push(...outputs);
-    this.tx.addOutputs(outputs);
+    this.tx.addOutputs(...args);
     return this;
   }
   attachScript(...args) {
@@ -1417,7 +1421,7 @@ class StellarCapoTestHelper extends StellarTestHelper {
     const { tina, tom, tracy } = this.actors;
     if (this.state.mintedCharterToken) {
       console.warn(
-        "reusing  minted charter from existing testing-context"
+        "reusing minted charter from existing testing-context"
       );
       return this.state.mintedCharterToken;
     }
