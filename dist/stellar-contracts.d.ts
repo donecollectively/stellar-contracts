@@ -144,12 +144,13 @@ type SeedTxnParams = {
 };
 declare class DefaultMinter extends StellarContract<SeedTxnParams> implements MinterBaseMethods {
     contractSource(): any;
-    txnCreatingUUT(tcx: StellarTxnContext, uutPurpose: string): Promise<Value>;
-    mkUUTValuesEntries(assetName: any): valuesEntry[];
+    txnCreatingUUTs(tcx: StellarTxnContext, purposes: string[]): Promise<Value>;
+    mkUUTValuesEntries(assetNames: string[]): valuesEntry[];
     get mintingPolicyHash(): MintingPolicyHash;
     protected mintingCharterToken({ owner }: MintCharterRedeemerArgs): isActivity;
-    protected mintingUUT({ seedTxn, seedIndex: sIdx, assetName, }: MintUUTRedeemerArgs): isActivity;
+    protected mintingUUT({ seedTxn, seedIndex: sIdx, purposes, }: MintUUTRedeemerArgs): isActivity;
     get charterTokenAsValuesEntry(): valuesEntry;
+    tvCharter(): Value;
     get charterTokenAsValue(): Value;
     txnMintingCharterToken(tcx: StellarTxnContext, owner: Address): Promise<StellarTxnContext>;
 }
@@ -159,7 +160,7 @@ type seedUtxoParams = {
     seedIndex: bigint;
 };
 interface hasUUTCreator {
-    txnCreatingUUT(tcs: StellarTxnContext, uutPurpose: string): Promise<Value>;
+    txnCreatingUUTs(tcs: StellarTxnContext, uutPurposes: string[]): Promise<Value>;
 }
 type MintCharterRedeemerArgs = {
     owner: Address;
@@ -167,7 +168,7 @@ type MintCharterRedeemerArgs = {
 type MintUUTRedeemerArgs = {
     seedTxn: TxId;
     seedIndex: bigint | number;
-    assetName: string;
+    purposes: string[];
 };
 interface MinterBaseMethods extends hasUUTCreator {
     get mintingPolicyHash(): MintingPolicyHash;
@@ -180,12 +181,13 @@ declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter
     abstract mkDatumCharterToken(args: anyDatumArgs): InlineDatum;
     get minterClass(): stellarSubclass<DefaultMinter, seedUtxoParams>;
     minter?: minterType;
-    txnCreatingUUT(tcx: StellarTxnContext, uutPurpose: string): Promise<Value>;
+    txnCreatingUUTs(tcx: StellarTxnContext, uutPurposes: string[]): Promise<Value>;
     protected usingAuthority(): isActivity;
     protected updatingCharter({ trustees, minSigs, }: {
         trustees: Address[];
         minSigs: bigint;
     }): isActivity;
+    tvCharter(): Value;
     get charterTokenAsValue(): Value;
     mkTxnMintCharterToken(datumArgs: anyDatumArgs, tcx?: StellarTxnContext): Promise<StellarTxnContext | never>;
     get charterTokenPredicate(): ((something: any) => any) & {

@@ -198,7 +198,7 @@ describe("StellarContract", async () => {
                         tcx.addOutput(
                             new TxOutput(
                                 actors.tracy.address,
-                                treasury.charterTokenAsValue
+                                treasury.tvCharter()
                             )
                         );
 
@@ -231,7 +231,7 @@ describe("StellarContract", async () => {
                         tcx.addOutput(
                             new TxOutput(
                                 treasury.address,
-                                treasury.charterTokenAsValue,
+                                treasury.tvCharter(),
                                 treasury.mkDatumCharterToken({
                                     trustees: targetTrustees,
                                     minSigs: targetMinSigs,
