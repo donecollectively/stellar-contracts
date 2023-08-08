@@ -763,7 +763,7 @@ describe("StellarContract", async () => {
                 const tcx = await h.mkCharterSpendTx();
                 expect(tcx.outputs).toHaveLength(1);
                 const hasCharterToken = treasury.mkTokenPredicate(
-                    treasury.charterTokenAsValue
+                    treasury.tvCharter()
                 );
                 expect(
                     tcx.outputs.find((o: TxOutput) => {
@@ -797,7 +797,7 @@ describe("StellarContract", async () => {
                 const tcx: StellarTxnContext = await h.mkCharterSpendTx();
                 const bogusPlace = (await actors.tina.usedAddresses)[0];
                 tcx.addOutput(
-                    new TxOutput(bogusPlace, treasury.charterTokenAsValue)
+                    new TxOutput(bogusPlace, treasury.tvCharter())
                 );
 
                 const submitting = treasury.submit(tcx, {
@@ -829,7 +829,7 @@ describe("StellarContract", async () => {
                     tcx.addOutput(
                         new TxOutput(
                             treasury.address,
-                            treasury.charterTokenAsValue
+                            treasury.tvCharter()
                         )
                     );
 
@@ -854,7 +854,7 @@ describe("StellarContract", async () => {
 
                 const tcx = new StellarTxnContext();
                 await t.txnAddAuthority(tcx);
-                const uut = await t.txnCreatingUUT(tcx, "something");
+                const uut = await t.txnCreatingUUTs(tcx, ["something"]);
 
                 tcx.addOutput(new TxOutput(tina.address, uut));
                 await t.submit(tcx, { signers: [tom, tina, tracy] });
@@ -865,6 +865,80 @@ describe("StellarContract", async () => {
                 const f = u.find(hasNamedToken);
                 expect(f).toBeTruthy();
                 expect(f?.origOutput.value.ge(uut)).toBeTruthy();
+            });
+
+            it("can create multiple UUTs", async (context: localTC) => {
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
+                const { tina, tom, tracy } = actors;
+
+                const t: SampleTreasury = await h.setup();
+                await h.mintCharterToken();
+                // await delay(1000);
+
+                const tcx = new StellarTxnContext();
+                await t.txnAddAuthority(tcx);
+                const uuts = await t.txnCreatingUUTs(tcx, ["foo", "bar"]);
+
+                tcx.addOutput(new TxOutput(tina.address, uuts));
+                await t.submit(tcx, { signers: [tom, tina, tracy] });
+                network.tick(1n);
+
+                const hasNamedToken = t.mkTokenPredicate(uuts);
+                const u = await network.getUtxos(tina.address);
+                const f = u.find(hasNamedToken);
+                expect(f).toBeTruthy();
+                expect(f?.origOutput.value.ge(uuts)).toBeTruthy();
+            });
+
+            it("won't mint multiple UUTs of the same name", async (context: localTC) => {
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
+                const { tina, tom, tracy } = actors;
+
+                const t: SampleTreasury = await h.setup();
+                const m: DefaultMinter = t.minter!;
+
+                await h.mintCharterToken();
+                // await delay(1000);
+
+                const noMultiples = "multiple-is-bad";
+
+                console.log("-------- case 1: using the txn-helper in unsupported way");
+                const tcx = new StellarTxnContext();
+                await t.txnAddAuthority(tcx);
+
+                const uut = await t.txnCreatingUUTs(tcx, [noMultiples, noMultiples]);
+
+                tcx.addOutput(new TxOutput(tina.address, uut));
+                await expect(
+                    t.submit(tcx, { signers: [tom, tina, tracy] })
+                ).rejects.toThrow(/UUT purposes not unique/);
+                network.tick(1n);
+
+                console.log("------ case 2: directly creating the transaction");
+                const tcx2 = new StellarTxnContext();
+                await t.txnAddAuthority(tcx2);
+
+                vi.spyOn(m, "mkUUTValuesEntries").mockImplementation(function (
+                    f: string[]
+                ) {
+                    return [
+                        this.mkValuesEntry(f[0], BigInt(2)),
+                    ];
+                });
+
+                const uut2 = await t.txnCreatingUUTs(tcx2, [noMultiples]);
+
+                tcx2.addOutput(new TxOutput(tina.address, uut2));
+                await expect(
+                    t.submit(tcx2, { signers: [tom, tina, tracy] })
+                ).rejects.toThrow(/bad UUT mint/);
+                network.tick(1n);
             });
 
             it("won't mint extra UUTs", async (context: localTC) => {
@@ -882,15 +956,15 @@ describe("StellarContract", async () => {
                 await t.txnAddAuthority(tcx);
                 const m: DefaultMinter = t.minter!;
                 vi.spyOn(m, "mkUUTValuesEntries").mockImplementation(function (
-                    f: string
+                    f: string[]
                 ) {
                     return [
-                        this.mkValuesEntry(f, BigInt(1)),
+                        this.mkValuesEntry(f[0], BigInt(1)),
                         this.mkValuesEntry("something-else", BigInt(1)),
                     ];
                 });
 
-                const uut = await t.txnCreatingUUT(tcx, "something");
+                const uut = await t.txnCreatingUUTs(tcx, ["something"]);
 
                 tcx.addOutput(new TxOutput(tina.address, uut));
                 await expect(
@@ -899,14 +973,7 @@ describe("StellarContract", async () => {
                 network.tick(1n);
             });
         });
-        //!!! todo: this (build-txn, check-it, submit-it, check-onchain)
-        //   ... might be a pattern worth lifting to a helper
-        // await this.txChecker({
-        //     async build() : tcx {  ... },
-        //     async onChain(utxosByAddr) {
-        //          ...
-        //     }
-        // };
+
 
         describe("the trustee threshold is enforced on all administrative actions", () => {
             it("works with a minSigs=1 if one person signs", async (context: localTC) => {

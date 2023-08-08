@@ -7,9 +7,10 @@ enum Redeemer {
     mintingCharterToken {
         owner: Address
     }
-    mintingUUT {
+    mintingUUTs {
         seedTxn: TxId
         seedIndex: Int
+        purposes: []String
     }
     mintingNamedToken {
         value: Value

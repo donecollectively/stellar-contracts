@@ -7,10 +7,11 @@ enum Redeemer {
     mintingCharterToken {
         owner: Address
     }
-    mintingUUT {
+    mintingUUTs {
         seedTxn: TxId
         seedIndex: Int
-        assetName: ByteArray
+        //!!! todo: apply this everywhere else
+        purposes: []String
     }
 }
 
@@ -29,7 +30,6 @@ func hasSeedUtxo(tx: Tx, sTxId : TxId, sIdx: Int) -> Bool {
 func hasContractSeedUtxo(tx: Tx) -> Bool {
     hasSeedUtxo(tx, seedTxn, seedIndex)
 }
-
 
 func main(r : Redeemer, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
@@ -53,21 +53,53 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
                 )
             })
         },
-        mintingUUT{sTxId, sIdx, assetName} => {
-            assetClass = AssetClass::new(mph, assetName);
-            value : Value = Value::new(assetClass, 1);
-            expectedMint : Map[ByteArray]Int = value.get_policy(mph);
+
+        mintingUUTs{sTxId, sIdx, purposes} => {
+            idxBytes : ByteArray = sIdx.bound_max(255).serialize();
+            // assert(idxBytes.length == 1, "surprise!");
+
+            //! yuck: un-CBOR...
+            rawTxId : ByteArray = sTxId.serialize().slice(5,37);
+
+            txoId : ByteArray = (rawTxId + "@".encode_utf8() + idxBytes);
+            assert(txoId.length == 34, "txId + @ + int should be length 34");
+            // print( "******** txoId " + txoId.show());
+
+            miniHash : ByteArray = txoId.blake2b().slice(0,6);
+            assert(miniHash.length == 6, "urgh.  slice 5? expected 12, got "+ miniHash.length.show());
+
+            assetValues = Value::sum(purposes.map(
+                (purpose: String) -> Value {
+                    assetName : ByteArray = (purpose + "." + miniHash.show()).encode_utf8();
+                    assetClass : AssetClass = AssetClass::new(mph, assetName);
+
+                    Value::new(assetClass, 1)
+                }
+            ));
+            expectedMint : Map[ByteArray]Int = assetValues.get_policy(mph);
             actualMint : Map[ByteArray]Int = value_minted.get_policy(mph);
 
             // print("redeemer" + sTxId.show() + " " + sIdx.show() + " asset " + assetName.show());
             // expectedMint.for_each( (b : ByteArray, i: Int) -> {
             //     print( "expected: " + b.show() + " " + i.show() )
             // });
+            temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {
+                l.find_safe((x : ByteArray) -> Bool { x == b }).switch{
+                    None => l.prepend(b),
+                    Some => error("UUT purposes not unique")
+                }
+            }, []ByteArray{});
+            assert(temp == temp, "prevent unused var");
+            
             // actualMint.for_each( (b : ByteArray, i: Int) -> {
             //     print( "actual: " + b.show() + " " + i.show() )
             // });
-            
-            assert(expectedMint == actualMint, "bad UUT mint has mismatch");
+
+            assert(expectedMint == actualMint, "bad UUT mint has mismatch;"+ 
+                "\n   ... expected "+ assetValues.show()+
+                "   ... actual "+ value_minted.show()+
+                "   ... diff = " + (assetValues - value_minted).show()
+            );
             hasSeedUtxo(tx, sTxId, sIdx)
         },
         _ => true

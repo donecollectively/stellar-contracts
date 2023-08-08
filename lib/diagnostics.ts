@@ -145,8 +145,14 @@ export function txAsString(tx: Tx): string {
         if ("redeemers" == x) {
             if (!item) continue;
             //!!! todo: augment with mph when that's available from the Redeemer.
-            item = item.map(
-                (x) => `🏧  #${x.data.index ? 1 + x.data.index : ""} ${x.data.toString()}`
+            item = item.map(                
+                (x) => {
+                    // console.log("redeemer keys", ...[ ...Object.keys(x2) ], x2.dump());
+                    const indexInfo = (x.inputIndex == -1) ? `spend txin #‹tbd›` : 
+                        'inputIndex' in x ? `spend txin #${1+x.inputIndex}` : `mint policy#${1+x.mphIndex}`;
+        
+                    return `🏧  ${indexInfo} ${x.data.toString()}`
+                }
             );
             if (item.length > 1) item.unshift("");
             item = item.join("\n    ");

@@ -72,17 +72,14 @@ export class SampleTreasury extends Capo {
         { trustees, minSigs }: CharterDatumArgs,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
-        console.log("minting charter token", this.paramsIn);
-
+        console.log(`minting charter from seed ${this.paramsIn.seedTxn.hex.substring(0, 12)}…@${this.paramsIn.seedIndex}`);
         return this.mustGetContractSeedUtxo().then((seedUtxo) => {
-            const v = this.charterTokenAsValue;
-            // this.charterTokenDatum
             const datum = this.mkDatumCharterToken({
                 trustees,
                 minSigs: BigInt(minSigs),
             });
 
-            const outputs = [new TxOutput(this.address, v, datum)];
+            const outputs = [new TxOutput(this.address, this.tvCharter(), datum)];
 
             tcx.addInput(seedUtxo).addOutputs(outputs);
             return this.minter!.txnMintingCharterToken(tcx, this.address);

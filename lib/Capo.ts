@@ -22,8 +22,6 @@ import {
 import { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 
-type minterContract<T extends paramsBase = any> = StellarContract<T>;
-
 export type seedUtxoParams = {
     seedTxn: TxId;
     seedIndex: bigint;
@@ -31,7 +29,7 @@ export type seedUtxoParams = {
 // P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never
 
 interface hasUUTCreator {
-    txnCreatingUUT(tcs: StellarTxnContext, uutPurpose: string): Promise<Value>;
+    txnCreatingUUTs(tcs: StellarTxnContext, uutPurposes: string[]): Promise<Value>;
 }
 
 export type MintCharterRedeemerArgs = {
@@ -40,7 +38,7 @@ export type MintCharterRedeemerArgs = {
 export type MintUUTRedeemerArgs = {
     seedTxn: TxId;
     seedIndex: bigint | number;
-    assetName: string;
+    purposes: string[];
 };
 
 export interface MinterBaseMethods extends hasUUTCreator {
@@ -94,11 +92,11 @@ export abstract class Capo<
     minter?: minterType;
 
     @Activity.partialTxn
-    async txnCreatingUUT(
+    async txnCreatingUUTs(
         tcx: StellarTxnContext,
-        uutPurpose: string
+        uutPurposes: string[]
     ): Promise<Value> {
-        return this.minter!.txnCreatingUUT(tcx, uutPurpose);
+        return this.minter!.txnCreatingUUTs(tcx, uutPurposes);
     }
 
     @Activity.redeemer
@@ -131,8 +129,13 @@ export abstract class Capo<
         return {redeemer: t._toUplcData() }
     }
 
+    tvCharter() {
+        return this.minter!.tvCharter()
+    }
+
     get charterTokenAsValue() {
-        return this.minter!.charterTokenAsValue
+        console.warn("deprecated get charterTokenAsValue; use tvCharter() instead")
+        return this.tvCharter()
     }
 
     @txn
@@ -140,10 +143,10 @@ export abstract class Capo<
         datumArgs: anyDatumArgs,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
-        console.log("minting charter token", this.paramsIn);
+        console.log(`minting charter from seed ${this.paramsIn.seedTxn.hex.substring(0, 12)}…@${this.paramsIn.seedIndex}`);
 
         return this.mustGetContractSeedUtxo().then((seedUtxo) => {
-            const v = this.charterTokenAsValue;
+            const v = this.tvCharter()
             
             const datum = this.mkDatumCharterToken(datumArgs);
             const outputs = [new TxOutput(this.address, v, datum)];
@@ -153,15 +156,13 @@ export abstract class Capo<
         });
     }
     get charterTokenPredicate() {
-        const ctVal = this.charterTokenAsValue;
-        const predicate = this.mkTokenPredicate(ctVal)
+        const predicate = this.mkTokenPredicate(this.tvCharter())
 
         return predicate
     }
 
     async mustFindCharterUtxo() {
-        const ctVal = this.charterTokenAsValue;
-        const predicate = this.mkTokenPredicate(ctVal)
+        const predicate = this.mkTokenPredicate(this.tvCharter())
 
         return this.mustFindMyUtxo(
             "charter", predicate,
@@ -205,7 +206,7 @@ export abstract class Capo<
     txnKeepCharterToken(tcx: StellarTxnContext, datum: InlineDatum) {
         
         tcx.addOutput(
-            new TxOutput(this.address, this.charterTokenAsValue, datum)
+            new TxOutput(this.address, this.tvCharter(), datum)
         );
 
         return tcx;
@@ -246,15 +247,15 @@ export abstract class Capo<
         const { seedTxn, seedIndex } = this.paramsIn;
 
         const minter = this.addScriptWithParams(minterClass, params);
-        const { mintingCharterToken, mintingUUT } =
+        const { mintingCharterToken, mintingUUTs } =
             minter.configuredContract.types.Redeemer;
         if (!mintingCharterToken)
             throw new Error(
                 `minting script doesn't offer required 'mintingCharterToken' activity-redeemer`
             );
-        if (!mintingUUT)
+        if (!mintingUUTs)
             throw new Error(
-                `minting script doesn't offer required 'mintingCharterToken' activity-redeemer`
+                `minting script doesn't offer required 'mintingUUTs' activity-redeemer`
             );
 
         //@ts-ignore-error - can't seem to indicate to typescript that minter's type can be relied on to be enough
@@ -266,7 +267,8 @@ export abstract class Capo<
         //! prior to initial on-chain creation of contract,
         //! it finds that specific UTxO in the current user's wallet.
         const { seedTxn, seedIndex } = this.paramsIn;
-        console.log("seeking seed txn", seedTxn.hex, seedIndex);
+        console.log(`seeking seed txn ${seedTxn.hex.substring(0, 12)}…@${seedIndex}`);
+
         return this.mustFindActorUtxo(
             "seed",
             (u) => {

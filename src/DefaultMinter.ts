@@ -12,6 +12,7 @@ import {
     UTxO,
     ByteArray,
     ByteArrayData,
+    bytesToHex,
 } from "@hyperionbt/helios";
 import {
     Activity,
@@ -44,15 +45,15 @@ export class DefaultMinter
     }
 
     @Activity.partialTxn
-    async txnCreatingUUT(
+    async txnCreatingUUTs(
         tcx: StellarTxnContext,
-        uutPurpose: string
+        purposes: string[]
     ): Promise<Value> {
         //!!! make it big enough to serve minUtxo for the new UUT
         const uutSeed = this.mkValuePredicate(BigInt(42_000), tcx);
 
         return this.mustFindActorUtxo(
-            `for-uut-${uutPurpose}`,
+            `for-uut-${purposes.join("+")}`,
             uutSeed,
             tcx
         ).then(async (freeSeedUtxo) => {
@@ -60,10 +61,16 @@ export class DefaultMinter
             const { txId, utxoIdx } = freeSeedUtxo;
             const { encodeBech32, blake2b, encodeBase32 } = Crypto;
 
-            const assetName = `${uutPurpose}.${encodeBase32(
-                blake2b(txId.bytes.concat(["@".charCodeAt(0), utxoIdx]), 6)
-            )}`;
-            const vEntries = this.mkUUTValuesEntries(assetName);
+            const assetNames = purposes.map(uutPurpose => {
+                const txoId = txId.bytes.concat(["@".charCodeAt(0), utxoIdx]);
+                // console.warn("txId " + txId.hex)
+                // console.warn("&&&&&&&& txoId", bytesToHex(txoId));
+                return `${uutPurpose}.${
+                    bytesToHex(blake2b(txoId).slice(0,6))
+                }`;
+            })
+
+            const vEntries = this.mkUUTValuesEntries(assetNames);
 
             const { txId: seedTxn, utxoIdx: seedIndex } = freeSeedUtxo;
 
@@ -73,7 +80,7 @@ export class DefaultMinter
                 this.mintingUUT({
                     seedTxn,
                     seedIndex,
-                    assetName,
+                    purposes,
                 }).redeemer
             );
 
@@ -85,8 +92,11 @@ export class DefaultMinter
             return v;
         });
     }
-    mkUUTValuesEntries(assetName) {
-        return [this.mkValuesEntry(assetName, BigInt(1))];
+
+    mkUUTValuesEntries(assetNames : string[]) {
+        return assetNames.map(assetName => {
+            return this.mkValuesEntry(assetName, BigInt(1))
+        })
     }
 
     //! overrides base getter type with undefined not being allowed
@@ -109,14 +119,15 @@ export class DefaultMinter
     protected mintingUUT({
         seedTxn,
         seedIndex: sIdx,
-        assetName,
+        purposes,
     }: MintUUTRedeemerArgs)  : isActivity {
         // debugger
         const seedIndex = BigInt(sIdx);
-        const t = new this.configuredContract.types.Redeemer.mintingUUT(
+        console.log("UUT redeemer seedTxn", seedTxn.hex);
+        const t = new this.configuredContract.types.Redeemer.mintingUUTs(
             seedTxn,
             seedIndex,
-            ByteArrayData.fromString(assetName).bytes
+            purposes
         );
 
         return { redeemer: t._toUplcData() }
@@ -126,7 +137,7 @@ export class DefaultMinter
         return this.mkValuesEntry("charter", BigInt(1));
     }
 
-    get charterTokenAsValue() {
+    tvCharter() {
         const { mintingPolicyHash } = this;
 
         const v = new Value(
@@ -134,6 +145,11 @@ export class DefaultMinter
             new Assets([[mintingPolicyHash, [this.charterTokenAsValuesEntry]]])
         );
         return v;
+    }
+
+    get charterTokenAsValue() {
+        console.warn("deprecated use of `get minter.charterTokenAsValue`; use tvCharter() instead")
+        return this.tvCharter()
     }
 
     @Activity.partialTxn
