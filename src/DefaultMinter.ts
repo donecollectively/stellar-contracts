@@ -87,7 +87,7 @@ export class DefaultMinter
             tcx.attachScript(this.compiledContract).mintTokens(
                 this.mintingPolicyHash!,
                 vEntries,
-                this.mintingUUT({
+                this.mintingUUTs({
                     seedTxn,
                     seedIndex,
                     purposes,
@@ -126,7 +126,7 @@ export class DefaultMinter
     }
 
     @Activity.redeemer
-    protected mintingUUT({
+    protected mintingUUTs({
         seedTxn,
         seedIndex: sIdx,
         purposes,

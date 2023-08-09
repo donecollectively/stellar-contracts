@@ -151,7 +151,7 @@ declare class DefaultMinter extends StellarContract<SeedTxnParams> implements Mi
     mkUUTValuesEntries(assetNames: string[]): valuesEntry[];
     get mintingPolicyHash(): MintingPolicyHash;
     protected mintingCharterToken({ owner }: MintCharterRedeemerArgs): isActivity;
-    protected mintingUUT({ seedTxn, seedIndex: sIdx, purposes, }: MintUUTRedeemerArgs): isActivity;
+    protected mintingUUTs({ seedTxn, seedIndex: sIdx, purposes, }: MintUUTRedeemerArgs): isActivity;
     get charterTokenAsValuesEntry(): valuesEntry;
     tvCharter(): Value;
     get charterTokenAsValue(): Value;
@@ -350,4 +350,4 @@ declare class SampleTreasury extends Capo {
     };
 }
 
-export { ADA, Activity, Capo, CharterDatumArgs, DefaultMinter, InlineDatum, SampleTreasury, StellarCapoTestHelper, StellarContract, StellarTestContext, StellarTestHelper, StellarTxnContext, TxInput, addTestContext, assetsAsString, datum, isActivity, lovelaceToAda, partialTxn, stellarSubclass, tokenNamesOrValuesEntry, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxoPredicate, utxosAsString, valueAsString, valuesEntry };
+export { ADA, Activity, Capo, CharterDatumArgs, DefaultMinter, InlineDatum, MintCharterRedeemerArgs, MintUUTRedeemerArgs, SampleTreasury, StellarCapoTestHelper, StellarContract, StellarTestContext, StellarTestHelper, StellarTxnContext, TxInput, addTestContext, assetsAsString, datum, isActivity, lovelaceToAda, partialTxn, stellarSubclass, tokenNamesOrValuesEntry, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxoPredicate, utxosAsString, valueAsString, valuesEntry };

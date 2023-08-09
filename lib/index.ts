@@ -9,7 +9,8 @@ export {
     lovelaceToAda
  } from "./diagnostics.js";
 
-export { Capo } from "./Capo.js";
+ export { Capo } from "./Capo.js";
+ export type { MintUUTRedeemerArgs, MintCharterRedeemerArgs } from "./Capo.js";
 
 export {
     StellarContract,
@@ -33,6 +34,7 @@ export { DefaultMinter } from "../src/DefaultMinter.js";
 export {
     SampleTreasury,
 } from "../src/examples/SampleTreasury.js";
+
 export type {
     CharterDatumArgs,
 } from "../src/examples/SampleTreasury.js";

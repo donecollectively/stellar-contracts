@@ -867,7 +867,7 @@ class DefaultMinter extends StellarContract {
       tcx.attachScript(this.compiledContract).mintTokens(
         this.mintingPolicyHash,
         vEntries,
-        this.mintingUUT({
+        this.mintingUUTs({
           seedTxn,
           seedIndex,
           purposes
@@ -895,7 +895,7 @@ class DefaultMinter extends StellarContract {
     );
     return { redeemer: t._toUplcData() };
   }
-  mintingUUT({
+  mintingUUTs({
     seedTxn,
     seedIndex: sIdx,
     purposes
@@ -941,7 +941,7 @@ __decorateClass$2([
 ], DefaultMinter.prototype, "mintingCharterToken", 1);
 __decorateClass$2([
   Activity.redeemer
-], DefaultMinter.prototype, "mintingUUT", 1);
+], DefaultMinter.prototype, "mintingUUTs", 1);
 __decorateClass$2([
   Activity.partialTxn
 ], DefaultMinter.prototype, "txnMintingCharterToken", 1);
