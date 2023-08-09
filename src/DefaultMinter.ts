@@ -23,6 +23,8 @@ import {
 
 //@ts-expect-error
 import contract from "./DefaultMinter.hl";
+import {CapoMintHelpers} from "./CapoMintHelpers.js";
+
 import { StellarTxnContext } from "../lib/StellarTxnContext.js";
 import {
     MintCharterRedeemerArgs,
@@ -42,6 +44,14 @@ export class DefaultMinter
 {
     contractSource() {
         return contract;
+    }
+    capoMinterHelpers() : string{
+        return CapoMintHelpers
+    }
+    importModules() : string[] {
+        return [
+            this.capoMinterHelpers()
+        ]
     }
 
     @Activity.partialTxn

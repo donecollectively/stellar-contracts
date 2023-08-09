@@ -14,6 +14,7 @@ specifiers:
   rollup-plugin-sourcemaps: ^0.6.3
   rollup-plugin-string: ^3.0.0
   rollup-plugin-ts: ^3.2.0
+  rollup-pluginutils: ^2.8.2
   tslib: ^2.5.3
   typescript: ^4.9.4
   vite: ^4.3.9
@@ -36,6 +37,7 @@ devDependencies:
   rollup-plugin-sourcemaps: 0.6.3_ydbslhyws7lwblmtnfo66hoiou
   rollup-plugin-string: 3.0.0
   rollup-plugin-ts: 3.2.0_euwgenqmky52fthno7td2lwldq
+  rollup-pluginutils: 2.8.2
   tslib: 2.5.3
   typescript: 4.9.5
   vite: 4.3.9_@types+node@20.2.5

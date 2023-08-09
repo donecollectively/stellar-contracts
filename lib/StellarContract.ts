@@ -721,11 +721,16 @@ export class StellarContract<
     // constructor(params: any) {
 
     // }
+    importModules() : string[] {
+        return []
+    }
+
     contractTemplate() {
         const src = this.contractSource();
+        const modules = this.importModules()
         // console.log({src, Program)
 
-        return (this._template = this._template || Program.new(src));
+        return (this._template = this._template || Program.new(src, modules));
     }
 
     async getMyActorAddress() {

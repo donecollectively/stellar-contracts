@@ -118,6 +118,7 @@ declare class StellarContract<ParamsType extends paramsBase> {
     }): Promise<helios.TxId>;
     ADA(n: bigint | number): bigint;
     contractSource(): string | never;
+    importModules(): string[];
     contractTemplate(): Program;
     getMyActorAddress(): Promise<Address>;
     private get missingActorError();
@@ -144,6 +145,8 @@ type SeedTxnParams = {
 };
 declare class DefaultMinter extends StellarContract<SeedTxnParams> implements MinterBaseMethods {
     contractSource(): any;
+    capoMinterHelpers(): string;
+    importModules(): string[];
     txnCreatingUUTs(tcx: StellarTxnContext, purposes: string[]): Promise<Value>;
     mkUUTValuesEntries(assetNames: string[]): valuesEntry[];
     get mintingPolicyHash(): MintingPolicyHash;
