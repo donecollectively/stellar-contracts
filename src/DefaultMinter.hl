@@ -21,7 +21,7 @@ enum Redeemer {
 }
 
 func hasContractSeedUtxo(tx: Tx) -> Bool {
-    hasSeedUtxo(tx, seedTxn, seedIndex)
+    hasSeedUtxo(tx, seedTxn, seedIndex, "charter")
 }
 
 func main(r : Redeemer, ctx: ScriptContext) -> Bool {

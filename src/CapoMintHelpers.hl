@@ -1,14 +1,14 @@
 module CapoMintHelpers
 
 
-func hasSeedUtxo(tx: Tx, sTxId : TxId, sIdx: Int) -> Bool {
+func hasSeedUtxo(tx: Tx, sTxId : TxId, sIdx: Int, reason: String) -> Bool {
     seedUtxo: TxOutputId = TxOutputId::new(
         sTxId,
         sIdx
     );
     assert(tx.inputs.any( (input: TxInput) -> Bool {
         input.output_id == seedUtxo
-    }),  "seed utxo required for minting the charter token");
+    }),  "seed utxo required for minting "+reason);
 
     true
 }
@@ -62,5 +62,5 @@ func validateUUTminting(ctx: ScriptContext, sTxId : TxId, sIdx : Int, purposes: 
         "   ... actual "+ value_minted.show()+
         "   ... diff = " + (assetValues - value_minted).show()
     );
-    hasSeedUtxo(tx, sTxId, sIdx)
+    hasSeedUtxo(tx, sTxId, sIdx, "UUT "+purposes.join("+"))
 }

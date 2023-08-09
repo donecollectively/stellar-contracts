@@ -25,7 +25,7 @@ function heliosLoader(opts = {}) {
 
         transform(code, id) {
             if (filter(id)) {
-                console.warn(`heliosLoader: generating javascript for ${id}`);               
+                // console.warn(`heliosLoader: generating javascript for ${id}`);               
                 return {
                     code: `export default ${JSON.stringify(code)};`,
                     map: { mappings: "" },
