@@ -161,7 +161,7 @@ declare class DefaultMinter extends StellarContract<SeedTxnParams> implements Mi
     contractSource(): any;
     capoMinterHelpers(): string;
     importModules(): string[];
-    txnCreatingUUTs<uutIndex extends hasUUTs<any>>(tcx: StellarTxnContext<uutIndex>, purposes: string[]): Promise<Value>;
+    txnCreatingUUTs<uutIndex extends hasUUTs<any>>(tcx: StellarTxnContext<uutIndex>, purposes: string[]): Promise<StellarTxnContext<uutIndex>>;
     mkUUTValuesEntries<UM extends uutPurposeMap<any>>(uutMap: UM): valuesEntry[];
     get mintingPolicyHash(): MintingPolicyHash;
     protected mintingCharterToken({ owner }: MintCharterRedeemerArgs): isActivity;
@@ -183,7 +183,7 @@ type hasUUTs<uutNames extends {} = {}> = {
     uuts: uutPurposeMap<uutNames>;
 };
 interface hasUUTCreator {
-    txnCreatingUUTs(tcx: StellarTxnContext<any>, uutPurposes: string[]): Promise<Value>;
+    txnCreatingUUTs(tcx: StellarTxnContext<any>, uutPurposes: string[]): Promise<StellarTxnContext<any>>;
 }
 type MintCharterRedeemerArgs = {
     owner: Address;
@@ -193,6 +193,7 @@ type MintUUTRedeemerArgs = {
     seedIndex: bigint | number;
     purposes: string[];
 };
+type hasUutContext = StellarTxnContext<hasUUTs<any>>;
 interface MinterBaseMethods extends hasUUTCreator {
     get mintingPolicyHash(): MintingPolicyHash;
     txnMintingCharterToken(tcx: StellarTxnContext<any>, owner: Address, tVal: valuesEntry): Promise<StellarTxnContext<any>>;
@@ -204,7 +205,9 @@ declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter
     abstract mkDatumCharterToken(args: anyDatumArgs): InlineDatum;
     get minterClass(): stellarSubclass<DefaultMinter, seedUtxoParams>;
     minter?: minterType;
-    txnCreatingUUTs(tcx: StellarTxnContext<hasUUTs<any>>, uutPurposes: string[]): Promise<Value>;
+    txnCreatingUUTs(tcx: hasUutContext, uutPurposes: string[]): Promise<hasUutContext>;
+    uutsValue(uutMap: uutPurposeMap): Value;
+    uutsValue(tcx: hasUutContext): Value;
     protected usingAuthority(): isActivity;
     protected updatingCharter({ trustees, minSigs, }: {
         trustees: Address[];

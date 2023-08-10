@@ -765,7 +765,7 @@ export class StellarContract<
     ): Promise<UTxO | never> {
         const address = await this.getMyActorAddress();
 
-        const isTcx = hintOrExcept instanceof StellarTxnContext<any>;
+        const isTcx = hintOrExcept instanceof StellarTxnContext;
         const exceptInTcx = isTcx ? hintOrExcept : undefined;
         const extraErrorHint = isTcx
             ? hint
@@ -800,7 +800,7 @@ export class StellarContract<
         hint?: string
     ): Promise<UTxO | never> {
         const { address } = this;
-        const isTcx = hintOrExcept instanceof StellarTxnContext<any>;
+        const isTcx = hintOrExcept instanceof StellarTxnContext;
         const exceptInTcx = isTcx ? hintOrExcept : undefined;
         const extraErrorHint = isTcx
             ? hint

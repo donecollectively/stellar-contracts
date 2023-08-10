@@ -870,17 +870,18 @@ describe("StellarContract", async () => {
                 type something = { something: string };
                 const tcx = new StellarTxnContext<hasUUTs<something>>();
                 await t.txnAddAuthority(tcx);
-                const uut = await t.txnCreatingUUTs(tcx, ["something"]);
+                await t.txnCreatingUUTs(tcx, ["something"]);
 
-                tcx.addOutput(new TxOutput(tina.address, uut));
+                const uutVal = t.uutsValue(tcx.state.uuts!);
+                tcx.addOutput(new TxOutput(tina.address, uutVal));
                 await t.submit(tcx, { signers: [tom, tina, tracy] });
                 network.tick(1n);
 
-                const hasNamedToken = t.mkTokenPredicate(uut);
+                const hasNamedToken = t.mkTokenPredicate(uutVal);
                 const u = await network.getUtxos(tina.address);
                 const f = u.find(hasNamedToken);
                 expect(f).toBeTruthy();
-                expect(f?.origOutput.value.ge(uut)).toBeTruthy();
+                expect(f?.origOutput.value.ge(uutVal)).toBeTruthy();
             });
 
             it("can create multiple UUTs", async (context: localTC) => {
@@ -894,9 +895,11 @@ describe("StellarContract", async () => {
                 await h.mintCharterToken();
                 // await delay(1000);
 
-                const tcx = new StellarTxnContext();
+                type hasFooBar = { foo: string; bar: string };
+                const tcx = new StellarTxnContext<hasUUTs<hasFooBar>>();
                 await t.txnAddAuthority(tcx);
-                const uuts = await t.txnCreatingUUTs(tcx, ["foo", "bar"]);
+                await t.txnCreatingUUTs(tcx, ["foo", "bar"]);
+                const uuts = t.uutsValue(tcx.state.uuts!);
 
                 tcx.addOutput(new TxOutput(tina.address, uuts));
                 await t.submit(tcx, { signers: [tom, tina, tracy] });
@@ -923,7 +926,9 @@ describe("StellarContract", async () => {
                 type hasFooBar = { foo: string; bar: string };
                 const tcx = new StellarTxnContext<hasUUTs<hasFooBar>>();
                 await t.txnAddAuthority(tcx);
-                const uuts = await t.txnCreatingUUTs(tcx, ["foo", "bar"]);
+                await t.txnCreatingUUTs(tcx, ["foo", "bar"]);
+                const uuts = t.uutsValue(tcx.state.uuts!);
+
                 //! fills state.uuts with named
                 expect(tcx.state.uuts?.foo).toBeTruthy();
                 expect(tcx.state.uuts?.bar).toBeTruthy();
@@ -960,10 +965,12 @@ describe("StellarContract", async () => {
                 const tcx = new StellarTxnContext<hasUUTs<uniqUutMap>>();
                 await t.txnAddAuthority(tcx);
 
-                const uut = await t.txnCreatingUUTs(tcx, [
+                await t.txnCreatingUUTs(tcx, [
                     noMultiples,
                     noMultiples,
                 ]);
+
+                const uut = t.uutsValue(tcx.state.uuts!);
 
                 tcx.addOutput(new TxOutput(tina.address, uut));
                 await expect(
@@ -972,7 +979,7 @@ describe("StellarContract", async () => {
                 network.tick(1n);
 
                 console.log("------ case 2: directly creating the transaction with >1 tokens");
-                const tcx2 = new StellarTxnContext();
+                const tcx2 = new StellarTxnContext<hasUUTs<uniqUutMap>>();
                 await t.txnAddAuthority(tcx2);
 
                 const spy = vi.spyOn(m, "mkUUTValuesEntries");
@@ -985,7 +992,8 @@ describe("StellarContract", async () => {
                     }
                 );
 
-                const uut2 = await t.txnCreatingUUTs(tcx2, [noMultiples]);
+                await t.txnCreatingUUTs(tcx2, [noMultiples]);
+                const uut2 = t.uutsValue(tcx2.state.uuts!);
 
                 tcx2.addOutput(new TxOutput(tina.address, uut2));
                 await expect(
@@ -996,7 +1004,7 @@ describe("StellarContract", async () => {
 
 
                 console.log("------ case 3: directly creating the transaction with multiple mint entries");
-                const tcx3 = new StellarTxnContext();
+                const tcx3 = new StellarTxnContext<hasUUTs<uniqUutMap>>();
                 await t.txnAddAuthority(tcx3);
 
                 spy.mockImplementation(
@@ -1009,7 +1017,8 @@ describe("StellarContract", async () => {
                     }
                 );
 
-                const uut3 = await t.txnCreatingUUTs(tcx3, [noMultiples]);
+                await t.txnCreatingUUTs(tcx3, [noMultiples]);
+                const uut3 = t.uutsValue(tcx3.state.uuts!);
 
                 tcx3.addOutput(new TxOutput(tina.address, uut3));
                 await expect(
@@ -1045,7 +1054,8 @@ describe("StellarContract", async () => {
                     }
                 );
 
-                const uut = await t.txnCreatingUUTs(tcx, ["something"]);
+                 await t.txnCreatingUUTs(tcx, ["something"]);
+                const uut = t.uutsValue(tcx);
 
                 tcx.addOutput(new TxOutput(tina.address, uut));
                 await expect(

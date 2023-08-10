@@ -890,7 +890,7 @@ class DefaultMinter extends StellarContract {
       tcx.state.uuts = uutMap;
       const vEntries = this.mkUUTValuesEntries(uutMap);
       const { txId: seedTxn, utxoIdx: seedIndex } = freeSeedUtxo;
-      tcx.attachScript(this.compiledContract).mintTokens(
+      return tcx.attachScript(this.compiledContract).mintTokens(
         this.mintingPolicyHash,
         vEntries,
         this.mintingUUTs({
@@ -899,11 +899,6 @@ class DefaultMinter extends StellarContract {
           purposes
         }).redeemer
       );
-      const v = new Value(
-        void 0,
-        new Assets([[this.mintingPolicyHash, vEntries]])
-      );
-      return v;
     });
   }
   mkUUTValuesEntries(uutMap) {
@@ -1008,6 +1003,14 @@ class Capo extends StellarContract {
   minter;
   async txnCreatingUUTs(tcx, uutPurposes) {
     return this.minter.txnCreatingUUTs(tcx, uutPurposes);
+  }
+  uutsValue(x) {
+    const uutMap = x instanceof StellarTxnContext ? x.state.uuts : x;
+    const vEntries = this.minter.mkUUTValuesEntries(uutMap);
+    return new Value(
+      void 0,
+      new Assets([[this.mintingPolicyHash, vEntries]])
+    );
   }
   usingAuthority() {
     const r = this.configuredContract.types.Redeemer;

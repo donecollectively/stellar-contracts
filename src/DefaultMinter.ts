@@ -60,7 +60,7 @@ export class DefaultMinter
     async txnCreatingUUTs<uutIndex extends hasUUTs<any>>(
         tcx: StellarTxnContext<uutIndex>,
         purposes: string[]
-    ): Promise<Value> {
+    ): Promise<StellarTxnContext<uutIndex>> {
         //!!! make it big enough to serve minUtxo for the new UUT
         const uutSeed = this.mkValuePredicate(BigInt(42_000), tcx);
 
@@ -89,7 +89,7 @@ export class DefaultMinter
 
             const { txId: seedTxn, utxoIdx: seedIndex } = freeSeedUtxo;
 
-            tcx.attachScript(this.compiledContract).mintTokens(
+            return tcx.attachScript(this.compiledContract).mintTokens(
                 this.mintingPolicyHash!,
                 vEntries,
                 this.mintingUUTs({
@@ -99,12 +99,7 @@ export class DefaultMinter
                 }).redeemer
             );
 
-            const v = new Value(
-                undefined,
-                new Assets([[this.mintingPolicyHash!, vEntries]])
-            );
-
-            return v;
+            return tcx
         });
     }
 

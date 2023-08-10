@@ -1,5 +1,6 @@
 import {
     Address,
+    Assets,
     Datum,
     MintingPolicyHash,
     TxId,
@@ -33,7 +34,7 @@ export type hasUUTs<uutNames extends {}={}> = {
 }
 
 interface hasUUTCreator {
-    txnCreatingUUTs(tcx: StellarTxnContext<any>, uutPurposes: string[]): Promise<Value>;
+    txnCreatingUUTs(tcx: StellarTxnContext<any>, uutPurposes: string[]): Promise<StellarTxnContext<any>>;
 }
 
 export type MintCharterRedeemerArgs = {
@@ -44,6 +45,7 @@ export type MintUUTRedeemerArgs = {
     seedIndex: bigint | number;
     purposes: string[];
 };
+type hasUutContext = StellarTxnContext<hasUUTs<any>>;
 
 export interface MinterBaseMethods extends hasUUTCreator {
     get mintingPolicyHash(): MintingPolicyHash;
@@ -99,12 +101,25 @@ export abstract class Capo<
     //   match the expected keys in the declared hasUUTs<T> type
     @Activity.partialTxn
     async txnCreatingUUTs(
-        tcx: StellarTxnContext<hasUUTs<any>>,
+        tcx: hasUutContext,
         uutPurposes: string[]
-    ): Promise<Value> {
+    ): Promise<hasUutContext> {
         return this.minter!.txnCreatingUUTs(tcx, uutPurposes);
     }
     // P extends paramsBase = SC extends StellarContract<infer P> ? P : never
+
+    uutsValue(uutMap: uutPurposeMap): Value
+    uutsValue(tcx: hasUutContext): Value
+    uutsValue(x: uutPurposeMap | hasUutContext): Value {
+        const uutMap = x instanceof StellarTxnContext ? x.state.uuts! : x
+        const vEntries = this.minter!.mkUUTValuesEntries(uutMap);
+
+        return new Value(
+            undefined,
+            new Assets([[this.mintingPolicyHash!, vEntries]])
+        );
+    }
+
 
     @Activity.redeemer
     protected usingAuthority() : isActivity {
