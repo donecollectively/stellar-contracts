@@ -1,3 +1,5 @@
+export { heliosRollupLoader } from "./heliosRollupLoader.js";
+
 export { 
     assetsAsString,
     txAsString,
@@ -10,7 +12,12 @@ export {
  } from "./diagnostics.js";
 
  export { Capo } from "./Capo.js";
- export type { MintUUTRedeemerArgs, MintCharterRedeemerArgs } from "./Capo.js";
+ export type { 
+    MintUUTRedeemerArgs, 
+    MintCharterRedeemerArgs, 
+    hasUUTs, 
+    uutPurposeMap 
+} from "./Capo.js";
 
 export {
     StellarContract,

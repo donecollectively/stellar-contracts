@@ -27,9 +27,13 @@ export type seedUtxoParams = {
     seedIndex: bigint;
 };
 // P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never
+export type uutPurposeMap<uutNames extends {[k: string]: string} = {}> = Partial<uutNames>
+export type hasUUTs<uutNames extends {}={}> = {
+    uuts: uutPurposeMap<uutNames>
+}
 
 interface hasUUTCreator {
-    txnCreatingUUTs(tcs: StellarTxnContext, uutPurposes: string[]): Promise<Value>;
+    txnCreatingUUTs(tcx: StellarTxnContext<any>, uutPurposes: string[]): Promise<Value>;
 }
 
 export type MintCharterRedeemerArgs = {
@@ -44,10 +48,10 @@ export type MintUUTRedeemerArgs = {
 export interface MinterBaseMethods extends hasUUTCreator {
     get mintingPolicyHash(): MintingPolicyHash;
     txnMintingCharterToken(
-        tcx: StellarTxnContext,
+        tcx: StellarTxnContext<any>,
         owner: Address,
         tVal: valuesEntry
-    ): Promise<StellarTxnContext>;
+    ): Promise<StellarTxnContext<any>>;
 }
 
 export type anyDatumArgs = Record<string, any>;
@@ -91,13 +95,16 @@ export abstract class Capo<
 
     minter?: minterType;
 
+    //!!! todo: type constraints so that the uutPurposes can only
+    //   match the expected keys in the declared hasUUTs<T> type
     @Activity.partialTxn
     async txnCreatingUUTs(
-        tcx: StellarTxnContext,
+        tcx: StellarTxnContext<hasUUTs<any>>,
         uutPurposes: string[]
     ): Promise<Value> {
         return this.minter!.txnCreatingUUTs(tcx, uutPurposes);
     }
+    // P extends paramsBase = SC extends StellarContract<infer P> ? P : never
 
     @Activity.redeemer
     protected usingAuthority() : isActivity {
@@ -155,6 +162,7 @@ export abstract class Capo<
             return this.minter!.txnMintingCharterToken(tcx, this.address);
         });
     }
+
     get charterTokenPredicate() {
         const predicate = this.mkTokenPredicate(this.tvCharter())
 
@@ -172,10 +180,10 @@ export abstract class Capo<
 
     @partialTxn  // non-activity partial
     async txnMustUseCharterUtxo(
-        tcx: StellarTxnContext,
+        tcx: StellarTxnContext<any>,
         redeemer: isActivity,
         newDatum?: InlineDatum
-    ): Promise<StellarTxnContext | never> {
+    ): Promise<StellarTxnContext<any> | never> {
         return this.mustFindCharterUtxo().then((ctUtxo: UTxO) => {
             tcx.addInput(
                 ctUtxo,
@@ -203,7 +211,7 @@ export abstract class Capo<
     }
 
     @partialTxn  // non-activity partial
-    txnKeepCharterToken(tcx: StellarTxnContext, datum: InlineDatum) {
+    txnKeepCharterToken(tcx: StellarTxnContext<any>, datum: InlineDatum) {
         
         tcx.addOutput(
             new TxOutput(this.address, this.tvCharter(), datum)
@@ -213,7 +221,7 @@ export abstract class Capo<
     }
 
     @partialTxn
-    async txnAddAuthority(tcx: StellarTxnContext) {
+    async txnAddAuthority(tcx: StellarTxnContext<any>) {
         return this.txnMustUseCharterUtxo(tcx, this.usingAuthority())
     }
 
@@ -305,6 +313,7 @@ export abstract class Capo<
                 details: [
                     "Building a txn with a UUT involves using the txnCreatingUUT partial-helper on the Capo.",
                     "That UUT (a Value) is returned, and then should be added to a TxOutput.",
+                    "Fills tcx.state.uuts with purpose-keyed unique token-names",
                     "The partial-helper doesn't constrain the semantics of the UUT.",
                     "The UUT uses the seed-utxo pattern to form 64 bits of uniqueness",
                     "   ... so that token-names stay short-ish.",

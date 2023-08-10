@@ -1,7 +1,28 @@
+import { createFilter } from 'rollup-pluginutils';
 import * as helios from '@hyperionbt/helios';
 import { Address, Tx, Value, UTxO, TxOutput, Assets, MintingPolicyHash, Program, bytesToHex, Crypto, NetworkParams, NetworkEmulator, Datum } from '@hyperionbt/helios';
 import { promises } from 'fs';
 import { expect } from 'vitest';
+
+function heliosRollupLoader(opts = {
+  include: "**/*.hl"
+}) {
+  if (!opts.include) {
+    throw Error("missing required 'include' option for helios loader");
+  }
+  const filter = createFilter(opts.include, opts.exclude);
+  return {
+    name: "helios",
+    transform(code, id) {
+      if (filter(id)) {
+        return {
+          code: `export default ${JSON.stringify(code)};`,
+          map: { mappings: "" }
+        };
+      }
+    }
+  };
+}
 
 function hexToPrintableString(hexStr) {
   let result = "";
@@ -210,9 +231,11 @@ class StellarTxnContext {
   collateral;
   outputs;
   feeLimit;
-  constructor() {
+  state;
+  constructor(state = {}) {
     this.tx = new Tx();
     this.inputs = [];
+    this.state = state;
     this.collateral = void 0;
     this.outputs = [];
   }
@@ -858,11 +881,14 @@ class DefaultMinter extends StellarContract {
       tcx.addInput(freeSeedUtxo);
       const { txId, utxoIdx } = freeSeedUtxo;
       const { encodeBech32, blake2b, encodeBase32 } = Crypto;
-      const assetNames = purposes.map((uutPurpose) => {
+      const uutMap = Object.fromEntries(purposes.map((uutPurpose) => {
         const txoId = txId.bytes.concat(["@".charCodeAt(0), utxoIdx]);
-        return `${uutPurpose}.${bytesToHex(blake2b(txoId).slice(0, 6))}`;
-      });
-      const vEntries = this.mkUUTValuesEntries(assetNames);
+        return [uutPurpose, `${uutPurpose}.${bytesToHex(blake2b(txoId).slice(0, 6))}`];
+      }));
+      if (tcx.state.uuts)
+        throw new Error(`uuts are already there`);
+      tcx.state.uuts = uutMap;
+      const vEntries = this.mkUUTValuesEntries(uutMap);
       const { txId: seedTxn, utxoIdx: seedIndex } = freeSeedUtxo;
       tcx.attachScript(this.compiledContract).mintTokens(
         this.mintingPolicyHash,
@@ -880,10 +906,12 @@ class DefaultMinter extends StellarContract {
       return v;
     });
   }
-  mkUUTValuesEntries(assetNames) {
-    return assetNames.map((assetName) => {
-      return this.mkValuesEntry(assetName, BigInt(1));
-    });
+  mkUUTValuesEntries(uutMap) {
+    return Object.entries(uutMap).map(
+      ([_purpose, assetName]) => {
+        return this.mkValuesEntry(assetName, BigInt(1));
+      }
+    );
   }
   //! overrides base getter type with undefined not being allowed
   get mintingPolicyHash() {
@@ -1129,6 +1157,7 @@ class Capo extends StellarContract {
         details: [
           "Building a txn with a UUT involves using the txnCreatingUUT partial-helper on the Capo.",
           "That UUT (a Value) is returned, and then should be added to a TxOutput.",
+          "Fills tcx.state.uuts with purpose-keyed unique token-names",
           "The partial-helper doesn't constrain the semantics of the UUT.",
           "The UUT uses the seed-utxo pattern to form 64 bits of uniqueness",
           "   ... so that token-names stay short-ish.",
@@ -1665,5 +1694,5 @@ __decorateClass([
   txn
 ], SampleTreasury.prototype, "mkTxnUpdateCharter", 1);
 
-export { ADA, Activity, Capo, DefaultMinter, SampleTreasury, StellarCapoTestHelper, StellarContract, StellarTestHelper, StellarTxnContext, addTestContext, assetsAsString, datum, lovelaceToAda, partialTxn, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString };
+export { ADA, Activity, Capo, DefaultMinter, SampleTreasury, StellarCapoTestHelper, StellarContract, StellarTestHelper, StellarTxnContext, addTestContext, assetsAsString, datum, heliosRollupLoader, lovelaceToAda, partialTxn, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString };
 //# sourceMappingURL=stellar-contracts.mjs.map

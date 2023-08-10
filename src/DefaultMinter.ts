@@ -30,6 +30,8 @@ import {
     MintCharterRedeemerArgs,
     MintUUTRedeemerArgs,
     MinterBaseMethods,
+    hasUUTs,
+    uutPurposeMap,
 } from "../lib/Capo.js";
 import { valuesEntry } from "../lib/HeliosPromotedTypes.js";
 
@@ -55,8 +57,8 @@ export class DefaultMinter
     }
 
     @Activity.partialTxn
-    async txnCreatingUUTs(
-        tcx: StellarTxnContext,
+    async txnCreatingUUTs<uutIndex extends hasUUTs<any>>(
+        tcx: StellarTxnContext<uutIndex>,
         purposes: string[]
     ): Promise<Value> {
         //!!! make it big enough to serve minUtxo for the new UUT
@@ -71,16 +73,19 @@ export class DefaultMinter
             const { txId, utxoIdx } = freeSeedUtxo;
             const { encodeBech32, blake2b, encodeBase32 } = Crypto;
 
-            const assetNames = purposes.map(uutPurpose => {
+            const uutMap : uutIndex["uuts"] = Object.fromEntries(purposes.map(uutPurpose => {
                 const txoId = txId.bytes.concat(["@".charCodeAt(0), utxoIdx]);
                 // console.warn("txId " + txId.hex)
                 // console.warn("&&&&&&&& txoId", bytesToHex(txoId));
-                return `${uutPurpose}.${
+                return [uutPurpose, `${uutPurpose}.${
                     bytesToHex(blake2b(txoId).slice(0,6))
-                }`;
-            })
+                }`];
+            }))
+            
+            if(tcx.state.uuts) throw new Error(`uuts are already there`);
+            tcx.state.uuts = uutMap;
 
-            const vEntries = this.mkUUTValuesEntries(assetNames);
+            const vEntries = this.mkUUTValuesEntries(uutMap);
 
             const { txId: seedTxn, utxoIdx: seedIndex } = freeSeedUtxo;
 
@@ -103,9 +108,10 @@ export class DefaultMinter
         });
     }
 
-    mkUUTValuesEntries(assetNames : string[]) {
-        return assetNames.map(assetName => {
-            return this.mkValuesEntry(assetName, BigInt(1))
+    mkUUTValuesEntries<UM extends uutPurposeMap<any>>(uutMap : UM) : valuesEntry[]{
+        return Object.entries(uutMap).map(
+            ([_purpose, assetName]) => {
+                return this.mkValuesEntry(assetName, BigInt(1))
         })
     }
 

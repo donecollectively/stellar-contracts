@@ -6,34 +6,11 @@ import { platformModulePaths } from "./rollup.lib.js";
 import sourcemaps from "rollup-plugin-sourcemaps";
 
 import packageJson from "./package.json" assert { type: "json" };
+import { heliosRollupLoader } from "./lib/heliosRollupLoader.js";
 const name = packageJson.main.replace(/\.m?js$/, "");
 
 const serverBundledModules = [];
 const forcedServerExternals = ["@hyperionbt/helios"];
-
-import { createFilter } from "rollup-pluginutils";
-
-function heliosLoader(opts = {}) {
-    if (!opts.include) {
-        throw Error("include option should be specified");
-    }
-
-    const filter = createFilter(opts.include, opts.exclude);
-
-    return {
-        name: "string",
-
-        transform(code, id) {
-            if (filter(id)) {
-                // console.warn(`heliosLoader: generating javascript for ${id}`);               
-                return {
-                    code: `export default ${JSON.stringify(code)};`,
-                    map: { mappings: "" },
-                };
-            }
-        },
-    };
-}
 
 // import { join } from "path";
 // import alias from "@rollup/plugin-alias";
@@ -62,10 +39,7 @@ export default [
         plugins: [
             sourcemaps(),
             externals(),
-            heliosLoader({
-                // Required to be specified
-                include: "**/*.hl",
-            }),
+            heliosRollupLoader(),
             resolve({
                 ...platformModulePaths("server"),
                 extensions: [".json", ".ts"],
@@ -82,7 +56,9 @@ export default [
     }),
     codeBundle({
         input: "lib/index.ts",
-        plugins: [dts()],
+        plugins: [
+            dts()
+        ],
         output: {
             file: `${name}.d.ts`,
             format: "es",

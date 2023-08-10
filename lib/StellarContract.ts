@@ -748,7 +748,7 @@ export class StellarContract<
     async mustFindActorUtxo(
         name: string,
         predicate: (u: UTxO) => UTxO | undefined,
-        exceptInTcx: StellarTxnContext,
+        exceptInTcx: StellarTxnContext<any>,
         extraErrorHint?: string
     ): Promise<UTxO | never>;
     async mustFindActorUtxo(
@@ -760,12 +760,12 @@ export class StellarContract<
     async mustFindActorUtxo(
         name: string,
         predicate: (u: UTxO) => UTxO | undefined,
-        hintOrExcept?: string | StellarTxnContext,
+        hintOrExcept?: string | StellarTxnContext<any>,
         hint?: string
     ): Promise<UTxO | never> {
         const address = await this.getMyActorAddress();
 
-        const isTcx = hintOrExcept instanceof StellarTxnContext;
+        const isTcx = hintOrExcept instanceof StellarTxnContext<any>;
         const exceptInTcx = isTcx ? hintOrExcept : undefined;
         const extraErrorHint = isTcx
             ? hint
@@ -784,7 +784,7 @@ export class StellarContract<
     async mustFindMyUtxo(
         name: string,
         predicate: (u: UTxO) => UTxO | undefined,
-        exceptInTcx: StellarTxnContext,
+        exceptInTcx: StellarTxnContext<any>,
         extraErrorHint?: string
     ): Promise<UTxO | never>;
     async mustFindMyUtxo(
@@ -796,11 +796,11 @@ export class StellarContract<
     async mustFindMyUtxo(
         name: string,
         predicate: (u: UTxO) => UTxO | undefined,
-        hintOrExcept?: string | StellarTxnContext,
+        hintOrExcept?: string | StellarTxnContext<any>,
         hint?: string
     ): Promise<UTxO | never> {
         const { address } = this;
-        const isTcx = hintOrExcept instanceof StellarTxnContext;
+        const isTcx = hintOrExcept instanceof StellarTxnContext<any>;
         const exceptInTcx = isTcx ? hintOrExcept : undefined;
         const extraErrorHint = isTcx
             ? hint
@@ -822,7 +822,7 @@ export class StellarContract<
         {
             address,
             exceptInTcx,
-        }: { address: Address; exceptInTcx?: StellarTxnContext },
+        }: { address: Address; exceptInTcx?: StellarTxnContext<any> },
         extraErrorHint: string = ""
     ): Promise<UTxO | never> {
         const found = await this.hasUtxo(name, predicate, {
@@ -841,7 +841,7 @@ export class StellarContract<
         return `${u.txId.hex}@${u.utxoIdx}`;
     }
 
-    async txnFindUtxo(tcx: StellarTxnContext,
+    async txnFindUtxo(tcx: StellarTxnContext<any>,
         name: string,
         predicate: utxoPredicate,
         address = this.address
@@ -858,7 +858,7 @@ export class StellarContract<
         {
             address,
             exceptInTcx,
-        }: { address: Address; exceptInTcx?: StellarTxnContext }
+        }: { address: Address; exceptInTcx?: StellarTxnContext<any> }
     ): Promise<UTxO | undefined> {
         const utxos = await this.network.getUtxos(address);
         const filterUtxos = exceptInTcx?.reservedUtxos();

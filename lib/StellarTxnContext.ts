@@ -16,15 +16,19 @@ import { txAsString } from "./diagnostics.js";
 //   bigger-picture contextual container that serves various Stellar
 //   contract scripts with non-txn context for building a Tx)
 
-export class StellarTxnContext {
+type noState = {}
+
+export class StellarTxnContext<S=noState> {
     tx: Tx;
     inputs: UTxO[];
     collateral?: UTxO;
     outputs: TxOutput[];
     feeLimit?: bigint;
-    constructor() {
+    state : Partial<S>;
+    constructor(state: Partial<S>={}) {
         this.tx = new Tx();
         this.inputs = [];
+        this.state = state;
         this.collateral = undefined;
         this.outputs = [];
     }
@@ -33,7 +37,7 @@ export class StellarTxnContext {
         return txAsString(tx);
     }
 
-    mintTokens(...args: Parameters<Tx["mintTokens"]>) : StellarTxnContext {
+    mintTokens(...args: Parameters<Tx["mintTokens"]>) : StellarTxnContext<S> {
         this.tx.mintTokens(...args);
 
         return this;
@@ -62,28 +66,28 @@ export class StellarTxnContext {
         return this;
     }
 
-    addInput(...args: Parameters<Tx["addInput"]>) : StellarTxnContext {
+    addInput(...args: Parameters<Tx["addInput"]>) : StellarTxnContext<S> {
         const [input, ..._otherArgs] = args;
         this.inputs.push(input);
         this.tx.addInput(...args);
         return this;
     }
 
-    addInputs(...args: Parameters<Tx["addInputs"]>) : StellarTxnContext {
+    addInputs(...args: Parameters<Tx["addInputs"]>) : StellarTxnContext<S> {
         const [inputs, ..._otherArgs] = args;
         this.inputs.push(...inputs);
         this.tx.addInputs(...args);
         return this;
     }
 
-    addOutput(...args: Parameters<Tx["addOutput"]>) : StellarTxnContext {
+    addOutput(...args: Parameters<Tx["addOutput"]>) : StellarTxnContext<S> {
         const [output, ..._otherArgs] = args;
         this.outputs.push(output);
         this.tx.addOutput(...args);
         return this;
     }
 
-    addOutputs(...args: Parameters<Tx["addOutputs"]>) : StellarTxnContext {
+    addOutputs(...args: Parameters<Tx["addOutputs"]>) : StellarTxnContext<S> {
         const [outputs, ..._otherArgs] = args;
         this.outputs.push(...outputs);
         this.tx.addOutputs(...args);
