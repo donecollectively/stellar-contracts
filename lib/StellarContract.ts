@@ -598,7 +598,9 @@ export class StellarContract<
     async findAnySpareUtxos(tcx: StellarTxnContext): Promise<TxInput[] | never> {
         if (!this.myActor) throw this.missingActorError;
 
-        const toSortInfo = this._mkUtxoSortInfo(this.ADA(2));
+        const mightNeedFees = this.ADA(3.5);
+        
+        const toSortInfo = this._mkUtxoSortInfo(mightNeedFees);
         const notReserved = tcx
             ? tcx.utxoNotReserved.bind(tcx)
             : (u: TxInput) => u;
