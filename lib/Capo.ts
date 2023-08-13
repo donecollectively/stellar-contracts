@@ -5,7 +5,7 @@ import {
     MintingPolicyHash,
     TxId,
     TxOutput,
-    UTxO,
+    TxInput,
     Value,
 } from "@hyperionbt/helios";
 import { DefaultMinter, SeedTxnParams } from "../src/DefaultMinter.js";
@@ -89,7 +89,7 @@ export abstract class Capo<
     // abstract txnMustUseCharterUtxo(
     //     tcx: StellarTxnContext,
     //     newDatum?: InlineDatum
-    // ): Promise<UTxO | never>;
+    // ): Promise<TxInput | never>;
 
     get minterClass(): stellarSubclass<DefaultMinter, seedUtxoParams> {
         return DefaultMinter;
@@ -199,7 +199,7 @@ export abstract class Capo<
         redeemer: isActivity,
         newDatum?: InlineDatum
     ): Promise<StellarTxnContext<any> | never> {
-        return this.mustFindCharterUtxo().then((ctUtxo: UTxO) => {
+        return this.mustFindCharterUtxo().then((ctUtxo: TxInput) => {
             tcx.addInput(
                 ctUtxo,
                 redeemer.redeemer
@@ -285,10 +285,10 @@ export abstract class Capo<
         return (this.minter = minter);
     }
 
-    async mustGetContractSeedUtxo(): Promise<UTxO | never> {
-        //! given a Capo-based contract instance having a free UTxO to seed its validator address,
+    async mustGetContractSeedUtxo(): Promise<TxInput | never> {
+        //! given a Capo-based contract instance having a free TxInput to seed its validator address,
         //! prior to initial on-chain creation of contract,
-        //! it finds that specific UTxO in the current user's wallet.
+        //! it finds that specific TxInput in the current user's wallet.
         const { seedTxn, seedIndex } = this.paramsIn;
         console.log(`seeking seed txn ${seedTxn.hex.substring(0, 12)}…@${seedIndex}`);
 

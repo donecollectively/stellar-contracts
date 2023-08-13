@@ -49,7 +49,6 @@ export type {
 export type {
     tokenNamesOrValuesEntry,
     InlineDatum,
-    TxInput,
     valuesEntry,
 } from "./HeliosPromotedTypes.js";
 // export {

@@ -1,9 +1,8 @@
 import {
     Address, Datum, Tx,
     TxOutput,
-    UTxO, Value
+    TxInput, Value
 } from "@hyperionbt/helios";
-import { TxInput } from "./HeliosPromotedTypes.js";
 
 
 export function hexToPrintableString(hexStr) {
@@ -112,7 +111,9 @@ export function txAsString(tx: Tx): string {
 
         if ("fee" == x) {
             item = parseInt(item);
-            item = `${(Math.round(item / 1000) / 1000).toFixed(3)} ADA`;
+            item = `${(Math.round(item / 1000) / 1000).toFixed(3)} ADA ` +
+                    tx.profileReport.split("\n")[0]
+
             // console.log("fee", item)
         }
 
@@ -186,7 +187,7 @@ export function txAsString(tx: Tx): string {
             .join("");
     }
     try {
-        details = details + `  txId: ${tx.id().dump()}`;
+        details = details + `  txId: ${tx.id().hex}`;
     } catch (e) {
         details = details + `  (Tx not yet finalized!)`;
     }
@@ -199,11 +200,11 @@ export function txInputAsString(x: TxInput, prefix = "-> "): string {
     )} = 📖 ${x.txId.hex.substring(0, 12)}…@${x.utxoIdx}`;
 }
 
-export function utxosAsString(utxos: UTxO[], joiner = "\n"): string {
+export function utxosAsString(utxos: TxInput[], joiner = "\n"): string {
     return utxos.map((u) => utxoAsString(u, " 💵")).join(joiner);
 }
 
-export function utxoAsString(u: UTxO, prefix = "💵"): string {
+export function utxoAsString(u: TxInput, prefix = "💵"): string {
     return ` 📖 ${u.txId.hex.substring(0, 12)}…@${u.utxoIdx}: ${txOutputAsString(u.origOutput, prefix)}`; // or 🪙
 }
 

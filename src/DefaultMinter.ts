@@ -9,7 +9,7 @@ import {
     MintingPolicyHash,
     Assets,
     Crypto,
-    UTxO,
+    TxInput,
     ByteArray,
     ByteArrayData,
     bytesToHex,

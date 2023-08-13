@@ -1,4 +1,5 @@
 import * as helios from "@hyperionbt/helios";
+helios.config.set({EXPERIMENTAL_CEK: true})
 import {
     Address,
     Crypto,
@@ -233,23 +234,6 @@ export abstract class StellarTestHelper<
         return new Promise((res) => setTimeout(res, ms));
     }
 
-    mkNetwork(): [NetworkEmulator, enhancedNetworkParams] {
-        const theNetwork = new NetworkEmulator();
-
-        const emuParams = theNetwork.initNetworkParams({
-            ...preProdParams,
-            raw: { ...preProdParams },
-        }) as enhancedNetworkParams;
-
-        emuParams.timeToSlot = function (t) {
-            const seconds = BigInt(t / 1000n);
-            return seconds;
-        };
-        emuParams.slotToTimestamp = this.slotToTimestamp;
-
-        return [theNetwork, emuParams];
-    }
-
     async mkSeedUtxo(seedIndex: bigint = 0n) {
         const { currentActor } = this;
         const { network } = this;
@@ -286,27 +270,34 @@ export abstract class StellarTestHelper<
         const isAlreadyInitialized = !!this.strella;
         try {
             await tx.finalize(this.networkParams, sendChangeToCurrentActor);
-        } catch (e) {
-            throw e;
+        } catch (e:  any) {
+            throw new Error(e.message + "\nin tx: "+txAsString(tx)+"\nprofile: "+ tx.profileReport
+            );
         }
         if (isAlreadyInitialized && !force) {
             throw new Error(
-                `use the submitTx from the testing-context's 'strella' object instead`
+                `helper is already initialized; use the submitTx from the testing-context's 'strella' object instead`
             );
         }
 
         console.log(
-            "Test helper submitting tx prior to instantiateWithParams():\n " +
+            `Test helper ${force || ""} submitting tx${ force && "" || " prior to instantiateWithParams()"}:\n` +
                 txAsString(tx)
             // new Error(`at stack`).stack
         );
 
-        const txId = await this.network.submitTx(tx);
-        this.network.tick(1n);
+        try {
+            const txId = await this.network.submitTx(tx);
+            console.log("test helper submitted direct txn:" + txAsString(tx))
+            this.network.tick(1n);
         // await this.delay(1000)
         // debugger
         // this.network.dump();
-        return txId;
+            return txId;
+        } catch(e: any) {
+            console.error(`submit failed: ${e.message}\n  ... in tx ${txAsString(tx)}`);
+            throw e
+        }
     }
 
     mkRandomBytes(length: number): number[] {
@@ -348,6 +339,24 @@ export abstract class StellarTestHelper<
         return a;
     }
 
+    mkNetwork(): [NetworkEmulator, enhancedNetworkParams] {
+        const theNetwork = new NetworkEmulator();
+
+        const emuParams = theNetwork.initNetworkParams({
+            ...preProdParams,
+            raw: { ...preProdParams },
+        }) as enhancedNetworkParams;
+
+        //@ts-expect-error
+        emuParams.timeToSlot = function (t) {
+            const seconds = BigInt(t / 1000n);
+            return seconds;
+        };
+        emuParams.slotToTimestamp = this.slotToTimestamp;
+
+        return [theNetwork, emuParams];
+    }
+
     slotToTimestamp(s: bigint) {
         const num = parseInt(BigInt.asIntN(52, s * 1000n).toString());
         return new Date(num);
@@ -359,6 +368,7 @@ export abstract class StellarTestHelper<
 
     waitUntil(time: Date) {
         const targetTimeMillis = BigInt(time.getTime());
+        //@ts-expect-error
         const targetSlot = this.liveSlotParams.timeToSlot(targetTimeMillis);
         const c = this.currentSlot();
 

@@ -1,6 +1,6 @@
 import { createFilter } from 'rollup-pluginutils';
 import * as helios from '@hyperionbt/helios';
-import { Address, Tx, Value, UTxO, TxOutput, Assets, MintingPolicyHash, Program, bytesToHex, Crypto, NetworkParams, NetworkEmulator, Datum } from '@hyperionbt/helios';
+import { Address, Tx, Value, TxInput, TxOutput, Assets, MintingPolicyHash, Program, bytesToHex, Crypto, NetworkParams, NetworkEmulator, Datum } from '@hyperionbt/helios';
 import { promises } from 'fs';
 import { expect } from 'vitest';
 
@@ -118,7 +118,7 @@ function txAsString(tx) {
     }
     if ("fee" == x) {
       item = parseInt(item);
-      item = `${(Math.round(item / 1e3) / 1e3).toFixed(3)} ADA`;
+      item = `${(Math.round(item / 1e3) / 1e3).toFixed(3)} ADA ` + tx.profileReport.split("\n")[0];
     }
     if ("collateralReturn" == x) {
       skipLabel = true;
@@ -192,7 +192,7 @@ function txAsString(tx) {
 `).join("");
   }
   try {
-    details = details + `  txId: ${tx.id().dump()}`;
+    details = details + `  txId: ${tx.id().hex}`;
   } catch (e) {
     details = details + `  (Tx not yet finalized!)`;
   }
@@ -434,6 +434,7 @@ class StellarContract {
     const configured = this.configuredContract = this.contractTemplate();
     this.configuredContract.parameters = this.contractParams;
     const simplify = !isTest;
+    console.warn(`----------------------------------------- simplify ${simplify}`);
     this.compiledContract = configured.compile(simplify);
   }
   get datumType() {
@@ -481,9 +482,9 @@ class StellarContract {
     const strella = new TargetClass(args);
     return strella;
   }
-  // async findDatum(d: Datum | DatumHash): Promise<UTxO[]>;
-  // async findDatum(predicate: utxoPredicate): Promise<UTxO[]>;
-  // async findDatum(d: Datum | DatumHash | utxoPredicate): Promise<UTxO[]> {
+  // async findDatum(d: Datum | DatumHash): Promise<TxInput[]>;
+  // async findDatum(predicate: utxoPredicate): Promise<TxInput[]>;
+  // async findDatum(d: Datum | DatumHash | utxoPredicate): Promise<TxInput[]> {
   //     let targetHash: DatumHash | undefined =
   //         d instanceof Datum
   //             ? d.hash
@@ -493,7 +494,7 @@ class StellarContract {
   //     let predicate =
   //         "function" === typeof d
   //             ? d
-  //             : (u: UTxO) => {
+  //             : (u: TxInput) => {
   //                   const match =
   //                       u.origOutput?.datum?.hash.hex == targetHash?.hex;
   //                   console.log(
@@ -525,7 +526,7 @@ class StellarContract {
     }).sort(this._utxoSortSmallerAndPureADA).map(this._infoBackToUtxo).at(0);
     return found;
   }
-  //! creates a filtering function, currently for UTxO-filtering only.
+  //! creates a filtering function, currently for TxInput-filtering only.
   //! with the optional tcx argument, utxo's already reserved
   //  ... in that transaction context will be skipped.
   mkValuePredicate(lovelace, tcx) {
@@ -561,7 +562,7 @@ class StellarContract {
     }
   }
   hasToken(something, value, tokenName, quantity) {
-    if (something instanceof UTxO)
+    if (something instanceof TxInput)
       return this.utxoHasToken(something, value, tokenName, quantity) && something || void 0;
     if (something instanceof TxOutput)
       return this.outputHasToken(something, value, tokenName, quantity) && something || void 0;
@@ -682,7 +683,7 @@ class StellarContract {
           continue;
         tx.addSigner(a.pubKeyHash);
       }
-      const feeEstimated = tx.estimateCollateralBaseFee(this.networkParams, changeAddress, spares);
+      const feeEstimated = tx.estimateFee(this.networkParams);
       if (feeEstimated > feeLimit) {
         console.log("outrageous fee - adjust tcx.feeLimit to get a different threshold");
         throw new Error(`outrageous fee-computation found - check txn setup for correctness`);
@@ -719,7 +720,7 @@ class StellarContract {
   //     const lovelaceOnly = v.assets.isZero();
   //     //! it finds free lovelace in token bundles, if it can't find free lovelace otherwise
   //     if (lovelaceOnly) {
-  //         let maxFree: UTxO, minToken: UTxO;
+  //         let maxFree: TxInput, minToken: TxInput;
   //         let minPolicyCount = Infinity;
   //         for (const u of utxos) {
   //             const policies = u.value.assets.mintingPolicies.length;
@@ -996,7 +997,7 @@ class Capo extends StellarContract {
   // abstract txnMustUseCharterUtxo(
   //     tcx: StellarTxnContext,
   //     newDatum?: InlineDatum
-  // ): Promise<UTxO | never>;
+  // ): Promise<TxInput | never>;
   get minterClass() {
     return DefaultMinter;
   }
@@ -1123,9 +1124,9 @@ class Capo extends StellarContract {
     return this.minter = minter;
   }
   async mustGetContractSeedUtxo() {
-    //! given a Capo-based contract instance having a free UTxO to seed its validator address,
+    //! given a Capo-based contract instance having a free TxInput to seed its validator address,
     //! prior to initial on-chain creation of contract,
-    //! it finds that specific UTxO in the current user's wallet.
+    //! it finds that specific TxInput in the current user's wallet.
     const { seedTxn, seedIndex } = this.paramsIn;
     console.log(`seeking seed txn ${seedTxn.hex.substring(0, 12)}\u2026@${seedIndex}`);
     return this.mustFindActorUtxo(
@@ -1330,19 +1331,6 @@ class StellarTestHelper {
   delay(ms) {
     return new Promise((res) => setTimeout(res, ms));
   }
-  mkNetwork() {
-    const theNetwork = new NetworkEmulator();
-    const emuParams = theNetwork.initNetworkParams({
-      ...preProdParams,
-      raw: { ...preProdParams }
-    });
-    emuParams.timeToSlot = function(t) {
-      const seconds = BigInt(t / 1000n);
-      return seconds;
-    };
-    emuParams.slotToTimestamp = this.slotToTimestamp;
-    return [theNetwork, emuParams];
-  }
   async mkSeedUtxo(seedIndex = 0n) {
     const { currentActor } = this;
     const { network } = this;
@@ -1376,7 +1364,7 @@ class StellarTestHelper {
     try {
       await tx.finalize(this.networkParams, sendChangeToCurrentActor);
     } catch (e) {
-      throw e;
+      throw new Error(e.message + "\nin tx: " + txAsString(tx));
     }
     if (isAlreadyInitialized && !force) {
       throw new Error(
@@ -1384,7 +1372,8 @@ class StellarTestHelper {
       );
     }
     console.log(
-      "Test helper submitting tx prior to instantiateWithParams():\n " + txAsString(tx)
+      `Test helper ${force || ""} submitting tx${force && "" || " prior to instantiateWithParams()"}:
+` + txAsString(tx)
       // new Error(`at stack`).stack
     );
     const txId = await this.network.submitTx(tx);
@@ -1420,6 +1409,19 @@ class StellarTestHelper {
     this.network.tick(BigInt(1));
     this.actors[roleName] = a;
     return a;
+  }
+  mkNetwork() {
+    const theNetwork = new NetworkEmulator();
+    const emuParams = theNetwork.initNetworkParams({
+      ...preProdParams,
+      raw: { ...preProdParams }
+    });
+    emuParams.timeToSlot = function(t) {
+      const seconds = BigInt(t / 1000n);
+      return seconds;
+    };
+    emuParams.slotToTimestamp = this.slotToTimestamp;
+    return [theNetwork, emuParams];
   }
   slotToTimestamp(s) {
     const num = parseInt(BigInt.asIntN(52, s * 1000n).toString());

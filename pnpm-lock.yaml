@@ -1,7 +1,7 @@
 lockfileVersion: 5.4
 
 specifiers:
-  '@hyperionbt/helios': ^0.14.4
+  '@hyperionbt/helios': ^0.15.2
   '@rollup/plugin-node-resolve': ^15.1.0
   '@rollup/pluginutils': ^5.0.2
   '@types/node': ^20.2.5
@@ -23,7 +23,7 @@ specifiers:
   webdriverio: ^8.10.7
 
 dependencies:
-  '@hyperionbt/helios': 0.14.4
+  '@hyperionbt/helios': 0.15.2
   semver: 7.5.4
 
 devDependencies:
@@ -276,8 +276,8 @@ packages:
     dev: true
     optional: true
 
-  /@hyperionbt/helios/0.14.4:
-    resolution: {integrity: sha512-zyn4oQTFcnuHhG62AVxmjCzO+pT+7p5vjAhUvwEPNwbXchOrA0d7rCFOCaJn2CjqDaybQqa9Mn3edj8sgIsyGQ==}
+  /@hyperionbt/helios/0.15.2:
+    resolution: {integrity: sha512-CKWJkC7ArWcTl53Xg6ICO/cUti76nXpijGlyOfKKb33osd0QegQfxRvF5xyjyLizcrJcPxhWbjyTRMBKVYwUiw==}
     dev: false
 
   /@isaacs/cliui/8.0.2:

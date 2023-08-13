@@ -30,7 +30,7 @@ func validateUUTminting(ctx: ScriptContext, sTxId : TxId, sIdx : Int, purposes: 
     miniHash : ByteArray = txoId.blake2b().slice(0,6);
     assert(miniHash.length == 6, "urgh.  slice 5? expected 12, got "+ miniHash.length.show());
 
-    assetValues = Value::sum(purposes.map(
+    assetValues = Value::sum(purposes.sort((a:String, b:String) -> Bool { a == b }).map(
         (purpose: String) -> Value {
             assetName : ByteArray = (purpose + "." + miniHash.show()).encode_utf8();
             assetClass : AssetClass = AssetClass::new(mph, assetName);

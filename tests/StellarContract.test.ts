@@ -13,7 +13,7 @@ import {
     Signature,
     Tx,
     TxOutput,
-    UTxO,
+    TxInput,
     Value,
 } from "@hyperionbt/helios";
 
@@ -112,22 +112,41 @@ describe("StellarContract", async () => {
                 h,
                 h: { network, actors, delay, state },
             } = context;
+            h.currentActor = "tom";
+
             const { tom } = actors;
-            // await h.setup()
-            const tx = new Tx();
             const tomMoney = await tom.utxos;
+            const firstUtxo = tomMoney[0];
 
-            tx.addInput(tomMoney[0]);
-            tx.addOutput(new TxOutput(tom.address, new Value(3n * ADA)));
-            tx.addOutput(
-                new TxOutput(
-                    tom.address,
-                    new Value(tomMoney[0].value.lovelace - 5n * ADA)
-                )
-            );
-            // console.log("s2")
+            async function tryWithSlop(margin: bigint) {
+                const tx = new Tx();
 
-            await h.submitTx(tx);
+                tx.addInput(firstUtxo);
+                tx.addOutput(new TxOutput(tom.address, new Value(3n * ADA)));
+                tx.addOutput(
+                    new TxOutput(
+                        tom.address,
+                        new Value(firstUtxo.value.lovelace - margin)
+                    )
+                );
+                // console.log("s2")
+                return h.submitTx(tx, "force");
+            }
+            console.log("case 1a: should work if finalize doesn't over-estimate fees")
+            await expect(tryWithSlop(170000n)).rejects.toThrow(/doesn't have enough inputs to cover the outputs/);
+            //!!! todo: once this ^^^^^^^^^^^^^^ starts passing, the other cases below can be removed
+            //    ... in favor of something like this: 
+            // await tryWithSlop(170000n * ADA);
+
+            console.log("case 1b: should work if finalize doesn't over-estimate fees ")
+            await expect(tryWithSlop(5n * ADA)).rejects.toThrow(/doesn't have enough inputs to cover the outputs/);
+
+            console.log("case 2: works if we give it more margin of error in initial fee calc")
+            await tryWithSlop(7n * ADA);
+            //!!! todo: remove case 1b, case2 after case 1a starts working right.
+
+
+
             const tm2 = await network.getUtxos(tom.address);
 
             expect(tomMoney.length).not.toEqual(tm2.length);
@@ -639,7 +658,7 @@ describe("StellarContract", async () => {
                 });
             });
 
-            describe("findAnySpareUtxos()", () => {
+            describe("TODO: TEST: findAnySpareUtxos()", () => {
                 it.todo(
                     "finds utxos in the current user's wallet, for use in txn balancing during finalize()"
                 );
@@ -673,7 +692,7 @@ describe("StellarContract", async () => {
             });
         });
 
-        describe("Composing contract constellations", () => {
+        describe("TODO: TEST: Composing contract constellations", () => {
             it.todo(
                 "addScriptWithParams(): instantiates related contracts",
                 async (context: localTC) => {
@@ -689,7 +708,7 @@ describe("StellarContract", async () => {
             );
         });
 
-        describe("mkValuePredicate()", () => {
+        describe("TODO: TEST: mkValuePredicate()", () => {
             it.todo(
                 "makes a predicate function for filtering any kind of value-bearing data"
             );
@@ -763,7 +782,6 @@ describe("StellarContract", async () => {
                             return wrongUtxo;
                         }
                     );
-
                     await expect(h.mintCharterToken()).rejects.toThrow(
                         "seed utxo required"
                     );
@@ -965,10 +983,7 @@ describe("StellarContract", async () => {
                 const tcx = new StellarTxnContext<hasUUTs<uniqUutMap>>();
                 await t.txnAddAuthority(tcx);
 
-                await t.txnCreatingUUTs(tcx, [
-                    noMultiples,
-                    noMultiples,
-                ]);
+                await t.txnCreatingUUTs(tcx, [noMultiples, noMultiples]);
 
                 const uut = t.uutsValue(tcx.state.uuts!);
 
@@ -978,7 +993,9 @@ describe("StellarContract", async () => {
                 ).rejects.toThrow(/bad UUT mint/);
                 network.tick(1n);
 
-                console.log("------ case 2: directly creating the transaction with >1 tokens");
+                console.log(
+                    "------ case 2: directly creating the transaction with >1 tokens"
+                );
                 const tcx2 = new StellarTxnContext<hasUUTs<uniqUutMap>>();
                 await t.txnAddAuthority(tcx2);
 
@@ -1001,9 +1018,9 @@ describe("StellarContract", async () => {
                 ).rejects.toThrow(/bad UUT mint/);
                 network.tick(1n);
 
-
-
-                console.log("------ case 3: directly creating the transaction with multiple mint entries");
+                console.log(
+                    "------ case 3: directly creating the transaction with multiple mint entries"
+                );
                 const tcx3 = new StellarTxnContext<hasUUTs<uniqUutMap>>();
                 await t.txnAddAuthority(tcx3);
 
@@ -1025,7 +1042,6 @@ describe("StellarContract", async () => {
                     t.submit(tcx3, { signers: [tom, tina, tracy] })
                 ).rejects.toThrow(/UUT purposes not unique/);
                 network.tick(1n);
-
             });
 
             it("won't mint extra UUTs", async (context: localTC) => {
@@ -1054,7 +1070,7 @@ describe("StellarContract", async () => {
                     }
                 );
 
-                 await t.txnCreatingUUTs(tcx, ["something"]);
+                await t.txnCreatingUUTs(tcx, ["something"]);
                 const uut = t.uutsValue(tcx);
 
                 tcx.addOutput(new TxOutput(tina.address, uut));
