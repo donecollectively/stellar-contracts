@@ -145,8 +145,6 @@ describe("StellarContract", async () => {
             await tryWithSlop(7n * ADA);
             //!!! todo: remove case 1b, case2 after case 1a starts working right.
 
-
-
             const tm2 = await network.getUtxos(tom.address);
 
             expect(tomMoney.length).not.toEqual(tm2.length);
