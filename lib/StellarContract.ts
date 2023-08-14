@@ -363,9 +363,11 @@ export class StellarContract<
             })
             .sort(this._utxoSortSmallerAndPureADA)
             .map(this._infoBackToUtxo)
+        console.log("smallest utxos: ", utxosAsString(found))
+        const chosen = found
             .at(0);
 
-        return found;
+        return chosen;
     }
 
     //! creates a filtering function, currently for TxInput-filtering only.
@@ -565,8 +567,8 @@ export class StellarContract<
             }
         }
         //! secondary: smaller utxos are more preferred than larger ones
-        if (free2 > free1) return 1;
-        if (free2 < free1) return -1;
+        if (free2 > free1) return -1;
+        if (free2 < free1) return 1;
         return 0;
     }
 
@@ -599,7 +601,7 @@ export class StellarContract<
         if (!this.myActor) throw this.missingActorError;
 
         const mightNeedFees = this.ADA(3.5);
-        
+
         const toSortInfo = this._mkUtxoSortInfo(mightNeedFees);
         const notReserved = tcx
             ? tcx.utxoNotReserved.bind(tcx)
