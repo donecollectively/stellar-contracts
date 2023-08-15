@@ -2,6 +2,7 @@ spending SampleTreasury
 
 // needed in helios 0.13: defaults
 const mph : MintingPolicyHash = MintingPolicyHash::new(#1234)
+const rev : Int = 1
 
 enum Datum {
     CharterToken {

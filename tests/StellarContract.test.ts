@@ -1130,6 +1130,7 @@ describe("StellarContract", async () => {
                     notEnoughSignaturesRegex
                 );
             });
+            
             it("works with a minSigs=2 and three people sign", async (context: localTC) => {
                 const {
                     h,

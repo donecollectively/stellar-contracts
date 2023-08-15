@@ -10,7 +10,6 @@ import {
     Assets,
     Crypto,
     TxInput,
-    ByteArray,
     ByteArrayData,
     bytesToHex,
 } from "@hyperionbt/helios";
@@ -30,15 +29,11 @@ import {
     MintCharterRedeemerArgs,
     MintUUTRedeemerArgs,
     MinterBaseMethods,
+    SeedTxnParams,
     hasUUTs,
     uutPurposeMap,
 } from "../lib/Capo.js";
 import { valuesEntry } from "../lib/HeliosPromotedTypes.js";
-
-export type SeedTxnParams = {
-    seedTxn: TxId;
-    seedIndex: bigint;
-};
 
 export class DefaultMinter
     extends StellarContract<SeedTxnParams>
@@ -70,7 +65,8 @@ export class DefaultMinter
             tcx
         ).then(async (freeSeedUtxo) => {
             tcx.addInput(freeSeedUtxo);
-            const { txId, utxoIdx } = freeSeedUtxo;
+            const { txId, utxoIdx } = freeSeedUtxo.outputId
+            
             const { encodeBech32, blake2b, encodeBase32 } = Crypto;
 
             const uutMap : uutIndex["uuts"] = Object.fromEntries(purposes.map(uutPurpose => {

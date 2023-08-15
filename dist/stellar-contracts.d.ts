@@ -152,10 +152,6 @@ declare class StellarContract<ParamsType extends paramsBase> {
     hasMyUtxo(name: string, predicate: utxoPredicate): Promise<TxInput | undefined>;
 }
 
-type SeedTxnParams = {
-    seedTxn: TxId;
-    seedIndex: bigint;
-};
 declare class DefaultMinter extends StellarContract<SeedTxnParams> implements MinterBaseMethods {
     contractSource(): any;
     capoMinterHelpers(): string;
@@ -171,7 +167,7 @@ declare class DefaultMinter extends StellarContract<SeedTxnParams> implements Mi
     txnMintingCharterToken(tcx: StellarTxnContext, owner: Address): Promise<StellarTxnContext>;
 }
 
-type seedUtxoParams = {
+type SeedTxnParams = {
     seedTxn: TxId;
     seedIndex: bigint;
 };
@@ -202,7 +198,7 @@ declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter
     constructor(args: StellarConstructorArgs<StellarContract<SeedTxnParams>, SeedTxnParams>);
     abstract contractSource(): string;
     abstract mkDatumCharterToken(args: anyDatumArgs): InlineDatum;
-    get minterClass(): stellarSubclass<DefaultMinter, seedUtxoParams>;
+    get minterClass(): stellarSubclass<DefaultMinter, SeedTxnParams>;
     minter?: minterType;
     txnCreatingUUTs(tcx: hasUutContext, uutPurposes: string[]): Promise<hasUutContext>;
     uutsValue(uutMap: uutPurposeMap): Value;
@@ -224,8 +220,10 @@ declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter
     txnKeepCharterToken(tcx: StellarTxnContext<any>, datum: InlineDatum): StellarTxnContext<any>;
     txnAddAuthority(tcx: StellarTxnContext<any>): Promise<StellarTxnContext<any>>;
     getMinterParams(): SeedTxnParams;
+    getCapoRev(): bigint;
     getContractParams(params: SeedTxnParams): {
         mph: MintingPolicyHash;
+        rev: bigint;
     };
     get mph(): MintingPolicyHash;
     get mintingPolicyHash(): MintingPolicyHash;
@@ -372,4 +370,4 @@ declare class SampleTreasury extends Capo {
     };
 }
 
-export { ADA, Activity, Capo, CharterDatumArgs, DefaultMinter, InlineDatum, MintCharterRedeemerArgs, MintUUTRedeemerArgs, SampleTreasury, StellarCapoTestHelper, StellarContract, StellarTestContext, StellarTestHelper, StellarTxnContext, addTestContext, assetsAsString, datum, hasUUTs, heliosRollupLoader, isActivity, lovelaceToAda, partialTxn, stellarSubclass, tokenNamesOrValuesEntry, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxoPredicate, utxosAsString, uutPurposeMap, valueAsString, valuesEntry };
+export { ADA, Activity, Capo, CharterDatumArgs, DefaultMinter, InlineDatum, MintCharterRedeemerArgs, MintUUTRedeemerArgs, SampleTreasury, SeedTxnParams, StellarCapoTestHelper, StellarContract, StellarTestContext, StellarTestHelper, StellarTxnContext, addTestContext, assetsAsString, datum, hasUUTs, heliosRollupLoader, isActivity, lovelaceToAda, partialTxn, stellarSubclass, tokenNamesOrValuesEntry, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxoPredicate, utxosAsString, uutPurposeMap, valueAsString, valuesEntry };

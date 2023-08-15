@@ -5,20 +5,16 @@ import {
     Crypto,
     NetworkEmulator,
     NetworkParams,
-    Program,
     Tx,
     TxId,
     TxOutput,
-    UplcProgram,
     Value,
-    Wallet,
     WalletEmulator,
 } from "@hyperionbt/helios";
 
 import { promises as fs } from "fs";
 import { Vitest, vitest, TestContext, expect } from "vitest";
 import {
-    StellarConstructorArgs,
     StellarContract,
     findInputsInWallets,
     paramsBase,
@@ -29,8 +25,7 @@ import {
     utxosAsString
 } from "./diagnostics.js";
 import { Capo, anyDatumArgs } from "./Capo.js";
-import { SeedTxnParams } from "../src/DefaultMinter.js";
-import { CharterDatumArgs } from "../src/examples/SampleTreasury.js";
+import { SeedTxnParams } from "./Capo.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 
 const preProdParams = JSON.parse(

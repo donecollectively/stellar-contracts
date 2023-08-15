@@ -1,6 +1,6 @@
 export { heliosRollupLoader } from "./heliosRollupLoader.js";
 
-export { 
+export {
     assetsAsString,
     txAsString,
     utxoAsString,
@@ -8,15 +8,16 @@ export {
     utxosAsString,
     txOutputAsString,
     txInputAsString,
-    lovelaceToAda
- } from "./diagnostics.js";
+    lovelaceToAda,
+} from "./diagnostics.js";
 
- export { Capo } from "./Capo.js";
- export type { 
-    MintUUTRedeemerArgs, 
-    MintCharterRedeemerArgs, 
-    hasUUTs, 
-    uutPurposeMap 
+export { Capo } from "./Capo.js";
+export type {
+    MintUUTRedeemerArgs,
+    MintCharterRedeemerArgs,
+    hasUUTs,
+    uutPurposeMap,
+    SeedTxnParams
 } from "./Capo.js";
 
 export {
@@ -28,7 +29,11 @@ export {
 } from "./StellarContract.js";
 
 export { StellarTxnContext } from "./StellarTxnContext.js";
-export type {stellarSubclass, isActivity, utxoPredicate } from "./StellarContract.js"
+export type {
+    stellarSubclass,
+    isActivity,
+    utxoPredicate,
+} from "./StellarContract.js";
 export {
     ADA,
     StellarTestHelper,
@@ -38,13 +43,9 @@ export {
 export type { StellarTestContext } from "./StellarTestHelper.js";
 export { DefaultMinter } from "../src/DefaultMinter.js";
 
-export {
-    SampleTreasury,
-} from "../src/examples/SampleTreasury.js";
+export { SampleTreasury } from "../src/examples/SampleTreasury.js";
 
-export type {
-    CharterDatumArgs,
-} from "../src/examples/SampleTreasury.js";
+export type { CharterDatumArgs } from "../src/examples/SampleTreasury.js";
 
 export type {
     tokenNamesOrValuesEntry,

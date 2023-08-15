@@ -8,7 +8,7 @@ import {
     TxInput,
     Value,
 } from "@hyperionbt/helios";
-import { DefaultMinter, SeedTxnParams } from "../src/DefaultMinter.js";
+import { DefaultMinter } from "../src/DefaultMinter.js";
 import {
     Activity,
     StellarConstructorArgs,
@@ -23,11 +23,11 @@ import {
 import { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 
-export type seedUtxoParams = {
+export type SeedTxnParams = {
     seedTxn: TxId;
     seedIndex: bigint;
 };
-// P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never
+
 export type uutPurposeMap<uutNames extends {[k: string]: string} = {}> = Partial<uutNames>
 export type hasUUTs<uutNames extends {}={}> = {
     uuts: uutPurposeMap<uutNames>
@@ -91,7 +91,7 @@ export abstract class Capo<
     //     newDatum?: InlineDatum
     // ): Promise<TxInput | never>;
 
-    get minterClass(): stellarSubclass<DefaultMinter, seedUtxoParams> {
+    get minterClass(): stellarSubclass<DefaultMinter, SeedTxnParams> {
         return DefaultMinter;
     }
 
@@ -245,13 +245,18 @@ export abstract class Capo<
     getMinterParams() {
         return this.paramsIn;
     }
+    getCapoRev() {
+        return 1n
+    }
 
     getContractParams(params: SeedTxnParams) {
         const { mph } = this;
+        const rev = this.getCapoRev()
         // console.log("this treasury uses mph", mph?.hex);
 
         return {
             mph,
+            rev
         };
     }
 
