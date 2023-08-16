@@ -261,6 +261,7 @@ declare function addTestContext<SC extends StellarContract<any>, P extends param
 declare abstract class StellarTestHelper<SC extends StellarContract<any>, P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never> {
     state: Record<string, any>;
     abstract get stellarClass(): stellarSubclass<SC, any>;
+    params?: P;
     defaultActor?: string;
     strella: SC;
     actors: actorMap;
@@ -275,8 +276,9 @@ declare abstract class StellarTestHelper<SC extends StellarContract<any>, P exte
     setupPending?: Promise<any>;
     setupActors(): void;
     constructor(params?: P & canHaveRandomSeed & canSkipSetup);
-    setup(params: P & canHaveRandomSeed): Promise<SC>;
-    initStrella(params: P): SC & StellarContract<any>;
+    setup(params: P & canHaveRandomSeed): Promise<any>;
+    initStellarClass(): any;
+    initStrella(TargetClass: stellarSubclass<any, any>, params: any): any;
     randomSeed?: number;
     rand?: () => number;
     delay(ms: any): Promise<unknown>;
@@ -294,7 +296,7 @@ declare abstract class StellarCapoTestHelper<SC extends Capo<any>> extends Stell
         seedTxn?: TxId;
         seedIndex?: bigint;
         randomSeed?: number;
-    }): Promise<SC>;
+    }): Promise<any>;
     mintCharterToken(args?: anyDatumArgs): Promise<StellarTxnContext>;
 }
 type actorMap = Record<string, WalletEmulator>;

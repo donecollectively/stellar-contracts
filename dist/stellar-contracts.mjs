@@ -1247,6 +1247,7 @@ async function addTestContext(context, TestHelperClass, params) {
 }
 class StellarTestHelper {
   state;
+  params;
   defaultActor;
   strella;
   actors;
@@ -1280,6 +1281,8 @@ class StellarTestHelper {
   }
   constructor(params) {
     this.state = {};
+    if (params)
+      this.params = params;
     const [theNetwork, emuParams] = this.mkNetwork();
     this.liveSlotParams = emuParams;
     this.network = theNetwork;
@@ -1318,20 +1321,23 @@ class StellarTestHelper {
       this.rand = void 0;
       this.randomSeed = randomSeed;
     }
-    return this.initStrella(p);
+    return this.initStellarClass();
   }
-  initStrella(params) {
+  initStellarClass() {
     const TargetClass = this.stellarClass;
-    const strella = new TargetClass({
+    const strella = this.initStrella(TargetClass, this.params);
+    this.strella = strella;
+    this.address = strella.address;
+    return strella;
+  }
+  initStrella(TargetClass, params) {
+    return new TargetClass({
       params,
       network: this.network,
       myActor: this.currentActor,
       networkParams: this.networkParams,
       isTest: true
     });
-    this.strella = strella;
-    this.address = strella.address;
-    return strella;
   }
   //! it has a seed for mkRandomBytes, which must be set by caller
   randomSeed;
@@ -1482,19 +1488,20 @@ class StellarCapoTestHelper extends StellarTestHelper {
     if (!seedTxn) {
       seedTxn = await this.mkSeedUtxo(seedIndex);
     }
-    const script = this.initStrella({
+    const strella = this.initStrella(this.stellarClass, {
       seedTxn,
       seedIndex
     });
-    const { address, mintingPolicyHash: mph } = script;
-    const { name } = script.configuredContract;
+    this.strella = strella;
+    const { address, mintingPolicyHash: mph } = strella;
+    const { name } = strella.configuredContract;
     console.log(
       name,
       address.toBech32().substring(0, 18) + "\u2026",
-      "vHash \u{1F4DC} " + script.compiledContract.validatorHash.hex.substring(0, 12) + "\u2026",
+      "vHash \u{1F4DC} " + strella.compiledContract.validatorHash.hex.substring(0, 12) + "\u2026",
       "mph \u{1F3E6} " + mph?.hex.substring(0, 12) + "\u2026"
     );
-    return script;
+    return strella;
   }
   async mintCharterToken(args) {
     const { tina, tom, tracy } = this.actors;

@@ -124,6 +124,7 @@ export abstract class StellarTestHelper<
 > {
     state: Record<string, any>;
     abstract get stellarClass(): stellarSubclass<SC, any>;
+    params?: P;
     defaultActor?: string;
     strella!: SC;
     actors: actorMap;
@@ -160,6 +161,8 @@ export abstract class StellarTestHelper<
 
     constructor(params?: P & canHaveRandomSeed & canSkipSetup) {
         this.state = {};
+        if (params) this.params = params;
+
         const [theNetwork, emuParams] = this.mkNetwork();
         this.liveSlotParams = emuParams;
         this.network = theNetwork;
@@ -184,6 +187,7 @@ export abstract class StellarTestHelper<
             return p;
         });
     }
+
     async setup(params: P & canHaveRandomSeed) {
         const { randomSeed, ...p } = params;
         if (this.setupPending) await this.setupPending;
@@ -201,24 +205,28 @@ export abstract class StellarTestHelper<
             this.randomSeed = randomSeed;
         }
 
-        return this.initStrella(p as P);
+        return this.initStellarClass();
     }
 
-    initStrella(params: P) {
+    initStellarClass() {
         const TargetClass = this.stellarClass;
 
-        const strella = new TargetClass({
-            params,
-            network: this.network,
-            myActor: this.currentActor,
-            networkParams: this.networkParams,
-            isTest: true,
-        });
+        const strella = this.initStrella(TargetClass, this.params)
 
         this.strella = strella;
         this.address = strella.address;
         return strella;
     }
+
+    initStrella(TargetClass: stellarSubclass<any, any>, params: any) {
+        return new TargetClass({
+            params,
+            network: this.network,
+            myActor: this.currentActor,
+            networkParams: this.networkParams,
+            isTest: true,   
+        });
+    }    
 
     //! it has a seed for mkRandomBytes, which must be set by caller
     randomSeed?: number;
@@ -403,22 +411,23 @@ export abstract class StellarCapoTestHelper<
         if (!seedTxn) {
             seedTxn = await this.mkSeedUtxo(seedIndex);
         }
-        const script = this.initStrella({
+        const strella = this.initStrella(this.stellarClass, {
             seedTxn,
             seedIndex,
         });
-        const { address, mintingPolicyHash: mph } = script;
+        this.strella = strella;
+        const { address, mintingPolicyHash: mph } = strella;
 
-        const { name } = script.configuredContract;
+        const { name } = strella.configuredContract;
         console.log(
             name,
             address.toBech32().substring(0, 18) + "…",
             "vHash 📜 " +
-                script.compiledContract.validatorHash.hex.substring(0, 12) +
+                strella.compiledContract.validatorHash.hex.substring(0, 12) +
                 "…",
             "mph 🏦 " + mph?.hex.substring(0, 12) + "…"
         );
-        return script;
+        return strella;
     }
 
     async mintCharterToken(args?: anyDatumArgs): Promise<StellarTxnContext> {
