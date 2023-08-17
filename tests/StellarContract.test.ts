@@ -842,6 +842,7 @@ describe("StellarContract", async () => {
                     /charter token must be returned/
                 );
             });
+            it.todo("can include the charter-token as a reference-input");
 
             it.todo(
                 "keeps the charter token separate from other assets in the contract",

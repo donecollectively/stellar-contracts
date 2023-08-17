@@ -60,6 +60,7 @@ function txAsString(tx) {
     "inputs",
     "minted",
     "collateral",
+    "refInputs",
     "outputs",
     "fee",
     "lastValidSlot",
@@ -67,8 +68,7 @@ function txAsString(tx) {
     "metadataHash",
     "scriptDataHash",
     "signers",
-    "collateralReturn",
-    "refInputs"
+    "collateralReturn"
   ];
   const witnessAttrs = [
     "signatures",
@@ -93,6 +93,10 @@ function txAsString(tx) {
     if ("inputs" == x) {
       item = `
   ${item.map((x2) => txInputAsString(x2)).join("\n  ")}`;
+    }
+    if ("refInputs" == x) {
+      item = `
+  ${item.map((x2) => txInputAsString(x2, "\u2139\uFE0F  ")).join("\n  ")}`;
     }
     if ("collateral" == x) {
       //!!! todo: group collateral with inputs and reflect it being spent either way,
@@ -1122,14 +1126,18 @@ class Capo extends StellarContract {
     );
   }
   // non-activity partial
-  async txnMustUseCharterUtxo(tcx, redeemer, newDatum) {
+  async txnMustUseCharterUtxo(tcx, redeemer, newDatum, useRefInput, forceAddRefScript) {
     return this.mustFindCharterUtxo().then((ctUtxo) => {
-      tcx.addInput(
-        ctUtxo,
-        redeemer.redeemer
-      ).attachScript(this.compiledContract);
-      const datum2 = newDatum || ctUtxo.origOutput.datum;
-      this.txnKeepCharterToken(tcx, datum2);
+      if (useRefInput) {
+        tcx.tx.addRefInput(ctUtxo, forceAddRefScript ? this.compiledContract : void 0);
+      } else {
+        tcx.addInput(
+          ctUtxo,
+          redeemer.redeemer
+        ).attachScript(this.compiledContract);
+        const datum2 = newDatum || ctUtxo.origOutput.datum;
+        this.txnKeepCharterToken(tcx, datum2);
+      }
       return tcx;
     });
   }

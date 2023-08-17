@@ -201,17 +201,22 @@ export abstract class Capo<
     async txnMustUseCharterUtxo(
         tcx: StellarTxnContext<any>,
         redeemer: isActivity,
-        newDatum?: InlineDatum
+        newDatum?: InlineDatum,
+        useRefInput? : boolean,
+        forceAddRefScript? : boolean,
     ): Promise<StellarTxnContext<any> | never> {
         return this.mustFindCharterUtxo().then((ctUtxo: TxInput) => {
-            tcx.addInput(
-                ctUtxo,
-                redeemer.redeemer
-            ).attachScript(this.compiledContract);
-
-            const datum = newDatum || (ctUtxo.origOutput.datum as InlineDatum);
-
-            this.txnKeepCharterToken(tcx, datum);
+            if (useRefInput) {
+                tcx.tx.addRefInput(ctUtxo, forceAddRefScript ? this.compiledContract : undefined);
+            } else {
+                tcx.addInput(
+                    ctUtxo,
+                    redeemer.redeemer
+                ).attachScript(this.compiledContract);
+                const datum = newDatum || (ctUtxo.origOutput.datum as InlineDatum);
+    
+                this.txnKeepCharterToken(tcx, datum);
+            }
             return tcx
         });
     }

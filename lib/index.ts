@@ -11,7 +11,9 @@ export {
     lovelaceToAda,
 } from "./diagnostics.js";
 
-export { Capo } from "./Capo.js";
+export { 
+    Capo
+ } from "./Capo.js";
 export type {
     MintUutRedeemerArgs,
     MintCharterRedeemerArgs,
@@ -19,7 +21,7 @@ export type {
     hasSomeUuts,
     hasAllUuts,
     hasUutContext,
-    SeedTxnParams
+    SeedTxnParams,
 } from "./Capo.js";
 
 export {
