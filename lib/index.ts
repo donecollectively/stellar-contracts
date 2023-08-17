@@ -13,10 +13,12 @@ export {
 
 export { Capo } from "./Capo.js";
 export type {
-    MintUUTRedeemerArgs,
+    MintUutRedeemerArgs,
     MintCharterRedeemerArgs,
-    hasUUTs,
     uutPurposeMap,
+    hasSomeUuts,
+    hasAllUuts,
+    hasUutContext,
     SeedTxnParams
 } from "./Capo.js";
 

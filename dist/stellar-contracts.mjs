@@ -844,9 +844,9 @@ class StellarContract {
   }
 }
 
-var contract$1 = "minting defaultMinter\n\nconst seedTxn : TxId = TxId::new(#1234)\nconst seedIndex : Int = 42\n\nimport { \n    hasSeedUtxo, \n    validateUUTminting\n} from CapoMintHelpers\n\nenum Redeemer { \n    mintingCharterToken {\n        owner: Address\n    }\n    mintingUUTs {\n        seedTxn: TxId\n        seedIndex: Int\n        //!!! todo: apply this everywhere else\n        purposes: []String\n    }\n}\n\nfunc hasContractSeedUtxo(tx: Tx) -> Bool {\n    hasSeedUtxo(tx, seedTxn, seedIndex, \"charter\")\n}\n\nfunc main(r : Redeemer, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    value_minted: Value = tx.minted;\n\n    charterToken: AssetClass = AssetClass::new(\n        mph,\n        \"charter\".encode_utf8()\n    );\n\n    ok : Bool = r.switch {\n        charter: mintingCharterToken => {       \n            assert(value_minted == Value::new(charterToken, 1), \"no charter token minted\");\n\n            hasContractSeedUtxo(tx) &&\n            tx.outputs.all( (output: TxOutput) -> Bool {\n                output.value != value_minted || (\n                    output.value == value_minted &&\n                    output.address == charter.owner\n                )\n            })\n        },\n\n        mintingUUTs{sTxId, sIdx, purposes} => validateUUTminting(ctx, sTxId, sIdx, purposes),\n        _ => true\n    };\n\n    print(\"defaultMinter: minting value: \" + value_minted.show());\n\n    ok\n}\n\n";
+var contract$1 = "minting defaultMinter\n\nconst seedTxn : TxId = TxId::new(#1234)\nconst seedIndex : Int = 42\n\nimport { \n    hasSeedUtxo, \n    validateUutMinting\n} from CapoMintHelpers\n\nenum Redeemer { \n    mintingCharterToken {\n        owner: Address\n    }\n    mintingUuts {\n        seedTxn: TxId\n        seedIndex: Int\n        //!!! todo: apply this everywhere else\n        purposes: []String\n    }\n}\n\nfunc hasContractSeedUtxo(tx: Tx) -> Bool {\n    hasSeedUtxo(tx, seedTxn, seedIndex, \"charter\")\n}\n\nfunc main(r : Redeemer, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    value_minted: Value = tx.minted;\n\n    charterToken: AssetClass = AssetClass::new(\n        mph,\n        \"charter\".encode_utf8()\n    );\n\n    ok : Bool = r.switch {\n        charter: mintingCharterToken => {       \n            assert(value_minted == Value::new(charterToken, 1), \"no charter token minted\");\n\n            hasContractSeedUtxo(tx) &&\n            tx.outputs.all( (output: TxOutput) -> Bool {\n                output.value != value_minted || (\n                    output.value == value_minted &&\n                    output.address == charter.owner\n                )\n            })\n        },\n\n        mintingUuts{sTxId, sIdx, purposes} => validateUutMinting(ctx, sTxId, sIdx, purposes),\n        _ => true\n    };\n\n    print(\"defaultMinter: minting value: \" + value_minted.show());\n\n    ok\n}\n\n";
 
-var cmh = "module CapoMintHelpers\n\n\nfunc hasSeedUtxo(tx: Tx, sTxId : TxId, sIdx: Int, reason: String) -> Bool {\n    seedUtxo: TxOutputId = TxOutputId::new(\n        sTxId,\n        sIdx\n    );\n    assert(tx.inputs.any( (input: TxInput) -> Bool {\n        input.output_id == seedUtxo\n    }),  \"seed utxo required for minting \"+reason);\n\n    true\n}\n\nfunc validateUUTminting(ctx: ScriptContext, sTxId : TxId, sIdx : Int, purposes: []String) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    value_minted: Value = tx.minted;\n    idxBytes : ByteArray = sIdx.bound_max(255).serialize();\n    // assert(idxBytes.length == 1, \"surprise!\");\n\n    //! yuck: un-CBOR...\n    rawTxId : ByteArray = sTxId.serialize().slice(5,37);\n\n    txoId : ByteArray = (rawTxId + \"@\".encode_utf8() + idxBytes);\n    assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // print( \"******** txoId \" + txoId.show());\n\n    miniHash : ByteArray = txoId.blake2b().slice(0,6);\n    assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    assetValues = Value::sum(purposes.sort((a:String, b:String) -> Bool { a == b }).map(\n        (purpose: String) -> Value {\n            assetName : ByteArray = (purpose + \".\" + miniHash.show()).encode_utf8();\n            assetClass : AssetClass = AssetClass::new(mph, assetName);\n\n            Value::new(assetClass, 1)\n        }\n    ));\n    expectedMint : Map[ByteArray]Int = assetValues.get_policy(mph);\n    actualMint : Map[ByteArray]Int = value_minted.get_policy(mph);\n\n    // print(\"redeemer\" + sTxId.show() + \" \" + sIdx.show() + \" asset \" + assetName.show());\n    // expectedMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"expected: \" + b.show() + \" \" + i.show() )\n    // });\n    temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {\n        l.find_safe((x : ByteArray) -> Bool { x == b }).switch{\n            None => l.prepend(b),\n            Some => error(\"UUT purposes not unique\")\n        }\n    }, []ByteArray{});\n    assert(temp == temp, \"prevent unused var\");\n\n    // actualMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"actual: \" + b.show() + \" \" + i.show() )\n    // });\n\n    assert(expectedMint == actualMint, \"bad UUT mint has mismatch;\"+ \n        \"\\n   ... expected \"+ assetValues.show()+\n        \"   ... actual \"+ value_minted.show()+\n        \"   ... diff = \" + (assetValues - value_minted).show()\n    );\n    hasSeedUtxo(tx, sTxId, sIdx, \"UUT \"+purposes.join(\"+\"))\n}";
+var cmh = "module CapoMintHelpers\n\n\nfunc hasSeedUtxo(tx: Tx, sTxId : TxId, sIdx: Int, reason: String) -> Bool {\n    seedUtxo: TxOutputId = TxOutputId::new(\n        sTxId,\n        sIdx\n    );\n    assert(tx.inputs.any( (input: TxInput) -> Bool {\n        input.output_id == seedUtxo\n    }),  \"seed utxo required for minting \"+reason);\n\n    true\n}\n\nfunc validateUutMinting(ctx: ScriptContext, sTxId : TxId, sIdx : Int, purposes: []String) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    value_minted: Value = tx.minted;\n    idxBytes : ByteArray = sIdx.bound_max(255).serialize();\n    // assert(idxBytes.length == 1, \"surprise!\");\n\n    //! yuck: un-CBOR...\n    rawTxId : ByteArray = sTxId.serialize().slice(5,37);\n\n    txoId : ByteArray = (rawTxId + \"@\".encode_utf8() + idxBytes);\n    assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // print( \"******** txoId \" + txoId.show());\n\n    miniHash : ByteArray = txoId.blake2b().slice(0,6);\n    assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    assetValues = Value::sum(purposes.sort((a:String, b:String) -> Bool { a == b }).map(\n        (purpose: String) -> Value {\n            assetName : ByteArray = (purpose + \".\" + miniHash.show()).encode_utf8();\n            assetClass : AssetClass = AssetClass::new(mph, assetName);\n\n            Value::new(assetClass, 1)\n        }\n    ));\n    expectedMint : Map[ByteArray]Int = assetValues.get_policy(mph);\n    actualMint : Map[ByteArray]Int = value_minted.get_policy(mph);\n\n    // print(\"redeemer\" + sTxId.show() + \" \" + sIdx.show() + \" asset \" + assetName.show());\n    // expectedMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"expected: \" + b.show() + \" \" + i.show() )\n    // });\n    temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {\n        l.find_safe((x : ByteArray) -> Bool { x == b }).switch{\n            None => l.prepend(b),\n            Some => error(\"UUT purposes not unique\")\n        }\n    }, []ByteArray{});\n    assert(temp == temp, \"prevent unused var\");\n\n    // actualMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"actual: \" + b.show() + \" \" + i.show() )\n    // });\n\n    assert(expectedMint == actualMint, \"bad UUT mint has mismatch;\"+ \n        \"\\n   ... expected \"+ assetValues.show()+\n        \"   ... actual \"+ value_minted.show()+\n        \"   ... diff = \" + (assetValues - value_minted).show()\n    );\n    hasSeedUtxo(tx, sTxId, sIdx, \"UUT \"+purposes.join(\"+\"))\n}";
 
 //! this file implements a workaround for a problem 
 const CapoMintHelpers = cmh;
@@ -870,66 +870,74 @@ class DefaultMinter extends StellarContract {
     return CapoMintHelpers;
   }
   importModules() {
-    return [
-      this.capoMinterHelpers()
-    ];
+    return [this.capoMinterHelpers()];
   }
-  async txnCreatingUUTs(tcx, purposes) {
+  async txnCreatingUuts(tcx, uutPurposes) {
     //!!! make it big enough to serve minUtxo for the new UUT
     const uutSeed = this.mkValuePredicate(BigInt(42e3), tcx);
     return this.mustFindActorUtxo(
-      `for-uut-${purposes.join("+")}`,
+      `for-uut-${uutPurposes.join("+")}`,
       uutSeed,
       tcx
     ).then(async (freeSeedUtxo) => {
       tcx.addInput(freeSeedUtxo);
       const { txId, utxoIdx } = freeSeedUtxo.outputId;
       const { encodeBech32, blake2b, encodeBase32 } = Crypto;
-      const uutMap = Object.fromEntries(purposes.map((uutPurpose) => {
-        const txoId = txId.bytes.concat(["@".charCodeAt(0), utxoIdx]);
-        return [uutPurpose, `${uutPurpose}.${bytesToHex(blake2b(txoId).slice(0, 6))}`];
-      }));
+      const uutMap = Object.fromEntries(
+        uutPurposes.map((uutPurpose) => {
+          const txoId = txId.bytes.concat([
+            "@".charCodeAt(0),
+            utxoIdx
+          ]);
+          return [
+            uutPurpose,
+            `${uutPurpose}.${bytesToHex(
+              blake2b(txoId).slice(0, 6)
+            )}`
+          ];
+        })
+      );
       if (tcx.state.uuts)
         throw new Error(`uuts are already there`);
       tcx.state.uuts = uutMap;
-      const vEntries = this.mkUUTValuesEntries(uutMap);
-      const { txId: seedTxn, utxoIdx: seedIndex } = freeSeedUtxo;
+      const vEntries = this.mkUutValuesEntries(uutMap);
+      const { txId: seedTxn, utxoIdx: seedIndex } = freeSeedUtxo.outputId;
       return tcx.attachScript(this.compiledContract).mintTokens(
         this.mintingPolicyHash,
         vEntries,
-        this.mintingUUTs({
+        this.mintingUuts({
           seedTxn,
           seedIndex,
-          purposes
+          purposes: uutPurposes
         }).redeemer
       );
     });
   }
-  mkUUTValuesEntries(uutMap) {
-    return Object.entries(uutMap).map(
-      ([_purpose, assetName]) => {
-        return this.mkValuesEntry(assetName, BigInt(1));
-      }
-    );
+  mkUutValuesEntries(uutMap) {
+    return Object.entries(uutMap).map(([_purpose, assetName]) => {
+      return this.mkValuesEntry(assetName, BigInt(1));
+    });
   }
   //! overrides base getter type with undefined not being allowed
   get mintingPolicyHash() {
     return super.mintingPolicyHash;
   }
-  mintingCharterToken({ owner }) {
+  mintingCharterToken({
+    owner
+  }) {
     const t = new this.configuredContract.types.Redeemer.mintingCharterToken(
       owner
     );
     return { redeemer: t._toUplcData() };
   }
-  mintingUUTs({
+  mintingUuts({
     seedTxn,
     seedIndex: sIdx,
     purposes
   }) {
     const seedIndex = BigInt(sIdx);
     console.log("UUT redeemer seedTxn", seedTxn.hex);
-    const t = new this.configuredContract.types.Redeemer.mintingUUTs(
+    const t = new this.configuredContract.types.Redeemer.mintingUuts(
       seedTxn,
       seedIndex,
       purposes
@@ -948,7 +956,9 @@ class DefaultMinter extends StellarContract {
     return v;
   }
   get charterTokenAsValue() {
-    console.warn("deprecated use of `get minter.charterTokenAsValue`; use tvCharter() instead");
+    console.warn(
+      "deprecated use of `get minter.charterTokenAsValue`; use tvCharter() instead"
+    );
     return this.tvCharter();
   }
   async txnMintingCharterToken(tcx, owner) {
@@ -962,13 +972,13 @@ class DefaultMinter extends StellarContract {
 }
 __decorateClass$2([
   Activity.partialTxn
-], DefaultMinter.prototype, "txnCreatingUUTs", 1);
+], DefaultMinter.prototype, "txnCreatingUuts", 1);
 __decorateClass$2([
   Activity.redeemer
 ], DefaultMinter.prototype, "mintingCharterToken", 1);
 __decorateClass$2([
   Activity.redeemer
-], DefaultMinter.prototype, "mintingUUTs", 1);
+], DefaultMinter.prototype, "mintingUuts", 1);
 __decorateClass$2([
   Activity.partialTxn
 ], DefaultMinter.prototype, "txnMintingCharterToken", 1);
@@ -1005,12 +1015,12 @@ class Capo extends StellarContract {
     return DefaultMinter;
   }
   minter;
-  async txnCreatingUUTs(tcx, uutPurposes) {
-    return this.minter.txnCreatingUUTs(tcx, uutPurposes);
+  txnCreatingUuts(tcx, uutPurposes) {
+    return this.minter.txnCreatingUuts(tcx, uutPurposes);
   }
   uutsValue(x) {
     const uutMap = x instanceof StellarTxnContext ? x.state.uuts : x;
-    const vEntries = this.minter.mkUUTValuesEntries(uutMap);
+    const vEntries = this.minter.mkUutValuesEntries(uutMap);
     return new Value(
       void 0,
       new Assets([[this.mintingPolicyHash, vEntries]])
@@ -1120,14 +1130,14 @@ class Capo extends StellarContract {
     const { minterClass } = this;
     this.paramsIn;
     const minter = this.addScriptWithParams(minterClass, params);
-    const { mintingCharterToken, mintingUUTs } = minter.configuredContract.types.Redeemer;
+    const { mintingCharterToken, mintingUuts } = minter.configuredContract.types.Redeemer;
     if (!mintingCharterToken)
       throw new Error(
         `minting script doesn't offer required 'mintingCharterToken' activity-redeemer`
       );
-    if (!mintingUUTs)
+    if (!mintingUuts)
       throw new Error(
-        `minting script doesn't offer required 'mintingUUTs' activity-redeemer`
+        `minting script doesn't offer required 'mintingUuts' activity-redeemer`
       );
     return this.minter = minter;
   }
@@ -1167,7 +1177,7 @@ class Capo extends StellarContract {
       "can create unique utility tokens": {
         purpose: "so the contract can use UUTs for scoped-authority semantics",
         details: [
-          "Building a txn with a UUT involves using the txnCreatingUUT partial-helper on the Capo.",
+          "Building a txn with a UUT involves using the txnCreatingUuts partial-helper on the Capo.",
           "That UUT (a Value) is returned, and then should be added to a TxOutput.",
           "Fills tcx.state.uuts with purpose-keyed unique token-names",
           "The partial-helper doesn't constrain the semantics of the UUT.",
@@ -1183,7 +1193,7 @@ class Capo extends StellarContract {
 }
 __decorateClass$1([
   Activity.partialTxn
-], Capo.prototype, "txnCreatingUUTs", 1);
+], Capo.prototype, "txnCreatingUuts", 1);
 __decorateClass$1([
   Activity.redeemer
 ], Capo.prototype, "usingAuthority", 1);

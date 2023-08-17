@@ -28,26 +28,32 @@ export type SeedTxnParams = {
     seedIndex: bigint;
 };
 
-export type uutPurposeMap<uutNames extends {[k: string]: string} = {}> = Partial<uutNames>
-export type hasUUTs<uutNames extends {}={}> = {
-    uuts: uutPurposeMap<uutNames>
+export type uutPurposeMap = {[purpose: string]: string}
+export type hasSomeUuts<uutEntries extends uutPurposeMap={}> = {
+    uuts: Partial<uutEntries>
+}
+export type hasAllUuts<uutEntries extends uutPurposeMap={}> = {
+    uuts: uutEntries
 }
 
-interface hasUUTCreator {
-    txnCreatingUUTs(tcx: StellarTxnContext<any>, uutPurposes: string[]): Promise<StellarTxnContext<any>>;
+interface hasUutCreator {
+    txnCreatingUuts<UutMapType extends uutPurposeMap>(
+        tcx: StellarTxnContext<any>, 
+        uutPurposes: (string & keyof UutMapType)[]
+    ): Promise<hasUutContext<UutMapType>>;
 }
 
 export type MintCharterRedeemerArgs = {
     owner: Address;
 };
-export type MintUUTRedeemerArgs = {
+export type MintUutRedeemerArgs = {
     seedTxn: TxId;
     seedIndex: bigint | number;
     purposes: string[];
 };
-type hasUutContext = StellarTxnContext<hasUUTs<any>>;
+export type hasUutContext<uutEntries extends uutPurposeMap> = StellarTxnContext<hasAllUuts<uutEntries>>;
 
-export interface MinterBaseMethods extends hasUUTCreator {
+export interface MinterBaseMethods extends hasUutCreator {
     get mintingPolicyHash(): MintingPolicyHash;
     txnMintingCharterToken(
         tcx: StellarTxnContext<any>,
@@ -62,7 +68,7 @@ export abstract class Capo<
         minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter
     >
     extends StellarContract<SeedTxnParams>
-    implements hasUUTCreator
+    implements hasUutCreator
 {
     constructor(
         args: StellarConstructorArgs<
@@ -97,22 +103,20 @@ export abstract class Capo<
 
     minter?: minterType;
 
-    //!!! todo: type constraints so that the uutPurposes can only
-    //   match the expected keys in the declared hasUUTs<T> type
     @Activity.partialTxn
-    async txnCreatingUUTs(
-        tcx: hasUutContext,
-        uutPurposes: string[]
-    ): Promise<hasUutContext> {
-        return this.minter!.txnCreatingUUTs(tcx, uutPurposes);
+    txnCreatingUuts<UutMapType extends uutPurposeMap>(
+        tcx: StellarTxnContext<any>, 
+        uutPurposes: (string & keyof UutMapType)[]
+    ): Promise<hasUutContext<UutMapType>> {
+        return this.minter!.txnCreatingUuts(tcx, uutPurposes);
     }
     // P extends paramsBase = SC extends StellarContract<infer P> ? P : never
 
     uutsValue(uutMap: uutPurposeMap): Value
-    uutsValue(tcx: hasUutContext): Value
-    uutsValue(x: uutPurposeMap | hasUutContext): Value {
+    uutsValue(tcx: hasUutContext<any>): Value
+    uutsValue(x: uutPurposeMap | hasUutContext<any>): Value {
         const uutMap = x instanceof StellarTxnContext ? x.state.uuts! : x
-        const vEntries = this.minter!.mkUUTValuesEntries(uutMap);
+        const vEntries = this.minter!.mkUutValuesEntries(uutMap);
 
         return new Value(
             undefined,
@@ -275,15 +279,15 @@ export abstract class Capo<
         const { seedTxn, seedIndex } = this.paramsIn;
 
         const minter = this.addScriptWithParams(minterClass, params);
-        const { mintingCharterToken, mintingUUTs } =
+        const { mintingCharterToken, mintingUuts } =
             minter.configuredContract.types.Redeemer;
         if (!mintingCharterToken)
             throw new Error(
                 `minting script doesn't offer required 'mintingCharterToken' activity-redeemer`
             );
-        if (!mintingUUTs)
+        if (!mintingUuts)
             throw new Error(
-                `minting script doesn't offer required 'mintingUUTs' activity-redeemer`
+                `minting script doesn't offer required 'mintingUuts' activity-redeemer`
             );
 
         //@ts-ignore-error - can't seem to indicate to typescript that minter's type can be relied on to be enough
@@ -331,7 +335,7 @@ export abstract class Capo<
                 purpose:
                     "so the contract can use UUTs for scoped-authority semantics",
                 details: [
-                    "Building a txn with a UUT involves using the txnCreatingUUT partial-helper on the Capo.",
+                    "Building a txn with a UUT involves using the txnCreatingUuts partial-helper on the Capo.",
                     "That UUT (a Value) is returned, and then should be added to a TxOutput.",
                     "Fills tcx.state.uuts with purpose-keyed unique token-names",
                     "The partial-helper doesn't constrain the semantics of the UUT.",

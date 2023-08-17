@@ -30,7 +30,7 @@ declare class StellarTxnContext<S = noState> {
     collateral?: TxInput;
     outputs: TxOutput[];
     feeLimit?: bigint;
-    state: Partial<S>;
+    state: S;
     constructor(state?: Partial<S>);
     dump(): string;
     mintTokens(...args: Parameters<Tx["mintTokens"]>): StellarTxnContext<S>;
@@ -156,11 +156,11 @@ declare class DefaultMinter extends StellarContract<SeedTxnParams> implements Mi
     contractSource(): any;
     capoMinterHelpers(): string;
     importModules(): string[];
-    txnCreatingUUTs<uutIndex extends hasUUTs<any>>(tcx: StellarTxnContext<uutIndex>, purposes: string[]): Promise<StellarTxnContext<uutIndex>>;
-    mkUUTValuesEntries<UM extends uutPurposeMap<any>>(uutMap: UM): valuesEntry[];
+    txnCreatingUuts<UutMapType extends uutPurposeMap>(tcx: StellarTxnContext<any>, uutPurposes: (string & keyof UutMapType)[]): Promise<hasUutContext<UutMapType>>;
+    mkUutValuesEntries<UM extends uutPurposeMap>(uutMap: UM): valuesEntry[];
     get mintingPolicyHash(): MintingPolicyHash;
-    protected mintingCharterToken({ owner }: MintCharterRedeemerArgs): isActivity;
-    protected mintingUUTs({ seedTxn, seedIndex: sIdx, purposes, }: MintUUTRedeemerArgs): isActivity;
+    protected mintingCharterToken({ owner, }: MintCharterRedeemerArgs): isActivity;
+    protected mintingUuts({ seedTxn, seedIndex: sIdx, purposes, }: MintUutRedeemerArgs): isActivity;
     get charterTokenAsValuesEntry(): valuesEntry;
     tvCharter(): Value;
     get charterTokenAsValue(): Value;
@@ -171,38 +171,41 @@ type SeedTxnParams = {
     seedTxn: TxId;
     seedIndex: bigint;
 };
-type uutPurposeMap<uutNames extends {
-    [k: string]: string;
-} = {}> = Partial<uutNames>;
-type hasUUTs<uutNames extends {} = {}> = {
-    uuts: uutPurposeMap<uutNames>;
+type uutPurposeMap = {
+    [purpose: string]: string;
 };
-interface hasUUTCreator {
-    txnCreatingUUTs(tcx: StellarTxnContext<any>, uutPurposes: string[]): Promise<StellarTxnContext<any>>;
+type hasSomeUuts<uutEntries extends uutPurposeMap = {}> = {
+    uuts: Partial<uutEntries>;
+};
+type hasAllUuts<uutEntries extends uutPurposeMap = {}> = {
+    uuts: uutEntries;
+};
+interface hasUutCreator {
+    txnCreatingUuts<UutMapType extends uutPurposeMap>(tcx: StellarTxnContext<any>, uutPurposes: (string & keyof UutMapType)[]): Promise<hasUutContext<UutMapType>>;
 }
 type MintCharterRedeemerArgs = {
     owner: Address;
 };
-type MintUUTRedeemerArgs = {
+type MintUutRedeemerArgs = {
     seedTxn: TxId;
     seedIndex: bigint | number;
     purposes: string[];
 };
-type hasUutContext = StellarTxnContext<hasUUTs<any>>;
-interface MinterBaseMethods extends hasUUTCreator {
+type hasUutContext<uutEntries extends uutPurposeMap> = StellarTxnContext<hasAllUuts<uutEntries>>;
+interface MinterBaseMethods extends hasUutCreator {
     get mintingPolicyHash(): MintingPolicyHash;
     txnMintingCharterToken(tcx: StellarTxnContext<any>, owner: Address, tVal: valuesEntry): Promise<StellarTxnContext<any>>;
 }
 type anyDatumArgs = Record<string, any>;
-declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter> extends StellarContract<SeedTxnParams> implements hasUUTCreator {
+declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter> extends StellarContract<SeedTxnParams> implements hasUutCreator {
     constructor(args: StellarConstructorArgs<StellarContract<SeedTxnParams>, SeedTxnParams>);
     abstract contractSource(): string;
     abstract mkDatumCharterToken(args: anyDatumArgs): InlineDatum;
     get minterClass(): stellarSubclass<DefaultMinter, SeedTxnParams>;
     minter?: minterType;
-    txnCreatingUUTs(tcx: hasUutContext, uutPurposes: string[]): Promise<hasUutContext>;
+    txnCreatingUuts<UutMapType extends uutPurposeMap>(tcx: StellarTxnContext<any>, uutPurposes: (string & keyof UutMapType)[]): Promise<hasUutContext<UutMapType>>;
     uutsValue(uutMap: uutPurposeMap): Value;
-    uutsValue(tcx: hasUutContext): Value;
+    uutsValue(tcx: hasUutContext<any>): Value;
     protected usingAuthority(): isActivity;
     protected updatingCharter({ trustees, minSigs, }: {
         trustees: Address[];
@@ -296,7 +299,7 @@ declare abstract class StellarCapoTestHelper<SC extends Capo<any>> extends Stell
         seedTxn?: TxId;
         seedIndex?: bigint;
         randomSeed?: number;
-    }): Promise<any>;
+    }): Promise<SC>;
     mintCharterToken(args?: anyDatumArgs): Promise<StellarTxnContext>;
 }
 type actorMap = Record<string, WalletEmulator>;
@@ -372,4 +375,4 @@ declare class SampleTreasury extends Capo {
     };
 }
 
-export { ADA, Activity, Capo, CharterDatumArgs, DefaultMinter, InlineDatum, MintCharterRedeemerArgs, MintUUTRedeemerArgs, SampleTreasury, SeedTxnParams, StellarCapoTestHelper, StellarContract, StellarTestContext, StellarTestHelper, StellarTxnContext, addTestContext, assetsAsString, datum, hasUUTs, heliosRollupLoader, isActivity, lovelaceToAda, partialTxn, stellarSubclass, tokenNamesOrValuesEntry, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxoPredicate, utxosAsString, uutPurposeMap, valueAsString, valuesEntry };
+export { ADA, Activity, Capo, CharterDatumArgs, DefaultMinter, InlineDatum, MintCharterRedeemerArgs, MintUutRedeemerArgs, SampleTreasury, SeedTxnParams, StellarCapoTestHelper, StellarContract, StellarTestContext, StellarTestHelper, StellarTxnContext, addTestContext, assetsAsString, datum, hasAllUuts, hasSomeUuts, hasUutContext, heliosRollupLoader, isActivity, lovelaceToAda, partialTxn, stellarSubclass, tokenNamesOrValuesEntry, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxoPredicate, utxosAsString, uutPurposeMap, valueAsString, valuesEntry };

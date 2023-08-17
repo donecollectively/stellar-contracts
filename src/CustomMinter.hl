@@ -2,7 +2,7 @@ minting customMinter
 
 import { 
     hasSeedUtxo, 
-    validateUUTminting
+    validateUutMinting
 } from CapoMintHelpers
 
 const seedTxn : TxId = TxId::new(#1234)
@@ -12,7 +12,7 @@ enum Redeemer {
     mintingCharterToken {
         owner: Address
     }
-    mintingUUTs {
+    mintingUuts {
         seedTxn: TxId
         seedIndex: Int
         purposes: []String

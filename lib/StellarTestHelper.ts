@@ -393,7 +393,7 @@ export abstract class StellarCapoTestHelper<
         randomSeed = 42,
         seedTxn,
         seedIndex = 0n,
-    }: { seedTxn?: TxId; seedIndex?: bigint; randomSeed?: number } = {}) {
+    }: { seedTxn?: TxId; seedIndex?: bigint; randomSeed?: number } = {}) : Promise<SC>{
         if (this.setupPending) await this.setupPending;
         if (this.strella && this.randomSeed == randomSeed) {
             console.log(

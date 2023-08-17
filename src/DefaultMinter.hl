@@ -5,14 +5,14 @@ const seedIndex : Int = 42
 
 import { 
     hasSeedUtxo, 
-    validateUUTminting
+    validateUutMinting
 } from CapoMintHelpers
 
 enum Redeemer { 
     mintingCharterToken {
         owner: Address
     }
-    mintingUUTs {
+    mintingUuts {
         seedTxn: TxId
         seedIndex: Int
         //!!! todo: apply this everywhere else
@@ -47,7 +47,7 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
             })
         },
 
-        mintingUUTs{sTxId, sIdx, purposes} => validateUUTminting(ctx, sTxId, sIdx, purposes),
+        mintingUuts{sTxId, sIdx, purposes} => validateUutMinting(ctx, sTxId, sIdx, purposes),
         _ => true
     };
 

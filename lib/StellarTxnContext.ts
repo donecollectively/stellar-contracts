@@ -24,10 +24,11 @@ export class StellarTxnContext<S=noState> {
     collateral?: TxInput;
     outputs: TxOutput[];
     feeLimit?: bigint;
-    state : Partial<S>;
+    state : S;
     constructor(state: Partial<S>={}) {
         this.tx = new Tx();
         this.inputs = [];
+        //@ts-expect-error
         this.state = state;
         this.collateral = undefined;
         this.outputs = [];

@@ -26,7 +26,7 @@ import {
     StellarTestContext,
     addTestContext,
 } from "../lib/StellarTestHelper";
-import { hasUUTs } from "../lib/Capo";
+import { hasAllUuts } from "../lib/Capo";
 
 type localTC = StellarTestContext<SampleTreasuryTestHelper>;
 
@@ -883,10 +883,10 @@ describe("StellarContract", async () => {
                 const t: SampleTreasury = await h.setup();
                 await h.mintCharterToken();
                 // await delay(1000);
-                type something = { something: string };
-                const tcx = new StellarTxnContext<hasUUTs<something>>();
+                type something = { "something": string };
+                const tcx = new StellarTxnContext<hasAllUuts<something>>();
                 await t.txnAddAuthority(tcx);
-                await t.txnCreatingUUTs(tcx, ["something"]);
+                await t.txnCreatingUuts<something>(tcx, ["something"]);
 
                 const uutVal = t.uutsValue(tcx.state.uuts!);
                 tcx.addOutput(new TxOutput(tina.address, uutVal));
@@ -912,9 +912,9 @@ describe("StellarContract", async () => {
                 // await delay(1000);
 
                 type hasFooBar = { foo: string; bar: string };
-                const tcx = new StellarTxnContext<hasUUTs<hasFooBar>>();
+                const tcx = new StellarTxnContext<hasAllUuts<hasFooBar>>();
                 await t.txnAddAuthority(tcx);
-                await t.txnCreatingUUTs(tcx, ["foo", "bar"]);
+                await t.txnCreatingUuts(tcx, ["foo", "bar"]);
                 const uuts = t.uutsValue(tcx.state.uuts!);
 
                 tcx.addOutput(new TxOutput(tina.address, uuts));
@@ -940,9 +940,9 @@ describe("StellarContract", async () => {
                 // await delay(1000);
 
                 type hasFooBar = { foo: string; bar: string };
-                const tcx = new StellarTxnContext<hasUUTs<hasFooBar>>();
+                const tcx = new StellarTxnContext<hasAllUuts<hasFooBar>>();
                 await t.txnAddAuthority(tcx);
-                await t.txnCreatingUUTs(tcx, ["foo", "bar"]);
+                await t.txnCreatingUuts(tcx, ["foo", "bar"]);
                 const uuts = t.uutsValue(tcx.state.uuts!);
 
                 //! fills state.uuts with named
@@ -978,10 +978,10 @@ describe("StellarContract", async () => {
                 console.log(
                     "-------- case 1: using the txn-helper in unsupported way"
                 );
-                const tcx = new StellarTxnContext<hasUUTs<uniqUutMap>>();
+                const tcx = new StellarTxnContext<hasAllUuts<uniqUutMap>>();
                 await t.txnAddAuthority(tcx);
 
-                await t.txnCreatingUUTs(tcx, [noMultiples, noMultiples]);
+                await t.txnCreatingUuts(tcx, [noMultiples, noMultiples]);
 
                 const uut = t.uutsValue(tcx.state.uuts!);
 
@@ -994,10 +994,10 @@ describe("StellarContract", async () => {
                 console.log(
                     "------ case 2: directly creating the transaction with >1 tokens"
                 );
-                const tcx2 = new StellarTxnContext<hasUUTs<uniqUutMap>>();
+                const tcx2 = new StellarTxnContext<hasAllUuts<uniqUutMap>>();
                 await t.txnAddAuthority(tcx2);
 
-                const spy = vi.spyOn(m, "mkUUTValuesEntries");
+                const spy = vi.spyOn(m, "mkUutValuesEntries");
                 spy.mockImplementation(
                     //@ts-expect-error
                     function (f: uniqUutMap) {
@@ -1007,7 +1007,7 @@ describe("StellarContract", async () => {
                     }
                 );
 
-                await t.txnCreatingUUTs(tcx2, [noMultiples]);
+                await t.txnCreatingUuts(tcx2, [noMultiples]);
                 const uut2 = t.uutsValue(tcx2.state.uuts!);
 
                 tcx2.addOutput(new TxOutput(tina.address, uut2));
@@ -1019,7 +1019,7 @@ describe("StellarContract", async () => {
                 console.log(
                     "------ case 3: directly creating the transaction with multiple mint entries"
                 );
-                const tcx3 = new StellarTxnContext<hasUUTs<uniqUutMap>>();
+                const tcx3 = new StellarTxnContext<hasAllUuts<uniqUutMap>>();
                 await t.txnAddAuthority(tcx3);
 
                 spy.mockImplementation(
@@ -1032,7 +1032,7 @@ describe("StellarContract", async () => {
                     }
                 );
 
-                await t.txnCreatingUUTs(tcx3, [noMultiples]);
+                await t.txnCreatingUuts(tcx3, [noMultiples]);
                 const uut3 = t.uutsValue(tcx3.state.uuts!);
 
                 tcx3.addOutput(new TxOutput(tina.address, uut3));
@@ -1054,11 +1054,11 @@ describe("StellarContract", async () => {
                 // await delay(1000);
 
                 type hasSomethingUut = { ["something"]: string };
-                const tcx = new StellarTxnContext<hasUUTs<hasSomethingUut>>();
+                const tcx = new StellarTxnContext<hasAllUuts<hasSomethingUut>>();
 
                 await t.txnAddAuthority(tcx);
                 const m: DefaultMinter = t.minter!;
-                vi.spyOn(m, "mkUUTValuesEntries").mockImplementation(
+                vi.spyOn(m, "mkUutValuesEntries").mockImplementation(
                     //@ts-expect-error
                     function (f: uniqUutMap) {
                         return [
@@ -1068,7 +1068,7 @@ describe("StellarContract", async () => {
                     }
                 );
 
-                await t.txnCreatingUUTs(tcx, ["something"]);
+                await t.txnCreatingUuts(tcx, ["something"]);
                 const uut = t.uutsValue(tcx);
 
                 tcx.addOutput(new TxOutput(tina.address, uut));
@@ -1130,7 +1130,7 @@ describe("StellarContract", async () => {
                     notEnoughSignaturesRegex
                 );
             });
-            
+
             it("works with a minSigs=2 and three people sign", async (context: localTC) => {
                 const {
                     h,

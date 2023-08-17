@@ -22,15 +22,17 @@ import {
 
 //@ts-expect-error
 import contract from "./DefaultMinter.hl";
-import {CapoMintHelpers} from "./CapoMintHelpers.js";
+import { CapoMintHelpers } from "./CapoMintHelpers.js";
 
 import { StellarTxnContext } from "../lib/StellarTxnContext.js";
 import {
     MintCharterRedeemerArgs,
-    MintUUTRedeemerArgs,
+    MintUutRedeemerArgs,
     MinterBaseMethods,
     SeedTxnParams,
-    hasUUTs,
+    hasAllUuts,
+    hasSomeUuts,
+    hasUutContext,
     uutPurposeMap,
 } from "../lib/Capo.js";
 import { valuesEntry } from "../lib/HeliosPromotedTypes.js";
@@ -42,68 +44,72 @@ export class DefaultMinter
     contractSource() {
         return contract;
     }
-    capoMinterHelpers() : string{
-        return CapoMintHelpers
+    capoMinterHelpers(): string {
+        return CapoMintHelpers;
     }
-    importModules() : string[] {
-        return [
-            this.capoMinterHelpers()
-        ]
+    importModules(): string[] {
+        return [this.capoMinterHelpers()];
     }
 
     @Activity.partialTxn
-    async txnCreatingUUTs<uutIndex extends hasUUTs<any>>(
-        tcx: StellarTxnContext<uutIndex>,
-        purposes: string[]
-    ): Promise<StellarTxnContext<uutIndex>> {
+    async txnCreatingUuts<UutMapType extends uutPurposeMap>(
+        tcx: StellarTxnContext<any>,
+        uutPurposes: (string & keyof UutMapType)[]
+    ): Promise<hasUutContext<UutMapType>> {
         //!!! make it big enough to serve minUtxo for the new UUT
         const uutSeed = this.mkValuePredicate(BigInt(42_000), tcx);
-
         return this.mustFindActorUtxo(
-            `for-uut-${purposes.join("+")}`,
+            `for-uut-${uutPurposes.join("+")}`,
             uutSeed,
             tcx
         ).then(async (freeSeedUtxo) => {
             tcx.addInput(freeSeedUtxo);
-            const { txId, utxoIdx } = freeSeedUtxo.outputId
-            
+            const { txId, utxoIdx } = freeSeedUtxo.outputId;
+
             const { encodeBech32, blake2b, encodeBase32 } = Crypto;
 
-            const uutMap : uutIndex["uuts"] = Object.fromEntries(purposes.map(uutPurpose => {
-                const txoId = txId.bytes.concat(["@".charCodeAt(0), utxoIdx]);
-                // console.warn("txId " + txId.hex)
-                // console.warn("&&&&&&&& txoId", bytesToHex(txoId));
-                return [uutPurpose, `${uutPurpose}.${
-                    bytesToHex(blake2b(txoId).slice(0,6))
-                }`];
-            }))
-            
-            if(tcx.state.uuts) throw new Error(`uuts are already there`);
+            const uutMap: UutMapType = Object.fromEntries(
+                uutPurposes.map((uutPurpose) => {
+                    const txoId = txId.bytes.concat([
+                        "@".charCodeAt(0),
+                        utxoIdx,
+                    ]);
+                    // console.warn("txId " + txId.hex)
+                    // console.warn("&&&&&&&& txoId", bytesToHex(txoId));
+                    return [
+                        uutPurpose,
+                        `${uutPurpose}.${bytesToHex(
+                            blake2b(txoId).slice(0, 6)
+                        )}`,
+                    ];
+                })
+            ) as UutMapType;
+
+            if (tcx.state.uuts) throw new Error(`uuts are already there`);
             tcx.state.uuts = uutMap;
 
-            const vEntries = this.mkUUTValuesEntries(uutMap);
+            const vEntries = this.mkUutValuesEntries(uutMap);
 
-            const { txId: seedTxn, utxoIdx: seedIndex } = freeSeedUtxo;
+            const { txId: seedTxn, utxoIdx: seedIndex } = freeSeedUtxo.outputId;
 
             return tcx.attachScript(this.compiledContract).mintTokens(
                 this.mintingPolicyHash!,
                 vEntries,
-                this.mintingUUTs({
+                this.mintingUuts({
                     seedTxn,
                     seedIndex,
-                    purposes,
+                    purposes: uutPurposes,
                 }).redeemer
             );
 
-            return tcx
+            return tcx;
         });
     }
 
-    mkUUTValuesEntries<UM extends uutPurposeMap<any>>(uutMap : UM) : valuesEntry[]{
-        return Object.entries(uutMap).map(
-            ([_purpose, assetName]) => {
-                return this.mkValuesEntry(assetName, BigInt(1))
-        })
+    mkUutValuesEntries<UM extends uutPurposeMap>(uutMap: UM): valuesEntry[] {
+        return Object.entries(uutMap).map(([_purpose, assetName]) => {
+            return this.mkValuesEntry(assetName, BigInt(1));
+        });
     }
 
     //! overrides base getter type with undefined not being allowed
@@ -112,32 +118,34 @@ export class DefaultMinter
     }
 
     @Activity.redeemer
-    protected mintingCharterToken({ owner }: MintCharterRedeemerArgs) : isActivity {
+    protected mintingCharterToken({
+        owner,
+    }: MintCharterRedeemerArgs): isActivity {
         // debugger
         const t =
             new this.configuredContract.types.Redeemer.mintingCharterToken(
                 owner
             );
 
-        return { redeemer: t._toUplcData() }
+        return { redeemer: t._toUplcData() };
     }
 
     @Activity.redeemer
-    protected mintingUUTs({
+    protected mintingUuts({
         seedTxn,
         seedIndex: sIdx,
         purposes,
-    }: MintUUTRedeemerArgs)  : isActivity {
+    }: MintUutRedeemerArgs): isActivity {
         // debugger
         const seedIndex = BigInt(sIdx);
         console.log("UUT redeemer seedTxn", seedTxn.hex);
-        const t = new this.configuredContract.types.Redeemer.mintingUUTs(
+        const t = new this.configuredContract.types.Redeemer.mintingUuts(
             seedTxn,
             seedIndex,
             purposes
         );
 
-        return { redeemer: t._toUplcData() }
+        return { redeemer: t._toUplcData() };
     }
 
     get charterTokenAsValuesEntry(): valuesEntry {
@@ -155,8 +163,10 @@ export class DefaultMinter
     }
 
     get charterTokenAsValue() {
-        console.warn("deprecated use of `get minter.charterTokenAsValue`; use tvCharter() instead")
-        return this.tvCharter()
+        console.warn(
+            "deprecated use of `get minter.charterTokenAsValue`; use tvCharter() instead"
+        );
+        return this.tvCharter();
     }
 
     @Activity.partialTxn
