@@ -516,6 +516,51 @@ class StellarContract {
   //     console.log(`    - found ${heldUtxos.length} utxo:`);
   //     return heldUtxos.filter(predicate);
   // }
+  async readDatum(datumName, datum2) {
+    const thisDatumType = this.configuredContract.mainArgTypes.find(
+      (x) => "Datum" == x.name
+    ).typeMembers[datumName];
+    if (!thisDatumType)
+      throw new Error(`invalid datumName ${datumName}`);
+    if (!datum2.isInline())
+      throw new Error(`datum must be an InlineDatum to be readable using readDatum()`);
+    const { fieldNames, instanceMembers } = thisDatumType;
+    const offChainTypes = Object.fromEntries(
+      fieldNames.map((fn) => {
+        return [fn, instanceMembers[fn].offChainType];
+      })
+    );
+    return Object.fromEntries(await Promise.all(
+      fieldNames.map(async (fn, i) => {
+        let current;
+        const uplcData = datum2.data.fields[i];
+        const thisFieldType = instanceMembers[fn];
+        try {
+          current = thisFieldType.uplcToJs(uplcData);
+          if (current.then)
+            current = await current;
+          if ("Enum" === thisFieldType?.typeDetails?.internalType?.type && 0 === uplcData.fields.length) {
+            current = Object.keys(current)[0];
+          }
+        } catch (e) {
+          if (e.message?.match(/doesn't support converting from Uplc/)) {
+            try {
+              current = await offChainTypes[fn].fromUplcData(uplcData);
+              if ("some" in current)
+                current = current.some;
+            } catch (e2) {
+              console.error(`datum: field ${fn}: ${e2.message}`);
+              debugger;
+              throw e2;
+            }
+          } else {
+            throw e;
+          }
+        }
+        return [fn, current];
+      })
+    ));
+  }
   findSmallestUnusedUtxo(lovelace, utxos, tcx) {
     const value = new Value({ lovelace });
     const toSortInfo = this._mkUtxoSortInfo(value.lovelace);

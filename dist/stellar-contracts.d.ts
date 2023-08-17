@@ -69,6 +69,7 @@ type utxoInfo = {
     minAdaAmount: bigint;
 };
 type stellarSubclass<S extends StellarContract<P>, P extends paramsBase> = new (args: StellarConstructorArgs<S, P>) => S & StellarContract<P>;
+type anyDatumProps = Record<string, any>;
 type paramsBase = Record<string, any>;
 declare const Activity: {
     partialTxn(proto: any, thingName: any, descriptor: any): any;
@@ -108,6 +109,7 @@ declare class StellarContract<ParamsType extends paramsBase> {
     stringToNumberArray(str: string): number[];
     mkValuesEntry(tokenName: string, count: bigint): valuesEntry;
     addScriptWithParams<SC extends StellarContract<any>>(TargetClass: new (a: SC extends StellarContract<any> ? StellarConstructorArgs<SC> : never) => SC, params: SC extends StellarContract<infer P> ? P : never): SC;
+    readDatum<DPROPS extends anyDatumProps>(datumName: string, datum: Datum | InlineDatum): Promise<DPROPS>;
     findSmallestUnusedUtxo(lovelace: bigint, utxos: TxInput[], tcx?: StellarTxnContext): TxInput | undefined;
     mkValuePredicate(lovelace: bigint, tcx?: StellarTxnContext): tokenPredicate<TxInput>;
     mkTokenPredicate(vOrMph: Value | MintingPolicyHash, tokenName?: string, quantity?: bigint): tokenPredicate<any>;
@@ -375,4 +377,4 @@ declare class SampleTreasury extends Capo {
     };
 }
 
-export { ADA, Activity, Capo, CharterDatumArgs, DefaultMinter, InlineDatum, MintCharterRedeemerArgs, MintUutRedeemerArgs, SampleTreasury, SeedTxnParams, StellarCapoTestHelper, StellarContract, StellarTestContext, StellarTestHelper, StellarTxnContext, addTestContext, assetsAsString, datum, hasAllUuts, hasSomeUuts, hasUutContext, heliosRollupLoader, isActivity, lovelaceToAda, partialTxn, stellarSubclass, tokenNamesOrValuesEntry, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxoPredicate, utxosAsString, uutPurposeMap, valueAsString, valuesEntry };
+export { ADA, Activity, Capo, CharterDatumArgs, DefaultMinter, InlineDatum, MintCharterRedeemerArgs, MintUutRedeemerArgs, SampleTreasury, SeedTxnParams, StellarCapoTestHelper, StellarContract, StellarTestContext, StellarTestHelper, StellarTxnContext, addTestContext, anyDatumProps, assetsAsString, datum, hasAllUuts, hasSomeUuts, hasUutContext, heliosRollupLoader, isActivity, lovelaceToAda, partialTxn, stellarSubclass, tokenNamesOrValuesEntry, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxoPredicate, utxosAsString, uutPurposeMap, valueAsString, valuesEntry };

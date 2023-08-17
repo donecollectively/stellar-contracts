@@ -35,7 +35,9 @@ export type {
     stellarSubclass,
     isActivity,
     utxoPredicate,
+    anyDatumProps,
 } from "./StellarContract.js";
+
 export {
     ADA,
     StellarTestHelper,

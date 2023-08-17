@@ -16,10 +16,11 @@ import {
     Value,
     Wallet,
     extractScriptPurposeAndName,
+    Datum,
 } from "@hyperionbt/helios";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 import { utxosAsString } from "./diagnostics.js";
-import { valuesEntry } from "./HeliosPromotedTypes.js";
+import { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer
@@ -45,6 +46,7 @@ export type stellarSubclass<
     P extends paramsBase
 > = new (args: StellarConstructorArgs<S, P>) => S & StellarContract<P>;
 
+export type anyDatumProps = Record<string, any>;
 export type paramsBase = Record<string, any>;
 
 export const Activity = {
@@ -344,6 +346,74 @@ export class StellarContract<
     //     console.log(`    - found ${heldUtxos.length} utxo:`);
     //     return heldUtxos.filter(predicate);
     // }
+
+    async readDatum<DPROPS extends anyDatumProps>(datumName:string, datum:Datum | InlineDatum) : Promise<DPROPS> {
+        //@ts-expect-error until mainArgTypes is made public again
+        const thisDatumType = this.configuredContract.mainArgTypes.find(
+            (x) => "Datum" == x.name
+        )!.typeMembers[datumName];
+
+        if (!thisDatumType) throw new Error(`invalid datumName ${datumName}`);
+        if (!datum.isInline()) throw new Error(`datum must be an InlineDatum to be readable using readDatum()`);
+
+        const { fieldNames, instanceMembers } = thisDatumType as any;
+
+        // const heliosTypes = Object.fromEntries(
+        //     fieldNames.map((fn) => {
+        //         return [fn, instanceMembers[fn].name];
+        //     })
+        // );
+        // const inputTypes = Object.fromEntries(
+        //     fieldNames.map((fn) => {
+        //         return [fn, instanceMembers[fn].typeDetails.inputType];
+        //     })
+        // );
+        // const outputTypes = Object.fromEntries(
+        //     fieldNames.map((fn) => {
+        //         debugger
+        //         return [fn, instanceMembers[fn].typeDetails.outputType];
+        //     })
+        // );
+        const offChainTypes = Object.fromEntries(
+            fieldNames.map((fn) => {
+                return [fn, instanceMembers[fn].offChainType];
+            })
+        );
+        return Object.fromEntries(await Promise.all(
+            fieldNames.map(async (fn, i) => {
+                let current;
+                const uplcData = datum.data.fields[i];
+                const thisFieldType = instanceMembers[fn];
+                try {
+                    current = thisFieldType.uplcToJs(uplcData);
+                    if (current.then) current = await current;
+
+                    if ("Enum" === thisFieldType?.typeDetails?.internalType?.type && 0 === uplcData.fields.length) {
+                        current = Object.keys(current)[0]
+                    }
+                } catch (e: any) {
+                    if (
+                        e.message?.match(/doesn't support converting from Uplc/)
+                    ) {
+                        try {
+                            current = await offChainTypes[fn].fromUplcData(uplcData);
+                            if ("some" in current) current = current.some;
+                        } catch (e: any) {
+                            console.error(`datum: field ${fn}: ${e.message}`);
+                            // console.log({outputTypes, fieldNames, offChainTypes, inputTypes, heliosTypes, thisDatumType});
+                            debugger;
+                            throw e;
+                        }
+                    } else {
+                        throw e;
+                    }
+                }
+                return [fn, current];
+            })
+        )) as DPROPS;
+    }
+
+
 
     findSmallestUnusedUtxo(
         lovelace: bigint,

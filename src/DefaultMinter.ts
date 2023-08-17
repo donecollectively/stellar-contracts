@@ -44,9 +44,11 @@ export class DefaultMinter
     contractSource() {
         return contract;
     }
+
     capoMinterHelpers(): string {
         return CapoMintHelpers;
     }
+    
     importModules(): string[] {
         return [this.capoMinterHelpers()];
     }
