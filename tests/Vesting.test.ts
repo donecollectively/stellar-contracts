@@ -130,8 +130,8 @@ describe("Vesting service", async () => {
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
 
-			const tcxClaim = await v.mkTxnClaimVestedValue(
-				pavel, 
+			const tcxCancel = await v.mkTxnCancelVesting(
+				sasha, 
 				valUtxos[0],
 				h.liveSlotParams.timeToSlot(t) // likely this is wrong
 			);
