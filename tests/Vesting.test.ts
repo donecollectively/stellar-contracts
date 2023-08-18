@@ -103,9 +103,11 @@ describe("Vesting service", async () => {
 			expect(valUtxos[0].origOutput.value.lovelace).toBeTypeOf('bigint');
 
 		});
-		it("lock as sasha and claim as pavel", async (context: localTC) => {
+		it("can lock and cancel", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
 			const { sasha, tom, pavel } = actors;
+
+			expect((await sasha.utxos).length).toBeGreaterThan(1);
 
 			const v = new Vesting(context);
 			const t = BigInt(Date.now());
@@ -117,15 +119,13 @@ describe("Vesting service", async () => {
 				deadline: d
 			});
 
-			// explore the transaction data:
-			expect(tcx.inputs[0].origOutput.value.lovelace).toBeTypeOf('bigint');
-			expect(tcx.inputs[1].origOutput.value.lovelace).toBeTypeOf('bigint');
+			// explore the Datum
 			expect(tcx.outputs[0].datum.data.toSchemaJson().length).toBe(175);
 
 			const txId = await h.submitTx(tcx.tx, "force");
 
 			expect((txId.hex).length).toBe(64);
-			expect((await pavel.utxos).length).toBe(2);
+			expect((await sasha.utxos).length).toBeGreaterThan(0);
 
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)

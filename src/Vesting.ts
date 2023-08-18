@@ -1,7 +1,9 @@
-import { Address, Datum, TxOutput} from "@hyperionbt/helios";
+import { Address, Datum, TxOutput, Value} from "@hyperionbt/helios";
 import { StellarContract, redeem, datum, txn } from "../lib/StellarContract.js";
 import contract from "./Vesting.hl";
 import { StellarTxnContext } from "../lib/StellarTxnContext";
+
+import {ADA} from "../lib/StellarTestHelper";
 
 export type VestingParams = {
     sponsor: WalletEmulator;
@@ -39,6 +41,7 @@ export class Vesting extends StellarContract<VestingParams> {
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
 	    // so far value is hardcoded: 
+	    	const margin = 5n * ADA;
 		const inUtxo = (await sponsor.utxos)[0];
 		const inUtxoFee = (await sponsor.utxos)[1];
 		const lockedVal = inUtxo.value; // TODO: parametrize
@@ -53,7 +56,13 @@ export class Vesting extends StellarContract<VestingParams> {
 
 		tcx.addInput(inUtxo)
 		   .addInput(inUtxoFee)
-		   .addOutput(new TxOutput(validatorAddress, lockedVal, inlineDatum));
+		   .addOutput(new TxOutput(validatorAddress, lockedVal, inlineDatum))
+                   .addOutput(
+                    new TxOutput(
+                        sponsor.address,
+                        new Value(inUtxoFee.value.lovelace - margin)
+                    )
+                );
 	return tcx
     }
     @txn
