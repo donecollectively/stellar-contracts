@@ -9,7 +9,7 @@ import {
     MintingPolicyHash,
     Assets,
     Crypto,
-    UTxO,
+    TxInput,
     ByteArray,
     ByteArrayData,
     bytesToHex,
@@ -23,11 +23,15 @@ import {
 
 //@ts-expect-error
 import contract from "./DefaultMinter.hl";
+import {CapoMintHelpers} from "./CapoMintHelpers.js";
+
 import { StellarTxnContext } from "../lib/StellarTxnContext.js";
 import {
     MintCharterRedeemerArgs,
     MintUUTRedeemerArgs,
     MinterBaseMethods,
+    hasUUTs,
+    uutPurposeMap,
 } from "../lib/Capo.js";
 import { valuesEntry } from "../lib/HeliosPromotedTypes.js";
 
@@ -43,12 +47,20 @@ export class DefaultMinter
     contractSource() {
         return contract;
     }
+    capoMinterHelpers() : string{
+        return CapoMintHelpers
+    }
+    importModules() : string[] {
+        return [
+            this.capoMinterHelpers()
+        ]
+    }
 
     @Activity.partialTxn
-    async txnCreatingUUTs(
-        tcx: StellarTxnContext,
+    async txnCreatingUUTs<uutIndex extends hasUUTs<any>>(
+        tcx: StellarTxnContext<uutIndex>,
         purposes: string[]
-    ): Promise<Value> {
+    ): Promise<StellarTxnContext<uutIndex>> {
         //!!! make it big enough to serve minUtxo for the new UUT
         const uutSeed = this.mkValuePredicate(BigInt(42_000), tcx);
 
@@ -61,41 +73,40 @@ export class DefaultMinter
             const { txId, utxoIdx } = freeSeedUtxo;
             const { encodeBech32, blake2b, encodeBase32 } = Crypto;
 
-            const assetNames = purposes.map(uutPurpose => {
+            const uutMap : uutIndex["uuts"] = Object.fromEntries(purposes.map(uutPurpose => {
                 const txoId = txId.bytes.concat(["@".charCodeAt(0), utxoIdx]);
                 // console.warn("txId " + txId.hex)
                 // console.warn("&&&&&&&& txoId", bytesToHex(txoId));
-                return `${uutPurpose}.${
+                return [uutPurpose, `${uutPurpose}.${
                     bytesToHex(blake2b(txoId).slice(0,6))
-                }`;
-            })
+                }`];
+            }))
+            
+            if(tcx.state.uuts) throw new Error(`uuts are already there`);
+            tcx.state.uuts = uutMap;
 
-            const vEntries = this.mkUUTValuesEntries(assetNames);
+            const vEntries = this.mkUUTValuesEntries(uutMap);
 
             const { txId: seedTxn, utxoIdx: seedIndex } = freeSeedUtxo;
 
-            tcx.attachScript(this.compiledContract).mintTokens(
+            return tcx.attachScript(this.compiledContract).mintTokens(
                 this.mintingPolicyHash!,
                 vEntries,
-                this.mintingUUT({
+                this.mintingUUTs({
                     seedTxn,
                     seedIndex,
                     purposes,
                 }).redeemer
             );
 
-            const v = new Value(
-                undefined,
-                new Assets([[this.mintingPolicyHash!, vEntries]])
-            );
-
-            return v;
+            return tcx
         });
     }
 
-    mkUUTValuesEntries(assetNames : string[]) {
-        return assetNames.map(assetName => {
-            return this.mkValuesEntry(assetName, BigInt(1))
+    mkUUTValuesEntries<UM extends uutPurposeMap<any>>(uutMap : UM) : valuesEntry[]{
+        return Object.entries(uutMap).map(
+            ([_purpose, assetName]) => {
+                return this.mkValuesEntry(assetName, BigInt(1))
         })
     }
 
@@ -116,7 +127,7 @@ export class DefaultMinter
     }
 
     @Activity.redeemer
-    protected mintingUUT({
+    protected mintingUUTs({
         seedTxn,
         seedIndex: sIdx,
         purposes,

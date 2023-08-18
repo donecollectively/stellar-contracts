@@ -4,15 +4,11 @@
 
 import { resolve } from 'path';
 import { defineConfig } from 'vite';
-// import heliosPlugin from './lib/HeliosLoader.ts';
-import { string } from "rollup-plugin-string";
+import { heliosRollupLoader } from './lib/heliosRollupLoader';
 
 export default defineConfig({
     plugins: [
-        string({
-            // Required to be specified
-            include: "**/*.hl",
-        }),
+        heliosRollupLoader(),
     ],
   test: {
     // include: ['tests/new*.test.ts', ],

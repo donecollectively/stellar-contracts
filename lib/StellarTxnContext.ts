@@ -2,7 +2,7 @@ import {
     HeliosData, Signature, Tx,
     TxOutput,
     TxWitnesses,
-    UTxO,
+    TxInput,
     UplcData,
     UplcDataValue,
     Wallet,
@@ -16,15 +16,19 @@ import { txAsString } from "./diagnostics.js";
 //   bigger-picture contextual container that serves various Stellar
 //   contract scripts with non-txn context for building a Tx)
 
-export class StellarTxnContext {
+type noState = {}
+
+export class StellarTxnContext<S=noState> {
     tx: Tx;
-    inputs: UTxO[];
-    collateral?: UTxO;
+    inputs: TxInput[];
+    collateral?: TxInput;
     outputs: TxOutput[];
     feeLimit?: bigint;
-    constructor() {
+    state : Partial<S>;
+    constructor(state: Partial<S>={}) {
         this.tx = new Tx();
         this.inputs = [];
+        this.state = state;
         this.collateral = undefined;
         this.outputs = [];
     }
@@ -33,26 +37,26 @@ export class StellarTxnContext {
         return txAsString(tx);
     }
 
-    mintTokens(...args: Parameters<Tx["mintTokens"]>) : StellarTxnContext {
+    mintTokens(...args: Parameters<Tx["mintTokens"]>) : StellarTxnContext<S> {
         this.tx.mintTokens(...args);
 
         return this;
     }
     
-    reservedUtxos() : UTxO[] {
+    reservedUtxos() : TxInput[] {
         return [
             ... this.inputs, 
             this.collateral 
-        ].filter((x) => !!x) as UTxO[]
+        ].filter((x) => !!x) as TxInput[]
     }
 
-    utxoNotReserved(u: UTxO) : UTxO | undefined {
+    utxoNotReserved(u: TxInput) : TxInput | undefined {
         if (this.collateral?.eq(u)) return undefined;
         if (this.inputs.find(i => i.eq(u)) ) return undefined;
         return u;
     }
 
-    addCollateral(collateral: UTxO) {
+    addCollateral(collateral: TxInput) {
         if (!collateral.value.assets.isZero()) {
             throw new Error(`invalid attempt to add non-pure-ADA utxo as collateral`)
         }
@@ -62,28 +66,28 @@ export class StellarTxnContext {
         return this;
     }
 
-    addInput(...args: Parameters<Tx["addInput"]>) : StellarTxnContext {
+    addInput(...args: Parameters<Tx["addInput"]>) : StellarTxnContext<S> {
         const [input, ..._otherArgs] = args;
         this.inputs.push(input);
         this.tx.addInput(...args);
         return this;
     }
 
-    addInputs(...args: Parameters<Tx["addInputs"]>) : StellarTxnContext {
+    addInputs(...args: Parameters<Tx["addInputs"]>) : StellarTxnContext<S> {
         const [inputs, ..._otherArgs] = args;
         this.inputs.push(...inputs);
         this.tx.addInputs(...args);
         return this;
     }
 
-    addOutput(...args: Parameters<Tx["addOutput"]>) : StellarTxnContext {
+    addOutput(...args: Parameters<Tx["addOutput"]>) : StellarTxnContext<S> {
         const [output, ..._otherArgs] = args;
         this.outputs.push(output);
         this.tx.addOutput(...args);
         return this;
     }
 
-    addOutputs(...args: Parameters<Tx["addOutputs"]>) : StellarTxnContext {
+    addOutputs(...args: Parameters<Tx["addOutputs"]>) : StellarTxnContext<S> {
         const [outputs, ..._otherArgs] = args;
         this.outputs.push(...outputs);
         this.tx.addOutputs(...args);

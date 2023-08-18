@@ -1,3 +1,5 @@
+export { heliosRollupLoader } from "./heliosRollupLoader.js";
+
 export { 
     assetsAsString,
     txAsString,
@@ -9,7 +11,13 @@ export {
     lovelaceToAda
  } from "./diagnostics.js";
 
-export { Capo } from "./Capo.js";
+ export { Capo } from "./Capo.js";
+ export type { 
+    MintUUTRedeemerArgs, 
+    MintCharterRedeemerArgs, 
+    hasUUTs, 
+    uutPurposeMap 
+} from "./Capo.js";
 
 export {
     StellarContract,
@@ -33,6 +41,7 @@ export { DefaultMinter } from "../src/DefaultMinter.js";
 export {
     SampleTreasury,
 } from "../src/examples/SampleTreasury.js";
+
 export type {
     CharterDatumArgs,
 } from "../src/examples/SampleTreasury.js";
@@ -40,7 +49,6 @@ export type {
 export type {
     tokenNamesOrValuesEntry,
     InlineDatum,
-    TxInput,
     valuesEntry,
 } from "./HeliosPromotedTypes.js";
 // export {

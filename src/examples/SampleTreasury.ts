@@ -7,7 +7,7 @@ import {
     Value,
     Datum,
     Wallet,
-    UTxO,
+    TxInput,
     DatumHash,
     ByteArray,
     Assets,

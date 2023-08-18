@@ -9,7 +9,7 @@ import {
     NetworkParams,
     Program,
     TxOutput,
-    UTxO,
+    TxInput,
     UplcData,
     UplcDataValue,
     UplcProgram,
@@ -19,7 +19,7 @@ import {
 } from "@hyperionbt/helios";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 import { utxosAsString } from "./diagnostics.js";
-import { TxInput, valuesEntry } from "./HeliosPromotedTypes.js";
+import { valuesEntry } from "./HeliosPromotedTypes.js";
 
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer
@@ -34,7 +34,7 @@ type WalletsAndAddresses = {
     addresses?: Address[];
 };
 export type utxoInfo = {
-    u: UTxO;
+    u: TxInput;
     sufficient: boolean;
     free: bigint;
     minAdaAmount: bigint;
@@ -176,9 +176,9 @@ export type StellarConstructorArgs<
     myActor?: Wallet;
 };
 export type utxoPredicate =
-    | ((u: UTxO) => UTxO | undefined)
-    | ((u: UTxO) => boolean)
-    | ((u: UTxO) => boolean | undefined);
+    | ((u: TxInput) => TxInput | undefined)
+    | ((u: TxInput) => boolean)
+    | ((u: TxInput) => boolean | undefined);
 
 type scriptPurpose =
     | "testing"
@@ -188,7 +188,7 @@ type scriptPurpose =
     | "module"
     | "linking";
 
-export type canHaveToken = UTxO | TxInput | TxOutput | Assets;
+export type canHaveToken = TxInput | TxOutput | Assets;
 
 //<CT extends Program>
 export class StellarContract<
@@ -229,6 +229,8 @@ export class StellarContract<
 
         const simplify = !isTest;
         // const t = new Date().getTime();
+        console.warn(`----------------------------------------- simplify ${simplify}`);
+
         this.compiledContract = configured.compile(simplify);
         // const t2 = new Date().getTime();
 
@@ -306,9 +308,9 @@ export class StellarContract<
         return strella;
     }
 
-    // async findDatum(d: Datum | DatumHash): Promise<UTxO[]>;
-    // async findDatum(predicate: utxoPredicate): Promise<UTxO[]>;
-    // async findDatum(d: Datum | DatumHash | utxoPredicate): Promise<UTxO[]> {
+    // async findDatum(d: Datum | DatumHash): Promise<TxInput[]>;
+    // async findDatum(predicate: utxoPredicate): Promise<TxInput[]>;
+    // async findDatum(d: Datum | DatumHash | utxoPredicate): Promise<TxInput[]> {
     //     let targetHash: DatumHash | undefined =
     //         d instanceof Datum
     //             ? d.hash
@@ -318,7 +320,7 @@ export class StellarContract<
     //     let predicate =
     //         "function" === typeof d
     //             ? d
-    //             : (u: UTxO) => {
+    //             : (u: TxInput) => {
     //                   const match =
     //                       u.origOutput?.datum?.hash.hex == targetHash?.hex;
     //                   console.log(
@@ -345,9 +347,9 @@ export class StellarContract<
 
     findSmallestUnusedUtxo(
         lovelace: bigint,
-        utxos: UTxO[],
+        utxos: TxInput[],
         tcx?: StellarTxnContext
-    ): UTxO | undefined {
+    ): TxInput | undefined {
         const value = new Value({ lovelace });
         const toSortInfo = this._mkUtxoSortInfo(value.lovelace);
 
@@ -366,13 +368,13 @@ export class StellarContract<
         return found;
     }
 
-    //! creates a filtering function, currently for UTxO-filtering only.
+    //! creates a filtering function, currently for TxInput-filtering only.
     //! with the optional tcx argument, utxo's already reserved
     //  ... in that transaction context will be skipped.
     mkValuePredicate(
         lovelace: bigint,
         tcx?: StellarTxnContext
-    ): tokenPredicate<UTxO> {
+    ): tokenPredicate<TxInput> {
         const value = new Value({ lovelace });
         const predicate = _adaPredicate.bind(this, tcx) as tokenPredicate<any>;
         predicate.value = value;
@@ -381,8 +383,8 @@ export class StellarContract<
         function _adaPredicate(
             this: StellarContract<ParamsType>,
             tcx: StellarTxnContext | undefined,
-            utxo: UTxO
-        ): UTxO | undefined {
+            utxo: TxInput
+        ): TxInput | undefined {
             return this.hasOnlyAda(value, tcx, utxo);
         }
     }
@@ -428,7 +430,7 @@ export class StellarContract<
         tokenName?: string,
         quantity?: bigint
     ): tokenBearer | undefined {
-        if (something instanceof UTxO)
+        if (something instanceof TxInput)
             return (
                 (this.utxoHasToken(something, value, tokenName, quantity) &&
                     something) ||
@@ -456,7 +458,7 @@ export class StellarContract<
     }
 
     private utxoHasToken(
-        u: UTxO,
+        u: TxInput,
         value: Value,
         tokenName?: string,
         quantity?: bigint
@@ -536,7 +538,7 @@ export class StellarContract<
         return v;
     }
 
-    hasOnlyAda(value: Value, tcx: StellarTxnContext | undefined, u: UTxO) {
+    hasOnlyAda(value: Value, tcx: StellarTxnContext | undefined, u: TxInput) {
         const toSortInfo = this._mkUtxoSortInfo(value.lovelace);
 
         const found = [u]
@@ -578,7 +580,7 @@ export class StellarContract<
         return u;
     }
     protected _mkUtxoSortInfo(min: bigint, max?: bigint) {
-        return (u: UTxO): utxoInfo => {
+        return (u: TxInput): utxoInfo => {
             const minAdaAmount = u.value.assets.isZero()
                 ? BigInt(0)
                 : u.origOutput.calcMinLovelace(this.networkParams);
@@ -593,13 +595,15 @@ export class StellarContract<
         return c + (minAdaAmount ? 0 : 1);
     }
 
-    async findAnySpareUtxos(tcx: StellarTxnContext): Promise<UTxO[] | never> {
+    async findAnySpareUtxos(tcx: StellarTxnContext): Promise<TxInput[] | never> {
         if (!this.myActor) throw this.missingActorError;
 
-        const toSortInfo = this._mkUtxoSortInfo(this.ADA(2), this.ADA(10));
+        const mightNeedFees = this.ADA(3.5);
+        
+        const toSortInfo = this._mkUtxoSortInfo(mightNeedFees);
         const notReserved = tcx
             ? tcx.utxoNotReserved.bind(tcx)
-            : (u: UTxO) => u;
+            : (u: TxInput) => u;
 
         return this.myActor.utxos.then((utxos) => {
             const allSpares = utxos
@@ -640,7 +644,7 @@ export class StellarContract<
                 if (tx.body.signers.find(s => a.pubKeyHash.hex === s.hex)) continue;
                 tx.addSigner(a.pubKeyHash);
             }
-            const feeEstimated = tx.estimateCollateralBaseFee(this.networkParams, changeAddress, spares)
+            const feeEstimated = tx.estimateFee(this.networkParams);
             if (feeEstimated > feeLimit) {
                 console.log("outrageous fee - adjust tcx.feeLimit to get a different threshold")
                 throw new Error(`outrageous fee-computation found - check txn setup for correctness`)
@@ -691,7 +695,7 @@ export class StellarContract<
     //     const lovelaceOnly = v.assets.isZero();
     //     //! it finds free lovelace in token bundles, if it can't find free lovelace otherwise
     //     if (lovelaceOnly) {
-    //         let maxFree: UTxO, minToken: UTxO;
+    //         let maxFree: TxInput, minToken: TxInput;
     //         let minPolicyCount = Infinity;
 
     //         for (const u of utxos) {
@@ -721,11 +725,16 @@ export class StellarContract<
     // constructor(params: any) {
 
     // }
+    importModules() : string[] {
+        return []
+    }
+
     contractTemplate() {
         const src = this.contractSource();
+        const modules = this.importModules()
         // console.log({src, Program)
 
-        return (this._template = this._template || Program.new(src));
+        return (this._template = this._template || Program.new(src, modules))
     }
 
     async getMyActorAddress() {
@@ -742,22 +751,22 @@ export class StellarContract<
 
     async mustFindActorUtxo(
         name: string,
-        predicate: (u: UTxO) => UTxO | undefined,
-        exceptInTcx: StellarTxnContext,
+        predicate: (u: TxInput) => TxInput | undefined,
+        exceptInTcx: StellarTxnContext<any>,
         extraErrorHint?: string
-    ): Promise<UTxO | never>;
+    ): Promise<TxInput | never>;
     async mustFindActorUtxo(
         name: string,
-        predicate: (u: UTxO) => UTxO | undefined,
+        predicate: (u: TxInput) => TxInput | undefined,
         extraErrorHint?: string
-    ): Promise<UTxO | never>;
+    ): Promise<TxInput | never>;
 
     async mustFindActorUtxo(
         name: string,
-        predicate: (u: UTxO) => UTxO | undefined,
-        hintOrExcept?: string | StellarTxnContext,
+        predicate: (u: TxInput) => TxInput | undefined,
+        hintOrExcept?: string | StellarTxnContext<any>,
         hint?: string
-    ): Promise<UTxO | never> {
+    ): Promise<TxInput | never> {
         const address = await this.getMyActorAddress();
 
         const isTcx = hintOrExcept instanceof StellarTxnContext;
@@ -778,22 +787,22 @@ export class StellarContract<
 
     async mustFindMyUtxo(
         name: string,
-        predicate: (u: UTxO) => UTxO | undefined,
-        exceptInTcx: StellarTxnContext,
+        predicate: (u: TxInput) => TxInput | undefined,
+        exceptInTcx: StellarTxnContext<any>,
         extraErrorHint?: string
-    ): Promise<UTxO | never>;
+    ): Promise<TxInput | never>;
     async mustFindMyUtxo(
         name: string,
-        predicate: (u: UTxO) => UTxO | undefined,
+        predicate: (u: TxInput) => TxInput | undefined,
         extraErrorHint?: string
-    ): Promise<UTxO | never>;
+    ): Promise<TxInput | never>;
 
     async mustFindMyUtxo(
         name: string,
-        predicate: (u: UTxO) => UTxO | undefined,
-        hintOrExcept?: string | StellarTxnContext,
+        predicate: (u: TxInput) => TxInput | undefined,
+        hintOrExcept?: string | StellarTxnContext<any>,
         hint?: string
-    ): Promise<UTxO | never> {
+    ): Promise<TxInput | never> {
         const { address } = this;
         const isTcx = hintOrExcept instanceof StellarTxnContext;
         const exceptInTcx = isTcx ? hintOrExcept : undefined;
@@ -813,13 +822,13 @@ export class StellarContract<
 
     async mustFindUtxo(
         name: string,
-        predicate: (u: UTxO) => UTxO | undefined,
+        predicate: (u: TxInput) => TxInput | undefined,
         {
             address,
             exceptInTcx,
-        }: { address: Address; exceptInTcx?: StellarTxnContext },
+        }: { address: Address; exceptInTcx?: StellarTxnContext<any> },
         extraErrorHint: string = ""
-    ): Promise<UTxO | never> {
+    ): Promise<TxInput | never> {
         const found = await this.hasUtxo(name, predicate, {
             address,
             exceptInTcx,
@@ -832,15 +841,15 @@ export class StellarContract<
 
         return found;
     }
-    toUtxoId(u: UTxO) {
+    toUtxoId(u: TxInput) {
         return `${u.txId.hex}@${u.utxoIdx}`;
     }
 
-    async txnFindUtxo(tcx: StellarTxnContext,
+    async txnFindUtxo(tcx: StellarTxnContext<any>,
         name: string,
         predicate: utxoPredicate,
         address = this.address
-    ): Promise<UTxO | undefined> {
+    ): Promise<TxInput | undefined> {
         return this.hasUtxo(name, predicate, {
             address,
             exceptInTcx: tcx
@@ -853,8 +862,8 @@ export class StellarContract<
         {
             address,
             exceptInTcx,
-        }: { address: Address; exceptInTcx?: StellarTxnContext }
-    ): Promise<UTxO | undefined> {
+        }: { address: Address; exceptInTcx?: StellarTxnContext<any> }
+    ): Promise<TxInput | undefined> {
         const utxos = await this.network.getUtxos(address);
         const filterUtxos = exceptInTcx?.reservedUtxos();
 
@@ -888,7 +897,7 @@ export class StellarContract<
     async hasMyUtxo(
         name: string,
         predicate: utxoPredicate
-    ): Promise<UTxO | undefined> {
+    ): Promise<TxInput | undefined> {
         return this.hasUtxo(name, predicate, { address: this.address });
     }
 }

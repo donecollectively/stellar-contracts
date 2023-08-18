@@ -1,16 +1,16 @@
 import dts from "rollup-plugin-dts";
-import esbuild from 'rollup-plugin-esbuild'
+import esbuild from "rollup-plugin-esbuild";
 import externals from "rollup-plugin-node-externals";
 import resolve from "@rollup/plugin-node-resolve";
-import { string } from "rollup-plugin-string";
 import { platformModulePaths } from "./rollup.lib.js";
-import sourcemaps from 'rollup-plugin-sourcemaps';
+import sourcemaps from "rollup-plugin-sourcemaps";
 
 import packageJson from "./package.json" assert { type: "json" };
+import { heliosRollupLoader } from "./lib/heliosRollupLoader.js";
 const name = packageJson.main.replace(/\.m?js$/, "");
 
 const serverBundledModules = [];
-const forcedServerExternals = [ "@hyperionbt/helios"];
+const forcedServerExternals = ["@hyperionbt/helios"];
 
 // import { join } from "path";
 // import alias from "@rollup/plugin-alias";
@@ -23,7 +23,7 @@ const codeBundle = (config) => {
         external: (id) => {
             if (serverBundledModules.includes(id)) return false;
             if (forcedServerExternals.includes(id)) {
-                console.warn("---ext detect ---", id)
+                console.warn("---ext detect ---", id);
                 return true;
             }
 
@@ -39,31 +39,29 @@ export default [
         plugins: [
             sourcemaps(),
             externals(),
-            string({
-                // Required to be specified
-                include: "**/*.hl",
-            }),
-                resolve({
+            heliosRollupLoader(),
+            resolve({
                 ...platformModulePaths("server"),
                 extensions: [".json", ".ts"],
             }),
-            esbuild()
+            esbuild(),
         ],
         output: [
             {
                 file: `${name}.mjs`,
                 format: "es",
                 sourcemap: true,
-            },        
+            },
         ],
     }),
     codeBundle({
         input: "lib/index.ts",
-        plugins: [dts()],
+        plugins: [
+            dts()
+        ],
         output: {
             file: `${name}.d.ts`,
             format: "es",
         },
     }),
-
 ];

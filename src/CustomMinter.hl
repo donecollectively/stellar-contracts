@@ -1,5 +1,10 @@
 minting customMinter
 
+import { 
+    hasSeedUtxo, 
+    validateUUTminting
+} from CapoMintHelpers
+
 const seedTxn : TxId = TxId::new(#1234)
 const seedIndex : Int = 42
 
@@ -18,16 +23,9 @@ enum Redeemer {
     burningToken
 }
 
-func hasSeedUtxo(tx: Tx) -> Bool {
-    seedUtxo: TxOutputId = TxOutputId::new(
-        seedTxn,
-        seedIndex
-    );
-    assert(tx.inputs.any( (input: TxInput) -> Bool {
-        input.output_id == seedUtxo
-    }),  "seed utxo required for minting the charter token");
 
-    true
+func hasContractSeedUtxo(tx: Tx) -> Bool {
+    hasSeedUtxo(tx, seedTxn, seedIndex, "charter")
 }
 
 func main(r : Redeemer, ctx: ScriptContext) -> Bool {
@@ -44,7 +42,7 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
         charter: mintingCharterToken => {       
             assert(value_minted == Value::new(charterToken, 1), "no charter token minted");
 
-            hasSeedUtxo(tx) &&
+            hasContractSeedUtxo(tx) &&
             tx.outputs.all( (output: TxOutput) -> Bool {
                 output.value != value_minted || (
                     output.value == value_minted &&
