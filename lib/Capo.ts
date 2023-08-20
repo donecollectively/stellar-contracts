@@ -197,18 +197,31 @@ export abstract class Capo<
         )
     }
 
-    @partialTxn  // non-activity partial
     async txnMustUseCharterUtxo(
         tcx: StellarTxnContext<any>,
         redeemer: isActivity,
         newDatum?: InlineDatum,
-        useRefInput? : boolean,
-        forceAddRefScript? : boolean,
+    ) : Promise<StellarTxnContext<any> | never>
+    async txnMustUseCharterUtxo(
+        tcx: StellarTxnContext<any>,
+        useReferenceInput: true,
+        forceAddRefScript? : true,
+    ): Promise<StellarTxnContext<any> | never>
+    @partialTxn  // non-activity partial
+    async txnMustUseCharterUtxo(
+        tcx: StellarTxnContext<any>,
+        redeemerOrRefInput: isActivity | true,
+        newDatumOrForceRefScript?: InlineDatum | true,
     ): Promise<StellarTxnContext<any> | never> {
         return this.mustFindCharterUtxo().then((ctUtxo: TxInput) => {
-            if (useRefInput) {
-                tcx.tx.addRefInput(ctUtxo, forceAddRefScript ? this.compiledContract : undefined);
+            if (true === redeemerOrRefInput) {
+                if (newDatumOrForceRefScript && true !== newDatumOrForceRefScript)
+                    throw new Error(`when using reference input for charter, arg3 can only be true (or may be omitted)`);
+                tcx.tx.addRefInput(ctUtxo, newDatumOrForceRefScript ? this.compiledContract : undefined);
             } else {
+                const redeemer = redeemerOrRefInput;
+                const newDatum = newDatumOrForceRefScript;
+                if (true === newDatum) throw new Error(`wrong type for newDatum when not using reference input for charter`)
                 tcx.addInput(
                     ctUtxo,
                     redeemer.redeemer

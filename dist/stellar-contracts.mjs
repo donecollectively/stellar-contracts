@@ -438,7 +438,9 @@ class StellarContract {
     const configured = this.configuredContract = this.contractTemplate();
     this.configuredContract.parameters = this.contractParams;
     const simplify = !isTest;
-    console.warn(`----------------------------------------- simplify ${simplify}`);
+    if (simplify) {
+      console.warn(`Loading optimized contract code for ` + this.configuredContract.name);
+    }
     this.compiledContract = configured.compile(simplify);
   }
   get datumType() {
@@ -1126,11 +1128,17 @@ class Capo extends StellarContract {
     );
   }
   // non-activity partial
-  async txnMustUseCharterUtxo(tcx, redeemer, newDatum, useRefInput, forceAddRefScript) {
+  async txnMustUseCharterUtxo(tcx, redeemerOrRefInput, newDatumOrForceRefScript) {
     return this.mustFindCharterUtxo().then((ctUtxo) => {
-      if (useRefInput) {
-        tcx.tx.addRefInput(ctUtxo, forceAddRefScript ? this.compiledContract : void 0);
+      if (true === redeemerOrRefInput) {
+        if (newDatumOrForceRefScript && true !== newDatumOrForceRefScript)
+          throw new Error(`when using reference input for charter, arg3 can only be true (or may be omitted)`);
+        tcx.tx.addRefInput(ctUtxo, newDatumOrForceRefScript ? this.compiledContract : void 0);
       } else {
+        const redeemer = redeemerOrRefInput;
+        const newDatum = newDatumOrForceRefScript;
+        if (true === newDatum)
+          throw new Error(`wrong type for newDatum when not using reference input for charter`);
         tcx.addInput(
           ctUtxo,
           redeemer.redeemer

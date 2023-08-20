@@ -220,7 +220,8 @@ declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter
         value: Value;
     };
     mustFindCharterUtxo(): Promise<TxInput>;
-    txnMustUseCharterUtxo(tcx: StellarTxnContext<any>, redeemer: isActivity, newDatum?: InlineDatum, useRefInput?: boolean, forceAddRefScript?: boolean): Promise<StellarTxnContext<any> | never>;
+    txnMustUseCharterUtxo(tcx: StellarTxnContext<any>, redeemer: isActivity, newDatum?: InlineDatum): Promise<StellarTxnContext<any> | never>;
+    txnMustUseCharterUtxo(tcx: StellarTxnContext<any>, useReferenceInput: true, forceAddRefScript?: true): Promise<StellarTxnContext<any> | never>;
     txnUpdateCharterUtxo(tcx: StellarTxnContext, redeemer: isActivity, newDatum: InlineDatum): Promise<StellarTxnContext | never>;
     txnKeepCharterToken(tcx: StellarTxnContext<any>, datum: InlineDatum): StellarTxnContext<any>;
     txnAddAuthority(tcx: StellarTxnContext<any>): Promise<StellarTxnContext<any>>;

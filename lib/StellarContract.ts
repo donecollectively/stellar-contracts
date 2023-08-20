@@ -231,7 +231,9 @@ export class StellarContract<
 
         const simplify = !isTest;
         // const t = new Date().getTime();
-        console.warn(`----------------------------------------- simplify ${simplify}`);
+        if (simplify) {
+            console.warn(`Loading optimized contract code for `+this.configuredContract.name);
+        }
 
         this.compiledContract = configured.compile(simplify);
         // const t2 = new Date().getTime();
