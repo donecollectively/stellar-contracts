@@ -132,7 +132,7 @@ describe("Vesting service", async () => {
 
 			const splitUtxo = await tryWithSlop(sasha);
 
-			expect((await sasha.utxos).length).toBeGreaterThan(1);
+			expect((await sasha.utxos).length).toBeGreaterThan(2);
 
 			const v = new Vesting(context);
 			const t = BigInt(Date.now());
