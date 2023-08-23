@@ -41,7 +41,7 @@ export class Vesting extends StellarContract<VestingParams> {
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
 	    // so far value is hardcoded: 
-	    	const margin = 1n * ADA;
+	    	const margin = 5n * ADA;
 		const inUtxo = (await sponsor.utxos)[0];
 		const inUtxoFee = (await sponsor.utxos)[1];
 		const lockedVal = inUtxo.value; // TODO: parametrize
