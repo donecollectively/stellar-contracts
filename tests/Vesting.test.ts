@@ -116,10 +116,10 @@ describe("Vesting service", async () => {
 				tx.addInput(firstUtxo);
 				tx.addInput(secondUtxo);
 
-				tx.addOutput(new TxOutput(user.address, new Value(3n * ADA)));
-				tx.addOutput(new TxOutput(user.address, new Value(3n * ADA)));
-				tx.addOutput(new TxOutput(user.address, new Value(3n * ADA)));
-				tx.addOutput(new TxOutput(user.address, new Value(3n * ADA)));
+				tx.addOutput(new TxOutput(user.address, new Value(30n * ADA)));
+				tx.addOutput(new TxOutput(user.address, new Value(30n * ADA)));
+				tx.addOutput(new TxOutput(user.address, new Value(30n * ADA)));
+				tx.addOutput(new TxOutput(user.address, new Value(30n * ADA)));
 				tx.addOutput(
 				    new TxOutput(
 					user.address,
