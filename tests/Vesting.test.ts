@@ -161,7 +161,7 @@ describe("Vesting service", async () => {
 				h.liveSlotParams.timeToSlot(t) // likely this is wrong
 			);
 
-			const txIdClaim = await h.submitTx(tcxClaim.tx, "force");
+			const txIdCancel = await h.submitTx(tcxCancel.tx, "force");
 
 		});
 	});
