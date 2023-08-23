@@ -108,7 +108,7 @@ describe("Vesting service", async () => {
 			const { sasha, tom, pavel } = actors;
 
 			async function tryWithSlop(user: WalletEmulator ) {
-				const margin = 15n * ADA;
+				const margin = 45n * ADA;
 				const firstUtxo = (await user.utxos)[0]
 				const secondUtxo = (await user.utxos)[1]
 				const tx = new Tx();
@@ -116,10 +116,10 @@ describe("Vesting service", async () => {
 				tx.addInput(firstUtxo);
 				tx.addInput(secondUtxo);
 
-				tx.addOutput(new TxOutput(user.address, new Value(30n * ADA)));
-				tx.addOutput(new TxOutput(user.address, new Value(30n * ADA)));
-				tx.addOutput(new TxOutput(user.address, new Value(30n * ADA)));
-				tx.addOutput(new TxOutput(user.address, new Value(30n * ADA)));
+				tx.addOutput(new TxOutput(user.address, new Value(10n * ADA)));
+				tx.addOutput(new TxOutput(user.address, new Value(10n * ADA)));
+				tx.addOutput(new TxOutput(user.address, new Value(10n * ADA)));
+				tx.addOutput(new TxOutput(user.address, new Value(10n * ADA)));
 				tx.addOutput(
 				    new TxOutput(
 					user.address,
