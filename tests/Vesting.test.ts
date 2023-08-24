@@ -170,7 +170,7 @@ describe("Vesting service", async () => {
 				validTo
 			);
 
-			expect(tcxCancel.tx.body.firstValidSlot).toBe(); // why Null? debugger shows a bigint 
+			expect(tcxCancel.tx.body.dump()).toBe(); // why Null? debugger shows a bigint 
 			const txIdCancel = await h.submitTx(tcxCancel.tx, "force");
 
 		});
