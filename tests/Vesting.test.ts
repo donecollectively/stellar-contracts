@@ -162,7 +162,7 @@ describe("Vesting service", async () => {
 			const tcxCancel = await v.mkTxnCancelVesting(
 				sasha, 
 				valUtxos[0],
-				h.liveSlotParams.timeToSlot(t) // likely this is wrong
+				h.currentSlot()
 			);
 
 			const txIdCancel = await h.submitTx(tcxCancel.tx, "force");
