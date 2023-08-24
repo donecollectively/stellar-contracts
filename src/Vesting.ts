@@ -83,7 +83,8 @@ export class Vesting extends StellarContract<VestingParams> {
 	   const feeUtxo = (await sponsor.utxos)[1];
 
 	   // Calculates validity interval:
-	   // const t1 = t0 + 5000n
+           // const validFrom = h.currentSlot() - 1n;
+	   // const validTo = h.currentSlot() + 500n;
 
 	   //creates the transaction and adds its components:
 	   tcx.addInput(feeUtxo)

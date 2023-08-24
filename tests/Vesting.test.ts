@@ -160,8 +160,8 @@ describe("Vesting service", async () => {
 			const valUtxos = await network.getUtxos(validatorAddress)
 
 			// TODO: try Date?
-			const validFrom = h.currentSlot();
-			const validTo = h.currentSlot();
+			const validFrom = h.currentSlot() - 1n;
+			const validTo = h.currentSlot() + 10000n;
 
 			const tcxCancel = await v.mkTxnCancelVesting(
 				sasha, 
