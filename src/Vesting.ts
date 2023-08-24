@@ -69,8 +69,8 @@ export class Vesting extends StellarContract<VestingParams> {
     async mkTxnCancelVesting(
 	sponsor: WalletEmulator,
 	valUtxo: UTxO,
-	// how does it get access to the currentSlot? 
-	t0: bigint,
+	validFrom: bigint,
+	validTill: bigint,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
 	    // How does it work?
@@ -83,7 +83,7 @@ export class Vesting extends StellarContract<VestingParams> {
 	   const feeUtxo = (await sponsor.utxos)[1];
 
 	   // Calculates validity interval:
-	   const t1 = t0 + 5000n
+	   // const t1 = t0 + 5000n
 
 	   //creates the transaction and adds its components:
 	   tcx.addInput(feeUtxo)
@@ -94,8 +94,8 @@ export class Vesting extends StellarContract<VestingParams> {
            	.addCollateral(collateralUtxo);
 	tcx.tx.addSigner(sponsor.address.pubKeyHash);
 	// need to pass both, see junk/dev1
-	tcx.tx.validFrom(t0);
-	tcx.tx.validTo(t1);
+	tcx.tx.validFrom(validFrom);
+	tcx.tx.validTo(validTill);
 
 	    return tcx
     }

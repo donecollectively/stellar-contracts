@@ -162,7 +162,8 @@ describe("Vesting service", async () => {
 			const tcxCancel = await v.mkTxnCancelVesting(
 				sasha, 
 				valUtxos[0],
-				h.currentSlot()
+				h.currentSlot(),
+				h.currentSlot() + 50000n,
 			);
 
 			const txIdCancel = await h.submitTx(tcxCancel.tx, "force");
