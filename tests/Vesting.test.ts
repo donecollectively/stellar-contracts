@@ -159,13 +159,18 @@ describe("Vesting service", async () => {
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
 
+			// TODO: try Date?
+			const validFrom = h.currentSlot();
+			const validTo = h.currentSlot();
+
 			const tcxCancel = await v.mkTxnCancelVesting(
 				sasha, 
 				valUtxos[0],
-				h.currentSlot(),
-				h.currentSlot() + 50000n,
+				validFrom,
+				validTo
 			);
 
+			expect(tcxCancel.tx.body.firstValidSlot).toBe(); // why Null? debugger shows a bigint 
 			const txIdCancel = await h.submitTx(tcxCancel.tx, "force");
 
 		});
