@@ -81,6 +81,11 @@ describe("Vesting service", async () => {
 
 		    expect(pavelMoney[0].value.lovelace).toBe(13n * ADA);
 		});
+		it.todo("can access currentSlot", async (context: localTC) => {
+			const {h, h: { network, actors, delay, state }} = context;
+
+
+		});
 		it("can access validator UTXO", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
 			const { sasha, tom, pavel } = actors;
