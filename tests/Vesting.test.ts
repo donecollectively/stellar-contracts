@@ -164,10 +164,14 @@ describe("Vesting service", async () => {
 			const valUtxos = await network.getUtxos(validatorAddress)
 
 
-			// TODO: try Date?
-			const interval = 100000n;
-			const validFrom = h.slotToTimestamp(h.currentSlot() - 1n);
-			const validTo = h.slotToTimestamp(h.currentSlot() + interval);
+			// why does not it work? 
+			// TODO: h.waitUntil, property: time. 
+			// Ok, I can try to randomly generate intervals for validFrom and validTo
+			// new PR
+			const startBefore = -1n;
+			const endAfter = 100000n;
+			const validFrom = h.slotToTimestamp(h.currentSlot() + startBefore);
+			const validTo = h.slotToTimestamp(h.currentSlot() + endAfter);
 			expect(BigInt(validFrom)).toBeGreaterThan(1692959910000n);
 
 			const tcxCancel = await v.mkTxnCancelVesting(
