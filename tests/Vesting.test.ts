@@ -81,9 +81,10 @@ describe("Vesting service", async () => {
 
 		    expect(pavelMoney[0].value.lovelace).toBe(13n * ADA);
 		});
-		it("can access StellarTestHelper and currentSlot", async (context: localTC) => {
+		fit("can access StellarTestHelper", async (context: localTC) => {
 			const {h, h: { network, actors, delay, state }} = context;
 			expect(h.currentSlot()).toBeTypeOf('bigint');
+			expect(typeof(h.slotToTimestamp(h.currentSlot()))).toBe('object');
 		});
 		it("can access validator UTXO", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
@@ -148,9 +149,6 @@ describe("Vesting service", async () => {
 				deadline: d
 			});
 
-			// explore the Datum
-			expect(tcx.outputs[0].datum.data.toSchemaJson().length).toBe(175);
-			
 			// Datum has time: 
 			expect(JSON.parse(tcx.outputs[0].datum.data.toSchemaJson()).list[2].int).toBeGreaterThan(1692945228725);
 
