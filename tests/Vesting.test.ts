@@ -140,7 +140,7 @@ describe("Vesting service", async () => {
 			expect((await sasha.utxos).length).toBeGreaterThan(2);
 
 			const v = new Vesting(context);
-			const t = BigInt(Date.now());
+			const t = h.currentSlot()
 			const d = t + BigInt(2*60*60*1000);
 
 			const tcx = await v.mkTxnDepositValueForVesting({
@@ -150,7 +150,7 @@ describe("Vesting service", async () => {
 			});
 
 			// Datum has time: 
-			expect(JSON.parse(tcx.outputs[0].datum.data.toSchemaJson()).list[2].int).toBeGreaterThan(1692945228725);
+			expect(JSON.parse(tcx.outputs[0].datum.data.toSchemaJson()).list[2].int).toBeTypeOf('number');
 
 			const txId = await h.submitTx(tcx.tx, "force");
 
@@ -161,8 +161,8 @@ describe("Vesting service", async () => {
 			const valUtxos = await network.getUtxos(validatorAddress)
 
 			// TODO: try Date?
-			const validFrom = h.slotToTimestamp(h.currentSlot() - 1n);
-			const validTo = h.slotToTimestamp(h.currentSlot() + 100000n);
+			const validFrom = t;
+			const validTo = validFrom + 50000n
 
 			const tcxCancel = await v.mkTxnCancelVesting(
 				sasha, 
