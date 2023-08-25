@@ -162,11 +162,15 @@ describe("Vesting service", async () => {
 
 			// h.waitUntil(deadline);
 
+			// TODO: try Date?
+			const validFrom = h.slotToTimestamp(h.currentSlot() - 1n);
+			const validTo = h.slotToTimestamp(h.currentSlot() + 100000n);
+
 			const tcxCancel = await v.mkTxnCancelVesting(
 				sasha, 
 				valUtxos[0],
-				validFrom,
-				validTo
+				// validFrom,
+				// validTo
 			);
 
 			// expect(tcxCancel.tx.body.dump()).toBe(); // why Null? debugger shows a bigint 
