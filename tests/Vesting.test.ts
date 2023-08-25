@@ -81,7 +81,7 @@ describe("Vesting service", async () => {
 
 		    expect(pavelMoney[0].value.lovelace).toBe(13n * ADA);
 		});
-		fit("can access StellarTestHelper", async (context: localTC) => {
+		it("can access StellarTestHelper", async (context: localTC) => {
 			const {h, h: { network, actors, delay, state }} = context;
 			expect(h.currentSlot()).toBeTypeOf('bigint');
 			expect(typeof(h.slotToTimestamp(h.currentSlot()))).toBe('object');
@@ -161,8 +161,8 @@ describe("Vesting service", async () => {
 			const valUtxos = await network.getUtxos(validatorAddress)
 
 			// TODO: try Date?
-			const validFrom = h.currentSlot() - 1n;
-			const validTo = h.currentSlot() + 100000n;
+			const validFrom = h.slotToTimestamp(h.currentSlot() - 1n);
+			const validTo = h.slotToTimestamp(h.currentSlot() + 100000n);
 
 			const tcxCancel = await v.mkTxnCancelVesting(
 				sasha, 
