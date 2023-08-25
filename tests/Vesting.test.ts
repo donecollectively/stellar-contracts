@@ -150,6 +150,9 @@ describe("Vesting service", async () => {
 
 			// explore the Datum
 			expect(tcx.outputs[0].datum.data.toSchemaJson().length).toBe(175);
+			
+			// Datum has time: 
+			expect(JSON.parse(tcx.outputs[0].datum.data.toSchemaJson()).list[2].int).toBeGreaterThan(1692945228725);
 
 			const txId = await h.submitTx(tcx.tx, "force");
 
