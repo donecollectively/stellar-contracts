@@ -160,7 +160,8 @@ describe("Vesting service", async () => {
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
 
-			// h.waitUntil(deadline);
+			h.waitUntil(deadline);
+			expect(h.currentSlot()).toBe();
 
 			// TODO: try Date?
 			const interval = 100000n;
