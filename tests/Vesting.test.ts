@@ -141,7 +141,10 @@ describe("Vesting service", async () => {
 
 			const v = new Vesting(context);
 			const t = h.slotToTimestamp(h.currentSlot());
-			const deadline = new Date(t.getTime() + 60*60);
+			const deadline = new Date(t.getTime() + 10000*60*60);
+
+			h.waitUntil(deadline);
+			expect(h.currentSlot()).toBe();
 
 			const tcx = await v.mkTxnDepositValueForVesting({
 				sponsor: sasha,
@@ -160,8 +163,6 @@ describe("Vesting service", async () => {
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
 
-			h.waitUntil(deadline);
-			expect(h.currentSlot()).toBe();
 
 			// TODO: try Date?
 			const interval = 100000n;
