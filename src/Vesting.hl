@@ -15,6 +15,7 @@ func main(datum: Datum, redeemer: Redeemer, context: ScriptContext) -> Bool {
     tx: Tx = context.tx;
     now: Time = tx.time_range.start;
 	assert(now < datum.deadline,"message");
+	print("hello world");
     redeemer.switch {
         Cancel => {
             // Check if deadline hasn't passed

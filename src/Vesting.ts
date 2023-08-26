@@ -95,8 +95,8 @@ export class Vesting extends StellarContract<VestingParams> {
            	.addCollateral(collateralUtxo);
 	tcx.tx.addSigner(sponsor.address.pubKeyHash);
 	// need to pass both, see junk/dev1
-	// tcx.tx.validFrom(validFrom);
-	// tcx.tx.validTo(validTill);
+	tcx.tx.validFrom(validFrom);
+	tcx.tx.validTo(validTill);
 
 	    return tcx
     }
