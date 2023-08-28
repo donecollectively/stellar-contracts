@@ -144,7 +144,7 @@ describe("Vesting service", async () => {
 			const v = new Vesting(context);
 
 			// TODO: deadline calculation
-			const deadline = 0n;
+			const deadline = BigInt(Date.now() + 99999999999999999);
 
 			const tcx = await v.mkTxnDepositValueForVesting({
 				sponsor: sasha,
@@ -178,6 +178,8 @@ describe("Vesting service", async () => {
 
 			expect(validFrom).toBeTypeOf('bigint');
 
+			expect((await sasha.utxos).length).toBe(4);
+
 			const tcxCancel = await v.mkTxnCancelVesting(
 				sasha, 
 				valUtxos[0],
@@ -185,8 +187,9 @@ describe("Vesting service", async () => {
 				validTo
 			);
 
-			// expect(tcxCancel.tx.body.dump()).toBe(); // why Null? debugger shows a bigint 
 			const txIdCancel = await h.submitTx(tcxCancel.tx, "force");
+
+			expect((await sasha.utxos).length).toBe(4);
 
 		});
 	});
