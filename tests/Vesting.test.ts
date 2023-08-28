@@ -142,11 +142,9 @@ describe("Vesting service", async () => {
 			expect((await sasha.utxos).length).toBeGreaterThan(2);
 
 			const v = new Vesting(context);
-			const t = h.slotToTimestamp(h.currentSlot());
-			const deadline = new Date(t.getTime() + 10000*60*60);
 
-			// h.waitUntil(deadline);
-			// expect(h.currentSlot()).toBe();
+			// TODO: deadline calculation
+			const deadline = 0n;
 
 			const tcx = await v.mkTxnDepositValueForVesting({
 				sponsor: sasha,
@@ -174,10 +172,11 @@ describe("Vesting service", async () => {
 			const endOffset = 1000n;
 			// const validFrom = h.slotToTimestamp(h.currentSlot() + startOffset);
 			// const validTo = h.slotToTimestamp(h.currentSlot() + endOffset);
-			const validFrom = h.currentSlot() + startOffset;
-			const validTo = h.currentSlot() + endOffset;
+			const now = BigInt(Date.now())
+			const validFrom = h.liveSlotParams.timeToSlot(now) + startOffset;
+			const validTo = validFrom + endOffset;
 
-			// expect(BigInt(validFrom)).toBeGreaterThan(1692959910000n);
+			expect(validFrom).toBeTypeOf('bigint');
 
 			const tcxCancel = await v.mkTxnCancelVesting(
 				sasha, 

@@ -69,8 +69,8 @@ export class Vesting extends StellarContract<VestingParams> {
     async mkTxnCancelVesting(
 	sponsor: WalletEmulator,
 	valUtxo: UTxO,
-	validFrom: Date,
-	validTill: Date,
+	validFrom: bigint,
+	validTill: bigint,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
 	    // How does it work?
