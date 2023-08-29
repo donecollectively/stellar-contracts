@@ -15,6 +15,7 @@ import {
 import {
     Address,
     Datum,
+    FuzzyTest,
     Value,
     Tx,
     TxOutput
@@ -83,10 +84,17 @@ describe("Vesting service", async () => {
 		});
 		it("can access StellarTestHelper", async (context: localTC) => {
 			const {h, h: { network, actors, delay, state }} = context;
+
 			expect(h.currentSlot()).toBeTypeOf('bigint');
 			expect(typeof(h.slotToTimestamp(h.currentSlot()))).toBe('object');
 			expect(h.liveSlotParams.timeToSlot(2n)).toBe(0n);
 			expect(h.liveSlotParams.timeToSlot(1000n)).toBe(1n);
+		});
+		it("can access FuzzyTest", async (context: localTC) => {
+			const {h, h: { network, actors, delay, state }} = context;
+
+			const rng = new FuzzyTest();
+
 		});
 		it("can access validator UTXO", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
