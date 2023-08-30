@@ -40,12 +40,15 @@ export class Vesting extends StellarContract<VestingParams> {
         { sponsor, payee, deadline }: VestingParams,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
-	    // so far value is hardcoded: 
-	    	const margin = 5n * ADA;
+	    	const margin = 5n * ADA; // a bug, wip
 		const inUtxo = (await sponsor.utxos)[0];
 		const inUtxoFee = (await sponsor.utxos)[1];
-		const lockedVal = inUtxo.value; // TODO: parametrize
 
+		// TODO: parametrize, 
+		// reqt: can access an arbitrary Value 
+		// reqt: can find the Value in sponsor utxos
+		const lockedVal = inUtxo.value; 
+		
 		const validatorAddress = Address.fromValidatorHash(this.compiledContract.validatorHash)
 
 		const inlineDatum = this.mkDatum({
@@ -69,36 +72,29 @@ export class Vesting extends StellarContract<VestingParams> {
     async mkTxnCancelVesting(
 	sponsor: WalletEmulator,
 	valUtxo: UTxO,
+	// shoud not it be encapsulated?
 	validFrom: bigint,
 	validTill: bigint,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
-	    // How does it work?
-	    // It creates a Redeemer and serializes it:
-	   const r = new this.configuredContract.types.Redeemer.Cancel();
-	   const valRedeemer = r._toUplcData();
+		const r = new this.configuredContract.types.Redeemer.Cancel();
+		const valRedeemer = r._toUplcData();
 
-	   // finds enough utxos:
-	   const collateralUtxo = (await sponsor.utxos)[0];
-	   const feeUtxo = (await sponsor.utxos)[1];
+		const collateralUtxo = (await sponsor.utxos)[0];
+		const feeUtxo = (await sponsor.utxos)[1];
 
-	   // Calculates validity interval:
-           // const validFrom = h.currentSlot() - 1n;
-	   // const validTo = h.currentSlot() + 500n;
+		tcx.addInput(feeUtxo)
+		   .addInput(valUtxo, valRedeemer)
+		   .addOutput(new TxOutput(sponsor.address, valUtxo.value))
 
-	   //creates the transaction and adds its components:
-	   tcx.addInput(feeUtxo)
-	   	.addInput(valUtxo, valRedeemer)
-           	.addOutput(new TxOutput(sponsor.address, valUtxo.value))
-           	
-           	.attachScript(this.compiledContract)
-           	.addCollateral(collateralUtxo);
-	tcx.tx.addSigner(sponsor.address.pubKeyHash);
-	// need to pass both, see junk/dev1
-	tcx.tx.validFrom(validFrom);
-	tcx.tx.validTo(validTill);
+		   .attachScript(this.compiledContract)
+		   .addCollateral(collateralUtxo);
 
-	    return tcx
+		tcx.tx.addSigner(sponsor.address.pubKeyHash);
+		tcx.tx.validFrom(validFrom);
+		tcx.tx.validTo(validTill);
+
+		return tcx
     }
     requirements() {
         return {
