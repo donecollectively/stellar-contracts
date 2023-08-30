@@ -163,11 +163,6 @@ describe("Vesting service", async () => {
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
 
-
-			// why does not it work? 
-			// TODO: h.waitUntil, property: time. 
-			// Ok, I can try to randomly generate intervals for validFrom and validTo
-
 			const startOffset = 0n;
 			const endOffset = 1000n;
 			// const validFrom = h.slotToTimestamp(h.currentSlot() + startOffset);
@@ -178,6 +173,9 @@ describe("Vesting service", async () => {
 
 			expect(validFrom).toBeTypeOf('bigint');
 
+			// TODO: make more definitive case here:
+			// sasha spent one utxo in the fees, so the new utxo must be 
+			// amountVested + (inputUtxo.value - txFee)
 			expect((await sasha.utxos).length).toBe(4);
 
 			const tcxCancel = await v.mkTxnCancelVesting(
