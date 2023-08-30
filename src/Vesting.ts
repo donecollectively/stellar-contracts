@@ -122,8 +122,23 @@ export class Vesting extends StellarContract<VestingParams> {
 			"Tx Rejected as sponsor",
 		],
             },
+            mkTxnCancel: {
+                purpose: "can cancel vesting",
+                details: [
+                // descriptive details of the requirement (not the tech):
+		],
+                mech: [
+                // descriptive details of the chosen mechanisms for implementing the reqts:
+		],
+                requires: [
+			"can find the correct utxo",
+			"can serialize the Redeemer",
+			"can access currentSlot",
+			"can consume UTxO[]",
+		],
+            },
             mkTxnClaim: {
-                purpose: "can claim or retrieve vested funds",
+                purpose: "can claim vested funds",
                 details: [
                 // descriptive details of the requirement (not the tech):
 		],
