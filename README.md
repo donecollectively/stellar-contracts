@@ -1,10 +1,11 @@
-# Done Collectively - Community Coin
+# Stellar Vesting
+A [technology]([url](https://stellar-contracts.org/)) use example.
 
-A community-coin project using Cardano and Helios
-
-Thanks to https://github.com/aleeusgr/potential-robot for boilerplate development
+Class src/Vesting implements abstract factory StellarContract to work with src/Vesting.hl - a validator in Helios.
+The test is using StellarTestContext to provide evidence about statements in the requirements section in the Stellar Contract Class. 
 
 ## Getting started
+can use `npm test` as well
 
   * `nvm use`
   * `pnpm i`
