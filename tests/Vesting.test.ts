@@ -147,6 +147,7 @@ describe("Vesting service", async () => {
 			expect(tDepo).toBeGreaterThan(1693459155930);
 			const offset =                1655683199999;
 			const deadline = BigInt(tDepo + offset);
+			expect(deadline).toBeGreaterThan(3349143163476n);
 
 			const tcx = await v.mkTxnDepositValueForVesting({
 				sponsor: sasha,
