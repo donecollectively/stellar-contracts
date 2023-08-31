@@ -98,7 +98,7 @@ describe("Vesting service", async () => {
 
 			const tcx = await v.mkTxnDepositValueForVesting({
 				sponsor: sasha, 
-				payee: pavel.address, //TODO: check in valUtxos
+				payee: pavel.address, 
 				deadline: deadline
 			});
 
@@ -114,7 +114,7 @@ describe("Vesting service", async () => {
 		    const {h, h: { network, actors, delay, state }} = context;
 			const { sasha, tom, pavel } = actors;
 
-			async function tryWithSlop(user: WalletEmulator ) {
+			async function splitUtxos(user: WalletEmulator ) {
 				const margin = 45n * ADA;
 				const firstUtxo = (await user.utxos)[0]
 				const secondUtxo = (await user.utxos)[1]
@@ -133,18 +133,18 @@ describe("Vesting service", async () => {
 					new Value(firstUtxo.value.lovelace - margin)
 				    )
 				);
-				// console.log("s2")
 				return h.submitTx(tx, "force");
             		}
 
-			const splitUtxo = await tryWithSlop(sasha);
+			const splitUtxo = await splitUtxos(sasha);
 
 			expect((await sasha.utxos).length).toBeGreaterThan(2);
 
 			const v = new Vesting(context);
 
 			// TODO: deadline calculation
-			const deadline = BigInt(Date.now() + 99999999999999999);
+			const offset = 99999999999999999;
+			const deadline = BigInt(Date.now() + offset);
 
 			const tcx = await v.mkTxnDepositValueForVesting({
 				sponsor: sasha,
@@ -152,24 +152,18 @@ describe("Vesting service", async () => {
 				deadline: BigInt(deadline)
 			});
 
-			// Datum has time: 
-			expect(JSON.parse(tcx.outputs[0].datum.data.toSchemaJson()).list[2].int).toBeTypeOf('number');
-
 			const txId = await h.submitTx(tcx.tx, "force");
 
+			// can access deadline as number in Datum:
+			expect(JSON.parse(tcx.outputs[0].datum.data.toSchemaJson()).list[2].int).toBeTypeOf('number');
 			expect((txId.hex).length).toBe(64);
 			expect((await sasha.utxos).length).toBeGreaterThan(0);
 
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
 
-			const startOffset = 0n;
-			const endOffset = 1000n;
-			// const validFrom = h.slotToTimestamp(h.currentSlot() + startOffset);
-			// const validTo = h.slotToTimestamp(h.currentSlot() + endOffset);
 			const now = BigInt(Date.now())
-			const validFrom = h.liveSlotParams.timeToSlot(now) + startOffset;
-			const validTo = validFrom + endOffset;
+			const validFrom = h.liveSlotParams.timeToSlot(now);
 
 			expect(validFrom).toBeTypeOf('bigint');
 
@@ -181,8 +175,7 @@ describe("Vesting service", async () => {
 			const tcxCancel = await v.mkTxnCancelVesting(
 				sasha, 
 				valUtxos[0],
-				validFrom,
-				validTo
+				validFrom
 			);
 
 			const txIdCancel = await h.submitTx(tcxCancel.tx, "force");

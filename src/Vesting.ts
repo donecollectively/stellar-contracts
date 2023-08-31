@@ -74,7 +74,6 @@ export class Vesting extends StellarContract<VestingParams> {
 	valUtxo: UTxO,
 	// shoud not it be encapsulated?
 	validFrom: bigint,
-	validTill: bigint,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
 		const r = new this.configuredContract.types.Redeemer.Cancel();
@@ -82,6 +81,8 @@ export class Vesting extends StellarContract<VestingParams> {
 
 		const collateralUtxo = (await sponsor.utxos)[0];
 		const feeUtxo = (await sponsor.utxos)[1];
+
+		const validTill = validFrom + 1000n;
 
 		tcx.addInput(feeUtxo)
 		   .addInput(valUtxo, valRedeemer)
