@@ -221,7 +221,7 @@ describe("Vesting service", async () => {
 			// TODO: deadline calculation
 			const tDepo = Date.now();
 			expect(tDepo).toBeGreaterThan(1693459155930);
-			const offset =               -9999999999999;
+			const offset =                0;
 			const deadline = BigInt(tDepo + offset);
 			// expect(deadline).toBeGreaterThan(1693459155930n);
 
@@ -249,9 +249,9 @@ describe("Vesting service", async () => {
 			// TODO: make more definitive case here:
 			// sasha spent one utxo in the fees, so the new utxo must be 
 			// amountVested + (inputUtxo.value - txFee)
-			expect((await sasha.utxos).length).toBe(4);
+			expect((await pavel.utxos).length).toBe(2);
 
-			const tcxCancel = await v.mkTxnCancelVesting(
+			const tcxCancel = await v.mkTxnClaimVesting(
 				pavel, 
 				valUtxos[0],
 				validFrom
@@ -259,7 +259,7 @@ describe("Vesting service", async () => {
 
 			const txIdCancel = await h.submitTx(tcxCancel.tx, "force");
 
-			expect((await sasha.utxos).length).toBe(4);
+			expect((await pavel.utxos).length).toBe(2);
 
 		});
 	});
