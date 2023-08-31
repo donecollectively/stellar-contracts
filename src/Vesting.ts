@@ -69,11 +69,39 @@ export class Vesting extends StellarContract<VestingParams> {
 	return tcx
     }
     @txn
+    async mkTxnClaimVesting(
+	sponsor: WalletEmulator,
+	valUtxo: UTxO,
+	validFrom: bigint, // TODO: assess alternative implementations
+        tcx: StellarTxnContext = new StellarTxnContext()
+    ): Promise<StellarTxnContext | never> {
+		const r = new this.configuredContract.types.Redeemer.Claim();
+		const valRedeemer = r._toUplcData();
+
+		const collateralUtxo = (await sponsor.utxos)[0];
+		const feeUtxo = (await sponsor.utxos)[1];
+
+		const validTill = validFrom + 1000n;
+
+		tcx.addInput(feeUtxo)
+		   .addInput(valUtxo, valRedeemer)
+		   .addOutput(new TxOutput(sponsor.address, valUtxo.value))
+
+		   .attachScript(this.compiledContract)
+		   .addCollateral(collateralUtxo);
+
+		tcx.tx.addSigner(sponsor.address.pubKeyHash);
+		tcx.tx.validFrom(validFrom);
+		tcx.tx.validTo(validTill);
+
+		return tcx
+    }
+
+    @txn
     async mkTxnCancelVesting(
 	sponsor: WalletEmulator,
 	valUtxo: UTxO,
-	// shoud not it be encapsulated?
-	validFrom: bigint,
+	validFrom: bigint, // TODO: assess alternative implementations
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
 		const r = new this.configuredContract.types.Redeemer.Cancel();
