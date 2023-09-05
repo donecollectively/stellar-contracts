@@ -28,17 +28,17 @@ export type SeedTxnParams = {
     seedIndex: bigint;
 };
 
-export type uutPurposeMap = {[purpose: string]: string}
-export type hasSomeUuts<uutEntries extends uutPurposeMap={}> = {
-    uuts: Partial<uutEntries>
-}
-export type hasAllUuts<uutEntries extends uutPurposeMap={}> = {
-    uuts: uutEntries
-}
+export type uutPurposeMap = { [purpose: string]: string };
+export type hasSomeUuts<uutEntries extends uutPurposeMap = {}> = {
+    uuts: Partial<uutEntries>;
+};
+export type hasAllUuts<uutEntries extends uutPurposeMap = {}> = {
+    uuts: uutEntries;
+};
 
 interface hasUutCreator {
     txnCreatingUuts<UutMapType extends uutPurposeMap>(
-        tcx: StellarTxnContext<any>, 
+        tcx: StellarTxnContext<any>,
         uutPurposes: (string & keyof UutMapType)[]
     ): Promise<hasUutContext<UutMapType>>;
 }
@@ -51,7 +51,9 @@ export type MintUutRedeemerArgs = {
     seedIndex: bigint | number;
     purposes: string[];
 };
-export type hasUutContext<uutEntries extends uutPurposeMap> = StellarTxnContext<hasAllUuts<uutEntries>>;
+export type hasUutContext<uutEntries extends uutPurposeMap> = StellarTxnContext<
+    hasAllUuts<uutEntries>
+>;
 
 export interface MinterBaseMethods extends hasUutCreator {
     get mintingPolicyHash(): MintingPolicyHash;
@@ -91,7 +93,7 @@ export abstract class Capo<
             throw new Error("Redeemer must have a 'usingAuthority' variant");
     }
     abstract contractSource(): string;
-    abstract mkDatumCharterToken(args: anyDatumArgs) : InlineDatum;
+    abstract mkDatumCharterToken(args: anyDatumArgs): InlineDatum;
     // abstract txnMustUseCharterUtxo(
     //     tcx: StellarTxnContext,
     //     newDatum?: InlineDatum
@@ -105,17 +107,17 @@ export abstract class Capo<
 
     @Activity.partialTxn
     txnCreatingUuts<UutMapType extends uutPurposeMap>(
-        tcx: StellarTxnContext<any>, 
+        tcx: StellarTxnContext<any>,
         uutPurposes: (string & keyof UutMapType)[]
     ): Promise<hasUutContext<UutMapType>> {
         return this.minter!.txnCreatingUuts(tcx, uutPurposes);
     }
     // P extends paramsBase = SC extends StellarContract<infer P> ? P : never
 
-    uutsValue(uutMap: uutPurposeMap): Value
-    uutsValue(tcx: hasUutContext<any>): Value
+    uutsValue(uutMap: uutPurposeMap): Value;
+    uutsValue(tcx: hasUutContext<any>): Value;
     uutsValue(x: uutPurposeMap | hasUutContext<any>): Value {
-        const uutMap = x instanceof StellarTxnContext ? x.state.uuts! : x
+        const uutMap = x instanceof StellarTxnContext ? x.state.uuts! : x;
         const vEntries = this.minter!.mkUutValuesEntries(uutMap);
 
         return new Value(
@@ -124,9 +126,8 @@ export abstract class Capo<
         );
     }
 
-
     @Activity.redeemer
-    protected usingAuthority() : isActivity {
+    protected usingAuthority(): isActivity {
         const r = this.configuredContract.types.Redeemer;
         const { usingAuthority } = r;
         if (!usingAuthority) {
@@ -136,7 +137,7 @@ export abstract class Capo<
         }
         const t = new usingAuthority();
 
-        return {redeemer: t._toUplcData() }
+        return { redeemer: t._toUplcData() };
     }
 
     @Activity.redeemer
@@ -146,22 +147,24 @@ export abstract class Capo<
     }: {
         trustees: Address[];
         minSigs: bigint;
-    }) : isActivity {
+    }): isActivity {
         const t = new this.configuredContract.types.Redeemer.updatingCharter(
             trustees,
             minSigs
         );
 
-        return {redeemer: t._toUplcData() }
+        return { redeemer: t._toUplcData() };
     }
 
     tvCharter() {
-        return this.minter!.tvCharter()
+        return this.minter!.tvCharter();
     }
 
     get charterTokenAsValue() {
-        console.warn("deprecated get charterTokenAsValue; use tvCharter() instead")
-        return this.tvCharter()
+        console.warn(
+            "deprecated get charterTokenAsValue; use tvCharter() instead"
+        );
+        return this.tvCharter();
     }
 
     @txn
@@ -169,11 +172,16 @@ export abstract class Capo<
         datumArgs: anyDatumArgs,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
-        console.log(`minting charter from seed ${this.paramsIn.seedTxn.hex.substring(0, 12)}…@${this.paramsIn.seedIndex}`);
+        console.log(
+            `minting charter from seed ${this.paramsIn.seedTxn.hex.substring(
+                0,
+                12
+            )}…@${this.paramsIn.seedIndex}`
+        );
 
         return this.mustGetContractSeedUtxo().then((seedUtxo) => {
-            const v = this.tvCharter()
-            
+            const v = this.tvCharter();
+
             const datum = this.mkDatumCharterToken(datumArgs);
             const outputs = [new TxOutput(this.address, v, datum)];
 
@@ -183,83 +191,88 @@ export abstract class Capo<
     }
 
     get charterTokenPredicate() {
-        const predicate = this.mkTokenPredicate(this.tvCharter())
+        const predicate = this.mkTokenPredicate(this.tvCharter());
+
 
         return predicate
     }
 
     async mustFindCharterUtxo() {
-        const predicate = this.mkTokenPredicate(this.tvCharter())
+        const predicate = this.mkTokenPredicate(this.tvCharter());
 
-        return this.mustFindMyUtxo(
-            "charter", predicate,
-            "has it been minted?"
-        )
+        return this.mustFindMyUtxo("charter", predicate, "has it been minted?");
     }
 
     async txnMustUseCharterUtxo(
         tcx: StellarTxnContext<any>,
         redeemer: isActivity,
-        newDatum?: InlineDatum,
-    ) : Promise<StellarTxnContext<any> | never>
+        newDatum?: InlineDatum
+    ): Promise<StellarTxnContext<any> | never>;
     async txnMustUseCharterUtxo(
         tcx: StellarTxnContext<any>,
         useReferenceInput: true,
-        forceAddRefScript? : true,
-    ): Promise<StellarTxnContext<any> | never>
-    @partialTxn  // non-activity partial
+        forceAddRefScript?: true
+    ): Promise<StellarTxnContext<any> | never>;
+    @partialTxn // non-activity partial
     async txnMustUseCharterUtxo(
         tcx: StellarTxnContext<any>,
         redeemerOrRefInput: isActivity | true,
-        newDatumOrForceRefScript?: InlineDatum | true,
+        newDatumOrForceRefScript?: InlineDatum | true
     ): Promise<StellarTxnContext<any> | never> {
         return this.mustFindCharterUtxo().then((ctUtxo: TxInput) => {
             if (true === redeemerOrRefInput) {
-                if (newDatumOrForceRefScript && true !== newDatumOrForceRefScript)
-                    throw new Error(`when using reference input for charter, arg3 can only be true (or may be omitted)`);
-                tcx.tx.addRefInput(ctUtxo, newDatumOrForceRefScript ? this.compiledContract : undefined);
+                if (
+                    newDatumOrForceRefScript &&
+                    true !== newDatumOrForceRefScript
+                )
+                    throw new Error(
+                        `when using reference input for charter, arg3 can only be true (or may be omitted)`
+                    );
+                tcx.tx.addRefInput(
+                    ctUtxo,
+                    newDatumOrForceRefScript ? this.compiledContract : undefined
+                );
             } else {
                 const redeemer = redeemerOrRefInput;
                 const newDatum = newDatumOrForceRefScript;
-                if (true === newDatum) throw new Error(`wrong type for newDatum when not using reference input for charter`)
-                tcx.addInput(
-                    ctUtxo,
-                    redeemer.redeemer
-                ).attachScript(this.compiledContract);
-                const datum = newDatum || (ctUtxo.origOutput.datum as InlineDatum);
-    
+                if (true === newDatum)
+                    throw new Error(
+                        `wrong type for newDatum when not using reference input for charter`
+                    );
+                tcx.addInput(ctUtxo, redeemer.redeemer).attachScript(
+                    this.compiledContract
+                );
+                const datum =
+                    newDatum || (ctUtxo.origOutput.datum as InlineDatum);
+
                 this.txnKeepCharterToken(tcx, datum);
             }
-            return tcx
+            return tcx;
         });
     }
 
-
-    @partialTxn  // non-activity partial
+    @partialTxn // non-activity partial
     async txnUpdateCharterUtxo(
         tcx: StellarTxnContext,
         redeemer: isActivity,
         newDatum: InlineDatum
-    ): Promise<StellarTxnContext| never> {
-        // this helper function is very simple.  Why have it?  
+    ): Promise<StellarTxnContext | never> {
+        // this helper function is very simple.  Why have it?
         //   -> its 3rd arg is required,
         //   -> and its name gives a more specific meaning.
-        return this.txnMustUseCharterUtxo(tcx, redeemer, newDatum );
+        return this.txnMustUseCharterUtxo(tcx, redeemer, newDatum);
     }
 
-    @partialTxn  // non-activity partial
+    @partialTxn // non-activity partial
     txnKeepCharterToken(tcx: StellarTxnContext<any>, datum: InlineDatum) {
-        
-        tcx.addOutput(
-            new TxOutput(this.address, this.tvCharter(), datum)
-        );
+        tcx.addOutput(new TxOutput(this.address, this.tvCharter(), datum));
 
         return tcx;
     }
 
     @partialTxn
     async txnAddAuthority(tcx: StellarTxnContext<any>) {
-        return this.txnMustUseCharterUtxo(tcx, this.usingAuthority())
+        return this.txnMustUseCharterUtxo(tcx, this.usingAuthority());
     }
 
 
@@ -268,17 +281,17 @@ export abstract class Capo<
         return this.paramsIn;
     }
     getCapoRev() {
-        return 1n
+        return 1n;
     }
 
     getContractParams(params: SeedTxnParams) {
         const { mph } = this;
-        const rev = this.getCapoRev()
+        const rev = this.getCapoRev();
         // console.log("this treasury uses mph", mph?.hex);
 
         return {
             mph,
-            rev
+            rev,
         };
     }
 
@@ -317,7 +330,9 @@ export abstract class Capo<
         //! prior to initial on-chain creation of contract,
         //! it finds that specific TxInput in the current user's wallet.
         const { seedTxn, seedIndex } = this.paramsIn;
-        console.log(`seeking seed txn ${seedTxn.hex.substring(0, 12)}…@${seedIndex}`);
+        console.log(
+            `seeking seed txn ${seedTxn.hex.substring(0, 12)}…@${seedIndex}`
+        );
 
         return this.mustFindActorUtxo(
             "seed",
