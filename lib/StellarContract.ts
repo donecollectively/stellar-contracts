@@ -19,7 +19,7 @@ import {
     Datum,
 } from "@hyperionbt/helios";
 import { StellarTxnContext } from "./StellarTxnContext.js";
-import { utxosAsString } from "./diagnostics.js";
+import { utxosAsString, valueAsString } from "./diagnostics.js";
 import { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
@@ -287,6 +287,34 @@ export class StellarContract<
 
     mkValuesEntry(tokenName: string, count: bigint): valuesEntry {
         return [this.stringToNumberArray(tokenName), count];
+    }
+
+    //! searches the network for utxos stored in the contract,
+    //  returning those whose datum hash is the same as the input datum
+    async outputsSentToDatum(datum: InlineDatum) {
+        const myUtxos = await this.network.getUtxos(this.address);
+
+        // const dump = utxosAsString(myUtxos)
+        // console.log({dump})
+        return myUtxos.filter((u) => {
+            return u.origOutput.datum.hash.hex == datum.hash.hex;
+        });
+    }
+
+    //! adds the values of the given TxInputs
+    totalValue(utxos: TxInput[]): Value {
+        return utxos.reduce((v: Value, u: TxInput) => {
+            return v.add(u.value);
+        }, new Value(0n));
+    }
+
+    //! adds the indicated Value to the transaction; 
+    //  ... EXPECTS  the value to already have minUtxo calculated on it.
+    @partialTxn // non-activity partial
+    txnKeepValue(tcx: StellarTxnContext, value: Value, datum: InlineDatum) {
+        tcx.addOutput(new TxOutput(this.address, value, datum));
+
+        return tcx;
     }
 
     addScriptWithParams<
@@ -589,27 +617,29 @@ export class StellarContract<
         return o.value.ge(v);
     }
 
+    //! deprecated tokenAsValue - use Capo
     tokenAsValue(
         tokenName: string,
         quantity: bigint,
         mph?: MintingPolicyHash
     ): Value {
-        if (!mph) {
-            mph = (this as any).mph;
-            if (!mph)
-                throw new Error(
-                    `tokenAsValue: mph in arg3 required unless the stellar contract (${this.constructor.name}) has an 'mph' getter.`
-                );
-        }
+        throw new Error(`deprecated tokenAsValue on StellarContract base class (Capo has mph, not so much any StellarContract`)
+        // if (!mph) {
+        //     mph = (this as any).mph;
+        //     if (!mph)
+        //         throw new Error(
+        //             `tokenAsValue: mph in arg3 required unless the stellar contract (${this.constructor.name}) has an 'mph' getter.`
+        //         );
+        // }
 
-        const v = new Value(
-            this.ADA(0),
-            new Assets([[mph, [this.mkValuesEntry(tokenName, quantity)]]])
-        );
-        const o = new TxOutput(this.address, v);
-        v.setLovelace(o.calcMinLovelace(this.networkParams));
+        // const v = new Value(
+        //     this.ADA(0),
+        //     new Assets([[mph, [this.mkValuesEntry(tokenName, quantity)]]])
+        // );
+        // const o = new TxOutput(this.address, v);
+        // v.setLovelace(o.calcMinLovelace(this.networkParams));
 
-        return v;
+        // return v;
     }
 
     hasOnlyAda(value: Value, tcx: StellarTxnContext | undefined, u: TxInput) {

@@ -24,6 +24,7 @@ export type {
     SeedTxnParams,
 } from "./Capo.js";
 
+
 export {
     StellarContract,
     Activity,
@@ -38,6 +39,7 @@ export type {
     isActivity,
     utxoPredicate,
     anyDatumProps,
+    paramsBase
 } from "./StellarContract.js";
 
 export {

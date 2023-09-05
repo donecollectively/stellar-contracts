@@ -193,8 +193,24 @@ export abstract class Capo<
     get charterTokenPredicate() {
         const predicate = this.mkTokenPredicate(this.tvCharter());
 
+        return predicate;
+    }
 
-        return predicate
+    //! forms a Value with minUtxo included
+    tokenAsValue(tokenName: string, quantity: bigint = 1n) {
+        const { mintingPolicyHash } = this;
+
+        const e = this.mkValuesEntry(tokenName, quantity);
+
+        const v = new Value(
+            this.ADA(0),
+            new Assets([[mintingPolicyHash, [e]]])
+        );
+        const t = new TxOutput(this.address, v);
+        const minLovelace = t.calcMinLovelace(this.networkParams);
+
+        v.setLovelace(minLovelace);
+        return v;
     }
 
     async mustFindCharterUtxo() {

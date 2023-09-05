@@ -1,4 +1,4 @@
-import { seedUtxoParams } from "../../lib/Capo.js";
+import { SeedTxnParams } from "../../lib/Capo.js";
 import { Activity, isActivity, stellarSubclass, txn } from "../../lib/StellarContract.js";
 import { StellarTxnContext } from "../../lib/StellarTxnContext.js";
 import { CustomMinter } from "../CustomMinter.js";
@@ -11,7 +11,7 @@ export class CustomTreasury extends SampleTreasury {
         return contract;
     }
 
-    get minterClass(): stellarSubclass<CustomMinter, seedUtxoParams> {
+    get minterClass(): stellarSubclass<CustomMinter, SeedTxnParams> {
         return CustomMinter;
     }
     declare minter: CustomMinter;

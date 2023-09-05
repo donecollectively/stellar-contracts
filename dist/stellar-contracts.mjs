@@ -1,6 +1,6 @@
 import { createFilter } from 'rollup-pluginutils';
 import * as helios from '@hyperionbt/helios';
-import { Address, Tx, Value, TxInput, TxOutput, Assets, MintingPolicyHash, Program, bytesToHex, Crypto, NetworkParams, NetworkEmulator, Datum } from '@hyperionbt/helios';
+import { Address, Tx, Value, TxOutput, TxInput, Assets, MintingPolicyHash, Program, bytesToHex, Crypto, NetworkParams, NetworkEmulator, Datum } from '@hyperionbt/helios';
 import { promises } from 'fs';
 import { expect } from 'vitest';
 
@@ -313,6 +313,17 @@ class StellarTxnContext {
   }
 }
 
+var __defProp$3 = Object.defineProperty;
+var __getOwnPropDesc$3 = Object.getOwnPropertyDescriptor;
+var __decorateClass$3 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$3(target, key) : target;
+  for (var i = decorators.length - 1, decorator; i >= 0; i--)
+    if (decorator = decorators[i])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result)
+    __defProp$3(target, key, result);
+  return result;
+};
 const Activity = {
   partialTxn(proto, thingName, descriptor) {
     needsActiveVerb(thingName);
@@ -476,6 +487,25 @@ class StellarContract {
   }
   mkValuesEntry(tokenName, count) {
     return [this.stringToNumberArray(tokenName), count];
+  }
+  //! searches the network for utxos stored in the contract,
+  //  returning those whose datum hash is the same as the input datum
+  async outputsSentToDatum(datum2) {
+    const myUtxos = await this.network.getUtxos(this.address);
+    return myUtxos.filter((u) => {
+      return u.origOutput.datum.hash.hex == datum2.hash.hex;
+    });
+  }
+  //! adds the values of the given TxInputs
+  totalValue(utxos) {
+    return utxos.reduce((v, u) => {
+      return v.add(u.value);
+    }, new Value(0n));
+  }
+  // non-activity partial
+  txnKeepValue(tcx, value, datum2) {
+    tcx.addOutput(new TxOutput(this.address, value, datum2));
+    return tcx;
   }
   addScriptWithParams(TargetClass, params) {
     const args = {
@@ -646,21 +676,9 @@ class StellarContract {
     const v = vOrMph instanceof MintingPolicyHash ? this.tokenAsValue(tokenName, quantity, vOrMph) : vOrMph;
     return o.value.ge(v);
   }
+  //! deprecated tokenAsValue - use Capo
   tokenAsValue(tokenName, quantity, mph) {
-    if (!mph) {
-      mph = this.mph;
-      if (!mph)
-        throw new Error(
-          `tokenAsValue: mph in arg3 required unless the stellar contract (${this.constructor.name}) has an 'mph' getter.`
-        );
-    }
-    const v = new Value(
-      this.ADA(0),
-      new Assets([[mph, [this.mkValuesEntry(tokenName, quantity)]]])
-    );
-    const o = new TxOutput(this.address, v);
-    v.setLovelace(o.calcMinLovelace(this.networkParams));
-    return v;
+    throw new Error(`deprecated tokenAsValue on StellarContract base class (Capo has mph, not so much any StellarContract`);
   }
   hasOnlyAda(value, tcx, u) {
     const toSortInfo = this._mkUtxoSortInfo(value.lovelace);
@@ -894,6 +912,9 @@ class StellarContract {
     return this.hasUtxo(name, predicate, { address: this.address });
   }
 }
+__decorateClass$3([
+  partialTxn
+], StellarContract.prototype, "txnKeepValue", 1);
 
 var contract$1 = "minting defaultMinter\n\nconst seedTxn : TxId = TxId::new(#1234)\nconst seedIndex : Int = 42\n\nimport { \n    hasSeedUtxo, \n    validateUutMinting\n} from CapoMintHelpers\n\nenum Redeemer { \n    mintingCharterToken {\n        owner: Address\n    }\n    mintingUuts {\n        seedTxn: TxId\n        seedIndex: Int\n        //!!! todo: apply this everywhere else\n        purposes: []String\n    }\n}\n\nfunc hasContractSeedUtxo(tx: Tx) -> Bool {\n    hasSeedUtxo(tx, seedTxn, seedIndex, \"charter\")\n}\n\nfunc main(r : Redeemer, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    value_minted: Value = tx.minted;\n\n    charterToken: AssetClass = AssetClass::new(\n        mph,\n        \"charter\".encode_utf8()\n    );\n\n    ok : Bool = r.switch {\n        charter: mintingCharterToken => {       \n            assert(value_minted == Value::new(charterToken, 1), \"no charter token minted\");\n\n            hasContractSeedUtxo(tx) &&\n            tx.outputs.all( (output: TxOutput) -> Bool {\n                output.value != value_minted || (\n                    output.value == value_minted &&\n                    output.address == charter.owner\n                )\n            })\n        },\n\n        mintingUuts{sTxId, sIdx, purposes} => validateUutMinting(ctx, sTxId, sIdx, purposes),\n        _ => true\n    };\n\n    print(\"defaultMinter: minting value: \" + value_minted.show());\n\n    ok\n}\n\n";
 
@@ -1102,11 +1123,18 @@ class Capo extends StellarContract {
     return this.minter.tvCharter();
   }
   get charterTokenAsValue() {
-    console.warn("deprecated get charterTokenAsValue; use tvCharter() instead");
+    console.warn(
+      "deprecated get charterTokenAsValue; use tvCharter() instead"
+    );
     return this.tvCharter();
   }
   async mkTxnMintCharterToken(datumArgs, tcx = new StellarTxnContext()) {
-    console.log(`minting charter from seed ${this.paramsIn.seedTxn.hex.substring(0, 12)}\u2026@${this.paramsIn.seedIndex}`);
+    console.log(
+      `minting charter from seed ${this.paramsIn.seedTxn.hex.substring(
+        0,
+        12
+      )}\u2026@${this.paramsIn.seedIndex}`
+    );
     return this.mustGetContractSeedUtxo().then((seedUtxo) => {
       const v = this.tvCharter();
       const datum2 = this.mkDatumCharterToken(datumArgs);
@@ -1119,30 +1147,45 @@ class Capo extends StellarContract {
     const predicate = this.mkTokenPredicate(this.tvCharter());
     return predicate;
   }
+  //! forms a Value with minUtxo included
+  tokenAsValue(tokenName, quantity = 1n) {
+    const { mintingPolicyHash } = this;
+    const e = this.mkValuesEntry(tokenName, quantity);
+    const v = new Value(
+      this.ADA(0),
+      new Assets([[mintingPolicyHash, [e]]])
+    );
+    const t = new TxOutput(this.address, v);
+    const minLovelace = t.calcMinLovelace(this.networkParams);
+    v.setLovelace(minLovelace);
+    return v;
+  }
   async mustFindCharterUtxo() {
     const predicate = this.mkTokenPredicate(this.tvCharter());
-    return this.mustFindMyUtxo(
-      "charter",
-      predicate,
-      "has it been minted?"
-    );
+    return this.mustFindMyUtxo("charter", predicate, "has it been minted?");
   }
   // non-activity partial
   async txnMustUseCharterUtxo(tcx, redeemerOrRefInput, newDatumOrForceRefScript) {
     return this.mustFindCharterUtxo().then((ctUtxo) => {
       if (true === redeemerOrRefInput) {
         if (newDatumOrForceRefScript && true !== newDatumOrForceRefScript)
-          throw new Error(`when using reference input for charter, arg3 can only be true (or may be omitted)`);
-        tcx.tx.addRefInput(ctUtxo, newDatumOrForceRefScript ? this.compiledContract : void 0);
+          throw new Error(
+            `when using reference input for charter, arg3 can only be true (or may be omitted)`
+          );
+        tcx.tx.addRefInput(
+          ctUtxo,
+          newDatumOrForceRefScript ? this.compiledContract : void 0
+        );
       } else {
         const redeemer = redeemerOrRefInput;
         const newDatum = newDatumOrForceRefScript;
         if (true === newDatum)
-          throw new Error(`wrong type for newDatum when not using reference input for charter`);
-        tcx.addInput(
-          ctUtxo,
-          redeemer.redeemer
-        ).attachScript(this.compiledContract);
+          throw new Error(
+            `wrong type for newDatum when not using reference input for charter`
+          );
+        tcx.addInput(ctUtxo, redeemer.redeemer).attachScript(
+          this.compiledContract
+        );
         const datum2 = newDatum || ctUtxo.origOutput.datum;
         this.txnKeepCharterToken(tcx, datum2);
       }
@@ -1155,9 +1198,7 @@ class Capo extends StellarContract {
   }
   // non-activity partial
   txnKeepCharterToken(tcx, datum2) {
-    tcx.addOutput(
-      new TxOutput(this.address, this.tvCharter(), datum2)
-    );
+    tcx.addOutput(new TxOutput(this.address, this.tvCharter(), datum2));
     return tcx;
   }
   async txnAddAuthority(tcx) {
@@ -1207,7 +1248,9 @@ class Capo extends StellarContract {
     //! prior to initial on-chain creation of contract,
     //! it finds that specific TxInput in the current user's wallet.
     const { seedTxn, seedIndex } = this.paramsIn;
-    console.log(`seeking seed txn ${seedTxn.hex.substring(0, 12)}\u2026@${seedIndex}`);
+    console.log(
+      `seeking seed txn ${seedTxn.hex.substring(0, 12)}\u2026@${seedIndex}`
+    );
     return this.mustFindActorUtxo(
       "seed",
       (u) => {

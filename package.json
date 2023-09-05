@@ -8,6 +8,7 @@
     "scripts": {
         "build": "rollup -c",
         "build:watch": "rollup -cw",
+        "dev": "rollup -cw",
         "test": "vitest",
         "test:debug": "vitest --inspect --threads false",
         "testing": "vitest --inspect --threads false",
