@@ -5,6 +5,7 @@ import { CustomMinter } from "../CustomMinter.js";
 import { SampleTreasury } from "./SampleTreasury.js";
 
 import contract from "./CustomTreasury.hl";
+import { RoleMap } from "../../lib/RolesAndDelegates.js";
 
 export class CustomTreasury extends SampleTreasury {
     contractSource() {
@@ -15,6 +16,19 @@ export class CustomTreasury extends SampleTreasury {
         return CustomMinter;
     }
     declare minter: CustomMinter;
+
+    get roles() : RoleMap {
+        return {
+            mintDelegate: { 
+                default: {
+                    delegateClass:  CustomMinter ,
+                    validateScriptParams(a) {
+                        return undefined
+                    }
+                }
+            }
+        }
+    }
 
     @Activity.redeemer
     mintingToken(tokenName: string)  : isActivity {

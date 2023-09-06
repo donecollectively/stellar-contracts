@@ -28,6 +28,9 @@ import { StellarTxnContext } from "../../lib/StellarTxnContext.js";
 //@ts-expect-error
 import contract from "./SampleTreasury.hl";
 import { Capo } from "../../lib/Capo.js";
+import { DefaultMinter } from "../DefaultMinter.js";
+import { RoleMap, strategyValidation, variantMap, VariantMap } from "../../lib/RolesAndDelegates.js";
+import { SampleMintDelegate } from "./SampleMintDelegate.js";
 
 export type CharterDatumArgs = {
     trustees: Address[];
@@ -39,9 +42,30 @@ export type HeldAssetsArgs = {
     purpose?: string;
 };
 
-export class SampleTreasury extends Capo {
+export class SampleTreasury extends Capo<DefaultMinter> {
     contractSource() {
         return contract;
+    }
+    get roles() : RoleMap {
+        return {
+            noDefault: variantMap<SampleMintDelegate>({ 
+            }),
+            mintDelegate: variantMap<SampleMintDelegate>({ 
+                default: {
+                    delegateClass: SampleMintDelegate,
+                    scriptParams: {},
+                    validateScriptParams(args) : strategyValidation {
+                        if (args.bad) {
+                            //note, this isn't the normal way of validating.
+                            //  ... usually it's a good field name whose value is missing or wrong.
+                            //  ... still, this conforms to the ErrorMap protocol good enough for testing.
+                            return {bad:  [ "must not be provided" ]}
+                        }
+                        return undefined
+                    }
+                }
+            })
+        }
     }
 
     @datum
@@ -60,12 +84,9 @@ export class SampleTreasury extends Capo {
         return Datum.inline(t._toUplcData());
     }
 
-
     //!!! consider making trustee-sigs only need to cover the otherRedeemerData
     //       new this.configuredContract.types.Redeemer.authorizeByCharter(otherRedeemerData, otherSignatures);
     // mkAuthorizeByCharterRedeemer(otherRedeemerData: UplcData, otherSignatures: Signature[]) {
-
-
 
     @txn
     async mkTxnMintCharterToken(

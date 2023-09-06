@@ -4,6 +4,8 @@ import {
     it as itWithContext,
     beforeEach,
     vi,
+    assertType,
+    expectTypeOf,
 } from "vitest";
 import { SampleTreasury } from "../src/examples/SampleTreasury";
 
@@ -20,13 +22,22 @@ import {
 import { StellarTxnContext } from "../lib/StellarTxnContext";
 import { MintingPolicyHash } from "@hyperionbt/helios";
 import { DefaultMinter } from "../src/DefaultMinter";
+import { SampleMintDelegate } from "../src/examples/SampleMintDelegate";
 import {
     ADA,
     StellarCapoTestHelper,
     StellarTestContext,
     addTestContext,
 } from "../lib/StellarTestHelper";
-import { hasAllUuts } from "../lib/Capo";
+import { Capo, hasAllUuts } from "../lib/Capo";
+import {
+    DelegateConfigNeeded,
+    VariantMap,
+    VariantStrategy,
+    strategyValidation,
+    variantMap,
+} from "../lib/RolesAndDelegates";
+// import { RoleDefs } from "../lib/RolesAndDelegates";
 
 type localTC = StellarTestContext<SampleTreasuryTestHelper>;
 
@@ -132,16 +143,26 @@ describe("StellarContract", async () => {
                 // console.log("s2")
                 return h.submitTx(tx, "force");
             }
-            console.log("case 1a: should work if finalize doesn't over-estimate fees")
-            await expect(tryWithSlop(170000n)).rejects.toThrow(/doesn't have enough inputs to cover the outputs/);
+            console.log(
+                "case 1a: should work if finalize doesn't over-estimate fees"
+            );
+            await expect(tryWithSlop(170000n)).rejects.toThrow(
+                /doesn't have enough inputs to cover the outputs/
+            );
             //!!! todo: once this ^^^^^^^^^^^^^^ starts passing, the other cases below can be removed
-            //    ... in favor of something like this: 
+            //    ... in favor of something like this:
             // await tryWithSlop(170000n * ADA);
 
-            console.log("case 1b: should work if finalize doesn't over-estimate fees ")
-            await expect(tryWithSlop(5n * ADA)).rejects.toThrow(/doesn't have enough inputs to cover the outputs/);
+            console.log(
+                "case 1b: should work if finalize doesn't over-estimate fees "
+            );
+            await expect(tryWithSlop(5n * ADA)).rejects.toThrow(
+                /doesn't have enough inputs to cover the outputs/
+            );
 
-            console.log("case 2: works if we give it more margin of error in initial fee calc")
+            console.log(
+                "case 2: works if we give it more margin of error in initial fee calc"
+            );
             await tryWithSlop(7n * ADA);
             //!!! todo: remove case 1b, case2 after case 1a starts working right.
 
@@ -884,7 +905,7 @@ describe("StellarContract", async () => {
                 const t: SampleTreasury = await h.setup();
                 await h.mintCharterToken();
                 // await delay(1000);
-                type something = { "something": string };
+                type something = { something: string };
                 const tcx = new StellarTxnContext<hasAllUuts<something>>();
                 await t.txnAddAuthority(tcx);
                 await t.txnCreatingUuts<something>(tcx, ["something"]);
@@ -1055,7 +1076,9 @@ describe("StellarContract", async () => {
                 // await delay(1000);
 
                 type hasSomethingUut = { ["something"]: string };
-                const tcx = new StellarTxnContext<hasAllUuts<hasSomethingUut>>();
+                const tcx = new StellarTxnContext<
+                    hasAllUuts<hasSomethingUut>
+                >();
 
                 await t.txnAddAuthority(tcx);
                 const m: DefaultMinter = t.minter!;
@@ -1199,6 +1222,154 @@ describe("StellarContract", async () => {
         });
 
         xit("rewards the first 256 buyers with 2.56x bonus credit", async () => {});
+        describe("Roles and delegates", () => {
+            describe("supports well-typed role declarations and strategy-adding", async () => {
+                it("has defined roles", async (context: localTC) => {
+                    const {
+                        h,
+                        h: { network, actors, delay, state },
+                    } = context;
+                    //!  temp, unrelated: strips stakey part of cardano address
+                    // const tt =  new Address("addr1q9g8hpckj8pmhn45v30wkrqfnnkfftamja3y9tcyjrg44cl0wk8n4atdnas8krf94kulzdqsltujm5gzas8rgel2uw0sjk4gt8")
+                    // const ttt = Address.fromPubKeyHash(tt.pubKeyHash, null, false)
+                    // console.log("addr of addr1q9g8hpckj8pmhn45v30wkrqfnnkfftamja3y9tcyjrg44cl0wk8n4atdnas8krf94kulzdqsltujm5gzas8rgel2uw0sjk4gt8\n",
+                    //   "\n    -> ", ttt.toBech32())
+
+                    const t: SampleTreasury = await h.setup();
+                    expect(t.roles).toBeTruthy();
+                    expect(t.roles.mintDelegate).toBeTruthy();
+                    expect(t.roles.mintDelegate.default).toBeTruthy();
+                });
+            });
+            describe("supports just-in-time strategy-selection using withDelegates() and txnMustGetDelegate()", () => {
+                it("withDelegates method starts a transaction with delegate settings", async (context: localTC) => {
+                    // prettier-ignore
+                    const {h, h:{network, actors, delay, state} } = context;
+                    const t = await h.setup();
+
+                    const tcx = t.withDelegates({
+                        mintDelegate: {
+                            strategyName: "default",
+                            addlParams: {},
+                        },
+                    });
+                    expect(tcx.selectedDelegates.mintDelegate).toBeTruthy();
+                });
+
+                it("txnMustGetDelegate(tcx, role) method retrieves a configured delegate", async (context: localTC) => {
+                    // prettier-ignore
+                    const {h, h:{network, actors, delay, state} } = context;
+                    const t = await h.setup();
+
+                    const tcx = t.withDelegates({
+                        mintDelegate: {
+                            strategyName: "default",
+                            addlParams: {},
+                        },
+                    });
+                    expect(
+                        t.txnMustGetDelegate(tcx, "mintDelegate")
+                    ).toBeInstanceOf(SampleMintDelegate);
+                });
+                it("txnMustGetDelegate() will use a 'default' delegate", async (context: localTC) => {
+                    // prettier-ignore
+                    const {h, h:{network, actors, delay, state} } = context;
+                    const t = await h.setup();
+
+                    const tcx = t.withDelegates({});
+
+                    expect(
+                        t.txnMustGetDelegate(tcx, "mintDelegate")
+                    ).toBeInstanceOf(SampleMintDelegate);
+                });
+
+                it("If there is no delegate configured (or defaulted) for the needed role, txnMustGetDelegate throws a DelegateConfigNeeded error.", async (context: localTC) => {
+                    // prettier-ignore
+                    const {h, h:{network, actors, delay, state} } = context;
+                    const t = await h.setup();
+
+                    const tcx = t.withDelegates({});
+
+                    const problem = () => {
+                        t.txnMustGetDelegate(tcx, "noDefault");
+                    };
+                    expect(problem).toThrow(/no delegate for role/);
+                    expect(problem).toThrow(DelegateConfigNeeded);
+                });
+
+                it("If the strategy-configuration has any configuration problems, the DelegateConfigNeeded error contains an 'errors' object", async (context: localTC) => {
+                    // prettier-ignore
+                    const {h, h:{network, actors, delay, state} } = context;
+                    const t = await h.setup();
+
+                    const problem = () => {
+                        t.txnMustGetDelegate(tcx, "mintDelegate");
+                    };
+
+                    let tcx = t.withDelegates({
+                        mintDelegate: {
+                            strategyName: "default",
+                            addlParams: { badSomeUnplannedWay: true },
+                        },
+                    });
+                    expect(problem).toThrow(/configuration error/);
+
+                    tcx = t.withDelegates({
+                        mintDelegate: {
+                            strategyName: "default",
+                            addlParams: { bad: true },
+                        },
+                    });
+
+                    expect(problem).toThrow(/validation errors/);
+                    expect(problem).toThrow(DelegateConfigNeeded);
+
+                    try {
+                        problem();
+                    } catch (e) {
+                        expect(e.errors.bad[0]).toMatch(/must not/);
+                    }
+                });
+            });
+            describe("Each role uses a RoleVariants structure which can accept new variants", () => {
+                it("RoleVariants has type-parameters indicating the baseline types & interfaces for delegates in that role", async (context: localTC) => {
+                    // prettier-ignore
+                    const {h, h:{network, actors, delay, state} } = context;
+                    const t = await h.setup();
+
+                    const ok: VariantStrategy<SampleMintDelegate> = {
+                        delegateClass: SampleMintDelegate,
+                        scriptParams: {},
+                        validateScriptParams(): strategyValidation {
+                            return undefined;
+                        },
+                    };
+                    expectTypeOf(ok).toMatchTypeOf<
+                        VariantStrategy<SampleMintDelegate>
+                    >;
+                    const bad = {
+                        // delegateClass: SampleMintDelegate,
+                        delegateClass: SampleTreasury,
+                        scriptParams: {},
+                        validateScriptParams(): strategyValidation {
+                            return undefined;
+                        },
+                    };
+                    assertType<VariantMap<SampleMintDelegate>>({
+                        ok,
+                        //@ts-expect-error 
+                        wrong: bad,
+                    })
+                });
+                it.todo("variants can augment the definedRoles object without removing or replacing any existing variant", async (context: localTC) => {
+                    // prettier-ignore
+                    const {h, h:{network, actors, delay, state} } = context;
+                    const t = await h.setup(); 
+                    throw new Error(`test not implemented`);
+                });
+                
+            });
+        });
     });
 });
 

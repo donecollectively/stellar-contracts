@@ -34,6 +34,7 @@ class CustomTreasuryTestHelper extends StellarCapoTestHelper<CustomTreasury> {
     get stellarClass() {
         return CustomTreasury;
     }
+
     setupActors() {
         this.addActor("tina", 1100n * ADA);
         this.addActor("tracy", 13n * ADA);

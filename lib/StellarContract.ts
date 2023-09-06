@@ -43,8 +43,10 @@ export type utxoInfo = {
 
 export type stellarSubclass<
     S extends StellarContract<P>,
-    P extends paramsBase
-> = new (args: StellarConstructorArgs<S, P>) => S & StellarContract<P>;
+    P extends paramsBase = S extends StellarContract<infer SCP> ? SCP : paramsBase
+> = 
+& ( new (args: StellarConstructorArgs<S, P>) => S & StellarContract<P> )
+& { defaultParams: P }
 
 export type anyDatumProps = Record<string, any>;
 export type paramsBase = Record<string, any>;
@@ -207,6 +209,10 @@ export class StellarContract<
     networkParams: NetworkParams;
     _template?: Program;
     myActor?: Wallet;
+
+    static get defaultParams() {
+        return {}
+    }
 
     getContractParams(params) {
         return params;
