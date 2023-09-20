@@ -5,7 +5,8 @@ import { CustomMinter } from "../CustomMinter.js";
 import { SampleTreasury } from "./SampleTreasury.js";
 
 import contract from "./CustomTreasury.hl";
-import { RoleMap } from "../../lib/RolesAndDelegates.js";
+import { RoleMap, variantMap } from "../../lib/RolesAndDelegates.js";
+import { DefaultMinter } from "../DefaultMinter.js";
 
 export class CustomTreasury extends SampleTreasury {
     contractSource() {
@@ -17,16 +18,20 @@ export class CustomTreasury extends SampleTreasury {
     }
     declare minter: CustomMinter;
 
+    static get defaultParams() {
+        return {}
+    }
+
     get roles() : RoleMap {
         return {
-            mintDelegate: { 
+            mintDelegate: variantMap<DefaultMinter>({ 
                 default: {
-                    delegateClass:  CustomMinter ,
+                    delegateClass:  CustomMinter,
                     validateScriptParams(a) {
-                        return undefined
+                        return undefined // any params are okay here (temporary)
                     }
                 }
-            }
+            })
         }
     }
 

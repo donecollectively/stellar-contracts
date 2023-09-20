@@ -46,7 +46,7 @@ export type stellarSubclass<
     P extends paramsBase = S extends StellarContract<infer SCP> ? SCP : paramsBase
 > = 
 & ( new (args: StellarConstructorArgs<S, P>) => S & StellarContract<P> )
-& { defaultParams: P }
+& { defaultParams: Partial<P> }
 
 export type anyDatumProps = Record<string, any>;
 export type paramsBase = Record<string, any>;
