@@ -23,7 +23,8 @@ export type {
     hasAllUuts,
     hasUutContext,
     SeedTxnParams,
-    RoleMap
+    RoleMap,
+    strategyValidation,
 } from "./Capo.js";
 
 

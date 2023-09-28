@@ -31,7 +31,7 @@ import {
 } from "./RolesAndDelegates.js";
 
 export { variantMap } from "./RolesAndDelegates.js";
-export type { RoleMap } from "./RolesAndDelegates.js";
+export type { RoleMap, strategyValidation } from "./RolesAndDelegates.js";
 
 const CALLED_DEFINE_ROLES_SUPER = Symbol("didCallDRsuper");
 
