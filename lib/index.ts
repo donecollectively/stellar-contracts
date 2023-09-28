@@ -12,7 +12,8 @@ export {
 } from "./diagnostics.js";
 
 export { 
-    Capo
+    Capo,
+    variantMap,
  } from "./Capo.js";
 export type {
     MintUutRedeemerArgs,
@@ -22,6 +23,7 @@ export type {
     hasAllUuts,
     hasUutContext,
     SeedTxnParams,
+    RoleMap
 } from "./Capo.js";
 
 
