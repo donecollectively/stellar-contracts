@@ -24,12 +24,10 @@ import { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 import {
     DelegateConfig,
-    NoRoleDefs,
-    RoleDefs,
-    RoleMap,
     SelectedDelegates,
     DelegateConfigNeeded,
     ErrorMap,
+    RoleMap,
 } from "./RolesAndDelegates.js";
 
 const CALLED_DEFINE_ROLES_SUPER = Symbol("didCallDRsuper");
