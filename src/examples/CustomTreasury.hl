@@ -12,7 +12,6 @@ enum Datum {
 }
 
 enum Redeemer {
-    mintingOriginalCharter
     updatingCharter{
         trustees: []Address
         minSigs: Int
@@ -143,9 +142,6 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     };
 
     redeemerSpecificChecks : Bool = redeemer.switch {
-        mintingOriginalCharter => {
-            true
-        },
         updatingCharter{trustees, minSigs} => { 
             //! guards from optimizing mph out of the program, screwing up parameterization
             assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
