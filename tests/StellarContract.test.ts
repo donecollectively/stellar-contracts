@@ -40,6 +40,7 @@ import {
 // import { RoleDefs } from "../lib/RolesAndDelegates";
 
 type localTC = StellarTestContext<SampleTreasuryTestHelper>;
+const insufficientInputError = /need .* lovelace, but only have/;
 
 const it = itWithContext<localTC>;
 const fit = it.only;
@@ -147,17 +148,17 @@ describe("StellarContract", async () => {
                 "case 1a: should work if finalize doesn't over-estimate fees"
             );
             await expect(tryWithSlop(170000n)).rejects.toThrow(
-                /doesn't have enough inputs to cover the outputs/
+                insufficientInputError
             );
             //!!! todo: once this ^^^^^^^^^^^^^^ starts passing, the other cases below can be removed
             //    ... in favor of something like this:
             // await tryWithSlop(170000n * ADA);
+            "case 1b: should work if finalize doesn't over-estimate fees "
 
             console.log(
-                "case 1b: should work if finalize doesn't over-estimate fees "
             );
             await expect(tryWithSlop(5n * ADA)).rejects.toThrow(
-                /doesn't have enough inputs to cover the outputs/
+                insufficientInputError
             );
 
             console.log(
@@ -1374,3 +1375,5 @@ describe("StellarContract", async () => {
 });
 
 const seconds = 1000; // milliseconds
+
+
