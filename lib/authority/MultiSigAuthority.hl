@@ -1,0 +1,79 @@
+spending MultiSigAuthority
+
+
+func preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {
+    tx: Tx = ctx.tx;
+
+    charterOutput : TxOutput = getCharterOutput(tx);
+
+    cvh : ValidatorHash = ctx.get_current_validator_hash();
+    myself : Credential = Credential::new_validator(cvh);
+    if (charterOutput.address.credential != myself) {
+        actual : String = charterOutput.address.credential.switch{
+            PubKey{pkh} => "pkh:🔑#" + pkh.show(),
+            Validator{vh} => "val:📜#:" + vh.show()
+        };
+        error(
+            "charter token must be returned to the contract " + cvh.show() +
+            "... but was sent to " +actual
+        )
+    };
+
+    Datum::CharterToken{trustees, minSigs} = datum;
+    Datum::CharterToken{newTrustees, newMinSigs} = Datum::from_data( 
+        charterOutput.datum.get_inline_data() 
+    );
+    if ( !(
+        newTrustees == trustees &&
+        newMinSigs == minSigs
+    )) { 
+        error("invalid update to charter settings") 
+    };
+
+    true
+}
+
+
+func requiresValidMinSigs(datum: Datum) -> Bool {
+    Datum::CharterToken{trustees, minSigs} = datum;
+
+    assert(
+        minSigs <= trustees.length,
+        "minSigs can't be more than the size of the trustee-list"
+    );
+
+    true
+}
+
+func requiresProofOfNewTrustees(
+    ctx: ScriptContext,
+    datum: Datum
+) -> Bool {
+    Datum::CharterToken{newTrustees, _} = datum;
+
+    assert(
+        newTrustees.all(didSignInCtx(ctx)), 
+        "all the new trustees must sign"
+    );
+
+    requiresValidMinSigs(datum)
+}
+
+//!!! adapt to use my UUT
+func requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {
+    Datum::CharterToken{trustees, minSigs} = datum;
+
+    foundSigs: Int = trustees.fold[Int](
+        (count: Int, a: Address) -> Int {            
+            count + if (didSign(ctx, a)) {1} else {0}
+        }, 0
+    );
+    assert(foundSigs >= minSigs, 
+        "not enough trustees ("+foundSigs.show()+ " of " + minSigs.show() + " needed) have signed the tx" 
+    );
+
+    true
+}
+
+// for updating trustee list:
+// requiresProofOfNewTrustees(ctx, newDatum)

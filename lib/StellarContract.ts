@@ -190,7 +190,7 @@ type scriptPurpose =
     | "spending"
     | "staking"
     | "module"
-    | "linking";
+    | "endpoint";
 
 export type canHaveToken = TxInput | TxOutput | Assets;
 
@@ -751,14 +751,14 @@ export class StellarContract<
             }
             for (const s of willSign) {
                 const [a] = await s.usedAddresses;
-                if (tx.body.signers.find(s => a.pubKeyHash.hex === s.hex)) continue;
-                tx.addSigner(a.pubKeyHash);
+                if (tx.body.signers.find(s => a.pubKeyHash!.hex === s.hex)) continue;
+                tx.addSigner(a.pubKeyHash!);
             }
-            const feeEstimated = tx.estimateFee(this.networkParams);
-            if (feeEstimated > feeLimit) {
-                console.log("outrageous fee - adjust tcx.feeLimit to get a different threshold")
-                throw new Error(`outrageous fee-computation found - check txn setup for correctness`)
-            }
+            // const feeEstimated = tx.estimateFee(this.networkParams);
+            // if (feeEstimated > feeLimit) {
+            //     console.log("outrageous fee - adjust tcx.feeLimit to get a different threshold")
+            //     throw new Error(`outrageous fee-computation found - check txn setup for correctness`)
+            // }
             try {
                 // const t1 = new Date().getTime();
                 await tx.finalize(this.networkParams, changeAddress, spares);
@@ -844,7 +844,25 @@ export class StellarContract<
         const modules = this.importModules()
         // console.log({src, Program)
 
-        return (this._template = this._template || Program.new(src, modules))
+        try {
+            return (this._template = this._template || Program.new(src, modules))
+        } catch(e: any) {
+            const moduleName = e.src.name;
+            const errorModule = [src, ...modules] .find((m) => (m as any).moduleName == moduleName)
+            const {srcFile ="‹unknown path to module›"} = errorModule as any || {}
+            const [sl, sc, el, ec] = e.getFilePos()
+            const t= new Error("");
+            const modifiedStack = t.stack!.split("\n").slice(1).join("\n");
+            const additionalErrors = e.src.errors.slice(1).map((x) => `       |         ⚠️  also: ${x}`);
+            const addlErrorText = additionalErrors.length ? ["", ...additionalErrors, "       v" ].join("\n") : ""
+            t.message = e.message + addlErrorText;
+
+            t.stack = `${e.message}\n    at ${moduleName
+                } (${srcFile}:${1+sl}:${1+sc})\n`+ 
+                modifiedStack 
+
+                throw(t)
+        }
     }
 
     async getMyActorAddress() {

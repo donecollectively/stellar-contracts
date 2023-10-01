@@ -1,0 +1,8 @@
+//! this file implements a workaround for a problem 
+//  ... where a second imported .hl file in a single .ts file
+//  ... causes the dts rollup plugin to not find the second .hl file
+import shh from "./StellarHeliosHelpers.hl";
+
+export const StellarHeliosHelpers = shh;
+
+

@@ -4,55 +4,34 @@ spending SampleTreasury
 const mph : MintingPolicyHash = MintingPolicyHash::new(#1234)
 const rev : Int = 1
 
+import { 
+    DelegateDetails,
+    requiresValidDelegate
+} from CapoDelegateHelpers
+
+import {
+    mkTv,
+    txHasOutput,
+    didSign,
+    didSignInCtx
+} from StellarHeliosHelpers
+
 enum Datum {
     CharterToken {
-        trustees: []Address
-        minSigs: Int
+        govDelegate: DelegateDetails
     }
 }
 
 enum Redeemer {
-    updatingCharter{
-        trustees: []Address
-        minSigs: Int
-    }
+    updatingCharter    
     usingAuthority
-    mintingToken {
-        tokenName: String
-    }
-        
 }
 
-func didSign(ctx : ScriptContext, a: Address) -> Bool {
-    tx : Tx = ctx.tx;
-
-    pkh : PubKeyHash = a.credential.switch{
-        PubKey{h} => h,
-        _ => error("trustee can't be a contract")
-    };
-    // print("checking if trustee signed: " + pkh.show());
-
-    tx.is_signed_by(pkh)
-}
-func didSignInCtx(ctx: ScriptContext) -> (a: Address) -> Bool {
-    (a : Address) -> Bool {
-        didSign(ctx, a)
-    }
-}
 
 func requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {
-    Datum::CharterToken{trustees, minSigs} = datum;
+    Datum::CharterToken{DelegateDetails{uut, _, _}} = datum;
 
-    foundSigs: Int = trustees.fold[Int](
-        (count: Int, a: Address) -> Int {            
-            count + if (didSign(ctx, a)) {1} else {0}
-        }, 0
-    );
-    assert(foundSigs >= minSigs, 
-        "not enough trustees ("+foundSigs.show()+ " of " + minSigs.show() + " needed) have signed the tx" 
-    );
-
-    true
+    txHasOutput(ctx.tx,  mkTv(mph, uut))
 }
 
 func getCharterOutput(tx: Tx) -> TxOutput {
@@ -88,44 +67,20 @@ func preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {
         )
     };
 
-    Datum::CharterToken{trustees, minSigs} = datum;
-    Datum::CharterToken{newTrustees, newMinSigs} = Datum::from_data( 
+    Datum::CharterToken{DelegateDetails{uut, strategy, address}} = datum;
+    Datum::CharterToken{DelegateDetails{newUut, newStrategy, newAddress}} = Datum::from_data( 
         charterOutput.datum.get_inline_data() 
     );
     if ( !(
-        newTrustees == trustees &&
-        newMinSigs == minSigs
+        newUut  == uut &&
+        newStrategy == strategy  &&
+        newAddress == address
     )) { 
         error("invalid update to charter settings") 
     };
 
     true
 }
-func requiresValidMinSigs(datum: Datum) -> Bool {
-    Datum::CharterToken{trustees, minSigs} = datum;
-
-    assert(
-        minSigs <= trustees.length,
-        "minSigs can't be more than the size of the trustee-list"
-    );
-
-    true
-}
-
-func requiresProofOfNewTrustees(
-    ctx: ScriptContext,
-    datum: Datum
-) -> Bool {
-    Datum::CharterToken{newTrustees, _} = datum;
-
-    assert(
-        newTrustees.all(didSignInCtx(ctx)), 
-        "all the new trustees must sign"
-    );
-
-    requiresValidMinSigs(datum)
-}
-
 
 func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
@@ -142,27 +97,22 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     };
 
     redeemerSpecificChecks : Bool = redeemer.switch {
-        updatingCharter{trustees, minSigs} => { 
+        updatingCharter => { 
             //! guards from optimizing mph out of the program, screwing up parameterization
             assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
-            assert(trustees.serialize() == trustees.serialize(), "guard failed"); // can't fail.
-            assert(minSigs.serialize() == minSigs.serialize(), "guard failed"); // can't fail.
             
             charterOutput : TxOutput = getCharterOutput(tx);
             newDatum = Datum::from_data( 
                 charterOutput.datum.get_inline_data() 
             );
-            
-            requiresAuthorization(ctx, datum) &&
-            requiresProofOfNewTrustees(ctx, newDatum)
-        },
-        mintingToken{tokenName} => {
-            //! guards from optimizing mph out of the program, screwing up parameterization
-            assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
-            tokenName == tokenName  &&
-            notUpdatingCharter &&
+            Datum::CharterToken{delegate} = newDatum;
+
+            requiresValidDelegate(delegate, mph, ctx) &&
             requiresAuthorization(ctx, datum)
         },
+        // authorizeByCharter{otherRedeemerData, otherSignatures} => {            
+        //     false // todo support authorizing **other** things to be done with this token
+        // },
         usingAuthority => {
             assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
 
@@ -175,16 +125,3 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     redeemerSpecificChecks &&
     tx.serialize() != datum.serialize()
 }
-
-const charterTokenBaseInfo: Datum::CharterToken = Datum::CharterToken{
-    trustees: []Address{},
-    minSigs: 1
-}
-
-// const mkCharterTokenDatum : (trustees: []Address, minSigs: Int) -> Datum::CharterSeed = (trustees: []Address, minSigs: Int) -> Datum::CharterSeed {
-//      Datum::CharterToken{
-//         nce: nce(),
-//         trustees: trustees,
-//         minSigs: minSigs
-//     }
-// }

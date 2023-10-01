@@ -1,0 +1,49 @@
+module StellarHeliosHelpers
+
+func didSign(ctx : ScriptContext, a: Address) -> Bool {
+    tx : Tx = ctx.tx;
+
+    pkh : PubKeyHash = a.credential.switch{
+        PubKey{h} => h,
+        _ => error("trustee can't be a contract")
+    };
+    // print("checking if trustee signed: " + pkh.show());
+
+    tx.is_signed_by(pkh)
+}
+
+func didSignInCtx(ctx: ScriptContext) -> (a: Address) -> Bool {
+    (a : Address) -> Bool {
+        didSign(ctx, a)
+    }
+}
+
+
+//! represents the indicated token name as a Value
+func mkTv(mph: MintingPolicyHash, tn: String, count : Int = 1) -> Value {
+    Value::new(
+        AssetClass::new(mph, tn.encode_utf8()), 
+        count
+    )
+}
+
+//! makes a predicate for checking outputs against an expected value
+func outputHas(v: Value, addr: Option[Address]=Option[Address]::None) -> (TxOutput) -> Bool {
+    (txo: TxOutput) -> Bool {
+        txo.value.contains(v) &&
+        addr.switch {
+            None => true,
+            Some{dest} => txo.address == dest
+        }
+    }
+}
+
+//! tests a transaction for an expected output value
+func txHasOutput(tx: Tx, v: Value, addr: Option[Address] = Option[Address]::None) -> Bool {
+    tx.outputs.find_safe(
+        outputHas(v, addr)
+   ).switch{
+        None => false,
+        Some => true
+    }
+}

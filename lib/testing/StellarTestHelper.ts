@@ -1,5 +1,4 @@
 import * as helios from "@hyperionbt/helios";
-helios.config.set({EXPERIMENTAL_CEK: true})
 import {
     Address,
     Crypto,
@@ -9,114 +8,20 @@ import {
     TxId,
     TxOutput,
     Value,
-    WalletEmulator,
+    WalletEmulator
 } from "@hyperionbt/helios";
-
-import { promises as fs } from "fs";
-import { Vitest, vitest, TestContext, expect } from "vitest";
 import {
     StellarContract,
     findInputsInWallets,
     paramsBase,
-    stellarSubclass,
-} from "./StellarContract.js";
+    stellarSubclass
+} from "../StellarContract.js";
 import {
     lovelaceToAda, txAsString,
     utxosAsString
-} from "./diagnostics.js";
-import { Capo, anyDatumArgs } from "./Capo.js";
-import { SeedTxnParams } from "./Capo.js";
-import { StellarTxnContext } from "./StellarTxnContext.js";
+} from "../diagnostics.js";
+import { actorMap, ADA, canHaveRandomSeed, canSkipSetup, preProdParams, enhancedNetworkParams } from "./types.js";
 
-const preProdParams = JSON.parse(
-    await fs.readFile("./src/preprod.json", "utf8")
-);
-
-type enhancedNetworkParams = NetworkParams & {
-    slotToTimestamp(n: bigint): Date;
-};
-
-export interface StellarTestContext<
-    HTH extends StellarTestHelper<SC, P>,
-    SC extends StellarContract<any> = HTH extends StellarTestHelper<
-        infer SC2,
-        any
-    >
-        ? SC2
-        : never,
-    P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never
-> extends canHaveRandomSeed,
-        TestContext {
-    h: HTH;
-    get strella(): SC;
-    initHelper(
-        // <
-        //     SC extends StellarContract<any>,
-        //     P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never
-        // >
-        params: Partial<P> & canHaveRandomSeed & canSkipSetup
-    ): Promise<StellarTestHelper<SC, P>>;
-}
-
-export type helperSubclass<
-    SC extends StellarContract<any>,
-    P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never
-> = new (params: P & canHaveRandomSeed) => StellarTestHelper<SC, P>;
-
-type canHaveRandomSeed = {
-    randomSeed?: number;
-};
-type canSkipSetup = {
-    skipSetup?: true;
-};
-
-export async function addTestContext<
-    SC extends StellarContract<any>,
-    P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never
->(
-    context: StellarTestContext<any, SC, P>,
-    TestHelperClass: helperSubclass<SC>,
-    params?: P
-) {
-    console.log(" ======== ========= ======== +test context");
-    Object.defineProperty(context, "strella", {
-        get: function () {
-            return this.h.strella;
-        },
-    });
-
-    context.initHelper = async (params) => {
-        //@ts-expect-error
-        const helper = new TestHelperClass(params);
-        if (context.h) {
-            if (!params.skipSetup)
-                throw new Error(
-                    `re-initializing shouldn't be necessary without skipSetup`
-                );
-            console.log(
-                "   ............. reinitializing test helper without setup"
-            );
-        }
-        context.h = helper;
-        // console.log("context IS ", context)
-        return helper;
-    };
-    try {
-        //@ts-expect-error
-        await context.initHelper(params);
-    } catch (e) {
-        if (!params) {
-            // console.error(e.stack || e.message || JSON.stringify(e));
-            console.error(
-                `${TestHelperClass.name}: error during initialization; does this test helper require initialization with explicit params?`
-            );
-            throw e;
-        } else {
-            console.error("urgh");
-            throw e;
-        }
-    }
-}
 
 export abstract class StellarTestHelper<
     SC extends StellarContract<any>,
@@ -144,7 +49,7 @@ export abstract class StellarTestHelper<
             throw new Error(
                 `setCurrentActor: invalid actor name '${actorName}'`
             );
-        if (this.strella) this.strella.myActor = thisActor
+        if (this.strella) this.strella.myActor = thisActor;
         this.actorName = actorName;
     }
 
@@ -211,7 +116,7 @@ export abstract class StellarTestHelper<
     initStellarClass() {
         const TargetClass = this.stellarClass;
 
-        const strella = this.initStrella(TargetClass, this.params)
+        const strella = this.initStrella(TargetClass, this.params);
 
         this.strella = strella;
         this.address = strella.address;
@@ -224,9 +129,9 @@ export abstract class StellarTestHelper<
             network: this.network,
             myActor: this.currentActor,
             networkParams: this.networkParams,
-            isTest: true,   
+            isTest: true,
         });
-    }    
+    }
 
     //! it has a seed for mkRandomBytes, which must be set by caller
     randomSeed?: number;
@@ -273,8 +178,8 @@ export abstract class StellarTestHelper<
         const isAlreadyInitialized = !!this.strella;
         try {
             await tx.finalize(this.networkParams, sendChangeToCurrentActor);
-        } catch (e:  any) {
-            throw new Error(e.message + "\nin tx: "+txAsString(tx)+"\nprofile: "+ tx.profileReport
+        } catch (e: any) {
+            throw new Error(e.message + "\nin tx: " + txAsString(tx) + "\nprofile: " + tx.profileReport
             );
         }
         if (isAlreadyInitialized && !force) {
@@ -284,22 +189,22 @@ export abstract class StellarTestHelper<
         }
 
         console.log(
-            `Test helper ${force || ""} submitting tx${ force && "" || " prior to instantiateWithParams()"}:\n` +
-                txAsString(tx)
+            `Test helper ${force || ""} submitting tx${force && "" || " prior to instantiateWithParams()"}:\n` +
+            txAsString(tx)
             // new Error(`at stack`).stack
         );
 
         try {
             const txId = await this.network.submitTx(tx);
-            console.log("test helper submitted direct txn:" + txAsString(tx))
+            console.log("test helper submitted direct txn:" + txAsString(tx));
             this.network.tick(1n);
-        // await this.delay(1000)
-        // debugger
-        // this.network.dump();
+            // await this.delay(1000)
+            // debugger
+            // this.network.dump();
             return txId;
-        } catch(e: any) {
+        } catch (e: any) {
             console.error(`submit failed: ${e.message}\n  ... in tx ${txAsString(tx)}`);
-            throw e
+            throw e;
         }
     }
 
@@ -326,14 +231,13 @@ export abstract class StellarTestHelper<
             `+🎭 Actor: ${roleName}: ${a.address
                 .toBech32()
                 .substring(0, 18)}… ${lovelaceToAda(
-                walletBalance
-            )} (🔑#${a.address.pubKeyHash.hex.substring(0, 8)}…)`
+                    walletBalance
+                )} (🔑#${a.address.pubKeyHash.hex.substring(0, 8)}…)`
         );
 
         //! it makes collateral for each actor, above and beyond the initial balance,
         //  ... so that the full balance is spendable and the actor can immediately
         //  ... engage in smart-contract interactions.
-
         this.network.tick(BigInt(2));
         this.network.createUtxo(a, 5n * ADA);
         this.network.tick(BigInt(1));
@@ -380,83 +284,7 @@ export abstract class StellarTestHelper<
             throw new Error(`the indicated time is not in the future`);
         }
         // console.warn(`waiting ${slotsToWait} slots -> ${time}`);
-
         this.network.tick(slotsToWait);
         return slotsToWait;
     }
 }
-
-export abstract class StellarCapoTestHelper<
-    SC extends Capo<any>
-> extends StellarTestHelper<SC, SeedTxnParams> {
-    async setup({
-        randomSeed = 42,
-        seedTxn,
-        seedIndex = 0n,
-    }: { seedTxn?: TxId; seedIndex?: bigint; randomSeed?: number } = {}) : Promise<SC>{
-        if (this.setupPending) await this.setupPending;
-        if (this.strella && this.randomSeed == randomSeed) {
-            console.log(
-                "       ----- skipped duplicate setup() in test helper"
-            );
-
-            return this.strella;
-        }
-        if (this.strella)
-            console.warn(
-                ".... warning: new test helper setup with new seed...."
-            );
-        this.randomSeed = randomSeed;
-        // console.log(new Error("setup from").stack)
-        if (!seedTxn) {
-            seedTxn = await this.mkSeedUtxo(seedIndex);
-        }
-        const strella = this.initStrella(this.stellarClass, {
-            seedTxn,
-            seedIndex,
-        });
-        this.strella = strella;
-        const { address, mintingPolicyHash: mph } = strella;
-
-        const { name } = strella.configuredContract;
-        console.log(
-            name,
-            address.toBech32().substring(0, 18) + "…",
-            "vHash 📜 " +
-                strella.compiledContract.validatorHash.hex.substring(0, 12) +
-                "…",
-            "mph 🏦 " + mph?.hex.substring(0, 12) + "…"
-        );
-        return strella;
-    }
-
-    async mintCharterToken(args?: anyDatumArgs): Promise<StellarTxnContext> {
-        const { delay } = this;
-        const { tina, tom, tracy } = this.actors;
-        if (this.state.mintedCharterToken) {
-            console.warn(
-                "reusing minted charter from existing testing-context"
-            );
-            return this.state.mintedCharterToken;
-        }
-
-        await this.setup();
-        const script = this.strella!;
-        args = args || {
-            trustees: [tina.address, tom.address, tracy.address],
-            minSigs: 2,
-        };
-        const tcx = await script.mkTxnMintCharterToken(args);
-        expect(script.network).toBe(this.network);
-
-        await script.submit(tcx);
-        console.log("charter token minted");
-
-        this.network.tick(1n);
-        return (this.state.mintedCharterToken = tcx);
-    }
-}
-
-type actorMap = Record<string, WalletEmulator>;
-
-export const ADA = 1_000_000n; // lovelace

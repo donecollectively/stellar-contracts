@@ -5,7 +5,7 @@ import {
 
 
 //@ts-expect-error
-import contract from "./SampleMintDelegate.hl";
+import contract from "./BasicMintDelegate.hl";
 import { Activity, StellarContract, StellarTxnContext, isActivity } from "../../lib/index.js";
 
 type MintDelegateArgs = {
@@ -24,7 +24,7 @@ export type MintDelegate<T> = StellarContract<any & T> & {
     txnCreateTokenPolicy
 }
 
-export class SampleMintDelegate extends StellarContract<MintDelegateArgs> {
+export class BasicMintDelegate extends StellarContract<MintDelegateArgs> {
     static currentRev = 1n;
     static get defaultParams() {
         return { rev: this.currentRev }

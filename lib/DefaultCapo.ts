@@ -17,24 +17,31 @@ import {
 } from "@hyperionbt/helios";
 
 import {
+    Activity,
     datum,
+    isActivity,
     partialTxn,
     txn,
-} from "../../lib/StellarContract.js";
-import { InlineDatum } from "../../lib/HeliosPromotedTypes.js";
+} from "./StellarContract.js";
+import { InlineDatum } from "./HeliosPromotedTypes.js";
 
-import { StellarTxnContext } from "../../lib/StellarTxnContext.js";
+import { StellarTxnContext } from "./StellarTxnContext.js";
 
 //@ts-expect-error
-import contract from "./SampleTreasury.hl";
-import { Capo } from "../../lib/Capo.js";
-import { DefaultMinter } from "../DefaultMinter.js";
-import { RoleMap, strategyValidation, variantMap, VariantMap } from "../../lib/RolesAndDelegates.js";
-import { SampleMintDelegate } from "./SampleMintDelegate.js";
+import contract from "./DefaultCapo.hl";
+import { Capo } from "./Capo.js";
+import { DefaultMinter } from "./DefaultMinter.js";
+import { RoleMap, strategyValidation, variantMap, VariantMap } from "./delegation/RolesAndDelegates.js";
+import { BasicMintDelegate } from "./delegation/BasicMintDelegate.js";
 
-export type CharterDatumArgs = {
-    trustees: Address[];
-    minSigs: number | bigint;
+export type DelegateInfo = {
+    uut: string,
+    strategy: string,
+    address: Address[]
+}
+
+export type DefaultCharterDatumArgs = {
+    govDelegate: DelegateInfo
 };
 
 export type HeldAssetsArgs = {
@@ -42,17 +49,33 @@ export type HeldAssetsArgs = {
     purpose?: string;
 };
 
-export class SampleTreasury extends Capo<DefaultMinter> {
+export class DefaultCapo<
+    MinterType extends DefaultMinter = DefaultMinter
+> extends Capo<MinterType> {
     contractSource() {
         return contract;
     }
+
+    // // @Activity.redeemer
+    // updatingCharter() : isActivity {
+    //     return this.updatingDefaultCharter()
+    // }
     get roles() : RoleMap {
         return {
-            noDefault: variantMap<SampleMintDelegate>({ 
+            noDefault: variantMap<BasicMintDelegate>({ 
             }),
-            mintDelegate: variantMap<SampleMintDelegate>({ 
+            govDelegate: variantMap<GenericAuthority>({ 
+                address: {
+                    delegateClass: AddressAuthority,
+                    scriptParams: {},
+                    validateScriptParams(args) : strategyValidation {
+
+                    }
+                }
+            }),
+            mintDelegate: variantMap<BasicMintDelegate>({ 
                 default: {
-                    delegateClass: SampleMintDelegate,
+                    delegateClass: BasicMintDelegate,
                     scriptParams: {},
                     validateScriptParams(args) : strategyValidation {
                         if (args.bad) {
@@ -69,17 +92,13 @@ export class SampleTreasury extends Capo<DefaultMinter> {
     }
 
     @datum
-    mkDatumCharterToken({
-        trustees,
-        minSigs,
-    }: {
-        trustees: Address[];
-        minSigs: bigint;
-    }): InlineDatum {
+    mkDatumCharterToken(args: DefaultCharterDatumArgs): InlineDatum {
         //!!! todo: make it possible to type these datum helpers more strongly
-        const t = new this.configuredContract.types.Datum.CharterToken(
-            trustees,
-            minSigs
+
+        const {Datum:{CharterToken}, DelegateDetails} = this.configuredContract.types;
+        const {uut, strategy, address} = args.govDelegate
+        const t = new CharterToken(
+            new DelegateDetails(uut, strategy, address)
         );
         return Datum.inline(t._toUplcData());
     }
@@ -90,33 +109,42 @@ export class SampleTreasury extends Capo<DefaultMinter> {
 
     @txn
     async mkTxnMintCharterToken(
-        { trustees, minSigs }: CharterDatumArgs,
+        charterArgs: DefaultCharterDatumArgs,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
         console.log(`minting charter from seed ${this.paramsIn.seedTxn.hex.substring(0, 12)}…@${this.paramsIn.seedIndex}`);
         return this.mustGetContractSeedUtxo().then((seedUtxo) => {
-            const datum = this.mkDatumCharterToken({
-                trustees,
-                minSigs: BigInt(minSigs),
-            });
+            const datum = this.mkDatumCharterToken(charterArgs);
 
             const outputs = [new TxOutput(this.address, this.tvCharter(), datum)];
 
             tcx.addInput(seedUtxo).addOutputs(outputs);
-            return this.minter!.txnMintingCharterToken(tcx, this.address);
+            return this.minter!.txnMintingCharter(tcx, this.address);
         });
     }
  
+    @Activity.redeemer
+    updatingCharter(
+        args: DefaultCharterDatumArgs 
+    ): isActivity {
+        const {DelegateDetails, Redeemer} = this.configuredContract.types
+        const t = new Redeemer.updatingCharter(
+            args.govDelegate,
+            new DelegateDetails(args.govDelegate.strategy, args.govDelegate.address)
+        );
+
+        return { redeemer: t._toUplcData() };
+    }
+
     @txn
     async mkTxnUpdateCharter(
-        trustees: Address[],
-        minSigs: bigint,
+        args:  DefaultCharterDatumArgs,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext> {
         return this.txnUpdateCharterUtxo(
             tcx,
-            this.updatingCharter({ trustees, minSigs }),
-            this.mkDatumCharterToken({ trustees, minSigs })
+            this.updatingCharter(args),
+            this.mkDatumCharterToken(args)
         )
     }
 

@@ -18,24 +18,26 @@ import {
     StellarContract,
     isActivity,
     partialTxn,
-} from "../lib/StellarContract.js";
+} from "./StellarContract.js";
 
 //@ts-expect-error
 import contract from "./DefaultMinter.hl";
 import { CapoMintHelpers } from "./CapoMintHelpers.js";
 
-import { StellarTxnContext } from "../lib/StellarTxnContext.js";
+import { StellarTxnContext } from "./StellarTxnContext.js";
 import {
     MintCharterRedeemerArgs,
     MintUutRedeemerArgs,
     MinterBaseMethods,
-    SeedTxnParams,
     hasAllUuts,
     hasSomeUuts,
     hasUutContext,
     uutPurposeMap,
 } from "../lib/Capo.js";
-import { valuesEntry } from "../lib/HeliosPromotedTypes.js";
+import { SeedTxnParams } from "./SeedTxn.js";
+import { valuesEntry } from "./HeliosPromotedTypes.js";
+import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";
+import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
 
 export class DefaultMinter
     extends StellarContract<SeedTxnParams>
@@ -44,29 +46,35 @@ export class DefaultMinter
     contractSource() {
         return contract;
     }
-
-    capoMinterHelpers(): string {
-        return CapoMintHelpers;
-    }
     
     importModules(): string[] {
-        return [this.capoMinterHelpers()];
+        return [ 
+            StellarHeliosHelpers, 
+            CapoDelegateHelpers,
+            CapoMintHelpers 
+        ]
     }
 
     @Activity.partialTxn
     async txnCreatingUuts<UutMapType extends uutPurposeMap>(
         tcx: StellarTxnContext<any>,
-        uutPurposes: (string & keyof UutMapType)[]
+        uutPurposes: (string & keyof UutMapType)[],
+        seedUtxo?: TxInput
     ): Promise<hasUutContext<UutMapType>> {
-        //!!! make it big enough to serve minUtxo for the new UUT
-        const uutSeed = this.mkValuePredicate(BigInt(42_000), tcx);
-        return this.mustFindActorUtxo(
-            `for-uut-${uutPurposes.join("+")}`,
-            uutSeed,
-            tcx
-        ).then(async (freeSeedUtxo) => {
-            tcx.addInput(freeSeedUtxo);
-            const { txId, utxoIdx } = freeSeedUtxo.outputId;
+        const gettingSeed = seedUtxo ? Promise.resolve<TxInput>(seedUtxo) :
+        new Promise<TxInput>(res => {
+            //!!! make it big enough to serve minUtxo for the new UUT
+            const uutSeed = this.mkValuePredicate(BigInt(42_000), tcx);
+            this.mustFindActorUtxo(
+                `for-uut-${uutPurposes.join("+")}`,
+                uutSeed,
+                tcx
+            ).then(res)
+        });
+
+        return gettingSeed.then(async (seedUtxo) => {
+            tcx.addInput(seedUtxo);
+            const { txId, utxoIdx } = seedUtxo.outputId;
 
             const { encodeBech32, blake2b, encodeBase32 } = Crypto;
 
@@ -92,7 +100,7 @@ export class DefaultMinter
 
             const vEntries = this.mkUutValuesEntries(uutMap);
 
-            const { txId: seedTxn, utxoIdx: seedIndex } = freeSeedUtxo.outputId;
+            const { txId: seedTxn, utxoIdx: seedIndex } = seedUtxo.outputId;
 
             return tcx.attachScript(this.compiledContract).mintTokens(
                 this.mintingPolicyHash!,
@@ -120,12 +128,12 @@ export class DefaultMinter
     }
 
     @Activity.redeemer
-    protected mintingCharterToken({
+    protected mintingCharter({
         owner,
     }: MintCharterRedeemerArgs): isActivity {
         // debugger
         const t =
-            new this.configuredContract.types.Redeemer.mintingCharterToken(
+            new this.configuredContract.types.Redeemer.mintingCharter(
                 owner
             );
 
@@ -172,7 +180,7 @@ export class DefaultMinter
     }
 
     @Activity.partialTxn
-    async txnMintingCharterToken(
+    async txnMintingCharter(
         tcx: StellarTxnContext,
         owner: Address
     ): Promise<StellarTxnContext> {
@@ -182,7 +190,7 @@ export class DefaultMinter
             .mintTokens(
                 this.mintingPolicyHash!,
                 [tVal],
-                this.mintingCharterToken({ owner }).redeemer
+                this.mintingCharter({ owner }).redeemer
             )
             .attachScript(this.compiledContract);
     }

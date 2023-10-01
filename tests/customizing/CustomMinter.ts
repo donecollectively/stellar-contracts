@@ -21,7 +21,7 @@ import {
 import contract from "./CustomMinter.hl";
 import { StellarTxnContext } from "../lib/StellarTxnContext.js";
 import { MinterBaseMethods } from "../lib/Capo.js";
-import { DefaultMinter } from "./DefaultMinter.js";
+import { DefaultMinter } from "../lib/DefaultMinter.js";
 import { tokenNamesOrValuesEntry, valuesEntry } from "../lib/HeliosPromotedTypes.js";
 
 

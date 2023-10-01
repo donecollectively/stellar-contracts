@@ -1,0 +1,29 @@
+module CapoDelegateHelpers
+
+import {
+    txHasOutput,
+    mkTv
+} from StellarHeliosHelpers
+
+struct DelegateDetails {
+    uut: String
+    strategy: String
+    addrHint: Address
+}
+
+func requiresValidDelegate(
+    dd: DelegateDetails, 
+    mph: MintingPolicyHash, 
+    ctx : ScriptContext
+) -> Bool {
+    DelegateDetails{uut, strategy, addrHint} = dd;
+    if (!(strategy.encode_utf8().length < 4)) {
+        error("strategy must be at least 4 bytes")
+    };
+
+    //! the delegate is valid as long as the transaction pays the UUT into the indicated address
+    //   ... that address might not be the permanent address for a "bearer" strategy, but
+    //   ... for other strategies, it should be.  So we just check it the same way for all cases.
+    //! the uut can be minted in the current transaction, or transferred from anywhere.
+    txHasOutput(ctx.tx, mkTv(mph, uut), Option[Address]::Some{addrHint} )
+}

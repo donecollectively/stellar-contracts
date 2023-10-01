@@ -1,21 +1,28 @@
-minting defaultMinter
-
-const seedTxn : TxId = TxId::new(#1234)
-const seedIndex : Int = 42
+minting DefaultMinter 
 
 import { 
     hasSeedUtxo, 
     validateUutMinting
 } from CapoMintHelpers
 
+import {mkTv} from StellarHeliosHelpers
+
+import {
+    DelegateDetails, 
+    requiresValidDelegate
+} from CapoDelegateHelpers
+
+const seedTxn : TxId = TxId::new(#1234)
+const seedIndex : Int = 42
+
 enum Redeemer { 
-    mintingCharterToken {
+    mintingCharter {
         owner: Address
+        delegate: DelegateDetails
     }
     mintingUuts {
         seedTxn: TxId
         seedIndex: Int
-        //!!! todo: apply this everywhere else
         purposes: []String
     }
 }
@@ -29,16 +36,17 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
     mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
     value_minted: Value = tx.minted;
 
-    charterToken: AssetClass = AssetClass::new(
-        mph,
-        "charter".encode_utf8()
-    );
-
     ok : Bool = r.switch {
-        charter: mintingCharterToken => {       
-            assert(value_minted == Value::new(charterToken, 1), "no charter token minted");
+        charter: mintingCharter => {       
+            charterVal : Value = mkTv(mph, "charter");
+            authTnBase : String = "delegated-authority";
+
+            assert(value_minted >= charterVal,
+                "charter token not minted");
 
             hasContractSeedUtxo(tx) &&
+            validateUutMinting(ctx:ctx, sTxId:seedTxn, sIdx:seedIndex, 
+                purposes: []String{authTnBase}, exact:false) &&
             tx.outputs.all( (output: TxOutput) -> Bool {
                 output.value != value_minted || (
                     output.value == value_minted &&

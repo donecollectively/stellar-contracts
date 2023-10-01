@@ -8,7 +8,7 @@ import {
     TxInput,
     Value,
 } from "@hyperionbt/helios";
-import { DefaultMinter } from "../src/DefaultMinter.js";
+import { DefaultMinter } from "./DefaultMinter.js";
 import {
     Activity,
     StellarConstructorArgs,
@@ -28,17 +28,15 @@ import {
     DelegateConfigNeeded,
     ErrorMap,
     RoleMap,
-} from "./RolesAndDelegates.js";
+} from "./delegation/RolesAndDelegates.js";
+import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
+import { SeedTxnParams } from "./SeedTxn.js";
+import { DefaultCharterDatumArgs } from "./DefaultCapo.js";
+import { CapoMintHelpers } from "./CapoMintHelpers.js";
+import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";
 
-export { variantMap } from "./RolesAndDelegates.js";
-export type { RoleMap, strategyValidation } from "./RolesAndDelegates.js";
-
-const CALLED_DEFINE_ROLES_SUPER = Symbol("didCallDRsuper");
-
-export type SeedTxnParams = {
-    seedTxn: TxId;
-    seedIndex: bigint;
-};
+export { variantMap } from "./delegation/RolesAndDelegates.js";
+export type { RoleMap, strategyValidation } from "./delegation/RolesAndDelegates.js";
 
 export type uutPurposeMap = { [purpose: string]: string };
 export type hasSomeUuts<uutEntries extends uutPurposeMap = {}> = {
@@ -51,7 +49,8 @@ export type hasAllUuts<uutEntries extends uutPurposeMap = {}> = {
 interface hasUutCreator {
     txnCreatingUuts<UutMapType extends uutPurposeMap>(
         tcx: StellarTxnContext<any>,
-        uutPurposes: (string & keyof UutMapType)[]
+        uutPurposes: (string & keyof UutMapType)[],
+        seedUtxo?: TxInput
     ): Promise<hasUutContext<UutMapType>>;
 }
 
@@ -69,7 +68,7 @@ export type hasUutContext<uutEntries extends uutPurposeMap> = StellarTxnContext<
 
 export interface MinterBaseMethods extends hasUutCreator {
     get mintingPolicyHash(): MintingPolicyHash;
-    txnMintingCharterToken(
+    txnMintingCharter(
         tcx: StellarTxnContext<any>,
         owner: Address,
         tVal: valuesEntry
@@ -79,7 +78,8 @@ export interface MinterBaseMethods extends hasUutCreator {
 export type anyDatumArgs = Record<string, any>;
 
 export abstract class Capo<
-        minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter
+        minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter,
+        charterDatumType extends anyDatumArgs = DefaultCharterDatumArgs
     >
     extends StellarContract<SeedTxnParams>
     implements hasUutCreator
@@ -108,7 +108,7 @@ export abstract class Capo<
             throw new Error("Redeemer must have a 'usingAuthority' variant");
     }
     abstract contractSource(): string;
-    abstract mkDatumCharterToken(args: anyDatumArgs): InlineDatum;
+    abstract mkDatumCharterToken(args: charterDatumType): InlineDatum;
     // abstract txnMustUseCharterUtxo(
     //     tcx: StellarTxnContext,
     //     newDatum?: InlineDatum
@@ -155,21 +155,7 @@ export abstract class Capo<
         return { redeemer: t._toUplcData() };
     }
 
-    @Activity.redeemer
-    protected updatingCharter({
-        trustees,
-        minSigs,
-    }: {
-        trustees: Address[];
-        minSigs: bigint;
-    }): isActivity {
-        const t = new this.configuredContract.types.Redeemer.updatingCharter(
-            trustees,
-            minSigs
-        );
-
-        return { redeemer: t._toUplcData() };
-    }
+    protected abstract updatingCharter(args: charterDatumType): isActivity;
 
     tvCharter() {
         return this.minter!.tvCharter();
@@ -182,9 +168,17 @@ export abstract class Capo<
         return this.tvCharter();
     }
 
+    importModules(): string[] {
+        return [
+            StellarHeliosHelpers,
+            CapoDelegateHelpers,
+            CapoMintHelpers
+        ];
+    }
+
     @txn
     async mkTxnMintCharterToken(
-        datumArgs: anyDatumArgs,
+        datumArgs: charterDatumType,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
         console.log(
@@ -197,11 +191,12 @@ export abstract class Capo<
         return this.mustGetContractSeedUtxo().then((seedUtxo) => {
             const v = this.tvCharter();
 
+            
             const datum = this.mkDatumCharterToken(datumArgs);
             const outputs = [new TxOutput(this.address, v, datum)];
 
             tcx.addInput(seedUtxo).addOutputs(outputs);
-            return this.minter!.txnMintingCharterToken(tcx, this.address);
+            return this.minter!.txnMintingCharter(tcx, this.address);
         });
     }
 
@@ -251,6 +246,7 @@ export abstract class Capo<
         newDatumOrForceRefScript?: InlineDatum | true
     ): Promise<StellarTxnContext<any> | never> {
         return this.mustFindCharterUtxo().then((ctUtxo: TxInput) => {
+            //!!! todo: include call to authority delegate's txnAuthorizeCharter
             if (true === redeemerOrRefInput) {
                 if (
                     newDatumOrForceRefScript &&
@@ -340,11 +336,11 @@ export abstract class Capo<
         const { seedTxn, seedIndex } = this.paramsIn;
 
         const minter = this.addScriptWithParams(minterClass, params);
-        const { mintingCharterToken, mintingUuts } =
+        const { mintingCharter, mintingUuts } =
             minter.configuredContract.types.Redeemer;
-        if (!mintingCharterToken)
+        if (!mintingCharter)
             throw new Error(
-                `minting script doesn't offer required 'mintingCharterToken' activity-redeemer`
+                `minting script doesn't offer required 'mintingCharter' activity-redeemer`
             );
         if (!mintingUuts)
             throw new Error(
@@ -367,7 +363,7 @@ export abstract class Capo<
         return this.mustFindActorUtxo(
             "seed",
             (u) => {
-                const { txId, utxoIdx } = u;
+                const { txId, utxoIdx } = u.outputId;
 
                 if (txId.eq(seedTxn) && BigInt(utxoIdx) == seedIndex) {
                     return u;

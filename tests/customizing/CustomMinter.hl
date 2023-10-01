@@ -9,7 +9,7 @@ const seedTxn : TxId = TxId::new(#1234)
 const seedIndex : Int = 42
 
 enum Redeemer { 
-    mintingCharterToken {
+    mintingCharter {
         owner: Address
     }
     mintingUuts {
@@ -39,7 +39,7 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
     );
 
     ok : Bool = r.switch {
-        charter: mintingCharterToken => {       
+        charter: mintingCharter => {       
             assert(value_minted == Value::new(charterToken, 1), "no charter token minted");
 
             hasContractSeedUtxo(tx) &&

@@ -1,7 +1,6 @@
 import { Address } from "@hyperionbt/helios";
-import { CustomMinter } from "../src/CustomMinter.js";
-import { StellarContract, paramsBase, stellarSubclass } from "./StellarContract.js";
-import { DefaultMinter } from "./index.js";
+import { StellarContract, paramsBase, stellarSubclass } from "../StellarContract.js";
+import { DefaultMinter } from "../index.js";
 
 
 export class DelegateConfigNeeded extends Error {
