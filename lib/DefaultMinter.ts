@@ -166,7 +166,7 @@ export class DefaultMinter
         const { mintingPolicyHash } = this;
 
         const v = new Value(
-            this.ADA(1.7),
+            undefined,
             new Assets([[mintingPolicyHash, [this.charterTokenAsValuesEntry]]])
         );
         return v;

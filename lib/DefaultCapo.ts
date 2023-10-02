@@ -116,9 +116,10 @@ export class DefaultCapo<
         return this.mustGetContractSeedUtxo().then((seedUtxo) => {
             const datum = this.mkDatumCharterToken(charterArgs);
 
-            const outputs = [new TxOutput(this.address, this.tvCharter(), datum)];
+            const output = new TxOutput(this.address, this.tvCharter(), datum);
+            output.correctLovelace(this.networkParams);
 
-            tcx.addInput(seedUtxo).addOutputs(outputs);
+            tcx.addInput(seedUtxo).addOutputs([ output ]);
             return this.minter!.txnMintingCharter(tcx, this.address);
         });
     }

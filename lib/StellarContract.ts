@@ -17,6 +17,7 @@ import {
     Wallet,
     extractScriptPurposeAndName,
     Datum,
+    AssetClass,
 } from "@hyperionbt/helios";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 import { utxosAsString, valueAsString } from "./diagnostics.js";
@@ -497,6 +498,14 @@ export class StellarContract<
         }
     }
 
+    mkAssetValue(tokenId: AssetClass, count: number = 1) {
+        const assets = [
+            [tokenId, count] as [AssetClass, number]
+        ];
+        const v = new Value(undefined, assets);
+        return v;
+    }
+
     mkTokenPredicate(
         vOrMph: Value | MintingPolicyHash,
         tokenName?: string,
@@ -504,6 +513,7 @@ export class StellarContract<
     ): tokenPredicate<any> {
         let v: Value;
 
+        //!!! todo: support (AssetClass, quantity) input form
         if (!vOrMph)
             throw new Error(
                 `missing required Value or MintingPolicyHash in arg1`

@@ -1,4 +1,4 @@
-import { Address, Value } from "@hyperionbt/helios"
+import { Address, AssetClass, TxInput, Value } from "@hyperionbt/helios"
 
 //@ts-expect-error
 import contract from "./MultisigAuthorityPolicy.hl"
@@ -39,13 +39,44 @@ export class MultisigAuthorityPolicy extends StellarContract<RCPolicyArgs> {
         return tcx
     }
 
-    // servesDelegationRole(role: string) {
-    //     if ("registeredCredPolicy" == role) return true;
-    // }
-    //
-    // static mkDelegateWithArgs(a: RCPolicyArgs) {
-    //
-    // }
+    //! impls MUST resolve the indicated token to a specific UTxO
+    //  ... or throw an informative error
+    async mustFindAuthorityToken(tcx, tokenId: AssetClass) : Promise<TxInput> {
+
+    }
+
+    async txnReceiveAuthorityToken(
+        tcx : StellarTxnContext, 
+        tokenId: AssetClass, 
+        delegateAddr: Address,
+        sourceUtxo?: TxInput,
+    ) : Promise<StellarTxnContext> {
+        throw new Error(`implementation TODO`)
+        return tcx;
+    }
+
+    //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
+    async txnGrantAuthority(        
+        tcx : StellarTxnContext, 
+        tokenId: AssetClass, 
+        sourceUtxo: TxInput,
+        delegateAddr: Address,
+    ): Promise<StellarTxnContext> {
+
+        return tcx;
+    }
+
+    //! Adds the indicated utxo to the transaction with appropriate activity/redeemer
+    //  ... allowing the token to be burned by the minting policy.
+    async txnRetireCred(
+        tcx : StellarTxnContext, 
+        tokenId: AssetClass, 
+        delegateAddr: Address,
+    ): Promise<StellarTxnContext> {
+
+        return tcx;
+    }
+
     requirements() {
         return {
             "provides arms-length proof of authority to any other contract": {

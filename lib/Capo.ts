@@ -36,7 +36,10 @@ import { CapoMintHelpers } from "./CapoMintHelpers.js";
 import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";
 
 export { variantMap } from "./delegation/RolesAndDelegates.js";
-export type { RoleMap, strategyValidation } from "./delegation/RolesAndDelegates.js";
+export type {
+    RoleMap,
+    strategyValidation,
+} from "./delegation/RolesAndDelegates.js";
 
 export type uutPurposeMap = { [purpose: string]: string };
 export type hasSomeUuts<uutEntries extends uutPurposeMap = {}> = {
@@ -169,11 +172,7 @@ export abstract class Capo<
     }
 
     importModules(): string[] {
-        return [
-            StellarHeliosHelpers,
-            CapoDelegateHelpers,
-            CapoMintHelpers
-        ];
+        return [StellarHeliosHelpers, CapoDelegateHelpers, CapoMintHelpers];
     }
 
     @txn
@@ -191,11 +190,11 @@ export abstract class Capo<
         return this.mustGetContractSeedUtxo().then((seedUtxo) => {
             const v = this.tvCharter();
 
-            
             const datum = this.mkDatumCharterToken(datumArgs);
-            const outputs = [new TxOutput(this.address, v, datum)];
+            const output = new TxOutput(this.address, v, datum);
+            output.correctLovelace(this.networkParams);
 
-            tcx.addInput(seedUtxo).addOutputs(outputs);
+            tcx.addInput(seedUtxo).addOutputs([output]);
             return this.minter!.txnMintingCharter(tcx, this.address);
         });
     }
@@ -292,7 +291,9 @@ export abstract class Capo<
 
     @partialTxn // non-activity partial
     txnKeepCharterToken(tcx: StellarTxnContext<any>, datum: InlineDatum) {
-        tcx.addOutput(new TxOutput(this.address, this.tvCharter(), datum));
+        const txo = new TxOutput(this.address, this.tvCharter(), datum);
+        txo.correctLovelace(this.networkParams);
+        tcx.addOutput(txo);
 
         return tcx;
     }
