@@ -1,11 +1,11 @@
-import { Address, Value } from "@hyperionbt/helios"
+import { Address, TxInput, Value } from "@hyperionbt/helios"
 
 //@ts-expect-error
 import contract from "./MultiSigAuthority.hl"
 import { Activity, StellarContract, StellarTxnContext } from "../index.js"
 import type { isActivity } from "../index.js"
 
-type RCPolicyArgs = {
+type AuthorityPolicyArgs = {
     rev: bigint
     // mph: MintingPolicyHash;
     // policyUutName: string;
@@ -22,8 +22,13 @@ export type RCPolicyDelegate<T> = StellarContract<any & T> & {
     txnRetireCred
 }
 
-//! a contract enforcing policy for a registered credential
-export class RCPolicy extends StellarContract<RCPolicyArgs> {
+//! an interface & base class to enforce policy for authorizing activities 
+//  ... in service to some other contract.  The other contract is EXPECTED
+//  ... to hold a reference to key information for identifying this policy,
+//  ... e.g. through a DelegateDetails structure.
+export abstract class AuthorityPolicy<
+    T extends AuthorityPolicyArgs=AuthorityPolicyArgs
+> extends StellarContract<T> {
     static currentRev = 1n
     static get defaultParams() {
         return { rev: this.currentRev }
@@ -42,18 +47,41 @@ export class RCPolicy extends StellarContract<RCPolicyArgs> {
         return { redeemer: t._toUplcData() }
     }
 
-    @Activity.partialTxn
-    async txnFreshenCredInfo(
-        tcx: StellarTxnContext,
-        tokenName: string
-    ): Promise<StellarTxnContext> {
-        return tcx
-    }
+    //! creates a UTxO depositing the indicated token-name into the delegated destination.
+    //! Each implemented subclass can use it's own style to match its strategy & mechanism.
+    //! This is used both for the original deposit and for returning the token during a grant-of-authority
+    //! When the sourceUtxo arg is present, its datum may be used 
+    //  ... for deciding the next datum for the token.
+    abstract txnReceiveAuthorityToken(
+        tcx : StellarTxnContext, 
+        tokenValue: Value, 
+        delegateAddr: Address,
+        sourceUtxo?: TxInput,
+    ) : StellarTxnContext;
 
-    // servesDelegationRole(role: string) {
-    //     if ("registeredCredPolicy" == role) return true;
-    // }
-    //
+    //! creates a TxIn, spending the indicated token-name.  
+    //! It SHOULD normally deposit it back to its origin with equivalent Datum settings;
+    //   ... a contract-backed implementation SHOULD enforce the expected return.
+    //! Other contracts needing the authority within a transaction can rely on the presence of this spent authority.
+    //! 
+    abstract txnGrantAuthority(        
+        tcx : StellarTxnContext, 
+        tokenValue: Value, 
+        delegateAddr: Address,
+    ): StellarTxnContext;
+
+
+    //! SHOULD burn the Uut.  When backed by a contract, 
+    //! ... it should ensure any other UTXOs it may also hold,
+    //   ... do not become inaccessible as a result.
+    //! When backed by a contract, it should use an activity/redeemer
+    //  ... allowing the token to be spent and not returned.
+    abstract txnRetireCred(
+        tcx : StellarTxnContext, 
+        tokenValue: Value, 
+        delegateAddr: Address,
+    ): StellarTxnContext;
+
     // static mkDelegateWithArgs(a: RCPolicyArgs) {
     //
     // }
@@ -96,9 +124,9 @@ export class RCPolicy extends StellarContract<RCPolicyArgs> {
                     "  ... the strategy variant has no meaningful action to perform ",
                     "  ... that would serve the method's purpose"
                 ], mech: [
-                    "txnReceiveAuthorityToken(tcx, tokenName, delegate) MUST create a UTxO depositing the indicated token-name into the delegated destination.",
-                    "txnGrantAuthority(tcx, tokenName, delegate) MUST create a TxIn, spending the indicated token-name.  It SHOULD normally deposit it back to its origin with equivalent Datum settings",
-                    "txnRetireCred(tcx, tokenName, delegate) SHOULD burn the Uut.  It SHOULD ensure any other UTXOs it may hold do not become inaccessible as a result",
+                    "txnReceiveAuthorityToken(tcx, tokenValue, delegateAddr, original?) MUST create a UTxO depositing the indicated token-name into the delegated destination.",
+                    "txnGrantAuthority(tcx, tokenValue, delegateAddr) MUST create a TxIn, spending the indicated token-name.  It SHOULD normally deposit it back to its origin with equivalent Datum settings",
+                    "txnRetireCred(tcx, tokenValue, delegateAddr) SHOULD create a TxIn to allow the token to be burned.  It SHOULD ensure any other UTXOs it may hold do not become inaccessible as a result",
                 ], requires: []
             },
 

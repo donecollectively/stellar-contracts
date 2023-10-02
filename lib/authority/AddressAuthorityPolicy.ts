@@ -1,9 +1,9 @@
 import { SeedTxnParams } from "../SeedTxn.js";
 import { Activity, StellarContract, isActivity, partialTxn } from "../StellarContract.js";
 import { StellarTxnContext } from "../index.js";
+import { AuthorityPolicy } from "./AuthorityPolicy.js";
 
-export abstract class AbstractAuthority extends StellarContract<SeedTxnParams>{
-
+export class AddressAuthorityPolicy extends AuthorityPolicy {
 
     @Activity.redeemer
     protected usingAuthority(): isActivity {
@@ -19,7 +19,5 @@ export abstract class AbstractAuthority extends StellarContract<SeedTxnParams>{
         return { redeemer: t._toUplcData() };
     }
 
-    // @partialTxn
-    abstract txnAuthorizeCharter(tcx: StellarTxnContext) :StellarTxnContext
 
 }

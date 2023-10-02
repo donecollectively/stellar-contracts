@@ -1,7 +1,7 @@
 import { Address, Value } from "@hyperionbt/helios"
 
 //@ts-expect-error
-import contract from "./MultiSigAuthority.hl"
+import contract from "./MultisigAuthorityPolicy.hl"
 import { Activity, StellarContract, StellarTxnContext } from "../index.js"
 import type { isActivity } from "../index.js"
 
@@ -12,7 +12,7 @@ type RCPolicyArgs = {
 }
 
 //! a contract enforcing policy for a registered credential
-export class RCPolicy extends StellarContract<RCPolicyArgs> {
+export class MultisigAuthorityPolicy extends StellarContract<RCPolicyArgs> {
     static currentRev = 1n
     static get defaultParams() {
         return { rev: this.currentRev }
