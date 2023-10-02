@@ -24,10 +24,11 @@ import {
     strategyValidation,
     variantMap,
 } from "../lib/delegation/RolesAndDelegates";
-import { DefaultCapoTestHelper } from "../lib/testing/DefaultCapoTestHelper";
+import { CustomCapoTestHelper } from "./customizing/CustomCapoTestHelper";
+import { CustomTreasury } from "./customizing/CustomTreasury";
 // import { RoleDefs } from "../lib/RolesAndDelegates";
 
-type localTC = StellarTestContext<DefaultCapoTestHelper>;
+type localTC = StellarTestContext<CustomCapoTestHelper>;
 const wrongMinSigs = /minSigs can't be more than the size of the trustee-list/;
 const notEnoughSignaturesRegex = /not enough trustees.*have signed/;
 const insufficientInputError = /need .* lovelace, but only have/;
@@ -43,7 +44,7 @@ const describe = descrWithContext<localTC>;
 describe("Capo", async () => {
     beforeEach<localTC>(async (context) => {
         // await new Promise(res => setTimeout(res, 10));
-        await addTestContext(context, DefaultCapoTestHelper);
+        await addTestContext(context, CustomCapoTestHelper);
     });
 
     describe("Roles and delegates", () => {
@@ -59,7 +60,7 @@ describe("Capo", async () => {
                 // console.log("addr of addr1q9g8hpckj8pmhn45v30wkrqfnnkfftamja3y9tcyjrg44cl0wk8n4atdnas8krf94kulzdqsltujm5gzas8rgel2uw0sjk4gt8\n",
                 //   "\n    -> ", ttt.toBech32())
 
-                const t: DefaultCapo = await h.setup();
+                const t: CustomTreasury = await h.setup();
                 expect(t.roles).toBeTruthy();
                 expect(t.roles.mintDelegate).toBeTruthy();
                 expect(t.roles.mintDelegate.default).toBeTruthy();

@@ -33,6 +33,8 @@ import { Capo } from "./Capo.js";
 import { DefaultMinter } from "./DefaultMinter.js";
 import { RoleMap, strategyValidation, variantMap, VariantMap } from "./delegation/RolesAndDelegates.js";
 import { BasicMintDelegate } from "./delegation/BasicMintDelegate.js";
+import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
+import { AddressAuthorityPolicy } from "./authority/AddressAuthorityPolicy.js";
 
 export type DelegateInfo = {
     uut: string,
@@ -62,14 +64,12 @@ export class DefaultCapo<
     // }
     get roles() : RoleMap {
         return {
-            noDefault: variantMap<BasicMintDelegate>({ 
-            }),
-            govDelegate: variantMap<GenericAuthority>({ 
+            govDelegate: variantMap<AuthorityPolicy>({ 
                 address: {
-                    delegateClass: AddressAuthority,
+                    delegateClass: AddressAuthorityPolicy,
                     scriptParams: {},
                     validateScriptParams(args) : strategyValidation {
-
+                        return undefined
                     }
                 }
             }),

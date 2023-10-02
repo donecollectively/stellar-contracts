@@ -1,12 +1,13 @@
-import { SeedTxnParams } from "lib/SeedTxn.js";
+import { SeedTxnParams } from "../../lib/SeedTxn.js";
 import { Activity, isActivity, stellarSubclass, txn } from "../../lib/StellarContract.js";
 import { StellarTxnContext } from "../../lib/StellarTxnContext.js";
-import { CustomMinter } from "../CustomMinter.js";
+import { CustomMinter } from "./CustomMinter.js";
 import { DefaultCapo } from "../../lib/DefaultCapo.js";
 
 import contract from "./CustomTreasury.hl";
 import { RoleMap, variantMap } from "../../lib/delegation/RolesAndDelegates.js";
 import { DefaultMinter } from "../../lib/DefaultMinter.js";
+import { BasicMintDelegate } from "../../lib/index.js";
 
 export class CustomTreasury extends DefaultCapo<CustomMinter> {
     contractSource() {
@@ -24,6 +25,8 @@ export class CustomTreasury extends DefaultCapo<CustomMinter> {
 
     get roles() : RoleMap {
         return {
+            noDefault: variantMap<BasicMintDelegate>({ 
+            }),
             mintDelegate: variantMap<DefaultMinter>({ 
                 default: {
                     delegateClass:  CustomMinter,
