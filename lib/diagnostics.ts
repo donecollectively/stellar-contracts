@@ -139,7 +139,7 @@ export function txAsString(tx: Tx): string {
         if ("signatures" == x) {
             if (!item) continue;
             item = item.map((s) => {
-                return `🖊️ ${Address.fromPubKeyHash(s.pubKeyHash)
+                return `🖊️ ${Address.fromHash(s.pubKeyHash)
                     .toBech32()
                     .substring(0, 24)}…`;
             });
@@ -211,7 +211,7 @@ export function utxoAsString(u: TxInput, prefix = "💵"): string {
     return ` 📖 ${u.txId.hex.substring(0, 12)}…@${u.utxoIdx}: ${txOutputAsString(u.origOutput, prefix)}`; // or 🪙
 }
 
-export function datumAsString(d: Datum | undefined): string {
+export function datumAsString(d: Datum | null | undefined): string {
     if (!d) return ""; //"‹no datum›";
 
     // debugger

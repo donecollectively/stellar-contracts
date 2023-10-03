@@ -1,15 +1,22 @@
 import { Address } from "@hyperionbt/helios";
 import { StellarContract, paramsBase, stellarSubclass } from "../StellarContract.js";
-import { DefaultMinter } from "../index.js";
+import { DefaultMinter } from "../DefaultMinter.js";
 
 
 export class DelegateConfigNeeded extends Error {
     errors?: ErrorMap
-    constructor(message: string, errors?: ErrorMap) {
+    availableStrategies?: string[]
+    constructor(message: string, options: {
+        errors?: ErrorMap,
+        availableStrategies?: string[]
+    }) {
         super(message)
+        const {errors, availableStrategies} = options;
         if (errors) this.errors = errors;
+        if (availableStrategies) this.availableStrategies = availableStrategies;
     }
 }
+
 export type ErrorMap = Record<string, string[]>
 // return type for strategy's validateScriptParams()
 export type strategyValidation = ErrorMap | undefined
@@ -37,7 +44,8 @@ export type delegateScriptParams = paramsBase;
 export type DelegateConfig = {
     strategyName: string,
     addlParams: delegateScriptParams, 
-    address?: Address
+    reqdAddress?: Address 
+    addressesHint?: Address[]
 }
 export type SelectedDelegates = {
     [roleName: string]: DelegateConfig

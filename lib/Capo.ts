@@ -28,12 +28,16 @@ import {
     DelegateConfigNeeded,
     ErrorMap,
     RoleMap,
+    variantMap,
+    strategyValidation,
 } from "./delegation/RolesAndDelegates.js";
 import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
 import { SeedTxnParams } from "./SeedTxn.js";
-import { DefaultCharterDatumArgs } from "./DefaultCapo.js";
+import { DefaultCharterDatumArgs, DelegateDetails } from "./DefaultCapo.js";
 import { CapoMintHelpers } from "./CapoMintHelpers.js";
 import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";
+import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
+import { AddressAuthorityPolicy } from "./authority/AddressAuthorityPolicy.js";
 
 export { variantMap } from "./delegation/RolesAndDelegates.js";
 export type {
@@ -57,9 +61,11 @@ interface hasUutCreator {
     ): Promise<hasUutContext<UutMapType>>;
 }
 
-export type MintCharterRedeemerArgs = {
+export type MintCharterRedeemerArgs<T={}> = T & {
     owner: Address;
+    delegate: DelegateDetails
 };
+
 export type MintUutRedeemerArgs = {
     seedTxn: TxId;
     seedIndex: bigint | number;
@@ -73,7 +79,10 @@ export interface MinterBaseMethods extends hasUutCreator {
     get mintingPolicyHash(): MintingPolicyHash;
     txnMintingCharter(
         tcx: StellarTxnContext<any>,
-        owner: Address,
+        charterMintArgs: {
+            owner: Address,
+            delegate: DelegateDetails,
+        },
         tVal: valuesEntry
     ): Promise<StellarTxnContext<any>>;
 }
@@ -88,8 +97,19 @@ export abstract class Capo<
     implements hasUutCreator
 {
     get roles(): RoleMap {
-        return {};
+        return {
+            govAuthority: variantMap<AuthorityPolicy>({ 
+                address: {
+                    delegateClass: AddressAuthorityPolicy,
+                    scriptParams: {},
+                    validateScriptParams(args) : strategyValidation {
+                        return undefined
+                    }
+                }
+            }),
+        };
     }
+
     constructor(
         args: StellarConstructorArgs<
             StellarContract<SeedTxnParams>,
@@ -175,29 +195,37 @@ export abstract class Capo<
         return [StellarHeliosHelpers, CapoDelegateHelpers, CapoMintHelpers];
     }
 
-    @txn
-    async mkTxnMintCharterToken(
+    abstract mkTxnMintCharterToken(
         datumArgs: charterDatumType,
-        tcx: StellarTxnContext = new StellarTxnContext()
-    ): Promise<StellarTxnContext | never> {
-        console.log(
-            `minting charter from seed ${this.paramsIn.seedTxn.hex.substring(
-                0,
-                12
-            )}…@${this.paramsIn.seedIndex}`
-        );
+        tcx?: StellarTxnContext
+    ): Promise<StellarTxnContext | never>;
+    // @txn
+    // async mkTxnMintCharterToken(
+    //     datumArgs: charterDatumType,
+    //     tcx: StellarTxnContext = new StellarTxnContext()
+    // ): Promise<StellarTxnContext | never> {
+    //     console.log(
+    //         `minting charter from seed ${this.paramsIn.seedTxn.hex.substring(
+    //             0,
+    //             12
+    //         )}…@${this.paramsIn.seedIndex}`
+    //     );
 
-        return this.mustGetContractSeedUtxo().then((seedUtxo) => {
-            const v = this.tvCharter();
+    //     return this.mustGetContractSeedUtxo().then((seedUtxo) => {
+    //         const v = this.tvCharter();
 
-            const datum = this.mkDatumCharterToken(datumArgs);
-            const output = new TxOutput(this.address, v, datum);
-            output.correctLovelace(this.networkParams);
+    //         const datum = this.mkDatumCharterToken(datumArgs);
+    //         const output = new TxOutput(this.address, v, datum);
+    //         output.correctLovelace(this.networkParams);
 
-            tcx.addInput(seedUtxo).addOutputs([output]);
-            return this.minter!.txnMintingCharter(tcx, this.address);
-        });
-    }
+    //         tcx.addInput(seedUtxo).addOutputs([output]);
+
+    //         return this.minter!.txnMintingCharter(tcx, {
+    //             owner: this.address,
+    //             delegate
+    //         })
+    //     });
+    // }
 
     get charterTokenPredicate() {
         const predicate = this.mkTokenPredicate(this.tvCharter());
@@ -381,28 +409,38 @@ export abstract class Capo<
         return tcx;
     }
 
-    txnMustGetDelegate(
+    txnMustGetDelegate<RT>(
         tcx: StellarTxnContext,
         roleName: string
         // delegateConfig: DelegateConfig)
-    ) {
+    ) : RT {
         const { selectedDelegates: d } = tcx;
         let selected = d[roleName];
+        const role = this.roles[roleName];
         if (!selected) {
-            const role = this.roles[roleName];
             if (role.default) {
                 selected = { strategyName: "default", addlParams: {} };
             }
         }
         if (!selected)
             throw new DelegateConfigNeeded(
-                `no delegate for role ${roleName} found in transaction-context or default`
+                `no selected or default delegate for role '${roleName}' found in transaction-context.  \n`+
+                ` Hint:   use ‹capo instance›.withDelegates(delegates) to select delegates by role name`,
+                {availableStrategies: Object.keys(role)}
             );
 
         const { strategyName, addlParams } = selected;
 
         const { roles } = this;
-        const selectedStrategy = roles[roleName][strategyName];
+        
+        const foundStrategies = roles[roleName];
+        const selectedStrategy = foundStrategies[strategyName];
+        if (!selectedStrategy) {
+            const e = new DelegateConfigNeeded(`invalid strategy name '${strategyName}' for role '${roleName}'`, {
+                availableStrategies: Object.keys(foundStrategies)
+            });
+            throw e
+        }
         const { delegateClass, validateScriptParams } = selectedStrategy;
         const { defaultParams } = delegateClass;
         const mergedParams = {
@@ -415,7 +453,7 @@ export abstract class Capo<
         if (errors) {
             throw new DelegateConfigNeeded(
                 "validation errors in contract params",
-                errors
+                { errors }
             );
         }
         try {
@@ -424,7 +462,7 @@ export abstract class Capo<
                 selectedStrategy.delegateClass,
                 mergedParams
             );
-            return configured;
+            return configured as RT
         } catch (e: any) {
             const t = e.message.match(/invalid parameter name '([^']+)'$/);
 
@@ -432,7 +470,7 @@ export abstract class Capo<
             if (badParamName) {
                 throw new DelegateConfigNeeded(
                     "configuration error while parameterizing contract script",
-                    { [badParamName]: e.message }
+                    { errors: { [badParamName]: e.message } }
                 );
             }
             throw e;

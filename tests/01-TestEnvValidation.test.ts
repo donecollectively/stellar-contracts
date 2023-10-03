@@ -22,10 +22,9 @@ import { ADA,
     StellarTestContext,
     addTestContext
 } from "../lib/testing";
+import { insufficientInputError } from "../lib/testing";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
-const insufficientInputError = /need .* lovelace, but only have/;
-
 const it = itWithContext<localTC>;
 const fit = it.only;
 const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTestingContext>

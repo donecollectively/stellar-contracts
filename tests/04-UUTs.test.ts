@@ -30,7 +30,6 @@ import { DefaultCapoTestHelper } from "../lib/testing/DefaultCapoTestHelper";
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
 const wrongMinSigs = /minSigs can't be more than the size of the trustee-list/;
 const notEnoughSignaturesRegex = /not enough trustees.*have signed/;
-const insufficientInputError = /need .* lovelace, but only have/;
 
 const it = itWithContext<localTC>;
 const fit = it.only;

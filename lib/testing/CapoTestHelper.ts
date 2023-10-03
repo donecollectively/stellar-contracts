@@ -64,7 +64,7 @@ export abstract class CapoTestHelper<
         await this.setup();
         const script = this.strella!;
         args = args || this.mkDefaultCharterArgs();
-
+        
         const tcx = await script.mkTxnMintCharterToken(args);
         expect(script.network).toBe(this.network);
 

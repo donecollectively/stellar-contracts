@@ -9,10 +9,11 @@ import {
     ADA,
     StellarTestContext,
     addTestContext,
-} from "../lib/StellarTestHelper";
-import { SampleTreasuryTestHelper } from "./SampleTreasuryTestHelper";
+} from "../lib/testing";
+import { CustomCapoTestHelper } from "./customizing/CustomCapoTestHelper";
 
-type localTC = StellarTestContext<SampleTreasuryTestHelper>;
+
+type localTC = StellarTestContext<CustomCapoTestHelper>;
 const wrongMinSigs = /minSigs can't be more than the size of the trustee-list/;
 const notEnoughSignaturesRegex = /not enough trustees.*have signed/;
 
@@ -30,7 +31,7 @@ const describe = descrWithContext<localTC>;
 describe("Capo: Authority: Multisig", async () => {
     beforeEach<localTC>(async (context) => {
         // await new Promise(res => setTimeout(res, 10));
-        await addTestContext(context, SampleTreasuryTestHelper);
+        await addTestContext(context, CustomCapoTestHelper);
     });
 
     describe("the trustee threshold is enforced on all administrative actions", () => {

@@ -38,6 +38,7 @@ import { SeedTxnParams } from "./SeedTxn.js";
 import { valuesEntry } from "./HeliosPromotedTypes.js";
 import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";
 import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
+import { DelegateDetails } from "./DefaultCapo.js";
 
 export class DefaultMinter
     extends StellarContract<SeedTxnParams>
@@ -130,11 +131,20 @@ export class DefaultMinter
     @Activity.redeemer
     protected mintingCharter({
         owner,
+        delegate
     }: MintCharterRedeemerArgs): isActivity {
         // debugger
+
+        const { DelegateDetails, Redeemer } = this.configuredContract.types;
+
+        const {uut, strategyName, reqdAddress, addressesHint } = delegate
+        const delegateDetails = DelegateDetails(
+            uut, strategyName, reqdAddress, addressesHint
+        );
         const t =
-            new this.configuredContract.types.Redeemer.mintingCharter(
-                owner
+            new Redeemer.mintingCharter(
+                owner,
+                delegateDetails
             );
 
         return { redeemer: t._toUplcData() };
@@ -182,7 +192,10 @@ export class DefaultMinter
     @Activity.partialTxn
     async txnMintingCharter(
         tcx: StellarTxnContext,
-        owner: Address
+        { owner, delegate } : {
+            owner: Address, 
+            delegate: DelegateDetails
+        }
     ): Promise<StellarTxnContext> {
         const tVal = this.charterTokenAsValuesEntry;
 
@@ -190,7 +203,9 @@ export class DefaultMinter
             .mintTokens(
                 this.mintingPolicyHash!,
                 [tVal],
-                this.mintingCharter({ owner }).redeemer
+                this.mintingCharter({ 
+                    owner, delegate
+                 }).redeemer
             )
             .attachScript(this.compiledContract);
     }

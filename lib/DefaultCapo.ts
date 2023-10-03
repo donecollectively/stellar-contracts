@@ -5,6 +5,8 @@ import {
     UplcProgram,
     TxOutput,
     Value,
+    //@ts-expect-error
+    Option,
     Datum,
     Wallet,
     TxInput,
@@ -29,21 +31,22 @@ import { StellarTxnContext } from "./StellarTxnContext.js";
 
 //@ts-expect-error
 import contract from "./DefaultCapo.hl";
-import { Capo } from "./Capo.js";
+import { anyDatumArgs, Capo } from "./Capo.js";
 import { DefaultMinter } from "./DefaultMinter.js";
 import { RoleMap, strategyValidation, variantMap, VariantMap } from "./delegation/RolesAndDelegates.js";
 import { BasicMintDelegate } from "./delegation/BasicMintDelegate.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
 import { AddressAuthorityPolicy } from "./authority/AddressAuthorityPolicy.js";
 
-export type DelegateInfo = {
+export type DelegateDetails = {
     uut: string,
-    strategy: string,
-    address: Address[]
+    strategyName: string,
+    reqdAddress?: Address,
+    addressesHint: Address[]
 }
 
 export type DefaultCharterDatumArgs = {
-    govDelegate: DelegateInfo
+    govDelegate: DelegateDetails
 };
 
 export type HeldAssetsArgs = {
@@ -52,8 +55,9 @@ export type HeldAssetsArgs = {
 };
 
 export class DefaultCapo<
-    MinterType extends DefaultMinter = DefaultMinter
-> extends Capo<MinterType> {
+    MinterType extends DefaultMinter = DefaultMinter,
+    CDT extends anyDatumArgs = DefaultCharterDatumArgs
+> extends Capo<MinterType, CDT> {
     contractSource() {
         return contract;
     }
@@ -63,27 +67,14 @@ export class DefaultCapo<
     //     return this.updatingDefaultCharter()
     // }
     get roles() : RoleMap {
+        const inherited = super.roles;
         return {
-            govDelegate: variantMap<AuthorityPolicy>({ 
-                address: {
-                    delegateClass: AddressAuthorityPolicy,
-                    scriptParams: {},
-                    validateScriptParams(args) : strategyValidation {
-                        return undefined
-                    }
-                }
-            }),
+            ...inherited,
             mintDelegate: variantMap<BasicMintDelegate>({ 
                 default: {
                     delegateClass: BasicMintDelegate,
                     scriptParams: {},
                     validateScriptParams(args) : strategyValidation {
-                        if (args.bad) {
-                            //note, this isn't the normal way of validating.
-                            //  ... usually it's a good field name whose value is missing or wrong.
-                            //  ... still, this conforms to the ErrorMap protocol good enough for testing.
-                            return {bad:  [ "must not be provided" ]}
-                        }
                         return undefined
                     }
                 }
@@ -92,13 +83,17 @@ export class DefaultCapo<
     }
 
     @datum
-    mkDatumCharterToken(args: DefaultCharterDatumArgs): InlineDatum {
+    mkDatumCharterToken(args: CDT): InlineDatum {
         //!!! todo: make it possible to type these datum helpers more strongly
 
         const {Datum:{CharterToken}, DelegateDetails} = this.configuredContract.types;
-        const {uut, strategy, address} = args.govDelegate
+        let {uut, strategyName, reqdAddress: canRequireAddr, addressesHint=[]} = args.govDelegate;
+        
+        const OptAddr = Option(Address);
+        const needsAddr = new OptAddr(canRequireAddr);
+
         const t = new CharterToken(
-            new DelegateDetails(uut, strategy, address)
+            new DelegateDetails(uut, strategyName, needsAddr, addressesHint)
         );
         return Datum.inline(t._toUplcData());
     }
@@ -109,29 +104,48 @@ export class DefaultCapo<
 
     @txn
     async mkTxnMintCharterToken(
-        charterArgs: DefaultCharterDatumArgs,
-        tcx: StellarTxnContext = new StellarTxnContext()
+        charterArgs: CDT,
+        existingTcx?: StellarTxnContext
     ): Promise<StellarTxnContext | never> {
         console.log(`minting charter from seed ${this.paramsIn.seedTxn.hex.substring(0, 12)}…@${this.paramsIn.seedIndex}`);
+        const tcx = existingTcx || this.withDelegates({})
+        // govAuthority: {
+        //     strategyName,
+        //     addressesHint,
+        //     reqdAddress,
+        //     addlParams,
+        //     uut,
+        // }});
         return this.mustGetContractSeedUtxo().then((seedUtxo) => {
             const datum = this.mkDatumCharterToken(charterArgs);
 
             const output = new TxOutput(this.address, this.tvCharter(), datum);
             output.correctLovelace(this.networkParams);
+            const delegate = this.txnMustGetDelegate<AuthorityPolicy>(tcx, "govAuthority")
 
             tcx.addInput(seedUtxo).addOutputs([ output ]);
-            return this.minter!.txnMintingCharter(tcx, this.address);
+            return this.minter!.txnMintingCharter(tcx, {
+                owner: this.address,
+                delegate
+        });
         });
     }
  
     @Activity.redeemer
     updatingCharter(
-        args: DefaultCharterDatumArgs 
+        args: CDT 
     ): isActivity {
         const {DelegateDetails, Redeemer} = this.configuredContract.types
+        let {uut, strategyName, reqdAddress: canRequireAddr, addressesHint=[]} = args.govDelegate
+
+        // const {Option} = this.configuredContract.types;
+        debugger
+        const OptAddr = Option(Address);
+        const needsAddr = new OptAddr(canRequireAddr);
+
         const t = new Redeemer.updatingCharter(
             args.govDelegate,
-            new DelegateDetails(args.govDelegate.strategy, args.govDelegate.address)
+            new DelegateDetails(uut, strategyName, needsAddr, addressesHint)
         );
 
         return { redeemer: t._toUplcData() };
@@ -139,7 +153,7 @@ export class DefaultCapo<
 
     @txn
     async mkTxnUpdateCharter(
-        args:  DefaultCharterDatumArgs,
+        args:  CDT,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext> {
         return this.txnUpdateCharterUtxo(

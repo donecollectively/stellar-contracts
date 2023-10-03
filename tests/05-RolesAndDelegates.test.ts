@@ -31,7 +31,6 @@ import { CustomTreasury } from "./customizing/CustomTreasury";
 type localTC = StellarTestContext<CustomCapoTestHelper>;
 const wrongMinSigs = /minSigs can't be more than the size of the trustee-list/;
 const notEnoughSignaturesRegex = /not enough trustees.*have signed/;
-const insufficientInputError = /need .* lovelace, but only have/;
 
 const it = itWithContext<localTC>;
 const fit = it.only;
@@ -118,7 +117,7 @@ describe("Capo", async () => {
                 const problem = () => {
                     t.txnMustGetDelegate(tcx, "noDefault");
                 };
-                expect(problem).toThrow(/no delegate for role/);
+                expect(problem).toThrow(/no .* delegate for role/);
                 expect(problem).toThrow(DelegateConfigNeeded);
             });
 
@@ -141,7 +140,7 @@ describe("Capo", async () => {
 
                 tcx = t.withDelegates({
                     mintDelegate: {
-                        strategyName: "default",
+                        strategyName: "failsWhenBad",
                         addlParams: { bad: true },
                     },
                 });
@@ -155,7 +154,44 @@ describe("Capo", async () => {
                     expect(e.errors.bad[0]).toMatch(/must not/);
                 }
             });
+
+
+            it("If the strategy-configuration doesn't match available variants, the DelegateConfigNeeded error offers suggested strategy-names", async (context: localTC) => {
+                // prettier-ignore
+                const {h, h:{network, actors, delay, state} } = context;
+                const t = await h.setup();
+
+                const problem = () => {
+                    t.txnMustGetDelegate(tcx, "mintDelegate");
+                };
+
+                let tcx = t.withDelegates({
+                    mintDelegate: {
+                        strategyName: "badStratName",
+                        addlParams: { badSomeUnplannedWay: true },
+                    },
+                });
+                expect(problem).toThrow(/invalid strategy name .*badStratName/);
+
+                tcx = t.withDelegates({
+                    mintDelegate: {
+                        strategyName: "bogusName",
+                        addlParams: { bad: true },
+                    },
+                });
+
+                expect(problem).toThrow(DelegateConfigNeeded);
+
+                try {
+                    problem();
+                } catch (e) {
+                    expect(Array.isArray(e.availableStrategies), "error.availableStrategies should be an array").toBeTruthy()
+                    expect(e.availableStrategies).toContain("default");
+                    expect(e.availableStrategies).toContain("failsWhenBad");
+                }
+            });
         });
+        
         describe("Each role uses a RoleVariants structure which can accept new variants", () => {
             it("RoleVariants has type-parameters indicating the baseline types & interfaces for delegates in that role", async (context: localTC) => {
                 // prettier-ignore

@@ -304,7 +304,7 @@ export class StellarContract<
         // const dump = utxosAsString(myUtxos)
         // console.log({dump})
         return myUtxos.filter((u) => {
-            return u.origOutput.datum.hash.hex == datum.hash.hex;
+            return u.origOutput.datum?.hash.hex == datum.hash.hex;
         });
     }
 
@@ -394,7 +394,8 @@ export class StellarContract<
         if (!datum.isInline()) throw new Error(`datum must be an InlineDatum to be readable using readDatum()`);
 
         const { fieldNames, instanceMembers } = thisDatumType as any;
-
+        debugger
+        
         // const heliosTypes = Object.fromEntries(
         //     fieldNames.map((fn) => {
         //         return [fn, instanceMembers[fn].name];
@@ -419,13 +420,16 @@ export class StellarContract<
         return Object.fromEntries(await Promise.all(
             fieldNames.map(async (fn, i) => {
                 let current;
-                const uplcData = datum.data.fields[i];
+                const uplcData = datum.data;
+                debugger
+                
+                const uplcDataField = uplcData.fields[i];
                 const thisFieldType = instanceMembers[fn];
                 try {
-                    current = thisFieldType.uplcToJs(uplcData);
+                    current = thisFieldType.uplcToJs(uplcDataField);
                     if (current.then) current = await current;
 
-                    if ("Enum" === thisFieldType?.typeDetails?.internalType?.type && 0 === uplcData.fields.length) {
+                    if ("Enum" === thisFieldType?.typeDetails?.internalType?.type && 0 === uplcDataField.fields.length) {
                         current = Object.keys(current)[0]
                     }
                 } catch (e: any) {
@@ -433,7 +437,7 @@ export class StellarContract<
                         e.message?.match(/doesn't support converting from Uplc/)
                     ) {
                         try {
-                            current = await offChainTypes[fn].fromUplcData(uplcData);
+                            current = await offChainTypes[fn].fromUplcData(uplcDataField);
                             if ("some" in current) current = current.some;
                         } catch (e: any) {
                             console.error(`datum: field ${fn}: ${e.message}`);
@@ -857,6 +861,10 @@ export class StellarContract<
         try {
             return (this._template = this._template || Program.new(src, modules))
         } catch(e: any) {
+            if (!e.src) {
+                debugger
+                throw e;
+            }
             const moduleName = e.src.name;
             const errorModule = [src, ...modules] .find((m) => (m as any).moduleName == moduleName)
             const {srcFile ="‹unknown path to module›"} = errorModule as any || {}

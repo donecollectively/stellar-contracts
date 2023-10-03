@@ -26,6 +26,16 @@ export class DefaultCapoTestHelper extends CapoTestHelper<DefaultCapo> {
         return treasury.txnAddAuthority(tcx);
     }
 
+    mkDefaultCharterArgs(): DefaultCharterDatumArgs {
+        return {
+            govDelegate: {
+                addressesHint: [ this.actors.tina.address ],
+                strategyName: "address",
+                uut: "tbd"
+            }
+        };
+    }
+
     async updateCharter(
         args: DefaultCharterDatumArgs
     ): Promise<StellarTxnContext> {

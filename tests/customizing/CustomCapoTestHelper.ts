@@ -15,6 +15,15 @@ export class CustomCapoTestHelper extends CapoTestHelper<CustomTreasury> {
         this.currentActor = "tina";
     }
 
+    mkDefaultCharterArgs(): DefaultCharterDatumArgs {
+        const {tina, tom, tracy} = this.actors;
+        
+        //! todo arrange the delegation to the multisig authority
+        return {
+            trustees: [tina.address, tom.address, tracy.address],
+            minSigs: 2,
+        };
+    }
     async mkCharterSpendTx(): Promise<StellarTxnContext> {
         await this.mintCharterToken();
 

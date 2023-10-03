@@ -29,7 +29,7 @@ enum Redeemer {
 
 
 func requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {
-    Datum::CharterToken{DelegateDetails{uut, _, _}} = datum;
+    Datum::CharterToken{DelegateDetails{uut, _, _, _}} = datum;
 
     txHasOutput(ctx.tx,  mkTv(mph, uut))
 }
@@ -67,14 +67,15 @@ func preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {
         )
     };
 
-    Datum::CharterToken{DelegateDetails{uut, strategy, address}} = datum;
-    Datum::CharterToken{DelegateDetails{newUut, newStrategy, newAddress}} = Datum::from_data( 
+    Datum::CharterToken{DelegateDetails{uut, strategy, reqdAddress, addressesHint}} = datum;
+    Datum::CharterToken{DelegateDetails{newUut, newStrategy, newReqdAddress, newAddressesHint}} = Datum::from_data( 
         charterOutput.datum.get_inline_data() 
     );
     if ( !(
         newUut  == uut &&
         newStrategy == strategy  &&
-        newAddress == address
+        newReqdAddress == reqdAddress &&
+        newAddressesHint == addressesHint
     )) { 
         error("invalid update to charter settings") 
     };

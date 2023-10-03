@@ -24,16 +24,27 @@ export class CustomTreasury extends DefaultCapo<CustomMinter> {
     }
 
     get roles() : RoleMap {
+        const inherited = super.roles;
+        const {mintDelegate, ... othersInherited} = inherited;
         return {
-            noDefault: variantMap<BasicMintDelegate>({ 
+            ...othersInherited,
+            noDefault: variantMap<DefaultMinter>({ 
             }),
-            mintDelegate: variantMap<DefaultMinter>({ 
-                default: {
-                    delegateClass:  CustomMinter,
-                    validateScriptParams(a) {
-                        return undefined // any params are okay here (temporary)
+            mintDelegate: variantMap<BasicMintDelegate>({ 
+                ... mintDelegate,
+                failsWhenBad: {
+                    delegateClass:  BasicMintDelegate,
+                    validateScriptParams(args) {
+                        //!!! todo: move this to CustomTreasury for testing
+                        if (args.bad) {
+                            //note, this isn't the normal way of validating.
+                            //  ... usually it's a good field name whose value is missing or wrong.
+                            //  ... still, this conforms to the ErrorMap protocol good enough for testing.
+                            return {bad:  [ "must not be provided" ]}
+                        }
                     }
-                }
+                },
+                
             })
         }
     }

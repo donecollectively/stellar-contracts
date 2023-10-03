@@ -29,7 +29,6 @@ import { DefaultCapoTestHelper } from "../lib/testing/DefaultCapoTestHelper";
 // import { RoleDefs } from "../lib/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
-const insufficientInputError = /need .* lovelace, but only have/;
 
 const it = itWithContext<localTC>;
 const fit = it.only;
