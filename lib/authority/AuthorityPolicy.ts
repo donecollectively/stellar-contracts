@@ -1,7 +1,7 @@
 import { Address, AssetClass, TxInput, Value } from "@hyperionbt/helios";
 
-import { Activity, StellarContract, StellarTxnContext } from "../index.js";
-import type { isActivity } from "../index.js";
+import { Activity, isActivity, StellarContract } from "../StellarContract.js";
+import { StellarTxnContext } from "../StellarTxnContext.js";
 
 type AuthorityPolicyArgs = {
     rev: bigint;
@@ -40,6 +40,16 @@ export abstract class AuthorityPolicy<
             );
 
         return { redeemer: t._toUplcData() };
+    }
+
+    //! it has a lifecycle method coordinating authority-creation in abstract way
+    async txnCreatingAuthority(
+        tcx: StellarTxnContext,
+        tokenId: AssetClass,
+        delegateAddr: Address
+    ): Promise<StellarTxnContext> {
+        throw new Error(`todo`);
+        return tcx;
     }
 
     //! allows different strategies for finding the UTxO having the authority token

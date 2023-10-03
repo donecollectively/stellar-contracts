@@ -7,7 +7,8 @@ import { StellarTestHelper } from "./StellarTestHelper.js";
 
 
 export abstract class CapoTestHelper<
-    SC extends Capo<any>
+    SC extends Capo<any>,
+    CDT extends anyDatumArgs = SC extends Capo<any, infer iCDT> ? iCDT : never
 > extends StellarTestHelper<SC, SeedTxnParams> {
     async setup({
         randomSeed = 42, seedTxn, seedIndex = 0n,
@@ -48,7 +49,9 @@ export abstract class CapoTestHelper<
         return strella;
     }
 
-    async mintCharterToken(args?: anyDatumArgs): Promise<StellarTxnContext> {
+    abstract mkDefaultCharterArgs() : CDT;
+    
+    async mintCharterToken(args?: CDT): Promise<StellarTxnContext> {
         const { delay } = this;
         const { tina, tom, tracy } = this.actors;
         if (this.state.mintedCharterToken) {
@@ -60,10 +63,8 @@ export abstract class CapoTestHelper<
 
         await this.setup();
         const script = this.strella!;
-        args = args || {
-            trustees: [tina.address, tom.address, tracy.address],
-            minSigs: 2,
-        };
+        args = args || this.mkDefaultCharterArgs();
+
         const tcx = await script.mkTxnMintCharterToken(args);
         expect(script.network).toBe(this.network);
 

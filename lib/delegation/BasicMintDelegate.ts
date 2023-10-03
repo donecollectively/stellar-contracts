@@ -6,7 +6,8 @@ import {
 
 //@ts-expect-error
 import contract from "./BasicMintDelegate.hl";
-import { Activity, StellarContract, StellarTxnContext, isActivity } from "../../lib/index.js";
+import { Activity, StellarContract, isActivity } from "../StellarContract.js";
+import { StellarTxnContext } from "../StellarTxnContext.js";
 
 type MintDelegateArgs = {
     rev: bigint

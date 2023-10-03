@@ -2,8 +2,8 @@ import { Address, AssetClass, TxInput, Value } from "@hyperionbt/helios"
 
 //@ts-expect-error
 import contract from "./MultisigAuthorityPolicy.hl"
-import { Activity, StellarContract, StellarTxnContext } from "../index.js"
-import type { isActivity } from "../index.js"
+import { Activity, isActivity, StellarContract } from "../StellarContract.js";
+import { StellarTxnContext } from "../StellarTxnContext.js";
 
 type RCPolicyArgs = {
     rev: bigint

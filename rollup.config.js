@@ -35,7 +35,7 @@ const codeBundle = (config) => {
 // console.log(JSON.stringify(browserRollupConfig, null, 2))
 export default [
     codeBundle({
-        input: "lib/index.ts",
+        input: "./index.ts",
         plugins: [
             sourcemaps(),
             externals(),
@@ -55,7 +55,7 @@ export default [
         ],
     }),
     codeBundle({
-        input: "lib/index.ts",
+        input: "./index.ts",
         plugins: [
             dts()
         ],

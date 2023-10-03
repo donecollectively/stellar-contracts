@@ -24,7 +24,7 @@ export default defineConfig({
         target: ["node", "esnext" ],
         lib: {
           // Could also be a dictionary or array of multiple entry points
-          entry: resolve(__dirname, 'lib/index.ts'),
+          entry: resolve(__dirname, 'index.ts'),
           name: 'stellar-contracts',
           // the proper extensions will be added
           fileName: 'stellar-contracts',

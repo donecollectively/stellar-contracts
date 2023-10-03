@@ -13,7 +13,7 @@ import {
     isActivity,
     partialTxn,
 } from "../StellarContract.js";
-import { StellarTxnContext } from "../index.js";
+import { StellarTxnContext } from "../StellarTxnContext.js";
 import { AuthorityPolicy } from "./AuthorityPolicy.js";
 
 export class AddressAuthorityPolicy extends AuthorityPolicy {

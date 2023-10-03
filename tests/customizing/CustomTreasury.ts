@@ -6,8 +6,8 @@ import { DefaultCapo } from "../../lib/DefaultCapo.js";
 
 import contract from "./CustomTreasury.hl";
 import { RoleMap, variantMap } from "../../lib/delegation/RolesAndDelegates.js";
+import { BasicMintDelegate } from "../../lib/delegation/BasicMintDelegate.js";
 import { DefaultMinter } from "../../lib/DefaultMinter.js";
-import { BasicMintDelegate } from "../../lib/index.js";
 
 export class CustomTreasury extends DefaultCapo<CustomMinter> {
     contractSource() {
