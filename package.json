@@ -6,9 +6,9 @@
     "types": "dist/stellar-contracts.d.ts",
     "type": "module",
     "scripts": {
-        "build": "rollup -c",
-        "build:watch": "rollup -cw",
-        "dev": "rollup -cw",
+        "build": "scripts/build",
+        "build:watch": "scripts/build --watch",
+        "dev": "scripts/build --watch",
         "test": "vitest",
         "test:debug": "vitest --inspect --threads false",
         "testing": "vitest --inspect --threads false",
@@ -37,7 +37,7 @@
         "rollup-pluginutils": "^2.8.2",
         "semver": ">=7.5.2",
         "tslib": "^2.5.3",
-        "typescript": "^4.9.4",
+        "typescript": "^4.9.5",
         "vite": "^4.3.9",
         "vitest": "^0.34.1",
         "webdriverio": "^8.10.7"

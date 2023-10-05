@@ -201,7 +201,7 @@ export abstract class Capo<
         return this.tvCharter();
     }
 
-    importModules(): string[] {
+    importModules(): HeliosModuleSrc[] {
         return [StellarHeliosHelpers, CapoDelegateHelpers, CapoMintHelpers];
     }
 

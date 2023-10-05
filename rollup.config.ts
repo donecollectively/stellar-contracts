@@ -9,7 +9,7 @@ import packageJson from "./package.json" assert { type: "json" };
 import { heliosRollupLoader } from "./lib/heliosRollupLoader.js";
 const name = packageJson.main.replace(/\.m?js$/, "");
 
-const serverBundledModules = [];
+const serverBundledModules : string[] = [];
 const forcedServerExternals = ["@hyperionbt/helios"];
 
 // import { join } from "path";

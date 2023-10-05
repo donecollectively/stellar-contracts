@@ -39,6 +39,7 @@ import { valuesEntry } from "./HeliosPromotedTypes.js";
 import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";
 import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
 import { RelativeDelegateLink, UutName } from "./delegation/RolesAndDelegates.js";
+import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 
 export class DefaultMinter
     extends StellarContract<SeedTxnParams>
@@ -48,7 +49,7 @@ export class DefaultMinter
         return contract;
     }
     
-    importModules(): string[] {
+    importModules(): HeliosModuleSrc[] {
         return [ 
             StellarHeliosHelpers, 
             CapoDelegateHelpers,

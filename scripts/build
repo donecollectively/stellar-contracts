@@ -1,0 +1,6 @@
+#!/bin/bash
+
+rollup \
+  --config rollup.config.ts \
+  --configPlugin 'esbuild={tsconfig:"./tsconfig.rollupconfig.json"}' \
+  $*

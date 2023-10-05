@@ -22,6 +22,8 @@ import {
 import { StellarTxnContext } from "./StellarTxnContext.js";
 import { utxosAsString, valueAsString } from "./diagnostics.js";
 import { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
+import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
+
 
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer
@@ -849,21 +851,37 @@ export class StellarContract<
     // constructor(params: any) {
 
     // }
-    importModules() : string[] {
+    importModules() : HeliosModuleSrc[] {
         return []
     }
 
     contractTemplate() {
         const src = this.contractSource();
-        const modules = this.importModules()
+        const modules = this.importModules();
+
         // console.log({src, Program)
 
         try {
             return (this._template = this._template || Program.new(src, modules))
         } catch(e: any) {
             if (!e.src) {
-                debugger
-                throw e;
+                console.error(
+                    `unexpected thrown error while compiling helios program`+
+                            `(or its imported module) \n`+
+                    `Suggested: connect with debugger (we provided a debugging point already)\n`+
+                     `  ... and use 'break on caught exceptions' to analyze the error \n`+
+                     `This likely indicates a problem in Helios' error reporting - \n`+
+                     `   ... please provide a minimal reproducer as an issue report for repair!`
+                )
+                try {
+                    debugger
+                    //! debugger'ing?  YOU ARE AWESOME!
+                    //  reminder: ensure "break on caught exceptions" is enabled
+                    //  before playing this next line to dig deeper into the error.
+                    Program.new(src, modules)
+                } catch(sameError) {
+                    throw sameError;
+                }
             }
             const moduleName = e.src.name;
             const errorModule = [src, ...modules] .find((m) => (m as any).moduleName == moduleName)

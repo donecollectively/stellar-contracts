@@ -1,0 +1,11 @@
+{
+    "compilerOptions":{
+        "module":"NodeNext",
+        "target": "ESNext",
+        "sourceMap": true
+    },
+    "include":[ 
+        "./rollup.config.ts", 
+        "./lib/heliosRollupLoader.ts"
+    ] 
+}

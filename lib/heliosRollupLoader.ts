@@ -1,8 +1,10 @@
 import { createFilter } from "rollup-pluginutils";
 
+
 export function heliosRollupLoader(
     opts = {
         include: "**/*.hl",
+        exclude: []
     }
 ) {
     if (!opts.include) {
