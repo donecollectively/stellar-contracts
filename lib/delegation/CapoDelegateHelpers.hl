@@ -5,19 +5,19 @@ import {
     mkTv
 } from StellarHeliosHelpers
 
-struct DelegateDetails {
+struct RelativeDelegateLink {
     uut: String
-    strategy: String
+    strategyName: String
     reqdAddr: Option[Address]
     addrHint: []Address
 }
 
 func requiresValidDelegate(
-    dd: DelegateDetails, 
+    dd: RelativeDelegateLink, 
     mph: MintingPolicyHash, 
     ctx : ScriptContext
 ) -> Bool {
-    DelegateDetails{uut, strategy, reqdAddr, _} = dd;
+    RelativeDelegateLink{uut, strategy, reqdAddr, _} = dd;
     if (!(strategy.encode_utf8().length < 4)) {
         error("strategy must be at least 4 bytes")
     };

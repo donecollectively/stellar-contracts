@@ -2,6 +2,16 @@ import { Address } from "@hyperionbt/helios";
 import { StellarContract, paramsBase, stellarSubclass } from "../StellarContract.js";
 import { DefaultMinter } from "../DefaultMinter.js";
 
+const _uutName = Symbol("uutName");
+export class UutName {
+    private [_uutName]: string
+
+    constructor(un: string) {
+        this[_uutName] = un
+    }
+    get name() { return this[_uutName] }
+}
+export const PARAM_REQUIRED = "__required__" as const;
 
 export class DelegateConfigNeeded extends Error {
     errors?: ErrorMap
@@ -21,13 +31,6 @@ export type ErrorMap = Record<string, string[]>
 // return type for strategy's validateScriptParams()
 export type strategyValidation = ErrorMap | undefined
 
-export type VariantStrategy<
-    T extends StellarContract<any>
-> = {
-    delegateClass: stellarSubclass<T>,
-    scriptParams? : strategyParams,
-    validateScriptParams(p: strategyParams) : strategyValidation
-}
 export function variantMap<
     T extends StellarContract<any>
 >(vm: VariantMap<T>) { return vm }
@@ -41,13 +44,83 @@ export type RoleMap = Record<string, VariantMap<any>>
 export type strategyParams = paramsBase;
 export type delegateScriptParams = paramsBase;
 
-export type DelegateConfig = {
+export type PartialParamConfig<PT extends paramsBase> = Partial<{
+    [key in keyof PT]: "__required__" | PT[key]
+}>
+
+//! declaration for a variant of a Role:
+//  ... indicates the details needed to construct a delegate script
+//  ... (and it's addr) that may not have existed before.
+export type VariantStrategy<
+    T extends StellarContract<any>,
+    PT extends paramsBase = T extends StellarContract<infer iPT> ? iPT : never
+> = {
+    delegateClass: stellarSubclass<T>,
+    //! it MAY provide a partial configuration to be used for parameterizing 
+    //  the underlying contract script, to be further customized by a delegate-selection
+    scriptParams? : PartialParamConfig<PT>,
+    //! it has a function used for validating parameter details
+    validateScriptParams(p: PT) : strategyValidation
+}
+
+//! a map of delegate selections needed for a transaction 
+//  ... to construct a concrete delegate that hasn't yet been manifested.  
+//  ... This commonly is needed during initial setup of a contract, 
+//  ... but may happen also at later moments in the contract's lifecycle.
+export type SelectedDelegates = {
+    [roleName: string]: SelectedDelegate<StellarContract<any>>
+}
+
+//! a single delegate selection, where a person chooses 
+//  ... one of the strategy variants 
+//  ... and the settings (script parameters) needed to create the on-chain contract
+export type SelectedDelegate<
+    T extends StellarContract<any>,
+    PT extends paramsBase = T extends StellarContract<infer iPT> ? iPT : never
+> = {
+    strategyName: string
+    selectedParams: Partial<PT>,
+} 
+
+//! a complete, validated configuration for a specific delegate.  
+//  ... Combined with a specific UUT, a delegate linkage can be created from this
+export type DelegateConfig<
+    T extends StellarContract<any>,
+    PT extends paramsBase = T extends StellarContract<infer iPT> ? iPT : never
+> = {
+    roleName: string,
     strategyName: string,
-    addlParams: delegateScriptParams, 
+    selectedClass: stellarSubclass<T>,
+    scriptParams: PT, 
+    reqdAddress?: Address,
+    addressesHint?: Address[],
+}
+
+export type RelativeDelegateLink = {
+    strategyName: string,
+    uut: UutName,
+    reqdAddress?: Address,
+    addressesHint?: Address[],
+}
+
+export type xDelegateLink = {
+    strategyName: string,
+    uutFingerprint: string,
+    reqdAddress?: Address,
+    addressesHint?: Address[],
+}
+
+export type DelegateDetailSnapshot<
+    T extends StellarContract<any>,
+    PT extends paramsBase = T extends StellarContract<infer iPT> ? iPT : never
+> = {
+    isDelegateSnapshot: true
+    roleName: string,
+    strategyName: string,
+    uut: string,
+    scriptParams: PT, 
     reqdAddress?: Address 
     addressesHint?: Address[]
 }
-export type SelectedDelegates = {
-    [roleName: string]: DelegateConfig
-}
+
 

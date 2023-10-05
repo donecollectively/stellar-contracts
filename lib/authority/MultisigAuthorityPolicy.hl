@@ -74,6 +74,8 @@ func requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {
 
     true
 }
-
+func main(_,_,_) -> Bool {
+    true
+}
 // for updating trustee list:
 // requiresProofOfNewTrustees(ctx, newDatum)

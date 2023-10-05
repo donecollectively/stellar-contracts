@@ -1,23 +1,14 @@
-import { Address, AssetClass, TxInput, Value } from "@hyperionbt/helios";
+import { Address, AssetClass, MintingPolicyHash, TxInput, Value } from "@hyperionbt/helios";
 
 import { Activity, isActivity, StellarContract } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
+import { UutName } from "../delegation/RolesAndDelegates.js";
 
-type AuthorityPolicyArgs = {
+export type AuthorityPolicyArgs = {
     rev: bigint;
-    // mph: MintingPolicyHash;
-    // policyUutName: string;
-};
-
-type RegisteredCredDatumProps = {
-    credid: string;
-    trustees;
-};
-
-export type RCPolicyDelegate<T> = StellarContract<any & T> & {
-    txnFreshenCredInfo;
-    txnMintLIT;
-    txnRetireCred;
+    uutFingerprint: string;
+    mph: MintingPolicyHash;
+    uut: UutName;
 };
 
 //! an interface & base class to enforce policy for authorizing activities
@@ -48,6 +39,7 @@ export abstract class AuthorityPolicy<
         tokenId: AssetClass,
         delegateAddr: Address
     ): Promise<StellarTxnContext> {
+        const fp = tokenId.toFingerprint();
         throw new Error(`todo`);
         return tcx;
     }
@@ -83,7 +75,7 @@ export abstract class AuthorityPolicy<
     //! Adds the indicated utxo to the transaction with appropriate activity/redeemer
     //  ... allowing the token to be burned by the minting policy.
     //! When backed by a contract,
-    //! ... it should ensure any other UTXOs it may also hold,
+    //! ... it should ensure any other UTXOs it may also hold
     //   ... do not become inaccessible as a result.
     //! When backed by a contract, it should use an activity/redeemer
     //  ... allowing the token to be spent and not returned.
@@ -96,7 +88,7 @@ export abstract class AuthorityPolicy<
     ): Promise<StellarTxnContext>;
 
     // static mkDelegateWithArgs(a: RCPolicyArgs) {
-    //
+    //      
     // }
     requirements() {
         return {

@@ -19,6 +19,7 @@ import { ADA, StellarTestContext, addTestContext } from "../lib/testing";
 import { Capo, hasAllUuts } from "../lib/Capo";
 import {
     DelegateConfigNeeded,
+    UutName,
     VariantMap,
     VariantStrategy,
     strategyValidation,
@@ -56,7 +57,7 @@ describe("Capo", async () => {
             const t: DefaultCapo = await h.setup();
             await h.mintCharterToken();
             // await delay(1000);
-            type something = { something: string };
+            type something = { something: UutName };
             const tcx = new StellarTxnContext<hasAllUuts<something>>();
             await t.txnAddAuthority(tcx);
             await t.txnCreatingUuts<something>(tcx, ["something"]);
@@ -84,7 +85,7 @@ describe("Capo", async () => {
             await h.mintCharterToken();
             // await delay(1000);
 
-            type hasFooBar = { foo: string; bar: string };
+            type hasFooBar = { foo: UutName; bar: UutName };
             const tcx = new StellarTxnContext<hasAllUuts<hasFooBar>>();
             await t.txnAddAuthority(tcx);
             await t.txnCreatingUuts(tcx, ["foo", "bar"]);
@@ -112,7 +113,7 @@ describe("Capo", async () => {
             await h.mintCharterToken();
             // await delay(1000);
 
-            type hasFooBar = { foo: string; bar: string };
+            type hasFooBar = { foo: UutName; bar: UutName };
             const tcx = new StellarTxnContext<hasAllUuts<hasFooBar>>();
             await t.txnAddAuthority(tcx);
             await t.txnCreatingUuts(tcx, ["foo", "bar"]);
@@ -147,7 +148,7 @@ describe("Capo", async () => {
             // await delay(1000);
 
             const noMultiples = "multiple-is-bad";
-            type uniqUutMap = { ["multiple-is-bad"]: string };
+            type uniqUutMap = { ["multiple-is-bad"]: UutName };
             console.log(
                 "-------- case 1: using the txn-helper in unsupported way"
             );
@@ -226,7 +227,7 @@ describe("Capo", async () => {
             await h.mintCharterToken();
             // await delay(1000);
 
-            type hasSomethingUut = { ["something"]: string };
+            type hasSomethingUut = { ["something"]: UutName };
             const tcx = new StellarTxnContext<hasAllUuts<hasSomethingUut>>();
 
             await t.txnAddAuthority(tcx);

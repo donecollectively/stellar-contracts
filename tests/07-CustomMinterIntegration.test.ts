@@ -8,7 +8,7 @@ import {
 
 import { Address, TxId, TxOutput } from "@hyperionbt/helios";
 
-import { CustomTreasury } from "../src/examples/CustomTreasury";
+import { CustomTreasury } from "./customizing/CustomTreasury";
 import { StellarTxnContext } from "../lib/StellarTxnContext";
 import {
     ADA,

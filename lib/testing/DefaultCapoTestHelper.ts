@@ -1,4 +1,4 @@
-import { DefaultCharterDatumArgs, DefaultCapo } from "../DefaultCapo.js";
+import { DefaultCharterDatumArgs, DefaultCapo, PartialDefaultCharterDatumArgs } from "../DefaultCapo.js";
 import { Address } from "@hyperionbt/helios";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import {
@@ -26,12 +26,11 @@ export class DefaultCapoTestHelper extends CapoTestHelper<DefaultCapo> {
         return treasury.txnAddAuthority(tcx);
     }
 
-    mkDefaultCharterArgs(): DefaultCharterDatumArgs {
+    mkDefaultCharterArgs(): PartialDefaultCharterDatumArgs {
         return {
-            govDelegate: {
+            govAuthorityLink: {
                 addressesHint: [ this.actors.tina.address ],
                 strategyName: "address",
-                uut: "tbd"
             }
         };
     }

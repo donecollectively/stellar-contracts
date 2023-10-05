@@ -8,19 +8,22 @@ import {
 import {mkTv} from StellarHeliosHelpers
 
 import {
-    DelegateDetails, 
     requiresValidDelegate
 } from CapoDelegateHelpers
 
+//!!!! todo: change to TxOutputId, rolling up these two things:
 const seedTxn : TxId = TxId::new(#1234)
 const seedIndex : Int = 42
 
 enum Redeemer { 
     mintingCharter {
         owner: Address
-        delegate: DelegateDetails
+
+        // we don't have a responsiblity to enforce delivery to the right location
+        // govAuthority: RelativeDelegateLink   // not needed 
     }
     mintingUuts {
+        //!!!! todo: change to TxOutputId, rolling up these two things:
         seedTxn: TxId
         seedIndex: Int
         purposes: []String
@@ -45,8 +48,12 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
                 "charter token not minted");
 
             hasContractSeedUtxo(tx) &&
-            validateUutMinting(ctx:ctx, sTxId:seedTxn, sIdx:seedIndex, 
-                purposes: []String{authTnBase}, exact:false) &&
+            validateUutMinting(ctx:ctx, 
+                sTxId:seedTxn, 
+                sIdx:seedIndex, 
+                purposes: []String{authTnBase}, 
+                exact:false
+            ) &&
             tx.outputs.all( (output: TxOutput) -> Bool {
                 output.value != value_minted || (
                     output.value == value_minted &&

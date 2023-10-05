@@ -4,12 +4,15 @@ import { Capo, anyDatumArgs } from "../Capo.js";
 import { SeedTxnParams } from "../SeedTxn.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
+import { PartialDefaultCharterDatumArgs } from "../DefaultCapo.js";
 
 
 export abstract class CapoTestHelper<
     SC extends Capo<any>,
-    CDT extends anyDatumArgs = SC extends Capo<any, infer iCDT> ? iCDT : never
-> extends StellarTestHelper<SC, SeedTxnParams> {
+    CDT extends anyDatumArgs = 
+        SC extends Capo<any, infer iCDT> ? iCDT : 
+        anyDatumArgs
+    > extends StellarTestHelper<SC, SeedTxnParams> {
     async setup({
         randomSeed = 42, seedTxn, seedIndex = 0n,
     }: { seedTxn?: TxId; seedIndex?: bigint; randomSeed?: number; } = {}): Promise<SC> {
@@ -49,7 +52,7 @@ export abstract class CapoTestHelper<
         return strella;
     }
 
-    abstract mkDefaultCharterArgs() : CDT;
+    abstract mkDefaultCharterArgs() : Partial<CDT>;
     
     async mintCharterToken(args?: CDT): Promise<StellarTxnContext> {
         const { delay } = this;
@@ -63,9 +66,9 @@ export abstract class CapoTestHelper<
 
         await this.setup();
         const script = this.strella!;
-        args = args || this.mkDefaultCharterArgs();
-        
-        const tcx = await script.mkTxnMintCharterToken(args);
+        const goodArgs: Partial<CDT> = args || this.mkDefaultCharterArgs();
+        debugger
+        const tcx = await script.mkTxnMintCharterToken(goodArgs);
         expect(script.network).toBe(this.network);
 
         await script.submit(tcx);

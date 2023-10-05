@@ -38,7 +38,7 @@ import { SeedTxnParams } from "./SeedTxn.js";
 import { valuesEntry } from "./HeliosPromotedTypes.js";
 import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";
 import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
-import { DelegateDetails } from "./DefaultCapo.js";
+import { RelativeDelegateLink, UutName } from "./delegation/RolesAndDelegates.js";
 
 export class DefaultMinter
     extends StellarContract<SeedTxnParams>
@@ -87,11 +87,12 @@ export class DefaultMinter
                     ]);
                     // console.warn("txId " + txId.hex)
                     // console.warn("&&&&&&&& txoId", bytesToHex(txoId));
+                    const uutName = new UutName(`${uutPurpose}.${bytesToHex(
+                        blake2b(txoId).slice(0, 6)
+                    )}`)
                     return [
                         uutPurpose,
-                        `${uutPurpose}.${bytesToHex(
-                            blake2b(txoId).slice(0, 6)
-                        )}`,
+                        uutName,
                     ];
                 })
             ) as UutMapType;
@@ -118,8 +119,8 @@ export class DefaultMinter
     }
 
     mkUutValuesEntries<UM extends uutPurposeMap>(uutMap: UM): valuesEntry[] {
-        return Object.entries(uutMap).map(([_purpose, assetName]) => {
-            return this.mkValuesEntry(assetName, BigInt(1));
+        return Object.entries(uutMap).map(([_purpose, uut]) => {
+            return this.mkValuesEntry(uut.name, BigInt(1));
         });
     }
 
@@ -131,14 +132,14 @@ export class DefaultMinter
     @Activity.redeemer
     protected mintingCharter({
         owner,
-        delegate
+        govAuthorityLink
     }: MintCharterRedeemerArgs): isActivity {
         // debugger
 
-        const { DelegateDetails, Redeemer } = this.configuredContract.types;
+        const { DelegateDetails: hlDelegateDetails, Redeemer } = this.configuredContract.types;
 
-        const {uut, strategyName, reqdAddress, addressesHint } = delegate
-        const delegateDetails = DelegateDetails(
+        const {uut, strategyName, reqdAddress, addressesHint } = govAuthorityLink
+        const delegateDetails = hlDelegateDetails(
             uut, strategyName, reqdAddress, addressesHint
         );
         const t =
@@ -192,9 +193,9 @@ export class DefaultMinter
     @Activity.partialTxn
     async txnMintingCharter(
         tcx: StellarTxnContext,
-        { owner, delegate } : {
+        { owner, govAuthorityLink } : {
             owner: Address, 
-            delegate: DelegateDetails
+            govAuthorityLink: RelativeDelegateLink
         }
     ): Promise<StellarTxnContext> {
         const tVal = this.charterTokenAsValuesEntry;
@@ -204,7 +205,7 @@ export class DefaultMinter
                 this.mintingPolicyHash!,
                 [tVal],
                 this.mintingCharter({ 
-                    owner, delegate
+                    owner, govAuthorityLink
                  }).redeemer
             )
             .attachScript(this.compiledContract);
