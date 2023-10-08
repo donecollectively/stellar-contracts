@@ -159,7 +159,7 @@ export class DefaultCapo<
         const {RelativeDelegateLink: hlRelativeDelegateLink, Redeemer} = this.configuredContract.types
         // let {uut, strategyName, reqdAddress: canRequireAddr, addressesHint=[]} = args.govAuthority
 
-        // // const {Option} = this.configuredContract.types;
+        // // const {Option} = this.scriptInstance.types;
         // debugger
         // const OptAddr = Option(Address);
         // const needsAddr = new OptAddr(canRequireAddr);

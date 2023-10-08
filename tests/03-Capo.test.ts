@@ -56,7 +56,7 @@ describe("Capo", async () => {
             const seedTxn = await h.mkSeedUtxo().catch((e) => {
                 throw e;
             });
-            await h.setup({
+            await h.initialize({
                 seedTxn,
                 seedIndex: 0n,
             });
@@ -74,8 +74,8 @@ describe("Capo", async () => {
                 h: { network, actors, delay, state },
             } = context;
 
-            const t1: DefaultCapo = await h.setup();
-            const t2: DefaultCapo = await h.setup({
+            const t1: DefaultCapo = await h.initialize();
+            const t2: DefaultCapo = await h.initialize({
                 randomSeed: 43,
                 seedIndex: 1n,
             });
@@ -98,8 +98,8 @@ describe("Capo", async () => {
             } = context;
 
             try {
-                const t1: DefaultCapo = await h.setup();
-                const t2: DefaultCapo = await h.setup({
+                const t1: DefaultCapo = await h.initialize();
+                const t2: DefaultCapo = await h.initialize({
                     randomSeed: 43,
                     seedIndex: 1n,
                 });
@@ -121,7 +121,7 @@ describe("Capo", async () => {
                 } = context;
                 // await context.delay(1000)
                 try {
-                    await h.setup();
+                    await h.initialize();
                     await h.mintCharterToken();
                 } catch (e) {
                     throw e;
@@ -138,7 +138,7 @@ describe("Capo", async () => {
                     h: { network, actors, delay, state },
                 } = context;
                 // await context.delay(1000)
-                const treasury = await h.setup();
+                const treasury = await h.initialize();
 
                 const wrongUtxo = (await actors.tracy.utxos).at(-1);
 
@@ -146,7 +146,7 @@ describe("Capo", async () => {
                     treasury,
                     "mustGetContractSeedUtxo"
                 ).mockImplementation(
-                    //@ts-expect-error this wrong utxo can be undefined or just wrong
+                    //@xxts-expect-error this wrong utxo can be undefined or just wrong
                     async () => {
                         return wrongUtxo;
                     }

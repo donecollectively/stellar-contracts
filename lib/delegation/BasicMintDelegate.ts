@@ -36,7 +36,7 @@ export class BasicMintDelegate extends StellarContract<MintDelegateArgs> {
 
     // @Activity.redeemer
     protected x(tokenName: string): isActivity {
-        const t = new this.configuredContract.types.Redeemer.commissioningNewToken(
+        const t = new this.scriptInstance.types.Redeemer.commissioningNewToken(
             tokenName
         );
 

@@ -41,7 +41,7 @@ describe("Capo: Authority: Multisig", async () => {
                 h: { network, actors, delay, state },
             } = context;
             const { tina, tom, tracy } = actors;
-            await h.setup();
+            await h.initialize();
             // await delay(1000);
             const treasury = context.strella!;
 
@@ -66,7 +66,7 @@ describe("Capo: Authority: Multisig", async () => {
                 h: { network, actors, delay, state },
             } = context;
             const { tina, tom, tracy } = actors;
-            await h.setup();
+            await h.initialize();
             const treasury = context.strella!;
 
             await h.mintCharterToken({
@@ -92,7 +92,7 @@ describe("Capo: Authority: Multisig", async () => {
                 h: { network, actors, delay, state },
             } = context;
             const { tina, tom, tracy } = actors;
-            await h.setup();
+            await h.initialize();
             const treasury = context.strella!;
 
             await h.mintCharterToken({

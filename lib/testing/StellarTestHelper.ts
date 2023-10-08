@@ -88,12 +88,12 @@ export abstract class StellarTestHelper<
         }
 
         //@ts-expect-error - can serve no-params case or params case
-        this.setupPending = this.setup(params).then((p) => {
+        this.setupPending = this.initialize(params).then((p) => {
             return p;
         });
     }
 
-    async setup(params: P & canHaveRandomSeed) {
+    async initialize(params: P & canHaveRandomSeed) {
         const { randomSeed, ...p } = params;
         if (this.setupPending) await this.setupPending;
         if (this.strella && this.randomSeed == randomSeed) {

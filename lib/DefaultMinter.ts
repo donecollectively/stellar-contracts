@@ -105,7 +105,7 @@ export class DefaultMinter
 
             const { txId: seedTxn, utxoIdx: seedIndex } = seedUtxo.outputId;
 
-            return tcx.attachScript(this.compiledContract).mintTokens(
+            return tcx.attachScript(this.compiledScript).mintTokens(
                 this.mintingPolicyHash!,
                 vEntries,
                 this.mintingUuts({
@@ -137,7 +137,7 @@ export class DefaultMinter
     }: MintCharterRedeemerArgs): isActivity {
         // debugger
 
-        const { DelegateDetails: hlDelegateDetails, Redeemer } = this.configuredContract.types;
+        const { DelegateDetails: hlDelegateDetails, Redeemer } = this.scriptInstance.types;
 
         const {uut, strategyName, reqdAddress, addressesHint } = govAuthorityLink
         const delegateDetails = hlDelegateDetails(
@@ -161,7 +161,7 @@ export class DefaultMinter
         // debugger
         const seedIndex = BigInt(sIdx);
         console.log("UUT redeemer seedTxn", seedTxn.hex);
-        const t = new this.configuredContract.types.Redeemer.mintingUuts(
+        const t = new this.scriptInstance.types.Redeemer.mintingUuts(
             seedTxn,
             seedIndex,
             purposes
@@ -209,6 +209,6 @@ export class DefaultMinter
                     owner, govAuthorityLink
                  }).redeemer
             )
-            .attachScript(this.compiledContract);
+            .attachScript(this.compiledScript);
     }
 }

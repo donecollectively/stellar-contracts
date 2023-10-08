@@ -54,7 +54,7 @@ describe("Capo", async () => {
             } = context;
             const { tina, tom, tracy } = actors;
 
-            const t: DefaultCapo = await h.setup();
+            const t: DefaultCapo = await h.initialize();
             await h.mintCharterToken();
             // await delay(1000);
             type something = { something: UutName };
@@ -81,7 +81,7 @@ describe("Capo", async () => {
             } = context;
             const { tina, tom, tracy } = actors;
 
-            const t: DefaultCapo = await h.setup();
+            const t: DefaultCapo = await h.initialize();
             await h.mintCharterToken();
             // await delay(1000);
 
@@ -109,7 +109,7 @@ describe("Capo", async () => {
             } = context;
             const { tina, tom, tracy } = actors;
 
-            const t: DefaultCapo = await h.setup();
+            const t: DefaultCapo = await h.initialize();
             await h.mintCharterToken();
             // await delay(1000);
 
@@ -141,7 +141,7 @@ describe("Capo", async () => {
             } = context;
             const { tina, tom, tracy } = actors;
 
-            const t: DefaultCapo = await h.setup();
+            const t: DefaultCapo = await h.initialize();
             const m: DefaultMinter = t.minter!;
 
             await h.mintCharterToken();
@@ -223,7 +223,7 @@ describe("Capo", async () => {
             } = context;
             const { tina, tom, tracy } = actors;
 
-            const t: DefaultCapo = await h.setup();
+            const t: DefaultCapo = await h.initialize();
             await h.mintCharterToken();
             // await delay(1000);
 

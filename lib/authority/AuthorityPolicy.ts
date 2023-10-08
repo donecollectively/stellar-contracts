@@ -26,7 +26,7 @@ export abstract class AuthorityPolicy<
     // @Activity.redeemer
     protected x(tokenName: string): isActivity {
         const t =
-            new this.configuredContract.types.Redeemer.commissioningNewToken(
+            new this.scriptInstance.types.Redeemer.commissioningNewToken(
                 tokenName
             );
 

@@ -14,8 +14,8 @@ import {
     ADA,
     StellarTestContext,
     addTestContext,
-    StellarCapoTestHelper,
-} from "../lib/StellarTestHelper";
+    CapoTestHelper,
+} from "../lib/testing/";
 
 type localTC = StellarTestContext<CustomTreasuryTestHelper>;
 
@@ -30,7 +30,7 @@ const describe = descrWithContext<localTC>;
 
 const minAda = 2n * ADA; // minimum needed to send an NFT
 
-class CustomTreasuryTestHelper extends StellarCapoTestHelper<CustomTreasury> {
+class CustomTreasuryTestHelper extends CapoTestHelper<CustomTreasury> {
     get stellarClass() {
         return CustomTreasury;
     }
@@ -105,7 +105,7 @@ describe("StellarContract", async () => {
             it("can build transactions that mint non-'charter' tokens", async (context: localTC) => {
                 const {h, h: { network, actors, delay, state }} = context;
 
-                await h.setup();
+                await h.initialize();
                 const treasury = context.h.strella;
 
                 const tokenName = "fooToken";
@@ -137,7 +137,7 @@ describe("StellarContract", async () => {
                     h: { network, actors, delay, state },
                 } = context;
 
-                await h.setup();
+                await h.initialize();
                 const treasury = context.strella!;
 
                 const tokenName = "fooToken";
@@ -182,7 +182,7 @@ describe("StellarContract", async () => {
                     h: { network, actors, delay, state },
                 } = context;
 
-                await h.setup();
+                await h.initialize();
                 const treasury = context.strella!;
 
                 const tokenName = "fooToken";
@@ -221,7 +221,7 @@ describe("StellarContract", async () => {
                 } = context;
                 const { tina, tom, tracy } = actors;
 
-                await h.setup();
+                await h.initialize();
                 const treasury = context.strella;
                 const tokenName = "fooToken";
 

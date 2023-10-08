@@ -13,7 +13,7 @@ export abstract class CapoTestHelper<
         SC extends Capo<any, infer iCDT> ? iCDT : 
         anyDatumArgs
     > extends StellarTestHelper<SC, SeedTxnParams> {
-    async setup({
+    async initialize({
         randomSeed = 42, seedTxn, seedIndex = 0n,
     }: { seedTxn?: TxId; seedIndex?: bigint; randomSeed?: number; } = {}): Promise<SC> {
         if (this.setupPending) await this.setupPending;
@@ -40,12 +40,12 @@ export abstract class CapoTestHelper<
         this.strella = strella;
         const { address, mintingPolicyHash: mph } = strella;
 
-        const { name } = strella.configuredContract;
+        const { name } = strella.scriptInstance;
         console.log(
             name,
             address.toBech32().substring(0, 18) + "…",
             "vHash 📜 " +
-            strella.compiledContract.validatorHash.hex.substring(0, 12) +
+            strella.compiledScript.validatorHash.hex.substring(0, 12) +
             "…",
             "mph 🏦 " + mph?.hex.substring(0, 12) + "…"
         );
@@ -64,7 +64,7 @@ export abstract class CapoTestHelper<
             return this.state.mintedCharterToken;
         }
 
-        await this.setup();
+        await this.initialize();
         const script = this.strella!;
         const goodArgs: Partial<CDT> = args || this.mkDefaultCharterArgs();
         debugger

@@ -59,7 +59,7 @@ describe("Capo", async () => {
                 // console.log("addr of addr1q9g8hpckj8pmhn45v30wkrqfnnkfftamja3y9tcyjrg44cl0wk8n4atdnas8krf94kulzdqsltujm5gzas8rgel2uw0sjk4gt8\n",
                 //   "\n    -> ", ttt.toBech32())
 
-                const t: CustomTreasury = await h.setup();
+                const t: CustomTreasury = await h.initialize();
                 expect(t.roles).toBeTruthy();
                 expect(t.roles.mintDelegate).toBeTruthy();
                 expect(t.roles.mintDelegate.default).toBeTruthy();
@@ -69,7 +69,7 @@ describe("Capo", async () => {
             it("withDelegates method starts a transaction with delegate settings", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
-                const t = await h.setup();
+                const t = await h.initialize();
 
                 const tcx = t.withDelegates({
                     mintDelegate: {
@@ -83,7 +83,7 @@ describe("Capo", async () => {
             it("txnMustGetDelegate(tcx, role) method retrieves a configured delegate", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
-                const t = await h.setup();
+                const t = await h.initialize();
 
                 const tcx = t.withDelegates({
                     mintDelegate: {
@@ -98,7 +98,7 @@ describe("Capo", async () => {
             it("txnMustGetDelegate() will use a 'default' delegate", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
-                const t = await h.setup();
+                const t = await h.initialize();
 
                 const tcx = t.withDelegates({});
 
@@ -110,7 +110,7 @@ describe("Capo", async () => {
             it("If there is no delegate configured (or defaulted) for the needed role, txnMustGetDelegate throws a DelegateConfigNeeded error.", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
-                const t = await h.setup();
+                const t = await h.initialize();
 
                 const tcx = t.withDelegates({});
 
@@ -124,7 +124,7 @@ describe("Capo", async () => {
             it("If the strategy-configuration has any configuration problems, the DelegateConfigNeeded error contains an 'errors' object", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
-                const t = await h.setup();
+                const t = await h.initialize();
 
                 const problem = () => {
                     t.txnMustGetDelegate(tcx, "mintDelegate");
@@ -159,7 +159,7 @@ describe("Capo", async () => {
             it("If the strategy-configuration doesn't match available variants, the DelegateConfigNeeded error offers suggested strategy-names", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
-                const t = await h.setup();
+                const t = await h.initialize();
 
                 const problem = () => {
                     t.txnMustGetDelegate(tcx, "mintDelegate");
@@ -196,7 +196,7 @@ describe("Capo", async () => {
             it("RoleVariants has type-parameters indicating the baseline types & interfaces for delegates in that role", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
-                const t = await h.setup();
+                const t = await h.initialize();
 
                 const ok: VariantStrategy<BasicMintDelegate> = {
                     delegateClass: BasicMintDelegate,
@@ -227,7 +227,7 @@ describe("Capo", async () => {
                 async (context: localTC) => {
                     // prettier-ignore
                     const {h, h:{network, actors, delay, state} } = context;
-                    const t = await h.setup();
+                    const t = await h.initialize();
                     throw new Error(`test not implemented`);
                 }
             );

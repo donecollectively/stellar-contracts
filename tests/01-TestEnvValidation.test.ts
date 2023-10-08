@@ -135,7 +135,7 @@ describe("Test environment", async () => {
         //             nonce: context.mkRandomBytes(16),
         //             initialTrustees: [context.actors.tina.address],
         //         });
-        //         const cc = strella.configuredContract;
+        //         const cc = strella.scriptInstance;
         //         const {
         //             types: { Redeemer },
         //         } = cc;

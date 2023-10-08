@@ -35,7 +35,7 @@ implements MinterBaseMethods {
     @Activity.redeemer
     protected mintingNamedToken(v : Value): isActivity {
         const t =
-            new this.configuredContract.types.Redeemer.mintingNamedToken(v);
+            new this.scriptInstance.types.Redeemer.mintingNamedToken(v);
 
         return {redeemer: t._toUplcData() }
     }
@@ -82,7 +82,7 @@ implements MinterBaseMethods {
                 values,
                 this.mintingNamedToken(value).redeemer
             )
-            .attachScript(this.compiledContract);
+            .attachScript(this.compiledScript);
     }
     private _mkMintingValue(values: valuesEntry[]) {
         return new Value(0, 

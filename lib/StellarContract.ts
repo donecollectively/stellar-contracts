@@ -202,17 +202,15 @@ export class StellarContract<
     // SUB extends StellarContract<any, ParamsType>,
     ParamsType extends paramsBase
 > {
-    //! it has configuredContract: a parameterized instance of the contract
+    //! it has scriptInstance: a parameterized instance of the contract
     //  ... with specific `parameters` assigned.
-    configuredContract: Program;
-    compiledContract: UplcProgram;
+    scriptInstance: Program;
     paramsIn: ParamsType;
     contractParams: paramsBase;
     network: Network;
     networkParams: NetworkParams;
-    _template?: Program;
     myActor?: Wallet;
-
+    isTest?: boolean
     static get defaultParams() {
         return {}
     }
@@ -231,56 +229,38 @@ export class StellarContract<
         this.network = network;
         this.networkParams = networkParams;
         this.paramsIn = params;
+        this.isTest = isTest
         if (myActor) this.myActor = myActor;
 
-        this.contractParams = this.getContractParams(params);
-
-        const configured = (this.configuredContract = this.contractTemplate());
-        this.configuredContract.parameters = this.contractParams;
-
-        const simplify = !isTest;
-        // const t = new Date().getTime();
-        if (simplify) {
-            console.warn(`Loading optimized contract code for `+this.configuredContract.name);
-        }
-
-        this.compiledContract = configured.compile(simplify);
-        // const t2 = new Date().getTime();
-
-        // Result: ~80ms cold-start or (much) faster on additional compiles
-        // console.log("::::::::::::::::::::::::compile time "+ (t2 - t) + "ms")
-        // -> caching would not improve
-
-        // const configured = Program.new(source)
-        // configured.parameters = params;
-        // const compiledContract = configured.compile(simplify)
-        // const addr = Address.fromHashes(compiledContract.validatorHash)
+        const fullParams = this.contractParams = this.getContractParams(params);
+        this.scriptInstance = this.mkScriptInstance(fullParams)
     }
+    compiledScript!: UplcProgram; // initialized in mkScriptInstance
 
     get datumType() {
-        return this.configuredContract.types.Datum;
+        return this.scriptInstance.types.Datum;
     }
     _purpose?: scriptPurpose;
     get purpose() {
         if (this._purpose) return this._purpose;
 
-        const purpose = this.configuredContract.purpose as scriptPurpose;
+        const purpose = this.scriptInstance.purpose as scriptPurpose;
         return (this._purpose = purpose as scriptPurpose);
     }
 
     get address(): Address {
-        return Address.fromHashes(this.compiledContract.validatorHash);
+        return Address.fromHashes(this.compiledScript.validatorHash);
     }
 
     get mintingPolicyHash() {
         if ("minting" != this.purpose) return undefined;
 
-        return this.compiledContract.mintingPolicyHash;
+        return this.compiledScript.mintingPolicyHash;
     }
 
     get identity() {
         if ("minting" == this.purpose) {
-            const b32 = this.compiledContract.mintingPolicyHash.toBech32();
+            const b32 = this.compiledScript.mintingPolicyHash.toBech32();
             //!!! todo: verify bech32 checksum isn't messed up by this:
             return b32.replace(/^asset/, "mph");
         }
@@ -388,7 +368,7 @@ export class StellarContract<
 
     async readDatum<DPROPS extends anyDatumProps>(datumName:string, datum:Datum | InlineDatum) : Promise<DPROPS> {
         //@ts-expect-error until mainArgTypes is made public again
-        const thisDatumType = this.configuredContract.mainArgTypes.find(
+        const thisDatumType = this.scriptInstance.mainArgTypes.find(
             (x) => "Datum" == x.name
         )!.typeMembers[datumName];
 
@@ -855,14 +835,37 @@ export class StellarContract<
         return []
     }
 
-    contractTemplate() {
+    mkScriptInstance(params: ParamsType) {
         const src = this.contractSource();
         const modules = this.importModules();
 
         // console.log({src, Program)
 
         try {
-            return (this._template = this._template || Program.new(src, modules))
+            const script = Program.new(src, modules);
+            script.parameters = params
+
+            const simplify = !this.isTest;
+            // const t = new Date().getTime();
+            if (simplify) {
+                console.warn(`Loading optimized contract code for `+this.scriptInstance.name);
+            }
+    
+            //!!! todo: consider pushing this to JIT or async
+            this.compiledScript = script.compile(simplify);
+            // const t2 = new Date().getTime();
+    
+            // Result: ~80ms cold-start or (much) faster on additional compiles
+            // console.log("::::::::::::::::::::::::compile time "+ (t2 - t) + "ms")
+            // -> caching would not improve
+    
+            // const configured = Program.new(source)
+            // configured.parameters = params;
+            // const compiledScript = configured.compile(simplify)
+            // const addr = Address.fromHashes(compiledScript.validatorHash)
+    
+
+            return script
         } catch(e: any) {
             if (!e.src) {
                 console.error(

@@ -176,7 +176,7 @@ export abstract class Capo<
 
     @Activity.redeemer
     protected usingAuthority(): isActivity {
-        const r = this.configuredContract.types.Redeemer;
+        const r = this.scriptInstance.types.Redeemer;
         const { usingAuthority } = r;
         if (!usingAuthority) {
             throw new Error(
@@ -294,7 +294,7 @@ export abstract class Capo<
                     );
                 tcx.tx.addRefInput(
                     ctUtxo,
-                    newDatumOrForceRefScript ? this.compiledContract : undefined
+                    newDatumOrForceRefScript ? this.compiledScript : undefined
                 );
             } else {
                 const redeemer = redeemerOrRefInput;
@@ -304,7 +304,7 @@ export abstract class Capo<
                         `wrong type for newDatum when not using reference input for charter`
                     );
                 tcx.addInput(ctUtxo, redeemer.redeemer).attachScript(
-                    this.compiledContract
+                    this.compiledScript
                 );
                 const datum =
                     newDatum || (ctUtxo.origOutput.datum as InlineDatum);

@@ -53,7 +53,7 @@ describe("StellarContract", async () => {
                 h: { network, actors, delay, state },
             } = context;
 
-            const treasury = await h.setup();
+            const treasury = await h.initialize();
             expect(treasury.datumType).toBeTruthy();
         });
         it("getter: purpose", async (context: localTC) => {
@@ -62,7 +62,7 @@ describe("StellarContract", async () => {
                 h: { network, actors, delay, state },
             } = context;
 
-            const treasury = await h.setup();
+            const treasury = await h.initialize();
 
             expect(treasury.purpose).toBe("spending");
             expect(treasury.minter!.purpose).toBe("minting");
@@ -73,7 +73,7 @@ describe("StellarContract", async () => {
                 h: { network, actors, delay, state },
             } = context;
 
-            const treasury = await h.setup();
+            const treasury = await h.initialize();
             expect(treasury.address).toBeInstanceOf(Address);
         });
         describe("getter: mintingPolicyHash", () => {
@@ -83,17 +83,17 @@ describe("StellarContract", async () => {
                     h: { network, actors, delay, state },
                 } = context;
 
-                const t = await h.setup();
+                const t = await h.initialize();
 
                 expect(() => {
-                    t.compiledContract.mintingPolicyHash;
+                    t.compiledScript.mintingPolicyHash;
                 }).toThrow("unexpected");
                 expect(t.mph.hex).toEqual(t.mintingPolicyHash.hex);
                 expect(t.mph.hex).toEqual(t.minter!.mintingPolicyHash.hex);
                 expect(t.minter!.mintingPolicyHash).toBeInstanceOf(
                     MintingPolicyHash
                 );
-                const t2 = await h.setup({ randomSeed: 43 });
+                const t2 = await h.initialize({ randomSeed: 43 });
                 expect(t2.mph.hex).not.toEqual(t.mph.hex);
             });
         });
@@ -105,7 +105,7 @@ describe("StellarContract", async () => {
                     h: { network, actors, delay, state },
                 } = context;
 
-                const treasury = await h.setup();
+                const treasury = await h.initialize();
                 expect(treasury.identity.length).toBe(63);
             });
 
@@ -115,7 +115,7 @@ describe("StellarContract", async () => {
                     h: { network, actors, delay, state },
                 } = context;
 
-                const treasury = await h.setup();
+                const treasury = await h.initialize();
                 expect(treasury.minter!.identity.length).toBe(42);
             });
         });
@@ -148,7 +148,7 @@ describe("StellarContract", async () => {
                     h: { network, actors, delay, state },
                 } = context;
 
-                const t = await h.setup();
+                const t = await h.initialize();
                 const a = t.stringToNumberArray("ABCDE");
                 expect(a).toHaveLength(5);
                 expect(a[0]).toBe(65);
@@ -161,7 +161,7 @@ describe("StellarContract", async () => {
                         h,
                         h: { network, actors, delay, state },
                     } = context;
-                    const t = await h.setup();
+                    const t = await h.initialize();
 
                     //!!! todo: check involvement in tokenAsValue
                 }
@@ -174,7 +174,7 @@ describe("StellarContract", async () => {
                         h: { network, actors, delay, state },
                     } = context;
 
-                    const t: DefaultCapo = await h.setup();
+                    const t: DefaultCapo = await h.initialize();
 
                     const tokenCount = 19n;
                     const tokenName = "foo";
@@ -196,7 +196,7 @@ describe("StellarContract", async () => {
                         h: { network, actors, delay, state },
                     } = context;
 
-                    const t = await h.setup();
+                    const t = await h.initialize();
                     expect(t.ADA(42)).toBe(42_000_000n);
                 });
                 it("accepts integer or bigint, or fractional number", async (context: localTC) => {
@@ -205,7 +205,7 @@ describe("StellarContract", async () => {
                         h: { network, actors, delay, state },
                     } = context;
 
-                    const t = await h.setup();
+                    const t = await h.initialize();
 
                     expect(t.ADA(4n)).toBe(4_000_000n);
                     expect(t.ADA(2)).toBe(2_000_000n);
@@ -218,7 +218,7 @@ describe("StellarContract", async () => {
                         h: { network, actors, delay, state },
                     } = context;
 
-                    const t = await h.setup();
+                    const t = await h.initialize();
 
                     expect(t.ADA(3.141592653589793238)).toBe(3_1415_93n);
                     expect(t.ADA(0.0000001)).toBe(0n);
@@ -233,7 +233,7 @@ describe("StellarContract", async () => {
                             h: { network, actors, delay, state },
                         } = context;
 
-                        const t = await h.setup();
+                        const t = await h.initialize();
 
                         const tcx = new StellarTxnContext();
                         const found = await t.mustFindActorUtxo(
@@ -258,7 +258,7 @@ describe("StellarContract", async () => {
                             h: { network, actors, delay, state },
                         } = context;
 
-                        const t = await h.setup();
+                        const t = await h.initialize();
 
                         const tcx = new StellarTxnContext();
                         let foundAddress;
@@ -283,7 +283,7 @@ describe("StellarContract", async () => {
                             h: { network, actors, delay, state },
                         } = context;
 
-                        const t = await h.setup();
+                        const t = await h.initialize();
                         const tcx = new StellarTxnContext();
                         await expect(
                             t.mustFindActorUtxo(
@@ -301,7 +301,7 @@ describe("StellarContract", async () => {
                                 h: { network, actors, delay, state },
                             } = context;
                             // await delay(1000)
-                            const t: DefaultCapo = await h.setup();
+                            const t: DefaultCapo = await h.initialize();
                             const tcx = new StellarTxnContext();
                             const isEnoughT = t.mkTokenPredicate(
                                 new Value({
@@ -369,7 +369,7 @@ describe("StellarContract", async () => {
                             h: { network, actors, delay, state },
                         } = context;
                         // await delay(1000)
-                        const t: DefaultCapo = await h.setup();
+                        const t: DefaultCapo = await h.initialize();
                         const tcx = new StellarTxnContext();
                         const isEnough = t.mkValuePredicate(42_000n, tcx);
                         const u1 = await t.mustFindActorUtxo(
@@ -431,7 +431,7 @@ describe("StellarContract", async () => {
                         h: { network, actors, delay, state },
                     } = context;
 
-                    const t = await h.setup();
+                    const t = await h.initialize();
 
                     const tcx = new StellarTxnContext();
                     let foundAddress;
@@ -458,7 +458,7 @@ describe("StellarContract", async () => {
                         h: { network, actors, delay, state },
                     } = context;
 
-                    const t = await h.setup();
+                    const t = await h.initialize();
 
                     const tcx = new StellarTxnContext();
                     let foundAddress;
@@ -523,7 +523,7 @@ describe("StellarContract", async () => {
                         h: { network, actors, delay, state },
                     } = context;
 
-                    const t = await h.setup();
+                    const t = await h.initialize();
 
                     // !!! todo: test it works with a specific example collaborating contract
                 }

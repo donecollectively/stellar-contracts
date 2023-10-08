@@ -19,7 +19,7 @@ import { AuthorityPolicy } from "./AuthorityPolicy.js";
 export class AddressAuthorityPolicy extends AuthorityPolicy {
     @Activity.redeemer
     protected usingAuthority(): isActivity {
-        const r = this.configuredContract.types.Redeemer;
+        const r = this.scriptInstance.types.Redeemer;
         const { usingAuthority } = r;
         if (!usingAuthority) {
             throw new Error(
