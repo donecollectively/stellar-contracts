@@ -17,13 +17,8 @@
     },
     "author": "Done Collectively",
     "license": "Cardano Community Source License",
-    "pnpm": {
-        "overrides": {
-            "esbuild": "^0.19.4"
-        }
-    },
     "dependencies": {
-        "@hyperionbt/helios": "^0.15.11",
+        "@hyperionbt/helios": "^0.15.13",
         "semver": ">=7.5.2"
     },
     "devDependencies": {

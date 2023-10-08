@@ -8,7 +8,8 @@ import {
     TxId,
     TxOutput,
     Value,
-    WalletEmulator
+    SimpleWallet,
+    SimpleWallet as WalletEmulator
 } from "@hyperionbt/helios";
 import {
     StellarContract,
@@ -232,7 +233,7 @@ export abstract class StellarTestHelper<
                 .toBech32()
                 .substring(0, 18)}… ${lovelaceToAda(
                     walletBalance
-                )} (🔑#${a.address.pubKeyHash.hex.substring(0, 8)}…)`
+                )} (🔑#${a.address.pubKeyHash?.hex.substring(0, 8)}…)`
         );
 
         //! it makes collateral for each actor, above and beyond the initial balance,
@@ -249,22 +250,26 @@ export abstract class StellarTestHelper<
     mkNetwork(): [NetworkEmulator, enhancedNetworkParams] {
         const theNetwork = new NetworkEmulator();
 
+        //@ts-expect-error with missing methods
         const emuParams = theNetwork.initNetworkParams({
             ...preProdParams,
             raw: { ...preProdParams },
         }) as enhancedNetworkParams;
 
-        //@ts-expect-error
-        emuParams.timeToSlot = function (t) {
-            const seconds = BigInt(t / 1000n);
-            return seconds;
-        };
-        emuParams.slotToTimestamp = this.slotToTimestamp;
+        // debugger
+        //@xxxts-expect-error
+        // emuParams.timeToSlot = function (t) {
+        //     const seconds = BigInt(t / 1000n);
+        //     return seconds;
+        // };
+        // emuParams.slotToTimestamp = this.slotToTimestamp;
 
         return [theNetwork, emuParams];
     }
 
     slotToTimestamp(s: bigint) {
+        return this.networkParams.slotToTime(s);
+
         const num = parseInt(BigInt.asIntN(52, s * 1000n).toString());
         return new Date(num);
     }
@@ -275,11 +280,11 @@ export abstract class StellarTestHelper<
 
     waitUntil(time: Date) {
         const targetTimeMillis = BigInt(time.getTime());
-        //@ts-expect-error
-        const targetSlot = this.liveSlotParams.timeToSlot(targetTimeMillis);
+        // debugger
+        const targetSlot = this.networkParams.timeToSlot(targetTimeMillis);
         const c = this.currentSlot();
 
-        const slotsToWait = targetSlot - c;
+        const slotsToWait = targetSlot - ( c || 0n );
         if (slotsToWait < 1) {
             throw new Error(`the indicated time is not in the future`);
         }

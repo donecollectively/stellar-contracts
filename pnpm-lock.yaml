@@ -4,7 +4,7 @@ overrides:
   esbuild: ^0.19.4
 
 specifiers:
-  '@hyperionbt/helios': ^0.15.11
+  '@hyperionbt/helios': ^0.15.13
   '@rollup/plugin-node-resolve': ^15.1.0
   '@rollup/pluginutils': ^5.0.2
   '@types/node': ^20.2.5
@@ -26,7 +26,7 @@ specifiers:
   webdriverio: ^8.10.7
 
 dependencies:
-  '@hyperionbt/helios': 0.15.11
+  '@hyperionbt/helios': 0.15.13
   semver: 7.5.4
 
 devDependencies:
@@ -270,8 +270,8 @@ packages:
     dev: true
     optional: true
 
-  /@hyperionbt/helios/0.15.11:
-    resolution: {integrity: sha512-Dr48bPRTTsmrhlrtNFWg0HK6i59A2matsPrQimu3a6VhaAsXp1Sc3uYQGYyPJPa4eN72hxDC6QBCMnDOpqbBsA==}
+  /@hyperionbt/helios/0.15.13:
+    resolution: {integrity: sha512-GVlIxBuTIYJkgIHQIrvGUf+jCaN4b+2DnkaPGajIJJeHTfegizJYuEaBuE8arHBd+ghnx2jDABe2xhkwLfzqMA==}
     dev: false
 
   /@isaacs/cliui/8.0.2:
