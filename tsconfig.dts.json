@@ -1,0 +1,38 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noEmit": false,
+        "module": "NodeNext",
+        "allowArbitraryExtensions": true,
+        "moduleResolution": "NodeNext",
+        "baseUrl": ".",
+        "resolveJsonModule": true,
+        "experimentalDecorators": true,
+        // "emitDecoratorMetadata": true,
+        "types": ["node"],
+        "plugins": [],
+        // "outFile": "dist/index.d.ts",
+        "sourceMap": true,
+        "declarationMap": true,
+        "emitDeclarationOnly": true,
+        "allowSyntheticDefaultImports": true,
+        // "noResolve": true,
+        "allowJs": true,
+        // "disableReferencedProjectLoad": false,
+        "noImplicitAny": false,
+        "rootDir": ".",
+    },
+    "files": [ "index.ts" ],
+    "include": [
+        "src/**/*.ts", 
+        "src/**/*.js", 
+        "src/**/*.json", 
+        // "src/**/*.hl",
+        "lib/**/*.ts", 
+        "lib/**/*.js", 
+    ],
+    "exclude": [
+        "node_modules",
+        "**/node_modules/"
+    ]
+}

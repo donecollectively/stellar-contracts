@@ -11,11 +11,9 @@ import {
 } from "../StellarContract.js";
 import { StellarTestContext } from "./StellarTestContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
+import ppParams from "../../preprod.json" assert { type: "json" }
 
-//!!! todo: read this at build-time, not runtime
-export const preProdParams = JSON.parse(
-    await fs.readFile("preprod.json", "utf8")
-);
+export const preProdParams = ppParams
 
 export type enhancedNetworkParams = NetworkParams & {
     slotToTimestamp(n: bigint): Date;
