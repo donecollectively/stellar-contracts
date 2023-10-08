@@ -376,7 +376,7 @@ export abstract class Capo<
 
         const minter = this.addScriptWithParams(minterClass, params);
         const { mintingCharter, mintingUuts } =
-            minter.configuredContract.types.Redeemer;
+            minter.scriptInstance.types.Redeemer;
         if (!mintingCharter)
             throw new Error(
                 `minting script doesn't offer required 'mintingCharter' activity-redeemer`
