@@ -3,6 +3,7 @@ import {
     TxOutput,
     TxInput, Value
 } from "@hyperionbt/helios";
+import { ErrorMap } from "./delegation/RolesAndDelegates.js";
 
 
 export function hexToPrintableString(hexStr) {
@@ -226,4 +227,10 @@ export function txOutputAsString(x: TxOutput, prefix = "<-"): string {
     return `${prefix} ${bech32.substring(0, 18)}… ${datumAsString(
         x.datum
     )} ${valueAsString(x.value)}`;
+}
+
+export function errorMapAsString(em: ErrorMap, prefix = "  ") {
+    return Object.keys(em).map( k => 
+        `${prefix }${k}: ${JSON.stringify(em[k])}`
+    ).join("\n")
 }

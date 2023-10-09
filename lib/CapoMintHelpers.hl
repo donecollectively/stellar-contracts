@@ -11,7 +11,9 @@ func hasSeedUtxo(tx: Tx, sTxId : TxId, sIdx: Int, reason: String) -> Bool {
     );
     assert(tx.inputs.any( (input: TxInput) -> Bool {
         input.output_id == seedUtxo
-    }),  "seed utxo required for minting "+reason);
+    }),  "seed utxo required for minting "+reason 
+        + "\n"+sTxId.show() + " : " + sIdx.show()
+    );
 
     true
 }
@@ -37,7 +39,7 @@ func tnUutFactory(
 
     mhs: String = miniHash.show();
     (p: String) -> String {
-        p + "." + mhs
+        p + "-" + mhs
     }
 }
 
@@ -101,7 +103,7 @@ func validateUutMinting(
     assert(expectationsMet, "bad UUT mint has mismatch;"+ 
         "\n   ... expected "+ expectationString + expectedValue.show()+
         "   ... actual "+ valueMinted.show()+
-        "   ... diff = " + (expectedValue - valueMinted).show()
+        "   ... diff = \n" + (expectedValue - valueMinted).show()
     );
     hasSeedUtxo(tx, sTxId, sIdx, "UUT "+purposes.join("+"))
 }

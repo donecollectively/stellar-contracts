@@ -27,11 +27,15 @@ enum Redeemer {
     usingAuthority
 }
 
-
 func requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {
-    Datum::CharterToken{RelativeDelegateLink{uut, _, _, _}} = datum;
+    Datum::CharterToken{
+        RelativeDelegateLink{uut, _, _, _}
+    } = datum;
 
-    txHasOutput(ctx.tx,  mkTv(mph, uut))
+    assert(txHasOutput(ctx.tx,  mkTv(mph, uut)),
+        "missing required authZor token "+uut
+    );
+    true
 }
 
 func getCharterOutput(tx: Tx) -> TxOutput {
@@ -67,8 +71,12 @@ func preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {
         )
     };
 
-    Datum::CharterToken{RelativeDelegateLink{uut, strategy, reqdAddress, addressesHint}} = datum;
-    Datum::CharterToken{RelativeDelegateLink{newUut, newStrategy, newReqdAddress, newAddressesHint}} = Datum::from_data( 
+    Datum::CharterToken{
+        RelativeDelegateLink{uut, strategy, reqdAddress, addressesHint}
+    } = datum;
+    Datum::CharterToken{
+        RelativeDelegateLink{newUut, newStrategy, newReqdAddress, newAddressesHint}
+    } = Datum::from_data( 
         charterOutput.datum.get_inline_data() 
     );
     if ( !(

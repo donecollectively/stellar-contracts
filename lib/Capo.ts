@@ -13,12 +13,10 @@ import {
     Activity,
     StellarConstructorArgs,
     StellarContract,
-    datum,
     isActivity,
     paramsBase,
     partialTxn,
     stellarSubclass,
-    txn,
 } from "./StellarContract.js";
 import { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
@@ -28,22 +26,17 @@ import {
     DelegateConfigNeeded,
     ErrorMap,
     RoleMap,
-    variantMap,
-    strategyValidation,
     SelectedDelegate,
     VariantStrategy,
-    RelativeDelegateLink,
     PartialParamConfig,
     UutName,
 } from "./delegation/RolesAndDelegates.js";
 import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
 import { SeedTxnParams } from "./SeedTxn.js";
-import { DefaultCharterDatumArgs } from "./DefaultCapo.js";
 import { CapoMintHelpers } from "./CapoMintHelpers.js";
 import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";
-import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
-import { AddressAuthorityPolicy } from "./authority/AddressAuthorityPolicy.js";
 import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
+import { errorMapAsString } from "./diagnostics.js";
 
 export { variantMap } from "./delegation/RolesAndDelegates.js";
 export type {
@@ -51,25 +44,28 @@ export type {
     strategyValidation,
 } from "./delegation/RolesAndDelegates.js";
 
-export type uutPurposeMap = { [purpose: string]: UutName };
-export type hasSomeUuts<uutEntries extends uutPurposeMap = {}> = {
-    uuts: Partial<uutEntries>;
+export type uutPurposeMap<
+    unionPurpose extends string
+> = { [purpose in unionPurpose]: UutName };
+
+export type hasSomeUuts<uutEntries extends string> = {
+    uuts: Partial<uutPurposeMap<uutEntries>>;
 };
-export type hasAllUuts<uutEntries extends uutPurposeMap = {}> = {
-    uuts: uutEntries;
+
+export type hasAllUuts<uutEntries extends string> = {
+    uuts: uutPurposeMap<uutEntries>;
 };
 
 interface hasUutCreator {
-    txnCreatingUuts<UutMapType extends uutPurposeMap>(
+    txnCreatingUuts<const purposes extends string>(
         tcx: StellarTxnContext<any>,
-        uutPurposes: (string & keyof UutMapType)[],
+        uutPurposes: purposes[],
         seedUtxo?: TxInput
-    ): Promise<hasUutContext<UutMapType>>;
+    ): Promise<hasUutContext<purposes>>;
 }
 
 export type MintCharterRedeemerArgs<T={}> = T & {
     owner: Address;
-    govAuthorityLink: RelativeDelegateLink
 };
 
 export type MintUutRedeemerArgs = {
@@ -77,7 +73,7 @@ export type MintUutRedeemerArgs = {
     seedIndex: bigint | number;
     purposes: string[];
 };
-export type hasUutContext<uutEntries extends uutPurposeMap> = StellarTxnContext<
+export type hasUutContext<uutEntries extends string> = StellarTxnContext<
     hasAllUuts<uutEntries>
 >;
 
@@ -87,7 +83,7 @@ export interface MinterBaseMethods extends hasUutCreator {
         tcx: StellarTxnContext<any>,
         charterMintArgs: {
             owner: Address,
-            govAuthorityLink: RelativeDelegateLink,
+            authZor: UutName,
         },
         tVal: valuesEntry
     ): Promise<StellarTxnContext<any>>;
@@ -102,22 +98,7 @@ export abstract class Capo<
     extends StellarContract<SeedTxnParams>
     implements hasUutCreator
 {
-    get roles(): RoleMap {
-        return {
-            govAuthority: variantMap<AuthorityPolicy>({ 
-                address: {
-                    delegateClass: AddressAuthorityPolicy,
-                    scriptParams: {
-                        mph: "__required__",
-                        uut: "__required__"
-                    },
-                    validateScriptParams(args) : strategyValidation {
-                        return undefined
-                    }
-                }
-            }),
-        };
-    }
+    abstract get roles(): RoleMap;
 
     constructor(
         args: StellarConstructorArgs<
@@ -153,18 +134,18 @@ export abstract class Capo<
     minter?: minterType;
 
     @Activity.partialTxn
-    txnCreatingUuts<UutMapType extends uutPurposeMap>(
+    txnCreatingUuts<const purposes extends string>(
         tcx: StellarTxnContext<any>,
-        uutPurposes: (string & keyof UutMapType)[],
+        uutPurposes: purposes[],
         seedUtxo?: TxInput
-    ): Promise<hasUutContext<UutMapType>> {
+    ): Promise<hasUutContext<purposes>> {
         return this.minter!.txnCreatingUuts(tcx, uutPurposes, seedUtxo);
     }
     // P extends paramsBase = SC extends StellarContract<infer P> ? P : never
 
-    uutsValue(uutMap: uutPurposeMap): Value;
+    uutsValue(uutMap: uutPurposeMap<any>): Value;
     uutsValue(tcx: hasUutContext<any>): Value;
-    uutsValue(x: uutPurposeMap | hasUutContext<any>): Value {
+    uutsValue(x: uutPurposeMap<any> | hasUutContext<any>): Value {
         const uutMap = x instanceof StellarTxnContext ? x.state.uuts! : x;
         const vEntries = this.minter!.mkUutValuesEntries(uutMap);
 
@@ -266,6 +247,10 @@ export abstract class Capo<
         return this.mustFindMyUtxo("charter", predicate, "has it been minted?");
     }
 
+    abstract txnAddCharterAuthz(
+        tcx: StellarTxnContext, datum: InlineDatum
+    ): Promise<StellarTxnContext<any> | never>
+
     async txnMustUseCharterUtxo(
         tcx: StellarTxnContext<any>,
         redeemer: isActivity,
@@ -282,8 +267,9 @@ export abstract class Capo<
         redeemerOrRefInput: isActivity | true,
         newDatumOrForceRefScript?: InlineDatum | true
     ): Promise<StellarTxnContext<any> | never> {
-        return this.mustFindCharterUtxo().then((ctUtxo: TxInput) => {
-            //!!! todo: include call to authority delegate's txnAuthorizeCharter
+        return this.mustFindCharterUtxo().then(async (ctUtxo: TxInput) => {
+            await this.txnAddCharterAuthz(tcx, ctUtxo.origOutput.datum as InlineDatum);
+
             if (true === redeemerOrRefInput) {
                 if (
                     newDatumOrForceRefScript &&
@@ -426,7 +412,7 @@ export abstract class Capo<
         roleName: string,
     ) : PartialParamConfig<PT>{
         const selected = this.txnMustSelectDelegate(tcx, roleName);
-        const { strategyName, selectedParams } = selected;
+        const { strategyName, scriptParams: selectedParams } = selected;
 
         const { roles } = this;
         
@@ -450,14 +436,17 @@ export abstract class Capo<
             if (role.default) {
                 selected = {
                     strategyName: "default",
-                    selectedParams: {}
+                    scriptParams: {}
                 };
             }
         }
         if (!selected) {
+            const foundDelegateSelections = Object.keys(selectedDelegates)
+            if (!foundDelegateSelections.length) foundDelegateSelections.push("‹none›")
             throw new DelegateConfigNeeded(
                 `no selected or default delegate for role '${roleName}' found in transaction-context.  \n`+
-                ` Hint:   use ‹capo instance›.withDelegates(delegates) to select delegates by role name`,
+                ` Hint:   use ‹capo instance›.withDelegates(delegates) to select delegates by role name\n`+
+                `    (found selections: ${foundDelegateSelections.join(", ")})`,
                 {availableStrategies: Object.keys(role)}
             );
         }
@@ -469,11 +458,9 @@ export abstract class Capo<
     >(
         tcx: StellarTxnContext,
         roleName: string,
-        partialParams: Partial<PT>={}
     ) : DelegateConfig<T, PT>{
-        const { selectedDelegates } = tcx;
         let selected = this.txnMustSelectDelegate(tcx, roleName)
-       const { strategyName, selectedParams } = selected;
+       const { strategyName, scriptParams: selectedParams } = selected;
 
         const { roles } = this;
         
@@ -487,7 +474,7 @@ export abstract class Capo<
         }
         const { delegateClass, validateScriptParams } = selectedStrategy;
         const { defaultParams: defaultParamsFromDelegateClass } = delegateClass;
-        const scriptParamsFromStrategyVariant = selected.selectedParams;
+        const scriptParamsFromStrategyVariant = selected.scriptParams;
         const mergedParams: PT = {
             ...defaultParamsFromDelegateClass,
             ...(scriptParamsFromStrategyVariant || {}),
@@ -497,7 +484,7 @@ export abstract class Capo<
         const errors: ErrorMap | undefined = validateScriptParams(mergedParams);
         if (errors) {
             throw new DelegateConfigNeeded(
-                "validation errors in contract params",
+                "validation errors in contract params:\n" + errorMapAsString(errors),
                 { errors }
             );
         }

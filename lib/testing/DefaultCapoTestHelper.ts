@@ -29,7 +29,7 @@ export class DefaultCapoTestHelper extends CapoTestHelper<DefaultCapo> {
     mkDefaultCharterArgs(): PartialDefaultCharterDatumArgs {
         return {
             govAuthorityLink: {
-                addressesHint: [ this.actors.tina.address ],
+                addressesHint: [ this.currentActor.address ],
                 strategyName: "address",
             }
         };

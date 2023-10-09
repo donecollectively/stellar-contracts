@@ -42,7 +42,7 @@ func main(r : Redeemer, ctx: ScriptContext) -> Bool {
     ok : Bool = r.switch {
         charter: mintingCharter => {       
             charterVal : Value = mkTv(mph, "charter");
-            authTnBase : String = "delegated-authority";
+            authTnBase : String = "authZor";
 
             assert(value_minted >= charterVal,
                 "charter token not minted");

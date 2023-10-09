@@ -5,6 +5,8 @@ import { SeedTxnParams } from "../SeedTxn.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
 import { PartialDefaultCharterDatumArgs } from "../DefaultCapo.js";
+import { AuthorityPolicy } from "../authority/AuthorityPolicy.js";
+import { selectDelegate } from "../delegation/RolesAndDelegates.js";
 
 
 export abstract class CapoTestHelper<
@@ -57,6 +59,7 @@ export abstract class CapoTestHelper<
     async mintCharterToken(args?: CDT): Promise<StellarTxnContext> {
         const { delay } = this;
         const { tina, tom, tracy } = this.actors;
+        
         if (this.state.mintedCharterToken) {
             console.warn(
                 "reusing minted charter from existing testing-context"
@@ -67,8 +70,17 @@ export abstract class CapoTestHelper<
         await this.initialize();
         const script = this.strella!;
         const goodArgs: Partial<CDT> = args || this.mkDefaultCharterArgs();
-        debugger
-        const tcx = await script.mkTxnMintCharterToken(goodArgs);
+        
+        // debugger
+
+        const tcx = await script.mkTxnMintCharterToken(goodArgs, script.withDelegates({
+            govAuthority: selectDelegate<AuthorityPolicy>({
+                strategyName: "address",
+                scriptParams: {
+
+                }
+            })
+        }));
         expect(script.network).toBe(this.network);
 
         await script.submit(tcx);
@@ -77,4 +89,5 @@ export abstract class CapoTestHelper<
         this.network.tick(1n);
         return (this.state.mintedCharterToken = tcx);
     }
+
 }

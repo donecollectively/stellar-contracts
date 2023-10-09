@@ -16,6 +16,7 @@ import {
     TxId,
     UplcData,
     Signature,
+    AssetClass,
 } from "@hyperionbt/helios";
 
 import {
@@ -33,26 +34,32 @@ import { StellarTxnContext } from "./StellarTxnContext.js";
 import contract from "./DefaultCapo.hl";
 import { anyDatumArgs, Capo } from "./Capo.js";
 import { DefaultMinter } from "./DefaultMinter.js";
-import { RelativeDelegateLink, RoleMap, strategyValidation, variantMap, VariantMap } from "./delegation/RolesAndDelegates.js";
+import {
+    ErrorMap,
+    PARAM_IMPLIED,
+    RelativeDelegateLink,
+    RoleMap,
+    strategyValidation,
+    variantMap,
+    VariantMap,
+} from "./delegation/RolesAndDelegates.js";
 import { BasicMintDelegate } from "./delegation/BasicMintDelegate.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
-import { PARAM_REQUIRED } from "./delegation/RolesAndDelegates.js";
 import { AddressAuthorityPolicy } from "./authority/AddressAuthorityPolicy.js";
 import { DelegateDetailSnapshot } from "./delegation/RolesAndDelegates.js";
+import { txAsString } from "./diagnostics.js";
 
 export type DefaultCharterDatumArgs = {
-    govAuthorityLink: RelativeDelegateLink
+    govAuthorityLink: RelativeDelegateLink;
 };
 
 export type PartialDefaultCharterDatumArgs<
-    T extends DefaultCharterDatumArgs=DefaultCharterDatumArgs
-> = Partial<Omit<T, "govAuthorityLink">> & { 
-    govAuthorityLink: 
-        & Required<Pick<RelativeDelegateLink, "strategyName">> 
-        & Partial<RelativeDelegateLink> 
-        // Partial<Omit<T["govAuthorityLink"], "strategyName">>
-    }
-
+    T extends DefaultCharterDatumArgs = DefaultCharterDatumArgs
+> = Partial<Omit<T, "govAuthorityLink">> & {
+    govAuthorityLink: Required<Pick<RelativeDelegateLink, "strategyName">> &
+        Partial<RelativeDelegateLink>;
+    // Partial<Omit<T["govAuthorityLink"], "strategyName">>
+};
 
 export type HeldAssetsArgs = {
     purposeId?: string;
@@ -71,36 +78,89 @@ export class DefaultCapo<
     // updatingCharter() : isActivity {
     //     return this.updatingDefaultCharter()
     // }
-    get roles() : RoleMap {
-        const inherited = super.roles;
+    get roles(): RoleMap {
         return {
-            ...inherited,
-            mintDelegate: variantMap<BasicMintDelegate>({ 
+            govAuthority: variantMap<AuthorityPolicy>({
+                address: {
+                    delegateClass: AddressAuthorityPolicy,
+                    scriptParams: {
+                        mph: PARAM_IMPLIED,
+                        uut: PARAM_IMPLIED,
+                        uutFingerprint: PARAM_IMPLIED,
+                    },
+                    validateScriptParams(args): strategyValidation {
+                        const { mph, rev, uut, uutFingerprint } = args;
+                        const errors: ErrorMap = {};
+                        if (!mph) errors.mph = ["required"];
+                        if (!rev) errors.rev = ["required"];
+                        if (!uut) errors.uut = ["required"];
+                        if (!uutFingerprint)
+                            errors.uutFingerprint = ["required"];
+                        if (Object.keys(errors).length > 0) return errors;
+
+                        return undefined;
+                    },
+                },
+            }),
+            mintDelegate: variantMap<BasicMintDelegate>({
                 default: {
                     delegateClass: BasicMintDelegate,
                     scriptParams: {},
-                    validateScriptParams(args) : strategyValidation {
-                        return undefined
-                    }
-                }
-            })
-        }
+                    validateScriptParams(args): strategyValidation {
+                        return undefined;
+                    },
+                },
+            }),
+        };
     }
 
     @datum
     mkDatumCharterToken(args: CDT): InlineDatum {
         //!!! todo: make it possible to type these datum helpers more strongly
 
-        const {Datum:{CharterToken: hlCharterToken}, RelativeDelegateLink: hlRelativeDelegateLink} = this.configuredContract.types;
-        let {uut, strategyName, reqdAddress: canRequireAddr, addressesHint=[]} = args.govAuthorityLink
-        
+        const {
+            Datum: { CharterToken: hlCharterToken },
+            RelativeDelegateLink: hlRelativeDelegateLink,
+        } = this.scriptInstance.types;
+        let {
+            uut,
+            strategyName,
+            reqdAddress: canRequireAddr,
+            addressesHint = [],
+        } = args.govAuthorityLink;
+
         const OptAddr = Option(Address);
         const needsAddr = new OptAddr(canRequireAddr);
 
         const t = new hlCharterToken(
-            new hlRelativeDelegateLink(uut, strategyName, needsAddr, addressesHint)
+            new hlRelativeDelegateLink(
+                uut,
+                strategyName,
+                needsAddr,
+                addressesHint
+            )
         );
         return Datum.inline(t._toUplcData());
+    }
+
+    async txnAddCharterAuthz(tcx: StellarTxnContext, datum: InlineDatum) {
+        const { govAuthorityLink } =
+            await this.readDatum<DefaultCharterDatumArgs>(
+                "CharterToken", datum
+            );
+
+        const {
+            strategyName,
+            uut,
+            addressesHint,
+            reqdAddress
+        } = govAuthorityLink;
+
+        const authZor = await this.connectDelegateWith<AuthorityPolicy>(
+            "govAuthority", govAuthorityLink
+        );
+        authZor.txnGrantAuthority(tcx);
+        return tcx;
     }
 
     @txn
@@ -110,52 +170,88 @@ export class DefaultCapo<
         charterDatumArgs: PartialDefaultCharterDatumArgs<CDT>,
         existingTcx?: StellarTxnContext
     ): Promise<StellarTxnContext | never> {
-        console.log(`minting charter from seed ${this.paramsIn.seedTxn.hex.substring(0, 12)}…@${this.paramsIn.seedIndex}`);
-        const {
-            strategyName
-        } = charterDatumArgs.govAuthorityLink
-        const initialTcx = existingTcx || this.withDelegates({})
-        return this.mustGetContractSeedUtxo().then(async (seedUtxo) => {
-            const ptnDelegatedAuthority = "delegated-authority";
-            const tcx = await this.txnCreatingUuts(initialTcx,  [ptnDelegatedAuthority], seedUtxo);
-            const uutAssetName = tcx.state.uuts[ptnDelegatedAuthority];
-            const delegateParams = this.txnGetSelectedDelegateParams(tcx, "govAuthority")
+        console.log(
+            `minting charter from seed ${this.paramsIn.seedTxn.hex.substring(
+                0,
+                12
+            )}…@${this.paramsIn.seedIndex}`
+        );
+        const { strategyName } = charterDatumArgs.govAuthorityLink;
 
-            if (delegateParams.uut == PARAM_REQUIRED) delegateParams.uut = uutAssetName
-            if (delegateParams.mph == PARAM_REQUIRED) delegateParams.mph = this.mph
-            
-            const govAuthorityConfig = this.txnMustConfigureSelectedDelegate<
-                AuthorityPolicy
-            >(initialTcx, "govAuthority", delegateParams);
+        const initialTcx = existingTcx || this.withDelegates({});
+        return this.mustGetContractSeedUtxo().then(async (seedUtxo) => {
+            const ptnDelegatedAuthority = "authZor";
+            // console.log("-> A", txAsString(initialTcx.tx));
+
+            const tcx = await this.minter!.txnWithUuts(
+                initialTcx,
+                [ptnDelegatedAuthority],
+                seedUtxo
+            );
+
+            // console.log("-> B", txAsString(tcx.tx));
+            const { authZor } = tcx.state.uuts;
+            const delegateParams = this.txnGetSelectedDelegateParams(
+                tcx,
+                "govAuthority"
+            );
+
+            if (delegateParams.uut == PARAM_IMPLIED)
+                delegateParams.uut = authZor;
+            if (delegateParams.mph == PARAM_IMPLIED)
+                delegateParams.mph = this.mph;
+            if (delegateParams.uutFingerprint == PARAM_IMPLIED) {
+                // debugger
+                //!!! todo: mkAssetClass(tn: string, mph=this.mph) -> AssetClass
+                delegateParams.uutFingerprint = new AssetClass({
+                    mph: this.mph,
+                    tokenName: this.stringToNumberArray(authZor.name),
+                }).toFingerprint();
+            }
+
+            // debugger
+            const govAuthorityConfig =
+                this.txnMustConfigureSelectedDelegate<AuthorityPolicy>(
+                    tcx,
+                    "govAuthority",
+                    delegateParams
+                );
 
             const govAuthorityLink = {
                 strategyName,
-                uut: uutAssetName
-            }
+                uut: authZor,
+            };
 
             //@ts-expect-error - typescript can't seem to understand that
             //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
-            const fullCharterArgs : DefaultCharterDatumArgs & CDT = {
+            const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
                 ...charterDatumArgs,
-                govAuthorityLink
+                govAuthorityLink,
             };
             const datum = this.mkDatumCharterToken(fullCharterArgs);
 
             const output = new TxOutput(this.address, this.tvCharter(), datum);
             output.correctLovelace(this.networkParams);
 
-            initialTcx.addInput(seedUtxo).addOutputs([ output ]);
-            return this.minter!.txnMintingCharter(initialTcx, {
+            tcx.addInput(seedUtxo);
+            tcx.addOutputs([output]);
+
+            console.log(
+                " ---------------- CHARTER MINT ---------------------\n",
+                txAsString(tcx.tx)
+            );
+            // debugger
+
+            return this.minter!.txnMintingCharter(tcx, {
                 owner: this.address,
-                govAuthorityLink
+                authZor,
             });
         });
     }
- 
+
     @Activity.redeemer
-    updatingCharter(
-        // args: CDT 
-    ): isActivity {
+    updatingCharter(): // args: CDT
+    isActivity {
         const {RelativeDelegateLink: hlRelativeDelegateLink, Redeemer} = this.configuredContract.types
         // let {uut, strategyName, reqdAddress: canRequireAddr, addressesHint=[]} = args.govAuthority
 
@@ -164,17 +260,16 @@ export class DefaultCapo<
         // const OptAddr = Option(Address);
         // const needsAddr = new OptAddr(canRequireAddr);
 
-        const t = new Redeemer.updatingCharter(
-            // args.govDelegate,
-            // new hlRelativeDelegateLink(uut, strategyName, needsAddr, addressesHint)
-        );
+        const t = new Redeemer.updatingCharter();
+        // args.govDelegate,
+        // new hlRelativeDelegateLink(uut, strategyName, needsAddr, addressesHint)
 
         return { redeemer: t._toUplcData() };
     }
 
     @txn
     async mkTxnUpdateCharter(
-        args:  CDT,
+        args: CDT,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext> {
         return this.txnUpdateCharterUtxo(

@@ -57,38 +57,24 @@ export class DefaultMinter
         ]
     }
 
-    @Activity.partialTxn
-    async txnCreatingUuts<UutMapType extends uutPurposeMap>(
+    @partialTxn
+    async txnWithUuts<const purposes extends string>(
         tcx: StellarTxnContext<any>,
-        uutPurposes: (string & keyof UutMapType)[],
-        seedUtxo?: TxInput
-    ): Promise<hasUutContext<UutMapType>> {
-        const gettingSeed = seedUtxo ? Promise.resolve<TxInput>(seedUtxo) :
-        new Promise<TxInput>(res => {
-            //!!! make it big enough to serve minUtxo for the new UUT
-            const uutSeed = this.mkValuePredicate(BigInt(42_000), tcx);
-            this.mustFindActorUtxo(
-                `for-uut-${uutPurposes.join("+")}`,
-                uutSeed,
-                tcx
-            ).then(res)
-        });
+        uutPurposes: purposes[],
+        seedUtxo: TxInput
+    ): Promise<hasUutContext<purposes>> {
+        const { txId, utxoIdx } = seedUtxo.outputId;
 
-        return gettingSeed.then(async (seedUtxo) => {
-            tcx.addInput(seedUtxo);
-            const { txId, utxoIdx } = seedUtxo.outputId;
+            const { blake2b } = Crypto;
 
-            const { encodeBech32, blake2b, encodeBase32 } = Crypto;
-
-            const uutMap: UutMapType = Object.fromEntries(
+            const uutMap: uutPurposeMap<purposes> = Object.fromEntries(
                 uutPurposes.map((uutPurpose) => {
                     const txoId = txId.bytes.concat([
                         "@".charCodeAt(0),
                         utxoIdx,
                     ]);
-                    // console.warn("txId " + txId.hex)
                     // console.warn("&&&&&&&& txoId", bytesToHex(txoId));
-                    const uutName = new UutName(`${uutPurpose}.${bytesToHex(
+                    const uutName = new UutName(`${uutPurpose}-${bytesToHex(
                         blake2b(txoId).slice(0, 6)
                     )}`)
                     return [
@@ -96,13 +82,36 @@ export class DefaultMinter
                         uutName,
                     ];
                 })
-            ) as UutMapType;
+            ) as uutPurposeMap<purposes>
 
             if (tcx.state.uuts) throw new Error(`uuts are already there`);
             tcx.state.uuts = uutMap;
 
-            const vEntries = this.mkUutValuesEntries(uutMap);
+            return tcx
+    }
 
+    @Activity.partialTxn
+    async txnCreatingUuts<const purposes extends string>(
+        initialTcx: StellarTxnContext<any>,
+        uutPurposes: purposes[],
+        seedUtxo?: TxInput
+    ): Promise<hasUutContext<purposes>> {
+        const gettingSeed = seedUtxo ? Promise.resolve<TxInput>(seedUtxo) :
+        new Promise<TxInput>(res => {
+            //!!! make it big enough to serve minUtxo for the new UUT(s)
+            const uutSeed = this.mkValuePredicate(BigInt(42_000), initialTcx);
+            this.mustFindActorUtxo(
+                `for-uut-${uutPurposes.join("+")}`,
+                uutSeed,
+                initialTcx
+            ).then(res)
+        });
+
+        return gettingSeed.then(async (seedUtxo) => {
+            const tcx = await this.txnWithUuts(initialTcx, uutPurposes, seedUtxo);
+            const vEntries = this.mkUutValuesEntries(tcx.state.uuts);
+
+            tcx.addInput(seedUtxo);
             const { txId: seedTxn, utxoIdx: seedIndex } = seedUtxo.outputId;
 
             return tcx.attachScript(this.compiledScript).mintTokens(
@@ -119,7 +128,7 @@ export class DefaultMinter
         });
     }
 
-    mkUutValuesEntries<UM extends uutPurposeMap>(uutMap: UM): valuesEntry[] {
+    mkUutValuesEntries<UM extends uutPurposeMap<any>>(uutMap: UM): valuesEntry[] {
         return Object.entries(uutMap).map(([_purpose, uut]) => {
             return this.mkValuesEntry(uut.name, BigInt(1));
         });
@@ -133,20 +142,11 @@ export class DefaultMinter
     @Activity.redeemer
     protected mintingCharter({
         owner,
-        govAuthorityLink
     }: MintCharterRedeemerArgs): isActivity {
-        // debugger
-
         const { DelegateDetails: hlDelegateDetails, Redeemer } = this.scriptInstance.types;
-
-        const {uut, strategyName, reqdAddress, addressesHint } = govAuthorityLink
-        const delegateDetails = hlDelegateDetails(
-            uut, strategyName, reqdAddress, addressesHint
-        );
         const t =
             new Redeemer.mintingCharter(
                 owner,
-                delegateDetails
             );
 
         return { redeemer: t._toUplcData() };
@@ -194,19 +194,20 @@ export class DefaultMinter
     @Activity.partialTxn
     async txnMintingCharter(
         tcx: StellarTxnContext,
-        { owner, govAuthorityLink } : {
+        { owner, authZor } : {
+            authZor:  UutName,
             owner: Address, 
-            govAuthorityLink: RelativeDelegateLink
         }
     ): Promise<StellarTxnContext> {
-        const tVal = this.charterTokenAsValuesEntry;
+        const charterVE = this.charterTokenAsValuesEntry;
+        const authzVE = this.mkValuesEntry(authZor.name, BigInt(1));
 
         return tcx
             .mintTokens(
                 this.mintingPolicyHash!,
-                [tVal],
+                [charterVE, authzVE],
                 this.mintingCharter({ 
-                    owner, govAuthorityLink
+                    owner
                  }).redeemer
             )
             .attachScript(this.compiledScript);

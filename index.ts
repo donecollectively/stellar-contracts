@@ -1,4 +1,10 @@
 
+declare global {
+    interface  ImportAttributes {
+        type: "json" | "text"
+    }
+  }
+  
 export { heliosRollupLoader } from "./lib/heliosRollupLoader.js";
 
 export {
@@ -10,6 +16,7 @@ export {
     txOutputAsString,
     txInputAsString,
     lovelaceToAda,
+    errorMapAsString,
 } from "./lib/diagnostics.js";
 
 export { 
