@@ -108,7 +108,7 @@ export abstract class Capo<
     ) {
         super(args);
 
-        const { Datum, Redeemer } = this.configuredContract.types;
+        const { Datum, Redeemer } = this.scriptInstance.types;
 
         const { CharterToken } = Datum;
         const { updatingCharter, usingAuthority } = Redeemer;

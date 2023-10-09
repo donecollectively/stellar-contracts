@@ -252,7 +252,8 @@ export class DefaultCapo<
     @Activity.redeemer
     updatingCharter(): // args: CDT
     isActivity {
-        const {RelativeDelegateLink: hlRelativeDelegateLink, Redeemer} = this.configuredContract.types
+        const { RelativeDelegateLink: hlRelativeDelegateLink, Redeemer } =
+            this.scriptInstance.types;
         // let {uut, strategyName, reqdAddress: canRequireAddr, addressesHint=[]} = args.govAuthority
 
         // // const {Option} = this.scriptInstance.types;
