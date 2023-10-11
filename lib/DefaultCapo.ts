@@ -91,7 +91,7 @@ export class DefaultCapo<
             govAuthority: variantMap<AuthorityPolicy>({
                 address: {
                     delegateClass: AddressAuthorityPolicy,
-                    scriptParams: {
+                    partialConfig: {
                         uut: PARAM_IMPLIED,
                     },
                     validateConfig(args): strategyValidation {
@@ -106,7 +106,7 @@ export class DefaultCapo<
                 },
                 multisig: {
                     delegateClass: MultisigAuthorityPolicy,
-                    scriptParams: {
+                    partialConfig: {
                         uut: PARAM_IMPLIED,
                     },
                     validateConfig(args): strategyValidation {
@@ -123,7 +123,7 @@ export class DefaultCapo<
             mintDelegate: variantMap<BasicMintDelegate>({
                 default: {
                     delegateClass: BasicMintDelegate,
-                    scriptParams: {},
+                    partialConfig: {},
                     validateConfig(args): strategyValidation {
                         return undefined;
                     },

@@ -449,8 +449,11 @@ export abstract class Capo<
             strategyName
         ] as VariantStrategy<T>;
 
-        const stratParams = selectedStrategy.scriptParams || {};
-        return { ...stratParams, ...selectedConfig };
+        const stratConfig = selectedStrategy.partialConfig || {};
+        return { 
+            ...stratConfig, 
+            ...selectedConfig 
+        };
     }
 
     txnMustSelectDelegate<
@@ -486,7 +489,9 @@ export abstract class Capo<
         return selected;
     }
 
-    txnMustConfigureSelectedDelegate<
+    //! stacks partial and implied configuration settings, validates and returns a good configuration
+    //  ... or throws errors
+    protected txnMustConfigureSelectedDelegate<
         T extends StellarContract<any>,
         const RN extends string,
     >(
@@ -523,6 +528,7 @@ export abstract class Capo<
             ...selectedConfig,
         } as unknown as ConfigFor<T>;
 
+        //! it validates the net configuration so it can return a working config.
         const errors: ErrorMap | undefined = validateConfig(mergedParams);
         if (errors) {
             throw new DelegateConfigNeeded(

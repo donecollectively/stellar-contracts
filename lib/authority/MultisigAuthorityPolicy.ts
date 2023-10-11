@@ -1,7 +1,9 @@
 import { Address, AssetClass, TxInput, Value } from "@hyperionbt/helios"
 
 //@ts-expect-error
-import contract from "./MultisigAuthorityPolicy.hl"
+import contract from "./MultisigAuthorityPolicy.hl";
+export const MultisigAuthorityScript = contract;
+
 import { Activity, isActivity, StellarContract } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { AuthorityPolicy } from "./AuthorityPolicy.js";
@@ -39,27 +41,23 @@ export class MultisigAuthorityPolicy extends AuthorityPolicy {
     //  ... or throw an informative error
     async txnMustFindAuthorityToken(tcx: StellarTxnContext) : Promise<TxInput> {
         const {
-            addrHint,uut, reqdAddress
+            addrHint, uut, reqdAddress
         } = this.configIn
-        return this.mustFindMyUtxo
+        return this.mustFindMyUtxo("authorityToken", this.mkTokenPredicate(uut))
     }
 
     async txnReceiveAuthorityToken(
         tcx : StellarTxnContext, 
-        tokenId: AssetClass, 
         delegateAddr: Address,
-        sourceUtxo?: TxInput,
     ) : Promise<StellarTxnContext> {
         throw new Error(`implementation TODO`)
         return tcx;
     }
 
     //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
-    async txnGrantAuthority(        
-        tcx : StellarTxnContext, 
-        tokenId: AssetClass, 
-        sourceUtxo: TxInput,
-        delegateAddr: Address,
+    async txnGrantAuthority(
+        tcx: StellarTxnContext,
+        fromFoundUtxo: TxInput,
     ): Promise<StellarTxnContext> {
 
         return tcx;
@@ -69,8 +67,7 @@ export class MultisigAuthorityPolicy extends AuthorityPolicy {
     //  ... allowing the token to be burned by the minting policy.
     async txnRetireCred(
         tcx : StellarTxnContext, 
-        tokenId: AssetClass, 
-        delegateAddr: Address,
+        fromFoundUtxo: TxInput,
     ): Promise<StellarTxnContext> {
 
         return tcx;
@@ -78,7 +75,7 @@ export class MultisigAuthorityPolicy extends AuthorityPolicy {
 
     requirements()  {
         const pReqts = super.requirements();
-        
+
         return hasReqts({
             ...pReqts,
             "provides arms-length proof of authority to any other contract": {

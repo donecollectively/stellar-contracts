@@ -3,9 +3,9 @@ spending SampleMintDelegate
 const rev : Int = 1
 const instance : ByteArray = #67656e6572616c
 
-import { 
-    preventCharterChange
-} from MultiSigAuthority
+// import { 
+//     preventCharterChange
+// } from MultiSigAuthority
 
 // struct Datum {
 //     hi: String

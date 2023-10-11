@@ -959,19 +959,27 @@ export class StellarContract<
 
             return script;
         } catch (e: any) {
+            if (e.message.match(/invalid parameter name/)) {
+                throw new Error(e.message + 
+                    `\n   ... this typically occurs when your StellarContract class (${this.constructor.name})`+ 
+                    "\n   ... can be missing a getContractScriptParams() method "+
+                    "\n   ... to map from the configured settings to contract parameters"
+                );
+            }
             if (!e.src) {
                 console.error(
-                    `unexpected thrown error while compiling helios program` +
-                        ` (or its imported module) \n` +
+                    `unexpected error while compiling helios program (or its imported module) \n` +
+                    `> ${e.message}\n`+
                         `Suggested: connect with debugger (we provided a debugging point already)\n` +
                         `  ... and use 'break on caught exceptions' to analyze the error \n` +
                         `This likely indicates a problem in Helios' error reporting - \n` +
-                        `   ... please provide a minimal reproducer as an issue report for repair!`
+                        `   ... please provide a minimal reproducer as an issue report for repair!\n\n`
+                        + e.stack.split("\n").slice(1).join("\n")
                 );
                 try {
                     debugger;
                     // debugger'ing?  YOU ARE AWESOME!
-                    //  reminder: ensure "break on caught exceptions" is enabled
+                    //  reminder: ensure "pause on caught exceptions" is enabled
                     //  before playing this next line to dig deeper into the error.
                     Program.new(src, modules);
                 } catch (sameError) {

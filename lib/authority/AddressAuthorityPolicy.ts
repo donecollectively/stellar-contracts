@@ -55,13 +55,10 @@ export class AddressAuthorityPolicy extends AuthorityPolicy {
     //! creates a UTxO depositing the indicated token-name into the delegated destination.
     async txnReceiveAuthorityToken(
         tcx: StellarTxnContext,
-        tokenId: AssetClass,
         delegateAddr: Address,
-        // sourceUtxo?: TxInput
     ): Promise<StellarTxnContext> {
-        //! no need to reference the sourceUtxo
-
-        const v = this.mkAssetValue(tokenId, 1);
+        const {uut} = this.configIn
+        const v = this.mkAssetValue(uut, 1);
         const output = new TxOutput(delegateAddr, v);
         output.correctLovelace(this.networkParams);
         tcx.addOutput(output);
@@ -70,21 +67,23 @@ export class AddressAuthorityPolicy extends AuthorityPolicy {
     }
 
     //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
+    //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
     async txnGrantAuthority(
         tcx: StellarTxnContext,
-        sourceUtxo: TxInput,
+        fromFoundUtxo: TxInput,
     ): Promise<StellarTxnContext> {
         //! no need to specify a redeemer
-        return tcx.addInput(sourceUtxo);
+        return tcx.addInput(fromFoundUtxo);
     }
 
     //! Adds the indicated utxo to the transaction with appropriate activity/redeemer
     //  ... allowing the token to be burned by the minting policy.
+    //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
     async txnRetireCred(
         tcx: StellarTxnContext,
-        sourceUtxo: TxInput,
+        fromFoundUtxo: TxInput,
     ): Promise<StellarTxnContext> {
         //! no need to specify a redeemer
-        return tcx.addInput(sourceUtxo);
+        return tcx.addInput(fromFoundUtxo);
     }
 }

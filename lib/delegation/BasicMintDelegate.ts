@@ -1,18 +1,20 @@
 import {
     Address,
+    AssetClass,
     Value,
 } from "@hyperionbt/helios";
 
 
 //@ts-expect-error
 import contract from "./BasicMintDelegate.hl";
-import { Activity, StellarContract, isActivity } from "../StellarContract.js";
+import { Activity, StellarContract, configBase, isActivity } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
+import { HeliosModuleSrc } from "../HeliosModuleSrc.js";
+import { MultisigAuthorityPolicy, MultisigAuthorityScript } from "../authority/MultisigAuthorityPolicy.js";
 
 type MintDelegateArgs = {
-    rev: bigint
-    // mph: MintingPolicyHash;
-    // policyUutName: string;
+    rev: bigint,
+    uut: AssetClass
 }
 
 //!!! TODO: include adapter(s) for Datum, which has the same essential shape
@@ -34,14 +36,20 @@ export class BasicMintDelegate extends StellarContract<MintDelegateArgs> {
         return contract;
     }
 
-    // @Activity.redeemer
-    protected x(tokenName: string): isActivity {
-        const t = new this.scriptProgram.types.Redeemer.commissioningNewToken(
-            tokenName
-        );
-
-        return { redeemer: t._toUplcData() };
+    getContractScriptParams(config: MintDelegateArgs): configBase {
+        return {
+            rev: config.rev
+        }
     }
+
+    // // @Activity.redeemer
+    // protected x(tokenName: string): isActivity {
+    //     const t = new this.scriptProgram!.types.Redeemer.commissioningNewToken(
+    //         tokenName
+    //     );
+
+    //     return { redeemer: t._toUplcData() };
+    // }
 
     @Activity.partialTxn
     async txnCreatingTokenPolicy(

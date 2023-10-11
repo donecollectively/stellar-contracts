@@ -16,6 +16,7 @@ import {
     addTestContext,
     CapoTestHelper,
 } from "../lib/testing/";
+import { PartialDefaultCharterDatumArgs } from "../lib/DefaultCapo";
 
 type localTC = StellarTestContext<CustomTreasuryTestHelper>;
 
@@ -33,6 +34,15 @@ const minAda = 2n * ADA; // minimum needed to send an NFT
 class CustomTreasuryTestHelper extends CapoTestHelper<CustomTreasury> {
     get stellarClass() {
         return CustomTreasury;
+    }
+
+    mkDefaultCharterArgs(): PartialDefaultCharterDatumArgs {
+        return {
+            govAuthorityLink: {
+                addressesHint: [ this.actors.tina.address ],
+                strategyName: "address",
+            }
+        };
     }
 
     setupActors() {

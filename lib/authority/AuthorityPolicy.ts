@@ -1,4 +1,10 @@
-import { Address, AssetClass, MintingPolicyHash, TxInput, Value } from "@hyperionbt/helios";
+import {
+    Address,
+    AssetClass,
+    MintingPolicyHash,
+    TxInput,
+    Value,
+} from "@hyperionbt/helios";
 
 import { Activity, isActivity, StellarContract } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
@@ -8,7 +14,7 @@ import { hasReqts } from "../Requirements.js";
 export type AuthorityPolicySettings = {
     rev: bigint;
     uut: AssetClass;
-    reqdAddress? :Address;
+    reqdAddress?: Address;
     addrHint: Address[];
 };
 
@@ -41,7 +47,7 @@ export abstract class AuthorityPolicy<
         delegateAddr: Address
     ): Promise<StellarTxnContext> {
         const fp = tokenId.toFingerprint();
-        debugger
+        debugger;
 
         throw new Error(`todo`);
         return tcx;
@@ -51,9 +57,11 @@ export abstract class AuthorityPolicy<
     //! impls MUST consult their configIn to see the 'uut' (an AssetClass) authority token.
     //! impls MUST a specific UTxO having that token,
     //  ... or throw an informative error
-    //! impls MAY consult the addrHint or reqdAddr settings in configIn 
-    //! impls MAY use details seen in the txn context 
-    abstract txnMustFindAuthorityToken(tcx: StellarTxnContext): Promise<TxInput>;
+    //! impls MAY consult the addrHint or reqdAddr settings in configIn
+    //! impls MAY use details seen in the txn context
+    abstract txnMustFindAuthorityToken(
+        tcx: StellarTxnContext
+    ): Promise<TxInput>;
 
     //! creates a UTxO depositing the indicated token-name into the delegated destination.
     //! Each implemented subclass can use it's own style to match its strategy & mechanism.
@@ -61,21 +69,22 @@ export abstract class AuthorityPolicy<
     //! impls should normally preserve the datum from an already-present sourceUtxo
     abstract txnReceiveAuthorityToken(
         tcx: StellarTxnContext,
-        tokenId: AssetClass,
-        delegateAddr: Address,
+        delegateAddr: Address
     ): Promise<StellarTxnContext>;
 
-    //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
+    //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer.
+    //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
     //! Other contracts needing the authority within a transaction can rely on the presence of this spent authority.
     //! impls can EXPECT the token will be returned via txnReceiveAuthorityToken
     //! a contract-backed impl SHOULD enforce the expected return in its on-chain code
     abstract txnGrantAuthority(
         tcx: StellarTxnContext,
-        sourceUtxo: TxInput,
+        fromFoundUtxo: TxInput
     ): Promise<StellarTxnContext>;
 
     //! Adds the indicated utxo to the transaction with appropriate activity/redeemer
     //  ... allowing the token to be burned by the minting policy.
+    //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
     //! When backed by a contract,
     //! ... it should ensure any other UTXOs it may also hold
     //   ... do not become inaccessible as a result.
@@ -84,11 +93,11 @@ export abstract class AuthorityPolicy<
     //! It MAY enforce additional requirements and/or block the action.
     abstract txnRetireCred(
         tcx: StellarTxnContext,
-        sourceUtxo: TxInput,
+        fromFoundUtxo: TxInput
     ): Promise<StellarTxnContext>;
 
     // static mkDelegateWithArgs(a: RCPolicyArgs) {
-    //      
+    //
     // }
     requirements() {
         return hasReqts({

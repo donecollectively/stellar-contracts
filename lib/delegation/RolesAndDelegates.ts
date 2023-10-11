@@ -64,7 +64,7 @@ export type VariantStrategy<
     delegateClass: stellarSubclass<T>,
     //! it MAY provide a partial configuration to be used for parameterizing 
     //  the underlying contract script, to be further customized by a delegate-selection
-    scriptParams? : PartialParamConfig<ConfigFor<T>>,
+    partialConfig? : PartialParamConfig<ConfigFor<T>>,
     //! it has a function used for validating parameter details
     validateConfig(p: ConfigFor<T>) : strategyValidation
 }

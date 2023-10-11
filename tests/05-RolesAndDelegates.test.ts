@@ -65,7 +65,7 @@ describe("Capo", async () => {
                 expect(t.roles.mintDelegate.default).toBeTruthy();
             });
         });
-        describe("supports just-in-time strategy-selection using withDelegates() and txnMustGetDelegate()", () => {
+        describe("supports just-in-time strategy-selection using withDelegates() and txnMustSelectDelegate()", () => {
             it("withDelegates method starts a transaction with delegate settings", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
@@ -74,40 +74,47 @@ describe("Capo", async () => {
                 const tcx = t.withDelegates({
                     mintDelegate: {
                         strategyName: "default",
-                        addlParams: {},
+                        config: {},
                     },
                 });
-                expect(tcx.selectedDelegates.mintDelegate).toBeTruthy();
+                expect(tcx.state.delegates.mintDelegate).toBeTruthy();
             });
 
-            it("txnMustGetDelegate(tcx, role) method retrieves a configured delegate", async (context: localTC) => {
+            it("txnMustSelectDelegate(tcx, role) method retrieves a partial delegate configuration", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.initialize();
 
+                const mintDelegate = {
+                    strategyName: "default",
+                    config: {},
+                };
                 const tcx = t.withDelegates({
-                    mintDelegate: {
-                        strategyName: "default",
-                        addlParams: {},
-                    },
+                    mintDelegate: mintDelegate,
                 });
                 expect(
-                    t.txnMustGetDelegate(tcx, "mintDelegate")
-                ).toBeInstanceOf(BasicMintDelegate);
+                    t.txnMustSelectDelegate(tcx, "mintDelegate")
+                ).toMatchObject(mintDelegate);
             });
-            it("txnMustGetDelegate() will use a 'default' delegate", async (context: localTC) => {
+
+            it("txnMustSelectDelegate() will use a 'default' delegate", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.initialize();
 
                 const tcx = t.withDelegates({});
 
+                const mintDelegate = {
+                    strategyName: "default",
+                    config: {},
+                };
+
                 expect(
-                    t.txnMustGetDelegate(tcx, "mintDelegate")
-                ).toBeInstanceOf(BasicMintDelegate);
+                    t.txnMustSelectDelegate(tcx, "mintDelegate")
+                ).toMatchObject(mintDelegate);
             });
 
-            it("If there is no delegate configured (or defaulted) for the needed role, txnMustGetDelegate throws a DelegateConfigNeeded error.", async (context: localTC) => {
+            it("If there is no delegate configured (or defaulted) for the needed role, txnMustSelectDelegate throws a DelegateConfigNeeded error.", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.initialize();
@@ -115,46 +122,11 @@ describe("Capo", async () => {
                 const tcx = t.withDelegates({});
 
                 const problem = () => {
-                    t.txnMustGetDelegate(tcx, "noDefault");
+                    t.txnMustSelectDelegate(tcx, "noDefault");
                 };
                 expect(problem).toThrow(/no .* delegate for role/);
                 expect(problem).toThrow(DelegateConfigNeeded);
             });
-
-            it("If the strategy-configuration has any configuration problems, the DelegateConfigNeeded error contains an 'errors' object", async (context: localTC) => {
-                // prettier-ignore
-                const {h, h:{network, actors, delay, state} } = context;
-                const t = await h.initialize();
-
-                const problem = () => {
-                    t.txnMustGetDelegate(tcx, "mintDelegate");
-                };
-
-                let tcx = t.withDelegates({
-                    mintDelegate: {
-                        strategyName: "default",
-                        addlParams: { badSomeUnplannedWay: true },
-                    },
-                });
-                expect(problem).toThrow(/configuration error/);
-
-                tcx = t.withDelegates({
-                    mintDelegate: {
-                        strategyName: "failsWhenBad",
-                        addlParams: { bad: true },
-                    },
-                });
-
-                expect(problem).toThrow(/validation errors/);
-                expect(problem).toThrow(DelegateConfigNeeded);
-
-                try {
-                    problem();
-                } catch (e) {
-                    expect(e.errors.bad[0]).toMatch(/must not/);
-                }
-            });
-
 
             it("If the strategy-configuration doesn't match available variants, the DelegateConfigNeeded error offers suggested strategy-names", async (context: localTC) => {
                 // prettier-ignore
@@ -162,21 +134,22 @@ describe("Capo", async () => {
                 const t = await h.initialize();
 
                 const problem = () => {
-                    t.txnMustGetDelegate(tcx, "mintDelegate");
+                    t.txnMustGetDelegate(tcx2, "mintDelegate");
                 };
 
                 let tcx = t.withDelegates({
                     mintDelegate: {
                         strategyName: "badStratName",
-                        addlParams: { badSomeUnplannedWay: true },
+                        config: { badSomeUnplannedWay: true },
                     },
                 });
+                let tcx2 = await t.txnCreatingUuts(tcx, [ "mintDelegate"])
                 expect(problem).toThrow(/invalid strategy name .*badStratName/);
 
                 tcx = t.withDelegates({
                     mintDelegate: {
                         strategyName: "bogusName",
-                        addlParams: { bad: true },
+                        config: { bad: true },
                     },
                 });
 
@@ -189,7 +162,67 @@ describe("Capo", async () => {
                     expect(e.availableStrategies).toContain("default");
                     expect(e.availableStrategies).toContain("failsWhenBad");
                 }
+            });    
+        });
+        describe("once a delegate strategy is selected, it can create a ready-to-use Stellar subclass with all the right settings", () => {
+            it("txnMustGetDelegate(tcx, role) method retrieves a configured delegate", async (context: localTC) => {
+                // prettier-ignore
+                const {h, h:{network, actors, delay, state} } = context;
+                const t = await h.initialize();
+
+                const tcx = t.withDelegates({
+                    mintDelegate: {
+                        strategyName: "default",
+                        config: {},
+                    },
+                });
+                const tcx2 = await t.txnCreatingUuts(tcx, [ "mintDelegate"])
+                expect(
+                    t.txnMustGetDelegate(tcx2, "mintDelegate")
+                ).toBeInstanceOf(BasicMintDelegate);
             });
+
+            it("If the strategy-configuration has any configuration problems, the DelegateConfigNeeded error contains an 'errors' object", async (context: localTC) => {
+                // prettier-ignore
+                const {h, h:{network, actors, delay, state} } = context;
+                const t = await h.initialize();
+
+                let tcx2 : any;
+                // const getConfig = () => {
+                //     //@ts-expect-error testing protected method, because it doesn't need the uutContext, where getDelegate does.
+                //     t.txnMustConfigureSelectedDelegate(tcx2 || tcx, "mintDelegate");
+                // };
+                const getDelegate = () => {
+                    t.txnMustGetDelegate(tcx2 || tcx, "mintDelegate");
+                };
+
+                let tcx = t.withDelegates({
+                    mintDelegate: {
+                        strategyName: "default",
+                        config: { badSomeUnplannedWay: true },
+                    },
+                });
+                expect(getDelegate).not.toThrow(/configuration error/);
+
+
+                tcx = t.withDelegates({
+                    mintDelegate: {
+                        strategyName: "failsWhenBad",
+                        config: { bad: true },
+                    },
+                });
+                tcx2 = await t.txnCreatingUuts(tcx, [ "mintDelegate"])
+
+                expect(getDelegate).toThrow(/validation errors/);
+                expect(getDelegate).toThrow(DelegateConfigNeeded);
+
+                try {
+                    getDelegate();
+                } catch (e) {
+                    expect(e.errors.bad[0]).toMatch(/must not/);
+                }
+            });
+
         });
         
         describe("Each role uses a RoleVariants structure which can accept new variants", () => {
@@ -200,8 +233,7 @@ describe("Capo", async () => {
 
                 const ok: VariantStrategy<BasicMintDelegate> = {
                     delegateClass: BasicMintDelegate,
-                    scriptParams: {},
-                    validateScriptParams(): strategyValidation {
+                    validateConfig(): strategyValidation {
                         return undefined;
                     },
                 };
@@ -211,7 +243,6 @@ describe("Capo", async () => {
                 const bad = {
                     // delegateClass: SampleMintDelegate,
                     delegateClass: DefaultCapo,
-                    scriptParams: {},
                     validateScriptParams(): strategyValidation {
                         return undefined;
                     },
