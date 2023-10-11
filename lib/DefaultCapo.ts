@@ -434,6 +434,6 @@ export class DefaultCapo<
                 mech: [],
                 requires: [],
             },
-        };
+        });
     }
 }
