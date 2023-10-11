@@ -35,7 +35,7 @@ import { StellarTxnContext } from "./StellarTxnContext.js";
 
 //@ts-expect-error
 import contract from "./DefaultCapo.hl";
-import { anyDatumArgs, Capo, CapoBaseConfig, CapoImpliedSettings } from "./Capo.js";
+import { Capo, CapoBaseConfig, hasSelectedDelegates } from "./Capo.js";
 import { DefaultMinter } from "./DefaultMinter.js";
 import {
     ErrorMap,
@@ -75,8 +75,9 @@ export type HeldAssetsArgs = {
 
 export class DefaultCapo<
     MinterType extends DefaultMinter = DefaultMinter,
-    CDT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs
-> extends Capo<MinterType, CDT> {
+    CDT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs,
+    configType extends CapoBaseConfig = CapoBaseConfig
+> extends Capo<MinterType, CDT, configType> {
     contractSource() {
         return contract;
     }

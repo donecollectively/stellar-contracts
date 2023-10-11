@@ -1,6 +1,6 @@
 import { TxId } from "@hyperionbt/helios";
 import { expect } from "vitest";
-import { Capo, anyDatumArgs } from "../Capo.js";
+import { Capo, CapoBaseConfig, anyDatumArgs } from "../Capo.js";
 import { SeedTxnParams } from "../SeedTxn.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
@@ -14,7 +14,7 @@ export abstract class CapoTestHelper<
     CDT extends anyDatumArgs = 
         SC extends Capo<any, infer iCDT> ? iCDT : 
         anyDatumArgs
-    > extends StellarTestHelper<SC, SeedTxnParams> {
+    > extends StellarTestHelper<SC, CapoBaseConfig> {
     async initialize({
         randomSeed = 42, seedTxn, seedIndex = 0n,
     }: { seedTxn?: TxId; seedIndex?: bigint; randomSeed?: number; } = {}): Promise<SC> {

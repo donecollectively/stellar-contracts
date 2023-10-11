@@ -1,4 +1,4 @@
-import { DefaultCharterDatumArgs, DefaultCapo } from "../../lib/DefaultCapo.js";
+import { DefaultCharterDatumArgs, DefaultCapo, PartialDefaultCharterDatumArgs } from "../../lib/DefaultCapo.js";
 import { Address } from "@hyperionbt/helios";
 import { StellarTxnContext } from "../../lib/StellarTxnContext.js";
 import { CapoTestHelper, ADA } from "../../lib/testing";
@@ -15,15 +15,23 @@ export class CustomCapoTestHelper extends CapoTestHelper<CustomTreasury> {
         this.currentActor = "tina";
     }
 
-    mkDefaultCharterArgs(): DefaultCharterDatumArgs {
+    mkDefaultCharterArgs(): PartialDefaultCharterDatumArgs {
         const {tina, tom, tracy} = this.actors;
-        
-        //! todo arrange the delegation to the multisig authority
         return {
-            trustees: [tina.address, tom.address, tracy.address],
-            minSigs: 2,
+            govAuthorityLink: {
+                strategyName: "multisig",
+                reqdAddress: this.address,
+                // addressesHint: [tina.address, tom.address, tracy.address],
+            }
         };
+
+        //! todo arrange the delegation to the multisig authority
+        // return {
+        //     trustees: [tina.address, tom.address, tracy.address],
+        //     minSigs: 2,
+        // };
     }
+
     async mkCharterSpendTx(): Promise<StellarTxnContext> {
         await this.mintCharterToken();
 

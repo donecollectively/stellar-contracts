@@ -112,9 +112,10 @@ type hasDelegateProp = {
 
 export abstract class Capo<
         minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter,
-        charterDatumType extends anyDatumArgs = anyDatumArgs
+        charterDatumType extends anyDatumArgs = anyDatumArgs,
+        configType extends CapoBaseConfig = CapoBaseConfig
     >
-    extends StellarContract<CapoBaseConfig>
+    extends StellarContract<configType>
     implements hasUutCreator
 {
     abstract get roles(): RoleMap;
