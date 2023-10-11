@@ -61,11 +61,14 @@ export type hasAllUuts<uutEntries extends string> = {
 };
 
 interface hasUutCreator {
-    txnCreatingUuts<const purposes extends string>(
-        tcx: StellarTxnContext<any>,
+    txnCreatingUuts<
+        const purposes extends string,
+        TCX extends StellarTxnContext<any>,
+    >(
+        tcx: TCX,
         uutPurposes: purposes[],
         seedUtxo?: TxInput
-    ): Promise<hasUutContext<purposes>>;
+    ): Promise<TCX & hasUutContext<purposes>>;
 }
 
 export type MintCharterRedeemerArgs<T = {}> = T & {
@@ -149,11 +152,14 @@ export abstract class Capo<
     minter?: minterType;
 
     @Activity.partialTxn
-    txnCreatingUuts<const purposes extends string>(
-        tcx: StellarTxnContext<any>,
+    txnCreatingUuts<
+        const purposes extends string,
+        TCX extends StellarTxnContext<any>
+    >(
+        tcx: TCX,
         uutPurposes: purposes[],
         seedUtxo?: TxInput
-    ): Promise<hasUutContext<purposes>> {
+    ): Promise<TCX & hasUutContext<purposes>> {
         return this.minter!.txnCreatingUuts(tcx, uutPurposes, seedUtxo);
     }
     // P extends paramsBase = SC extends StellarContract<infer P> ? P : never

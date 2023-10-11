@@ -66,7 +66,7 @@ export class DefaultMinter
         tcx: existingTcx,
         uutPurposes: purposes [],
         seedUtxo: TxInput,
-        role?: R,
+        role: R,
     ): Promise<existingTcx & hasUutContext<purposes | ( R extends "" ? never : R )>> {
         const { txId, utxoIdx } = seedUtxo.outputId;
 
@@ -97,11 +97,14 @@ export class DefaultMinter
     }
 
     @Activity.partialTxn
-    async txnCreatingUuts<const purposes extends string>(
-        initialTcx: StellarTxnContext<any>,
+    async txnCreatingUuts<
+        const purposes extends string,
+        TCX extends StellarTxnContext<any>,
+    >(
+        initialTcx: TCX,
         uutPurposes: purposes[],
         seedUtxo?: TxInput
-    ): Promise<hasUutContext<purposes>> {
+    ): Promise<TCX & hasUutContext<purposes>> {
         const gettingSeed = seedUtxo ? Promise.resolve<TxInput>(seedUtxo) :
         new Promise<TxInput>(res => {
             //!!! make it big enough to serve minUtxo for the new UUT(s)
@@ -114,13 +117,13 @@ export class DefaultMinter
         });
 
         return gettingSeed.then(async (seedUtxo) => {
-            const tcx = await this.txnWithUuts(initialTcx, uutPurposes, seedUtxo);
+            const tcx = await this.txnWithUuts(initialTcx, uutPurposes, seedUtxo, "");
             const vEntries = this.mkUutValuesEntries(tcx.state.uuts);
 
             tcx.addInput(seedUtxo);
             const { txId: seedTxn, utxoIdx: seedIndex } = seedUtxo.outputId;
 
-            return tcx.attachScript(this.compiledScript).mintTokens(
+            tcx.attachScript(this.compiledScript).mintTokens(
                 this.mintingPolicyHash!,
                 vEntries,
                 this.mintingUuts({
