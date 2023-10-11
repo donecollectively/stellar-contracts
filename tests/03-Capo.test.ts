@@ -159,17 +159,37 @@ describe("Capo", async () => {
     });
 
     describe("the charter token is always kept in the contract", () => {
+        it("fails to use the charter token without the authZor token", async (context: localTC) => {
+            const {
+                h,
+                h: { network, actors, delay, state },
+            } = context;
+                        
+            const treasury = await h.initialize();
+            vi.spyOn(treasury, "txnAddCharterAuthz").mockImplementation(
+                async (tcx, datum) => {return tcx}
+            )
+            console.log( "------ mkCharterSpend (mocked out txnAddCharterAuthz)")
+            const tcx = await h.mkCharterSpendTx();
+            expect(tcx.outputs).toHaveLength(1);
+            
+
+            console.log( "------ submit charterSpend")
+            await expect(treasury.submit(tcx, {
+                signers: [actors.tracy, actors.tom],
+            })).rejects.toThrow(/missing .* authZor/)
+        });
+
         it("builds transactions with the charter token returned to the contract", async (context: localTC) => {
             const {
                 h,
                 h: { network, actors, delay, state },
             } = context;
-
-            await h.mintCharterToken();
-            const treasury = context.strella!;
-
+            
             const tcx = await h.mkCharterSpendTx();
             expect(tcx.outputs).toHaveLength(1);
+            
+            const treasury = context.strella!;
             const hasCharterToken = treasury.mkTokenPredicate(
                 treasury.tvCharter()
             );
@@ -182,6 +202,7 @@ describe("Capo", async () => {
                 })
             ).toBeTruthy();
 
+            console.log( "------ submit charterSpend")
             await treasury.submit(tcx, {
                 signers: [actors.tracy, actors.tom],
             });

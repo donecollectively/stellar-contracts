@@ -29,11 +29,11 @@ enum Redeemer {
 
 func requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {
     Datum::CharterToken{
-        RelativeDelegateLink{uut, _, _, _}
+        RelativeDelegateLink{uutName, _, _, _}
     } = datum;
 
-    assert(txHasOutput(ctx.tx,  mkTv(mph, uut)),
-        "missing required authZor token "+uut
+    assert(txHasOutput(ctx.tx,  mkTv(mph, uutName)),
+        "missing required authZor token "+uutName
     );
     true
 }

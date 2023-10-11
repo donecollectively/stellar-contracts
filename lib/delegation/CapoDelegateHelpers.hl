@@ -6,7 +6,7 @@ import {
 } from StellarHeliosHelpers
 
 struct RelativeDelegateLink {
-    uut: String
+    uutName: String
     strategyName: String
     reqdAddr: Option[Address]
     addrHint: []Address

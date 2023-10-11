@@ -35,7 +35,7 @@ implements MinterBaseMethods {
     @Activity.redeemer
     protected mintingNamedToken(v : Value): isActivity {
         const t =
-            new this.scriptInstance.types.Redeemer.mintingNamedToken(v);
+            new this.scriptProgram.types.Redeemer.mintingNamedToken(v);
 
         return {redeemer: t._toUplcData() }
     }

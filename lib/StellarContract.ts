@@ -18,20 +18,22 @@ import {
     extractScriptPurposeAndName,
     Datum,
     AssetClass,
+    //@ts-expect-error
+    DataDefinition,
+    ListData,
 } from "@hyperionbt/helios";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 import { utxosAsString, valueAsString } from "./diagnostics.js";
 import { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 
-
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer
 ) => tokenBearer | undefined) & { value: Value };
 export type isActivity = {
-    redeemer:  UplcDataValue | UplcData
-    // | HeliosData 
-}
+    redeemer: UplcDataValue | UplcData;
+    // | HeliosData
+};
 
 type WalletsAndAddresses = {
     wallets: Wallet[];
@@ -46,34 +48,38 @@ export type utxoInfo = {
 
 export type stellarSubclass<
     S extends StellarContract<P>,
-    P extends paramsBase = S extends StellarContract<infer SCP> ? SCP : paramsBase
-> = 
-& ( new (args: StellarConstructorArgs<S, P>) => S & StellarContract<P> )
-& { defaultParams: Partial<P> }
+    P extends configBase = S extends StellarContract<infer SCP>
+        ? SCP
+        : configBase
+> = (new (args: StellarConstructorArgs<S>) => S & StellarContract<P>) & {
+    defaultParams: Partial<P>;
+};
 
 export type anyDatumProps = Record<string, any>;
-export type paramsBase = Record<string, any>;
+export type configBase = Record<string, any>;
 
 export const Activity = {
     partialTxn(proto, thingName, descriptor) {
-        needsActiveVerb(thingName)
+        needsActiveVerb(thingName);
         return partialTxn(proto, thingName, descriptor);
     },
     redeemer(proto, thingName, descriptor) {
-        needsActiveVerb(thingName, !!"okwhatever")
+        needsActiveVerb(thingName, !!"okwhatever");
         return Activity.redeemerData(proto, thingName, descriptor);
     },
     redeemerData(proto, thingName, descriptor) {
         //!!! todo: registry and cross-checking for missing redeeming methods
-        
+
         //!!! todo: develop more patterns of "redeemer uses an input of a certain mph/value"
         return descriptor;
-    }
+    },
 };
 
-function needsActiveVerb(thingName : string, okWorkaround? : boolean) {
+function needsActiveVerb(thingName: string, okWorkaround?: boolean) {
     if (!thingName.match(/ing/)) {
-        const orWorkaround = okWorkaround  && "(or work around with @Activity.redeemerData instead)";
+        const orWorkaround =
+            okWorkaround &&
+            "(or work around with @Activity.redeemerData instead)";
         throw new Error(
             `Activity: ${thingName}: name should have 'ing' in it ${orWorkaround}`
         );
@@ -83,9 +89,7 @@ function needsActiveVerb(thingName : string, okWorkaround? : boolean) {
             `Activity: ${thingName}: name shouldn't start with 'ing'`
         );
     }
-
 }
-
 
 export function datum(proto, thingName, descriptor) {
     // console.log("+datum", proto.constructor.name, thingName || "none", descriptor.value.name )
@@ -172,15 +176,21 @@ export async function findInputsInWallets(
     );
 }
 
-export type StellarConstructorArgs<
-    SC extends StellarContract<P>,
-    P extends paramsBase = SC extends StellarContract<infer P> ? P : never
-> = {
-    params: P;
+export type SetupDetails = {
     network: Network;
     networkParams: NetworkParams;
     isTest: boolean;
     myActor?: Wallet;
+};
+export type ConfigFor<
+    SC extends StellarContract<C>,
+    C extends configBase = SC extends StellarContract<infer inferredConfig>
+        ? inferredConfig
+        : never
+> = C;
+export type StellarConstructorArgs<SC extends StellarContract<any>> = {
+    setup: SetupDetails;
+    config: ConfigFor<SC>;
 };
 export type utxoPredicate =
     | ((u: TxInput) => TxInput | undefined)
@@ -196,55 +206,65 @@ type scriptPurpose =
     | "endpoint";
 
 export type canHaveToken = TxInput | TxOutput | Assets;
+//!!! todo: type configuredStellarClass = class -> networkStuff -> withParams = stellar instance.
 
 //<CT extends Program>
 export class StellarContract<
     // SUB extends StellarContract<any, ParamsType>,
-    ParamsType extends paramsBase
+    ConfigType extends configBase
 > {
-    //! it has scriptInstance: a parameterized instance of the contract
+    //! it has scriptProgram: a parameterized instance of the contract
     //  ... with specific `parameters` assigned.
-    scriptInstance: Program;
-    paramsIn: ParamsType;
-    contractParams: paramsBase;
+    scriptProgram?: Program;
+    configIn: ConfigType;
+    contractParams: configBase;
+    setup: SetupDetails;
     network: Network;
     networkParams: NetworkParams;
     myActor?: Wallet;
-    isTest?: boolean
+    // isTest?: boolean
     static get defaultParams() {
-        return {}
+        return {};
     }
 
-    getContractParams(params) {
-        return params;
+    //! can transform input configuration to contract script params
+    //! by default, all the config keys are used as script params
+    getContractScriptParams(config: ConfigType): configBase {
+        return config;
     }
 
     constructor({
-        params,
-        network,
-        networkParams,
-        isTest,
-        myActor,
-    }: StellarConstructorArgs<StellarContract<ParamsType>, ParamsType>) {
+        setup,
+        config,
+    }: StellarConstructorArgs<StellarContract<any>>) {
+        //@ts-expect-error because typescript doesn't understand this static getter
+        if (!setup) setup = this.constructor.setup;
+
+        const { network, networkParams, isTest, myActor } = setup;
+        this.setup = setup;
+        this.configIn = config;
         this.network = network;
         this.networkParams = networkParams;
-        this.paramsIn = params;
-        this.isTest = isTest
+        // this.isTest = isTest
         if (myActor) this.myActor = myActor;
 
-        const fullParams = this.contractParams = this.getContractParams(params);
-        this.scriptInstance = this.mkScriptInstance(fullParams)
+        const fullParams = (this.contractParams =
+            this.getContractScriptParams(config));
+
+        //@ts-expect-error - until a better signature can be found for gCSP()
+        this.scriptProgram = this.loadProgramScript(fullParams);
     }
-    compiledScript!: UplcProgram; // initialized in mkScriptInstance
+    compiledScript!: UplcProgram; // initialized in loadProgramScript
 
     get datumType() {
-        return this.scriptInstance.types.Datum;
+        return this.scriptProgram?.types.Datum;
     }
     _purpose?: scriptPurpose;
     get purpose() {
         if (this._purpose) return this._purpose;
 
-        const purpose = this.scriptInstance.purpose as scriptPurpose;
+        const purpose = this.scriptProgram?.purpose as scriptPurpose;
+        if (!purpose) return "non-script"
         return (this._purpose = purpose as scriptPurpose);
     }
 
@@ -297,7 +317,7 @@ export class StellarContract<
         }, new Value(0n));
     }
 
-    //! adds the indicated Value to the transaction; 
+    //! adds the indicated Value to the transaction;
     //  ... EXPECTS  the value to already have minUtxo calculated on it.
     @partialTxn // non-activity partial
     txnKeepValue(tcx: StellarTxnContext, value: Value, datum: InlineDatum) {
@@ -318,11 +338,8 @@ export class StellarContract<
         params: SC extends StellarContract<infer P> ? P : never
     ) {
         const args: StellarConstructorArgs<SC> = {
-            params,
-            network: this.network,
-            myActor: this.myActor,
-            networkParams: this.networkParams,
-            isTest: true,
+            config: params,
+            setup: this.setup,
         };
         //@ts-expect-error todo: why is the conditional type not matching enough?
         const strella = new TargetClass(args);
@@ -366,18 +383,56 @@ export class StellarContract<
     //     return heldUtxos.filter(predicate);
     // }
 
-    async readDatum<DPROPS extends anyDatumProps>(datumName:string, datum:Datum | InlineDatum) : Promise<DPROPS> {
+    async readDatum<DPROPS extends anyDatumProps>(
+        datumName: string,
+        datum: Datum | InlineDatum
+    ): Promise<DPROPS> {
         //@ts-expect-error until mainArgTypes is made public again
-        const thisDatumType = this.scriptInstance.mainArgTypes.find(
+        const thisDatumType = this.scriptProgram.mainArgTypes.find(
             (x) => "Datum" == x.name
         )!.typeMembers[datumName];
 
-        if (!thisDatumType) throw new Error(`invalid datumName ${datumName}`);
-        if (!datum.isInline()) throw new Error(`datum must be an InlineDatum to be readable using readDatum()`);
+        // console.log(` ----- read datum ${datumName}`)
 
-        const { fieldNames, instanceMembers } = thisDatumType as any;
-        debugger
-        
+        if (!thisDatumType) throw new Error(`invalid datumName ${datumName}`);
+        if (!datum.isInline())
+            throw new Error(
+                `datum must be an InlineDatum to be readable using readDatum()`
+            );
+
+        return this.readUplcDatum(
+            thisDatumType,
+            datum.data!
+        ) as Promise<DPROPS>;
+    }
+
+    private async readUplcStructList(uplcType: any, uplcData: ListData) {
+        const { fieldNames, instanceMembers } = uplcType as any;
+
+        if (uplcType.fieldNames?.length == 1) {
+            throw new Error(`todo: support for single-field nested structs?`);
+        }
+
+        //@ts-expect-error until Helios exposes right type info for the list element
+        const nestedFieldList = uplcData.list;
+        return Object.fromEntries(
+            await Promise.all(
+                fieldNames.map(async (fn: string, i: number) => {
+                    const fieldData = nestedFieldList[i];
+                    const fieldType = instanceMembers[fn];
+                    // console.log(` ----- read struct field ${fn}`)
+                    const value = await this.readUplcField(fn, fieldType, fieldData);
+                    // console.log(` <----- struct field ${fn}`, value);
+
+                    return [fn, value];
+                })
+            )
+        );
+    }
+
+    private async readUplcDatum(uplcType: any, uplcData: UplcData) {
+        const { fieldNames, instanceMembers } = uplcType as any;
+
         // const heliosTypes = Object.fromEntries(
         //     fieldNames.map((fn) => {
         //         return [fn, instanceMembers[fn].name];
@@ -394,49 +449,68 @@ export class StellarContract<
         //         return [fn, instanceMembers[fn].typeDetails.outputType];
         //     })
         // );
-        const offChainTypes = Object.fromEntries(
-            fieldNames.map((fn) => {
-                return [fn, instanceMembers[fn].offChainType];
-            })
-        );
-        return Object.fromEntries(await Promise.all(
-            fieldNames.map(async (fn, i) => {
-                let current;
-                const uplcData = datum.data;
-                debugger
-                
-                const uplcDataField = uplcData.fields[i];
-                const thisFieldType = instanceMembers[fn];
-                try {
-                    current = thisFieldType.uplcToJs(uplcDataField);
-                    if (current.then) current = await current;
+        return Object.fromEntries(
+            await Promise.all(
+                fieldNames.map(async (fn, i) => {
+                    let current;
 
-                    if ("Enum" === thisFieldType?.typeDetails?.internalType?.type && 0 === uplcDataField.fields.length) {
-                        current = Object.keys(current)[0]
-                    }
-                } catch (e: any) {
-                    if (
-                        e.message?.match(/doesn't support converting from Uplc/)
-                    ) {
-                        try {
-                            current = await offChainTypes[fn].fromUplcData(uplcDataField);
-                            if ("some" in current) current = current.some;
-                        } catch (e: any) {
-                            console.error(`datum: field ${fn}: ${e.message}`);
-                            // console.log({outputTypes, fieldNames, offChainTypes, inputTypes, heliosTypes, thisDatumType});
-                            debugger;
-                            throw e;
-                        }
-                    } else {
-                        throw e;
-                    }
-                }
-                return [fn, current];
-            })
-        )) as DPROPS;
+                    //@ts-expect-error
+                    const uplcDataField = uplcData.fields[i];
+                    const fieldType = instanceMembers[fn];
+                    // console.log(` ----- read field ${fn}`)
+
+                    current = await this.readUplcField(fn, fieldType, uplcDataField);
+
+                    return [fn, current];
+                })
+            )
+        );
     }
 
+    private async readUplcField(fn: string, fieldType: any, uplcDataField: any) {
+        let value;
+        const {offChainType} = fieldType;
+        const internalType = fieldType.typeDetails.internalType.type;
+        if ("Struct" == internalType) {
+            value = await this.readUplcStructList(
+                fieldType,
+                uplcDataField
+            );
+            // console.log(`  <-- field value`, value)
+            return value
+        }
+        try {
+            value = fieldType.uplcToJs(uplcDataField);
+            if (value.then) value = await value;
 
+            if ("Enum" === internalType &&
+                0 === uplcDataField.fields.length) {
+                value = Object.keys(value)[0];
+            }
+        } catch (e: any) {
+            if (e.message?.match(
+                /doesn't support converting from Uplc/
+            )) {
+                try {
+                    value = await offChainType.fromUplcData(
+                        uplcDataField
+                    );
+                    if ("some" in value) value = value.some;
+                } catch (e: any) {
+                    console.error(
+                        `datum: field ${fn}: ${e.message}`
+                    );
+                    // console.log({outputTypes, fieldNames, offChainTypes, inputTypes, heliosTypes, thisDatumType});
+                    debugger;
+                    throw e;
+                }
+            } else {
+                throw e;
+            }
+        }
+        // console.log(`  <-- field value`, value)
+        return value;
+    }
 
     findSmallestUnusedUtxo(
         lovelace: bigint,
@@ -455,10 +529,9 @@ export class StellarContract<
                 return !!tcx?.utxoNotReserved(uInfo.u);
             })
             .sort(this._utxoSortSmallerAndPureADA)
-            .map(this._infoBackToUtxo)
-        console.log("smallest utxos: ", utxosAsString(found))
-        const chosen = found
-            .at(0);
+            .map(this._infoBackToUtxo);
+        console.log("smallest utxos: ", utxosAsString(found));
+        const chosen = found.at(0);
 
         return chosen;
     }
@@ -476,7 +549,7 @@ export class StellarContract<
         return predicate;
 
         function _adaPredicate(
-            this: StellarContract<ParamsType>,
+            this: StellarContract<ConfigType>,
             tcx: StellarTxnContext | undefined,
             utxo: TxInput
         ): TxInput | undefined {
@@ -485,9 +558,7 @@ export class StellarContract<
     }
 
     mkAssetValue(tokenId: AssetClass, count: number = 1) {
-        const assets = [
-            [tokenId, count] as [AssetClass, number]
-        ];
+        const assets = [[tokenId, count] as [AssetClass, number]];
         const v = new Value(undefined, assets);
         return v;
     }
@@ -521,7 +592,7 @@ export class StellarContract<
         return predicate;
 
         function _tokenPredicate<tokenBearer extends canHaveToken>(
-            this: StellarContract<ParamsType>,
+            this: StellarContract<ConfigType>,
             something: tokenBearer
         ): tokenBearer | undefined {
             return this.hasToken(something, v);
@@ -625,7 +696,9 @@ export class StellarContract<
         quantity: bigint,
         mph?: MintingPolicyHash
     ): Value {
-        throw new Error(`deprecated tokenAsValue on StellarContract base class (Capo has mph, not so much any StellarContract`)
+        throw new Error(
+            `deprecated tokenAsValue on StellarContract base class (Capo has mph, not so much any StellarContract`
+        );
         // if (!mph) {
         //     mph = (this as any).mph;
         //     if (!mph)
@@ -701,7 +774,9 @@ export class StellarContract<
         return c + (minAdaAmount ? 0 : 1);
     }
 
-    async findAnySpareUtxos(tcx: StellarTxnContext): Promise<TxInput[] | never> {
+    async findAnySpareUtxos(
+        tcx: StellarTxnContext
+    ): Promise<TxInput[] | never> {
         if (!this.myActor) throw this.missingActorError;
 
         const mightNeedFees = this.ADA(3.5);
@@ -747,7 +822,8 @@ export class StellarContract<
             }
             for (const s of willSign) {
                 const [a] = await s.usedAddresses;
-                if (tx.body.signers.find(s => a.pubKeyHash!.hex === s.hex)) continue;
+                if (tx.body.signers.find((s) => a.pubKeyHash!.hex === s.hex))
+                    continue;
                 tx.addSigner(a.pubKeyHash!);
             }
             // const feeEstimated = tx.estimateFee(this.networkParams);
@@ -824,18 +900,11 @@ export class StellarContract<
     //     }
     // }
 
-    // static withParams(this: new () => StellarContract, params: any) : never | StellarContract {
-    //     throw new Error(`subclass must implement static withParams`);
-    //     // return new this(params)
-    // }
-    // constructor(params: any) {
-
-    // }
-    importModules() : HeliosModuleSrc[] {
-        return []
+    importModules(): HeliosModuleSrc[] {
+        return [];
     }
 
-    mkScriptInstance(params: ParamsType) {
+    loadProgramScript(params: ConfigType) : Program | null {
         const src = this.contractSource();
         const modules = this.importModules();
 
@@ -843,64 +912,74 @@ export class StellarContract<
 
         try {
             const script = Program.new(src, modules);
-            script.parameters = params
+            script.parameters = params;
 
-            const simplify = !this.isTest;
+            const simplify = !this.setup.isTest;
             // const t = new Date().getTime();
             if (simplify) {
-                console.warn(`Loading optimized contract code for `+this.scriptInstance.name);
+                console.warn(
+                    `Loading optimized contract code for ` +
+                        script.name
+                );
             }
-    
+
             //!!! todo: consider pushing this to JIT or async
             this.compiledScript = script.compile(simplify);
             // const t2 = new Date().getTime();
-    
+
             // Result: ~80ms cold-start or (much) faster on additional compiles
             // console.log("::::::::::::::::::::::::compile time "+ (t2 - t) + "ms")
             // -> caching would not improve
-    
+
             // const configured = Program.new(source)
             // configured.parameters = params;
             // const compiledScript = configured.compile(simplify)
             // const addr = Address.fromHashes(compiledScript.validatorHash)
-    
 
-            return script
-        } catch(e: any) {
+            return script;
+        } catch (e: any) {
             if (!e.src) {
                 console.error(
-                    `unexpected thrown error while compiling helios program`+
-                            `(or its imported module) \n`+
-                    `Suggested: connect with debugger (we provided a debugging point already)\n`+
-                     `  ... and use 'break on caught exceptions' to analyze the error \n`+
-                     `This likely indicates a problem in Helios' error reporting - \n`+
-                     `   ... please provide a minimal reproducer as an issue report for repair!`
-                )
+                    `unexpected thrown error while compiling helios program` +
+                        ` (or its imported module) \n` +
+                        `Suggested: connect with debugger (we provided a debugging point already)\n` +
+                        `  ... and use 'break on caught exceptions' to analyze the error \n` +
+                        `This likely indicates a problem in Helios' error reporting - \n` +
+                        `   ... please provide a minimal reproducer as an issue report for repair!`
+                );
                 try {
-                    debugger
-                    //! debugger'ing?  YOU ARE AWESOME!
+                    debugger;
+                    // debugger'ing?  YOU ARE AWESOME!
                     //  reminder: ensure "break on caught exceptions" is enabled
                     //  before playing this next line to dig deeper into the error.
-                    Program.new(src, modules)
-                } catch(sameError) {
+                    Program.new(src, modules);
+                } catch (sameError) {
                     throw sameError;
                 }
             }
             const moduleName = e.src.name;
-            const errorModule = [src, ...modules] .find((m) => (m as any).moduleName == moduleName)
-            const {srcFile ="‹unknown path to module›"} = errorModule as any || {}
-            const [sl, sc, el, ec] = e.getFilePos()
-            const t= new Error("");
+            const errorModule = [src, ...modules].find(
+                (m) => (m as any).moduleName == moduleName
+            );
+            const { srcFile = "‹unknown path to module›" } =
+                (errorModule as any) || {};
+            const [sl, sc, el, ec] = e.getFilePos();
+            const t = new Error("");
             const modifiedStack = t.stack!.split("\n").slice(1).join("\n");
-            const additionalErrors = e.src.errors.slice(1).map((x) => `       |         ⚠️  also: ${x}`);
-            const addlErrorText = additionalErrors.length ? ["", ...additionalErrors, "       v" ].join("\n") : ""
+            const additionalErrors = e.src.errors
+                .slice(1)
+                .map((x) => `       |         ⚠️  also: ${x}`);
+            const addlErrorText = additionalErrors.length
+                ? ["", ...additionalErrors, "       v"].join("\n")
+                : "";
             t.message = e.message + addlErrorText;
 
-            t.stack = `${e.message}\n    at ${moduleName
-                } (${srcFile}:${1+sl}:${1+sc})\n`+ 
-                modifiedStack 
+            t.stack =
+                `${e.message}\n    at ${moduleName} (${srcFile}:${1 + sl}:${
+                    1 + sc
+                })\n` + modifiedStack;
 
-                throw(t)
+            throw t;
         }
     }
 
@@ -952,20 +1031,21 @@ export class StellarContract<
         );
     }
 
+    //! finds a utxo (
     async mustFindMyUtxo(
-        name: string,
+        semanticName: string,
         predicate: (u: TxInput) => TxInput | undefined,
         exceptInTcx: StellarTxnContext<any>,
         extraErrorHint?: string
     ): Promise<TxInput | never>;
     async mustFindMyUtxo(
-        name: string,
+        semanticName: string,
         predicate: (u: TxInput) => TxInput | undefined,
         extraErrorHint?: string
     ): Promise<TxInput | never>;
 
     async mustFindMyUtxo(
-        name: string,
+        semanticName: string,
         predicate: (u: TxInput) => TxInput | undefined,
         hintOrExcept?: string | StellarTxnContext<any>,
         hint?: string
@@ -980,7 +1060,7 @@ export class StellarContract<
             : undefined;
 
         return this.mustFindUtxo(
-            name,
+            semanticName,
             predicate,
             { address, exceptInTcx },
             extraErrorHint
@@ -988,7 +1068,7 @@ export class StellarContract<
     }
 
     async mustFindUtxo(
-        name: string,
+        semanticName: string,
         predicate: (u: TxInput) => TxInput | undefined,
         {
             address,
@@ -996,35 +1076,36 @@ export class StellarContract<
         }: { address: Address; exceptInTcx?: StellarTxnContext<any> },
         extraErrorHint: string = ""
     ): Promise<TxInput | never> {
-        const found = await this.hasUtxo(name, predicate, {
+        const found = await this.hasUtxo(semanticName, predicate, {
             address,
             exceptInTcx,
         });
         if (!found) {
             throw new Error(
-                `${this.constructor.name}: '${name}' utxo not found (${extraErrorHint}) in address`
+                `${this.constructor.name}: '${semanticName}' utxo not found (${extraErrorHint}) in address`
             );
         }
 
         return found;
     }
     toUtxoId(u: TxInput) {
-        return `${u.txId.hex}@${u.utxoIdx}`;
+        return `${u.outputId.txId.hex}@${u.outputId.utxoIdx}`;
     }
 
-    async txnFindUtxo(tcx: StellarTxnContext<any>,
+    async txnFindUtxo(
+        tcx: StellarTxnContext<any>,
         name: string,
         predicate: utxoPredicate,
         address = this.address
     ): Promise<TxInput | undefined> {
         return this.hasUtxo(name, predicate, {
             address,
-            exceptInTcx: tcx
-        })
+            exceptInTcx: tcx,
+        });
     }
 
     async hasUtxo(
-        name: string,
+        semanticName: string,
         predicate: utxoPredicate,
         {
             address,
@@ -1039,7 +1120,7 @@ export class StellarContract<
             : utxos;
 
         console.log(
-            `finding '${name}' utxo${
+            `finding '${semanticName}' utxo${
                 exceptInTcx ? " (not already being spent in txn)" : ""
             } from set:\n  ${utxosAsString(filtered, "\n  ")}`,
             ...(exceptInTcx && filterUtxos?.length
@@ -1062,9 +1143,9 @@ export class StellarContract<
     }
 
     async hasMyUtxo(
-        name: string,
+        semanticName: string,
         predicate: utxoPredicate
     ): Promise<TxInput | undefined> {
-        return this.hasUtxo(name, predicate, { address: this.address });
+        return this.hasUtxo(semanticName, predicate, { address: this.address });
     }
 }

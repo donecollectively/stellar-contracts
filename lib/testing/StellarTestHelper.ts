@@ -14,7 +14,7 @@ import {
 import {
     StellarContract,
     findInputsInWallets,
-    paramsBase,
+    configBase,
     stellarSubclass
 } from "../StellarContract.js";
 import {
@@ -26,7 +26,7 @@ import { actorMap, ADA, canHaveRandomSeed, canSkipSetup, preProdParams, enhanced
 
 export abstract class StellarTestHelper<
     SC extends StellarContract<any>,
-    P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never
+    P extends configBase = SC extends StellarContract<infer PT> ? PT : never
 > {
     state: Record<string, any>;
     abstract get stellarClass(): stellarSubclass<SC, any>;
@@ -126,11 +126,13 @@ export abstract class StellarTestHelper<
 
     initStrella(TargetClass: stellarSubclass<any, any>, params: any) {
         return new TargetClass({
-            params,
-            network: this.network,
-            myActor: this.currentActor,
-            networkParams: this.networkParams,
-            isTest: true,
+            config: params,
+            setup: {
+                network: this.network,
+                myActor: this.currentActor, 
+                networkParams: this.networkParams,
+                isTest: true,
+            }
         });
     }
 

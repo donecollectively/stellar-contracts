@@ -17,9 +17,12 @@ import { StellarTxnContext } from "../StellarTxnContext.js";
 import { AuthorityPolicy } from "./AuthorityPolicy.js";
 
 export class AddressAuthorityPolicy extends AuthorityPolicy {
+    loadProgramScript(params) {
+        return null
+    }
     @Activity.redeemer
     protected usingAuthority(): isActivity {
-        const r = this.scriptInstance.types.Redeemer;
+        const r = this.scriptProgram?.types.Redeemer;
         const { usingAuthority } = r;
         if (!usingAuthority) {
             throw new Error(
@@ -33,13 +36,19 @@ export class AddressAuthorityPolicy extends AuthorityPolicy {
 
     //! impls MUST resolve the indicated token to a specific UTxO
     //  ... or throw an informative error
-    async mustFindAuthorityToken(tcx, tokenId: AssetClass): Promise<TxInput> {
-        const v = this.mkAssetValue(tokenId);
+    async txnMustFindAuthorityToken(tcx): Promise<TxInput> {
+        const {uut, addrHint} = this.configIn;
+        const v = this.mkAssetValue(uut);
+        debugger
         return this.mustFindActorUtxo(
             `authority-token(address strat)`,
             this.mkTokenPredicate(v),
             tcx,
-            "are you connected to the right wallet address?"
+            "are you connected to the right wallet address? "+
+                (addrHint?.length ? 
+                    "  maybe at:\n    " +addrHint.join("\n or ")
+                    : ""
+                )
         );
     }
 
@@ -48,7 +57,7 @@ export class AddressAuthorityPolicy extends AuthorityPolicy {
         tcx: StellarTxnContext,
         tokenId: AssetClass,
         delegateAddr: Address,
-        sourceUtxo?: TxInput
+        // sourceUtxo?: TxInput
     ): Promise<StellarTxnContext> {
         //! no need to reference the sourceUtxo
 
@@ -63,9 +72,7 @@ export class AddressAuthorityPolicy extends AuthorityPolicy {
     //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
     async txnGrantAuthority(
         tcx: StellarTxnContext,
-        tokenId: AssetClass,
         sourceUtxo: TxInput,
-        delegateAddr: Address
     ): Promise<StellarTxnContext> {
         //! no need to specify a redeemer
         return tcx.addInput(sourceUtxo);
@@ -75,9 +82,7 @@ export class AddressAuthorityPolicy extends AuthorityPolicy {
     //  ... allowing the token to be burned by the minting policy.
     async txnRetireCred(
         tcx: StellarTxnContext,
-        tokenId: AssetClass,
         sourceUtxo: TxInput,
-        delegateAddr: Address
     ): Promise<StellarTxnContext> {
         //! no need to specify a redeemer
         return tcx.addInput(sourceUtxo);

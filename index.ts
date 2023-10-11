@@ -51,7 +51,7 @@ export type {
     isActivity,
     utxoPredicate,
     anyDatumProps,
-    paramsBase
+    configBase as paramsBase
 } from "./lib/StellarContract.js";
 
 export {

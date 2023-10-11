@@ -7,6 +7,7 @@ import {
     TxOutput,
     TxInput,
     Value,
+    AssetClass,
 } from "@hyperionbt/helios";
 import { DefaultMinter } from "./DefaultMinter.js";
 import {
@@ -14,14 +15,15 @@ import {
     StellarConstructorArgs,
     StellarContract,
     isActivity,
-    paramsBase,
+    configBase,
     partialTxn,
     stellarSubclass,
+    ConfigFor,
 } from "./StellarContract.js";
 import { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 import {
-    DelegateConfig,
+    DelegateSettings,
     SelectedDelegates,
     DelegateConfigNeeded,
     ErrorMap,
@@ -30,6 +32,7 @@ import {
     VariantStrategy,
     PartialParamConfig,
     UutName,
+    RelativeDelegateLink,
 } from "./delegation/RolesAndDelegates.js";
 import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
 import { SeedTxnParams } from "./SeedTxn.js";
@@ -44,9 +47,9 @@ export type {
     strategyValidation,
 } from "./delegation/RolesAndDelegates.js";
 
-export type uutPurposeMap<
-    unionPurpose extends string
-> = { [purpose in unionPurpose]: UutName };
+export type uutPurposeMap<unionPurpose extends string> = {
+    [purpose in unionPurpose]: UutName;
+};
 
 export type hasSomeUuts<uutEntries extends string> = {
     uuts: Partial<uutPurposeMap<uutEntries>>;
@@ -64,7 +67,7 @@ interface hasUutCreator {
     ): Promise<hasUutContext<purposes>>;
 }
 
-export type MintCharterRedeemerArgs<T={}> = T & {
+export type MintCharterRedeemerArgs<T = {}> = T & {
     owner: Address;
 };
 
@@ -82,8 +85,8 @@ export interface MinterBaseMethods extends hasUutCreator {
     txnMintingCharter(
         tcx: StellarTxnContext<any>,
         charterMintArgs: {
-            owner: Address,
-            authZor: UutName,
+            owner: Address;
+            authZor: UutName;
         },
         tVal: valuesEntry
     ): Promise<StellarTxnContext<any>>;
@@ -91,24 +94,29 @@ export interface MinterBaseMethods extends hasUutCreator {
 
 export type anyDatumArgs = Record<string, any>;
 
+//!!! todo: let this be parameterized for more specificity
+export type CapoBaseConfig = SeedTxnParams & {
+    mph: MintingPolicyHash;
+};
+
+//!!! todo: let this be parameterized for more specificity
+export type CapoImpliedSettings = {
+    uut: AssetClass;
+};
+
 export abstract class Capo<
         minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter,
-        charterDatumType extends anyDatumArgs=anyDatumArgs
+        charterDatumType extends anyDatumArgs = anyDatumArgs
     >
-    extends StellarContract<SeedTxnParams>
+    extends StellarContract<CapoBaseConfig>
     implements hasUutCreator
 {
     abstract get roles(): RoleMap;
 
-    constructor(
-        args: StellarConstructorArgs<
-            StellarContract<SeedTxnParams>,
-            SeedTxnParams
-        >
-    ) {
+    constructor(args: StellarConstructorArgs<StellarContract<CapoBaseConfig>>) {
         super(args);
 
-        const { Datum, Redeemer } = this.scriptInstance.types;
+        const { Datum, Redeemer } = this.scriptProgram!.types;
 
         const { CharterToken } = Datum;
         const { updatingCharter, usingAuthority } = Redeemer;
@@ -157,7 +165,7 @@ export abstract class Capo<
 
     @Activity.redeemer
     protected usingAuthority(): isActivity {
-        const r = this.scriptInstance.types.Redeemer;
+        const r = this.scriptProgram!.types.Redeemer;
         const { usingAuthority } = r;
         if (!usingAuthority) {
             throw new Error(
@@ -248,8 +256,9 @@ export abstract class Capo<
     }
 
     abstract txnAddCharterAuthz(
-        tcx: StellarTxnContext, datum: InlineDatum
-    ): Promise<StellarTxnContext<any> | never>
+        tcx: StellarTxnContext,
+        datum: InlineDatum
+    ): Promise<StellarTxnContext<any> | never>;
 
     async txnMustUseCharterUtxo(
         tcx: StellarTxnContext<any>,
@@ -268,7 +277,10 @@ export abstract class Capo<
         newDatumOrForceRefScript?: InlineDatum | true
     ): Promise<StellarTxnContext<any> | never> {
         return this.mustFindCharterUtxo().then(async (ctUtxo: TxInput) => {
-            await this.txnAddCharterAuthz(tcx, ctUtxo.origOutput.datum as InlineDatum);
+            await this.txnAddCharterAuthz(
+                tcx,
+                ctUtxo.origOutput.datum as InlineDatum
+            );
 
             if (true === redeemerOrRefInput) {
                 if (
@@ -329,13 +341,13 @@ export abstract class Capo<
 
     //! it can provide minter-targeted params through getMinterParams()
     getMinterParams() {
-        return this.paramsIn;
+        return this.configIn;
     }
     getCapoRev() {
         return 1n;
     }
 
-    getContractParams(params: SeedTxnParams) {
+    getContractScriptParams(params: SeedTxnParams) {
         const { mph } = this;
         const rev = this.getCapoRev();
         // console.log("this treasury uses mph", mph?.hex);
@@ -358,11 +370,11 @@ export abstract class Capo<
     connectMintingScript(params: SeedTxnParams): minterType {
         if (this.minter) return this.minter;
         const { minterClass } = this;
-        const { seedTxn, seedIndex } = this.paramsIn;
+        const { seedTxn, seedIndex } = this.configIn;
 
         const minter = this.addScriptWithParams(minterClass, params);
         const { mintingCharter, mintingUuts } =
-            minter.scriptInstance.types.Redeemer;
+            minter.scriptProgram!.types.Redeemer;
         if (!mintingCharter)
             throw new Error(
                 `minting script doesn't offer required 'mintingCharter' activity-redeemer`
@@ -380,7 +392,7 @@ export abstract class Capo<
         //! given a Capo-based contract instance having a free TxInput to seed its validator address,
         //! prior to initial on-chain creation of contract,
         //! it finds that specific TxInput in the current user's wallet.
-        const { seedTxn, seedIndex } = this.paramsIn;
+        const { seedTxn, seedIndex } = this.configIn;
         console.log(
             `seeking seed txn ${seedTxn.hex.substring(0, 12)}…@${seedIndex}`
         );
@@ -405,30 +417,32 @@ export abstract class Capo<
         return tcx;
     }
 
-    txnGetSelectedDelegateParams<T extends StellarContract<any>,
-        PT extends paramsBase = T extends StellarContract<infer iPT> ? iPT : never
+    txnGetSelectedDelegateConfig<
+        T extends StellarContract<any>,
+        const RN extends string,
     >(
-        tcx: StellarTxnContext,
-        roleName: string,
-    ) : PartialParamConfig<PT>{
+        tcx: hasUutContext<RN>,
+        roleName: RN,
+    ): PartialParamConfig<ConfigFor<T>> {
         const selected = this.txnMustSelectDelegate(tcx, roleName);
-        const { strategyName, scriptParams: selectedParams } = selected;
+        const { strategyName, config: selectedConfig } = selected;
 
         const { roles } = this;
-        
-        const foundStrategies = roles[roleName];
-        const selectedStrategy = foundStrategies[strategyName] as VariantStrategy<T, PT>
 
-        const stratParams = selectedStrategy.scriptParams || {}
-        return {...stratParams, ...selectedParams }
+        const foundStrategies = roles[roleName];
+        const selectedStrategy = foundStrategies[
+            strategyName
+        ] as VariantStrategy<T>;
+
+        const stratParams = selectedStrategy.scriptParams || {};
+        return { ...stratParams, ...selectedConfig };
     }
 
-    txnMustSelectDelegate<T extends StellarContract<any>,
-        PT extends paramsBase = T extends StellarContract<infer iPT> ? iPT : never
-    >(
-        tcx: StellarTxnContext,
-        roleName: string,
-    ) : SelectedDelegate<T,PT>{
+    txnMustSelectDelegate<
+        T extends StellarContract<any>,
+        const RN extends string,
+        TCX extends hasUutContext<RN>
+    >(tcx: TCX, roleName: RN): SelectedDelegate<T> {
         const { selectedDelegates } = tcx;
         let selected = selectedDelegates[roleName];
         const role = this.roles[roleName];
@@ -436,55 +450,69 @@ export abstract class Capo<
             if (role.default) {
                 selected = {
                     strategyName: "default",
-                    scriptParams: {}
+                    config: {},
                 };
             }
         }
         if (!selected) {
-            const foundDelegateSelections = Object.keys(selectedDelegates)
-            if (!foundDelegateSelections.length) foundDelegateSelections.push("‹none›")
+            const foundDelegateSelections = Object.keys(selectedDelegates);
+            if (!foundDelegateSelections.length)
+                foundDelegateSelections.push("‹none›");
             throw new DelegateConfigNeeded(
-                `no selected or default delegate for role '${roleName}' found in transaction-context.  \n`+
-                ` Hint:   use ‹capo instance›.withDelegates(delegates) to select delegates by role name\n`+
-                `    (found selections: ${foundDelegateSelections.join(", ")})`,
-                {availableStrategies: Object.keys(role)}
+                `no selected or default delegate for role '${roleName}' found in transaction-context.  \n` +
+                    ` Hint:   use ‹capo instance›.withDelegates(delegates) to select delegates by role name\n` +
+                    `    (found selections: ${foundDelegateSelections.join(
+                        ", "
+                    )})`,
+                { availableStrategies: Object.keys(role) }
             );
         }
 
-            return selected
-        }
-    txnMustConfigureSelectedDelegate<T extends StellarContract<any>,
-        PT extends paramsBase = T extends StellarContract<infer iPT> ? iPT : never
+        return selected;
+    }
+
+    txnMustConfigureSelectedDelegate<
+        T extends StellarContract<any>,
+        const RN extends string,
     >(
-        tcx: StellarTxnContext,
-        roleName: string,
-    ) : DelegateConfig<T, PT>{
-        let selected = this.txnMustSelectDelegate(tcx, roleName)
-       const { strategyName, scriptParams: selectedParams } = selected;
+        tcx: StellarTxnContext & hasUutContext<RN>,
+        roleName: RN,
+    ): DelegateSettings<T> {
+        let selected = this.txnMustSelectDelegate(tcx, roleName);
+        const { strategyName, config: selectedConfig } = selected;
 
         const { roles } = this;
-        
+        const uut = tcx.state.uuts[roleName];
+        const impliedSettings = this.mkImpliedSettings(uut);
+
         const foundStrategies = roles[roleName];
-        const selectedStrategy = foundStrategies[strategyName] as VariantStrategy<T, PT>
+        const selectedStrategy = foundStrategies[
+            strategyName
+        ] as VariantStrategy<T>;
         if (!selectedStrategy) {
-            const e = new DelegateConfigNeeded(`invalid strategy name '${strategyName}' for role '${roleName}'`, {
-                availableStrategies: Object.keys(foundStrategies)
-            });
-            throw e
+            const e = new DelegateConfigNeeded(
+                `invalid strategy name '${strategyName}' for role '${roleName}'`,
+                {
+                    availableStrategies: Object.keys(foundStrategies),
+                }
+            );
+            throw e;
         }
-        const { delegateClass, validateScriptParams } = selectedStrategy;
+        const { delegateClass, validateConfig } = selectedStrategy;
         const { defaultParams: defaultParamsFromDelegateClass } = delegateClass;
-        const scriptParamsFromStrategyVariant = selected.scriptParams;
-        const mergedParams: PT = {
+        const scriptParamsFromStrategyVariant = selected.config;
+        const mergedParams: ConfigFor<T> = {
             ...defaultParamsFromDelegateClass,
             ...(scriptParamsFromStrategyVariant || {}),
-            ...selectedParams,
-        } as unknown as PT;
+            ...impliedSettings,
+            ...selectedConfig,
+        } as unknown as ConfigFor<T>;
 
-        const errors: ErrorMap | undefined = validateScriptParams(mergedParams);
+        const errors: ErrorMap | undefined = validateConfig(mergedParams);
         if (errors) {
             throw new DelegateConfigNeeded(
-                "validation errors in contract params:\n" + errorMapAsString(errors),
+                "validation errors in contract params:\n" +
+                    errorMapAsString(errors),
                 { errors }
             );
         }
@@ -492,25 +520,39 @@ export abstract class Capo<
         return {
             roleName,
             strategyName,
-            scriptParams: mergedParams,
-            selectedClass: delegateClass,
-        }
+            config: mergedParams,
+            delegateClass,
+        };
     }
 
-    txnMustGetDelegate<RT extends StellarContract<any>>(
-        tcx: StellarTxnContext,
-        roleName: string,
-        configuredDelegate?: DelegateConfig<RT>
-    ) : RT {
-        const sdd = configuredDelegate || this.txnMustConfigureSelectedDelegate<RT>(tcx, roleName);
-        const {selectedClass, scriptParams} = sdd;
+    mkImpliedSettings(uut: UutName) : CapoImpliedSettings{
+        return {
+            uut: new AssetClass({
+                mph: this.mph,
+                tokenName: this.stringToNumberArray(uut.name),
+            })
+        };
+    }
+
+    txnMustGetDelegate<
+        T extends StellarContract<any>,
+        const RN extends string
+    >(
+        tcx: StellarTxnContext & hasUutContext<RN>,
+        roleName: RN,
+        configuredDelegate?: DelegateSettings<T>
+    ): T {
+        const sdd =
+            configuredDelegate ||
+            this.txnMustConfigureSelectedDelegate<T,RN>(tcx, roleName);
+        const { delegateClass, config: scriptParams } = sdd;
         try {
             // delegate
             const configured = this.addScriptWithParams(
-                selectedClass,
+                delegateClass,
                 scriptParams
             );
-            return configured as RT
+            return configured as T;
         } catch (e: any) {
             const t = e.message.match(/invalid parameter name '([^']+)'$/);
 
@@ -523,6 +565,30 @@ export abstract class Capo<
             }
             throw e;
         }
+    }
+
+    async connectDelegateWith<DelegateType extends StellarContract<any>>(
+        roleName: string,
+        delegateLink: RelativeDelegateLink<ConfigFor<DelegateType>>
+    ): Promise<DelegateType> {
+        const role = this.roles[roleName];
+        //!!! work on type-safety with roleName + available roles
+        const { strategyName, uutName, reqdAddress, addressesHint, config: linkedConfig } = delegateLink;
+        const selectedStrat = role[
+            strategyName
+        ] as unknown as DelegateSettings<DelegateType>;
+        if (!selectedStrat) {
+            throw new Error(`mismatched strategyName '${strategyName}' in delegate link for role '${roleName}'`)
+        }
+        const { delegateClass, config: stratSettings } = selectedStrat;
+        const config = {
+            ...stratSettings,
+            ...this.mkImpliedSettings(new UutName("some-delegate", uutName)),
+            ...linkedConfig
+        }
+
+        const {setup} = this;
+        return new delegateClass({setup, config});
     }
 
     capoRequirements() {

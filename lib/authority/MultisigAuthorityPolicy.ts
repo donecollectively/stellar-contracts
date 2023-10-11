@@ -4,15 +4,10 @@ import { Address, AssetClass, TxInput, Value } from "@hyperionbt/helios"
 import contract from "./MultisigAuthorityPolicy.hl"
 import { Activity, isActivity, StellarContract } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
-
-type RCPolicyArgs = {
-    rev: bigint
-    // mph: MintingPolicyHash;
-    // policyUutName: string;
-}
+import { AuthorityPolicy } from "./AuthorityPolicy.js";
 
 //! a contract enforcing policy for a registered credential
-export class MultisigAuthorityPolicy extends StellarContract<RCPolicyArgs> {
+export class MultisigAuthorityPolicy extends AuthorityPolicy {
     static currentRev = 1n
     static get defaultParams() {
         return { rev: this.currentRev }
@@ -21,28 +16,31 @@ export class MultisigAuthorityPolicy extends StellarContract<RCPolicyArgs> {
         return contract
     }
 
-    // @Activity.redeemer
-    protected x(tokenName: string): isActivity {
-        const t =
-            new this.scriptInstance.types.Redeemer.commissioningNewToken(
-                tokenName
-            )
+    // // @Activity.redeemer
+    // protected x(tokenName: string): isActivity {
+    //     const t =
+    //         new this.scriptProgram.types.Redeemer.commissioningNewToken(
+    //             tokenName
+    //         )
 
-        return { redeemer: t._toUplcData() }
-    }
+    //     return { redeemer: t._toUplcData() }
+    // }
 
-    @Activity.partialTxn
-    async txnFreshenCredInfo(
-        tcx: StellarTxnContext,
-        tokenName: string
-    ): Promise<StellarTxnContext> {
-        return tcx
-    }
+    // @Activity.partialTxn
+    // async txnFresheningCredInfo(
+    //     tcx: StellarTxnContext,
+    //     tokenName: string
+    // ): Promise<StellarTxnContext> {
+    //     return tcx
+    // }
 
-    //! impls MUST resolve the indicated token to a specific UTxO
+    // ! impls MUST resolve the indicated token to a specific UTxO
     //  ... or throw an informative error
-    async mustFindAuthorityToken(tcx, tokenId: AssetClass) : Promise<TxInput> {
-
+    async txnMustFindAuthorityToken(tcx: StellarTxnContext) : Promise<TxInput> {
+        const {
+            addrHint,uut, reqdAddress
+        } = this.configIn
+        return this.mustFindMyUtxo
     }
 
     async txnReceiveAuthorityToken(

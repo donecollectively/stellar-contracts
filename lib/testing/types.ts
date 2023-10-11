@@ -1,13 +1,14 @@
 import {
     NetworkParams,
-    WalletEmulator,
+    SimpleWallet as WalletEmulator,
+    SimpleWallet
 } from "@hyperionbt/helios";
 
 import { promises as fs } from "fs";
 import { Vitest, vitest } from "vitest";
 import {
     StellarContract,
-    paramsBase,
+    configBase,
 } from "../StellarContract.js";
 import { StellarTestContext } from "./StellarTestContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
@@ -21,7 +22,7 @@ export type enhancedNetworkParams = NetworkParams & {
 
 export type helperSubclass<
     SC extends StellarContract<any>,
-    P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never
+    P extends configBase = SC extends StellarContract<infer PT> ? PT : never
 > = new (params: P & canHaveRandomSeed) => StellarTestHelper<SC, P>;
 
 export type canHaveRandomSeed = {
@@ -33,7 +34,7 @@ export type canSkipSetup = {
 
 export async function addTestContext<
     SC extends StellarContract<any>,
-    P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never
+    P extends configBase = SC extends StellarContract<infer PT> ? PT : never
 >(
     context: StellarTestContext<any, SC, P>,
     TestHelperClass: helperSubclass<SC>,

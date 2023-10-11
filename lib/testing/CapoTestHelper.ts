@@ -42,7 +42,7 @@ export abstract class CapoTestHelper<
         this.strella = strella;
         const { address, mintingPolicyHash: mph } = strella;
 
-        const { name } = strella.scriptInstance;
+        const { name } = strella.scriptProgram;
         console.log(
             name,
             address.toBech32().substring(0, 18) + "…",
@@ -76,7 +76,7 @@ export abstract class CapoTestHelper<
         const tcx = await script.mkTxnMintCharterToken(goodArgs, script.withDelegates({
             govAuthority: selectDelegate<AuthorityPolicy>({
                 strategyName: "address",
-                scriptParams: {
+                config: {
 
                 }
             })

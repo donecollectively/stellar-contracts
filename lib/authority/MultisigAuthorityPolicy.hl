@@ -1,5 +1,7 @@
 spending MultiSigAuthority
 
+const rev : Int = 1
+const instance : ByteArray = #67656e6572616c
 
 func preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {
     tx: Tx = ctx.tx;
@@ -32,7 +34,6 @@ func preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {
 
     true
 }
-
 
 func requiresValidMinSigs(datum: Datum) -> Bool {
     Datum::CharterToken{trustees, minSigs} = datum;

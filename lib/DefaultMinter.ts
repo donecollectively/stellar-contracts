@@ -58,23 +58,24 @@ export class DefaultMinter
     }
 
     @partialTxn
-    async txnWithUuts<const purposes extends string>(
+    async txnWithUuts<const purposes extends string, const R extends string>(
         tcx: StellarTxnContext<any>,
-        uutPurposes: purposes[],
-        seedUtxo: TxInput
-    ): Promise<hasUutContext<purposes>> {
+        uutPurposes: purposes [],
+        seedUtxo: TxInput,
+        role?: R,
+    ): Promise<hasUutContext<purposes | ( R extends "" ? never : R )>> {
         const { txId, utxoIdx } = seedUtxo.outputId;
 
             const { blake2b } = Crypto;
-
-            const uutMap: uutPurposeMap<purposes> = Object.fromEntries(
+            if (role && uutPurposes.length !== 1) throw new Error(`role uut must have exactly one purpose`)
+            const uutMap: uutPurposeMap<purposes | R> = Object.fromEntries(
                 uutPurposes.map((uutPurpose) => {
                     const txoId = txId.bytes.concat([
                         "@".charCodeAt(0),
                         utxoIdx,
                     ]);
                     // console.warn("&&&&&&&& txoId", bytesToHex(txoId));
-                    const uutName = new UutName(`${uutPurpose}-${bytesToHex(
+                    const uutName = new UutName(uutPurpose, `${uutPurpose}-${bytesToHex(
                         blake2b(txoId).slice(0, 6)
                     )}`)
                     return [
@@ -82,7 +83,8 @@ export class DefaultMinter
                         uutName,
                     ];
                 })
-            ) as uutPurposeMap<purposes>
+            ) as uutPurposeMap<purposes | R>
+            if (role) uutMap[role] = uutMap[uutPurposes[0]]
 
             if (tcx.state.uuts) throw new Error(`uuts are already there`);
             tcx.state.uuts = uutMap;
@@ -143,7 +145,7 @@ export class DefaultMinter
     protected mintingCharter({
         owner,
     }: MintCharterRedeemerArgs): isActivity {
-        const { DelegateDetails: hlDelegateDetails, Redeemer } = this.scriptInstance.types;
+        const { DelegateDetails: hlDelegateDetails, Redeemer } = this.scriptProgram!.types;
         const t =
             new Redeemer.mintingCharter(
                 owner,
@@ -161,7 +163,7 @@ export class DefaultMinter
         // debugger
         const seedIndex = BigInt(sIdx);
         console.log("UUT redeemer seedTxn", seedTxn.hex);
-        const t = new this.scriptInstance.types.Redeemer.mintingUuts(
+        const t = new this.scriptProgram!.types.Redeemer.mintingUuts(
             seedTxn,
             seedIndex,
             purposes

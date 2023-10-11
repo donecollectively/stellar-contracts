@@ -57,7 +57,7 @@ describe("Capo", async () => {
             const t: DefaultCapo = await h.initialize();
             await h.mintCharterToken();
             // await delay(1000);
-            type something = { something: UutName };
+            type something = "something"
             const tcx = new StellarTxnContext<hasAllUuts<something>>();
             await t.txnAddAuthority(tcx);
             await t.txnCreatingUuts<something>(tcx, ["something"]);
@@ -85,8 +85,8 @@ describe("Capo", async () => {
             await h.mintCharterToken();
             // await delay(1000);
 
-            type hasFooBar = { foo: UutName; bar: UutName };
-            const tcx = new StellarTxnContext<hasAllUuts<hasFooBar>>();
+            type fooAndBar = "foo" | "bar"
+            const tcx = new StellarTxnContext<hasAllUuts<fooAndBar>>();
             await t.txnAddAuthority(tcx);
             await t.txnCreatingUuts(tcx, ["foo", "bar"]);
             const uuts = t.uutsValue(tcx.state.uuts!);
@@ -113,8 +113,8 @@ describe("Capo", async () => {
             await h.mintCharterToken();
             // await delay(1000);
 
-            type hasFooBar = { foo: UutName; bar: UutName };
-            const tcx = new StellarTxnContext<hasAllUuts<hasFooBar>>();
+            type fooAndBar = "foo" | "bar"
+            const tcx = new StellarTxnContext<hasAllUuts<fooAndBar>>();
             await t.txnAddAuthority(tcx);
             await t.txnCreatingUuts(tcx, ["foo", "bar"]);
             const uuts = t.uutsValue(tcx.state.uuts!);
@@ -148,7 +148,7 @@ describe("Capo", async () => {
             // await delay(1000);
 
             const noMultiples = "multiple-is-bad";
-            type uniqUutMap = { ["multiple-is-bad"]: UutName };
+            type uniqUutMap = typeof noMultiples
             console.log(
                 "-------- case 1: using the txn-helper in unsupported way"
             );
@@ -228,7 +228,7 @@ describe("Capo", async () => {
             // await delay(1000);
 
             type hasSomethingUut = { ["something"]: UutName };
-            const tcx = new StellarTxnContext<hasAllUuts<hasSomethingUut>>();
+            const tcx = new StellarTxnContext<hasAllUuts<"something">>();
 
             await t.txnAddAuthority(tcx);
             const m: DefaultMinter = t.minter!;

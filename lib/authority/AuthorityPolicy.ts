@@ -4,11 +4,11 @@ import { Activity, isActivity, StellarContract } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { UutName } from "../delegation/RolesAndDelegates.js";
 
-export type AuthorityPolicyArgs = {
+export type AuthorityPolicySettings = {
     rev: bigint;
-    uutFingerprint: string;
-    mph: MintingPolicyHash;
-    uut: UutName;
+    uut: AssetClass;
+    reqdAddress? :Address;
+    addrHint: Address[];
 };
 
 //! an interface & base class to enforce policy for authorizing activities
@@ -16,22 +16,22 @@ export type AuthorityPolicyArgs = {
 //  ... to hold a reference to key information for identifying this policy,
 //  ... e.g. through a DelegateDetails structure.
 export abstract class AuthorityPolicy<
-    T extends AuthorityPolicyArgs = AuthorityPolicyArgs
+    T extends AuthorityPolicySettings = AuthorityPolicySettings
 > extends StellarContract<T> {
     static currentRev = 1n;
     static get defaultParams() {
         return { rev: this.currentRev };
     }
 
-    // @Activity.redeemer
-    protected x(tokenName: string): isActivity {
-        const t =
-            new this.scriptInstance.types.Redeemer.commissioningNewToken(
-                tokenName
-            );
+    // // @Activity.redeemer
+    // protected x(tokenName: string): isActivity {
+    //     const t =
+    //         new this.scriptProgram.types.Redeemer.commissioningNewToken(
+    //             tokenName
+    //         );
 
-        return { redeemer: t._toUplcData() };
-    }
+    //     return { redeemer: t._toUplcData() };
+    // }
 
     //! it has a lifecycle method coordinating authority-creation in abstract way
     async txnCreatingAuthority(
@@ -40,15 +40,19 @@ export abstract class AuthorityPolicy<
         delegateAddr: Address
     ): Promise<StellarTxnContext> {
         const fp = tokenId.toFingerprint();
+        debugger
+
         throw new Error(`todo`);
         return tcx;
     }
 
     //! allows different strategies for finding the UTxO having the authority token
-    //! impls MAY use details seen in the txn context to find the indicated token
-    //! impls MUST resolve the indicated token to a specific UTxO
+    //! impls MUST consult their configIn to see the 'uut' (an AssetClass) authority token.
+    //! impls MUST a specific UTxO having that token,
     //  ... or throw an informative error
-    abstract mustFindAuthorityToken(tcx, tokenId: AssetClass): Promise<TxInput>;
+    //! impls MAY consult the addrHint or reqdAddr settings in configIn 
+    //! impls MAY use details seen in the txn context 
+    abstract txnMustFindAuthorityToken(tcx: StellarTxnContext): Promise<TxInput>;
 
     //! creates a UTxO depositing the indicated token-name into the delegated destination.
     //! Each implemented subclass can use it's own style to match its strategy & mechanism.
@@ -58,7 +62,6 @@ export abstract class AuthorityPolicy<
         tcx: StellarTxnContext,
         tokenId: AssetClass,
         delegateAddr: Address,
-        sourceUtxo?: TxInput
     ): Promise<StellarTxnContext>;
 
     //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
@@ -67,9 +70,7 @@ export abstract class AuthorityPolicy<
     //! a contract-backed impl SHOULD enforce the expected return in its on-chain code
     abstract txnGrantAuthority(
         tcx: StellarTxnContext,
-        tokenId: AssetClass,
         sourceUtxo: TxInput,
-        delegateAddr: Address
     ): Promise<StellarTxnContext>;
 
     //! Adds the indicated utxo to the transaction with appropriate activity/redeemer
@@ -82,9 +83,7 @@ export abstract class AuthorityPolicy<
     //! It MAY enforce additional requirements and/or block the action.
     abstract txnRetireCred(
         tcx: StellarTxnContext,
-        tokenId: AssetClass,
         sourceUtxo: TxInput,
-        delegateAddr: Address
     ): Promise<StellarTxnContext>;
 
     // static mkDelegateWithArgs(a: RCPolicyArgs) {

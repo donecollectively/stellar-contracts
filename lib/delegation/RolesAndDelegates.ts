@@ -1,13 +1,14 @@
 import { Address } from "@hyperionbt/helios";
-import { StellarContract, paramsBase, stellarSubclass } from "../StellarContract.js";
+import { ConfigFor, StellarContract, configBase, stellarSubclass } from "../StellarContract.js";
 import { DefaultMinter } from "../DefaultMinter.js";
 
 const _uutName = Symbol("uutName");
 const maxUutName = 32
 export class UutName {
     private [_uutName]: string
-
-    constructor(un: string) {
+    private purpose : string
+    constructor(purpose: string, un: string) {
+        this.purpose = purpose;
         if (un.length > maxUutName ) {
             throw new Error(`uut name '${un}' exceeds max length of ${maxUutName}`)
         }
@@ -47,26 +48,25 @@ export type VariantMap<
 
 export type RoleMap = Record<string, VariantMap<any>>
 
-export type strategyParams = paramsBase;
-export type delegateScriptParams = paramsBase;
+export type strategyParams = configBase;
+export type delegateScriptParams = configBase;
 
-export type PartialParamConfig<PT extends paramsBase> = Partial<{
-    [key in keyof PT]: typeof PARAM_REQUIRED | typeof PARAM_IMPLIED | PT[key]
+export type PartialParamConfig<CT extends configBase> = Partial<{
+    [key in keyof CT]: typeof PARAM_REQUIRED | typeof PARAM_IMPLIED | CT[key]
 }>
 
 //! declaration for a variant of a Role:
 //  ... indicates the details needed to construct a delegate script
 //  ... (and it's addr) that may not have existed before.
 export type VariantStrategy<
-    T extends StellarContract<any>,
-    PT extends paramsBase = T extends StellarContract<infer iPT> ? iPT : never
+    T extends StellarContract<any>
 > = {
     delegateClass: stellarSubclass<T>,
     //! it MAY provide a partial configuration to be used for parameterizing 
     //  the underlying contract script, to be further customized by a delegate-selection
-    scriptParams? : PartialParamConfig<PT>,
+    scriptParams? : PartialParamConfig<ConfigFor<T>>,
     //! it has a function used for validating parameter details
-    validateScriptParams(p: PT) : strategyValidation
+    validateConfig(p: ConfigFor<T>) : strategyValidation
 }
 
 //! a map of delegate selections needed for a transaction 
@@ -81,41 +81,41 @@ export type SelectedDelegates = {
 //  ... one of the strategy variants 
 //  ... and the settings (script parameters) needed to create the on-chain contract
 export type SelectedDelegate<
-    T extends StellarContract<any>,
-    PT extends paramsBase = T extends StellarContract<infer iPT> ? iPT : never
+    T extends StellarContract<any>
 > = {
     strategyName: string
-    scriptParams: Partial<PT>,
+    config: Partial<ConfigFor<T>>,
 } 
 
 export function selectDelegate<
-    T extends StellarContract<any>,
-    PT extends paramsBase = T extends StellarContract<infer iPT> ? iPT : never
->(sd: string | SelectedDelegate<T, PT>) {
-    if ("string" == typeof sd) return { strategyName: sd, scriptParams: {} }
+    T extends StellarContract<any>
+>(sd: SelectedDelegate<T>) {
     return sd
 } 
 
 
 //! a complete, validated configuration for a specific delegate.  
 //  ... Combined with a specific UUT, a delegate linkage can be created from this
-export type DelegateConfig<
-    T extends StellarContract<any>,
-    PT extends paramsBase = T extends StellarContract<infer iPT> ? iPT : never
+export type DelegateSettings<
+    T extends StellarContract<any>
 > = {
+    delegateClass: stellarSubclass<T>,
+
     roleName: string,
     strategyName: string,
-    selectedClass: stellarSubclass<T>,
-    scriptParams: PT, 
+    config: ConfigFor<T>, 
     reqdAddress?: Address,
     addressesHint?: Address[],
 }
 
-export type RelativeDelegateLink = {
-    strategyName: string,
-    uut: UutName,
-    reqdAddress?: Address,
-    addressesHint?: Address[],
+export type RelativeDelegateLink<
+    CT extends configBase
+> = {
+    uutName: string,    
+    strategyName: string;
+    config: Partial<CT>;
+    reqdAddress?: Address;
+    addressesHint?: Address[];
 }
 
 export type xDelegateLink = {
@@ -127,15 +127,9 @@ export type xDelegateLink = {
 
 export type DelegateDetailSnapshot<
     T extends StellarContract<any>,
-    PT extends paramsBase = T extends StellarContract<infer iPT> ? iPT : never
 > = {
-    isDelegateSnapshot: true
-    roleName: string,
-    strategyName: string,
+    isDelegateSnapshot: true,
     uut: string,
-    scriptParams: PT, 
-    reqdAddress?: Address 
-    addressesHint?: Address[]
+    settings: DelegateSettings<T>
 }
-
 

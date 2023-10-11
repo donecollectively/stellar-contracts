@@ -10,7 +10,7 @@ import {
     hexToBytes
 } from "@hyperionbt/helios";
 import { txAsString } from "./diagnostics.js";
-import { paramsBase, stellarSubclass } from "./StellarContract.js";
+import { configBase, stellarSubclass } from "./StellarContract.js";
 import { SelectedDelegates } from "./delegation/RolesAndDelegates.js";
 
 //!!! if we could access the inputs and outputs in a building Tx,

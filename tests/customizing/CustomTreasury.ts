@@ -34,8 +34,8 @@ export class CustomTreasury extends DefaultCapo<CustomMinter> {
                 ... mintDelegate,
                 failsWhenBad: {
                     delegateClass:  BasicMintDelegate,
-                    validateScriptParams(args) {
-                        //!!! todo: move this to CustomTreasury for testing
+                    validateConfig(args) {
+                        //@ts-expect-error so we can force test validation
                         if (args.bad) {
                             //note, this isn't the normal way of validating.
                             //  ... usually it's a good field name whose value is missing or wrong.
@@ -51,7 +51,7 @@ export class CustomTreasury extends DefaultCapo<CustomMinter> {
 
     @Activity.redeemer
     mintingToken(tokenName: string)  : isActivity {
-        const t = new this.scriptInstance.types.Redeemer.mintingToken(
+        const t = new this.scriptProgram!.types.Redeemer.mintingToken(
             tokenName
         );
 
