@@ -564,32 +564,53 @@ export class StellarContract<
     }
 
     mkTokenPredicate(
-        vOrMph: Value | MintingPolicyHash,
-        tokenName?: string,
+        val: Value
+    ): tokenPredicate<any>;
+    mkTokenPredicate(
+        mph: MintingPolicyHash,
+        tokenName: string,
+        quantity?: bigint
+    ): tokenPredicate<any>;
+    mkTokenPredicate(
+        vOrMph: AssetClass,
+        quantity?: bigint
+    ): tokenPredicate<any>;
+     mkTokenPredicate(
+        specifier: Value | MintingPolicyHash | AssetClass,
+        quantOrTokenName?: string | bigint,
         quantity?: bigint
     ): tokenPredicate<any> {
         let v: Value;
-
+        let mph : MintingPolicyHash;
+        let tokenName: string;
         //!!! todo: support (AssetClass, quantity) input form
-        if (!vOrMph)
+        if (!specifier)
             throw new Error(
                 `missing required Value or MintingPolicyHash in arg1`
             );
         const predicate = _tokenPredicate.bind(this) as tokenPredicate<any>;
 
-        const isValue = !(vOrMph instanceof MintingPolicyHash);
+        const isValue = (specifier instanceof Value);
         if (isValue) {
-            v = predicate.value = vOrMph;
+            v = predicate.value = specifier;
             return predicate;
-        }
-        if (!tokenName || !quantity)
-            throw new Error(
-                `missing required tokenName, quantity for this mph`
-            );
+        } else if (specifier instanceof MintingPolicyHash) {
+            mph = specifier;
+            if ("string" !== typeof quantOrTokenName) throw new Error(`with minting policy hash, token-name must be a string (or ByteArray support is TODO)`)
+            tokenName = quantOrTokenName;
+            quantity = quantity || 1n;
 
-        const mph = vOrMph;
-        v = predicate.value = this.tokenAsValue(tokenName, quantity, mph);
-        return predicate;
+            v = predicate.value = this.tokenAsValue(tokenName, quantity, mph);
+            return predicate;
+        } else if (specifier instanceof AssetClass) {
+            mph = specifier.mintingPolicyHash;
+            if (!quantOrTokenName) quantOrTokenName = 1n;
+            if ("bigint" !== typeof quantOrTokenName) throw new Error(`with AssetClass, the second arg must be a bigint like 3n, or omitted`)
+            quantity = quantOrTokenName
+
+            v = predicate.value = new Value(0n,[ [ specifier, quantity]])
+            return predicate;
+        } else { throw new Error(`wrong token specifier (need Value, MPH+tokenName, or AssetClass`); }
 
         function _tokenPredicate<tokenBearer extends canHaveToken>(
             this: StellarContract<ConfigType>,
