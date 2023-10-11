@@ -105,6 +105,11 @@ export type CapoImpliedSettings = {
     uut: AssetClass;
 };
 
+export type hasSelectedDelegates = StellarTxnContext<hasDelegateProp>
+type hasDelegateProp = {
+    delegates: SelectedDelegates
+}
+
 export abstract class Capo<
         minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter,
         charterDatumType extends anyDatumArgs = anyDatumArgs
@@ -411,9 +416,11 @@ export abstract class Capo<
         );
     }
 
-    withDelegates(delegates: SelectedDelegates): StellarTxnContext {
-        const tcx = new StellarTxnContext();
-        tcx.selectedDelegates = delegates;
+    withDelegates(
+        delegates: SelectedDelegates
+    ): hasSelectedDelegates {
+        const tcx = new StellarTxnContext<hasDelegateProp>();
+        tcx.state.delegates = delegates;
 
         return tcx;
     }
@@ -422,7 +429,7 @@ export abstract class Capo<
         T extends StellarContract<any>,
         const RN extends string,
     >(
-        tcx: hasUutContext<RN>,
+        tcx: hasSelectedDelegates,
         roleName: RN,
     ): PartialParamConfig<ConfigFor<T>> {
         const selected = this.txnMustSelectDelegate(tcx, roleName);
@@ -442,9 +449,9 @@ export abstract class Capo<
     txnMustSelectDelegate<
         T extends StellarContract<any>,
         const RN extends string,
-        TCX extends hasUutContext<RN>
+        TCX extends hasSelectedDelegates
     >(tcx: TCX, roleName: RN): SelectedDelegate<T> {
-        const { selectedDelegates } = tcx;
+        const { delegates: selectedDelegates } = tcx.state;
         let selected = selectedDelegates[roleName];
         const role = this.roles[roleName];
         if (!selected) {
@@ -476,7 +483,7 @@ export abstract class Capo<
         T extends StellarContract<any>,
         const RN extends string,
     >(
-        tcx: StellarTxnContext & hasUutContext<RN>,
+        tcx: hasSelectedDelegates & hasUutContext<RN>,
         roleName: RN,
     ): DelegateSettings<T> {
         let selected = this.txnMustSelectDelegate(tcx, roleName);
@@ -539,7 +546,7 @@ export abstract class Capo<
         T extends StellarContract<any>,
         const RN extends string
     >(
-        tcx: StellarTxnContext & hasUutContext<RN>,
+        tcx: hasSelectedDelegates & hasUutContext<RN>,
         roleName: RN,
         configuredDelegate?: DelegateSettings<T>
     ): T {

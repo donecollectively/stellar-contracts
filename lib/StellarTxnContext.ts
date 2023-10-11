@@ -27,7 +27,6 @@ export class StellarTxnContext<S=noState> {
     outputs: TxOutput[];
     feeLimit?: bigint;
     state : S;
-    selectedDelegates : SelectedDelegates = {}
     constructor(state: Partial<S>={}) {
         this.tx = new Tx();
         this.inputs = [];

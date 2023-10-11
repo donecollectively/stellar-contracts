@@ -58,12 +58,16 @@ export class DefaultMinter
     }
 
     @partialTxn
-    async txnWithUuts<const purposes extends string, const R extends string>(
-        tcx: StellarTxnContext<any>,
+    async txnWithUuts<
+        const purposes extends string, 
+        existingTcx extends StellarTxnContext<any>,
+        const R extends string
+    >(
+        tcx: existingTcx,
         uutPurposes: purposes [],
         seedUtxo: TxInput,
         role?: R,
-    ): Promise<hasUutContext<purposes | ( R extends "" ? never : R )>> {
+    ): Promise<existingTcx & hasUutContext<purposes | ( R extends "" ? never : R )>> {
         const { txId, utxoIdx } = seedUtxo.outputId;
 
             const { blake2b } = Crypto;

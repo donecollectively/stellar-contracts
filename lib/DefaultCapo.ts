@@ -188,7 +188,7 @@ export class DefaultCapo<
     //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
     async mkTxnMintCharterToken(
         charterDatumArgs: PartialDefaultCharterDatumArgs<CDT>,
-        existingTcx?: StellarTxnContext
+        existingTcx?: hasSelectedDelegates
     ): Promise<StellarTxnContext | never> {
         console.log(
             `minting charter from seed ${this.configIn.seedTxn.hex.substring(
