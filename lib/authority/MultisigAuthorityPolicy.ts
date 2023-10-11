@@ -5,6 +5,7 @@ import contract from "./MultisigAuthorityPolicy.hl"
 import { Activity, isActivity, StellarContract } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { AuthorityPolicy } from "./AuthorityPolicy.js";
+import { hasReqts } from "../Requirements.js";
 
 //! a contract enforcing policy for a registered credential
 export class MultisigAuthorityPolicy extends AuthorityPolicy {
@@ -75,8 +76,11 @@ export class MultisigAuthorityPolicy extends AuthorityPolicy {
         return tcx;
     }
 
-    requirements() {
-        return {
+    requirements()  {
+        const pReqts = super.requirements();
+        
+        return hasReqts({
+            ...pReqts,
             "provides arms-length proof of authority to any other contract": {
                 purpose: "to decouple authority administration from its effects",
                 details: [
@@ -111,6 +115,10 @@ export class MultisigAuthorityPolicy extends AuthorityPolicy {
                     "TODO: the trustee group can be changed",
                 ],
             },
+            "TODO: has a unique authority UUT": hasReqts.TODO,
+            "TODO: the trustee threshold is required to spend its UUT": hasReqts.TODO,
+            "TODO: the trustee group can be changed": hasReqts.TODO,
+
             "the trustee threshold is required to spend its UUT": {
                 purpose:
                     "allows progress in case a small fraction of trustees may not be available",
@@ -142,6 +150,6 @@ export class MultisigAuthorityPolicy extends AuthorityPolicy {
                 requires: [],
             },
 
-        }
+        })
     }
 }

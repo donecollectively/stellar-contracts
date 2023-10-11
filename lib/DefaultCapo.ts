@@ -52,6 +52,7 @@ import { AddressAuthorityPolicy } from "./authority/AddressAuthorityPolicy.js";
 import { DelegateDetailSnapshot } from "./delegation/RolesAndDelegates.js";
 import { txAsString } from "./diagnostics.js";
 import { MultisigAuthorityPolicy } from "./authority/MultisigAuthorityPolicy.js";
+import { hasReqts } from "./Requirements.js";
 
 export type DefaultCharterDatumArgs<CT extends configBase=CapoBaseConfig> = {
     govAuthorityLink: RelativeDelegateLink<CT>;
@@ -283,7 +284,7 @@ export class DefaultCapo<
     }
 
     requirements() {
-        return {
+        return hasReqts({
             "positively governs all administrative actions": {
                 purpose: "to maintain clear control by a trustee group",
                 details: [
@@ -345,7 +346,7 @@ export class DefaultCapo<
                     "the charter token can't ever be recreated (it's non-fungible and can't be re-minted)",
                     "the treasury address, minting policy hash, and charter token are all deterministic based on input utxo",
                 ],
-                impl: "txMintCharterToken()",
+                impl: "txnMintCharterToken()",
                 mech: [
                     "creates a unique 'charter' token, with assetId determined from minting-policy-hash+'charter'",
                     "TODO: fails if minSigs is longer than trustee list",
@@ -377,7 +378,7 @@ export class DefaultCapo<
                 requires: [],
             },
 
-            "XXX can mint other tokens, on the authority of the charter token": {
+            "can mint other tokens, on the authority of the Charter token": {
                 purpose:
                     "to simplify the logic of minting, while being sure of minting authority",
                 details: [
@@ -422,7 +423,9 @@ export class DefaultCapo<
                 mech: [
                     "doesn't allow the charterToken to be sent without enough minSigs from the trustee list",
                 ],
-                requires: [],
+                requires: [
+                    
+                ],
             },
 
             foo: {

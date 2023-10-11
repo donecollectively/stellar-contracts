@@ -40,6 +40,7 @@ import { CapoMintHelpers } from "./CapoMintHelpers.js";
 import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";
 import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { errorMapAsString } from "./diagnostics.js";
+import { hasReqts } from "./Requirements.js";
 
 export { variantMap } from "./delegation/RolesAndDelegates.js";
 export type {
@@ -592,7 +593,7 @@ export abstract class Capo<
     }
 
     capoRequirements() {
-        return {
+        return hasReqts({
             "is a base class for leader/Capo pattern": {
                 purpose:
                     "so that smart contract developers can easily start multi-script development",
@@ -612,16 +613,17 @@ export abstract class Capo<
                 purpose:
                     "so the contract can use UUTs for scoped-authority semantics",
                 details: [
-                    "Building a txn with a UUT involves using the txnCreatingUuts partial-helper on the Capo.",
                     "That UUT (a Value) is returned, and then should be added to a TxOutput.",
-                    "Fills tcx.state.uuts with purpose-keyed unique token-names",
                     "The partial-helper doesn't constrain the semantics of the UUT.",
-                    "The UUT uses the seed-utxo pattern to form 64 bits of uniqueness",
-                    "   ... so that token-names stay short-ish.",
                     "The uniqueness level can be iterated in future as needed.",
                     "The UUT's token-name combines its textual purpose with a short hash ",
                     "   ... of the seed UTxO, formatted with bech32",
                 ],
+                mech: [
+                    "Building a txn with a UUT involves using the txnCreatingUuts partial-helper on the Capo.",
+                    "Fills tcx.state.uuts with purpose-keyed unique token-names",
+                    "The UUT uses the seed-utxo pattern to form 64 bits of uniqueness, so that token-names stay short-ish.",
+                ]
             },
             "supports the Delegation pattern using roles and strategy-variants":
                 {
@@ -639,10 +641,11 @@ export abstract class Capo<
                         "Variant-names are human-readable, while the actual code",
                         "  ... behind each variant name are the strategies",
                     ],
+                    mech: [],
                     requires: [
                         "supports well-typed role declarations and strategy-adding",
-                        "supports just-in-time strategy-selection",
-                        "can concretely resolve role delegates",
+                        "supports just-in-time strategy-selection using withDelegates() and txnMustGetDelegate()",
+                        "supports concrete resolution of existing role delegates"
                     ],
                 },
             "supports well-typed role declarations and strategy-adding": {
@@ -659,7 +662,7 @@ export abstract class Capo<
                     "Subclasses can define their own get roles(), return a role-map-to-variant-map structure",
                 ],
                 requires: [
-                    "role definitions use a RoleMap and nested VariantMap data structure",
+                    "Each role uses a RoleVariants structure which can accept new variants"
                 ],
             },
             "supports just-in-time strategy-selection using withDelegates() and txnMustGetDelegate()":
@@ -732,7 +735,7 @@ export abstract class Capo<
                         "validateScriptParams() should return undefined if there are no problems",
                     ],
                     requires: [
-                        "supports concrete resolution of role delegates",
+                        "supports concrete resolution of existing role delegates"
                     ],
                 },
             "supports concrete resolution of existing role delegates": {
@@ -754,6 +757,6 @@ export abstract class Capo<
                     "TODO: with an existing delegate, the selected strategy class MUST exactly match the known delegate-address",
                 ],
             },
-        };
+        })
     }
 }

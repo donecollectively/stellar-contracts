@@ -3,6 +3,7 @@ import { Address, AssetClass, MintingPolicyHash, TxInput, Value } from "@hyperio
 import { Activity, isActivity, StellarContract } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { UutName } from "../delegation/RolesAndDelegates.js";
+import { hasReqts } from "../Requirements.js";
 
 export type AuthorityPolicySettings = {
     rev: bigint;
@@ -90,7 +91,7 @@ export abstract class AuthorityPolicy<
     //      
     // }
     requirements() {
-        return {
+        return hasReqts({
             "provides an interface for providing arms-length proof of authority to any other contract":
                 {
                     purpose:
@@ -136,14 +137,14 @@ export abstract class AuthorityPolicy<
                     ],
                     mech: [],
                     requires: [
-                        "requires a txnReceiveAuthorityToken(tcx, tokenId, delegateAddr, original?) ",
-                        "requires a mustFindAuthorityToken(tcx, tokenId)",
-                        "requires a txnGrantAuthority(tcx, tokenId, delegateAddr)",
-                        "requires txnRetireCred(tcx, tokenId, delegateAddr)",
+                        "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)",
+                        "requires a mustFindAuthorityToken(tcx)",
+                        "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)",
+                        "requires txnRetireCred(tcx, fromFoundUtxo)",
                     ],
                 },
 
-            "requires a txnReceiveAuthorityToken(tcx, tokenValue, delegateAddr, original?)":
+            "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)":
                 {
                     purpose:
                         "to deposit the authority token (back) to the delegated destination",
@@ -159,7 +160,7 @@ export abstract class AuthorityPolicy<
                     requires: [],
                 },
 
-            "requires a mustFindAuthorityToken(tcx, tokenId)": {
+            "requires a mustFindAuthorityToken(tcx)": {
                 purpose: "to locate the given authority token",
                 details: [
                     "allows different strategies for finding the UTxO having the authority token",
@@ -170,7 +171,7 @@ export abstract class AuthorityPolicy<
                 ],
             },
 
-            "requires a txnGrantAuthority(tcx, tokenId, sourceUtxo)": {
+            "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)": {
                 purpose: "to use the delegated authority",
                 details: [
                     "Adds the indicated utxo to the transaction with appropriate activity/redeemer",
@@ -181,10 +182,9 @@ export abstract class AuthorityPolicy<
                 mech: [
                     "the base AuthorityPolicy MUST call txnReceiveAuthorityToken() with the token's sourceUtxo",
                 ],
-                requires: [],
             },
 
-            "requires txnRetireCred(tcx, tokenValue, delegateAddr)": {
+            "requires txnRetireCred(tcx, fromFoundUtxo)": {
                 purpose: "to allow burning the authority token",
                 details: [
                     "Adds the indicated utxo to the transaction with appropriate activity/redeemer",
@@ -196,6 +196,6 @@ export abstract class AuthorityPolicy<
                     "if the token cannot be retired, by appropriate policy, it SHOULD throw an informative error",
                 ],
             },
-        };
+        });
     }
 }
