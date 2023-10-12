@@ -424,6 +424,9 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     constructor({ setup, config, }: StellarConstructorArgs<StellarContract<any>>);
     compiledScript: UplcProgram;
     get datumType(): any;
+    /**
+     * @private
+     **/
     _purpose?: scriptPurpose;
     get purpose(): scriptPurpose | "non-script";
     get address(): Address;
@@ -452,11 +455,26 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     private outputHasToken;
     tokenAsValue(tokenName: string, quantity: bigint, mph?: MintingPolicyHash): Value;
     hasOnlyAda(value: Value, tcx: StellarTxnContext | undefined, u: TxInput): TxInput | undefined;
+    /**
+     * @private
+     **/
     protected _utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }: utxoInfo, { free: free2, minAdaAmount: r2 }: utxoInfo): 1 | -1 | 0;
+    /**
+     * @private
+     **/
     protected _utxoIsSufficient({ sufficient }: utxoInfo): boolean;
+    /**
+     * @private
+     **/
     protected _utxoIsPureADA({ u }: utxoInfo): TxInput | undefined;
     protected _infoBackToUtxo({ u }: utxoInfo): TxInput;
+    /**
+     * @private
+     **/
     protected _mkUtxoSortInfo(min: bigint, max?: bigint): (u: TxInput) => utxoInfo;
+    /**
+     * @private
+     **/
     protected _utxoCountAdaOnly(c: number, { minAdaAmount }: utxoInfo): number;
     findAnySpareUtxos(tcx: StellarTxnContext): Promise<TxInput[] | never>;
     submit(tcx: StellarTxnContext, { sign, signers, }?: {

@@ -394,6 +394,9 @@ class StellarContract {
   get datumType() {
     return this.scriptProgram?.types.Datum;
   }
+  /**
+   * @private
+   **/
   _purpose;
   get purpose() {
     if (this._purpose)
@@ -690,6 +693,9 @@ class StellarContract {
     const found = [u].map(toSortInfo).filter(this._utxoIsSufficient).filter(this._utxoIsPureADA).map(this._infoBackToUtxo).at(0);
     return found;
   }
+  /**
+   * @private
+   **/
   _utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }, { free: free2, minAdaAmount: r2 }) {
     {
       //! primary: treats pure-ada utxos as always better
@@ -707,15 +713,27 @@ class StellarContract {
       return 1;
     return 0;
   }
+  /**
+   * @private
+   **/
   _utxoIsSufficient({ sufficient }) {
     return !!sufficient;
   }
+  /**
+   * @private
+   **/
   _utxoIsPureADA({ u }) {
     return u.value.assets.isZero() ? u : void 0;
   }
+  /*
+   * @private
+   **/
   _infoBackToUtxo({ u }) {
     return u;
   }
+  /**
+   * @private
+   **/
   _mkUtxoSortInfo(min, max) {
     return (u) => {
       const minAdaAmount = u.value.assets.isZero() ? BigInt(0) : u.origOutput.calcMinLovelace(this.networkParams);
@@ -725,6 +743,9 @@ class StellarContract {
       return t;
     };
   }
+  /**
+   * @private
+   **/
   _utxoCountAdaOnly(c, { minAdaAmount }) {
     return c + (minAdaAmount ? 0 : 1);
   }

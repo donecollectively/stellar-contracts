@@ -214,7 +214,24 @@ type scriptPurpose =
 export type canHaveToken = TxInput | TxOutput | Assets;
 //!!! todo: type configuredStellarClass = class -> networkStuff -> withParams = stellar instance.
 
-//<CT extends Program>
+/*
+ * Basic wrapper and off-chain facade for interacting with a single Plutus contract script
+ * @remarks
+ *
+ * This class is normally used only for individual components of a higher-level {@link Capo | Capo or Leader contract},
+ * which act as delegates within its application context.  Nonetheless, it is the base class for every Capo as well as
+ * simpler contract scripts.
+ *
+ * The StellarContract class serves as an off-chain facade for transaction-building and interfacing to any on-chain
+ * contract script.  Each StellarContract subclass must define a `contractSource()`, which is currently a Helios-language
+ * script, compiled in any Javascript environment to an on-chain executable UPLC or "plutus core" form.  This enables
+ * a static dApp to be self-sovereign, without need for any server ("application back-end") environment.
+ *
+ * @typeParam ConfigType - schema for the configuration needed for creating or reproducing a
+ * specific instance of the contract script on-chain.
+ *
+ * @public
+ **/
 export class StellarContract<
     // SUB extends StellarContract<any, ParamsType>,
     ConfigType extends configBase
@@ -265,7 +282,9 @@ export class StellarContract<
     get datumType() {
         return this.scriptProgram?.types.Datum;
     }
-    /* @private */
+    /**
+     * @private
+     **/
     _purpose?: scriptPurpose;
     get purpose() {
         if (this._purpose) return this._purpose;
@@ -768,7 +787,9 @@ export class StellarContract<
         return found;
     }
 
-    /* @private */
+    /**
+     * @private
+     **/
     protected _utxoSortSmallerAndPureADA(
         { free: free1, minAdaAmount: r1 }: utxoInfo,
         { free: free2, minAdaAmount: r2 }: utxoInfo
@@ -788,19 +809,27 @@ export class StellarContract<
         return 0;
     }
 
-    /* @private */
+    /**
+     * @private
+     **/
     protected _utxoIsSufficient({ sufficient }: utxoInfo) {
         return !!sufficient;
     }
-    /* @private */
+    /**
+     * @private
+     **/
     protected _utxoIsPureADA({ u }: utxoInfo) {
         return u.value.assets.isZero() ? u : undefined;
     }
-    /* @private */
+    /*
+     * @private
+     **/
     protected _infoBackToUtxo({ u }: utxoInfo) {
         return u;
     }
-    /* @private */
+    /**
+     * @private
+     **/
     protected _mkUtxoSortInfo(min: bigint, max?: bigint) {
         return (u: TxInput): utxoInfo => {
             const minAdaAmount = u.value.assets.isZero()
@@ -813,7 +842,9 @@ export class StellarContract<
             return t;
         };
     }
-    /* @private */
+    /**
+     * @private
+     **/
     protected _utxoCountAdaOnly(c: number, { minAdaAmount }: utxoInfo): number {
         return c + (minAdaAmount ? 0 : 1);
     }

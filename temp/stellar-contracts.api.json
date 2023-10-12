@@ -6024,7 +6024,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#_mkUtxoSortInfo:member(1)",
-              "docComment": "",
+              "docComment": "/**\n * @private\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -6102,7 +6102,7 @@
             {
               "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#_purpose:member",
-              "docComment": "",
+              "docComment": "/**\n * @private\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -6133,7 +6133,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#_utxoCountAdaOnly:member(1)",
-              "docComment": "",
+              "docComment": "/**\n * @private\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -6198,7 +6198,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#_utxoIsPureADA:member(1)",
-              "docComment": "",
+              "docComment": "/**\n * @private\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -6252,7 +6252,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#_utxoIsSufficient:member(1)",
-              "docComment": "",
+              "docComment": "/**\n * @private\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -6301,7 +6301,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#_utxoSortSmallerAndPureADA:member(1)",
-              "docComment": "",
+              "docComment": "/**\n * @private\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
