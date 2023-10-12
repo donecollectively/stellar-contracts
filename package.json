@@ -5,9 +5,15 @@
     "main": "dist/stellar-contracts.mjs",
     "types": "dist/stellar-contracts.d.ts",
     "exports": {
+        "default": {
+            "import": "./dist/stellar-contracts.mjs",
+            "default": "./dist/stellar-contracts.cjs",
+            "types": "./dist/stellar-contracts.d.ts"
+        },
         "test": {
-            "default": "dist/testing.mjs",
-            "types": "dist/test.d.ts"
+            "import": "./dist/testing.mjs",
+            "default": "./dist/testing.d.ts",
+            "types": "./dist/testing.d.ts"
         }
     },
     "type": "module",
