@@ -33,7 +33,7 @@ import {
     hasSomeUuts,
     hasUutContext,
     uutPurposeMap,
-} from "../lib/Capo.js";
+} from "./Capo.js";
 import { SeedTxnParams } from "./SeedTxn.js";
 import { valuesEntry } from "./HeliosPromotedTypes.js";
 import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";

@@ -8,25 +8,25 @@ import {
     expectTypeOf,
 } from "vitest";
 
-import { DefaultCapo } from "../lib/DefaultCapo";
+import { DefaultCapo } from "../src/DefaultCapo";
 
-import { StellarTxnContext } from "../lib/StellarTxnContext";
-import { DefaultMinter } from "../lib/DefaultMinter";
-import { BasicMintDelegate } from "../lib/delegation/BasicMintDelegate";
-import { ADA, addTestContext } from "../lib/testing/types";
-import { StellarTestContext } from "../lib/testing/StellarTestContext";
+import { StellarTxnContext } from "../src/StellarTxnContext";
+import { DefaultMinter } from "../src/DefaultMinter";
+import { BasicMintDelegate } from "../src/delegation/BasicMintDelegate";
+import { ADA, addTestContext } from "../src/testing/types";
+import { StellarTestContext } from "../src/testing/StellarTestContext";
 
-import { Capo, hasAllUuts } from "../lib/Capo";
+import { Capo, hasAllUuts } from "../src/Capo";
 import {
     DelegateConfigNeeded,
     VariantMap,
     VariantStrategy,
     strategyValidation,
     variantMap,
-} from "../lib/delegation/RolesAndDelegates";
+} from "../src/delegation/RolesAndDelegates";
 import { CustomCapoTestHelper } from "./customizing/CustomCapoTestHelper";
 import { CustomTreasury } from "./customizing/CustomTreasury";
-// import { RoleDefs } from "../lib/RolesAndDelegates";
+// import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<CustomCapoTestHelper>;
 const wrongMinSigs = /minSigs can't be more than the size of the trustee-list/;

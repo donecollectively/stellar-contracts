@@ -8,15 +8,15 @@ import {
     expectTypeOf,
 } from "vitest";
 
-import { DefaultCapo } from "../lib/DefaultCapo";
+import { DefaultCapo } from "../src/DefaultCapo";
 
 import { TxOutput } from "@hyperionbt/helios";
 
-import { StellarTxnContext } from "../lib/StellarTxnContext";
-import { DefaultMinter } from "../lib/DefaultMinter";
-import { BasicMintDelegate } from "../lib/delegation/BasicMintDelegate";
-import { ADA, StellarTestContext, addTestContext } from "../lib/testing";
-import { Capo, hasAllUuts } from "../lib/Capo";
+import { StellarTxnContext } from "../src/StellarTxnContext";
+import { DefaultMinter } from "../src/DefaultMinter";
+import { BasicMintDelegate } from "../src/delegation/BasicMintDelegate";
+import { ADA, StellarTestContext, addTestContext } from "../src/testing";
+import { Capo, hasAllUuts } from "../src/Capo";
 import {
     DelegateConfigNeeded,
     UutName,
@@ -24,9 +24,9 @@ import {
     VariantStrategy,
     strategyValidation,
     variantMap,
-} from "../lib/delegation/RolesAndDelegates";
-import { DefaultCapoTestHelper } from "../lib/testing/DefaultCapoTestHelper";
-// import { RoleDefs } from "../lib/RolesAndDelegates";
+} from "../src/delegation/RolesAndDelegates";
+import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
+// import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
 const wrongMinSigs = /minSigs can't be more than the size of the trustee-list/;
@@ -60,7 +60,7 @@ describe("Capo", async () => {
             type something = "something"
             const tcx = new StellarTxnContext<hasAllUuts<something>>();
             await t.txnAddAuthority(tcx);
-            await t.txnCreatingUuts<something>(tcx, ["something"]);
+            await t.txnCreatingUuts(tcx, ["something"]);
 
             const uutVal = t.uutsValue(tcx.state.uuts!);
             tcx.addOutput(new TxOutput(tina.address, uutVal));

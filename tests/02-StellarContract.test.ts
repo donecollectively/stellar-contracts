@@ -7,7 +7,7 @@ import {
     assertType,
     expectTypeOf,
 } from "vitest";
-import { DefaultCapo } from "../lib/DefaultCapo";
+import { DefaultCapo } from "../src/DefaultCapo";
 
 import {
     Address,
@@ -19,16 +19,16 @@ import {
     Value,
 } from "@hyperionbt/helios";
 
-import { StellarTxnContext } from "../lib/StellarTxnContext";
+import { StellarTxnContext } from "../src/StellarTxnContext";
 import { MintingPolicyHash } from "@hyperionbt/helios";
-import { DefaultMinter } from "../lib/DefaultMinter";
-import { BasicMintDelegate } from "../lib/delegation/BasicMintDelegate";
-import { ADA, addTestContext } from "../lib/testing/";
-import { StellarTestContext } from "../lib/testing/";
+import { DefaultMinter } from "../src/DefaultMinter";
+import { BasicMintDelegate } from "../src/delegation/BasicMintDelegate";
+import { ADA, addTestContext } from "../src/testing/";
+import { StellarTestContext } from "../src/testing/";
 
-import { Capo, hasAllUuts } from "../lib/Capo";
-import { DefaultCapoTestHelper } from "../lib/testing/DefaultCapoTestHelper";
-// import { RoleDefs } from "../lib/RolesAndDelegates";
+import { Capo, hasAllUuts } from "../src/Capo";
+import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
+// import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
 

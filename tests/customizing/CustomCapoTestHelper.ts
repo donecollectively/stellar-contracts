@@ -1,7 +1,7 @@
-import { DefaultCharterDatumArgs, DefaultCapo, PartialDefaultCharterDatumArgs } from "../../lib/DefaultCapo.js";
+import { DefaultCharterDatumArgs, DefaultCapo, PartialDefaultCharterDatumArgs } from "../../src/DefaultCapo.js";
 import { Address } from "@hyperionbt/helios";
-import { StellarTxnContext } from "../../lib/StellarTxnContext.js";
-import { CapoTestHelper, ADA } from "../../lib/testing";
+import { StellarTxnContext } from "../../src/StellarTxnContext.js";
+import { CapoTestHelper, ADA } from "../../src/testing/index.js";
 import { CustomTreasury } from "./CustomTreasury.js";
 
 export class CustomCapoTestHelper extends CapoTestHelper<CustomTreasury> {

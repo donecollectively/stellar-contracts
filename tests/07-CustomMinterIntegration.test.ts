@@ -9,14 +9,14 @@ import {
 import { Address, TxId, TxOutput } from "@hyperionbt/helios";
 
 import { CustomTreasury } from "./customizing/CustomTreasury";
-import { StellarTxnContext } from "../lib/StellarTxnContext";
+import { StellarTxnContext } from "../src/StellarTxnContext";
 import {
     ADA,
     StellarTestContext,
     addTestContext,
     CapoTestHelper,
-} from "../lib/testing/";
-import { PartialDefaultCharterDatumArgs } from "../lib/DefaultCapo";
+} from "../src/testing/";
+import { PartialDefaultCharterDatumArgs } from "../src/DefaultCapo";
 
 type localTC = StellarTestContext<CustomTreasuryTestHelper>;
 

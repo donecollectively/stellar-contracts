@@ -4,7 +4,7 @@
 
 import { resolve } from 'path';
 import { defineConfig } from 'vite';
-import { heliosRollupLoader } from './lib/heliosRollupLoader';
+import { heliosRollupLoader } from './src/heliosRollupLoader';
 
 export default defineConfig({
     plugins: [

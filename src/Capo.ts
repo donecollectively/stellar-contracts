@@ -48,14 +48,24 @@ export type {
     strategyValidation,
 } from "./delegation/RolesAndDelegates.js";
 
+/**
+ * strongly-typed map of purpose-names to Uut objects
+ *
+ * @public
+ */
 export type uutPurposeMap<unionPurpose extends string> = {
     [purpose in unionPurpose]: UutName;
 };
 
-export type hasSomeUuts<uutEntries extends string> = {
-    uuts: Partial<uutPurposeMap<uutEntries>>;
-};
+// export type hasSomeUuts<uutEntries extends string> = {
+//     uuts: Partial<uutPurposeMap<uutEntries>>;
+// };
 
+/**
+ * used for transaction-context state having specific uut-purposes
+ *
+ * @public
+ */
 export type hasAllUuts<uutEntries extends string> = {
     uuts: uutPurposeMap<uutEntries>;
 };
@@ -63,7 +73,7 @@ export type hasAllUuts<uutEntries extends string> = {
 interface hasUutCreator {
     txnCreatingUuts<
         const purposes extends string,
-        TCX extends StellarTxnContext<any>,
+        TCX extends StellarTxnContext<any>
     >(
         tcx: TCX,
         uutPurposes: purposes[],
@@ -108,10 +118,10 @@ export type CapoImpliedSettings = {
     uut: AssetClass;
 };
 
-export type hasSelectedDelegates = StellarTxnContext<hasDelegateProp>
+export type hasSelectedDelegates = StellarTxnContext<hasDelegateProp>;
 type hasDelegateProp = {
-    delegates: SelectedDelegates
-}
+    delegates: SelectedDelegates;
+};
 
 export abstract class Capo<
         minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter,
@@ -423,9 +433,7 @@ export abstract class Capo<
         );
     }
 
-    withDelegates(
-        delegates: SelectedDelegates
-    ): hasSelectedDelegates {
+    withDelegates(delegates: SelectedDelegates): hasSelectedDelegates {
         const tcx = new StellarTxnContext<hasDelegateProp>();
         tcx.state.delegates = delegates;
 
@@ -434,10 +442,10 @@ export abstract class Capo<
 
     txnGetSelectedDelegateConfig<
         T extends StellarContract<any>,
-        const RN extends string,
+        const RN extends string
     >(
         tcx: hasSelectedDelegates,
-        roleName: RN,
+        roleName: RN
     ): PartialParamConfig<ConfigFor<T>> {
         const selected = this.txnMustSelectDelegate(tcx, roleName);
         const { strategyName, config: selectedConfig } = selected;
@@ -450,9 +458,9 @@ export abstract class Capo<
         ] as VariantStrategy<T>;
 
         const stratConfig = selectedStrategy.partialConfig || {};
-        return { 
-            ...stratConfig, 
-            ...selectedConfig 
+        return {
+            ...stratConfig,
+            ...selectedConfig,
         };
     }
 
@@ -493,10 +501,10 @@ export abstract class Capo<
     //  ... or throws errors
     protected txnMustConfigureSelectedDelegate<
         T extends StellarContract<any>,
-        const RN extends string,
+        const RN extends string
     >(
         tcx: hasSelectedDelegates & hasUutContext<RN>,
-        roleName: RN,
+        roleName: RN
     ): DelegateSettings<T> {
         let selected = this.txnMustSelectDelegate(tcx, roleName);
         const { strategyName, config: selectedConfig } = selected;
@@ -546,26 +554,23 @@ export abstract class Capo<
         };
     }
 
-    mkImpliedSettings(uut: UutName) : CapoImpliedSettings{
+    mkImpliedSettings(uut: UutName): CapoImpliedSettings {
         return {
             uut: new AssetClass({
                 mph: this.mph,
                 tokenName: this.stringToNumberArray(uut.name),
-            })
+            }),
         };
     }
 
-    txnMustGetDelegate<
-        T extends StellarContract<any>,
-        const RN extends string
-    >(
+    txnMustGetDelegate<T extends StellarContract<any>, const RN extends string>(
         tcx: hasSelectedDelegates & hasUutContext<RN>,
         roleName: RN,
         configuredDelegate?: DelegateSettings<T>
     ): T {
         const sdd =
             configuredDelegate ||
-            this.txnMustConfigureSelectedDelegate<T,RN>(tcx, roleName);
+            this.txnMustConfigureSelectedDelegate<T, RN>(tcx, roleName);
         const { delegateClass, config: scriptParams } = sdd;
         try {
             // delegate
@@ -594,22 +599,30 @@ export abstract class Capo<
     ): Promise<DelegateType> {
         const role = this.roles[roleName];
         //!!! work on type-safety with roleName + available roles
-        const { strategyName, uutName, reqdAddress, addressesHint, config: linkedConfig } = delegateLink;
+        const {
+            strategyName,
+            uutName,
+            reqdAddress,
+            addressesHint,
+            config: linkedConfig,
+        } = delegateLink;
         const selectedStrat = role[
             strategyName
         ] as unknown as DelegateSettings<DelegateType>;
         if (!selectedStrat) {
-            throw new Error(`mismatched strategyName '${strategyName}' in delegate link for role '${roleName}'`)
+            throw new Error(
+                `mismatched strategyName '${strategyName}' in delegate link for role '${roleName}'`
+            );
         }
         const { delegateClass, config: stratSettings } = selectedStrat;
         const config = {
             ...stratSettings,
             ...this.mkImpliedSettings(new UutName("some-delegate", uutName)),
-            ...linkedConfig
-        }
+            ...linkedConfig,
+        };
 
-        const {setup} = this;
-        return new delegateClass({setup, config});
+        const { setup } = this;
+        return new delegateClass({ setup, config });
     }
 
     capoRequirements() {
@@ -643,7 +656,7 @@ export abstract class Capo<
                     "Building a txn with a UUT involves using the txnCreatingUuts partial-helper on the Capo.",
                     "Fills tcx.state.uuts with purpose-keyed unique token-names",
                     "The UUT uses the seed-utxo pattern to form 64 bits of uniqueness, so that token-names stay short-ish.",
-                ]
+                ],
             },
             "supports the Delegation pattern using roles and strategy-variants":
                 {
@@ -665,7 +678,7 @@ export abstract class Capo<
                     requires: [
                         "supports well-typed role declarations and strategy-adding",
                         "supports just-in-time strategy-selection using withDelegates() and txnMustGetDelegate()",
-                        "supports concrete resolution of existing role delegates"
+                        "supports concrete resolution of existing role delegates",
                     ],
                 },
             "supports well-typed role declarations and strategy-adding": {
@@ -682,7 +695,7 @@ export abstract class Capo<
                     "Subclasses can define their own get roles(), return a role-map-to-variant-map structure",
                 ],
                 requires: [
-                    "Each role uses a RoleVariants structure which can accept new variants"
+                    "Each role uses a RoleVariants structure which can accept new variants",
                 ],
             },
             "supports just-in-time strategy-selection using withDelegates() and txnMustGetDelegate()":
@@ -755,7 +768,7 @@ export abstract class Capo<
                         "validateScriptParams() should return undefined if there are no problems",
                     ],
                     requires: [
-                        "supports concrete resolution of existing role delegates"
+                        "supports concrete resolution of existing role delegates",
                     ],
                 },
             "supports concrete resolution of existing role delegates": {
@@ -777,6 +790,6 @@ export abstract class Capo<
                     "TODO: with an existing delegate, the selected strategy class MUST exactly match the known delegate-address",
                 ],
             },
-        })
+        });
     }
 }

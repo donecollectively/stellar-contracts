@@ -7,4 +7,4 @@ rollup \
   --configPlugin 'esbuild={loaders:{".json": "json"}, target: "esnext", tsconfig:"./tsconfig.rollupconfig.json"}' \
   $*
 
-tsc --declaration --declarationMap -p tsconfig.dts.json 
+api-extractor run --local --verbose

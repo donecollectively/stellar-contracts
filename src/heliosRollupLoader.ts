@@ -1,5 +1,5 @@
+import path from "path";
 import { createFilter } from "rollup-pluginutils";
-
 
 export function heliosRollupLoader(
     opts = {
@@ -18,7 +18,8 @@ export function heliosRollupLoader(
 
         transform(content, id) {
             if (filter(id)) {
-                console.warn(`heliosLoader: generating javascript for ${id}`);
+                const relPath = path.relative(".", id)
+                console.warn(`heliosLoader: generating javascript for ${relPath}`);
                 const [_, purpose, moduleName] = content.match(
                     /(module|minting|spending|endpoint)\s+([a-zA-Z0-9]+)/m
                 ) || []
@@ -27,7 +28,7 @@ export function heliosRollupLoader(
                 const code = new String(
                     `const code = 
 new String(${JSON.stringify(content)});
-code.srcFile = ${JSON.stringify(id)};
+code.srcFile = ${JSON.stringify(relPath)};
 code.purpose = ${JSON.stringify(purpose)}
 code.moduleName = ${JSON.stringify(moduleName)}
 

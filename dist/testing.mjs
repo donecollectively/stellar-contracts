@@ -514,7 +514,11 @@ class StellarContract {
         fieldNames.map(async (fn, i) => {
           const fieldData = nestedFieldList[i];
           const fieldType = instanceMembers[fn];
-          const value = await this.readUplcField(fn, fieldType, fieldData);
+          const value = await this.readUplcField(
+            fn,
+            fieldType,
+            fieldData
+          );
           return [fn, value];
         })
       )
@@ -528,7 +532,11 @@ class StellarContract {
           let current;
           const uplcDataField = uplcData.fields[i];
           const fieldType = instanceMembers[fn];
-          current = await this.readUplcField(fn, fieldType, uplcDataField);
+          current = await this.readUplcField(
+            fn,
+            fieldType,
+            uplcDataField
+          );
           return [fn, current];
         })
       )
@@ -539,10 +547,7 @@ class StellarContract {
     const { offChainType } = fieldType;
     const internalType = fieldType.typeDetails.internalType.type;
     if ("Struct" == internalType) {
-      value = await this.readUplcStructList(
-        fieldType,
-        uplcDataField
-      );
+      value = await this.readUplcStructList(fieldType, uplcDataField);
       return value;
     }
     try {
@@ -553,19 +558,13 @@ class StellarContract {
         value = Object.keys(value)[0];
       }
     } catch (e) {
-      if (e.message?.match(
-        /doesn't support converting from Uplc/
-      )) {
+      if (e.message?.match(/doesn't support converting from Uplc/)) {
         try {
-          value = await offChainType.fromUplcData(
-            uplcDataField
-          );
+          value = await offChainType.fromUplcData(uplcDataField);
           if ("some" in value)
             value = value.some;
         } catch (e2) {
-          console.error(
-            `datum: field ${fn}: ${e2.message}`
-          );
+          console.error(`datum: field ${fn}: ${e2.message}`);
           debugger;
           throw e2;
         }
@@ -621,7 +620,9 @@ class StellarContract {
     } else if (specifier instanceof MintingPolicyHash) {
       mph = specifier;
       if ("string" !== typeof quantOrTokenName)
-        throw new Error(`with minting policy hash, token-name must be a string (or ByteArray support is TODO)`);
+        throw new Error(
+          `with minting policy hash, token-name must be a string (or ByteArray support is TODO)`
+        );
       tokenName = quantOrTokenName;
       quantity = quantity || 1n;
       v = predicate.value = this.tokenAsValue(tokenName, quantity, mph);
@@ -631,12 +632,16 @@ class StellarContract {
       if (!quantOrTokenName)
         quantOrTokenName = 1n;
       if ("bigint" !== typeof quantOrTokenName)
-        throw new Error(`with AssetClass, the second arg must be a bigint like 3n, or omitted`);
+        throw new Error(
+          `with AssetClass, the second arg must be a bigint like 3n, or omitted`
+        );
       quantity = quantOrTokenName;
       v = predicate.value = new Value(0n, [[specifier, quantity]]);
       return predicate;
     } else {
-      throw new Error(`wrong token specifier (need Value, MPH+tokenName, or AssetClass`);
+      throw new Error(
+        `wrong token specifier (need Value, MPH+tokenName, or AssetClass`
+      );
     }
     function _tokenPredicate(something) {
       return this.hasToken(something, v);

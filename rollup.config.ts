@@ -9,7 +9,7 @@ import sourcemaps from "rollup-plugin-sourcemaps";
 // const packageJson = await import("./package.json", { assert: { type: "json" } });
 
 import packageJson from "./package.json" assert { type: "json" };
-import { heliosRollupLoader } from "./lib/heliosRollupLoader.js";
+import { heliosRollupLoader } from "./src/heliosRollupLoader.js";
 const name = packageJson.main.replace(/\.m?js$/, "");
 
 const serverBundledModules : string[] = [];
@@ -62,7 +62,7 @@ export default [
         ],
     }),
     codeBundle({
-        input: "./lib/testing/index.ts",
+        input: "./src/testing/index.ts",
         plugins: [
             sourcemaps(),
             externals(),

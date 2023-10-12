@@ -1,3 +1,4 @@
+import path from 'path';
 import { createFilter } from 'rollup-pluginutils';
 import * as helios from '@hyperionbt/helios';
 import { Address, Tx, Value, TxOutput, MintingPolicyHash, AssetClass, TxInput, Assets, Program, bytesToHex, Crypto, NetworkParams, NetworkEmulator, Option, Datum } from '@hyperionbt/helios';
@@ -26,7 +27,8 @@ function heliosRollupLoader(opts = {
     name: "helios",
     transform(content, id) {
       if (filter(id)) {
-        console.warn(`heliosLoader: generating javascript for ${id}`);
+        const relPath = path.relative(".", id);
+        console.warn(`heliosLoader: generating javascript for ${relPath}`);
         const [_, purpose, moduleName] = content.match(
           /(module|minting|spending|endpoint)\s+([a-zA-Z0-9]+)/m
         ) || [];
@@ -35,7 +37,7 @@ function heliosRollupLoader(opts = {
         const code = new String(
           `const code = 
 new String(${JSON.stringify(content)});
-code.srcFile = ${JSON.stringify(id)};
+code.srcFile = ${JSON.stringify(relPath)};
 code.purpose = ${JSON.stringify(purpose)}
 code.moduleName = ${JSON.stringify(moduleName)}
 
@@ -612,7 +614,11 @@ class StellarContract {
         fieldNames.map(async (fn, i) => {
           const fieldData = nestedFieldList[i];
           const fieldType = instanceMembers[fn];
-          const value = await this.readUplcField(fn, fieldType, fieldData);
+          const value = await this.readUplcField(
+            fn,
+            fieldType,
+            fieldData
+          );
           return [fn, value];
         })
       )
@@ -626,7 +632,11 @@ class StellarContract {
           let current;
           const uplcDataField = uplcData.fields[i];
           const fieldType = instanceMembers[fn];
-          current = await this.readUplcField(fn, fieldType, uplcDataField);
+          current = await this.readUplcField(
+            fn,
+            fieldType,
+            uplcDataField
+          );
           return [fn, current];
         })
       )
@@ -637,10 +647,7 @@ class StellarContract {
     const { offChainType } = fieldType;
     const internalType = fieldType.typeDetails.internalType.type;
     if ("Struct" == internalType) {
-      value = await this.readUplcStructList(
-        fieldType,
-        uplcDataField
-      );
+      value = await this.readUplcStructList(fieldType, uplcDataField);
       return value;
     }
     try {
@@ -651,19 +658,13 @@ class StellarContract {
         value = Object.keys(value)[0];
       }
     } catch (e) {
-      if (e.message?.match(
-        /doesn't support converting from Uplc/
-      )) {
+      if (e.message?.match(/doesn't support converting from Uplc/)) {
         try {
-          value = await offChainType.fromUplcData(
-            uplcDataField
-          );
+          value = await offChainType.fromUplcData(uplcDataField);
           if ("some" in value)
             value = value.some;
         } catch (e2) {
-          console.error(
-            `datum: field ${fn}: ${e2.message}`
-          );
+          console.error(`datum: field ${fn}: ${e2.message}`);
           debugger;
           throw e2;
         }
@@ -719,7 +720,9 @@ class StellarContract {
     } else if (specifier instanceof MintingPolicyHash) {
       mph = specifier;
       if ("string" !== typeof quantOrTokenName)
-        throw new Error(`with minting policy hash, token-name must be a string (or ByteArray support is TODO)`);
+        throw new Error(
+          `with minting policy hash, token-name must be a string (or ByteArray support is TODO)`
+        );
       tokenName = quantOrTokenName;
       quantity = quantity || 1n;
       v = predicate.value = this.tokenAsValue(tokenName, quantity, mph);
@@ -729,12 +732,16 @@ class StellarContract {
       if (!quantOrTokenName)
         quantOrTokenName = 1n;
       if ("bigint" !== typeof quantOrTokenName)
-        throw new Error(`with AssetClass, the second arg must be a bigint like 3n, or omitted`);
+        throw new Error(
+          `with AssetClass, the second arg must be a bigint like 3n, or omitted`
+        );
       quantity = quantOrTokenName;
       v = predicate.value = new Value(0n, [[specifier, quantity]]);
       return predicate;
     } else {
-      throw new Error(`wrong token specifier (need Value, MPH+tokenName, or AssetClass`);
+      throw new Error(
+        `wrong token specifier (need Value, MPH+tokenName, or AssetClass`
+      );
     }
     function _tokenPredicate(something) {
       return this.hasToken(something, v);
@@ -1059,13 +1066,13 @@ __decorateClass$5([
 
 const code$6 = 
 new String("minting DefaultMinter \n\nimport { \n    hasSeedUtxo, \n    validateUutMinting\n} from CapoMintHelpers\n\nimport {mkTv} from StellarHeliosHelpers\n\nimport {\n    requiresValidDelegate\n} from CapoDelegateHelpers\n\n//!!!! todo: change to TxOutputId, rolling up these two things:\nconst seedTxn : TxId = TxId::new(#1234)\nconst seedIndex : Int = 42\n\nenum Redeemer { \n    mintingCharter {\n        owner: Address\n\n        // we don't have a responsiblity to enforce delivery to the right location\n        // govAuthority: RelativeDelegateLink   // not needed \n    }\n    mintingUuts {\n        //!!!! todo: change to TxOutputId, rolling up these two things:\n        seedTxn: TxId\n        seedIndex: Int\n        purposes: []String\n    }\n}\n\nfunc hasContractSeedUtxo(tx: Tx) -> Bool {\n    hasSeedUtxo(tx, seedTxn, seedIndex, \"charter\")\n}\n\nfunc main(r : Redeemer, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    value_minted: Value = tx.minted;\n\n    ok : Bool = r.switch {\n        charter: mintingCharter => {       \n            charterVal : Value = mkTv(mph, \"charter\");\n            authTnBase : String = \"authZor\";\n\n            assert(value_minted >= charterVal,\n                \"charter token not minted\");\n\n            hasContractSeedUtxo(tx) &&\n            validateUutMinting(ctx:ctx, \n                sTxId:seedTxn, \n                sIdx:seedIndex, \n                purposes: []String{authTnBase}, \n                exact:false\n            ) &&\n            tx.outputs.all( (output: TxOutput) -> Bool {\n                output.value != value_minted || (\n                    output.value == value_minted &&\n                    output.address == charter.owner\n                )\n            })\n        },\n\n        mintingUuts{sTxId, sIdx, purposes} => validateUutMinting(ctx, sTxId, sIdx, purposes),\n        _ => true\n    };\n\n    print(\"defaultMinter: minting value: \" + value_minted.show());\n\n    ok\n}\n\n");
-code$6.srcFile = "/home/san/dev/stellar-contracts/lib/DefaultMinter.hl";
+code$6.srcFile = "src/DefaultMinter.hl";
 code$6.purpose = "minting";
 code$6.moduleName = "DefaultMinter";
 
 const code$5 = 
 new String("module CapoMintHelpers\nimport {\n    mkTv\n    // txHasOutput\n} from StellarHeliosHelpers\n\nfunc hasSeedUtxo(tx: Tx, sTxId : TxId, sIdx: Int, reason: String) -> Bool {\n    seedUtxo: TxOutputId = TxOutputId::new(\n        sTxId,\n        sIdx\n    );\n    assert(tx.inputs.any( (input: TxInput) -> Bool {\n        input.output_id == seedUtxo\n    }),  \"seed utxo required for minting \"+reason \n        + \"\\n\"+sTxId.show() + \" : \" + sIdx.show()\n    );\n\n    true\n}\n\n//! pre-computes the hash-based suffix for a token name, returning\n//  a function that makes Uut names with any given purpose, given the seed-txn details\nfunc tnUutFactory(\n    sTxId : TxId, sIdx : Int\n) -> (String) -> String {\n\n    idxBytes : ByteArray = sIdx.bound_max(255).serialize();\n    // assert(idxBytes.length == 1, \"surprise!\");\n\n    //! yuck: un-CBOR...\n    rawTxId : ByteArray = sTxId.serialize().slice(5,37);\n\n    txoId : ByteArray = (rawTxId + \"@\".encode_utf8() + idxBytes);\n    assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // print( \"******** txoId \" + txoId.show());\n\n    miniHash : ByteArray = txoId.blake2b().slice(0,6);\n    // assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    mhs: String = miniHash.show();\n    (p: String) -> String {\n        p + \"-\" + mhs\n    }\n}\n\nfunc validateUutMinting(\n    ctx: ScriptContext, \n    sTxId : TxId, sIdx : Int, \n    purposes: []String, \n    exact:Bool=true) -> Bool {\n\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    valueMinted: Value = tx.minted;\n\n    // idxBytes : ByteArray = sIdx.bound_max(255).serialize();\n    // // assert(idxBytes.length == 1, \"surprise!\");\n\n    // //! yuck: un-CBOR...\n    // rawTxId : ByteArray = sTxId.serialize().slice(5,37);\n\n    // txoId : ByteArray = (rawTxId + \"@\".encode_utf8() + idxBytes);\n    // assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // // print( \"******** txoId \" + txoId.show());\n\n    // miniHash : ByteArray = txoId.blake2b().slice(0,6);\n    // // assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    mkTokenName: (String) -> String = tnUutFactory(sTxId, sIdx);\n    // tokenName1 = purpose + \".\" + miniHash.show();\n\n    expectedValue = Value::sum(purposes.sort((a:String, b:String) -> Bool { a == b }).map(\n        (purpose: String) -> Value {\n            mkTv(mph, mkTokenName(purpose))\n        }\n    ));\n    // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);\n    actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);\n\n    // print(\"redeemer\" + sTxId.show() + \" \" + sIdx.show() + \" asset \" + assetName.show());\n    // expectedMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"expected: \" + b.show() + \" \" + i.show() )\n    // });\n    temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {\n        l.find_safe((x : ByteArray) -> Bool { x == b }).switch{\n            None => l.prepend(b),\n            Some => error(\"UUT purposes not unique\")\n        }\n    }, []ByteArray{});\n    assert(temp == temp, \"prevent unused var\");\n\n    // actualMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"actual: \" + b.show() + \" \" + i.show() )\n    // });\n\n    expectationString : String = if( exact ) {\"\"} else {\"at least \"};\n    expectationsMet : Bool = if (exact) { \n        valueMinted  == expectedValue\n    } else { \n        valueMinted >= expectedValue\n    };\n\n    assert(expectationsMet, \"bad UUT mint has mismatch;\"+ \n        \"\\n   ... expected \"+ expectationString + expectedValue.show()+\n        \"   ... actual \"+ valueMinted.show()+\n        \"   ... diff = \\n\" + (expectedValue - valueMinted).show()\n    );\n    hasSeedUtxo(tx, sTxId, sIdx, \"UUT \"+purposes.join(\"+\"))\n}");
-code$5.srcFile = "/home/san/dev/stellar-contracts/lib/CapoMintHelpers.hl";
+code$5.srcFile = "src/CapoMintHelpers.hl";
 code$5.purpose = "module";
 code$5.moduleName = "CapoMintHelpers";
 
@@ -1073,7 +1080,7 @@ const CapoMintHelpers = code$5;
 
 const code$4 = 
 new String("module StellarHeliosHelpers\n\nfunc didSign(ctx : ScriptContext, a: Address) -> Bool {\n    tx : Tx = ctx.tx;\n\n    pkh : PubKeyHash = a.credential.switch{\n        PubKey{h} => h,\n        _ => error(\"trustee can't be a contract\")\n    };\n    // print(\"checking if trustee signed: \" + pkh.show());\n\n    tx.is_signed_by(pkh)\n}\n\nfunc didSignInCtx(ctx: ScriptContext) -> (a: Address) -> Bool {\n    (a : Address) -> Bool {\n        didSign(ctx, a)\n    }\n}\n\n\n//! represents the indicated token name as a Value\nfunc mkTv(mph: MintingPolicyHash, tn: String, count : Int = 1) -> Value {\n    Value::new(\n        AssetClass::new(mph, tn.encode_utf8()), \n        count\n    )\n}\n\n//! makes a predicate for checking outputs against an expected value\nfunc outputHas(v: Value, addr: Option[Address]=Option[Address]::None) -> (TxOutput) -> Bool {\n    (txo: TxOutput) -> Bool {\n        txo.value.contains(v) &&\n        addr.switch {\n            None => true,\n            Some{dest} => txo.address == dest\n        }\n    }\n}\n\n//! tests a transaction for an expected output value\nfunc txHasOutput(tx: Tx, v: Value, addr: Option[Address] = Option[Address]::None) -> Bool {\n    tx.outputs.find_safe(\n        outputHas(v, addr)\n   ).switch{\n        None => false,\n        Some => true\n    }\n}\n");
-code$4.srcFile = "/home/san/dev/stellar-contracts/lib/StellarHeliosHelpers.hl";
+code$4.srcFile = "src/StellarHeliosHelpers.hl";
 code$4.purpose = "module";
 code$4.moduleName = "StellarHeliosHelpers";
 
@@ -1081,7 +1088,7 @@ const StellarHeliosHelpers = code$4;
 
 const code$3 = 
 new String("module CapoDelegateHelpers\n\nimport {\n    txHasOutput,\n    mkTv\n} from StellarHeliosHelpers\n\nstruct RelativeDelegateLink {\n    uutName: String\n    strategyName: String\n    reqdAddr: Option[Address]\n    addrHint: []Address\n}\n\nfunc requiresValidDelegate(\n    dd: RelativeDelegateLink, \n    mph: MintingPolicyHash, \n    ctx : ScriptContext\n) -> Bool {\n    RelativeDelegateLink{uut, strategy, reqdAddr, _} = dd;\n    if (!(strategy.encode_utf8().length < 4)) {\n        error(\"strategy must be at least 4 bytes\")\n    };\n\n    //! the delegate is valid as long as the transaction pays the UUT into the indicated address\n    //   ... that address might not be the permanent address for a \"bearer\" strategy, but\n    //   ... for other strategies, it should be.  So we just check it the same way for all cases.\n    //! the uut can be minted in the current transaction, or transferred from anywhere.\n    txHasOutput(ctx.tx, mkTv(mph, uut), reqdAddr )\n}");
-code$3.srcFile = "/home/san/dev/stellar-contracts/lib/delegation/CapoDelegateHelpers.hl";
+code$3.srcFile = "src/delegation/CapoDelegateHelpers.hl";
 code$3.purpose = "module";
 code$3.moduleName = "CapoDelegateHelpers";
 
@@ -1624,10 +1631,18 @@ class Capo extends StellarContract {
   async connectDelegateWith(roleName, delegateLink) {
     const role = this.roles[roleName];
     //!!! work on type-safety with roleName + available roles
-    const { strategyName, uutName, reqdAddress, addressesHint, config: linkedConfig } = delegateLink;
+    const {
+      strategyName,
+      uutName,
+      reqdAddress,
+      addressesHint,
+      config: linkedConfig
+    } = delegateLink;
     const selectedStrat = role[strategyName];
     if (!selectedStrat) {
-      throw new Error(`mismatched strategyName '${strategyName}' in delegate link for role '${roleName}'`);
+      throw new Error(
+        `mismatched strategyName '${strategyName}' in delegate link for role '${roleName}'`
+      );
     }
     const { delegateClass, config: stratSettings } = selectedStrat;
     const config = {
@@ -1816,7 +1831,7 @@ __decorateClass$3([
 
 const code$2 = 
 new String("spending SampleMintDelegate\n\nconst rev : Int = 1\nconst instance : ByteArray = #67656e6572616c\n\n// import { \n//     preventCharterChange\n// } from MultiSigAuthority\n\n// struct Datum {\n//     hi: String\n// }\n\n// func main(datum: Datum,_,ctx: ScriptContext) -> Bool {\n//     preventCharterChange(ctx, datum) \n// }\n\nfunc main(_,_,_) -> Bool {\n    true\n}\n");
-code$2.srcFile = "/home/san/dev/stellar-contracts/lib/delegation/BasicMintDelegate.hl";
+code$2.srcFile = "src/delegation/BasicMintDelegate.hl";
 code$2.purpose = "spending";
 code$2.moduleName = "SampleMintDelegate";
 
@@ -2843,7 +2858,7 @@ class CapoTestHelper extends StellarTestHelper {
 
 const code$1 = 
 new String("spending DefaultCapo\n\n// needed in helios 0.13: defaults\nconst mph : MintingPolicyHash = MintingPolicyHash::new(#1234)\nconst rev : Int = 1\n\nimport { \n    RelativeDelegateLink,\n    requiresValidDelegate\n} from CapoDelegateHelpers\n\nimport {\n    mkTv,\n    txHasOutput,\n    didSign,\n    didSignInCtx\n} from StellarHeliosHelpers\n\nenum Datum {\n    CharterToken {\n        govAuthorityLink: RelativeDelegateLink\n    }\n}\n\nenum Redeemer {\n    updatingCharter    \n    usingAuthority\n}\n\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{\n        RelativeDelegateLink{uutName, _, _, _}\n    } = datum;\n\n    assert(txHasOutput(ctx.tx,  mkTv(mph, uutName)),\n        \"missing required authZor token \"+uutName\n    );\n    true\n}\n\nfunc getCharterOutput(tx: Tx) -> TxOutput {\n    charterTokenValue : Value = Value::new(\n        AssetClass::new(mph, \"charter\".encode_utf8()), \n        1\n    );\n    tx.outputs.find_safe(\n        (txo : TxOutput) -> Bool {\n            txo.value >= charterTokenValue\n        }\n    ).switch{\n        None => error(\"this could only happen if the charter token is burned.\"),\n        Some{o} => o\n    }\n}\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        actual : String = charterOutput.address.credential.switch{\n            PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n            Validator{vh} => \"val:📜#:\" + vh.show()\n        };\n        error(\n            \"charter token must be returned to the contract \" + cvh.show() +\n            \"... but was sent to \" +actual\n        )\n    };\n\n    Datum::CharterToken{\n        RelativeDelegateLink{uut, strategy, reqdAddress, addressesHint}\n    } = datum;\n    Datum::CharterToken{\n        RelativeDelegateLink{newUut, newStrategy, newReqdAddress, newAddressesHint}\n    } = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newUut  == uut &&\n        newStrategy == strategy  &&\n        newReqdAddress == reqdAddress &&\n        newAddressesHint == addressesHint\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    // now: Time = tx.time_range.start;\n    \n    notUpdatingCharter : Bool = redeemer.switch {\n        updatingCharter => false,  \n        _ => true\n    };\n    charterChangeAllowable : Bool = if(notUpdatingCharter) { \n        preventCharterChange(ctx, datum) // throws if it's not kosher\n     } else { \n        true // \"maybe\", really\n    };\n\n    redeemerSpecificChecks : Bool = redeemer.switch {\n        updatingCharter => { \n            //! guards from optimizing mph out of the program, screwing up parameterization\n            assert(mph.serialize() != datum.serialize(), \"guard failed\"); // can't fail.\n            \n            charterOutput : TxOutput = getCharterOutput(tx);\n            newDatum = Datum::from_data( \n                charterOutput.datum.get_inline_data() \n            );\n            Datum::CharterToken{delegate} = newDatum;\n\n            requiresValidDelegate(delegate, mph, ctx) &&\n            requiresAuthorization(ctx, datum)\n        },\n        // authorizeByCharter{otherRedeemerData, otherSignatures} => {            \n        //     false // todo support authorizing **other** things to be done with this token\n        // },\n        usingAuthority => {\n            assert(mph.serialize() != datum.serialize(), \"guard failed\"); // can't fail.\n\n            notUpdatingCharter &&\n            requiresAuthorization(ctx, datum)\n        }\n    };\n\n    charterChangeAllowable &&\n    redeemerSpecificChecks &&\n    tx.serialize() != datum.serialize()\n}\n");
-code$1.srcFile = "/home/san/dev/stellar-contracts/lib/DefaultCapo.hl";
+code$1.srcFile = "src/DefaultCapo.hl";
 code$1.purpose = "spending";
 code$1.moduleName = "DefaultCapo";
 
@@ -3036,7 +3051,7 @@ __decorateClass$1([
 
 const code = 
 new String("spending MultiSigAuthority\n\nconst rev : Int = 1\nconst instance : ByteArray = #67656e6572616c\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        actual : String = charterOutput.address.credential.switch{\n            PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n            Validator{vh} => \"val:📜#:\" + vh.show()\n        };\n        error(\n            \"charter token must be returned to the contract \" + cvh.show() +\n            \"... but was sent to \" +actual\n        )\n    };\n\n    Datum::CharterToken{trustees, minSigs} = datum;\n    Datum::CharterToken{newTrustees, newMinSigs} = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newTrustees == trustees &&\n        newMinSigs == minSigs\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc requiresValidMinSigs(datum: Datum) -> Bool {\n    Datum::CharterToken{trustees, minSigs} = datum;\n\n    assert(\n        minSigs <= trustees.length,\n        \"minSigs can't be more than the size of the trustee-list\"\n    );\n\n    true\n}\n\nfunc requiresProofOfNewTrustees(\n    ctx: ScriptContext,\n    datum: Datum\n) -> Bool {\n    Datum::CharterToken{newTrustees, _} = datum;\n\n    assert(\n        newTrustees.all(didSignInCtx(ctx)), \n        \"all the new trustees must sign\"\n    );\n\n    requiresValidMinSigs(datum)\n}\n\n//!!! adapt to use my UUT\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{trustees, minSigs} = datum;\n\n    foundSigs: Int = trustees.fold[Int](\n        (count: Int, a: Address) -> Int {            \n            count + if (didSign(ctx, a)) {1} else {0}\n        }, 0\n    );\n    assert(foundSigs >= minSigs, \n        \"not enough trustees (\"+foundSigs.show()+ \" of \" + minSigs.show() + \" needed) have signed the tx\" \n    );\n\n    true\n}\nfunc main(_,_,_) -> Bool {\n    true\n}\n// for updating trustee list:\n// requiresProofOfNewTrustees(ctx, newDatum)\n");
-code.srcFile = "/home/san/dev/stellar-contracts/lib/authority/MultisigAuthorityPolicy.hl";
+code.srcFile = "src/authority/MultisigAuthorityPolicy.hl";
 code.purpose = "spending";
 code.moduleName = "MultiSigAuthority";
 

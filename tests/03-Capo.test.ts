@@ -7,7 +7,7 @@ import {
     assertType,
     expectTypeOf,
 } from "vitest";
-import { DefaultCapo } from "../lib/DefaultCapo";
+import { DefaultCapo } from "../src/DefaultCapo";
 
 import {
     Address,
@@ -19,14 +19,14 @@ import {
     Value,
 } from "@hyperionbt/helios";
 
-import { StellarTxnContext } from "../lib/StellarTxnContext";
+import { StellarTxnContext } from "../src/StellarTxnContext";
 import {
     ADA,
     StellarTestContext,
     addTestContext,
-} from "../lib/testing";
-import { DefaultCapoTestHelper } from "../lib/testing/DefaultCapoTestHelper";
-// import { RoleDefs } from "../lib/RolesAndDelegates";
+} from "../src/testing";
+import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
+// import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
 
@@ -146,7 +146,7 @@ describe("Capo", async () => {
                     treasury,
                     "mustGetContractSeedUtxo"
                 ).mockImplementation(
-                    //@xxts-expect-error this wrong utxo can be undefined or just wrong
+                    //@ts-expect-error this wrong utxo can be undefined or just wrong
                     async () => {
                         return wrongUtxo;
                     }

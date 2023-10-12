@@ -17,6 +17,6 @@
     },
     "include":[ 
         "./rollup.config.ts", 
-        "./lib/heliosRollupLoader.ts"
+        "./src/heliosRollupLoader.ts"
     ] 
 }

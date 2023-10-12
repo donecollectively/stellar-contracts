@@ -17,12 +17,12 @@ import {
     Value,
 } from "@hyperionbt/helios";
 
-import { DefaultCapoTestHelper } from "../lib/testing/DefaultCapoTestHelper";
+import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import { ADA,
     StellarTestContext,
     addTestContext
-} from "../lib/testing";
-import { insufficientInputError } from "../lib/testing";
+} from "../src/testing";
+import { insufficientInputError } from "../src/testing";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
 const it = itWithContext<localTC>;

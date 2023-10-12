@@ -23,7 +23,7 @@
         "allowJs": true,
         // "disableReferencedProjectLoad": false,
         "noImplicitAny": false,
-        "outFile": "dist/stellar-contracts.d.ts",
+        "outFile": "dist/stellar-contracts-raw.d.ts",
         "rootDir": ".",
     },
     "files": [ "index.ts" ],

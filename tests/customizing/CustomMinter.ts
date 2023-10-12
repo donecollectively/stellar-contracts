@@ -15,14 +15,14 @@ import {
     StellarContract,
     isActivity,
     partialTxn,
-} from "../../lib/StellarContract.js";
+} from "../../src/StellarContract.js";
 
 //@ts-expect-error
 import contract from "./CustomMinter.hl";
-import { StellarTxnContext } from "../../lib/StellarTxnContext.js";
-import { MinterBaseMethods } from "../../lib/Capo.js";
-import { DefaultMinter } from "../../lib/DefaultMinter.js";
-import { tokenNamesOrValuesEntry, valuesEntry } from "../../lib/HeliosPromotedTypes.js";
+import { StellarTxnContext } from "../../src/StellarTxnContext.js";
+import { MinterBaseMethods } from "../../src/Capo.js";
+import { DefaultMinter } from "../../src/DefaultMinter.js";
+import { tokenNamesOrValuesEntry, valuesEntry } from "../../src/HeliosPromotedTypes.js";
 
 
 export class CustomMinter 

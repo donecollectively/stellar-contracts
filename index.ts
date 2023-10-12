@@ -1,6 +1,6 @@
-export { mkHeliosModule } from "./lib/HeliosModuleSrc.js";
-export type { HeliosModuleSrc } from "./lib/HeliosModuleSrc.js";
-export { heliosRollupLoader } from "./lib/heliosRollupLoader.js";
+export { mkHeliosModule } from "./src/HeliosModuleSrc.js";
+export type { HeliosModuleSrc } from "./src/HeliosModuleSrc.js";
+export { heliosRollupLoader } from "./src/heliosRollupLoader.js";
 
 export {
     assetsAsString,
@@ -12,25 +12,24 @@ export {
     txInputAsString,
     lovelaceToAda,
     errorMapAsString,
-} from "./lib/diagnostics.js";
+} from "./src/diagnostics.js";
 
 export { 
     Capo,
     variantMap,
- } from "./lib/Capo.js";
+ } from "./src/Capo.js";
 export type {
     MintUutRedeemerArgs,
     MintCharterRedeemerArgs,
     uutPurposeMap,
-    hasSomeUuts,
     hasAllUuts,
     hasUutContext,
     RoleMap,
     strategyValidation,
-} from "./lib/Capo.js";
+} from "./src/Capo.js";
 
-export type {SeedTxnParams} from "./lib/SeedTxn.js"
-export { BasicMintDelegate } from "./lib/delegation/BasicMintDelegate.js";
+export type {SeedTxnParams} from "./src/SeedTxn.js"
+export { BasicMintDelegate } from "./src/delegation/BasicMintDelegate.js";
 
 export {
     StellarContract,
@@ -38,34 +37,34 @@ export {
     txn,
     partialTxn,
     datum,
-} from "./lib/StellarContract.js";
+} from "./src/StellarContract.js";
 
-export { StellarTxnContext } from "./lib/StellarTxnContext.js";
+export { StellarTxnContext } from "./src/StellarTxnContext.js";
 export type {
     stellarSubclass,
     isActivity,
     utxoPredicate,
     anyDatumProps,
     configBase as paramsBase
-} from "./lib/StellarContract.js";
+} from "./src/StellarContract.js";
 
 export {
     ADA,
     addTestContext,
-} from "./lib/testing/types.js";
-export type { StellarTestContext } from "./lib/testing/StellarTestContext.js";
-export { CapoTestHelper } from "./lib/testing/CapoTestHelper.js";
-export { StellarTestHelper } from "./lib/testing/StellarTestHelper.js";
+} from "./src/testing/types.js";
+export type { StellarTestContext } from "./src/testing/StellarTestContext.js";
+export { CapoTestHelper } from "./src/testing/CapoTestHelper.js";
+export { StellarTestHelper } from "./src/testing/StellarTestHelper.js";
 
-export { DefaultMinter } from "./lib/DefaultMinter.js";
-export { DefaultCapo } from "./lib/DefaultCapo.js";
-export type { DefaultCharterDatumArgs } from "./lib/DefaultCapo.js";
+export { DefaultMinter } from "./src/DefaultMinter.js";
+export { DefaultCapo } from "./src/DefaultCapo.js";
+export type { DefaultCharterDatumArgs } from "./src/DefaultCapo.js";
  
 export type {
     tokenNamesOrValuesEntry,
     InlineDatum,
     valuesEntry,
-} from "./lib/HeliosPromotedTypes.js";
+} from "./src/HeliosPromotedTypes.js";
 // export {
 //     // DatumInline,
 // } from "./HeliosPromotedTypes.js";

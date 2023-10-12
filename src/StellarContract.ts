@@ -30,6 +30,12 @@ import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer
 ) => tokenBearer | undefined) & { value: Value };
+
+/**
+ * a type for redeemer/activity-factory functions declared with @Activity.redeemer
+ *
+ * @public
+ */
 export type isActivity = {
     redeemer: UplcDataValue | UplcData;
     // | HeliosData
@@ -264,7 +270,7 @@ export class StellarContract<
         if (this._purpose) return this._purpose;
 
         const purpose = this.scriptProgram?.purpose as scriptPurpose;
-        if (!purpose) return "non-script"
+        if (!purpose) return "non-script";
         return (this._purpose = purpose as scriptPurpose);
     }
 
@@ -421,7 +427,11 @@ export class StellarContract<
                     const fieldData = nestedFieldList[i];
                     const fieldType = instanceMembers[fn];
                     // console.log(` ----- read struct field ${fn}`)
-                    const value = await this.readUplcField(fn, fieldType, fieldData);
+                    const value = await this.readUplcField(
+                        fn,
+                        fieldType,
+                        fieldData
+                    );
                     // console.log(` <----- struct field ${fn}`, value);
 
                     return [fn, value];
@@ -459,7 +469,11 @@ export class StellarContract<
                     const fieldType = instanceMembers[fn];
                     // console.log(` ----- read field ${fn}`)
 
-                    current = await this.readUplcField(fn, fieldType, uplcDataField);
+                    current = await this.readUplcField(
+                        fn,
+                        fieldType,
+                        uplcDataField
+                    );
 
                     return [fn, current];
                 })
@@ -467,39 +481,33 @@ export class StellarContract<
         );
     }
 
-    private async readUplcField(fn: string, fieldType: any, uplcDataField: any) {
+    private async readUplcField(
+        fn: string,
+        fieldType: any,
+        uplcDataField: any
+    ) {
         let value;
-        const {offChainType} = fieldType;
+        const { offChainType } = fieldType;
         const internalType = fieldType.typeDetails.internalType.type;
         if ("Struct" == internalType) {
-            value = await this.readUplcStructList(
-                fieldType,
-                uplcDataField
-            );
+            value = await this.readUplcStructList(fieldType, uplcDataField);
             // console.log(`  <-- field value`, value)
-            return value
+            return value;
         }
         try {
             value = fieldType.uplcToJs(uplcDataField);
             if (value.then) value = await value;
 
-            if ("Enum" === internalType &&
-                0 === uplcDataField.fields.length) {
+            if ("Enum" === internalType && 0 === uplcDataField.fields.length) {
                 value = Object.keys(value)[0];
             }
         } catch (e: any) {
-            if (e.message?.match(
-                /doesn't support converting from Uplc/
-            )) {
+            if (e.message?.match(/doesn't support converting from Uplc/)) {
                 try {
-                    value = await offChainType.fromUplcData(
-                        uplcDataField
-                    );
+                    value = await offChainType.fromUplcData(uplcDataField);
                     if ("some" in value) value = value.some;
                 } catch (e: any) {
-                    console.error(
-                        `datum: field ${fn}: ${e.message}`
-                    );
+                    console.error(`datum: field ${fn}: ${e.message}`);
                     // console.log({outputTypes, fieldNames, offChainTypes, inputTypes, heliosTypes, thisDatumType});
                     debugger;
                     throw e;
@@ -563,9 +571,7 @@ export class StellarContract<
         return v;
     }
 
-    mkTokenPredicate(
-        val: Value
-    ): tokenPredicate<any>;
+    mkTokenPredicate(val: Value): tokenPredicate<any>;
     mkTokenPredicate(
         mph: MintingPolicyHash,
         tokenName: string,
@@ -575,13 +581,13 @@ export class StellarContract<
         vOrMph: AssetClass,
         quantity?: bigint
     ): tokenPredicate<any>;
-     mkTokenPredicate(
+    mkTokenPredicate(
         specifier: Value | MintingPolicyHash | AssetClass,
         quantOrTokenName?: string | bigint,
         quantity?: bigint
     ): tokenPredicate<any> {
         let v: Value;
-        let mph : MintingPolicyHash;
+        let mph: MintingPolicyHash;
         let tokenName: string;
         //!!! todo: support (AssetClass, quantity) input form
         if (!specifier)
@@ -590,13 +596,16 @@ export class StellarContract<
             );
         const predicate = _tokenPredicate.bind(this) as tokenPredicate<any>;
 
-        const isValue = (specifier instanceof Value);
+        const isValue = specifier instanceof Value;
         if (isValue) {
             v = predicate.value = specifier;
             return predicate;
         } else if (specifier instanceof MintingPolicyHash) {
             mph = specifier;
-            if ("string" !== typeof quantOrTokenName) throw new Error(`with minting policy hash, token-name must be a string (or ByteArray support is TODO)`)
+            if ("string" !== typeof quantOrTokenName)
+                throw new Error(
+                    `with minting policy hash, token-name must be a string (or ByteArray support is TODO)`
+                );
             tokenName = quantOrTokenName;
             quantity = quantity || 1n;
 
@@ -605,12 +614,19 @@ export class StellarContract<
         } else if (specifier instanceof AssetClass) {
             mph = specifier.mintingPolicyHash;
             if (!quantOrTokenName) quantOrTokenName = 1n;
-            if ("bigint" !== typeof quantOrTokenName) throw new Error(`with AssetClass, the second arg must be a bigint like 3n, or omitted`)
-            quantity = quantOrTokenName
+            if ("bigint" !== typeof quantOrTokenName)
+                throw new Error(
+                    `with AssetClass, the second arg must be a bigint like 3n, or omitted`
+                );
+            quantity = quantOrTokenName;
 
-            v = predicate.value = new Value(0n,[ [ specifier, quantity]])
+            v = predicate.value = new Value(0n, [[specifier, quantity]]);
             return predicate;
-        } else { throw new Error(`wrong token specifier (need Value, MPH+tokenName, or AssetClass`); }
+        } else {
+            throw new Error(
+                `wrong token specifier (need Value, MPH+tokenName, or AssetClass`
+            );
+        }
 
         function _tokenPredicate<tokenBearer extends canHaveToken>(
             this: StellarContract<ConfigType>,
@@ -925,7 +941,7 @@ export class StellarContract<
         return [];
     }
 
-    loadProgramScript(params: ConfigType) : Program | null {
+    loadProgramScript(params: ConfigType): Program | null {
         const src = this.contractSource();
         const modules = this.importModules();
 
@@ -939,8 +955,7 @@ export class StellarContract<
             // const t = new Date().getTime();
             if (simplify) {
                 console.warn(
-                    `Loading optimized contract code for ` +
-                        script.name
+                    `Loading optimized contract code for ` + script.name
                 );
             }
 
@@ -960,21 +975,22 @@ export class StellarContract<
             return script;
         } catch (e: any) {
             if (e.message.match(/invalid parameter name/)) {
-                throw new Error(e.message + 
-                    `\n   ... this typically occurs when your StellarContract class (${this.constructor.name})`+ 
-                    "\n   ... can be missing a getContractScriptParams() method "+
-                    "\n   ... to map from the configured settings to contract parameters"
+                throw new Error(
+                    e.message +
+                        `\n   ... this typically occurs when your StellarContract class (${this.constructor.name})` +
+                        "\n   ... can be missing a getContractScriptParams() method " +
+                        "\n   ... to map from the configured settings to contract parameters"
                 );
             }
             if (!e.src) {
                 console.error(
                     `unexpected error while compiling helios program (or its imported module) \n` +
-                    `> ${e.message}\n`+
+                        `> ${e.message}\n` +
                         `Suggested: connect with debugger (we provided a debugging point already)\n` +
                         `  ... and use 'break on caught exceptions' to analyze the error \n` +
                         `This likely indicates a problem in Helios' error reporting - \n` +
-                        `   ... please provide a minimal reproducer as an issue report for repair!\n\n`
-                        + e.stack.split("\n").slice(1).join("\n")
+                        `   ... please provide a minimal reproducer as an issue report for repair!\n\n` +
+                        e.stack.split("\n").slice(1).join("\n")
                 );
                 try {
                     debugger;

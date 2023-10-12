@@ -9,7 +9,7 @@ import {
     ADA,
     StellarTestContext,
     addTestContext,
-} from "../lib/testing";
+} from "../src/testing";
 import { CustomCapoTestHelper } from "./customizing/CustomCapoTestHelper";
 
 
