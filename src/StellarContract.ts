@@ -265,6 +265,7 @@ export class StellarContract<
     get datumType() {
         return this.scriptProgram?.types.Datum;
     }
+    /* @private */
     _purpose?: scriptPurpose;
     get purpose() {
         if (this._purpose) return this._purpose;
@@ -767,6 +768,7 @@ export class StellarContract<
         return found;
     }
 
+    /* @private */
     protected _utxoSortSmallerAndPureADA(
         { free: free1, minAdaAmount: r1 }: utxoInfo,
         { free: free2, minAdaAmount: r2 }: utxoInfo
@@ -786,15 +788,19 @@ export class StellarContract<
         return 0;
     }
 
+    /* @private */
     protected _utxoIsSufficient({ sufficient }: utxoInfo) {
         return !!sufficient;
     }
+    /* @private */
     protected _utxoIsPureADA({ u }: utxoInfo) {
         return u.value.assets.isZero() ? u : undefined;
     }
+    /* @private */
     protected _infoBackToUtxo({ u }: utxoInfo) {
         return u;
     }
+    /* @private */
     protected _mkUtxoSortInfo(min: bigint, max?: bigint) {
         return (u: TxInput): utxoInfo => {
             const minAdaAmount = u.value.assets.isZero()
@@ -807,6 +813,7 @@ export class StellarContract<
             return t;
         };
     }
+    /* @private */
     protected _utxoCountAdaOnly(c: number, { minAdaAmount }: utxoInfo): number {
         return c + (minAdaAmount ? 0 : 1);
     }
