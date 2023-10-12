@@ -61,6 +61,31 @@ declare type canSkipSetup = {
     skipSetup?: true;
 };
 
+/**
+ * Base class for the leader of a set of contracts
+ * @remarks
+ *
+ * A Capo contract provides a central contract address that can act as a treasury or data registry;
+ * it can mint tokens using its connected minting-policy, and it can delegate policies to other contract
+ * scripts.  Subclasses of Capo can use these capabilities in custom ways for strong flexibility.
+ *
+ * Any Capo contract can (and must) define roles() to establish collaborating scripts; these are used for
+ * separating granular responsbilities for different functional purposes within your (on-chain and off-chain)
+ * application; this approach enables delegates to use any one of multiple strategies with different
+ * functional logic to serve in any given role, thus providing flexibility and extensibility.
+ *
+ * The delegation pattern uses UUTs, which are non-fungible / unique utility tokens.  See DefaultCapo for more about them.
+ *
+ * **Capo is a foundational class**; you should consider using DefaultCapo as a starting point, unless its govAuthority
+ * role conflicts with your goals.
+ *
+ * Inherits from: {@link StellarContract}\<`configType`\> (is this a redundant doc entry?) .
+ *
+ * @typeParam minterType - allows setting a different contract (script & off-chain class) for the minting policy
+ * @typeParam charterDatumType - specifies schema for datum information held in the Capo's primary or "charter" UTXO
+ * @typeParam configType - specifies schema for details required to pre-configure the contract suite, or to reproduce it in a specific application instance.
+ * @public
+ */
 export declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter, charterDatumType extends anyDatumArgs = anyDatumArgs, configType extends CapoBaseConfig = CapoBaseConfig> extends StellarContract<configType> implements hasUutCreator {
     abstract get roles(): RoleMap;
     constructor(args: StellarConstructorArgs<StellarContract<CapoBaseConfig>>);
@@ -132,6 +157,47 @@ export declare function datum(proto: any, thingName: any, descriptor: any): any;
 
 declare const DatumInline: typeof Datum.inline;
 
+/**
+ * Base class for leader contracts, with predefined roles for delegating governance authority and minting policies
+ * @remarks
+ *
+ *  * A Capo contract provides a central contract address that can act as a treasury or data registry;
+ * it can mint tokens using its connected minting-policy, and it can delegate policies to other contract
+ * scripts.  Subclasses of Capo can use these capabilities in custom ways for strong flexibility.
+
+ * Subclass and customize DefaultCapo's type-parameters if you need to customize further.
+ *
+ * Any Capo contract can (and must) define roles() to establish collaborating scripts; these are used for
+ * separating granular responsbilities for different functional purposes within your (on-chain and off-chain)
+ * application; this approach enables delegates to use any one of multiple strategies with different
+ * functional logic to serve in any given role, thus providing flexibility and extensibility.
+ *
+ * DefaultCapo provides roles for govAuthority and mintDelegate, and methods to facilitate
+ * the lifecycle of charter creation & update.
+ *
+ * **Example: Multisig authority delegation** - a Capo contract would get much more complicated if it
+ * contained multisig logic.  Instead, the governance authority for the Capo can be delegated to a
+ * standalone multi-sig contract, which can contain all (and only) the multi-sig logic.  Separating the
+ * responsibilities makes each part simpler, easing the process of ensuring each part is doing its job
+ * perfectly :pray:
+ *
+ * A Capo subclass can decorate an existing entry from `super.roles()` with additional strategy entries, or can add
+ * extra roles useful in the operation of its application.
+ *
+ * The Capo base class provides utilities for creating and using UUT's, or **unique utility tokens**,
+ * which are non-fungible assets that can form a positive linkage between the Capo (which should
+ * normally retain a reference to that UUT) and any delegate; that delegate is most commonly another
+ * contract script also referenced within the roles() definition, with a selected strategy.
+ *
+ * Architecturally, UUTs provide a simple and unique handle for the Capo to use as a  **required transaction element**
+ * in key operational activities (like updating the charter details); so that the delegate holding the UUT is entrusted to
+ * approved the UUT's inclusion in a transaction, with all the policy-enforcement implicated on the other end of the
+ * delegation.
+ *
+ *
+ * See the {@link Capo | Capo base class} and {@link StellarContract} for addition context.
+ * @public
+ */
 export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs, configType extends CapoBaseConfig = CapoBaseConfig> extends Capo<MinterType, CDT, configType> {
     contractSource(): any;
     get roles(): RoleMap;
@@ -143,6 +209,13 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
     requirements(): ReqtsMap<"the trustee group can be changed" | "positively governs all administrative actions" | "has a unique, permanent charter token" | "has a unique, permanent treasury address" | "the trustee threshold is enforced on all administrative actions" | "the charter token is always kept in the contract" | "can mint other tokens, on the authority of the Charter token" | "has a singleton minting policy" | "foo">;
 }
 
+/**
+ * Schema for Charter Datum, which allows state to be stored in the Leader contract
+ * together with it's primary or "charter" utxo.
+ *
+ * @typeParam CT - allows type-safe partial-`config`uration details for the charter's authority-delegate
+ *    to be to be stored within the datum.
+ **/
 export declare type DefaultCharterDatumArgs<CT extends paramsBase = CapoBaseConfig> = {
     govAuthorityLink: RelativeDelegateLink<CT>;
 };
@@ -182,6 +255,11 @@ declare type ErrorMap = Record<string, string[]>;
 
 export declare function errorMapAsString(em: ErrorMap, prefix?: string): string;
 
+/**
+ * used for transaction-context state having specific uut-purposes
+ *
+ * @public
+ */
 export declare type hasAllUuts<uutEntries extends string> = {
     uuts: uutPurposeMap<uutEntries>;
 };
@@ -192,12 +270,18 @@ declare type hasDelegateProp = {
 
 declare type hasSelectedDelegates = StellarTxnContext<hasDelegateProp>;
 
-export declare type hasSomeUuts<uutEntries extends string> = {
-    uuts: Partial<uutPurposeMap<uutEntries>>;
-};
-
+/**
+ * A txn context having specifically-purposed UUTs in its state
+ *
+ * @public
+ */
 export declare type hasUutContext<uutEntries extends string> = StellarTxnContext<hasAllUuts<uutEntries>>;
 
+/**
+ * the uut-factory interface
+ *
+ * @public
+ */
 declare interface hasUutCreator {
     txnCreatingUuts<const purposes extends string, TCX extends StellarTxnContext<any>>(tcx: TCX, uutPurposes: purposes[], seedUtxo?: TxInput): Promise<TCX & hasUutContext<purposes>>;
 }
@@ -225,13 +309,18 @@ declare type helperSubclass<SC extends StellarContract<any>, P extends paramsBas
 
 export declare type InlineDatum = ReturnType<typeof DatumInline>;
 
+/**
+ * a type for redeemer/activity-factory functions declared with @Activity.redeemer
+ *
+ * @public
+ */
 export declare type isActivity = {
     redeemer: UplcDataValue | UplcData;
 };
 
 export declare function lovelaceToAda(l: bigint | number): string;
 
-export declare type MintCharterRedeemerArgs<T = {}> = T & {
+declare type MintCharterRedeemerArgs<T = {}> = T & {
     owner: Address;
 };
 
@@ -240,6 +329,11 @@ declare type MintDelegateArgs = {
     uut: AssetClass;
 };
 
+/**
+ * charter-minting interface
+ *
+ * @public
+ */
 declare interface MinterBaseMethods extends hasUutCreator {
     get mintingPolicyHash(): MintingPolicyHash;
     txnMintingCharter(tcx: StellarTxnContext<any>, charterMintArgs: {
@@ -248,6 +342,11 @@ declare interface MinterBaseMethods extends hasUutCreator {
     }, tVal: valuesEntry): Promise<StellarTxnContext<any>>;
 }
 
+/**
+ * UUT minting should always use these settings to guard for uniqueness
+ *
+ * @public
+ */
 export declare type MintUutRedeemerArgs = {
     seedTxn: TxId;
     seedIndex: bigint | number;
@@ -497,6 +596,11 @@ declare class UutName {
 
 declare const _uutName: unique symbol;
 
+/**
+ * strongly-typed map of purpose-names to Uut objects
+ *
+ * @public
+ */
 export declare type uutPurposeMap<unionPurpose extends string> = {
     [purpose in unionPurpose]: UutName;
 };

@@ -3266,10 +3266,7 @@ class DefaultCapo extends Capo {
     return Datum.inline(t._toUplcData());
   }
   async txnAddCharterAuthz(tcx, datum2) {
-    const charterDatum = await this.readDatum(
-      "CharterToken",
-      datum2
-    );
+    const charterDatum = await this.readDatum("CharterToken", datum2);
     console.log("add charter authz", charterDatum);
     charterDatum.govAuthorityLink;
     debugger;
@@ -3304,10 +3301,7 @@ class DefaultCapo extends Capo {
         tcx,
         "govAuthority"
       );
-      this.txnMustConfigureSelectedDelegate(
-        tcx,
-        "govAuthority"
-      );
+      this.txnMustConfigureSelectedDelegate(tcx, "govAuthority");
       const govAuthorityLink = {
         strategyName,
         uutName: authZor.name

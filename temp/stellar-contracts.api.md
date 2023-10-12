@@ -75,7 +75,7 @@ export class BasicMintDelegate extends StellarContract<MintDelegateArgs> {
 // Warning: (ae-forgotten-export) The symbol "CapoBaseConfig" needs to be exported by the entry point index.d.ts
 // Warning: (ae-forgotten-export) The symbol "hasUutCreator" needs to be exported by the entry point index.d.ts
 //
-// @public (undocumented)
+// @public
 export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter, charterDatumType extends anyDatumArgs = anyDatumArgs, configType extends CapoBaseConfig = CapoBaseConfig> extends StellarContract<configType> implements hasUutCreator {
     // Warning: (ae-forgotten-export) The symbol "StellarConstructorArgs" needs to be exported by the entry point index.d.ts
     constructor(args: StellarConstructorArgs<StellarContract<CapoBaseConfig>>);
@@ -194,7 +194,7 @@ export abstract class CapoTestHelper<SC extends Capo<any>, CDT extends anyDatumA
 // @public (undocumented)
 export function datum(proto: any, thingName: any, descriptor: any): any;
 
-// @public (undocumented)
+// @public
 export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs, configType extends CapoBaseConfig = CapoBaseConfig> extends Capo<MinterType, CDT, configType> {
     // (undocumented)
     contractSource(): any;
@@ -216,7 +216,7 @@ export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT e
     updatingCharter(): isActivity;
 }
 
-// @public (undocumented)
+// @public
 export type DefaultCharterDatumArgs<CT extends paramsBase = CapoBaseConfig> = {
     govAuthorityLink: RelativeDelegateLink<CT>;
 };
@@ -231,6 +231,8 @@ export class DefaultMinter extends StellarContract<SeedTxnParams> implements Min
     contractSource(): any;
     // (undocumented)
     importModules(): HeliosModuleSrc[];
+    // Warning: (ae-forgotten-export) The symbol "MintCharterRedeemerArgs" needs to be exported by the entry point index.d.ts
+    //
     // (undocumented)
     protected mintingCharter({ owner, }: MintCharterRedeemerArgs): isActivity;
     // (undocumented)
@@ -257,17 +259,12 @@ export class DefaultMinter extends StellarContract<SeedTxnParams> implements Min
 // @public (undocumented)
 export function errorMapAsString(em: ErrorMap, prefix?: string): string;
 
-// @public (undocumented)
+// @public
 export type hasAllUuts<uutEntries extends string> = {
     uuts: uutPurposeMap<uutEntries>;
 };
 
-// @public (undocumented)
-export type hasSomeUuts<uutEntries extends string> = {
-    uuts: Partial<uutPurposeMap<uutEntries>>;
-};
-
-// @public (undocumented)
+// @public
 export type hasUutContext<uutEntries extends string> = StellarTxnContext<hasAllUuts<uutEntries>>;
 
 // @public (undocumented)
@@ -296,7 +293,7 @@ export function heliosRollupLoader(opts?: {
 // @public (undocumented)
 export type InlineDatum = ReturnType<typeof DatumInline>;
 
-// @public (undocumented)
+// @public
 export type isActivity = {
     redeemer: UplcDataValue | UplcData;
 };
@@ -304,12 +301,7 @@ export type isActivity = {
 // @public (undocumented)
 export function lovelaceToAda(l: bigint | number): string;
 
-// @public (undocumented)
-export type MintCharterRedeemerArgs<T = {}> = T & {
-    owner: Address;
-};
-
-// @public (undocumented)
+// @public
 export type MintUutRedeemerArgs = {
     seedTxn: TxId;
     seedIndex: bigint | number;
@@ -619,7 +611,7 @@ export type utxoPredicate = ((u: TxInput) => TxInput | undefined) | ((u: TxInput
 // @public (undocumented)
 export function utxosAsString(utxos: TxInput[], joiner?: string): string;
 
-// @public (undocumented)
+// @public
 export type uutPurposeMap<unionPurpose extends string> = {
     [purpose in unionPurpose]: UutName;
 };

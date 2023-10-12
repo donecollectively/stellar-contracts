@@ -20,7 +20,7 @@ export {
  } from "./src/Capo.js";
 export type {
     MintUutRedeemerArgs,
-    MintCharterRedeemerArgs,
+    // MintCharterRedeemerArgs,
     uutPurposeMap,
     hasAllUuts,
     hasUutContext,

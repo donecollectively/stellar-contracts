@@ -818,7 +818,7 @@
         {
           "kind": "Class",
           "canonicalReference": "@donecollectively/stellar-contracts!Capo:class",
-          "docComment": "",
+          "docComment": "/**\n * Base class for the leader of a set of contracts\n *\n * @remarks\n *\n * A Capo contract provides a central contract address that can act as a treasury or data registry; it can mint tokens using its connected minting-policy, and it can delegate policies to other contract scripts. Subclasses of Capo can use these capabilities in custom ways for strong flexibility.\n *\n * Any Capo contract can (and must) define roles() to establish collaborating scripts; these are used for separating granular responsbilities for different functional purposes within your (on-chain and off-chain) application; this approach enables delegates to use any one of multiple strategies with different functional logic to serve in any given role, thus providing flexibility and extensibility.\n *\n * The delegation pattern uses UUTs, which are non-fungible / unique utility tokens. See DefaultCapo for more about them.\n *\n * **Capo is a foundational class**; you should consider using DefaultCapo as a starting point, unless its govAuthority role conflicts with your goals.\n *\n * Inherits from: {@link StellarContract}\\<`configType`\\> (is this a redundant doc entry?) .\n *\n * @typeParam minterType - allows setting a different contract (script & off-chain class) for the minting policy\n *\n * @typeParam charterDatumType - specifies schema for datum information held in the Capo's primary or \"charter\" UTXO\n *\n * @typeParam configType - specifies schema for details required to pre-configure the contract suite, or to reproduce it in a specific application instance.\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -3800,7 +3800,7 @@
         {
           "kind": "Class",
           "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo:class",
-          "docComment": "",
+          "docComment": "/**\n * Base class for leader contracts, with predefined roles for delegating governance authority and minting policies\n *\n * @remarks\n *\n * * A Capo contract provides a central contract address that can act as a treasury or data registry; it can mint tokens using its connected minting-policy, and it can delegate policies to other contract scripts. Subclasses of Capo can use these capabilities in custom ways for strong flexibility.\n *\n * Subclass and customize DefaultCapo's type-parameters if you need to customize further.\n *\n * Any Capo contract can (and must) define roles() to establish collaborating scripts; these are used for separating granular responsbilities for different functional purposes within your (on-chain and off-chain) application; this approach enables delegates to use any one of multiple strategies with different functional logic to serve in any given role, thus providing flexibility and extensibility.\n *\n * DefaultCapo provides roles for govAuthority and mintDelegate, and methods to facilitate the lifecycle of charter creation & update.\n *\n * **Example: Multisig authority delegation** - a Capo contract would get much more complicated if it contained multisig logic. Instead, the governance authority for the Capo can be delegated to a standalone multi-sig contract, which can contain all (and only) the multi-sig logic. Separating the responsibilities makes each part simpler, easing the process of ensuring each part is doing its job perfectly :pray:\n *\n * A Capo subclass can decorate an existing entry from `super.roles()` with additional strategy entries, or can add extra roles useful in the operation of its application.\n *\n * The Capo base class provides utilities for creating and using UUT's, or **unique utility tokens**, which are non-fungible assets that can form a positive linkage between the Capo (which should normally retain a reference to that UUT) and any delegate; that delegate is most commonly another contract script also referenced within the roles() definition, with a selected strategy.\n *\n * Architecturally, UUTs provide a simple and unique handle for the Capo to use as a **required transaction element** in key operational activities (like updating the charter details); so that the delegate holding the UUT is entrusted to approved the UUT's inclusion in a transaction, with all the policy-enforcement implicated on the other end of the delegation.\n *\n * See the {@link Capo | Capo base class} and {@link StellarContract} for addition context.\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -4351,7 +4351,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!DefaultCharterDatumArgs:type",
-          "docComment": "",
+          "docComment": "/**\n * Schema for Charter Datum, which allows state to be stored in the Leader contract together with it's primary or \"charter\" utxo.\n *\n * @typeParam CT - allows type-safe partial-`config`uration details for the charter's authority-delegate to be to be stored within the datum.\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -4602,7 +4602,7 @@
                 {
                   "kind": "Reference",
                   "text": "MintCharterRedeemerArgs",
-                  "canonicalReference": "@donecollectively/stellar-contracts!MintCharterRedeemerArgs:type"
+                  "canonicalReference": "@donecollectively/stellar-contracts!~MintCharterRedeemerArgs:type"
                 },
                 {
                   "kind": "Content",
@@ -5330,7 +5330,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!hasAllUuts:type",
-          "docComment": "",
+          "docComment": "/**\n * used for transaction-context state having specific uut-purposes\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -5385,73 +5385,8 @@
         },
         {
           "kind": "TypeAlias",
-          "canonicalReference": "@donecollectively/stellar-contracts!hasSomeUuts:type",
-          "docComment": "",
-          "excerptTokens": [
-            {
-              "kind": "Content",
-              "text": "export type hasSomeUuts<uutEntries extends "
-            },
-            {
-              "kind": "Content",
-              "text": "string"
-            },
-            {
-              "kind": "Content",
-              "text": "> = "
-            },
-            {
-              "kind": "Content",
-              "text": "{\n    uuts: "
-            },
-            {
-              "kind": "Reference",
-              "text": "Partial",
-              "canonicalReference": "!Partial:type"
-            },
-            {
-              "kind": "Content",
-              "text": "<"
-            },
-            {
-              "kind": "Reference",
-              "text": "uutPurposeMap",
-              "canonicalReference": "@donecollectively/stellar-contracts!uutPurposeMap:type"
-            },
-            {
-              "kind": "Content",
-              "text": "<uutEntries>>;\n}"
-            },
-            {
-              "kind": "Content",
-              "text": ";"
-            }
-          ],
-          "fileUrlPath": "src/Capo.ts",
-          "releaseTag": "Public",
-          "name": "hasSomeUuts",
-          "typeParameters": [
-            {
-              "typeParameterName": "uutEntries",
-              "constraintTokenRange": {
-                "startIndex": 1,
-                "endIndex": 2
-              },
-              "defaultTypeTokenRange": {
-                "startIndex": 0,
-                "endIndex": 0
-              }
-            }
-          ],
-          "typeTokenRange": {
-            "startIndex": 3,
-            "endIndex": 8
-          }
-        },
-        {
-          "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!hasUutContext:type",
-          "docComment": "",
+          "docComment": "/**\n * A txn context having specifically-purposed UUTs in its state\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -5632,7 +5567,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!isActivity:type",
-          "docComment": "",
+          "docComment": "/**\n * a type for redeemer/activity-factory functions declared with @Activity.redeemer\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -5720,64 +5655,8 @@
         },
         {
           "kind": "TypeAlias",
-          "canonicalReference": "@donecollectively/stellar-contracts!MintCharterRedeemerArgs:type",
-          "docComment": "",
-          "excerptTokens": [
-            {
-              "kind": "Content",
-              "text": "export type MintCharterRedeemerArgs<T = "
-            },
-            {
-              "kind": "Content",
-              "text": "{}"
-            },
-            {
-              "kind": "Content",
-              "text": "> = "
-            },
-            {
-              "kind": "Content",
-              "text": "T & {\n    owner: "
-            },
-            {
-              "kind": "Reference",
-              "text": "Address",
-              "canonicalReference": "@hyperionbt/helios!Address:class"
-            },
-            {
-              "kind": "Content",
-              "text": ";\n}"
-            },
-            {
-              "kind": "Content",
-              "text": ";"
-            }
-          ],
-          "fileUrlPath": "src/Capo.ts",
-          "releaseTag": "Public",
-          "name": "MintCharterRedeemerArgs",
-          "typeParameters": [
-            {
-              "typeParameterName": "T",
-              "constraintTokenRange": {
-                "startIndex": 0,
-                "endIndex": 0
-              },
-              "defaultTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 2
-              }
-            }
-          ],
-          "typeTokenRange": {
-            "startIndex": 3,
-            "endIndex": 6
-          }
-        },
-        {
-          "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!MintUutRedeemerArgs:type",
-          "docComment": "",
+          "docComment": "/**\n * UUT minting should always use these settings to guard for uniqueness\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -12672,7 +12551,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!uutPurposeMap:type",
-          "docComment": "",
+          "docComment": "/**\n * strongly-typed map of purpose-names to Uut objects\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",

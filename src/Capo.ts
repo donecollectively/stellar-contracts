@@ -63,13 +63,18 @@ export type uutPurposeMap<unionPurpose extends string> = {
 
 /**
  * used for transaction-context state having specific uut-purposes
- *
+ * 
  * @public
  */
 export type hasAllUuts<uutEntries extends string> = {
     uuts: uutPurposeMap<uutEntries>;
 };
 
+/**
+ * the uut-factory interface
+ * 
+ * @public
+ */
 interface hasUutCreator {
     txnCreatingUuts<
         const purposes extends string,
@@ -81,19 +86,30 @@ interface hasUutCreator {
     ): Promise<TCX & hasUutContext<purposes>>;
 }
 
-export type MintCharterRedeemerArgs<T = {}> = T & {
-    owner: Address;
-};
-
+/**
+ * UUT minting should always use these settings to guard for uniqueness
+ * 
+ * @public
+ */
 export type MintUutRedeemerArgs = {
     seedTxn: TxId;
     seedIndex: bigint | number;
     purposes: string[];
 };
+/**
+ * A txn context having specifically-purposed UUTs in its state
+ * 
+ * @public
+ */
 export type hasUutContext<uutEntries extends string> = StellarTxnContext<
     hasAllUuts<uutEntries>
 >;
 
+/**
+ * charter-minting interface
+ * 
+ * @public
+ */
 export interface MinterBaseMethods extends hasUutCreator {
     get mintingPolicyHash(): MintingPolicyHash;
     txnMintingCharter(
@@ -123,6 +139,31 @@ type hasDelegateProp = {
     delegates: SelectedDelegates;
 };
 
+/**
+ * Base class for the leader of a set of contracts
+ * @remarks
+ * 
+ * A Capo contract provides a central contract address that can act as a treasury or data registry;
+ * it can mint tokens using its connected minting-policy, and it can delegate policies to other contract 
+ * scripts.  Subclasses of Capo can use these capabilities in custom ways for strong flexibility.
+ * 
+ * Any Capo contract can (and must) define roles() to establish collaborating scripts; these are used for 
+ * separating granular responsbilities for different functional purposes within your (on-chain and off-chain) 
+ * application; this approach enables delegates to use any one of multiple strategies with different
+ * functional logic to serve in any given role, thus providing flexibility and extensibility.
+ * 
+ * The delegation pattern uses UUTs, which are non-fungible / unique utility tokens.  See DefaultCapo for more about them.
+ * 
+ * **Capo is a foundational class**; you should consider using DefaultCapo as a starting point, unless its govAuthority 
+ * role conflicts with your goals.
+ *
+ * Inherits from: {@link StellarContract}\<`configType`\> (is this a redundant doc entry?) .
+ * 
+ * @typeParam minterType - allows setting a different contract (script & off-chain class) for the minting policy
+ * @typeParam charterDatumType - specifies schema for datum information held in the Capo's primary or "charter" UTXO
+ * @typeParam configType - specifies schema for details required to pre-configure the contract suite, or to reproduce it in a specific application instance.
+ * @public
+ */
 export abstract class Capo<
         minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter,
         charterDatumType extends anyDatumArgs = anyDatumArgs,

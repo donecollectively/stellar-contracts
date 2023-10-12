@@ -47,21 +47,32 @@ import {
     VariantMap,
 } from "./delegation/RolesAndDelegates.js";
 import { BasicMintDelegate } from "./delegation/BasicMintDelegate.js";
-import { AuthorityPolicy, AuthorityPolicySettings } from "./authority/AuthorityPolicy.js";
+import {
+    AuthorityPolicy,
+    AuthorityPolicySettings,
+} from "./authority/AuthorityPolicy.js";
 import { AddressAuthorityPolicy } from "./authority/AddressAuthorityPolicy.js";
 import { DelegateDetailSnapshot } from "./delegation/RolesAndDelegates.js";
 import { txAsString } from "./diagnostics.js";
 import { MultisigAuthorityPolicy } from "./authority/MultisigAuthorityPolicy.js";
 import { hasReqts } from "./Requirements.js";
 
-export type DefaultCharterDatumArgs<CT extends configBase=CapoBaseConfig> = {
+/**
+ * Schema for Charter Datum, which allows state to be stored in the Leader contract
+ * together with it's primary or "charter" utxo.
+ *
+ * @typeParam CT - allows type-safe partial-`config`uration details for the charter's authority-delegate
+ *    to be to be stored within the datum.
+ **/
+export type DefaultCharterDatumArgs<CT extends configBase = CapoBaseConfig> = {
     govAuthorityLink: RelativeDelegateLink<CT>;
 };
 
 export type PartialDefaultCharterDatumArgs<
     T extends DefaultCharterDatumArgs<any> = DefaultCharterDatumArgs,
-    CT extends configBase = 
-        T extends DefaultCharterDatumArgs<infer iCT> ? iCT : never
+    CT extends configBase = T extends DefaultCharterDatumArgs<infer iCT>
+        ? iCT
+        : never
 > = Partial<Omit<T, "govAuthorityLink">> & {
     govAuthorityLink: Required<Pick<RelativeDelegateLink<CT>, "strategyName">> &
         Partial<RelativeDelegateLink<CT>>;
@@ -72,6 +83,48 @@ export type HeldAssetsArgs = {
     purposeId?: string;
     purpose?: string;
 };
+
+/**
+ * Base class for leader contracts, with predefined roles for delegating governance authority and minting policies
+ * @remarks
+ * 
+ *  * A Capo contract provides a central contract address that can act as a treasury or data registry;
+ * it can mint tokens using its connected minting-policy, and it can delegate policies to other contract 
+ * scripts.  Subclasses of Capo can use these capabilities in custom ways for strong flexibility.
+
+ * Subclass and customize DefaultCapo's type-parameters if you need to customize further.
+ * 
+ * Any Capo contract can (and must) define roles() to establish collaborating scripts; these are used for 
+ * separating granular responsbilities for different functional purposes within your (on-chain and off-chain) 
+ * application; this approach enables delegates to use any one of multiple strategies with different
+ * functional logic to serve in any given role, thus providing flexibility and extensibility.
+ *
+ * DefaultCapo provides roles for govAuthority and mintDelegate, and methods to facilitate 
+ * the lifecycle of charter creation & update. 
+ * 
+ * **Example: Multisig authority delegation** - a Capo contract would get much more complicated if it 
+ * contained multisig logic.  Instead, the governance authority for the Capo can be delegated to a 
+ * standalone multi-sig contract, which can contain all (and only) the multi-sig logic.  Separating the 
+ * responsibilities makes each part simpler, easing the process of ensuring each part is doing its job 
+ * perfectly :pray:
+ * 
+ * A Capo subclass can decorate an existing entry from `super.roles()` with additional strategy entries, or can add 
+ * extra roles useful in the operation of its application.
+ * 
+ * The Capo base class provides utilities for creating and using UUT's, or **unique utility tokens**, 
+ * which are non-fungible assets that can form a positive linkage between the Capo (which should 
+ * normally retain a reference to that UUT) and any delegate; that delegate is most commonly another 
+ * contract script also referenced within the roles() definition, with a selected strategy.  
+ * 
+ * Architecturally, UUTs provide a simple and unique handle for the Capo to use as a  **required transaction element** 
+ * in key operational activities (like updating the charter details); so that the delegate holding the UUT is entrusted to
+ * approved the UUT's inclusion in a transaction, with all the policy-enforcement implicated on the other end of the 
+ * delegation.
+ * 
+ * 
+ * See the {@link Capo | Capo base class} and {@link StellarContract} for addition context.
+ * @public
+ */
 
 export class DefaultCapo<
     MinterType extends DefaultMinter = DefaultMinter,
@@ -95,7 +148,7 @@ export class DefaultCapo<
                         uut: PARAM_IMPLIED,
                     },
                     validateConfig(args): strategyValidation {
-                        const {rev, uut } = args;
+                        const { rev, uut } = args;
                         const errors: ErrorMap = {};
                         if (!rev) errors.rev = ["required"];
                         if (!uut) errors.uut = ["required"];
@@ -110,7 +163,7 @@ export class DefaultCapo<
                         uut: PARAM_IMPLIED,
                     },
                     validateConfig(args): strategyValidation {
-                        const {rev, uut } = args;
+                        const { rev, uut } = args;
                         const errors: ErrorMap = {};
                         if (!rev) errors.rev = ["required"];
                         if (!uut) errors.uut = ["required"];
@@ -118,7 +171,7 @@ export class DefaultCapo<
 
                         return undefined;
                     },
-                }
+                },
             }),
             mintDelegate: variantMap<BasicMintDelegate>({
                 default: {
@@ -136,7 +189,7 @@ export class DefaultCapo<
     mkDatumCharterToken(args: CDT): InlineDatum {
         //!!! todo: make it possible to type these datum helpers more strongly
 
-        console.log("--> mkDatumCharter", args)
+        console.log("--> mkDatumCharter", args);
         const {
             Datum: { CharterToken: hlCharterToken },
             RelativeDelegateLink: hlRelativeDelegateLink,
@@ -163,21 +216,17 @@ export class DefaultCapo<
     }
 
     async txnAddCharterAuthz(tcx: StellarTxnContext, datum: InlineDatum) {
-        const charterDatum =
-            await this.readDatum<DefaultCharterDatumArgs<AuthorityPolicySettings>>(
-                "CharterToken", datum
-            );
+        const charterDatum = await this.readDatum<
+            DefaultCharterDatumArgs<AuthorityPolicySettings>
+        >("CharterToken", datum);
 
-            console.log("add charter authz", charterDatum);
-        const {
-            strategyName,
-            uutName,
-            addressesHint,
-            reqdAddress
-        } = charterDatum.govAuthorityLink;
-    debugger
+        console.log("add charter authz", charterDatum);
+        const { strategyName, uutName, addressesHint, reqdAddress } =
+            charterDatum.govAuthorityLink;
+        debugger;
         const authZor = await this.connectDelegateWith<AuthorityPolicy>(
-            "govAuthority", charterDatum.govAuthorityLink
+            "govAuthority",
+            charterDatum.govAuthorityLink
         );
         const authZorUtxo = await authZor.txnMustFindAuthorityToken(tcx);
         authZor.txnGrantAuthority(tcx, authZorUtxo);
@@ -205,7 +254,7 @@ export class DefaultCapo<
                 initialTcx,
                 ["authZor"],
                 seedUtxo,
-                "govAuthority",
+                "govAuthority"
             );
 
             // console.log("-> B", txAsString(tcx.tx));
@@ -216,11 +265,10 @@ export class DefaultCapo<
             );
 
             // debugger
-            const govAuthorityConfig =
-                this.txnMustConfigureSelectedDelegate<AuthorityPolicy, "govAuthority">(
-                    tcx,
-                    "govAuthority" as const,
-                );
+            const govAuthorityConfig = this.txnMustConfigureSelectedDelegate<
+                AuthorityPolicy,
+                "govAuthority"
+            >(tcx, "govAuthority" as const);
 
             const govAuthorityLink = {
                 strategyName,
@@ -424,9 +472,7 @@ export class DefaultCapo<
                 mech: [
                     "doesn't allow the charterToken to be sent without enough minSigs from the trustee list",
                 ],
-                requires: [
-                    
-                ],
+                requires: [],
             },
 
             foo: {

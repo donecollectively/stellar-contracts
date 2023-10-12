@@ -1,16 +1,10 @@
 import {
-    Program,
-    Datum,
-    TxId,
-    TxOutputId,
     Address,
     Value,
-    TxOutput,
     MintingPolicyHash,
     Assets,
     Crypto,
     TxInput,
-    ByteArrayData,
     bytesToHex,
 } from "@hyperionbt/helios";
 import {
@@ -26,11 +20,8 @@ import { CapoMintHelpers } from "./CapoMintHelpers.js";
 
 import { StellarTxnContext } from "./StellarTxnContext.js";
 import {
-    MintCharterRedeemerArgs,
     MintUutRedeemerArgs,
     MinterBaseMethods,
-    hasAllUuts,
-    hasSomeUuts,
     hasUutContext,
     uutPurposeMap,
 } from "./Capo.js";
@@ -40,6 +31,10 @@ import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";
 import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
 import { RelativeDelegateLink, UutName } from "./delegation/RolesAndDelegates.js";
 import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
+
+type MintCharterRedeemerArgs<T = {}> = T & {
+    owner: Address;
+};
 
 export class DefaultMinter
     extends StellarContract<SeedTxnParams>
