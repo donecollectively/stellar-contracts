@@ -1274,25 +1274,23 @@ declare module "lib/testing/CapoTestHelper" {
         mintCharterToken(args?: CDT): Promise<StellarTxnContext>;
     }
 }
-declare module "index" {
-    export { mkHeliosModule } from "lib/HeliosModuleSrc";
-    export type { HeliosModuleSrc } from "lib/HeliosModuleSrc";
-    export { heliosRollupLoader } from "lib/heliosRollupLoader";
-    export { assetsAsString, txAsString, utxoAsString, valueAsString, utxosAsString, txOutputAsString, txInputAsString, lovelaceToAda, errorMapAsString, } from "lib/diagnostics";
-    export { Capo, variantMap, } from "lib/Capo";
-    export type { MintUutRedeemerArgs, MintCharterRedeemerArgs, uutPurposeMap, hasSomeUuts, hasAllUuts, hasUutContext, RoleMap, strategyValidation, } from "lib/Capo";
-    export type { SeedTxnParams } from "lib/SeedTxn";
-    export { BasicMintDelegate } from "lib/delegation/BasicMintDelegate";
-    export { StellarContract, Activity, txn, partialTxn, datum, } from "lib/StellarContract";
-    export { StellarTxnContext } from "lib/StellarTxnContext";
-    export type { stellarSubclass, isActivity, utxoPredicate, anyDatumProps, configBase as paramsBase } from "lib/StellarContract";
-    export { ADA, addTestContext, } from "lib/testing/types";
-    export type { StellarTestContext } from "lib/testing/StellarTestContext";
-    export { CapoTestHelper } from "lib/testing/CapoTestHelper";
-    export { StellarTestHelper } from "lib/testing/StellarTestHelper";
-    export { DefaultMinter } from "lib/DefaultMinter";
-    export { DefaultCapo } from "lib/DefaultCapo";
-    export type { DefaultCharterDatumArgs } from "lib/DefaultCapo";
-    export type { tokenNamesOrValuesEntry, InlineDatum, valuesEntry, } from "lib/HeliosPromotedTypes";
-}
+export { mkHeliosModule } from "lib/HeliosModuleSrc";
+export type { HeliosModuleSrc } from "lib/HeliosModuleSrc";
+export { heliosRollupLoader } from "lib/heliosRollupLoader";
+export { assetsAsString, txAsString, utxoAsString, valueAsString, utxosAsString, txOutputAsString, txInputAsString, lovelaceToAda, errorMapAsString, } from "lib/diagnostics";
+export { Capo, variantMap, } from "lib/Capo";
+export type { MintUutRedeemerArgs, MintCharterRedeemerArgs, uutPurposeMap, hasSomeUuts, hasAllUuts, hasUutContext, RoleMap, strategyValidation, } from "lib/Capo";
+export type { SeedTxnParams } from "lib/SeedTxn";
+export { BasicMintDelegate } from "lib/delegation/BasicMintDelegate";
+export { StellarContract, Activity, txn, partialTxn, datum, } from "lib/StellarContract";
+export { StellarTxnContext } from "lib/StellarTxnContext";
+export type { stellarSubclass, isActivity, utxoPredicate, anyDatumProps, configBase as paramsBase } from "lib/StellarContract";
+export { ADA, addTestContext, } from "lib/testing/types";
+export type { StellarTestContext } from "lib/testing/StellarTestContext";
+export { CapoTestHelper } from "lib/testing/CapoTestHelper";
+export { StellarTestHelper } from "lib/testing/StellarTestHelper";
+export { DefaultMinter } from "lib/DefaultMinter";
+export { DefaultCapo } from "lib/DefaultCapo";
+export type { DefaultCharterDatumArgs } from "lib/DefaultCapo";
+export type { tokenNamesOrValuesEntry, InlineDatum, valuesEntry, } from "lib/HeliosPromotedTypes";
 //# sourceMappingURL=stellar-contracts.d.ts.map

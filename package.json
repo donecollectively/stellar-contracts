@@ -7,11 +7,13 @@
     "exports": {
         "default": {
             "import": "./dist/stellar-contracts.mjs",
+            "require":"./dist/stellar-contracts.cjs",
             "default": "./dist/stellar-contracts.cjs",
             "types": "./dist/stellar-contracts.d.ts"
         },
         "test": {
             "import": "./dist/testing.mjs",
+            "require": "./dist/testing.d.ts",
             "default": "./dist/testing.d.ts",
             "types": "./dist/testing.d.ts"
         }
