@@ -8,9 +8,9 @@ type RequirementEntry<reqts extends string> = {
 }
 
 const TODO = Symbol("needs to be implemented")
-
+export type TODO_TYPE = typeof TODO
 export type ReqtsMap<reqts extends string> = {
-    [reqtDescription in reqts ]: typeof TODO | RequirementEntry<reqts>
+    [reqtDescription in reqts ]: TODO_TYPE | RequirementEntry<reqts>
 }
 
 export function hasReqts<
@@ -18,7 +18,7 @@ export function hasReqts<
     const reqts extends string = string & keyof R
 >(
     reqtsMap: R 
-) {
+) : ReqtsMap<reqts> {
     return reqtsMap
 }
 

@@ -2,9 +2,9 @@
 
 #//! EXPECTS to be run in context of `pnpm exec`
 
-rollup \
-  --config rollup.config.ts \
-  --configPlugin 'esbuild={tsconfig:"./tsconfig.rollupconfig.json"}' \
-  $*
+# rollup \
+#   --config rollup.config.ts \
+#   --configPlugin 'esbuild={loaders:{".json": "json"}, target: "esnext", tsconfig:"./tsconfig.rollupconfig.json"}' \
+#   $*
 
 tsc --declaration --declarationMap -p tsconfig.dts.json 

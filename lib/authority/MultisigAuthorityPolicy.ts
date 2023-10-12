@@ -74,10 +74,7 @@ export class MultisigAuthorityPolicy extends AuthorityPolicy {
     }
 
     requirements()  {
-        const pReqts = super.requirements();
-
         return hasReqts({
-            ...pReqts,
             "provides arms-length proof of authority to any other contract": {
                 purpose: "to decouple authority administration from its effects",
                 details: [

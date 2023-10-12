@@ -1,19 +1,19 @@
 {
     "compilerOptions": {
         "lib": ["esnext", "dom"],
-        "target": "ES2022",
-        "moduleResolution": "NodeNext",
+        "target": "ESNext",
         "module": "NodeNext",
-
+        "moduleResolution": "NodeNext",
         "importHelpers": true,
         "baseUrl": ".",
         "strict": true,
-        // "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "noEmit": true,
         "experimentalDecorators": true,
-        "emitDecoratorMetadata": true,
+        // "emitDecoratorMetadata": true,
         "types": ["node"],
         "allowSyntheticDefaultImports": true,
         "allowJs": true,
@@ -21,10 +21,9 @@
         "rootDir": ".",
         "sourceMap": true
     },
+    "files": [ "index.ts" ],
     "include": [
-        "src/**/*.ts", 
-        "src/**/*.js", 
-        "src/**/*.hl",
+        "lib/**/*.hl",
         "lib/**/*.ts", 
         "lib/**/*.js", 
     ],

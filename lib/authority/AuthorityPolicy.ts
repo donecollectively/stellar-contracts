@@ -99,7 +99,7 @@ export abstract class AuthorityPolicy<
     // static mkDelegateWithArgs(a: RCPolicyArgs) {
     //
     // }
-    requirements() {
+    authorityPolicyRequirements() {
         return hasReqts({
             "provides an interface for providing arms-length proof of authority to any other contract":
                 {

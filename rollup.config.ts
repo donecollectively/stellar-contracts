@@ -1,9 +1,12 @@
-import dts from "rollup-plugin-dts";
 import esbuild from "rollup-plugin-esbuild";
 import externals from "rollup-plugin-node-externals";
 import resolve from "@rollup/plugin-node-resolve";
+import json from "@rollup/plugin-json";
+
 import { platformModulePaths } from "./rollup.lib.js";
 import sourcemaps from "rollup-plugin-sourcemaps";
+
+// const packageJson = await import("./package.json", { assert: { type: "json" } });
 
 import packageJson from "./package.json" assert { type: "json" };
 import { heliosRollupLoader } from "./lib/heliosRollupLoader.js";
@@ -40,11 +43,15 @@ export default [
             sourcemaps(),
             externals(),
             heliosRollupLoader(),
+            json(),
             resolve({
                 ...platformModulePaths("server"),
                 extensions: [".json", ".ts"],
             }),
-            esbuild(),
+            esbuild({
+                tsconfig: "./tsconfig.json",
+                target: ["node18" ],
+            }),
         ],
         output: [
             {
@@ -55,13 +62,37 @@ export default [
         ],
     }),
     codeBundle({
-        input: "./index.ts",
+        input: "./lib/testing/index.ts",
         plugins: [
-            dts()
+            sourcemaps(),
+            externals(),
+            heliosRollupLoader(),
+            json(),
+            resolve({
+                ...platformModulePaths("server"),
+                extensions: [".json", ".ts"],
+            }),
+            esbuild({
+                tsconfig: "./tsconfig.json",
+                target: ["node18" ],
+            }),
         ],
-        output: {
-            file: `${name}.d.ts`,
-            format: "es",
-        },
+        output: [
+            {
+                file: `dist/testing.mjs`,
+                format: "es",
+                sourcemap: true,
+            },
+        ],
     }),
+    // codeBundle({
+    //     input: "./index.ts",
+    //     plugins: [
+    //         dts()
+    //     ],
+    //     output: {
+    //         file: `${name}.d.ts`,
+    //         format: "es",
+    //     },
+    // }),
 ];

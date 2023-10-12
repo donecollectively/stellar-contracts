@@ -1,10 +1,4 @@
 
-declare global {
-    interface  ImportAttributes {
-        type: "json" | "text"
-    }
-  }
-  
 export { heliosRollupLoader } from "./lib/heliosRollupLoader.js";
 
 export {

@@ -32,6 +32,7 @@ export class BasicMintDelegate extends StellarContract<MintDelegateArgs> {
     static get defaultParams() {
         return { rev: this.currentRev }
     }
+
     contractSource() {
         return contract;
     }
@@ -41,6 +42,12 @@ export class BasicMintDelegate extends StellarContract<MintDelegateArgs> {
             rev: config.rev
         }
     }
+    // importModules(): HeliosModuleSrc[] {
+    //     return [
+    //         ... super.importModules(),
+    //         // MultisigAuthorityScript
+    //     ]
+    // }
 
     // // @Activity.redeemer
     // protected x(tokenName: string): isActivity {

@@ -4,6 +4,12 @@
     "description": "Smart contract fusion for Cardano",
     "main": "dist/stellar-contracts.mjs",
     "types": "dist/stellar-contracts.d.ts",
+    "exports": {
+        "test": {
+            "default": "dist/testing.mjs",
+            "types": "dist/test.d.ts"
+        }
+    },
     "type": "module",
     "scripts": {
         "build": "scripts/build",
@@ -22,13 +28,14 @@
         "semver": ">=7.5.2"
     },
     "devDependencies": {
+        "@rollup/plugin-json": "^6.0.1",
         "@rollup/plugin-node-resolve": "^15.1.0",
         "@rollup/pluginutils": "^5.0.2",
         "@types/node": "^20.2.5",
         "@vitest/ui": "^0.34.6",
         "esbuild": "^0.19.4",
         "rollup": "^3.23.1",
-        "rollup-plugin-esbuild": "^5.0.0",
+        "rollup-plugin-esbuild": "^6.1.0",
         "rollup-plugin-node-externals": "^6.1.1",
         "rollup-plugin-sourcemaps": "^0.6.3",
         "rollup-plugin-string": "^3.0.0",
