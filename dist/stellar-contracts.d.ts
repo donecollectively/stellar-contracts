@@ -1,3 +1,11 @@
+declare module "lib/HeliosModuleSrc" {
+    export type HeliosModuleSrc = string & {
+        srcFile: string;
+        purpose: string;
+        moduleName: string;
+    };
+    export function mkHeliosModule(src: string, filename: string): HeliosModuleSrc;
+}
 declare module "lib/heliosRollupLoader" {
     export function heliosRollupLoader(opts?: {
         include: string;
@@ -48,13 +56,6 @@ declare module "lib/HeliosPromotedTypes" {
     export type InlineDatum = ReturnType<typeof DatumInline>;
     export type tokenNamesOrValuesEntry = [string | number[], bigint];
     export type valuesEntry = [number[], bigint];
-}
-declare module "lib/HeliosModuleSrc" {
-    export type HeliosModuleSrc = string & {
-        srcFile: string;
-        purpose: string;
-        moduleName: string;
-    };
 }
 declare module "lib/StellarContract" {
     import { Address, Assets, MintingPolicyHash, Network, NetworkParams, Program, TxOutput, TxInput, UplcData, UplcDataValue, UplcProgram, Value, Wallet, Datum, AssetClass } from "@hyperionbt/helios";
@@ -1274,11 +1275,8 @@ declare module "lib/testing/CapoTestHelper" {
     }
 }
 declare module "index" {
-    global {
-        interface ImportAttributes {
-            type: "json" | "text";
-        }
-    }
+    export { mkHeliosModule } from "lib/HeliosModuleSrc";
+    export type { HeliosModuleSrc } from "lib/HeliosModuleSrc";
     export { heliosRollupLoader } from "lib/heliosRollupLoader";
     export { assetsAsString, txAsString, utxoAsString, valueAsString, utxosAsString, txOutputAsString, txInputAsString, lovelaceToAda, errorMapAsString, } from "lib/diagnostics";
     export { Capo, variantMap, } from "lib/Capo";

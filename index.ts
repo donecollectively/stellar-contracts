@@ -1,4 +1,5 @@
-
+export { mkHeliosModule } from "./lib/HeliosModuleSrc.js";
+export type { HeliosModuleSrc } from "./lib/HeliosModuleSrc.js";
 export { heliosRollupLoader } from "./lib/heliosRollupLoader.js";
 
 export {
@@ -59,7 +60,7 @@ export { StellarTestHelper } from "./lib/testing/StellarTestHelper.js";
 export { DefaultMinter } from "./lib/DefaultMinter.js";
 export { DefaultCapo } from "./lib/DefaultCapo.js";
 export type { DefaultCharterDatumArgs } from "./lib/DefaultCapo.js";
-
+ 
 export type {
     tokenNamesOrValuesEntry,
     InlineDatum,

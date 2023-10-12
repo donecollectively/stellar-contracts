@@ -3,6 +3,17 @@ import * as helios from '@hyperionbt/helios';
 import { Address, Tx, Value, TxOutput, MintingPolicyHash, AssetClass, TxInput, Assets, Program, bytesToHex, Crypto, NetworkParams, NetworkEmulator, Option, Datum } from '@hyperionbt/helios';
 import { expect } from 'vitest';
 
+function mkHeliosModule(src, filename) {
+  const module = new String(src);
+  const [_, purpose, moduleName] = src.match(
+    /(module|minting|spending|endpoint)\s+([a-zA-Z0-9]+)/m
+  ) || [];
+  module.srcFile = filename;
+  module.purpose = purpose;
+  module.moduleName = moduleName;
+  return module;
+}
+
 function heliosRollupLoader(opts = {
   include: "**/*.hl",
   exclude: []
@@ -2859,7 +2870,7 @@ class AuthorityPolicy extends StellarContract {
   // static mkDelegateWithArgs(a: RCPolicyArgs) {
   //
   // }
-  requirements() {
+  authorityPolicyRequirements() {
     return hasReqts({
       "provides an interface for providing arms-length proof of authority to any other contract": {
         purpose: "to decouple authority administration from its effects",
@@ -3076,9 +3087,7 @@ class MultisigAuthorityPolicy extends AuthorityPolicy {
     return tcx;
   }
   requirements() {
-    const pReqts = super.requirements();
     return hasReqts({
-      ...pReqts,
       "provides arms-length proof of authority to any other contract": {
         purpose: "to decouple authority administration from its effects",
         details: [
@@ -3472,5 +3481,5 @@ __decorateClass([
   txn
 ], DefaultCapo.prototype, "mkTxnUpdateCharter", 1);
 
-export { ADA, Activity, BasicMintDelegate, Capo, CapoTestHelper, DefaultCapo, DefaultMinter, StellarContract, StellarTestHelper, StellarTxnContext, addTestContext, assetsAsString, datum, errorMapAsString, heliosRollupLoader, lovelaceToAda, partialTxn, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString, variantMap };
+export { ADA, Activity, BasicMintDelegate, Capo, CapoTestHelper, DefaultCapo, DefaultMinter, StellarContract, StellarTestHelper, StellarTxnContext, addTestContext, assetsAsString, datum, errorMapAsString, heliosRollupLoader, lovelaceToAda, mkHeliosModule, partialTxn, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString, variantMap };
 //# sourceMappingURL=stellar-contracts.mjs.map
