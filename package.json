@@ -2,9 +2,9 @@
     "name": "@donecollectively/stellar-contracts",
     "version": "0.7.4",
     "description": "Smart contract fusion for Cardano",
-    "main": "dist/stellar-contracts.mjs",
-    "types": "dist/stellar-contracts.d.ts",
-    "exports": {
+    "main": "./dist/stellar-contracts.mjs",
+    "types": "./dist/stellar-contracts.d.ts",
+    "XXexports": {
         "default": {
             "import": "./dist/stellar-contracts.mjs",
             "require":"./dist/stellar-contracts.cjs",
