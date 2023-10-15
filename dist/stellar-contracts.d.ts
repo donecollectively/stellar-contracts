@@ -214,12 +214,18 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
  * @remarks
  *
  * Arranges an test environment with predefined actor-names having various amounts of ADA in their (emulated) wallets,
- * and default helpers for setting up test scenarios.
+ * and default helpers for setting up test scenarios.  Provides a simplified framework for testing Stellar contracts extending
+ * the DefaultCapo class.
  *
+ * To use it, you MUST extend DefaultCapoTestHelper<YourStellarCapoClass>.
+ *
+ * You MUST also implement a getter  for stellarClass, returning the specific class for YourStellarCapoClass
+ *
+ * @typeParam DC - the specific DefaultCapo subclass under test
  * @public
  **/
-export declare class DefaultCapoTestHelper extends CapoTestHelper<DefaultCapo> {
-    get stellarClass(): typeof DefaultCapo;
+export declare class DefaultCapoTestHelper<DC extends DefaultCapo = DefaultCapo> extends CapoTestHelper<DC> {
+    get stellarClass(): stellarSubclass<DC>;
     setupActors(): void;
     mkCharterSpendTx(): Promise<StellarTxnContext>;
     mkDefaultCharterArgs(): PartialDefaultCharterDatumArgs;

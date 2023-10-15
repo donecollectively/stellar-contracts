@@ -3512,6 +3512,7 @@ __decorateClass([
 ], DefaultCapo.prototype, "mkTxnUpdateCharter", 1);
 
 class DefaultCapoTestHelper extends CapoTestHelper {
+  //@ts-expect-error
   get stellarClass() {
     return DefaultCapo;
   }

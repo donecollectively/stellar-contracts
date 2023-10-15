@@ -217,7 +217,7 @@ export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT e
 }
 
 // @public
-export class DefaultCapoTestHelper extends CapoTestHelper<DefaultCapo> {
+export class DefaultCapoTestHelper<DC extends DefaultCapo = DefaultCapo> extends CapoTestHelper<DC> {
     // (undocumented)
     mkCharterSpendTx(): Promise<StellarTxnContext>;
     // (undocumented)
@@ -225,7 +225,7 @@ export class DefaultCapoTestHelper extends CapoTestHelper<DefaultCapo> {
     // (undocumented)
     setupActors(): void;
     // (undocumented)
-    get stellarClass(): typeof DefaultCapo;
+    get stellarClass(): stellarSubclass<DC>;
     // (undocumented)
     updateCharter(args: DefaultCharterDatumArgs): Promise<StellarTxnContext>;
 }

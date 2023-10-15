@@ -5,20 +5,30 @@ import {
     ADA,
 } from "./types.js";
 import { CapoTestHelper } from "./CapoTestHelper.js";
+import { stellarSubclass } from "../StellarContract.js";
 
 /**
  * Test helper for classes extending DefaultCapo
  * @remarks
  * 
  * Arranges an test environment with predefined actor-names having various amounts of ADA in their (emulated) wallets,
- * and default helpers for setting up test scenarios.
+ * and default helpers for setting up test scenarios.  Provides a simplified framework for testing Stellar contracts extending 
+ * the DefaultCapo class.
  * 
+ * To use it, you MUST extend DefaultCapoTestHelper<YourStellarCapoClass>.
+ * 
+ * You MUST also implement a getter  for stellarClass, returning the specific class for YourStellarCapoClass
+ * 
+ * @typeParam DC - the specific DefaultCapo subclass under test
  * @public
  **/
-export class DefaultCapoTestHelper extends CapoTestHelper<DefaultCapo> {
-    get stellarClass() {
+export class DefaultCapoTestHelper<DC extends DefaultCapo=DefaultCapo> extends CapoTestHelper<DC> {
+    //@ts-expect-error
+    get stellarClass() : stellarSubclass<DC>{
+        //@ts-expect-error
         return DefaultCapo;
     }
+
     setupActors() {
         this.addActor("tina", 1100n * ADA);
         this.addActor("tracy", 13n * ADA);
