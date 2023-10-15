@@ -3511,5 +3511,41 @@ __decorateClass([
   txn
 ], DefaultCapo.prototype, "mkTxnUpdateCharter", 1);
 
-export { ADA, Activity, BasicMintDelegate, Capo, CapoTestHelper, DefaultCapo, DefaultMinter, StellarContract, StellarTestHelper, StellarTxnContext, addTestContext, assetsAsString, datum, errorMapAsString, hasReqts, heliosRollupLoader, lovelaceToAda, mkHeliosModule, partialTxn, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString, variantMap };
+class DefaultCapoTestHelper extends CapoTestHelper {
+  get stellarClass() {
+    return DefaultCapo;
+  }
+  setupActors() {
+    this.addActor("tina", 1100n * ADA);
+    this.addActor("tracy", 13n * ADA);
+    this.addActor("tom", 120n * ADA);
+    this.currentActor = "tina";
+  }
+  async mkCharterSpendTx() {
+    await this.mintCharterToken();
+    const treasury = this.strella;
+    const tcx = new StellarTxnContext();
+    return treasury.txnAddAuthority(tcx);
+  }
+  mkDefaultCharterArgs() {
+    return {
+      govAuthorityLink: {
+        addressesHint: [this.currentActor.address],
+        strategyName: "address"
+      }
+    };
+  }
+  async updateCharter(args) {
+    await this.mintCharterToken();
+    const treasury = this.strella;
+    const { signers } = this.state;
+    const tcx = await treasury.mkTxnUpdateCharter(args);
+    return treasury.submit(tcx, { signers }).then(() => {
+      this.network.tick(1n);
+      return tcx;
+    });
+  }
+}
+
+export { ADA, Activity, BasicMintDelegate, Capo, CapoTestHelper, DefaultCapo, DefaultCapoTestHelper, DefaultMinter, StellarContract, StellarTestHelper, StellarTxnContext, addTestContext, assetsAsString, datum, errorMapAsString, hasReqts, heliosRollupLoader, lovelaceToAda, mkHeliosModule, partialTxn, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString, variantMap };
 //# sourceMappingURL=stellar-contracts.mjs.map

@@ -6,6 +6,15 @@ import {
 } from "./types.js";
 import { CapoTestHelper } from "./CapoTestHelper.js";
 
+/**
+ * Test helper for classes extending DefaultCapo
+ * @remarks
+ * 
+ * Arranges an test environment with predefined actor-names having various amounts of ADA in their (emulated) wallets,
+ * and default helpers for setting up test scenarios.
+ * 
+ * @public
+ **/
 export class DefaultCapoTestHelper extends CapoTestHelper<DefaultCapo> {
     get stellarClass() {
         return DefaultCapo;

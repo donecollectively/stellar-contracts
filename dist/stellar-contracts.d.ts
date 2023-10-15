@@ -210,6 +210,23 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
 }
 
 /**
+ * Test helper for classes extending DefaultCapo
+ * @remarks
+ *
+ * Arranges an test environment with predefined actor-names having various amounts of ADA in their (emulated) wallets,
+ * and default helpers for setting up test scenarios.
+ *
+ * @public
+ **/
+export declare class DefaultCapoTestHelper extends CapoTestHelper<DefaultCapo> {
+    get stellarClass(): typeof DefaultCapo;
+    setupActors(): void;
+    mkCharterSpendTx(): Promise<StellarTxnContext>;
+    mkDefaultCharterArgs(): PartialDefaultCharterDatumArgs;
+    updateCharter(args: DefaultCharterDatumArgs): Promise<StellarTxnContext>;
+}
+
+/**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
  * together with it's primary or "charter" utxo.
  *

@@ -1,3 +1,4 @@
+
 export { mkHeliosModule } from "./src/HeliosModuleSrc.js";
 export type { HeliosModuleSrc } from "./src/HeliosModuleSrc.js";
 export { heliosRollupLoader } from "./src/heliosRollupLoader.js";
@@ -51,6 +52,7 @@ export type {
 export { ADA, addTestContext } from "./src/testing/types.js";
 export type { StellarTestContext } from "./src/testing/StellarTestContext.js";
 export { CapoTestHelper } from "./src/testing/CapoTestHelper.js";
+export { DefaultCapoTestHelper } from "./src/testing/DefaultCapoTestHelper.js";
 export { StellarTestHelper } from "./src/testing/StellarTestHelper.js";
 
 export { DefaultMinter } from "./src/DefaultMinter.js";

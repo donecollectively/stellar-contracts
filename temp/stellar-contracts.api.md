@@ -217,6 +217,20 @@ export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT e
 }
 
 // @public
+export class DefaultCapoTestHelper extends CapoTestHelper<DefaultCapo> {
+    // (undocumented)
+    mkCharterSpendTx(): Promise<StellarTxnContext>;
+    // (undocumented)
+    mkDefaultCharterArgs(): PartialDefaultCharterDatumArgs;
+    // (undocumented)
+    setupActors(): void;
+    // (undocumented)
+    get stellarClass(): typeof DefaultCapo;
+    // (undocumented)
+    updateCharter(args: DefaultCharterDatumArgs): Promise<StellarTxnContext>;
+}
+
+// @public
 export type DefaultCharterDatumArgs<CT extends paramsBase = CapoBaseConfig> = {
     govAuthorityLink: RelativeDelegateLink<CT>;
 };
