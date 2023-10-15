@@ -14,10 +14,7 @@ export {
     errorMapAsString,
 } from "./src/diagnostics.js";
 
-export { 
-    Capo,
-    variantMap,
- } from "./src/Capo.js";
+export { Capo, variantMap } from "./src/Capo.js";
 export type {
     MintUutRedeemerArgs,
     // MintCharterRedeemerArgs,
@@ -28,7 +25,7 @@ export type {
     strategyValidation,
 } from "./src/Capo.js";
 
-export type {SeedTxnParams} from "./src/SeedTxn.js"
+export type { SeedTxnParams } from "./src/SeedTxn.js";
 export { BasicMintDelegate } from "./src/delegation/BasicMintDelegate.js";
 
 export {
@@ -39,19 +36,19 @@ export {
     datum,
 } from "./src/StellarContract.js";
 
+export { hasReqts } from "./src/Requirements.js";
+export type { ReqtsMap, RequirementEntry } from "./src/Requirements.js";
+
 export { StellarTxnContext } from "./src/StellarTxnContext.js";
 export type {
     stellarSubclass,
     isActivity,
     utxoPredicate,
     anyDatumProps,
-    configBase as paramsBase
+    configBase as paramsBase,
 } from "./src/StellarContract.js";
 
-export {
-    ADA,
-    addTestContext,
-} from "./src/testing/types.js";
+export { ADA, addTestContext } from "./src/testing/types.js";
 export type { StellarTestContext } from "./src/testing/StellarTestContext.js";
 export { CapoTestHelper } from "./src/testing/CapoTestHelper.js";
 export { StellarTestHelper } from "./src/testing/StellarTestHelper.js";
@@ -59,7 +56,7 @@ export { StellarTestHelper } from "./src/testing/StellarTestHelper.js";
 export { DefaultMinter } from "./src/DefaultMinter.js";
 export { DefaultCapo } from "./src/DefaultCapo.js";
 export type { DefaultCharterDatumArgs } from "./src/DefaultCapo.js";
- 
+
 export type {
     tokenNamesOrValuesEntry,
     InlineDatum,

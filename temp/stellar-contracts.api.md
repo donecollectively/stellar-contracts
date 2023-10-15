@@ -14,7 +14,7 @@ import { Network } from '@hyperionbt/helios';
 import { NetworkEmulator } from '@hyperionbt/helios';
 import { NetworkParams } from '@hyperionbt/helios';
 import { Program } from '@hyperionbt/helios';
-import { ReqtsMap } from './Requirements.js';
+import { ReqtsMap as ReqtsMap_2 } from './Requirements.js';
 import { SimpleWallet } from '@hyperionbt/helios';
 import { TestContext } from 'vitest';
 import { Tx } from '@hyperionbt/helios';
@@ -80,7 +80,7 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     // Warning: (ae-forgotten-export) The symbol "StellarConstructorArgs" needs to be exported by the entry point index.d.ts
     constructor(args: StellarConstructorArgs<StellarContract<CapoBaseConfig>>);
     // (undocumented)
-    capoRequirements(): ReqtsMap<"is a base class for leader/Capo pattern" | "can create unique utility tokens" | "supports the Delegation pattern using roles and strategy-variants" | "supports well-typed role declarations and strategy-adding" | "supports just-in-time strategy-selection using withDelegates() and txnMustGetDelegate()" | "supports concrete resolution of existing role delegates" | "Each role uses a RoleVariants structure which can accept new variants" | "provides a Strategy type for binding a contract to a strategy-variant name">;
+    capoRequirements(): ReqtsMap_2<"is a base class for leader/Capo pattern" | "can create unique utility tokens" | "supports the Delegation pattern using roles and strategy-variants" | "supports well-typed role declarations and strategy-adding" | "supports just-in-time strategy-selection using withDelegates() and txnMustGetDelegate()" | "supports concrete resolution of existing role delegates" | "Each role uses a RoleVariants structure which can accept new variants" | "provides a Strategy type for binding a contract to a strategy-variant name">;
     // (undocumented)
     get charterTokenAsValue(): Value;
     // (undocumented)
@@ -207,7 +207,7 @@ export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT e
     // (undocumented)
     mkTxnUpdateCharter(args: CDT, tcx?: StellarTxnContext): Promise<StellarTxnContext>;
     // (undocumented)
-    requirements(): ReqtsMap<"the trustee group can be changed" | "positively governs all administrative actions" | "has a unique, permanent charter token" | "has a unique, permanent treasury address" | "the trustee threshold is enforced on all administrative actions" | "the charter token is always kept in the contract" | "can mint other tokens, on the authority of the Charter token" | "has a singleton minting policy" | "foo">;
+    requirements(): ReqtsMap_2<"the trustee group can be changed" | "positively governs all administrative actions" | "has a unique, permanent charter token" | "has a unique, permanent treasury address" | "the trustee threshold is enforced on all administrative actions" | "the charter token is always kept in the contract" | "can mint other tokens, on the authority of the Charter token" | "has a singleton minting policy" | "foo">;
     // (undocumented)
     get roles(): RoleMap;
     // (undocumented)
@@ -265,6 +265,15 @@ export type hasAllUuts<uutEntries extends string> = {
 };
 
 // @public
+export function hasReqts<R extends ReqtsMap<reqts>, const reqts extends string = string & keyof R>(reqtsMap: R): ReqtsMap<reqts>;
+
+// @public (undocumented)
+export namespace hasReqts {
+    var // (undocumented)
+    TODO: unique symbol;
+}
+
+// @public
 export type hasUutContext<uutEntries extends string> = StellarTxnContext<hasAllUuts<uutEntries>>;
 
 // @public (undocumented)
@@ -316,6 +325,22 @@ export type paramsBase = Record<string, any>;
 
 // @public (undocumented)
 export function partialTxn(proto: any, thingName: any, descriptor: any): any;
+
+// Warning: (ae-forgotten-export) The symbol "TODO_TYPE" needs to be exported by the entry point index.d.ts
+//
+// @public
+export type ReqtsMap<reqts extends string> = {
+    [reqtDescription in reqts]: TODO_TYPE | RequirementEntry<reqts>;
+};
+
+// @public
+export type RequirementEntry<reqts extends string> = {
+    purpose: string;
+    details: string[];
+    mech: string[];
+    impl?: string;
+    requires?: reqts[];
+};
 
 // Warning: (ae-forgotten-export) The symbol "VariantMap" needs to be exported by the entry point index.d.ts
 //
@@ -384,7 +409,7 @@ export class StellarContract<ConfigType extends paramsBase> {
     mkTokenPredicate(mph: MintingPolicyHash, tokenName: string, quantity?: bigint): tokenPredicate<any>;
     // (undocumented)
     mkTokenPredicate(vOrMph: AssetClass, quantity?: bigint): tokenPredicate<any>;
-    // (undocumented)
+    // @internal (undocumented)
     protected _mkUtxoSortInfo(min: bigint, max?: bigint): (u: TxInput) => utxoInfo;
     // Warning: (ae-forgotten-export) The symbol "tokenPredicate" needs to be exported by the entry point index.d.ts
     //
@@ -417,7 +442,7 @@ export class StellarContract<ConfigType extends paramsBase> {
     get purpose(): scriptPurpose | "non-script";
     // Warning: (ae-forgotten-export) The symbol "scriptPurpose" needs to be exported by the entry point index.d.ts
     //
-    // (undocumented)
+    // @internal (undocumented)
     _purpose?: scriptPurpose;
     // (undocumented)
     readDatum<DPROPS extends anyDatumProps>(datumName: string, datum: Datum | InlineDatum): Promise<DPROPS>;
@@ -444,15 +469,15 @@ export class StellarContract<ConfigType extends paramsBase> {
     txnFindUtxo(tcx: StellarTxnContext<any>, name: string, predicate: utxoPredicate, address?: Address): Promise<TxInput | undefined>;
     // (undocumented)
     txnKeepValue(tcx: StellarTxnContext, value: Value, datum: InlineDatum): StellarTxnContext<{}>;
-    // (undocumented)
+    // @internal (undocumented)
     protected _utxoCountAdaOnly(c: number, { minAdaAmount }: utxoInfo): number;
-    // (undocumented)
+    // @internal (undocumented)
     protected _utxoIsPureADA({ u }: utxoInfo): TxInput | undefined;
-    // (undocumented)
+    // @internal (undocumented)
     protected _utxoIsSufficient({ sufficient }: utxoInfo): boolean;
     // Warning: (ae-forgotten-export) The symbol "utxoInfo" needs to be exported by the entry point index.d.ts
     //
-    // (undocumented)
+    // @internal (undocumented)
     protected _utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }: utxoInfo, { free: free2, minAdaAmount: r2 }: utxoInfo): 1 | -1 | 0;
 }
 

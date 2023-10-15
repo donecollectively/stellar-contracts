@@ -3511,5 +3511,5 @@ __decorateClass([
   txn
 ], DefaultCapo.prototype, "mkTxnUpdateCharter", 1);
 
-export { ADA, Activity, BasicMintDelegate, Capo, CapoTestHelper, DefaultCapo, DefaultMinter, StellarContract, StellarTestHelper, StellarTxnContext, addTestContext, assetsAsString, datum, errorMapAsString, heliosRollupLoader, lovelaceToAda, mkHeliosModule, partialTxn, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString, variantMap };
+export { ADA, Activity, BasicMintDelegate, Capo, CapoTestHelper, DefaultCapo, DefaultMinter, StellarContract, StellarTestHelper, StellarTxnContext, addTestContext, assetsAsString, datum, errorMapAsString, hasReqts, heliosRollupLoader, lovelaceToAda, mkHeliosModule, partialTxn, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString, variantMap };
 //# sourceMappingURL=stellar-contracts.mjs.map

@@ -8,7 +8,7 @@ import { Network } from '@hyperionbt/helios';
 import { NetworkEmulator } from '@hyperionbt/helios';
 import { NetworkParams } from '@hyperionbt/helios';
 import { Program } from '@hyperionbt/helios';
-import { ReqtsMap } from './Requirements.js';
+import { ReqtsMap as ReqtsMap_2 } from './Requirements.js';
 import { SimpleWallet } from '@hyperionbt/helios';
 import { TestContext } from 'vitest';
 import { Tx } from '@hyperionbt/helios';
@@ -130,7 +130,7 @@ export declare abstract class Capo<minterType extends MinterBaseMethods & Defaul
     mkImpliedSettings(uut: UutName): CapoImpliedSettings;
     txnMustGetDelegate<T extends StellarContract<any>, const RN extends string>(tcx: hasSelectedDelegates & hasUutContext<RN>, roleName: RN, configuredDelegate?: DelegateSettings<T>): T;
     connectDelegateWith<DelegateType extends StellarContract<any>>(roleName: string, delegateLink: RelativeDelegateLink<ConfigFor<DelegateType>>): Promise<DelegateType>;
-    capoRequirements(): ReqtsMap<"is a base class for leader/Capo pattern" | "can create unique utility tokens" | "supports the Delegation pattern using roles and strategy-variants" | "supports well-typed role declarations and strategy-adding" | "supports just-in-time strategy-selection using withDelegates() and txnMustGetDelegate()" | "supports concrete resolution of existing role delegates" | "Each role uses a RoleVariants structure which can accept new variants" | "provides a Strategy type for binding a contract to a strategy-variant name">;
+    capoRequirements(): ReqtsMap_2<"is a base class for leader/Capo pattern" | "can create unique utility tokens" | "supports the Delegation pattern using roles and strategy-variants" | "supports well-typed role declarations and strategy-adding" | "supports just-in-time strategy-selection using withDelegates() and txnMustGetDelegate()" | "supports concrete resolution of existing role delegates" | "Each role uses a RoleVariants structure which can accept new variants" | "provides a Strategy type for binding a contract to a strategy-variant name">;
 }
 
 declare type CapoBaseConfig = SeedTxnParams & {
@@ -206,7 +206,7 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
     mkTxnMintCharterToken(charterDatumArgs: PartialDefaultCharterDatumArgs<CDT>, existingTcx?: hasSelectedDelegates): Promise<StellarTxnContext | never>;
     updatingCharter(): isActivity;
     mkTxnUpdateCharter(args: CDT, tcx?: StellarTxnContext): Promise<StellarTxnContext>;
-    requirements(): ReqtsMap<"the trustee group can be changed" | "positively governs all administrative actions" | "has a unique, permanent charter token" | "has a unique, permanent treasury address" | "the trustee threshold is enforced on all administrative actions" | "the charter token is always kept in the contract" | "can mint other tokens, on the authority of the Charter token" | "has a singleton minting policy" | "foo">;
+    requirements(): ReqtsMap_2<"the trustee group can be changed" | "positively governs all administrative actions" | "has a unique, permanent charter token" | "has a unique, permanent treasury address" | "the trustee threshold is enforced on all administrative actions" | "the charter token is always kept in the contract" | "can mint other tokens, on the authority of the Charter token" | "has a singleton minting policy" | "foo">;
 }
 
 /**
@@ -267,6 +267,28 @@ export declare type hasAllUuts<uutEntries extends string> = {
 declare type hasDelegateProp = {
     delegates: SelectedDelegates;
 };
+
+/**
+ * Factory for type-safe requirements details for a unit of software
+ * @public
+ * @remarks
+ * return `hasReqts({... requirements})` from a requirements() or other method in a class, to express
+ * requirements using a standardized form that supports arbitrary amounts of detailed requirements
+ * with references to unit-test labels that can verify the impl details.
+ *
+ * You don't need to provide the type params or TS type annotations.  `requirements() { return hasReqts({...yourReqts}) }` will work fine.
+ *
+ * See the {@link ReqtsMap} and {@link RequirementEntry} types for more details about expressing requirements.
+ *
+ * @param reqtsMap - the ReqtsMap structure for the software unit
+ * @typeParam R - implicitly matches the provided `reqtsMap`
+ * @typeParam reqts - implicitly matches the requirements strings from the provided `reqtsMap`
+ */
+export declare function hasReqts<R extends ReqtsMap<reqts>, const reqts extends string = string & keyof R>(reqtsMap: R): ReqtsMap<reqts>;
+
+export declare namespace hasReqts {
+    var TODO: unique symbol;
+}
 
 declare type hasSelectedDelegates = StellarTxnContext<hasDelegateProp>;
 
@@ -381,6 +403,49 @@ declare type RelativeDelegateLink<CT extends paramsBase> = {
     addressesHint?: Address[];
 };
 
+/**
+ * Describes the requirements for a unit of software
+ * @remarks
+ *
+ * A requirements map is a list of described requirements, in which each requirement
+ * has a synopsis, a description of its purpose, descriptive detail, and technical requirements
+ * for the mechanism used for implementation.  The mech strings should be usable as unit-test titles.
+ *
+ * use the hasReqts() helper method to declare a type-safe set of requirements following this data structure.
+ *
+ * Each requirement also has space for nested 'requires', without the need for deeply nested data structures;
+ * these reference other requirements in the same hasReqts() data structure. As a result, high-level and detail-
+ * level requirements and 'impl' details can have progressive levels of detail.
+ *
+ * @typeParam reqts - the list of known requirement names.  Implicitly detected by the hasReqts() helper.
+ * @public
+ **/
+export declare type ReqtsMap<reqts extends string> = {
+    [reqtDescription in reqts]: TODO_TYPE | RequirementEntry<reqts>;
+};
+
+/**
+ * Documents one specific requirement
+ * @remarks
+ *
+ * Describes the purpose, details, and implementation mechanism for a single requirement for a unit of software.
+ *
+ * Also references any other requirements in the host ReqtsMap structure, whose behavior this requirement
+ * depends on.  The details of those other dependencies, are delegated entirely to the other requirement, facilitating
+ * narrowly-focused capture of for key expectations within each individual semantic expectation of a software unit's
+ * behavior.
+ *
+ * @typeParam reqts - constrains `requires` entries to the list of requirements in the host ReqtsMap structure
+ * @public
+ **/
+export declare type RequirementEntry<reqts extends string> = {
+    purpose: string;
+    details: string[];
+    mech: string[];
+    impl?: string;
+    requires?: reqts[];
+};
+
 export declare type RoleMap = Record<string, VariantMap<any>>;
 
 declare type scriptPurpose = "testing" | "minting" | "spending" | "staking" | "module" | "endpoint";
@@ -425,7 +490,7 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     compiledScript: UplcProgram;
     get datumType(): any;
     /**
-     * @private
+     * @internal
      **/
     _purpose?: scriptPurpose;
     get purpose(): scriptPurpose | "non-script";
@@ -456,24 +521,24 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     tokenAsValue(tokenName: string, quantity: bigint, mph?: MintingPolicyHash): Value;
     hasOnlyAda(value: Value, tcx: StellarTxnContext | undefined, u: TxInput): TxInput | undefined;
     /**
-     * @private
+     * @internal
      **/
     protected _utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }: utxoInfo, { free: free2, minAdaAmount: r2 }: utxoInfo): 1 | -1 | 0;
     /**
-     * @private
+     * @internal
      **/
     protected _utxoIsSufficient({ sufficient }: utxoInfo): boolean;
     /**
-     * @private
+     * @internal
      **/
     protected _utxoIsPureADA({ u }: utxoInfo): TxInput | undefined;
     protected _infoBackToUtxo({ u }: utxoInfo): TxInput;
     /**
-     * @private
+     * @internal
      **/
     protected _mkUtxoSortInfo(min: bigint, max?: bigint): (u: TxInput) => utxoInfo;
     /**
-     * @private
+     * @internal
      **/
     protected _utxoCountAdaOnly(c: number, { minAdaAmount }: utxoInfo): number;
     findAnySpareUtxos(tcx: StellarTxnContext): Promise<TxInput[] | never>;
@@ -576,6 +641,10 @@ export declare class StellarTxnContext<S = noState> {
 }
 
 export declare type strategyValidation = ErrorMap | undefined;
+
+declare const TODO: unique symbol;
+
+declare type TODO_TYPE = typeof TODO;
 
 export declare type tokenNamesOrValuesEntry = [string | number[], bigint];
 

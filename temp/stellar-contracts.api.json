@@ -1022,7 +1022,7 @@
                 {
                   "kind": "Reference",
                   "text": "ReqtsMap",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~ReqtsMap:type"
+                  "canonicalReference": "@donecollectively/stellar-contracts!ReqtsMap:type"
                 },
                 {
                   "kind": "Content",
@@ -4174,7 +4174,7 @@
                 {
                   "kind": "Reference",
                   "text": "ReqtsMap",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~ReqtsMap:type"
+                  "canonicalReference": "@donecollectively/stellar-contracts!ReqtsMap:type"
                 },
                 {
                   "kind": "Content",
@@ -5384,6 +5384,148 @@
           }
         },
         {
+          "kind": "Function",
+          "canonicalReference": "@donecollectively/stellar-contracts!hasReqts:function(1)",
+          "docComment": "/**\n * Factory for type-safe requirements details for a unit of software\n *\n * @remarks\n *\n * return `hasReqts({... requirements})` from a requirements() or other method in a class, to express requirements using a standardized form that supports arbitrary amounts of detailed requirements with references to unit-test labels that can verify the impl details.\n *\n * You don't need to provide the type params or TS type annotations. `requirements() { return hasReqts({...yourReqts}) }` will work fine.\n *\n * See the {@link ReqtsMap} and {@link RequirementEntry} types for more details about expressing requirements.\n *\n * @param reqtsMap - the ReqtsMap structure for the software unit\n *\n * @typeParam R - implicitly matches the provided `reqtsMap`\n *\n * @typeParam reqts - implicitly matches the requirements strings from the provided `reqtsMap`\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function hasReqts<R extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "ReqtsMap",
+              "canonicalReference": "@donecollectively/stellar-contracts!ReqtsMap:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<reqts>"
+            },
+            {
+              "kind": "Content",
+              "text": ", const reqts extends "
+            },
+            {
+              "kind": "Content",
+              "text": "string"
+            },
+            {
+              "kind": "Content",
+              "text": " = "
+            },
+            {
+              "kind": "Content",
+              "text": "string & keyof R"
+            },
+            {
+              "kind": "Content",
+              "text": ">(reqtsMap: "
+            },
+            {
+              "kind": "Content",
+              "text": "R"
+            },
+            {
+              "kind": "Content",
+              "text": "): "
+            },
+            {
+              "kind": "Reference",
+              "text": "ReqtsMap",
+              "canonicalReference": "@donecollectively/stellar-contracts!ReqtsMap:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<reqts>"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/Requirements.ts",
+          "returnTypeTokenRange": {
+            "startIndex": 10,
+            "endIndex": 12
+          },
+          "releaseTag": "Public",
+          "overloadIndex": 1,
+          "parameters": [
+            {
+              "parameterName": "reqtsMap",
+              "parameterTypeTokenRange": {
+                "startIndex": 8,
+                "endIndex": 9
+              },
+              "isOptional": false
+            }
+          ],
+          "typeParameters": [
+            {
+              "typeParameterName": "R",
+              "constraintTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 0,
+                "endIndex": 0
+              }
+            },
+            {
+              "typeParameterName": "reqts",
+              "constraintTokenRange": {
+                "startIndex": 4,
+                "endIndex": 5
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 6,
+                "endIndex": 7
+              }
+            }
+          ],
+          "name": "hasReqts"
+        },
+        {
+          "kind": "Namespace",
+          "canonicalReference": "@donecollectively/stellar-contracts!hasReqts:namespace",
+          "docComment": "",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare namespace hasReqts "
+            }
+          ],
+          "fileUrlPath": "src/Requirements.ts",
+          "releaseTag": "Public",
+          "name": "hasReqts",
+          "preserveMemberOrder": false,
+          "members": [
+            {
+              "kind": "Variable",
+              "canonicalReference": "@donecollectively/stellar-contracts!hasReqts.TODO:var",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "TODO: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "unique symbol"
+                }
+              ],
+              "isReadonly": false,
+              "releaseTag": "Public",
+              "name": "TODO",
+              "variableTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              }
+            }
+          ]
+        },
+        {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!hasUutContext:type",
           "docComment": "/**\n * A txn context having specifically-purposed UUTs in its state\n *\n * @public\n */\n",
@@ -5860,6 +6002,118 @@
         },
         {
           "kind": "TypeAlias",
+          "canonicalReference": "@donecollectively/stellar-contracts!ReqtsMap:type",
+          "docComment": "/**\n * Describes the requirements for a unit of software\n *\n * @remarks\n *\n * A requirements map is a list of described requirements, in which each requirement has a synopsis, a description of its purpose, descriptive detail, and technical requirements for the mechanism used for implementation. The mech strings should be usable as unit-test titles.\n *\n * use the hasReqts() helper method to declare a type-safe set of requirements following this data structure.\n *\n * Each requirement also has space for nested 'requires', without the need for deeply nested data structures; these reference other requirements in the same hasReqts() data structure. As a result, high-level and detail- level requirements and 'impl' details can have progressive levels of detail.\n *\n * @typeParam reqts - the list of known requirement names. Implicitly detected by the hasReqts() helper.\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export type ReqtsMap<reqts extends "
+            },
+            {
+              "kind": "Content",
+              "text": "string"
+            },
+            {
+              "kind": "Content",
+              "text": "> = "
+            },
+            {
+              "kind": "Content",
+              "text": "{\n    [reqtDescription in reqts]: "
+            },
+            {
+              "kind": "Reference",
+              "text": "TODO_TYPE",
+              "canonicalReference": "@donecollectively/stellar-contracts!~TODO_TYPE:type"
+            },
+            {
+              "kind": "Content",
+              "text": " | "
+            },
+            {
+              "kind": "Reference",
+              "text": "RequirementEntry",
+              "canonicalReference": "@donecollectively/stellar-contracts!RequirementEntry:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<reqts>;\n}"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/Requirements.ts",
+          "releaseTag": "Public",
+          "name": "ReqtsMap",
+          "typeParameters": [
+            {
+              "typeParameterName": "reqts",
+              "constraintTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 0,
+                "endIndex": 0
+              }
+            }
+          ],
+          "typeTokenRange": {
+            "startIndex": 3,
+            "endIndex": 8
+          }
+        },
+        {
+          "kind": "TypeAlias",
+          "canonicalReference": "@donecollectively/stellar-contracts!RequirementEntry:type",
+          "docComment": "/**\n * Documents one specific requirement\n *\n * @remarks\n *\n * Describes the purpose, details, and implementation mechanism for a single requirement for a unit of software.\n *\n * Also references any other requirements in the host ReqtsMap structure, whose behavior this requirement depends on. The details of those other dependencies, are delegated entirely to the other requirement, facilitating narrowly-focused capture of for key expectations within each individual semantic expectation of a software unit's behavior.\n *\n * @typeParam reqts - constrains `requires` entries to the list of requirements in the host ReqtsMap structure\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export type RequirementEntry<reqts extends "
+            },
+            {
+              "kind": "Content",
+              "text": "string"
+            },
+            {
+              "kind": "Content",
+              "text": "> = "
+            },
+            {
+              "kind": "Content",
+              "text": "{\n    purpose: string;\n    details: string[];\n    mech: string[];\n    impl?: string;\n    requires?: reqts[];\n}"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/Requirements.ts",
+          "releaseTag": "Public",
+          "name": "RequirementEntry",
+          "typeParameters": [
+            {
+              "typeParameterName": "reqts",
+              "constraintTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 0,
+                "endIndex": 0
+              }
+            }
+          ],
+          "typeTokenRange": {
+            "startIndex": 3,
+            "endIndex": 4
+          }
+        },
+        {
+          "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!RoleMap:type",
           "docComment": "",
           "excerptTokens": [
@@ -6020,385 +6274,6 @@
               "isOptional": false,
               "isAbstract": false,
               "name": "_infoBackToUtxo"
-            },
-            {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#_mkUtxoSortInfo:member(1)",
-              "docComment": "/**\n * @private\n */\n",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "protected _mkUtxoSortInfo(min: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "bigint"
-                },
-                {
-                  "kind": "Content",
-                  "text": ", max?: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "bigint"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
-                },
-                {
-                  "kind": "Content",
-                  "text": "(u: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "TxInput",
-                  "canonicalReference": "@hyperionbt/helios!TxInput:class"
-                },
-                {
-                  "kind": "Content",
-                  "text": ") => "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "utxoInfo",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~utxoInfo:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 5,
-                "endIndex": 9
-              },
-              "releaseTag": "Public",
-              "isProtected": true,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "min",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 2
-                  },
-                  "isOptional": false
-                },
-                {
-                  "parameterName": "max",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 3,
-                    "endIndex": 4
-                  },
-                  "isOptional": true
-                }
-              ],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "_mkUtxoSortInfo"
-            },
-            {
-              "kind": "Property",
-              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#_purpose:member",
-              "docComment": "/**\n * @private\n */\n",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "_purpose?: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "scriptPurpose",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~scriptPurpose:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isReadonly": false,
-              "isOptional": true,
-              "releaseTag": "Public",
-              "name": "_purpose",
-              "propertyTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 2
-              },
-              "isStatic": false,
-              "isProtected": false,
-              "isAbstract": false
-            },
-            {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#_utxoCountAdaOnly:member(1)",
-              "docComment": "/**\n * @private\n */\n",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "protected _utxoCountAdaOnly(c: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "number"
-                },
-                {
-                  "kind": "Content",
-                  "text": ", { minAdaAmount }: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "utxoInfo",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~utxoInfo:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
-                },
-                {
-                  "kind": "Content",
-                  "text": "number"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 5,
-                "endIndex": 6
-              },
-              "releaseTag": "Public",
-              "isProtected": true,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "c",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 2
-                  },
-                  "isOptional": false
-                },
-                {
-                  "parameterName": "{ minAdaAmount }",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 3,
-                    "endIndex": 4
-                  },
-                  "isOptional": false
-                }
-              ],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "_utxoCountAdaOnly"
-            },
-            {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#_utxoIsPureADA:member(1)",
-              "docComment": "/**\n * @private\n */\n",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "protected _utxoIsPureADA({ u }: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "utxoInfo",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~utxoInfo:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "TxInput",
-                  "canonicalReference": "@hyperionbt/helios!TxInput:class"
-                },
-                {
-                  "kind": "Content",
-                  "text": " | undefined"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 3,
-                "endIndex": 5
-              },
-              "releaseTag": "Public",
-              "isProtected": true,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "{ u }",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 2
-                  },
-                  "isOptional": false
-                }
-              ],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "_utxoIsPureADA"
-            },
-            {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#_utxoIsSufficient:member(1)",
-              "docComment": "/**\n * @private\n */\n",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "protected _utxoIsSufficient({ sufficient }: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "utxoInfo",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~utxoInfo:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
-                },
-                {
-                  "kind": "Content",
-                  "text": "boolean"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 3,
-                "endIndex": 4
-              },
-              "releaseTag": "Public",
-              "isProtected": true,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "{ sufficient }",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 2
-                  },
-                  "isOptional": false
-                }
-              ],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "_utxoIsSufficient"
-            },
-            {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#_utxoSortSmallerAndPureADA:member(1)",
-              "docComment": "/**\n * @private\n */\n",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "protected _utxoSortSmallerAndPureADA({ "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "free",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~__type#free"
-                },
-                {
-                  "kind": "Content",
-                  "text": ": free1, "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "minAdaAmount",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~__type#minAdaAmount"
-                },
-                {
-                  "kind": "Content",
-                  "text": ": r1 }: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "utxoInfo",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~utxoInfo:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": ", { "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "free",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~__type#free"
-                },
-                {
-                  "kind": "Content",
-                  "text": ": free2, "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "minAdaAmount",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~__type#minAdaAmount"
-                },
-                {
-                  "kind": "Content",
-                  "text": ": r2 }: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "utxoInfo",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~utxoInfo:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
-                },
-                {
-                  "kind": "Content",
-                  "text": "1 | -1 | 0"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 13,
-                "endIndex": 14
-              },
-              "releaseTag": "Public",
-              "isProtected": true,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "{ free: free1, minAdaAmount: r1 }",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 5,
-                    "endIndex": 6
-                  },
-                  "isOptional": false
-                },
-                {
-                  "parameterName": "{ free: free2, minAdaAmount: r2 }",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 11,
-                    "endIndex": 12
-                  },
-                  "isOptional": false
-                }
-              ],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "_utxoSortSmallerAndPureADA"
             },
             {
               "kind": "Constructor",
