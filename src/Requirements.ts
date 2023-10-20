@@ -40,8 +40,8 @@ export type TODO_TYPE = typeof TODO;
  * @typeParam reqts - the list of known requirement names.  Implicitly detected by the hasReqts() helper.
  * @public
  **/
-export type ReqtsMap<reqts extends string> = {
-    [reqtDescription in reqts]: TODO_TYPE | RequirementEntry<reqts>;
+export type ReqtsMap<validReqts extends string> = {
+    [reqtDescription in validReqts]: TODO_TYPE | RequirementEntry<validReqts>;
 };
 
 /**
@@ -61,9 +61,9 @@ export type ReqtsMap<reqts extends string> = {
  * @typeParam reqts - implicitly matches the requirements strings from the provided `reqtsMap`
  */
 export function hasReqts<
-    R extends ReqtsMap<reqts>,
-    const reqts extends string = string & keyof R
->(reqtsMap: R): ReqtsMap<reqts> {
+    R extends ReqtsMap<validReqts>,
+    const validReqts extends string = string & keyof R
+>(reqtsMap: R): ReqtsMap<validReqts> {
     return reqtsMap;
 }
 
