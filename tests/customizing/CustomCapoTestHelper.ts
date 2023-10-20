@@ -3,8 +3,9 @@ import { Address } from "@hyperionbt/helios";
 import { StellarTxnContext } from "../../src/StellarTxnContext.js";
 import { CapoTestHelper, ADA } from "../../src/testing/index.js";
 import { CustomTreasury } from "./CustomTreasury.js";
+import { DefaultCapoTestHelper } from "../../src/testing/DefaultCapoTestHelper.js";
 
-export class CustomCapoTestHelper extends CapoTestHelper<CustomTreasury> {
+export class CustomCapoTestHelper extends DefaultCapoTestHelper<CustomTreasury> {
     get stellarClass() {
         return CustomTreasury;
     }

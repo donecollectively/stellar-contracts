@@ -40,6 +40,7 @@ export class MultisigAuthorityPolicy extends AuthorityPolicy {
     // ! impls MUST resolve the indicated token to a specific UTxO
     //  ... or throw an informative error
     async txnMustFindAuthorityToken(tcx: StellarTxnContext) : Promise<TxInput> {
+        if (!this.configIn) throw new Error(`must be instantiated with a configIn`);
         const {
             addrHint, uut, reqdAddress
         } = this.configIn

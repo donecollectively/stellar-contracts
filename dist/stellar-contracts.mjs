@@ -473,21 +473,21 @@ class StellarContract {
   getContractScriptParams(config) {
     return config;
   }
-  constructor({
-    setup,
-    config
-  }) {
-    if (!setup)
-      setup = this.constructor.setup;
-    const { network, networkParams, isTest, myActor } = setup;
+  constructor(args) {
+    const { setup, config, partialConfig, onInstanceCreated } = args;
     this.setup = setup;
-    this.configIn = config;
+    const { network, networkParams, isTest, myActor } = setup;
+    if (config) {
+      this.configIn = config;
+    } else if (!args.onInstanceCreated) {
+      throw new Error(`first time setup for ${this.constructor.name} missing config.onInstanceCreated() callback`);
+    }
     this.network = network;
     this.networkParams = networkParams;
     if (myActor)
       this.myActor = myActor;
-    const fullParams = this.contractParams = this.getContractScriptParams(config);
-    this.scriptProgram = this.loadProgramScript(fullParams);
+    const fullScriptParams = this.contractParams = this.getContractScriptParams(config);
+    this.scriptProgram = this.loadProgramScript(fullScriptParams);
   }
   compiledScript;
   // initialized in loadProgramScript
@@ -1477,12 +1477,13 @@ class Capo extends StellarContract {
   }
   //! it can provide minter-targeted params through getMinterParams()
   getMinterParams() {
-    return this.configIn;
+    const { seedTxn, seedIndex } = this.configIn;
+    return { seedTxn, seedIndex };
   }
   getCapoRev() {
     return 1n;
   }
-  getContractScriptParams(params) {
+  getContractScriptParams(config) {
     const { mph } = this;
     const rev = this.getCapoRev();
     return {
@@ -1501,8 +1502,8 @@ class Capo extends StellarContract {
     if (this.minter)
       return this.minter;
     const { minterClass } = this;
-    this.configIn;
-    const minter = this.addScriptWithParams(minterClass, params);
+    const { seedTxn, seedIndex } = this.configIn;
+    const minter = this.addScriptWithParams(minterClass, { seedTxn, seedIndex });
     const { mintingCharter, mintingUuts } = minter.scriptProgram.types.Redeemer;
     if (!mintingCharter)
       throw new Error(
@@ -2599,7 +2600,7 @@ const ADA = 1000000n;
 
 class StellarTestHelper {
   state;
-  params;
+  config;
   defaultActor;
   strella;
   actors;
@@ -2634,7 +2635,7 @@ class StellarTestHelper {
   constructor(params) {
     this.state = {};
     if (params)
-      this.params = params;
+      this.config = params;
     const [theNetwork, emuParams] = this.mkNetwork();
     this.liveSlotParams = emuParams;
     this.network = theNetwork;
@@ -2677,14 +2678,14 @@ class StellarTestHelper {
   }
   initStellarClass() {
     const TargetClass = this.stellarClass;
-    const strella = this.initStrella(TargetClass, this.params);
+    const strella = this.initStrella(TargetClass, this.config);
     this.strella = strella;
     this.address = strella.address;
     return strella;
   }
-  initStrella(TargetClass, params) {
+  initStrella(TargetClass, config) {
     return new TargetClass({
-      config: params,
+      config,
       setup: {
         network: this.network,
         myActor: this.currentActor,
@@ -2831,7 +2832,7 @@ class CapoTestHelper extends StellarTestHelper {
     }
     if (this.strella)
       console.warn(
-        ".... warning: new test helper setup with new seed...."
+        ".... warning: new test helper setup with new seed ..."
       );
     this.randomSeed = randomSeed;
     if (!seedTxn) {
@@ -2929,7 +2930,7 @@ class AuthorityPolicy extends StellarContract {
         purpose: "for sufficient assurance of desirable safeguards",
         details: [
           "A subclass of the GenericAuthority should take care of guarding the UUT's spend",
-          "  ... in whatever way is considered appropriate for its use-case"
+          "  ... in whatever way is appropriate for its use-case"
         ],
         mech: [],
         requires: []
@@ -3516,6 +3517,7 @@ class DefaultCapoTestHelper extends CapoTestHelper {
   get stellarClass() {
     return DefaultCapo;
   }
+  //!!! todo: create type-safe ActorMap helper hasActors(), on same pattern as hasRequirements
   setupActors() {
     this.addActor("tina", 1100n * ADA);
     this.addActor("tracy", 13n * ADA);

@@ -26,6 +26,7 @@ import {
     variantMap,
 } from "../src/delegation/RolesAndDelegates";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
+import * as utils from "../src/utils";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
@@ -171,12 +172,12 @@ describe("Capo", async () => {
             const tcx2 = new StellarTxnContext<hasAllUuts<uniqUutMap>>();
             await t.txnAddAuthority(tcx2);
 
-            const spy = vi.spyOn(m, "mkUutValuesEntries");
+            const spy = vi.spyOn(utils, "mkUutValuesEntries");
             spy.mockImplementation(
                 //@ts-expect-error
                 function (f: uniqUutMap) {
                     return [
-                        this.mkValuesEntry(f["multiple-is-bad"], BigInt(2)),
+                        utils.mkValuesEntry(f["multiple-is-bad"], BigInt(2)),
                     ];
                 }
             );
@@ -232,7 +233,9 @@ describe("Capo", async () => {
 
             await t.txnAddAuthority(tcx);
             const m: DefaultMinter = t.minter!;
-            vi.spyOn(m, "mkUutValuesEntries").mockImplementation(
+
+            const spy = vi.spyOn(utils, "mkUutValuesEntries");
+            spy.mockImplementation(
                 //@ts-expect-error
                 function (f: uniqUutMap) {
                     return [

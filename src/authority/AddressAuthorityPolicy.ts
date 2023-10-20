@@ -18,7 +18,7 @@ import { AuthorityPolicy } from "./AuthorityPolicy.js";
 
 export class AddressAuthorityPolicy extends AuthorityPolicy {
     loadProgramScript(params) {
-        return null
+        return undefined
     }
     @Activity.redeemer
     protected usingAuthority(): isActivity {
@@ -37,6 +37,7 @@ export class AddressAuthorityPolicy extends AuthorityPolicy {
     //! impls MUST resolve the indicated token to a specific UTxO
     //  ... or throw an informative error
     async txnMustFindAuthorityToken(tcx): Promise<TxInput> {
+        if (!this.configIn) throw new Error(`must be instantiated with a configIn`);
         const {uut, addrHint} = this.configIn;
         const v = this.mkAssetValue(uut);
         debugger
@@ -57,6 +58,7 @@ export class AddressAuthorityPolicy extends AuthorityPolicy {
         tcx: StellarTxnContext,
         delegateAddr: Address,
     ): Promise<StellarTxnContext> {
+        if (!this.configIn) throw new Error(`must be instantiated with a configIn`);
         const {uut} = this.configIn
         const v = this.mkAssetValue(uut, 1);
         const output = new TxOutput(delegateAddr, v);

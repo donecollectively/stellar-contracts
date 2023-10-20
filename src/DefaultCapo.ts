@@ -35,10 +35,16 @@ import { StellarTxnContext } from "./StellarTxnContext.js";
 
 //@ts-expect-error
 import contract from "./DefaultCapo.hl";
-import { Capo, CapoBaseConfig, hasSelectedDelegates } from "./Capo.js";
+import {
+    Capo,
+    CapoBaseConfig,
+    hasBootstrappedConfig,
+    hasSelectedDelegates,
+} from "./Capo.js";
 import { DefaultMinter } from "./DefaultMinter.js";
 import {
     ErrorMap,
+    isRoleMap,
     PARAM_IMPLIED,
     RelativeDelegateLink,
     RoleMap,
@@ -139,8 +145,8 @@ export class DefaultCapo<
     // updatingCharter() : isActivity {
     //     return this.updatingDefaultCharter()
     // }
-    get roles(): RoleMap {
-        return {
+    get roles() {
+        return isRoleMap({
             govAuthority: variantMap<AuthorityPolicy>({
                 address: {
                     delegateClass: AddressAuthorityPolicy,
@@ -182,7 +188,7 @@ export class DefaultCapo<
                     },
                 },
             }),
-        };
+        });
     }
 
     @datum
@@ -233,23 +239,62 @@ export class DefaultCapo<
         return tcx;
     }
 
+    // getMinterParams() {
+    //     const { seedTxn, seedIdx } = this.configIn
+    //     return { seedTxn, seedIdx }
+    // }
+
+    /**
+     * should emit a complete configuration structure that can reconstitute a contract (suite) after its first bootstrap transaction
+     * @remarks
+     *
+     * mkFullConfig is called during a bootstrap transaction.  The default implementation works
+     * for subclasses as long as they use CapoBaseConfig for their config type.  Or, if they're 
+     * instantiated with a partialConfig that augments CapoBaseConfig with concrete details that 
+     * fulfill their extensions to the config type.
+     *
+     * If you have a custom mkBootstrapTxn() that uses techniques to explicitly add config 
+     * properties not provided by your usage of `partialConfig` in the constructor, then you'll
+     * need to provide a more specific impl of mkFullConfig().  It's recommended that you 
+     * call super.mkFullConfig() from your impl.
+     * @param baseConfig - receives the BaseConfig properties: mph, seedTxn and seedIndex
+     * @public
+     **/
+
+    mkFullConfig(baseConfig: CapoBaseConfig): CapoBaseConfig & configType {
+        const pCfg = this.partialConfig || {};
+        return { ...baseConfig, ...pCfg } as configType & CapoBaseConfig;
+    }
+
     @txn
     //@ts-expect-error - typescript can't seem to understand that
     //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
-    async mkTxnMintCharterToken(
+    async mkTxnMintCharterToken<TCX extends hasSelectedDelegates>(
         charterDatumArgs: PartialDefaultCharterDatumArgs<CDT>,
-        existingTcx?: hasSelectedDelegates
-    ): Promise<StellarTxnContext | never> {
-        console.log(
-            `minting charter from seed ${this.configIn.seedTxn.hex.substring(
-                0,
-                12
-            )}…@${this.configIn.seedIndex}`
-        );
+        existingTcx?: TCX
+    ): Promise<
+        never | (TCX & hasBootstrappedConfig<CapoBaseConfig & configType>)
+    > {
+        if (this.configIn)
+            throw new Error(
+                `this contract suite is already configured and can't be re-chartered`
+            );
+
         const { strategyName } = charterDatumArgs.govAuthorityLink;
 
-        const initialTcx = existingTcx || this.withDelegates({});
-        return this.mustGetContractSeedUtxo().then(async (seedUtxo) => {
+        //@ts-expect-error yet another case of seemingly spurious "could be instantiated with a different subtype" (actual fixes welcome :pray:)
+        const initialTcx: TCX &
+            hasBootstrappedConfig<CapoBaseConfig & configType> =
+            existingTcx || this.withDelegates({});
+
+        return this.txnMustGetSeedUtxo(initialTcx, "charter bootstrapping", [
+            "charter",
+        ]).then(async (seedUtxo) => {
+            const { txId: seedTxn, utxoIdx } = seedUtxo.outputId;
+            const seedIndex = BigInt(utxoIdx);
+
+            this.connectMintingScript({ seedIndex, seedTxn });
+
             const tcx = await this.minter!.txnWithUuts(
                 initialTcx,
                 ["authZor"],
@@ -257,6 +302,20 @@ export class DefaultCapo<
                 "govAuthority"
             );
 
+            const { mintingPolicyHash: mph } = this.minter!;
+            const rev = this.getCapoRev();
+            const bsc = this.mkFullConfig({
+                mph,
+                rev,
+                seedTxn,
+                seedIndex,
+            });
+            tcx.state.bootstrappedConfig = bsc;
+            const fullScriptParams = (this.contractParams =
+                this.getContractScriptParams(bsc));
+            this.configIn = bsc;
+
+            this.scriptProgram = this.loadProgramScript(fullScriptParams);
             // console.log("-> B", txAsString(tcx.tx));
             const { authZor } = tcx.state.uuts;
             const delegateParams = this.txnGetSelectedDelegateConfig(

@@ -23,6 +23,7 @@ import { StellarTxnContext } from "../../src/StellarTxnContext.js";
 import { MinterBaseMethods } from "../../src/Capo.js";
 import { DefaultMinter } from "../../src/DefaultMinter.js";
 import { tokenNamesOrValuesEntry, valuesEntry } from "../../src/HeliosPromotedTypes.js";
+import { mkValuesEntry } from "../../src/utils.js";
 
 
 export class CustomMinter 
@@ -72,7 +73,7 @@ implements MinterBaseMethods {
         }
         const values: valuesEntry[] = namesAndCounts.map(([name, count]) => {
             if (Array.isArray(name)) return [name, count] as valuesEntry;
-            return this.mkValuesEntry(name, count);
+            return mkValuesEntry(name, count);
         });
         const value  = this._mkMintingValue(values);
 

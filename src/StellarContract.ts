@@ -53,12 +53,12 @@ export type utxoInfo = {
 };
 
 export type stellarSubclass<
-    S extends StellarContract<P>,
-    P extends configBase = S extends StellarContract<infer SCP>
-        ? SCP
+    S extends StellarContract<CT>,
+    CT extends configBase = S extends StellarContract<infer iCT>
+        ? iCT
         : configBase
-> = (new (args: StellarConstructorArgs<S>) => S & StellarContract<P>) & {
-    defaultParams: Partial<P>;
+> = (new (args: StellarConstructorArgs<CT>) => S & StellarContract<CT>) & {
+    defaultParams: Partial<CT>;
 };
 
 export type anyDatumProps = Record<string, any>;
@@ -194,10 +194,14 @@ export type ConfigFor<
         ? inferredConfig
         : never
 > = C;
-export type StellarConstructorArgs<SC extends StellarContract<any>> = {
-    setup: SetupDetails;
-    config: ConfigFor<SC>;
+
+export type StellarConstructorArgs<CT extends configBase> = {
+     setup: SetupDetails,
+    config?: CT 
+    partialConfig?: Partial<CT>
 };
+
+
 export type utxoPredicate =
     | ((u: TxInput) => TxInput | undefined)
     | ((u: TxInput) => boolean)
@@ -239,8 +243,9 @@ export class StellarContract<
     //! it has scriptProgram: a parameterized instance of the contract
     //  ... with specific `parameters` assigned.
     scriptProgram?: Program;
-    configIn: ConfigType;
-    contractParams: configBase;
+    configIn?: ConfigType;
+    partialConfig?: Partial<ConfigType>;
+    contractParams?: configBase;
     setup: SetupDetails;
     network: Network;
     networkParams: NetworkParams;
@@ -252,30 +257,30 @@ export class StellarContract<
 
     //! can transform input configuration to contract script params
     //! by default, all the config keys are used as script params
-    getContractScriptParams(config: ConfigType): configBase {
+    getContractScriptParams(config: ConfigType): configBase & Partial<ConfigType> {
         return config;
     }
 
-    constructor({
-        setup,
-        config,
-    }: StellarConstructorArgs<StellarContract<any>>) {
-        //@ts-expect-error because typescript doesn't understand this static getter
-        if (!setup) setup = this.constructor.setup;
-
-        const { network, networkParams, isTest, myActor } = setup;
+    constructor(args: StellarConstructorArgs<ConfigType>) {
+        const {setup, config, partialConfig } = args;
         this.setup = setup;
-        this.configIn = config;
+        const { network, networkParams, isTest, myActor } = setup;
         this.network = network;
         this.networkParams = networkParams;
         // this.isTest = isTest
         if (myActor) this.myActor = myActor;
 
-        const fullParams = (this.contractParams =
-            this.getContractScriptParams(config));
+        if (config) {
+            this.configIn = config;
 
-        //@ts-expect-error - until a better signature can be found for gCSP()
-        this.scriptProgram = this.loadProgramScript(fullParams);
+            const fullScriptParams = (this.contractParams =
+                this.getContractScriptParams(config));
+    
+                this.scriptProgram = this.loadProgramScript(fullScriptParams);
+            } else {
+            this.partialConfig = partialConfig;
+            this.scriptProgram = this.loadProgramScript();
+        }
     }
     compiledScript!: UplcProgram; // initialized in loadProgramScript
 
@@ -314,16 +319,6 @@ export class StellarContract<
         return this.address.toBech32();
     }
 
-    stringToNumberArray(str: string): number[] {
-        let encoder = new TextEncoder();
-        let byteArray = encoder.encode(str);
-        return [...byteArray].map((x) => parseInt(x.toString()));
-    }
-
-    mkValuesEntry(tokenName: string, count: bigint): valuesEntry {
-        return [this.stringToNumberArray(tokenName), count];
-    }
-
     //! searches the network for utxos stored in the contract,
     //  returning those whose datum hash is the same as the input datum
     async outputsSentToDatum(datum: InlineDatum) {
@@ -358,12 +353,12 @@ export class StellarContract<
     >(
         TargetClass: new (
             a: SC extends StellarContract<any>
-                ? StellarConstructorArgs<SC>
+                ? StellarConstructorArgs<ConfigFor<SC>>
                 : never
         ) => SC,
         params: SC extends StellarContract<infer P> ? P : never
     ) {
-        const args: StellarConstructorArgs<SC> = {
+        const args: StellarConstructorArgs<ConfigFor<SC>> = {
             config: params,
             setup: this.setup,
         };
@@ -935,7 +930,7 @@ export class StellarContract<
         const bn =
             "number" == typeof n
                 ? BigInt(Math.round(1_000_000 * n))
-                : ((BigInt(1_000_000) * n) as bigint);
+                : ((BigInt(1_000_000) * n) as bigint);debugger
         return bn;
     }
 
@@ -979,7 +974,7 @@ export class StellarContract<
         return [];
     }
 
-    loadProgramScript(params: ConfigType): Program | null {
+    loadProgramScript(params?: Partial<ConfigType>): Program | undefined {
         const src = this.contractSource();
         const modules = this.importModules();
 
@@ -987,7 +982,7 @@ export class StellarContract<
 
         try {
             const script = Program.new(src, modules);
-            script.parameters = params;
+            if (params) script.parameters = params;
 
             const simplify = !this.setup.isTest;
             // const t = new Date().getTime();

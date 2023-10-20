@@ -31,6 +31,7 @@ import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";
 import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
 import { RelativeDelegateLink, UutName } from "./delegation/RolesAndDelegates.js";
 import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
+import { mkUutValuesEntries, mkValuesEntry } from "./utils.js";
 
 type MintCharterRedeemerArgs<T = {}> = T & {
     owner: Address;
@@ -104,6 +105,7 @@ export class DefaultMinter
         new Promise<TxInput>(res => {
             //!!! make it big enough to serve minUtxo for the new UUT(s)
             const uutSeed = this.mkValuePredicate(BigInt(42_000), initialTcx);
+
             this.mustFindActorUtxo(
                 `for-uut-${uutPurposes.join("+")}`,
                 uutSeed,
@@ -113,7 +115,7 @@ export class DefaultMinter
 
         return gettingSeed.then(async (seedUtxo) => {
             const tcx = await this.txnWithUuts(initialTcx, uutPurposes, seedUtxo, "");
-            const vEntries = this.mkUutValuesEntries(tcx.state.uuts);
+            const vEntries = mkUutValuesEntries(tcx.state.uuts);
 
             tcx.addInput(seedUtxo);
             const { txId: seedTxn, utxoIdx: seedIndex } = seedUtxo.outputId;
@@ -129,12 +131,6 @@ export class DefaultMinter
             );
 
             return tcx;
-        });
-    }
-
-    mkUutValuesEntries<UM extends uutPurposeMap<any>>(uutMap: UM): valuesEntry[] {
-        return Object.entries(uutMap).map(([_purpose, uut]) => {
-            return this.mkValuesEntry(uut.name, BigInt(1));
         });
     }
 
@@ -175,7 +171,7 @@ export class DefaultMinter
     }
 
     get charterTokenAsValuesEntry(): valuesEntry {
-        return this.mkValuesEntry("charter", BigInt(1));
+        return mkValuesEntry("charter", BigInt(1));
     }
 
     tvCharter() {
@@ -196,17 +192,17 @@ export class DefaultMinter
     }
 
     @Activity.partialTxn
-    async txnMintingCharter(
-        tcx: StellarTxnContext,
+    async txnMintingCharter<TCX extends StellarTxnContext<any>>(
+        tcx: TCX,
         { owner, authZor } : {
             authZor:  UutName,
             owner: Address, 
         }
-    ): Promise<StellarTxnContext> {
+    ): Promise<TCX> {
         const charterVE = this.charterTokenAsValuesEntry;
-        const authzVE = this.mkValuesEntry(authZor.name, BigInt(1));
+        const authzVE = mkValuesEntry(authZor.name, BigInt(1));
 
-        return tcx
+        return (tcx
             .mintTokens(
                 this.mintingPolicyHash!,
                 [charterVE, authzVE],
@@ -214,6 +210,6 @@ export class DefaultMinter
                     owner
                  }).redeemer
             )
-            .attachScript(this.compiledScript);
+            .attachScript(this.compiledScript)) as TCX
     }
 }

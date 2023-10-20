@@ -1,6 +1,7 @@
 import { Address } from "@hyperionbt/helios";
 import { ConfigFor, StellarContract, configBase, stellarSubclass } from "../StellarContract.js";
 import { DefaultMinter } from "../DefaultMinter.js";
+import { Capo } from "../Capo.js";
 
 const _uutName = Symbol("uutName");
 const maxUutName = 32
@@ -47,6 +48,11 @@ export type VariantMap<
 > = Record<string, VariantStrategy<T>>
 
 export type RoleMap = Record<string, VariantMap<any>>
+export function isRoleMap<
+    const R extends RoleMap,
+>(x: R) : RoleMap { 
+    return x 
+};
 
 export type strategyParams = configBase;
 export type delegateScriptParams = configBase;
@@ -81,10 +87,10 @@ export type SelectedDelegates = {
 //  ... one of the strategy variants 
 //  ... and the settings (script parameters) needed to create the on-chain contract
 export type SelectedDelegate<
-    T extends StellarContract<any>
+    SC extends StellarContract<any>
 > = {
     strategyName: string
-    config: Partial<ConfigFor<T>>,
+    config?: Partial<ConfigFor<SC>>,
 } 
 
 export function selectDelegate<

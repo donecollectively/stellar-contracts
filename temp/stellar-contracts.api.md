@@ -78,7 +78,7 @@ export class BasicMintDelegate extends StellarContract<MintDelegateArgs> {
 // @public
 export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter, charterDatumType extends anyDatumArgs = anyDatumArgs, configType extends CapoBaseConfig = CapoBaseConfig> extends StellarContract<configType> implements hasUutCreator {
     // Warning: (ae-forgotten-export) The symbol "StellarConstructorArgs" needs to be exported by the entry point index.d.ts
-    constructor(args: StellarConstructorArgs<StellarContract<CapoBaseConfig>>);
+    constructor(args: StellarConstructorArgs<CapoBaseConfig>);
     // (undocumented)
     capoRequirements(): ReqtsMap_2<"is a base class for leader/Capo pattern" | "can create unique utility tokens" | "supports the Delegation pattern using roles and strategy-variants" | "supports well-typed role declarations and strategy-adding" | "supports just-in-time strategy-selection using withDelegates() and txnMustGetDelegate()" | "supports concrete resolution of existing role delegates" | "Each role uses a RoleVariants structure which can accept new variants" | "provides a Strategy type for binding a contract to a strategy-variant name">;
     // (undocumented)
@@ -98,12 +98,15 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     // (undocumented)
     getCapoRev(): bigint;
     // (undocumented)
-    getContractScriptParams(params: SeedTxnParams): {
+    getContractScriptParams(config: configType): {
         mph: MintingPolicyHash;
         rev: bigint;
     };
     // (undocumented)
-    getMinterParams(): configType;
+    getMinterParams(): {
+        seedTxn: TxId;
+        seedIndex: bigint;
+    };
     // (undocumented)
     importModules(): HeliosModuleSrc[];
     // (undocumented)
@@ -217,7 +220,7 @@ export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT e
 }
 
 // @public
-export class DefaultCapoTestHelper<DC extends DefaultCapo = DefaultCapo> extends CapoTestHelper<DC> {
+export class DefaultCapoTestHelper<DC extends DefaultCapo<any> = DefaultCapo> extends CapoTestHelper<DC> {
     // (undocumented)
     mkCharterSpendTx(): Promise<StellarTxnContext>;
     // (undocumented)
@@ -369,13 +372,13 @@ export type SeedTxnParams = {
 
 // @public (undocumented)
 export class StellarContract<ConfigType extends paramsBase> {
-    constructor({ setup, config, }: StellarConstructorArgs<StellarContract<any>>);
+    constructor(args: StellarConstructorArgs<ConfigType>);
     // (undocumented)
     ADA(n: bigint | number): bigint;
     // (undocumented)
     get address(): Address;
     // (undocumented)
-    addScriptWithParams<SC extends StellarContract<any>>(TargetClass: new (a: SC extends StellarContract<any> ? StellarConstructorArgs<SC> : never) => SC, params: SC extends StellarContract<infer P> ? P : never): SC;
+    addScriptWithParams<SC extends StellarContract<any>>(TargetClass: new (a: SC extends StellarContract<any> ? StellarConstructorArgs<ConfigFor<SC>> : never) => SC, params: SC extends StellarContract<infer P> ? P : never): SC;
     // (undocumented)
     compiledScript: UplcProgram;
     // (undocumented)
@@ -496,8 +499,8 @@ export class StellarContract<ConfigType extends paramsBase> {
 }
 
 // @public (undocumented)
-export type stellarSubclass<S extends StellarContract<P>, P extends paramsBase = S extends StellarContract<infer SCP> ? SCP : paramsBase> = (new (args: StellarConstructorArgs<S>) => S & StellarContract<P>) & {
-    defaultParams: Partial<P>;
+export type stellarSubclass<S extends StellarContract<CT>, CT extends paramsBase = S extends StellarContract<infer iCT> ? iCT : paramsBase> = (new (args: StellarConstructorArgs<CT>) => S & StellarContract<CT>) & {
+    defaultParams: Partial<CT>;
 };
 
 // Warning: (ae-forgotten-export) The symbol "canHaveRandomSeed" needs to be exported by the entry point index.d.ts
@@ -515,8 +518,8 @@ export interface StellarTestContext<HTH extends StellarTestHelper<SC, P>, SC ext
 }
 
 // @public (undocumented)
-export abstract class StellarTestHelper<SC extends StellarContract<any>, P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never> {
-    constructor(params?: P & canHaveRandomSeed & canSkipSetup);
+export abstract class StellarTestHelper<SC extends StellarContract<any>, CT extends paramsBase = SC extends StellarContract<infer iCT> ? iCT : never> {
+    constructor(params?: CT & canHaveRandomSeed & canSkipSetup);
     // Warning: (ae-forgotten-export) The symbol "actorMap" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
@@ -525,6 +528,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, P exten
     addActor(roleName: string, walletBalance: bigint): helios.SimpleWallet;
     // (undocumented)
     address?: Address;
+    // (undocumented)
+    config?: CT;
     // (undocumented)
     get currentActor(): SimpleWallet;
     set currentActor(actorName: string);
@@ -535,11 +540,11 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, P exten
     // (undocumented)
     delay(ms: any): Promise<unknown>;
     // (undocumented)
-    initialize(params: P & canHaveRandomSeed): Promise<any>;
+    initialize(params: CT & canHaveRandomSeed): Promise<SC>;
     // (undocumented)
-    initStellarClass(): any;
+    initStellarClass(): SC & StellarContract<any>;
     // (undocumented)
-    initStrella(TargetClass: stellarSubclass<any, any>, params: any): any;
+    initStrella(TargetClass: stellarSubclass<SC, any>, config: any): SC & StellarContract<any>;
     // (undocumented)
     liveSlotParams: NetworkParams;
     // Warning: (ae-forgotten-export) The symbol "enhancedNetworkParams" needs to be exported by the entry point index.d.ts
@@ -556,8 +561,6 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, P exten
     networkParams: NetworkParams;
     // (undocumented)
     optimize: boolean;
-    // (undocumented)
-    params?: P;
     // (undocumented)
     rand?: () => number;
     // (undocumented)

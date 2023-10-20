@@ -7,6 +7,7 @@ import {
 import { promises as fs } from "fs";
 import { Vitest, vitest } from "vitest";
 import {
+    ConfigFor,
     StellarContract,
     configBase,
 } from "../StellarContract.js";
@@ -20,10 +21,9 @@ export type enhancedNetworkParams = NetworkParams & {
     slotToTimestamp(n: bigint): Date;
 };
 
-export type helperSubclass<
+export type stellarTestHelperSubclass<
     SC extends StellarContract<any>,
-    P extends configBase = SC extends StellarContract<infer PT> ? PT : never
-> = new (params: P & canHaveRandomSeed) => StellarTestHelper<SC, P>;
+> = new (config: ConfigFor<SC> & canHaveRandomSeed) => StellarTestHelper<SC>;
 
 export type canHaveRandomSeed = {
     randomSeed?: number;
@@ -36,8 +36,8 @@ export async function addTestContext<
     SC extends StellarContract<any>,
     P extends configBase = SC extends StellarContract<infer PT> ? PT : never
 >(
-    context: StellarTestContext<any, SC, P>,
-    TestHelperClass: helperSubclass<SC>,
+    context: StellarTestContext<any, SC>,
+    TestHelperClass: stellarTestHelperSubclass<SC>,
     params?: P
 ) {
     console.log(" ======== ========= ======== +test context");

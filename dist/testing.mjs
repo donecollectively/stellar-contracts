@@ -373,21 +373,21 @@ class StellarContract {
   getContractScriptParams(config) {
     return config;
   }
-  constructor({
-    setup,
-    config
-  }) {
-    if (!setup)
-      setup = this.constructor.setup;
-    const { network, networkParams, isTest, myActor } = setup;
+  constructor(args) {
+    const { setup, config, partialConfig, onInstanceCreated } = args;
     this.setup = setup;
-    this.configIn = config;
+    const { network, networkParams, isTest, myActor } = setup;
+    if (config) {
+      this.configIn = config;
+    } else if (!args.onInstanceCreated) {
+      throw new Error(`first time setup for ${this.constructor.name} missing config.onInstanceCreated() callback`);
+    }
     this.network = network;
     this.networkParams = networkParams;
     if (myActor)
       this.myActor = myActor;
-    const fullParams = this.contractParams = this.getContractScriptParams(config);
-    this.scriptProgram = this.loadProgramScript(fullParams);
+    const fullScriptParams = this.contractParams = this.getContractScriptParams(config);
+    this.scriptProgram = this.loadProgramScript(fullScriptParams);
   }
   compiledScript;
   // initialized in loadProgramScript
@@ -1689,7 +1689,7 @@ const ADA = 1000000n;
 
 class StellarTestHelper {
   state;
-  params;
+  config;
   defaultActor;
   strella;
   actors;
@@ -1724,7 +1724,7 @@ class StellarTestHelper {
   constructor(params) {
     this.state = {};
     if (params)
-      this.params = params;
+      this.config = params;
     const [theNetwork, emuParams] = this.mkNetwork();
     this.liveSlotParams = emuParams;
     this.network = theNetwork;
@@ -1767,14 +1767,14 @@ class StellarTestHelper {
   }
   initStellarClass() {
     const TargetClass = this.stellarClass;
-    const strella = this.initStrella(TargetClass, this.params);
+    const strella = this.initStrella(TargetClass, this.config);
     this.strella = strella;
     this.address = strella.address;
     return strella;
   }
-  initStrella(TargetClass, params) {
+  initStrella(TargetClass, config) {
     return new TargetClass({
-      config: params,
+      config,
       setup: {
         network: this.network,
         myActor: this.currentActor,
@@ -1929,7 +1929,7 @@ class CapoTestHelper extends StellarTestHelper {
     }
     if (this.strella)
       console.warn(
-        ".... warning: new test helper setup with new seed...."
+        ".... warning: new test helper setup with new seed ..."
       );
     this.randomSeed = randomSeed;
     if (!seedTxn) {

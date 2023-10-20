@@ -41,6 +41,11 @@ import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";
 import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { errorMapAsString } from "./diagnostics.js";
 import { hasReqts } from "./Requirements.js";
+import {
+    mkUutValuesEntries,
+    mkValuesEntry,
+    stringToNumberArray,
+} from "./utils.js";
 
 export { variantMap } from "./delegation/RolesAndDelegates.js";
 export type {
@@ -63,7 +68,7 @@ export type uutPurposeMap<unionPurpose extends string> = {
 
 /**
  * used for transaction-context state having specific uut-purposes
- * 
+ *
  * @public
  */
 export type hasAllUuts<uutEntries extends string> = {
@@ -72,7 +77,7 @@ export type hasAllUuts<uutEntries extends string> = {
 
 /**
  * the uut-factory interface
- * 
+ *
  * @public
  */
 interface hasUutCreator {
@@ -88,7 +93,7 @@ interface hasUutCreator {
 
 /**
  * UUT minting should always use these settings to guard for uniqueness
- * 
+ *
  * @public
  */
 export type MintUutRedeemerArgs = {
@@ -98,7 +103,7 @@ export type MintUutRedeemerArgs = {
 };
 /**
  * A txn context having specifically-purposed UUTs in its state
- * 
+ *
  * @public
  */
 export type hasUutContext<uutEntries extends string> = StellarTxnContext<
@@ -107,7 +112,7 @@ export type hasUutContext<uutEntries extends string> = StellarTxnContext<
 
 /**
  * charter-minting interface
- * 
+ *
  * @public
  */
 export interface MinterBaseMethods extends hasUutCreator {
@@ -127,6 +132,7 @@ export type anyDatumArgs = Record<string, any>;
 //!!! todo: let this be parameterized for more specificity
 export type CapoBaseConfig = SeedTxnParams & {
     mph: MintingPolicyHash;
+    rev: bigint;
 };
 
 //!!! todo: let this be parameterized for more specificity
@@ -136,29 +142,34 @@ export type CapoImpliedSettings = {
 
 export type hasSelectedDelegates = StellarTxnContext<hasDelegateProp>;
 type hasDelegateProp = {
-    delegates: SelectedDelegates;
+    delegates: Partial<SelectedDelegates>;
 };
+
+export type hasBootstrappedConfig<CT extends CapoBaseConfig> =
+    StellarTxnContext<{
+        bootstrappedConfig: CT;
+    }>;
 
 /**
  * Base class for the leader of a set of contracts
  * @remarks
- * 
+ *
  * A Capo contract provides a central contract address that can act as a treasury or data registry;
- * it can mint tokens using its connected minting-policy, and it can delegate policies to other contract 
+ * it can mint tokens using its connected minting-policy, and it can delegate policies to other contract
  * scripts.  Subclasses of Capo can use these capabilities in custom ways for strong flexibility.
- * 
- * Any Capo contract can (and must) define roles() to establish collaborating scripts; these are used for 
- * separating granular responsbilities for different functional purposes within your (on-chain and off-chain) 
+ *
+ * Any Capo contract can (and must) define roles() to establish collaborating scripts; these are used for
+ * separating granular responsbilities for different functional purposes within your (on-chain and off-chain)
  * application; this approach enables delegates to use any one of multiple strategies with different
  * functional logic to serve in any given role, thus providing flexibility and extensibility.
- * 
+ *
  * The delegation pattern uses UUTs, which are non-fungible / unique utility tokens.  See DefaultCapo for more about them.
- * 
- * **Capo is a foundational class**; you should consider using DefaultCapo as a starting point, unless its govAuthority 
+ *
+ * **Capo is a foundational class**; you should consider using DefaultCapo as a starting point, unless its govAuthority
  * role conflicts with your goals.
  *
  * Inherits from: {@link StellarContract}\<`configType`\> (is this a redundant doc entry?) .
- * 
+ *
  * @typeParam minterType - allows setting a different contract (script & off-chain class) for the minting policy
  * @typeParam charterDatumType - specifies schema for datum information held in the Capo's primary or "charter" UTXO
  * @typeParam configType - specifies schema for details required to pre-configure the contract suite, or to reproduce it in a specific application instance.
@@ -173,8 +184,10 @@ export abstract class Capo<
     implements hasUutCreator
 {
     abstract get roles(): RoleMap;
+    abstract mkFullConfig(baseConfig: CapoBaseConfig): configType;
 
-    constructor(args: StellarConstructorArgs<StellarContract<CapoBaseConfig>>) {
+    constructor(args: StellarConstructorArgs<CapoBaseConfig>) {
+        //@ts-expect-error spurious "could be instantiated with a different subtype"
         super(args);
 
         const { Datum, Redeemer } = this.scriptProgram!.types;
@@ -219,7 +232,7 @@ export abstract class Capo<
     uutsValue(tcx: hasUutContext<any>): Value;
     uutsValue(x: uutPurposeMap<any> | hasUutContext<any>): Value {
         const uutMap = x instanceof StellarTxnContext ? x.state.uuts! : x;
-        const vEntries = this.minter!.mkUutValuesEntries(uutMap);
+        const vEntries = mkUutValuesEntries(uutMap);
 
         return new Value(
             undefined,
@@ -258,10 +271,13 @@ export abstract class Capo<
         return [StellarHeliosHelpers, CapoDelegateHelpers, CapoMintHelpers];
     }
 
-    abstract mkTxnMintCharterToken(
+    abstract mkTxnMintCharterToken<TCX extends hasSelectedDelegates>(
         charterDatumArgs: Partial<charterDatumType>,
-        tcx?: StellarTxnContext
-    ): Promise<StellarTxnContext | never>;
+        existingTcx?: TCX
+    ): Promise<
+        never | (TCX & hasBootstrappedConfig<CapoBaseConfig & configType>)
+    >;
+
     // @txn
     // async mkTxnMintCharterToken(
     //     datumArgs: charterDatumType,
@@ -300,7 +316,7 @@ export abstract class Capo<
     tokenAsValue(tokenName: string, quantity: bigint = 1n) {
         const { mintingPolicyHash } = this;
 
-        const e = this.mkValuesEntry(tokenName, quantity);
+        const e = mkValuesEntry(tokenName, quantity);
 
         const v = new Value(
             this.ADA(0),
@@ -403,19 +419,37 @@ export abstract class Capo<
         return this.txnMustUseCharterUtxo(tcx, this.usingAuthority());
     }
 
-    //! it can provide minter-targeted params through getMinterParams()
+    /**
+     * provides minter-targeted params extracted from the input configuration
+     * @remarks
+     *
+     * extracts the seed-txn details that are key to parameterizing the minter contract
+     * @public
+     **/
     getMinterParams() {
-        return this.configIn;
+        const { seedTxn, seedIndex } = this.configIn!;
+        return { seedTxn, seedIndex };
     }
     getCapoRev() {
         return 1n;
     }
 
-    getContractScriptParams(params: SeedTxnParams) {
-        const { mph } = this;
+    /**
+     * extracts from the input configuration the key details needed to construct/reconstruct the on-chain contract address
+     * @remarks
+     *
+     * extracts the details that are key to parameterizing the Capo / leader's on-chain contract script
+     * @public
+     **/
+    getContractScriptParams(
+        config: configType
+    ): configBase & Partial<configType> {
+        if (this.configIn && config.mph && config.mph !== this.mph) throw new Error(`mph mismatch`);
+        const { mph } = config;
         const rev = this.getCapoRev();
         // console.log("this treasury uses mph", mph?.hex);
 
+        //@ts-expect-error because TS only sees the abstract configType, not its constraint's props
         return {
             mph,
             rev,
@@ -423,7 +457,8 @@ export abstract class Capo<
     }
 
     get mph() {
-        const minter = this.connectMintingScript(this.getMinterParams());
+        const minter =
+            this.minter || this.connectMintingScript(this.getMinterParams());
         return minter.mintingPolicyHash!;
     }
 
@@ -432,11 +467,15 @@ export abstract class Capo<
     }
 
     connectMintingScript(params: SeedTxnParams): minterType {
-        if (this.minter) return this.minter;
+        if (this.minter)
+            throw new Error(`just use this.minter when it's already present`);
         const { minterClass } = this;
-        const { seedTxn, seedIndex } = this.configIn;
+        const { seedTxn, seedIndex } = params;
 
-        const minter = this.addScriptWithParams(minterClass, params);
+        const minter = this.addScriptWithParams(minterClass, {
+            seedTxn,
+            seedIndex,
+        });
         const { mintingCharter, mintingUuts } =
             minter.scriptProgram!.types.Redeemer;
         if (!mintingCharter)
@@ -452,29 +491,65 @@ export abstract class Capo<
         return (this.minter = minter);
     }
 
-    async mustGetContractSeedUtxo(): Promise<TxInput | never> {
+    async txnMustGetSeedUtxo(
+        tcx: StellarTxnContext,
+        purpose: string,
+        tokenNames: string[]
+    ): Promise<TxInput | never> {
         //! given a Capo-based contract instance having a free TxInput to seed its validator address,
         //! prior to initial on-chain creation of contract,
         //! it finds that specific TxInput in the current user's wallet.
-        const { seedTxn, seedIndex } = this.configIn;
-        console.log(
-            `seeking seed txn ${seedTxn.hex.substring(0, 12)}…@${seedIndex}`
-        );
 
-        return this.mustFindActorUtxo(
-            "seed",
-            (u) => {
-                const { txId, utxoIdx } = u.outputId;
+        const minter = this.configIn
+            ? this.minter
+            : (this.mockMinter =
+                  this.mockMinter ||
+                  (new this.minterClass({
+                      //@ts-expect-error - this empty config is good enough for a mock-minter
+                      //    ... we only need enough for calculating minUtxo
+                      config: {},
+                      setup: this.setup,
+                  }) as minterType));
+        const mph = minter!.mintingPolicyHash;
 
-                if (txId.eq(seedTxn) && BigInt(utxoIdx) == seedIndex) {
-                    return u;
-                }
-            },
-            "already spent?"
+        const minUtxo = tokenNames.reduce(
+            addTokenValue.bind(this),
+            new Value(0n)
         );
+        const uutSeed = this.mkValuePredicate(minUtxo.lovelace, tcx);
+        const seedUtxo = await this.mustFindActorUtxo(
+            purpose,
+            uutSeed,
+            tcx
+        ).catch((x) => {
+            throw x;
+        });
+
+        const { txId: seedTxn, utxoIdx } = seedUtxo.outputId;
+        const seedIndex = BigInt(utxoIdx);
+        const count = tokenNames.length > 1 ? 
+            `${tokenNames.length} uuts for ` : "";
+        console.log(`Seed tx for ${count}${purpose}: ${
+                seedTxn.hex.slice(0, 8)}…${seedTxn.hex.slice(-4)
+            }#${seedIndex}`);
+        return seedUtxo;
+
+        //! accumulates min-utxos for each stringy token-name in a reduce()
+        function addTokenValue(
+            this: Capo<any>,
+            accumulator: Value,
+            tn: string
+        ): Value {
+            const ve = mkValuesEntry(tn, 1n);
+            const v = new Value(undefined, [[mph, [ve]]]);
+            const o = new TxOutput(this.address, minter!.tvCharter());
+            o.correctLovelace(this.networkParams);
+            return accumulator.add(o.value);
+        }
     }
+    mockMinter?: minterType;
 
-    withDelegates(delegates: SelectedDelegates): hasSelectedDelegates {
+    withDelegates(delegates: Partial<SelectedDelegates>): hasSelectedDelegates {
         const tcx = new StellarTxnContext<hasDelegateProp>();
         tcx.state.delegates = delegates;
 
@@ -489,7 +564,7 @@ export abstract class Capo<
         roleName: RN
     ): PartialParamConfig<ConfigFor<T>> {
         const selected = this.txnMustSelectDelegate(tcx, roleName);
-        const { strategyName, config: selectedConfig } = selected;
+        const { strategyName, config: selectedConfig = {} } = selected;
 
         const { roles } = this;
 
@@ -497,6 +572,15 @@ export abstract class Capo<
         const selectedStrategy = foundStrategies[
             strategyName
         ] as VariantStrategy<T>;
+        if (!selectedStrategy) {
+            debugger;
+            throw new Error(
+                `${this.constructor.name}: invalid strategy name '${strategyName}' for role '${roleName}'` +
+                    `\n ...try one of ${Object.keys(foundStrategies).join(
+                        ", "
+                    )}`
+            );
+        }
 
         const stratConfig = selectedStrategy.partialConfig || {};
         return {
@@ -513,6 +597,7 @@ export abstract class Capo<
         const { delegates: selectedDelegates } = tcx.state;
         let selected = selectedDelegates[roleName];
         const role = this.roles[roleName];
+        if (!role) throw new Error(`${this.constructor.name}: no such role ${roleName}`)
         if (!selected) {
             if (role.default) {
                 selected = {
@@ -552,7 +637,7 @@ export abstract class Capo<
 
         const { roles } = this;
         const uut = tcx.state.uuts[roleName];
-        const impliedSettings = this.mkImpliedSettings(uut);
+        const impliedSettings = this.mkImpliedUutDetails(uut);
 
         const foundStrategies = roles[roleName];
         const selectedStrategy = foundStrategies[
@@ -595,11 +680,11 @@ export abstract class Capo<
         };
     }
 
-    mkImpliedSettings(uut: UutName): CapoImpliedSettings {
+    mkImpliedUutDetails(uut: UutName): CapoImpliedSettings {
         return {
             uut: new AssetClass({
                 mph: this.mph,
-                tokenName: this.stringToNumberArray(uut.name),
+                tokenName: stringToNumberArray(uut.name),
             }),
         };
     }
@@ -658,7 +743,7 @@ export abstract class Capo<
         const { delegateClass, config: stratSettings } = selectedStrat;
         const config = {
             ...stratSettings,
-            ...this.mkImpliedSettings(new UutName("some-delegate", uutName)),
+            ...this.mkImpliedUutDetails(new UutName("some-delegate", uutName)),
             ...linkedConfig,
         };
 

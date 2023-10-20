@@ -125,7 +125,7 @@ export abstract class AuthorityPolicy<
                 purpose: "for sufficient assurance of desirable safeguards",
                 details: [
                     "A subclass of the GenericAuthority should take care of guarding the UUT's spend",
-                    "  ... in whatever way is considered appropriate for its use-case",
+                    "  ... in whatever way is appropriate for its use-case",
                 ],
                 mech: [],
                 requires: [],

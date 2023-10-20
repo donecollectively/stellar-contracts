@@ -15,7 +15,9 @@ import {
     StellarContract,
     findInputsInWallets,
     configBase,
-    stellarSubclass
+    stellarSubclass,
+    ConfigFor,
+    StellarConstructorArgs
 } from "../StellarContract.js";
 import {
     lovelaceToAda, txAsString,
@@ -25,12 +27,11 @@ import { actorMap, ADA, canHaveRandomSeed, canSkipSetup, preProdParams, enhanced
 
 
 export abstract class StellarTestHelper<
-    SC extends StellarContract<any>,
-    P extends configBase = SC extends StellarContract<infer PT> ? PT : never
+    SC extends StellarContract<any>
 > {
     state: Record<string, any>;
     abstract get stellarClass(): stellarSubclass<SC, any>;
-    params?: P;
+    config?: ConfigFor<SC>;
     defaultActor?: string;
     strella!: SC;
     actors: actorMap;
@@ -65,9 +66,9 @@ export abstract class StellarTestHelper<
         this.currentActor = "hiro";
     }
 
-    constructor(params?: P & canHaveRandomSeed & canSkipSetup) {
+    constructor(config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup) {
         this.state = {};
-        if (params) this.params = params;
+        if (config) this.config = config;
 
         const [theNetwork, emuParams] = this.mkNetwork();
         this.liveSlotParams = emuParams;
@@ -83,19 +84,17 @@ export abstract class StellarTestHelper<
             );
         const now = new Date();
         this.waitUntil(now);
-        if (params?.skipSetup) {
+        if (config?.skipSetup) {
             console.log("test helper skipping setup");
             return;
         }
 
         //@ts-expect-error - can serve no-params case or params case
-        this.setupPending = this.initialize(params).then((p) => {
-            return p;
-        });
+        this.setupPending = this.initialize(config)
     }
 
-    async initialize(params: P & canHaveRandomSeed) {
-        const { randomSeed, ...p } = params;
+    async initialize(config: ConfigFor<SC> & canHaveRandomSeed) {
+        const { randomSeed, ...p } = config;
         if (this.setupPending) await this.setupPending;
         if (this.strella && this.randomSeed == randomSeed) {
             console.log(
@@ -117,23 +116,32 @@ export abstract class StellarTestHelper<
     initStellarClass() {
         const TargetClass = this.stellarClass;
 
-        const strella = this.initStrella(TargetClass, this.params);
+        const strella = this.initStrella(TargetClass, this.config);
 
         this.strella = strella;
         this.address = strella.address;
         return strella;
     }
 
-    initStrella(TargetClass: stellarSubclass<any, any>, params: any) {
-        return new TargetClass({
-            config: params,
-            setup: {
-                network: this.network,
-                myActor: this.currentActor, 
-                networkParams: this.networkParams,
-                isTest: true,
-            }
-        });
+
+    initStrella(TargetClass: stellarSubclass<SC, ConfigFor<SC>>, config?: ConfigFor<SC>) {
+        const setup = {
+            network: this.network,
+            myActor: this.currentActor,
+            networkParams: this.networkParams,
+            isTest: true,
+        };
+
+        let cfg : StellarConstructorArgs<ConfigFor<SC>> = {
+            setup, 
+            config: config!
+        };
+
+        if (!config) cfg = {
+            setup,
+            partialConfig:{},
+        }
+        return new TargetClass(cfg)
     }
 
     //! it has a seed for mkRandomBytes, which must be set by caller

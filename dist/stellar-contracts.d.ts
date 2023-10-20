@@ -88,7 +88,7 @@ declare type canSkipSetup = {
  */
 export declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter, charterDatumType extends anyDatumArgs = anyDatumArgs, configType extends CapoBaseConfig = CapoBaseConfig> extends StellarContract<configType> implements hasUutCreator {
     abstract get roles(): RoleMap;
-    constructor(args: StellarConstructorArgs<StellarContract<CapoBaseConfig>>);
+    constructor(args: StellarConstructorArgs<CapoBaseConfig>);
     abstract contractSource(): string;
     abstract mkDatumCharterToken(args: charterDatumType): InlineDatum;
     get minterClass(): stellarSubclass<DefaultMinter, SeedTxnParams>;
@@ -113,9 +113,12 @@ export declare abstract class Capo<minterType extends MinterBaseMethods & Defaul
     txnUpdateCharterUtxo(tcx: StellarTxnContext, redeemer: isActivity, newDatum: InlineDatum): Promise<StellarTxnContext | never>;
     txnKeepCharterToken(tcx: StellarTxnContext<any>, datum: InlineDatum): StellarTxnContext<any>;
     txnAddAuthority(tcx: StellarTxnContext<any>): Promise<StellarTxnContext<any>>;
-    getMinterParams(): configType;
+    getMinterParams(): {
+        seedTxn: TxId;
+        seedIndex: bigint;
+    };
     getCapoRev(): bigint;
-    getContractScriptParams(params: SeedTxnParams): {
+    getContractScriptParams(config: configType): {
         mph: MintingPolicyHash;
         rev: bigint;
     };
@@ -221,10 +224,17 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
  *
  * You MUST also implement a getter  for stellarClass, returning the specific class for YourStellarCapoClass
  *
+ * You SHOULD also implement a setupActors method to arrange named actors for your test scenarios.
+ * It's recommended to identify general roles of different people who will interact with the contract, and create
+ * one or more actor names for each role, where the actor names start with the same letter as the role-names.
+ * For example, a set of Trustees in a contract might have actor names tina, tracy and tom, while
+ * unprivileged Public users might have actor names like pablo and peter.  setupActors() also
+ * should pre-assign some ADA funds to each actor: e.g. `this.addActor(‹actorName›, 142n * ADA)`
+ *
  * @typeParam DC - the specific DefaultCapo subclass under test
  * @public
  **/
-export declare class DefaultCapoTestHelper<DC extends DefaultCapo = DefaultCapo> extends CapoTestHelper<DC> {
+export declare class DefaultCapoTestHelper<DC extends DefaultCapo<any> = DefaultCapo> extends CapoTestHelper<DC> {
     get stellarClass(): stellarSubclass<DC>;
     setupActors(): void;
     mkCharterSpendTx(): Promise<StellarTxnContext>;
@@ -315,6 +325,10 @@ export declare namespace hasReqts {
 
 declare type hasSelectedDelegates = StellarTxnContext<hasDelegateProp>;
 
+declare type hasSetup = {
+    setup: SetupDetails;
+};
+
 /**
  * A txn context having specifically-purposed UUTs in its state
  *
@@ -353,6 +367,20 @@ export declare function heliosRollupLoader(opts?: {
 declare type helperSubclass<SC extends StellarContract<any>, P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never> = new (params: P & canHaveRandomSeed) => StellarTestHelper<SC, P>;
 
 export declare type InlineDatum = ReturnType<typeof DatumInline>;
+
+/**
+ * indirection details pointing to the information needed for reconsistituting an instance
+ * @remarks
+ *
+ * a record of metadata that indirectly identifies where the Capo configuration
+ * for a specific instance has been recorded, so that the instance can be reconstituted.
+ * @public
+ **/
+declare type instanceCaptureRecord = {
+    id: string;
+    scope: string;
+    evidence: string;
+};
 
 /**
  * a type for redeemer/activity-factory functions declared with @Activity.redeemer
@@ -399,6 +427,11 @@ export declare type MintUutRedeemerArgs = {
 };
 
 export declare function mkHeliosModule(src: string, filename: string): HeliosModuleSrc;
+
+declare type needsConfigCapture<C extends paramsBase> = {
+    partialConfig: Partial<C>;
+    onInstanceCreated(config: C): instanceCaptureRecord;
+};
 
 declare type noState = {};
 
@@ -494,10 +527,12 @@ declare type SetupDetails = {
     myActor?: Wallet;
 };
 
-declare type StellarConstructorArgs<SC extends StellarContract<any>> = {
-    setup: SetupDetails;
-    config: ConfigFor<SC>;
-};
+declare type StellarConstructorArgs<CT extends paramsBase> = (hasSetup & Partial<needsConfigCapture<CT>> & {
+    config: CT;
+    partialConfig?: Partial<CT>;
+}) & ((hasSetup & {
+    config: CT;
+}) | (hasSetup & needsConfigCapture<CT>));
 
 export declare class StellarContract<ConfigType extends paramsBase> {
     scriptProgram?: Program;
@@ -509,7 +544,7 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     myActor?: Wallet;
     static get defaultParams(): {};
     getContractScriptParams(config: ConfigType): paramsBase;
-    constructor({ setup, config, }: StellarConstructorArgs<StellarContract<any>>);
+    constructor(args: StellarConstructorArgs<ConfigType>);
     compiledScript: UplcProgram;
     get datumType(): any;
     /**
@@ -525,7 +560,7 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     outputsSentToDatum(datum: InlineDatum): Promise<TxInput[]>;
     totalValue(utxos: TxInput[]): Value;
     txnKeepValue(tcx: StellarTxnContext, value: Value, datum: InlineDatum): StellarTxnContext<{}>;
-    addScriptWithParams<SC extends StellarContract<any>>(TargetClass: new (a: SC extends StellarContract<any> ? StellarConstructorArgs<SC> : never) => SC, params: SC extends StellarContract<infer P> ? P : never): SC;
+    addScriptWithParams<SC extends StellarContract<any>>(TargetClass: new (a: SC extends StellarContract<any> ? StellarConstructorArgs<ConfigFor<SC>> : never) => SC, params: SC extends StellarContract<infer P> ? P : never): SC;
     readDatum<DPROPS extends anyDatumProps>(datumName: string, datum: Datum | InlineDatum): Promise<DPROPS>;
     private readUplcStructList;
     private readUplcDatum;
@@ -592,8 +627,8 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     hasMyUtxo(semanticName: string, predicate: utxoPredicate): Promise<TxInput | undefined>;
 }
 
-export declare type stellarSubclass<S extends StellarContract<P>, P extends paramsBase = S extends StellarContract<infer SCP> ? SCP : paramsBase> = (new (args: StellarConstructorArgs<S>) => S & StellarContract<P>) & {
-    defaultParams: Partial<P>;
+export declare type stellarSubclass<S extends StellarContract<CT>, CT extends paramsBase = S extends StellarContract<infer iCT> ? iCT : paramsBase> = (new (args: StellarConstructorArgs<CT>) => S & StellarContract<CT>) & {
+    defaultParams: Partial<CT>;
 };
 
 export declare interface StellarTestContext<HTH extends StellarTestHelper<SC, P>, SC extends StellarContract<any> = HTH extends StellarTestHelper<infer SC2, any> ? SC2 : never, P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never> extends canHaveRandomSeed, TestContext {
@@ -602,10 +637,10 @@ export declare interface StellarTestContext<HTH extends StellarTestHelper<SC, P>
     initHelper(params: Partial<P> & canHaveRandomSeed & canSkipSetup): Promise<StellarTestHelper<SC, P>>;
 }
 
-export declare abstract class StellarTestHelper<SC extends StellarContract<any>, P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never> {
+export declare abstract class StellarTestHelper<SC extends StellarContract<any>, CT extends paramsBase = SC extends StellarContract<infer iCT> ? iCT : never> {
     state: Record<string, any>;
     abstract get stellarClass(): stellarSubclass<SC, any>;
-    params?: P;
+    config?: CT;
     defaultActor?: string;
     strella: SC;
     actors: actorMap;
@@ -619,10 +654,10 @@ export declare abstract class StellarTestHelper<SC extends StellarContract<any>,
     address?: Address;
     setupPending?: Promise<any>;
     setupActors(): void;
-    constructor(params?: P & canHaveRandomSeed & canSkipSetup);
-    initialize(params: P & canHaveRandomSeed): Promise<any>;
-    initStellarClass(): any;
-    initStrella(TargetClass: stellarSubclass<any, any>, params: any): any;
+    constructor(params?: CT & canHaveRandomSeed & canSkipSetup);
+    initialize(params: CT & canHaveRandomSeed): Promise<SC>;
+    initStellarClass(): SC & StellarContract<any>;
+    initStrella(TargetClass: stellarSubclass<SC, any>, config: any): SC & StellarContract<any>;
     randomSeed?: number;
     rand?: () => number;
     delay(ms: any): Promise<unknown>;

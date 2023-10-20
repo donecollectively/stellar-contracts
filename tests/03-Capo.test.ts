@@ -26,6 +26,7 @@ import {
     addTestContext,
 } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
+import { ConfigFor } from "../src/StellarContract";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
@@ -38,8 +39,6 @@ const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTes
 
 const describe = descrWithContext<localTC>;
 
-const notEnoughSignaturesRegex = /not enough trustees.*have signed/;
-const wrongMinSigs = /minSigs can't be more than the size of the trustee-list/;
 describe("Capo", async () => {
     beforeEach<localTC>(async (context) => {
         // await new Promise(res => setTimeout(res, 10));
@@ -53,17 +52,15 @@ describe("Capo", async () => {
                 h,
                 h: { network, actors, delay, state },
             } = context;
-            const seedTxn = await h.mkSeedUtxo().catch((e) => {
-                throw e;
-            });
-            await h.initialize({
-                seedTxn,
-                seedIndex: 0n,
-            });
+            await h.bootstrap();
+
+            const config : ConfigFor<DefaultCapo> = h.state.config;
+            expect(config).toBeTruthy();
+            const {mph, seedIndex, seedTxn} = config;
 
             const unspent = await network.getUtxos(actors.tina.address);
             const empty = unspent.find((x) => {
-                return x.txId == seedTxn && BigInt(x.utxoIdx) == 0n;
+                return x.outputId.txId == seedTxn && BigInt(x.outputId.utxoIdx) == BigInt(seedIndex);
             });
             expect(empty).toBeFalsy();
         });
@@ -74,19 +71,13 @@ describe("Capo", async () => {
                 h: { network, actors, delay, state },
             } = context;
 
-            const t1: DefaultCapo = await h.initialize();
+            const t1: DefaultCapo = await h.bootstrap();
             const t2: DefaultCapo = await h.initialize({
                 randomSeed: 43,
-                seedIndex: 1n,
             });
+            await h.bootstrap()
 
-            expect(
-                t1.connectMintingScript(t1.getMinterParams()).mintingPolicyHash
-                    ?.hex
-            ).not.toEqual(
-                t2.connectMintingScript(t2.getMinterParams()).mintingPolicyHash
-                    ?.hex
-            );
+            expect( t1.mph.hex ).not.toEqual( t2.mph.hex );
         });
     });
 
@@ -98,11 +89,13 @@ describe("Capo", async () => {
             } = context;
 
             try {
-                const t1: DefaultCapo = await h.initialize();
+                const t1: DefaultCapo = await h.bootstrap();
+                console.log("t1 addr                                      ", t1.address);
+                debugger
                 const t2: DefaultCapo = await h.initialize({
                     randomSeed: 43,
-                    seedIndex: 1n,
                 });
+                await h.bootstrap()
                 expect(t1.address.toBech32()).not.toEqual(
                     t2.address.toBech32()
                 );
@@ -128,31 +121,7 @@ describe("Capo", async () => {
                 }
                 state.mintedCharterToken = null;
                 return expect(h.mintCharterToken()).rejects.toThrow(
-                    "already spent"
-                );
-            });
-
-            it("doesn't work with a different spent utxo", async (context: localTC) => {
-                const {
-                    h,
-                    h: { network, actors, delay, state },
-                } = context;
-                // await context.delay(1000)
-                const treasury = await h.initialize();
-
-                const wrongUtxo = (await actors.tracy.utxos).at(-1);
-
-                vi.spyOn(
-                    treasury,
-                    "mustGetContractSeedUtxo"
-                ).mockImplementation(
-                    //@ts-expect-error this wrong utxo can be undefined or just wrong
-                    async () => {
-                        return wrongUtxo;
-                    }
-                );
-                await expect(h.mintCharterToken()).rejects.toThrow(
-                    "seed utxo required"
+                    "already configured"
                 );
             });
         });

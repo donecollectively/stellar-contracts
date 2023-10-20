@@ -28,6 +28,7 @@ import { StellarTestContext } from "../src/testing/";
 
 import { Capo, hasAllUuts } from "../src/Capo";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
+import { stringToNumberArray } from "../src/utils";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
@@ -62,7 +63,7 @@ describe("StellarContract", async () => {
                 h: { network, actors, delay, state },
             } = context;
 
-            const treasury = await h.initialize();
+            const treasury = await h.bootstrap();
 
             expect(treasury.purpose).toBe("spending");
             expect(treasury.minter!.purpose).toBe("minting");
@@ -83,7 +84,7 @@ describe("StellarContract", async () => {
                     h: { network, actors, delay, state },
                 } = context;
 
-                const t = await h.initialize();
+                const t = await h.bootstrap();
 
                 expect(() => {
                     t.compiledScript.mintingPolicyHash;
@@ -93,8 +94,12 @@ describe("StellarContract", async () => {
                 expect(t.minter!.mintingPolicyHash).toBeInstanceOf(
                     MintingPolicyHash
                 );
+                console.log("--- init again with different seed")
                 const t2 = await h.initialize({ randomSeed: 43 });
-                expect(t2.mph.hex).not.toEqual(t.mph.hex);
+                await h.bootstrap();
+                const t1h = t.mph.hex
+                const t2h = t2.mph.hex
+                expect(t2h).not.toEqual(t1h);
             });
         });
 
@@ -116,6 +121,8 @@ describe("StellarContract", async () => {
                 } = context;
 
                 const treasury = await h.initialize();
+                await h.mintCharterToken();
+
                 expect(treasury.minter!.identity.length).toBe(42);
             });
         });
@@ -149,7 +156,7 @@ describe("StellarContract", async () => {
                 } = context;
 
                 const t = await h.initialize();
-                const a = t.stringToNumberArray("ABCDE");
+                const a = stringToNumberArray("ABCDE");
                 expect(a).toHaveLength(5);
                 expect(a[0]).toBe(65);
             });
@@ -174,7 +181,7 @@ describe("StellarContract", async () => {
                         h: { network, actors, delay, state },
                     } = context;
 
-                    const t: DefaultCapo = await h.initialize();
+                    const t: DefaultCapo = await h.bootstrap();
 
                     const tokenCount = 19n;
                     const tokenName = "foo";
@@ -182,7 +189,7 @@ describe("StellarContract", async () => {
 
                     expect(tv).toBeInstanceOf(Value);
                     expect(
-                        tv.assets.get(t.mph, t.stringToNumberArray(tokenName))
+                        tv.assets.get(t.mph, stringToNumberArray(tokenName))
                     ).toBe(tokenCount);
                 });
             });
@@ -301,6 +308,21 @@ describe("StellarContract", async () => {
                                 h: { network, actors, delay, state },
                             } = context;
                             // await delay(1000)
+
+                            const tina = h.currentActor
+                            const tinaMoney = await tina.utxos;
+                            const firstUtxo = tinaMoney[0];
+                
+                            const tx = new Tx();
+
+                            tx.addInput(firstUtxo);
+                            tx.addOutput(new TxOutput(tina.address, new Value(3n * ADA)));
+                            tx.addOutput(new TxOutput(tina.address, new Value(10n * ADA)));
+                            tx.addOutput(new TxOutput(tina.address, new Value(32n * ADA)));
+                            // console.log("s2")
+                            await h.submitTx(tx, "force");
+                            h.network.tick(1n);
+
                             const t: DefaultCapo = await h.initialize();
                             const tcx = new StellarTxnContext();
                             const isEnoughT = t.mkTokenPredicate(
@@ -334,7 +356,7 @@ describe("StellarContract", async () => {
                             );
                             tcx.addCollateral(u2);
                             const u3 = await t.mustFindActorUtxo(
-                                "#3with token",
+                                "third, with token",
                                 isEnoughT,
                                 tcx
                             );
@@ -371,6 +393,22 @@ describe("StellarContract", async () => {
                         // await delay(1000)
                         const t: DefaultCapo = await h.initialize();
                         const tcx = new StellarTxnContext();
+
+                        const tina = h.currentActor
+                        const tinaMoney = await tina.utxos;
+                        const firstUtxo = tinaMoney[0];
+            
+                        const tx = new Tx();
+
+                        tx.addInput(firstUtxo);
+                        tx.addOutput(new TxOutput(tina.address, new Value(3n * ADA)));
+                        tx.addOutput(new TxOutput(tina.address, new Value(45n * ADA)));
+                        tx.addOutput(new TxOutput(tina.address, new Value(77n * ADA)));
+                        // console.log("s2")
+                        await h.submitTx(tx, "force");
+                        h.network.tick(1n);
+
+
                         const isEnough = t.mkValuePredicate(42_000n, tcx);
                         const u1 = await t.mustFindActorUtxo(
                             "first",
