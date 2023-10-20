@@ -1,10 +1,12 @@
 import {
-    Address, Datum, Tx,
+    Address,
+    Datum,
+    Tx,
     TxOutput,
-    TxInput, Value
+    TxInput,
+    Value,
 } from "@hyperionbt/helios";
 import { ErrorMap } from "./delegation/RolesAndDelegates.js";
-
 
 export function hexToPrintableString(hexStr) {
     let result = "";
@@ -26,16 +28,20 @@ export function assetsAsString(v: any) {
         .map(([policyId, tokens]) => {
             const tokenString = Object.entries(tokens as any)
                 .map(
-                    ([name, count]) => `${count}×💴 ${hexToPrintableString(name)}`
+                    ([name, count]) =>
+                        `${count}×💴 ${hexToPrintableString(name)}`
                 )
                 .join(" + ");
-            return `⦑🏦 ${policyId.substring(0, 12)}… ${tokenString}⦒`;
+            return `⦑🏦 ${policyId.slice(0, 8)}…${policyId.slice(
+                -4
+            )} ${tokenString}⦒`;
         })
         .join("\n  ");
 }
 export function lovelaceToAda(l: bigint | number) {
     const asNum = parseInt(l.toString());
-    const ada = (asNum && `${(Math.round(asNum / 1000) / 1000).toFixed(3)} ADA`) || "";
+    const ada =
+        (asNum && `${(Math.round(asNum / 1000) / 1000).toFixed(3)} ADA`) || "";
     return ada;
 }
 
@@ -86,7 +92,9 @@ export function txAsString(tx: Tx): string {
             item = `\n  ${item.map((x) => txInputAsString(x)).join("\n  ")}`;
         }
         if ("refInputs" == x) {
-            item = `\n  ${item.map((x) => txInputAsString(x, "ℹ️  ")).join("\n  ")}`;
+            item = `\n  ${item
+                .map((x) => txInputAsString(x, "ℹ️  "))
+                .join("\n  ")}`;
         }
         if ("collateral" == x) {
             //!!! todo: group collateral with inputs and reflect it being spent either way,
@@ -109,14 +117,15 @@ export function txAsString(tx: Tx): string {
         if ("signers" == x) {
             item = item.map((x) => {
                 if (!x.hex) debugger;
-                return `🔑#${x.hex.substring(0, 8)}…`;
+                return `🔑#${x.hex.slice(0, 6)}…${x.hex.slice(-2)}`;
             });
         }
 
         if ("fee" == x) {
             item = parseInt(item);
-            item = `${(Math.round(item / 1000) / 1000).toFixed(3)} ADA ` +
-                    tx.profileReport.split("\n")[0]
+            item =
+                `${(Math.round(item / 1000) / 1000).toFixed(3)} ADA ` +
+                tx.profileReport.split("\n")[0];
 
             // console.log("fee", item)
         }
@@ -140,9 +149,8 @@ export function txAsString(tx: Tx): string {
         if ("signatures" == x) {
             if (!item) continue;
             item = item.map((s) => {
-                return `🖊️ ${Address.fromHash(s.pubKeyHash)
-                    .toBech32()
-                    .substring(0, 24)}…`;
+                const addr = Address.fromHash(s.pubKeyHash).toBech32();
+                return `🖊️ ${addr.substring(0, 20)}…${addr.substring(-4)}`;
             });
             if (item.length > 1) item.unshift("");
             item = item.join("\n    ");
@@ -150,15 +158,17 @@ export function txAsString(tx: Tx): string {
         if ("redeemers" == x) {
             if (!item) continue;
             //!!! todo: augment with mph when that's available from the Redeemer.
-            item = item.map(                
-                (x) => {
-                    // console.log("redeemer keys", ...[ ...Object.keys(x2) ], x2.dump());
-                    const indexInfo = (x.inputIndex == -1) ? `spend txin #‹tbd›` : 
-                        'inputIndex' in x ? `spend txin #${1+x.inputIndex}` : `mint policy#${1+x.mphIndex}`;
-        
-                    return `🏧  ${indexInfo} ${x.data.toString()}`
-                }
-            );
+            item = item.map((x) => {
+                // console.log("redeemer keys", ...[ ...Object.keys(x2) ], x2.dump());
+                const indexInfo =
+                    x.inputIndex == -1
+                        ? `spend txin #‹tbd›`
+                        : "inputIndex" in x
+                        ? `spend txin #${1 + x.inputIndex}`
+                        : `mint policy#${1 + x.mphIndex}`;
+
+                return `🏧  ${indexInfo} ${x.data.toString()}`;
+            });
             if (item.length > 1) item.unshift("");
             item = item.join("\n    ");
         }
@@ -166,15 +176,11 @@ export function txAsString(tx: Tx): string {
             if (!item) continue;
             item = item.map((s) => {
                 try {
-                    return `🏦 ${s.mintingPolicyHash.hex.substring(
-                        0,
-                        12
-                    )}… (minting)`;
+                    const mph = s.mintingPolicyHash.hex;
+                    return `🏦 ${mph.slice(0, 8)}…${mph.slice(-4)} (minting)`;
                 } catch (e) {
-                    return `📜 ${s.validatorHash.hex.substring(
-                        0,
-                        12
-                    )}… (validator)`;
+                    const vh = s.validatorHash.hex;
+                    return `📜 ${vh.slice(0, 8)}…${vh.slice(-4)} (validator)`;
                 }
             });
             if (item.length > 1) item.unshift("");
@@ -199,38 +205,48 @@ export function txAsString(tx: Tx): string {
 }
 
 export function txInputAsString(x: TxInput, prefix = "-> "): string {
-    return `${prefix}${x.address.toBech32().substring(0, 18)}… ${valueAsString(
+    const oid = x.outputId.txId.hex;
+    const oidx = x.outputId.utxoIdx;
+    const addr = x.address.toBech32();
+    return `${prefix}${addr.slice(0, 14)}…${addr.slice(-4)} ${valueAsString(
         x.value
-    )} = 📖 ${x.txId.hex.substring(0, 12)}…@${x.utxoIdx}`;
+    )} = 📖 ${oid.slice(0, 6)}…${oid.slice(-4)}#${oidx}`;
 }
 
 export function utxosAsString(utxos: TxInput[], joiner = "\n"): string {
     return utxos.map((u) => utxoAsString(u, " 💵")).join(joiner);
 }
 
-export function utxoAsString(u: TxInput, prefix = "💵"): string {
-    return ` 📖 ${u.txId.hex.substring(0, 12)}…@${u.utxoIdx}: ${txOutputAsString(u.origOutput, prefix)}`; // or 🪙
+export function utxoAsString(x: TxInput, prefix = "💵"): string {
+    const oid = x.outputId.txId.hex;
+    const oidx = x.outputId.utxoIdx;
+
+    return ` 📖 ${oid.slice(0, 6)}…${oid.slice(-4)}#${oidx}: ${txOutputAsString(
+        x.origOutput,
+        prefix
+    )}`; // or 🪙
 }
 
 export function datumAsString(d: Datum | null | undefined): string {
     if (!d) return ""; //"‹no datum›";
 
     // debugger
-    const dhss = d.hash.hex.substring(0, 12);
-    if (d.isInline()) return `d‹inline:${dhss}…›`;
+    const dh = d.hash.hex;
+    const dhss  = `${dh.slice(0, 8)}…${dh.slice(-4)}`;
+    if (d.isInline()) return `d‹inline:${dhss}›`;
     return `d‹hash:${dhss}…›`;
 }
 
 export function txOutputAsString(x: TxOutput, prefix = "<-"): string {
     const bech32 = (x.address as any).bech32 || x.address.toBech32();
 
-    return `${prefix} ${bech32.substring(0, 18)}… ${datumAsString(
-        x.datum
-    )} ${valueAsString(x.value)}`;
+    return `${prefix} ${bech32.slice(0, 12)}…${bech32.slice(
+        -4
+    )} ${datumAsString(x.datum)} ${valueAsString(x.value)}`;
 }
 
 export function errorMapAsString(em: ErrorMap, prefix = "  ") {
-    return Object.keys(em).map( k => 
-        `${prefix }${k}: ${JSON.stringify(em[k])}`
-    ).join("\n")
+    return Object.keys(em)
+        .map((k) => `${prefix}${k}: ${JSON.stringify(em[k])}`)
+        .join("\n");
 }
