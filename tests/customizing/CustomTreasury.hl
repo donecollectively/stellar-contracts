@@ -1,4 +1,8 @@
 spending CustomTreasury
+import { 
+    RelativeDelegateLink,
+    requiresValidDelegate
+} from CapoDelegationHelpers
 
 // needed in helios 0.13: defaults
 const mph : MintingPolicyHash = MintingPolicyHash::new(#1234)
@@ -6,22 +10,14 @@ const rev : Int = 1
 
 enum Datum {
     CharterToken {
-        trustees: []Address
-        minSigs: Int
+        govAuthorityLink: RelativeDelegateLink
     }
+}
+enum Redeemer {
+    updatingCharter    
+    usingAuthority
 }
 
-enum Redeemer {
-    updatingCharter{
-        trustees: []Address
-        minSigs: Int
-    }
-    usingAuthority
-    mintingToken {
-        tokenName: String
-    }
-        
-}
 
 func didSign(ctx : ScriptContext, a: Address) -> Bool {
     tx : Tx = ctx.tx;
