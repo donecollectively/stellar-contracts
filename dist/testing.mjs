@@ -1,4 +1,3 @@
-import { expect } from 'vitest';
 import * as helios from '@hyperionbt/helios';
 import { Address, Tx, Value, TxOutput, MintingPolicyHash, AssetClass, TxInput, Assets, Program, NetworkParams, Crypto, NetworkEmulator } from '@hyperionbt/helios';
 
@@ -20,7 +19,9 @@ function assetsAsString(v) {
     const tokenString = Object.entries(tokens).map(
       ([name, count]) => `${count}\xD7\u{1F4B4} ${hexToPrintableString(name)}`
     ).join(" + ");
-    return `\u2991\u{1F3E6} ${policyId.substring(0, 12)}\u2026 ${tokenString}\u2992`;
+    return `\u2991\u{1F3E6} ${policyId.slice(0, 8)}\u2026${policyId.slice(
+      -4
+    )} ${tokenString}\u2992`;
   }).join("\n  ");
 }
 function lovelaceToAda(l) {
@@ -95,7 +96,7 @@ function txAsString(tx) {
       item = item.map((x2) => {
         if (!x2.hex)
           debugger;
-        return `\u{1F511}#${x2.hex.substring(0, 8)}\u2026`;
+        return `\u{1F511}#${x2.hex.slice(0, 6)}\u2026${x2.hex.slice(-2)}`;
       });
     }
     if ("fee" == x) {
@@ -124,7 +125,8 @@ function txAsString(tx) {
       if (!item)
         continue;
       item = item.map((s) => {
-        return `\u{1F58A}\uFE0F ${Address.fromHash(s.pubKeyHash).toBech32().substring(0, 24)}\u2026`;
+        const addr = Address.fromHash(s.pubKeyHash).toBech32();
+        return `\u{1F58A}\uFE0F ${addr.substring(0, 20)}\u2026${addr.substring(-4)}`;
       });
       if (item.length > 1)
         item.unshift("");
@@ -134,12 +136,10 @@ function txAsString(tx) {
       if (!item)
         continue;
       //!!! todo: augment with mph when that's available from the Redeemer.
-      item = item.map(
-        (x2) => {
-          const indexInfo = x2.inputIndex == -1 ? `spend txin #\u2039tbd\u203A` : "inputIndex" in x2 ? `spend txin #${1 + x2.inputIndex}` : `mint policy#${1 + x2.mphIndex}`;
-          return `\u{1F3E7}  ${indexInfo} ${x2.data.toString()}`;
-        }
-      );
+      item = item.map((x2) => {
+        const indexInfo = x2.inputIndex == -1 ? `spend txin #\u2039tbd\u203A` : "inputIndex" in x2 ? `spend txin #${1 + x2.inputIndex}` : `mint policy#${1 + x2.mphIndex}`;
+        return `\u{1F3E7}  ${indexInfo} ${x2.data.toString()}`;
+      });
       if (item.length > 1)
         item.unshift("");
       item = item.join("\n    ");
@@ -149,15 +149,11 @@ function txAsString(tx) {
         continue;
       item = item.map((s) => {
         try {
-          return `\u{1F3E6} ${s.mintingPolicyHash.hex.substring(
-            0,
-            12
-          )}\u2026 (minting)`;
+          const mph = s.mintingPolicyHash.hex;
+          return `\u{1F3E6} ${mph.slice(0, 8)}\u2026${mph.slice(-4)} (minting)`;
         } catch (e) {
-          return `\u{1F4DC} ${s.validatorHash.hex.substring(
-            0,
-            12
-          )}\u2026 (validator)`;
+          const vh = s.validatorHash.hex;
+          return `\u{1F4DC} ${vh.slice(0, 8)}\u2026${vh.slice(-4)} (validator)`;
         }
       });
       if (item.length > 1)
@@ -181,29 +177,38 @@ function txAsString(tx) {
   return details;
 }
 function txInputAsString(x, prefix = "-> ") {
-  return `${prefix}${x.address.toBech32().substring(0, 18)}\u2026 ${valueAsString(
+  const oid = x.outputId.txId.hex;
+  const oidx = x.outputId.utxoIdx;
+  const addr = x.address.toBech32();
+  return `${prefix}${addr.slice(0, 14)}\u2026${addr.slice(-4)} ${valueAsString(
     x.value
-  )} = \u{1F4D6} ${x.txId.hex.substring(0, 12)}\u2026@${x.utxoIdx}`;
+  )} = \u{1F4D6} ${oid.slice(0, 6)}\u2026${oid.slice(-4)}#${oidx}`;
 }
 function utxosAsString(utxos, joiner = "\n") {
   return utxos.map((u) => utxoAsString(u, " \u{1F4B5}")).join(joiner);
 }
-function utxoAsString(u, prefix = "\u{1F4B5}") {
-  return ` \u{1F4D6} ${u.txId.hex.substring(0, 12)}\u2026@${u.utxoIdx}: ${txOutputAsString(u.origOutput, prefix)}`;
+function utxoAsString(x, prefix = "\u{1F4B5}") {
+  const oid = x.outputId.txId.hex;
+  const oidx = x.outputId.utxoIdx;
+  return ` \u{1F4D6} ${oid.slice(0, 6)}\u2026${oid.slice(-4)}#${oidx}: ${txOutputAsString(
+    x.origOutput,
+    prefix
+  )}`;
 }
 function datumAsString(d) {
   if (!d)
     return "";
-  const dhss = d.hash.hex.substring(0, 12);
+  const dh = d.hash.hex;
+  const dhss = `${dh.slice(0, 8)}\u2026${dh.slice(-4)}`;
   if (d.isInline())
-    return `d\u2039inline:${dhss}\u2026\u203A`;
+    return `d\u2039inline:${dhss}\u203A`;
   return `d\u2039hash:${dhss}\u2026\u203A`;
 }
 function txOutputAsString(x, prefix = "<-") {
   const bech32 = x.address.bech32 || x.address.toBech32();
-  return `${prefix} ${bech32.substring(0, 18)}\u2026 ${datumAsString(
-    x.datum
-  )} ${valueAsString(x.value)}`;
+  return `${prefix} ${bech32.slice(0, 12)}\u2026${bech32.slice(
+    -4
+  )} ${datumAsString(x.datum)} ${valueAsString(x.value)}`;
 }
 
 //!!! if we could access the inputs and outputs in a building Tx,
@@ -359,6 +364,7 @@ class StellarContract {
   //  ... with specific `parameters` assigned.
   scriptProgram;
   configIn;
+  partialConfig;
   contractParams;
   setup;
   network;
@@ -374,20 +380,21 @@ class StellarContract {
     return config;
   }
   constructor(args) {
-    const { setup, config, partialConfig, onInstanceCreated } = args;
+    const { setup, config, partialConfig } = args;
     this.setup = setup;
     const { network, networkParams, isTest, myActor } = setup;
-    if (config) {
-      this.configIn = config;
-    } else if (!args.onInstanceCreated) {
-      throw new Error(`first time setup for ${this.constructor.name} missing config.onInstanceCreated() callback`);
-    }
     this.network = network;
     this.networkParams = networkParams;
     if (myActor)
       this.myActor = myActor;
-    const fullScriptParams = this.contractParams = this.getContractScriptParams(config);
-    this.scriptProgram = this.loadProgramScript(fullScriptParams);
+    if (config) {
+      this.configIn = config;
+      const fullScriptParams = this.contractParams = this.getContractScriptParams(config);
+      this.scriptProgram = this.loadProgramScript(fullScriptParams);
+    } else {
+      this.partialConfig = partialConfig;
+      this.scriptProgram = this.loadProgramScript();
+    }
   }
   compiledScript;
   // initialized in loadProgramScript
@@ -421,14 +428,6 @@ class StellarContract {
       return b32.replace(/^asset/, "mph");
     }
     return this.address.toBech32();
-  }
-  stringToNumberArray(str) {
-    let encoder = new TextEncoder();
-    let byteArray = encoder.encode(str);
-    return [...byteArray].map((x) => parseInt(x.toString()));
-  }
-  mkValuesEntry(tokenName, count) {
-    return [this.stringToNumberArray(tokenName), count];
   }
   //! searches the network for utxos stored in the contract,
   //  returning those whose datum hash is the same as the input datum
@@ -799,6 +798,7 @@ class StellarContract {
   }
   ADA(n) {
     const bn = "number" == typeof n ? BigInt(Math.round(1e6 * n)) : BigInt(1e6) * n;
+    debugger;
     return bn;
   }
   //! it requires an subclass to define a contractSource
@@ -841,7 +841,8 @@ class StellarContract {
     const modules = this.importModules();
     try {
       const script = Program.new(src, modules);
-      script.parameters = params;
+      if (params)
+        script.parameters = params;
       const simplify = !this.setup.isTest;
       if (simplify) {
         console.warn(
@@ -1721,10 +1722,12 @@ class StellarTestHelper {
     this.addActor("hiro", 1863n * ADA);
     this.currentActor = "hiro";
   }
-  constructor(params) {
+  constructor(config) {
     this.state = {};
-    if (params)
-      this.config = params;
+    if (config) {
+      console.log("XXXXXXXXXXXXXXXXXXXXXXXXXX test helper with config", config);
+      this.config = config;
+    }
     const [theNetwork, emuParams] = this.mkNetwork();
     this.liveSlotParams = emuParams;
     this.network = theNetwork;
@@ -1738,16 +1741,14 @@ class StellarTestHelper {
       );
     const now = /* @__PURE__ */ new Date();
     this.waitUntil(now);
-    if (params?.skipSetup) {
+    if (config?.skipSetup) {
       console.log("test helper skipping setup");
       return;
     }
-    this.setupPending = this.initialize(params).then((p) => {
-      return p;
-    });
+    this.setupPending = this.initialize(config);
   }
-  async initialize(params) {
-    const { randomSeed, ...p } = params;
+  async initialize(config) {
+    const { randomSeed, ...p } = config;
     if (this.setupPending)
       await this.setupPending;
     if (this.strella && this.randomSeed == randomSeed) {
@@ -1762,6 +1763,8 @@ class StellarTestHelper {
       );
       this.rand = void 0;
       this.randomSeed = randomSeed;
+    } else {
+      console.log(" - Test helper bootstrapping (will emit details to onInstanceCreated())");
     }
     return this.initStellarClass();
   }
@@ -1772,16 +1775,32 @@ class StellarTestHelper {
     this.address = strella.address;
     return strella;
   }
+  //!!! reconnect tests to tcx-based config-capture
+  // onInstanceCreated: async (config: ConfigFor<SC>) => {
+  //     this.config = config
+  //     return {
+  //         evidence: this,
+  //         id: "empheral",
+  //         scope: "unit test"
+  //     }
+  // }
   initStrella(TargetClass, config) {
-    return new TargetClass({
-      config,
-      setup: {
-        network: this.network,
-        myActor: this.currentActor,
-        networkParams: this.networkParams,
-        isTest: true
-      }
-    });
+    const setup = {
+      network: this.network,
+      myActor: this.currentActor,
+      networkParams: this.networkParams,
+      isTest: true
+    };
+    let cfg = {
+      setup,
+      config
+    };
+    if (!config)
+      cfg = {
+        setup,
+        partialConfig: {}
+      };
+    return new TargetClass(cfg);
   }
   //! it has a seed for mkRandomBytes, which must be set by caller
   randomSeed;
@@ -1905,19 +1924,10 @@ class StellarTestHelper {
   }
 }
 
-//! declaration for a variant of a Role:
-//! a map of delegate selections needed for a transaction 
-//! a single delegate selection, where a person chooses 
-function selectDelegate(sd) {
-  return sd;
-}
-//! a complete, validated configuration for a specific delegate.
-
 class CapoTestHelper extends StellarTestHelper {
   async initialize({
     randomSeed = 42,
-    seedTxn,
-    seedIndex = 0n
+    config
   } = {}) {
     if (this.setupPending)
       await this.setupPending;
@@ -1928,17 +1938,18 @@ class CapoTestHelper extends StellarTestHelper {
       return this.strella;
     }
     if (this.strella)
-      console.warn(
-        ".... warning: new test helper setup with new seed ..."
+      console.log(
+        `  ---  new test helper setup with new seed (was ${this.randomSeed}, now ${randomSeed})...
+` + new Error("stack").stack.split("\n").slice(1).filter(
+          (line) => !line.match(/node_modules/) && !line.match(/node:internal/)
+        ).join("\n")
       );
     this.randomSeed = randomSeed;
-    if (!seedTxn) {
-      seedTxn = await this.mkSeedUtxo(seedIndex);
-    }
-    const strella = this.initStrella(this.stellarClass, {
-      seedTxn,
-      seedIndex
-    });
+    this.state.mintedCharterToken = void 0;
+    //! when there's not a preset config, it leaves the detailed setup to be done just-in-time
+    if (!config)
+      return this.strella = this.initStrella(this.stellarClass);
+    const strella = this.initStrella(this.stellarClass, config);
     this.strella = strella;
     const { address, mintingPolicyHash: mph } = strella;
     const { name } = strella.scriptProgram;
@@ -1950,28 +1961,10 @@ class CapoTestHelper extends StellarTestHelper {
     );
     return strella;
   }
-  async mintCharterToken(args) {
-    this.actors;
-    if (this.state.mintedCharterToken) {
-      console.warn(
-        "reusing minted charter from existing testing-context"
-      );
-      return this.state.mintedCharterToken;
-    }
-    await this.initialize();
-    const script = this.strella;
-    const goodArgs = args || this.mkDefaultCharterArgs();
-    const tcx = await script.mkTxnMintCharterToken(goodArgs, script.withDelegates({
-      govAuthority: selectDelegate({
-        strategyName: "address",
-        config: {}
-      })
-    }));
-    expect(script.network).toBe(this.network);
-    await script.submit(tcx);
-    console.log("charter token minted");
-    this.network.tick(1n);
-    return this.state.mintedCharterToken = tcx;
+  async bootstrap(args) {
+    let strella = this.strella || await this.initialize();
+    await this.mintCharterToken(args);
+    return strella;
   }
 }
 

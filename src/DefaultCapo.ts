@@ -35,6 +35,7 @@ import { StellarTxnContext } from "./StellarTxnContext.js";
 
 //@ts-expect-error
 import contract from "./DefaultCapo.hl";
+// import contract from "./BaselineCapo.hl";
 import {
     Capo,
     CapoBaseConfig,
@@ -62,6 +63,8 @@ import { DelegateDetailSnapshot } from "./delegation/RolesAndDelegates.js";
 import { txAsString } from "./diagnostics.js";
 import { MultisigAuthorityPolicy } from "./authority/MultisigAuthorityPolicy.js";
 import { hasReqts } from "./Requirements.js";
+import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
+import { UnspecializedCapo } from "./UnspecializedCapo.js";
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
@@ -127,7 +130,26 @@ export type HeldAssetsArgs = {
  * approved the UUT's inclusion in a transaction, with all the policy-enforcement implicated on the other end of the 
  * delegation.
  * 
+ * Customizing Datum and Redeemer
  * 
+ * The baseline contract script can have specialized Datum and Redeemer
+ * definitions by subclassing DefaultCapo with a `get specializedCapo()`.  This
+ * should be an imported helios script having `module specializedCapo` at the top.
+ * It MUST export Datum and Redeemer enums, with variants matching those in the provided 
+ * baseline/unspecializedCapo module.  
+ * 
+ * A customized Datum::validateSpend(self, ctx) -> Bool method
+ * should be defined, even if it doesn't put constraints on spending Datum.  
+ * If it does choose to add hard constraints, note that this method doesn't
+ * have access to the Redeemer.  It's a simple place to express simple
+ * constraints on spending a custom Datum that only needs one 'spendingDatum' 
+ * activity.  
+ * 
+ * A customized Redeemer: allowActivity(self, datum, ctx) -> Bool method
+ * has access to both the redeemer (in self), as well as Datum and the transaction 
+ * context.  In this method, use self.switch{...} to implement activity-specific
+ * validations.
+* 
  * See the {@link Capo | Capo base class} and {@link StellarContract} for addition context.
  * @public
  */
@@ -139,6 +161,16 @@ export class DefaultCapo<
 > extends Capo<MinterType, CDT, configType> {
     contractSource() {
         return contract;
+    }
+
+    get specializedCapo() : HeliosModuleSrc {
+        return UnspecializedCapo
+    }
+
+    importModules(): HeliosModuleSrc[] {
+        const parentModules = super.importModules();
+        const specializedCapo = this.specializedCapo;
+        return [specializedCapo, ...parentModules];
     }
 
     // // @Activity.redeemer

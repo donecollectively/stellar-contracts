@@ -1,0 +1,52 @@
+module specializedCapo
+
+//! provides a basic version, not actually specialized,
+// of the "specializedCapo" interface, which simply
+// exports a Datum and Redeemer.  
+//! the Datum and Redeemer of specializations
+//  MUST include the same enum variants as in this
+//  unspecialized version.  if you're specializing 
+//  ... and you get a Helios compiler error,
+// ... these are the first things you should check!
+//! Your specialization MAY include any 
+// ... additional functions, imports or methods
+
+import { 
+    RelativeDelegateLink
+} from CapoDelegateHelpers
+
+//! provides a basic version of Datum in default specializedCapo module
+enum Datum {
+    CharterToken {
+        govAuthorityLink: RelativeDelegateLink
+    }
+    //! datum-validation only supports checks of absolute spendability, 
+    //  ... and can't check details of the Activity/Redeemer being used.
+    func validateSpend(self, ctx: ScriptContext) -> Bool {
+        //! Note: an overridden Datum's impl of validateSpend() 
+        // ... is never called with the CharterToken variant
+        assert(false, "can't happen");
+        self.switch{
+            CharterToken => true,
+            _ => error("can't happen")
+        } || ctx.tx.serialize() != self.serialize()
+    }   
+}
+
+//! provides a basic version of Redeemer in default specializedCapo module
+enum Redeemer {
+    spendingDatum
+    updatingCharter    
+    usingAuthority
+
+    func allowActivity(self, datum: Datum, ctx: ScriptContext) -> Bool {
+        self.switch{
+            //! Note: an overridden Reedeemer def doesn't have to replicate the checks
+            // ... for the baseline enum variants; it's not called in those cases.
+            updatingCharter => true,
+            usingAuthority => true,
+            _ => error("unreachable code")
+            // not executed, but prevents the args from showing up as unused:
+        } || ctx.tx.serialize() != datum.serialize()
+    }    
+}

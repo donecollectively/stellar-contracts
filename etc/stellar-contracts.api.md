@@ -37,10 +37,10 @@ export const Activity: {
 // @public (undocumented)
 export const ADA = 1000000n;
 
-// Warning: (ae-forgotten-export) The symbol "helperSubclass" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "stellarTestHelperSubclass" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export function addTestContext<SC extends StellarContract<any>, P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never>(context: StellarTestContext<any, SC, P>, TestHelperClass: helperSubclass<SC>, params?: P): Promise<void>;
+export function addTestContext<SC extends StellarContract<any>, P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never>(context: StellarTestContext<any, SC>, TestHelperClass: stellarTestHelperSubclass<SC>, params?: P): Promise<void>;
 
 // @public (undocumented)
 export type anyDatumProps = Record<string, any>;
@@ -97,12 +97,7 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     abstract contractSource(): string;
     // (undocumented)
     getCapoRev(): bigint;
-    // (undocumented)
-    getContractScriptParams(config: configType): {
-        mph: MintingPolicyHash;
-        rev: bigint;
-    };
-    // (undocumented)
+    getContractScriptParams(config: configType): paramsBase & Partial<configType>;
     getMinterParams(): {
         seedTxn: TxId;
         seedIndex: bigint;
@@ -117,19 +112,23 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     get mintingPolicyHash(): MintingPolicyHash;
     // (undocumented)
     abstract mkDatumCharterToken(args: charterDatumType): InlineDatum;
+    // (undocumented)
+    abstract mkFullConfig(baseConfig: CapoBaseConfig): configType;
     // Warning: (ae-forgotten-export) The symbol "UutName" needs to be exported by the entry point index.d.ts
     // Warning: (ae-forgotten-export) The symbol "CapoImpliedSettings" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
-    mkImpliedSettings(uut: UutName): CapoImpliedSettings;
+    mkImpliedUutDetails(uut: UutName): CapoImpliedSettings;
+    // Warning: (ae-forgotten-export) The symbol "hasSelectedDelegates" needs to be exported by the entry point index.d.ts
+    //
     // (undocumented)
-    abstract mkTxnMintCharterToken(charterDatumArgs: Partial<charterDatumType>, tcx?: StellarTxnContext): Promise<StellarTxnContext | never>;
+    abstract mkTxnMintCharterToken<TCX extends hasSelectedDelegates>(charterDatumArgs: Partial<charterDatumType>, existingTcx?: TCX): Promise<never | (TCX & hasBootstrappedConfig<CapoBaseConfig & configType>)>;
+    // (undocumented)
+    mockMinter?: minterType;
     // (undocumented)
     get mph(): MintingPolicyHash;
     // (undocumented)
     mustFindCharterUtxo(): Promise<TxInput>;
-    // (undocumented)
-    mustGetContractSeedUtxo(): Promise<TxInput | never>;
     // (undocumented)
     abstract get roles(): RoleMap;
     // (undocumented)
@@ -155,6 +154,8 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     protected txnMustConfigureSelectedDelegate<T extends StellarContract<any>, const RN extends string>(tcx: hasSelectedDelegates & hasUutContext<RN>, roleName: RN): DelegateSettings<T>;
     // (undocumented)
     txnMustGetDelegate<T extends StellarContract<any>, const RN extends string>(tcx: hasSelectedDelegates & hasUutContext<RN>, roleName: RN, configuredDelegate?: DelegateSettings<T>): T;
+    // (undocumented)
+    txnMustGetSeedUtxo(tcx: StellarTxnContext, purpose: string, tokenNames: string[]): Promise<TxInput | never>;
     // Warning: (ae-forgotten-export) The symbol "SelectedDelegate" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
@@ -174,22 +175,22 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     // (undocumented)
     uutsValue(tcx: hasUutContext<any>): Value;
     // Warning: (ae-forgotten-export) The symbol "SelectedDelegates" needs to be exported by the entry point index.d.ts
-    // Warning: (ae-forgotten-export) The symbol "hasSelectedDelegates" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
-    withDelegates(delegates: SelectedDelegates): hasSelectedDelegates;
+    withDelegates(delegates: Partial<SelectedDelegates>): hasSelectedDelegates;
 }
 
 // @public (undocumented)
-export abstract class CapoTestHelper<SC extends Capo<any>, CDT extends anyDatumArgs = SC extends Capo<any, infer iCDT> ? iCDT : anyDatumArgs> extends StellarTestHelper<SC, CapoBaseConfig> {
+export abstract class CapoTestHelper<SC extends Capo<DefaultMinter & MinterBaseMethods, CDT, CT>, CDT extends anyDatumArgs = SC extends Capo<DefaultMinter, infer iCDT> ? iCDT : anyDatumArgs, CT extends CapoBaseConfig = SC extends Capo<any, any, infer iCT> ? iCT : never> extends StellarTestHelper<SC> {
     // (undocumented)
-    initialize({ randomSeed, seedTxn, seedIndex, }?: {
-        seedTxn?: TxId;
-        seedIndex?: bigint;
+    bootstrap(args?: CDT): Promise<SC>;
+    // (undocumented)
+    initialize({ randomSeed, config }?: {
+        config?: CT;
         randomSeed?: number;
     }): Promise<SC>;
     // (undocumented)
-    mintCharterToken(args?: CDT): Promise<StellarTxnContext>;
+    abstract mintCharterToken(args?: CDT): Promise<hasBootstrappedConfig<CT>>;
     // (undocumented)
     abstract mkDefaultCharterArgs(): Partial<CDT>;
 }
@@ -202,11 +203,14 @@ export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT e
     // (undocumented)
     contractSource(): any;
     // (undocumented)
+    importModules(): HeliosModuleSrc[];
+    // (undocumented)
     mkDatumCharterToken(args: CDT): InlineDatum;
+    mkFullConfig(baseConfig: CapoBaseConfig): CapoBaseConfig & configType;
     // Warning: (ae-forgotten-export) The symbol "PartialDefaultCharterDatumArgs" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
-    mkTxnMintCharterToken(charterDatumArgs: PartialDefaultCharterDatumArgs<CDT>, existingTcx?: hasSelectedDelegates): Promise<StellarTxnContext | never>;
+    mkTxnMintCharterToken<TCX extends hasSelectedDelegates>(charterDatumArgs: PartialDefaultCharterDatumArgs<CDT>, existingTcx?: TCX): Promise<never | (TCX & hasBootstrappedConfig<CapoBaseConfig & configType>)>;
     // (undocumented)
     mkTxnUpdateCharter(args: CDT, tcx?: StellarTxnContext): Promise<StellarTxnContext>;
     // (undocumented)
@@ -214,13 +218,19 @@ export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT e
     // (undocumented)
     get roles(): RoleMap;
     // (undocumented)
+    get specializedCapo(): HeliosModuleSrc;
+    // (undocumented)
     txnAddCharterAuthz(tcx: StellarTxnContext, datum: InlineDatum): Promise<StellarTxnContext<{}>>;
     // (undocumented)
     updatingCharter(): isActivity;
 }
 
 // @public
-export class DefaultCapoTestHelper<DC extends DefaultCapo<any> = DefaultCapo> extends CapoTestHelper<DC> {
+export class DefaultCapoTestHelper<DC extends DefaultCapo<DefaultMinter, CDT, CT> = DefaultCapo, CDT extends DefaultCharterDatumArgs = DC extends Capo<DefaultMinter, infer iCDT> ? iCDT : DefaultCharterDatumArgs, CT extends CapoBaseConfig = DC extends Capo<any, any, infer iCT> ? iCT : never> extends CapoTestHelper<DC, CDT, CT> {
+    // (undocumented)
+    static forCapoClass<DC extends DefaultCapo<DefaultMinter, any, any>>(s: stellarSubclass<DC>): stellarTestHelperSubclass<DC>;
+    // (undocumented)
+    mintCharterToken(args?: CDT): Promise<hasBootstrappedConfig<CT>>;
     // (undocumented)
     mkCharterSpendTx(): Promise<StellarTxnContext>;
     // (undocumented)
@@ -230,7 +240,7 @@ export class DefaultCapoTestHelper<DC extends DefaultCapo<any> = DefaultCapo> ex
     // (undocumented)
     get stellarClass(): stellarSubclass<DC>;
     // (undocumented)
-    updateCharter(args: DefaultCharterDatumArgs): Promise<StellarTxnContext>;
+    updateCharter(args: CDT): Promise<StellarTxnContext>;
 }
 
 // @public
@@ -257,16 +267,14 @@ export class DefaultMinter extends StellarContract<SeedTxnParams> implements Min
     // (undocumented)
     protected mintingUuts({ seedTxn, seedIndex: sIdx, purposes, }: MintUutRedeemerArgs): isActivity;
     // (undocumented)
-    mkUutValuesEntries<UM extends uutPurposeMap<any>>(uutMap: UM): valuesEntry[];
-    // (undocumented)
     tvCharter(): Value;
     // (undocumented)
     txnCreatingUuts<const purposes extends string, TCX extends StellarTxnContext<any>>(initialTcx: TCX, uutPurposes: purposes[], seedUtxo?: TxInput): Promise<TCX & hasUutContext<purposes>>;
     // (undocumented)
-    txnMintingCharter(tcx: StellarTxnContext, { owner, authZor }: {
+    txnMintingCharter<TCX extends StellarTxnContext<any>>(tcx: TCX, { owner, authZor }: {
         authZor: UutName;
         owner: Address;
-    }): Promise<StellarTxnContext>;
+    }): Promise<TCX>;
     // (undocumented)
     txnWithUuts<const purposes extends string, existingTcx extends StellarTxnContext<any>, const R extends string>(tcx: existingTcx, uutPurposes: purposes[], seedUtxo: TxInput, role: R): Promise<existingTcx & hasUutContext<purposes | (R extends "" ? never : R)>>;
 }
@@ -281,8 +289,13 @@ export type hasAllUuts<uutEntries extends string> = {
     uuts: uutPurposeMap<uutEntries>;
 };
 
+// @public (undocumented)
+export type hasBootstrappedConfig<CT extends CapoBaseConfig> = StellarTxnContext<{
+    bootstrappedConfig: CT;
+}>;
+
 // @public
-export function hasReqts<R extends ReqtsMap<reqts>, const reqts extends string = string & keyof R>(reqtsMap: R): ReqtsMap<reqts>;
+export function hasReqts<R extends ReqtsMap<validReqts>, const validReqts extends string = string & keyof R>(reqtsMap: R): ReqtsMap<validReqts>;
 
 // @public (undocumented)
 export namespace hasReqts {
@@ -338,6 +351,15 @@ export type MintUutRedeemerArgs = {
 export function mkHeliosModule(src: string, filename: string): HeliosModuleSrc;
 
 // @public (undocumented)
+export function mkUutValuesEntries(uuts: UutName[]): valuesEntry[];
+
+// @public (undocumented)
+export function mkUutValuesEntries(uuts: uutPurposeMap<any>): valuesEntry[];
+
+// @public (undocumented)
+export function mkValuesEntry(tokenName: string, count: bigint): valuesEntry;
+
+// @public (undocumented)
 export type paramsBase = Record<string, any>;
 
 // @public (undocumented)
@@ -346,8 +368,8 @@ export function partialTxn(proto: any, thingName: any, descriptor: any): any;
 // Warning: (ae-forgotten-export) The symbol "TODO_TYPE" needs to be exported by the entry point index.d.ts
 //
 // @public
-export type ReqtsMap<reqts extends string> = {
-    [reqtDescription in reqts]: TODO_TYPE | RequirementEntry<reqts>;
+export type ReqtsMap<validReqts extends string> = {
+    [reqtDescription in validReqts]: TODO_TYPE | RequirementEntry<validReqts>;
 };
 
 // @public
@@ -382,9 +404,9 @@ export class StellarContract<ConfigType extends paramsBase> {
     // (undocumented)
     compiledScript: UplcProgram;
     // (undocumented)
-    configIn: ConfigType;
+    configIn?: ConfigType;
     // (undocumented)
-    contractParams: paramsBase;
+    contractParams?: paramsBase;
     // (undocumented)
     contractSource(): string | never;
     // (undocumented)
@@ -396,7 +418,7 @@ export class StellarContract<ConfigType extends paramsBase> {
     // (undocumented)
     findSmallestUnusedUtxo(lovelace: bigint, utxos: TxInput[], tcx?: StellarTxnContext): TxInput | undefined;
     // (undocumented)
-    getContractScriptParams(config: ConfigType): paramsBase;
+    getContractScriptParams(config: ConfigType): paramsBase & Partial<ConfigType>;
     // (undocumented)
     getMyActorAddress(): Promise<Address>;
     // (undocumented)
@@ -415,7 +437,7 @@ export class StellarContract<ConfigType extends paramsBase> {
     // (undocumented)
     protected _infoBackToUtxo({ u }: utxoInfo): TxInput;
     // (undocumented)
-    loadProgramScript(params: ConfigType): Program | null;
+    loadProgramScript(params?: Partial<ConfigType>): Program | undefined;
     // (undocumented)
     get mintingPolicyHash(): MintingPolicyHash | undefined;
     // (undocumented)
@@ -432,8 +454,6 @@ export class StellarContract<ConfigType extends paramsBase> {
     //
     // (undocumented)
     mkValuePredicate(lovelace: bigint, tcx?: StellarTxnContext): tokenPredicate<TxInput>;
-    // (undocumented)
-    mkValuesEntry(tokenName: string, count: bigint): valuesEntry;
     // (undocumented)
     mustFindActorUtxo(name: string, predicate: (u: TxInput) => TxInput | undefined, exceptInTcx: StellarTxnContext<any>, extraErrorHint?: string): Promise<TxInput | never>;
     // (undocumented)
@@ -456,6 +476,8 @@ export class StellarContract<ConfigType extends paramsBase> {
     // (undocumented)
     outputsSentToDatum(datum: InlineDatum): Promise<TxInput[]>;
     // (undocumented)
+    partialConfig?: Partial<ConfigType>;
+    // (undocumented)
     get purpose(): scriptPurpose | "non-script";
     // Warning: (ae-forgotten-export) The symbol "scriptPurpose" needs to be exported by the entry point index.d.ts
     //
@@ -469,8 +491,6 @@ export class StellarContract<ConfigType extends paramsBase> {
     //
     // (undocumented)
     setup: SetupDetails;
-    // (undocumented)
-    stringToNumberArray(str: string): number[];
     // (undocumented)
     submit(tcx: StellarTxnContext, { sign, signers, }?: {
         sign?: boolean;
@@ -506,20 +526,20 @@ export type stellarSubclass<S extends StellarContract<CT>, CT extends paramsBase
 // Warning: (ae-forgotten-export) The symbol "canHaveRandomSeed" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export interface StellarTestContext<HTH extends StellarTestHelper<SC, P>, SC extends StellarContract<any> = HTH extends StellarTestHelper<infer SC2, any> ? SC2 : never, P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never> extends canHaveRandomSeed, TestContext {
+export interface StellarTestContext<HTH extends StellarTestHelper<SC>, SC extends StellarContract<any> = HTH extends StellarTestHelper<infer iSC> ? iSC : never> extends canHaveRandomSeed, TestContext {
     // (undocumented)
     h: HTH;
     // Warning: (ae-forgotten-export) The symbol "canSkipSetup" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
-    initHelper(params: Partial<P> & canHaveRandomSeed & canSkipSetup): Promise<StellarTestHelper<SC, P>>;
+    initHelper(config: Partial<ConfigFor<SC>> & canHaveRandomSeed & canSkipSetup): Promise<StellarTestHelper<SC>>;
     // (undocumented)
     get strella(): SC;
 }
 
 // @public (undocumented)
-export abstract class StellarTestHelper<SC extends StellarContract<any>, CT extends paramsBase = SC extends StellarContract<infer iCT> ? iCT : never> {
-    constructor(params?: CT & canHaveRandomSeed & canSkipSetup);
+export abstract class StellarTestHelper<SC extends StellarContract<any>> {
+    constructor(config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup);
     // Warning: (ae-forgotten-export) The symbol "actorMap" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
@@ -529,7 +549,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, CT exte
     // (undocumented)
     address?: Address;
     // (undocumented)
-    config?: CT;
+    config?: ConfigFor<SC>;
     // (undocumented)
     get currentActor(): SimpleWallet;
     set currentActor(actorName: string);
@@ -540,11 +560,11 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>, CT exte
     // (undocumented)
     delay(ms: any): Promise<unknown>;
     // (undocumented)
-    initialize(params: CT & canHaveRandomSeed): Promise<SC>;
+    initialize(config: ConfigFor<SC> & canHaveRandomSeed): Promise<SC>;
     // (undocumented)
-    initStellarClass(): SC & StellarContract<any>;
+    initStellarClass(): SC & StellarContract<SC extends StellarContract<infer inferredConfig extends paramsBase> ? inferredConfig : never>;
     // (undocumented)
-    initStrella(TargetClass: stellarSubclass<SC, any>, config: any): SC & StellarContract<any>;
+    initStrella(TargetClass: stellarSubclass<SC, ConfigFor<SC>>, config?: ConfigFor<SC>): SC & StellarContract<SC extends StellarContract<infer inferredConfig extends paramsBase> ? inferredConfig : never>;
     // (undocumented)
     liveSlotParams: NetworkParams;
     // Warning: (ae-forgotten-export) The symbol "enhancedNetworkParams" needs to be exported by the entry point index.d.ts
@@ -630,6 +650,9 @@ export class StellarTxnContext<S = noState> {
 export type strategyValidation = ErrorMap | undefined;
 
 // @public (undocumented)
+export function stringToNumberArray(str: string): number[];
+
+// @public (undocumented)
 export type tokenNamesOrValuesEntry = [string | number[], bigint];
 
 // @public (undocumented)
@@ -645,7 +668,7 @@ export function txn(proto: any, thingName: any, descriptor: any): any;
 export function txOutputAsString(x: TxOutput, prefix?: string): string;
 
 // @public (undocumented)
-export function utxoAsString(u: TxInput, prefix?: string): string;
+export function utxoAsString(x: TxInput, prefix?: string): string;
 
 // @public (undocumented)
 export type utxoPredicate = ((u: TxInput) => TxInput | undefined) | ((u: TxInput) => boolean) | ((u: TxInput) => boolean | undefined);

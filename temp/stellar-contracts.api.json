@@ -277,7 +277,7 @@
             },
             {
               "kind": "Content",
-              "text": "<any, SC, P>"
+              "text": "<any, SC>"
             },
             {
               "kind": "Content",
@@ -285,8 +285,8 @@
             },
             {
               "kind": "Reference",
-              "text": "helperSubclass",
-              "canonicalReference": "@donecollectively/stellar-contracts!~helperSubclass:type"
+              "text": "stellarTestHelperSubclass",
+              "canonicalReference": "@donecollectively/stellar-contracts!~stellarTestHelperSubclass:type"
             },
             {
               "kind": "Content",
@@ -1330,7 +1330,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!Capo#getContractScriptParams:member(1)",
-              "docComment": "",
+              "docComment": "/**\n * extracts from the input configuration the key details needed to construct/reconstruct the on-chain contract address\n *\n * @remarks\n *\n * extracts the details that are key to parameterizing the Capo / leader's on-chain contract script\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -1345,17 +1345,22 @@
                   "text": "): "
                 },
                 {
+                  "kind": "Reference",
+                  "text": "configBase",
+                  "canonicalReference": "@donecollectively/stellar-contracts!paramsBase:type"
+                },
+                {
                   "kind": "Content",
-                  "text": "{\n        mph: "
+                  "text": " & "
                 },
                 {
                   "kind": "Reference",
-                  "text": "MintingPolicyHash",
-                  "canonicalReference": "@hyperionbt/helios!MintingPolicyHash:class"
+                  "text": "Partial",
+                  "canonicalReference": "!Partial:type"
                 },
                 {
                   "kind": "Content",
-                  "text": ";\n        rev: bigint;\n    }"
+                  "text": "<configType>"
                 },
                 {
                   "kind": "Content",
@@ -1365,7 +1370,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 3,
-                "endIndex": 6
+                "endIndex": 7
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -1387,7 +1392,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!Capo#getMinterParams:member(1)",
-              "docComment": "",
+              "docComment": "/**\n * provides minter-targeted params extracted from the input configuration\n *\n * @remarks\n *\n * extracts the seed-txn details that are key to parameterizing the minter contract\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -1625,12 +1630,61 @@
             },
             {
               "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!Capo#mkImpliedSettings:member(1)",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#mkFullConfig:member(1)",
               "docComment": "",
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "mkImpliedSettings(uut: "
+                  "text": "abstract mkFullConfig(baseConfig: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "CapoBaseConfig",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoBaseConfig:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "configType"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 4
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "baseConfig",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": true,
+              "name": "mkFullConfig"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#mkImpliedUutDetails:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "mkImpliedUutDetails(uut: "
                 },
                 {
                   "kind": "Reference",
@@ -1671,7 +1725,7 @@
               ],
               "isOptional": false,
               "isAbstract": false,
-              "name": "mkImpliedSettings"
+              "name": "mkImpliedUutDetails"
             },
             {
               "kind": "Method",
@@ -1680,7 +1734,16 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "abstract mkTxnMintCharterToken(charterDatumArgs: "
+                  "text": "abstract mkTxnMintCharterToken<TCX extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasSelectedDelegates",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~hasSelectedDelegates:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">(charterDatumArgs: "
                 },
                 {
                   "kind": "Reference",
@@ -1693,12 +1756,11 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", tcx?: "
+                  "text": ", existingTcx?: "
                 },
                 {
-                  "kind": "Reference",
-                  "text": "StellarTxnContext",
-                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                  "kind": "Content",
+                  "text": "TCX"
                 },
                 {
                   "kind": "Content",
@@ -1711,26 +1773,48 @@
                 },
                 {
                   "kind": "Content",
+                  "text": "<never | (TCX & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasBootstrappedConfig",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasBootstrappedConfig:type"
+                },
+                {
+                  "kind": "Content",
                   "text": "<"
                 },
                 {
                   "kind": "Reference",
-                  "text": "StellarTxnContext",
-                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                  "text": "CapoBaseConfig",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoBaseConfig:type"
                 },
                 {
                   "kind": "Content",
-                  "text": " | never>"
+                  "text": " & configType>)>"
                 },
                 {
                   "kind": "Content",
                   "text": ";"
                 }
               ],
+              "typeParameters": [
+                {
+                  "typeParameterName": "TCX",
+                  "constraintTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                }
+              ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 6,
-                "endIndex": 10
+                "startIndex": 8,
+                "endIndex": 14
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -1739,16 +1823,16 @@
                 {
                   "parameterName": "charterDatumArgs",
                   "parameterTypeTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 3
+                    "startIndex": 3,
+                    "endIndex": 5
                   },
                   "isOptional": false
                 },
                 {
-                  "parameterName": "tcx",
+                  "parameterName": "existingTcx",
                   "parameterTypeTokenRange": {
-                    "startIndex": 4,
-                    "endIndex": 5
+                    "startIndex": 6,
+                    "endIndex": 7
                   },
                   "isOptional": true
                 }
@@ -1756,6 +1840,36 @@
               "isOptional": false,
               "isAbstract": true,
               "name": "mkTxnMintCharterToken"
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#mockMinter:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "mockMinter?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "minterType"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": true,
+              "releaseTag": "Public",
+              "name": "mockMinter",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
             },
             {
               "kind": "Property",
@@ -1832,51 +1946,6 @@
               "isOptional": false,
               "isAbstract": false,
               "name": "mustFindCharterUtxo"
-            },
-            {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!Capo#mustGetContractSeedUtxo:member(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "mustGetContractSeedUtxo(): "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "Promise",
-                  "canonicalReference": "!Promise:interface"
-                },
-                {
-                  "kind": "Content",
-                  "text": "<"
-                },
-                {
-                  "kind": "Reference",
-                  "text": "TxInput",
-                  "canonicalReference": "@hyperionbt/helios!TxInput:class"
-                },
-                {
-                  "kind": "Content",
-                  "text": " | never>"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 5
-              },
-              "releaseTag": "Public",
-              "isProtected": false,
-              "overloadIndex": 1,
-              "parameters": [],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "mustGetContractSeedUtxo"
             },
             {
               "kind": "Property",
@@ -2766,6 +2835,101 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#txnMustGetSeedUtxo:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "txnMustGetSeedUtxo(tcx: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", purpose: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", tokenNames: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string[]"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "TxInput",
+                  "canonicalReference": "@hyperionbt/helios!TxInput:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": " | never>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 7,
+                "endIndex": 11
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "tcx",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "purpose",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 3,
+                    "endIndex": 4
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "tokenNames",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 5,
+                    "endIndex": 6
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "txnMustGetSeedUtxo"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!Capo#txnMustSelectDelegate:member(1)",
               "docComment": "",
               "excerptTokens": [
@@ -3395,8 +3559,21 @@
                 },
                 {
                   "kind": "Reference",
+                  "text": "Partial",
+                  "canonicalReference": "!Partial:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
                   "text": "SelectedDelegates",
                   "canonicalReference": "@donecollectively/stellar-contracts!~SelectedDelegates:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
@@ -3414,8 +3591,8 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 3,
-                "endIndex": 4
+                "startIndex": 6,
+                "endIndex": 7
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -3425,7 +3602,7 @@
                   "parameterName": "delegates",
                   "parameterTypeTokenRange": {
                     "startIndex": 1,
-                    "endIndex": 2
+                    "endIndex": 5
                   },
                   "isOptional": false
                 }
@@ -3462,7 +3639,25 @@
             },
             {
               "kind": "Content",
-              "text": "<any>"
+              "text": "<"
+            },
+            {
+              "kind": "Reference",
+              "text": "DefaultMinter",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter:class"
+            },
+            {
+              "kind": "Content",
+              "text": " & "
+            },
+            {
+              "kind": "Reference",
+              "text": "MinterBaseMethods",
+              "canonicalReference": "@donecollectively/stellar-contracts!~MinterBaseMethods:interface"
+            },
+            {
+              "kind": "Content",
+              "text": ", CDT, CT>"
             },
             {
               "kind": "Content",
@@ -3488,12 +3683,47 @@
             },
             {
               "kind": "Content",
-              "text": "<any, infer iCDT> ? iCDT : "
+              "text": "<"
+            },
+            {
+              "kind": "Reference",
+              "text": "DefaultMinter",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter:class"
+            },
+            {
+              "kind": "Content",
+              "text": ", infer iCDT> ? iCDT : "
             },
             {
               "kind": "Reference",
               "text": "anyDatumArgs",
               "canonicalReference": "@donecollectively/stellar-contracts!~anyDatumArgs:type"
+            },
+            {
+              "kind": "Content",
+              "text": ", CT extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "CapoBaseConfig",
+              "canonicalReference": "@donecollectively/stellar-contracts!~CapoBaseConfig:type"
+            },
+            {
+              "kind": "Content",
+              "text": " = "
+            },
+            {
+              "kind": "Content",
+              "text": "SC extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "Capo",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<any, any, infer iCT> ? iCT : never"
             },
             {
               "kind": "Content",
@@ -3506,16 +3736,7 @@
             },
             {
               "kind": "Content",
-              "text": "<SC, "
-            },
-            {
-              "kind": "Reference",
-              "text": "CapoBaseConfig",
-              "canonicalReference": "@donecollectively/stellar-contracts!~CapoBaseConfig:type"
-            },
-            {
-              "kind": "Content",
-              "text": ">"
+              "text": "<SC>"
             },
             {
               "kind": "Content",
@@ -3529,7 +3750,7 @@
               "typeParameterName": "SC",
               "constraintTokenRange": {
                 "startIndex": 1,
-                "endIndex": 3
+                "endIndex": 7
               },
               "defaultTypeTokenRange": {
                 "startIndex": 0,
@@ -3539,12 +3760,23 @@
             {
               "typeParameterName": "CDT",
               "constraintTokenRange": {
-                "startIndex": 4,
-                "endIndex": 5
+                "startIndex": 8,
+                "endIndex": 9
               },
               "defaultTypeTokenRange": {
-                "startIndex": 6,
-                "endIndex": 10
+                "startIndex": 10,
+                "endIndex": 16
+              }
+            },
+            {
+              "typeParameterName": "CT",
+              "constraintTokenRange": {
+                "startIndex": 17,
+                "endIndex": 18
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 19,
+                "endIndex": 22
               }
             }
           ],
@@ -3554,25 +3786,16 @@
           "members": [
             {
               "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!CapoTestHelper#initialize:member(1)",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoTestHelper#bootstrap:member(1)",
               "docComment": "",
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "initialize({ randomSeed, seedTxn, seedIndex, }?: "
+                  "text": "bootstrap(args?: "
                 },
                 {
                   "kind": "Content",
-                  "text": "{\n        seedTxn?: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "TxId",
-                  "canonicalReference": "@hyperionbt/helios!TxId:class"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";\n        seedIndex?: bigint;\n        randomSeed?: number;\n    }"
+                  "text": "CDT"
                 },
                 {
                   "kind": "Content",
@@ -3594,18 +3817,71 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 5,
-                "endIndex": 7
+                "startIndex": 3,
+                "endIndex": 5
               },
               "releaseTag": "Public",
               "isProtected": false,
               "overloadIndex": 1,
               "parameters": [
                 {
-                  "parameterName": "{ randomSeed, seedTxn, seedIndex, }",
+                  "parameterName": "args",
                   "parameterTypeTokenRange": {
                     "startIndex": 1,
-                    "endIndex": 4
+                    "endIndex": 2
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "bootstrap"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoTestHelper#initialize:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "initialize({ randomSeed, config }?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "{\n        config?: CT;\n        randomSeed?: number;\n    }"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<SC>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "{ randomSeed, config }",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
                   },
                   "isOptional": true
                 }
@@ -3621,7 +3897,7 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "mintCharterToken(args?: "
+                  "text": "abstract mintCharterToken(args?: "
                 },
                 {
                   "kind": "Content",
@@ -3642,12 +3918,12 @@
                 },
                 {
                   "kind": "Reference",
-                  "text": "StellarTxnContext",
-                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                  "text": "hasBootstrappedConfig",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasBootstrappedConfig:type"
                 },
                 {
                   "kind": "Content",
-                  "text": ">"
+                  "text": "<CT>>"
                 },
                 {
                   "kind": "Content",
@@ -3673,7 +3949,7 @@
                 }
               ],
               "isOptional": false,
-              "isAbstract": false,
+              "isAbstract": true,
               "name": "mintCharterToken"
             },
             {
@@ -3714,8 +3990,8 @@
             }
           ],
           "extendsTokenRange": {
-            "startIndex": 11,
-            "endIndex": 15
+            "startIndex": 23,
+            "endIndex": 25
           },
           "implementsTokenRanges": []
         },
@@ -3799,7 +4075,7 @@
         {
           "kind": "Class",
           "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo:class",
-          "docComment": "/**\n * Base class for leader contracts, with predefined roles for delegating governance authority and minting policies\n *\n * @remarks\n *\n * * A Capo contract provides a central contract address that can act as a treasury or data registry; it can mint tokens using its connected minting-policy, and it can delegate policies to other contract scripts. Subclasses of Capo can use these capabilities in custom ways for strong flexibility.\n *\n * Subclass and customize DefaultCapo's type-parameters if you need to customize further.\n *\n * Any Capo contract can (and must) define roles() to establish collaborating scripts; these are used for separating granular responsbilities for different functional purposes within your (on-chain and off-chain) application; this approach enables delegates to use any one of multiple strategies with different functional logic to serve in any given role, thus providing flexibility and extensibility.\n *\n * DefaultCapo provides roles for govAuthority and mintDelegate, and methods to facilitate the lifecycle of charter creation & update.\n *\n * **Example: Multisig authority delegation** - a Capo contract would get much more complicated if it contained multisig logic. Instead, the governance authority for the Capo can be delegated to a standalone multi-sig contract, which can contain all (and only) the multi-sig logic. Separating the responsibilities makes each part simpler, easing the process of ensuring each part is doing its job perfectly :pray:\n *\n * A Capo subclass can decorate an existing entry from `super.roles()` with additional strategy entries, or can add extra roles useful in the operation of its application.\n *\n * The Capo base class provides utilities for creating and using UUT's, or **unique utility tokens**, which are non-fungible assets that can form a positive linkage between the Capo (which should normally retain a reference to that UUT) and any delegate; that delegate is most commonly another contract script also referenced within the roles() definition, with a selected strategy.\n *\n * Architecturally, UUTs provide a simple and unique handle for the Capo to use as a **required transaction element** in key operational activities (like updating the charter details); so that the delegate holding the UUT is entrusted to approved the UUT's inclusion in a transaction, with all the policy-enforcement implicated on the other end of the delegation.\n *\n * See the {@link Capo | Capo base class} and {@link StellarContract} for addition context.\n *\n * @public\n */\n",
+          "docComment": "/**\n * Base class for leader contracts, with predefined roles for delegating governance authority and minting policies\n *\n * @remarks\n *\n * * A Capo contract provides a central contract address that can act as a treasury or data registry; it can mint tokens using its connected minting-policy, and it can delegate policies to other contract scripts. Subclasses of Capo can use these capabilities in custom ways for strong flexibility.\n *\n * Subclass and customize DefaultCapo's type-parameters if you need to customize further.\n *\n * Any Capo contract can (and must) define roles() to establish collaborating scripts; these are used for separating granular responsbilities for different functional purposes within your (on-chain and off-chain) application; this approach enables delegates to use any one of multiple strategies with different functional logic to serve in any given role, thus providing flexibility and extensibility.\n *\n * DefaultCapo provides roles for govAuthority and mintDelegate, and methods to facilitate the lifecycle of charter creation & update.\n *\n * **Example: Multisig authority delegation** - a Capo contract would get much more complicated if it contained multisig logic. Instead, the governance authority for the Capo can be delegated to a standalone multi-sig contract, which can contain all (and only) the multi-sig logic. Separating the responsibilities makes each part simpler, easing the process of ensuring each part is doing its job perfectly :pray:\n *\n * A Capo subclass can decorate an existing entry from `super.roles()` with additional strategy entries, or can add extra roles useful in the operation of its application.\n *\n * The Capo base class provides utilities for creating and using UUT's, or **unique utility tokens**, which are non-fungible assets that can form a positive linkage between the Capo (which should normally retain a reference to that UUT) and any delegate; that delegate is most commonly another contract script also referenced within the roles() definition, with a selected strategy.\n *\n * Architecturally, UUTs provide a simple and unique handle for the Capo to use as a **required transaction element** in key operational activities (like updating the charter details); so that the delegate holding the UUT is entrusted to approved the UUT's inclusion in a transaction, with all the policy-enforcement implicated on the other end of the delegation.\n *\n * Customizing Datum and Redeemer\n *\n * The baseline contract script can have specialized Datum and Redeemer definitions by subclassing DefaultCapo with a `get specializedCapo()`. This should be an imported helios script having `module specializedCapo` at the top. It MUST export Datum and Redeemer enums, with variants matching those in the provided baseline/unspecializedCapo module.\n *\n * A customized Datum::validateSpend(self, ctx) -> Bool method should be defined, even if it doesn't put constraints on spending Datum. If it does choose to add hard constraints, note that this method doesn't have access to the Redeemer. It's a simple place to express simple constraints on spending a custom Datum that only needs one 'spendingDatum' activity.\n *\n * A customized Redeemer: allowActivity(self, datum, ctx) -> Bool method has access to both the redeemer (in self), as well as Datum and the transaction context. In this method, use self.switch{...} to implement activity-specific validations.\n *\n * See the {@link Capo | Capo base class} and {@link StellarContract} for addition context.\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -3947,6 +4223,42 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#importModules:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "importModules(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "HeliosModuleSrc",
+                  "canonicalReference": "@donecollectively/stellar-contracts!HeliosModuleSrc:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "[]"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "importModules"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#mkDatumCharterToken:member(1)",
               "docComment": "",
               "excerptTokens": [
@@ -3996,12 +4308,75 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#mkFullConfig:member(1)",
+              "docComment": "/**\n * should emit a complete configuration structure that can reconstitute a contract (suite) after its first bootstrap transaction\n *\n * @remarks\n *\n * mkFullConfig is called during a bootstrap transaction. The default implementation works for subclasses as long as they use CapoBaseConfig for their config type. Or, if they're instantiated with a partialConfig that augments CapoBaseConfig with concrete details that fulfill their extensions to the config type.\n *\n * If you have a custom mkBootstrapTxn() that uses techniques to explicitly add config properties not provided by your usage of `partialConfig` in the constructor, then you'll need to provide a more specific impl of mkFullConfig(). It's recommended that you call super.mkFullConfig() from your impl.\n *\n * @param baseConfig - receives the BaseConfig properties: mph, seedTxn and seedIndex\n *\n * @public\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "mkFullConfig(baseConfig: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "CapoBaseConfig",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoBaseConfig:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "CapoBaseConfig",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoBaseConfig:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": " & configType"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "baseConfig",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "mkFullConfig"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#mkTxnMintCharterToken:member(1)",
               "docComment": "",
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "mkTxnMintCharterToken(charterDatumArgs: "
+                  "text": "mkTxnMintCharterToken<TCX extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasSelectedDelegates",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~hasSelectedDelegates:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">(charterDatumArgs: "
                 },
                 {
                   "kind": "Reference",
@@ -4017,9 +4392,8 @@
                   "text": ", existingTcx?: "
                 },
                 {
-                  "kind": "Reference",
-                  "text": "hasSelectedDelegates",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~hasSelectedDelegates:type"
+                  "kind": "Content",
+                  "text": "TCX"
                 },
                 {
                   "kind": "Content",
@@ -4032,26 +4406,48 @@
                 },
                 {
                   "kind": "Content",
+                  "text": "<never | (TCX & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasBootstrappedConfig",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasBootstrappedConfig:type"
+                },
+                {
+                  "kind": "Content",
                   "text": "<"
                 },
                 {
                   "kind": "Reference",
-                  "text": "StellarTxnContext",
-                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                  "text": "CapoBaseConfig",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoBaseConfig:type"
                 },
                 {
                   "kind": "Content",
-                  "text": " | never>"
+                  "text": " & configType>)>"
                 },
                 {
                   "kind": "Content",
                   "text": ";"
                 }
               ],
+              "typeParameters": [
+                {
+                  "typeParameterName": "TCX",
+                  "constraintTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                }
+              ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 6,
-                "endIndex": 10
+                "startIndex": 8,
+                "endIndex": 14
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -4060,16 +4456,16 @@
                 {
                   "parameterName": "charterDatumArgs",
                   "parameterTypeTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 3
+                    "startIndex": 3,
+                    "endIndex": 5
                   },
                   "isOptional": false
                 },
                 {
                   "parameterName": "existingTcx",
                   "parameterTypeTokenRange": {
-                    "startIndex": 4,
-                    "endIndex": 5
+                    "startIndex": 6,
+                    "endIndex": 7
                   },
                   "isOptional": true
                 }
@@ -4229,6 +4625,37 @@
               "isAbstract": false
             },
             {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#specializedCapo:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "get specializedCapo(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "HeliosModuleSrc",
+                  "canonicalReference": "@donecollectively/stellar-contracts!HeliosModuleSrc:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": true,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "specializedCapo",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#txnAddCharterAuthz:member(1)",
               "docComment": "",
@@ -4363,7 +4790,16 @@
             },
             {
               "kind": "Content",
-              "text": "<any>"
+              "text": "<"
+            },
+            {
+              "kind": "Reference",
+              "text": "DefaultMinter",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter:class"
+            },
+            {
+              "kind": "Content",
+              "text": ", CDT, CT>"
             },
             {
               "kind": "Content",
@@ -4376,6 +4812,72 @@
             },
             {
               "kind": "Content",
+              "text": ", CDT extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "DefaultCharterDatumArgs",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCharterDatumArgs:type"
+            },
+            {
+              "kind": "Content",
+              "text": " = "
+            },
+            {
+              "kind": "Content",
+              "text": "DC extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "Capo",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<"
+            },
+            {
+              "kind": "Reference",
+              "text": "DefaultMinter",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter:class"
+            },
+            {
+              "kind": "Content",
+              "text": ", infer iCDT> ? iCDT : "
+            },
+            {
+              "kind": "Reference",
+              "text": "DefaultCharterDatumArgs",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCharterDatumArgs:type"
+            },
+            {
+              "kind": "Content",
+              "text": ", CT extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "CapoBaseConfig",
+              "canonicalReference": "@donecollectively/stellar-contracts!~CapoBaseConfig:type"
+            },
+            {
+              "kind": "Content",
+              "text": " = "
+            },
+            {
+              "kind": "Content",
+              "text": "DC extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "Capo",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<any, any, infer iCT> ? iCT : never"
+            },
+            {
+              "kind": "Content",
               "text": "> extends "
             },
             {
@@ -4385,7 +4887,7 @@
             },
             {
               "kind": "Content",
-              "text": "<DC>"
+              "text": "<DC, CDT, CT>"
             },
             {
               "kind": "Content",
@@ -4399,11 +4901,33 @@
               "typeParameterName": "DC",
               "constraintTokenRange": {
                 "startIndex": 1,
-                "endIndex": 3
+                "endIndex": 5
               },
               "defaultTypeTokenRange": {
-                "startIndex": 4,
-                "endIndex": 5
+                "startIndex": 6,
+                "endIndex": 7
+              }
+            },
+            {
+              "typeParameterName": "CDT",
+              "constraintTokenRange": {
+                "startIndex": 8,
+                "endIndex": 9
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 10,
+                "endIndex": 16
+              }
+            },
+            {
+              "typeParameterName": "CT",
+              "constraintTokenRange": {
+                "startIndex": 17,
+                "endIndex": 18
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 19,
+                "endIndex": 22
               }
             }
           ],
@@ -4411,6 +4935,161 @@
           "name": "DefaultCapoTestHelper",
           "preserveMemberOrder": false,
           "members": [
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapoTestHelper.forCapoClass:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "static forCapoClass<DC extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "DefaultCapo",
+                  "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "DefaultMinter",
+                  "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", any, any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">(s: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "stellarSubclass",
+                  "canonicalReference": "@donecollectively/stellar-contracts!stellarSubclass:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<DC>"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "stellarTestHelperSubclass",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~stellarTestHelperSubclass:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<DC>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "typeParameters": [
+                {
+                  "typeParameterName": "DC",
+                  "constraintTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 5
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                }
+              ],
+              "isStatic": true,
+              "returnTypeTokenRange": {
+                "startIndex": 9,
+                "endIndex": 11
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "s",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 6,
+                    "endIndex": 8
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "forCapoClass"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapoTestHelper#mintCharterToken:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "mintCharterToken(args?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "CDT"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasBootstrappedConfig",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasBootstrappedConfig:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<CT>>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 7
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "args",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "mintCharterToken"
+            },
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapoTestHelper#mkCharterSpendTx:member(1)",
@@ -4564,9 +5243,8 @@
                   "text": "updateCharter(args: "
                 },
                 {
-                  "kind": "Reference",
-                  "text": "DefaultCharterDatumArgs",
-                  "canonicalReference": "@donecollectively/stellar-contracts!DefaultCharterDatumArgs:type"
+                  "kind": "Content",
+                  "text": "CDT"
                 },
                 {
                   "kind": "Content",
@@ -4619,8 +5297,8 @@
             }
           ],
           "extendsTokenRange": {
-            "startIndex": 6,
-            "endIndex": 8
+            "startIndex": 23,
+            "endIndex": 25
           },
           "implementsTokenRanges": []
         },
@@ -5008,85 +5686,6 @@
             },
             {
               "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter#mkUutValuesEntries:member(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "mkUutValuesEntries<UM extends "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "uutPurposeMap",
-                  "canonicalReference": "@donecollectively/stellar-contracts!uutPurposeMap:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": "<any>"
-                },
-                {
-                  "kind": "Content",
-                  "text": ">(uutMap: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "UM"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "valuesEntry",
-                  "canonicalReference": "@donecollectively/stellar-contracts!valuesEntry:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": "[]"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "typeParameters": [
-                {
-                  "typeParameterName": "UM",
-                  "constraintTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 3
-                  },
-                  "defaultTypeTokenRange": {
-                    "startIndex": 0,
-                    "endIndex": 0
-                  }
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 6,
-                "endIndex": 8
-              },
-              "releaseTag": "Public",
-              "isProtected": false,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "uutMap",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 4,
-                    "endIndex": 5
-                  },
-                  "isOptional": false
-                }
-              ],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "mkUutValuesEntries"
-            },
-            {
-              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter#tvCharter:member(1)",
               "docComment": "",
               "excerptTokens": [
@@ -5264,12 +5863,24 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "txnMintingCharter(tcx: "
+                  "text": "txnMintingCharter<TCX extends "
                 },
                 {
                   "kind": "Reference",
                   "text": "StellarTxnContext",
                   "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">(tcx: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "TCX"
                 },
                 {
                   "kind": "Content",
@@ -5308,26 +5919,30 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<"
-                },
-                {
-                  "kind": "Reference",
-                  "text": "StellarTxnContext",
-                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
-                },
-                {
-                  "kind": "Content",
-                  "text": ">"
+                  "text": "<TCX>"
                 },
                 {
                   "kind": "Content",
                   "text": ";"
                 }
               ],
+              "typeParameters": [
+                {
+                  "typeParameterName": "TCX",
+                  "constraintTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 3
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                }
+              ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 9,
-                "endIndex": 13
+                "startIndex": 12,
+                "endIndex": 14
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -5336,16 +5951,16 @@
                 {
                   "parameterName": "tcx",
                   "parameterTypeTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 2
+                    "startIndex": 4,
+                    "endIndex": 5
                   },
                   "isOptional": false
                 },
                 {
                   "parameterName": "{ owner, authZor }",
                   "parameterTypeTokenRange": {
-                    "startIndex": 3,
-                    "endIndex": 8
+                    "startIndex": 6,
+                    "endIndex": 11
                   },
                   "isOptional": false
                 }
@@ -5660,6 +6275,59 @@
           }
         },
         {
+          "kind": "TypeAlias",
+          "canonicalReference": "@donecollectively/stellar-contracts!hasBootstrappedConfig:type",
+          "docComment": "",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export type hasBootstrappedConfig<CT extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "CapoBaseConfig",
+              "canonicalReference": "@donecollectively/stellar-contracts!~CapoBaseConfig:type"
+            },
+            {
+              "kind": "Content",
+              "text": "> = "
+            },
+            {
+              "kind": "Reference",
+              "text": "StellarTxnContext",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<{\n    bootstrappedConfig: CT;\n}>"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/Capo.ts",
+          "releaseTag": "Public",
+          "name": "hasBootstrappedConfig",
+          "typeParameters": [
+            {
+              "typeParameterName": "CT",
+              "constraintTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 0,
+                "endIndex": 0
+              }
+            }
+          ],
+          "typeTokenRange": {
+            "startIndex": 3,
+            "endIndex": 5
+          }
+        },
+        {
           "kind": "Function",
           "canonicalReference": "@donecollectively/stellar-contracts!hasReqts:function(1)",
           "docComment": "/**\n * Factory for type-safe requirements details for a unit of software\n *\n * @remarks\n *\n * return `hasReqts({... requirements})` from a requirements() or other method in a class, to express requirements using a standardized form that supports arbitrary amounts of detailed requirements with references to unit-test labels that can verify the impl details.\n *\n * You don't need to provide the type params or TS type annotations. `requirements() { return hasReqts({...yourReqts}) }` will work fine.\n *\n * See the {@link ReqtsMap} and {@link RequirementEntry} types for more details about expressing requirements.\n *\n * @param reqtsMap - the ReqtsMap structure for the software unit\n *\n * @typeParam R - implicitly matches the provided `reqtsMap`\n *\n * @typeParam reqts - implicitly matches the requirements strings from the provided `reqtsMap`\n *\n * @public\n */\n",
@@ -5675,11 +6343,11 @@
             },
             {
               "kind": "Content",
-              "text": "<reqts>"
+              "text": "<validReqts>"
             },
             {
               "kind": "Content",
-              "text": ", const reqts extends "
+              "text": ", const validReqts extends "
             },
             {
               "kind": "Content",
@@ -5712,7 +6380,7 @@
             },
             {
               "kind": "Content",
-              "text": "<reqts>"
+              "text": "<validReqts>"
             },
             {
               "kind": "Content",
@@ -5749,7 +6417,7 @@
               }
             },
             {
-              "typeParameterName": "reqts",
+              "typeParameterName": "validReqts",
               "constraintTokenRange": {
                 "startIndex": 4,
                 "endIndex": 5
@@ -6169,6 +6837,178 @@
           "name": "mkHeliosModule"
         },
         {
+          "kind": "Function",
+          "canonicalReference": "@donecollectively/stellar-contracts!mkUutValuesEntries:function(1)",
+          "docComment": "",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function mkUutValuesEntries(uuts: "
+            },
+            {
+              "kind": "Reference",
+              "text": "UutName",
+              "canonicalReference": "@donecollectively/stellar-contracts!~UutName:class"
+            },
+            {
+              "kind": "Content",
+              "text": "[]"
+            },
+            {
+              "kind": "Content",
+              "text": "): "
+            },
+            {
+              "kind": "Reference",
+              "text": "valuesEntry",
+              "canonicalReference": "@donecollectively/stellar-contracts!valuesEntry:type"
+            },
+            {
+              "kind": "Content",
+              "text": "[]"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/utils.ts",
+          "returnTypeTokenRange": {
+            "startIndex": 4,
+            "endIndex": 6
+          },
+          "releaseTag": "Public",
+          "overloadIndex": 1,
+          "parameters": [
+            {
+              "parameterName": "uuts",
+              "parameterTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
+              },
+              "isOptional": false
+            }
+          ],
+          "name": "mkUutValuesEntries"
+        },
+        {
+          "kind": "Function",
+          "canonicalReference": "@donecollectively/stellar-contracts!mkUutValuesEntries:function(2)",
+          "docComment": "",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function mkUutValuesEntries(uuts: "
+            },
+            {
+              "kind": "Reference",
+              "text": "uutPurposeMap",
+              "canonicalReference": "@donecollectively/stellar-contracts!uutPurposeMap:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<any>"
+            },
+            {
+              "kind": "Content",
+              "text": "): "
+            },
+            {
+              "kind": "Reference",
+              "text": "valuesEntry",
+              "canonicalReference": "@donecollectively/stellar-contracts!valuesEntry:type"
+            },
+            {
+              "kind": "Content",
+              "text": "[]"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/utils.ts",
+          "returnTypeTokenRange": {
+            "startIndex": 4,
+            "endIndex": 6
+          },
+          "releaseTag": "Public",
+          "overloadIndex": 2,
+          "parameters": [
+            {
+              "parameterName": "uuts",
+              "parameterTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
+              },
+              "isOptional": false
+            }
+          ],
+          "name": "mkUutValuesEntries"
+        },
+        {
+          "kind": "Function",
+          "canonicalReference": "@donecollectively/stellar-contracts!mkValuesEntry:function(1)",
+          "docComment": "",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function mkValuesEntry(tokenName: "
+            },
+            {
+              "kind": "Content",
+              "text": "string"
+            },
+            {
+              "kind": "Content",
+              "text": ", count: "
+            },
+            {
+              "kind": "Content",
+              "text": "bigint"
+            },
+            {
+              "kind": "Content",
+              "text": "): "
+            },
+            {
+              "kind": "Reference",
+              "text": "valuesEntry",
+              "canonicalReference": "@donecollectively/stellar-contracts!valuesEntry:type"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/utils.ts",
+          "returnTypeTokenRange": {
+            "startIndex": 5,
+            "endIndex": 6
+          },
+          "releaseTag": "Public",
+          "overloadIndex": 1,
+          "parameters": [
+            {
+              "parameterName": "tokenName",
+              "parameterTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isOptional": false
+            },
+            {
+              "parameterName": "count",
+              "parameterTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 4
+              },
+              "isOptional": false
+            }
+          ],
+          "name": "mkValuesEntry"
+        },
+        {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!paramsBase:type",
           "docComment": "",
@@ -6283,7 +7123,7 @@
           "excerptTokens": [
             {
               "kind": "Content",
-              "text": "export type ReqtsMap<reqts extends "
+              "text": "export type ReqtsMap<validReqts extends "
             },
             {
               "kind": "Content",
@@ -6295,7 +7135,7 @@
             },
             {
               "kind": "Content",
-              "text": "{\n    [reqtDescription in reqts]: "
+              "text": "{\n    [reqtDescription in validReqts]: "
             },
             {
               "kind": "Reference",
@@ -6313,7 +7153,7 @@
             },
             {
               "kind": "Content",
-              "text": "<reqts>;\n}"
+              "text": "<validReqts>;\n}"
             },
             {
               "kind": "Content",
@@ -6325,7 +7165,7 @@
           "name": "ReqtsMap",
           "typeParameters": [
             {
-              "typeParameterName": "reqts",
+              "typeParameterName": "validReqts",
               "constraintTokenRange": {
                 "startIndex": 1,
                 "endIndex": 2
@@ -6831,7 +7671,7 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "configIn: "
+                  "text": "configIn?: "
                 },
                 {
                   "kind": "Content",
@@ -6843,7 +7683,7 @@
                 }
               ],
               "isReadonly": false,
-              "isOptional": false,
+              "isOptional": true,
               "releaseTag": "Public",
               "name": "configIn",
               "propertyTypeTokenRange": {
@@ -6861,7 +7701,7 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "contractParams: "
+                  "text": "contractParams?: "
                 },
                 {
                   "kind": "Reference",
@@ -6874,7 +7714,7 @@
                 }
               ],
               "isReadonly": false,
-              "isOptional": false,
+              "isOptional": true,
               "releaseTag": "Public",
               "name": "contractParams",
               "propertyTypeTokenRange": {
@@ -7154,13 +7994,26 @@
                 },
                 {
                   "kind": "Content",
+                  "text": " & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Partial",
+                  "canonicalReference": "!Partial:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<ConfigType>"
+                },
+                {
+                  "kind": "Content",
                   "text": ";"
                 }
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 3,
-                "endIndex": 4
+                "endIndex": 7
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -7581,11 +8434,16 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "loadProgramScript(params: "
+                  "text": "loadProgramScript(params?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Partial",
+                  "canonicalReference": "!Partial:type"
                 },
                 {
                   "kind": "Content",
-                  "text": "ConfigType"
+                  "text": "<ConfigType>"
                 },
                 {
                   "kind": "Content",
@@ -7598,7 +8456,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": " | null"
+                  "text": " | undefined"
                 },
                 {
                   "kind": "Content",
@@ -7607,8 +8465,8 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 3,
-                "endIndex": 5
+                "startIndex": 4,
+                "endIndex": 6
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -7618,9 +8476,9 @@
                   "parameterName": "params",
                   "parameterTypeTokenRange": {
                     "startIndex": 1,
-                    "endIndex": 2
+                    "endIndex": 3
                   },
-                  "isOptional": false
+                  "isOptional": true
                 }
               ],
               "isOptional": false,
@@ -8016,71 +8874,6 @@
               "isOptional": false,
               "isAbstract": false,
               "name": "mkValuePredicate"
-            },
-            {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#mkValuesEntry:member(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "mkValuesEntry(tokenName: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "string"
-                },
-                {
-                  "kind": "Content",
-                  "text": ", count: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "bigint"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "valuesEntry",
-                  "canonicalReference": "@donecollectively/stellar-contracts!valuesEntry:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 5,
-                "endIndex": 6
-              },
-              "releaseTag": "Public",
-              "isProtected": false,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "tokenName",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 2
-                  },
-                  "isOptional": false
-                },
-                {
-                  "parameterName": "count",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 3,
-                    "endIndex": 4
-                  },
-                  "isOptional": false
-                }
-              ],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "mkValuesEntry"
             },
             {
               "kind": "Method",
@@ -8876,6 +9669,41 @@
             },
             {
               "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#partialConfig:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "partialConfig?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Partial",
+                  "canonicalReference": "!Partial:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<ConfigType>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": true,
+              "releaseTag": "Public",
+              "name": "partialConfig",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#purpose:member",
               "docComment": "",
               "excerptTokens": [
@@ -9071,54 +9899,6 @@
               "isStatic": false,
               "isProtected": false,
               "isAbstract": false
-            },
-            {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#stringToNumberArray:member(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "stringToNumberArray(str: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "string"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
-                },
-                {
-                  "kind": "Content",
-                  "text": "number[]"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 3,
-                "endIndex": 4
-              },
-              "releaseTag": "Public",
-              "isProtected": false,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "str",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 2
-                  },
-                  "isOptional": false
-                }
-              ],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "stringToNumberArray"
             },
             {
               "kind": "Method",
@@ -9738,7 +10518,7 @@
             },
             {
               "kind": "Content",
-              "text": "<SC, P>"
+              "text": "<SC>"
             },
             {
               "kind": "Content",
@@ -9768,33 +10548,7 @@
             },
             {
               "kind": "Content",
-              "text": "<infer SC2, any> ? SC2 : never"
-            },
-            {
-              "kind": "Content",
-              "text": ", P extends "
-            },
-            {
-              "kind": "Reference",
-              "text": "configBase",
-              "canonicalReference": "@donecollectively/stellar-contracts!paramsBase:type"
-            },
-            {
-              "kind": "Content",
-              "text": " = "
-            },
-            {
-              "kind": "Content",
-              "text": "SC extends "
-            },
-            {
-              "kind": "Reference",
-              "text": "StellarContract",
-              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract:class"
-            },
-            {
-              "kind": "Content",
-              "text": "<infer PT> ? PT : never"
+              "text": "<infer iSC> ? iSC : never"
             },
             {
               "kind": "Content",
@@ -9843,17 +10597,6 @@
                 "startIndex": 7,
                 "endIndex": 10
               }
-            },
-            {
-              "typeParameterName": "P",
-              "constraintTokenRange": {
-                "startIndex": 11,
-                "endIndex": 12
-              },
-              "defaultTypeTokenRange": {
-                "startIndex": 13,
-                "endIndex": 16
-              }
             }
           ],
           "name": "StellarTestContext",
@@ -9893,7 +10636,7 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "initHelper(params: "
+                  "text": "initHelper(config: "
                 },
                 {
                   "kind": "Reference",
@@ -9902,7 +10645,16 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<P> & "
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "ConfigFor",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~ConfigFor:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<SC>> & "
                 },
                 {
                   "kind": "Reference",
@@ -9938,7 +10690,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<SC, P>>"
+                  "text": "<SC>>"
                 },
                 {
                   "kind": "Content",
@@ -9947,17 +10699,17 @@
               ],
               "isOptional": false,
               "returnTypeTokenRange": {
-                "startIndex": 7,
-                "endIndex": 11
+                "startIndex": 9,
+                "endIndex": 13
               },
               "releaseTag": "Public",
               "overloadIndex": 1,
               "parameters": [
                 {
-                  "parameterName": "params",
+                  "parameterName": "config",
                   "parameterTypeTokenRange": {
                     "startIndex": 1,
-                    "endIndex": 6
+                    "endIndex": 8
                   },
                   "isOptional": false
                 }
@@ -9997,12 +10749,12 @@
           ],
           "extendsTokenRanges": [
             {
-              "startIndex": 17,
-              "endIndex": 18
+              "startIndex": 11,
+              "endIndex": 12
             },
             {
-              "startIndex": 19,
-              "endIndex": 20
+              "startIndex": 13,
+              "endIndex": 14
             }
           ]
         },
@@ -10026,32 +10778,6 @@
             },
             {
               "kind": "Content",
-              "text": ", CT extends "
-            },
-            {
-              "kind": "Reference",
-              "text": "configBase",
-              "canonicalReference": "@donecollectively/stellar-contracts!paramsBase:type"
-            },
-            {
-              "kind": "Content",
-              "text": " = "
-            },
-            {
-              "kind": "Content",
-              "text": "SC extends "
-            },
-            {
-              "kind": "Reference",
-              "text": "StellarContract",
-              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract:class"
-            },
-            {
-              "kind": "Content",
-              "text": "<infer iCT> ? iCT : never"
-            },
-            {
-              "kind": "Content",
               "text": "> "
             }
           ],
@@ -10068,17 +10794,6 @@
                 "startIndex": 0,
                 "endIndex": 0
               }
-            },
-            {
-              "typeParameterName": "CT",
-              "constraintTokenRange": {
-                "startIndex": 4,
-                "endIndex": 5
-              },
-              "defaultTypeTokenRange": {
-                "startIndex": 6,
-                "endIndex": 9
-              }
             }
           ],
           "isAbstract": true,
@@ -10092,11 +10807,16 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "constructor(params?: "
+                  "text": "constructor(config?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "ConfigFor",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~ConfigFor:type"
                 },
                 {
                   "kind": "Content",
-                  "text": "CT & "
+                  "text": "<SC> & "
                 },
                 {
                   "kind": "Reference",
@@ -10122,10 +10842,10 @@
               "overloadIndex": 1,
               "parameters": [
                 {
-                  "parameterName": "params",
+                  "parameterName": "config",
                   "parameterTypeTokenRange": {
                     "startIndex": 1,
-                    "endIndex": 5
+                    "endIndex": 6
                   },
                   "isOptional": true
                 }
@@ -10268,8 +10988,13 @@
                   "text": "config?: "
                 },
                 {
+                  "kind": "Reference",
+                  "text": "ConfigFor",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~ConfigFor:type"
+                },
+                {
                   "kind": "Content",
-                  "text": "CT"
+                  "text": "<SC>"
                 },
                 {
                   "kind": "Content",
@@ -10282,7 +11007,7 @@
               "name": "config",
               "propertyTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 2
+                "endIndex": 3
               },
               "isStatic": false,
               "isProtected": false,
@@ -10440,11 +11165,16 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "initialize(params: "
+                  "text": "initialize(config: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "ConfigFor",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~ConfigFor:type"
                 },
                 {
                   "kind": "Content",
-                  "text": "CT & "
+                  "text": "<SC> & "
                 },
                 {
                   "kind": "Reference",
@@ -10471,18 +11201,18 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 4,
-                "endIndex": 6
+                "startIndex": 5,
+                "endIndex": 7
               },
               "releaseTag": "Public",
               "isProtected": false,
               "overloadIndex": 1,
               "parameters": [
                 {
-                  "parameterName": "params",
+                  "parameterName": "config",
                   "parameterTypeTokenRange": {
                     "startIndex": 1,
-                    "endIndex": 3
+                    "endIndex": 4
                   },
                   "isOptional": false
                 }
@@ -10511,7 +11241,25 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<any>"
+                  "text": "<SC extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarContract",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarContract:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<infer inferredConfig extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "configBase",
+                  "canonicalReference": "@donecollectively/stellar-contracts!paramsBase:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "> ? inferredConfig : never>"
                 },
                 {
                   "kind": "Content",
@@ -10521,7 +11269,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 4
+                "endIndex": 8
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -10547,15 +11295,29 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<SC, any>"
+                  "text": "<SC, "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "ConfigFor",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~ConfigFor:type"
                 },
                 {
                   "kind": "Content",
-                  "text": ", config: "
+                  "text": "<SC>>"
                 },
                 {
                   "kind": "Content",
-                  "text": "any"
+                  "text": ", config?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "ConfigFor",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~ConfigFor:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<SC>"
                 },
                 {
                   "kind": "Content",
@@ -10572,7 +11334,25 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<any>"
+                  "text": "<SC extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarContract",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarContract:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<infer inferredConfig extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "configBase",
+                  "canonicalReference": "@donecollectively/stellar-contracts!paramsBase:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "> ? inferredConfig : never>"
                 },
                 {
                   "kind": "Content",
@@ -10581,8 +11361,8 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 6,
-                "endIndex": 9
+                "startIndex": 9,
+                "endIndex": 16
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -10592,17 +11372,17 @@
                   "parameterName": "TargetClass",
                   "parameterTypeTokenRange": {
                     "startIndex": 1,
-                    "endIndex": 3
+                    "endIndex": 5
                   },
                   "isOptional": false
                 },
                 {
                   "parameterName": "config",
                   "parameterTypeTokenRange": {
-                    "startIndex": 4,
-                    "endIndex": 5
+                    "startIndex": 6,
+                    "endIndex": 8
                   },
-                  "isOptional": false
+                  "isOptional": true
                 }
               ],
               "isOptional": false,
@@ -12255,6 +13035,51 @@
           }
         },
         {
+          "kind": "Function",
+          "canonicalReference": "@donecollectively/stellar-contracts!stringToNumberArray:function(1)",
+          "docComment": "",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function stringToNumberArray(str: "
+            },
+            {
+              "kind": "Content",
+              "text": "string"
+            },
+            {
+              "kind": "Content",
+              "text": "): "
+            },
+            {
+              "kind": "Content",
+              "text": "number[]"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/utils.ts",
+          "returnTypeTokenRange": {
+            "startIndex": 3,
+            "endIndex": 4
+          },
+          "releaseTag": "Public",
+          "overloadIndex": 1,
+          "parameters": [
+            {
+              "parameterName": "str",
+              "parameterTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isOptional": false
+            }
+          ],
+          "name": "stringToNumberArray"
+        },
+        {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!tokenNamesOrValuesEntry:type",
           "docComment": "",
@@ -12534,7 +13359,7 @@
           "excerptTokens": [
             {
               "kind": "Content",
-              "text": "export declare function utxoAsString(u: "
+              "text": "export declare function utxoAsString(x: "
             },
             {
               "kind": "Reference",
@@ -12571,7 +13396,7 @@
           "overloadIndex": 1,
           "parameters": [
             {
-              "parameterName": "u",
+              "parameterName": "x",
               "parameterTypeTokenRange": {
                 "startIndex": 1,
                 "endIndex": 2

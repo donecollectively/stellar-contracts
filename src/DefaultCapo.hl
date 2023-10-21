@@ -1,4 +1,4 @@
-spending DefaultCapo
+spending BaselineCapo
 
 // needed in helios 0.13: defaults
 const mph : MintingPolicyHash = MintingPolicyHash::new(#1234)
@@ -16,16 +16,8 @@ import {
     didSignInCtx
 } from StellarHeliosHelpers
 
-enum Datum {
-    CharterToken {
-        govAuthorityLink: RelativeDelegateLink
-    }
-}
+import { Datum, Redeemer } from specializedCapo
 
-enum Redeemer {
-    updatingCharter    
-    usingAuthority
-}
 
 func requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {
     Datum::CharterToken{
@@ -53,7 +45,12 @@ func getCharterOutput(tx: Tx) -> TxOutput {
     }
 }
 
-func preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {
+func notUpdatingCharter(redeemer: Redeemer) -> Bool { redeemer.switch {
+    updatingCharter => false,  
+    _ => true
+}}
+
+func preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Bool {
     tx: Tx = ctx.tx;
 
     charterOutput : TxOutput = getCharterOutput(tx);
@@ -95,21 +92,24 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
     // now: Time = tx.time_range.start;
     
-    notUpdatingCharter : Bool = redeemer.switch {
-        updatingCharter => false,  
-        _ => true
+    allDatumSpecificChecks: Bool = datum.switch {
+        ctd : CharterToken => {
+            // throws if bad
+            if(notUpdatingCharter(redeemer)) { 
+                preventCharterChange(ctx, ctd)
+            } else {
+                true // "maybe", really
+            }
+        },
+        _ => {
+            redeemer.switch {
+                spendingDatum => datum.validateSpend(ctx),
+                _ => true
+            }
+        }            
     };
-    charterChangeAllowable : Bool = if(notUpdatingCharter) { 
-        preventCharterChange(ctx, datum) // throws if it's not kosher
-     } else { 
-        true // "maybe", really
-    };
-
-    redeemerSpecificChecks : Bool = redeemer.switch {
-        updatingCharter => { 
-            //! guards from optimizing mph out of the program, screwing up parameterization
-            assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
-            
+    allRedeemerSpecificChecks : Bool = redeemer.switch {
+        updatingCharter => {             
             charterOutput : TxOutput = getCharterOutput(tx);
             newDatum = Datum::from_data( 
                 charterOutput.datum.get_inline_data() 
@@ -119,18 +119,29 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
             requiresValidDelegate(delegate, mph, ctx) &&
             requiresAuthorization(ctx, datum)
         },
-        // authorizeByCharter{otherRedeemerData, otherSignatures} => {            
-        //     false // todo support authorizing **other** things to be done with this token
-        // },
         usingAuthority => {
-            assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
-
-            notUpdatingCharter &&
-            requiresAuthorization(ctx, datum)
-        }
+            // by definition, we're truly notUpdatingCharter(redeemer) 
+            datum.switch {
+                 // throws if bad
+                ctd : CharterToken => requiresAuthorization(ctx, ctd),
+                _ => error("wrong use of usingAuthority action for non-CharterToken datum")
+            }
+        },
+        _ => redeemer.allowActivity(datum, ctx)
     };
 
-    charterChangeAllowable &&
-    redeemerSpecificChecks &&
+    assert(allDatumSpecificChecks, "datum-check fail");
+    assert(allRedeemerSpecificChecks, "redeeemer-check fail");
+
+    //! retains mph in parameterization
+    assert(
+        ( allDatumSpecificChecks && allRedeemerSpecificChecks ) ||
+            // this should never execute (much less fail), yet it also shouldn't be optimized out.
+             mph.serialize() != datum.serialize(), 
+        "unreachable"
+    ); 
+
+    allDatumSpecificChecks && 
+    allRedeemerSpecificChecks &&
     tx.serialize() != datum.serialize()
 }
