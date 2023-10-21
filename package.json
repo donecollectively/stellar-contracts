@@ -32,7 +32,7 @@
     "author": "Done Collectively",
     "license": "Cardano Community Source License",
     "dependencies": {
-        "@hyperionbt/helios": "^0.15.13",
+        "@hyperionbt/helios": "^0.15.14",
         "semver": ">=7.5.2"
     },
     "devDependencies": {

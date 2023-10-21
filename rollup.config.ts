@@ -12,8 +12,12 @@ import packageJson from "./package.json" assert { type: "json" };
 import { heliosRollupLoader } from "./src/heliosRollupLoader.js";
 const name = packageJson.main.replace(/\.m?js$/, "");
 
-const serverBundledModules : string[] = [];
-const forcedServerExternals = ["@hyperionbt/helios"];
+const serverBundledModules : string[] = [
+    "@hyperionbt/helios"
+];
+const forcedServerExternals : string[] = [];
+
+const notified = {}
 
 // import { join } from "path";
 // import alias from "@rollup/plugin-alias";
@@ -24,9 +28,16 @@ const codeBundle = (config) => {
     return {
         ...config,
         external: (id) => {
-            if (serverBundledModules.includes(id)) return false;
+            // console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ext check")
+            if (serverBundledModules.includes(id)) {
+                if (!notified[id]) {
+                    console.warn("    --- bundling module:", id);
+                    notified[id] = true;
+                }
+                return false;
+            }
             if (forcedServerExternals.includes(id)) {
-                console.warn("---ext detect ---", id);
+                console.warn("    --- dependency on external module:", id);
                 return true;
             }
 
@@ -41,7 +52,7 @@ export default [
         input: "./index.ts",
         plugins: [
             sourcemaps(),
-            externals(),
+            // externals(),
             heliosRollupLoader(),
             json(),
             resolve({
@@ -49,7 +60,7 @@ export default [
                 extensions: [".json", ".ts"],
             }),
             esbuild({
-                tsconfig: "./tsconfig.json",
+                tsconfig: "./tsconfig.json",                
                 target: ["node18" ],
             }),
         ],
