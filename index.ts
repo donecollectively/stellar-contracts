@@ -2,6 +2,7 @@
 export { mkHeliosModule } from "./src/HeliosModuleSrc.js";
 export type { HeliosModuleSrc } from "./src/HeliosModuleSrc.js";
 export { heliosRollupLoader } from "./src/heliosRollupLoader.js";
+export { mkValuesEntry,mkUutValuesEntries, stringToNumberArray } from "./src/utils.js";
 
 export {
     assetsAsString,
@@ -24,6 +25,7 @@ export type {
     hasUutContext,
     RoleMap,
     strategyValidation,
+    hasBootstrappedConfig,
 } from "./src/Capo.js";
 
 export type { SeedTxnParams } from "./src/SeedTxn.js";
@@ -39,6 +41,7 @@ export {
 
 export { hasReqts } from "./src/Requirements.js";
 export type { ReqtsMap, RequirementEntry } from "./src/Requirements.js";
+
 
 export { StellarTxnContext } from "./src/StellarTxnContext.js";
 export type {
