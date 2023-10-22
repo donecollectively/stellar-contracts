@@ -1,29 +1,25 @@
 import {
     NetworkParams,
     SimpleWallet as WalletEmulator,
-    SimpleWallet
+    SimpleWallet,
 } from "@hyperionbt/helios";
 
 import { promises as fs } from "fs";
 import { Vitest, vitest } from "vitest";
-import {
-    ConfigFor,
-    StellarContract,
-    configBase,
-} from "../StellarContract.js";
+import { ConfigFor, StellarContract, configBase } from "../StellarContract.js";
 import { StellarTestContext } from "./StellarTestContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
-import ppParams from "../../preprod.json" assert { type: "json" }
+import ppParams from "../../preprod.json" assert { type: "json" };
 
-export const preProdParams = ppParams
+export const preProdParams = ppParams;
 
 export type enhancedNetworkParams = NetworkParams & {
     slotToTimestamp(n: bigint): Date;
 };
 
-export type stellarTestHelperSubclass<
-    SC extends StellarContract<any>,
-> = new (config: ConfigFor<SC> & canHaveRandomSeed) => StellarTestHelper<SC>;
+export type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (
+    config: ConfigFor<SC> & canHaveRandomSeed
+) => StellarTestHelper<SC>;
 
 export type canHaveRandomSeed = {
     randomSeed?: number;

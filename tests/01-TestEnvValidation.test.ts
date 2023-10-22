@@ -18,10 +18,7 @@ import {
 } from "@hyperionbt/helios";
 
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
-import { ADA,
-    StellarTestContext,
-    addTestContext
-} from "../src/testing";
+import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { insufficientInputError } from "../src/testing";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
@@ -97,10 +94,9 @@ describe("Test environment", async () => {
             //!!! todo: once this ^^^^^^^^^^^^^^ starts passing, the other cases below can be removed
             //    ... in favor of something like this:
             // await tryWithSlop(170000n * ADA);
-            "case 1b: should work if finalize doesn't over-estimate fees "
+            ("case 1b: should work if finalize doesn't over-estimate fees ");
 
-            console.log(
-            );
+            console.log();
             await expect(tryWithSlop(5n * ADA)).rejects.toThrow(
                 insufficientInputError
             );
@@ -143,8 +139,6 @@ describe("Test environment", async () => {
         //         expect(Redeemer?.charterMint).toBeTruthy();
         //     });
     });
-})
+});
 
 const seconds = 1000; // milliseconds
-
-

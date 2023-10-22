@@ -29,7 +29,10 @@ import { SeedTxnParams } from "./SeedTxn.js";
 import { valuesEntry } from "./HeliosPromotedTypes.js";
 import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";
 import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
-import { RelativeDelegateLink, UutName } from "./delegation/RolesAndDelegates.js";
+import {
+    RelativeDelegateLink,
+    UutName,
+} from "./delegation/RolesAndDelegates.js";
 import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { mkUutValuesEntries, mkValuesEntry } from "./utils.js";
 
@@ -44,77 +47,85 @@ export class DefaultMinter
     contractSource() {
         return contract;
     }
-    
+
     importModules(): HeliosModuleSrc[] {
-        return [ 
-            StellarHeliosHelpers, 
+        return [
+            //prettier-ignore
+            StellarHeliosHelpers,
             CapoDelegateHelpers,
-            CapoMintHelpers 
-        ]
+            CapoMintHelpers,
+        ];
     }
 
     @partialTxn
     async txnWithUuts<
-        const purposes extends string, 
+        const purposes extends string,
         existingTcx extends StellarTxnContext<any>,
         const R extends string
     >(
         tcx: existingTcx,
-        uutPurposes: purposes [],
+        uutPurposes: purposes[],
         seedUtxo: TxInput,
-        role: R,
-    ): Promise<existingTcx & hasUutContext<purposes | ( R extends "" ? never : R )>> {
+        role: R
+    ): Promise<
+        existingTcx & hasUutContext<purposes | (R extends "" ? never : R)>
+    > {
         const { txId, utxoIdx } = seedUtxo.outputId;
 
-            const { blake2b } = Crypto;
-            if (role && uutPurposes.length !== 1) throw new Error(`role uut must have exactly one purpose`)
-            const uutMap: uutPurposeMap<purposes | R> = Object.fromEntries(
-                uutPurposes.map((uutPurpose) => {
-                    const txoId = txId.bytes.concat([
-                        "@".charCodeAt(0),
-                        utxoIdx,
-                    ]);
-                    // console.warn("&&&&&&&& txoId", bytesToHex(txoId));
-                    const uutName = new UutName(uutPurpose, `${uutPurpose}-${bytesToHex(
-                        blake2b(txoId).slice(0, 6)
-                    )}`)
-                    return [
-                        uutPurpose,
-                        uutName,
-                    ];
-                })
-            ) as uutPurposeMap<purposes | R>
-            if (role) uutMap[role] = uutMap[uutPurposes[0]]
+        const { blake2b } = Crypto;
+        if (role && uutPurposes.length !== 1)
+            throw new Error(`role uut must have exactly one purpose`);
+        const uutMap: uutPurposeMap<purposes | R> = Object.fromEntries(
+            uutPurposes.map((uutPurpose) => {
+                const txoId = txId.bytes.concat(["@".charCodeAt(0), utxoIdx]);
+                // console.warn("&&&&&&&& txoId", bytesToHex(txoId));
+                const uutName = new UutName(
+                    uutPurpose,
+                    `${uutPurpose}-${bytesToHex(blake2b(txoId).slice(0, 6))}`
+                );
+                return [uutPurpose, uutName];
+            })
+        ) as uutPurposeMap<purposes | R>;
+        if (role) uutMap[role] = uutMap[uutPurposes[0]];
 
-            if (tcx.state.uuts) throw new Error(`uuts are already there`);
-            tcx.state.uuts = uutMap;
+        if (tcx.state.uuts) throw new Error(`uuts are already there`);
+        tcx.state.uuts = uutMap;
 
-            return tcx
+        return tcx;
     }
 
     @Activity.partialTxn
     async txnCreatingUuts<
         const purposes extends string,
-        TCX extends StellarTxnContext<any>,
+        TCX extends StellarTxnContext<any>
     >(
         initialTcx: TCX,
         uutPurposes: purposes[],
         seedUtxo?: TxInput
     ): Promise<TCX & hasUutContext<purposes>> {
-        const gettingSeed = seedUtxo ? Promise.resolve<TxInput>(seedUtxo) :
-        new Promise<TxInput>(res => {
-            //!!! make it big enough to serve minUtxo for the new UUT(s)
-            const uutSeed = this.mkValuePredicate(BigInt(42_000), initialTcx);
+        const gettingSeed = seedUtxo
+            ? Promise.resolve<TxInput>(seedUtxo)
+            : new Promise<TxInput>((res) => {
+                  //!!! make it big enough to serve minUtxo for the new UUT(s)
+                  const uutSeed = this.mkValuePredicate(
+                      BigInt(42_000),
+                      initialTcx
+                  );
 
-            this.mustFindActorUtxo(
-                `for-uut-${uutPurposes.join("+")}`,
-                uutSeed,
-                initialTcx
-            ).then(res)
-        });
+                  this.mustFindActorUtxo(
+                      `for-uut-${uutPurposes.join("+")}`,
+                      uutSeed,
+                      initialTcx
+                  ).then(res);
+              });
 
         return gettingSeed.then(async (seedUtxo) => {
-            const tcx = await this.txnWithUuts(initialTcx, uutPurposes, seedUtxo, "");
+            const tcx = await this.txnWithUuts(
+                initialTcx,
+                uutPurposes,
+                seedUtxo,
+                ""
+            );
             const vEntries = mkUutValuesEntries(tcx.state.uuts);
 
             tcx.addInput(seedUtxo);
@@ -140,14 +151,10 @@ export class DefaultMinter
     }
 
     @Activity.redeemer
-    protected mintingCharter({
-        owner,
-    }: MintCharterRedeemerArgs): isActivity {
-        const { DelegateDetails: hlDelegateDetails, Redeemer } = this.scriptProgram!.types;
-        const t =
-            new Redeemer.mintingCharter(
-                owner,
-            );
+    protected mintingCharter({ owner }: MintCharterRedeemerArgs): isActivity {
+        const { DelegateDetails: hlDelegateDetails, Redeemer } =
+            this.scriptProgram!.types;
+        const t = new Redeemer.mintingCharter(owner);
 
         return { redeemer: t._toUplcData() };
     }
@@ -194,22 +201,25 @@ export class DefaultMinter
     @Activity.partialTxn
     async txnMintingCharter<TCX extends StellarTxnContext<any>>(
         tcx: TCX,
-        { owner, authZor } : {
-            authZor:  UutName,
-            owner: Address, 
+        {
+            owner,
+            authZor,
+        }: {
+            authZor: UutName;
+            owner: Address;
         }
     ): Promise<TCX> {
         const charterVE = this.charterTokenAsValuesEntry;
         const authzVE = mkValuesEntry(authZor.name, BigInt(1));
 
-        return (tcx
+        return tcx
             .mintTokens(
                 this.mintingPolicyHash!,
                 [charterVE, authzVE],
-                this.mintingCharter({ 
-                    owner
-                 }).redeemer
+                this.mintingCharter({
+                    owner,
+                }).redeemer
             )
-            .attachScript(this.compiledScript)) as TCX
+            .attachScript(this.compiledScript) as TCX;
     }
 }

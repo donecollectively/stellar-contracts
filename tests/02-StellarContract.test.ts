@@ -94,11 +94,11 @@ describe("StellarContract", async () => {
                 expect(t.minter!.mintingPolicyHash).toBeInstanceOf(
                     MintingPolicyHash
                 );
-                console.log("--- init again with different seed")
+                console.log("--- init again with different seed");
                 const t2 = await h.initialize({ randomSeed: 43 });
                 await h.bootstrap();
-                const t1h = t.mph.hex
-                const t2h = t2.mph.hex
+                const t1h = t.mph.hex;
+                const t2h = t2.mph.hex;
                 expect(t2h).not.toEqual(t1h);
             });
         });
@@ -309,16 +309,22 @@ describe("StellarContract", async () => {
                             } = context;
                             // await delay(1000)
 
-                            const tina = h.currentActor
+                            const tina = h.currentActor;
                             const tinaMoney = await tina.utxos;
                             const firstUtxo = tinaMoney[0];
-                
+
                             const tx = new Tx();
 
                             tx.addInput(firstUtxo);
-                            tx.addOutput(new TxOutput(tina.address, new Value(3n * ADA)));
-                            tx.addOutput(new TxOutput(tina.address, new Value(10n * ADA)));
-                            tx.addOutput(new TxOutput(tina.address, new Value(32n * ADA)));
+                            tx.addOutput(
+                                new TxOutput(tina.address, new Value(3n * ADA))
+                            );
+                            tx.addOutput(
+                                new TxOutput(tina.address, new Value(10n * ADA))
+                            );
+                            tx.addOutput(
+                                new TxOutput(tina.address, new Value(32n * ADA))
+                            );
                             // console.log("s2")
                             await h.submitTx(tx, "force");
                             h.network.tick(1n);
@@ -394,20 +400,25 @@ describe("StellarContract", async () => {
                         const t: DefaultCapo = await h.initialize();
                         const tcx = new StellarTxnContext();
 
-                        const tina = h.currentActor
+                        const tina = h.currentActor;
                         const tinaMoney = await tina.utxos;
                         const firstUtxo = tinaMoney[0];
-            
+
                         const tx = new Tx();
 
                         tx.addInput(firstUtxo);
-                        tx.addOutput(new TxOutput(tina.address, new Value(3n * ADA)));
-                        tx.addOutput(new TxOutput(tina.address, new Value(45n * ADA)));
-                        tx.addOutput(new TxOutput(tina.address, new Value(77n * ADA)));
+                        tx.addOutput(
+                            new TxOutput(tina.address, new Value(3n * ADA))
+                        );
+                        tx.addOutput(
+                            new TxOutput(tina.address, new Value(45n * ADA))
+                        );
+                        tx.addOutput(
+                            new TxOutput(tina.address, new Value(77n * ADA))
+                        );
                         // console.log("s2")
                         await h.submitTx(tx, "force");
                         h.network.tick(1n);
-
 
                         const isEnough = t.mkValuePredicate(42_000n, tcx);
                         const u1 = await t.mustFindActorUtxo(
@@ -580,9 +591,6 @@ describe("StellarContract", async () => {
             );
         });
     });
-
 });
 
 const seconds = 1000; // milliseconds
-
-

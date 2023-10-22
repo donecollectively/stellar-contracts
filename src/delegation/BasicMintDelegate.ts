@@ -1,36 +1,33 @@
-import {
-    Address,
-    AssetClass,
-    Value,
-} from "@hyperionbt/helios";
+import { Address, AssetClass, Value } from "@hyperionbt/helios";
 
-
-//@ts-expect-error
+//@ts-expect-error because TS can't import non-ts content : /
 import contract from "./BasicMintDelegate.hl";
-import { Activity, StellarContract, configBase, isActivity } from "../StellarContract.js";
+import {
+    Activity,
+    StellarContract,
+    configBase,
+} from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
-import { HeliosModuleSrc } from "../HeliosModuleSrc.js";
-import { MultisigAuthorityPolicy, MultisigAuthorityScript } from "../authority/MultisigAuthorityPolicy.js";
 
 type MintDelegateArgs = {
-    rev: bigint,
-    uut: AssetClass
-}
+    rev: bigint;
+    uut: AssetClass;
+};
 
 //!!! TODO: include adapter(s) for Datum, which has the same essential shape
 type MintDelegateDatumProps = {
-    tokenName: string,
-    maxMintSize: bigint
-}
+    tokenName: string;
+    maxMintSize: bigint;
+};
 
 export type MintDelegate<T> = StellarContract<any & T> & {
-    txnCreateTokenPolicy
-}
+    txnCreateTokenPolicy;
+};
 
 export class BasicMintDelegate extends StellarContract<MintDelegateArgs> {
     static currentRev = 1n;
     static get defaultParams() {
-        return { rev: this.currentRev }
+        return { rev: this.currentRev };
     }
 
     contractSource() {
@@ -39,8 +36,8 @@ export class BasicMintDelegate extends StellarContract<MintDelegateArgs> {
 
     getContractScriptParams(config: MintDelegateArgs): configBase {
         return {
-            rev: config.rev
-        }
+            rev: config.rev,
+        };
     }
     // importModules(): HeliosModuleSrc[] {
     //     return [
@@ -63,7 +60,6 @@ export class BasicMintDelegate extends StellarContract<MintDelegateArgs> {
         tcx: StellarTxnContext,
         tokenName: string
     ): Promise<StellarTxnContext> {
-
         return tcx;
     }
 
@@ -71,8 +67,5 @@ export class BasicMintDelegate extends StellarContract<MintDelegateArgs> {
         if ("mintingPolicy" == role) return true;
     }
 
-    static mkDelegateWithArgs(a: MintDelegateArgs) {
-
-    }
+    static mkDelegateWithArgs(a: MintDelegateArgs) {}
 }
-    

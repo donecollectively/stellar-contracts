@@ -4,7 +4,7 @@ import { createFilter } from "rollup-pluginutils";
 export function heliosRollupLoader(
     opts = {
         include: "**/*.hl",
-        exclude: []
+        exclude: [],
     }
 ) {
     if (!opts.include) {
@@ -18,12 +18,16 @@ export function heliosRollupLoader(
 
         transform(content, id) {
             if (filter(id)) {
-                const relPath = path.relative(".", id)
-                console.warn(`heliosLoader: generating javascript for ${relPath}`);
-                const [_, purpose, moduleName] = content.match(
-                    /(module|minting|spending|endpoint)\s+([a-zA-Z0-9]+)/m
-                ) || []
-                if (!(purpose  && moduleName)) throw new Error(`Bad format for helios file ${id}`);
+                const relPath = path.relative(".", id);
+                console.warn(
+                    `heliosLoader: generating javascript for ${relPath}`
+                );
+                const [_, purpose, moduleName] =
+                    content.match(
+                        /(module|minting|spending|endpoint)\s+([a-zA-Z0-9]+)/m
+                    ) || [];
+                if (!(purpose && moduleName))
+                    throw new Error(`Bad format for helios file ${id}`);
 
                 const code = new String(
                     `const code = 
@@ -42,4 +46,3 @@ export default code\n`
         },
     };
 }
-

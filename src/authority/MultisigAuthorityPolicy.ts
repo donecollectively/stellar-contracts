@@ -1,4 +1,4 @@
-import { Address, AssetClass, TxInput, Value } from "@hyperionbt/helios"
+import { Address, AssetClass, TxInput, Value } from "@hyperionbt/helios";
 
 //@ts-expect-error
 import contract from "./MultisigAuthorityPolicy.hl";
@@ -11,12 +11,12 @@ import { hasReqts } from "../Requirements.js";
 
 //! a contract enforcing policy for a registered credential
 export class MultisigAuthorityPolicy extends AuthorityPolicy {
-    static currentRev = 1n
+    static currentRev = 1n;
     static get defaultParams() {
-        return { rev: this.currentRev }
+        return { rev: this.currentRev };
     }
     contractSource() {
-        return contract
+        return contract;
     }
 
     // // @Activity.redeemer
@@ -39,45 +39,46 @@ export class MultisigAuthorityPolicy extends AuthorityPolicy {
 
     // ! impls MUST resolve the indicated token to a specific UTxO
     //  ... or throw an informative error
-    async txnMustFindAuthorityToken(tcx: StellarTxnContext) : Promise<TxInput> {
-        if (!this.configIn) throw new Error(`must be instantiated with a configIn`);
-        const {
-            addrHint, uut, reqdAddress
-        } = this.configIn
-        return this.mustFindMyUtxo("authorityToken", this.mkTokenPredicate(uut))
+    async txnMustFindAuthorityToken(tcx: StellarTxnContext): Promise<TxInput> {
+        if (!this.configIn)
+            throw new Error(`must be instantiated with a configIn`);
+        const { addrHint, uut, reqdAddress } = this.configIn;
+        return this.mustFindMyUtxo(
+            "authorityToken",
+            this.mkTokenPredicate(uut)
+        );
     }
 
     async txnReceiveAuthorityToken(
-        tcx : StellarTxnContext, 
-        delegateAddr: Address,
-    ) : Promise<StellarTxnContext> {
-        throw new Error(`implementation TODO`)
+        tcx: StellarTxnContext,
+        delegateAddr: Address
+    ): Promise<StellarTxnContext> {
+        throw new Error(`implementation TODO`);
         return tcx;
     }
 
     //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
     async txnGrantAuthority(
         tcx: StellarTxnContext,
-        fromFoundUtxo: TxInput,
+        fromFoundUtxo: TxInput
     ): Promise<StellarTxnContext> {
-
         return tcx;
     }
 
     //! Adds the indicated utxo to the transaction with appropriate activity/redeemer
     //  ... allowing the token to be burned by the minting policy.
     async txnRetireCred(
-        tcx : StellarTxnContext, 
-        fromFoundUtxo: TxInput,
+        tcx: StellarTxnContext,
+        fromFoundUtxo: TxInput
     ): Promise<StellarTxnContext> {
-
         return tcx;
     }
 
-    requirements()  {
+    requirements() {
         return hasReqts({
             "provides arms-length proof of authority to any other contract": {
-                purpose: "to decouple authority administration from its effects",
+                purpose:
+                    "to decouple authority administration from its effects",
                 details: [
                     "See GenericAuthority for more background on authority delegation.",
                     "This policy uses a trustee list and minSigs threshold to provide multisig-based authority",
@@ -111,7 +112,8 @@ export class MultisigAuthorityPolicy extends AuthorityPolicy {
                 ],
             },
             "TODO: has a unique authority UUT": hasReqts.TODO,
-            "TODO: the trustee threshold is required to spend its UUT": hasReqts.TODO,
+            "TODO: the trustee threshold is required to spend its UUT":
+                hasReqts.TODO,
             "TODO: the trustee group can be changed": hasReqts.TODO,
 
             "the trustee threshold is required to spend its UUT": {
@@ -135,7 +137,7 @@ export class MultisigAuthorityPolicy extends AuthorityPolicy {
                     "When the needed threshold for administrative modifications is achieved, the Settings datum can be updated",
                     "When changing trustees, it should guard against mistakes in the new trustee list, ",
                     "  ... by validating signatures of the new trustees",
-                    "  ... and by validating new minSigs"
+                    "  ... and by validating new minSigs",
                 ],
                 mech: [
                     "TODO: trustee list can be changed if the signature threshold is met",
@@ -144,7 +146,6 @@ export class MultisigAuthorityPolicy extends AuthorityPolicy {
                 ],
                 requires: [],
             },
-
-        })
+        });
     }
 }

@@ -1,5 +1,10 @@
 import { SeedTxnParams } from "../../src/SeedTxn.js";
-import { Activity, isActivity, stellarSubclass, txn } from "../../src/StellarContract.js";
+import {
+    Activity,
+    isActivity,
+    stellarSubclass,
+    txn,
+} from "../../src/StellarContract.js";
 import { StellarTxnContext } from "../../src/StellarTxnContext.js";
 import { CustomMinter } from "./CustomMinter.js";
 import { DefaultCapo } from "../../src/DefaultCapo.js";
@@ -21,16 +26,16 @@ export class CustomTreasury extends DefaultCapo<CustomMinter> {
     declare minter: CustomMinter;
 
     static get defaultParams() {
-        return {}
+        return {};
     }
 
     @Activity.redeemer
-    mintingToken(tokenName: string)  : isActivity {
+    mintingToken(tokenName: string): isActivity {
         const t = new this.scriptProgram!.types.Redeemer.mintingToken(
             tokenName
         );
 
-        return {redeemer: t._toUplcData() }
+        return { redeemer: t._toUplcData() };
     }
 
     @txn

@@ -20,11 +20,7 @@ import {
 } from "@hyperionbt/helios";
 
 import { StellarTxnContext } from "../src/StellarTxnContext";
-import {
-    ADA,
-    StellarTestContext,
-    addTestContext,
-} from "../src/testing";
+import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import { ConfigFor } from "../src/StellarContract";
 // import { RoleDefs } from "../src/RolesAndDelegates";
@@ -54,13 +50,16 @@ describe("Capo", async () => {
             } = context;
             await h.bootstrap();
 
-            const config : ConfigFor<DefaultCapo> = h.state.config;
+            const config: ConfigFor<DefaultCapo> = h.state.config;
             expect(config).toBeTruthy();
-            const {mph, seedIndex, seedTxn} = config;
+            const { mph, seedIndex, seedTxn } = config;
 
             const unspent = await network.getUtxos(actors.tina.address);
             const empty = unspent.find((x) => {
-                return x.outputId.txId == seedTxn && BigInt(x.outputId.utxoIdx) == BigInt(seedIndex);
+                return (
+                    x.outputId.txId == seedTxn &&
+                    BigInt(x.outputId.utxoIdx) == BigInt(seedIndex)
+                );
             });
             expect(empty).toBeFalsy();
         });
@@ -75,9 +74,9 @@ describe("Capo", async () => {
             const t2: DefaultCapo = await h.initialize({
                 randomSeed: 43,
             });
-            await h.bootstrap()
+            await h.bootstrap();
 
-            expect( t1.mph.hex ).not.toEqual( t2.mph.hex );
+            expect(t1.mph.hex).not.toEqual(t2.mph.hex);
         });
     });
 
@@ -90,12 +89,15 @@ describe("Capo", async () => {
 
             try {
                 const t1: DefaultCapo = await h.bootstrap();
-                console.log("t1 addr                                      ", t1.address);
-                debugger
+                console.log(
+                    "t1 addr                                      ",
+                    t1.address
+                );
+                debugger;
                 const t2: DefaultCapo = await h.initialize({
                     randomSeed: 43,
                 });
-                await h.bootstrap()
+                await h.bootstrap();
                 expect(t1.address.toBech32()).not.toEqual(
                     t2.address.toBech32()
                 );
@@ -133,20 +135,25 @@ describe("Capo", async () => {
                 h,
                 h: { network, actors, delay, state },
             } = context;
-                        
+
             const treasury = await h.initialize();
             vi.spyOn(treasury, "txnAddCharterAuthz").mockImplementation(
-                async (tcx, datum) => {return tcx}
-            )
-            console.log( "------ mkCharterSpend (mocked out txnAddCharterAuthz)")
+                async (tcx, datum) => {
+                    return tcx;
+                }
+            );
+            console.log(
+                "------ mkCharterSpend (mocked out txnAddCharterAuthz)"
+            );
             const tcx = await h.mkCharterSpendTx();
             expect(tcx.outputs).toHaveLength(1);
-            
 
-            console.log( "------ submit charterSpend")
-            await expect(treasury.submit(tcx, {
-                signers: [actors.tracy, actors.tom],
-            })).rejects.toThrow(/missing .* authZor/)
+            console.log("------ submit charterSpend");
+            await expect(
+                treasury.submit(tcx, {
+                    signers: [actors.tracy, actors.tom],
+                })
+            ).rejects.toThrow(/missing .* authZor/);
         });
 
         it("builds transactions with the charter token returned to the contract", async (context: localTC) => {
@@ -154,10 +161,10 @@ describe("Capo", async () => {
                 h,
                 h: { network, actors, delay, state },
             } = context;
-            
+
             const tcx = await h.mkCharterSpendTx();
             expect(tcx.outputs).toHaveLength(1);
-            
+
             const treasury = context.strella!;
             const hasCharterToken = treasury.mkTokenPredicate(
                 treasury.tvCharter()
@@ -171,7 +178,7 @@ describe("Capo", async () => {
                 })
             ).toBeTruthy();
 
-            console.log( "------ submit charterSpend")
+            console.log("------ submit charterSpend");
             await treasury.submit(tcx, {
                 signers: [actors.tracy, actors.tom],
             });

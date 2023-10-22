@@ -232,7 +232,7 @@ export function datumAsString(d: Datum | null | undefined): string {
 
     // debugger
     const dh = d.hash.hex;
-    const dhss  = `${dh.slice(0, 8)}…${dh.slice(-4)}`;
+    const dhss = `${dh.slice(0, 8)}…${dh.slice(-4)}`;
     if (d.isInline()) return `d‹inline:${dhss}›`;
     return `d‹hash:${dhss}…›`;
 }

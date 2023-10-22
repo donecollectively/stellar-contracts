@@ -18,7 +18,7 @@ import { AuthorityPolicy } from "./AuthorityPolicy.js";
 
 export class AddressAuthorityPolicy extends AuthorityPolicy {
     loadProgramScript(params) {
-        return undefined
+        return undefined;
     }
     @Activity.redeemer
     protected usingAuthority(): isActivity {
@@ -37,29 +37,30 @@ export class AddressAuthorityPolicy extends AuthorityPolicy {
     //! impls MUST resolve the indicated token to a specific UTxO
     //  ... or throw an informative error
     async txnMustFindAuthorityToken(tcx): Promise<TxInput> {
-        if (!this.configIn) throw new Error(`must be instantiated with a configIn`);
-        const {uut, addrHint} = this.configIn;
+        if (!this.configIn)
+            throw new Error(`must be instantiated with a configIn`);
+        const { uut, addrHint } = this.configIn;
         const v = this.mkAssetValue(uut);
-        debugger
+        debugger;
         return this.mustFindActorUtxo(
             `authority-token(address strat)`,
             this.mkTokenPredicate(v),
             tcx,
-            "are you connected to the right wallet address? "+
-                (addrHint?.length ? 
-                    "  maybe at:\n    " +addrHint.join("\n or ")
-                    : ""
-                )
+            "are you connected to the right wallet address? " +
+                (addrHint?.length
+                    ? "  maybe at:\n    " + addrHint.join("\n or ")
+                    : "")
         );
     }
 
     //! creates a UTxO depositing the indicated token-name into the delegated destination.
     async txnReceiveAuthorityToken(
         tcx: StellarTxnContext,
-        delegateAddr: Address,
+        delegateAddr: Address
     ): Promise<StellarTxnContext> {
-        if (!this.configIn) throw new Error(`must be instantiated with a configIn`);
-        const {uut} = this.configIn
+        if (!this.configIn)
+            throw new Error(`must be instantiated with a configIn`);
+        const { uut } = this.configIn;
         const v = this.mkAssetValue(uut, 1);
         const output = new TxOutput(delegateAddr, v);
         output.correctLovelace(this.networkParams);
@@ -72,7 +73,7 @@ export class AddressAuthorityPolicy extends AuthorityPolicy {
     //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
     async txnGrantAuthority(
         tcx: StellarTxnContext,
-        fromFoundUtxo: TxInput,
+        fromFoundUtxo: TxInput
     ): Promise<StellarTxnContext> {
         //! no need to specify a redeemer
         return tcx.addInput(fromFoundUtxo);
@@ -83,7 +84,7 @@ export class AddressAuthorityPolicy extends AuthorityPolicy {
     //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
     async txnRetireCred(
         tcx: StellarTxnContext,
-        fromFoundUtxo: TxInput,
+        fromFoundUtxo: TxInput
     ): Promise<StellarTxnContext> {
         //! no need to specify a redeemer
         return tcx.addInput(fromFoundUtxo);

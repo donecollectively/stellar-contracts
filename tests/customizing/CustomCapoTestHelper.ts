@@ -1,4 +1,8 @@
-import { DefaultCharterDatumArgs, DefaultCapo, PartialDefaultCharterDatumArgs } from "../../src/DefaultCapo.js";
+import {
+    DefaultCharterDatumArgs,
+    DefaultCapo,
+    PartialDefaultCharterDatumArgs,
+} from "../../src/DefaultCapo.js";
 import { Address } from "@hyperionbt/helios";
 import { StellarTxnContext } from "../../src/StellarTxnContext.js";
 import { CapoTestHelper, ADA } from "../../src/testing/index.js";
@@ -17,13 +21,13 @@ export class CustomCapoTestHelper extends DefaultCapoTestHelper<CustomTreasury> 
     }
 
     mkDefaultCharterArgs(): PartialDefaultCharterDatumArgs {
-        const {tina, tom, tracy} = this.actors;
+        const { tina, tom, tracy } = this.actors;
         return {
             govAuthorityLink: {
                 strategyName: "multisig",
                 reqdAddress: this.address,
                 // addressesHint: [tina.address, tom.address, tracy.address],
-            }
+            },
         };
 
         //! todo arrange the delegation to the multisig authority

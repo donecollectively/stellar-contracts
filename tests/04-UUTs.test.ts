@@ -58,7 +58,7 @@ describe("Capo", async () => {
             const t: DefaultCapo = await h.initialize();
             await h.mintCharterToken();
             // await delay(1000);
-            type something = "something"
+            type something = "something";
             const tcx = new StellarTxnContext<hasAllUuts<something>>();
             await t.txnAddAuthority(tcx);
             await t.txnCreatingUuts(tcx, ["something"]);
@@ -86,7 +86,7 @@ describe("Capo", async () => {
             await h.mintCharterToken();
             // await delay(1000);
 
-            type fooAndBar = "foo" | "bar"
+            type fooAndBar = "foo" | "bar";
             const tcx = new StellarTxnContext<hasAllUuts<fooAndBar>>();
             await t.txnAddAuthority(tcx);
             await t.txnCreatingUuts(tcx, ["foo", "bar"]);
@@ -114,7 +114,7 @@ describe("Capo", async () => {
             await h.mintCharterToken();
             // await delay(1000);
 
-            type fooAndBar = "foo" | "bar"
+            type fooAndBar = "foo" | "bar";
             const tcx = new StellarTxnContext<hasAllUuts<fooAndBar>>();
             await t.txnAddAuthority(tcx);
             await t.txnCreatingUuts(tcx, ["foo", "bar"]);
@@ -149,7 +149,7 @@ describe("Capo", async () => {
             // await delay(1000);
 
             const noMultiples = "multiple-is-bad";
-            type uniqUutMap = typeof noMultiples
+            type uniqUutMap = typeof noMultiples;
             console.log(
                 "-------- case 1: using the txn-helper in unsupported way"
             );

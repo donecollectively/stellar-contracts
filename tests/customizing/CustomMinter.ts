@@ -22,25 +22,23 @@ import contract from "./CustomMinter.hl";
 import { StellarTxnContext } from "../../src/StellarTxnContext.js";
 import { MinterBaseMethods } from "../../src/Capo.js";
 import { DefaultMinter } from "../../src/DefaultMinter.js";
-import { tokenNamesOrValuesEntry, valuesEntry } from "../../src/HeliosPromotedTypes.js";
+import {
+    tokenNamesOrValuesEntry,
+    valuesEntry,
+} from "../../src/HeliosPromotedTypes.js";
 import { mkValuesEntry } from "../../src/utils.js";
 
-
-export class CustomMinter 
-extends DefaultMinter
-implements MinterBaseMethods {
+export class CustomMinter extends DefaultMinter implements MinterBaseMethods {
     contractSource() {
         return contract;
     }
 
     @Activity.redeemer
-    protected mintingNamedToken(v : Value): isActivity {
-        const t =
-            new this.scriptProgram!.types.Redeemer.mintingNamedToken(v);
+    protected mintingNamedToken(v: Value): isActivity {
+        const t = new this.scriptProgram!.types.Redeemer.mintingNamedToken(v);
 
-        return {redeemer: t._toUplcData() }
+        return { redeemer: t._toUplcData() };
     }
-
 
     async txnMintingNamedToken(
         tcx: StellarTxnContext,
@@ -75,7 +73,7 @@ implements MinterBaseMethods {
             if (Array.isArray(name)) return [name, count] as valuesEntry;
             return mkValuesEntry(name, count);
         });
-        const value  = this._mkMintingValue(values);
+        const value = this._mkMintingValue(values);
 
         return tcx
             .mintTokens(
@@ -86,12 +84,6 @@ implements MinterBaseMethods {
             .attachScript(this.compiledScript);
     }
     private _mkMintingValue(values: valuesEntry[]) {
-        return new Value(0, 
-            new Assets(
-                [[
-                    this.mintingPolicyHash, values
-                ]]
-            )
-        );
+        return new Value(0, new Assets([[this.mintingPolicyHash, values]]));
     }
 }

@@ -9,7 +9,7 @@ import {
     TxOutput,
     Value,
     SimpleWallet,
-    SimpleWallet as WalletEmulator
+    SimpleWallet as WalletEmulator,
 } from "@hyperionbt/helios";
 import {
     StellarContract,
@@ -17,18 +17,19 @@ import {
     configBase,
     stellarSubclass,
     ConfigFor,
-    StellarConstructorArgs
+    StellarConstructorArgs,
 } from "../StellarContract.js";
+import { lovelaceToAda, txAsString, utxosAsString } from "../diagnostics.js";
 import {
-    lovelaceToAda, txAsString,
-    utxosAsString
-} from "../diagnostics.js";
-import { actorMap, ADA, canHaveRandomSeed, canSkipSetup, preProdParams, enhancedNetworkParams } from "./types.js";
+    actorMap,
+    ADA,
+    canHaveRandomSeed,
+    canSkipSetup,
+    preProdParams,
+    enhancedNetworkParams,
+} from "./types.js";
 
-
-export abstract class StellarTestHelper<
-    SC extends StellarContract<any>
-> {
+export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     state: Record<string, any>;
     abstract get stellarClass(): stellarSubclass<SC, any>;
     config?: ConfigFor<SC>;
@@ -90,7 +91,7 @@ export abstract class StellarTestHelper<
         }
 
         //@ts-expect-error - can serve no-params case or params case
-        this.setupPending = this.initialize(config)
+        this.setupPending = this.initialize(config);
     }
 
     async initialize(config: ConfigFor<SC> & canHaveRandomSeed) {
@@ -124,7 +125,10 @@ export abstract class StellarTestHelper<
     }
 
 
-    initStrella(TargetClass: stellarSubclass<SC, ConfigFor<SC>>, config?: ConfigFor<SC>) {
+    initStrella(
+        TargetClass: stellarSubclass<SC, ConfigFor<SC>>,
+        config?: ConfigFor<SC>
+    ) {
         const setup = {
             network: this.network,
             myActor: this.currentActor,
@@ -132,16 +136,17 @@ export abstract class StellarTestHelper<
             isTest: true,
         };
 
-        let cfg : StellarConstructorArgs<ConfigFor<SC>> = {
-            setup, 
-            config: config!
+        let cfg: StellarConstructorArgs<ConfigFor<SC>> = {
+            setup,
+            config: config!,
         };
 
-        if (!config) cfg = {
-            setup,
-            partialConfig:{},
-        }
-        return new TargetClass(cfg)
+        if (!config)
+            cfg = {
+                setup,
+                partialConfig: {},
+            };
+        return new TargetClass(cfg);
     }
 
     //! it has a seed for mkRandomBytes, which must be set by caller
@@ -190,7 +195,12 @@ export abstract class StellarTestHelper<
         try {
             await tx.finalize(this.networkParams, sendChangeToCurrentActor);
         } catch (e: any) {
-            throw new Error(e.message + "\nin tx: " + txAsString(tx) + "\nprofile: " + tx.profileReport
+            throw new Error(
+                e.message +
+                    "\nin tx: " +
+                    txAsString(tx) +
+                    "\nprofile: " +
+                    tx.profileReport
             );
         }
         if (isAlreadyInitialized && !force) {
@@ -200,8 +210,9 @@ export abstract class StellarTestHelper<
         }
 
         console.log(
-            `Test helper ${force || ""} submitting tx${force && "" || " prior to instantiateWithParams()"}:\n` +
-            txAsString(tx)
+            `Test helper ${force || ""} submitting tx${
+                (force && "") || " prior to instantiateWithParams()"
+            }:\n` + txAsString(tx)
             // new Error(`at stack`).stack
         );
 
@@ -214,7 +225,9 @@ export abstract class StellarTestHelper<
             // this.network.dump();
             return txId;
         } catch (e: any) {
-            console.error(`submit failed: ${e.message}\n  ... in tx ${txAsString(tx)}`);
+            console.error(
+                `submit failed: ${e.message}\n  ... in tx ${txAsString(tx)}`
+            );
             throw e;
         }
     }
@@ -242,8 +255,8 @@ export abstract class StellarTestHelper<
             `+🎭 Actor: ${roleName}: ${a.address
                 .toBech32()
                 .substring(0, 18)}… ${lovelaceToAda(
-                    walletBalance
-                )} (🔑#${a.address.pubKeyHash?.hex.substring(0, 8)}…)`
+                walletBalance
+            )} (🔑#${a.address.pubKeyHash?.hex.substring(0, 8)}…)`
         );
 
         //! it makes collateral for each actor, above and beyond the initial balance,
@@ -294,7 +307,7 @@ export abstract class StellarTestHelper<
         const targetSlot = this.networkParams.timeToSlot(targetTimeMillis);
         const c = this.currentSlot();
 
-        const slotsToWait = targetSlot - ( c || 0n );
+        const slotsToWait = targetSlot - (c || 0n);
         if (slotsToWait < 1) {
             throw new Error(`the indicated time is not in the future`);
         }

@@ -39,9 +39,9 @@ class CustomTreasuryTestHelper extends CapoTestHelper<CustomTreasury> {
     mkDefaultCharterArgs(): PartialDefaultCharterDatumArgs {
         return {
             govAuthorityLink: {
-                addressesHint: [ this.actors.tina.address ],
+                addressesHint: [this.actors.tina.address],
                 strategyName: "address",
-            }
+            },
         };
     }
 
@@ -113,7 +113,10 @@ describe("StellarContract", async () => {
     describe("Integration tests: custom Capo, custom minter", () => {
         describe("can mint other tokens, on the authority of the charter token", () => {
             it("can build transactions that mint non-'charter' tokens", async (context: localTC) => {
-                const {h, h: { network, actors, delay, state }} = context;
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
 
                 await h.initialize();
                 const treasury = context.h.strella;

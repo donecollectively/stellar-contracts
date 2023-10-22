@@ -196,11 +196,10 @@ export type ConfigFor<
 > = C;
 
 export type StellarConstructorArgs<CT extends configBase> = {
-     setup: SetupDetails,
-    config?: CT 
-    partialConfig?: Partial<CT>
+    setup: SetupDetails;
+    config?: CT;
+    partialConfig?: Partial<CT>;
 };
-
 
 export type utxoPredicate =
     | ((u: TxInput) => TxInput | undefined)
@@ -257,12 +256,14 @@ export class StellarContract<
 
     //! can transform input configuration to contract script params
     //! by default, all the config keys are used as script params
-    getContractScriptParams(config: ConfigType): configBase & Partial<ConfigType> {
+    getContractScriptParams(
+        config: ConfigType
+    ): configBase & Partial<ConfigType> {
         return config;
     }
 
     constructor(args: StellarConstructorArgs<ConfigType>) {
-        const {setup, config, partialConfig } = args;
+        const { setup, config, partialConfig } = args;
         this.setup = setup;
         const { network, networkParams, isTest, myActor } = setup;
         this.network = network;
@@ -275,9 +276,9 @@ export class StellarContract<
 
             const fullScriptParams = (this.contractParams =
                 this.getContractScriptParams(config));
-    
-                this.scriptProgram = this.loadProgramScript(fullScriptParams);
-            } else {
+
+            this.scriptProgram = this.loadProgramScript(fullScriptParams);
+        } else {
             this.partialConfig = partialConfig;
             this.scriptProgram = this.loadProgramScript();
         }
@@ -930,7 +931,7 @@ export class StellarContract<
         const bn =
             "number" == typeof n
                 ? BigInt(Math.round(1_000_000 * n))
-                : ((BigInt(1_000_000) * n) as bigint);debugger
+                : ((BigInt(1_000_000) * n) as bigint);
         return bn;
     }
 

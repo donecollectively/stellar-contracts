@@ -163,8 +163,8 @@ export class DefaultCapo<
         return contract;
     }
 
-    get specializedCapo() : HeliosModuleSrc {
-        return UnspecializedCapo
+    get specializedCapo(): HeliosModuleSrc {
+        return UnspecializedCapo;
     }
 
     importModules(): HeliosModuleSrc[] {
@@ -281,13 +281,13 @@ export class DefaultCapo<
      * @remarks
      *
      * mkFullConfig is called during a bootstrap transaction.  The default implementation works
-     * for subclasses as long as they use CapoBaseConfig for their config type.  Or, if they're 
-     * instantiated with a partialConfig that augments CapoBaseConfig with concrete details that 
+     * for subclasses as long as they use CapoBaseConfig for their config type.  Or, if they're
+     * instantiated with a partialConfig that augments CapoBaseConfig with concrete details that
      * fulfill their extensions to the config type.
      *
-     * If you have a custom mkBootstrapTxn() that uses techniques to explicitly add config 
+     * If you have a custom mkBootstrapTxn() that uses techniques to explicitly add config
      * properties not provided by your usage of `partialConfig` in the constructor, then you'll
-     * need to provide a more specific impl of mkFullConfig().  It's recommended that you 
+     * need to provide a more specific impl of mkFullConfig().  It's recommended that you
      * call super.mkFullConfig() from your impl.
      * @param baseConfig - receives the BaseConfig properties: mph, seedTxn and seedIndex
      * @public

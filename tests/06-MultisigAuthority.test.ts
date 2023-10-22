@@ -5,13 +5,8 @@ import {
     beforeEach,
 } from "vitest";
 
-import {
-    ADA,
-    StellarTestContext,
-    addTestContext,
-} from "../src/testing";
+import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { CustomCapoTestHelper } from "./customizing/CustomCapoTestHelper";
-
 
 type localTC = StellarTestContext<CustomCapoTestHelper>;
 const wrongMinSigs = /minSigs can't be more than the size of the trustee-list/;

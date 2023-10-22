@@ -444,7 +444,8 @@ export abstract class Capo<
     getContractScriptParams(
         config: configType
     ): configBase & Partial<configType> {
-        if (this.configIn && config.mph && config.mph !== this.mph) throw new Error(`mph mismatch`);
+        if (this.configIn && config.mph && config.mph !== this.mph)
+            throw new Error(`mph mismatch`);
         const { mph } = config;
         const rev = this.getCapoRev();
         // console.log("this treasury uses mph", mph?.hex);
@@ -527,11 +528,14 @@ export abstract class Capo<
 
         const { txId: seedTxn, utxoIdx } = seedUtxo.outputId;
         const seedIndex = BigInt(utxoIdx);
-        const count = tokenNames.length > 1 ? 
-            `${tokenNames.length} uuts for ` : "";
-        console.log(`Seed tx for ${count}${purpose}: ${
-                seedTxn.hex.slice(0, 8)}…${seedTxn.hex.slice(-4)
-            }#${seedIndex}`);
+        const count =
+            tokenNames.length > 1 ? `${tokenNames.length} uuts for ` : "";
+        console.log(
+            `Seed tx for ${count}${purpose}: ${seedTxn.hex.slice(
+                0,
+                8
+            )}…${seedTxn.hex.slice(-4)}#${seedIndex}`
+        );
         return seedUtxo;
 
         //! accumulates min-utxos for each stringy token-name in a reduce()
@@ -597,7 +601,10 @@ export abstract class Capo<
         const { delegates: selectedDelegates } = tcx.state;
         let selected = selectedDelegates[roleName];
         const role = this.roles[roleName];
-        if (!role) throw new Error(`${this.constructor.name}: no such role ${roleName}`)
+        if (!role)
+            throw new Error(
+                `${this.constructor.name}: no such role ${roleName}`
+            );
         if (!selected) {
             if (role.default) {
                 selected = {
