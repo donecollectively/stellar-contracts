@@ -20,7 +20,7 @@ export {
     dumpAny,
 } from "./src/diagnostics.js";
 
-export { Capo, variantMap } from "./src/Capo.js";
+export { Capo } from "./src/Capo.js";
 export type {
     MintUutRedeemerArgs,
     // MintCharterRedeemerArgs,
@@ -31,6 +31,11 @@ export type {
     strategyValidation,
     hasBootstrappedConfig,
 } from "./src/Capo.js";
+
+export {
+    delegateRoles, defineRole, 
+    
+} from "./src/delegation/RolesAndDelegates.js"
 
 export type { SeedTxnParams } from "./src/SeedTxn.js";
 export { BasicMintDelegate } from "./src/delegation/BasicMintDelegate.js";

@@ -215,11 +215,11 @@ export type SelectedDelegate<SC extends StellarContract<any>> = {
     config?: Partial<ConfigFor<SC>>;
 };
 
-export function selectDelegate<T extends StellarContract<any>>(
-    sd: SelectedDelegate<T>
-) {
-    return sd;
-}
+// export function selectDelegate<T extends StellarContract<any>>(
+//     sd: SelectedDelegate<T>
+// ) {
+//     return sd;
+// }
 
 /**
  * A complete, validated and resolved configuration for a specific delegate

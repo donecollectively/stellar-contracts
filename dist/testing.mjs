@@ -235,10 +235,9 @@ class StellarTxnContext {
     return this;
   }
   reservedUtxos() {
-    return [
-      ...this.inputs,
-      this.collateral
-    ].filter((x) => !!x);
+    return [...this.inputs, this.collateral].filter(
+      (x) => !!x
+    );
   }
   utxoNotReserved(u) {
     if (this.collateral?.eq(u))
@@ -249,7 +248,9 @@ class StellarTxnContext {
   }
   addCollateral(collateral) {
     if (!collateral.value.assets.isZero()) {
-      throw new Error(`invalid attempt to add non-pure-ADA utxo as collateral`);
+      throw new Error(
+        `invalid attempt to add non-pure-ADA utxo as collateral`
+      );
     }
     this.collateral = collateral;
     this.tx.addCollateral(collateral);
@@ -309,8 +310,13 @@ var __decorateClass = (decorators, target, key, kind) => {
 };
 function partialTxn(proto, thingName, descriptor) {
   if (!thingName.match(/^txn[A-Z]/)) {
+    let help = "";
+    if (thingName.match(/^mkTxn/)) {
+      help = `
+  ... or, for transaction initiation with mkTxn, you might try @txn instead. `;
+    }
     throw new Error(
-      `@partialTxn factory: ${thingName}: should start with 'txn[A-Z]...'`
+      `@partialTxn factory: ${thingName}: should start with 'txn[A-Z]...'${help}`
     );
   }
   return descriptor;
@@ -378,6 +384,12 @@ class StellarContract {
   //! by default, all the config keys are used as script params
   getContractScriptParams(config) {
     return config;
+  }
+  delegateReqdAddress() {
+    return this.address;
+  }
+  delegateAddressesHint() {
+    return void 0;
   }
   constructor(args) {
     const { setup, config, partialConfig } = args;
@@ -448,9 +460,9 @@ class StellarContract {
     tcx.addOutput(new TxOutput(this.address, value, datum2));
     return tcx;
   }
-  addScriptWithParams(TargetClass, params) {
+  addScriptWithParams(TargetClass, config) {
     const args = {
-      config: params,
+      config,
       setup: this.setup
     };
     const strella = new TargetClass(args);
@@ -604,6 +616,12 @@ class StellarContract {
     const assets = [[tokenId, count]];
     const v = new Value(void 0, assets);
     return v;
+  }
+  mkMinAssetValue(tokenId, count = 1) {
+    this.mkAssetValue(tokenId, count);
+    const txo = new TxOutput(this.address, this.mkAssetValue(this.configIn.uut));
+    txo.correctLovelace(this.networkParams);
+    return txo.value;
   }
   mkTokenPredicate(specifier, quantOrTokenName, quantity) {
     let v;
@@ -798,7 +816,6 @@ class StellarContract {
   }
   ADA(n) {
     const bn = "number" == typeof n ? BigInt(Math.round(1e6 * n)) : BigInt(1e6) * n;
-    debugger;
     return bn;
   }
   //! it requires an subclass to define a contractSource
@@ -1725,7 +1742,10 @@ class StellarTestHelper {
   constructor(config) {
     this.state = {};
     if (config) {
-      console.log("XXXXXXXXXXXXXXXXXXXXXXXXXX test helper with config", config);
+      console.log(
+        "XXXXXXXXXXXXXXXXXXXXXXXXXX test helper with config",
+        config
+      );
       this.config = config;
     }
     const [theNetwork, emuParams] = this.mkNetwork();
@@ -1764,7 +1784,9 @@ class StellarTestHelper {
       this.rand = void 0;
       this.randomSeed = randomSeed;
     } else {
-      console.log(" - Test helper bootstrapping (will emit details to onInstanceCreated())");
+      console.log(
+        " - Test helper bootstrapping (will emit details to onInstanceCreated())"
+      );
     }
     return this.initStellarClass();
   }
@@ -1862,8 +1884,10 @@ class StellarTestHelper {
       this.network.tick(1n);
       return txId;
     } catch (e) {
-      console.error(`submit failed: ${e.message}
-  ... in tx ${txAsString(tx)}`);
+      console.error(
+        `submit failed: ${e.message}
+  ... in tx ${txAsString(tx)}`
+      );
       throw e;
     }
   }
