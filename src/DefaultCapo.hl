@@ -21,11 +21,12 @@ import { Datum, Redeemer } from specializedCapo
 
 func requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {
     Datum::CharterToken{
-        RelativeDelegateLink{uutName, _, _, _}
+        RelativeDelegateLink{charterAuthZorName, _, _, _},
+        _
     } = datum;
 
-    assert(txHasOutput(ctx.tx,  mkTv(mph, uutName)),
-        "missing required authZor token "+uutName
+    assert(txHasOutput(ctx.tx,  mkTv(mph, charterAuthZorName)),
+        "missing required authZor token "+charterAuthZorName
     );
     true
 }
@@ -69,18 +70,18 @@ func preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Boo
     };
 
     Datum::CharterToken{
-        RelativeDelegateLink{uut, strategy, reqdAddress, addressesHint}
+        govDelegate,
+        mintDelegate
     } = datum;
     Datum::CharterToken{
-        RelativeDelegateLink{newUut, newStrategy, newReqdAddress, newAddressesHint}
+        newGovDelegate,
+        newMintDelegate
     } = Datum::from_data( 
         charterOutput.datum.get_inline_data() 
     );
     if ( !(
-        newUut  == uut &&
-        newStrategy == strategy  &&
-        newReqdAddress == reqdAddress &&
-        newAddressesHint == addressesHint
+        newGovDelegate == govDelegate &&
+        newMintDelegate == mintDelegate
     )) { 
         error("invalid update to charter settings") 
     };
@@ -114,9 +115,10 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
             newDatum = Datum::from_data( 
                 charterOutput.datum.get_inline_data() 
             );
-            Datum::CharterToken{delegate} = newDatum;
+            Datum::CharterToken{govDelegate, mintDelegate} = newDatum;
 
-            requiresValidDelegate(delegate, mph, ctx) &&
+            requiresValidDelegate(govDelegate, mph, ctx) &&
+            requiresValidDelegate(mintDelegate, mph, ctx) &&
             requiresAuthorization(ctx, datum)
         },
         usingAuthority => {

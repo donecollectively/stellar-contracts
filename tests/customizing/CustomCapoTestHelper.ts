@@ -1,7 +1,7 @@
 import {
     DefaultCharterDatumArgs,
     DefaultCapo,
-    PartialDefaultCharterDatumArgs,
+    MinimalDefaultCharterDatumArgs,
 } from "../../src/DefaultCapo.js";
 import { Address } from "@hyperionbt/helios";
 import { StellarTxnContext } from "../../src/StellarTxnContext.js";
@@ -20,9 +20,10 @@ export class CustomCapoTestHelper extends DefaultCapoTestHelper<CustomTreasury> 
         this.currentActor = "tina";
     }
 
-    mkDefaultCharterArgs(): PartialDefaultCharterDatumArgs {
+    mkDefaultCharterArgs(): MinimalDefaultCharterDatumArgs {
         const { tina, tom, tracy } = this.actors;
         return {
+            ...super.mkDefaultCharterArgs(),
             govAuthorityLink: {
                 strategyName: "multisig",
                 reqdAddress: this.address,

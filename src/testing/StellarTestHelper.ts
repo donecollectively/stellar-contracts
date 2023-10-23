@@ -69,7 +69,14 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
 
     constructor(config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup) {
         this.state = {};
-        if (config) this.config = config;
+        if (config) {
+            console.log(
+                "XXXXXXXXXXXXXXXXXXXXXXXXXX test helper with config",
+                config
+            );
+
+            this.config = config;
+        }
 
         const [theNetwork, emuParams] = this.mkNetwork();
         this.liveSlotParams = emuParams;
@@ -109,6 +116,10 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             );
             this.rand = undefined;
             this.randomSeed = randomSeed;
+        } else {
+            console.log(
+                " - Test helper bootstrapping (will emit details to onInstanceCreated())"
+            );
         }
 
         return this.initStellarClass();
@@ -124,6 +135,15 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         return strella;
     }
 
+    //!!! reconnect tests to tcx-based config-capture
+    // onInstanceCreated: async (config: ConfigFor<SC>) => {
+    //     this.config = config
+    //     return {
+    //         evidence: this,
+    //         id: "empheral",
+    //         scope: "unit test"
+    //     }
+    // }
 
     initStrella(
         TargetClass: stellarSubclass<SC, ConfigFor<SC>>,
@@ -250,6 +270,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         if (this.actors[roleName])
             throw new Error(`duplicate role name '${roleName}'`);
         //! it instantiates a wallet with the indicated balance pre-set
+
         const a = this.network.createWallet(walletBalance);
         console.log(
             `+🎭 Actor: ${roleName}: ${a.address

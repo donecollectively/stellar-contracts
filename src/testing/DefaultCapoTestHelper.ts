@@ -1,7 +1,7 @@
 import {
     DefaultCharterDatumArgs,
     DefaultCapo,
-    PartialDefaultCharterDatumArgs,
+    MinimalDefaultCharterDatumArgs,
 } from "../DefaultCapo.js";
 import { Address } from "@hyperionbt/helios";
 import { StellarTxnContext } from "../StellarTxnContext.js";
@@ -80,16 +80,19 @@ export class DefaultCapoTestHelper<
         return treasury.txnAddAuthority(tcx);
     }
 
-    mkDefaultCharterArgs(): PartialDefaultCharterDatumArgs {
+    mkDefaultCharterArgs(): MinimalDefaultCharterDatumArgs<CDT> {
         return {
             govAuthorityLink: {
                 addressesHint: [this.currentActor.address],
                 strategyName: "address",
             },
+            mintDelegateLink: {
+                strategyName: "default",
+            },
         };
     }
 
-    async mintCharterToken(args?: CDT): Promise<hasBootstrappedConfig<CT>> {
+    async mintCharterToken(args?: MinimalDefaultCharterDatumArgs<CDT>): Promise<hasBootstrappedConfig<CT>> {
         const { delay } = this;
         const { tina, tom, tracy } = this.actors;
 
@@ -103,16 +106,11 @@ export class DefaultCapoTestHelper<
         if (!this.strella) await this.initialize();
         const script = this.strella!;
         const goodArgs = (args ||
-            this.mkDefaultCharterArgs()) as PartialDefaultCharterDatumArgs<CDT>;
+            this.mkDefaultCharterArgs()) as MinimalDefaultCharterDatumArgs<CDT>;
         // debugger
 
         const tcx = await script.mkTxnMintCharterToken(
-            goodArgs,
-            script.withDelegates({
-                govAuthority: {
-                    strategyName: "address",
-                },
-            })
+            goodArgs
         );
         this.state.config = tcx.state.bootstrappedConfig;
 

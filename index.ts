@@ -1,8 +1,11 @@
-
 export { mkHeliosModule } from "./src/HeliosModuleSrc.js";
 export type { HeliosModuleSrc } from "./src/HeliosModuleSrc.js";
 export { heliosRollupLoader } from "./src/heliosRollupLoader.js";
-export { mkValuesEntry,mkUutValuesEntries, stringToNumberArray } from "./src/utils.js";
+export {
+    mkValuesEntry,
+    mkUutValuesEntries,
+    stringToNumberArray,
+} from "./src/utils.js";
 
 export {
     assetsAsString,
@@ -14,6 +17,7 @@ export {
     txInputAsString,
     lovelaceToAda,
     errorMapAsString,
+    dumpAny,
 } from "./src/diagnostics.js";
 
 export { Capo, variantMap } from "./src/Capo.js";
@@ -41,7 +45,6 @@ export {
 
 export { hasReqts } from "./src/Requirements.js";
 export type { ReqtsMap, RequirementEntry } from "./src/Requirements.js";
-
 
 export { StellarTxnContext } from "./src/StellarTxnContext.js";
 export type {

@@ -10,7 +10,7 @@ import {
 import { SeedTxnParams } from "../SeedTxn.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
-import { PartialDefaultCharterDatumArgs } from "../DefaultCapo.js";
+import { MinimalDefaultCharterDatumArgs } from "../DefaultCapo.js";
 import { AuthorityPolicy } from "../authority/AuthorityPolicy.js";
 import { ConfigFor } from "../StellarContract.js";
 import { DefaultMinter } from "../DefaultMinter.js";
@@ -74,12 +74,12 @@ export abstract class CapoTestHelper<
         return strella;
     }
 
-    async bootstrap(args?: CDT) {
+    async bootstrap(args?: MinimalDefaultCharterDatumArgs) {
         let strella = this.strella || (await this.initialize());
 
         await this.mintCharterToken(args);
         return strella;
     }
-    abstract mkDefaultCharterArgs(): Partial<CDT>;
-    abstract mintCharterToken(args?: CDT): Promise<hasBootstrappedConfig<CT>>;
+    abstract mkDefaultCharterArgs(): MinimalDefaultCharterDatumArgs<any>
+    abstract mintCharterToken(args?: MinimalDefaultCharterDatumArgs<any>): Promise<hasBootstrappedConfig<CT>>;
 }

@@ -24,6 +24,9 @@ import {
     strategyValidation,
     variantMap,
 } from "../src/delegation/RolesAndDelegates";
+import { StellarTxnContext } from "../src/StellarTxnContext";
+import { configBase } from "../src/StellarContract";
+import { txAsString } from "../src/diagnostics";
 
 class DelegationTestCapo extends DefaultCapo {
     get roles(): RoleMap {
@@ -89,64 +92,58 @@ describe("Capo", async () => {
                 expect(t.roles.mintDelegate.default).toBeTruthy();
             });
         });
-        describe("supports just-in-time strategy-selection using withDelegates() and txnMustSelectDelegate()", () => {
-            it("withDelegates method starts a transaction with delegate settings", async (context: localTC) => {
-                // prettier-ignore
-                const {h, h:{network, actors, delay, state} } = context;
-                const t = await h.initialize();
-
-                const tcx = t.withDelegates({
-                    mintDelegate: {
-                        strategyName: "default",
-                        config: {},
-                    },
-                });
-                expect(tcx.state.delegates.mintDelegate).toBeTruthy();
-            });
-
-            it("txnMustSelectDelegate(tcx, role) method retrieves a partial delegate configuration", async (context: localTC) => {
-                // prettier-ignore
-                const {h, h:{network, actors, delay, state} } = context;
-                const t = await h.initialize();
-
-                const mintDelegate = {
-                    strategyName: "default",
-                    config: {},
-                };
-                const tcx = t.withDelegates({
-                    mintDelegate: mintDelegate,
-                });
-                expect(
-                    t.txnMustSelectDelegate(tcx, "mintDelegate")
-                ).toMatchObject(mintDelegate);
-            });
-
-            it("txnMustSelectDelegate() will use a 'default' delegate", async (context: localTC) => {
-                // prettier-ignore
-                const {h, h:{network, actors, delay, state} } = context;
-                const t = await h.initialize();
-
-                const tcx = t.withDelegates({});
-
-                const mintDelegate = {
-                    strategyName: "default",
-                    config: {},
-                };
-
-                expect(
-                    t.txnMustSelectDelegate(tcx, "mintDelegate")
-                ).toMatchObject(mintDelegate);
-            });
-
-            it("If there is no delegate configured (or defaulted) for the needed role, txnMustSelectDelegate throws a DelegateConfigNeeded error.", async (context: localTC) => {
+        describe("supports just-in-time strategy-selection using txnCreateDelegateLink()", () => {
+            it("txnCreateDelegateLink(tcx, role, delegationSettings) configures a new delegate", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
 
-                const tcx = t.withDelegates({});
+                const tcx = await t.mkTxnCreatingUuts(
+                    new StellarTxnContext(), 
+                    ["mintDgt"],
+                    undefined,
+                    { "mintDelegate": "mintDgt" }
+                );
+                const mintDelegateLink = t.txnCreateDelegateLink(tcx, "mintDelegate", {
+                    strategyName: "default",
+                });
 
+                expect(mintDelegateLink.reqdAddress).toBeTruthy()
+            });
+
+            it("txnCreateDelegateLink(tcx, role) will use a 'default' delegate strategy", async (context: localTC) => {
+                // prettier-ignore
+                const {h, h:{network, actors, delay, state} } = context;
+                const t = await h.bootstrap();
+
+                const tcx = await t.mkTxnCreatingUuts(
+                    new StellarTxnContext(), 
+                    ["mintDgt"],
+                    undefined,
+                    { "mintDelegate": "mintDgt" }
+                );
+                const mintDelegateLink = t.txnCreateDelegateLink(tcx, "mintDelegate");
+                const mintDelegateLink2 = t.txnCreateDelegateLink(tcx, "mintDelegate", {
+                    strategyName: "default",
+                });
+
+                expect(mintDelegateLink.reqdAddress!.eq(mintDelegateLink2.reqdAddress!)).toBeTruthy()
+            });
+
+            it("If there is no delegate configured (or defaulted) for the needed role, txnCreateDelegateLink throws a DelegateConfigNeeded error.", async (context: localTC) => {
+                // prettier-ignore
+                const {h, h:{network, actors, delay, state} } = context;
+                const t = await h.bootstrap();
+
+                const tcx = await t.mkTxnCreatingUuts(
+                    new StellarTxnContext(), 
+                    ["x"],
+                    undefined,
+                    { "noDefault": "x" }
+                );
+                
                 const problem = () => {
-                    t.txnMustSelectDelegate(tcx, "noDefault");
+                    const mintDelegateLink = t.txnCreateDelegateLink(tcx, "noDefault");
                 };
                 expect(problem).toThrow(/no .* delegate for role/);
                 expect(problem).toThrow(DelegateConfigNeeded);
@@ -157,27 +154,24 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
 
+                const tcx = await t.mkTxnCreatingUuts(
+                    new StellarTxnContext(), 
+                    ["mintDgt"],
+                    undefined,
+                    { "mintDelegate": "mintDgt" }
+                );
+                expect( () => {
+                     t.txnCreateDelegateLink(tcx, "mintDelegate", {strategyName: "badStratName"});
+                }).toThrow(/invalid strategyName .*badStratName/);
+
+
                 const problem = () => {
-                    t.txnMustGetDelegate(tcx2, "mintDelegate");
-                };
-
-                let tcx = t.withDelegates({
-                    mintDelegate: {
+                    t.txnCreateDelegateLink(tcx, "mintDelegate", {
                         strategyName: "badStratName",
-                        config: { badSomeUnplannedWay: true },
-                    },
-                });
-                let tcx2 = await t.txnCreatingUuts(tcx, ["mintDelegate"]);
-                expect(problem).toThrow(/invalid strategy name .*badStratName/);
-
-                tcx = t.withDelegates({
-                    mintDelegate: {
-                        strategyName: "bogusName",
                         config: { bad: true },
-                    },
-                });
-
-                expect(problem).toThrow(DelegateConfigNeeded);
+                    });
+                };
+                expect( problem).toThrow(DelegateConfigNeeded);
 
                 try {
                     problem();
@@ -191,55 +185,26 @@ describe("Capo", async () => {
                     expect(e.availableStrategies).toContain("failsWhenBad");
                 }
             });
-        });
-        describe("once a delegate strategy is selected, it can create a ready-to-use Stellar subclass with all the right settings", () => {
-            it("txnMustGetDelegate(tcx, role) method retrieves a configured delegate", async (context: localTC) => {
-                // prettier-ignore
-                const {h, h:{network, actors, delay, state} } = context;
-                const t = await h.bootstrap();
-
-                const tcx = t.withDelegates({
-                    mintDelegate: {
-                        strategyName: "default",
-                        config: {},
-                    },
-                });
-                const tcx2 = await t.txnCreatingUuts(tcx, ["mintDelegate"]);
-                expect(
-                    t.txnMustGetDelegate(tcx2, "mintDelegate")
-                ).toBeInstanceOf(BasicMintDelegate);
-            });
 
             it("If the strategy-configuration has any configuration problems, the DelegateConfigNeeded error contains an 'errors' object", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
 
-                let tcx2: any;
-                // const getConfig = () => {
-                //     //@ts-expect-error testing protected method, because it doesn't need the uutContext, where getDelegate does.
-                //     t.txnMustConfigureSelectedDelegate(tcx2 || tcx, "mintDelegate");
-                // };
+                const tcx = await t.mkTxnCreatingUuts(
+                    new StellarTxnContext(), 
+                    ["mintDgt"],
+                    undefined,
+                    { "mintDelegate": "mintDgt" }
+                );
+                let config : configBase = { badSomeUnplannedWay: true };
                 const getDelegate = () => {
-                    t.txnMustGetDelegate(tcx2 || tcx, "mintDelegate");
+                     t.txnCreateDelegateLink(tcx, "mintDelegate", {strategyName: "failsWhenBad", config})
                 };
 
-                let tcx = t.withDelegates({
-                    mintDelegate: {
-                        strategyName: "default",
-                        config: { badSomeUnplannedWay: true },
-                    },
-                });
                 expect(getDelegate).not.toThrow(/configuration error/);
-
-                tcx = t.withDelegates({
-                    mintDelegate: {
-                        strategyName: "failsWhenBad",
-                        config: { bad: true },
-                    },
-                });
-                tcx2 = await t.txnCreatingUuts(tcx, ["mintDelegate"]);
-
+                
+                config = { bad: true };
                 expect(getDelegate).toThrow(/validation errors/);
                 expect(getDelegate).toThrow(DelegateConfigNeeded);
 
@@ -249,7 +214,37 @@ describe("Capo", async () => {
                     expect(e.errors.bad[0]).toMatch(/must not/);
                 }
             });
+
+            it.todo("txnCreateDelegateSettings(tcx, role, delegationSettings) returns the delegate link plus a concreted delegate instance", async (context: localTC) => {
+                // prettier-ignore
+                const {h, h:{network, actors, delay, state} } = context;
+                const t = await h.setup(); 
+                
+            });            
         });
+        describe("given a configured delegate-link, it can create a ready-to-use Stellar subclass with all the right settings", () => {
+            it("txnCreateDelegateLink(tcx, role, partialLink) method returns configured delegate link", async (context: localTC) => {
+                // prettier-ignore
+                const {h, h:{network, actors, delay, state} } = context;
+                const t = await h.bootstrap();
+
+                const tcx = await t.mkTxnCreatingUuts(
+                    new StellarTxnContext(), 
+                    ["mintDgt"],
+                    undefined,
+                    { "mintDelegate": "mintDgt" }
+                );
+                const mintDelegateLink = t.txnCreateDelegateLink(tcx, "mintDelegate" );
+
+                console.log(" delegateTxn :::::::::::: ", txAsString(tcx.tx));
+                const createdDelegate = await t.connectDelegateWith("mintDelegate", mintDelegateLink)
+
+                expect(
+                    createdDelegate.address.toBech32()
+                ).toBe(mintDelegateLink.reqdAddress!.toBech32())
+            });
+        });
+
 
         describe("Each role uses a RoleVariants structure which can accept new variants", () => {
             it("RoleVariants has type-parameters indicating the baseline types & interfaces for delegates in that role", async (context: localTC) => {

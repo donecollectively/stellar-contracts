@@ -19,11 +19,12 @@ import {
     partialTxn,
     stellarSubclass,
     ConfigFor,
+    txn,
 } from "./StellarContract.js";
 import { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 import {
-    DelegateSettings,
+    ConfiguredDelegate,
     SelectedDelegates,
     DelegateConfigNeeded,
     ErrorMap,
@@ -46,6 +47,7 @@ import {
     mkValuesEntry,
     stringToNumberArray,
 } from "./utils.js";
+import { MinimalDelegateLink } from "./DefaultCapo.js";
 
 export { variantMap } from "./delegation/RolesAndDelegates.js";
 export type {
@@ -81,14 +83,28 @@ export type hasAllUuts<uutEntries extends string> = {
  * @public
  */
 interface hasUutCreator {
-    txnCreatingUuts<
+    txnWithUuts<
         const purposes extends string,
-        TCX extends StellarTxnContext<any>
+        existingTcx extends StellarTxnContext<any>,
+        const RM extends Record<ROLES, purposes>,
+        const ROLES extends keyof RM & string = string & keyof RM
     >(
-        tcx: TCX,
+        initialTcx: existingTcx,
         uutPurposes: purposes[],
-        seedUtxo?: TxInput
-    ): Promise<TCX & hasUutContext<purposes>>;
+        seedUtxo: TxInput,
+        roles?: RM 
+    ): Promise<existingTcx & hasUutContext<ROLES | purposes>>;
+    mkTxnCreatingUuts<
+        const purposes extends string,
+        existingTcx extends StellarTxnContext<any>,
+        const RM extends Record<ROLES, purposes>,
+        const ROLES extends keyof RM & string = string & keyof RM
+    >(
+        initialTcx: existingTcx,
+        uutPurposes: purposes[],
+        seedUtxo?: TxInput,
+        roles?: RM
+    ): Promise<existingTcx & hasUutContext<ROLES | purposes>>;
 }
 
 /**
@@ -138,11 +154,6 @@ export type CapoBaseConfig = SeedTxnParams & {
 //!!! todo: let this be parameterized for more specificity
 export type CapoImpliedSettings = {
     uut: AssetClass;
-};
-
-export type hasSelectedDelegates = StellarTxnContext<hasDelegateProp>;
-type hasDelegateProp = {
-    delegates: Partial<SelectedDelegates>;
 };
 
 export type hasBootstrappedConfig<CT extends CapoBaseConfig> =
@@ -214,17 +225,46 @@ export abstract class Capo<
     }
 
     minter?: minterType;
-
-    @Activity.partialTxn
-    txnCreatingUuts<
+    @partialTxn
+    txnWithUuts<
         const purposes extends string,
-        TCX extends StellarTxnContext<any>
+        existingTcx extends StellarTxnContext<any>,
+        const RM extends Record<ROLES, purposes>,
+        const ROLES extends keyof RM & string = string & keyof RM
     >(
-        tcx: TCX,
+        initialTcx: existingTcx,
         uutPurposes: purposes[],
-        seedUtxo?: TxInput
-    ): Promise<TCX & hasUutContext<purposes>> {
-        return this.minter!.txnCreatingUuts(tcx, uutPurposes, seedUtxo);
+        seedUtxo: TxInput,
+        //@ts-expect-error
+        roles: RM = {} as Record<string, purposes>
+    ): Promise<existingTcx & hasUutContext<ROLES | purposes>> {
+        return this.minter!.txnWithUuts(
+            initialTcx,
+            uutPurposes,
+            seedUtxo,
+            roles
+        );
+    }
+
+    @txn
+    mkTxnCreatingUuts<
+        const purposes extends string,
+        existingTcx extends StellarTxnContext<any>,
+        const RM extends Record<ROLES, purposes>,
+        const ROLES extends keyof RM & string = string & keyof RM
+    >(
+        initialTcx: existingTcx,
+        uutPurposes: purposes[],
+        seedUtxo?: TxInput,
+        //@ts-expect-error
+        roles: RM = {} as Record<string, purposes>
+    ): Promise<existingTcx & hasUutContext<ROLES | purposes>> {
+        return this.minter!.mkTxnCreatingUuts(
+            initialTcx,
+            uutPurposes,
+            seedUtxo,
+            roles
+        );
     }
     // P extends paramsBase = SC extends StellarContract<infer P> ? P : never
 
@@ -271,40 +311,12 @@ export abstract class Capo<
         return [StellarHeliosHelpers, CapoDelegateHelpers, CapoMintHelpers];
     }
 
-    abstract mkTxnMintCharterToken<TCX extends hasSelectedDelegates>(
+    abstract mkTxnMintCharterToken<TCX extends StellarTxnContext>(
         charterDatumArgs: Partial<charterDatumType>,
         existingTcx?: TCX
     ): Promise<
         never | (TCX & hasBootstrappedConfig<CapoBaseConfig & configType>)
     >;
-
-    // @txn
-    // async mkTxnMintCharterToken(
-    //     datumArgs: charterDatumType,
-    //     tcx: StellarTxnContext = new StellarTxnContext()
-    // ): Promise<StellarTxnContext | never> {
-    //     console.log(
-    //         `minting charter from seed ${this.paramsIn.seedTxn.hex.substring(
-    //             0,
-    //             12
-    //         )}…@${this.paramsIn.seedIndex}`
-    //     );
-
-    //     return this.mustGetContractSeedUtxo().then((seedUtxo) => {
-    //         const v = this.tvCharter();
-
-    //         const datum = this.mkDatumCharterToken(datumArgs);
-    //         const output = new TxOutput(this.address, v, datum);
-    //         output.correctLovelace(this.networkParams);
-
-    //         tcx.addInput(seedUtxo).addOutputs([output]);
-
-    //         return this.minter!.txnMintingCharter(tcx, {
-    //             owner: this.address,
-    //             delegate
-    //         })
-    //     });
-    // }
 
     get charterTokenPredicate() {
         const predicate = this.mkTokenPredicate(this.tvCharter());
@@ -553,106 +565,101 @@ export abstract class Capo<
     }
     mockMinter?: minterType;
 
-    withDelegates(delegates: Partial<SelectedDelegates>): hasSelectedDelegates {
-        const tcx = new StellarTxnContext<hasDelegateProp>();
-        tcx.state.delegates = delegates;
-
-        return tcx;
-    }
-
-    txnGetSelectedDelegateConfig<
+    /**
+     * Creates a delegate link, given a delegation role and and strategy-selection details
+     * @remarks
+     *
+     * Combines partal and implied configuration settings, validating the resulting configuration.
+     *
+     * The resulting "relative" delegate link can be used directly in a Datum field of type RelativeDelegateLink
+     * or can be stored off-chain in any way suitable for your dApp.
+     *
+     * To get a full DelegateSettings object, use txnCreateDelegateSettings() instead.
+     *
+     * Note: if you have a delegate use-case that should not include a `reqdAddress`,
+     * `delegateReqdAddress() { return false as const }` is a useful Typescript snippet.
+     * in that case, you may wish to also provide an `delegateAddressesHint()`, if the resulting
+     * details provides a useful path for your dApp's functionality.
+     *
+     * @reqt throws DelegateConfigNeeded with an `errors` entry
+     *   ... if there are any problems in validating the net configuration settings.
+     * @reqt EXPECTS the `tcx` to be minting a UUT for the delegation,
+     *   ... whose UutName can be found in `tcx.state.uuts[roleName]`
+     * @reqt combines base settings from the selected delegate class's `defaultParams`
+     *   ... adding the roles()[roleName] configuration for the selected roleName,
+     *   ... along with any explicit `config` from the provided `delegateInfo`
+     *   ... and automatically applies a `uut` setting.
+     *   ... The later properties in this sequence take precedence.
+     * @reqt If the resolved delegate class provides a truthy `delegateReqdAddress()`,
+     *   ... the resolved settings will reflect in a `reqdAddr` property.  Otherwise,
+     *   ... any provided `delegateAddressesHint()` will be included as `addressesHint`.
+     *
+     * @param tcx - A transaction-context
+     * @param roleName - the role of the delegate, matched with the `roles()` of `this`
+     * @param delegateInfo - partial detail of the delegation, with `strategyName` and any other
+     *     details required by the particular role
+     * @typeParam ‹pName› - descr (for generic types)
+     * @public
+     **/
+    txnCreateDelegateLink<
         T extends StellarContract<any>,
         const RN extends string
     >(
-        tcx: hasSelectedDelegates,
-        roleName: RN
-    ): PartialParamConfig<ConfigFor<T>> {
-        const selected = this.txnMustSelectDelegate(tcx, roleName);
-        const { strategyName, config: selectedConfig = {} } = selected;
-
-        const { roles } = this;
-
-        const foundStrategies = roles[roleName];
-        const selectedStrategy = foundStrategies[
-            strategyName
-        ] as VariantStrategy<T>;
-        if (!selectedStrategy) {
-            debugger;
-            throw new Error(
-                `${this.constructor.name}: invalid strategy name '${strategyName}' for role '${roleName}'` +
-                    `\n ...try one of ${Object.keys(foundStrategies).join(
-                        ", "
-                    )}`
-            );
-        }
-
-        const stratConfig = selectedStrategy.partialConfig || {};
+        tcx: hasUutContext<RN>,
+        roleName: RN,
+        delegateInfo: MinimalDelegateLink<T> = { strategyName: "default" }
+    ): RelativeDelegateLink<T> {
+        const ds = this.txnCreateDelegateSettings(tcx, roleName, delegateInfo);
+        const {
+            strategyName,
+            uutName,
+            config,
+            addressesHint,
+            reqdAddress,
+        }: RelativeDelegateLink<T> = ds;
         return {
-            ...stratConfig,
-            ...selectedConfig,
+            strategyName,
+            uutName,
+            config,
+            addressesHint,
+            reqdAddress,
         };
     }
-
-    txnMustSelectDelegate<
-        T extends StellarContract<any>,
-        const RN extends string,
-        TCX extends hasSelectedDelegates
-    >(tcx: TCX, roleName: RN): SelectedDelegate<T> {
-        const { delegates: selectedDelegates } = tcx.state;
-        let selected = selectedDelegates[roleName];
-        const role = this.roles[roleName];
-        if (!role)
-            throw new Error(
-                `${this.constructor.name}: no such role ${roleName}`
-            );
-        if (!selected) {
-            if (role.default) {
-                selected = {
-                    strategyName: "default",
-                    config: {},
-                };
-            }
-        }
-        if (!selected) {
-            const foundDelegateSelections = Object.keys(selectedDelegates);
-            if (!foundDelegateSelections.length)
-                foundDelegateSelections.push("‹none›");
-            throw new DelegateConfigNeeded(
-                `no selected or default delegate for role '${roleName}' found in transaction-context.  \n` +
-                    ` Hint:   use ‹capo instance›.withDelegates(delegates) to select delegates by role name\n` +
-                    `    (found selections: ${foundDelegateSelections.join(
-                        ", "
-                    )})`,
-                { availableStrategies: Object.keys(role) }
-            );
-        }
-
-        return selected;
-    }
-
-    //! stacks partial and implied configuration settings, validates and returns a good configuration
-    //  ... or throws errors
-    protected txnMustConfigureSelectedDelegate<
+    /**
+     * Returns a complete set of delegate settings, given a delegation role and strategy-selection details
+     * @remarks
+     *
+     * Behaves exactly like (and provides the core implementation of) {@link txnCreateDelegateLink},
+     * returning additional `roleName` and `delegateClass`, to conform with the DelegateSettings type.
+     *
+     * See txnCreateDelegateLink for further details.
+     * @public
+     **/
+    txnCreateDelegateSettings<
         T extends StellarContract<any>,
         const RN extends string
     >(
-        tcx: hasSelectedDelegates & hasUutContext<RN>,
-        roleName: RN
-    ): DelegateSettings<T> {
-        let selected = this.txnMustSelectDelegate(tcx, roleName);
-        const { strategyName, config: selectedConfig } = selected;
+        tcx: hasUutContext<RN>,
+        roleName: RN,
+        delegateInfo: MinimalDelegateLink<T> = { strategyName: "default" }
+    ): ConfiguredDelegate<T> {
+        const { strategyName, config: selectedConfig = {} } = delegateInfo;
 
         const { roles } = this;
         const uut = tcx.state.uuts[roleName];
-        const impliedSettings = this.mkImpliedUutDetails(uut);
+        const uutSetting = this.mkImpliedUutDetails(uut);
 
         const foundStrategies = roles[roleName];
         const selectedStrategy = foundStrategies[
             strategyName
         ] as VariantStrategy<T>;
         if (!selectedStrategy) {
+            let msg = `invalid strategyName '${strategyName}' for role '${roleName}'`;
+            if( strategyName == "default") {
+                msg =`no selected or default delegate for role '${roleName}'.  Specify strategyName`
+            }
             const e = new DelegateConfigNeeded(
-                `invalid strategy name '${strategyName}' for role '${roleName}'`,
+                msg,
                 {
                     availableStrategies: Object.keys(foundStrategies),
                 }
@@ -661,16 +668,18 @@ export abstract class Capo<
         }
         const { delegateClass, validateConfig } = selectedStrategy;
         const { defaultParams: defaultParamsFromDelegateClass } = delegateClass;
-        const scriptParamsFromStrategyVariant = selected.config;
-        const mergedParams: ConfigFor<T> = {
+        const scriptParamsFromStrategyVariant =
+            selectedStrategy.partialConfig || {};
+        const mergedConfig: ConfigFor<T> = {
             ...defaultParamsFromDelegateClass,
             ...(scriptParamsFromStrategyVariant || {}),
-            ...impliedSettings,
             ...selectedConfig,
+            ...uutSetting,
         } as unknown as ConfigFor<T>;
 
+        debugger;
         //! it validates the net configuration so it can return a working config.
-        const errors: ErrorMap | undefined = validateConfig(mergedParams);
+        const errors: ErrorMap | undefined = validateConfig(mergedConfig);
         if (errors) {
             throw new DelegateConfigNeeded(
                 "validation errors in contract params:\n" +
@@ -679,12 +688,29 @@ export abstract class Capo<
             );
         }
 
-        return {
+        let delegate: T;
+        const delegateSettings: ConfiguredDelegate<T> = {
+            ...delegateInfo,
+            //@ts-expect-error - chicken/egg with delegate initiatlization.
+            delegate,
             roleName,
-            strategyName,
-            config: mergedParams,
             delegateClass,
+            uutName: uut.name,
+            config: mergedConfig,
         };
+        delegateSettings.delegate = delegate =
+            this.mustGetDelegate(delegateSettings);
+
+        const reqdAddress = delegate.delegateReqdAddress();
+        if (reqdAddress) {
+            delegateSettings.reqdAddress = reqdAddress;
+        } else {
+            const addressesHint = delegate.delegateAddressesHint();
+            if (addressesHint) {
+                delegateSettings.addressesHint = addressesHint;
+            }
+        }
+        return delegateSettings;
     }
 
     mkImpliedUutDetails(uut: UutName): CapoImpliedSettings {
@@ -696,21 +722,13 @@ export abstract class Capo<
         };
     }
 
-    txnMustGetDelegate<T extends StellarContract<any>, const RN extends string>(
-        tcx: hasSelectedDelegates & hasUutContext<RN>,
-        roleName: RN,
-        configuredDelegate?: DelegateSettings<T>
+    mustGetDelegate<T extends StellarContract<any>, const RN extends string>(
+        configuredDelegate: Omit<ConfiguredDelegate<T>, "delegate">
     ): T {
-        const sdd =
-            configuredDelegate ||
-            this.txnMustConfigureSelectedDelegate<T, RN>(tcx, roleName);
-        const { delegateClass, config: scriptParams } = sdd;
+        const { delegateClass, config } = configuredDelegate;
         try {
             // delegate
-            const configured = this.addScriptWithParams(
-                delegateClass,
-                scriptParams
-            );
+            const configured = this.addScriptWithParams(delegateClass, config);
             return configured as T;
         } catch (e: any) {
             const t = e.message.match(/invalid parameter name '([^']+)'$/);
@@ -728,7 +746,7 @@ export abstract class Capo<
 
     async connectDelegateWith<DelegateType extends StellarContract<any>>(
         roleName: string,
-        delegateLink: RelativeDelegateLink<ConfigFor<DelegateType>>
+        delegateLink: RelativeDelegateLink<DelegateType>
     ): Promise<DelegateType> {
         const role = this.roles[roleName];
         //!!! work on type-safety with roleName + available roles
@@ -741,7 +759,7 @@ export abstract class Capo<
         } = delegateLink;
         const selectedStrat = role[
             strategyName
-        ] as unknown as DelegateSettings<DelegateType>;
+        ] as unknown as ConfiguredDelegate<DelegateType>;
         if (!selectedStrat) {
             throw new Error(
                 `mismatched strategyName '${strategyName}' in delegate link for role '${roleName}'`
@@ -750,7 +768,9 @@ export abstract class Capo<
         const { delegateClass, config: stratSettings } = selectedStrat;
         const config = {
             ...stratSettings,
-            ...this.mkImpliedUutDetails(new UutName("some-delegate", uutName)),
+            ...this.mkImpliedUutDetails(new UutName(roleName, uutName)),
+            reqdAddress,
+            addressesHint,
             ...linkedConfig,
         };
 
@@ -810,7 +830,8 @@ export abstract class Capo<
                     mech: [],
                     requires: [
                         "supports well-typed role declarations and strategy-adding",
-                        "supports just-in-time strategy-selection using withDelegates() and txnMustGetDelegate()",
+                        "supports just-in-time strategy-selection using txnCreateDelegateLink()",
+                        "given a configured delegate-link, it can create a ready-to-use Stellar subclass with all the right settings",
                         "supports concrete resolution of existing role delegates",
                     ],
                 },
@@ -831,16 +852,16 @@ export abstract class Capo<
                     "Each role uses a RoleVariants structure which can accept new variants",
                 ],
             },
-            "supports just-in-time strategy-selection using withDelegates() and txnMustGetDelegate()":
+            "supports just-in-time strategy-selection using txnCreateDelegateLink()":
                 {
                     purpose:
                         "enabling each transaction to select appropriate plugins for its contextual needs",
                     details: [
                         "When a transaction having an extensibility-point is being created,",
                         "  ... it SHOULD require an explicit choice of the delegate to use in that role.",
-                        "When a mkTxnDoesThings method creates a new role-delegated UTxO, ",
+                        "When a 'mkTxn‹DoesThings›' method creates a new role-delegated UTxO, ",
                         "  ... it sets essential configuration details for the delegation ",
-                        "  ... and it requires the transaction-context to have delegation details.",
+                        "  ... including a specific UUT that provides a linking mechanism for the delegate",
                         "The delegate contract, including its address and/or reference-script UTxO ",
                         "  ... and/or its parameters and its StellarContract class, MUST be captured ",
                         "  ... so that it can be easily resolved and used/referenced",
@@ -851,13 +872,30 @@ export abstract class Capo<
                         "  ... or be instantiated as a result of the delegation details.",
                     ],
                     mech: [
-                        "withDelegates method starts a transaction with prepared delegate settings",
-                        "txnMustGetDelegate(tcx, role) method retrieves a configured delegate",
-                        "txnMustGetDelegate() will use a 'default' delegate",
-                        "If there is no delegate configured (or defaulted) for the needed role, txnMustGetDelegate throws a DelegateConfigNeeded error.",
+                        "txnCreateDelegateLink(tcx, role, delegationSettings) method configures a new delegate",
+                        "txnCreateDelegateLink() will use a 'default' delegate strategy",
+                        "If there is no delegate configured (or defaulted) for the needed role, txnCreateDelegateLink throws a DelegateConfigNeeded error.",
+                        "If the strategy-configuration doesn't match available variants, the DelegateConfigNeeded error offers suggested strategy-names",
                         "If the strategy-configuration has any configuration problems, the DelegateConfigNeeded error contains an 'errors' object",
+                        "txnCreateDelegateSettings(tcx, role, delegationSettings) returns the delegate link plus a concreted delegate instance",
                     ],
                 },
+            "given a configured delegate-link, it can create a ready-to-use Stellar subclass with all the right settings":
+                {
+                    purpose:
+                        "allows the known facts about a delegate to be resolved to working SC class",
+                    details: [
+                        "A delegate link created by txnCreateDelegateLink(), can be captured in different ways",
+                        "  ... e.g. as a Datum property in a contract, ",
+                        "  ... or in any off-chain way.",
+                        "A dApp then reconstitutes this key information to a StellarContract, ",
+                        "  ... enabling simple multi-contract collaboration",
+                    ],
+                    mech: [
+                        "mustGetDelegate(configuredDelegate) method retrieves a configured delegate",
+                    ],
+                },
+
             "Each role uses a RoleVariants structure which can accept new variants":
                 {
                     purpose:

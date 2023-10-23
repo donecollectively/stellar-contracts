@@ -36,17 +36,11 @@ import { StellarTxnContext } from "./StellarTxnContext.js";
 //@ts-expect-error
 import contract from "./DefaultCapo.hl";
 // import contract from "./BaselineCapo.hl";
-import {
-    Capo,
-    CapoBaseConfig,
-    hasBootstrappedConfig,
-    hasSelectedDelegates,
-} from "./Capo.js";
+import { Capo, CapoBaseConfig, hasBootstrappedConfig } from "./Capo.js";
 import { DefaultMinter } from "./DefaultMinter.js";
 import {
     ErrorMap,
     isRoleMap,
-    PARAM_IMPLIED,
     RelativeDelegateLink,
     RoleMap,
     strategyValidation,
@@ -58,7 +52,7 @@ import {
     AuthorityPolicy,
     AuthorityPolicySettings,
 } from "./authority/AuthorityPolicy.js";
-import { AddressAuthorityPolicy } from "./authority/AddressAuthorityPolicy.js";
+import { AnyAddressAuthorityPolicy } from "./authority/AnyAddressAuthorityPolicy.js";
 import { DelegateDetailSnapshot } from "./delegation/RolesAndDelegates.js";
 import { txAsString } from "./diagnostics.js";
 import { MultisigAuthorityPolicy } from "./authority/MultisigAuthorityPolicy.js";
@@ -69,24 +63,57 @@ import { UnspecializedCapo } from "./UnspecializedCapo.js";
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
  * together with it's primary or "charter" utxo.
- *
- * @typeParam CT - allows type-safe partial-`config`uration details for the charter's authority-delegate
- *    to be to be stored within the datum.
+ * @public
  **/
-export type DefaultCharterDatumArgs<CT extends configBase = CapoBaseConfig> = {
-    govAuthorityLink: RelativeDelegateLink<CT>;
+export type DefaultCharterDatumArgs = {
+    govAuthorityLink: RelativeDelegateLink<AuthorityPolicy>;
+    mintDelegateLink: RelativeDelegateLink<BasicMintDelegate>;
 };
 
-export type PartialDefaultCharterDatumArgs<
-    T extends DefaultCharterDatumArgs<any> = DefaultCharterDatumArgs,
-    CT extends configBase = T extends DefaultCharterDatumArgs<infer iCT>
-        ? iCT
-        : never
-> = Partial<Omit<T, "govAuthorityLink">> & {
-    govAuthorityLink: Required<Pick<RelativeDelegateLink<CT>, "strategyName">> &
-        Partial<RelativeDelegateLink<CT>>;
-    // Partial<Omit<T["govAuthorityLink"], "strategyName">>
+/**
+ * Includes key details needed to create a delegate link
+ * @remarks
+ *
+ * Requires a `strategyName` and may include a partial `config` for the targeted SC contract type
+ *
+ * Because delegates can be of different subtypes, the SC and `config` are typically
+ * generic at the type level.  When using the `config` entry for a specific delegate subtype,
+ * additional details might be needed (not expected to be the norm).
+ *
+ * uutName can't be specified in this structure because creating a delegate link
+ * should use txnMustGetSeedUtxo() instead, minting a new UUT for the purpose.
+ * If you seek to reuse an existing uutName, probably you're modifying an existing
+ * full RelativeDelegateLink structure instead - e.g. with a different `strategy`,
+ * `config`, and/or `reqdAddress`; this type wouldn't be involved in that case.
+ *
+ * @typeParam SC - the type of StellarContract targeted for delegation
+ * @public
+ **/
+export type MinimalDelegateLink<SC extends StellarContract<any>> = Required<
+    Pick<RelativeDelegateLink<SC>, "strategyName">
+> &
+    Partial<Omit<RelativeDelegateLink<SC>, "uutName">>;
+
+/**
+ * Establishes minimum requirements for creating a charter-datum
+ * @remarks
+ *
+ * requires a baseline configuration for the gov authority and mint delegate.
+ *
+ * @typeParam DAT - a charter-datum type that may have additional properties in case of advanced extensions to DefaultCapo.
+ * @public
+ **/
+export type MinimalDefaultCharterDatumArgs<
+    DAT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs
+> = {
+    // RemainingMinimalCharterDatumArgs<DAT> & {
+    govAuthorityLink: MinimalDelegateLink<AuthorityPolicy>;
+    mintDelegateLink: MinimalDelegateLink<BasicMintDelegate>;
 };
+//!!! todo enable "other" datum args - (ideally, those other than delegate-link types) to be inlcuded in MDCDA above.
+export type RemainingMinimalCharterDatumArgs<
+    DAT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs
+> = Omit<DAT, "govAuthorityLink" | "mintDelegateLink">;
 
 export type HeldAssetsArgs = {
     purposeId?: string;
@@ -181,10 +208,7 @@ export class DefaultCapo<
         return isRoleMap({
             govAuthority: variantMap<AuthorityPolicy>({
                 address: {
-                    delegateClass: AddressAuthorityPolicy,
-                    partialConfig: {
-                        uut: PARAM_IMPLIED,
-                    },
+                    delegateClass: AnyAddressAuthorityPolicy,
                     validateConfig(args): strategyValidation {
                         const { rev, uut } = args;
                         const errors: ErrorMap = {};
@@ -197,9 +221,6 @@ export class DefaultCapo<
                 },
                 multisig: {
                     delegateClass: MultisigAuthorityPolicy,
-                    partialConfig: {
-                        uut: PARAM_IMPLIED,
-                    },
                     validateConfig(args): strategyValidation {
                         const { rev, uut } = args;
                         const errors: ErrorMap = {};
@@ -223,6 +244,27 @@ export class DefaultCapo<
         });
     }
 
+    extractDelegateLink(dl: RelativeDelegateLink<any>) {
+        const { RelativeDelegateLink: hlRelativeDelegateLink } =
+            this.scriptProgram!.types;
+
+        let {
+            uutName,
+            strategyName,
+            reqdAddress: canRequireAddr,
+            addressesHint = [],
+        } = dl;
+        const OptAddr = Option(Address);
+        const needsAddr = new OptAddr(canRequireAddr);
+
+        return new hlRelativeDelegateLink(
+            uutName,
+            strategyName,
+            needsAddr,
+            addressesHint
+        );
+    }
+
     @datum
     mkDatumCharterToken(args: CDT): InlineDatum {
         //!!! todo: make it possible to type these datum helpers more strongly
@@ -230,33 +272,20 @@ export class DefaultCapo<
         console.log("--> mkDatumCharter", args);
         const {
             Datum: { CharterToken: hlCharterToken },
-            RelativeDelegateLink: hlRelativeDelegateLink,
         } = this.scriptProgram!.types;
-        let {
-            uutName,
-            strategyName,
-            reqdAddress: canRequireAddr,
-            addressesHint = [],
-        } = args.govAuthorityLink;
 
-        const OptAddr = Option(Address);
-        const needsAddr = new OptAddr(canRequireAddr);
-
-        const t = new hlCharterToken(
-            new hlRelativeDelegateLink(
-                uutName,
-                strategyName,
-                needsAddr,
-                addressesHint
-            )
-        );
+        const govAuthority = this.extractDelegateLink(args.govAuthorityLink);
+        const mintDelegate = this.extractDelegateLink(args.mintDelegateLink);
+        const t = new hlCharterToken(govAuthority, mintDelegate);
         return Datum.inline(t._toUplcData());
     }
 
     async txnAddCharterAuthz(tcx: StellarTxnContext, datum: InlineDatum) {
-        const charterDatum = await this.readDatum<
-            DefaultCharterDatumArgs<AuthorityPolicySettings>
-        >("CharterToken", datum);
+        //!!! verify both datums are read properly
+        const charterDatum = await this.readDatum<DefaultCharterDatumArgs>(
+            "CharterToken",
+            datum
+        );
 
         console.log("add charter authz", charterDatum);
         const { strategyName, uutName, addressesHint, reqdAddress } =
@@ -298,11 +327,20 @@ export class DefaultCapo<
         return { ...baseConfig, ...pCfg } as configType & CapoBaseConfig;
     }
 
+    /**
+     * Initiates a seeding transaction, creating a new Capo contract of this type
+     * @remarks
+     *
+     * detailed remarks
+     * @param ‹pName› - descr
+     * @typeParam ‹pName› - descr (for generic types)
+     * @public
+     **/
     @txn
     //@ts-expect-error - typescript can't seem to understand that
     //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
-    async mkTxnMintCharterToken<TCX extends hasSelectedDelegates>(
-        charterDatumArgs: PartialDefaultCharterDatumArgs<CDT>,
+    async mkTxnMintCharterToken<TCX extends StellarTxnContext>(
+        charterDatumArgs: MinimalDefaultCharterDatumArgs<CDT>,
         existingTcx?: TCX
     ): Promise<
         never | (TCX & hasBootstrappedConfig<CapoBaseConfig & configType>)
@@ -312,12 +350,10 @@ export class DefaultCapo<
                 `this contract suite is already configured and can't be re-chartered`
             );
 
-        const { strategyName } = charterDatumArgs.govAuthorityLink;
-
+        type hasBsc = hasBootstrappedConfig<CapoBaseConfig & configType>;
         //@ts-expect-error yet another case of seemingly spurious "could be instantiated with a different subtype" (actual fixes welcome :pray:)
-        const initialTcx: TCX &
-            hasBootstrappedConfig<CapoBaseConfig & configType> =
-            existingTcx || this.withDelegates({});
+        const initialTcx: TCX & hasBsc =
+            existingTcx || (new StellarTxnContext() as hasBsc);
 
         return this.txnMustGetSeedUtxo(initialTcx, "charter bootstrapping", [
             "charter",
@@ -327,13 +363,6 @@ export class DefaultCapo<
 
             this.connectMintingScript({ seedIndex, seedTxn });
 
-            const tcx = await this.minter!.txnWithUuts(
-                initialTcx,
-                ["authZor"],
-                seedUtxo,
-                "govAuthority"
-            );
-
             const { mintingPolicyHash: mph } = this.minter!;
             const rev = this.getCapoRev();
             const bsc = this.mkFullConfig({
@@ -342,34 +371,43 @@ export class DefaultCapo<
                 seedTxn,
                 seedIndex,
             });
-            tcx.state.bootstrappedConfig = bsc;
+            initialTcx.state.bootstrappedConfig = bsc;
             const fullScriptParams = (this.contractParams =
                 this.getContractScriptParams(bsc));
             this.configIn = bsc;
 
             this.scriptProgram = this.loadProgramScript(fullScriptParams);
-            // console.log("-> B", txAsString(tcx.tx));
-            const { authZor } = tcx.state.uuts;
-            const delegateParams = this.txnGetSelectedDelegateConfig(
-                tcx,
-                "govAuthority"
-            );
 
-            // debugger
-            const govAuthorityConfig = this.txnMustConfigureSelectedDelegate<
+            const tcx = await this.minter!.txnWithUuts(
+                initialTcx,
+                ["authZor", "mintDgt"],
+                seedUtxo,
+                {
+                    govAuthority: "authZor",
+                    mintDelegate: "mintDgt",
+                }
+            );
+            const { authZor, govAuthority } = tcx.state.uuts;
+            {
+                if (govAuthority !== authZor)
+                    throw new Error(`assertion can't fail`);
+            }
+
+            const govAuthorityLink = this.txnCreateDelegateLink<
                 AuthorityPolicy,
                 "govAuthority"
-            >(tcx, "govAuthority" as const);
-
-            const govAuthorityLink = {
-                strategyName,
-                uutName: authZor.name,
-            };
+            >(tcx, "govAuthority", charterDatumArgs.govAuthorityLink);
+            
+            const mintDelegateLink = this.txnCreateDelegateLink<
+                BasicMintDelegate,
+                "mintDelegate"
+            >(tcx, "mintDelegate", charterDatumArgs.mintDelegateLink);
             //@ts-expect-error - typescript can't seem to understand that
             //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
             const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
                 ...charterDatumArgs,
                 govAuthorityLink,
+                mintDelegateLink,
             };
             const datum = this.mkDatumCharterToken(fullCharterArgs);
 
@@ -387,7 +425,7 @@ export class DefaultCapo<
 
             return this.minter!.txnMintingCharter(tcx, {
                 owner: this.address,
-                authZor,
+                authZor, // same as govAuthority,
             });
         });
     }

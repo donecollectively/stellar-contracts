@@ -61,7 +61,7 @@ describe("Capo", async () => {
             type something = "something";
             const tcx = new StellarTxnContext<hasAllUuts<something>>();
             await t.txnAddAuthority(tcx);
-            await t.txnCreatingUuts(tcx, ["something"]);
+            await t.mkTxnCreatingUuts(tcx, ["something"]);
 
             const uutVal = t.uutsValue(tcx.state.uuts!);
             tcx.addOutput(new TxOutput(tina.address, uutVal));
@@ -89,7 +89,7 @@ describe("Capo", async () => {
             type fooAndBar = "foo" | "bar";
             const tcx = new StellarTxnContext<hasAllUuts<fooAndBar>>();
             await t.txnAddAuthority(tcx);
-            await t.txnCreatingUuts(tcx, ["foo", "bar"]);
+            await t.mkTxnCreatingUuts(tcx, ["foo", "bar"]);
             const uuts = t.uutsValue(tcx.state.uuts!);
 
             tcx.addOutput(new TxOutput(tina.address, uuts));
@@ -117,7 +117,7 @@ describe("Capo", async () => {
             type fooAndBar = "foo" | "bar";
             const tcx = new StellarTxnContext<hasAllUuts<fooAndBar>>();
             await t.txnAddAuthority(tcx);
-            await t.txnCreatingUuts(tcx, ["foo", "bar"]);
+            await t.mkTxnCreatingUuts(tcx, ["foo", "bar"]);
             const uuts = t.uutsValue(tcx.state.uuts!);
 
             //! fills state.uuts with named
@@ -156,7 +156,7 @@ describe("Capo", async () => {
             const tcx = new StellarTxnContext<hasAllUuts<uniqUutMap>>();
             await t.txnAddAuthority(tcx);
 
-            await t.txnCreatingUuts(tcx, [noMultiples, noMultiples]);
+            await t.mkTxnCreatingUuts(tcx, [noMultiples, noMultiples]);
 
             const uut = t.uutsValue(tcx.state.uuts!);
 
@@ -182,7 +182,7 @@ describe("Capo", async () => {
                 }
             );
 
-            await t.txnCreatingUuts(tcx2, [noMultiples]);
+            await t.mkTxnCreatingUuts(tcx2, [noMultiples]);
             const uut2 = t.uutsValue(tcx2.state.uuts!);
 
             tcx2.addOutput(new TxOutput(tina.address, uut2));
@@ -207,7 +207,7 @@ describe("Capo", async () => {
                 }
             );
 
-            await t.txnCreatingUuts(tcx3, [noMultiples]);
+            await t.mkTxnCreatingUuts(tcx3, [noMultiples]);
             const uut3 = t.uutsValue(tcx3.state.uuts!);
 
             tcx3.addOutput(new TxOutput(tina.address, uut3));
@@ -245,7 +245,7 @@ describe("Capo", async () => {
                 }
             );
 
-            await t.txnCreatingUuts(tcx, ["something"]);
+            await t.mkTxnCreatingUuts(tcx, ["something"]);
             const uut = t.uutsValue(tcx);
 
             tcx.addOutput(new TxOutput(tina.address, uut));

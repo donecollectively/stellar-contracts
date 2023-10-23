@@ -16,10 +16,15 @@ import {
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { AuthorityPolicy } from "./AuthorityPolicy.js";
 
-export class AddressAuthorityPolicy extends AuthorityPolicy {
+export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     loadProgramScript(params) {
         return undefined;
     }
+
+    delegateReqdAddress() {
+        return false as const
+    }
+
     @Activity.redeemer
     protected usingAuthority(): isActivity {
         const r = this.scriptProgram?.types.Redeemer;

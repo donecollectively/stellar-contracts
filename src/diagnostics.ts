@@ -7,6 +7,7 @@ import {
     Value,
 } from "@hyperionbt/helios";
 import { ErrorMap } from "./delegation/RolesAndDelegates.js";
+import { StellarTxnContext } from "./StellarTxnContext.js";
 
 export function hexToPrintableString(hexStr) {
     let result = "";
@@ -249,4 +250,12 @@ export function errorMapAsString(em: ErrorMap, prefix = "  ") {
     return Object.keys(em)
         .map((k) => `${prefix}${k}: ${JSON.stringify(em[k])}`)
         .join("\n");
+}
+
+export function dumpAny(x: Tx | StellarTxnContext) {
+    if (x instanceof Tx) {
+        return txAsString(x);
+    } else if (x instanceof StellarTxnContext) {
+        return txAsString(x.tx);
+    }
 }

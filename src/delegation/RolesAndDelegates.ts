@@ -29,8 +29,6 @@ export class UutName {
         return this[_uutName];
     }
 }
-export const PARAM_REQUIRED = Symbol("paramReqd");
-export const PARAM_IMPLIED = Symbol("paramImplied");
 
 export class DelegateConfigNeeded extends Error {
     errors?: ErrorMap;
@@ -70,9 +68,7 @@ export function isRoleMap<const R extends RoleMap>(x: R): RoleMap {
 export type strategyParams = configBase;
 export type delegateScriptParams = configBase;
 
-export type PartialParamConfig<CT extends configBase> = Partial<{
-    [key in keyof CT]: typeof PARAM_REQUIRED | typeof PARAM_IMPLIED | CT[key];
-}>;
+export type PartialParamConfig<CT extends configBase> = Partial<CT>
 
 //! declaration for a variant of a Role:
 //  ... indicates the details needed to construct a delegate script
@@ -108,22 +104,27 @@ export function selectDelegate<T extends StellarContract<any>>(
     return sd;
 }
 
-//! a complete, validated configuration for a specific delegate.
-//  ... Combined with a specific UUT, a delegate linkage can be created from this
-export type DelegateSettings<T extends StellarContract<any>> = {
-    delegateClass: stellarSubclass<T>;
-
+/**
+ * A complete, validated and resolved configuration for a specific delegate
+ * @remarks
+ * 
+ * Use StellarContract's `txnCreateDelegateSettings()` method to resolve
+ * from any (minimal or better) delegate details to a ResolvedDelegate object.
+ * @typeParam DT - a StellarContract class conforming to the `roleName`,
+ *     within the scope of a Capo class's `roles()`.
+ * @public
+ **/
+export type ConfiguredDelegate<DT extends StellarContract<any>> = {
+    delegateClass: stellarSubclass<DT>;
+    delegate: DT;
     roleName: string;
-    strategyName: string;
-    config: ConfigFor<T>;
-    reqdAddress?: Address;
-    addressesHint?: Address[];
-};
+    config: ConfigFor<DT>
+} & RelativeDelegateLink<DT>
 
-export type RelativeDelegateLink<CT extends configBase> = {
+export type RelativeDelegateLink<T extends StellarContract<any>> = {
     uutName: string;
     strategyName: string;
-    config: Partial<CT>;
+    config: Partial<ConfigFor<T>>;
     reqdAddress?: Address;
     addressesHint?: Address[];
 };
@@ -138,5 +139,5 @@ export type xDelegateLink = {
 export type DelegateDetailSnapshot<T extends StellarContract<any>> = {
     isDelegateSnapshot: true;
     uut: string;
-    settings: DelegateSettings<T>;
+    settings: ConfiguredDelegate<T>;
 };

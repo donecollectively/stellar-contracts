@@ -12,6 +12,7 @@ import {
     StellarContract,
     isActivity,
     partialTxn,
+    txn,
 } from "./StellarContract.js";
 
 //@ts-expect-error
@@ -35,6 +36,7 @@ import {
 } from "./delegation/RolesAndDelegates.js";
 import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { mkUutValuesEntries, mkValuesEntry } from "./utils.js";
+import { dumpAny } from "./diagnostics.js";
 
 type MintCharterRedeemerArgs<T = {}> = T & {
     owner: Address;
@@ -57,25 +59,28 @@ export class DefaultMinter
         ];
     }
 
+
+    //!!! todo: fold args 2 & 4, allowing either array or map but not both.
     @partialTxn
     async txnWithUuts<
         const purposes extends string,
         existingTcx extends StellarTxnContext<any>,
-        const R extends string
+        const RM extends Record<ROLES,purposes>,
+        const ROLES extends string & keyof RM = string & keyof RM
     >(
         tcx: existingTcx,
         uutPurposes: purposes[],
         seedUtxo: TxInput,
-        role: R
+        //@ts-expect-error
+        roles: RM = {} as Record<string, purposes>,
     ): Promise<
-        existingTcx & hasUutContext<purposes | (R extends "" ? never : R)>
+        hasUutContext<ROLES | purposes> & existingTcx 
     > {
         const { txId, utxoIdx } = seedUtxo.outputId;
 
         const { blake2b } = Crypto;
-        if (role && uutPurposes.length !== 1)
-            throw new Error(`role uut must have exactly one purpose`);
-        const uutMap: uutPurposeMap<purposes | R> = Object.fromEntries(
+
+        const uutMap: uutPurposeMap<ROLES | purposes> = Object.fromEntries(
             uutPurposes.map((uutPurpose) => {
                 const txoId = txId.bytes.concat(["@".charCodeAt(0), utxoIdx]);
                 // console.warn("&&&&&&&& txoId", bytesToHex(txoId));
@@ -85,24 +90,31 @@ export class DefaultMinter
                 );
                 return [uutPurpose, uutName];
             })
-        ) as uutPurposeMap<purposes | R>;
-        if (role) uutMap[role] = uutMap[uutPurposes[0]];
-
+        ) as uutPurposeMap<ROLES | purposes>;
+        for (const [role, uutPurpose] of Object.entries(roles)) {
+            uutMap[role] = uutMap[uutPurpose as string];
+        }
+        
+        if (!tcx.state) tcx.state = {};
         if (tcx.state.uuts) throw new Error(`uuts are already there`);
         tcx.state.uuts = uutMap;
 
-        return tcx;
+        return tcx as hasUutContext<ROLES | purposes> & existingTcx 
     }
 
-    @Activity.partialTxn
-    async txnCreatingUuts<
+    @txn
+    async mkTxnCreatingUuts<
         const purposes extends string,
-        TCX extends StellarTxnContext<any>
+        existingTcx extends StellarTxnContext<any>,
+        const RM extends Record<ROLES, purposes>,
+        const ROLES extends keyof RM & string = string & keyof RM,
     >(
-        initialTcx: TCX,
+        initialTcx: existingTcx,
         uutPurposes: purposes[],
-        seedUtxo?: TxInput
-    ): Promise<TCX & hasUutContext<purposes>> {
+        seedUtxo?: TxInput,
+        //@ts-expect-error
+        roles: RM = {} as Record<string, purposes>,
+    ): Promise<existingTcx & hasUutContext<ROLES | purposes>> {
         const gettingSeed = seedUtxo
             ? Promise.resolve<TxInput>(seedUtxo)
             : new Promise<TxInput>((res) => {
@@ -124,13 +136,12 @@ export class DefaultMinter
                 initialTcx,
                 uutPurposes,
                 seedUtxo,
-                ""
+                roles,
             );
             const vEntries = mkUutValuesEntries(tcx.state.uuts);
 
             tcx.addInput(seedUtxo);
             const { txId: seedTxn, utxoIdx: seedIndex } = seedUtxo.outputId;
-
             tcx.attachScript(this.compiledScript).mintTokens(
                 this.mintingPolicyHash!,
                 vEntries,

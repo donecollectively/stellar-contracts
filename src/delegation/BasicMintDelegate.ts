@@ -63,9 +63,5 @@ export class BasicMintDelegate extends StellarContract<MintDelegateArgs> {
         return tcx;
     }
 
-    servesDelegationRole(role: string) {
-        if ("mintingPolicy" == role) return true;
-    }
-
     static mkDelegateWithArgs(a: MintDelegateArgs) {}
 }

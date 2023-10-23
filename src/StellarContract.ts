@@ -120,8 +120,12 @@ export function txn(proto, thingName, descriptor) {
 export function partialTxn(proto, thingName, descriptor) {
     // console.log("+datum", proto.constructor.name, thingName || "none", descriptor.value.name )
     if (!thingName.match(/^txn[A-Z]/)) {
+        let help = ""
+        if (thingName.match(/^mkTxn/)) {
+            help = `\n  ... or, for transaction initiation with mkTxn, you might try @txn instead. `;
+        }
         throw new Error(
-            `@partialTxn factory: ${thingName}: should start with 'txn[A-Z]...'`
+            `@partialTxn factory: ${thingName}: should start with 'txn[A-Z]...'${help}`
         );
     }
     return descriptor;
@@ -262,6 +266,13 @@ export class StellarContract<
         return config;
     }
 
+    delegateReqdAddress(): false | Address {
+        return this.address;
+    }
+    delegateAddressesHint(): Address[] | undefined {
+        return undefined;
+    }
+
     constructor(args: StellarConstructorArgs<ConfigType>) {
         const { setup, config, partialConfig } = args;
         this.setup = setup;
@@ -357,10 +368,10 @@ export class StellarContract<
                 ? StellarConstructorArgs<ConfigFor<SC>>
                 : never
         ) => SC,
-        params: SC extends StellarContract<infer P> ? P : never
+        config: SC extends StellarContract<infer iCT> ? iCT : never
     ) {
         const args: StellarConstructorArgs<ConfigFor<SC>> = {
-            config: params,
+            config,
             setup: this.setup,
         };
         //@ts-expect-error todo: why is the conditional type not matching enough?

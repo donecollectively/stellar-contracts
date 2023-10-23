@@ -19,6 +19,7 @@ import {
 enum Datum {
     CharterToken {
         govAuthorityLink: RelativeDelegateLink
+        mintDelegateLink: RelativeDelegateLink
     }
     //! datum-validation only supports checks of absolute spendability, 
     //  ... and can't check details of the Activity/Redeemer being used.
