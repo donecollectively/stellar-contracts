@@ -19,38 +19,52 @@ import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import {
     DelegateConfigNeeded,
     RoleMap,
-    VariantMap,
+    RoleInfo,
     VariantStrategy,
-    isRoleMap,
+    delegateRoles,
     strategyValidation,
-    variantMap,
+    defineRole,
 } from "../src/delegation/RolesAndDelegates";
 import { StellarTxnContext } from "../src/StellarTxnContext";
 import { configBase } from "../src/StellarContract";
 import { txAsString } from "../src/diagnostics";
 
 class DelegationTestCapo extends DefaultCapo {
-    get roles() {
-        const inherited = super.roles;
-        const { mintDelegate, ...othersInherited } = inherited;
-        return isRoleMap({
-            ...othersInherited,
-            noDefault: variantMap<DefaultMinter>({}),
-            mintDelegate: variantMap<BasicMintDelegate>({
-                ...mintDelegate,
-                failsWhenBad: {
-                    delegateClass: BasicMintDelegate,
-                    validateConfig(args) {
-                        if (args.bad) {
-                            //note, this isn't the normal way of validating.
-                            //  ... usually it's a good field name whose value is missing or wrong.
-                            //  ... still, this conforms to the ErrorMap protocol good enough for testing.
-                            return { bad: ["must not be provided"] };
-                        }
-                    },
+    get delegateRoles() {
+        const inherited = super.delegateRoles;
+        const { 
+            mintDelegate: parentMintDelegate,
+             ...othersInherited 
+        } = inherited;
+        const {baseClass, uutPurpose, variants: pVariants} = parentMintDelegate
+        const mt = defineRole("mintDgt", BasicMintDelegate, {
+            failsWhenBad: {
+                delegateClass: BasicMintDelegate,
+                validateConfig(args) {
+                    if (args.bad) {
+                        //note, this isn't the normal way of validating.
+                        //  ... usually it's a good field name whose value is missing or wrong.
+                        //  ... still, this conforms to the ErrorMap protocol good enough for testing.
+                        return { bad: ["must not be provided"] };
+                    }
                 },
-            }),
-        })
+            },
+        });
+        const mintDelegate : typeof  parentMintDelegate & typeof mt
+        = {
+            uutPurpose,
+            baseClass,
+            variants: {
+                ... pVariants,
+                ... mt.variants
+            },
+        };
+        
+        return delegateRoles({
+            ...othersInherited,
+            noDefault: defineRole("noDef", DefaultMinter, {}),
+            mintDelegate
+        });
     }
 }
 
@@ -87,9 +101,9 @@ describe("Capo", async () => {
                 //   "\n    -> ", ttt.toBech32())
 
                 const t = await h.initialize();
-                expect(t.roles).toBeTruthy();
-                expect(t.roles.mintDelegate).toBeTruthy();
-                expect(t.roles.mintDelegate.default).toBeTruthy();
+                expect(t.delegateRoles).toBeTruthy();
+                expect(t.delegateRoles.mintDelegate.variants).toBeTruthy();
+                expect(t.delegateRoles.mintDelegate.variants.default).toBeTruthy();
             });
         });
         describe("supports just-in-time strategy-selection using txnCreateDelegateLink()", () => {
@@ -99,16 +113,20 @@ describe("Capo", async () => {
                 const t = await h.bootstrap();
 
                 const tcx = await t.mkTxnCreatingUuts(
-                    new StellarTxnContext(), 
+                    new StellarTxnContext(),
                     ["mintDgt"],
                     undefined,
-                    { "mintDelegate": "mintDgt" }
+                    { mintDelegate: "mintDgt" }
                 );
-                const mintDelegateLink = t.txnCreateDelegateLink(tcx, "mintDelegate", {
-                    strategyName: "default",
-                });
+                const mintDelegateLink = t.txnCreateDelegateLink(
+                    tcx,
+                    "mintDelegate",
+                    {
+                        strategyName: "default",
+                    }
+                );
 
-                expect(mintDelegateLink.reqdAddress).toBeTruthy()
+                expect(mintDelegateLink.reqdAddress).toBeTruthy();
             });
 
             it("txnCreateDelegateLink(tcx, role) will use a 'default' delegate strategy", async (context: localTC) => {
@@ -117,17 +135,28 @@ describe("Capo", async () => {
                 const t = await h.bootstrap();
 
                 const tcx = await t.mkTxnCreatingUuts(
-                    new StellarTxnContext(), 
+                    new StellarTxnContext(),
                     ["mintDgt"],
                     undefined,
-                    { "mintDelegate": "mintDgt" }
+                    { mintDelegate: "mintDgt" }
                 );
-                const mintDelegateLink = t.txnCreateDelegateLink(tcx, "mintDelegate");
-                const mintDelegateLink2 = t.txnCreateDelegateLink(tcx, "mintDelegate", {
-                    strategyName: "default",
-                });
+                const mintDelegateLink = t.txnCreateDelegateLink(
+                    tcx,
+                    "mintDelegate"
+                );
+                const mintDelegateLink2 = t.txnCreateDelegateLink(
+                    tcx,
+                    "mintDelegate",
+                    {
+                        strategyName: "default",
+                    }
+                );
 
-                expect(mintDelegateLink.reqdAddress!.eq(mintDelegateLink2.reqdAddress!)).toBeTruthy()
+                expect(
+                    mintDelegateLink.reqdAddress!.eq(
+                        mintDelegateLink2.reqdAddress!
+                    )
+                ).toBeTruthy();
             });
 
             it("If there is no delegate configured (or defaulted) for the needed role, txnCreateDelegateLink throws a DelegateConfigNeeded error.", async (context: localTC) => {
@@ -136,14 +165,17 @@ describe("Capo", async () => {
                 const t = await h.bootstrap();
 
                 const tcx = await t.mkTxnCreatingUuts(
-                    new StellarTxnContext(), 
+                    new StellarTxnContext(),
                     ["x"],
                     undefined,
-                    { "noDefault": "x" }
+                    { noDefault: "x" }
                 );
-                
+
                 const problem = () => {
-                    const mintDelegateLink = t.txnCreateDelegateLink(tcx, "noDefault");
+                    const mintDelegateLink = t.txnCreateDelegateLink(
+                        tcx,
+                        "noDefault"
+                    );
                 };
                 expect(problem).toThrow(/no .* delegate for role/);
                 expect(problem).toThrow(DelegateConfigNeeded);
@@ -155,15 +187,16 @@ describe("Capo", async () => {
                 const t = await h.bootstrap();
 
                 const tcx = await t.mkTxnCreatingUuts(
-                    new StellarTxnContext(), 
+                    new StellarTxnContext(),
                     ["mintDgt"],
                     undefined,
-                    { "mintDelegate": "mintDgt" }
+                    { mintDelegate: "mintDgt" }
                 );
-                expect( () => {
-                     t.txnCreateDelegateLink(tcx, "mintDelegate", {strategyName: "badStratName"});
+                expect(() => {
+                    t.txnCreateDelegateLink(tcx, "mintDelegate", {
+                        strategyName: "badStratName",
+                    });
                 }).toThrow(/invalid strategyName .*badStratName/);
-
 
                 const problem = () => {
                     t.txnCreateDelegateLink(tcx, "mintDelegate", {
@@ -171,7 +204,7 @@ describe("Capo", async () => {
                         config: { bad: true },
                     });
                 };
-                expect( problem).toThrow(DelegateConfigNeeded);
+                expect(problem).toThrow(DelegateConfigNeeded);
 
                 try {
                     problem();
@@ -192,18 +225,21 @@ describe("Capo", async () => {
                 const t = await h.bootstrap();
 
                 const tcx = await t.mkTxnCreatingUuts(
-                    new StellarTxnContext(), 
+                    new StellarTxnContext(),
                     ["mintDgt"],
                     undefined,
-                    { "mintDelegate": "mintDgt" }
+                    { mintDelegate: "mintDgt" }
                 );
-                let config : configBase = { badSomeUnplannedWay: true };
+                let config: configBase = { badSomeUnplannedWay: true };
                 const getDelegate = () => {
-                     t.txnCreateDelegateLink(tcx, "mintDelegate", {strategyName: "failsWhenBad", config})
+                    t.txnCreateDelegateLink(tcx, "mintDelegate", {
+                        strategyName: "failsWhenBad",
+                        config,
+                    });
                 };
 
                 expect(getDelegate).not.toThrow(/configuration error/);
-                
+
                 config = { bad: true };
                 expect(getDelegate).toThrow(/validation errors/);
                 expect(getDelegate).toThrow(DelegateConfigNeeded);
@@ -221,15 +257,21 @@ describe("Capo", async () => {
                 const t = await h.bootstrap();
 
                 const tcx = await t.mkTxnCreatingUuts(
-                    new StellarTxnContext(), 
+                    new StellarTxnContext(),
                     ["mintDgt"],
                     undefined,
-                    { "mintDelegate": "mintDgt" }
+                    { mintDelegate: "mintDgt" }
                 );
-                const {delegate, reqdAddress} = t.txnCreateConfiguredDelegate(tcx, "mintDelegate" );
+                const { delegate, reqdAddress } = t.txnCreateConfiguredDelegate(
+                    tcx,
+                    "mintDelegate"
+                );
                 expect(delegate).toBeTruthy();
-                expect(delegate.address.eq(reqdAddress!), "addresses should have matched").toBeTruthy()
-            });            
+                expect(
+                    delegate.address.eq(reqdAddress!),
+                    "addresses should have matched"
+                ).toBeTruthy();
+            });
         });
 
         describe("given a configured delegate-link, it can create a ready-to-use Stellar subclass with all the right settings", () => {
@@ -239,22 +281,27 @@ describe("Capo", async () => {
                 const t = await h.bootstrap();
 
                 const tcx = await t.mkTxnCreatingUuts(
-                    new StellarTxnContext(), 
+                    new StellarTxnContext(),
                     ["mintDgt"],
                     undefined,
-                    { "mintDelegate": "mintDgt" }
+                    { mintDelegate: "mintDgt" }
                 );
-                const mintDelegateLink = t.txnCreateDelegateLink(tcx, "mintDelegate" );
+                const mintDelegateLink = t.txnCreateDelegateLink(
+                    tcx,
+                    "mintDelegate"
+                );
 
                 console.log(" delegateTxn :::::::::::: ", txAsString(tcx.tx));
-                const createdDelegate = await t.connectDelegateWith("mintDelegate", mintDelegateLink)
+                const createdDelegate = await t.connectDelegateWith(
+                    "mintDelegate",
+                    mintDelegateLink
+                );
 
-                expect(
-                    createdDelegate.address.toBech32()
-                ).toBe(mintDelegateLink.reqdAddress!.toBech32())
+                expect(createdDelegate.address.toBech32()).toBe(
+                    mintDelegateLink.reqdAddress!.toBech32()
+                );
             });
         });
-
 
         describe("Each role uses a RoleVariants structure which can accept new variants", () => {
             it("RoleVariants has type-parameters indicating the baseline types & interfaces for delegates in that role", async (context: localTC) => {
@@ -278,9 +325,8 @@ describe("Capo", async () => {
                         return undefined;
                     },
                 };
-                assertType<VariantMap<BasicMintDelegate>>({
+                assertType<RoleInfo<BasicMintDelegate, any,any,any>["variants"]>({
                     ok,
-                    //@ts-expect-error
                     wrong: bad,
                 });
             });

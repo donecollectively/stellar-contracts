@@ -27,6 +27,7 @@ import {
     isActivity,
     partialTxn,
     StellarContract,
+    stellarSubclass,
     txn,
 } from "./StellarContract.js";
 import { InlineDatum } from "./HeliosPromotedTypes.js";
@@ -40,12 +41,12 @@ import { Capo, CapoBaseConfig, hasBootstrappedConfig } from "./Capo.js";
 import { DefaultMinter } from "./DefaultMinter.js";
 import {
     ErrorMap,
-    isRoleMap,
+    delegateRoles,
     RelativeDelegateLink,
     RoleMap,
     strategyValidation,
-    variantMap,
-    VariantMap,
+    defineRole,
+    RoleInfo,
 } from "./delegation/RolesAndDelegates.js";
 import { BasicMintDelegate } from "./delegation/BasicMintDelegate.js";
 import {
@@ -221,9 +222,10 @@ export class DefaultCapo<
     // updatingCharter() : isActivity {
     //     return this.updatingDefaultCharter()
     // }
-    get roles() {
-        return isRoleMap({
-            govAuthority: variantMap<AuthorityPolicy>({
+
+    get delegateRoles() {
+        return delegateRoles({
+            govAuthority: defineRole("authZor", AuthorityPolicy, {
                 address: {
                     delegateClass: AnyAddressAuthorityPolicy,
                     validateConfig(args): strategyValidation {
@@ -249,7 +251,7 @@ export class DefaultCapo<
                     },
                 },
             }),
-            mintDelegate: variantMap<BasicMintDelegate>({
+            mintDelegate: defineRole("mintDgt", BasicMintDelegate, {
                 default: {
                     delegateClass: BasicMintDelegate,
                     partialConfig: {},
@@ -307,11 +309,15 @@ export class DefaultCapo<
         console.log("add charter authz", charterDatum);
         const { strategyName, uutName, addressesHint, reqdAddress } =
             charterDatum.govAuthorityLink;
-        debugger;
+
         const authZor = await this.connectDelegateWith<AuthorityPolicy>(
             "govAuthority",
             charterDatum.govAuthorityLink
         );
+        // const authZor = await this.connectDelegate.govAuthority(
+        //     charterDatum.govAuthorityLink
+        // );
+
         const authZorUtxo = await authZor.txnMustFindAuthorityToken(tcx);
         authZor.txnGrantAuthority(tcx, authZorUtxo);
         return tcx;

@@ -35,6 +35,7 @@ import {
     UutName,
     RelativeDelegateLink,
     capoDelegateConfig,
+    RoleInfo,
 } from "./delegation/RolesAndDelegates.js";
 import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
 import { SeedTxnParams } from "./SeedTxn.js";
@@ -50,7 +51,6 @@ import {
 } from "./utils.js";
 import { MinimalDelegateLink } from "./DefaultCapo.js";
 
-export { variantMap } from "./delegation/RolesAndDelegates.js";
 export type {
     RoleMap,
     strategyValidation,
@@ -172,7 +172,7 @@ type PreconfiguredDelegate<T extends StellarContract<capoDelegateConfig & any>> 
  * it can mint tokens using its connected minting-policy, and it can delegate policies to other contract
  * scripts.  Subclasses of Capo can use these capabilities in custom ways for strong flexibility.
  *
- * Any Capo contract can (and must) define roles() to establish collaborating scripts; these are used for
+ * Any Capo contract can (and must) define delegateRoles() to establish collaborating scripts; these are used for
  * separating granular responsbilities for different functional purposes within your (on-chain and off-chain)
  * application; this approach enables delegates to use any one of multiple strategies with different
  * functional logic to serve in any given role, thus providing flexibility and extensibility.
@@ -197,7 +197,7 @@ export abstract class Capo<
     extends StellarContract<configType>
     implements hasUutCreator
 {
-    abstract get roles(): RoleMap<any>;
+    abstract get delegateRoles(): RoleMap<any>;
     abstract mkFullConfig(baseConfig: CapoBaseConfig): configType;
 
     constructor(args: StellarConstructorArgs<CapoBaseConfig>) {
@@ -589,7 +589,7 @@ export abstract class Capo<
      * @reqt EXPECTS the `tcx` to be minting a UUT for the delegation,
      *   ... whose UutName can be found in `tcx.state.uuts[roleName]`
      * @reqt combines base settings from the selected delegate class's `defaultParams`
-     *   ... adding the roles()[roleName] configuration for the selected roleName,
+     *   ... adding the delegateRoles()[roleName] configuration for the selected roleName,
      *   ... along with any explicit `config` from the provided `delegateInfo`
      *   ... and automatically applies a `uut` setting.
      *   ... The later properties in this sequence take precedence.
@@ -598,7 +598,7 @@ export abstract class Capo<
      *   ... any provided `delegateAddressesHint()` will be included as `addressesHint`.
      *
      * @param tcx - A transaction-context
-     * @param roleName - the role of the delegate, matched with the `roles()` of `this`
+     * @param roleName - the role of the delegate, matched with the `delegateRoles()` of `this`
      * @param delegateInfo - partial detail of the delegation, with `strategyName` and any other
      *     details required by the particular role
      * @typeParam ‹pName› - descr (for generic types)
@@ -652,17 +652,17 @@ export abstract class Capo<
         const RN extends string
     >(
         tcx: hasUutContext<RN>,
-        roleName: RN,
+        roleName: RN & keyof this["delegateRoles"],
         delegateInfo: MinimalDelegateLink<DT> = { strategyName: "default" }
     ): ConfiguredDelegate<DT> {
         const { strategyName, config: selectedConfig = {} } = delegateInfo;
 
-        const { roles } = this;
+        const { delegateRoles } = this;
         const uut = tcx.state.uuts[roleName];
         const uutSetting = this.mkImpliedUutDetails(uut);
 
-        const foundStrategies = roles[roleName];
-        const selectedStrategy = foundStrategies[
+        const foundStrategies = delegateRoles[roleName] as RoleInfo<DT,any,any,RN>
+        const selectedStrategy = foundStrategies.variants[
             strategyName
         ] as VariantStrategy<DT>;
         if (!selectedStrategy) {
@@ -673,7 +673,7 @@ export abstract class Capo<
             const e = new DelegateConfigNeeded(
                 msg,
                 {
-                    availableStrategies: Object.keys(foundStrategies),
+                    availableStrategies: Object.keys(foundStrategies.variants),
                 }
             );
             throw e;
@@ -699,7 +699,6 @@ export abstract class Capo<
                 { errors }
             );
         }
-
         
         const delegateSettings: PreconfiguredDelegate<DT> = {
             ...delegateInfo,
@@ -756,6 +755,7 @@ export abstract class Capo<
         }
     }
 
+    // get connectDelegate()
     async connectDelegateWith<
         DelegateType extends StellarContract<
             configBase & capoDelegateConfig >,
@@ -766,16 +766,17 @@ export abstract class Capo<
         roleName: string,
         delegateLink: RelativeDelegateLink<DelegateType>
     ): Promise<DelegateType> {
-        const role = this.roles[roleName];
+        const role = this.delegateRoles[roleName];
         //!!! work on type-safety with roleName + available roles
         const {
             strategyName,
             uutName,
             reqdAddress,
+
             addressesHint,
             config: linkedConfig,
         } = delegateLink;
-        const selectedStrat = role[
+        const selectedStrat = role.variants[
             strategyName
          ] as unknown as ConfiguredDelegate<DelegateType>;
         if (!selectedStrat) {
@@ -871,9 +872,9 @@ export abstract class Capo<
                     "A dApp using a Capo class can add strategy variants by subclassing",
                 ],
                 mech: [
-                    "Capo EXPECTS a synchronous getter for 'roles' to be defined",
-                    "Capo provides a default 'roles' having no specific roles (or maybe just minter - TBD)",
-                    "Subclasses can define their own get roles(), return a role-map-to-variant-map structure",
+                    "Capo EXPECTS a synchronous getter for 'delegateRoles' to be defined",
+                    "Capo provides a default 'delegateRoles' having no specific roles (or maybe just minter - TBD)",
+                    "Subclasses can define their own get delegateRoles(), return a role-map-to-variant-map structure",
                 ],
                 requires: [
                     "Each role uses a RoleVariants structure which can accept new variants",
@@ -938,7 +939,7 @@ export abstract class Capo<
                     ],
                     mech: [
                         "RoleVariants has type-parameters indicating the baseline types & interfaces for delegates in that role",
-                        "TODO: variants can augment the definedRoles object without removing or replacing any existing variant",
+                        "TODO: variants can augment the delegateRoles object without removing or replacing any existing variant",
                     ],
                     requires: [
                         "provides a Strategy type for binding a contract to a strategy-variant name",

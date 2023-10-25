@@ -20,10 +20,10 @@ import { Capo, hasAllUuts } from "../src/Capo";
 import {
     DelegateConfigNeeded,
     UutName,
-    VariantMap,
+    RoleInfo,
     VariantStrategy,
     strategyValidation,
-    variantMap,
+    defineRole,
 } from "../src/delegation/RolesAndDelegates";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import * as utils from "../src/utils";

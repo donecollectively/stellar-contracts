@@ -21,8 +21,7 @@ import { Datum, Redeemer } from specializedCapo
 
 func requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {
     Datum::CharterToken{
-        RelativeDelegateLink{charterAuthZorName, _, _, _},
-        _
+        RelativeDelegateLink{charterAuthZorName, _, _, _}, _
     } = datum;
 
     assert(txHasOutput(ctx.tx,  mkTv(mph, charterAuthZorName)),

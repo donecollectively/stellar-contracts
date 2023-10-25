@@ -77,14 +77,7 @@ export interface StellarDelegate {
         fromFoundUtxo?: TxInput
     ): Promise<TCX>;
 };
-export function variantMap<T extends StellarContract<any>>(vm: VariantMap<T>) {
-    return vm;
-}
 
-export type VariantMap<T extends StellarContract<any>> = Record<
-    string,
-    VariantStrategy<T>
->;
 /**
  * Allows any targeted delegate class to use the address of the leader contract
  * @remarks
@@ -107,14 +100,85 @@ export type capoDelegateConfig = configBase & {
     addrHint: Address[];
 };
 
+export type RoleMap<KR extends Record<string, RoleInfo<any, any, any, any>>> = {
+    [roleName in keyof KR]: KR[roleName];
+};
 
-export type RoleMap<KR extends Record<string, VariantMap<any>>> = {
-    [roleName in keyof KR]: KR[roleName]
-}
-
-export function isRoleMap<const RM extends RoleMap<any>>(x: RM): RoleMap<RM> {
+export function delegateRoles<const RM extends RoleMap<any>>(x: RM): RoleMap<RM> {
     return x;
 }
+
+export type RoleInfo<
+    SC extends StellarContract<any>,
+    VM extends Record<variants, VariantStrategy<SC>>,
+    UUTP extends string,
+    variants extends string = string & keyof VM
+> = {
+    uutPurpose: UUTP;
+    baseClass: stellarSubclass<SC>,
+    variants: { [variant in variants]: VM[variant] };
+};
+
+export function defineRole<
+    const UUTP extends string,
+    SC extends StellarContract<any>,
+    const VMv extends RoleInfo<SC, any, UUTP>["variants"]
+>(
+    uutBaseName: UUTP,
+    baseClass: stellarSubclass<SC> & any,
+    variants: VMv
+) :  RoleInfo<SC, VMv, UUTP> {
+    return {
+        uutPurpose: uutBaseName,
+        baseClass,
+        variants,
+    };
+}
+
+//!!! todo: develop this further to allow easily enhancing a parent role-definition 
+// ... with an additional strategy variant
+
+// type vmapBuilder<
+//     SC extends StellarContract<any>,
+//     UUTP extends string,
+//     VMv extends RoleInfo<SC, any, UUTP>["variants"]
+// > = (variants: VMv) => RoleInfo<SC, VMv, UUTP>;
+// export function defineRole<
+//     SC extends StellarContract<any>,
+//     const PUUTP extends string,
+// >(
+//     inheritedRoleDefinition: RoleInfo<SC, any, PUUTP>
+// ) : vmapBuilder<SC, PUUTP, RoleInfo<SC, any, PUUTP>["variants"]>
+// export function defineRole<
+//     const UUTP extends string,
+//     SC extends StellarContract<any>,
+// >(
+//     uutBaseName: UUTP,
+//     subclass: stellarSubclass<SC> & any,
+// ) : vmapBuilder<SC, UUTP, RoleInfo<SC, any, UUTP>["variants"]>
+// export function defineRole<
+//     const UUTP extends string,
+//     SC extends StellarContract<any>,
+//     const Puutp extends string,
+// >(
+//     uBNorParentDef: Puutp | RoleInfo<SC, any, UUTP>,
+//     subclass?: stellarSubclass<SC> & any,
+// ) : vmapBuilder<SC, Puutp | UUTP, RoleInfo<SC, any, Puutp | UUTP>["variants"]> {
+//     const uutBaseName = (
+//         "string" == typeof uBNorParentDef
+//      ) ? uBNorParentDef
+//         : uBNorParentDef.uutPurpose;
+
+//     return function vmapBuilder<
+//         const VMv extends RoleInfo<SC, any, UUTP>["variants"]
+//     >(  
+//         variants: VMv
+//     ): RoleInfo<SC, VMv, UUTP> {
+//         return {
+//             uutPurpose: uutBaseName,
+//             variants,
+//         };
+//     }
 
 export type strategyParams = configBase;
 export type delegateScriptParams = configBase;

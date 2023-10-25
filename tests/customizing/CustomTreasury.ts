@@ -11,7 +11,7 @@ import { DefaultCapo } from "../../src/DefaultCapo.js";
 
 //@ts-expect-error importing a module provided by Rollup
 import contract from "./CustomTreasury.hl";
-import { RoleMap, variantMap } from "../../src/delegation/RolesAndDelegates.js";
+import { RoleMap, defineRole } from "../../src/delegation/RolesAndDelegates.js";
 import { BasicMintDelegate } from "../../src/delegation/BasicMintDelegate.js";
 import { DefaultMinter } from "../../src/DefaultMinter.js";
 

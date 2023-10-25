@@ -155,7 +155,6 @@ describe("Capo", async () => {
                 })
             ).rejects.toThrow(/missing .* authZor/);
         });
-
         it("builds transactions with the charter token returned to the contract", async (context: localTC) => {
             const {
                 h,
