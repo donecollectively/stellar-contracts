@@ -64,28 +64,28 @@ export class StellarTxnContext<S = noState> {
         return this;
     }
 
-    addInput(...args: Parameters<Tx["addInput"]>): StellarTxnContext<S> {
+    addInput<TCX extends StellarTxnContext<S>>(this:TCX, ...args: Parameters<Tx["addInput"]>): TCX  {
         const [input, ..._otherArgs] = args;
         this.inputs.push(input);
         this.tx.addInput(...args);
         return this;
     }
 
-    addInputs(...args: Parameters<Tx["addInputs"]>): StellarTxnContext<S> {
+    addInputs<TCX extends StellarTxnContext<S>>(this:TCX, ...args: Parameters<Tx["addInputs"]>): TCX {
         const [inputs, ..._otherArgs] = args;
         this.inputs.push(...inputs);
         this.tx.addInputs(...args);
         return this;
     }
 
-    addOutput(...args: Parameters<Tx["addOutput"]>): StellarTxnContext<S> {
+    addOutput<TCX extends StellarTxnContext<S>>(this:TCX, ...args: Parameters<Tx["addOutput"]>): TCX {
         const [output, ..._otherArgs] = args;
         this.outputs.push(output);
         this.tx.addOutput(...args);
         return this;
     }
 
-    addOutputs(...args: Parameters<Tx["addOutputs"]>): StellarTxnContext<S> {
+    addOutputs<TCX extends StellarTxnContext<S>>(this:TCX,...args: Parameters<Tx["addOutputs"]>): TCX {
         const [outputs, ..._otherArgs] = args;
         this.outputs.push(...outputs);
         this.tx.addOutputs(...args);

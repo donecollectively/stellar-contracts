@@ -15,8 +15,8 @@ import {
     StellarTestContext,
     addTestContext,
     CapoTestHelper,
-} from "../src/testing/";
-import { PartialDefaultCharterDatumArgs } from "../src/DefaultCapo";
+} from "../src/testing";
+import { DefaultCharterDatumArgs, MinimalDefaultCharterDatumArgs } from "../src/DefaultCapo";
 
 type localTC = StellarTestContext<CustomTreasuryTestHelper>;
 
@@ -36,7 +36,7 @@ class CustomTreasuryTestHelper extends CapoTestHelper<CustomTreasury> {
         return CustomTreasury;
     }
 
-    mkDefaultCharterArgs(): PartialDefaultCharterDatumArgs {
+    mkDefaultCharterArgs() {
         return {
             govAuthorityLink: {
                 addressesHint: [this.actors.tina.address],

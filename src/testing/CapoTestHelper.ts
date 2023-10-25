@@ -80,6 +80,6 @@ export abstract class CapoTestHelper<
         await this.mintCharterToken(args);
         return strella;
     }
-    abstract mkDefaultCharterArgs(): MinimalDefaultCharterDatumArgs<any>
+    abstract mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<any>>
     abstract mintCharterToken(args?: MinimalDefaultCharterDatumArgs<any>): Promise<hasBootstrappedConfig<CT>>;
 }

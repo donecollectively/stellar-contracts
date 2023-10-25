@@ -80,15 +80,15 @@ export class DefaultCapoTestHelper<
         return treasury.txnAddAuthority(tcx);
     }
 
-    mkDefaultCharterArgs(): MinimalDefaultCharterDatumArgs<CDT> {
+    mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<CDT>> {
         return {
             govAuthorityLink: {
                 addressesHint: [this.currentActor.address],
                 strategyName: "address",
             },
-            mintDelegateLink: {
-                strategyName: "default",
-            },
+            // mintDelegateLink: {
+            //     strategyName: "default",
+            // },
         };
     }
 

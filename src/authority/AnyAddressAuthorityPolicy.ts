@@ -44,8 +44,8 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     async txnMustFindAuthorityToken(tcx): Promise<TxInput> {
         if (!this.configIn)
             throw new Error(`must be instantiated with a configIn`);
-        const { uut, addrHint } = this.configIn;
-        const v = this.mkAssetValue(uut);
+        const { uutID, addrHint } = this.configIn;
+        const v = this.mkAssetValue(uutID);
         debugger;
         return this.mustFindActorUtxo(
             `authority-token(address strat)`,
@@ -58,15 +58,15 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         );
     }
 
-    //! creates a UTxO depositing the indicated token-name into the delegated destination.
     async txnReceiveAuthorityToken(
         tcx: StellarTxnContext,
-        delegateAddr: Address
+        delegateAddr: Address,
+        fromFoundUtxo: TxInput,
     ): Promise<StellarTxnContext> {
         if (!this.configIn)
             throw new Error(`must be instantiated with a configIn`);
-        const { uut } = this.configIn;
-        const v = this.mkAssetValue(uut, 1);
+        const { uutID } = this.configIn;
+        const v = this.mkAssetValue(uutID, 1);
         const output = new TxOutput(delegateAddr, v);
         output.correctLovelace(this.networkParams);
         tcx.addOutput(output);

@@ -8,14 +8,11 @@ import {
 
 import { Activity, isActivity, StellarContract } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
-import { UutName } from "../delegation/RolesAndDelegates.js";
+import { capoDelegateConfig, StellarDelegate, UutName } from "../delegation/RolesAndDelegates.js";
 import { hasReqts } from "../Requirements.js";
 
-export type AuthorityPolicySettings = {
+export type AuthorityPolicySettings = capoDelegateConfig & {
     rev: bigint;
-    uut: AssetClass;
-    reqdAddress?: Address;
-    addrHint: Address[];
 };
 
 //! an interface & base class to enforce policy for authorizing activities
@@ -24,7 +21,9 @@ export type AuthorityPolicySettings = {
 //  ... e.g. through a DelegateDetails structure.
 export abstract class AuthorityPolicy<
     T extends AuthorityPolicySettings = AuthorityPolicySettings
-> extends StellarContract<T> {
+> extends StellarContract<T> 
+
+{
     static currentRev = 1n;
     static get defaultParams() {
         return { rev: this.currentRev };
@@ -63,14 +62,6 @@ export abstract class AuthorityPolicy<
         tcx: StellarTxnContext
     ): Promise<TxInput>;
 
-    //! creates a UTxO depositing the indicated token-name into the delegated destination.
-    //! Each implemented subclass can use it's own style to match its strategy & mechanism.
-    //! This is used both for the original deposit and for returning the token during a grant-of-authority
-    //! impls should normally preserve the datum from an already-present sourceUtxo
-    abstract txnReceiveAuthorityToken(
-        tcx: StellarTxnContext,
-        delegateAddr: Address
-    ): Promise<StellarTxnContext>;
 
     //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer.
     //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
@@ -79,7 +70,7 @@ export abstract class AuthorityPolicy<
     //! a contract-backed impl SHOULD enforce the expected return in its on-chain code
     abstract txnGrantAuthority(
         tcx: StellarTxnContext,
-        fromFoundUtxo: TxInput
+        fromFoundUtxo: TxInput,
     ): Promise<StellarTxnContext>;
 
     //! Adds the indicated utxo to the transaction with appropriate activity/redeemer

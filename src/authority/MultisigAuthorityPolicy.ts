@@ -8,9 +8,12 @@ import { Activity, isActivity, StellarContract } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { AuthorityPolicy } from "./AuthorityPolicy.js";
 import { hasReqts } from "../Requirements.js";
+import { StellarDelegate } from "../delegation/RolesAndDelegates.js";
 
 //! a contract enforcing policy for a registered credential
-export class MultisigAuthorityPolicy extends AuthorityPolicy {
+export class MultisigAuthorityPolicy extends AuthorityPolicy
+implements StellarDelegate
+{
     static currentRev = 1n;
     static get defaultParams() {
         return { rev: this.currentRev };
@@ -42,19 +45,17 @@ export class MultisigAuthorityPolicy extends AuthorityPolicy {
     async txnMustFindAuthorityToken(tcx: StellarTxnContext): Promise<TxInput> {
         if (!this.configIn)
             throw new Error(`must be instantiated with a configIn`);
-        const { addrHint, uut, reqdAddress } = this.configIn;
+        const { addrHint, uutID, reqdAddress } = this.configIn;
         return this.mustFindMyUtxo(
             "authorityToken",
-            this.mkTokenPredicate(uut)
+            this.mkTokenPredicate(uutID)
         );
     }
 
-    async txnReceiveAuthorityToken(
-        tcx: StellarTxnContext,
-        delegateAddr: Address
-    ): Promise<StellarTxnContext> {
-        throw new Error(`implementation TODO`);
-        return tcx;
+    async txnReceiveAuthorityToken<
+        TCX extends StellarTxnContext<any>
+    >(tcx: TCX, fromFoundUtxo?: TxInput | undefined): Promise<TCX> {
+        throw new Error(`todo`)        
     }
 
     //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer

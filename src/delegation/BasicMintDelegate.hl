@@ -1,20 +1,45 @@
-spending SampleMintDelegate
+spending BasicMintDelegate
 
 const rev : Int = 1
 const instance : ByteArray = #67656e6572616c
 
+import {
+    DelegateDatum,
+    tvAuthZor,
+    acAuthZor
+} from CapoDelegateHelpers
+
+import {
+    // outputHas,
+    returnsValueToScript
+} from StellarHeliosHelpers
+
 // import { 
 //     preventCharterChange
 // } from MultiSigAuthority
-
-// struct Datum {
-//     hi: String
-// }
-
 // func main(datum: Datum,_,ctx: ScriptContext) -> Bool {
 //     preventCharterChange(ctx, datum) 
 // }
 
-func main(_,_,_) -> Bool {
-    true
+enum DelegateActivity {
+    Authorize
+    Reassign
+    Retire
+}
+
+
+func main(dd: DelegateDatum, action: DelegateActivity, ctx: ScriptContext) -> Bool {
+    // input = ctx.get_current_input();
+    action.switch {        
+        Authorize => returnsValueToScript(tvAuthZor(dd), ctx),
+        Reassign => {
+            // the token isn't burned, and it isn't returned back to this script
+            ctx.tx.minted.get_safe( acAuthZor(dd) ) == 0 &&
+            !returnsValueToScript( tvAuthZor(dd), ctx)
+        },
+        Retire => {
+            // the token is burned
+            ctx.tx.minted.get(acAuthZor(dd)) == -1
+        }
+    }
 }

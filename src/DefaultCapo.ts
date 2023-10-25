@@ -59,6 +59,7 @@ import { MultisigAuthorityPolicy } from "./authority/MultisigAuthorityPolicy.js"
 import { hasReqts } from "./Requirements.js";
 import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { UnspecializedCapo } from "./UnspecializedCapo.js";
+import { NoMintDelegation } from "./delegation/NoMintDelegation.js";
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
@@ -108,7 +109,7 @@ export type MinimalDefaultCharterDatumArgs<
 > = {
     // RemainingMinimalCharterDatumArgs<DAT> & {
     govAuthorityLink: MinimalDelegateLink<AuthorityPolicy>;
-    mintDelegateLink: MinimalDelegateLink<BasicMintDelegate>;
+    mintDelegateLink?: MinimalDelegateLink<BasicMintDelegate>;
 };
 //!!! todo enable "other" datum args - (ideally, those other than delegate-link types) to be inlcuded in MDCDA above.
 export type RemainingMinimalCharterDatumArgs<
@@ -190,6 +191,22 @@ export class DefaultCapo<
         return contract;
     }
 
+    /**
+     * indicates any specialization of the baseline Capo types
+     * @remarks
+     * 
+     * The default implementation is an UnspecialiedCapo, which
+     * you can use as a template for your specialized Capo.
+     * 
+     * Every specalization MUST include a Datum and a Redeemer,
+     * and MAY include additional functions, and methods on Datum / Redeemer.
+     * 
+     * The datum SHOULD have a validateSpend(self, datum, ctx) method.
+     * 
+     * The redeemer SHOULD have an allowActivity(self, datum, ctx) method.
+     *
+     * @public
+     **/
     get specializedCapo(): HeliosModuleSrc {
         return UnspecializedCapo;
     }
@@ -210,10 +227,10 @@ export class DefaultCapo<
                 address: {
                     delegateClass: AnyAddressAuthorityPolicy,
                     validateConfig(args): strategyValidation {
-                        const { rev, uut } = args;
+                        const { rev, uutID } = args;
                         const errors: ErrorMap = {};
                         if (!rev) errors.rev = ["required"];
-                        if (!uut) errors.uut = ["required"];
+                        if (!uutID) errors.uutID = ["required"];
                         if (Object.keys(errors).length > 0) return errors;
 
                         return undefined;
@@ -268,7 +285,7 @@ export class DefaultCapo<
     @datum
     mkDatumCharterToken(args: CDT): InlineDatum {
         //!!! todo: make it possible to type these datum helpers more strongly
-
+        //  ... at the interface to Helios
         console.log("--> mkDatumCharter", args);
         const {
             Datum: { CharterToken: hlCharterToken },

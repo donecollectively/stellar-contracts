@@ -20,7 +20,7 @@ export class CustomCapoTestHelper extends DefaultCapoTestHelper<CustomTreasury> 
         this.currentActor = "tina";
     }
 
-    mkDefaultCharterArgs(): MinimalDefaultCharterDatumArgs {
+    mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs> {
         const { tina, tom, tracy } = this.actors;
         return {
             ...super.mkDefaultCharterArgs(),

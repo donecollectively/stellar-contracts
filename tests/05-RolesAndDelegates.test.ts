@@ -21,6 +21,7 @@ import {
     RoleMap,
     VariantMap,
     VariantStrategy,
+    isRoleMap,
     strategyValidation,
     variantMap,
 } from "../src/delegation/RolesAndDelegates";
@@ -29,10 +30,10 @@ import { configBase } from "../src/StellarContract";
 import { txAsString } from "../src/diagnostics";
 
 class DelegationTestCapo extends DefaultCapo {
-    get roles(): RoleMap {
+    get roles() {
         const inherited = super.roles;
         const { mintDelegate, ...othersInherited } = inherited;
-        return {
+        return isRoleMap({
             ...othersInherited,
             noDefault: variantMap<DefaultMinter>({}),
             mintDelegate: variantMap<BasicMintDelegate>({
@@ -40,7 +41,6 @@ class DelegationTestCapo extends DefaultCapo {
                 failsWhenBad: {
                     delegateClass: BasicMintDelegate,
                     validateConfig(args) {
-                        //@ts-expect-error on simple way to enable the test
                         if (args.bad) {
                             //note, this isn't the normal way of validating.
                             //  ... usually it's a good field name whose value is missing or wrong.
@@ -50,7 +50,7 @@ class DelegationTestCapo extends DefaultCapo {
                     },
                 },
             }),
-        };
+        })
     }
 }
 
@@ -215,13 +215,23 @@ describe("Capo", async () => {
                 }
             });
 
-            it.todo("txnCreateDelegateSettings(tcx, role, delegationSettings) returns the delegate link plus a concreted delegate instance", async (context: localTC) => {
+            it("txnCreateDelegateSettings(tcx, role, delegationSettings) returns the delegate link plus a concrete delegate instance", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
-                const t = await h.setup(); 
-                
+                const t = await h.bootstrap();
+
+                const tcx = await t.mkTxnCreatingUuts(
+                    new StellarTxnContext(), 
+                    ["mintDgt"],
+                    undefined,
+                    { "mintDelegate": "mintDgt" }
+                );
+                const {delegate, reqdAddress} = t.txnCreateConfiguredDelegate(tcx, "mintDelegate" );
+                expect(delegate).toBeTruthy();
+                expect(delegate.address.eq(reqdAddress!), "addresses should have matched").toBeTruthy()
             });            
         });
+
         describe("given a configured delegate-link, it can create a ready-to-use Stellar subclass with all the right settings", () => {
             it("txnCreateDelegateLink(tcx, role, partialLink) method returns configured delegate link", async (context: localTC) => {
                 // prettier-ignore

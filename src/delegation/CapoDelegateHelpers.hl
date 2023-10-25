@@ -12,6 +12,22 @@ struct RelativeDelegateLink {
     addrHint: []Address
 }
 
+struct DelegateDatum {
+    capo: Address
+    mph: MintingPolicyHash
+    tn: ByteArray
+}
+
+func acAuthZor(dd: DelegateDatum) -> AssetClass {
+    AssetClass::new(dd.mph, dd.tn)
+}
+
+func tvAuthZor(dd: DelegateDatum) -> Value {
+    Value::new(
+        acAuthZor(dd), 1
+    )
+}
+
 func requiresValidDelegate(
     dd: RelativeDelegateLink, 
     mph: MintingPolicyHash, 

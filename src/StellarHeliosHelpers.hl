@@ -27,6 +27,7 @@ func mkTv(mph: MintingPolicyHash, tn: String, count : Int = 1) -> Value {
     )
 }
 
+
 //! makes a predicate for checking outputs against an expected value
 func outputHas(v: Value, addr: Option[Address]=Option[Address]::None) -> (TxOutput) -> Bool {
     (txo: TxOutput) -> Bool {
@@ -46,4 +47,13 @@ func txHasOutput(tx: Tx, v: Value, addr: Option[Address] = Option[Address]::None
         None => false,
         Some => true
     }
+}
+
+func returnsValueToScript(value : Value, ctx : ScriptContext) -> Bool {
+    input : TxInput = ctx.get_current_input();
+    ctx.tx.outputs.any(
+        outputHas(value,
+           Option[Address]::Some{input.address}
+        )
+    )
 }

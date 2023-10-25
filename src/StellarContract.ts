@@ -597,6 +597,13 @@ export class StellarContract<
         const v = new Value(undefined, assets);
         return v;
     }
+    
+    mkMinAssetValue(tokenId: AssetClass, count: number = 1) {
+        const v = this.mkAssetValue(tokenId, count);
+        const txo = new TxOutput(this.address, this.mkAssetValue(this.configIn!.uut));
+        txo.correctLovelace(this.networkParams);
+        return txo.value;
+    }
 
     mkTokenPredicate(val: Value): tokenPredicate<any>;
     mkTokenPredicate(

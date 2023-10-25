@@ -34,6 +34,7 @@ import {
     PartialParamConfig,
     UutName,
     RelativeDelegateLink,
+    capoDelegateConfig,
 } from "./delegation/RolesAndDelegates.js";
 import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
 import { SeedTxnParams } from "./SeedTxn.js";
@@ -153,13 +154,15 @@ export type CapoBaseConfig = SeedTxnParams & {
 
 //!!! todo: let this be parameterized for more specificity
 export type CapoImpliedSettings = {
-    uut: AssetClass;
+    uutID: AssetClass;
 };
 
 export type hasBootstrappedConfig<CT extends CapoBaseConfig> =
     StellarTxnContext<{
         bootstrappedConfig: CT;
     }>;
+
+type PreconfiguredDelegate<T extends StellarContract<capoDelegateConfig & any>> = Omit<ConfiguredDelegate<T>, "delegate">;
 
 /**
  * Base class for the leader of a set of contracts
@@ -194,7 +197,7 @@ export abstract class Capo<
     extends StellarContract<configType>
     implements hasUutCreator
 {
-    abstract get roles(): RoleMap;
+    abstract get roles(): RoleMap<any>;
     abstract mkFullConfig(baseConfig: CapoBaseConfig): configType;
 
     constructor(args: StellarConstructorArgs<CapoBaseConfig>) {
@@ -602,21 +605,29 @@ export abstract class Capo<
      * @public
      **/
     txnCreateDelegateLink<
-        T extends StellarContract<any>,
+        DT extends StellarContract<capoDelegateConfig>,
         const RN extends string
     >(
         tcx: hasUutContext<RN>,
         roleName: RN,
-        delegateInfo: MinimalDelegateLink<T> = { strategyName: "default" }
-    ): RelativeDelegateLink<T> {
-        const ds = this.txnCreateDelegateSettings(tcx, roleName, delegateInfo);
+        delegateInfo: MinimalDelegateLink<DT> = { strategyName: "default" }
+    ) {
+        const configured = this.txnCreateConfiguredDelegate(tcx, roleName, delegateInfo);
+ 
+        return this.relativeLink(configured)
+    }
+
+    relativeLink<
+        DT extends StellarContract<capoDelegateConfig>
+    >(configured : ConfiguredDelegate<DT>) : RelativeDelegateLink<DT> {
         const {
             strategyName,
             uutName,
             config,
             addressesHint,
             reqdAddress,
-        }: RelativeDelegateLink<T> = ds;
+        }: RelativeDelegateLink<DT> = configured;
+
         return {
             strategyName,
             uutName,
@@ -625,6 +636,7 @@ export abstract class Capo<
             reqdAddress,
         };
     }
+
     /**
      * Returns a complete set of delegate settings, given a delegation role and strategy-selection details
      * @remarks
@@ -635,14 +647,14 @@ export abstract class Capo<
      * See txnCreateDelegateLink for further details.
      * @public
      **/
-    txnCreateDelegateSettings<
-        T extends StellarContract<any>,
+    txnCreateConfiguredDelegate<
+        DT extends StellarContract<any & capoDelegateConfig>,
         const RN extends string
     >(
         tcx: hasUutContext<RN>,
         roleName: RN,
-        delegateInfo: MinimalDelegateLink<T> = { strategyName: "default" }
-    ): ConfiguredDelegate<T> {
+        delegateInfo: MinimalDelegateLink<DT> = { strategyName: "default" }
+    ): ConfiguredDelegate<DT> {
         const { strategyName, config: selectedConfig = {} } = delegateInfo;
 
         const { roles } = this;
@@ -652,7 +664,7 @@ export abstract class Capo<
         const foundStrategies = roles[roleName];
         const selectedStrategy = foundStrategies[
             strategyName
-        ] as VariantStrategy<T>;
+        ] as VariantStrategy<DT>;
         if (!selectedStrategy) {
             let msg = `invalid strategyName '${strategyName}' for role '${roleName}'`;
             if( strategyName == "default") {
@@ -670,36 +682,33 @@ export abstract class Capo<
         const { defaultParams: defaultParamsFromDelegateClass } = delegateClass;
         const scriptParamsFromStrategyVariant =
             selectedStrategy.partialConfig || {};
-        const mergedConfig: ConfigFor<T> = {
+        const mergedConfig: ConfigFor<DT> = {
             ...defaultParamsFromDelegateClass,
             ...(scriptParamsFromStrategyVariant || {}),
             ...selectedConfig,
             ...uutSetting,
-        } as unknown as ConfigFor<T>;
+        } as unknown as ConfigFor<DT>;
 
         debugger;
         //! it validates the net configuration so it can return a working config.
-        const errors: ErrorMap | undefined = validateConfig(mergedConfig);
+        const errors: ErrorMap | undefined = validateConfig && validateConfig(mergedConfig);
         if (errors) {
             throw new DelegateConfigNeeded(
-                "validation errors in contract params:\n" +
+                `validation errors in contract params for ${roleName} '${strategyName}':\n` +
                     errorMapAsString(errors),
                 { errors }
             );
         }
 
-        let delegate: T;
-        const delegateSettings: ConfiguredDelegate<T> = {
+        
+        const delegateSettings: PreconfiguredDelegate<DT> = {
             ...delegateInfo,
-            //@ts-expect-error - chicken/egg with delegate initiatlization.
-            delegate,
             roleName,
             delegateClass,
             uutName: uut.name,
             config: mergedConfig,
         };
-        delegateSettings.delegate = delegate =
-            this.mustGetDelegate(delegateSettings);
+        let delegate: DT = this.mustGetDelegate(delegateSettings);
 
         const reqdAddress = delegate.delegateReqdAddress();
         if (reqdAddress) {
@@ -710,20 +719,23 @@ export abstract class Capo<
                 delegateSettings.addressesHint = addressesHint;
             }
         }
-        return delegateSettings;
+        return {
+            ... delegateSettings,
+            delegate
+        }
     }
 
     mkImpliedUutDetails(uut: UutName): CapoImpliedSettings {
         return {
-            uut: new AssetClass({
+            uutID: new AssetClass({
                 mph: this.mph,
                 tokenName: stringToNumberArray(uut.name),
             }),
         };
     }
 
-    mustGetDelegate<T extends StellarContract<any>, const RN extends string>(
-        configuredDelegate: Omit<ConfiguredDelegate<T>, "delegate">
+    mustGetDelegate<T extends StellarContract<capoDelegateConfig & any>> (
+        configuredDelegate: PreconfiguredDelegate<T>
     ): T {
         const { delegateClass, config } = configuredDelegate;
         try {
@@ -744,7 +756,13 @@ export abstract class Capo<
         }
     }
 
-    async connectDelegateWith<DelegateType extends StellarContract<any>>(
+    async connectDelegateWith<
+        DelegateType extends StellarContract<
+            configBase & capoDelegateConfig >,
+        configType extends (DelegateType extends 
+            StellarContract<infer c> ? c : configBase) = (DelegateType extends 
+                StellarContract<infer c> ? c : configBase)
+    >(
         roleName: string,
         delegateLink: RelativeDelegateLink<DelegateType>
     ): Promise<DelegateType> {
@@ -759,20 +777,29 @@ export abstract class Capo<
         } = delegateLink;
         const selectedStrat = role[
             strategyName
-        ] as unknown as ConfiguredDelegate<DelegateType>;
+         ] as unknown as ConfiguredDelegate<DelegateType>;
         if (!selectedStrat) {
             throw new Error(
                 `mismatched strategyName '${strategyName}' in delegate link for role '${roleName}'`
             );
         }
         const { delegateClass, config: stratSettings } = selectedStrat;
-        const config = {
-            ...stratSettings,
-            ...this.mkImpliedUutDetails(new UutName(roleName, uutName)),
+        const { defaultParams: defaultParamsFromDelegateClass } = delegateClass;
+        const implied = this.mkImpliedUutDetails(new UutName(roleName, uutName))
+        const {
+            uutID
+        } = implied
+
+        //@ts-expect-error because this stack of generically partial
+        //  ... config elements isn't recognized as adding up to a full config type.
+        const config : configType = {
+            ...defaultParamsFromDelegateClass,
+            ...stratSettings,            
             reqdAddress,
             addressesHint,
             ...linkedConfig,
-        };
+            uutID
+        }
 
         const { setup } = this;
         return new delegateClass({ setup, config });
