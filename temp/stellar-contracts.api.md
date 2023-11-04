@@ -20,6 +20,7 @@ import { ReqtsMap as ReqtsMap_3 } from './Requirements.js';
 import { RoleInfo as RoleInfo_2 } from './delegation/RolesAndDelegates.js';
 import { SimpleWallet } from '@hyperionbt/helios';
 import { TestContext } from 'vitest';
+import { textToBytes } from '@hyperionbt/helios';
 import { Tx } from '@hyperionbt/helios';
 import { TxId } from '@hyperionbt/helios';
 import { TxInput } from '@hyperionbt/helios';
@@ -32,19 +33,19 @@ import { ValidatorHash } from '@hyperionbt/helios';
 import { Value } from '@hyperionbt/helios';
 import { Wallet } from '@hyperionbt/helios';
 
-// @public (undocumented)
+// @public
 export const Activity: {
     partialTxn(proto: any, thingName: any, descriptor: any): any;
     redeemer(proto: any, thingName: any, descriptor: any): any;
     redeemerData(proto: any, thingName: any, descriptor: any): any;
 };
 
-// @public (undocumented)
+// @public
 export const ADA = 1000000n;
 
 // Warning: (ae-forgotten-export) The symbol "stellarTestHelperSubclass" needs to be exported by the entry point index.d.ts
 //
-// @public (undocumented)
+// @public
 export function addTestContext<SC extends StellarContract<any>, P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never>(context: StellarTestContext<any, SC>, TestHelperClass: stellarTestHelperSubclass<SC>, params?: P): Promise<void>;
 
 // @public
@@ -65,10 +66,10 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     protected usingAuthority(): isActivity;
 }
 
-// @public (undocumented)
+// @public
 export type anyDatumProps = Record<string, any>;
 
-// @public (undocumented)
+// @public
 export function assetsAsString(v: any): string;
 
 // @public
@@ -77,7 +78,7 @@ export abstract class AuthorityPolicy<T extends capoDelegateConfig = capoDelegat
 
 // Warning: (ae-forgotten-export) The symbol "MintDelegateArgs" needs to be exported by the entry point index.d.ts
 //
-// @public (undocumented)
+// @public
 export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     // (undocumented)
     contractSource(): any;
@@ -157,7 +158,6 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     mkImpliedDelegationDetails(uut: UutName): DelegationDetail;
     // (undocumented)
     mkTxnCreatingUuts<const purposes extends string, existingTcx extends StellarTxnContext<any>, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput, roles?: RM): Promise<existingTcx & hasUutContext<ROLES | purposes>>;
-    // (undocumented)
     abstract mkTxnMintCharterToken<TCX extends StellarTxnContext>(charterDatumArgs: Partial<charterDatumType>, existingTcx?: TCX): Promise<never | (TCX & hasBootstrappedConfig<CapoBaseConfig & configType>)>;
     // (undocumented)
     mockMinter?: minterType;
@@ -211,7 +211,7 @@ export type capoDelegateConfig = paramsBase & {
     addrHint: Address[];
 };
 
-// @public (undocumented)
+// @public
 export abstract class CapoTestHelper<SC extends Capo<DefaultMinter & MinterBaseMethods, CDT, CT>, CDT extends anyDatumArgs = SC extends Capo<DefaultMinter, infer iCDT> ? iCDT : anyDatumArgs, //prettier-ignore
 CT extends CapoBaseConfig = SC extends Capo<any, any, infer iCT> ? iCT : never> extends StellarTestHelper<SC> {
     // Warning: (ae-forgotten-export) The symbol "MinimalDefaultCharterDatumArgs" needs to be exported by the entry point index.d.ts
@@ -237,7 +237,7 @@ export type ConfiguredDelegate<DT extends StellarDelegate<any>> = {
     config: ConfigFor<DT>;
 } & RelativeDelegateLink<DT>;
 
-// @public (undocumented)
+// @public
 export function datum(proto: any, thingName: any, descriptor: any): any;
 
 // @public
@@ -320,7 +320,7 @@ export type DefaultCharterDatumArgs = {
     mintDelegateLink: RelativeDelegateLink<BasicMintDelegate>;
 };
 
-// @public (undocumented)
+// @public
 export class DefaultMinter extends StellarContract<BasicMinterParams> implements MinterBaseMethods {
     // (undocumented)
     get charterTokenAsValue(): Value;
@@ -362,13 +362,13 @@ export function defineRole<const UUTP extends string, SC extends StellarContract
 // @public
 export function delegateRoles<const RM extends RoleMap<any>>(roleMap: RM): RoleMap<RM>;
 
-// @public (undocumented)
+// @public
 export function dumpAny(x: Tx | StellarTxnContext): string | undefined;
 
 // @public
 export type ErrorMap = Record<string, string[]>;
 
-// @public (undocumented)
+// @public
 export function errorMapAsString(em: ErrorMap, prefix?: string): string;
 
 // @public
@@ -393,14 +393,14 @@ export namespace hasReqts {
 // @public
 export type hasUutContext<uutEntries extends string> = StellarTxnContext<hasAllUuts<uutEntries>>;
 
-// @public (undocumented)
+// @public
 export type HeliosModuleSrc = string & {
     srcFile: string;
     purpose: string;
     moduleName: string;
 };
 
-// @public (undocumented)
+// @public
 export function heliosRollupLoader(opts?: {
     include: string;
     exclude: never[];
@@ -416,7 +416,7 @@ export function heliosRollupLoader(opts?: {
 
 // Warning: (ae-forgotten-export) The symbol "DatumInline" needs to be exported by the entry point index.d.ts
 //
-// @public (undocumented)
+// @public
 export type InlineDatum = ReturnType<typeof DatumInline>;
 
 // @public
@@ -424,7 +424,7 @@ export type isActivity = {
     redeemer: UplcDataValue | UplcData;
 };
 
-// @public (undocumented)
+// @public
 export function lovelaceToAda(l: bigint | number): string;
 
 // @public
@@ -434,22 +434,22 @@ export type MintUutActivityArgs = {
     purposes: string[];
 };
 
-// @public (undocumented)
+// @public
 export function mkHeliosModule(src: string, filename: string): HeliosModuleSrc;
 
-// @public (undocumented)
+// @public
 export function mkUutValuesEntries(uuts: UutName[]): valuesEntry[];
 
 // @public (undocumented)
 export function mkUutValuesEntries(uuts: uutPurposeMap<any>): valuesEntry[];
 
-// @public (undocumented)
+// @public
 export function mkValuesEntry(tokenName: string | number[], count: bigint): valuesEntry;
 
-// @public (undocumented)
+// @public
 export type paramsBase = Record<string, any>;
 
-// @public (undocumented)
+// @public
 export function partialTxn(proto: any, thingName: any, descriptor: any): any;
 
 // @public
@@ -481,7 +481,7 @@ export type RoleMap<KR extends Record<string, RoleInfo<any, any, any, any>>> = {
     [roleName in keyof KR]: KR[roleName];
 };
 
-// @public (undocumented)
+// @public
 export type SeedTxnParams = {
     seedTxn: TxId;
     seedIndex: bigint;
@@ -654,14 +654,14 @@ export abstract class StellarDelegate<CT extends paramsBase & capoDelegateConfig
     txnRetireAuthorityToken<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<StellarTxnContext<{}>>;
 }
 
-// @public (undocumented)
+// @public
 export type stellarSubclass<S extends StellarContract<CT>, CT extends paramsBase = S extends StellarContract<infer iCT> ? iCT : paramsBase> = (new (args: StellarConstructorArgs<CT>) => S & StellarContract<CT>) & {
     defaultParams: Partial<CT>;
 };
 
 // Warning: (ae-forgotten-export) The symbol "canHaveRandomSeed" needs to be exported by the entry point index.d.ts
 //
-// @public (undocumented)
+// @public
 export interface StellarTestContext<HTH extends StellarTestHelper<SC>, SC extends StellarContract<any> = HTH extends StellarTestHelper<infer iSC> ? iSC : never> extends canHaveRandomSeed, TestContext {
     // (undocumented)
     h: HTH;
@@ -673,7 +673,7 @@ export interface StellarTestContext<HTH extends StellarTestHelper<SC>, SC extend
     get strella(): SC;
 }
 
-// @public (undocumented)
+// @public
 export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     constructor(config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup);
     // Warning: (ae-forgotten-export) The symbol "actorMap" needs to be exported by the entry point index.d.ts
@@ -741,7 +741,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
 
 // Warning: (ae-forgotten-export) The symbol "noState" needs to be exported by the entry point index.d.ts
 //
-// @public (undocumented)
+// @public
 export class StellarTxnContext<S = noState> {
     constructor(state?: Partial<S>);
     // (undocumented)
@@ -790,31 +790,33 @@ export class StellarTxnContext<S = noState> {
 // @internal
 export type strategyValidation = ErrorMap | undefined;
 
-// @public (undocumented)
-export function stringToNumberArray(str: string): number[];
+// @public
+export const stringToNumberArray: typeof textToBytes;
 
-// @public (undocumented)
+// @public
 export type tokenNamesOrValuesEntry = [string | number[], bigint];
 
-// @public (undocumented)
+// @public
 export function txAsString(tx: Tx): string;
 
-// @public (undocumented)
+// @public
 export function txInputAsString(x: TxInput, prefix?: string): string;
 
-// @public (undocumented)
+// @public
 export function txn(proto: any, thingName: any, descriptor: any): any;
 
-// @public (undocumented)
+// @public
 export function txOutputAsString(x: TxOutput, prefix?: string): string;
 
-// @public (undocumented)
+// Warning: (ae-internal-missing-underscore) The name "utxoAsString" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export function utxoAsString(x: TxInput, prefix?: string): string;
 
-// @public (undocumented)
+// @public
 export type utxoPredicate = ((u: TxInput) => TxInput | undefined) | ((u: TxInput) => boolean) | ((u: TxInput) => boolean | undefined);
 
-// @public (undocumented)
+// @public
 export function utxosAsString(utxos: TxInput[], joiner?: string): string;
 
 // @public
@@ -832,10 +834,10 @@ export type uutPurposeMap<unionPurpose extends string> = {
     [purpose in unionPurpose]: UutName;
 };
 
-// @public (undocumented)
+// @public
 export function valueAsString(v: Value): string;
 
-// @public (undocumented)
+// @public
 export type valuesEntry = [number[], bigint];
 
 // @public

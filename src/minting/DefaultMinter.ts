@@ -48,6 +48,14 @@ export type BasicMinterParams = SeedTxnParams & {
     capo: DefaultCapo<any, any,any>
 }
 
+/**
+ * A basic minting validator serving a Capo's family of contract scripts
+ * @remarks
+ * 
+ * Mints charter tokens based on seed UTxOs.  Can also mint UUTs and 
+ * other tokens as approved by the Capo's minting delegate.
+* @public
+ **/
 export class DefaultMinter
     extends StellarContract<BasicMinterParams>
     implements MinterBaseMethods

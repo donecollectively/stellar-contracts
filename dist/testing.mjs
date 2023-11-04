@@ -1,5 +1,5 @@
 import * as helios from '@hyperionbt/helios';
-import { Address, Tx, Value, TxOutput, ConstrData, AssetClass, MintingPolicyHash, TxInput, Assets, Program, NetworkParams, Crypto, NetworkEmulator } from '@hyperionbt/helios';
+import { Address, Tx, textToBytes, Value, TxOutput, ConstrData, AssetClass, MintingPolicyHash, TxInput, Assets, Program, NetworkParams, Crypto, NetworkEmulator } from '@hyperionbt/helios';
 
 function hexToPrintableString(hexStr) {
   let result = "";
@@ -295,11 +295,7 @@ class StellarTxnContext {
   }
 }
 
-function stringToNumberArray(str) {
-  let encoder = new TextEncoder();
-  let byteArray = encoder.encode(str);
-  return [...byteArray].map((x) => parseInt(x.toString()));
-}
+const stringToNumberArray = textToBytes;
 
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -509,9 +505,9 @@ class StellarContract {
   /**
    * Returns all the types exposed by the contract script
    * @remarks
-   * 
+   *
    * Passed directly from Helios; property names match contract's defined type names
-   * 
+   *
    * @public
    **/
   get onChainTypes() {
@@ -528,14 +524,14 @@ class StellarContract {
     return "Datum";
   }
   /**
-  * returns the on-chain type for datum
-  * @remarks
-  * 
-  * returns the on-chain enum used for attaching data (or data hashes) to contract utxos
-  * the returned type (and its enum variants) are suitable for off-chain txn-creation
-  * override `get scriptDatumName()` if needed to match your contract script.
-  * @public
-  **/
+   * returns the on-chain type for datum
+   * @remarks
+   *
+   * returns the on-chain enum used for attaching data (or data hashes) to contract utxos
+   * the returned type (and its enum variants) are suitable for off-chain txn-creation
+   * override `get scriptDatumName()` if needed to match your contract script.
+   * @public
+   **/
   get onChainDatumType() {
     const { scriptDatumName: onChainDatumName } = this;
     const { [onChainDatumName]: DatumType } = this.scriptProgram.types;
@@ -571,7 +567,9 @@ class StellarContract {
       const { scriptActivitiesName: onChainActivitiesName } = this;
       throw new Error(
         `$${this.constructor.name}: activity name mismatch ${onChainActivitiesName}::${activityName}''
-   known activities in this script: ${Object.keys(this.onChainActivitiesType).join(", ")}`
+   known activities in this script: ${Object.keys(
+          this.onChainActivitiesType
+        ).join(", ")}`
       );
     }
     return activityType;
@@ -637,12 +635,22 @@ class StellarContract {
         const foundIndex = uplcData.index;
         const { dataDefinition: enumDataDef, constrIndex } = enumVariant;
         if (!(uplcData instanceof ConstrData))
-          throw new Error(`uplcData mismatch - no constrData, expected constData#${constrIndex}`);
+          throw new Error(
+            `uplcData mismatch - no constrData, expected constData#${constrIndex}`
+          );
         if (!(foundIndex == constrIndex))
-          throw new Error(`uplcData expected constrData#${constrIndex}, got #${foundIndex}`);
-        return this.readUplcEnumVariant(uplcType, enumDataDef, uplcData);
+          throw new Error(
+            `uplcData expected constrData#${constrIndex}, got #${foundIndex}`
+          );
+        return this.readUplcEnumVariant(
+          uplcType,
+          enumDataDef,
+          uplcData
+        );
       }
-      throw new Error(`can't determine how to parse UplcDatum without 'fieldNames'.  Tried enum`);
+      throw new Error(
+        `can't determine how to parse UplcDatum without 'fieldNames'.  Tried enum`
+      );
     }
     return Object.fromEntries(
       await Promise.all(

@@ -50393,11 +50393,7 @@ function mkUutValuesEntries(uuts) {
   const uutNs = Array.isArray(uuts) ? uuts : Object.values(uuts);
   return uutNs.map((uut) => mkValuesEntry(uut.name, BigInt(1)));
 }
-function stringToNumberArray(str) {
-  let encoder = new TextEncoder();
-  let byteArray = encoder.encode(str);
-  return [...byteArray].map((x) => parseInt(x.toString()));
-}
+const stringToNumberArray = textToBytes;
 function mkValuesEntry(tokenName, count) {
   const tnBytes = Array.isArray(tokenName) ? tokenName : stringToNumberArray(tokenName);
   return [tnBytes, count];
@@ -50726,10 +50722,28 @@ var __decorateClass$6 = (decorators, target, key, kind) => {
   return result;
 };
 const Activity = {
+  /**
+   * Decorates a partial-transaction function that spends a contract-locked UTxO using a specific activity ("redeemer")
+   * @remarks
+   *
+   * activity-linked transaction-partial functions must follow the txn\{...\} 
+   * and active-verb ("ing") naming conventions.  `txnRetiringDeletation`,
+   * `txnModifyingVote` and `txnWithdrawingStake` would be examples
+   * of function names following this guidance.
+   *
+   * @public
+   **/
   partialTxn(proto, thingName, descriptor) {
     needsActiveVerb(thingName);
     return partialTxn(proto, thingName, descriptor);
   },
+  /**
+   * Decorates a factory-function for creating tagged redeemer data for a specific on-chain activity
+   * @remarks
+   * 
+   * The factory function should follow an active-verb convention by including "ing" in the name of the factory function
+   * @public
+   **/
   redeemer(proto, thingName, descriptor) {
     needsActiveVerb(thingName, true);
     return Activity.redeemerData(proto, thingName, descriptor);
@@ -50966,9 +50980,9 @@ class StellarContract {
   /**
    * Returns all the types exposed by the contract script
    * @remarks
-   * 
+   *
    * Passed directly from Helios; property names match contract's defined type names
-   * 
+   *
    * @public
    **/
   get onChainTypes() {
@@ -50985,14 +50999,14 @@ class StellarContract {
     return "Datum";
   }
   /**
-  * returns the on-chain type for datum
-  * @remarks
-  * 
-  * returns the on-chain enum used for attaching data (or data hashes) to contract utxos
-  * the returned type (and its enum variants) are suitable for off-chain txn-creation
-  * override `get scriptDatumName()` if needed to match your contract script.
-  * @public
-  **/
+   * returns the on-chain type for datum
+   * @remarks
+   *
+   * returns the on-chain enum used for attaching data (or data hashes) to contract utxos
+   * the returned type (and its enum variants) are suitable for off-chain txn-creation
+   * override `get scriptDatumName()` if needed to match your contract script.
+   * @public
+   **/
   get onChainDatumType() {
     const { scriptDatumName: onChainDatumName } = this;
     const { [onChainDatumName]: DatumType } = this.scriptProgram.types;
@@ -51028,7 +51042,9 @@ class StellarContract {
       const { scriptActivitiesName: onChainActivitiesName } = this;
       throw new Error(
         `$${this.constructor.name}: activity name mismatch ${onChainActivitiesName}::${activityName}''
-   known activities in this script: ${Object.keys(this.onChainActivitiesType).join(", ")}`
+   known activities in this script: ${Object.keys(
+          this.onChainActivitiesType
+        ).join(", ")}`
       );
     }
     return activityType;
@@ -51094,12 +51110,22 @@ class StellarContract {
         const foundIndex = uplcData.index;
         const { dataDefinition: enumDataDef, constrIndex } = enumVariant;
         if (!(uplcData instanceof ConstrData))
-          throw new Error(`uplcData mismatch - no constrData, expected constData#${constrIndex}`);
+          throw new Error(
+            `uplcData mismatch - no constrData, expected constData#${constrIndex}`
+          );
         if (!(foundIndex == constrIndex))
-          throw new Error(`uplcData expected constrData#${constrIndex}, got #${foundIndex}`);
-        return this.readUplcEnumVariant(uplcType, enumDataDef, uplcData);
+          throw new Error(
+            `uplcData expected constrData#${constrIndex}, got #${foundIndex}`
+          );
+        return this.readUplcEnumVariant(
+          uplcType,
+          enumDataDef,
+          uplcData
+        );
       }
-      throw new Error(`can't determine how to parse UplcDatum without 'fieldNames'.  Tried enum`);
+      throw new Error(
+        `can't determine how to parse UplcDatum without 'fieldNames'.  Tried enum`
+      );
     }
     return Object.fromEntries(
       await Promise.all(
@@ -52164,7 +52190,7 @@ class Capo extends StellarContract {
    * Returns a complete set of delegate settings, given a delegation role and strategy-selection details
    * @remarks
    *
-   * Behaves exactly like (and provides the core implementation of) {@link txnCreateDelegateLink},
+   * Behaves exactly like (and provides the core implementation of) {@link Capo.txnCreateDelegateLink | txnCreateDelegateLink()},
    * returning additional `roleName` and `delegateClass`, to conform with the DelegateSettings type.
    *
    * See txnCreateDelegateLink for further details.
@@ -52531,7 +52557,7 @@ class StellarDelegate extends StellarContract {
    * calls the delegate-specific DelegateAddsAuthorityToken() method,
    * with the uut found by DelegateMustFindAuthorityToken().
    *
-   * returns the token back to the contract using {@link txnReceiveAuthorityToken}
+   * returns the token back to the contract using {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
    * @param tcx - transaction context
    * @public
    **/
@@ -52614,7 +52640,7 @@ class StellarDelegate extends StellarContract {
    * in the delegate's contract address.
    *
    * It's possible to have a delegate that doesn't have an on-chain contract script.
-   * ... in this case, the delegate should use this.{@link tvAuthorityToken}() and a
+   * ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a
    * delegate-specific heuristic to locate the needed token.  It might consult the
    * addrHint in its `configIn` or another technique for resolution.
    *
@@ -52635,10 +52661,10 @@ class StellarDelegate extends StellarContract {
    * @remarks
    * Given a delegate already configured by a Capo, this method implements
    * transaction-building logic needed to include the UUT into the `tcx`.
-   * the `utxo` is discovered by {@link DelegateMustFindAuthorityToken}()
+   * the `utxo` is discovered by {@link StellarDelegate.DelegateMustFindAuthorityToken | DelegateMustFindAuthorityToken() }
    * 
    * The default implementation adds the `uutxo` to the transaction 
-   * using {@link activityAuthorizing}().
+   * using {@link StellarDelegate.activityAuthorizing | activityAuthorizing() }.
    * 
    * The off-chain code shouldn't need to check the details; it can simply
    * arrange the details properly and spend the delegate's authority token, 
@@ -52997,9 +53023,10 @@ class BasicMintDelegate extends StellarDelegate {
    * Adds a mint-delegate-specific authority token to the txn output
    * @remarks
    * 
-   * Implements {@link StellarDelegate.txnReceiveAuthorityToken}.
+   * Implements {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }.
    * 
-   * Uses {@link mkDelegationDatum} to make the inline Datum for the output.
+   * Uses {@link BasicMintDelegate.mkDelegationDatum | mkDelegationDatum()} to make the inline Datum for the output.
+   * @see {@link StellarDelegate.txnReceiveAuthorityToken | baseline txnReceiveAuthorityToken()'s doc }
    * @public
    **/
   async txnReceiveAuthorityToken(tcx, tokenValue, fromFoundUtxo) {

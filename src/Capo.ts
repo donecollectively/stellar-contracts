@@ -163,7 +163,7 @@ export type CapoBaseConfig = SeedTxnParams & {
  * should be captured for reproducibility, and this type allows the bootstrap 
  * transaction to expose that configuration.
  * 
- * Capo's {@link Capo.mkTxnMintCharterToken}() returns a transaction context 
+ * Capo's {@link Capo.mkTxnMintCharterToken | mkTxnMintCharterToken()} returns a transaction context 
  * of this type, with `state.bootstrappedConfig`;
  * @public
  **/
@@ -336,6 +336,19 @@ export abstract class Capo<
         return [StellarHeliosHelpers, CapoDelegateHelpers, CapoMintHelpers];
     }
 
+    /**
+     * Initiates a seeding transaction, creating a new Capo contract of this type
+     * @remarks
+     *
+     * The returned transaction context has `state.bootstrappedConfig` for 
+     * capturing the details for reproducing the contract's settings and on-chain 
+     * address.
+     * 
+     * @param charterDatumArgs - initial details for the charter datum
+     * @param tcx - any existing transaction context
+     * @typeParam TCX - inferred type of a provided transaction context
+     * @public
+     **/
     abstract mkTxnMintCharterToken<TCX extends StellarTxnContext>(
         charterDatumArgs: Partial<charterDatumType>,
         existingTcx?: TCX
@@ -686,7 +699,7 @@ export abstract class Capo<
      * Returns a complete set of delegate settings, given a delegation role and strategy-selection details
      * @remarks
      *
-     * Behaves exactly like (and provides the core implementation of) {@link txnCreateDelegateLink},
+     * Behaves exactly like (and provides the core implementation of) {@link Capo.txnCreateDelegateLink | txnCreateDelegateLink()},
      * returning additional `roleName` and `delegateClass`, to conform with the DelegateSettings type.
      *
      * See txnCreateDelegateLink for further details.

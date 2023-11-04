@@ -35,7 +35,7 @@ type tokenPredicate<tokenBearer extends canHaveToken> = ((
 ) => tokenBearer | undefined) & { value: Value };
 
 /**
- * a type for redeemer/activity-factory functions declared with @Activity.redeemer
+ * a type for redeemer/activity-factory functions declared with \@Activity.redeemer
  *
  * @public
  */
@@ -55,6 +55,18 @@ export type utxoInfo = {
     minAdaAmount: bigint;
 };
 
+/**
+ * Type for the Class that constructs to a given type
+ * @remarks
+ *
+ * Type of the matching literal class
+ *
+ * Typescript should make this pattern easier
+ *
+ * @typeParam S - the type of objects of this class
+ * @typeParam CT - inferred type of the constructor args for the class
+ * @public
+ **/
 export type stellarSubclass<
     S extends StellarContract<CT>,
     CT extends configBase = S extends StellarContract<infer iCT>
@@ -64,14 +76,44 @@ export type stellarSubclass<
     defaultParams: Partial<CT>;
 };
 
+/**
+ * Properties for Datum structures for on-chain scripts
+ * @public
+ **/
 export type anyDatumProps = Record<string, any>;
+/**
+ * Configuration details for StellarContract classes
+ * @public
+ **/
 export type configBase = Record<string, any>;
 
+/**
+ * Decorators for on-chain activity (redeemer) factory functions
+ * @public
+ **/
 export const Activity = {
+    /**
+     * Decorates a partial-transaction function that spends a contract-locked UTxO using a specific activity ("redeemer")
+     * @remarks
+     *
+     * activity-linked transaction-partial functions must follow the txn\{...\} 
+     * and active-verb ("ing") naming conventions.  `txnRetiringDeletation`,
+     * `txnModifyingVote` and `txnWithdrawingStake` would be examples
+     * of function names following this guidance.
+     *
+     * @public
+     **/
     partialTxn(proto, thingName, descriptor) {
         needsActiveVerb(thingName);
         return partialTxn(proto, thingName, descriptor);
     },
+    /**
+     * Decorates a factory-function for creating tagged redeemer data for a specific on-chain activity
+     * @remarks
+     * 
+     * The factory function should follow an active-verb convention by including "ing" in the name of the factory function
+     * @public
+     **/
     redeemer(proto, thingName, descriptor) {
         needsActiveVerb(thingName, !!"okwhatever");
         return Activity.redeemerData(proto, thingName, descriptor);
@@ -100,6 +142,18 @@ function needsActiveVerb(thingName: string, okWorkaround?: boolean) {
     }
 }
 
+/**
+ * Decorates datum-building functions
+ * @remarks
+ *
+ * function names must follow the mkDatum... convention.
+ *
+ * The function should accept a single argument with input type
+ * that feels Typescripty, and that can be fit to the on-chain type of
+ * the underlying Datum variant of the given name.
+ *
+ * @public
+ **/
 export function datum(proto, thingName, descriptor) {
     // console.log("+datum", proto.constructor.name, thingName || "none", descriptor.value.name )
     if (!thingName.match(/^mkDatum/)) {
@@ -110,6 +164,13 @@ export function datum(proto, thingName, descriptor) {
     return descriptor;
 }
 
+/**
+ * Decorates functions that can construct a new transaction context for a specific use-case
+ * @remarks
+ *
+ * function names must follow the mkTxn... convention.
+ * @public
+ **/
 export function txn(proto, thingName, descriptor) {
     // console.log("+datum", proto.constructor.name, thingName || "none", descriptor.value.name )
     if (!thingName.match(/^mkTxn/)) {
@@ -120,6 +181,24 @@ export function txn(proto, thingName, descriptor) {
     return descriptor;
 }
 
+/**
+ * decorates functions that increment a transaction by adding needed details for a use-case
+ * @remarks
+ *
+ * Function names must follow the txn\{...\} naming convention. Typical partial-transaction names
+ * may describe the semantics of how the function augments the transaction.
+ * `txnAddSignatures` or `txnReceivePayment` could be example names following
+ * this guidance
+ *
+ * Partial transactions should have a \<TCX extends StellarTxnContext\<...\>\> type parameter,
+ * matched to its first function argument, and should return a type extending that same TCX,
+ * possibly with additional StellarTxnContext\<...\> type info.
+ *
+ * The TCX constraint can specify key requirements for an existing transaction context when
+ * that's relevant.
+ *
+ * @public
+ **/
 export function partialTxn(proto, thingName, descriptor) {
     // console.log("+datum", proto.constructor.name, thingName || "none", descriptor.value.name )
     if (!thingName.match(/^txn[A-Z]/)) {
@@ -208,6 +287,13 @@ export type StellarConstructorArgs<CT extends configBase> = {
     partialConfig?: Partial<CT>;
 };
 
+/**
+ * a function that can filter txInputs for coin-selection
+ * @remarks
+ *
+ * short form: "returns truthy" if the input is matchy for the context
+ * @public
+ **/
 export type utxoPredicate =
     | ((u: TxInput) => TxInput | undefined)
     | ((u: TxInput) => boolean)
@@ -300,7 +386,7 @@ export class StellarContract<
     compiledScript!: UplcProgram; // initialized in loadProgramScript
 
     get datumType() {
-        return this.onChainDatumType
+        return this.onChainDatumType;
     }
     /**
      * @internal
@@ -358,7 +444,7 @@ export class StellarContract<
      * @public
      * @param tcx - transaction context
      * @param value - a value already having minUtxo calculated
-     * @param datum - inline datum 
+     * @param datum - inline datum
      **/
     //! adds the indicated Value to the transaction;
     //  ... EXPECTS  the value to already have minUtxo calculated on it.
@@ -429,9 +515,9 @@ export class StellarContract<
     /**
      * Returns all the types exposed by the contract script
      * @remarks
-     * 
+     *
      * Passed directly from Helios; property names match contract's defined type names
-     * 
+     *
      * @public
      **/
     get onChainTypes() {
@@ -450,15 +536,15 @@ export class StellarContract<
     }
 
     /**
- * returns the on-chain type for datum
- * @remarks
- * 
- * returns the on-chain enum used for attaching data (or data hashes) to contract utxos
- * the returned type (and its enum variants) are suitable for off-chain txn-creation
- * override `get scriptDatumName()` if needed to match your contract script.
- * @public
- **/
-get onChainDatumType() {
+     * returns the on-chain type for datum
+     * @remarks
+     *
+     * returns the on-chain enum used for attaching data (or data hashes) to contract utxos
+     * the returned type (and its enum variants) are suitable for off-chain txn-creation
+     * override `get scriptDatumName()` if needed to match your contract script.
+     * @public
+     **/
+    get onChainDatumType() {
         const { scriptDatumName: onChainDatumName } = this;
         const { [onChainDatumName]: DatumType } = this.scriptProgram!.types;
         return DatumType;
@@ -496,11 +582,13 @@ get onChainDatumType() {
         if (!activityType) {
             const { scriptActivitiesName: onChainActivitiesName } = this;
             throw new Error(
-                `$${this.constructor.name}: activity name mismatch ${onChainActivitiesName}::${activityName}''\n`+
-                `   known activities in this script: ${Object.keys(this.onChainActivitiesType).join(", ")}`
+                `$${this.constructor.name}: activity name mismatch ${onChainActivitiesName}::${activityName}''\n` +
+                    `   known activities in this script: ${Object.keys(
+                        this.onChainActivitiesType
+                    ).join(", ")}`
             );
         }
-        return activityType
+        return activityType;
     }
 
     async readDatum<DPROPS extends anyDatumProps>(
@@ -551,25 +639,29 @@ get onChainDatumType() {
         );
     }
 
-    private async readUplcEnumVariant(uplcType: any, enumDataDef: any, uplcData: & ConstrData & UplcData) {
-        const fieldNames : string[] = enumDataDef.fieldNames;
-        debugger
+    private async readUplcEnumVariant(
+        uplcType: any,
+        enumDataDef: any,
+        uplcData: ConstrData & UplcData
+    ) {
+        const fieldNames: string[] = enumDataDef.fieldNames;
+        debugger;
         //@ts-expect-error TS doesn't understand this enum variant data
-        const {fields} = uplcData;
+        const { fields } = uplcData;
         return Object.fromEntries(
             await Promise.all(
                 fieldNames.map(async (fn, i) => {
-                    const fieldData = fields[i]
+                    const fieldData = fields[i];
                     const fieldType = enumDataDef.fields[i].type;
                     const value = await this.readUplcField(
                         fn,
                         fieldType,
                         fieldData
                     );
-                    return [fn, value]
+                    return [fn, value];
                 })
             )
-        )
+        );
     }
 
     private async readUplcDatum(uplcType: any, uplcData: UplcData) {
@@ -579,15 +671,27 @@ get onChainDatumType() {
             if (enumVariant) {
                 //@ts-expect-error because TS doesn't grok ConstrData here
                 const foundIndex = uplcData.index;
-                const {dataDefinition: enumDataDef, constrIndex} = enumVariant
-                if (! (uplcData instanceof ConstrData)) throw new Error(`uplcData mismatch - no constrData, expected constData#${constrIndex}`)
-                if (! (foundIndex == constrIndex)) throw new Error(`uplcData expected constrData#${constrIndex}, got #${foundIndex}`)
+                const { dataDefinition: enumDataDef, constrIndex } =
+                    enumVariant;
+                if (!(uplcData instanceof ConstrData))
+                    throw new Error(
+                        `uplcData mismatch - no constrData, expected constData#${constrIndex}`
+                    );
+                if (!(foundIndex == constrIndex))
+                    throw new Error(
+                        `uplcData expected constrData#${constrIndex}, got #${foundIndex}`
+                    );
 
-                return this.readUplcEnumVariant(uplcType, enumDataDef, uplcData)
+                return this.readUplcEnumVariant(
+                    uplcType,
+                    enumDataDef,
+                    uplcData
+                );
             }
-            throw new Error(`can't determine how to parse UplcDatum without 'fieldNames'.  Tried enum`);
+            throw new Error(
+                `can't determine how to parse UplcDatum without 'fieldNames'.  Tried enum`
+            );
         }
-
 
         // const heliosTypes = Object.fromEntries(
         //     fieldNames.map((fn) => {
@@ -1061,7 +1165,7 @@ get onChainDatumType() {
                 //    ... with elided error messages that don't support negative-testing very well
             } catch (e) {
                 console.log("FAILED submitting:", tcx.dump());
-                debugger
+                debugger;
                 throw e;
             }
             for (const s of willSign) {
@@ -1362,7 +1466,7 @@ get onChainDatumType() {
 
         const found = filtered.find(predicate);
         if (found) {
-            console.log("  <- found:"+ utxosAsString([found]));
+            console.log("  <- found:" + utxosAsString([found]));
         } else {
             console.log("  (not found)");
         }

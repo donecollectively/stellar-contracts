@@ -29,6 +29,14 @@ import {
     enhancedNetworkParams,
 } from "./types.js";
 
+/**
+ * Base class for test-helpers on generic Stellar contracts
+ * @remarks
+ * 
+ * NOTE: DefaultCapoTestHelper is likely to be a better fit for typical testing needs and typical contract-development scenarios.
+ * Use this class for specific unit-testing needs not sufficiently served by integration-testing on a Capo.
+ * @public
+ **/
 export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     state: Record<string, any>;
     abstract get stellarClass(): stellarSubclass<SC, any>;

@@ -165,16 +165,16 @@ export type HeldAssetsArgs = {
  * It MUST export Datum and Activity enums, with variants matching those in the provided 
  * baseline/unspecializedCapo module.  
  * 
- * A customized Datum::validateSpend(self, ctx) -> Bool method
+ * A customized Datum::validateSpend(self, ctx) -\> Bool method
  * should be defined, even if it doesn't put constraints on spending Datum.  
  * If it does choose to add hard constraints, note that this method doesn't
  * have access to the Activity ("redeemer") type.  It's a simple place to express simple
  * constraints on spending a custom Datum that only needs one 'spendingDatum' 
  * activity.  
  * 
- * A customized Activity: allowActivity(self, datum, ctx) -> Bool method
+ * A customized Activity: allowActivity(self, datum, ctx) -\> Bool method
  * has access to both the redeemer (in self), as well as Datum and the transaction 
- * context.  In this method, use self.switch{...} to implement activity-specific
+ * context.  In this method, use self.switch\{...\} to implement activity-specific
  * validations.
 * 
  * See the {@link Capo | Capo base class} and {@link StellarContract} for addition context.
@@ -429,15 +429,10 @@ export class DefaultCapo<
         return tcx
     }
 
-    /**
-     * Initiates a seeding transaction, creating a new Capo contract of this type
-     * @remarks
-     *
-     * detailed remarks
-     * @param ‹pName› - descr
-     * @typeParam TCX - 
-     * @public
-     **/
+/**
+ * {@inheritdoc Capo.mkTxnMintCharterToken}
+* @public
+ **/
     @txn
     //@ts-expect-error - typescript can't seem to understand that
     //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again

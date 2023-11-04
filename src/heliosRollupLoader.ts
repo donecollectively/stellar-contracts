@@ -1,6 +1,10 @@
 import path from "path";
 import { createFilter } from "rollup-pluginutils";
 
+/**
+ * Rollup loader for Helios source files
+ * @public
+ **/
 export function heliosRollupLoader(
     opts = {
         include: "**/*.hl",

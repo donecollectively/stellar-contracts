@@ -38,6 +38,13 @@ type MintDelegateDatumProps = {
     maxMintSize: bigint;
 };
 
+/**
+ * Serves a delegated minting-policy role for Capo contracts
+ * @remarks
+ * 
+ * shifts detailed minting policy out of the minter and into the delegate.
+ * @public
+ **/
 export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     static currentRev = 1n;
     static get defaultParams() {
@@ -98,9 +105,10 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
      * Adds a mint-delegate-specific authority token to the txn output
      * @remarks
      * 
-     * Implements {@link StellarDelegate.txnReceiveAuthorityToken}.
+     * Implements {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }.
      * 
-     * Uses {@link mkDelegationDatum} to make the inline Datum for the output.
+     * Uses {@link BasicMintDelegate.mkDelegationDatum | mkDelegationDatum()} to make the inline Datum for the output.
+     * @see {@link StellarDelegate.txnReceiveAuthorityToken | baseline txnReceiveAuthorityToken()'s doc }
      * @public
      **/
     async txnReceiveAuthorityToken<TCX extends StellarTxnContext<any>>(

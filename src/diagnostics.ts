@@ -5,10 +5,21 @@ import {
     TxOutput,
     TxInput,
     Value,
+    bytesToText,
 } from "@hyperionbt/helios";
 import { ErrorMap } from "./delegation/RolesAndDelegates.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 
+/**
+ * converts a hex string to a printable alternative, with no assumptions about the underlying data
+ * @remarks
+ * 
+ * Unlike Helios' bytesToText, hexToPrintable() simply changes printable characters to characters,
+ * and represents non-printable characters in '‹XX›' format.
+ * @param ‹pName› - descr
+ * @typeParam ‹pName› - descr (for generic types)
+ * @public
+ **/
 export function hexToPrintableString(hexStr) {
     let result = "";
     for (let i = 0; i < hexStr.length; i += 2) {
@@ -24,6 +35,14 @@ export function hexToPrintableString(hexStr) {
     }
     return result;
 }
+/**
+ * Converts an array of [ policyId, ‹tokens› ] tuples for on-screen presentation
+ * @remarks
+ * 
+ * Presents policy-ids with shortened identifiers, and shows a readable & printable 
+ * representation of token names even if they're not UTF-8 encoded.
+ * @public
+ **/
 export function assetsAsString(v: any) {
     return Object.entries(v)
         .map(([policyId, tokens]) => {
@@ -39,6 +58,10 @@ export function assetsAsString(v: any) {
         })
         .join("\n  ");
 }
+/**
+ * Converts lovelace to approximate ADA, in consumable 3-decimal form
+ * @public
+ **/
 export function lovelaceToAda(l: bigint | number) {
     const asNum = parseInt(l.toString());
     const ada =
@@ -46,12 +69,20 @@ export function lovelaceToAda(l: bigint | number) {
     return ada;
 }
 
+/**
+ * Converts a Value to printable form
+ * @public
+ **/
 export function valueAsString(v: Value) {
     const ada = lovelaceToAda(v.lovelace);
     const assets = assetsAsString(v.assets.dump?.() || v.assets);
     return [ada, assets].filter((x) => !!x).join(" + ");
 }
 
+/**
+ * Converts a Tx to printable form
+ * @public
+ **/
 export function txAsString(tx: Tx): string {
     const bodyAttrs = [
         "inputs",
@@ -205,6 +236,13 @@ export function txAsString(tx: Tx): string {
     return details;
 }
 
+/**
+ * Converts a TxInput to printable form
+ * @remarks
+ * 
+ * Shortens address and output-id for visual simplicity
+ * @public
+ **/
 export function txInputAsString(x: TxInput, prefix = "-> "): string {
     const oid = x.outputId.txId.hex;
     const oidx = x.outputId.utxoIdx;
@@ -214,10 +252,24 @@ export function txInputAsString(x: TxInput, prefix = "-> "): string {
     )} = 📖 ${oid.slice(0, 6)}…${oid.slice(-4)}#${oidx}`;
 }
 
+/**
+ * Converts a list of UTxOs to printable form
+ * @remarks
+ * 
+ * ... using {@link txInputAsString}
+ * @public
+ **/
 export function utxosAsString(utxos: TxInput[], joiner = "\n"): string {
     return utxos.map((u) => utxoAsString(u, " 💵")).join(joiner);
 }
 
+/**
+ * converts a utxo to printable form
+ * @remarks
+ * 
+ * shows shortened output-id and the value being output
+ * @internal
+ **/
 export function utxoAsString(x: TxInput, prefix = "💵"): string {
     const oid = x.outputId.txId.hex;
     const oidx = x.outputId.utxoIdx;
@@ -228,6 +280,13 @@ export function utxoAsString(x: TxInput, prefix = "💵"): string {
     )}`; // or 🪙
 }
 
+/**
+ * converts a Datum to a printable summary
+ * @remarks
+ * 
+ * using shortening techniques for the datumHash
+ * @public
+ **/
 export function datumAsString(d: Datum | null | undefined): string {
     if (!d) return ""; //"‹no datum›";
 
@@ -238,6 +297,13 @@ export function datumAsString(d: Datum | null | undefined): string {
     return `d‹hash:${dhss}…›`;
 }
 
+/**
+ * Converts a txOutput to printable form
+ * @remarks
+ * 
+ * including all its values, and shortened Address.
+ * @public
+ **/
 export function txOutputAsString(x: TxOutput, prefix = "<-"): string {
     const bech32 = (x.address as any).bech32 || x.address.toBech32();
 
@@ -246,12 +312,23 @@ export function txOutputAsString(x: TxOutput, prefix = "<-"): string {
     )} ${datumAsString(x.datum)} ${valueAsString(x.value)}`;
 }
 
+/**
+ * Converts an Errors object to a string for onscreen presentation
+ * @public
+ **/
 export function errorMapAsString(em: ErrorMap, prefix = "  ") {
     return Object.keys(em)
         .map((k) => `${prefix}${k}: ${JSON.stringify(em[k])}`)
         .join("\n");
 }
 
+/**
+ * Converts any (supported) input arg to string
+ * @remarks
+ * 
+ * more types to be supported TODO
+ * @public
+ **/
 export function dumpAny(x: Tx | StellarTxnContext) {
     if (x instanceof Tx) {
         return txAsString(x);

@@ -21,6 +21,23 @@ type RedeemerArg = {
     redeemer: _redeemerArg;
 };
 
+/**
+ * Transaction-building context for Stellar Contract transactions
+ * @remarks
+ *
+ * Uses same essential facade as Helios Tx.
+ * 
+ * Adds a transaction-state container with strong typing of its contents,
+ * enabling transaction-building code to use type-sensitive auto-complete
+ * and allowing Stellar Contracts library code to require transaction contexts
+ * having known states.
+ * 
+ * Retains reflection capabilities to allow utxo-finding utilities to exclude 
+ * utxo's already included in the contract.
+ * 
+ * @typeParam S - type of the context's `state` prop
+ * @public
+ **/
 export class StellarTxnContext<S = noState> {
     tx: Tx;
     inputs: TxInput[];

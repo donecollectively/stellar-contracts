@@ -14,6 +14,7 @@ import { ReqtsMap as ReqtsMap_3 } from './Requirements.js';
 import { RoleInfo as RoleInfo_2 } from './delegation/RolesAndDelegates.js';
 import { SimpleWallet } from '@hyperionbt/helios';
 import { TestContext } from 'vitest';
+import { textToBytes } from '@hyperionbt/helios';
 import { Tx } from '@hyperionbt/helios';
 import { TxId } from '@hyperionbt/helios';
 import { TxInput } from '@hyperionbt/helios';
@@ -26,18 +27,53 @@ import { ValidatorHash } from '@hyperionbt/helios';
 import { Value } from '@hyperionbt/helios';
 import { Wallet } from '@hyperionbt/helios';
 
+/**
+ * Decorators for on-chain activity (redeemer) factory functions
+ * @public
+ **/
 export declare const Activity: {
+    /**
+     * Decorates a partial-transaction function that spends a contract-locked UTxO using a specific activity ("redeemer")
+     * @remarks
+     *
+     * activity-linked transaction-partial functions must follow the txn\{...\}
+     * and active-verb ("ing") naming conventions.  `txnRetiringDeletation`,
+     * `txnModifyingVote` and `txnWithdrawingStake` would be examples
+     * of function names following this guidance.
+     *
+     * @public
+     **/
     partialTxn(proto: any, thingName: any, descriptor: any): any;
+    /**
+     * Decorates a factory-function for creating tagged redeemer data for a specific on-chain activity
+     * @remarks
+     *
+     * The factory function should follow an active-verb convention by including "ing" in the name of the factory function
+     * @public
+     **/
     redeemer(proto: any, thingName: any, descriptor: any): any;
     redeemerData(proto: any, thingName: any, descriptor: any): any;
 };
 
 declare type actorMap = Record<string, SimpleWallet>;
 
+/**
+ * 1 million as bigint.  Multiply by this ADA value to get lovelace
+ * @public
+ **/
 export declare const ADA = 1000000n;
 
 declare type addInputArgs = Parameters<Tx["addInput"]>;
 
+/**
+ * Adds a test helper class to a `vitest` testing context.
+ * @remarks
+ *
+ * @param context -  a vitest context, typically created with StellarTestContext
+ * @param TestHelperClass - typically created with DefaultCapoTestHelper
+ * @param params - preset configuration for the contract under test
+ * @public
+ **/
 export declare function addTestContext<SC extends StellarContract<any>, P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never>(context: StellarTestContext<any, SC>, TestHelperClass: stellarTestHelperSubclass<SC>, params?: P): Promise<void>;
 
 /**
@@ -64,8 +100,20 @@ export declare class AnyAddressAuthorityPolicy extends AuthorityPolicy {
 
 declare type anyDatumArgs = Record<string, any>;
 
+/**
+ * Properties for Datum structures for on-chain scripts
+ * @public
+ **/
 export declare type anyDatumProps = Record<string, any>;
 
+/**
+ * Converts an array of [ policyId, ‹tokens› ] tuples for on-screen presentation
+ * @remarks
+ *
+ * Presents policy-ids with shortened identifiers, and shows a readable & printable
+ * representation of token names even if they're not UTF-8 encoded.
+ * @public
+ **/
 export declare function assetsAsString(v: any): string;
 
 /**
@@ -80,6 +128,13 @@ export declare function assetsAsString(v: any): string;
 export declare abstract class AuthorityPolicy<T extends capoDelegateConfig = capoDelegateConfig> extends StellarDelegate<T> {
 }
 
+/**
+ * Serves a delegated minting-policy role for Capo contracts
+ * @remarks
+ *
+ * shifts detailed minting policy out of the minter and into the delegate.
+ * @public
+ **/
 export declare class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     static currentRev: bigint;
     static get defaultParams(): {
@@ -105,9 +160,10 @@ export declare class BasicMintDelegate extends StellarDelegate<MintDelegateArgs>
      * Adds a mint-delegate-specific authority token to the txn output
      * @remarks
      *
-     * Implements {@link StellarDelegate.txnReceiveAuthorityToken}.
+     * Implements {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }.
      *
-     * Uses {@link mkDelegationDatum} to make the inline Datum for the output.
+     * Uses {@link BasicMintDelegate.mkDelegationDatum | mkDelegationDatum()} to make the inline Datum for the output.
+     * @see {@link StellarDelegate.txnReceiveAuthorityToken | baseline txnReceiveAuthorityToken()'s doc }
      * @public
      **/
     txnReceiveAuthorityToken<TCX extends StellarTxnContext<any>>(tcx: TCX, tokenValue: Value, fromFoundUtxo?: TxInput): Promise<TCX>;
@@ -173,6 +229,19 @@ export declare abstract class Capo<minterType extends MinterBaseMethods & Defaul
     tvCharter(): Value;
     get charterTokenAsValue(): Value;
     importModules(): HeliosModuleSrc[];
+    /**
+     * Initiates a seeding transaction, creating a new Capo contract of this type
+     * @remarks
+     *
+     * The returned transaction context has `state.bootstrappedConfig` for
+     * capturing the details for reproducing the contract's settings and on-chain
+     * address.
+     *
+     * @param charterDatumArgs - initial details for the charter datum
+     * @param tcx - any existing transaction context
+     * @typeParam TCX - inferred type of a provided transaction context
+     * @public
+     **/
     abstract mkTxnMintCharterToken<TCX extends StellarTxnContext>(charterDatumArgs: Partial<charterDatumType>, existingTcx?: TCX): Promise<never | (TCX & hasBootstrappedConfig<CapoBaseConfig & configType>)>;
     get charterTokenPredicate(): ((something: any) => any) & {
         value: Value;
@@ -272,7 +341,7 @@ export declare abstract class Capo<minterType extends MinterBaseMethods & Defaul
      * Returns a complete set of delegate settings, given a delegation role and strategy-selection details
      * @remarks
      *
-     * Behaves exactly like (and provides the core implementation of) {@link txnCreateDelegateLink},
+     * Behaves exactly like (and provides the core implementation of) {@link Capo.txnCreateDelegateLink | txnCreateDelegateLink()},
      * returning additional `roleName` and `delegateClass`, to conform with the DelegateSettings type.
      *
      * See txnCreateDelegateLink for further details.
@@ -310,6 +379,14 @@ export declare type capoDelegateConfig = paramsBase & {
     addrHint: Address[];
 };
 
+/**
+ * Base class for test helpers for Capo contracts
+ * @remarks
+ *
+ * Unless you have a custom Capo not based on DefaultCapo, you
+ * should probably use DefaultCapoTestHelper instead of this class.
+ * @public
+ **/
 export declare abstract class CapoTestHelper<SC extends Capo<DefaultMinter & MinterBaseMethods, CDT, CT>, CDT extends anyDatumArgs = SC extends Capo<DefaultMinter, infer iCDT> ? iCDT : anyDatumArgs, //prettier-ignore
 CT extends CapoBaseConfig = SC extends Capo<any, any, infer iCT> ? iCT : never> extends StellarTestHelper<SC> {
     initialize({ randomSeed, config, }?: {
@@ -340,6 +417,18 @@ export declare type ConfiguredDelegate<DT extends StellarDelegate<any>> = {
     config: ConfigFor<DT>;
 } & RelativeDelegateLink<DT>;
 
+/**
+ * Decorates datum-building functions
+ * @remarks
+ *
+ * function names must follow the mkDatum... convention.
+ *
+ * The function should accept a single argument with input type
+ * that feels Typescripty, and that can be fit to the on-chain type of
+ * the underlying Datum variant of the given name.
+ *
+ * @public
+ **/
 export declare function datum(proto: any, thingName: any, descriptor: any): any;
 
 declare const DatumInline: typeof Datum.inline;
@@ -389,16 +478,16 @@ declare const DatumInline: typeof Datum.inline;
  * It MUST export Datum and Activity enums, with variants matching those in the provided
  * baseline/unspecializedCapo module.
  *
- * A customized Datum::validateSpend(self, ctx) -> Bool method
+ * A customized Datum::validateSpend(self, ctx) -\> Bool method
  * should be defined, even if it doesn't put constraints on spending Datum.
  * If it does choose to add hard constraints, note that this method doesn't
  * have access to the Activity ("redeemer") type.  It's a simple place to express simple
  * constraints on spending a custom Datum that only needs one 'spendingDatum'
  * activity.
  *
- * A customized Activity: allowActivity(self, datum, ctx) -> Bool method
+ * A customized Activity: allowActivity(self, datum, ctx) -\> Bool method
  * has access to both the redeemer (in self), as well as Datum and the transaction
- * context.  In this method, use self.switch{...} to implement activity-specific
+ * context.  In this method, use self.switch\{...\} to implement activity-specific
  * validations.
  *
  * See the {@link Capo | Capo base class} and {@link StellarContract} for addition context.
@@ -486,12 +575,7 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
     getGovDelegate(): Promise<AuthorityPolicy<capoDelegateConfig_2>>;
     txnAddMintAuthority<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX>;
     /**
-     * Initiates a seeding transaction, creating a new Capo contract of this type
-     * @remarks
-     *
-     * detailed remarks
-     * @param ‹pName› - descr
-     * @typeParam TCX -
+     * {@inheritdoc Capo.mkTxnMintCharterToken}
      * @public
      **/
     mkTxnMintCharterToken<TCX extends StellarTxnContext<any>>(charterDatumArgs: MinimalDefaultCharterDatumArgs<CDT>, existingTcx?: TCX): Promise<never | (TCX & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & hasBootstrappedConfig<CapoBaseConfig & configType>)>;
@@ -544,6 +628,14 @@ export declare type DefaultCharterDatumArgs = {
     mintDelegateLink: RelativeDelegateLink<BasicMintDelegate>;
 };
 
+/**
+ * A basic minting validator serving a Capo's family of contract scripts
+ * @remarks
+ *
+ * Mints charter tokens based on seed UTxOs.  Can also mint UUTs and
+ * other tokens as approved by the Capo's minting delegate.
+ * @public
+ **/
 export declare class DefaultMinter extends StellarContract<BasicMinterParams> implements MinterBaseMethods {
     contractSource(): any;
     getContractScriptParams(config: BasicMinterParams): paramsBase & SeedTxnParams;
@@ -606,6 +698,13 @@ declare type DelegationDetail = {
     tn: number[];
 };
 
+/**
+ * Converts any (supported) input arg to string
+ * @remarks
+ *
+ * more types to be supported TODO
+ * @public
+ **/
 export declare function dumpAny(x: Tx | StellarTxnContext): string | undefined;
 
 declare type enhancedNetworkParams = NetworkParams & {
@@ -621,6 +720,10 @@ declare type enhancedNetworkParams = NetworkParams & {
  **/
 export declare type ErrorMap = Record<string, string[]>;
 
+/**
+ * Converts an Errors object to a string for onscreen presentation
+ * @public
+ **/
 export declare function errorMapAsString(em: ErrorMap, prefix?: string): string;
 
 /**
@@ -640,7 +743,7 @@ export declare type hasAllUuts<uutEntries extends string> = {
  * should be captured for reproducibility, and this type allows the bootstrap
  * transaction to expose that configuration.
  *
- * Capo's {@link Capo.mkTxnMintCharterToken}() returns a transaction context
+ * Capo's {@link Capo.mkTxnMintCharterToken | mkTxnMintCharterToken()} returns a transaction context
  * of this type, with `state.bootstrappedConfig`;
  * @public
  **/
@@ -650,8 +753,8 @@ export declare type hasBootstrappedConfig<CT extends CapoBaseConfig> = StellarTx
 
 /**
  * Factory for type-safe requirements details for a unit of software
- * @public
  * @remarks
+ *
  * return `hasReqts({... requirements})` from a requirements() or other method in a class, to express
  * requirements using a standardized form that supports arbitrary amounts of detailed requirements
  * with references to unit-test labels that can verify the impl details.
@@ -660,10 +763,10 @@ export declare type hasBootstrappedConfig<CT extends CapoBaseConfig> = StellarTx
  *
  * See the {@link ReqtsMap} and {@link RequirementEntry} types for more details about expressing requirements.
  *
+ * NOTE: Type parameters are inferred from the provided data structure
  * @param reqtsMap - the ReqtsMap structure for the software unit
- * @typeParam R - implicitly matches the provided `reqtsMap`
- * @typeParam reqts - implicitly matches the requirements strings from the provided `reqtsMap`
- */
+ * @public
+ **/
 export declare function hasReqts<R extends ReqtsMap<validReqts>, const validReqts extends string = string & keyof R>(reqtsMap: R): ReqtsMap<validReqts>;
 
 export declare namespace hasReqts {
@@ -687,12 +790,20 @@ declare interface hasUutCreator {
     mkTxnCreatingUuts<const purposes extends string, existingTcx extends StellarTxnContext<any>, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput, roles?: RM): Promise<existingTcx & hasUutContext<ROLES | purposes>>;
 }
 
+/**
+ * Properties for a Helios source file
+ * @public
+ **/
 export declare type HeliosModuleSrc = string & {
     srcFile: string;
     purpose: string;
     moduleName: string;
 };
 
+/**
+ * Rollup loader for Helios source files
+ * @public
+ **/
 export declare function heliosRollupLoader(opts?: {
     include: string;
     exclude: never[];
@@ -706,10 +817,14 @@ export declare function heliosRollupLoader(opts?: {
     } | undefined;
 };
 
+/**
+ * Inline Datum for contract outputs
+ * @public
+ **/
 export declare type InlineDatum = ReturnType<typeof DatumInline>;
 
 /**
- * a type for redeemer/activity-factory functions declared with @Activity.redeemer
+ * a type for redeemer/activity-factory functions declared with \@Activity.redeemer
  *
  * @public
  */
@@ -717,6 +832,10 @@ export declare type isActivity = {
     redeemer: UplcDataValue | UplcData;
 };
 
+/**
+ * Converts lovelace to approximate ADA, in consumable 3-decimal form
+ * @public
+ **/
 export declare function lovelaceToAda(l: bigint | number): string;
 
 /**
@@ -786,12 +905,32 @@ export declare type MintUutActivityArgs = {
     purposes: string[];
 };
 
+/**
+ * Creates a String object from Helios source code, having additional properties about the helios source
+ * @remarks
+ *
+ * `srcFile`, `purpose`, and `moduleName` are parsed from the Helios source string using a simple regular expression.
+ * @public
+ **/
 export declare function mkHeliosModule(src: string, filename: string): HeliosModuleSrc;
 
+/**
+ * Creates Value-creation entires for a list of uuts
+ * @remarks
+ *
+ * returns a list of `entries` usable in Value's `[mph, entries[]]` tuple.
+ * @param uuts - a list of {@link UutName}s or a {@link uutPurposeMap}
+ * @public
+ **/
 export declare function mkUutValuesEntries(uuts: UutName[]): valuesEntry[];
 
+/** @public **/
 export declare function mkUutValuesEntries(uuts: uutPurposeMap<any>): valuesEntry[];
 
+/**
+ * Creates a tuple usable in a Value, converting token-name to byte-array if needed
+ * @public
+ **/
 export declare function mkValuesEntry(tokenName: string | number[], count: bigint): valuesEntry;
 
 declare class MultisigAuthorityPolicy extends AuthorityPolicy {
@@ -808,10 +947,32 @@ declare class MultisigAuthorityPolicy extends AuthorityPolicy {
 
 declare type noState = {};
 
+/**
+ * Configuration details for StellarContract classes
+ * @public
+ **/
 export declare type paramsBase = Record<string, any>;
 
 declare type PartialParamConfig<CT extends paramsBase> = Partial<CT>;
 
+/**
+ * decorates functions that increment a transaction by adding needed details for a use-case
+ * @remarks
+ *
+ * Function names must follow the txn\{...\} naming convention. Typical partial-transaction names
+ * may describe the semantics of how the function augments the transaction.
+ * `txnAddSignatures` or `txnReceivePayment` could be example names following
+ * this guidance
+ *
+ * Partial transactions should have a \<TCX extends StellarTxnContext\<...\>\> type parameter,
+ * matched to its first function argument, and should return a type extending that same TCX,
+ * possibly with additional StellarTxnContext\<...\> type info.
+ *
+ * The TCX constraint can specify key requirements for an existing transaction context when
+ * that's relevant.
+ *
+ * @public
+ **/
 export declare function partialTxn(proto: any, thingName: any, descriptor: any): any;
 
 declare type PreconfiguredDelegate<T extends StellarDelegate<any>> = Omit<ConfiguredDelegate<T>, "delegate" | "delegateValidatorHash">;
@@ -922,6 +1083,10 @@ export declare type RoleMap<KR extends Record<string, RoleInfo<any, any, any, an
 
 declare type scriptPurpose = "testing" | "minting" | "spending" | "staking" | "module" | "endpoint";
 
+/**
+ * details of seed transaction
+ * @public
+ **/
 export declare type SeedTxnParams = {
     seedTxn: TxId;
     seedIndex: bigint;
@@ -1110,7 +1275,7 @@ export declare abstract class StellarDelegate<CT extends paramsBase & capoDelega
      * calls the delegate-specific DelegateAddsAuthorityToken() method,
      * with the uut found by DelegateMustFindAuthorityToken().
      *
-     * returns the token back to the contract using {@link txnReceiveAuthorityToken}
+     * returns the token back to the contract using {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
      * @param tcx - transaction context
      * @public
      **/
@@ -1176,8 +1341,7 @@ export declare abstract class StellarDelegate<CT extends paramsBase & capoDelega
      * Every delegate is expected to have a two-field 'IsDelegation' variant
      * in the first position of its on-chain Datum type.  This helper method
      * constructs a suitable UplcData structure, given appropriate inputs.
-     * @param ‹pName› - descr
-     * @typeParam ‹pName› - descr (for generic types)
+     * @param dd - Delegation details
      * @public
      **/
     mkDatumIsDelegation(dd: DelegationDetail, ...args: DCCT extends string ? [string] | [] : [DCCT]): InlineDatum;
@@ -1199,7 +1363,7 @@ export declare abstract class StellarDelegate<CT extends paramsBase & capoDelega
      * in the delegate's contract address.
      *
      * It's possible to have a delegate that doesn't have an on-chain contract script.
-     * ... in this case, the delegate should use this.{@link tvAuthorityToken}() and a
+     * ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a
      * delegate-specific heuristic to locate the needed token.  It might consult the
      * addrHint in its `configIn` or another technique for resolution.
      *
@@ -1214,10 +1378,10 @@ export declare abstract class StellarDelegate<CT extends paramsBase & capoDelega
      * @remarks
      * Given a delegate already configured by a Capo, this method implements
      * transaction-building logic needed to include the UUT into the `tcx`.
-     * the `utxo` is discovered by {@link DelegateMustFindAuthorityToken}()
+     * the `utxo` is discovered by {@link StellarDelegate.DelegateMustFindAuthorityToken | DelegateMustFindAuthorityToken() }
      *
      * The default implementation adds the `uutxo` to the transaction
-     * using {@link activityAuthorizing}().
+     * using {@link StellarDelegate.activityAuthorizing | activityAuthorizing() }.
      *
      * The off-chain code shouldn't need to check the details; it can simply
      * arrange the details properly and spend the delegate's authority token,
@@ -1301,16 +1465,40 @@ export declare abstract class StellarDelegate<CT extends paramsBase & capoDelega
     delegateRequirements(): ReqtsMap_2<"provides an interface for providing arms-length proof of authority to any other contract" | "implementations SHOULD positively govern spend of the UUT" | "implementations MUST provide an essential interface for transaction-building" | "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)" | "requires a mustFindAuthorityToken(tcx)" | "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)" | "requires txnRetireCred(tcx, fromFoundUtxo)">;
 }
 
+/**
+ * Type for the Class that constructs to a given type
+ * @remarks
+ *
+ * Type of the matching literal class
+ *
+ * Typescript should make this pattern easier
+ *
+ * @typeParam S - the type of objects of this class
+ * @typeParam CT - inferred type of the constructor args for the class
+ * @public
+ **/
 export declare type stellarSubclass<S extends StellarContract<CT>, CT extends paramsBase = S extends StellarContract<infer iCT> ? iCT : paramsBase> = (new (args: StellarConstructorArgs<CT>) => S & StellarContract<CT>) & {
     defaultParams: Partial<CT>;
 };
 
+/**
+ * Interface augmenting the generic vitest testing context with a convention for testing contracts created with Stellar Contracts.
+ * @public
+ **/
 export declare interface StellarTestContext<HTH extends StellarTestHelper<SC>, SC extends StellarContract<any> = HTH extends StellarTestHelper<infer iSC> ? iSC : never> extends canHaveRandomSeed, TestContext {
     h: HTH;
     get strella(): SC;
     initHelper(config: Partial<ConfigFor<SC>> & canHaveRandomSeed & canSkipSetup): Promise<StellarTestHelper<SC>>;
 }
 
+/**
+ * Base class for test-helpers on generic Stellar contracts
+ * @remarks
+ *
+ * NOTE: DefaultCapoTestHelper is likely to be a better fit for typical testing needs and typical contract-development scenarios.
+ * Use this class for specific unit-testing needs not sufficiently served by integration-testing on a Capo.
+ * @public
+ **/
 export declare abstract class StellarTestHelper<SC extends StellarContract<any>> {
     state: Record<string, any>;
     abstract get stellarClass(): stellarSubclass<SC, any>;
@@ -1347,6 +1535,23 @@ export declare abstract class StellarTestHelper<SC extends StellarContract<any>>
 
 declare type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (config: ConfigFor<SC> & canHaveRandomSeed) => StellarTestHelper<SC>;
 
+/**
+ * Transaction-building context for Stellar Contract transactions
+ * @remarks
+ *
+ * Uses same essential facade as Helios Tx.
+ *
+ * Adds a transaction-state container with strong typing of its contents,
+ * enabling transaction-building code to use type-sensitive auto-complete
+ * and allowing Stellar Contracts library code to require transaction contexts
+ * having known states.
+ *
+ * Retains reflection capabilities to allow utxo-finding utilities to exclude
+ * utxo's already included in the contract.
+ *
+ * @typeParam S - type of the context's `state` prop
+ * @public
+ **/
 export declare class StellarTxnContext<S = noState> {
     tx: Tx;
     inputs: TxInput[];
@@ -1380,26 +1585,70 @@ export declare class StellarTxnContext<S = noState> {
  **/
 export declare type strategyValidation = ErrorMap | undefined;
 
-export declare function stringToNumberArray(str: string): number[];
+/**
+ * Converts string to array of UTF-8 byte-values
+ * @public
+ **/
+export declare const stringToNumberArray: typeof textToBytes;
 
 declare const TODO: unique symbol;
 
+/**
+ * tags requirement that aren't yet implemented
+ * @public
+ **/
 declare type TODO_TYPE = typeof TODO;
 
+/**
+ * tuple expressing a token-name and count
+ * @public
+ **/
 export declare type tokenNamesOrValuesEntry = [string | number[], bigint];
 
 declare type tokenPredicate<tokenBearer extends canHaveToken> = ((something: tokenBearer) => tokenBearer | undefined) & {
     value: Value;
 };
 
+/**
+ * Converts a Tx to printable form
+ * @public
+ **/
 export declare function txAsString(tx: Tx): string;
 
+/**
+ * Converts a TxInput to printable form
+ * @remarks
+ *
+ * Shortens address and output-id for visual simplicity
+ * @public
+ **/
 export declare function txInputAsString(x: TxInput, prefix?: string): string;
 
+/**
+ * Decorates functions that can construct a new transaction context for a specific use-case
+ * @remarks
+ *
+ * function names must follow the mkTxn... convention.
+ * @public
+ **/
 export declare function txn(proto: any, thingName: any, descriptor: any): any;
 
+/**
+ * Converts a txOutput to printable form
+ * @remarks
+ *
+ * including all its values, and shortened Address.
+ * @public
+ **/
 export declare function txOutputAsString(x: TxOutput, prefix?: string): string;
 
+/**
+ * converts a utxo to printable form
+ * @remarks
+ *
+ * shows shortened output-id and the value being output
+ * @internal
+ **/
 export declare function utxoAsString(x: TxInput, prefix?: string): string;
 
 declare type utxoInfo = {
@@ -1409,8 +1658,22 @@ declare type utxoInfo = {
     minAdaAmount: bigint;
 };
 
+/**
+ * a function that can filter txInputs for coin-selection
+ * @remarks
+ *
+ * short form: "returns truthy" if the input is matchy for the context
+ * @public
+ **/
 export declare type utxoPredicate = ((u: TxInput) => TxInput | undefined) | ((u: TxInput) => boolean) | ((u: TxInput) => boolean | undefined);
 
+/**
+ * Converts a list of UTxOs to printable form
+ * @remarks
+ *
+ * ... using {@link txInputAsString}
+ * @public
+ **/
 export declare function utxosAsString(utxos: TxInput[], joiner?: string): string;
 
 /**
@@ -1448,8 +1711,16 @@ export declare type uutPurposeMap<unionPurpose extends string> = {
     [purpose in unionPurpose]: UutName;
 };
 
+/**
+ * Converts a Value to printable form
+ * @public
+ **/
 export declare function valueAsString(v: Value): string;
 
+/**
+ * Tuple of byte-array, count, needed for Value creation on native tokens.
+ * @public
+ **/
 export declare type valuesEntry = [number[], bigint];
 
 /**

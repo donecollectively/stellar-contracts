@@ -21,6 +21,10 @@ export type RequirementEntry<reqts extends string> = {
 };
 
 const TODO = Symbol("needs to be implemented");
+/**
+ * tags requirement that aren't yet implemented
+ * @public
+ **/
 export type TODO_TYPE = typeof TODO;
 
 /**
@@ -44,10 +48,11 @@ export type ReqtsMap<validReqts extends string> = {
     [reqtDescription in validReqts]: TODO_TYPE | RequirementEntry<validReqts>;
 };
 
+
 /**
  * Factory for type-safe requirements details for a unit of software
- * @public
  * @remarks
+ * 
  * return `hasReqts({... requirements})` from a requirements() or other method in a class, to express
  * requirements using a standardized form that supports arbitrary amounts of detailed requirements
  * with references to unit-test labels that can verify the impl details.
@@ -56,15 +61,15 @@ export type ReqtsMap<validReqts extends string> = {
  *
  * See the {@link ReqtsMap} and {@link RequirementEntry} types for more details about expressing requirements.
  *
+ * NOTE: Type parameters are inferred from the provided data structure
  * @param reqtsMap - the ReqtsMap structure for the software unit
- * @typeParam R - implicitly matches the provided `reqtsMap`
- * @typeParam reqts - implicitly matches the requirements strings from the provided `reqtsMap`
- */
+ * @public
+ **/
 export function hasReqts<
     R extends ReqtsMap<validReqts>,
     const validReqts extends string = string & keyof R
 >(reqtsMap: R): ReqtsMap<validReqts> {
     return reqtsMap;
 }
-
+/** @public **/
 hasReqts.TODO = TODO;

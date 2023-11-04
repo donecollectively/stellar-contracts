@@ -16,6 +16,14 @@ import { AuthorityPolicy } from "../authority/AuthorityPolicy.js";
 import { ConfigFor } from "../StellarContract.js";
 import { DefaultMinter } from "../minting/DefaultMinter.js";
 
+/**
+ * Base class for test helpers for Capo contracts
+ * @remarks
+ * 
+ * Unless you have a custom Capo not based on DefaultCapo, you 
+ * should probably use DefaultCapoTestHelper instead of this class.
+ * @public
+ **/
 export abstract class CapoTestHelper<
     SC extends Capo<DefaultMinter & MinterBaseMethods, CDT, CT>,
     CDT extends anyDatumArgs = //prettier-ignore

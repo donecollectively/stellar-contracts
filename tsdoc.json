@@ -1,0 +1,24 @@
+{
+    "$schema": "https://developer.microsoft.com/json-schemas/tsdoc/v0/tsdoc.schema.json",
+    "tagDefinitions": [
+        {
+            "tagName": "@reqt",
+            "syntaxKind": "block"
+        }
+    ],
+    "supportForTags": {
+        "@link": true,
+        "@inheritdoc": true,
+        "@example": true,
+        "@see": true,
+        "@alpha": true,
+        "@beta": true,
+        "@public": true,
+        "@internal": true,
+        "@remarks": true,
+        "@param": true,
+        "@typeParam": true,
+        "@deprecated": true,
+        "@reqt": true
+    }
+}

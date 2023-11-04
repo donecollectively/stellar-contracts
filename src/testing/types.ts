@@ -28,6 +28,15 @@ export type canSkipSetup = {
     skipSetup?: true;
 };
 
+/**
+ * Adds a test helper class to a `vitest` testing context.
+ * @remarks
+ * 
+ * @param context -  a vitest context, typically created with StellarTestContext
+ * @param TestHelperClass - typically created with DefaultCapoTestHelper
+ * @param params - preset configuration for the contract under test
+ * @public
+ **/
 export async function addTestContext<
     SC extends StellarContract<any>,
     P extends configBase = SC extends StellarContract<infer PT> ? PT : never
@@ -78,4 +87,8 @@ export async function addTestContext<
 
 export type actorMap = Record<string, WalletEmulator>;
 
+/**
+ * 1 million as bigint.  Multiply by this ADA value to get lovelace
+ * @public
+ **/
 export const ADA = 1_000_000n; // lovelace

@@ -4,14 +4,26 @@ import {
     MintingPolicyHash,
     TxOutput,
     Value,
+    textToBytes,
     
 } from "@hyperionbt/helios";
 import { uutPurposeMap } from "./Capo.js";
 import { valuesEntry } from "./HeliosPromotedTypes.js";
 import { UutName } from "./delegation/RolesAndDelegates.js";
 
+
+/**
+ * Creates Value-creation entires for a list of uuts
+ * @remarks
+ * 
+ * returns a list of `entries` usable in Value's `[mph, entries[]]` tuple.
+ * @param uuts - a list of {@link UutName}s or a {@link uutPurposeMap}
+ * @public
+ **/
 export function mkUutValuesEntries(uuts: UutName[]): valuesEntry[];
+/** @public **/
 export function mkUutValuesEntries(uuts: uutPurposeMap<any>): valuesEntry[];
+/** @public **/
 export function mkUutValuesEntries(
     uuts: UutName[] | uutPurposeMap<any>
 ): valuesEntry[] {
@@ -20,12 +32,21 @@ export function mkUutValuesEntries(
     return uutNs.map((uut) => mkValuesEntry(uut.name, BigInt(1)));
 }
 
-export function stringToNumberArray(str: string): number[] {
-    let encoder = new TextEncoder();
-    let byteArray = encoder.encode(str);
-    return [...byteArray].map((x) => parseInt(x.toString()));
-}
+/**
+ * Converts string to array of UTF-8 byte-values 
+* @public
+ **/
+export const stringToNumberArray = textToBytes
+// func stringToNumberArray (str: string): number[] {
+//     let encoder = new TextEncoder();
+//     let byteArray = encoder.encode(str);
+//     return [...byteArray].map((x) => parseInt(x.toString()));
+// }
 
+/**
+ * Creates a tuple usable in a Value, converting token-name to byte-array if needed
+ * @public
+ **/
 export function mkValuesEntry(
     tokenName: string | number[],
     count: bigint

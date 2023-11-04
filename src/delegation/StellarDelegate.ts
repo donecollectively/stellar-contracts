@@ -42,7 +42,7 @@ export abstract class StellarDelegate<
      * calls the delegate-specific DelegateAddsAuthorityToken() method,
      * with the uut found by DelegateMustFindAuthorityToken().
      *
-     * returns the token back to the contract using {@link txnReceiveAuthorityToken}
+     * returns the token back to the contract using {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
      * @param tcx - transaction context
      * @public
      **/
@@ -148,8 +148,7 @@ export abstract class StellarDelegate<
      * Every delegate is expected to have a two-field 'IsDelegation' variant
      * in the first position of its on-chain Datum type.  This helper method
      * constructs a suitable UplcData structure, given appropriate inputs.
-     * @param ‹pName› - descr
-     * @typeParam ‹pName› - descr (for generic types)
+     * @param dd - Delegation details
      * @public
      **/
     @datum
@@ -200,7 +199,7 @@ export abstract class StellarDelegate<
      * in the delegate's contract address.
      *
      * It's possible to have a delegate that doesn't have an on-chain contract script.
-     * ... in this case, the delegate should use this.{@link tvAuthorityToken}() and a
+     * ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a
      * delegate-specific heuristic to locate the needed token.  It might consult the
      * addrHint in its `configIn` or another technique for resolution.
      *
@@ -225,10 +224,10 @@ export abstract class StellarDelegate<
      * @remarks
      * Given a delegate already configured by a Capo, this method implements
      * transaction-building logic needed to include the UUT into the `tcx`.
-     * the `utxo` is discovered by {@link DelegateMustFindAuthorityToken}()
+     * the `utxo` is discovered by {@link StellarDelegate.DelegateMustFindAuthorityToken | DelegateMustFindAuthorityToken() }
      * 
      * The default implementation adds the `uutxo` to the transaction 
-     * using {@link activityAuthorizing}().
+     * using {@link StellarDelegate.activityAuthorizing | activityAuthorizing() }.
      * 
      * The off-chain code shouldn't need to check the details; it can simply
      * arrange the details properly and spend the delegate's authority token, 
