@@ -47,7 +47,7 @@ export const ADA = 1000000n;
 // @public (undocumented)
 export function addTestContext<SC extends StellarContract<any>, P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never>(context: StellarTestContext<any, SC>, TestHelperClass: stellarTestHelperSubclass<SC>, params?: P): Promise<void>;
 
-// @public (undocumented)
+// @public
 export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     // (undocumented)
     DelegateAddsAuthorityToken<TCX extends StellarTxnContext<any>>(tcx: TCX, fromFoundUtxo: TxInput): Promise<TCX & StellarTxnContext<any>>;
@@ -356,16 +356,16 @@ export class DefaultMinter extends StellarContract<BasicMinterParams> implements
 
 // Warning: (ae-forgotten-export) The symbol "RoleInfo" needs to be exported by the entry point index.d.ts
 //
-// @public (undocumented)
+// @public
 export function defineRole<const UUTP extends string, SC extends StellarContract<any>, const VMv extends RoleInfo<SC, any, UUTP>["variants"]>(uutBaseName: UUTP, baseClass: stellarSubclass<SC> & any, variants: VMv): RoleInfo<SC, VMv, UUTP>;
 
-// @public (undocumented)
-export function delegateRoles<const RM extends RoleMap<any>>(x: RM): RoleMap<RM>;
+// @public
+export function delegateRoles<const RM extends RoleMap<any>>(roleMap: RM): RoleMap<RM>;
 
 // @public (undocumented)
 export function dumpAny(x: Tx | StellarTxnContext): string | undefined;
 
-// @public (undocumented)
+// @public
 export type ErrorMap = Record<string, string[]>;
 
 // @public (undocumented)
@@ -376,7 +376,7 @@ export type hasAllUuts<uutEntries extends string> = {
     uuts: uutPurposeMap<uutEntries>;
 };
 
-// @public (undocumented)
+// @public
 export type hasBootstrappedConfig<CT extends CapoBaseConfig> = StellarTxnContext<{
     bootstrappedConfig: CT;
 }>;
@@ -452,11 +452,11 @@ export type paramsBase = Record<string, any>;
 // @public (undocumented)
 export function partialTxn(proto: any, thingName: any, descriptor: any): any;
 
-// @public (undocumented)
-export type RelativeDelegateLink<T extends StellarDelegate<any>> = {
+// @public
+export type RelativeDelegateLink<DT extends StellarDelegate<any>> = {
     uutName: string;
     strategyName: string;
-    config: Partial<ConfigFor<T>>;
+    config: Partial<ConfigFor<DT>>;
     delegateValidatorHash?: ValidatorHash;
 };
 
@@ -476,7 +476,7 @@ export type RequirementEntry<reqts extends string> = {
     requires?: reqts[];
 };
 
-// @public (undocumented)
+// @public
 export type RoleMap<KR extends Record<string, RoleInfo<any, any, any, any>>> = {
     [roleName in keyof KR]: KR[roleName];
 };
@@ -785,7 +785,9 @@ export class StellarTxnContext<S = noState> {
     utxoNotReserved(u: TxInput): TxInput | undefined;
 }
 
-// @public (undocumented)
+// Warning: (ae-internal-missing-underscore) The name "strategyValidation" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export type strategyValidation = ErrorMap | undefined;
 
 // @public (undocumented)
@@ -836,10 +838,22 @@ export function valueAsString(v: Value): string;
 // @public (undocumented)
 export type valuesEntry = [number[], bigint];
 
+// @public
+export type VariantStrategy<DT extends StellarContract<capoDelegateConfig & any>> = {
+    delegateClass: stellarSubclass<DT>;
+    partialConfig?: PartialParamConfig<ConfigFor<DT>>;
+    validateConfig?: (p: ConfigFor<DT>) => strategyValidation;
+};
+
 // Warnings were encountered during analysis:
 //
+// src/DefaultCapo.ts:262:17 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
 // src/DefaultCapo.ts:266:3 - (ae-forgotten-export) The symbol "MultisigAuthorityPolicy" needs to be exported by the entry point index.d.ts
-// src/delegation/RolesAndDelegates.ts:248:5 - (ae-forgotten-export) The symbol "ConfigFor" needs to be exported by the entry point index.d.ts
+// src/DefaultCapo.ts:267:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
+// src/DefaultCapo.ts:283:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
+// src/delegation/RolesAndDelegates.ts:294:5 - (ae-forgotten-export) The symbol "PartialParamConfig" needs to be exported by the entry point index.d.ts
+// src/delegation/RolesAndDelegates.ts:296:5 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
+// src/delegation/RolesAndDelegates.ts:339:5 - (ae-forgotten-export) The symbol "ConfigFor" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

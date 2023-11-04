@@ -18,6 +18,18 @@ import { StellarTxnContext } from "../StellarTxnContext.js";
 import { StellarDelegate } from "../delegation/StellarDelegate.js";
 import { AuthorityPolicy } from "./AuthorityPolicy.js";
 
+/**
+ * Token-based authority
+ * @remarks
+ * 
+ * Transferrable authority using a unique token and no smart-contract.
+ * 
+ * This simple strategy relies entirely on the presence of a specific, unique token
+ * held in a wallet.  Authorizing activities using this strategy requires diligent review
+ * by the person controlling the wallet, since it has no enforced validation logic.
+ * 
+ * @public
+ **/
 export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     loadProgramScript(params) {
         return undefined;

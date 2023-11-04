@@ -155,6 +155,18 @@ export type CapoBaseConfig = SeedTxnParams & {
     rev: bigint;
 };
 
+/**
+ * StellarTransactionContext exposing a bootstrapped Capo configuration
+ * @remarks
+ * 
+ * During first-time setup of a Capo contract, its manifest configuration details 
+ * should be captured for reproducibility, and this type allows the bootstrap 
+ * transaction to expose that configuration.
+ * 
+ * Capo's {@link Capo.mkTxnMintCharterToken}() returns a transaction context 
+ * of this type, with `state.bootstrappedConfig`;
+ * @public
+ **/
 export type hasBootstrappedConfig<CT extends CapoBaseConfig> =
     StellarTxnContext<{
         bootstrappedConfig: CT;
@@ -180,8 +192,8 @@ type PreconfiguredDelegate<T extends StellarDelegate<any>> = Omit<
  *
  * The delegation pattern uses UUTs, which are non-fungible / unique utility tokens.  See DefaultCapo for more about them.
  *
- * **Capo is a foundational class**; you should consider using DefaultCapo as a starting point, unless its govAuthority
- * role conflicts with your goals.
+ * **Capo is a foundational class**; you should consider using DefaultCapo as a starting point, 
+ * unless its govAuthority role conflicts with your goals.
  *
  * Inherits from: {@link StellarContract}\<`configType`\> (is this a redundant doc entry?) .
  *

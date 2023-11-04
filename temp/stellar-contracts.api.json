@@ -380,7 +380,7 @@
         {
           "kind": "Class",
           "canonicalReference": "@donecollectively/stellar-contracts!AnyAddressAuthorityPolicy:class",
-          "docComment": "",
+          "docComment": "/**\n * Token-based authority\n *\n * @remarks\n *\n * Transferrable authority using a unique token and no smart-contract.\n *\n * This simple strategy relies entirely on the presence of a specific, unique token held in a wallet. Authorizing activities using this strategy requires diligent review by the person controlling the wallet, since it has no enforced validation logic.\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -8261,7 +8261,7 @@
         {
           "kind": "Function",
           "canonicalReference": "@donecollectively/stellar-contracts!defineRole:function(1)",
-          "docComment": "",
+          "docComment": "/**\n * Creates a strongly-typed definition of a delegation role used in a Capo contract\n *\n * @remarks\n *\n * The definition ncludes the different strategy variants that can serve in that role.\n *\n * NOTE: all type parameters are inferred from the function params.\n *\n * @param uutBaseName - token-name prefix for the tokens connecting delegates for the role\n *\n * @param baseClass - each variant is expected to inherit from this base class\n *\n * @param variants - maps each strategy-variant name to a detailed {@link VariantStrategy} definition\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -8417,7 +8417,7 @@
         {
           "kind": "Function",
           "canonicalReference": "@donecollectively/stellar-contracts!delegateRoles:function(1)",
-          "docComment": "",
+          "docComment": "/**\n * Standalone helper method defining a specific RoleMap; used in a Capo's delegateRoles() instance method\n *\n * @remarks\n *\n * Called with a set of literal role defintitions, the full type of the RoleMap is inferred.\n *\n * Use {@link defineRole}() to create each role entry\n *\n * @param roleMap - maps role-names to role-definitions\n *\n * @typeParam RM - inferred type of the `roleMap` param\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -8434,7 +8434,7 @@
             },
             {
               "kind": "Content",
-              "text": ">(x: "
+              "text": ">(roleMap: "
             },
             {
               "kind": "Content",
@@ -8467,7 +8467,7 @@
           "overloadIndex": 1,
           "parameters": [
             {
-              "parameterName": "x",
+              "parameterName": "roleMap",
               "parameterTypeTokenRange": {
                 "startIndex": 4,
                 "endIndex": 5
@@ -8548,7 +8548,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!ErrorMap:type",
-          "docComment": "",
+          "docComment": "/**\n * Reveals errors found during delegate selection\n *\n * @remarks\n *\n * Each field name is mapped to an array of string error messages found on that field.\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -8697,7 +8697,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!hasBootstrappedConfig:type",
-          "docComment": "",
+          "docComment": "/**\n * StellarTransactionContext exposing a bootstrapped Capo configuration\n *\n * @remarks\n *\n * During first-time setup of a Capo contract, its manifest configuration details should be captured for reproducibility, and this type allows the bootstrap transaction to expose that configuration.\n *\n * Capo's {@link Capo.mkTxnMintCharterToken}() returns a transaction context of this type, with `state.bootstrappedConfig`;\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -9539,11 +9539,11 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!RelativeDelegateLink:type",
-          "docComment": "",
+          "docComment": "/**\n * Minimal structure for connecting a specific Capo contract to a configured StellarDelegate\n *\n * @remarks\n *\n * This structure can always resolve to a reproducible delegate class (a {@link StellarDelegate}), given a specific Capo and roleName.\n *\n * When the delegate isn't backed by a specific on-chain contract script, the delegateValidatorHash is optional.\n *\n * @typeParam DT - the base class, to which all role-strategy variants conform\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
-              "text": "export type RelativeDelegateLink<T extends "
+              "text": "export type RelativeDelegateLink<DT extends "
             },
             {
               "kind": "Reference",
@@ -9578,7 +9578,7 @@
             },
             {
               "kind": "Content",
-              "text": "<T>>;\n    delegateValidatorHash?: "
+              "text": "<DT>>;\n    delegateValidatorHash?: "
             },
             {
               "kind": "Reference",
@@ -9599,7 +9599,7 @@
           "name": "RelativeDelegateLink",
           "typeParameters": [
             {
-              "typeParameterName": "T",
+              "typeParameterName": "DT",
               "constraintTokenRange": {
                 "startIndex": 1,
                 "endIndex": 3
@@ -9730,7 +9730,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!RoleMap:type",
-          "docComment": "",
+          "docComment": "/**\n * Richly-typed structure that can capture the various delegation roles available in a Capo contract\n *\n * @remarks\n *\n * Defined in a delegateRoles() method using the standalone delegateRoles() and defineRole() helper functions.\n *\n * @typeParam KR - deep, strong type of the role map - always inferred by delegateRoles() helper.\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -17067,37 +17067,6 @@
           "implementsTokenRanges": []
         },
         {
-          "kind": "TypeAlias",
-          "canonicalReference": "@donecollectively/stellar-contracts!strategyValidation:type",
-          "docComment": "",
-          "excerptTokens": [
-            {
-              "kind": "Content",
-              "text": "export type strategyValidation = "
-            },
-            {
-              "kind": "Reference",
-              "text": "ErrorMap",
-              "canonicalReference": "@donecollectively/stellar-contracts!ErrorMap:type"
-            },
-            {
-              "kind": "Content",
-              "text": " | undefined"
-            },
-            {
-              "kind": "Content",
-              "text": ";"
-            }
-          ],
-          "fileUrlPath": "src/delegation/RolesAndDelegates.ts",
-          "releaseTag": "Public",
-          "name": "strategyValidation",
-          "typeTokenRange": {
-            "startIndex": 1,
-            "endIndex": 3
-          }
-        },
-        {
           "kind": "Function",
           "canonicalReference": "@donecollectively/stellar-contracts!stringToNumberArray:function(1)",
           "docComment": "",
@@ -17889,6 +17858,112 @@
           "typeTokenRange": {
             "startIndex": 1,
             "endIndex": 2
+          }
+        },
+        {
+          "kind": "TypeAlias",
+          "canonicalReference": "@donecollectively/stellar-contracts!VariantStrategy:type",
+          "docComment": "/**\n * declaration for one strategy-variant of a delegate role\n *\n * @remarks\n *\n * Indicates the details needed to construct a delegate script\n *\n * NOTE: the Type param is always inferred by defineRole()\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export type VariantStrategy<DT extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "StellarContract",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<"
+            },
+            {
+              "kind": "Reference",
+              "text": "capoDelegateConfig",
+              "canonicalReference": "@donecollectively/stellar-contracts!capoDelegateConfig:type"
+            },
+            {
+              "kind": "Content",
+              "text": " & any>"
+            },
+            {
+              "kind": "Content",
+              "text": "> = "
+            },
+            {
+              "kind": "Content",
+              "text": "{\n    delegateClass: "
+            },
+            {
+              "kind": "Reference",
+              "text": "stellarSubclass",
+              "canonicalReference": "@donecollectively/stellar-contracts!stellarSubclass:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<DT>;\n    partialConfig?: "
+            },
+            {
+              "kind": "Reference",
+              "text": "PartialParamConfig",
+              "canonicalReference": "@donecollectively/stellar-contracts!~PartialParamConfig:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<"
+            },
+            {
+              "kind": "Reference",
+              "text": "ConfigFor",
+              "canonicalReference": "@donecollectively/stellar-contracts!~ConfigFor:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<DT>>;\n    validateConfig?: (p: "
+            },
+            {
+              "kind": "Reference",
+              "text": "ConfigFor",
+              "canonicalReference": "@donecollectively/stellar-contracts!~ConfigFor:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<DT>) => "
+            },
+            {
+              "kind": "Reference",
+              "text": "strategyValidation",
+              "canonicalReference": "@donecollectively/stellar-contracts!strategyValidation:type"
+            },
+            {
+              "kind": "Content",
+              "text": ";\n}"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/delegation/RolesAndDelegates.ts",
+          "releaseTag": "Public",
+          "name": "VariantStrategy",
+          "typeParameters": [
+            {
+              "typeParameterName": "DT",
+              "constraintTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 0,
+                "endIndex": 0
+              }
+            }
+          ],
+          "typeTokenRange": {
+            "startIndex": 6,
+            "endIndex": 17
           }
         }
       ]

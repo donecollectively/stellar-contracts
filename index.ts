@@ -36,13 +36,16 @@ export {
     UutName
 } from "./src/delegation/RolesAndDelegates.js"
 export { StellarDelegate } from "./src/delegation/StellarDelegate.js";
+export { AuthorityPolicy } from "./src/authority/AuthorityPolicy.js";
+export { AnyAddressAuthorityPolicy } from "./src/authority/AnyAddressAuthorityPolicy.js";
 
 export type {
     capoDelegateConfig,
 
     ErrorMap,
     ConfiguredDelegate,
-    RelativeDelegateLink
+    RelativeDelegateLink,
+    VariantStrategy
 } from "./src/delegation/RolesAndDelegates.js"
 
 export type { SeedTxnParams } from "./src/SeedTxn.js";

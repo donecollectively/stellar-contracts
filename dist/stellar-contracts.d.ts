@@ -40,6 +40,18 @@ declare type addInputArgs = Parameters<Tx["addInput"]>;
 
 export declare function addTestContext<SC extends StellarContract<any>, P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never>(context: StellarTestContext<any, SC>, TestHelperClass: stellarTestHelperSubclass<SC>, params?: P): Promise<void>;
 
+/**
+ * Token-based authority
+ * @remarks
+ *
+ * Transferrable authority using a unique token and no smart-contract.
+ *
+ * This simple strategy relies entirely on the presence of a specific, unique token
+ * held in a wallet.  Authorizing activities using this strategy requires diligent review
+ * by the person controlling the wallet, since it has no enforced validation logic.
+ *
+ * @public
+ **/
 export declare class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     loadProgramScript(params: any): undefined;
     get delegateValidatorHash(): undefined;
@@ -133,8 +145,8 @@ declare type canSkipSetup = {
  *
  * The delegation pattern uses UUTs, which are non-fungible / unique utility tokens.  See DefaultCapo for more about them.
  *
- * **Capo is a foundational class**; you should consider using DefaultCapo as a starting point, unless its govAuthority
- * role conflicts with your goals.
+ * **Capo is a foundational class**; you should consider using DefaultCapo as a starting point,
+ * unless its govAuthority role conflicts with your goals.
  *
  * Inherits from: {@link StellarContract}\<`configType`\> (is this a redundant doc entry?) .
  *
@@ -551,10 +563,43 @@ export declare class DefaultMinter extends StellarContract<BasicMinterParams> im
     }): Promise<TCX & StellarTxnContext<any>>;
 }
 
+/**
+ * Creates a strongly-typed definition of a delegation role used in a Capo contract
+ *
+ * @remarks
+ * The definition ncludes the different strategy variants that can serve in that role.
+ *
+ * NOTE: all type parameters are inferred from the function params.
+ *
+ * @param uutBaseName - token-name prefix for the tokens connecting delegates for the role
+ * @param baseClass - each variant is expected to inherit from this base class
+ * @param variants - maps each strategy-variant name to a detailed {@link VariantStrategy}  definition
+ * @public
+ **/
 export declare function defineRole<const UUTP extends string, SC extends StellarContract<any>, const VMv extends RoleInfo<SC, any, UUTP>["variants"]>(uutBaseName: UUTP, baseClass: stellarSubclass<SC> & any, variants: VMv): RoleInfo<SC, VMv, UUTP>;
 
-export declare function delegateRoles<const RM extends RoleMap<any>>(x: RM): RoleMap<RM>;
+/**
+ * Standalone helper method defining a specific RoleMap; used in a Capo's delegateRoles() instance method
+ * @remarks
+ *
+ * Called with a set of literal role defintitions, the full type  of the RoleMap is inferred.
+ *
+ * Use {@link defineRole}() to create each role entry
+ *
+ * @param roleMap - maps role-names to role-definitions
+ * @typeParam RM - inferred type of the `roleMap` param
+ * @public
+ **/
+export declare function delegateRoles<const RM extends RoleMap<any>>(roleMap: RM): RoleMap<RM>;
 
+/**
+ * Captures normal details of every delegate relationship
+ * @remarks
+ *
+ * Includes the address of the leader contract, its minting policy, and the token-name
+ * used for the delegate
+ * @public
+ **/
 declare type DelegationDetail = {
     capoAddr: Address;
     mph: MintingPolicyHash;
@@ -567,6 +612,13 @@ declare type enhancedNetworkParams = NetworkParams & {
     slotToTimestamp(n: bigint): Date;
 };
 
+/**
+ * Reveals errors found during delegate selection
+ * @remarks
+ *
+ * Each field name is mapped to an array of string error messages found on that field.
+ * @public
+ **/
 export declare type ErrorMap = Record<string, string[]>;
 
 export declare function errorMapAsString(em: ErrorMap, prefix?: string): string;
@@ -580,6 +632,18 @@ export declare type hasAllUuts<uutEntries extends string> = {
     uuts: uutPurposeMap<uutEntries>;
 };
 
+/**
+ * StellarTransactionContext exposing a bootstrapped Capo configuration
+ * @remarks
+ *
+ * During first-time setup of a Capo contract, its manifest configuration details
+ * should be captured for reproducibility, and this type allows the bootstrap
+ * transaction to expose that configuration.
+ *
+ * Capo's {@link Capo.mkTxnMintCharterToken}() returns a transaction context
+ * of this type, with `state.bootstrappedConfig`;
+ * @public
+ **/
 export declare type hasBootstrappedConfig<CT extends CapoBaseConfig> = StellarTxnContext<{
     bootstrappedConfig: CT;
 }>;
@@ -758,10 +822,23 @@ declare type RedeemerArg = {
 
 declare type _redeemerArg = addInputArgs[1];
 
-export declare type RelativeDelegateLink<T extends StellarDelegate<any>> = {
+/**
+ * Minimal structure for connecting a specific Capo contract to a configured StellarDelegate
+ * @remarks
+ *
+ * This structure can always resolve to a reproducible delegate class (a {@link StellarDelegate}),
+ * given a specific Capo and roleName.
+ *
+ * When the delegate isn't backed by a specific on-chain contract script, the delegateValidatorHash
+ * is optional.
+ *
+ * @typeParam DT - the base class, to which all role-strategy variants conform
+ * @public
+ **/
+export declare type RelativeDelegateLink<DT extends StellarDelegate<any>> = {
     uutName: string;
     strategyName: string;
-    config: Partial<ConfigFor<T>>;
+    config: Partial<ConfigFor<DT>>;
     delegateValidatorHash?: ValidatorHash;
 };
 
@@ -808,6 +885,18 @@ export declare type RequirementEntry<reqts extends string> = {
     requires?: reqts[];
 };
 
+/**
+ * Describes one delegation role used in a Capo contract
+ * @remarks
+ *
+ * Includes the base class for all the variants of the role, a
+ * uutPurpose (base name for their authority tokens), and
+ * named variants for that role
+ *
+ * All type-parameters are normally inferred from {@link defineRole}()
+ *
+ * @public
+ **/
 declare type RoleInfo<SC extends StellarContract<any>, VM extends Record<variants, VariantStrategy<SC>>, UUTP extends string, variants extends string = string & keyof VM> = {
     uutPurpose: UUTP;
     baseClass: stellarSubclass<SC>;
@@ -816,6 +905,17 @@ declare type RoleInfo<SC extends StellarContract<any>, VM extends Record<variant
     };
 };
 
+/**
+ * Richly-typed structure that can capture the various delegation roles available
+ * in a Capo contract
+ * @remarks
+ *
+ * Defined in a delegateRoles() method using the standalone delegateRoles()
+ * and defineRole() helper functions.
+ * @typeParam KR - deep, strong type of the role map - always inferred by
+ * delegateRoles() helper.
+ * @public
+ **/
 export declare type RoleMap<KR extends Record<string, RoleInfo<any, any, any, any>>> = {
     [roleName in keyof KR]: KR[roleName];
 };
@@ -1274,6 +1374,10 @@ export declare class StellarTxnContext<S = noState> {
     addScript(): void;
 }
 
+/**
+ * return type for strategy's validateScriptParams()
+ * @internal
+ **/
 export declare type strategyValidation = ErrorMap | undefined;
 
 export declare function stringToNumberArray(str: string): number[];
@@ -1348,10 +1452,19 @@ export declare function valueAsString(v: Value): string;
 
 export declare type valuesEntry = [number[], bigint];
 
-declare type VariantStrategy<T extends StellarContract<capoDelegateConfig & any>> = {
-    delegateClass: stellarSubclass<T>;
-    partialConfig?: PartialParamConfig<ConfigFor<T>>;
-    validateConfig?: (p: ConfigFor<T>) => strategyValidation;
+/**
+ * declaration for one strategy-variant of a delegate role
+ * @remarks
+ *
+ * Indicates the details needed to construct a delegate script
+ *
+ * NOTE: the Type param is always inferred by defineRole()
+ * @public
+ **/
+export declare type VariantStrategy<DT extends StellarContract<capoDelegateConfig & any>> = {
+    delegateClass: stellarSubclass<DT>;
+    partialConfig?: PartialParamConfig<ConfigFor<DT>>;
+    validateConfig?: (p: ConfigFor<DT>) => strategyValidation;
 };
 
 export { }

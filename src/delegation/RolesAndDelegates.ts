@@ -46,6 +46,19 @@ export class UutName {
     }
 }
 
+/**
+ * An error type for reflecting configuration problems at time of delegate setup
+ * @remarks
+ * 
+ * acts like a regular error, plus has an `errors` object mapping field names
+ * to problems found in those fields.   
+ *
+ * When a strategy-selection failure happens, the `availableStrategies` property 
+ * also has a list of known strategies for a selected delegation role.
+ *  
+ * @param ‹pName› - descr
+ * @public
+ **/
 export class DelegateConfigNeeded extends Error {
     errors?: ErrorMap;
     availableStrategies?: string[];
@@ -63,10 +76,29 @@ export class DelegateConfigNeeded extends Error {
     }
 }
 
+/**
+ * Reveals errors found during delegate selection
+ * @remarks
+ * 
+ * Each field name is mapped to an array of string error messages found on that field.
+ * @public
+ **/
 export type ErrorMap = Record<string, string[]>;
-// return type for strategy's validateScriptParams()
+
+/**
+ * return type for strategy's validateScriptParams()
+ * @internal
+ **/
 export type strategyValidation = ErrorMap | undefined;
 
+/**
+ * Captures normal details of every delegate relationship
+ * @remarks
+ * 
+ * Includes the address of the leader contract, its minting policy, and the token-name
+ * used for the delegate
+ * @public
+ **/
 export type DelegationDetail = {
     capoAddr: Address;
     mph: MintingPolicyHash;
@@ -92,15 +124,43 @@ export type capoDelegateConfig = configBase & {
     addrHint: Address[];
 };
 
+/**
+ * Richly-typed structure that can capture the various delegation roles available
+ * in a Capo contract
+ * @remarks
+ * 
+ * Defined in a delegateRoles() method using the standalone delegateRoles() 
+ * and defineRole() helper functions.
+ * @typeParam KR - deep, strong type of the role map - always inferred by 
+ * delegateRoles() helper.
+ * @public
+ **/
 export type RoleMap<KR extends Record<string, RoleInfo<any, any, any, any>>> = {
     [roleName in keyof KR]: KR[roleName];
 };
 
+/**
+ * Standalone helper method defining a specific RoleMap; used in a Capo's delegateRoles() instance method
+ * @remarks
+ * 
+ * Called with a set of literal role defintitions, the full type  of the RoleMap is inferred.
+ * 
+ * Use {@link defineRole}() to create each role entry
+ * 
+ * @param roleMap - maps role-names to role-definitions
+ * @typeParam RM - inferred type of the `roleMap` param
+ * @public
+ **/
 export function delegateRoles<const RM extends RoleMap<any>>(
-    x: RM
+    roleMap: RM
 ): RoleMap<RM> {
-    return x;
+    return roleMap;
 }
+
+/**
+ * toJSON adapter for delegate links
+ * @internal
+ **/
 export function delegateLinkSerializer(key: string, value: any) {
     if (typeof value === "bigint") {
         return value.toString();
@@ -114,6 +174,18 @@ export function delegateLinkSerializer(key: string, value: any) {
     return value; // return everything else unchanged
 }
 
+/**
+ * Describes one delegation role used in a Capo contract
+ * @remarks
+ * 
+ * Includes the base class for all the variants of the role, a 
+ * uutPurpose (base name for their authority tokens), and
+ * named variants for that role
+ * 
+ * All type-parameters are normally inferred from {@link defineRole}()
+ * 
+ * @public
+ **/
 export type RoleInfo<
     SC extends StellarContract<any>,
     VM extends Record<variants, VariantStrategy<SC>>,
@@ -125,6 +197,19 @@ export type RoleInfo<
     variants: { [variant in variants]: VM[variant] };
 };
 
+/**
+ * Creates a strongly-typed definition of a delegation role used in a Capo contract
+ * 
+ * @remarks
+ * The definition ncludes the different strategy variants that can serve in that role.
+ * 
+ * NOTE: all type parameters are inferred from the function params.
+ * 
+* @param uutBaseName - token-name prefix for the tokens connecting delegates for the role
+ * @param baseClass - each variant is expected to inherit from this base class
+ * @param variants - maps each strategy-variant name to a detailed {@link VariantStrategy}  definition
+ * @public
+ **/
 export function defineRole<
     const UUTP extends string,
     SC extends StellarContract<any>,
@@ -191,18 +276,24 @@ export type delegateScriptParams = configBase;
 
 export type PartialParamConfig<CT extends configBase> = Partial<CT>;
 
-//! declaration for a variant of a Role:
-//  ... indicates the details needed to construct a delegate script
-//  ... (and it's addr) that may not have existed before.
+/**
+ * declaration for one strategy-variant of a delegate role
+ * @remarks
+ * 
+ * Indicates the details needed to construct a delegate script
+ * 
+ * NOTE: the Type param is always inferred by defineRole()
+ * @public
+ **/
 export type VariantStrategy<
-    T extends StellarContract<capoDelegateConfig & any>
+    DT extends StellarContract<capoDelegateConfig & any>
 > = {
-    delegateClass: stellarSubclass<T>;
+    delegateClass: stellarSubclass<DT>;
     //! it MAY provide a partial configuration to be used for parameterizing
     //  the underlying contract script, to be further customized by a delegate-selection
-    partialConfig?: PartialParamConfig<ConfigFor<T>>;
+    partialConfig?: PartialParamConfig<ConfigFor<DT>>;
     //! it has a function used for validating parameter details
-    validateConfig?: (p: ConfigFor<T>) => strategyValidation;
+    validateConfig?: (p: ConfigFor<DT>) => strategyValidation;
 };
 
 //! a map of delegate selections needed for a transaction
@@ -248,10 +339,23 @@ export type ConfiguredDelegate<DT extends StellarDelegate<any>> = {
     config: ConfigFor<DT>;
 } & RelativeDelegateLink<DT>;
 
-export type RelativeDelegateLink<T extends StellarDelegate<any>> = {
+/**
+ * Minimal structure for connecting a specific Capo contract to a configured StellarDelegate
+ * @remarks
+ * 
+ * This structure can always resolve to a reproducible delegate class (a {@link StellarDelegate}),
+ * given a specific Capo and roleName.  
+ * 
+ * When the delegate isn't backed by a specific on-chain contract script, the delegateValidatorHash 
+ * is optional.
+ * 
+ * @typeParam DT - the base class, to which all role-strategy variants conform
+ * @public
+ **/
+export type RelativeDelegateLink<DT extends StellarDelegate<any>> = {
     uutName: string;
     strategyName: string;
-    config: Partial<ConfigFor<T>>;
+    config: Partial<ConfigFor<DT>>;
     delegateValidatorHash?: ValidatorHash;
     // reqdAddress?: Address; removed
     // addrHint?: Address[]; moved to config

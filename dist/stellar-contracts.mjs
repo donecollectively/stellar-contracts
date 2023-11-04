@@ -51643,8 +51643,8 @@ class DelegateConfigNeeded extends Error {
       this.availableStrategies = availableStrategies;
   }
 }
-function delegateRoles(x) {
-  return x;
+function delegateRoles(roleMap) {
+  return roleMap;
 }
 function delegateLinkSerializer(key, value) {
   if (typeof value === "bigint") {
@@ -51666,7 +51666,6 @@ function defineRole(uutBaseName, baseClass, variants) {
   };
 }
 //!!! todo: develop this further to allow easily enhancing a parent role-definition
-//! declaration for a variant of a Role:
 //! a map of delegate selections needed for a transaction
 //! a single delegate selection, where a person chooses
 
