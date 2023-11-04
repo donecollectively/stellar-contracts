@@ -5,6 +5,7 @@ import {
     TxInput,
     TxOutput,
     Value,
+    bytesToText,
 } from "@hyperionbt/helios";
 import { SeedTxnParams } from "../SeedTxn.js";
 import {
@@ -14,6 +15,7 @@ import {
     partialTxn,
 } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
+import { StellarDelegate } from "../delegation/StellarDelegate.js";
 import { AuthorityPolicy } from "./AuthorityPolicy.js";
 
 export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
@@ -21,17 +23,16 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         return undefined;
     }
 
-    delegateReqdAddress() {
-        return false as const
+    get delegateValidatorHash() {
+        return undefined
     }
 
     @Activity.redeemer
     protected usingAuthority(): isActivity {
-        const r = this.scriptProgram?.types.Redeemer;
-        const { usingAuthority } = r;
+        const { usingAuthority } = this.onChainActivitiesType;
         if (!usingAuthority) {
             throw new Error(
-                `invalid contract without a usingAuthority redeemer`
+                `invalid contract without a usingAuthority activity`
             );
         }
         const t = new usingAuthority();
@@ -41,14 +42,12 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
 
     //! impls MUST resolve the indicated token to a specific UTxO
     //  ... or throw an informative error
-    async txnMustFindAuthorityToken(tcx): Promise<TxInput> {
-        if (!this.configIn)
-            throw new Error(`must be instantiated with a configIn`);
-        const { uutID, addrHint } = this.configIn;
-        const v = this.mkAssetValue(uutID);
+    async DelegateMustFindAuthorityToken(tcx: StellarTxnContext<any>, label: string): Promise<TxInput> {
+        const v = this.tvAuthorityToken()
+        const {addrHint} = this.configIn!
         debugger;
         return this.mustFindActorUtxo(
-            `authority-token(address strat)`,
+            `${label}: ${bytesToText(this.configIn!.tn)}`,
             this.mkTokenPredicate(v),
             tcx,
             "are you connected to the right wallet address? " +
@@ -58,16 +57,28 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         );
     }
 
-    async txnReceiveAuthorityToken(
-        tcx: StellarTxnContext,
-        delegateAddr: Address,
-        fromFoundUtxo: TxInput,
-    ): Promise<StellarTxnContext> {
-        if (!this.configIn)
-            throw new Error(`must be instantiated with a configIn`);
-        const { uutID } = this.configIn;
-        const v = this.mkAssetValue(uutID, 1);
-        const output = new TxOutput(delegateAddr, v);
+    async txnReceiveAuthorityToken<TCX extends StellarTxnContext<any>>(
+        tcx: TCX,
+        tokenValue: Value,
+        fromFoundUtxo: TxInput
+    ): Promise<TCX> {
+        let dest : Address;
+        if (fromFoundUtxo) { 
+            dest = fromFoundUtxo.address
+        } else {
+            if (!this.configIn?.addrHint?.[0])
+                throw new Error(
+                    `must be instantiated with a configIn having an addrHint`
+                );
+            const {
+                addrHint,
+                // reqdAddress,  // removed
+            } = this.configIn;
+            debugger
+            dest = addrHint[0]
+        }
+
+        const output = new TxOutput(dest, tokenValue);
         output.correctLovelace(this.networkParams);
         tcx.addOutput(output);
 
@@ -76,10 +87,10 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
 
     //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
     //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
-    async txnGrantAuthority(
-        tcx: StellarTxnContext,
+    async DelegateAddsAuthorityToken<TCX extends StellarTxnContext<any>>(
+        tcx: TCX,
         fromFoundUtxo: TxInput
-    ): Promise<StellarTxnContext> {
+    ): Promise<TCX & StellarTxnContext<any>> {
         //! no need to specify a redeemer
         return tcx.addInput(fromFoundUtxo);
     }
@@ -87,7 +98,7 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     //! Adds the indicated utxo to the transaction with appropriate activity/redeemer
     //  ... allowing the token to be burned by the minting policy.
     //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
-    async txnRetireCred(
+    async DelegateRetiresAuthorityToken(
         tcx: StellarTxnContext,
         fromFoundUtxo: TxInput
     ): Promise<StellarTxnContext> {

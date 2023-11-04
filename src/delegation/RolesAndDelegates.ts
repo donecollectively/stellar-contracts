@@ -1,33 +1,43 @@
-import {
-    Address,
-    AssetClass,
-    MintingPolicyHash,
-    TxInput,
-} from "@hyperionbt/helios";
+import { Address, MintingPolicyHash, ValidatorHash, bytesToHex, bytesToText } from "@hyperionbt/helios";
 import {
     ConfigFor,
     StellarContract,
     configBase,
     stellarSubclass,
 } from "../StellarContract.js";
-import { DefaultMinter } from "../DefaultMinter.js";
-import { Capo } from "../Capo.js";
-import { StellarTxnContext } from "../StellarTxnContext.js";
+
+import { StellarDelegate } from "./StellarDelegate.js";
 
 const _uutName = Symbol("uutName");
 const maxUutName = 32;
+/**
+ * a unique utility token having a unique name
+ * @remarks
+ *
+ * This class contains a general 'purpose' name, mapped to a unique
+ * `name`, which is generated using a seed-utxo pattern.
+ *
+ * @public
+ **/
 export class UutName {
     private [_uutName]: string;
-    private purpose: string;
-    constructor(purpose: string, un: string) {
+    purpose: string;
+    constructor(purpose: string, fullUutName: string) {
         this.purpose = purpose;
-        if (un.length > maxUutName) {
+        if (fullUutName.length > maxUutName) {
             throw new Error(
-                `uut name '${un}' exceeds max length of ${maxUutName}`
+                `uut name '${fullUutName}' exceeds max length of ${maxUutName}`
             );
         }
-        this[_uutName] = un;
+        this[_uutName] = fullUutName;
     }
+    /**
+     * the full uniquified name of this UUT
+     * @remarks
+     *
+     * format: `purpose-‹...uniqifier...›`
+     * @public
+     **/
     get name() {
         return this[_uutName];
     }
@@ -57,33 +67,17 @@ export type ErrorMap = Record<string, string[]>;
 // return type for strategy's validateScriptParams()
 export type strategyValidation = ErrorMap | undefined;
 
-export interface StellarDelegate {
-    /**
-     * Standard delegate method for receiving the authority token
-     * @remarks
-     * 
-     * creates a UTxO depositing the indicated token-name into the delegated destination.
-     * 
-    * Each implemented subclass can use it's own style to match its strategy & mechanism.
-    //! This is used both for the original deposit and for returning the token during a grant-of-authority
-    //! impls should normally preserve the datum from an already-present sourceUtxo
-     * @param tcx - transaction-context
-     * @param fromFoundUtxo - always present when the authority token already existed
-     * @public
-     **/
-    txnReceiveAuthorityToken<TCX extends StellarTxnContext<any>>(
-        tcx: TCX,
-        // delegateAddr: Address,
-        fromFoundUtxo?: TxInput
-    ): Promise<TCX>;
+export type DelegationDetail = {
+    capoAddr: Address;
+    mph: MintingPolicyHash;
+    tn: number[];
 };
 
 /**
- * Allows any targeted delegate class to use the address of the leader contract
+ * Allows any targeted delegate class to access & use certain details originating in the leader contract
  * @remarks
  *
- * This setting is implicitly defined on all Delegate configurations, and includes
- * `uut` and `capo.address`, along with optional `reqdAddress` and `addrHint`,
+ * This setting is implicitly defined on all Delegate configurations.
  *
  * These allow any Capo delegate class to reference details from its essential
  * delegation context
@@ -91,12 +85,10 @@ export interface StellarDelegate {
  * @public
  **/
 export type capoDelegateConfig = configBase & {
-    uutID: AssetClass;
-    capo: {
-        address: Address;
-        mph: MintingPolicyHash;
-    };
-    reqdAddress?: Address;
+    capoAddr: Address;
+    mph: MintingPolicyHash;
+    tn: number[];
+    rev: bigint;
     addrHint: Address[];
 };
 
@@ -104,8 +96,22 @@ export type RoleMap<KR extends Record<string, RoleInfo<any, any, any, any>>> = {
     [roleName in keyof KR]: KR[roleName];
 };
 
-export function delegateRoles<const RM extends RoleMap<any>>(x: RM): RoleMap<RM> {
+export function delegateRoles<const RM extends RoleMap<any>>(
+    x: RM
+): RoleMap<RM> {
     return x;
+}
+export function delegateLinkSerializer(key: string, value: any) {
+    if (typeof value === "bigint") {
+        return value.toString();
+    } else if ("bytes" == key && Array.isArray(value)) {
+        return bytesToHex(value)
+    } else if (value instanceof Address) {
+        return value.toBech32()
+    } else if ("tn" == key && Array.isArray(value)) {
+        return bytesToText(value)
+    }
+    return value; // return everything else unchanged
 }
 
 export type RoleInfo<
@@ -115,7 +121,7 @@ export type RoleInfo<
     variants extends string = string & keyof VM
 > = {
     uutPurpose: UUTP;
-    baseClass: stellarSubclass<SC>,
+    baseClass: stellarSubclass<SC>;
     variants: { [variant in variants]: VM[variant] };
 };
 
@@ -127,7 +133,7 @@ export function defineRole<
     uutBaseName: UUTP,
     baseClass: stellarSubclass<SC> & any,
     variants: VMv
-) :  RoleInfo<SC, VMv, UUTP> {
+): RoleInfo<SC, VMv, UUTP> {
     return {
         uutPurpose: uutBaseName,
         baseClass,
@@ -135,7 +141,7 @@ export function defineRole<
     };
 }
 
-//!!! todo: develop this further to allow easily enhancing a parent role-definition 
+//!!! todo: develop this further to allow easily enhancing a parent role-definition
 // ... with an additional strategy variant
 
 // type vmapBuilder<
@@ -171,7 +177,7 @@ export function defineRole<
 
 //     return function vmapBuilder<
 //         const VMv extends RoleInfo<SC, any, UUTP>["variants"]
-//     >(  
+//     >(
 //         variants: VMv
 //     ): RoleInfo<SC, VMv, UUTP> {
 //         return {
@@ -215,6 +221,10 @@ export type SelectedDelegate<SC extends StellarContract<any>> = {
     config?: Partial<ConfigFor<SC>>;
 };
 
+// export type StellarDelegate =
+//     StellarDelegateClass<any & configBase & capoDelegateConfig> &
+//     StellarContract<any & configBase & capoDelegateConfig>;
+
 // export function selectDelegate<T extends StellarContract<any>>(
 //     sd: SelectedDelegate<T>
 // ) {
@@ -223,40 +233,26 @@ export type SelectedDelegate<SC extends StellarContract<any>> = {
 
 /**
  * A complete, validated and resolved configuration for a specific delegate
+ * @public
  * @remarks
  *
  * Use StellarContract's `txnCreateDelegateSettings()` method to resolve
  * from any (minimal or better) delegate details to a ResolvedDelegate object.
  * @typeParam DT - a StellarContract class conforming to the `roleName`,
  *     within the scope of a Capo class's `roles()`.
- * @public
  **/
-export type ConfiguredDelegate<
-    DT extends StellarContract<any & capoDelegateConfig>
-> = {
+export type ConfiguredDelegate<DT extends StellarDelegate<any>> = {
     delegateClass: stellarSubclass<DT>;
     delegate: DT;
     roleName: string;
     config: ConfigFor<DT>;
 } & RelativeDelegateLink<DT>;
 
-export type RelativeDelegateLink<T extends StellarContract<any>> = {
+export type RelativeDelegateLink<T extends StellarDelegate<any>> = {
     uutName: string;
     strategyName: string;
     config: Partial<ConfigFor<T>>;
-    reqdAddress?: Address;
-    addressesHint?: Address[];
-};
-
-export type xDelegateLink = {
-    strategyName: string;
-    uutFingerprint: string;
-    reqdAddress?: Address;
-    addressesHint?: Address[];
-};
-
-export type DelegateDetailSnapshot<T extends StellarContract<any>> = {
-    isDelegateSnapshot: true;
-    uut: string;
-    settings: ConfiguredDelegate<T>;
+    delegateValidatorHash?: ValidatorHash;
+    // reqdAddress?: Address; removed
+    // addrHint?: Address[]; moved to config
 };

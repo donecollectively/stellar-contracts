@@ -1,0 +1,86 @@
+spending BasicMintDelegate
+
+const rev : Int = 1
+const instance : ByteArray = #67656e6572616c
+
+import {
+    DelegationDetail,
+    acAuthorityToken,
+    tvAuthorityToken
+} from CapoDelegateHelpers
+
+import {
+    returnsValueToScript
+} from StellarHeliosHelpers
+
+import {
+    MintDelegateActivity,
+    MintDelegateDatum
+} from specializedMintDelegate
+
+// import { 
+//     preventCharterChange
+// } from MultiSigAuthority
+// func main(datum: Datum,_,ctx: ScriptContext) -> Bool {
+//     preventCharterChange(ctx, datum) 
+// }
+
+func mustReturnValueToScript(value : Value, ctx : ScriptContext) -> Bool {
+    if (!returnsValueToScript( value, ctx)) {
+         error("the authZor token MUST be returned")
+    };
+    true
+}
+
+func main(mdd: MintDelegateDatum, action: MintDelegateActivity, ctx: ScriptContext) -> Bool {
+    // input = ctx.get_current_input();
+    mdd.switch{
+        isD : IsDelegation{dd, _} => {
+            // MintDelegateDatum::IsDelegation{dd, cfg} = isD;
+            action.switch {        
+                Authorizing => {
+                    ok : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);
+
+                    o : []TxOutput = ctx.get_cont_outputs();
+                    if (o.length != 1) { error("only one utxo allowed in return to mint delegate") };
+
+                    MintDelegateDatum::IsDelegation{
+                        ddNew, _
+                    } = MintDelegateDatum::from_data( 
+                        o.head.datum.get_inline_data() 
+                    );
+            
+                    //! the datum must be unchanged.
+                    ddNew == dd && ok
+                },
+                Reassigning => {
+                    // the token isn't burned, and it isn't returned back to this script
+                    ctx.tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&
+                    !returnsValueToScript( tvAuthorityToken(dd), ctx)
+                },
+                Retiring => {
+                    // the token is burned
+                    ctx.tx.minted.get(acAuthorityToken(dd)) == -1
+                },
+                Modifying => {
+                    authorityValue : Value = tvAuthorityToken(dd);
+                    ok : Bool = mustReturnValueToScript(authorityValue, ctx);
+                    dlgt : TxOutput = ctx.get_cont_outputs().find(
+                        (o :TxOutput) -> Bool {
+                            o.value.contains(authorityValue)
+                        }
+                    );
+                            
+                    ddNew : MintDelegateDatum::IsDelegation = 
+                    MintDelegateDatum::from_data( 
+                        dlgt.datum.get_inline_data() 
+                    );
+
+                    mdd.validateCDConfig(ddNew) && ok
+                },
+                _ => true
+            } && action.additionalDelegateValidation(isD, ctx)
+        },
+        _ => action.otherActivityValidation(mdd, ctx)
+    }
+}

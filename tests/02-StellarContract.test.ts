@@ -21,8 +21,8 @@ import {
 
 import { StellarTxnContext } from "../src/StellarTxnContext";
 import { MintingPolicyHash } from "@hyperionbt/helios";
-import { DefaultMinter } from "../src/DefaultMinter";
-import { BasicMintDelegate } from "../src/delegation/BasicMintDelegate";
+// import { DefaultMinter } from "../src/DefaultMinter";
+// import { BasicMintDelegate } from "../src/delegation/BasicMintDelegate";
 import { ADA, addTestContext } from "../src/testing/";
 import { StellarTestContext } from "../src/testing/";
 
@@ -48,15 +48,34 @@ describe("StellarContract", async () => {
     });
 
     describe("things provided by the base class", () => {
-        it("getter: datumType", async (context: localTC) => {
+        it("getter: onChainDatumType", async (context: localTC) => {
             const {
                 h,
                 h: { network, actors, delay, state },
             } = context;
 
             const treasury = await h.initialize();
-            expect(treasury.datumType).toBeTruthy();
+            expect(treasury.onChainDatumType).toBeTruthy();
         });
+        it("getter: onChainActivitiesType", async (context: localTC) => {
+            const {
+                h,
+                h: { network, actors, delay, state },
+            } = context;
+
+            const treasury = await h.initialize();
+            expect(treasury.onChainActivitiesType).toBeTruthy();
+        });
+        it("getter: onChainTypes", async (context: localTC) => {
+            const {
+                h,
+                h: { network, actors, delay, state },
+            } = context;
+
+            const treasury = await h.initialize();
+            expect(treasury.onChainTypes).toBeTruthy();
+        });
+
         it("getter: purpose", async (context: localTC) => {
             const {
                 h,
@@ -294,11 +313,11 @@ describe("StellarContract", async () => {
                         const tcx = new StellarTxnContext();
                         await expect(
                             t.mustFindActorUtxo(
-                                "something",
+                                "testSomeThing",
                                 () => undefined,
                                 tcx
                             )
-                        ).rejects.toThrow(/something.*utxo not found/);
+                        ).rejects.toThrow(/testSomeThing.*utxo not found/);
                     });
 
                     describe("with tokenPredicate", () => {

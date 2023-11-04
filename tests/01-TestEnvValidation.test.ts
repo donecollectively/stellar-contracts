@@ -131,12 +131,8 @@ describe("Test environment", async () => {
         //             nonce: context.mkRandomBytes(16),
         //             initialTrustees: [context.actors.tina.address],
         //         });
-        //         const cc = strella.scriptProgram;
-        //         const {
-        //             types: { Redeemer },
-        //         } = cc;
-
-        //         expect(Redeemer?.charterMint).toBeTruthy();
+        //         const { charterMint } = strella.onChainActivitiesType;
+        //         expect(charterMint).toBeTruthy();
         //     });
     });
 });

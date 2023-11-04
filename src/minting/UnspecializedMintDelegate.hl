@@ -1,0 +1,80 @@
+module specializedMintDelegate
+
+//! provides a basic version, not actually specialized,
+// of the "specializedMintDelegate" interface, which simply
+// exports a DelegateDatum enum and DelegateActivities (redeemer enum).  
+//! these specializations MAY include additional enum variants, and 
+//  ... they MUST include the same enum variants found in this
+//  ... unspecialized version.  
+//  If you're specializing and you get a Helios compiler error,
+// ... these are the first things you should check!
+//! Your specialization MAY include any 
+// ... additional functions, imports or methods
+
+import {
+     DelegationDetail 
+} from CapoDelegateHelpers
+
+enum MintDelegateDatum {
+    IsDelegation {
+        dd: DelegationDetail
+        // provides structural space for (non-string) configuration data.
+        // the string case is degenerate (expect empty string always)
+        CustomConfig: String
+    }
+    
+    func validateCDConfig(self, updated: MintDelegateDatum::IsDelegation) -> Bool {
+        self.switch {
+            ddd: IsDelegation => {
+                (ddd.CustomConfig == "") &&
+                (updated == self)
+            },
+            _ => error("unreachable")
+        }
+    }
+}
+
+enum MintDelegateActivity {
+    Authorizing
+    Reassigning
+    Retiring
+    Modifying
+    //! used only for validating IsDelegation datum, that is,
+    //   ... to approve minting requests or any customize spending modes 
+    //   ... of that datum.  In this unspecialized version, 
+    //   ... the "Modifying" activity is an unsupported stand-in for that use-case, always rejecting.
+    //! in a real-life customization case, additional custom IsDelegation config can be
+    //   ... enforced in "Modifying" event the second field of IsDelegation (the "CDConfig" stand-in here)
+    //   ... the BasicMintDelegate allows for that field's presence, without any assumptions
+    //   ... about its type.
+    //  Note that the basic mint delegate
+    //   ... enforces the authority UUT being returned to the delegate script,
+    //   ... and other basic administrative expectations, so any specialization
+    //   ... can focus on higher-level policy considerations.
+    func additionalDelegateValidation( self,
+        ddd: MintDelegateDatum::IsDelegation, 
+        ctx: ScriptContext
+    ) -> Bool {
+        // this is a no-op, structured this way only 
+        //  ... to avoid unused variable errors
+        self.switch {
+            Modifying => false,
+            _ => true
+        } || ctx.tx.serialize() != ddd.serialize()
+    }
+
+    //! used only for validating non-IsDelegation datum types.
+    //   if you have any admininstrative data structures that inform
+    func otherActivityValidation( self,
+        mdd: MintDelegateDatum, 
+        ctx: ScriptContext
+    ) -> Bool {
+        // this is a no-op, structured this way only 
+        //  ... to avoid unused variable errors
+        self.switch{
+            Authorizing => true,
+            _ => true
+        } || ctx.tx.serialize() != mdd.serialize()
+    }
+}
+

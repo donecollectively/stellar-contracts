@@ -17,6 +17,7 @@ import {
     UplcData,
     Signature,
     AssetClass,
+    ValidatorHash,
 } from "@hyperionbt/helios";
 
 import {
@@ -37,8 +38,8 @@ import { StellarTxnContext } from "./StellarTxnContext.js";
 //@ts-expect-error
 import contract from "./DefaultCapo.hl";
 // import contract from "./BaselineCapo.hl";
-import { Capo, CapoBaseConfig, hasBootstrappedConfig } from "./Capo.js";
-import { DefaultMinter } from "./DefaultMinter.js";
+import { Capo, CapoBaseConfig, hasBootstrappedConfig, hasUutContext } from "./Capo.js";
+import { DefaultMinter } from "./minting/DefaultMinter.js";
 import {
     ErrorMap,
     delegateRoles,
@@ -46,21 +47,18 @@ import {
     RoleMap,
     strategyValidation,
     defineRole,
-    RoleInfo,
 } from "./delegation/RolesAndDelegates.js";
-import { BasicMintDelegate } from "./delegation/BasicMintDelegate.js";
-import {
-    AuthorityPolicy,
-    AuthorityPolicySettings,
-} from "./authority/AuthorityPolicy.js";
+import { BasicMintDelegate } from "./minting/BasicMintDelegate.js";
 import { AnyAddressAuthorityPolicy } from "./authority/AnyAddressAuthorityPolicy.js";
-import { DelegateDetailSnapshot } from "./delegation/RolesAndDelegates.js";
 import { txAsString } from "./diagnostics.js";
 import { MultisigAuthorityPolicy } from "./authority/MultisigAuthorityPolicy.js";
 import { hasReqts } from "./Requirements.js";
 import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { UnspecializedCapo } from "./UnspecializedCapo.js";
-import { NoMintDelegation } from "./delegation/NoMintDelegation.js";
+import { NoMintDelegation } from "./minting/NoMintDelegation.js";
+import { CapoHelpers } from "./CapoHelpers.js";
+import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
+import { StellarDelegate } from "./delegation/StellarDelegate.js";
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
@@ -85,13 +83,13 @@ export type DefaultCharterDatumArgs = {
  * uutName can't be specified in this structure because creating a delegate link
  * should use txnMustGetSeedUtxo() instead, minting a new UUT for the purpose.
  * If you seek to reuse an existing uutName, probably you're modifying an existing
- * full RelativeDelegateLink structure instead - e.g. with a different `strategy`,
- * `config`, and/or `reqdAddress`; this type wouldn't be involved in that case.
+ * full RelativeDelegateLink structure instead - e.g. with a different `strategy` and
+ * `config`; this type wouldn't be involved in that case.
  *
  * @typeParam SC - the type of StellarContract targeted for delegation
  * @public
  **/
-export type MinimalDelegateLink<SC extends StellarContract<any>> = Required<
+export type MinimalDelegateLink<SC extends StellarDelegate<any>> = Required<
     Pick<RelativeDelegateLink<SC>, "strategyName">
 > &
     Partial<Omit<RelativeDelegateLink<SC>, "uutName">>;
@@ -159,22 +157,22 @@ export type HeldAssetsArgs = {
  * approved the UUT's inclusion in a transaction, with all the policy-enforcement implicated on the other end of the 
  * delegation.
  * 
- * Customizing Datum and Redeemer
+ * Customizing Datum and Activity
  * 
- * The baseline contract script can have specialized Datum and Redeemer
+ * The baseline contract script can have specialized Datum and Activity ("redeemer")
  * definitions by subclassing DefaultCapo with a `get specializedCapo()`.  This
  * should be an imported helios script having `module specializedCapo` at the top.
- * It MUST export Datum and Redeemer enums, with variants matching those in the provided 
+ * It MUST export Datum and Activity enums, with variants matching those in the provided 
  * baseline/unspecializedCapo module.  
  * 
  * A customized Datum::validateSpend(self, ctx) -> Bool method
  * should be defined, even if it doesn't put constraints on spending Datum.  
  * If it does choose to add hard constraints, note that this method doesn't
- * have access to the Redeemer.  It's a simple place to express simple
+ * have access to the Activity ("redeemer") type.  It's a simple place to express simple
  * constraints on spending a custom Datum that only needs one 'spendingDatum' 
  * activity.  
  * 
- * A customized Redeemer: allowActivity(self, datum, ctx) -> Bool method
+ * A customized Activity: allowActivity(self, datum, ctx) -> Bool method
  * has access to both the redeemer (in self), as well as Datum and the transaction 
  * context.  In this method, use self.switch{...} to implement activity-specific
  * validations.
@@ -199,8 +197,8 @@ export class DefaultCapo<
      * The default implementation is an UnspecialiedCapo, which
      * you can use as a template for your specialized Capo.
      * 
-     * Every specalization MUST include a Datum and a Redeemer,
-     * and MAY include additional functions, and methods on Datum / Redeemer.
+     * Every specalization MUST include Datum and Activity ("redeemer") enums,
+     * and MAY include additional functions, and methods on Datum / Activity.
      * 
      * The datum SHOULD have a validateSpend(self, datum, ctx) method.
      * 
@@ -212,10 +210,44 @@ export class DefaultCapo<
         return UnspecializedCapo;
     }
 
+    /**
+     * indicates any specialization of the baseline Capo types
+     * @remarks
+     * 
+     * The default implementation is an UnspecialiedCapo, which
+     * you can use as a template for your specialized Capo.
+     * 
+     * Every specalization MUST include Datum and  Activity ("redeemer") enums,
+     * and MAY include additional functions, and methods on Datum / Activity.
+     * 
+     * The datum enum SHOULD have a validateSpend(self, datum, ctx) method.
+     * 
+     * The activity enum SHOULD have an allowActivity(self, datum, ctx) method.
+     *
+     * @public
+     **/
+    get capoHelpers(): HeliosModuleSrc {
+        return CapoHelpers;
+    }
+
+
     importModules(): HeliosModuleSrc[] {
         const parentModules = super.importModules();
         const specializedCapo = this.specializedCapo;
-        return [specializedCapo, ...parentModules];
+        if (specializedCapo.moduleName !== "specializedCapo") {
+            throw new Error(`${
+                this.constructor.name
+            }: specializedCapo() module name must be `+
+                `'specializedCapo', not '${
+                    specializedCapo.moduleName
+            }'\n  ... in ${specializedCapo.srcFile}`)
+        }
+
+        return [
+            specializedCapo, 
+            this.capoHelpers,
+            ...parentModules
+        ];
     }
 
     // // @Activity.redeemer
@@ -225,14 +257,15 @@ export class DefaultCapo<
 
     get delegateRoles() {
         return delegateRoles({
-            govAuthority: defineRole("authZor", AuthorityPolicy, {
+            govAuthority: defineRole("capoGov", AuthorityPolicy, {
                 address: {
                     delegateClass: AnyAddressAuthorityPolicy,
                     validateConfig(args): strategyValidation {
-                        const { rev, uutID } = args;
+                        const { rev,tn } = args;
+                        debugger
                         const errors: ErrorMap = {};
                         if (!rev) errors.rev = ["required"];
-                        if (!uutID) errors.uutID = ["required"];
+                        if (!tn?.length) errors.tn = ["token-name required"];
                         if (Object.keys(errors).length > 0) return errors;
 
                         return undefined;
@@ -259,28 +292,34 @@ export class DefaultCapo<
                         return undefined;
                     },
                 },
+                // undelegated: { ... todo ... }
             }),
         });
     }
 
     extractDelegateLink(dl: RelativeDelegateLink<any>) {
-        const { RelativeDelegateLink: hlRelativeDelegateLink } =
-            this.scriptProgram!.types;
+        const { 
+            RelativeDelegateLink: hlRelativeDelegateLink 
+        } = this.onChainTypes
 
         let {
             uutName,
             strategyName,
-            reqdAddress: canRequireAddr,
-            addressesHint = [],
+            delegateValidatorHash,
+            config
+            // reqdAddress: canRequireAddr,
+            // addrHint = [],
         } = dl;
-        const OptAddr = Option(Address);
-        const needsAddr = new OptAddr(canRequireAddr);
+        const OptValidator = Option(ValidatorHash);
+        // const needsAddr = new OptAddr(canRequireAddr);
 
         return new hlRelativeDelegateLink(
             uutName,
             strategyName,
-            needsAddr,
-            addressesHint
+            new OptValidator(delegateValidatorHash),
+            // config //!!! todo - support inline config if/when needed
+            // needsAddr,
+            // addrHint
         );
     }
 
@@ -289,9 +328,7 @@ export class DefaultCapo<
         //!!! todo: make it possible to type these datum helpers more strongly
         //  ... at the interface to Helios
         console.log("--> mkDatumCharter", args);
-        const {
-            Datum: { CharterToken: hlCharterToken },
-        } = this.scriptProgram!.types;
+        const {CharterToken: hlCharterToken} = this.onChainDatumType
 
         const govAuthority = this.extractDelegateLink(args.govAuthorityLink);
         const mintDelegate = this.extractDelegateLink(args.mintDelegateLink);
@@ -299,28 +336,29 @@ export class DefaultCapo<
         return Datum.inline(t._toUplcData());
     }
 
-    async txnAddCharterAuthz(tcx: StellarTxnContext, datum: InlineDatum) {
-        //!!! verify both datums are read properly
-        const charterDatum = await this.readDatum<DefaultCharterDatumArgs>(
-            "CharterToken",
-            datum
-        );
 
-        console.log("add charter authz", charterDatum);
-        const { strategyName, uutName, addressesHint, reqdAddress } =
-            charterDatum.govAuthorityLink;
+    async findCharterDatum() {
+        return this.mustFindCharterUtxo().then(async (ctUtxo: TxInput) => {
+            const charterDatum = await this.readDatum<DefaultCharterDatumArgs>(
+                "CharterToken",
+                ctUtxo.origOutput.datum as InlineDatum
+            );    
+            return charterDatum
+        })
+    }
 
-        const authZor = await this.connectDelegateWith<AuthorityPolicy>(
+    async txnAddGovAuthority<TCX extends StellarTxnContext<any>>(
+        tcx: TCX
+    ): Promise<TCX & StellarTxnContext<any>> {
+        const charterDatum = await this.findCharterDatum()
+
+        console.log("adding charter's govAuthority via delegate", charterDatum.govAuthorityLink);
+        const capoGov = await this.connectDelegateWithLink<AuthorityPolicy>(
             "govAuthority",
             charterDatum.govAuthorityLink
         );
-        // const authZor = await this.connectDelegate.govAuthority(
-        //     charterDatum.govAuthorityLink
-        // );
 
-        const authZorUtxo = await authZor.txnMustFindAuthorityToken(tcx);
-        authZor.txnGrantAuthority(tcx, authZorUtxo);
-        return tcx;
+        return capoGov.txnGrantAuthority(tcx);
     }
 
     // getMinterParams() {
@@ -350,23 +388,67 @@ export class DefaultCapo<
         return { ...baseConfig, ...pCfg } as configType & CapoBaseConfig;
     }
 
+    async mkTxnCreatingUuts<
+        const purposes extends string, 
+        existingTcx extends StellarTxnContext<any>, 
+        const RM extends Record<ROLES, purposes>, 
+        const ROLES extends keyof RM & string = string & keyof RM
+    >(
+        initialTcx: existingTcx, 
+        uutPurposes: purposes[], 
+        seedUtxo?: TxInput | undefined, 
+        roles?: RM
+    ): Promise<existingTcx & hasUutContext<ROLES | purposes>> {
+
+        const tcx = await super.mkTxnCreatingUuts(initialTcx, uutPurposes, seedUtxo, roles);
+        return this.txnAddMintAuthority(tcx)
+    }
+
+    async getMintDelegate() {
+        const charterDatum = await this.findCharterDatum();
+
+        return this.connectDelegateWithLink(
+            "mintDelegate", charterDatum.mintDelegateLink
+        );
+    }
+
+    async getGovDelegate() {
+        const charterDatum = await this.findCharterDatum();
+
+        return this.connectDelegateWithLink(
+            "govDelegate", charterDatum.govAuthorityLink
+        );
+    }
+
+    async txnAddMintAuthority<
+        TCX extends StellarTxnContext<any>
+    >(tcx: TCX) : Promise<TCX> {
+        const mintDelegate = await this.getMintDelegate()
+
+        await mintDelegate.txnGrantAuthority(tcx)
+        return tcx
+    }
+
     /**
      * Initiates a seeding transaction, creating a new Capo contract of this type
      * @remarks
      *
      * detailed remarks
      * @param ‹pName› - descr
-     * @typeParam ‹pName› - descr (for generic types)
+     * @typeParam TCX - 
      * @public
      **/
     @txn
     //@ts-expect-error - typescript can't seem to understand that
     //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
-    async mkTxnMintCharterToken<TCX extends StellarTxnContext>(
+    async mkTxnMintCharterToken<TCX extends StellarTxnContext<any>>(
         charterDatumArgs: MinimalDefaultCharterDatumArgs<CDT>,
         existingTcx?: TCX
     ): Promise<
-        never | (TCX & hasBootstrappedConfig<CapoBaseConfig & configType>)
+        never | (
+            & TCX 
+            & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt">
+            & hasBootstrappedConfig<CapoBaseConfig & configType>)
     > {
         if (this.configIn)
             throw new Error(
@@ -403,25 +485,28 @@ export class DefaultCapo<
 
             const tcx = await this.minter!.txnWithUuts(
                 initialTcx,
-                ["authZor", "mintDgt"],
+                ["capoGov", "mintDgt"],
                 seedUtxo,
                 {
-                    govAuthority: "authZor",
+                    govAuthority: "capoGov",
                     mintDelegate: "mintDgt",
                 }
             );
-            const { authZor, govAuthority } = tcx.state.uuts;
+            const { 
+                capoGov, govAuthority,
+                mintDgt, mintDelegate
+            } = tcx.state.uuts;
             {
-                if (govAuthority !== authZor)
+                if (govAuthority !== capoGov)
                     throw new Error(`assertion can't fail`);
             }
 
-            const govAuthorityLink = this.txnCreateDelegateLink<
+            const govAuthorityLink = await this.txnCreateDelegateLink<
                 AuthorityPolicy,
                 "govAuthority"
             >(tcx, "govAuthority", charterDatumArgs.govAuthorityLink);
             
-            const mintDelegateLink = this.txnCreateDelegateLink<
+            const mintDelegateLink = await this.txnCreateDelegateLink<
                 BasicMintDelegate,
                 "mintDelegate"
             >(tcx, "mintDelegate", charterDatumArgs.mintDelegateLink);
@@ -434,11 +519,12 @@ export class DefaultCapo<
             };
             const datum = this.mkDatumCharterToken(fullCharterArgs);
 
-            const output = new TxOutput(this.address, this.tvCharter(), datum);
-            output.correctLovelace(this.networkParams);
+            const charterOut = new TxOutput(this.address, this.tvCharter(), datum);
+            charterOut.correctLovelace(this.networkParams);
+
 
             tcx.addInput(seedUtxo);
-            tcx.addOutputs([output]);
+            tcx.addOutputs([charterOut])
 
             console.log(
                 " ---------------- CHARTER MINT ---------------------\n",
@@ -448,7 +534,8 @@ export class DefaultCapo<
 
             return this.minter!.txnMintingCharter(tcx, {
                 owner: this.address,
-                authZor, // same as govAuthority,
+                capoGov, // same as govAuthority,
+                mintDgt
             });
         });
     }
@@ -456,18 +543,16 @@ export class DefaultCapo<
     @Activity.redeemer
     updatingCharter(): // args: CDT
     isActivity {
-        const { RelativeDelegateLink: hlRelativeDelegateLink, Redeemer } =
-            this.scriptProgram!.types;
-        // let {uut, strategyName, reqdAddress: canRequireAddr, addressesHint=[]} = args.govAuthority
+        const {updatingCharter} = this.onChainActivitiesType;
+        // let {uut, strategyName, reqdAddress: canRequireAddr, addrHint=[]} = args.govAuthority
 
-        // // const {Option} = this.scriptProgram.types;
+        // // const {Option} = this.onChainTypes;
         // debugger
         // const OptAddr = Option(Address);
         // const needsAddr = new OptAddr(canRequireAddr);
-
-        const t = new Redeemer.updatingCharter();
+        const t = new updatingCharter();
         // args.govDelegate,
-        // new hlRelativeDelegateLink(uut, strategyName, needsAddr, addressesHint)
+        // new hlRelativeDelegateLink(uut, strategyName, needsAddr, addrHint)
 
         return { redeemer: t._toUplcData() };
     }

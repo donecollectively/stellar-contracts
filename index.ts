@@ -22,8 +22,7 @@ export {
 
 export { Capo } from "./src/Capo.js";
 export type {
-    MintUutRedeemerArgs,
-    // MintCharterRedeemerArgs,
+    MintUutActivityArgs,
     uutPurposeMap,
     hasAllUuts,
     hasUutContext,
@@ -34,11 +33,20 @@ export type {
 
 export {
     delegateRoles, defineRole, 
-    
+    UutName
+} from "./src/delegation/RolesAndDelegates.js"
+export { StellarDelegate } from "./src/delegation/StellarDelegate.js";
+
+export type {
+    capoDelegateConfig,
+
+    ErrorMap,
+    ConfiguredDelegate,
+    RelativeDelegateLink
 } from "./src/delegation/RolesAndDelegates.js"
 
 export type { SeedTxnParams } from "./src/SeedTxn.js";
-export { BasicMintDelegate } from "./src/delegation/BasicMintDelegate.js";
+export { BasicMintDelegate } from "./src/minting/BasicMintDelegate.js";
 
 export {
     StellarContract,
@@ -66,7 +74,7 @@ export { CapoTestHelper } from "./src/testing/CapoTestHelper.js";
 export { DefaultCapoTestHelper } from "./src/testing/DefaultCapoTestHelper.js";
 export { StellarTestHelper } from "./src/testing/StellarTestHelper.js";
 
-export { DefaultMinter } from "./src/DefaultMinter.js";
+export { DefaultMinter } from "./src/minting/DefaultMinter.js";
 export { DefaultCapo } from "./src/DefaultCapo.js";
 export type { DefaultCharterDatumArgs } from "./src/DefaultCapo.js";
 

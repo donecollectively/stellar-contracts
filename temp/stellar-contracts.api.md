@@ -7,6 +7,7 @@
 import { Address } from '@hyperionbt/helios';
 import { AssetClass } from '@hyperionbt/helios';
 import { Assets } from '@hyperionbt/helios';
+import { capoDelegateConfig as capoDelegateConfig_2 } from './delegation/RolesAndDelegates.js';
 import { Datum } from '@hyperionbt/helios';
 import * as helios from '@hyperionbt/helios';
 import { MintingPolicyHash } from '@hyperionbt/helios';
@@ -14,8 +15,9 @@ import { Network } from '@hyperionbt/helios';
 import { NetworkEmulator } from '@hyperionbt/helios';
 import { NetworkParams } from '@hyperionbt/helios';
 import { Program } from '@hyperionbt/helios';
-import { ReqtsMap as ReqtsMap_2 } from './Requirements.js';
-import { ReqtsMap as ReqtsMap_3 } from '../Requirements.js';
+import { ReqtsMap as ReqtsMap_2 } from '../Requirements.js';
+import { ReqtsMap as ReqtsMap_3 } from './Requirements.js';
+import { RoleInfo as RoleInfo_2 } from './delegation/RolesAndDelegates.js';
 import { SimpleWallet } from '@hyperionbt/helios';
 import { TestContext } from 'vitest';
 import { Tx } from '@hyperionbt/helios';
@@ -25,6 +27,8 @@ import { TxOutput } from '@hyperionbt/helios';
 import { UplcData } from '@hyperionbt/helios';
 import { UplcDataValue } from '@hyperionbt/helios';
 import { UplcProgram } from '@hyperionbt/helios';
+import { UserTypes } from '@hyperionbt/helios';
+import { ValidatorHash } from '@hyperionbt/helios';
 import { Value } from '@hyperionbt/helios';
 import { Wallet } from '@hyperionbt/helios';
 
@@ -44,16 +48,37 @@ export const ADA = 1000000n;
 export function addTestContext<SC extends StellarContract<any>, P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never>(context: StellarTestContext<any, SC>, TestHelperClass: stellarTestHelperSubclass<SC>, params?: P): Promise<void>;
 
 // @public (undocumented)
+export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
+    // (undocumented)
+    DelegateAddsAuthorityToken<TCX extends StellarTxnContext<any>>(tcx: TCX, fromFoundUtxo: TxInput): Promise<TCX & StellarTxnContext<any>>;
+    // (undocumented)
+    DelegateMustFindAuthorityToken(tcx: StellarTxnContext<any>, label: string): Promise<TxInput>;
+    // (undocumented)
+    DelegateRetiresAuthorityToken(tcx: StellarTxnContext, fromFoundUtxo: TxInput): Promise<StellarTxnContext>;
+    // (undocumented)
+    get delegateValidatorHash(): undefined;
+    // (undocumented)
+    loadProgramScript(params: any): undefined;
+    // (undocumented)
+    txnReceiveAuthorityToken<TCX extends StellarTxnContext<any>>(tcx: TCX, tokenValue: Value, fromFoundUtxo: TxInput): Promise<TCX>;
+    // (undocumented)
+    protected usingAuthority(): isActivity;
+}
+
+// @public (undocumented)
 export type anyDatumProps = Record<string, any>;
 
 // @public (undocumented)
 export function assetsAsString(v: any): string;
 
+// @public
+export abstract class AuthorityPolicy<T extends capoDelegateConfig = capoDelegateConfig> extends StellarDelegate<T> {
+}
+
 // Warning: (ae-forgotten-export) The symbol "MintDelegateArgs" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "StellarDelegate" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export class BasicMintDelegate extends StellarContract<MintDelegateArgs> implements StellarDelegate {
+export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     // (undocumented)
     contractSource(): any;
     // (undocumented)
@@ -67,15 +92,17 @@ export class BasicMintDelegate extends StellarContract<MintDelegateArgs> impleme
     // (undocumented)
     importModules(): HeliosModuleSrc[];
     // (undocumented)
-    mkDatumDelegate(): InlineDatum;
-    // (undocumented)
     static mkDelegateWithArgs(a: MintDelegateArgs): void;
     // (undocumented)
     mkDelegationDatum(txin?: TxInput): Datum;
     // (undocumented)
-    txnCreatingTokenPolicy(tcx: StellarTxnContext, tokenName: string): Promise<StellarTxnContext<{}>>;
+    get scriptActivitiesName(): string;
     // (undocumented)
-    txnReceiveAuthorityToken<TCX extends StellarTxnContext<any>>(tcx: TCX, fromFoundUtxo?: TxInput): Promise<TCX>;
+    get scriptDatumName(): string;
+    get specializedMintDelegate(): HeliosModuleSrc;
+    // (undocumented)
+    txnCreatingTokenPolicy(tcx: StellarTxnContext, tokenName: string): Promise<StellarTxnContext<{}>>;
+    txnReceiveAuthorityToken<TCX extends StellarTxnContext<any>>(tcx: TCX, tokenValue: Value, fromFoundUtxo?: TxInput): Promise<TCX>;
 }
 
 // Warning: (ae-forgotten-export) The symbol "MinterBaseMethods" needs to be exported by the entry point index.d.ts
@@ -88,7 +115,7 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     // Warning: (ae-forgotten-export) The symbol "StellarConstructorArgs" needs to be exported by the entry point index.d.ts
     constructor(args: StellarConstructorArgs<CapoBaseConfig>);
     // (undocumented)
-    capoRequirements(): ReqtsMap_2<"is a base class for leader/Capo pattern" | "can create unique utility tokens" | "supports the Delegation pattern using roles and strategy-variants" | "supports well-typed role declarations and strategy-adding" | "supports just-in-time strategy-selection using txnCreateDelegateLink()" | "given a configured delegate-link, it can create a ready-to-use Stellar subclass with all the right settings" | "supports concrete resolution of existing role delegates" | "Each role uses a RoleVariants structure which can accept new variants" | "provides a Strategy type for binding a contract to a strategy-variant name">;
+    capoRequirements(): ReqtsMap_3<"is a base class for leader/Capo pattern" | "can create unique utility tokens" | "supports the Delegation pattern using roles and strategy-variants" | "supports well-typed role declarations and strategy-adding" | "supports just-in-time strategy-selection using txnCreateDelegateLink()" | "given a configured delegate-link, it can create a ready-to-use Stellar subclass with all the right settings" | "supports concrete resolution of existing role delegates" | "Each role uses a RoleVariants structure which can accept new variants" | "provides a Strategy type for binding a contract to a strategy-variant name">;
     // (undocumented)
     get charterTokenAsValue(): Value;
     // (undocumented)
@@ -96,11 +123,11 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
         value: Value;
     };
     // (undocumented)
-    connectDelegateWith<DelegateType extends StellarContract<paramsBase & capoDelegateConfig>, configType extends (DelegateType extends StellarContract<infer c> ? c : paramsBase) = (DelegateType extends StellarContract<infer c> ? c : paramsBase)>(roleName: string, delegateLink: RelativeDelegateLink<DelegateType>): Promise<DelegateType>;
+    connectDelegateWithLink<DelegateType extends StellarDelegate<any>, configType extends (DelegateType extends StellarContract<infer c> ? c : paramsBase) = DelegateType extends StellarContract<infer c> ? c : paramsBase>(roleName: string, delegateLink: RelativeDelegateLink<DelegateType>): Promise<DelegateType>;
     // (undocumented)
     connectMintingScript(params: SeedTxnParams): minterType;
     // (undocumented)
-    abstract contractSource(): string;
+    abstract contractSource(): HeliosModuleSrc;
     // (undocumented)
     abstract get delegateRoles(): RoleMap<any>;
     // (undocumented)
@@ -114,19 +141,20 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     importModules(): HeliosModuleSrc[];
     // (undocumented)
     minter?: minterType;
+    // Warning: (ae-forgotten-export) The symbol "BasicMinterParams" needs to be exported by the entry point index.d.ts
+    //
     // (undocumented)
-    get minterClass(): stellarSubclass<DefaultMinter, SeedTxnParams>;
+    get minterClass(): stellarSubclass<DefaultMinter, BasicMinterParams>;
     // (undocumented)
     get mintingPolicyHash(): MintingPolicyHash;
     // (undocumented)
     abstract mkDatumCharterToken(args: charterDatumType): InlineDatum;
     // (undocumented)
     abstract mkFullConfig(baseConfig: CapoBaseConfig): configType;
-    // Warning: (ae-forgotten-export) The symbol "UutName" needs to be exported by the entry point index.d.ts
-    // Warning: (ae-forgotten-export) The symbol "CapoImpliedSettings" needs to be exported by the entry point index.d.ts
+    // Warning: (ae-forgotten-export) The symbol "DelegationDetail" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
-    mkImpliedUutDetails(uut: UutName): CapoImpliedSettings;
+    mkImpliedDelegationDetails(uut: UutName): DelegationDetail;
     // (undocumented)
     mkTxnCreatingUuts<const purposes extends string, existingTcx extends StellarTxnContext<any>, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput, roles?: RM): Promise<existingTcx & hasUutContext<ROLES | purposes>>;
     // (undocumented)
@@ -140,32 +168,26 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     // Warning: (ae-forgotten-export) The symbol "PreconfiguredDelegate" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
-    mustGetDelegate<T extends StellarContract<capoDelegateConfig & any>>(configuredDelegate: PreconfiguredDelegate<T>): T;
-    // Warning: (ae-forgotten-export) The symbol "ConfiguredDelegate" needs to be exported by the entry point index.d.ts
-    //
+    mustGetDelegate<T extends StellarDelegate<any>>(configuredDelegate: PreconfiguredDelegate<T>): T;
     // (undocumented)
-    relativeLink<DT extends StellarContract<capoDelegateConfig>>(configured: ConfiguredDelegate<DT>): RelativeDelegateLink<DT>;
+    relativeLink<DT extends StellarDelegate<any>>(configured: ConfiguredDelegate<DT>): RelativeDelegateLink<DT>;
     // (undocumented)
-    tokenAsValue(tokenName: string, quantity?: bigint): Value;
+    tokenAsValue(tokenName: string | UutName, count?: bigint): Value;
     // (undocumented)
     tvCharter(): Value;
+    txnAddCharterAuthorityTokenRef<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX & StellarTxnContext<any>>;
     // (undocumented)
-    txnAddAuthority(tcx: StellarTxnContext<any>): Promise<StellarTxnContext<any>>;
-    // (undocumented)
-    abstract txnAddCharterAuthz(tcx: StellarTxnContext, datum: InlineDatum): Promise<StellarTxnContext<any> | never>;
-    txnCreateConfiguredDelegate<DT extends StellarContract<any & capoDelegateConfig>, const RN extends string>(tcx: hasUutContext<RN>, roleName: RN & keyof this["delegateRoles"], delegateInfo?: MinimalDelegateLink<DT>): ConfiguredDelegate<DT>;
-    // Warning: (ae-forgotten-export) The symbol "capoDelegateConfig" needs to be exported by the entry point index.d.ts
+    abstract txnAddGovAuthority<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX & StellarTxnContext<any>>;
+    txnCreateConfiguredDelegate<DT extends StellarDelegate<any>, const RN extends string>(tcx: hasUutContext<RN>, roleName: RN & keyof this["delegateRoles"], delegateInfo?: MinimalDelegateLink<DT>): ConfiguredDelegate<DT>;
     // Warning: (ae-forgotten-export) The symbol "MinimalDelegateLink" needs to be exported by the entry point index.d.ts
-    // Warning: (ae-forgotten-export) The symbol "RelativeDelegateLink" needs to be exported by the entry point index.d.ts
-    txnCreateDelegateLink<DT extends StellarContract<capoDelegateConfig>, const RN extends string>(tcx: hasUutContext<RN>, roleName: RN, delegateInfo?: MinimalDelegateLink<DT>): RelativeDelegateLink<DT>;
+    txnCreateDelegateLink<DT extends StellarDelegate, const RN extends string>(tcx: hasUutContext<RN>, roleName: RN, delegateInfo?: MinimalDelegateLink<DT>): Promise<RelativeDelegateLink<DT>>;
     // (undocumented)
     txnKeepCharterToken(tcx: StellarTxnContext<any>, datum: InlineDatum): StellarTxnContext<any>;
-    // (undocumented)
     txnMustGetSeedUtxo(tcx: StellarTxnContext, purpose: string, tokenNames: string[]): Promise<TxInput | never>;
     // (undocumented)
-    txnMustUseCharterUtxo(tcx: StellarTxnContext<any>, redeemer: isActivity, newDatum?: InlineDatum): Promise<StellarTxnContext<any> | never>;
+    txnMustUseCharterUtxo<TCX extends StellarTxnContext<any>>(tcx: TCX, redeemer: isActivity, newDatum?: InlineDatum): Promise<TCX>;
     // (undocumented)
-    txnMustUseCharterUtxo(tcx: StellarTxnContext<any>, useReferenceInput: true, forceAddRefScript?: true): Promise<StellarTxnContext<any> | never>;
+    txnMustUseCharterUtxo<TCX extends StellarTxnContext<any>>(tcx: TCX, useReferenceInput: "refInput" | true, forceAddRefScript?: true): Promise<TCX>;
     // (undocumented)
     txnUpdateCharterUtxo(tcx: StellarTxnContext, redeemer: isActivity, newDatum: InlineDatum): Promise<StellarTxnContext | never>;
     // (undocumented)
@@ -173,12 +195,21 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     // (undocumented)
     protected abstract updatingCharter(args: charterDatumType): isActivity;
     // (undocumented)
-    protected usingAuthority(): isActivity;
+    usingAuthority(): isActivity;
     // (undocumented)
     uutsValue(uutMap: uutPurposeMap<any>): Value;
     // (undocumented)
     uutsValue(tcx: hasUutContext<any>): Value;
 }
+
+// @public
+export type capoDelegateConfig = paramsBase & {
+    capoAddr: Address;
+    mph: MintingPolicyHash;
+    tn: number[];
+    rev: bigint;
+    addrHint: Address[];
+};
 
 // @public (undocumented)
 export abstract class CapoTestHelper<SC extends Capo<DefaultMinter & MinterBaseMethods, CDT, CT>, CDT extends anyDatumArgs = SC extends Capo<DefaultMinter, infer iCDT> ? iCDT : anyDatumArgs, //prettier-ignore
@@ -193,53 +224,72 @@ CT extends CapoBaseConfig = SC extends Capo<any, any, infer iCT> ? iCT : never> 
         randomSeed?: number;
     }): Promise<SC>;
     // (undocumented)
-    abstract mintCharterToken(args?: MinimalDefaultCharterDatumArgs<any>): Promise<hasBootstrappedConfig<CT>>;
+    abstract mintCharterToken(args?: MinimalDefaultCharterDatumArgs<any>): Promise<StellarTxnContext<any> & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & hasBootstrappedConfig<CapoBaseConfig>>;
     // (undocumented)
     abstract mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<any>>;
 }
+
+// @public
+export type ConfiguredDelegate<DT extends StellarDelegate<any>> = {
+    delegateClass: stellarSubclass<DT>;
+    delegate: DT;
+    roleName: string;
+    config: ConfigFor<DT>;
+} & RelativeDelegateLink<DT>;
 
 // @public (undocumented)
 export function datum(proto: any, thingName: any, descriptor: any): any;
 
 // @public
 export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs, configType extends CapoBaseConfig = CapoBaseConfig> extends Capo<MinterType, CDT, configType> {
+    get capoHelpers(): HeliosModuleSrc;
     // (undocumented)
     contractSource(): any;
     // (undocumented)
     get delegateRoles(): RoleMap<{
-        readonly govAuthority: RoleInfo<StellarContract<any>, {
-            readonly address: {
-                readonly delegateClass: typeof AnyAddressAuthorityPolicy;
-                readonly validateConfig: (args: any) => strategyValidation;
-            };
-            readonly multisig: {
-                readonly delegateClass: typeof MultisigAuthorityPolicy;
-                readonly validateConfig: (args: any) => strategyValidation;
-            };
-        }, "authZor", "address" | "multisig">;
-        readonly mintDelegate: RoleInfo<StellarContract<any>, {
-            readonly default: {
-                readonly delegateClass: typeof BasicMintDelegate;
-                readonly partialConfig: {};
-                readonly validateConfig: (args: any) => strategyValidation;
-            };
+        readonly govAuthority: RoleInfo_2<StellarContract<any>, {
+        readonly address: {
+        readonly delegateClass: typeof AnyAddressAuthorityPolicy;
+        readonly validateConfig: (args: any) => strategyValidation;
+        };
+        readonly multisig: {
+        readonly delegateClass: typeof MultisigAuthorityPolicy;
+        readonly validateConfig: (args: any) => strategyValidation;
+        };
+        }, "capoGov", "address" | "multisig">;
+        readonly mintDelegate: RoleInfo_2<StellarContract<any>, {
+        readonly default: {
+        readonly delegateClass: typeof BasicMintDelegate;
+        readonly partialConfig: {};
+        readonly validateConfig: (args: any) => strategyValidation;
+        };
         }, "mintDgt", "default">;
     }>;
     // (undocumented)
     extractDelegateLink(dl: RelativeDelegateLink<any>): any;
     // (undocumented)
+    findCharterDatum(): Promise<DefaultCharterDatumArgs>;
+    // (undocumented)
+    getGovDelegate(): Promise<AuthorityPolicy<capoDelegateConfig_2>>;
+    // (undocumented)
+    getMintDelegate(): Promise<BasicMintDelegate>;
+    // (undocumented)
     importModules(): HeliosModuleSrc[];
     // (undocumented)
     mkDatumCharterToken(args: CDT): InlineDatum;
     mkFullConfig(baseConfig: CapoBaseConfig): CapoBaseConfig & configType;
-    mkTxnMintCharterToken<TCX extends StellarTxnContext>(charterDatumArgs: MinimalDefaultCharterDatumArgs<CDT>, existingTcx?: TCX): Promise<never | (TCX & hasBootstrappedConfig<CapoBaseConfig & configType>)>;
+    // (undocumented)
+    mkTxnCreatingUuts<const purposes extends string, existingTcx extends StellarTxnContext<any>, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput | undefined, roles?: RM): Promise<existingTcx & hasUutContext<ROLES | purposes>>;
+    mkTxnMintCharterToken<TCX extends StellarTxnContext<any>>(charterDatumArgs: MinimalDefaultCharterDatumArgs<CDT>, existingTcx?: TCX): Promise<never | (TCX & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & hasBootstrappedConfig<CapoBaseConfig & configType>)>;
     // (undocumented)
     mkTxnUpdateCharter(args: CDT, tcx?: StellarTxnContext): Promise<StellarTxnContext>;
     // (undocumented)
-    requirements(): ReqtsMap_2<"the trustee group can be changed" | "positively governs all administrative actions" | "has a unique, permanent charter token" | "has a unique, permanent treasury address" | "the trustee threshold is enforced on all administrative actions" | "the charter token is always kept in the contract" | "can mint other tokens, on the authority of the Charter token" | "has a singleton minting policy" | "foo">;
+    requirements(): ReqtsMap_3<"the trustee group can be changed" | "positively governs all administrative actions" | "has a unique, permanent charter token" | "has a unique, permanent treasury address" | "the trustee threshold is enforced on all administrative actions" | "the charter token is always kept in the contract" | "can mint other tokens, on the authority of the Charter token" | "has a singleton minting policy" | "foo">;
     get specializedCapo(): HeliosModuleSrc;
     // (undocumented)
-    txnAddCharterAuthz(tcx: StellarTxnContext, datum: InlineDatum): Promise<StellarTxnContext<{}>>;
+    txnAddGovAuthority<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX & StellarTxnContext<any>>;
+    // (undocumented)
+    txnAddMintAuthority<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX>;
     // (undocumented)
     updatingCharter(): isActivity;
 }
@@ -251,7 +301,7 @@ CT extends CapoBaseConfig = DC extends Capo<any, any, infer iCT> ? iCT : never> 
     // (undocumented)
     static forCapoClass<DC extends DefaultCapo<DefaultMinter, any, any>>(s: stellarSubclass<DC>): stellarTestHelperSubclass<DC>;
     // (undocumented)
-    mintCharterToken(args?: MinimalDefaultCharterDatumArgs<CDT>): Promise<hasBootstrappedConfig<CT>>;
+    mintCharterToken(args?: MinimalDefaultCharterDatumArgs<CDT>): Promise<hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & StellarTxnContext<any> & hasBootstrappedConfig<CapoBaseConfig>>;
     // (undocumented)
     mkCharterSpendTx(): Promise<StellarTxnContext>;
     // (undocumented)
@@ -271,7 +321,7 @@ export type DefaultCharterDatumArgs = {
 };
 
 // @public (undocumented)
-export class DefaultMinter extends StellarContract<SeedTxnParams> implements MinterBaseMethods {
+export class DefaultMinter extends StellarContract<BasicMinterParams> implements MinterBaseMethods {
     // (undocumented)
     get charterTokenAsValue(): Value;
     // (undocumented)
@@ -279,28 +329,33 @@ export class DefaultMinter extends StellarContract<SeedTxnParams> implements Min
     // (undocumented)
     contractSource(): any;
     // (undocumented)
+    getContractScriptParams(config: BasicMinterParams): paramsBase & SeedTxnParams;
+    // (undocumented)
     importModules(): HeliosModuleSrc[];
-    // Warning: (ae-forgotten-export) The symbol "MintCharterRedeemerArgs" needs to be exported by the entry point index.d.ts
+    // Warning: (ae-forgotten-export) The symbol "MintCharterActivityArgs" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
-    protected mintingCharter({ owner }: MintCharterRedeemerArgs): isActivity;
+    protected mintingCharter({ owner }: MintCharterActivityArgs): isActivity;
     // (undocumented)
     get mintingPolicyHash(): MintingPolicyHash;
     // (undocumented)
-    protected mintingUuts({ seedTxn, seedIndex: sIdx, purposes, }: MintUutRedeemerArgs): isActivity;
+    protected mintingUuts({ seedTxn, seedIndex: sIdx, purposes, }: MintUutActivityArgs): isActivity;
     // (undocumented)
     mkTxnCreatingUuts<const purposes extends string, existingTcx extends StellarTxnContext<any>, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput, roles?: RM): Promise<existingTcx & hasUutContext<ROLES | purposes>>;
     // (undocumented)
     tvCharter(): Value;
     // (undocumented)
-    txnMintingCharter<TCX extends StellarTxnContext<any>>(tcx: TCX, { owner, authZor, }: {
-        authZor: UutName;
+    txnMintingCharter<TCX extends StellarTxnContext<any>>(tcx: TCX, { owner, capoGov, mintDgt, }: {
         owner: Address;
-    }): Promise<TCX>;
+        capoGov: UutName;
+        mintDgt: UutName;
+    }): Promise<TCX & StellarTxnContext<any>>;
     // (undocumented)
     txnWithUuts<const purposes extends string, existingTcx extends StellarTxnContext<any>, const RM extends Record<ROLES, purposes>, const ROLES extends string & keyof RM = string & keyof RM>(tcx: existingTcx, uutPurposes: purposes[], seedUtxo: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
 }
 
+// Warning: (ae-forgotten-export) The symbol "RoleInfo" needs to be exported by the entry point index.d.ts
+//
 // @public (undocumented)
 export function defineRole<const UUTP extends string, SC extends StellarContract<any>, const VMv extends RoleInfo<SC, any, UUTP>["variants"]>(uutBaseName: UUTP, baseClass: stellarSubclass<SC> & any, variants: VMv): RoleInfo<SC, VMv, UUTP>;
 
@@ -310,8 +365,9 @@ export function delegateRoles<const RM extends RoleMap<any>>(x: RM): RoleMap<RM>
 // @public (undocumented)
 export function dumpAny(x: Tx | StellarTxnContext): string | undefined;
 
-// Warning: (ae-forgotten-export) The symbol "ErrorMap" needs to be exported by the entry point index.d.ts
-//
+// @public (undocumented)
+export type ErrorMap = Record<string, string[]>;
+
 // @public (undocumented)
 export function errorMapAsString(em: ErrorMap, prefix?: string): string;
 
@@ -372,7 +428,7 @@ export type isActivity = {
 export function lovelaceToAda(l: bigint | number): string;
 
 // @public
-export type MintUutRedeemerArgs = {
+export type MintUutActivityArgs = {
     seedTxn: TxId;
     seedIndex: bigint | number;
     purposes: string[];
@@ -388,13 +444,21 @@ export function mkUutValuesEntries(uuts: UutName[]): valuesEntry[];
 export function mkUutValuesEntries(uuts: uutPurposeMap<any>): valuesEntry[];
 
 // @public (undocumented)
-export function mkValuesEntry(tokenName: string, count: bigint): valuesEntry;
+export function mkValuesEntry(tokenName: string | number[], count: bigint): valuesEntry;
 
 // @public (undocumented)
 export type paramsBase = Record<string, any>;
 
 // @public (undocumented)
 export function partialTxn(proto: any, thingName: any, descriptor: any): any;
+
+// @public (undocumented)
+export type RelativeDelegateLink<T extends StellarDelegate<any>> = {
+    uutName: string;
+    strategyName: string;
+    config: Partial<ConfigFor<T>>;
+    delegateValidatorHash?: ValidatorHash;
+};
 
 // Warning: (ae-forgotten-export) The symbol "TODO_TYPE" needs to be exported by the entry point index.d.ts
 //
@@ -430,10 +494,8 @@ export class StellarContract<ConfigType extends paramsBase> {
     ADA(n: bigint | number): bigint;
     // (undocumented)
     get address(): Address;
-    // Warning: (ae-forgotten-export) The symbol "ConfigFor" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
-    addScriptWithParams<SC extends StellarContract<any>>(TargetClass: new (a: SC extends StellarContract<any> ? StellarConstructorArgs<ConfigFor<SC>> : never) => SC, config: SC extends StellarContract<infer iCT> ? iCT : never): SC;
+    addStrellaWithConfig<SC extends StellarContract<any>>(TargetClass: new (a: SC extends StellarContract<any> ? StellarConstructorArgs<ConfigFor<SC>> : never) => SC, config: SC extends StellarContract<infer iCT> ? iCT : never): SC;
     // (undocumented)
     compiledScript: UplcProgram;
     // (undocumented)
@@ -447,7 +509,7 @@ export class StellarContract<ConfigType extends paramsBase> {
     // (undocumented)
     static get defaultParams(): {};
     // (undocumented)
-    delegateAddressesHint(): Address[] | undefined;
+    delegateAddrHint(): Address[] | undefined;
     // (undocumented)
     delegateReqdAddress(): false | Address;
     // (undocumented)
@@ -478,9 +540,11 @@ export class StellarContract<ConfigType extends paramsBase> {
     // (undocumented)
     get mintingPolicyHash(): MintingPolicyHash | undefined;
     // (undocumented)
-    mkAssetValue(tokenId: AssetClass, count?: number): Value;
+    mkAssetValue(tokenId: AssetClass, count?: bigint): Value;
     // (undocumented)
-    mkMinAssetValue(tokenId: AssetClass, count?: number): Value;
+    mkMinAssetValue(tokenId: AssetClass, count?: bigint): Value;
+    // (undocumented)
+    mkMinTv(mph: MintingPolicyHash, tn: string | UutName, count?: bigint): Value;
     // (undocumented)
     mkTokenPredicate(val: Value): tokenPredicate<any>;
     // (undocumented)
@@ -507,11 +571,16 @@ export class StellarContract<ConfigType extends paramsBase> {
         exceptInTcx?: StellarTxnContext<any>;
     }, extraErrorHint?: string): Promise<TxInput | never>;
     // (undocumented)
+    mustGetActivity(activityName: any): any;
+    // (undocumented)
     myActor?: Wallet;
     // (undocumented)
     network: Network;
     // (undocumented)
     networkParams: NetworkParams;
+    get onChainActivitiesType(): any;
+    get onChainDatumType(): any;
+    get onChainTypes(): UserTypes;
     // (undocumented)
     outputsSentToDatum(datum: InlineDatum): Promise<TxInput[]>;
     // (undocumented)
@@ -524,6 +593,8 @@ export class StellarContract<ConfigType extends paramsBase> {
     _purpose?: scriptPurpose;
     // (undocumented)
     readDatum<DPROPS extends anyDatumProps>(datumName: string, datum: Datum | InlineDatum): Promise<DPROPS>;
+    get scriptActivitiesName(): string;
+    get scriptDatumName(): string;
     // (undocumented)
     scriptProgram?: Program;
     // Warning: (ae-forgotten-export) The symbol "SetupDetails" needs to be exported by the entry point index.d.ts
@@ -543,7 +614,6 @@ export class StellarContract<ConfigType extends paramsBase> {
     toUtxoId(u: TxInput): string;
     // (undocumented)
     txnFindUtxo(tcx: StellarTxnContext<any>, name: string, predicate: utxoPredicate, address?: Address): Promise<TxInput | undefined>;
-    // (undocumented)
     txnKeepValue(tcx: StellarTxnContext, value: Value, datum: InlineDatum): StellarTxnContext<{}>;
     // @internal (undocumented)
     protected _utxoCountAdaOnly(c: number, { minAdaAmount }: utxoInfo): number;
@@ -555,6 +625,33 @@ export class StellarContract<ConfigType extends paramsBase> {
     //
     // @internal (undocumented)
     protected _utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }: utxoInfo, { free: free2, minAdaAmount: r2 }: utxoInfo): 1 | -1 | 0;
+}
+
+// @public
+export abstract class StellarDelegate<CT extends paramsBase & capoDelegateConfig = capoDelegateConfig, DCCT extends Record<string, any> | string = string> extends StellarContract<CT> {
+    activityAuthorizing(): {
+        redeemer: any;
+    };
+    activityRetiring(): {
+        redeemer: any;
+    };
+    // (undocumented)
+    static currentRev: bigint;
+    // (undocumented)
+    static get defaultParams(): {
+        rev: bigint;
+    };
+    protected DelegateAddsAuthorityToken<TCX extends StellarTxnContext<any>>(tcx: TCX, uutxo: TxInput): Promise<TCX>;
+    DelegateMustFindAuthorityToken(tcx: StellarTxnContext<any>, label: string): Promise<TxInput>;
+    delegateRequirements(): ReqtsMap_2<"provides an interface for providing arms-length proof of authority to any other contract" | "implementations SHOULD positively govern spend of the UUT" | "implementations MUST provide an essential interface for transaction-building" | "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)" | "requires a mustFindAuthorityToken(tcx)" | "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)" | "requires txnRetireCred(tcx, fromFoundUtxo)">;
+    protected DelegateRetiresAuthorityToken(tcx: StellarTxnContext, fromFoundUtxo: TxInput): Promise<StellarTxnContext>;
+    get delegateValidatorHash(): ValidatorHash | undefined;
+    mkDatumIsDelegation(dd: DelegationDetail, ...args: DCCT extends string ? [string] | [] : [DCCT]): InlineDatum;
+    // (undocumented)
+    tvAuthorityToken(): Value;
+    txnGrantAuthority<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX>;
+    abstract txnReceiveAuthorityToken<TCX extends StellarTxnContext<any>>(tcx: TCX, tokenValue: Value, fromFoundUtxo?: TxInput): Promise<TCX>;
+    txnRetireAuthorityToken<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<StellarTxnContext<{}>>;
 }
 
 // @public (undocumented)
@@ -649,10 +746,13 @@ export class StellarTxnContext<S = noState> {
     constructor(state?: Partial<S>);
     // (undocumented)
     addCollateral(collateral: TxInput): this;
+    // Warning: (ae-forgotten-export) The symbol "addInputArgs" needs to be exported by the entry point index.d.ts
+    // Warning: (ae-forgotten-export) The symbol "RedeemerArg" needs to be exported by the entry point index.d.ts
+    //
     // (undocumented)
-    addInput<TCX extends StellarTxnContext<S>>(this: TCX, ...args: Parameters<Tx["addInput"]>): TCX;
+    addInput<TCX extends StellarTxnContext<S>>(this: TCX, input: addInputArgs[0], r?: RedeemerArg): TCX;
     // (undocumented)
-    addInputs<TCX extends StellarTxnContext<S>>(this: TCX, ...args: Parameters<Tx["addInputs"]>): TCX;
+    addInputs<TCX extends StellarTxnContext<S>>(this: TCX, inputs: Parameters<Tx["addInputs"]>[0], r: RedeemerArg): TCX;
     // (undocumented)
     addOutput<TCX extends StellarTxnContext<S>>(this: TCX, ...args: Parameters<Tx["addOutput"]>): TCX;
     // (undocumented)
@@ -716,6 +816,16 @@ export type utxoPredicate = ((u: TxInput) => TxInput | undefined) | ((u: TxInput
 export function utxosAsString(utxos: TxInput[], joiner?: string): string;
 
 // @public
+export class UutName {
+    constructor(purpose: string, fullUutName: string);
+    get name(): string;
+    // (undocumented)
+    purpose: string;
+    // (undocumented)
+    toString(): string;
+}
+
+// @public
 export type uutPurposeMap<unionPurpose extends string> = {
     [purpose in unionPurpose]: UutName;
 };
@@ -728,10 +838,8 @@ export type valuesEntry = [number[], bigint];
 
 // Warnings were encountered during analysis:
 //
-// src/DefaultCapo.ts:71:5 - (ae-forgotten-export) The symbol "AuthorityPolicy" needs to be exported by the entry point index.d.ts
-// src/DefaultCapo.ts:227:9 - (ae-forgotten-export) The symbol "RoleInfo" needs to be exported by the entry point index.d.ts
-// src/DefaultCapo.ts:229:17 - (ae-forgotten-export) The symbol "AnyAddressAuthorityPolicy" needs to be exported by the entry point index.d.ts
-// src/DefaultCapo.ts:234:3 - (ae-forgotten-export) The symbol "MultisigAuthorityPolicy" needs to be exported by the entry point index.d.ts
+// src/DefaultCapo.ts:266:3 - (ae-forgotten-export) The symbol "MultisigAuthorityPolicy" needs to be exported by the entry point index.d.ts
+// src/delegation/RolesAndDelegates.ts:248:5 - (ae-forgotten-export) The symbol "ConfigFor" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

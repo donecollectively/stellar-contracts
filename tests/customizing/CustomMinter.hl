@@ -8,7 +8,7 @@ import {
 const seedTxn : TxId = TxId::new(#1234)
 const seedIndex : Int = 42
 
-enum Redeemer { 
+enum Activity { 
     mintingCharter {
         owner: Address
     }
@@ -28,7 +28,7 @@ func hasContractSeedUtxo(tx: Tx) -> Bool {
     hasSeedUtxo(tx, seedTxn, seedIndex, "charter")
 }
 
-func main(r : Redeemer, ctx: ScriptContext) -> Bool {
+func main(r : Activity, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
     mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
     value_minted: Value = tx.minted;

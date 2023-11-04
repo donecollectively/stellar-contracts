@@ -1,5 +1,5 @@
 import * as helios from '@hyperionbt/helios';
-import { Address, Tx, Value, TxOutput, MintingPolicyHash, AssetClass, TxInput, Assets, Program, NetworkParams, Crypto, NetworkEmulator } from '@hyperionbt/helios';
+import { Address, Tx, Value, TxOutput, ConstrData, AssetClass, MintingPolicyHash, TxInput, Assets, Program, NetworkParams, Crypto, NetworkEmulator } from '@hyperionbt/helios';
 
 function hexToPrintableString(hexStr) {
   let result = "";
@@ -96,7 +96,7 @@ function txAsString(tx) {
       item = item.map((x2) => {
         if (!x2.hex)
           debugger;
-        return `\u{1F511}#${x2.hex.slice(0, 6)}\u2026${x2.hex.slice(-2)}`;
+        return `\u{1F511}#${x2.hex.slice(0, 6)}\u2026${x2.hex.slice(-4)}`;
       });
     }
     if ("fee" == x) {
@@ -126,7 +126,7 @@ function txAsString(tx) {
         continue;
       item = item.map((s) => {
         const addr = Address.fromHash(s.pubKeyHash).toBech32();
-        return `\u{1F58A}\uFE0F ${addr.substring(0, 20)}\u2026${addr.substring(-4)}`;
+        return `\u{1F58A}\uFE0F ${addr.slice(0, 20)}\u2026${addr.slice(-4)} = \u{1F511}\u2026${s.pubKeyHash.hex.slice(-4)}`;
       });
       if (item.length > 1)
         item.unshift("");
@@ -135,7 +135,7 @@ function txAsString(tx) {
     if ("redeemers" == x) {
       if (!item)
         continue;
-      //!!! todo: augment with mph when that's available from the Redeemer.
+      //!!! todo: augment with mph when that's available from the Activity.
       item = item.map((x2) => {
         const indexInfo = x2.inputIndex == -1 ? `spend txin #\u2039tbd\u203A` : "inputIndex" in x2 ? `spend txin #${1 + x2.inputIndex}` : `mint policy#${1 + x2.mphIndex}`;
         return `\u{1F3E7}  ${indexInfo} ${x2.data.toString()}`;
@@ -256,16 +256,14 @@ class StellarTxnContext {
     this.tx.addCollateral(collateral);
     return this;
   }
-  addInput(...args) {
-    const [input, ..._otherArgs] = args;
+  addInput(input, r) {
     this.inputs.push(input);
-    this.tx.addInput(...args);
+    this.tx.addInput(input, r?.redeemer);
     return this;
   }
-  addInputs(...args) {
-    const [inputs, ..._otherArgs] = args;
+  addInputs(inputs, r) {
     this.inputs.push(...inputs);
-    this.tx.addInputs(...args);
+    this.tx.addInputs(inputs, r.redeemer);
     return this;
   }
   addOutput(...args) {
@@ -295,6 +293,12 @@ class StellarTxnContext {
    **/
   addScript() {
   }
+}
+
+function stringToNumberArray(str) {
+  let encoder = new TextEncoder();
+  let byteArray = encoder.encode(str);
+  return [...byteArray].map((x) => parseInt(x.toString()));
 }
 
 var __defProp = Object.defineProperty;
@@ -388,7 +392,7 @@ class StellarContract {
   delegateReqdAddress() {
     return this.address;
   }
-  delegateAddressesHint() {
+  delegateAddrHint() {
     return void 0;
   }
   constructor(args) {
@@ -411,7 +415,7 @@ class StellarContract {
   compiledScript;
   // initialized in loadProgramScript
   get datumType() {
-    return this.scriptProgram?.types.Datum;
+    return this.onChainDatumType;
   }
   /**
    * @internal
@@ -460,7 +464,7 @@ class StellarContract {
     tcx.addOutput(new TxOutput(this.address, value, datum2));
     return tcx;
   }
-  addScriptWithParams(TargetClass, config) {
+  addStrellaWithConfig(TargetClass, config) {
     const args = {
       config,
       setup: this.setup
@@ -502,10 +506,78 @@ class StellarContract {
   //     console.log(`    - found ${heldUtxos.length} utxo:`);
   //     return heldUtxos.filter(predicate);
   // }
+  /**
+   * Returns all the types exposed by the contract script
+   * @remarks
+   * 
+   * Passed directly from Helios; property names match contract's defined type names
+   * 
+   * @public
+   **/
+  get onChainTypes() {
+    return this.scriptProgram.types;
+  }
+  /**
+   * identifies the enum used for the script Datum
+   * @remarks
+   *
+   * Override this if your contract script uses a type name other than Datum.
+   * @public
+   **/
+  get scriptDatumName() {
+    return "Datum";
+  }
+  /**
+  * returns the on-chain type for datum
+  * @remarks
+  * 
+  * returns the on-chain enum used for attaching data (or data hashes) to contract utxos
+  * the returned type (and its enum variants) are suitable for off-chain txn-creation
+  * override `get scriptDatumName()` if needed to match your contract script.
+  * @public
+  **/
+  get onChainDatumType() {
+    const { scriptDatumName: onChainDatumName } = this;
+    const { [onChainDatumName]: DatumType } = this.scriptProgram.types;
+    return DatumType;
+  }
+  /**
+   * identifies the enum used for activities (redeemers) in the Helios script
+   * @remarks
+   *
+   * Override this if your contract script uses a type name other than Activity.
+   * @public
+   **/
+  get scriptActivitiesName() {
+    return "Activity";
+  }
+  /**
+   * returns the on-chain type for activites ("redeemers")
+   * @remarks
+   *
+   * returns the on-chain enum used for spending contract utxos or for different use-cases of minting (in a minting script).
+   * the returned type (and its enum variants) are suitable for off-chain txn-creation
+   * override `get onChainActivitiesName()` if needed to match your contract script.
+   * @public
+   **/
+  get onChainActivitiesType() {
+    const { scriptActivitiesName: onChainActivitiesName } = this;
+    const { [onChainActivitiesName]: ActivitiesType } = this.scriptProgram.types;
+    return ActivitiesType;
+  }
+  mustGetActivity(activityName) {
+    const { [activityName]: activityType } = this.onChainActivitiesType;
+    if (!activityType) {
+      const { scriptActivitiesName: onChainActivitiesName } = this;
+      throw new Error(
+        `$${this.constructor.name}: activity name mismatch ${onChainActivitiesName}::${activityName}''
+   known activities in this script: ${Object.keys(this.onChainActivitiesType).join(", ")}`
+      );
+    }
+    return activityType;
+  }
   async readDatum(datumName, datum2) {
-    const thisDatumType = this.scriptProgram.mainArgTypes.find(
-      (x) => "Datum" == x.name
-    ).typeMembers[datumName];
+    const thisDatumType = this.onChainDatumType[datumName];
     if (!thisDatumType)
       throw new Error(`invalid datumName ${datumName}`);
     if (!datum2.isInline())
@@ -538,8 +610,40 @@ class StellarContract {
       )
     );
   }
+  async readUplcEnumVariant(uplcType, enumDataDef, uplcData) {
+    const fieldNames = enumDataDef.fieldNames;
+    debugger;
+    const { fields } = uplcData;
+    return Object.fromEntries(
+      await Promise.all(
+        fieldNames.map(async (fn, i) => {
+          const fieldData = fields[i];
+          const fieldType = enumDataDef.fields[i].type;
+          const value = await this.readUplcField(
+            fn,
+            fieldType,
+            fieldData
+          );
+          return [fn, value];
+        })
+      )
+    );
+  }
   async readUplcDatum(uplcType, uplcData) {
     const { fieldNames, instanceMembers } = uplcType;
+    if (!fieldNames) {
+      const enumVariant = uplcType.prototype._enumVariantStatement;
+      if (enumVariant) {
+        const foundIndex = uplcData.index;
+        const { dataDefinition: enumDataDef, constrIndex } = enumVariant;
+        if (!(uplcData instanceof ConstrData))
+          throw new Error(`uplcData mismatch - no constrData, expected constData#${constrIndex}`);
+        if (!(foundIndex == constrIndex))
+          throw new Error(`uplcData expected constrData#${constrIndex}, got #${foundIndex}`);
+        return this.readUplcEnumVariant(uplcType, enumDataDef, uplcData);
+      }
+      throw new Error(`can't determine how to parse UplcDatum without 'fieldNames'.  Tried enum`);
+    }
     return Object.fromEntries(
       await Promise.all(
         fieldNames.map(async (fn, i) => {
@@ -612,14 +716,23 @@ class StellarContract {
       return this.hasOnlyAda(value, tcx2, utxo);
     }
   }
-  mkAssetValue(tokenId, count = 1) {
+  mkMinTv(mph, tn, count = 1n) {
+    return this.mkMinAssetValue(
+      new AssetClass([mph, stringToNumberArray(tn.toString())]),
+      count
+    );
+  }
+  mkAssetValue(tokenId, count = 1n) {
     const assets = [[tokenId, count]];
     const v = new Value(void 0, assets);
     return v;
   }
-  mkMinAssetValue(tokenId, count = 1) {
+  mkMinAssetValue(tokenId, count = 1n) {
     this.mkAssetValue(tokenId, count);
-    const txo = new TxOutput(this.address, this.mkAssetValue(this.configIn.uut));
+    const txo = new TxOutput(
+      new Address(Array(29).fill(0)),
+      this.mkAssetValue(tokenId, count)
+    );
     txo.correctLovelace(this.networkParams);
     return txo.value;
   }
@@ -802,6 +915,7 @@ class StellarContract {
         await tx.finalize(this.networkParams, changeAddress, spares);
       } catch (e) {
         console.log("FAILED submitting:", tcx.dump());
+        debugger;
         throw e;
       }
       for (const s of willSign) {
@@ -895,6 +1009,7 @@ This likely indicates a problem in Helios' error reporting -
         } catch (sameError) {
           throw sameError;
         }
+        throw e;
       }
       const moduleName = e.src.name;
       const errorModule = [src, ...modules].find(
@@ -981,15 +1096,13 @@ This likely indicates a problem in Helios' error reporting -
       `finding '${semanticName}' utxo${exceptInTcx ? " (not already being spent in txn)" : ""} from set:
   ${utxosAsString(filtered, "\n  ")}`,
       ...exceptInTcx && filterUtxos?.length ? [
-        "\n  ... after filtering out:\n  ",
+        "\n  ... after filtering out:\n ",
         utxosAsString(exceptInTcx.reservedUtxos(), "\n  ")
       ] : []
     );
     const found = filtered.find(predicate);
     if (found) {
-      console.log({
-        found: utxosAsString([found])
-      });
+      console.log("  <- found:" + utxosAsString([found]));
     } else {
       console.log("  (not found)");
     }

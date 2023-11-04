@@ -39,7 +39,7 @@ class CustomTreasuryTestHelper extends CapoTestHelper<CustomTreasury> {
     mkDefaultCharterArgs() {
         return {
             govAuthorityLink: {
-                addressesHint: [this.actors.tina.address],
+                addrHint: [this.currentActor.address],
                 strategyName: "address",
             },
         };
@@ -85,7 +85,7 @@ class CustomTreasuryTestHelper extends CapoTestHelper<CustomTreasury> {
         const treasury = this.strella!;
         const tcx: StellarTxnContext = new StellarTxnContext();
 
-        return treasury.txnAddAuthority(tcx);
+        return treasury.txnAddCharterWithAuthority(tcx);
     }
 
     async updateCharter(

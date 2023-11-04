@@ -23,6 +23,7 @@ import { StellarTxnContext } from "../src/StellarTxnContext";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import { ConfigFor } from "../src/StellarContract";
+import { dumpAny } from "../src/diagnostics";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
@@ -126,19 +127,66 @@ describe("Capo", async () => {
                     "already configured"
                 );
             });
+            it("creates an authZor UUT for the govAuthority delegate, sent to user wallet", async (context: localTC) => {
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
+
+                debugger
+                const treasury = await h.bootstrap();
+                const tcx = await h.mintCharterToken();
+
+                const {capoGov} = tcx.state.uuts;
+                expect(
+                    tcx.outputs.find((o: TxOutput) => {
+                        return (
+                            o.value.ge(treasury.tokenAsValue(capoGov)) &&
+                            o.address.eq(h.currentActor.address)
+                        );
+                    })
+                ).toBeTruthy();
+    
+            });
+            it("creates a mintDgt UUT and deposits it in the mintDelegate contract", async (context: localTC) => {
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
+                    const treasury = await h.bootstrap();
+                    const tcx = await h.mintCharterToken();
+
+                    const {
+                        mintDgt
+                    } = tcx.state.uuts
+
+                    const datum = await treasury.findCharterDatum()
+                    const mintDelegate = await treasury.connectDelegateWithLink("mintDelegate", datum.mintDelegateLink);
+
+                    expect(
+                        tcx.outputs.find((o: TxOutput) => {
+                            return (
+                                o.value.ge(treasury.tokenAsValue(mintDgt)) &&
+                                o.address.eq(mintDelegate.address)
+                            );
+                        }), "should find the mintDgt token"
+                    ).toBeTruthy();
+        
+    
+                })
         });
     });
 
     describe("the charter token is always kept in the contract", () => {
-        it("fails to use the charter token without the authZor token", async (context: localTC) => {
+        it("fails to use the charter token without the capoGov token", async (context: localTC) => {
             const {
                 h,
                 h: { network, actors, delay, state },
             } = context;
 
             const treasury = await h.initialize();
-            vi.spyOn(treasury, "txnAddCharterAuthz").mockImplementation(
-                async (tcx, datum) => {
+            vi.spyOn(treasury, "txnAddGovAuthority").mockImplementation(
+                async (tcx) => {
                     return tcx;
                 }
             );
@@ -153,8 +201,9 @@ describe("Capo", async () => {
                 treasury.submit(tcx, {
                     signers: [actors.tracy, actors.tom],
                 })
-            ).rejects.toThrow(/missing .* authZor/);
+            ).rejects.toThrow(/missing .* capoGov/);
         });
+
         it("builds transactions with the charter token returned to the contract", async (context: localTC) => {
             const {
                 h,
@@ -162,7 +211,9 @@ describe("Capo", async () => {
             } = context;
 
             const tcx = await h.mkCharterSpendTx();
-            expect(tcx.outputs).toHaveLength(1);
+            expect(
+                tcx.outputs
+            ).toHaveLength(2);
 
             const treasury = context.strella!;
             const hasCharterToken = treasury.mkTokenPredicate(

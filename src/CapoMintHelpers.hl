@@ -1,18 +1,31 @@
 module CapoMintHelpers
 import {
-    mkTv
-    // txHasOutput
+    mkTv,
+    tvCharter
 } from StellarHeliosHelpers
 
-func hasSeedUtxo(tx: Tx, sTxId : TxId, sIdx: Int, reason: String) -> Bool {
+import {
+    getRefCharterDatum
+} from CapoHelpers
+
+import {
+    Datum, Activity
+} from specializedCapo
+
+import {
+    RelativeDelegateLink,
+    requiresDelegateAuthorizing
+} from CapoDelegateHelpers
+
+func hasSeedUtxo(tx: Tx, seedTxId : TxId, seedIdx: Int, reason: String) -> Bool {
     seedUtxo: TxOutputId = TxOutputId::new(
-        sTxId,
-        sIdx
+        seedTxId,
+        seedIdx
     );
     assert(tx.inputs.any( (input: TxInput) -> Bool {
         input.output_id == seedUtxo
     }),  "seed utxo required for minting "+reason 
-        + "\n"+sTxId.show() + " : " + sIdx.show()
+        + "\n"+seedTxId.show() + " : " + seedIdx.show()
     );
 
     true
@@ -21,14 +34,14 @@ func hasSeedUtxo(tx: Tx, sTxId : TxId, sIdx: Int, reason: String) -> Bool {
 //! pre-computes the hash-based suffix for a token name, returning
 //  a function that makes Uut names with any given purpose, given the seed-txn details
 func tnUutFactory(
-    sTxId : TxId, sIdx : Int
+    seedTxId : TxId, seedIdx : Int
 ) -> (String) -> String {
 
-    idxBytes : ByteArray = sIdx.bound_max(255).serialize();
+    idxBytes : ByteArray = seedIdx.bound_max(255).serialize();
     // assert(idxBytes.length == 1, "surprise!");
 
     //! yuck: un-CBOR...
-    rawTxId : ByteArray = sTxId.serialize().slice(5,37);
+    rawTxId : ByteArray = seedTxId.serialize().slice(5,37);
 
     txoId : ByteArray = (rawTxId + "@".encode_utf8() + idxBytes);
     assert(txoId.length == 34, "txId + @ + int should be length 34");
@@ -45,19 +58,36 @@ func tnUutFactory(
 
 func validateUutMinting(
     ctx: ScriptContext, 
-    sTxId : TxId, sIdx : Int, 
+    seedTxId : TxId, seedIdx : Int, 
     purposes: []String, 
-    exact:Bool=true) -> Bool {
-
+    bootstrapCharter:Value = Value::new(AssetClass::ADA, 0)
+) -> Bool {
     tx: Tx = ctx.tx;
     mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
+
+    isBootstrapping : Bool = !( bootstrapCharter.is_zero() );
+    delegateApproval : Bool = if ( isBootstrapping ) { 
+        true 
+    } else {
+        // not bootstrapping; must honor the mintDelegate's authority
+        Datum::CharterToken {
+            _, mintDgt
+        } = getRefCharterDatum(ctx, mph);
+
+        requiresDelegateAuthorizing(
+            mintDgt, 
+            mph, 
+            ctx
+        )
+    };
+
     valueMinted: Value = tx.minted;
 
-    // idxBytes : ByteArray = sIdx.bound_max(255).serialize();
+    // idxBytes : ByteArray = seedIdx.bound_max(255).serialize();
     // // assert(idxBytes.length == 1, "surprise!");
 
     // //! yuck: un-CBOR...
-    // rawTxId : ByteArray = sTxId.serialize().slice(5,37);
+    // rawTxId : ByteArray = seedTxId.serialize().slice(5,37);
 
     // txoId : ByteArray = (rawTxId + "@".encode_utf8() + idxBytes);
     // assert(txoId.length == 34, "txId + @ + int should be length 34");
@@ -66,18 +96,18 @@ func validateUutMinting(
     // miniHash : ByteArray = txoId.blake2b().slice(0,6);
     // // assert(miniHash.length == 6, "urgh.  slice 5? expected 12, got "+ miniHash.length.show());
 
-    mkTokenName: (String) -> String = tnUutFactory(sTxId, sIdx);
+    mkTokenName: (String) -> String = tnUutFactory(seedTxId, seedIdx);
     // tokenName1 = purpose + "." + miniHash.show();
 
-    expectedValue = Value::sum(purposes.sort((a:String, b:String) -> Bool { a == b }).map(
+    expectedValue : Value = Value::sum(purposes.sort((a:String, b:String) -> Bool { a == b }).map(
         (purpose: String) -> Value {
             mkTv(mph, mkTokenName(purpose))
         }
-    ));
+    )) + bootstrapCharter;
     // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);
     actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);
 
-    // print("redeemer" + sTxId.show() + " " + sIdx.show() + " asset " + assetName.show());
+    // print("activity" + seedTxId.show() + " " + seedIdx.show() + " asset " + assetName.show());
     // expectedMint.for_each( (b : ByteArray, i: Int) -> {
     //     print( "expected: " + b.show() + " " + i.show() )
     // });
@@ -93,17 +123,14 @@ func validateUutMinting(
     //     print( "actual: " + b.show() + " " + i.show() )
     // });
 
-    expectationString : String = if( exact ) {""} else {"at least "};
-    expectationsMet : Bool = if (exact) { 
-        valueMinted  == expectedValue
-    } else { 
-        valueMinted >= expectedValue
-    };
+    expectationsMet : Bool = valueMinted  == expectedValue;
 
     assert(expectationsMet, "bad UUT mint has mismatch;"+ 
-        "\n   ... expected "+ expectationString + expectedValue.show()+
+        "\n   ... expected "+ expectedValue.show()+
         "   ... actual "+ valueMinted.show()+
         "   ... diff = \n" + (expectedValue - valueMinted).show()
     );
-    hasSeedUtxo(tx, sTxId, sIdx, "UUT "+purposes.join("+"))
+
+    delegateApproval && expectationsMet &&
+    hasSeedUtxo(tx, seedTxId, seedIdx, "UUT "+purposes.join("+"))
 }

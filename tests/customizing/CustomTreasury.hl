@@ -1,23 +1,14 @@
 spending CustomTreasury
 import { 
     RelativeDelegateLink,
-    requiresValidDelegate
-} from CapoDelegationHelpers
+    requiresValidDelegateOutput
+} from CapoDelegateHelpers
 
 // needed in helios 0.13: defaults
 const mph : MintingPolicyHash = MintingPolicyHash::new(#1234)
 const rev : Int = 1
 
-enum Datum {
-    CharterToken {
-        govAuthorityLink: RelativeDelegateLink
-    }
-}
-enum Redeemer {
-    updatingCharter    
-    usingAuthority
-}
-
+import { Datum, Activity } from specializedCapo
 
 func didSign(ctx : ScriptContext, a: Address) -> Bool {
     tx : Tx = ctx.tx;
@@ -123,11 +114,11 @@ func requiresProofOfNewTrustees(
 }
 
 
-func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
+func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
     // now: Time = tx.time_range.start;
     
-    notUpdatingCharter : Bool = redeemer.switch {
+    notUpdatingCharter : Bool = activity.switch {
         updatingCharter => false,  
         _ => true
     };
@@ -137,7 +128,7 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
         true // "maybe", really
     };
 
-    redeemerSpecificChecks : Bool = redeemer.switch {
+    activitySpecificChecks : Bool = activity.switch {
         updatingCharter{trustees, minSigs} => { 
             //! guards from optimizing mph out of the program, screwing up parameterization
             assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
@@ -168,6 +159,6 @@ func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     };
 
     charterChangeAllowable &&
-    redeemerSpecificChecks &&
+    activitySpecificChecks &&
     tx.serialize() != datum.serialize()
 }

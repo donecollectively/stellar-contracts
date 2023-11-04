@@ -10,44 +10,55 @@ import {
 import {
     Activity,
     StellarContract,
+    configBase,
     isActivity,
     partialTxn,
     txn,
-} from "./StellarContract.js";
+} from "../StellarContract.js";
 
 //@ts-expect-error
 import contract from "./DefaultMinter.hl";
-import { CapoMintHelpers } from "./CapoMintHelpers.js";
+import { CapoMintHelpers } from "../CapoMintHelpers.js";
 
-import { StellarTxnContext } from "./StellarTxnContext.js";
+import { StellarTxnContext } from "../StellarTxnContext.js";
 import {
-    MintUutRedeemerArgs,
+    MintUutActivityArgs,
     MinterBaseMethods,
     hasUutContext,
     uutPurposeMap,
-} from "./Capo.js";
-import { SeedTxnParams } from "./SeedTxn.js";
-import { valuesEntry } from "./HeliosPromotedTypes.js";
-import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";
-import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
+} from "../Capo.js";
+import { SeedTxnParams } from "../SeedTxn.js";
+import { valuesEntry } from "../HeliosPromotedTypes.js";
+import { StellarHeliosHelpers } from "../StellarHeliosHelpers.js";
+import { CapoDelegateHelpers } from "../delegation/CapoDelegateHelpers.js";
 import {
     RelativeDelegateLink,
     UutName,
-} from "./delegation/RolesAndDelegates.js";
-import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
-import { mkUutValuesEntries, mkValuesEntry } from "./utils.js";
-import { dumpAny } from "./diagnostics.js";
+} from "../delegation/RolesAndDelegates.js";
+import { HeliosModuleSrc } from "../HeliosModuleSrc.js";
+import { mkUutValuesEntries, mkValuesEntry } from "../utils.js";
+import { dumpAny } from "../diagnostics.js";
+import { DefaultCapo } from "../DefaultCapo.js";
 
-type MintCharterRedeemerArgs<T = {}> = T & {
+type MintCharterActivityArgs<T = {}> = T & {
     owner: Address;
 };
 
+export type BasicMinterParams = SeedTxnParams & {
+    capo: DefaultCapo<any, any,any>
+}
+
 export class DefaultMinter
-    extends StellarContract<SeedTxnParams>
+    extends StellarContract<BasicMinterParams>
     implements MinterBaseMethods
 {
     contractSource() {
         return contract;
+    }
+    getContractScriptParams(config: BasicMinterParams): configBase & SeedTxnParams {
+        const {seedIndex, seedTxn} = config
+
+        return { seedIndex, seedTxn }
     }
 
     importModules(): HeliosModuleSrc[] {
@@ -56,6 +67,8 @@ export class DefaultMinter
             StellarHeliosHelpers,
             CapoDelegateHelpers,
             CapoMintHelpers,
+            this.configIn!.capo.specializedCapo,
+            this.configIn!.capo.capoHelpers,
         ];
     }
 
@@ -162,24 +175,26 @@ export class DefaultMinter
     }
 
     @Activity.redeemer
-    protected mintingCharter({ owner }: MintCharterRedeemerArgs): isActivity {
-        const { DelegateDetails: hlDelegateDetails, Redeemer } =
-            this.scriptProgram!.types;
-        const t = new Redeemer.mintingCharter(owner);
+    protected mintingCharter({ owner }: MintCharterActivityArgs): isActivity {
+        const {mintingCharter} =this.onChainActivitiesType;
+        const { DelegateDetails: hlDelegateDetails } = this.onChainTypes;
+        const t = new mintingCharter(owner);
 
         return { redeemer: t._toUplcData() };
     }
+
 
     @Activity.redeemer
     protected mintingUuts({
         seedTxn,
         seedIndex: sIdx,
         purposes,
-    }: MintUutRedeemerArgs): isActivity {
+    }: MintUutActivityArgs): isActivity {
         // debugger
         const seedIndex = BigInt(sIdx);
         console.log("UUT redeemer seedTxn", seedTxn.hex);
-        const t = new this.scriptProgram!.types.Redeemer.mintingUuts(
+        const {mintingUuts} = this.onChainActivitiesType;
+        const t = new mintingUuts(
             seedTxn,
             seedIndex,
             purposes
@@ -214,19 +229,26 @@ export class DefaultMinter
         tcx: TCX,
         {
             owner,
-            authZor,
+            capoGov,
+            mintDgt,
         }: {
-            authZor: UutName;
             owner: Address;
+            capoGov: UutName;
+            mintDgt: UutName;
         }
-    ): Promise<TCX> {
+    ): Promise<TCX & StellarTxnContext<any>> {
         const charterVE = this.charterTokenAsValuesEntry;
-        const authzVE = mkValuesEntry(authZor.name, BigInt(1));
+        const capoGovVE = mkValuesEntry(capoGov.name, BigInt(1));
+        const mintDgtVE = mkValuesEntry(mintDgt.name, BigInt(1));
 
         return tcx
             .mintTokens(
                 this.mintingPolicyHash!,
-                [charterVE, authzVE],
+                [
+                    charterVE, 
+                    capoGovVE,
+                    mintDgtVE
+                ],
                 this.mintingCharter({
                     owner,
                 }).redeemer

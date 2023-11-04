@@ -8,8 +8,8 @@ import { StellarTxnContext } from "../StellarTxnContext.js";
 import { ADA, canHaveRandomSeed, stellarTestHelperSubclass } from "./types.js";
 import { CapoTestHelper } from "./CapoTestHelper.js";
 import { stellarSubclass } from "../StellarContract.js";
-import { Capo, CapoBaseConfig, hasBootstrappedConfig } from "../Capo.js";
-import { DefaultMinter } from "../DefaultMinter.js";
+import { Capo, CapoBaseConfig, hasBootstrappedConfig, hasUutContext } from "../Capo.js";
+import { DefaultMinter } from "../minting/DefaultMinter.js";
 import { expect } from "vitest";
 import { StellarTestHelper } from "./StellarTestHelper.js";
 
@@ -76,15 +76,21 @@ export class DefaultCapoTestHelper<
 
         const treasury = this.strella!;
         const tcx: StellarTxnContext = new StellarTxnContext();
+        const tcx2 = await treasury.txnAddGovAuthority(tcx);
+        return treasury.txnMustUseCharterUtxo(tcx2, treasury.usingAuthority())
 
-        return treasury.txnAddAuthority(tcx);
+        // return treasury.txnAddCharterWithAuthority(tcx);
     }
 
     mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<CDT>> {
+        const addr = this.currentActor.address;
+        console.log("test helper charter -> actor addr", addr.toBech32())
         return {
             govAuthorityLink: {
-                addressesHint: [this.currentActor.address],
                 strategyName: "address",
+                config: {
+                    addrHint: [addr],
+                },
             },
             // mintDelegateLink: {
             //     strategyName: "default",
@@ -92,7 +98,13 @@ export class DefaultCapoTestHelper<
         };
     }
 
-    async mintCharterToken(args?: MinimalDefaultCharterDatumArgs<CDT>): Promise<hasBootstrappedConfig<CT>> {
+    async mintCharterToken(
+        args?: MinimalDefaultCharterDatumArgs<CDT>
+    ): Promise<
+        & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt">
+        & StellarTxnContext<any> 
+        & hasBootstrappedConfig<CapoBaseConfig>
+    >{
         const { delay } = this;
         const { tina, tom, tracy } = this.actors;
 
@@ -117,10 +129,11 @@ export class DefaultCapoTestHelper<
         expect(script.network).toBe(this.network);
 
         await script.submit(tcx);
-        console.log(`charter token minted at slot ${this.network.currentSlot}`);
+        console.log(`----- charter token minted at slot ${this.network.currentSlot}`);
 
         this.network.tick(1n);
-        return (this.state.mintedCharterToken = tcx);
+        this.state.mintedCharterToken = tcx
+        return tcx;
     }
 
     async updateCharter(args: CDT): Promise<StellarTxnContext> {

@@ -4,16 +4,12 @@ import { Address, AssetClass, TxInput, Value } from "@hyperionbt/helios";
 import contract from "./MultisigAuthorityPolicy.hl";
 export const MultisigAuthorityScript = contract;
 
-import { Activity, isActivity, StellarContract } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
-import { AuthorityPolicy } from "./AuthorityPolicy.js";
 import { hasReqts } from "../Requirements.js";
-import { StellarDelegate } from "../delegation/RolesAndDelegates.js";
+import { AuthorityPolicy } from "./AuthorityPolicy.js";
 
 //! a contract enforcing policy for a registered credential
-export class MultisigAuthorityPolicy extends AuthorityPolicy
-implements StellarDelegate
-{
+export class MultisigAuthorityPolicy extends AuthorityPolicy {
     static currentRev = 1n;
     static get defaultParams() {
         return { rev: this.currentRev };
@@ -21,16 +17,6 @@ implements StellarDelegate
     contractSource() {
         return contract;
     }
-
-    // // @Activity.redeemer
-    // protected x(tokenName: string): isActivity {
-    //     const t =
-    //         new this.scriptProgram.types.Redeemer.commissioningNewToken(
-    //             tokenName
-    //         )
-
-    //     return { redeemer: t._toUplcData() }
-    // }
 
     // @Activity.partialTxn
     // async txnFresheningCredInfo(
@@ -40,35 +26,28 @@ implements StellarDelegate
     //     return tcx
     // }
 
-    // ! impls MUST resolve the indicated token to a specific UTxO
-    //  ... or throw an informative error
-    async txnMustFindAuthorityToken(tcx: StellarTxnContext): Promise<TxInput> {
-        if (!this.configIn)
-            throw new Error(`must be instantiated with a configIn`);
-        const { addrHint, uutID, reqdAddress } = this.configIn;
-        return this.mustFindMyUtxo(
-            "authorityToken",
-            this.mkTokenPredicate(uutID)
-        );
-    }
-
     async txnReceiveAuthorityToken<
         TCX extends StellarTxnContext<any>
-    >(tcx: TCX, fromFoundUtxo?: TxInput | undefined): Promise<TCX> {
+    >(
+        tcx: TCX, 
+        val: Value, 
+        fromFoundUtxo?: TxInput | undefined
+    ): Promise<TCX> {
         throw new Error(`todo`)        
     }
 
     //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
-    async txnGrantAuthority(
-        tcx: StellarTxnContext,
+    async DelegateAddsAuthorityToken<TCX extends StellarTxnContext<any>>(
+        tcx: TCX,
         fromFoundUtxo: TxInput
-    ): Promise<StellarTxnContext> {
+    ): Promise<TCX & StellarTxnContext<any>> {
+        throw new Error(`todo`)
         return tcx;
     }
 
     //! Adds the indicated utxo to the transaction with appropriate activity/redeemer
     //  ... allowing the token to be burned by the minting policy.
-    async txnRetireCred(
+    async DelegateRetiresAuthorityToken(
         tcx: StellarTxnContext,
         fromFoundUtxo: TxInput
     ): Promise<StellarTxnContext> {

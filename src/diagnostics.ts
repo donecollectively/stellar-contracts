@@ -118,7 +118,7 @@ export function txAsString(tx: Tx): string {
         if ("signers" == x) {
             item = item.map((x) => {
                 if (!x.hex) debugger;
-                return `🔑#${x.hex.slice(0, 6)}…${x.hex.slice(-2)}`;
+                return `🔑#${x.hex.slice(0, 6)}…${x.hex.slice(-4)}`;
             });
         }
 
@@ -151,14 +151,14 @@ export function txAsString(tx: Tx): string {
             if (!item) continue;
             item = item.map((s) => {
                 const addr = Address.fromHash(s.pubKeyHash).toBech32();
-                return `🖊️ ${addr.substring(0, 20)}…${addr.substring(-4)}`;
+                return `🖊️ ${addr.slice(0, 20)}…${addr.slice(-4)} = 🔑…${s.pubKeyHash.hex.slice(-4)}`;
             });
             if (item.length > 1) item.unshift("");
             item = item.join("\n    ");
         }
         if ("redeemers" == x) {
             if (!item) continue;
-            //!!! todo: augment with mph when that's available from the Redeemer.
+            //!!! todo: augment with mph when that's available from the Activity.
             item = item.map((x) => {
                 // console.log("redeemer keys", ...[ ...Object.keys(x2) ], x2.dump());
                 const indexInfo =

@@ -26,8 +26,9 @@ export class CustomCapoTestHelper extends DefaultCapoTestHelper<CustomTreasury> 
             ...super.mkDefaultCharterArgs(),
             govAuthorityLink: {
                 strategyName: "multisig",
-                reqdAddress: this.address,
-                // addressesHint: [tina.address, tom.address, tracy.address],
+                config: {
+                    addrHint: [tina.address, tom.address, tracy.address],
+                }
             },
         };
 
@@ -44,7 +45,7 @@ export class CustomCapoTestHelper extends DefaultCapoTestHelper<CustomTreasury> 
         const treasury = this.strella!;
         const tcx: StellarTxnContext = new StellarTxnContext();
 
-        return treasury.txnAddAuthority(tcx);
+        return treasury.txnAddCharterWithAuthority(tcx);
     }
 
     async updateCharter(

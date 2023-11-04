@@ -1,46 +1,127 @@
 module CapoDelegateHelpers
 
 import {
-    txHasOutput,
     mkTv
 } from StellarHeliosHelpers
+
+// Delegates can define addtional activities in their enum variants,
+// but these 4 basic activities are essential.
+enum BASE_DELEGATE_Activity {
+    Authorizing
+    Reassigning
+    Retiring
+    Modifying
+}
 
 struct RelativeDelegateLink {
     uutName: String
     strategyName: String
-    reqdAddr: Option[Address]
-    addrHint: []Address
+    delegateValidator: Option[ValidatorHash]
+
+    // config: Data
 }
 
-struct DelegateDatum {
-    capo: Address
+struct DelegationDetail {
+    capoAddr: Address
     mph: MintingPolicyHash
     tn: ByteArray
 }
 
-func acAuthZor(dd: DelegateDatum) -> AssetClass {
+// Delegates can define additional Datum in their enums,
+// but this first Datum is essential
+enum BASE_DELEGATE_Datum {
+    IsDelegation {
+        dd: DelegationDetail
+        CustomConfig: Data
+    }
+}
+
+
+func acAuthorityToken(dd: DelegationDetail) -> AssetClass {
     AssetClass::new(dd.mph, dd.tn)
 }
 
-func tvAuthZor(dd: DelegateDatum) -> Value {
+func tvAuthorityToken(dd: DelegationDetail) -> Value {
     Value::new(
-        acAuthZor(dd), 1
+        acAuthorityToken(dd), 1
     )
 }
 
-func requiresValidDelegate(
+func requiresValidDelegateOutput(
     dd: RelativeDelegateLink, 
     mph: MintingPolicyHash, 
     ctx : ScriptContext
 ) -> Bool {
-    RelativeDelegateLink{uut, strategy, reqdAddr, _} = dd;
-    if (!(strategy.encode_utf8().length < 4)) {
-        error("strategy must be at least 4 bytes")
+    RelativeDelegateLink{
+        uut, strategy,
+        validatorHash
+    } = dd;
+    if (strategy.encode_utf8().length < 4) {
+        error("strategy must be at least 4 bytes, got: '"+strategy +
+            "' = "+ strategy.encode_utf8().length.show()
+        )
     };
 
-    //! the delegate is valid as long as the transaction pays the UUT into the indicated address
-    //   ... that address might not be the permanent address for a "bearer" strategy, but
-    //   ... for other strategies, it should be.  So we just check it the same way for all cases.
-    //! the uut can be minted in the current transaction, or transferred from anywhere.
-    txHasOutput(ctx.tx, mkTv(mph, uut), reqdAddr )
+    v : Value = mkTv(mph, uut);
+    validatorHash.switch{
+        Some{vh} => {
+            if (ctx.tx.value_locked_by(vh).contains(v)) {
+                true 
+            } else { 
+                error("invalid delegate / missing uut output: "+ uut + " to validator " +vh.show()) 
+            }
+        },
+        None =>
+
+        ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {
+            o.value.contains(v)
+        }).switch{
+            Some => true, 
+            None => error("invalid delegate or missing uut " + uut)
+        }
+    }
+}
+
+
+func requiresDelegateAuthorizing(
+    dd: RelativeDelegateLink, 
+    mph: MintingPolicyHash, 
+    ctx : ScriptContext
+) -> Bool {
+    authzVal : Value = Value::new(AssetClass::new(mph, dd.uutName.encode_utf8()), 1);
+    print("finding: " + authzVal.show());
+    targetId : TxOutputId = ctx.tx.inputs.find_safe((i: TxInput) -> {
+        // print("   ?  in "+i.value.show());
+        i.value.contains(authzVal) // find my authority token
+    }).switch{
+        Some{x} => x.output_id,
+        None => error("missing required delegate UUT "+dd.uutName)
+     };
+    print ("found");
+    k : ScriptPurpose = ctx.tx.redeemers.find_key( 
+        (purpose : ScriptPurpose) -> { purpose.switch{ 
+            sp: Spending => {
+                print ("oid: " + sp.output_id.show());
+                sp.output_id == targetId
+            }, 
+            _ => false 
+        } }
+    );
+    // r : Data = ctx.tx.redeemers.get(  // index redeemers by...
+    //     ScriptPurpose::new_spending(  // [spending, plus ...
+    //     );
+        
+        print("hi there");
+    isAuthorizing : Bool = ctx.tx.redeemers.get(k).switch {
+        (index: Int, fields: []Data) => {
+            // a: BASE_DELEGATE_Activity => a.switch {
+            //     Authorizing => true,
+            if (index == 0 && fields.length == 0) { true } else {
+                error("authz token not spent with Authorizing activity!")
+            }
+        },
+        _ => error("authz token not spent with Authorizing activity!")
+    };
+
+    isAuthorizing && requiresValidDelegateOutput(dd, mph, ctx)
 }

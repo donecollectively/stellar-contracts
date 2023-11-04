@@ -6,6 +6,7 @@ import {
     MinterBaseMethods,
     anyDatumArgs,
     hasBootstrappedConfig,
+    hasUutContext,
 } from "../Capo.js";
 import { SeedTxnParams } from "../SeedTxn.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
@@ -13,7 +14,7 @@ import { StellarTestHelper } from "./StellarTestHelper.js";
 import { MinimalDefaultCharterDatumArgs } from "../DefaultCapo.js";
 import { AuthorityPolicy } from "../authority/AuthorityPolicy.js";
 import { ConfigFor } from "../StellarContract.js";
-import { DefaultMinter } from "../DefaultMinter.js";
+import { DefaultMinter } from "../minting/DefaultMinter.js";
 
 export abstract class CapoTestHelper<
     SC extends Capo<DefaultMinter & MinterBaseMethods, CDT, CT>,
@@ -81,5 +82,11 @@ export abstract class CapoTestHelper<
         return strella;
     }
     abstract mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<any>>
-    abstract mintCharterToken(args?: MinimalDefaultCharterDatumArgs<any>): Promise<hasBootstrappedConfig<CT>>;
+    abstract mintCharterToken(
+        args?: MinimalDefaultCharterDatumArgs<any>
+    ): Promise<
+        & StellarTxnContext<any> 
+        & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt">
+        & hasBootstrappedConfig<CapoBaseConfig>
+    >
 }

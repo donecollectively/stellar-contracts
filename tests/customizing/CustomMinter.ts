@@ -21,7 +21,7 @@ import {
 import contract from "./CustomMinter.hl";
 import { StellarTxnContext } from "../../src/StellarTxnContext.js";
 import { MinterBaseMethods } from "../../src/Capo.js";
-import { DefaultMinter } from "../../src/DefaultMinter.js";
+import { DefaultMinter } from "../../src/minting/DefaultMinter.js";
 import {
     tokenNamesOrValuesEntry,
     valuesEntry,
@@ -35,7 +35,8 @@ export class CustomMinter extends DefaultMinter implements MinterBaseMethods {
 
     @Activity.redeemer
     protected mintingNamedToken(v: Value): isActivity {
-        const t = new this.scriptProgram!.types.Redeemer.mintingNamedToken(v);
+        const {mintingNamedToken} = this.onChainActivitiesType;
+        const t = new mintingNamedToken(v);
 
         return { redeemer: t._toUplcData() };
     }

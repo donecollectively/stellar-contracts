@@ -31,7 +31,8 @@ export class CustomTreasury extends DefaultCapo<CustomMinter> {
 
     @Activity.redeemer
     mintingToken(tokenName: string): isActivity {
-        const t = new this.scriptProgram!.types.Redeemer.mintingToken(
+        const {mintingToken} = this.onChainActivitiesType
+        const t = new mintingToken(
             tokenName
         );
 

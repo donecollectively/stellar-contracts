@@ -14,6 +14,13 @@ import { txAsString } from "./diagnostics.js";
 
 type noState = {};
 
+type addInputArgs = Parameters<Tx["addInput"]>;
+type _redeemerArg = addInputArgs[1]
+
+type RedeemerArg = {
+    redeemer: _redeemerArg;
+};
+
 export class StellarTxnContext<S = noState> {
     tx: Tx;
     inputs: TxInput[];
@@ -64,28 +71,40 @@ export class StellarTxnContext<S = noState> {
         return this;
     }
 
-    addInput<TCX extends StellarTxnContext<S>>(this:TCX, ...args: Parameters<Tx["addInput"]>): TCX  {
-        const [input, ..._otherArgs] = args;
+    addInput<TCX extends StellarTxnContext<S>>(
+        this: TCX, 
+        input: addInputArgs[0], 
+        r?: RedeemerArg
+    ) : TCX  {
         this.inputs.push(input);
-        this.tx.addInput(...args);
+        this.tx.addInput(input, r?.redeemer);
         return this;
     }
 
-    addInputs<TCX extends StellarTxnContext<S>>(this:TCX, ...args: Parameters<Tx["addInputs"]>): TCX {
-        const [inputs, ..._otherArgs] = args;
+    addInputs<TCX extends StellarTxnContext<S>>(
+        this:TCX, 
+        inputs: Parameters<Tx["addInputs"]>[0], 
+        r: RedeemerArg
+    ): TCX {
         this.inputs.push(...inputs);
-        this.tx.addInputs(...args);
+        this.tx.addInputs(inputs, r.redeemer);
         return this;
     }
 
-    addOutput<TCX extends StellarTxnContext<S>>(this:TCX, ...args: Parameters<Tx["addOutput"]>): TCX {
+    addOutput<TCX extends StellarTxnContext<S>>(
+        this:TCX, 
+        ...args: Parameters<Tx["addOutput"]>
+    ): TCX {
         const [output, ..._otherArgs] = args;
         this.outputs.push(output);
         this.tx.addOutput(...args);
         return this;
     }
 
-    addOutputs<TCX extends StellarTxnContext<S>>(this:TCX,...args: Parameters<Tx["addOutputs"]>): TCX {
+    addOutputs<TCX extends StellarTxnContext<S>>(
+        this:TCX
+        ,...args: Parameters<Tx["addOutputs"]>
+    ): TCX {
         const [outputs, ..._otherArgs] = args;
         this.outputs.push(...outputs);
         this.tx.addOutputs(...args);

@@ -5,21 +5,24 @@ import contract from "./BasicMintDelegate.hl";
 import { Activity, StellarContract, configBase } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { MintDelegateArgs } from "./BasicMintDelegate.js";
-import { StellarDelegate } from "./RolesAndDelegates.js";
+import { StellarDelegate } from "../delegation/StellarDelegate.js";
 
+/**
+ * Stores the mintDgt UUT together with the charter, thus requiring that the 
+ * govAuthority delegate directly approves any mint
+ * @remarks
+ * 
+ * @public
+ **/
 export class NoMintDelegation
-    extends StellarContract<MintDelegateArgs>
-    implements StellarDelegate
+    extends StellarDelegate<MintDelegateArgs>
 {
     static currentRev = 1n;
     static get defaultParams() {
         return { rev: this.currentRev };
     }
 
-    delegateReqdAddress() {
-        return false as const;
-    }
-
+de
     contractSource() {
         return contract;
     }
@@ -31,6 +34,7 @@ export class NoMintDelegation
     }
     txnReceiveAuthorityToken<TCX extends StellarTxnContext<any>>(
         tcx: TCX,
+        value: Value,
         fromFoundUtxo?: TxInput | undefined
     ): Promise<TCX> {
         throw new Error(`todo`);

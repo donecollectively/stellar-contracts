@@ -18,7 +18,6 @@ func didSignInCtx(ctx: ScriptContext) -> (a: Address) -> Bool {
     }
 }
 
-
 //! represents the indicated token name as a Value
 func mkTv(mph: MintingPolicyHash, tn: String, count : Int = 1) -> Value {
     Value::new(
@@ -27,33 +26,16 @@ func mkTv(mph: MintingPolicyHash, tn: String, count : Int = 1) -> Value {
     )
 }
 
-
-//! makes a predicate for checking outputs against an expected value
-func outputHas(v: Value, addr: Option[Address]=Option[Address]::None) -> (TxOutput) -> Bool {
-    (txo: TxOutput) -> Bool {
-        txo.value.contains(v) &&
-        addr.switch {
-            None => true,
-            Some{dest} => txo.address == dest
-        }
-    }
-}
-
-//! tests a transaction for an expected output value
-func txHasOutput(tx: Tx, v: Value, addr: Option[Address] = Option[Address]::None) -> Bool {
-    tx.outputs.find_safe(
-        outputHas(v, addr)
-   ).switch{
-        None => false,
-        Some => true
-    }
+//! returns the charter-token from our minter, as a Value
+func tvCharter(mph: MintingPolicyHash)  -> Value {
+    mkTv(mph, "charter")
 }
 
 func returnsValueToScript(value : Value, ctx : ScriptContext) -> Bool {
     input : TxInput = ctx.get_current_input();
-    ctx.tx.outputs.any(
-        outputHas(value,
-           Option[Address]::Some{input.address}
-        )
-    )
+    input.value.contains(value) &&
+    ctx.tx.outputs.any( (txo : TxOutput) -> Bool {
+        txo.address == input.address &&
+        txo.value.contains(value)
+    } )
 }

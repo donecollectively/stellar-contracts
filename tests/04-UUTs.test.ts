@@ -13,8 +13,8 @@ import { DefaultCapo } from "../src/DefaultCapo";
 import { TxOutput } from "@hyperionbt/helios";
 
 import { StellarTxnContext } from "../src/StellarTxnContext";
-import { DefaultMinter } from "../src/DefaultMinter";
-import { BasicMintDelegate } from "../src/delegation/BasicMintDelegate";
+import { DefaultMinter } from "../src/minting/DefaultMinter";
+import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { Capo, hasAllUuts } from "../src/Capo";
 import {
@@ -48,6 +48,92 @@ describe("Capo", async () => {
     });
 
     describe("UUTs for contract utility", () => {
+       it("won't create a UUT without the minting delegate's involvement", async (context: localTC) => {
+            const {
+                h,
+                h: { network, actors, delay, state },
+            } = context;
+            const { tina, tom, tracy } = actors;
+
+            const t: DefaultCapo = await h.initialize();
+            await h.mintCharterToken();
+            // await delay(1000);
+            type testSomeThing = "testSomeThing";
+            const tcx = new StellarTxnContext<hasAllUuts<testSomeThing>>();
+            await t.txnMustUseCharterUtxo(tcx, "refInput");
+            {
+                const mintDgt = await t.getMintDelegate();
+                vi.spyOn(mintDgt, "txnGrantAuthority"
+                    ).mockImplementation(async tcx => tcx)
+
+                await t.mkTxnCreatingUuts(tcx, ["testSomeThing"]);
+            }
+
+            const uutVal = t.uutsValue(tcx.state.uuts!);
+            tcx.addOutput(new TxOutput(tina.address, uutVal));
+            expect(
+                t.submit(tcx, { signers: [tom, tina, tracy] })
+            ).rejects.toThrow(/missing.*delegate.*mintDgt/);
+        });
+
+        it("requires the charter to be used as reference input", async (context: localTC) => {
+            const {
+                h,
+                h: { network, actors, delay, state },
+            } = context;
+            const { tina, tom, tracy } = actors;
+
+            const t: DefaultCapo = await h.bootstrap();
+
+            type testSomeThing = "testSomeThing";
+            const tcx = new StellarTxnContext<hasAllUuts<testSomeThing>>();
+            {
+                await t.txnMustUseCharterUtxo(tcx, t.usingAuthority());
+                const spy = vi.spyOn(t, "txnMustUseCharterUtxo").mockImplementation(
+                    async (tcx:any, isRef:any) => {
+                        expect(isRef).toBe("refInput")
+                        return tcx
+                    }
+                );
+                    
+                await t.txnAddCharterAuthorityTokenRef(tcx);
+                expect(spy).toHaveBeenCalled();
+            }
+
+            await t.mkTxnCreatingUuts(tcx, ["testSomeThing"]);
+            const uutVal = t.uutsValue(tcx.state.uuts!);
+            tcx.addOutput(new TxOutput(tina.address, uutVal));
+            expect(
+                t.submit(tcx, { signers: [tom, tina, tracy] })
+            ).rejects.toThrow(/Missing charter in required ref_inputs/);
+        });
+
+        it("fails when the mint-delegate authZor isn't returned", async (context: localTC) => {
+            const {
+                h,
+                h: { network, actors, delay, state },
+            } = context;
+            const { tina, tom, tracy } = actors;
+
+            const t: DefaultCapo = await h.initialize();
+            await h.mintCharterToken();
+            // await delay(1000);
+            type testSomeThing = "testSomeThing";
+            const tcx = new StellarTxnContext<hasAllUuts<testSomeThing>>();
+            const tcx2 = await t.txnAddCharterAuthorityTokenRef(tcx);
+            const mintDelegate = await t.getMintDelegate()
+            vi.spyOn(
+                mintDelegate, "txnReceiveAuthorityToken"
+            ).mockImplementation(async tcx => tcx);
+            await t.mkTxnCreatingUuts(tcx2, ["testSomeThing"]);
+
+            const uutVal = t.uutsValue(tcx.state.uuts!);
+            tcx.addOutput(new TxOutput(tina.address, uutVal));
+            expect(
+                 t.submit(tcx, { signers: [tom, tina, tracy] })
+            ).rejects.toThrow(/missing uut output.*to validator/)
+        });
+
         it("can create a UUT and send it anywhere", async (context: localTC) => {
             const {
                 h,
@@ -58,10 +144,10 @@ describe("Capo", async () => {
             const t: DefaultCapo = await h.initialize();
             await h.mintCharterToken();
             // await delay(1000);
-            type something = "something";
-            const tcx = new StellarTxnContext<hasAllUuts<something>>();
-            await t.txnAddAuthority(tcx);
-            await t.mkTxnCreatingUuts(tcx, ["something"]);
+            type testSomeThing = "testSomeThing";
+            const tcx = new StellarTxnContext<hasAllUuts<testSomeThing>>();
+            await t.txnAddCharterAuthorityTokenRef(tcx);
+            await t.mkTxnCreatingUuts(tcx, ["testSomeThing"]);
 
             const uutVal = t.uutsValue(tcx.state.uuts!);
             tcx.addOutput(new TxOutput(tina.address, uutVal));
@@ -74,6 +160,7 @@ describe("Capo", async () => {
             expect(f).toBeTruthy();
             expect(f?.origOutput.value.ge(uutVal)).toBeTruthy();
         });
+
 
         it("can create multiple UUTs", async (context: localTC) => {
             const {
@@ -88,7 +175,7 @@ describe("Capo", async () => {
 
             type fooAndBar = "foo" | "bar";
             const tcx = new StellarTxnContext<hasAllUuts<fooAndBar>>();
-            await t.txnAddAuthority(tcx);
+            await t.txnAddCharterAuthorityTokenRef(tcx);
             await t.mkTxnCreatingUuts(tcx, ["foo", "bar"]);
             const uuts = t.uutsValue(tcx.state.uuts!);
 
@@ -116,7 +203,7 @@ describe("Capo", async () => {
 
             type fooAndBar = "foo" | "bar";
             const tcx = new StellarTxnContext<hasAllUuts<fooAndBar>>();
-            await t.txnAddAuthority(tcx);
+            await t.txnAddCharterAuthorityTokenRef(tcx);
             await t.mkTxnCreatingUuts(tcx, ["foo", "bar"]);
             const uuts = t.uutsValue(tcx.state.uuts!);
 
@@ -154,7 +241,7 @@ describe("Capo", async () => {
                 "-------- case 1: using the txn-helper in unsupported way"
             );
             const tcx = new StellarTxnContext<hasAllUuts<uniqUutMap>>();
-            await t.txnAddAuthority(tcx);
+            await t.txnAddCharterAuthorityTokenRef(tcx);
 
             await t.mkTxnCreatingUuts(tcx, [noMultiples, noMultiples]);
 
@@ -170,7 +257,7 @@ describe("Capo", async () => {
                 "------ case 2: directly creating the transaction with >1 tokens"
             );
             const tcx2 = new StellarTxnContext<hasAllUuts<uniqUutMap>>();
-            await t.txnAddAuthority(tcx2);
+            await t.txnAddCharterAuthorityTokenRef(tcx2);
 
             const spy = vi.spyOn(utils, "mkUutValuesEntries");
             spy.mockImplementation(
@@ -195,7 +282,7 @@ describe("Capo", async () => {
                 "------ case 3: directly creating the transaction with multiple mint entries"
             );
             const tcx3 = new StellarTxnContext<hasAllUuts<uniqUutMap>>();
-            await t.txnAddAuthority(tcx3);
+            await t.txnAddCharterAuthorityTokenRef(tcx3);
 
             spy.mockImplementation(
                 //@ts-expect-error
@@ -228,10 +315,10 @@ describe("Capo", async () => {
             await h.mintCharterToken();
             // await delay(1000);
 
-            type hasSomethingUut = { ["something"]: UutName };
-            const tcx = new StellarTxnContext<hasAllUuts<"something">>();
+            type hasSomethingUut = { ["testSomeThing"]: UutName };
+            const tcx = new StellarTxnContext<hasAllUuts<"testSomeThing">>();
 
-            await t.txnAddAuthority(tcx);
+            await t.txnAddCharterAuthorityTokenRef(tcx);
             const m: DefaultMinter = t.minter!;
 
             const spy = vi.spyOn(utils, "mkUutValuesEntries");
@@ -239,13 +326,13 @@ describe("Capo", async () => {
                 //@ts-expect-error
                 function (f: uniqUutMap) {
                     return [
-                        this.mkValuesEntry(f["something"], BigInt(1)),
+                        this.mkValuesEntry(f["testSomeThing"], BigInt(1)),
                         this.mkValuesEntry(f["something-else"], BigInt(1)),
                     ];
                 }
             );
 
-            await t.mkTxnCreatingUuts(tcx, ["something"]);
+            await t.mkTxnCreatingUuts(tcx, ["testSomeThing"]);
             const uut = t.uutsValue(tcx);
 
             tcx.addOutput(new TxOutput(tina.address, uut));

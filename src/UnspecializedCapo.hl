@@ -2,8 +2,8 @@ module specializedCapo
 
 //! provides a basic version, not actually specialized,
 // of the "specializedCapo" interface, which simply
-// exports a Datum and Redeemer.  
-//! the Datum and Redeemer of specializations
+// exports Datum and Activity ('redemeer") enum types.  
+//! the Datum and Activity of specializations
 //  MUST include the same enum variants as in this
 //  unspecialized version.  if you're specializing 
 //  ... and you get a Helios compiler error,
@@ -22,7 +22,7 @@ enum Datum {
         mintDelegateLink: RelativeDelegateLink
     }
     //! datum-validation only supports checks of absolute spendability, 
-    //  ... and can't check details of the Activity/Redeemer being used.
+    //  ... and can't check details of the Activity ("redeemer") being used.
     func validateSpend(self, ctx: ScriptContext) -> Bool {
         //! Note: an overridden Datum's impl of validateSpend() 
         // ... is never called with the CharterToken variant
@@ -34,11 +34,11 @@ enum Datum {
     }   
 }
 
-//! provides a basic version of Redeemer in default specializedCapo module
-enum Redeemer {
+//! provides a basic version of Activity ("redeemer" type) in default specializedCapo module
+enum Activity {
+    usingAuthority
     spendingDatum
     updatingCharter    
-    usingAuthority
 
     func allowActivity(self, datum: Datum, ctx: ScriptContext) -> Bool {
         self.switch{

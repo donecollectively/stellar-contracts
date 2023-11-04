@@ -1,0 +1,44 @@
+module CapoHelpers
+
+import {
+    mkTv,
+    tvCharter
+} from StellarHeliosHelpers
+
+import { Datum, Activity } from specializedCapo
+
+func getRefCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::CharterToken {
+    chVal : Value = tvCharter(mph);
+    hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
+    print("getting ref_input for charter");
+    charterUtxo : TxInput = ctx.tx.ref_inputs.find_safe(hasCharter).switch{
+        Some{ch} => ch,
+        None => error("Missing charter in required ref_inputs")
+    };
+    ctd : Datum::CharterToken = Datum::from_data( 
+        charterUtxo.datum.get_inline_data() 
+    );
+
+    ctd    
+}
+
+//! retrieves a required Charter Datum for the indicated policy - 
+// ... either from the txn's reference inputs  or inputs.
+func getTxCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::CharterToken {
+    chVal : Value = tvCharter(mph);
+    hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
+
+    charterUtxo : TxInput = ctx.tx.ref_inputs.find_safe(hasCharter).switch{
+        Some{ch} => ch,
+        None => ctx.tx.inputs.find_safe(hasCharter).switch{
+            Some{ch} => ch,
+            None => error("Missing charter inputs / ref_inputs")
+        }
+    };
+    ctd : Datum::CharterToken = Datum::from_data( 
+        charterUtxo.datum.get_inline_data() 
+    );
+
+    ctd    
+}
+
