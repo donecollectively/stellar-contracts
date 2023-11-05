@@ -19,6 +19,8 @@ import { ReqtsMap as ReqtsMap_2 } from '../Requirements.js';
 import { ReqtsMap as ReqtsMap_3 } from './Requirements.js';
 import { RoleInfo as RoleInfo_2 } from './delegation/RolesAndDelegates.js';
 import { SimpleWallet } from '@hyperionbt/helios';
+import { StakeAddress } from '@hyperionbt/helios';
+import { StakingValidatorHash } from '@hyperionbt/helios';
 import { TestContext } from 'vitest';
 import { textToBytes } from '@hyperionbt/helios';
 import { Tx } from '@hyperionbt/helios';
@@ -42,6 +44,8 @@ export const Activity: {
 
 // @public
 export const ADA = 1000000n;
+
+export { Address }
 
 // Warning: (ae-forgotten-export) The symbol "stellarTestHelperSubclass" needs to be exported by the entry point index.d.ts
 //
@@ -237,6 +241,8 @@ export type ConfiguredDelegate<DT extends StellarDelegate<any>> = {
     config: ConfigFor<DT>;
 } & RelativeDelegateLink<DT>;
 
+export { Datum }
+
 // @public
 export function datum(proto: any, thingName: any, descriptor: any): any;
 
@@ -266,8 +272,6 @@ export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT e
         }, "mintDgt", "default">;
     }>;
     // (undocumented)
-    extractDelegateLink(dl: RelativeDelegateLink<any>): any;
-    // (undocumented)
     findCharterDatum(): Promise<DefaultCharterDatumArgs>;
     // (undocumented)
     getGovDelegate(): Promise<AuthorityPolicy<capoDelegateConfig_2>>;
@@ -278,6 +282,8 @@ export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT e
     // (undocumented)
     mkDatumCharterToken(args: CDT): InlineDatum;
     mkFullConfig(baseConfig: CapoBaseConfig): CapoBaseConfig & configType;
+    // (undocumented)
+    mkOnchainDelegateLink(dl: RelativeDelegateLink<any>): any;
     // (undocumented)
     mkTxnCreatingUuts<const purposes extends string, existingTcx extends StellarTxnContext<any>, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput | undefined, roles?: RM): Promise<existingTcx & hasUutContext<ROLES | purposes>>;
     mkTxnMintCharterToken<TCX extends StellarTxnContext<any>>(charterDatumArgs: MinimalDefaultCharterDatumArgs<CDT>, existingTcx?: TCX): Promise<never | (TCX & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & hasBootstrappedConfig<CapoBaseConfig & configType>)>;
@@ -393,6 +399,8 @@ export namespace hasReqts {
 // @public
 export type hasUutContext<uutEntries extends string> = StellarTxnContext<hasAllUuts<uutEntries>>;
 
+export { helios }
+
 // @public
 export type HeliosModuleSrc = string & {
     srcFile: string;
@@ -487,6 +495,10 @@ export type SeedTxnParams = {
     seedIndex: bigint;
 };
 
+export { StakeAddress }
+
+export { StakingValidatorHash }
+
 // @public (undocumented)
 export class StellarContract<ConfigType extends paramsBase> {
     constructor(args: StellarConstructorArgs<ConfigType>);
@@ -562,9 +574,9 @@ export class StellarContract<ConfigType extends paramsBase> {
     // (undocumented)
     mustFindActorUtxo(name: string, predicate: (u: TxInput) => TxInput | undefined, extraErrorHint?: string): Promise<TxInput | never>;
     // (undocumented)
-    mustFindMyUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, exceptInTcx: StellarTxnContext<any>, extraErrorHint?: string): Promise<TxInput | never>;
+    mustFindMyUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, exceptInTcx: StellarTxnContext<any>, extraErrorHint?: string): Promise<TxInput>;
     // (undocumented)
-    mustFindMyUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, extraErrorHint?: string): Promise<TxInput | never>;
+    mustFindMyUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, extraErrorHint?: string): Promise<TxInput>;
     // (undocumented)
     mustFindUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, { address, exceptInTcx, }: {
         address: Address;
@@ -796,14 +808,20 @@ export const stringToNumberArray: typeof textToBytes;
 // @public
 export type tokenNamesOrValuesEntry = [string | number[], bigint];
 
+export { Tx }
+
 // @public
 export function txAsString(tx: Tx): string;
+
+export { TxInput }
 
 // @public
 export function txInputAsString(x: TxInput, prefix?: string): string;
 
 // @public
 export function txn(proto: any, thingName: any, descriptor: any): any;
+
+export { TxOutput }
 
 // @public
 export function txOutputAsString(x: TxOutput, prefix?: string): string;
@@ -833,6 +851,10 @@ export class UutName {
 export type uutPurposeMap<unionPurpose extends string> = {
     [purpose in unionPurpose]: UutName;
 };
+
+export { ValidatorHash }
+
+export { Value }
 
 // @public
 export function valueAsString(v: Value): string;

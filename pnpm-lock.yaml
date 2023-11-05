@@ -2,7 +2,7 @@ lockfileVersion: 5.4
 
 specifiers:
   '@hyperionbt/helios': ^0.15.14
-  '@microsoft/api-extractor': ^7.38.0
+  '@microsoft/api-extractor': ^7.38.2
   '@rollup/plugin-json': ^6.0.1
   '@rollup/plugin-node-resolve': ^15.1.0
   '@rollup/pluginutils': ^5.0.2
@@ -10,6 +10,7 @@ specifiers:
   '@vitest/ui': ^0.34.6
   esbuild: ^0.19.4
   rollup: ^3.23.1
+  rollup-plugin-api-extractor: ^0.2.5
   rollup-plugin-esbuild: ^6.1.0
   rollup-plugin-node-externals: ^6.1.1
   rollup-plugin-sourcemaps: ^0.6.3
@@ -24,11 +25,11 @@ specifiers:
   webdriverio: ^8.10.7
 
 dependencies:
-  '@hyperionbt/helios': 0.15.14
   semver: 7.5.4
 
 devDependencies:
-  '@microsoft/api-extractor': 7.38.0_@types+node@20.2.5
+  '@hyperionbt/helios': 0.15.14
+  '@microsoft/api-extractor': 7.38.2_@types+node@20.2.5
   '@rollup/plugin-json': 6.0.1_rollup@3.23.1
   '@rollup/plugin-node-resolve': 15.1.0_rollup@3.23.1
   '@rollup/pluginutils': 5.0.2_rollup@3.23.1
@@ -36,6 +37,7 @@ devDependencies:
   '@vitest/ui': 0.34.6_vitest@0.34.6
   esbuild: 0.19.4
   rollup: 3.23.1
+  rollup-plugin-api-extractor: 0.2.5_f7e6coq222phllrbpiq4nrvt5u
   rollup-plugin-esbuild: 6.1.0_l7dsmd3rtcq4im5quytl4uvtaq
   rollup-plugin-node-externals: 6.1.1_rollup@3.23.1
   rollup-plugin-sourcemaps: 0.6.3_ydbslhyws7lwblmtnfo66hoiou
@@ -469,7 +471,7 @@ packages:
 
   /@hyperionbt/helios/0.15.14:
     resolution: {integrity: sha512-PaKhL8hoApOVVngSXHP1xs/MlKwEkLjEPTY/DEUc8BuLhL42hHJGHf42M8Itqhp+gKhy90FgI/hMhfAFHhsA3g==}
-    dev: false
+    dev: true
 
   /@isaacs/cliui/8.0.2:
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
@@ -508,8 +510,8 @@ packages:
       - '@types/node'
     dev: true
 
-  /@microsoft/api-extractor/7.38.0_@types+node@20.2.5:
-    resolution: {integrity: sha512-e1LhZYnfw+JEebuY2bzhw0imDCl1nwjSThTrQqBXl40hrVo6xm3j/1EpUr89QyzgjqmAwek2ZkIVZbrhaR+cqg==}
+  /@microsoft/api-extractor/7.38.2_@types+node@20.2.5:
+    resolution: {integrity: sha512-JOARuhTwOcOMIU0O2czscoJy3ddVzIRhSA9/7T1ALuZSNphgWsPk+Bv4E7AnBDmTV4pP4lBNLtCxEHjjpWaytQ==}
     hasBin: true
     dependencies:
       '@microsoft/api-extractor-model': 7.28.2_@types+node@20.2.5
@@ -517,7 +519,7 @@ packages:
       '@microsoft/tsdoc-config': 0.16.2
       '@rushstack/node-core-library': 3.61.0_@types+node@20.2.5
       '@rushstack/rig-package': 0.5.1
-      '@rushstack/ts-command-line': 4.16.1
+      '@rushstack/ts-command-line': 4.17.1
       colors: 1.2.5
       lodash: 4.17.21
       resolve: 1.22.2
@@ -695,8 +697,8 @@ packages:
       strip-json-comments: 3.1.1
     dev: true
 
-  /@rushstack/ts-command-line/4.16.1:
-    resolution: {integrity: sha512-+OCsD553GYVLEmz12yiFjMOzuPeCiZ3f8wTiFHL30ZVXexTyPmgjwXEhg2K2P0a2lVf+8YBy7WtPoflB2Fp8/A==}
+  /@rushstack/ts-command-line/4.17.1:
+    resolution: {integrity: sha512-2jweO1O57BYP5qdBGl6apJLB+aRIn5ccIRTPDyULh0KMwVzFqWtw6IZWt1qtUoZD/pD2RNkIOosH6Cq45rIYeg==}
     dependencies:
       '@types/argparse': 1.0.38
       argparse: 1.0.10
@@ -2732,6 +2734,18 @@ packages:
 
   /rgb2hex/0.2.5:
     resolution: {integrity: sha512-22MOP1Rh7sAo1BZpDG6R5RFYzR2lYEgwq7HEmyW2qcsOqR2lQKmn+O//xV3YG/0rrhMC6KVX2hU+ZXuaw9a5bw==}
+    dev: true
+
+  /rollup-plugin-api-extractor/0.2.5_f7e6coq222phllrbpiq4nrvt5u:
+    resolution: {integrity: sha512-oWG57yqB6n/xn2egrbiOFjgKjIt/GCwbcdQHaDDM5s26RvwBfckCIokCP3reZCS1OQnINw8NOPcJNarTjef8rA==}
+    peerDependencies:
+      '@microsoft/api-extractor': '>=7.19.0'
+      rollup: '>=2.63.0'
+      tslib: '*'
+    dependencies:
+      '@microsoft/api-extractor': 7.38.2_@types+node@20.2.5
+      rollup: 3.23.1
+      tslib: 2.5.3
     dev: true
 
   /rollup-plugin-esbuild/6.1.0_l7dsmd3rtcq4im5quytl4uvtaq:

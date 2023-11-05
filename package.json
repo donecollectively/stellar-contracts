@@ -32,11 +32,11 @@
     "author": "Done Collectively",
     "license": "Cardano Community Source License",
     "dependencies": {
-        "@hyperionbt/helios": "^0.15.14",
         "semver": ">=7.5.2"
     },
     "devDependencies": {
-        "@microsoft/api-extractor": "^7.38.0",
+        "@hyperionbt/helios": "^0.15.14",
+        "@microsoft/api-extractor": "^7.38.2",
         "@rollup/plugin-json": "^6.0.1",
         "@rollup/plugin-node-resolve": "^15.1.0",
         "@rollup/pluginutils": "^5.0.2",
@@ -44,6 +44,7 @@
         "@vitest/ui": "^0.34.6",
         "esbuild": "^0.19.4",
         "rollup": "^3.23.1",
+        "rollup-plugin-api-extractor": "^0.2.5",
         "rollup-plugin-esbuild": "^6.1.0",
         "rollup-plugin-node-externals": "^6.1.1",
         "rollup-plugin-sourcemaps": "^0.6.3",

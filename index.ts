@@ -19,6 +19,8 @@ export {
     errorMapAsString,
     dumpAny,
 } from "./src/diagnostics.js";
+import * as helios from "@hyperionbt/helios";
+export { helios }
 
 export { Capo } from "./src/Capo.js";
 export type {
@@ -84,8 +86,27 @@ export type { DefaultCharterDatumArgs } from "./src/DefaultCapo.js";
 export type {
     tokenNamesOrValuesEntry,
     InlineDatum,
-    valuesEntry,
+    valuesEntry,    
+    Datum,
+    Tx,
+    TxInput,
+    Address,
+    TxOutput,
+    ValidatorHash,
+    Value,
+    StakingValidatorHash,
+    StakeAddress,
 } from "./src/HeliosPromotedTypes.js";
+
+
 // export {
-//     // DatumInline,
-// } from "./HeliosPromotedTypes.js";
+//     Datum,
+//     Tx,
+//     TxInput,
+//     Address,
+//     TxOutput,
+//     ValidatorHash,
+//     Value,
+//     StakingValidatorHash,
+//     StakeAddress,
+// } from "./src/HeliosPromotedTypes.js";

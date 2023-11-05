@@ -1,4 +1,26 @@
-import { Datum, Tx } from "@hyperionbt/helios";
+import {
+    Datum,
+    Tx,
+    TxInput,
+    Address,
+    TxOutput,
+    ValidatorHash,
+    Value,
+    StakingValidatorHash,
+    StakeAddress,
+} from "@hyperionbt/helios";
+
+export type {
+    Datum,
+    Tx,
+    TxInput,
+    Address,
+    TxOutput,
+    ValidatorHash,
+    Value,
+    StakingValidatorHash,
+    StakeAddress,
+} from "@hyperionbt/helios";
 
 const DatumInline = Datum.inline;
 /**

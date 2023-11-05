@@ -1370,19 +1370,19 @@ export class StellarContract<
         predicate: (u: TxInput) => TxInput | undefined,
         exceptInTcx: StellarTxnContext<any>,
         extraErrorHint?: string
-    ): Promise<TxInput | never>;
+    ): Promise<TxInput>;
     async mustFindMyUtxo(
         semanticName: string,
         predicate: (u: TxInput) => TxInput | undefined,
         extraErrorHint?: string
-    ): Promise<TxInput | never>;
+    ): Promise<TxInput>;
 
     async mustFindMyUtxo(
         semanticName: string,
         predicate: (u: TxInput) => TxInput | undefined,
         hintOrExcept?: string | StellarTxnContext<any>,
         hint?: string
-    ): Promise<TxInput | never> {
+    ): Promise<TxInput> {
         const { address } = this;
         const isTcx = hintOrExcept instanceof StellarTxnContext;
         const exceptInTcx = isTcx ? hintOrExcept : undefined;

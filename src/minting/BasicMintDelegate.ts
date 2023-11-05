@@ -93,8 +93,6 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
         return "MintDelegateActivity";
     }
 
-
-
     getContractScriptParams(config: MintDelegateArgs): configBase {
         return {
             rev: config.rev,
