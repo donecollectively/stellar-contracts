@@ -1,6 +1,5 @@
 import path from 'path';
 import { createFilter } from 'rollup-pluginutils';
-import { expect } from 'vitest';
 
 function mkHeliosModule(src, filename) {
   const module = new String(src);
@@ -346,6 +345,15 @@ export default code
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+////////////////////
+// Section 1: Config
+////////////////////
+
+/**
+ * Current version of the Helios library.
+ */
+const VERSION = "0.15.14";
 
 /**
  * A tab used for indenting of the IR.
@@ -1397,6 +1405,44 @@ class Source {
 
 		return lines.join("\n");
 	}
+}
+
+/**
+ * Template string tag function that doesn't do anything and just returns the template string as a string.
+ * Can be used as a marker of Helios sources so that syntax highlighting can work inside JS/TS files.
+ * @example
+ * hl`hello ${"world"}!` == "hello world!"
+ * @param {string[]} a 
+ * @param  {...any} b 
+ * @returns {string}
+ */
+function hl(a, ...b) {
+	return a.map((part, i) => {
+		if (i < b.length) {
+			return part + b[i].toString();
+		} else {
+			return part;
+		}
+	}).join("");
+}
+
+/**
+ * Display a warning message that a certain feature will be deprecated at some point in the future.
+ * @internal
+ * @param {string} feature
+ * @param {string} futureVersion
+ * @param {string} alternative
+ * @param {string} docUrl
+ */
+function deprecationWarning(feature, futureVersion, alternative, docUrl = "") {
+	let msg = `${feature} is DEPRECATED, and will be removed from version ${futureVersion} onwards!
+${alternative}`;
+
+	if (docUrl != "") {
+		msg += `\n(for more information: ${docUrl})`;
+	}
+
+	console.warn(msg);
 }
 
 
@@ -2966,6 +3012,18 @@ class IRParametricName {
  * @internal
  */
 var BLAKE2B_DIGEST_SIZE = 32; // bytes
+
+/**
+ * Changes the value of BLAKE2B_DIGEST_SIZE 
+ *  (because the nodejs crypto module only supports 
+ *   blake2b-512 and not blake2b-256, and we want to avoid non-standard dependencies in the 
+ *   test-suite)
+ * @internal
+ * @param {number} s - 32 or 64
+ */
+function setBlake2bDigestSize(s) {
+    BLAKE2B_DIGEST_SIZE = s;
+}
 
 /**
  * Make sure resulting number fits in uint32
@@ -4912,6 +4970,37 @@ const Ed25519 = {
         return left.equals(right);
     }
 };
+
+/**
+ * Standard English Bip39 dictionary consisting of 2048 words allowing wallet root keys to be formed by a phrase of 12, 15, 18, 21 or 24 of these words.
+ */
+const BIP39_DICT_EN = [
+    "abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract", "absurd", "abuse", "access", "accident", "account", "accuse", "achieve", "acid", "acoustic", "acquire", "across", "act", "action", "actor", "actress", "actual", "adapt", "add", "addict", "address", "adjust", "admit", "adult", "advance", "advice", "aerobic", "affair", "afford", "afraid", "again", "age", "agent", "agree", "ahead", "aim", "air", "airport", "aisle", "alarm", "album", "alcohol", "alert", "alien", "all", "alley", "allow", "almost", "alone", "alpha", "already", "also", "alter", "always", "amateur", "amazing", "among", "amount", "amused", "analyst", "anchor", "ancient", "anger", "angle", "angry", "animal", "ankle", "announce", "annual", "another", "answer", "antenna", "antique", "anxiety", "any", "apart", "apology", "appear", "apple", "approve", "april", "arch", "arctic", "area", "arena", "argue", "arm", "armed", "armor", "army", "around", "arrange", "arrest", "arrive", "arrow", "art", "artefact", "artist", "artwork", "ask", "aspect", "assault", "asset", "assist", "assume", "asthma", "athlete", "atom", "attack", "attend", "attitude", "attract", "auction", "audit", "august", "aunt", "author", "auto", "autumn", "average", "avocado", "avoid", "awake", "aware", "away", "awesome", "awful", "awkward", "axis",
+    "baby", "bachelor", "bacon", "badge", "bag", "balance", "balcony", "ball", "bamboo", "banana", "banner", "bar", "barely", "bargain", "barrel", "base", "basic", "basket", "battle", "beach", "bean", "beauty", "because", "become", "beef", "before", "begin", "behave", "behind", "believe", "below", "belt", "bench", "benefit", "best", "betray", "better", "between", "beyond", "bicycle", "bid", "bike", "bind", "biology", "bird", "birth", "bitter", "black", "blade", "blame", "blanket", "blast", "bleak", "bless", "blind", "blood", "blossom", "blouse", "blue", "blur", "blush", "board", "boat", "body", "boil", "bomb", "bone", "bonus", "book", "boost", "border", "boring", "borrow", "boss", "bottom", "bounce", "box", "boy", "bracket", "brain", "brand", "brass", "brave", "bread", "breeze", "brick", "bridge", "brief", "bright", "bring", "brisk", "broccoli", "broken", "bronze", "broom", "brother", "brown", "brush", "bubble", "buddy", "budget", "buffalo", "build", "bulb", "bulk", "bullet", "bundle", "bunker", "burden", "burger", "burst", "bus", "business", "busy", "butter", "buyer", "buzz",
+    "cabbage", "cabin", "cable", "cactus", "cage", "cake", "call", "calm", "camera", "camp", "can", "canal", "cancel", "candy", "cannon", "canoe", "canvas", "canyon", "capable", "capital", "captain", "car", "carbon", "card", "cargo", "carpet", "carry", "cart", "case", "cash", "casino", "castle", "casual", "cat", "catalog", "catch", "category", "cattle", "caught", "cause", "caution", "cave", "ceiling", "celery", "cement", "census", "century", "cereal", "certain", "chair", "chalk", "champion", "change", "chaos", "chapter", "charge", "chase", "chat", "cheap", "check", "cheese", "chef", "cherry", "chest", "chicken", "chief", "child", "chimney", "choice", "choose", "chronic", "chuckle", "chunk", "churn", "cigar", "cinnamon", "circle", "citizen", "city", "civil", "claim", "clap", "clarify", "claw", "clay", "clean", "clerk", "clever", "click", "client", "cliff", "climb", "clinic", "clip", "clock", "clog", "close", "cloth", "cloud", "clown", "club", "clump", "cluster", "clutch", "coach", "coast", "coconut", "code", "coffee", "coil", "coin", "collect", "color", "column", "combine", "come", "comfort", "comic", "common", "company", "concert", "conduct", "confirm", "congress", "connect", "consider", "control", "convince", "cook", "cool", "copper", "copy", "coral", "core", "corn", "correct", "cost", "cotton", "couch", "country", "couple", "course", "cousin", "cover", "coyote", "crack", "cradle", "craft", "cram", "crane", "crash", "crater", "crawl", "crazy", "cream", "credit", "creek", "crew", "cricket", "crime", "crisp", "critic", "crop", "cross", "crouch", "crowd", "crucial", "cruel", "cruise", "crumble", "crunch", "crush", "cry", "crystal", "cube", "culture", "cup", "cupboard", "curious", "current", "curtain", "curve", "cushion", "custom", "cute", "cycle",
+    "dad", "damage", "damp", "dance", "danger", "daring", "dash", "daughter", "dawn", "day", "deal", "debate", "debris", "decade", "december", "decide", "decline", "decorate", "decrease", "deer", "defense", "define", "defy", "degree", "delay", "deliver", "demand", "demise", "denial", "dentist", "deny", "depart", "depend", "deposit", "depth", "deputy", "derive", "describe", "desert", "design", "desk", "despair", "destroy", "detail", "detect", "develop", "device", "devote", "diagram", "dial", "diamond", "diary", "dice", "diesel", "diet", "differ", "digital", "dignity", "dilemma", "dinner", "dinosaur", "direct", "dirt", "disagree", "discover", "disease", "dish", "dismiss", "disorder", "display", "distance", "divert", "divide", "divorce", "dizzy", "doctor", "document", "dog", "doll", "dolphin", "domain", "donate", "donkey", "donor", "door", "dose", "double", "dove", "draft", "dragon", "drama", "drastic", "draw", "dream", "dress", "drift", "drill", "drink", "drip", "drive", "drop", "drum", "dry", "duck", "dumb", "dune", "during", "dust", "dutch", "duty", "dwarf", "dynamic",
+    "eager", "eagle", "early", "earn", "earth", "easily", "east", "easy", "echo", "ecology", "economy", "edge", "edit", "educate", "effort", "egg", "eight", "either", "elbow", "elder", "electric", "elegant", "element", "elephant", "elevator", "elite", "else", "embark", "embody", "embrace", "emerge", "emotion", "employ", "empower", "empty", "enable", "enact", "end", "endless", "endorse", "enemy", "energy", "enforce", "engage", "engine", "enhance", "enjoy", "enlist", "enough", "enrich", "enroll", "ensure", "enter", "entire", "entry", "envelope", "episode", "equal", "equip", "era", "erase", "erode", "erosion", "error", "erupt", "escape", "essay", "essence", "estate", "eternal", "ethics", "evidence", "evil", "evoke", "evolve", "exact", "example", "excess", "exchange", "excite", "exclude", "excuse", "execute", "exercise", "exhaust", "exhibit", "exile", "exist", "exit", "exotic", "expand", "expect", "expire", "explain", "expose", "express", "extend", "extra", "eye", "eyebrow",
+    "fabric", "face", "faculty", "fade", "faint", "faith", "fall", "false", "fame", "family", "famous", "fan", "fancy", "fantasy", "farm", "fashion", "fat", "fatal", "father", "fatigue", "fault", "favorite", "feature", "february", "federal", "fee", "feed", "feel", "female", "fence", "festival", "fetch", "fever", "few", "fiber", "fiction", "field", "figure", "file", "film", "filter", "final", "find", "fine", "finger", "finish", "fire", "firm", "first", "fiscal", "fish", "fit", "fitness", "fix", "flag", "flame", "flash", "flat", "flavor", "flee", "flight", "flip", "float", "flock", "floor", "flower", "fluid", "flush", "fly", "foam", "focus", "fog", "foil", "fold", "follow", "food", "foot", "force", "forest", "forget", "fork", "fortune", "forum", "forward", "fossil", "foster", "found", "fox", "fragile", "frame", "frequent", "fresh", "friend", "fringe", "frog", "front", "frost", "frown", "frozen", "fruit", "fuel", "fun", "funny", "furnace", "fury", "future",
+    "gadget", "gain", "galaxy", "gallery", "game", "gap", "garage", "garbage", "garden", "garlic", "garment", "gas", "gasp", "gate", "gather", "gauge", "gaze", "general", "genius", "genre", "gentle", "genuine", "gesture", "ghost", "giant", "gift", "giggle", "ginger", "giraffe", "girl", "give", "glad", "glance", "glare", "glass", "glide", "glimpse", "globe", "gloom", "glory", "glove", "glow", "glue", "goat", "goddess", "gold", "good", "goose", "gorilla", "gospel", "gossip", "govern", "gown", "grab", "grace", "grain", "grant", "grape", "grass", "gravity", "great", "green", "grid", "grief", "grit", "grocery", "group", "grow", "grunt", "guard", "guess", "guide", "guilt", "guitar", "gun", "gym",
+    "habit", "hair", "half", "hammer", "hamster", "hand", "happy", "harbor", "hard", "harsh", "harvest", "hat", "have", "hawk", "hazard", "head", "health", "heart", "heavy", "hedgehog", "height", "hello", "helmet", "help", "hen", "hero", "hidden", "high", "hill", "hint", "hip", "hire", "history", "hobby", "hockey", "hold", "hole", "holiday", "hollow", "home", "honey", "hood", "hope", "horn", "horror", "horse", "hospital", "host", "hotel", "hour", "hover", "hub", "huge", "human", "humble", "humor", "hundred", "hungry", "hunt", "hurdle", "hurry", "hurt", "husband", "hybrid",
+    "ice", "icon", "idea", "identify", "idle", "ignore", "ill", "illegal", "illness", "image", "imitate", "immense", "immune", "impact", "impose", "improve", "impulse", "inch", "include", "income", "increase", "index", "indicate", "indoor", "industry", "infant", "inflict", "inform", "inhale", "inherit", "initial", "inject", "injury", "inmate", "inner", "innocent", "input", "inquiry", "insane", "insect", "inside", "inspire", "install", "intact", "interest", "into", "invest", "invite", "involve", "iron", "island", "isolate", "issue", "item", "ivory",
+    "jacket", "jaguar", "jar", "jazz", "jealous", "jeans", "jelly", "jewel", "job", "join", "joke", "journey", "joy", "judge", "juice", "jump", "jungle", "junior", "junk", "just",
+    "kangaroo", "keen", "keep", "ketchup", "key", "kick", "kid", "kidney", "kind", "kingdom", "kiss", "kit", "kitchen", "kite", "kitten", "kiwi", "knee", "knife", "knock", "know",
+    "lab", "label", "labor", "ladder", "lady", "lake", "lamp", "language", "laptop", "large", "later", "latin", "laugh", "laundry", "lava", "law", "lawn", "lawsuit", "layer", "lazy", "leader", "leaf", "learn", "leave", "lecture", "left", "leg", "legal", "legend", "leisure", "lemon", "lend", "length", "lens", "leopard", "lesson", "letter", "level", "liar", "liberty", "library", "license", "life", "lift", "light", "like", "limb", "limit", "link", "lion", "liquid", "list", "little", "live", "lizard", "load", "loan", "lobster", "local", "lock", "logic", "lonely", "long", "loop", "lottery", "loud", "lounge", "love", "loyal", "lucky", "luggage", "lumber", "lunar", "lunch", "luxury", "lyrics",
+    "machine", "mad", "magic", "magnet", "maid", "mail", "main", "major", "make", "mammal", "man", "manage", "mandate", "mango", "mansion", "manual", "maple", "marble", "march", "margin", "marine", "market", "marriage", "mask", "mass", "master", "match", "material", "math", "matrix", "matter", "maximum", "maze", "meadow", "mean", "measure", "meat", "mechanic", "medal", "media", "melody", "melt", "member", "memory", "mention", "menu", "mercy", "merge", "merit", "merry", "mesh", "message", "metal", "method", "middle", "midnight", "milk", "million", "mimic", "mind", "minimum", "minor", "minute", "miracle", "mirror", "misery", "miss", "mistake", "mix", "mixed", "mixture", "mobile", "model", "modify", "mom", "moment", "monitor", "monkey", "monster", "month", "moon", "moral", "more", "morning", "mosquito", "mother", "motion", "motor", "mountain", "mouse", "move", "movie", "much", "muffin", "mule", "multiply", "muscle", "museum", "mushroom", "music", "must", "mutual", "myself", "mystery", "myth",
+    "naive", "name", "napkin", "narrow", "nasty", "nation", "nature", "near", "neck", "need", "negative", "neglect", "neither", "nephew", "nerve", "nest", "net", "network", "neutral", "never", "news", "next", "nice", "night", "noble", "noise", "nominee", "noodle", "normal", "north", "nose", "notable", "note", "nothing", "notice", "novel", "now", "nuclear", "number", "nurse", "nut",
+    "oak", "obey", "object", "oblige", "obscure", "observe", "obtain", "obvious", "occur", "ocean", "october", "odor", "off", "offer", "office", "often", "oil", "okay", "old", "olive", "olympic", "omit", "once", "one", "onion", "online", "only", "open", "opera", "opinion", "oppose", "option", "orange", "orbit", "orchard", "order", "ordinary", "organ", "orient", "original", "orphan", "ostrich", "other", "outdoor", "outer", "output", "outside", "oval", "oven", "over", "own", "owner", "oxygen", "oyster", "ozone",
+    "pact", "paddle", "page", "pair", "palace", "palm", "panda", "panel", "panic", "panther", "paper", "parade", "parent", "park", "parrot", "party", "pass", "patch", "path", "patient", "patrol", "pattern", "pause", "pave", "payment", "peace", "peanut", "pear", "peasant", "pelican", "pen", "penalty", "pencil", "people", "pepper", "perfect", "permit", "person", "pet", "phone", "photo", "phrase", "physical", "piano", "picnic", "picture", "piece", "pig", "pigeon", "pill", "pilot", "pink", "pioneer", "pipe", "pistol", "pitch", "pizza", "place", "planet", "plastic", "plate", "play", "please", "pledge", "pluck", "plug", "plunge", "poem", "poet", "point", "polar", "pole", "police", "pond", "pony", "pool", "popular", "portion", "position", "possible", "post", "potato", "pottery", "poverty", "powder", "power", "practice", "praise", "predict", "prefer", "prepare", "present", "pretty", "prevent", "price", "pride", "primary", "print", "priority", "prison", "private", "prize", "problem", "process", "produce", "profit", "program", "project", "promote", "proof", "property", "prosper", "protect", "proud", "provide", "public", "pudding", "pull", "pulp", "pulse", "pumpkin", "punch", "pupil", "puppy", "purchase", "purity", "purpose", "purse", "push", "put", "puzzle", "pyramid",
+    "quality", "quantum", "quarter", "question", "quick", "quit", "quiz", "quote",
+    "rabbit", "raccoon", "race", "rack", "radar", "radio", "rail", "rain", "raise", "rally", "ramp", "ranch", "random", "range", "rapid", "rare", "rate", "rather", "raven", "raw", "razor", "ready", "real", "reason", "rebel", "rebuild", "recall", "receive", "recipe", "record", "recycle", "reduce", "reflect", "reform", "refuse", "region", "regret", "regular", "reject", "relax", "release", "relief", "rely", "remain", "remember", "remind", "remove", "render", "renew", "rent", "reopen", "repair", "repeat", "replace", "report", "require", "rescue", "resemble", "resist", "resource", "response", "result", "retire", "retreat", "return", "reunion", "reveal", "review", "reward", "rhythm", "rib", "ribbon", "rice", "rich", "ride", "ridge", "rifle", "right", "rigid", "ring", "riot", "ripple", "risk", "ritual", "rival", "river", "road", "roast", "robot", "robust", "rocket", "romance", "roof", "rookie", "room", "rose", "rotate", "rough", "round", "route", "royal", "rubber", "rude", "rug", "rule", "run", "runway", "rural",
+    "sad", "saddle", "sadness", "safe", "sail", "salad", "salmon", "salon", "salt", "salute", "same", "sample", "sand", "satisfy", "satoshi", "sauce", "sausage", "save", "say", "scale", "scan", "scare", "scatter", "scene", "scheme", "school", "science", "scissors", "scorpion", "scout", "scrap", "screen", "script", "scrub", "sea", "search", "season", "seat", "second", "secret", "section", "security", "seed", "seek", "segment", "select", "sell", "seminar", "senior", "sense", "sentence", "series", "service", "session", "settle", "setup", "seven", "shadow", "shaft", "shallow", "share", "shed", "shell", "sheriff", "shield", "shift", "shine", "ship", "shiver", "shock", "shoe", "shoot", "shop", "short", "shoulder", "shove", "shrimp", "shrug", "shuffle", "shy", "sibling", "sick", "side", "siege", "sight", "sign", "silent", "silk", "silly", "silver", "similar", "simple", "since", "sing", "siren", "sister", "situate", "six", "size", "skate", "sketch", "ski", "skill", "skin", "skirt", "skull", "slab", "slam", "sleep", "slender", "slice", "slide", "slight", "slim", "slogan", "slot", "slow", "slush", "small", "smart", "smile", "smoke", "smooth", "snack", "snake", "snap", "sniff", "snow", "soap", "soccer", "social", "sock", "soda", "soft", "solar", "soldier", "solid", "solution", "solve", "someone", "song", "soon", "sorry", "sort", "soul", "sound", "soup", "source", "south", "space", "spare", "spatial", "spawn", "speak", "special", "speed", "spell", "spend", "sphere", "spice", "spider", "spike", "spin", "spirit", "split", "spoil", "sponsor", "spoon", "sport", "spot", "spray", "spread", "spring", "spy", "square", "squeeze", "squirrel", "stable", "stadium", "staff", "stage", "stairs", "stamp", "stand", "start", "state", "stay", "steak", "steel", "stem", "step", "stereo", "stick", "still", "sting", "stock", "stomach", "stone", "stool", "story", "stove", "strategy", "street", "strike", "strong", "struggle", "student", "stuff", "stumble", "style", "subject", "submit", "subway", "success", "such", "sudden", "suffer", "sugar", "suggest", "suit", "summer", "sun", "sunny", "sunset", "super", "supply", "supreme", "sure", "surface", "surge", "surprise", "surround", "survey", "suspect", "sustain", "swallow", "swamp", "swap", "swarm", "swear", "sweet", "swift", "swim", "swing", "switch", "sword", "symbol", "symptom", "syrup", "system",
+    "table", "tackle", "tag", "tail", "talent", "talk", "tank", "tape", "target", "task", "taste", "tattoo", "taxi", "teach", "team", "tell", "ten", "tenant", "tennis", "tent", "term", "test", "text", "thank", "that", "theme", "then", "theory", "there", "they", "thing", "this", "thought", "three", "thrive", "throw", "thumb", "thunder", "ticket", "tide", "tiger", "tilt", "timber", "time", "tiny", "tip", "tired", "tissue", "title", "toast", "tobacco", "today", "toddler", "toe", "together", "toilet", "token", "tomato", "tomorrow", "tone", "tongue", "tonight", "tool", "tooth", "top", "topic", "topple", "torch", "tornado", "tortoise", "toss", "total", "tourist", "toward", "tower", "town", "toy", "track", "trade", "traffic", "tragic", "train", "transfer", "trap", "trash", "travel", "tray", "treat", "tree", "trend", "trial", "tribe", "trick", "trigger", "trim", "trip", "trophy", "trouble", "truck", "true", "truly", "trumpet", "trust", "truth", "try", "tube", "tuition", "tumble", "tuna", "tunnel", "turkey", "turn", "turtle", "twelve", "twenty", "twice", "twin", "twist", "two", "type", "typical",
+    "ugly", "umbrella", "unable", "unaware", "uncle", "uncover", "under", "undo", "unfair", "unfold", "unhappy", "uniform", "unique", "unit", "universe", "unknown", "unlock", "until", "unusual", "unveil", "update", "upgrade", "uphold", "upon", "upper", "upset", "urban", "urge", "usage", "use", "used", "useful", "useless", "usual", "utility",
+    "vacant", "vacuum", "vague", "valid", "valley", "valve", "van", "vanish", "vapor", "various", "vast", "vault", "vehicle", "velvet", "vendor", "venture", "venue", "verb", "verify", "version", "very", "vessel", "veteran", "viable", "vibrant", "vicious", "victory", "video", "view", "village", "vintage", "violin", "virtual", "virus", "visa", "visit", "visual", "vital", "vivid", "vocal", "voice", "void", "volcano", "volume", "vote", "voyage",
+    "wage", "wagon", "wait", "walk", "wall", "walnut", "want", "warfare", "warm", "warrior", "wash", "wasp", "waste", "water", "wave", "way", "wealth", "weapon", "wear", "weasel", "weather", "web", "wedding", "weekend", "weird", "welcome", "west", "wet", "whale", "what", "wheat", "wheel", "when", "where", "whip", "whisper", "wide", "width", "wife", "wild", "will", "win", "window", "wine", "wing", "wink", "winner", "winter", "wire", "wisdom", "wise", "wish", "witness", "wolf", "woman", "wonder", "wood", "wool", "word", "work", "world", "worry", "worth", "wrap", "wreck", "wrestle", "wrist", "write", "wrong",
+    "yard", "year", "yellow", "you", "young", "youth",
+    "zebra", "zero", "zone", "zoo"
+];
 
 
 
@@ -10732,6 +10821,17 @@ const UPLC_MACROS = [
 ];
 
 /**
+ * Use this function to check cost-model parameters
+ * @internal
+ * @param {NetworkParams} networkParams
+ */
+function dumpCostModels(networkParams) {
+	for (let builtin of UPLC_BUILTINS) {
+		builtin.dumpCostModel(networkParams);
+	}
+}
+
+/**
  * Returns index of a named builtin
  * Throws an error if builtin doesn't exist
  * @internal
@@ -10742,6 +10842,24 @@ function findUplcBuiltin(name) {
 	let i = UPLC_BUILTINS.findIndex(info => { return "__core__" + info.name == name });
 	assert(i != -1, `${name} is not a real builtin`);
 	return i;
+}
+
+/**
+ * Checks if a named builtin exists
+ * @internal
+ * @param {string} name 
+ * @param {boolean} strict - if true then throws an error if builtin doesn't exist
+ * @returns {boolean}
+ */
+function isUplcBuiltin(name, strict = false) {
+	if (name.startsWith("__core")) {
+		if (strict) {
+			void this.findBuiltin(name); // assert that builtin exists
+		}
+		return true;
+	} else {
+		return false;
+	}
 }
 
 
@@ -11606,6 +11724,78 @@ class UplcAny extends UplcValue {
 	 */
 	toString() {
 		return "Any";
+	}
+}
+
+/**
+ * @internal
+ */
+class UplcDelayedValue extends UplcValue {
+	#evaluator;
+
+	/**
+	 * @param {Site} site
+	 * @param {() => (UplcValue | Promise<UplcValue>)} evaluator
+	 */
+	constructor(site, evaluator) {
+		super(site);
+		this.#evaluator = evaluator;
+	}
+
+	/**
+	 * Should never be part of ast
+	 * @param {TransferUplcAst} other 
+	 * @returns {any}
+	 */
+	transfer(other) {
+		throw new Error("not expected to be part of uplc ast");
+	}
+
+	get memSize() {
+		return 1;
+	}
+
+	/**
+	 * @param {Site} newSite 
+	 * @returns {UplcValue}
+	 */
+	copy(newSite) {
+		return new UplcDelayedValue(newSite, this.#evaluator);
+	}
+
+	/**
+	 * @return {Promise<UplcValue>}
+	 */
+	force() {
+		let res = this.#evaluator();
+
+		if (res instanceof Promise) {
+			return res;
+		} else {
+			return new Promise((resolve, _) => {
+				resolve(res);
+			});
+		}
+	}
+
+	toString() {
+		return `delay`;
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	typeBits() {
+		throw new Error("a UplcDelayedValue value doesn't have a literal representation");
+	}
+
+	/**
+	 * Encodes value with plutus flat encoding.
+	 * Member function not named 'toFlat' as not to confuse with 'toFlat' member of terms.
+	 * @param {BitWriter} bitWriter
+	 */
+	toFlatValue(bitWriter) {
+		throw new Error("a UplcDelayedValue value doesn't have a literal representation");
 	}
 }
 
@@ -15396,6 +15586,45 @@ const UPLC_TAG_WIDTHS = {
 
 		assert(this.eof(), "not at end");
 	}
+}
+
+/**
+ * Deserializes a flat encoded `UplcProgram`.
+ * @param {number[]} bytes 
+ * @param {ProgramProperties} properties
+ * @returns {UplcProgram}
+ */
+function deserializeUplcBytes(bytes, properties = {purpose: null, callsTxTimeRange: false}) {
+	return UplcProgram.fromFlat(bytes, properties);
+}
+
+/**
+ * Parses a plutus core program. Returns a `UplcProgram` instance.
+ * @param {string | {cborHex: string}} json a raw JSON string or a parsed JSON object
+ * @returns {UplcProgram}
+ */
+function deserializeUplc(json) {
+	const obj = typeof json == "string" ? JSON.parse(json) : json;
+
+	if (!("cborHex" in obj)) {
+		throw UserError.syntaxError(new Source(typeof json == "string" ? json : JSON.stringify(json, undefined, 4), "<json>"), 0, 1, "cborHex field not in json")
+	}
+
+	let cborHex = obj.cborHex;
+	if (typeof cborHex !== "string") {
+		const raw = typeof json == "string" ? json : JSON.stringify(json, undefined, 4);
+		const src = new Source(raw, "<json>");
+		const re = /cborHex/;
+		const cborHexMatch = raw.match(re);
+		if (cborHexMatch === null) {
+			throw UserError.syntaxError(src, 0, 1, "'cborHex' key not found");
+		} else {
+			const pos = raw.search(re);
+			throw UserError.syntaxError(src, pos, pos+1, "cborHex not a string");
+		}
+	}
+
+	return UplcProgram.fromCbor(hexToBytes(cborHex));
 }
 
 
@@ -22160,6 +22389,25 @@ class TopScope extends Scope {
 class ModuleScope extends Scope {
 }
 
+
+/////////////////////////////
+// Section 23: IR definitions
+/////////////////////////////
+/**
+ * For collecting test coverage statistics
+ * @type {?((name: string, count: number) => void)}
+ */
+var onNotifyRawUsage = null;
+
+/**
+ * Set the statistics collector (used by the test-suite)
+ * @internal
+ * @param {(name: string, count: number) => void} callback 
+ */
+function setRawUsageNotifier(callback) {
+	onNotifyRawUsage = callback;
+}
+
 const RE_BUILTIN = new RegExp("(?<![@[])__helios[a-zA-Z0-9_@[\\]]*", "g");
 
 /**
@@ -22210,6 +22458,9 @@ class RawFunc {
 	 * @returns {void}
 	 */
 	load(db, dst) {
+		if (onNotifyRawUsage !== null) {
+			onNotifyRawUsage(this.#name, 1);
+		}
 
 		if (dst.has(this.#name)) {
 			return;
@@ -28649,6 +28900,15 @@ function fetchRawGenerics(ctx) {
  * @returns {IRDefinitions}
  */
 function fetchRawFunctions(ctx, ir, userDefs = null) {
+	// notify statistics of existence of builtin in correct order
+	if (onNotifyRawUsage !== null) {
+		for (let [name, _] of ctx.db) {
+			// don't add templates, as they will never actually be used (type parameters are substituted)
+			if (!IRParametricName.isTemplate(name)) {
+				onNotifyRawUsage(name, 0);
+			}
+		}
+	}
 
 	let [src, _] = ir.generateSource();
 
@@ -28674,6 +28934,18 @@ function fetchRawFunctions(ctx, ir, userDefs = null) {
 	}
 
 	return map;
+}
+
+/**
+ * @internal
+ * @param {ToIRContext} ctx
+ * @param {IR} ir 
+ * @returns {IR}
+ */
+function wrapWithRawFunctions(ctx, ir) {
+	const map = fetchRawFunctions(ctx, ir);
+	
+	return IR.wrapWithDefinitions(ir, map);
 }
 
 
@@ -35649,6 +35921,16 @@ const AUTOMATIC_METHODS = [
  * @type {null | ((path: StringLiteral) => (string | null))}
  */
 let importPathTranslator = null;
+
+/**
+ * Used by VSCode plugin and CLI
+ * The sources can't be modified directly because that messes up the codemapping
+ * @internal
+ * @param {(path: StringLiteral) => (string | null)} fn 
+ */
+function setImportPathTranslator(fn) {
+	importPathTranslator = fn;
+}
 
 /**
  * @internal
@@ -47281,6 +47563,18 @@ class TxInput extends CborData {
 }
 
 /**
+ * Use TxInput instead
+ * @deprecated
+ */
+class UTxO extends TxInput {}
+
+/**
+ * Use TxInput instead
+ * @deprecated
+ */
+class TxRefInput extends TxInput {}
+
+/**
  * Represents a transaction output that is used when building a transaction.
  */
 class TxOutput extends CborData {
@@ -48034,6 +48328,194 @@ class DCertDelegate extends DCert {
 }
 
 /**
+ * @internal
+ */
+class DCertRegisterPool extends DCert {
+
+}
+
+/**
+ * @internal
+ */
+class DCertRetirePool extends DCert {
+
+}
+
+/**
+ * Wrapper for Cardano stake address bytes. An StakeAddress consists of two parts internally:
+ *   - Header (1 byte, see CIP 8)
+ *   - Staking witness hash (28 bytes that represent the `PubKeyHash` or `StakingValidatorHash`)
+ * 
+ * Stake addresses are used to query the assets held by given staking credentials.
+ */
+class StakeAddress {
+	#bytes;
+
+	/**
+	 * @param {number[]} bytes 
+	 */
+	constructor(bytes) {
+		assert(bytes.length == 29);
+
+		this.#bytes = bytes;
+	}
+
+	/**
+	 * @type {number[]}
+	 */
+	get bytes() {
+		return this.#bytes;
+	}
+
+	/**
+	 * Returns `true` if the given `StakeAddress` is a testnet address.
+	 * @param {StakeAddress} sa
+	 * @returns {boolean}
+	 */
+	static isForTestnet(sa) {
+		return Address.isForTestnet(new Address(sa.bytes));
+	}
+
+	/**
+	 * Convert a regular `Address` into a `StakeAddress`. 
+	 * Throws an error if the Address doesn't have a staking credential.
+	 * @param {Address} addr 
+	 * @returns {StakeAddress}
+	 */
+	static fromAddress(addr) {
+		const sh = addr.stakingHash;
+
+		if (sh === null) {
+			throw new Error("address doesn't have a staking part");
+		} else {
+			return StakeAddress.fromHash(Address.isForTestnet(addr), sh);
+		}
+	}
+
+	/**
+	 * Converts a `StakeAddress` into its CBOR representation.
+	 * @returns {number[]}
+	 */
+	toCbor() {
+		return Cbor.encodeBytes(this.#bytes);
+	}
+
+	/**
+	 * @param {number[]} bytes
+	 * @returns {StakeAddress}
+	 */
+	static fromCbor(bytes) {
+		return new StakeAddress(Cbor.decodeBytes(bytes));
+	}
+
+	/**
+	 * Converts a `StakeAddress` into its Bech32 representation.
+	 * @returns {string}
+	 */
+	toBech32() {
+		return Crypto.encodeBech32(
+			StakeAddress.isForTestnet(this) ? "stake_test" : "stake",
+			this.bytes
+		);
+	}
+
+	/**
+	 * @param {string} str
+	 * @returns {StakeAddress}
+	 */
+	static fromBech32(str) {
+		let [prefix, bytes] = Crypto.decodeBech32(str);
+
+		let result = new StakeAddress(bytes);
+
+		assert(prefix == (StakeAddress.isForTestnet(result) ? "stake_test" : "stake"), "invalid StakeAddress prefix");
+
+		return result;
+	}
+
+	/**
+	 * Converts a `StakeAddress` into its hexadecimal representation.
+	 * @returns {string}
+	 */
+	toHex() {
+		return bytesToHex(this.#bytes);
+	}
+
+	/**
+	 * Converts a `StakeAddress` into its hexadecimal representation.
+	 * @type {string}
+	 */
+	get hex() {
+		return this.toHex()
+	}
+
+	/**
+	 * Doesn't check validity
+	 * @param {string} hex
+	 * @returns {StakeAddress}
+	 */
+	static fromHex(hex) {
+		return new StakeAddress(hexToBytes(hex));
+	}
+
+	/**
+	 * Address with only staking part (regular PubKeyHash)
+	 * @internal
+	 * @param {boolean} isTestnet
+	 * @param {PubKeyHash} hash
+	 * @returns {StakeAddress}
+	 */
+	static fromPubKeyHash(isTestnet, hash) {
+		return new StakeAddress(
+			[isTestnet ? 0xe0 : 0xe1].concat(hash.bytes)
+		);
+	}
+
+	/**
+	 * Address with only staking part (script StakingValidatorHash)
+	 * @internal
+	 * @param {boolean} isTestnet
+	 * @param {StakingValidatorHash} hash
+	 * @returns {StakeAddress}
+	 */
+	static fromStakingValidatorHash(isTestnet, hash) {
+		return new StakeAddress(
+			[isTestnet ? 0xf0 : 0xf1].concat(hash.bytes)
+		);
+	}
+
+	/**
+	 * Converts a `PubKeyHash` or `StakingValidatorHash` into `StakeAddress`.
+	 * @param {boolean} isTestnet
+	 * @param {PubKeyHash | StakingValidatorHash} hash
+	 * @returns {StakeAddress}
+	 */
+	static fromHash(isTestnet, hash) {
+		if (hash instanceof PubKeyHash) {
+			return StakeAddress.fromPubKeyHash(isTestnet, hash);
+		} else {
+			return StakeAddress.fromStakingValidatorHash(isTestnet, hash);
+		}
+	}
+
+	/**
+	 * Returns the underlying `PubKeyHash` or `StakingValidatorHash`.
+	 * @returns {PubKeyHash | StakingValidatorHash}
+	 */
+	get stakingHash() {
+		const type = this.bytes[0];
+
+		if (type == 0xe0 || type == 0xe1) {
+			return new PubKeyHash(this.bytes.slice(1));
+		} else if (type == 0xf0 || type == 0xf1) {
+			return new StakingValidatorHash(this.bytes.slice(1));
+		} else {
+			throw new Error("bad StakeAddress header");
+		}
+	}
+}
+
+/**
  * Represents a Ed25519 signature.
  * 
  * Also contains a reference to the PubKey that did the signing.
@@ -48162,6 +48644,94 @@ class Signature extends CborData {
 				}
 			}
 		}
+	}
+}
+
+/**
+ * @interface
+ * @typedef {object} PrivateKey
+ * @property {() => PubKey} derivePubKey Generates the corresponding public key.
+ * @property {(msg: number[]) => Signature} sign Signs a byte-array payload, returning the signature.
+ */
+
+/**
+ * @implements {PrivateKey}
+ */
+class Ed25519PrivateKey extends HeliosData {
+	/**
+	 * @type {number[]}
+	 */
+	#bytes;
+
+	/**
+	 * cache the derived pubKey
+	 * @type {null | PubKey}
+	 */
+	#pubKey
+
+	/**
+	 * @param {string | number[]} bytes
+	 */
+	constructor(bytes) {
+		super();
+		this.#bytes = Array.isArray(bytes) ? bytes : hexToBytes(bytes);
+		this.#pubKey = null;
+	}
+
+ 	/**
+     * Generate a private key from a random number generator.
+	 * This is not cryptographically secure, only use this for testing purpose
+     * @param {NumberGenerator} random 
+     * @returns {Ed25519PrivateKey} - Ed25519 private key is 32 bytes long
+     */
+	static random(random) {
+		return new Ed25519PrivateKey(randomBytes(random, 32));
+	}
+
+	/**
+	 * @type {number[]}
+	 */
+	get bytes() {
+		return this.#bytes;
+	}
+
+	/**
+	 * @type {string}
+	 */
+	get hex() {
+		return bytesToHex(this.#bytes);
+	}
+
+	/**
+	 * NOT the Ed25519-Bip32 hierarchial extension algorithm (see ExtendedPrivateKey below)
+	 * @returns {Ed25519PrivateKey}
+	 */
+	extend() {
+		return new Ed25519PrivateKey(Crypto.sha2_512(this.#bytes));
+	}
+
+	/**
+	 * @returns {PubKey}
+	 */
+	derivePubKey() {
+		if (this.#pubKey) {
+			return this.#pubKey;
+		} else {
+			this.#pubKey = new PubKey(Ed25519.derivePublicKey(this.#bytes));
+			
+			return this.#pubKey;
+		}
+	}
+
+	/**
+	 * @param {number[]} message 
+	 * @returns {Signature}
+	 */
+	sign(message) {
+		return new Signature(
+			this.derivePubKey(),
+			Ed25519.sign(message, this.#bytes)
+		);
 	}
 }
 
@@ -48366,6 +48936,200 @@ class Bip32PrivateKey {
 			this.derivePubKey(),
 			Ed25519.signBip32(message, this.k)
 		);
+	}
+}
+
+/**
+ * @implements {PrivateKey}
+ */
+class RootPrivateKey {
+	#entropy;
+	#key;
+
+	/**
+	 * @param {number[]} entropy 
+	 */
+	constructor(entropy) {
+		assert(entropy.length == 16 || entropy.length == 20 || entropy.length == 24 || entropy.length == 28 || entropy.length == 32, `expected 16, 20, 24, 28 or 32 bytes for the root entropy, got ${entropy.length}`);
+		
+		this.#entropy = entropy;
+		this.#key = Bip32PrivateKey.fromBip39Entropy(entropy);
+	}
+
+	/**
+	 * @param {string[]} phrase 
+	 * @param {string[]} dict 
+	 * @returns {boolean}
+	 */
+	static isValidPhrase(phrase, dict = BIP39_DICT_EN) {
+		if (phrase.length != 12 && phrase.length != 15 && phrase.length != 18 && phrase.length != 21 && phrase.length != 24) {
+			return false;
+		} else {
+			return phrase.every(w => dict.findIndex(dw => dw == w) != -1);
+		}
+	}
+
+	/**
+	 * @param {string[]} phrase 
+	 * @param {string[]} dict 
+	 * @returns {RootPrivateKey}
+	 */
+	static fromPhrase(phrase, dict = BIP39_DICT_EN) {
+		assert(phrase.length == 12 || phrase.length == 15 || phrase.length == 18 || phrase.length == 21 || phrase.length == 24, `expected phrase with 12, 15, 18, 21 or 24 words, got ${phrase.length} words`);
+
+		const bw = new BitWriter();
+
+		phrase.forEach(w => {
+			const i = dict.findIndex(dw => dw == w);
+			assert(i != -1, `invalid phrase, ${w} not found in dict`);
+
+			bw.write(padZeroes(i.toString(2), 11));
+		});
+
+		const nChecksumBits = phrase.length/3;
+		assert(nChecksumBits%1.0 == 0.0, "bad nChecksumBits");
+		assert(nChecksumBits >= 4.0 && nChecksumBits <= 8.0, "too many or too few nChecksumBits");
+
+		const checksum = bw.pop(nChecksumBits);
+
+		const bytes = bw.finalize(false);
+
+		assert(padZeroes(Crypto.sha2_256(bytes)[0].toString(2).slice(0, nChecksumBits), nChecksumBits) == checksum, "invalid checksum");
+
+		return new RootPrivateKey(bytes);
+	}
+
+	/**
+	 * @type {number[]}
+	 */
+	get bytes() {
+		return this.#key.bytes;
+	}
+
+	/**
+	 * @type {number[]}
+	 */
+	get entropy() {
+		return this.#entropy;
+	}
+
+	/**
+	 * @param {string[]} dict 
+	 * @returns {string[]}
+	 */
+	toPhrase(dict = BIP39_DICT_EN) {
+		const nChecksumBits = this.#entropy.length/4;
+		const checksum = padZeroes(Crypto.sha2_256(this.#entropy)[0].toString(2).slice(0, nChecksumBits), nChecksumBits);
+
+		/**
+		 * @type {string[]}
+		 */
+		const parts = [];
+
+		this.#entropy.forEach(b => {
+			parts.push(padZeroes(b.toString(2), 8));
+		});
+
+		parts.push(checksum);
+
+		let bits = parts.join('');
+
+		assert(bits.length%11 == 0.0);
+
+		/**
+		 * @type {string[]}
+		 */
+		const words = [];
+
+		while (bits.length > 0) {
+			const part = bits.slice(0, 11);
+			assert(part.length == 11, "didn't slice of exactly 11 bits");
+
+			const i = parseInt(part, 2);
+
+			words.push(assertDefined(dict[i], `dict entry ${i} not found`));
+
+			bits = bits.slice(11);
+		}
+
+		assert(RootPrivateKey.isValidPhrase(words, dict), "internal error: invalid phrase");
+
+		return words;
+	}
+
+	/**
+	 * @param {number} i - childIndex
+	 * @returns {Bip32PrivateKey}
+	 */
+	derive(i) {
+		return this.#key.derive(i);
+	}
+
+	/**
+	 * @param {number[]} path 
+	 * @returns {Bip32PrivateKey}
+	 */
+	derivePath(path) {
+		return this.#key.derivePath(path);
+	}
+
+	/**
+	 * @param {number} accountIndex
+	 * @returns {Bip32PrivateKey}
+	 */
+	deriveSpendingRootKey(accountIndex = 0) {
+		return this.derivePath([
+			1852 + BIP32_HARDEN,
+			1815 + BIP32_HARDEN,
+			accountIndex + BIP32_HARDEN,
+			0
+		]);
+	}
+
+	/**
+	 * @param {number} accountIndex
+	 * @returns {Bip32PrivateKey}
+	 */
+	deriveStakingRootKey(accountIndex) {
+		return this.derivePath([
+			1852 + BIP32_HARDEN,
+			1815 + BIP32_HARDEN,
+			accountIndex + BIP32_HARDEN,
+			2
+		]);
+	}
+
+	/**
+	 * @param {number} accountIndex
+	 * @param {number} i
+	 * @returns {Bip32PrivateKey}
+	 */
+	deriveSpendingKey(accountIndex = 0, i = 0) {
+		return this.deriveSpendingRootKey(accountIndex).derive(i);
+	}
+
+	/**
+	 * @param {number} accountIndex
+	 * @param {number} i
+	 * @returns {Bip32PrivateKey}
+	 */
+	deriveStakingKey(accountIndex = 0, i = 0) {
+		return this.deriveStakingRootKey(accountIndex).derive(i);
+	}
+
+	/**
+	 * @returns {PubKey}
+	 */ 
+	derivePubKey() {
+		return this.#key.derivePubKey();
+	}
+
+	/**
+	 * @param {number[]} message 
+	 * @returns {Signature}
+	 */
+	sign(message) {
+		return this.#key.sign(message);
 	}
 }
 
@@ -49188,6 +49952,1591 @@ class TxMetadata {
 
 		return txMetadata;
 	}
+}
+
+
+
+////////////////////////////////////
+// Section 34: Highlighting function
+////////////////////////////////////
+
+/**
+ * Categories for syntax highlighting
+ */
+const SyntaxCategory = {
+	Normal:     0,
+	Comment:    1,
+	Literal:    2,
+	Symbol:     3,
+	Type:       4,
+	Keyword:    5,
+	Error:      6,
+};
+
+/**
+ * Returns Uint8Array with the same length as the number of chars in the script.
+ * Each resulting byte respresents a different syntax category.
+ * This approach should be faster than a RegExp based a approach.
+ * @param {string} src
+ * @returns {Uint8Array}
+ */
+function highlight(src) {
+	let n = src.length;
+
+	const SyntaxState = {
+		Normal:        0,
+		SLComment:     1,
+		MLComment:     2,
+		String:        3,
+		NumberStart:   4,
+		HexNumber:     5,
+		BinaryNumber:  6,
+		OctalNumber:   7,
+		DecimalNumber: 8,
+		ByteArray:     9,
+	};
+
+	// array of categories
+	let data = new Uint8Array(n);
+
+	let j = 0; // position in data
+	let state = SyntaxState.Normal;
+
+	/** @type {SymbolToken[]} */
+	let groupStack = [];
+	
+	for (let i = 0; i < n; i++) {
+		let c = src[i];
+		let isLast = i == n - 1;
+
+		switch (state) {
+			case SyntaxState.Normal:
+				if (c == "/") {
+					// maybe comment
+					if (!isLast && src[i+1] == "/") {
+						data[j++] = SyntaxCategory.Comment;
+						data[j++] = SyntaxCategory.Comment;
+		
+						i++;
+						state = SyntaxState.SLComment;
+					} else if (!isLast && src[i+1] == "*") {
+						data[j++] = SyntaxCategory.Comment;
+						data[j++] = SyntaxCategory.Comment;
+
+						i++;
+						state = SyntaxState.MLComment;
+					} else {
+						data[j++] = SyntaxCategory.Symbol;
+					}
+				} else if (c == "[" || c == "]" || c == "{" || c == "}" || c == "(" || c == ")") {
+					let s = new SymbolToken(new Site(new Source(src, ""), i), c);
+
+					if (Group.isOpenSymbol(s)) {
+						groupStack.push(s);
+						data[j++] = SyntaxCategory.Normal;
+					} else {
+						let prevGroup = groupStack.pop();
+
+						if (prevGroup === undefined) {
+							data[j++] = SyntaxCategory.Error;
+						} else if (c == Group.matchSymbol(prevGroup)) {
+							data[j++] = SyntaxCategory.Normal;
+						} else {
+							data[prevGroup.site.startPos] = SyntaxCategory.Error;
+							data[j++] = SyntaxCategory.Error;
+						}
+					}
+				} else if (c == "%" || c == "!" || c == "&" || c == "*" || c == "+" || c == "-" || c == "<" || c == "=" || c == ">" || c == "|") {
+					// symbol
+					switch (c) {
+						case "&":
+							if (!isLast && src[i+1] == "&") {
+								data[j++] = SyntaxCategory.Symbol;
+								data[j++] = SyntaxCategory.Symbol;
+								i++;
+							} else {
+								data[j++] = SyntaxCategory.Normal;
+							}
+							break;
+						case "|":
+							if (!isLast && src[i+1] == "|") {
+								data[j++] = SyntaxCategory.Symbol;
+								data[j++] = SyntaxCategory.Symbol;
+								i++;
+							} else {
+								data[j++] = SyntaxCategory.Normal;
+							}
+							break;
+						case "!":
+							if (!isLast && src[i+1] == "=") {
+								data[j++] = SyntaxCategory.Symbol;
+								data[j++] = SyntaxCategory.Symbol;
+								i++;
+							} else {
+								data[j++] = SyntaxCategory.Symbol;
+							}
+							break;
+						case "=":
+							if (!isLast && (src[i+1] == "=" || src[i+1] == ">")) {
+								data[j++] = SyntaxCategory.Symbol;
+								data[j++] = SyntaxCategory.Symbol;
+								i++;
+							} else {
+								data[j++] = SyntaxCategory.Symbol;
+							}
+							break;
+						case ">":
+							if (!isLast && src[i+1] == "=") {
+								data[j++] = SyntaxCategory.Symbol;
+								data[j++] = SyntaxCategory.Symbol;
+								i++;
+							} else {
+								data[j++] = SyntaxCategory.Symbol;
+							}
+							break;
+						case "<":
+							if (!isLast && src[i+1] == "=") {
+								data[j++] = SyntaxCategory.Symbol;
+								data[j++] = SyntaxCategory.Symbol;
+								i++;
+							} else {
+								data[j++] = SyntaxCategory.Symbol;
+							}
+							break;
+						case "-":
+							if (!isLast && src[i+1] == ">") {
+								data[j++] = SyntaxCategory.Symbol;
+								data[j++] = SyntaxCategory.Symbol;
+								i++;
+							} else {
+								data[j++] = SyntaxCategory.Symbol;
+							}
+							break;
+						default:
+							data[j++] = SyntaxCategory.Symbol;
+					}
+				} else if (c == "\"") {
+					// literal string
+					data[j++] = SyntaxCategory.Literal;
+					state = SyntaxState.String;
+				} else if (c == "0") {
+					// literal number
+					data[j++] = SyntaxCategory.Literal;
+					state = SyntaxState.NumberStart;
+				} else if (c >= "1" && c <= "9") {
+					// literal decimal number
+					data[j++] = SyntaxCategory.Literal;
+					state = SyntaxState.DecimalNumber;
+				} else if (c == "#") {
+					data[j++] = SyntaxCategory.Literal;
+					state = SyntaxState.ByteArray;
+				} else if ((c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c == "_") {
+					// maybe keyword, builtin type, or boolean
+					let i0 = i;
+					let chars = [c];
+					// move i to the last word char
+					while (i + 1 < n) {
+						let d = src[i+1];
+
+						if ((d >= "a" && d <= "z") || (d >= "A" && d <= "Z") || d == "_" || (d >= "0" && d <= "9")) {
+							chars.push(d);
+							i++;
+						} else {
+							break;
+						}
+					}
+
+					let word = chars.join("");
+					/** @type {number} */
+					let type;
+					switch (word) {
+						case "true":
+						case "false":
+							type = SyntaxCategory.Literal;
+							break;
+						case "Bool":
+						case "Int":
+						case "ByteArray":
+						case "String":
+						case "Option":
+							type = SyntaxCategory.Type;
+							break;
+						case "if":
+						case "else":
+						case "switch":
+						case "func":
+						case "const":
+						case "struct":
+						case "enum":
+						case "import":
+						case "print":
+						case "error":
+						case "self":
+							type = SyntaxCategory.Keyword;
+							break;
+						case "testing":
+						case "spending":
+						case "staking":
+						case "minting":
+						case "endpoint":
+						case "module":
+							if (i0 == 0) {
+								type = SyntaxCategory.Keyword;
+							} else {
+								type = SyntaxCategory.Normal;
+							}
+							break;
+						default:
+							type = SyntaxCategory.Normal;
+					}
+
+					for (let ii = i0; ii < i0 + chars.length; ii++) {
+						data[j++] = type;
+					}
+				} else {
+					data[j++] = SyntaxCategory.Normal;
+				}
+				break;
+			case SyntaxState.SLComment:
+				data[j++] = SyntaxCategory.Comment;
+				if (c == "\n") {
+					state = SyntaxState.Normal;
+				}
+				break;
+			case SyntaxState.MLComment:
+				data[j++] = SyntaxCategory.Comment;
+
+				if (c == "*" && !isLast && src[i+1] == "/") {
+					i++;
+					data[j++] = SyntaxCategory.Comment;
+					state = SyntaxState.Normal;
+				}
+				break;
+			case SyntaxState.String:
+				data[j++] = SyntaxCategory.Literal;
+
+				if (c == "\"") {
+					state = SyntaxState.Normal;
+				}
+				break;
+			case SyntaxState.NumberStart:
+				if (c == "x") {
+					data[j++] = SyntaxCategory.Literal;
+					state = SyntaxState.HexNumber;
+				} else if (c == "o") {
+					data[j++] = SyntaxCategory.Literal;
+					state = SyntaxState.OctalNumber;
+				} else if (c == "b") {
+					data[j++] = SyntaxCategory.Literal;
+					state = SyntaxState.BinaryNumber;
+				} else if (c >= "0" && c <= "9") {
+					data[j++] = SyntaxCategory.Literal;
+					state = SyntaxState.DecimalNumber;
+				} else {
+					i--;
+					state = SyntaxState.Normal;
+				}
+				break;
+			case SyntaxState.DecimalNumber:
+				if (c >= "0" && c <= "9") {
+					data[j++] = SyntaxCategory.Literal;
+				} else {
+					i--;
+					state = SyntaxState.Normal;
+				}
+				break;
+			case SyntaxState.HexNumber:
+			case SyntaxState.ByteArray:
+				if ((c >= "a" && c <= "f") || (c >= "0" && c <= "9")) {
+					data[j++] = SyntaxCategory.Literal;
+				} else {
+					i--;
+					state = SyntaxState.Normal;
+				}
+				break;
+			case SyntaxState.OctalNumber:
+				if (c >= "0" && c <= "7") {
+					data[j++] = SyntaxCategory.Literal;
+				} else {
+					i--;
+					state = SyntaxState.Normal;
+				}
+				break;
+			case SyntaxState.BinaryNumber:
+				if (c == "0" || c == "1") {
+					data[j++] = SyntaxCategory.Literal;
+				} else {
+					i--;
+					state = SyntaxState.Normal;
+				}
+				break;
+			default:
+				throw new Error("unhandled SyntaxState");
+		}		
+	}
+
+	for (let s of groupStack) {
+		data[s.site.startPos] = SyntaxCategory.Error;
+	}
+
+	return data;
+}
+
+
+////////////////////////////
+// Section 35: CoinSelection
+////////////////////////////
+
+/**
+ * Returns two lists. The first list contains the selected UTxOs, the second list contains the remaining UTxOs.
+ * @typedef {(utxos: TxInput[], amount: Value) => [TxInput[], TxInput[]]} CoinSelectionAlgorithm
+ */
+
+/**
+ * Collection of common [coin selection algorithms](https://cips.cardano.org/cips/cip2/).
+ * @namespace
+ */
+const CoinSelection = {
+    /**
+     * @internal
+     * @param {TxInput[]} utxos 
+     * @param {Value} amount 
+     * @param {boolean} largestFirst
+     * @returns {[TxInput[], TxInput[]]} - [picked, not picked that can be used as spares]
+     */
+    selectExtremumFirst: (utxos, amount, largestFirst) => {
+        let sum = new Value();
+
+        /** @type {TxInput[]} */
+        let notSelected = utxos.slice();
+
+        /** @type {TxInput[]} */
+        const selected = [];
+
+        /**
+         * Selects smallest utxos until 'needed' is reached
+         * @param {bigint} neededQuantity
+         * @param {(utxo: TxInput) => bigint} getQuantity
+         */
+        function select(neededQuantity, getQuantity) {
+            // first sort notYetPicked in ascending order when picking smallest first,
+            // and in descending order when picking largest first
+            // sort UTxOs that contain more assets last
+            notSelected.sort((a, b) => {
+                const qa = getQuantity(a);
+                const qb = getQuantity(b);
+
+                const sign = largestFirst ? -1 : 1;
+
+                if (qa != 0n && qb == 0n) {
+                    return sign;
+                } else if (qa == 0n && qb != 0n) {
+                    return -sign;
+                } else if (qa == 0n && qb == 0n) {
+                    return 0;
+                } else {
+                    const na = a.value.assets.nTokenTypes;
+                    const nb = b.value.assets.nTokenTypes;
+
+                    if (na == nb) {
+                        return Number(qa - qb)*sign;
+                    } else if (na < nb) {
+                        return sign;
+                    } else {
+                        return -sign
+                    }
+                }
+            });
+
+            let count = 0n;
+            const remaining = [];
+
+            while (count < neededQuantity || count == 0n) { // must select at least one utxo if neededQuantity == 0n
+                const utxo = notSelected.shift();
+
+                if (utxo === undefined) {
+                    console.error(selected.map(s => JSON.stringify(s.dump(), undefined, "  ")));
+                    console.error(JSON.stringify(amount.dump(), undefined, "  "));
+                    throw new Error("not enough utxos to cover amount");
+                } else {
+                    const qty = getQuantity(utxo);
+
+                    if (qty > 0n) {
+                        count += qty;
+                        selected.push(utxo);
+                        sum = sum.add(utxo.value);
+                    } else {
+                        remaining.push(utxo);
+                    }
+                }
+            }
+
+            notSelected = notSelected.concat(remaining);
+        }
+
+        /**
+         * Select UTxOs while looping through (MintingPolicyHash,TokenName) entries
+         */
+        const mphs = amount.assets.mintingPolicies;
+
+        for (const mph of mphs) {
+            const tokenNames = amount.assets.getTokenNames(mph);
+
+            for (const tokenName of tokenNames) {
+                const need = amount.assets.get(mph, tokenName);
+                const have = sum.assets.get(mph, tokenName);
+
+                if (have < need) {
+                    const diff = need - have;
+
+                    select(diff, (utxo) => utxo.value.assets.get(mph, tokenName));
+                }
+            }
+        }
+
+        // now use the same strategy for lovelace
+        const need = amount.lovelace;
+        const have = sum.lovelace;
+
+        if (have < need) {
+            const diff = need - have;
+
+            select(diff, (utxo) => utxo.value.lovelace);
+        }
+
+        assert(selected.length + notSelected.length == utxos.length, "internal error: select algorithm doesn't conserve utxos");
+
+        return [selected, notSelected];
+    },
+
+    /**
+     * Selects UTxOs from a list by iterating through the tokens in the given `Value` and picking the UTxOs containing the smallest corresponding amount first.
+     * This method can be used to eliminate dust UTxOs from a wallet.
+     * @type {CoinSelectionAlgorithm}
+     */
+    selectSmallestFirst: (utxos, amount) => {
+        return CoinSelection.selectExtremumFirst(utxos, amount, false);
+    },
+
+    /**
+     * * Selects UTxOs from a list by iterating through the tokens in the given `Value` and picking the UTxOs containing the largest corresponding amount first.
+     * @type {CoinSelectionAlgorithm}
+     */
+    selectLargestFirst: (utxos, amount) => {
+        return CoinSelection.selectExtremumFirst(utxos, amount, true);
+    }
+};
+
+
+//////////////////////
+// Section 36: Wallets
+//////////////////////
+
+/**
+ * An interface type for a wallet that manages a user's UTxOs and addresses.
+ * @interface
+ * @typedef {object} Wallet
+*  @property {() => Promise<boolean>} isMainnet Returns `true` if the wallet is connected to the mainnet.
+*  @property {Promise<Address[]>} usedAddresses Returns a list of addresses which already contain UTxOs.
+*  @property {Promise<Address[]>} unusedAddresses Returns a list of unique unused addresses which can be used to send UTxOs to with increased anonimity.
+*  @property {Promise<TxInput[]>} utxos Returns a list of all the utxos controlled by the wallet.
+*  @property {Promise<TxInput[]>} collateral
+*  @property {(tx: Tx) => Promise<Signature[]>} signTx Signs a transaction, returning a list of signatures needed for submitting a valid transaction.
+*  @property {(tx: Tx) => Promise<TxId>} submitTx Submits a transaction to the blockchain and returns the id of that transaction upon success.
+*/
+
+/**
+ * Convenience type for browser plugin wallets supporting the CIP 30 dApp connector standard (eg. Eternl, Nami, ...).
+ * 
+ * This is useful in typescript projects to avoid type errors when accessing the handles in `window.cardano`.
+ * 
+ * ```ts
+ * // refer to this file in the 'typeRoots' list in tsconfig.json
+ *
+ * type Cip30SimpleHandle = {
+ *   name: string,
+ *   icon: string,
+ *   enable(): Promise<helios.Cip30Handle>,
+ *   isEnabled(): boolean
+ * }
+ *
+ * declare global {
+ *   interface Window {
+ *     cardano: {
+ *       [walletName: string]: Cip30SimpleHandle
+ *     };
+ *   }
+ * }
+ * ```
+ * 
+ * @typedef {{
+ *     getNetworkId(): Promise<number>,
+ *     getUsedAddresses(): Promise<string[]>,
+ *     getUnusedAddresses(): Promise<string[]>,
+ *     getUtxos(): Promise<string[]>,
+ *     getCollateral(): Promise<string[]>,
+ *     signTx(txHex: string, partialSign: boolean): Promise<string>,
+ *     submitTx(txHex: string): Promise<string>,
+ *     experimental: {
+ *         getCollateral(): Promise<string[]>
+ *     },
+ * }} Cip30Handle
+ */
+
+/**
+ * Implementation of `Wallet` that lets you connect to a browser plugin wallet.
+ * @implements {Wallet}
+ */
+class Cip30Wallet {
+    #handle;
+
+    /**
+     * Constructs Cip30Wallet using the Cip30Handle which is available in the browser window.cardano context.
+     * 
+     * ```ts
+     * const handle: helios.Cip30Handle = await window.cardano.eternl.enable()
+     * const wallet = new helios.Cip30Wallet(handle)
+     * ```
+     * @param {Cip30Handle} handle
+     */
+    constructor(handle) {
+        this.#handle = handle;
+    }
+
+    /**
+     * Returns `true` if the wallet is connected to the mainnet.
+     * @returns {Promise<boolean>}
+     */
+    async isMainnet() {
+        return (await this.#handle.getNetworkId()) == 1;
+    }
+
+    /**
+     * Gets a list of addresses which contain(ed) UTxOs.
+     * @type {Promise<Address[]>}
+     */
+    get usedAddresses() {
+        return this.#handle.getUsedAddresses().then(addresses => addresses.map(a => new Address(a)));
+    }
+
+    /**
+     * Gets a list of unique unused addresses which can be used to UTxOs to.
+     * @type {Promise<Address[]>}
+     */
+    get unusedAddresses() {
+        return this.#handle.getUnusedAddresses().then(addresses => addresses.map(a => new Address(a)));
+    }
+
+    /**
+     * Gets the complete list of UTxOs (as `TxInput` instances) sitting at the addresses owned by the wallet.
+     * @type {Promise<TxInput[]>}
+     */
+    get utxos() {
+        return this.#handle.getUtxos().then(utxos => utxos.map(u => TxInput.fromFullCbor(hexToBytes(u))));
+    }
+
+    /**
+     * @type {Promise<TxInput[]>}
+     */
+    get collateral() {
+        const getCollateral = this.#handle.getCollateral || this.#handle.experimental.getCollateral;
+        return getCollateral().then(utxos => utxos.map(u => TxInput.fromFullCbor(hexToBytes(u))));
+    }
+
+    /**
+     * Signs a transaction, returning a list of signatures needed for submitting a valid transaction.
+     * @param {Tx} tx
+     * @returns {Promise<Signature[]>}
+     */
+    async signTx(tx) {
+        const res = await this.#handle.signTx(bytesToHex(tx.toCbor()), true);
+
+        return TxWitnesses.fromCbor(hexToBytes(res)).signatures;
+    }
+
+    /**
+     * Submits a transaction to the blockchain.
+     * @param {Tx} tx
+     * @returns {Promise<TxId>}
+     */
+    async submitTx(tx) {
+        const responseText = await this.#handle.submitTx(bytesToHex(tx.toCbor()));
+
+        return new TxId(responseText);
+    }
+}
+
+/**
+ * High-level helper class for instances that implement the `Wallet` interface.
+ */
+class WalletHelper {
+    #wallet;
+    #getUtxosFallback;
+
+    /**
+     * @param {Wallet} wallet
+     * @param {undefined | ((addr: Address[]) => Promise<TxInput[]>)} getUtxosFallback
+     */
+    constructor(wallet, getUtxosFallback = undefined) {
+        this.#wallet = wallet;
+        this.#getUtxosFallback = getUtxosFallback;
+    }
+
+    /**
+     * Concatenation of `usedAddresses` and `unusedAddresses`.
+     * @type {Promise<Address[]>}
+     */
+    get allAddresses() {
+        return this.#wallet.usedAddresses.then(usedAddress => this.#wallet.unusedAddresses.then(unusedAddresses => usedAddress.concat(unusedAddresses)));
+    }
+
+    /**
+     * @returns {Promise<Value>}
+     */
+    async calcBalance() {
+        let sum = new Value();
+
+        const utxos = await this.getUtxos();
+
+        for (const utxo of utxos) {
+            sum = sum.add(utxo.value);
+        }
+
+        return sum;
+    }
+
+    /**
+     * First `Address` in `allAddresses`.
+     * @type {Promise<Address>}
+     */
+    get baseAddress() {
+        return this.allAddresses.then(addresses => assertDefined(addresses[0]));
+    }
+
+    /**
+     * First `Address` in `unusedAddresses` (falls back to last `Address` in `usedAddresses` if not defined).
+     * @type {Promise<Address>}
+     */
+    get changeAddress() {
+        return this.#wallet.unusedAddresses.then(addresses => {
+            if (addresses.length == 0) {
+                return this.#wallet.usedAddresses.then(addresses => {
+                    if (addresses.length == 0) {
+                        throw new Error("no addresses found")
+                    } else {
+                        return addresses[addresses.length-1];
+                    }
+                })
+            } else {
+                return addresses[0];
+            }
+        });
+    }
+
+    /**
+     * First UTxO in `utxos`. Can be used to distinguish between preview and preprod networks.
+     * @type {Promise<null | TxInput>}
+     */
+    get refUtxo() {
+        return this.getUtxos().then(utxos => {
+            if(utxos.length == 0) {
+                return null;
+            } else {
+                return assertDefined(utxos[0]);
+            }
+        });
+    }
+
+    /**
+     * @returns {Promise<TxInput[]>}
+     */
+    async getUtxos() {
+        try {
+            const utxos = await this.#wallet.utxos;
+
+            if (utxos.length > 0) {
+                return utxos;
+            }
+        } catch (e) {
+            if (!this.#getUtxosFallback) {
+                console.error("fallback not set");
+                throw e;
+            }
+        }
+
+        if (this.#getUtxosFallback) {
+            console.log("falling back to retrieving UTxOs through query layer");
+            return this.#getUtxosFallback(await this.#wallet.usedAddresses);
+        } else {
+            throw new Error("wallet returned 0 utxos, set the helper getUtxosFallback callback to use an Api query layer instead");
+        }
+    }
+    /**
+     * Pick a number of UTxOs needed to cover a given Value. The default coin selection strategy is to pick the smallest first.
+     * @param {Value} amount
+     * @param {CoinSelectionAlgorithm} algorithm
+     * @returns {Promise<[TxInput[], TxInput[]]>} The first list contains the selected UTxOs, the second list contains the remaining UTxOs.
+     */
+    async pickUtxos(amount, algorithm = CoinSelection.selectSmallestFirst) {
+        return algorithm(await this.getUtxos(), amount);
+    }
+
+    /**
+     * Picks a single UTxO intended as collateral.
+     * @param {bigint} amount - 2 Ada should cover most things
+     * @returns {Promise<TxInput>}
+     */
+    async pickCollateral(amount = 2000000n) {
+        const pureUtxos = (await this.getUtxos()).filter(utxo => utxo.value.assets.isZero());
+
+        if (pureUtxos.length == 0) {
+            throw new Error("no pure UTxOs in wallet (needed for collateral)");
+        }
+
+        const bigEnough = pureUtxos.filter(utxo => utxo.value.lovelace >= amount);
+
+        if (bigEnough.length == 0) {
+            throw new Error("no UTxO in wallet that is big enough to cover collateral");
+        }
+
+        bigEnough.sort((a,b) => Number(a.value.lovelace - b.value.lovelace));
+
+        return bigEnough[0];
+    }
+
+    /**
+     * Returns `true` if the `PubKeyHash` in the given `Address` is controlled by the wallet.
+     * @param {Address} addr
+     * @returns {Promise<boolean>}
+     */
+    async isOwnAddress(addr) {
+        const pkh = addr.pubKeyHash;
+
+        if (pkh === null) {
+            return false;
+        } else {
+            return this.isOwnPubKeyHash(pkh);
+        }
+    }
+
+    /**
+     * Returns `true` if the given `PubKeyHash` is controlled by the wallet.
+     * @param {PubKeyHash} pkh
+     * @returns {Promise<boolean>}
+     */
+    async isOwnPubKeyHash(pkh) {
+        const addresses = await this.allAddresses;
+
+        for (const addr of addresses) {
+            const aPkh = addr.pubKeyHash;
+
+            if (aPkh !== null && aPkh.eq(pkh)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @returns {Promise<any>}
+     */
+    async toJson() {
+        const isMainnet = (await this.#wallet.isMainnet());
+        const usedAddresses = (await this.#wallet.usedAddresses);
+        const unusedAddresses = (await this.#wallet.unusedAddresses);
+
+        return {
+            isMainnet: isMainnet,
+            usedAddresses: usedAddresses.map(a => a.toBech32()),
+            unusedAddresses: unusedAddresses.map(a => a.toBech32()),
+            utxos: (await this.getUtxos()).map(u => bytesToHex(u.toFullCbor()))
+        };
+    }
+}
+
+/**
+ * @implements {Wallet}
+ */
+class RemoteWallet {
+    #isMainnet;
+    #usedAddresses;
+    #unusedAddresses;
+    #utxos;
+
+    /**
+     * @param {boolean} isMainnet
+     * @param {Address[]} usedAddresses 
+     * @param {Address[]} unusedAddresses 
+     * @param {TxInput[]} utxos 
+     */
+    constructor(isMainnet, usedAddresses, unusedAddresses, utxos) {
+        this.#isMainnet = isMainnet;
+        this.#usedAddresses = usedAddresses;
+        this.#unusedAddresses = unusedAddresses;
+        this.#utxos = utxos;
+    }
+
+    /**
+     * @param {string | Object} obj 
+     * @returns {RemoteWallet}
+     */
+    static fromJson(obj) {
+        if (typeof obj == "string") {
+            return RemoteWallet.fromJson(JSON.parse(obj));
+        } else {
+            return new RemoteWallet(
+                obj.isMainnet,
+                obj.usedAddresses.map(a => Address.fromBech32(a)),
+                obj.unusedAddresses.map(a => Address.fromBech32(a)),
+                obj.utxos.map(u => TxInput.fromFullCbor(u))
+            )
+        }
+    }
+
+    /**
+     * @returns {Promise<boolean>}
+     */
+    async isMainnet() {
+        return this.#isMainnet;
+    }
+
+    /**
+     * @type {Promise<Address[]>}
+     */
+    get usedAddresses() {
+        return new Promise((resolve, _) => resolve(this.#usedAddresses));
+    }
+    
+    /**
+     * @type {Promise<Address[]>}
+     */
+    get unusedAddresses() {
+        return new Promise((resolve, _) => resolve(this.#unusedAddresses));
+    }
+
+    /**
+     * @type {Promise<TxInput[]>}
+     */
+    get utxos() {
+        return new Promise((resolve, _) => resolve(this.#utxos));
+    }
+
+    /**
+     * @type {Promise<TxInput[]>}
+     */
+    get collateral() {
+        return new Promise((resolve, _) => resolve([]));
+    }
+
+    /**
+     * @param {Tx} tx 
+     * @returns {Promise<Signature[]>}
+     */
+    async signTx(tx) {
+        throw new Error("a RemoteWallet can't sign a transaction");
+    }
+
+    /**
+     * @param {Tx} tx 
+     * @returns {Promise<TxId>}
+     */
+    async submitTx(tx) {
+        throw new Error("a RemoteWallet can't submit a transaction");
+    }
+}
+
+
+
+//////////////////////
+// Section 37: Network
+//////////////////////
+
+
+/**
+ * Blockchain query interface.
+ * @interface
+ * @typedef {object} Network
+ * @property {(address: Address) => Promise<TxInput[]>} getUtxos Returns a complete list of UTxOs at a given address.
+ * @property {(id: TxOutputId) => Promise<TxInput>} getUtxo Returns a single TxInput (that might already have been spent).
+ * @property {() => Promise<NetworkParams>} getParameters Returns the latest network parameters.
+ * @property {(tx: Tx) => Promise<TxId>} submitTx Submits a transaction to the blockchain and returns the id of that transaction upon success.
+ */
+
+/**
+ * Blockfrost specific implementation of `Network`.
+ * @implements {Network}
+ */
+class BlockfrostV0 {
+    #networkName;
+    #projectId;
+
+    /**
+     * Constructs a BlockfrostV0 using the network name (preview, preprod or mainnet) and your Blockfrost `project_id`.
+     * @param {"preview" | "preprod" | "mainnet"} networkName
+     * @param {string} projectId
+     */
+    constructor(networkName, projectId) {
+        this.#networkName = networkName;
+        this.#projectId = projectId;
+    }
+
+    /**
+     * @type {string}
+     */
+    get networkName() {
+        return this.#networkName;
+    }
+
+    /**
+     * Throws an error if a Blockfrost project_id is missing for that specific network.
+     * @param {TxInput} refUtxo
+     * @param {{
+     *     preview?: string,
+     *     preprod?: string,
+     *     mainnet?: string
+     * }} projectIds
+     * @returns {Promise<BlockfrostV0>}
+     */
+    static async resolveUsingUtxo(refUtxo, projectIds) {
+        const mainnetProjectId = projectIds["mainnet"];
+        const preprodProjectId = projectIds["preprod"];
+        const previewProjectId = projectIds["preview"];
+
+        if (preprodProjectId !== undefined) {
+            const preprodNetwork = new BlockfrostV0("preprod", preprodProjectId);
+
+            if (await preprodNetwork.hasUtxo(refUtxo)) {
+                return preprodNetwork;
+            }
+        }
+
+        if (previewProjectId !== undefined) {
+            const previewNetwork = new BlockfrostV0("preview", previewProjectId);
+
+            if (await previewNetwork.hasUtxo(refUtxo)) {
+                return previewNetwork;
+            }
+        }
+
+        if (mainnetProjectId !== undefined) {
+            const mainnetNetwork = new BlockfrostV0("mainnet", mainnetProjectId);
+
+            if (await mainnetNetwork.hasUtxo(refUtxo)) {
+                return mainnetNetwork;
+            }
+        }
+
+        throw new Error("refUtxo not found on a network for which you have a project id");
+    }
+
+    /**
+     * Connects to the same network a given `Wallet` is connected to (preview, preprod or mainnet).
+     * 
+     * Throws an error if a Blockfrost project_id is missing for that specific network.
+     * @param {Wallet} wallet
+     * @param {{
+     *     preview?: string,
+     *     preprod?: string,
+     *     mainnet?: string
+     * }} projectIds
+     * @returns {Promise<BlockfrostV0>}
+     */
+    static async resolveUsingWallet(wallet, projectIds) {
+        if (await wallet.isMainnet()) {
+            return new BlockfrostV0("mainnet", assertDefined(projectIds["mainnet"]));
+        } else {
+            const helper = new WalletHelper(wallet);
+
+            const refUtxo = await helper.refUtxo;
+
+            if (refUtxo === null) {
+                throw new Error("empty wallet, can't determine which testnet you are connecting to");
+            } else {
+                return BlockfrostV0.resolveUsingUtxo(refUtxo, projectIds);
+            }
+        }
+    }
+
+     /**
+     * Connects to the same network a given `Wallet` or the given `TxInput` (preview, preprod or mainnet).
+     * 
+     * Throws an error if a Blockfrost project_id is missing for that specific network.
+     * @param {TxInput | Wallet} utxoOrWallet
+     * @param {{
+     *     preview?: string,
+     *     preprod?: string,
+     *     mainnet?: string
+     * }} projectIds
+     * @returns {Promise<BlockfrostV0>}
+     */
+    static async resolve(utxoOrWallet, projectIds) {
+        if (utxoOrWallet instanceof TxInput) {
+            return BlockfrostV0.resolveUsingUtxo(utxoOrWallet, projectIds);
+        } else {
+            return BlockfrostV0.resolveUsingWallet(utxoOrWallet, projectIds);
+        }
+    }
+
+    /**
+     * @internal
+     * @param {{unit: string, quantity: string}[]} obj
+     * @returns {Value}
+     */
+    static parseValue(obj) {
+        let value = new Value();
+
+        for (let item of obj) {
+            let qty = BigInt(item.quantity);
+
+            if (item.unit == "lovelace") {
+                value = value.add(new Value(qty));
+            } else {
+                let policyID = item.unit.substring(0, 56);
+                let mph = MintingPolicyHash.fromHex(policyID);
+
+                let token = hexToBytes(item.unit.substring(56));
+
+                value = value.add(new Value(0n, new Assets([
+                    [mph, [
+                        [token, qty]
+                    ]]
+                ])));
+            }
+        }
+
+        return value;
+    }
+
+    /**
+     * @returns {Promise<NetworkParams>}
+     */
+    async getParameters() {
+        const response = await fetch(`https://d1t0d7c2nekuk0.cloudfront.net/${this.#networkName}.json`);
+
+        // TODO: build networkParams from Blockfrost endpoints instead
+        return new NetworkParams(await response.json());
+    }
+
+    /**
+     * @returns {Promise<any>}
+     */
+    async getLatestEpoch() {
+        const response = await fetch(`https://cardano-preview.blockfrost.io/api/v0/epochs/latest`, {
+            method: "GET",
+            headers: {
+                "project_id": this.#projectId
+            }
+        });
+
+        return (await response.json());
+    }
+
+    /**
+     * If the UTxO isn't found an error is throw with the following message format: "UTxO <txId.utxoId> not found".
+     * @param {TxOutputId} id
+     * @returns {Promise<TxInput>}
+     */
+    async getUtxo(id) {
+        const txId = id.txId;
+
+        const url = `https://cardano-${this.#networkName}.blockfrost.io/api/v0/txs/${txId.hex}/utxos`;
+
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                "project_id": this.#projectId
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`UTxO ${id.toString()} not found`);
+        } else if (response.status != 200) {
+            throw new Error(`Blockfrost error: ${await response.text()}`);
+        }
+
+        const responseObj = await response.json();
+
+        
+        
+        const outputs = responseObj.outputs;
+
+        if (!outputs) {
+            console.log(responseObj);
+            throw new Error(`unexpected response from Blockfrost`);
+        }
+
+        const obj = outputs[id.utxoIdx];
+
+        if (!obj) {
+            console.log(responseObj);
+            throw new Error(`UTxO ${id.toString()} not found`);
+        }
+
+        obj["tx_hash"] = txId.hex;
+        obj["output_index"] = Number(id.utxoIdx);
+
+        return await this.restoreTxInput(obj);
+    }
+
+    /**
+     * Used by `BlockfrostV0.resolve()`.
+     * @param {TxInput} utxo
+     * @returns {Promise<boolean>}
+     */
+    async hasUtxo(utxo) {
+        const txId = utxo.outputId.txId;
+
+        const url = `https://cardano-${this.#networkName}.blockfrost.io/api/v0/txs/${txId.hex}/utxos`;
+
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                "project_id": this.#projectId
+            }
+        });
+
+        return response.ok;
+    }
+
+    /**
+     * @internal
+     * @param {{
+     *   address: string
+     *   tx_hash: string
+     *   output_index: number
+     *   amount: {unit: string, quantity: string}[]
+     *   inline_datum: null | string
+     *   data_hash: null | string
+     *   collateral: boolean
+     *   reference_script_hash: null | string
+     * }} obj 
+     */
+    async restoreTxInput(obj) {
+        /**
+         * @type {null | UplcProgram}
+         */
+        let refScript = null;
+        if (obj.reference_script_hash !== null) {
+            const url = `https://cardano-${this.#networkName}.blockfrost.io/api/v0/scripts/${obj.reference_script_hash}/cbor`;
+
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "project_id": this.#projectId
+                }
+            });
+
+            const cbor = (await response.json()).cbor;
+
+            refScript = UplcProgram.fromCbor(cbor);
+        }
+
+        return new TxInput(
+            new TxOutputId(TxId.fromHex(obj.tx_hash), obj.output_index),
+            new TxOutput(
+                Address.fromBech32(obj.address),
+                BlockfrostV0.parseValue(obj.amount),
+                obj.inline_datum ? Datum.inline(UplcData.fromCbor(hexToBytes(obj.inline_datum))) : null,
+                refScript
+            )
+        );
+    }
+
+    /**
+     * Gets a complete list of UTxOs at a given `Address`.
+     * Returns oldest UTxOs first, newest last.
+     * @param {Address} address
+     * @returns {Promise<TxInput[]>}
+     */
+    async getUtxos(address) {
+        /**
+         * TODO: pagination
+         */
+
+        const url = `https://cardano-${this.#networkName}.blockfrost.io/api/v0/addresses/${address.toBech32()}/utxos?order=asc`;
+
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    "project_id": this.#projectId
+                }
+            });
+
+            if (response.status == 404) {
+                return []; 
+            }
+
+            /**
+             * @type {any}
+             */
+            let all = await response.json();
+
+            if (all?.status_code >= 300) {
+                all = [];
+            }
+
+            try {
+                return await Promise.all(all.map(obj => {
+                    return this.restoreTxInput(obj);
+                }));
+            } catch (e) {
+                console.error("unable to parse blockfrost utxo format:", all);
+                throw e;
+            }
+        } catch (e) {
+            if (e.message.includes("The requested component has not been found")) {
+                return []
+            } else {
+                throw e
+            }
+        }
+    }
+
+    /**
+     * Submits a transaction to the blockchain.
+     * @param {Tx} tx
+     * @returns {Promise<TxId>}
+     */
+    async submitTx(tx) {
+        const data = new Uint8Array(tx.toCbor());
+        const url = `https://cardano-${this.#networkName}.blockfrost.io/api/v0/tx/submit`;
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "content-type": "application/cbor",
+                "project_id": this.#projectId
+            },
+            body: data
+        }).catch(e => {
+            console.error(e);
+            throw e;
+        });
+
+        const responseText = await response.text();
+
+        if (response.status != 200) {
+            // analyze error and throw a different error if it was detected that an input UTxO might not exist
+            throw new Error(responseText);
+        } else {
+            return new TxId(JSON.parse(responseText));
+        }
+    }
+
+    /**
+     * Allows inspecting the live Blockfrost mempool.
+     */
+    async dumpMempool() {
+        const url = `https://cardano-${this.#networkName}.blockfrost.io/api/v0/mempool`;
+
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                "project_id": this.#projectId
+            }
+        });
+
+        console.log(await response.text());
+    }
+}
+
+/**
+ * Koios network interface.
+ * @implements {Network}
+ */
+class KoiosV0 {
+    #networkName;
+
+    /**
+     * @param {"preview" | "preprod" | "mainnet"} networkName 
+     */
+    constructor(networkName) {
+        this.#networkName = networkName;
+    }
+
+    /**
+     * @private
+     * @type {string}
+     */
+    get rootUrl() {
+        return {
+            preview: "https://preview.koios.rest",
+            preprod: "https://preprod.koios.rest",
+            guildnet: "https://guild.koios.rest",
+            mainnet: "https://api.koios.rest"
+        }[this.#networkName];
+    }
+
+     /**
+     * @returns {Promise<NetworkParams>}
+     */
+     async getParameters() {
+        const response = await fetch(`https://d1t0d7c2nekuk0.cloudfront.net/${this.#networkName}.json`);
+
+        // TODO: build networkParams from Koios endpoints instead
+        return new NetworkParams(await response.json());
+    }
+
+    /**
+     * @private
+     * @param {TxOutputId[]} ids 
+     * @returns {Promise<TxInput[]>}
+     */
+    async getUtxosInternal(ids) {
+        const url = `${this.rootUrl}/api/v0/tx_info`;
+
+        /**
+         * @type {Map<string, number[]>}
+         */
+        const txIds = new Map();
+        
+        ids.forEach(id => {
+            const prev = txIds.get(id.txId.hex);
+
+            if (prev) {
+                prev.push(id.utxoIdx);
+            } else {
+                txIds.set(id.txId.hex, [id.utxoIdx]);
+            }
+        });
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "accept": "application/json",
+                "content-type": "application/json"
+            },
+            body: JSON.stringify({
+                _tx_hashes: Array.from(txIds.keys())
+            })
+        });
+
+        const responseText = await response.text();
+
+        if (response.status != 200) {
+            // analyze error and throw a different error if it was detected that an input UTxO might not exist
+            throw new Error(responseText);
+        }
+
+        const obj = JSON.parse(responseText);
+
+        /**
+         * @type {Map<string, TxInput>}
+         */
+        const result = new Map();
+
+        const rawTxs = obj;
+
+        if (!Array.isArray(rawTxs)) {
+            throw new Error(`unexpected tx_info format: ${responseText}`);
+        }
+
+        rawTxs.forEach(rawTx => {
+            const rawOutputs = rawTx["outputs"];
+            
+            if (!rawOutputs) {
+                throw new Error(`unexpected tx_info format: ${JSON.stringify(rawTx)}`);
+            }
+
+            const utxoIdxs = assertDefined(txIds.get(rawTx.tx_hash));
+
+            for (let utxoIdx of utxoIdxs) {
+                const id = new TxOutputId(new TxId(rawTx.tx_hash), utxoIdx);
+                
+                const rawOutput = rawOutputs[id.utxoIdx];
+
+                if (!rawOutput) {
+                    throw new Error(`UTxO ${id.toString()} doesn't exist`);
+                }
+
+                const rawPaymentAddr = rawOutput.payment_addr?.bech32;
+
+                if (!rawPaymentAddr || typeof rawPaymentAddr != "string") {
+                    throw new Error(`unexpected tx_info format: ${JSON.stringify(rawTx)}`);
+                }
+
+                const rawStakeAddr = rawOutput.stake_addr;
+
+                if (rawStakeAddr === undefined) {
+                    throw new Error(`unexpected tx_info format: ${JSON.stringify(rawTx)}`);
+                }
+
+                const paymentAddr = Address.fromBech32(rawPaymentAddr);
+                
+                const stakeAddr = rawStakeAddr ? StakeAddress.fromBech32(rawStakeAddr) : null;
+
+                const address = Address.fromHashes(
+                    assertDefined(paymentAddr.pubKeyHash ?? paymentAddr.validatorHash),
+                    stakeAddr?.stakingHash ?? null,
+                    this.#networkName != "mainnet"
+                );
+
+                const lovelace = BigInt(parseInt(assertDefined(rawOutput.value)));
+
+                assert(lovelace.toString() == rawOutput.value, `unexpected tx_info format: ${JSON.stringify(rawTx)}`);
+
+                /**
+                 * @type {[AssetClass, bigint][]}
+                 */
+                const assets = [];
+
+                for (let rawAsset of rawOutput.asset_list) {
+                    const qty = BigInt(parseInt(rawAsset.quantity));
+                    assert(qty.toString() == rawAsset.quantity, `unexpected tx_info format: ${JSON.stringify(rawTx)}`);
+
+                    assets.push([
+                        new AssetClass(`${rawAsset.policy_id}.${rawAsset.asset_name ?? ""}`),
+                        qty
+                    ]);
+                }
+
+                const datum = rawOutput.inline_datum ? 
+                    (Datum.inline(UplcData.fromCbor(rawOutput.inline_datum.bytes))) : 
+                    (rawOutput.datum_hash ? new HashedDatum(new DatumHash(rawOutput.datum_hash)) : null);
+
+                const refScript = rawOutput.reference_script ? UplcProgram.fromCbor(rawOutput.reference_script) : null;
+
+                const txInput =  new TxInput(
+                    id,
+                    new TxOutput(
+                        address,
+                        new Value(lovelace, new Assets(assets)),
+                        datum,
+                        refScript
+                    )
+                );
+
+                result.set(id.toString(), txInput);
+            }
+        });
+
+        return ids.map(id => assertDefined(result.get(id.toString())));
+    }
+
+     /**
+     * Throws an error if a Blockfrost project_id is missing for that specific network.
+     * @param {TxInput} refUtxo
+     * @returns {Promise<KoiosV0>}
+     */
+    static async resolveUsingUtxo(refUtxo) {
+        const preprodNetwork = new KoiosV0("preprod");
+
+        if (await preprodNetwork.hasUtxo(refUtxo)) {
+            return preprodNetwork;
+        }
+        
+        const previewNetwork = new KoiosV0("preview");
+
+        if (await previewNetwork.hasUtxo(refUtxo)) {
+            return previewNetwork;
+        }
+
+        const mainnetNetwork = new KoiosV0("mainnet");
+
+        if (await mainnetNetwork.hasUtxo(refUtxo)) {
+            return mainnetNetwork;
+        }
+
+        throw new Error("refUtxo not found on any network");
+    }
+
+    /** 
+     * @param {TxOutputId} id 
+     * @returns {Promise<TxInput>}
+     */
+    async getUtxo(id) {
+        return assertDefined(await this.getUtxosInternal([id])[0]);
+    }
+
+     /**
+     * Used by `KoiosV0.resolveUsingUtxo()`.
+     * @param {TxInput} utxo
+     * @returns {Promise<boolean>}
+     */
+     async hasUtxo(utxo) {
+        const url = `${this.rootUrl}/api/v0/tx_info`;
+
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                "accept": "application/json",
+                "content-type": "application/json"
+            },
+            body: JSON.stringify({
+                _tx_hashes: [utxo.outputId.txId.hex]
+            })
+        });
+
+        return response.ok;
+    }
+
+    /**
+     * @param {Address} address 
+     * @returns {Promise<TxInput[]>}
+     */
+    async getUtxos(address) {
+        const url = `${this.rootUrl}/api/v0/credential_utxos`;
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "accept": "application/json",
+                "content-type": "application/json"
+            },
+            body: JSON.stringify({
+                _payment_credentials: [assertDefined(address.pubKeyHash ?? address.validatorHash).hex]
+            })
+        });
+
+        const responseText = await response.text();
+
+        if (response.status != 200) {
+            // analyze error and throw a different error if it was detected that an input UTxO might not exist
+            throw new Error(responseText);
+        }
+
+        const obj = JSON.parse(responseText);
+
+        if (!Array.isArray(obj)) {
+            throw new Error(`unexpected credential_utxos format: ${responseText}`);
+        }
+
+        const ids = obj.map(rawId => {
+            const utxoIdx = Number(rawId.tx_index);
+            const id = new TxOutputId(new TxId(rawId.tx_hash), utxoIdx);
+
+            return id;
+        });
+
+        return this.getUtxosInternal(ids);
+    }
+
+    /**
+     * @param {Tx} tx 
+     * @returns {Promise<TxId>}
+     */
+    async submitTx(tx) {
+        const url = `${this.rootUrl}/api/v0/submittx`;
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "accept": "application/json",
+                "content-type": "application/cbor"
+            },
+            body: new Uint8Array(tx.toCbor())
+        });
+
+        const responseText = await response.text();
+
+        if (response.status != 200) {
+            // analyze error and throw a different error if it was detected that an input UTxO might not exist
+            throw new Error(responseText);
+        }
+
+        return new TxId(responseText);
+    }
 }
 
 
@@ -50389,6 +52738,1422 @@ class NetworkEmulator {
     }
 }
 
+/**
+ * @internal
+ * @implements {Wallet}
+ */
+class TxChainWallet {
+    #base;
+    #chain;
+    
+    /**
+     * 
+     * @param {Wallet} base 
+     * @param {TxChain} chain 
+     */
+    constructor(base, chain) {
+        this.#base = base;
+        this.#chain = chain;
+    }
+
+    /**
+     * @returns {Promise<boolean>}
+     */
+    async isMainnet() {
+        return this.#base.isMainnet()
+    }
+
+    /**
+     * @param {Tx} tx 
+     * @returns {Promise<Signature[]>}
+     */
+    async signTx(tx) {
+        return this.#base.signTx(tx)
+    }
+
+    /**
+     * @param {Tx} tx 
+     * @returns {Promise<TxId>}
+     */
+    async submitTx(tx) {
+        return this.#chain.submitTx(tx)
+    }
+
+    get unusedAddresses() {
+        return this.#base.unusedAddresses;
+    }
+
+    get usedAddresses() {
+        return this.#base.usedAddresses;
+    }
+
+    /**
+     * @internal
+     * @param {TxInput[]} utxos 
+     * @returns {Promise<TxInput[]>}
+     */
+    async filterUtxos(utxos) {
+        const ua = await this.usedAddresses;
+        const una = await this.unusedAddresses;
+
+        const addrs = ua.concat(una);
+
+        return await this.#chain.getUtxosInternal(utxos, addrs);
+    }
+
+    /**
+     * @type {Promise<TxInput[]>}
+     */
+    get collateral() {
+        return new Promise((resolve, reject) => {
+            this.#base.collateral.then(utxos => {
+                this.filterUtxos(utxos).then(utxos => {
+                    resolve(utxos);
+                });
+            });
+        });
+    }
+
+    /**
+     * @type {Promise<TxInput[]>}
+     */
+    get utxos() {
+        return new Promise((resolve, reject) => {
+            this.#base.utxos.then(utxos => {
+                this.filterUtxos(utxos).then(utxos => {
+                    resolve(utxos);
+                });
+            });
+        });
+    }
+}
+
+/**
+ * Helper that 
+ * @implements {Network}
+ */
+class TxChain {
+    #network;
+
+    /**
+     * @type {RegularTx[]}
+     */
+    #txs;
+
+    /**
+     * @param {Network} network 
+     */
+    constructor(network) {
+        this.#network = network;
+        this.#txs = [];
+    }
+
+    /**
+     * @param {Tx} tx 
+     * @returns {Promise<TxId>}
+     */
+    async submitTx(tx) {
+        const id = await this.#network.submitTx(tx);
+
+        this.#txs.push(new RegularTx(tx));
+
+        return id;
+    }
+
+    /**
+     * @returns {Promise<NetworkParams>}
+     */
+    async getParameters() {
+        return this.#network.getParameters()
+    }
+
+    /**
+     * @param {TxOutputId} id 
+     * @returns {Promise<TxInput>}
+     */
+    async getUtxo(id) {
+        for (let i = 0; i < this.#txs.length; i++) {
+            const txInput = this.#txs[i].getUtxo(id);
+
+            if (txInput) {
+                return txInput;
+            }
+        }
+
+        return this.#network.getUtxo(id);
+    }
+
+    /**
+     * @param {TxInput[]} utxos
+     * @param {Address[]} addrs
+     * @returns {Promise<TxInput[]>}
+     */
+    async getUtxosInternal(utxos, addrs) {
+        for (let tx of this.#txs) {
+            addrs.forEach(addr => {
+                utxos = tx.collectUtxos(addr, utxos);
+            });
+        }
+
+        return utxos;
+    }
+    /**
+     * @param {Address} addr
+     * @returns {Promise<TxInput[]>}
+     */
+    async getUtxos(addr) {
+        let utxos = await this.#network.getUtxos(addr);
+
+        return this.getUtxosInternal(utxos, [addr])
+    }
+
+    /**
+     * @param {Wallet} baseWallet 
+     * @returns {Wallet}
+     */
+    asWallet(baseWallet) {
+        return new TxChainWallet(baseWallet, this);
+    }
+}
+
+/**
+ * @typedef {{
+ *   [address: string]: TxInput[]
+ * }} NetworkSliceUTxOs
+ */
+
+/**
+ * @implements {Network}
+ */
+class NetworkSlice {
+    #params;
+    #utxos;
+
+    /**
+     * @param {NetworkParams} params
+     * @param {NetworkSliceUTxOs} utxos 
+     */
+    constructor(params, utxos) {
+        this.#params = params;
+        this.#utxos = utxos;
+    }
+
+    /**
+     * @param {Network} network
+     * @param {Address[]} addresses
+     * @returns {Promise<NetworkSlice>}
+     */
+    static async init(network, addresses) {
+        /**
+         * @type {[Promise<NetworkParams>, ...Promise<TxInput[]>[]]}
+         */
+        const promises = [
+            network.getParameters(),
+            ...addresses.map(a => network.getUtxos(a))
+        ];
+
+        const resolved = await Promise.all(promises);
+
+        const [params, ...utxos] = resolved;
+
+        /**
+         * @type {NetworkSliceUTxOs}
+         */
+        const obj = {};
+
+        addresses.forEach((a, i) => {
+            obj[a.toBech32()] = utxos[i];
+        });
+
+        return new NetworkSlice(params, obj);
+    }
+
+    /**
+     * @returns {any}
+     */
+    toJson() {
+        const obj = {};
+
+        for (let a in this.#utxos) {
+            obj[a] = this.#utxos[a].map(utxo => bytesToHex(utxo.toFullCbor()));
+        }
+
+        return {
+            params: this.#params.raw,
+            utxos: obj
+        };
+    }
+
+    /**
+     * @param {any} obj 
+     * @returns {NetworkSlice}
+     */
+    static fromJson(obj) {
+        const params = new NetworkParams(obj.params);
+
+        /**
+         * @type {NetworkSliceUTxOs}
+         */
+        const utxos = {};
+
+        for (let a in obj.utxos) {
+            utxos[a] = obj.utxos[a].map(utxo => TxInput.fromFullCbor(utxo));
+        }
+
+        return new NetworkSlice(params, utxos);
+    }
+
+    /**
+     * @returns {Promise<NetworkParams>}
+     */
+    async getParameters() {
+        return this.#params;
+    }
+
+    /**
+     * @param {TxOutputId} id 
+     * @returns {Promise<TxInput>}
+     */
+    async getUtxo(id) {
+        for (let utxos of Object.values(this.#utxos)) {
+            for (let utxo of utxos) {
+                if (utxo.outputId.eq(id)) {
+                    return utxo;
+                }
+            }
+        }
+
+        throw new Error(`utxo ${id.toString()} not found`);
+    }
+
+    /**
+     * @param {Address} addr 
+     * @returns {Promise<TxInput[]>}
+     */
+    async getUtxos(addr) {
+        const key = addr.toBech32();
+
+        if (key in this.#utxos) {
+            return this.#utxos[key];
+        } else {
+            return [];
+        }
+    }
+
+    /**
+     * @param {Tx} tx 
+     * @returns {Promise<TxId>}
+     */
+    async submitTx(tx) {
+        throw new Error("can't submit tx through network slice");
+    }
+}
+
+
+//////////////////////////////////////
+// Section 39: Fuzzy testing framework
+//////////////////////////////////////
+
+/**
+ * @typedef {() => UplcData} ValueGenerator
+ */
+
+/**
+ * @typedef {(args: UplcValue[], res: (UplcValue | RuntimeError), isSimplfied?: boolean) => (boolean | Object.<string, boolean>)} PropertyTest
+ */
+
+/**
+ * Helper class for performing fuzzy property-based tests of Helios scripts.
+ */
+class FuzzyTest {
+	/**
+	 * @type {number}
+	 */
+	#seed;
+
+	/**
+	 * @type {NumberGenerator} - seed generator
+	 */
+	#rand;
+
+	#runsPerTest;
+
+	#simplify;
+
+	/**
+	 * @type {NetworkParams}
+	 */
+	#dummyNetworkParams;
+
+	/**
+	 * The simplify argument specifies whether optimized versions of the Helios sources should also be tested.
+	 * @param {number} seed
+	 * @param {number} runsPerTest
+	 * @param {boolean} simplify If true then also test the simplified program
+	 */
+	constructor(seed = 0, runsPerTest = 100, simplify = false) {
+		console.log("starting fuzzy testing  with seed", seed);
+
+		this.#seed = seed;
+		this.#rand = Crypto.rand(seed);
+		this.#runsPerTest = runsPerTest;
+		this.#simplify = simplify;
+		this.#dummyNetworkParams = new NetworkParams(rawNetworkEmulatorParams);
+	}
+
+	reset() {
+		this.#rand = Crypto.rand(this.#seed);
+	}
+
+	/**
+	 * @returns {NumberGenerator}
+	 */
+	newRand() {
+		let seed = this.#rand()*1000000;
+
+		return Crypto.rand(seed);
+	}
+
+	/**
+	 * Returns a gernator for whole numbers between min and max
+	 * @param {number} min
+	 * @param {number} max
+	 * @returns {() => bigint}
+	 */
+	rawInt(min = -10000000, max = 10000000) {
+		let rand = this.newRand();
+
+		return function() {
+			return BigInt(Math.floor(rand()*(max - min)) + min);
+		}
+	}
+
+	/**
+	 * Returns a generator for whole numbers between min and max, wrapped with IntData
+	 * @param {number} min
+	 * @param {number} max
+	 * @returns {ValueGenerator}
+	 */
+	int(min = -10000000, max = 10000000) {		
+		let rand = this.rawInt(min, max);
+
+		return function() {
+			return new IntData(rand());
+		}
+	}
+
+	/**
+	 * @param {number} min 
+	 * @param {number} max 
+	 * @returns {ValueGenerator}
+	 */
+	real(min = -1000, max = 1000) {
+		let rand = this.newRand();
+
+		return function() {
+			return new IntData(BigInt(Math.floor(((rand()*(max - min)) + min)*1000000)))
+		}
+	}
+
+	/**
+	 * Returns a generator for strings containing any utf-8 character.
+	 * @param {number} minLength
+	 * @param {number} maxLength
+	 * @returns {ValueGenerator}
+	 */
+	string(minLength = 0, maxLength = 64) {
+		let rand = this.newRand();
+
+		return function() {
+			let n = Math.round(rand()*(maxLength - minLength)) + minLength;
+			if (n < 0) {
+				n = 0;
+			}
+
+			let chars = [];
+			for (let i = 0; i < n; i++) {
+				chars.push(String.fromCodePoint(Math.round(rand()*1112064)));
+			}
+			
+			return ByteArrayData.fromString(chars.join(""));
+		}
+	}
+
+	/** 
+	 * Returns a generator for strings with ascii characters from 32 (space) to 126 (tilde).
+	 * @param {number} minLength
+	 * @param {number} maxLength
+	 * @returns {ValueGenerator}
+	 */
+	ascii(minLength = 0, maxLength = 64) {
+		let rand = this.newRand();
+
+		return function() {
+			let n = Math.round(rand()*(maxLength - minLength)) + minLength;
+			if (n < 0) {
+				n = 0;
+			}
+
+			let chars = [];
+			for (let i = 0; i < n; i++) {
+				chars.push(String.fromCharCode(Math.round(rand()*94 + 32)));
+			}
+			
+			return ByteArrayData.fromString(chars.join(""));
+		}
+	}
+
+	/**
+	 * Returns a generator for bytearrays containing only valid ascii characters
+	 * @param {number} minLength
+	 * @param {number} maxLength
+	 * @returns {ValueGenerator}
+	 */
+	asciiBytes(minLength = 0, maxLength = 64) {
+		let rand = this.newRand();
+
+		return function() {
+			let n = Math.round(rand()*(maxLength - minLength)) + minLength;
+			if (n < 0) {
+				n = 0;
+			}
+
+			let bytes = [];
+			for (let i = 0; i < n; i++) {
+				bytes.push(Math.floor(rand()*94 + 32));
+			}
+
+			return new ByteArrayData(bytes);
+		}
+	}
+
+	/**
+	 * Returns a generator for bytearrays the are also valid utf8 strings
+	 * @param {number} minLength - length of the string, not of the bytearray!
+	 * @param {number} maxLength - length of the string, not of the bytearray!
+	 * @returns {ValueGenerator}
+	 */
+	utf8Bytes(minLength = 0, maxLength = 64) {
+		return this.string(minLength, maxLength);
+	}
+
+	/**
+	 * Returns a generator for number[]
+	 * @param {number} minLength
+	 * @param {number} maxLength
+	 * @returns {() => number[]}
+	 */
+	rawBytes(minLength = 0, maxLength = 64) {
+		let rand = this.newRand();
+
+		return function() {
+			let n = Math.round(rand()*(maxLength - minLength)) + minLength;
+			if (n < 0) {
+				n = 0;
+			}
+
+			let bytes = [];
+			for (let i = 0; i < n; i++) {
+				bytes.push(Math.floor(rand()*256));
+			}
+
+			return bytes;
+		}
+	}
+
+	/**
+	 * Returns a generator for bytearrays 
+	 * @param {number} minLength
+	 * @param {number} maxLength
+	 * @returns {ValueGenerator}
+	 */
+	bytes(minLength = 0, maxLength = 64) {
+		let rand = this.rawBytes(minLength, maxLength);
+
+		return function() {
+			let bytes = rand();
+
+			return new ByteArrayData(bytes);
+		}
+	}
+	/**
+	 * Returns a generator for booleans,
+	 * @returns {() => boolean}
+	 */
+	rawBool() {
+		let rand = this.newRand();
+
+		return function() {
+			let x = rand();
+
+			return x >= 0.5;
+		}
+	}
+
+	/**
+	 * Returns a generator for booleans, wrapped with ConstrData
+	 * @returns {ValueGenerator}
+	 */
+	bool() {
+		let rand = this.rawBool();
+
+		return function() {
+			return new ConstrData(rand() ? 1 : 0, []);
+		}
+	}
+
+	/**
+	 * Returns a generator for options
+	 * @param {ValueGenerator} someGenerator
+	 * @param {number} noneProbability
+	 * @returns {ValueGenerator}
+	 */
+	option(someGenerator, noneProbability = 0.5) {
+		let rand = this.newRand();
+
+		return function() {
+			let x = rand();
+
+			if (x < noneProbability) {
+				return new ConstrData(1, []);
+			} else {
+				return new ConstrData(0, [someGenerator()]);
+			}
+		}
+	}
+
+	/**
+	 * Returns a generator for lists
+	 * @param {ValueGenerator} itemGenerator
+	 * @param {number} minLength
+	 * @param {number} maxLength
+	 * @returns {ValueGenerator}
+	 */
+	list(itemGenerator, minLength = 0, maxLength = 10) {
+		let rand = this.newRand();
+
+		if (minLength < 0) {
+			minLength = 0;
+		}
+
+		if (maxLength < 0) {
+			maxLength = 0;
+		}
+
+		return function() {
+			let n = Math.round(rand()*(maxLength - minLength)) + minLength;
+			if (n < 0) {
+				n = 0;
+			}
+
+			/**
+			 * @type {UplcData[]}
+			 */
+			let items = [];
+
+			for (let i = 0; i < n; i++) {
+				items.push(itemGenerator());
+			}
+
+			return new ListData(items);
+		}
+	}
+
+	/**
+	 * Returns a generator for maps
+	 * @param {ValueGenerator} keyGenerator
+	 * @param {ValueGenerator} valueGenerator
+	 * @param {number} minLength
+	 * @param {number} maxLength
+	 * @returns {ValueGenerator}
+	 */
+	map(keyGenerator, valueGenerator, minLength = 0, maxLength = 10) {
+		let rand = this.newRand();
+
+		if (minLength < 0) {
+			minLength = 0;
+		}
+
+		if (maxLength < 0) {
+			maxLength = 0;
+		}
+
+		return function() {
+			let n = Math.round(rand()*(maxLength - minLength)) + minLength;
+
+			if (n < 0) {
+				n = 0;
+			}
+
+			/**
+			 * @type {[UplcData, UplcData][]}
+			 */
+			let pairs = [];
+
+			for (let i = 0; i < n; i++) {
+				pairs.push([keyGenerator(), valueGenerator()]);
+			}
+
+			return new MapData(pairs);
+		};
+	}
+
+	/**
+	 * Returns a generator for objects
+	 * @param {...ValueGenerator} itemGenerators
+	 * @returns {ValueGenerator}
+	 */
+	object(...itemGenerators) {
+		return function() {
+			let items = itemGenerators.map(g => g());
+
+			return new ConstrData(0, items);
+		}
+	}
+
+	/**
+	 * Returns a generator for tagged constr
+	 * @param {number | NumberGenerator} tag
+	 * @param {...ValueGenerator} fieldGenerators
+	 * @returns {ValueGenerator}
+	 */
+	constr(tag, ...fieldGenerators) {
+		return function() {
+			const fields = fieldGenerators.map(g => g());
+
+			const finalTag = (typeof tag == "number") ? tag : Math.round(tag()*100);
+			
+			return new ConstrData(finalTag, fields);
+		}
+	}
+
+	/**
+	 * Perform a fuzzy/property-based test-run of a Helios source. One value generator must be specified per argument of main.
+	 * 
+	 * Throws an error if the propTest fails. 
+	 * 
+	 * The propTest can simply return a boolean, or can return an object with boolean values, and if any of these booleans is false the propTest fails (the keys can be used to provide extra information).
+	 * @param {ValueGenerator[]} argGens
+	 * @param {string} src
+	 * @param {PropertyTest} propTest
+	 * @param {number} nRuns
+	 * @param {boolean} simplify
+	 * @returns {Promise<void>} - throws an error if any of the property tests fail
+	 */
+	async test(argGens, src, propTest, nRuns = this.#runsPerTest, simplify = false) {
+		// compilation errors here aren't caught
+
+		let purposeName = extractScriptPurposeAndName(src);
+
+		if (purposeName === null) {
+			throw new Error("failed to get script purpose and name");
+		} else {
+			let [_, testName] = purposeName;
+
+			let program = Program.new(src).compile(simplify);
+
+			/**
+			 * @type {Cost}
+			 */
+			const totalCost = {
+				mem: 0n,
+				cpu: 0n
+			};
+
+			let nonErrorRuns = 0;
+
+			for (let it = 0; it < nRuns; it++) {
+				let args = argGens.map(gen => new UplcDataValue(Site.dummy(), gen()));
+			
+				/**
+				 * @type {Cost}
+				 */
+				const cost = {
+					mem: 0n,
+					cpu: 0n
+				};
+
+				let result = await program.run(
+					args, {
+						...DEFAULT_UPLC_RTE_CALLBACKS,
+						onPrint: async (msg) => {return},
+						onIncrCost: (name, isTerm, c) => {cost.mem = cost.mem + c.mem; cost.cpu = cost.cpu + c.cpu;}
+					},
+					this.#dummyNetworkParams
+				);
+
+				let obj = propTest(args, result, simplify);
+
+				if (result instanceof UplcValue) {
+					totalCost.mem += cost.mem;
+					totalCost.cpu += cost.cpu;
+					nonErrorRuns += 1;
+				}
+
+				if (typeof obj == "boolean") {
+					if (!obj) {
+						throw new Error(`property test '${testName}' failed (info: (${args.map(a => a.toString()).join(', ')}) => ${result.toString()})`);
+					}
+				} else {
+					// check for failures
+					for (let key in obj) {
+						if (!obj[key]) {
+							throw new Error(`property test '${testName}:${key}' failed (info: (${args.map(a => a.toString()).join(', ')}) => ${result.toString()})`);
+						}
+					}
+				}
+			}
+
+			console.log(`property tests for '${testName}' succeeded${simplify ? " (simplified)":""} (${program.calcSize()} bytes, ${nonErrorRuns > 0 ? totalCost.mem/BigInt(nonErrorRuns): "N/A"} mem, ${nonErrorRuns > 0 ? totalCost.cpu/BigInt(nonErrorRuns): "N/A"} cpu)`);
+		}
+
+		if (!simplify && this.#simplify) {
+			await this.test(argGens, src, propTest, nRuns, true);
+		}
+	}
+
+	/**
+	 * @param {Object.<string, ValueGenerator>} paramGenerators
+	 * @param {string[]} paramArgs
+	 * @param {string} src
+	 * @param {PropertyTest} propTest
+	 * @param {number} nRuns
+	 * @param {boolean} simplify
+	 * @returns {Promise<void>}
+	 */
+	async testParams(paramGenerators, paramArgs, src, propTest, nRuns = this.#runsPerTest, simplify = false) {
+		let program = Program.new(src);
+
+		let purposeName = extractScriptPurposeAndName(src);
+
+		if (purposeName === null) {
+			throw new Error("failed to get script purpose and name");
+		} else {
+			let [_, testName] = purposeName;
+
+			for (let it = 0; it < nRuns; it++) {
+
+				for (let key in paramGenerators) {
+					program.changeParamSafe(key, paramGenerators[key]());
+				}
+
+				let args = paramArgs.map(paramArg => program.evalParam(paramArg));
+			
+				let coreProgram = Program.new(src).compile(simplify);
+
+				let result = await coreProgram.run(args);
+
+				let obj = propTest(args, result, simplify);
+
+				if (typeof obj == "boolean") {
+					if (!obj) {
+						throw new Error(`property test '${testName}' failed (info: (${args.map(a => a.toString()).join(', ')}) => ${result.toString()})`);
+					}
+				} else {
+					// check for failures
+					for (let key in obj) {
+						if (!obj[key]) {
+							throw new Error(`property test '${testName}:${key}' failed (info: (${args.map(a => a.toString()).join(', ')}) => ${result.toString()})`);
+						}
+					}
+				}
+			}
+
+			console.log(`property tests for '${testName}' succeeded${simplify ? " (simplified)":""}`);
+		}
+
+		if (!simplify && this.#simplify) {
+			await this.testParams(paramGenerators, paramArgs, src, propTest, nRuns, true);
+		}
+	}
+}
+
+
+//////////////////////////////////////////
+// Section 40: Bundling specific functions
+//////////////////////////////////////////
+
+
+/**
+ * @internal
+ * @param {TypeSchema} schema
+ * @param {any} obj
+ * @param {JsToUplcHelpers} helpers
+ * @returns {Promise<UplcData>}
+ */
+async function jsToUplcInternal(schema, obj, helpers) {
+    if (schema.type == "List" && "itemType" in schema) {
+        if (!Array.isArray(obj)) {
+            throw new Error(`expected Array, got '${obj}'`);
+        }
+
+        const items = obj.map(item => jsToUplcInternal(schema.itemType, item, helpers));
+
+        return new ListData(await Promise.all(items));
+    } else if (schema.type == "Map" && "keyType" in schema && "valueType" in schema) {
+        if (!Array.isArray(obj)) {
+            throw new Error(`expected Array, got '${obj}'`);
+        }
+
+        /**
+         * @type {[Promise<UplcData>, Promise<UplcData>][]}
+         */
+        const pairs = obj.map(entry => {
+            if (!Array.isArray(entry)) {
+                throw new Error(`expected Array of Arrays, got '${obj}'`);
+            }
+
+            const [key, value] = entry;
+
+            if (!key || !value) {
+                throw new Error(`expected Array of Array[2], got '${obj}'`);
+            }
+
+            return [
+                jsToUplcInternal(schema.keyType, key, helpers),
+                jsToUplcInternal(schema.valueType, value, helpers)
+            ];
+        });
+
+        const keys = await Promise.all(pairs.map(p => p[0]));
+        const values = await Promise.all(pairs.map(p => p[1]));
+
+        return new MapData(keys.map((k, i) => [k, values[i]]));
+    } else if (schema.type == "Option" && "someType" in schema) {
+        if (obj === null) {
+            return new ConstrData(1, []);
+        } else {
+            return new ConstrData(0, [await jsToUplcInternal(schema.someType, obj, helpers)]);
+        }
+    } else if (schema.type == "Struct" && "fieldTypes" in schema) {
+        const fields = schema.fieldTypes.map((fieldSchema) => {
+            const fieldName = fieldSchema.name;
+            const fieldObj = obj[fieldName];
+
+            if (fieldObj === undefined) {
+                throw new Error(`field ${fieldName} not found in '${obj}'`);
+            }
+
+            return jsToUplcInternal(fieldSchema, fieldObj, helpers);
+        });
+
+        if (fields.length == 1) {
+            return fields[0];
+        } else {
+            return new ListData(await Promise.all(fields));
+        }
+    } else if (schema.type == "Enum" && "variantTypes" in schema) {
+        const keys = Object.keys(obj);
+
+        if (keys.length != 1) {
+            throw new Error("expected a single key for enum");
+        }
+
+        const key = keys[0];
+
+        const index = schema.variantTypes.findIndex(variant => variant.name == key);
+
+        if (index == -1) {
+            throw new Error(`invalid variant ${key}`);
+        }
+
+        const fields = schema.variantTypes[index].fieldTypes.map((fieldSchema) => {
+            const fieldName = fieldSchema.name;
+            const fieldObj = obj[key][fieldName];
+
+            if (fieldObj === undefined) {
+                throw new Error(`field ${fieldName} not found in '${obj[key]}'`);
+            }
+
+            return jsToUplcInternal(fieldSchema, fieldObj, helpers);
+        });
+
+        return new ConstrData(index, await Promise.all(fields));
+    } else {
+        const builtinType = builtinTypes[schema.type];
+
+        if (!builtinType) {
+            throw new Error(`${schema.type} isn't a valid builtin type`);
+        }
+
+        return builtinType.jsToUplc(obj, helpers);
+    }
+}
+
+/**
+ * @internal
+ * @param {TypeSchema} schema
+ * @param {any} obj
+ * @param {JsToUplcHelpers} helpers
+ * @returns {Promise<UplcData>}
+ */
+function jsToUplc(schema, obj, helpers) {
+    return jsToUplcInternal(schema, obj, helpers);
+}
+
+/**
+ * @internal
+ * @param {TypeSchema} schema
+ * @param {UplcData} data
+ * @param {UplcToJsHelpers} helpers
+ * @returns {Promise<any>}
+ */
+async function uplcToJsInternal(schema, data, helpers) {
+    if (schema.type == "List" && "itemType" in schema) {
+        return await Promise.all(data.list.map(item => uplcToJsInternal(schema.itemType, item, helpers)));
+    } else if (schema.type == "Map" && "keyType" in schema && "valueType" in schema) {
+        /**
+         * @type {[Promise<any>, Promise<any>][]}
+         */
+        const pairs = data.map.map(([key, value]) => [uplcToJsInternal(schema.keyType, key, helpers), uplcToJsInternal(schema.valueType, value, helpers)]);
+
+        const keys = await Promise.all(pairs.map(p => p[0]));
+        const values = await Promise.all(pairs.map(p => p[1]));
+
+        return keys.map((k, i) => [k, values[i]]);
+    } else if (schema.type == "Option" && "someType" in schema) {
+        if (data.index == 1) {
+            assert(data.fields.length == 0, "not an Option ConstrData");
+            return null;
+        } else if (data.index == 0) {
+            assert(data.fields.length == 1, "not an Option ConstrData");
+            return uplcToJsInternal(schema.someType, data.fields[0], helpers);
+        } else {
+            throw new Error("not an Option ConstrData");
+        }
+    } else if (schema.type == "Struct" && "fieldTypes" in schema) {
+        const obj = {};
+
+        const fields = schema.fieldTypes.length == 1 ? [data] : data.list;
+
+        for (let i = 0; i < fields.length; i++) {
+            const field = fields[i];
+
+            const fieldType = schema.fieldTypes[i];
+
+            if (!fieldType) {
+                throw new Error("field out-of-range");
+            }
+
+            obj[fieldType.name] = await uplcToJsInternal(fieldType, field, helpers);
+        }
+
+        return obj;
+    } else if (schema.type == "Enum" && "variantTypes" in schema) {
+        const index = data.index;
+
+        const variant = schema.variantTypes[index];
+
+        if (!variant) {
+            throw new Error("constr index out-of-range");
+        }
+
+        const obj = {};
+
+        const fields = data.fields;
+
+        for (let i = 0; i< fields.length; i++) {
+            const field = fields[i];
+
+            const fieldType = variant.fieldTypes[i];
+
+            if (!fieldType) {
+                throw new Error("field out-of-range");
+            }
+
+            obj[fieldType.name] = await uplcToJsInternal(fieldType, field, helpers);
+        }
+
+        return {[variant.name]: obj};
+    } else {
+        const builtinType = builtinTypes[schema.type];
+
+        if (!builtinType) {
+            throw new Error(`${schema.type} isn't a valid builtin type`);
+        }
+
+        return builtinType.uplcToJs(data, helpers);
+    }
+}
+
+/**
+ * @internal
+ * @param {TypeSchema} schema
+ * @param {UplcData} data
+ * @param {UplcToJsHelpers} helpers
+ * @returns {Promise<any>}
+ */
+function uplcToJs(schema, data, helpers) {
+    return uplcToJsInternal(schema, data, helpers);
+}
+
+var helios = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    Address: Address,
+    AddressType: AddressType,
+    AllType: AllType,
+    AnyType: AnyType,
+    AnyTypeClass: AnyTypeClass,
+    Arg0SizeCost: Arg0SizeCost,
+    Arg1SizeCost: Arg1SizeCost,
+    Arg2SizeCost: Arg2SizeCost,
+    ArgSizeCost: ArgSizeCost,
+    ArgSizeDiagCost: ArgSizeDiagCost,
+    ArgSizeDiffCost: ArgSizeDiffCost,
+    ArgSizeProdCost: ArgSizeProdCost,
+    ArgType: ArgType,
+    AssertFunc: AssertFunc,
+    AssetClass: AssetClass,
+    AssetClassType: AssetClassType,
+    Assets: Assets,
+    AssignExpr: AssignExpr,
+    BINARY_SYMBOLS_MAP: BINARY_SYMBOLS_MAP,
+    BIP32_HARDEN: BIP32_HARDEN,
+    BIP39_DICT_EN: BIP39_DICT_EN,
+    BinaryExpr: BinaryExpr,
+    Bip32PrivateKey: Bip32PrivateKey,
+    BitReader: BitReader,
+    BitWriter: BitWriter,
+    BlockfrostV0: BlockfrostV0,
+    Bool: Bool,
+    BoolLiteral: BoolLiteral,
+    BoolType: BoolType,
+    BuiltinFunc: BuiltinFunc,
+    ByteArray: ByteArray,
+    ByteArrayData: ByteArrayData,
+    ByteArrayLiteral: ByteArrayLiteral,
+    ByteArrayType: ByteArrayType,
+    CallArgExpr: CallArgExpr,
+    CallExpr: CallExpr,
+    CallFrame: CallFrame,
+    Cbor: Cbor,
+    CborData: CborData,
+    ChainExpr: ChainExpr,
+    Cip30Wallet: Cip30Wallet,
+    CoinSelection: CoinSelection,
+    Common: Common,
+    ConstCost: ConstCost,
+    ConstStatement: ConstStatement,
+    ConstrData: ConstrData,
+    ContractContextType: ContractContextType,
+    CostModel: CostModel,
+    CredentialType: CredentialType,
+    Crypto: Crypto,
+    DCert: DCert,
+    DCertDelegate: DCertDelegate,
+    DCertDeregister: DCertDeregister,
+    DCertRegister: DCertRegister,
+    DCertRegisterPool: DCertRegisterPool,
+    DCertRetirePool: DCertRetirePool,
+    DCertType: DCertType,
+    DEFAULT_UPLC_RTE_CALLBACKS: DEFAULT_UPLC_RTE_CALLBACKS,
+    DataDefinition: DataDefinition,
+    DataEntity: DataEntity,
+    DataField: DataField,
+    DataSwitchExpr: DataSwitchExpr,
+    DataTypeClassImpl: DataTypeClassImpl,
+    Datum: Datum,
+    DatumHash: DatumHash,
+    DatumHashType: DatumHashType,
+    DatumRedeemerProgram: DatumRedeemerProgram,
+    DefaultTypeClass: DefaultTypeClass,
+    DestructExpr: DestructExpr,
+    Duration: Duration,
+    DurationType: DurationType,
+    Ed25519: Ed25519,
+    Ed25519PrivateKey: Ed25519PrivateKey,
+    EnumMember: EnumMember,
+    EnumStatement: EnumStatement,
+    EnumSwitchExpr: EnumSwitchExpr,
+    ErrorEntity: ErrorEntity,
+    ErrorFunc: ErrorFunc,
+    ErrorType: ErrorType,
+    Expr: Expr,
+    FTPP: FTPP,
+    ForceFrame: ForceFrame,
+    FuncArg: FuncArg,
+    FuncArgTypeExpr: FuncArgTypeExpr,
+    FuncEntity: FuncEntity,
+    FuncLiteralExpr: FuncLiteralExpr,
+    FuncStatement: FuncStatement,
+    FuncType: FuncType,
+    FuncTypeExpr: FuncTypeExpr,
+    FuzzyTest: FuzzyTest,
+    GenericEnumMemberType: GenericEnumMemberType,
+    GenericParametricEnumMemberType: GenericParametricEnumMemberType,
+    GenericParametricType: GenericParametricType,
+    GenericType: GenericType,
+    GlobalScope: GlobalScope,
+    Group: Group,
+    HInt: HInt,
+    HList: HList,
+    HMap: HMap,
+    HString: HString,
+    Hash: Hash,
+    HashedDatum: HashedDatum,
+    HeliosData: HeliosData,
+    IR: IR,
+    IRAnonCallExpr: IRAnonCallExpr,
+    IRCallExpr: IRCallExpr,
+    IRCallStack: IRCallStack,
+    IRConstExpr: IRConstExpr,
+    IRCoreCallExpr: IRCoreCallExpr,
+    IRDeferredValue: IRDeferredValue,
+    IRErrorCallExpr: IRErrorCallExpr,
+    IRExpr: IRExpr,
+    IRExprRegistry: IRExprRegistry,
+    IRFuncDefExpr: IRFuncDefExpr,
+    IRFuncExpr: IRFuncExpr,
+    IRFuncValue: IRFuncValue,
+    IRLiteralExpr: IRLiteralExpr,
+    IRLiteralValue: IRLiteralValue,
+    IRNameExpr: IRNameExpr,
+    IRNameExprRegistry: IRNameExprRegistry,
+    IRNestedAnonCallExpr: IRNestedAnonCallExpr,
+    IRParametricName: IRParametricName,
+    IRParametricProgram: IRParametricProgram,
+    IRProgram: IRProgram,
+    IRScope: IRScope,
+    IRUserCallExpr: IRUserCallExpr,
+    IRValue: IRValue,
+    IRVariable: IRVariable,
+    IfElseExpr: IfElseExpr,
+    ImplDefinition: ImplDefinition,
+    ImportFromStatement: ImportFromStatement,
+    ImportModuleStatement: ImportModuleStatement,
+    IntData: IntData,
+    IntLiteral: IntLiteral,
+    IntType: IntType,
+    IteratorType$: IteratorType$,
+    IteratorTypeExpr: IteratorTypeExpr,
+    KoiosV0: KoiosV0,
+    LinearCost: LinearCost,
+    ListData: ListData,
+    ListLiteralExpr: ListLiteralExpr,
+    ListType: ListType,
+    ListType$: ListType$,
+    ListTypeExpr: ListTypeExpr,
+    LiteralDataExpr: LiteralDataExpr,
+    MacroType: MacroType,
+    MapData: MapData,
+    MapLiteralExpr: MapLiteralExpr,
+    MapType: MapType,
+    MapType$: MapType$,
+    MapTypeExpr: MapTypeExpr,
+    MaxArgSizeCost: MaxArgSizeCost,
+    MemberExpr: MemberExpr,
+    MinArgSizeCost: MinArgSizeCost,
+    MintingPolicyHash: MintingPolicyHash,
+    MintingPolicyHashType: MintingPolicyHashType,
+    MintingRedeemer: MintingRedeemer,
+    ModuleNamespace: ModuleNamespace,
+    ModuleScope: ModuleScope,
+    MultiEntity: MultiEntity,
+    NameTypePair: NameTypePair,
+    NamedEntity: NamedEntity,
+    NativeContext: NativeContext,
+    NativeScript: NativeScript,
+    NetworkEmulator: NetworkEmulator,
+    NetworkParams: NetworkParams,
+    NetworkSlice: NetworkSlice,
+    NetworkType: NetworkType,
+    Option: Option,
+    OptionType: OptionType,
+    OptionType$: OptionType$,
+    OptionTypeExpr: OptionTypeExpr,
+    OutputDatumType: OutputDatumType,
+    Parameter: Parameter,
+    ParametricExpr: ParametricExpr,
+    ParametricFunc: ParametricFunc,
+    ParametricType: ParametricType,
+    ParensExpr: ParensExpr,
+    PathExpr: PathExpr,
+    PreCallFrame: PreCallFrame,
+    PrimitiveLiteral: PrimitiveLiteral,
+    PrimitiveLiteralExpr: PrimitiveLiteralExpr,
+    PrintFunc: PrintFunc,
+    Program: Program,
+    PubKey: PubKey,
+    PubKeyHash: PubKeyHash,
+    PubKeyHashType: PubKeyHashType,
+    PubKeyType: PubKeyType,
+    REAL_PRECISION: REAL_PRECISION,
+    RE_IR_PARAMETRIC_NAME: RE_IR_PARAMETRIC_NAME,
+    RawDataType: RawDataType,
+    RealLiteral: RealLiteral,
+    RealType: RealType,
+    Redeemer: Redeemer,
+    RefExpr: RefExpr,
+    RemoteWallet: RemoteWallet,
+    RootPrivateKey: RootPrivateKey,
+    RuntimeError: RuntimeError,
+    Scope: Scope,
+    ScriptContextType: ScriptContextType,
+    ScriptHash: ScriptHash,
+    ScriptHashType: ScriptHashType,
+    ScriptPurposeType: ScriptPurposeType,
+    ScriptsType: ScriptsType,
+    Signature: Signature,
+    SimpleWallet: SimpleWallet,
+    Site: Site,
+    Source: Source,
+    SpendingRedeemer: SpendingRedeemer,
+    StakeAddress: StakeAddress,
+    StakingCredentialType: StakingCredentialType,
+    StakingHashStakeKeyType: StakingHashStakeKeyType,
+    StakingHashType: StakingHashType,
+    StakingHashValidatorType: StakingHashValidatorType,
+    StakingPurposeType: StakingPurposeType,
+    StakingValidatorHash: StakingValidatorHash,
+    StakingValidatorHashType: StakingValidatorHashType,
+    Statement: Statement,
+    StringLiteral: StringLiteral,
+    StringType: StringType,
+    StructLiteralExpr: StructLiteralExpr,
+    StructLiteralField: StructLiteralField,
+    StructStatement: StructStatement,
+    SumArgSizesCost: SumArgSizesCost,
+    SummableTypeClass: SummableTypeClass,
+    SwitchCase: SwitchCase,
+    SwitchDefault: SwitchDefault,
+    SymbolToken: SymbolToken,
+    TAB: TAB,
+    TTPP: TTPP,
+    Time: Time,
+    TimeRangeType: TimeRangeType,
+    TimeType: TimeType,
+    ToIRContext: ToIRContext,
+    Token: Token,
+    Tokenizer: Tokenizer,
+    TopScope: TopScope,
+    Tx: Tx,
+    TxBody: TxBody,
+    TxBuilderType: TxBuilderType,
+    TxChain: TxChain,
+    TxId: TxId,
+    TxIdType: TxIdType,
+    TxInput: TxInput,
+    TxInputType: TxInputType,
+    TxMetadata: TxMetadata,
+    TxOutput: TxOutput,
+    TxOutputId: TxOutputId,
+    TxOutputIdType: TxOutputIdType,
+    TxOutputType: TxOutputType,
+    TxRefInput: TxRefInput,
+    TxType: TxType,
+    TxWitnesses: TxWitnesses,
+    TypeClassImpl: TypeClassImpl,
+    TypeParameter: TypeParameter,
+    TypeParameters: TypeParameters,
+    TypedEntity: TypedEntity,
+    UPLC_BUILTINS: UPLC_BUILTINS,
+    UPLC_MACROS: UPLC_MACROS,
+    UPLC_MACROS_OFFSET: UPLC_MACROS_OFFSET,
+    UTxO: UTxO,
+    UnaryExpr: UnaryExpr,
+    UnconstrDataSwitchCase: UnconstrDataSwitchCase,
+    UplcAny: UplcAny,
+    UplcBool: UplcBool,
+    UplcBuiltin: UplcBuiltin,
+    UplcBuiltinConfig: UplcBuiltinConfig,
+    UplcByteArray: UplcByteArray,
+    UplcCall: UplcCall,
+    UplcConst: UplcConst,
+    UplcData: UplcData,
+    UplcDataValue: UplcDataValue,
+    UplcDelay: UplcDelay,
+    UplcDelayedValue: UplcDelayedValue,
+    UplcError: UplcError,
+    UplcForce: UplcForce,
+    UplcFrame: UplcFrame,
+    UplcInt: UplcInt,
+    UplcLambda: UplcLambda,
+    UplcList: UplcList,
+    UplcPair: UplcPair,
+    UplcProgram: UplcProgram,
+    UplcRte: UplcRte,
+    UplcString: UplcString,
+    UplcTerm: UplcTerm,
+    UplcType: UplcType,
+    UplcUnit: UplcUnit,
+    UplcValue: UplcValue,
+    UplcVariable: UplcVariable,
+    UserError: UserError,
+    VERSION: VERSION,
+    ValidatorHash: ValidatorHash,
+    ValidatorHashType: ValidatorHashType,
+    ValuableTypeClass: ValuableTypeClass,
+    Value: Value,
+    ValuePathExpr: ValuePathExpr,
+    ValueType: ValueType,
+    VoidEntity: VoidEntity,
+    VoidExpr: VoidExpr,
+    VoidType: VoidType,
+    VoidTypeExpr: VoidTypeExpr,
+    WalletHelper: WalletHelper,
+    WalletType: WalletType,
+    Word: Word,
+    applyTypes: applyTypes,
+    assert: assert,
+    assertClass: assertClass,
+    assertDefined: assertDefined,
+    assertEq: assertEq,
+    assertNonEmpty: assertNonEmpty,
+    assertNumber: assertNumber,
+    assertToken: assertToken,
+    bigIntToBytes: bigIntToBytes,
+    bigIntToLe32Bytes: bigIntToLe32Bytes,
+    buildIRExpr: buildIRExpr,
+    buildProgramStatements: buildProgramStatements,
+    buildScript: buildScript,
+    buildScriptPurpose: buildScriptPurpose,
+    builtinTypes: builtinTypes,
+    byteToBitString: byteToBitString,
+    bytesToBigInt: bytesToBigInt,
+    bytesToHex: bytesToHex,
+    bytesToText: bytesToText,
+    config: config,
+    deprecationWarning: deprecationWarning,
+    deserializeUplc: deserializeUplc,
+    deserializeUplcBytes: deserializeUplcBytes,
+    dumpCostModels: dumpCostModels,
+    eq: eq,
+    evalCek: evalCek,
+    extractScriptPurposeAndName: extractScriptPurposeAndName,
+    fetchRawFunctions: fetchRawFunctions,
+    fetchRawGenerics: fetchRawGenerics,
+    findUplcBuiltin: findUplcBuiltin,
+    genCommonEnumTypeMembers: genCommonEnumTypeMembers,
+    genCommonInstanceMembers: genCommonInstanceMembers,
+    genCommonTypeMembers: genCommonTypeMembers,
+    hexToBytes: hexToBytes,
+    highlight: highlight,
+    hl: hl,
+    idiv: idiv,
+    imask: imask,
+    imod8: imod8,
+    ipow2: ipow2,
+    isUplcBuiltin: isUplcBuiltin,
+    jsToUplc: jsToUplc,
+    jsToUplcInternal: jsToUplcInternal,
+    leBytesToBigInt: leBytesToBigInt,
+    padZeroes: padZeroes,
+    randomBytes: randomBytes,
+    rawNetworkEmulatorParams: rawNetworkEmulatorParams,
+    reduceNull: reduceNull,
+    reduceNullPairs: reduceNullPairs,
+    replaceTabs: replaceTabs,
+    scriptHashType: scriptHashType,
+    setBlake2bDigestSize: setBlake2bDigestSize,
+    setImportPathTranslator: setImportPathTranslator,
+    setRawUsageNotifier: setRawUsageNotifier,
+    textToBytes: textToBytes,
+    tokenize: tokenize,
+    tokenizeIR: tokenizeIR,
+    uplcToJs: uplcToJs,
+    wrapWithRawFunctions: wrapWithRawFunctions
+});
+
 function mkUutValuesEntries(uuts) {
   const uutNs = Array.isArray(uuts) ? uuts : Object.values(uuts);
   return uutNs.map((uut) => mkValuesEntry(uut.name, BigInt(1)));
@@ -50795,49 +54560,6 @@ function partialTxn(proto, thingName, descriptor) {
     );
   }
   return descriptor;
-}
-async function findInputsInWallets(v, searchIn, network) {
-  const { wallets, addresses } = searchIn;
-  const lovelaceOnly = v.assets.isZero();
-  console.warn("finding inputs", {
-    lovelaceOnly
-  });
-  for (const w of wallets) {
-    const [a] = await w.usedAddresses;
-    console.log("finding funds in wallet", a.toBech32().substring(0, 18));
-    const utxos = await w.utxos;
-    for (const u of utxos) {
-      if (lovelaceOnly) {
-        if (u.value.assets.isZero() && u.value.lovelace >= v.lovelace) {
-          return u;
-        }
-        console.log("  - too small; skipping ", u.value.dump());
-      } else {
-        if (u.value.ge(v)) {
-          return u;
-        }
-      }
-    }
-  }
-  if (lovelaceOnly) {
-    throw new Error(
-      `no ADA is present except those on token bundles.  TODO: findFreeLovelaceWithTokens`
-    );
-  }
-  //!!! todo: allow getting free ada from a contract address?
-  if (addresses) {
-    for (const a of addresses) {
-      const utxos = await network.getUtxos(a);
-      for (const u of utxos) {
-        if (u.value.ge(v)) {
-          return u;
-        }
-      }
-    }
-  }
-  throw new Error(
-    `None of these wallets${addresses && " or addresses" || ""} have the needed tokens`
-  );
 }
 //!!! todo: type configuredStellarClass = class -> networkStuff -> withParams = stellar instance.
 class StellarContract {
@@ -51880,6 +55602,9 @@ var __decorateClass$4 = (decorators, target, key, kind) => {
 };
 //!!! todo: let this be parameterized for more specificity
 class Capo extends StellarContract {
+  get isConfigured() {
+    return !!this.configIn;
+  }
   constructor(args) {
     super(args);
     const {
@@ -52209,6 +55934,7 @@ class Capo extends StellarContract {
         msg = `no selected or default delegate for role '${roleName}'.  Specify strategyName`;
       }
       const e = new DelegateConfigNeeded(msg, {
+        errorRole: roleName,
         availableStrategies: Object.keys(foundStrategies.variants)
       });
       throw e;
@@ -52222,7 +55948,6 @@ class Capo extends StellarContract {
       ...selectedConfig,
       ...impliedDelegationDetails
     };
-    debugger;
     //! it validates the net configuration so it can return a working config.
     const errors = validateConfig && validateConfig(mergedConfig);
     if (errors) {
@@ -52259,7 +55984,6 @@ class Capo extends StellarContract {
   // get connectDelegate()
   async connectDelegateWithLink(roleName, delegateLink) {
     const cache = this.#_delegateCache;
-    debugger;
     const cacheKey = JSON.stringify(delegateLink, delegateLinkSerializer, 4);
     if (!cache[roleName])
       cache[roleName] = {};
@@ -52899,7 +56623,6 @@ class AnyAddressAuthorityPolicy extends AuthorityPolicy {
   async DelegateMustFindAuthorityToken(tcx, label) {
     const v = this.tvAuthorityToken();
     const { addrHint } = this.configIn;
-    debugger;
     return this.mustFindActorUtxo(
       `${label}: ${bytesToText(this.configIn.tn)}`,
       this.mkTokenPredicate(v),
@@ -52914,13 +56637,12 @@ class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     } else {
       if (!this.configIn?.addrHint?.[0])
         throw new Error(
-          `must be instantiated with a configIn having an addrHint`
+          `missing addrHint`
         );
       const {
         addrHint
         // reqdAddress,  // removed
       } = this.configIn;
-      debugger;
       dest = addrHint[0];
     }
     const output = new TxOutput(dest, tokenValue);
@@ -53056,995 +56778,6 @@ class BasicMintDelegate extends StellarDelegate {
 __decorateClass$1([
   Activity.partialTxn
 ], BasicMintDelegate.prototype, "txnCreatingTokenPolicy", 1);
-
-var shelleyGenesis = {
-	activeSlotsCoeff: 0.05,
-	epochLength: 432000,
-	genDelegs: {
-		"637f2e950b0fd8f8e3e811c5fbeb19e411e7a2bf37272b84b29c1a0b": {
-			delegate: "aae9293510344ddd636364c2673e34e03e79e3eefa8dbaa70e326f7d",
-			vrf: "227116365af2ed943f1a8b5e6557bfaa34996f1578eec667a5e2b361c51e4ce7"
-		},
-		"8a4b77c4f534f8b8cc6f269e5ebb7ba77fa63a476e50e05e66d7051c": {
-			delegate: "d15422b2e8b60e500a82a8f4ceaa98b04e55a0171d1125f6c58f8758",
-			vrf: "0ada6c25d62db5e1e35d3df727635afa943b9e8a123ab83785e2281605b09ce2"
-		},
-		b00470cd193d67aac47c373602fccd4195aad3002c169b5570de1126: {
-			delegate: "b3b539e9e7ed1b32fbf778bf2ebf0a6b9f980eac90ac86623d11881a",
-			vrf: "0ff0ce9b820376e51c03b27877cd08f8ba40318f1a9f85a3db0b60dd03f71a7a"
-		},
-		b260ffdb6eba541fcf18601923457307647dce807851b9d19da133ab: {
-			delegate: "7c64eb868b4ef566391a321c85323f41d2b95480d7ce56ad2abcb022",
-			vrf: "7fb22abd39d550c9a022ec8104648a26240a9ff9c88b8b89a6e20d393c03098e"
-		},
-		ced1599fd821a39593e00592e5292bdc1437ae0f7af388ef5257344a: {
-			delegate: "de7ca985023cf892f4de7f5f1d0a7181668884752d9ebb9e96c95059",
-			vrf: "c301b7fc4d1b57fb60841bcec5e3d2db89602e5285801e522fce3790987b1124"
-		},
-		dd2a7d71a05bed11db61555ba4c658cb1ce06c8024193d064f2a66ae: {
-			delegate: "1e113c218899ee7807f4028071d0e108fc790dade9fd1a0d0b0701ee",
-			vrf: "faf2702aa4893c877c622ab22dfeaf1d0c8aab98b837fe2bf667314f0d043822"
-		},
-		f3b9e74f7d0f24d2314ea5dfbca94b65b2059d1ff94d97436b82d5b4: {
-			delegate: "fd637b08cc379ef7b99c83b416458fcda8a01a606041779331008fb9",
-			vrf: "37f2ea7c843a688159ddc2c38a2f997ab465150164a9136dca69564714b73268"
-		}
-	},
-	initialFunds: {
-	},
-	maxKESEvolutions: 120,
-	maxLovelaceSupply: 45000000000000000,
-	networkId: "Testnet",
-	networkMagic: 1,
-	protocolParams: {
-		a0: 0.1,
-		decentralisationParam: 1,
-		eMax: 18,
-		extraEntropy: {
-			tag: "NeutralNonce"
-		},
-		keyDeposit: 400000,
-		maxBlockBodySize: 65536,
-		maxBlockHeaderSize: 1100,
-		maxTxSize: 16384,
-		minFeeA: 44,
-		minFeeB: 155381,
-		minPoolCost: 0,
-		minUTxOValue: 0,
-		nOpt: 50,
-		poolDeposit: 500000000,
-		protocolVersion: {
-			major: 2,
-			minor: 0
-		},
-		rho: 0.00178650067,
-		tau: 0.1
-	},
-	securityParam: 2160,
-	slotLength: 1,
-	slotsPerKESPeriod: 86400,
-	staking: {
-		pools: {
-		},
-		stake: {
-		}
-	},
-	systemStart: "2022-06-01T00:00:00Z",
-	updateQuorum: 5
-};
-var alonzoGenesis = {
-	lovelacePerUTxOWord: 34482,
-	executionPrices: {
-		prSteps: {
-			numerator: 721,
-			denominator: 10000000
-		},
-		prMem: {
-			numerator: 577,
-			denominator: 10000
-		}
-	},
-	maxTxExUnits: {
-		exUnitsMem: 10000000,
-		exUnitsSteps: 10000000000
-	},
-	maxBlockExUnits: {
-		exUnitsMem: 50000000,
-		exUnitsSteps: 40000000000
-	},
-	maxValueSize: 5000,
-	collateralPercentage: 150,
-	maxCollateralInputs: 3,
-	costModels: {
-		PlutusV1: {
-			"sha2_256-memory-arguments": 4,
-			"equalsString-cpu-arguments-constant": 1000,
-			"cekDelayCost-exBudgetMemory": 100,
-			"lessThanEqualsByteString-cpu-arguments-intercept": 103599,
-			"divideInteger-memory-arguments-minimum": 1,
-			"appendByteString-cpu-arguments-slope": 621,
-			"blake2b-cpu-arguments-slope": 29175,
-			"iData-cpu-arguments": 150000,
-			"encodeUtf8-cpu-arguments-slope": 1000,
-			"unBData-cpu-arguments": 150000,
-			"multiplyInteger-cpu-arguments-intercept": 61516,
-			"cekConstCost-exBudgetMemory": 100,
-			"nullList-cpu-arguments": 150000,
-			"equalsString-cpu-arguments-intercept": 150000,
-			"trace-cpu-arguments": 150000,
-			"mkNilData-memory-arguments": 32,
-			"lengthOfByteString-cpu-arguments": 150000,
-			"cekBuiltinCost-exBudgetCPU": 29773,
-			"bData-cpu-arguments": 150000,
-			"subtractInteger-cpu-arguments-slope": 0,
-			"unIData-cpu-arguments": 150000,
-			"consByteString-memory-arguments-intercept": 0,
-			"divideInteger-memory-arguments-slope": 1,
-			"divideInteger-cpu-arguments-model-arguments-slope": 118,
-			"listData-cpu-arguments": 150000,
-			"headList-cpu-arguments": 150000,
-			"chooseData-memory-arguments": 32,
-			"equalsInteger-cpu-arguments-intercept": 136542,
-			"sha3_256-cpu-arguments-slope": 82363,
-			"sliceByteString-cpu-arguments-slope": 5000,
-			"unMapData-cpu-arguments": 150000,
-			"lessThanInteger-cpu-arguments-intercept": 179690,
-			"mkCons-cpu-arguments": 150000,
-			"appendString-memory-arguments-intercept": 0,
-			"modInteger-cpu-arguments-model-arguments-slope": 118,
-			"ifThenElse-cpu-arguments": 1,
-			"mkNilPairData-cpu-arguments": 150000,
-			"lessThanEqualsInteger-cpu-arguments-intercept": 145276,
-			"addInteger-memory-arguments-slope": 1,
-			"chooseList-memory-arguments": 32,
-			"constrData-memory-arguments": 32,
-			"decodeUtf8-cpu-arguments-intercept": 150000,
-			"equalsData-memory-arguments": 1,
-			"subtractInteger-memory-arguments-slope": 1,
-			"appendByteString-memory-arguments-intercept": 0,
-			"lengthOfByteString-memory-arguments": 4,
-			"headList-memory-arguments": 32,
-			"listData-memory-arguments": 32,
-			"consByteString-cpu-arguments-intercept": 150000,
-			"unIData-memory-arguments": 32,
-			"remainderInteger-memory-arguments-minimum": 1,
-			"bData-memory-arguments": 32,
-			"lessThanByteString-cpu-arguments-slope": 248,
-			"encodeUtf8-memory-arguments-intercept": 0,
-			"cekStartupCost-exBudgetCPU": 100,
-			"multiplyInteger-memory-arguments-intercept": 0,
-			"unListData-memory-arguments": 32,
-			"remainderInteger-cpu-arguments-model-arguments-slope": 118,
-			"cekVarCost-exBudgetCPU": 29773,
-			"remainderInteger-memory-arguments-slope": 1,
-			"cekForceCost-exBudgetCPU": 29773,
-			"sha2_256-cpu-arguments-slope": 29175,
-			"equalsInteger-memory-arguments": 1,
-			"indexByteString-memory-arguments": 1,
-			"addInteger-memory-arguments-intercept": 1,
-			"chooseUnit-cpu-arguments": 150000,
-			"sndPair-cpu-arguments": 150000,
-			"cekLamCost-exBudgetCPU": 29773,
-			"fstPair-cpu-arguments": 150000,
-			"quotientInteger-memory-arguments-minimum": 1,
-			"decodeUtf8-cpu-arguments-slope": 1000,
-			"lessThanInteger-memory-arguments": 1,
-			"lessThanEqualsInteger-cpu-arguments-slope": 1366,
-			"fstPair-memory-arguments": 32,
-			"modInteger-memory-arguments-intercept": 0,
-			"unConstrData-cpu-arguments": 150000,
-			"lessThanEqualsInteger-memory-arguments": 1,
-			"chooseUnit-memory-arguments": 32,
-			"sndPair-memory-arguments": 32,
-			"addInteger-cpu-arguments-intercept": 197209,
-			"decodeUtf8-memory-arguments-slope": 8,
-			"equalsData-cpu-arguments-intercept": 150000,
-			"mapData-cpu-arguments": 150000,
-			"mkPairData-cpu-arguments": 150000,
-			"quotientInteger-cpu-arguments-constant": 148000,
-			"consByteString-memory-arguments-slope": 1,
-			"cekVarCost-exBudgetMemory": 100,
-			"indexByteString-cpu-arguments": 150000,
-			"unListData-cpu-arguments": 150000,
-			"equalsInteger-cpu-arguments-slope": 1326,
-			"cekStartupCost-exBudgetMemory": 100,
-			"subtractInteger-cpu-arguments-intercept": 197209,
-			"divideInteger-cpu-arguments-model-arguments-intercept": 425507,
-			"divideInteger-memory-arguments-intercept": 0,
-			"cekForceCost-exBudgetMemory": 100,
-			"blake2b-cpu-arguments-intercept": 2477736,
-			"remainderInteger-cpu-arguments-constant": 148000,
-			"tailList-cpu-arguments": 150000,
-			"encodeUtf8-cpu-arguments-intercept": 150000,
-			"equalsString-cpu-arguments-slope": 1000,
-			"lessThanByteString-memory-arguments": 1,
-			"multiplyInteger-cpu-arguments-slope": 11218,
-			"appendByteString-cpu-arguments-intercept": 396231,
-			"lessThanEqualsByteString-cpu-arguments-slope": 248,
-			"modInteger-memory-arguments-slope": 1,
-			"addInteger-cpu-arguments-slope": 0,
-			"equalsData-cpu-arguments-slope": 10000,
-			"decodeUtf8-memory-arguments-intercept": 0,
-			"chooseList-cpu-arguments": 150000,
-			"constrData-cpu-arguments": 150000,
-			"equalsByteString-memory-arguments": 1,
-			"cekApplyCost-exBudgetCPU": 29773,
-			"quotientInteger-memory-arguments-slope": 1,
-			"verifySignature-cpu-arguments-intercept": 3345831,
-			"unMapData-memory-arguments": 32,
-			"mkCons-memory-arguments": 32,
-			"sliceByteString-memory-arguments-slope": 1,
-			"sha3_256-memory-arguments": 4,
-			"ifThenElse-memory-arguments": 1,
-			"mkNilPairData-memory-arguments": 32,
-			"equalsByteString-cpu-arguments-slope": 247,
-			"appendString-cpu-arguments-intercept": 150000,
-			"quotientInteger-cpu-arguments-model-arguments-slope": 118,
-			"cekApplyCost-exBudgetMemory": 100,
-			"equalsString-memory-arguments": 1,
-			"multiplyInteger-memory-arguments-slope": 1,
-			"cekBuiltinCost-exBudgetMemory": 100,
-			"remainderInteger-memory-arguments-intercept": 0,
-			"sha2_256-cpu-arguments-intercept": 2477736,
-			"remainderInteger-cpu-arguments-model-arguments-intercept": 425507,
-			"lessThanEqualsByteString-memory-arguments": 1,
-			"tailList-memory-arguments": 32,
-			"mkNilData-cpu-arguments": 150000,
-			"chooseData-cpu-arguments": 150000,
-			"unBData-memory-arguments": 32,
-			"blake2b-memory-arguments": 4,
-			"iData-memory-arguments": 32,
-			"nullList-memory-arguments": 32,
-			"cekDelayCost-exBudgetCPU": 29773,
-			"subtractInteger-memory-arguments-intercept": 1,
-			"lessThanByteString-cpu-arguments-intercept": 103599,
-			"consByteString-cpu-arguments-slope": 1000,
-			"appendByteString-memory-arguments-slope": 1,
-			"trace-memory-arguments": 32,
-			"divideInteger-cpu-arguments-constant": 148000,
-			"cekConstCost-exBudgetCPU": 29773,
-			"encodeUtf8-memory-arguments-slope": 8,
-			"quotientInteger-cpu-arguments-model-arguments-intercept": 425507,
-			"mapData-memory-arguments": 32,
-			"appendString-cpu-arguments-slope": 1000,
-			"modInteger-cpu-arguments-constant": 148000,
-			"verifySignature-cpu-arguments-slope": 1,
-			"unConstrData-memory-arguments": 32,
-			"quotientInteger-memory-arguments-intercept": 0,
-			"equalsByteString-cpu-arguments-constant": 150000,
-			"sliceByteString-memory-arguments-intercept": 0,
-			"mkPairData-memory-arguments": 32,
-			"equalsByteString-cpu-arguments-intercept": 112536,
-			"appendString-memory-arguments-slope": 1,
-			"lessThanInteger-cpu-arguments-slope": 497,
-			"modInteger-cpu-arguments-model-arguments-intercept": 425507,
-			"modInteger-memory-arguments-minimum": 1,
-			"sha3_256-cpu-arguments-intercept": 0,
-			"verifySignature-memory-arguments": 1,
-			"cekLamCost-exBudgetMemory": 100,
-			"sliceByteString-cpu-arguments-intercept": 150000
-		}
-	}
-};
-var latestParams = {
-	collateralPercentage: 150,
-	costModels: {
-		PlutusScriptV1: {
-			"addInteger-cpu-arguments-intercept": 205665,
-			"addInteger-cpu-arguments-slope": 812,
-			"addInteger-memory-arguments-intercept": 1,
-			"addInteger-memory-arguments-slope": 1,
-			"appendByteString-cpu-arguments-intercept": 1000,
-			"appendByteString-cpu-arguments-slope": 571,
-			"appendByteString-memory-arguments-intercept": 0,
-			"appendByteString-memory-arguments-slope": 1,
-			"appendString-cpu-arguments-intercept": 1000,
-			"appendString-cpu-arguments-slope": 24177,
-			"appendString-memory-arguments-intercept": 4,
-			"appendString-memory-arguments-slope": 1,
-			"bData-cpu-arguments": 1000,
-			"bData-memory-arguments": 32,
-			"blake2b_256-cpu-arguments-intercept": 117366,
-			"blake2b_256-cpu-arguments-slope": 10475,
-			"blake2b_256-memory-arguments": 4,
-			"cekApplyCost-exBudgetCPU": 23000,
-			"cekApplyCost-exBudgetMemory": 100,
-			"cekBuiltinCost-exBudgetCPU": 23000,
-			"cekBuiltinCost-exBudgetMemory": 100,
-			"cekConstCost-exBudgetCPU": 23000,
-			"cekConstCost-exBudgetMemory": 100,
-			"cekDelayCost-exBudgetCPU": 23000,
-			"cekDelayCost-exBudgetMemory": 100,
-			"cekForceCost-exBudgetCPU": 23000,
-			"cekForceCost-exBudgetMemory": 100,
-			"cekLamCost-exBudgetCPU": 23000,
-			"cekLamCost-exBudgetMemory": 100,
-			"cekStartupCost-exBudgetCPU": 100,
-			"cekStartupCost-exBudgetMemory": 100,
-			"cekVarCost-exBudgetCPU": 23000,
-			"cekVarCost-exBudgetMemory": 100,
-			"chooseData-cpu-arguments": 19537,
-			"chooseData-memory-arguments": 32,
-			"chooseList-cpu-arguments": 175354,
-			"chooseList-memory-arguments": 32,
-			"chooseUnit-cpu-arguments": 46417,
-			"chooseUnit-memory-arguments": 4,
-			"consByteString-cpu-arguments-intercept": 221973,
-			"consByteString-cpu-arguments-slope": 511,
-			"consByteString-memory-arguments-intercept": 0,
-			"consByteString-memory-arguments-slope": 1,
-			"constrData-cpu-arguments": 89141,
-			"constrData-memory-arguments": 32,
-			"decodeUtf8-cpu-arguments-intercept": 497525,
-			"decodeUtf8-cpu-arguments-slope": 14068,
-			"decodeUtf8-memory-arguments-intercept": 4,
-			"decodeUtf8-memory-arguments-slope": 2,
-			"divideInteger-cpu-arguments-constant": 196500,
-			"divideInteger-cpu-arguments-model-arguments-intercept": 453240,
-			"divideInteger-cpu-arguments-model-arguments-slope": 220,
-			"divideInteger-memory-arguments-intercept": 0,
-			"divideInteger-memory-arguments-minimum": 1,
-			"divideInteger-memory-arguments-slope": 1,
-			"encodeUtf8-cpu-arguments-intercept": 1000,
-			"encodeUtf8-cpu-arguments-slope": 28662,
-			"encodeUtf8-memory-arguments-intercept": 4,
-			"encodeUtf8-memory-arguments-slope": 2,
-			"equalsByteString-cpu-arguments-constant": 245000,
-			"equalsByteString-cpu-arguments-intercept": 216773,
-			"equalsByteString-cpu-arguments-slope": 62,
-			"equalsByteString-memory-arguments": 1,
-			"equalsData-cpu-arguments-intercept": 1060367,
-			"equalsData-cpu-arguments-slope": 12586,
-			"equalsData-memory-arguments": 1,
-			"equalsInteger-cpu-arguments-intercept": 208512,
-			"equalsInteger-cpu-arguments-slope": 421,
-			"equalsInteger-memory-arguments": 1,
-			"equalsString-cpu-arguments-constant": 187000,
-			"equalsString-cpu-arguments-intercept": 1000,
-			"equalsString-cpu-arguments-slope": 52998,
-			"equalsString-memory-arguments": 1,
-			"fstPair-cpu-arguments": 80436,
-			"fstPair-memory-arguments": 32,
-			"headList-cpu-arguments": 43249,
-			"headList-memory-arguments": 32,
-			"iData-cpu-arguments": 1000,
-			"iData-memory-arguments": 32,
-			"ifThenElse-cpu-arguments": 80556,
-			"ifThenElse-memory-arguments": 1,
-			"indexByteString-cpu-arguments": 57667,
-			"indexByteString-memory-arguments": 4,
-			"lengthOfByteString-cpu-arguments": 1000,
-			"lengthOfByteString-memory-arguments": 10,
-			"lessThanByteString-cpu-arguments-intercept": 197145,
-			"lessThanByteString-cpu-arguments-slope": 156,
-			"lessThanByteString-memory-arguments": 1,
-			"lessThanEqualsByteString-cpu-arguments-intercept": 197145,
-			"lessThanEqualsByteString-cpu-arguments-slope": 156,
-			"lessThanEqualsByteString-memory-arguments": 1,
-			"lessThanEqualsInteger-cpu-arguments-intercept": 204924,
-			"lessThanEqualsInteger-cpu-arguments-slope": 473,
-			"lessThanEqualsInteger-memory-arguments": 1,
-			"lessThanInteger-cpu-arguments-intercept": 208896,
-			"lessThanInteger-cpu-arguments-slope": 511,
-			"lessThanInteger-memory-arguments": 1,
-			"listData-cpu-arguments": 52467,
-			"listData-memory-arguments": 32,
-			"mapData-cpu-arguments": 64832,
-			"mapData-memory-arguments": 32,
-			"mkCons-cpu-arguments": 65493,
-			"mkCons-memory-arguments": 32,
-			"mkNilData-cpu-arguments": 22558,
-			"mkNilData-memory-arguments": 32,
-			"mkNilPairData-cpu-arguments": 16563,
-			"mkNilPairData-memory-arguments": 32,
-			"mkPairData-cpu-arguments": 76511,
-			"mkPairData-memory-arguments": 32,
-			"modInteger-cpu-arguments-constant": 196500,
-			"modInteger-cpu-arguments-model-arguments-intercept": 453240,
-			"modInteger-cpu-arguments-model-arguments-slope": 220,
-			"modInteger-memory-arguments-intercept": 0,
-			"modInteger-memory-arguments-minimum": 1,
-			"modInteger-memory-arguments-slope": 1,
-			"multiplyInteger-cpu-arguments-intercept": 69522,
-			"multiplyInteger-cpu-arguments-slope": 11687,
-			"multiplyInteger-memory-arguments-intercept": 0,
-			"multiplyInteger-memory-arguments-slope": 1,
-			"nullList-cpu-arguments": 60091,
-			"nullList-memory-arguments": 32,
-			"quotientInteger-cpu-arguments-constant": 196500,
-			"quotientInteger-cpu-arguments-model-arguments-intercept": 453240,
-			"quotientInteger-cpu-arguments-model-arguments-slope": 220,
-			"quotientInteger-memory-arguments-intercept": 0,
-			"quotientInteger-memory-arguments-minimum": 1,
-			"quotientInteger-memory-arguments-slope": 1,
-			"remainderInteger-cpu-arguments-constant": 196500,
-			"remainderInteger-cpu-arguments-model-arguments-intercept": 453240,
-			"remainderInteger-cpu-arguments-model-arguments-slope": 220,
-			"remainderInteger-memory-arguments-intercept": 0,
-			"remainderInteger-memory-arguments-minimum": 1,
-			"remainderInteger-memory-arguments-slope": 1,
-			"sha2_256-cpu-arguments-intercept": 806990,
-			"sha2_256-cpu-arguments-slope": 30482,
-			"sha2_256-memory-arguments": 4,
-			"sha3_256-cpu-arguments-intercept": 1927926,
-			"sha3_256-cpu-arguments-slope": 82523,
-			"sha3_256-memory-arguments": 4,
-			"sliceByteString-cpu-arguments-intercept": 265318,
-			"sliceByteString-cpu-arguments-slope": 0,
-			"sliceByteString-memory-arguments-intercept": 4,
-			"sliceByteString-memory-arguments-slope": 0,
-			"sndPair-cpu-arguments": 85931,
-			"sndPair-memory-arguments": 32,
-			"subtractInteger-cpu-arguments-intercept": 205665,
-			"subtractInteger-cpu-arguments-slope": 812,
-			"subtractInteger-memory-arguments-intercept": 1,
-			"subtractInteger-memory-arguments-slope": 1,
-			"tailList-cpu-arguments": 41182,
-			"tailList-memory-arguments": 32,
-			"trace-cpu-arguments": 212342,
-			"trace-memory-arguments": 32,
-			"unBData-cpu-arguments": 31220,
-			"unBData-memory-arguments": 32,
-			"unConstrData-cpu-arguments": 32696,
-			"unConstrData-memory-arguments": 32,
-			"unIData-cpu-arguments": 43357,
-			"unIData-memory-arguments": 32,
-			"unListData-cpu-arguments": 32247,
-			"unListData-memory-arguments": 32,
-			"unMapData-cpu-arguments": 38314,
-			"unMapData-memory-arguments": 32,
-			"verifyEd25519Signature-cpu-arguments-intercept": 9462713,
-			"verifyEd25519Signature-cpu-arguments-slope": 1021,
-			"verifyEd25519Signature-memory-arguments": 10
-		},
-		PlutusScriptV2: {
-			"addInteger-cpu-arguments-intercept": 205665,
-			"addInteger-cpu-arguments-slope": 812,
-			"addInteger-memory-arguments-intercept": 1,
-			"addInteger-memory-arguments-slope": 1,
-			"appendByteString-cpu-arguments-intercept": 1000,
-			"appendByteString-cpu-arguments-slope": 571,
-			"appendByteString-memory-arguments-intercept": 0,
-			"appendByteString-memory-arguments-slope": 1,
-			"appendString-cpu-arguments-intercept": 1000,
-			"appendString-cpu-arguments-slope": 24177,
-			"appendString-memory-arguments-intercept": 4,
-			"appendString-memory-arguments-slope": 1,
-			"bData-cpu-arguments": 1000,
-			"bData-memory-arguments": 32,
-			"blake2b_256-cpu-arguments-intercept": 117366,
-			"blake2b_256-cpu-arguments-slope": 10475,
-			"blake2b_256-memory-arguments": 4,
-			"cekApplyCost-exBudgetCPU": 23000,
-			"cekApplyCost-exBudgetMemory": 100,
-			"cekBuiltinCost-exBudgetCPU": 23000,
-			"cekBuiltinCost-exBudgetMemory": 100,
-			"cekConstCost-exBudgetCPU": 23000,
-			"cekConstCost-exBudgetMemory": 100,
-			"cekDelayCost-exBudgetCPU": 23000,
-			"cekDelayCost-exBudgetMemory": 100,
-			"cekForceCost-exBudgetCPU": 23000,
-			"cekForceCost-exBudgetMemory": 100,
-			"cekLamCost-exBudgetCPU": 23000,
-			"cekLamCost-exBudgetMemory": 100,
-			"cekStartupCost-exBudgetCPU": 100,
-			"cekStartupCost-exBudgetMemory": 100,
-			"cekVarCost-exBudgetCPU": 23000,
-			"cekVarCost-exBudgetMemory": 100,
-			"chooseData-cpu-arguments": 19537,
-			"chooseData-memory-arguments": 32,
-			"chooseList-cpu-arguments": 175354,
-			"chooseList-memory-arguments": 32,
-			"chooseUnit-cpu-arguments": 46417,
-			"chooseUnit-memory-arguments": 4,
-			"consByteString-cpu-arguments-intercept": 221973,
-			"consByteString-cpu-arguments-slope": 511,
-			"consByteString-memory-arguments-intercept": 0,
-			"consByteString-memory-arguments-slope": 1,
-			"constrData-cpu-arguments": 89141,
-			"constrData-memory-arguments": 32,
-			"decodeUtf8-cpu-arguments-intercept": 497525,
-			"decodeUtf8-cpu-arguments-slope": 14068,
-			"decodeUtf8-memory-arguments-intercept": 4,
-			"decodeUtf8-memory-arguments-slope": 2,
-			"divideInteger-cpu-arguments-constant": 196500,
-			"divideInteger-cpu-arguments-model-arguments-intercept": 453240,
-			"divideInteger-cpu-arguments-model-arguments-slope": 220,
-			"divideInteger-memory-arguments-intercept": 0,
-			"divideInteger-memory-arguments-minimum": 1,
-			"divideInteger-memory-arguments-slope": 1,
-			"encodeUtf8-cpu-arguments-intercept": 1000,
-			"encodeUtf8-cpu-arguments-slope": 28662,
-			"encodeUtf8-memory-arguments-intercept": 4,
-			"encodeUtf8-memory-arguments-slope": 2,
-			"equalsByteString-cpu-arguments-constant": 245000,
-			"equalsByteString-cpu-arguments-intercept": 216773,
-			"equalsByteString-cpu-arguments-slope": 62,
-			"equalsByteString-memory-arguments": 1,
-			"equalsData-cpu-arguments-intercept": 1060367,
-			"equalsData-cpu-arguments-slope": 12586,
-			"equalsData-memory-arguments": 1,
-			"equalsInteger-cpu-arguments-intercept": 208512,
-			"equalsInteger-cpu-arguments-slope": 421,
-			"equalsInteger-memory-arguments": 1,
-			"equalsString-cpu-arguments-constant": 187000,
-			"equalsString-cpu-arguments-intercept": 1000,
-			"equalsString-cpu-arguments-slope": 52998,
-			"equalsString-memory-arguments": 1,
-			"fstPair-cpu-arguments": 80436,
-			"fstPair-memory-arguments": 32,
-			"headList-cpu-arguments": 43249,
-			"headList-memory-arguments": 32,
-			"iData-cpu-arguments": 1000,
-			"iData-memory-arguments": 32,
-			"ifThenElse-cpu-arguments": 80556,
-			"ifThenElse-memory-arguments": 1,
-			"indexByteString-cpu-arguments": 57667,
-			"indexByteString-memory-arguments": 4,
-			"lengthOfByteString-cpu-arguments": 1000,
-			"lengthOfByteString-memory-arguments": 10,
-			"lessThanByteString-cpu-arguments-intercept": 197145,
-			"lessThanByteString-cpu-arguments-slope": 156,
-			"lessThanByteString-memory-arguments": 1,
-			"lessThanEqualsByteString-cpu-arguments-intercept": 197145,
-			"lessThanEqualsByteString-cpu-arguments-slope": 156,
-			"lessThanEqualsByteString-memory-arguments": 1,
-			"lessThanEqualsInteger-cpu-arguments-intercept": 204924,
-			"lessThanEqualsInteger-cpu-arguments-slope": 473,
-			"lessThanEqualsInteger-memory-arguments": 1,
-			"lessThanInteger-cpu-arguments-intercept": 208896,
-			"lessThanInteger-cpu-arguments-slope": 511,
-			"lessThanInteger-memory-arguments": 1,
-			"listData-cpu-arguments": 52467,
-			"listData-memory-arguments": 32,
-			"mapData-cpu-arguments": 64832,
-			"mapData-memory-arguments": 32,
-			"mkCons-cpu-arguments": 65493,
-			"mkCons-memory-arguments": 32,
-			"mkNilData-cpu-arguments": 22558,
-			"mkNilData-memory-arguments": 32,
-			"mkNilPairData-cpu-arguments": 16563,
-			"mkNilPairData-memory-arguments": 32,
-			"mkPairData-cpu-arguments": 76511,
-			"mkPairData-memory-arguments": 32,
-			"modInteger-cpu-arguments-constant": 196500,
-			"modInteger-cpu-arguments-model-arguments-intercept": 453240,
-			"modInteger-cpu-arguments-model-arguments-slope": 220,
-			"modInteger-memory-arguments-intercept": 0,
-			"modInteger-memory-arguments-minimum": 1,
-			"modInteger-memory-arguments-slope": 1,
-			"multiplyInteger-cpu-arguments-intercept": 69522,
-			"multiplyInteger-cpu-arguments-slope": 11687,
-			"multiplyInteger-memory-arguments-intercept": 0,
-			"multiplyInteger-memory-arguments-slope": 1,
-			"nullList-cpu-arguments": 60091,
-			"nullList-memory-arguments": 32,
-			"quotientInteger-cpu-arguments-constant": 196500,
-			"quotientInteger-cpu-arguments-model-arguments-intercept": 453240,
-			"quotientInteger-cpu-arguments-model-arguments-slope": 220,
-			"quotientInteger-memory-arguments-intercept": 0,
-			"quotientInteger-memory-arguments-minimum": 1,
-			"quotientInteger-memory-arguments-slope": 1,
-			"remainderInteger-cpu-arguments-constant": 196500,
-			"remainderInteger-cpu-arguments-model-arguments-intercept": 453240,
-			"remainderInteger-cpu-arguments-model-arguments-slope": 220,
-			"remainderInteger-memory-arguments-intercept": 0,
-			"remainderInteger-memory-arguments-minimum": 1,
-			"remainderInteger-memory-arguments-slope": 1,
-			"serialiseData-cpu-arguments-intercept": 1159724,
-			"serialiseData-cpu-arguments-slope": 392670,
-			"serialiseData-memory-arguments-intercept": 0,
-			"serialiseData-memory-arguments-slope": 2,
-			"sha2_256-cpu-arguments-intercept": 806990,
-			"sha2_256-cpu-arguments-slope": 30482,
-			"sha2_256-memory-arguments": 4,
-			"sha3_256-cpu-arguments-intercept": 1927926,
-			"sha3_256-cpu-arguments-slope": 82523,
-			"sha3_256-memory-arguments": 4,
-			"sliceByteString-cpu-arguments-intercept": 265318,
-			"sliceByteString-cpu-arguments-slope": 0,
-			"sliceByteString-memory-arguments-intercept": 4,
-			"sliceByteString-memory-arguments-slope": 0,
-			"sndPair-cpu-arguments": 85931,
-			"sndPair-memory-arguments": 32,
-			"subtractInteger-cpu-arguments-intercept": 205665,
-			"subtractInteger-cpu-arguments-slope": 812,
-			"subtractInteger-memory-arguments-intercept": 1,
-			"subtractInteger-memory-arguments-slope": 1,
-			"tailList-cpu-arguments": 41182,
-			"tailList-memory-arguments": 32,
-			"trace-cpu-arguments": 212342,
-			"trace-memory-arguments": 32,
-			"unBData-cpu-arguments": 31220,
-			"unBData-memory-arguments": 32,
-			"unConstrData-cpu-arguments": 32696,
-			"unConstrData-memory-arguments": 32,
-			"unIData-cpu-arguments": 43357,
-			"unIData-memory-arguments": 32,
-			"unListData-cpu-arguments": 32247,
-			"unListData-memory-arguments": 32,
-			"unMapData-cpu-arguments": 38314,
-			"unMapData-memory-arguments": 32,
-			"verifyEcdsaSecp256k1Signature-cpu-arguments": 20000000000,
-			"verifyEcdsaSecp256k1Signature-memory-arguments": 20000000000,
-			"verifyEd25519Signature-cpu-arguments-intercept": 9462713,
-			"verifyEd25519Signature-cpu-arguments-slope": 1021,
-			"verifyEd25519Signature-memory-arguments": 10,
-			"verifySchnorrSecp256k1Signature-cpu-arguments-intercept": 20000000000,
-			"verifySchnorrSecp256k1Signature-cpu-arguments-slope": 0,
-			"verifySchnorrSecp256k1Signature-memory-arguments": 20000000000
-		}
-	},
-	executionUnitPrices: {
-		priceMemory: 0.0577,
-		priceSteps: 0.0000721
-	},
-	maxBlockBodySize: 90112,
-	maxBlockExecutionUnits: {
-		memory: 62000000,
-		steps: 40000000000
-	},
-	maxBlockHeaderSize: 1100,
-	maxCollateralInputs: 3,
-	maxTxExecutionUnits: {
-		memory: 14000000,
-		steps: 10000000000
-	},
-	maxTxSize: 16384,
-	maxValueSize: 5000,
-	minPoolCost: 340000000,
-	monetaryExpansion: 0.003,
-	poolPledgeInfluence: 0.3,
-	poolRetireMaxEpoch: 18,
-	protocolVersion: {
-		major: 7,
-		minor: 0
-	},
-	stakeAddressDeposit: 2000000,
-	stakePoolDeposit: 500000000,
-	stakePoolTargetNum: 500,
-	treasuryCut: 0.2,
-	txFeeFixed: 155381,
-	txFeePerByte: 44,
-	utxoCostPerByte: 4310
-};
-var latestTip = {
-	epoch: 29,
-	hash: "0de380c16222470e4cf4f7cce8af9a7b54d63e5aa4228520df9f2d252a0efcb5",
-	slot: 11192926,
-	time: 1666876126000
-};
-var ppParams = {
-	shelleyGenesis: shelleyGenesis,
-	alonzoGenesis: alonzoGenesis,
-	latestParams: latestParams,
-	latestTip: latestTip
-};
-
-const preProdParams = ppParams;
-async function addTestContext(context, TestHelperClass, params) {
-  console.log(" ======== ========= ======== +test context");
-  Object.defineProperty(context, "strella", {
-    get: function() {
-      return this.h.strella;
-    }
-  });
-  context.initHelper = async (params2) => {
-    const helper = new TestHelperClass(params2);
-    if (context.h) {
-      if (!params2.skipSetup)
-        throw new Error(
-          `re-initializing shouldn't be necessary without skipSetup`
-        );
-      console.log(
-        "   ............. reinitializing test helper without setup"
-      );
-    }
-    context.h = helper;
-    return helper;
-  };
-  try {
-    await context.initHelper(params);
-  } catch (e) {
-    if (!params) {
-      console.error(
-        `${TestHelperClass.name}: error during initialization; does this test helper require initialization with explicit params?`
-      );
-      throw e;
-    } else {
-      console.error("urgh");
-      throw e;
-    }
-  }
-}
-const ADA = 1000000n;
-
-class StellarTestHelper {
-  state;
-  config;
-  defaultActor;
-  strella;
-  actors;
-  optimize = false;
-  liveSlotParams;
-  networkParams;
-  network;
-  actorName;
-  //@ts-ignore type mismatch in getter/setter until ts v5
-  get currentActor() {
-    return this.actors[this.actorName];
-  }
-  set currentActor(actorName) {
-    const thisActor = this.actors[actorName];
-    if (!thisActor)
-      throw new Error(
-        `setCurrentActor: invalid actor name '${actorName}'`
-      );
-    if (this.strella)
-      this.strella.myActor = thisActor;
-    this.actorName = actorName;
-  }
-  address;
-  setupPending;
-  setupActors() {
-    console.warn(
-      `using 'hiro' as default actor because ${this.constructor.name} doesn't define setupActors()`
-    );
-    this.addActor("hiro", 1863n * ADA);
-    this.currentActor = "hiro";
-  }
-  constructor(config) {
-    this.state = {};
-    if (config) {
-      console.log(
-        "XXXXXXXXXXXXXXXXXXXXXXXXXX test helper with config",
-        config
-      );
-      this.config = config;
-    }
-    const [theNetwork, emuParams] = this.mkNetwork();
-    this.liveSlotParams = emuParams;
-    this.network = theNetwork;
-    this.networkParams = new NetworkParams(preProdParams);
-    this.actors = {};
-    this.actorName = "";
-    this.setupActors();
-    if (!this.actorName)
-      throw new Error(
-        `${this.constructor.name} doesn't set currentActor in setupActors()`
-      );
-    const now = /* @__PURE__ */ new Date();
-    this.waitUntil(now);
-    if (config?.skipSetup) {
-      console.log("test helper skipping setup");
-      return;
-    }
-    this.setupPending = this.initialize(config);
-  }
-  async initialize(config) {
-    const { randomSeed, ...p } = config;
-    if (this.setupPending)
-      await this.setupPending;
-    if (this.strella && this.randomSeed == randomSeed) {
-      console.log(
-        "       ----- skipped duplicate setup() in test helper"
-      );
-      return this.strella;
-    }
-    if (this.strella) {
-      console.warn(
-        ".... warning: new test helper setup with new seed...."
-      );
-      this.rand = void 0;
-      this.randomSeed = randomSeed;
-    } else {
-      console.log(
-        " - Test helper bootstrapping (will emit details to onInstanceCreated())"
-      );
-    }
-    return this.initStellarClass();
-  }
-  initStellarClass() {
-    const TargetClass = this.stellarClass;
-    const strella = this.initStrella(TargetClass, this.config);
-    this.strella = strella;
-    this.address = strella.address;
-    return strella;
-  }
-  //!!! reconnect tests to tcx-based config-capture
-  // onInstanceCreated: async (config: ConfigFor<SC>) => {
-  //     this.config = config
-  //     return {
-  //         evidence: this,
-  //         id: "empheral",
-  //         scope: "unit test"
-  //     }
-  // }
-  initStrella(TargetClass, config) {
-    const setup = {
-      network: this.network,
-      myActor: this.currentActor,
-      networkParams: this.networkParams,
-      isTest: true
-    };
-    let cfg = {
-      setup,
-      config
-    };
-    if (!config)
-      cfg = {
-        setup,
-        partialConfig: {}
-      };
-    return new TargetClass(cfg);
-  }
-  //! it has a seed for mkRandomBytes, which must be set by caller
-  randomSeed;
-  //! it makes a rand() function based on the randomSeed after first call to mkRandomBytes
-  rand;
-  delay(ms) {
-    return new Promise((res) => setTimeout(res, ms));
-  }
-  async mkSeedUtxo(seedIndex = 0n) {
-    const { currentActor } = this;
-    const { network } = this;
-    const tx = new Tx();
-    const actorMoney = await currentActor.utxos;
-    console.log(
-      `${this.actorName} has money: 
-` + utxosAsString(actorMoney)
-    );
-    tx.addInput(
-      await findInputsInWallets(
-        new Value(30n * ADA),
-        { wallets: [currentActor] },
-        network
-      )
-    );
-    tx.addOutput(new TxOutput(currentActor.address, new Value(10n * ADA)));
-    tx.addOutput(new TxOutput(currentActor.address, new Value(10n * ADA)));
-    let si = 2;
-    for (; si < seedIndex; si++) {
-      tx.addOutput(
-        new TxOutput(currentActor.address, new Value(10n * ADA))
-      );
-    }
-    const txId = await this.submitTx(tx, "force");
-    return txId;
-  }
-  async submitTx(tx, force) {
-    const sendChangeToCurrentActor = this.currentActor.address;
-    const isAlreadyInitialized = !!this.strella;
-    try {
-      await tx.finalize(this.networkParams, sendChangeToCurrentActor);
-    } catch (e) {
-      throw new Error(
-        e.message + "\nin tx: " + txAsString(tx) + "\nprofile: " + tx.profileReport
-      );
-    }
-    if (isAlreadyInitialized && !force) {
-      throw new Error(
-        `helper is already initialized; use the submitTx from the testing-context's 'strella' object instead`
-      );
-    }
-    console.log(
-      `Test helper ${force || ""} submitting tx${force && "" || " prior to instantiateWithParams()"}:
-` + txAsString(tx)
-      // new Error(`at stack`).stack
-    );
-    try {
-      const txId = await this.network.submitTx(tx);
-      console.log("test helper submitted direct txn:" + txAsString(tx));
-      this.network.tick(1n);
-      return txId;
-    } catch (e) {
-      console.error(
-        `submit failed: ${e.message}
-  ... in tx ${txAsString(tx)}`
-      );
-      throw e;
-    }
-  }
-  mkRandomBytes(length) {
-    if (!this.randomSeed)
-      throw new Error(
-        `test must set context.randomSeed for deterministic randomness in tests`
-      );
-    if (!this.rand)
-      this.rand = Crypto.rand(this.randomSeed);
-    const bytes = [];
-    for (let i = 0; i < length; i++) {
-      bytes.push(Math.floor(this.rand() * 256));
-    }
-    return bytes;
-  }
-  addActor(roleName, walletBalance) {
-    if (this.actors[roleName])
-      throw new Error(`duplicate role name '${roleName}'`);
-    //! it instantiates a wallet with the indicated balance pre-set
-    const a = this.network.createWallet(walletBalance);
-    console.log(
-      `+\u{1F3AD} Actor: ${roleName}: ${a.address.toBech32().substring(0, 18)}\u2026 ${lovelaceToAda(
-        walletBalance
-      )} (\u{1F511}#${a.address.pubKeyHash?.hex.substring(0, 8)}\u2026)`
-    );
-    //! it makes collateral for each actor, above and beyond the initial balance,
-    this.network.tick(BigInt(2));
-    this.network.createUtxo(a, 5n * ADA);
-    this.network.tick(BigInt(1));
-    this.actors[roleName] = a;
-    return a;
-  }
-  mkNetwork() {
-    const theNetwork = new NetworkEmulator();
-    const emuParams = theNetwork.initNetworkParams({
-      ...preProdParams,
-      raw: { ...preProdParams }
-    });
-    return [theNetwork, emuParams];
-  }
-  slotToTimestamp(s) {
-    return this.networkParams.slotToTime(s);
-  }
-  currentSlot() {
-    return this.liveSlotParams.liveSlot;
-  }
-  waitUntil(time) {
-    const targetTimeMillis = BigInt(time.getTime());
-    const targetSlot = this.networkParams.timeToSlot(targetTimeMillis);
-    const c = this.currentSlot();
-    const slotsToWait = targetSlot - (c || 0n);
-    if (slotsToWait < 1) {
-      throw new Error(`the indicated time is not in the future`);
-    }
-    this.network.tick(slotsToWait);
-    return slotsToWait;
-  }
-}
-
-class CapoTestHelper extends StellarTestHelper {
-  async initialize({
-    randomSeed = 42,
-    config
-  } = {}) {
-    if (this.setupPending)
-      await this.setupPending;
-    if (this.strella && this.randomSeed == randomSeed) {
-      console.log(
-        "       ----- skipped duplicate setup() in test helper"
-      );
-      return this.strella;
-    }
-    if (this.strella)
-      console.log(
-        `  ---  new test helper setup with new seed (was ${this.randomSeed}, now ${randomSeed})...
-` + new Error("stack").stack.split("\n").slice(1).filter(
-          (line) => !line.match(/node_modules/) && !line.match(/node:internal/)
-        ).join("\n")
-      );
-    this.randomSeed = randomSeed;
-    this.state.mintedCharterToken = void 0;
-    //! when there's not a preset config, it leaves the detailed setup to be done just-in-time
-    if (!config)
-      return this.strella = this.initStrella(this.stellarClass);
-    const strella = this.initStrella(this.stellarClass, config);
-    this.strella = strella;
-    const { address, mintingPolicyHash: mph } = strella;
-    const { name } = strella.scriptProgram;
-    console.log(
-      name,
-      address.toBech32().substring(0, 18) + "\u2026",
-      "vHash \u{1F4DC} " + strella.compiledScript.validatorHash.hex.substring(0, 12) + "\u2026",
-      "mph \u{1F3E6} " + mph?.hex.substring(0, 12) + "\u2026"
-    );
-    return strella;
-  }
-  async bootstrap(args) {
-    let strella = this.strella || await this.initialize();
-    await this.mintCharterToken(args);
-    return strella;
-  }
-}
 
 const code$3 = 
 new String("spending Capo\n\n// needed in helios 0.13: defaults\nconst mph : MintingPolicyHash = MintingPolicyHash::new(#1234)\nconst rev : Int = 1\n\nimport {\n    tvCharter\n} from CapoHelpers\n\nimport { \n    RelativeDelegateLink,\n    requiresValidDelegateOutput\n} from CapoDelegateHelpers\n\nimport {\n    mkTv,\n    didSign,\n    didSignInCtx\n} from StellarHeliosHelpers\n\nimport { Datum, Activity } from specializedCapo\n\n/**\n * \n */\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{\n        govDelegateLink, _\n    } = datum;\n\n    requiresValidDelegateOutput(govDelegateLink, mph, ctx)\n}\n\nfunc getCharterOutput(tx: Tx) -> TxOutput {\n    charterTokenValue : Value = Value::new(\n        AssetClass::new(mph, \"charter\".encode_utf8()), \n        1\n    );\n    tx.outputs.find_safe(\n        (txo : TxOutput) -> Bool {\n            txo.value >= charterTokenValue\n        }\n    ).switch{\n        None => error(\"this could only happen if the charter token is burned.\"),\n        Some{o} => o\n    }\n}\n\nfunc notUpdatingCharter(activity: Activity) -> Bool { activity.switch {\n    updatingCharter => false,  \n    _ => true\n}}\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        actual : String = charterOutput.address.credential.switch{\n            PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n            Validator{vh} => \"val:📜#:\" + vh.show()\n        };\n        error(\n            \"charter token must be returned to the contract \" + cvh.show() +\n            \"... but was sent to \" +actual\n        )\n    };\n\n    Datum::CharterToken{\n        govDelegate,\n        mintDelegate\n    } = datum;\n    Datum::CharterToken{\n        newGovDelegate,\n        newMintDelegate\n    } = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newGovDelegate == govDelegate &&\n        newMintDelegate == mintDelegate\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    // now: Time = tx.time_range.start;\n    \n    allDatumSpecificChecks: Bool = datum.switch {\n        ctd : CharterToken => {\n            // throws if bad\n            if(notUpdatingCharter(activity)) { \n                preventCharterChange(ctx, ctd)\n            } else {\n                true // \"maybe\", really\n            }\n        },\n        _ => {\n            activity.switch {\n                spendingDatum => datum.validateSpend(ctx),\n                _ => true\n            }\n        }            \n    };\n    allActivitySpecificChecks : Bool = activity.switch {\n        updatingCharter => {\n            charterOutput : TxOutput = getCharterOutput(tx);\n            newDatum = Datum::from_data( \n                charterOutput.datum.get_inline_data() \n            );\n            Datum::CharterToken{govDelegate, mintDelegate} = newDatum;\n\n            requiresValidDelegateOutput(govDelegate, mph, ctx) &&\n            requiresValidDelegateOutput(mintDelegate, mph, ctx) &&\n            requiresAuthorization(ctx, datum)\n        },\n        usingAuthority => {\n            // by definition, we're truly notUpdatingCharter(activity) \n            datum.switch {\n                 // throws if bad\n                ctd : CharterToken => requiresAuthorization(ctx, ctd),\n                _ => error(\"wrong use of usingAuthority action for non-CharterToken datum\")\n            }\n        },\n        _ => activity.allowActivity(datum, ctx)\n    };\n\n    assert(allDatumSpecificChecks, \"datum-check fail\");\n    assert(allActivitySpecificChecks, \"redeeemer-check fail\");\n\n    //! retains mph in parameterization\n    assert(\n        ( allDatumSpecificChecks && allActivitySpecificChecks ) ||\n            // this should never execute (much less fail), yet it also shouldn't be optimized out.\n             mph.serialize() != datum.serialize(), \n        \"unreachable\"\n    ); \n\n    allDatumSpecificChecks && \n    allActivitySpecificChecks &&\n    tx.serialize() != datum.serialize()\n}\n");
@@ -54250,13 +56983,14 @@ class DefaultCapo extends Capo {
         address: {
           delegateClass: AnyAddressAuthorityPolicy,
           validateConfig(args) {
-            const { rev, tn } = args;
-            debugger;
+            const { rev, tn, addrHint } = args;
             const errors = {};
             if (!rev)
               errors.rev = ["required"];
             if (!tn?.length)
-              errors.tn = ["token-name required"];
+              errors.tn = ["(token-name) required"];
+            if (!addrHint?.length)
+              errors.addrHint = ["destination address required"];
             if (Object.keys(errors).length > 0)
               return errors;
             return void 0;
@@ -54289,7 +57023,7 @@ class DefaultCapo extends Capo {
       })
     });
   }
-  extractDelegateLink(dl) {
+  mkOnchainDelegateLink(dl) {
     const {
       RelativeDelegateLink: hlRelativeDelegateLink
     } = this.onChainTypes;
@@ -54315,8 +57049,8 @@ class DefaultCapo extends Capo {
     //!!! todo: make it possible to type these datum helpers more strongly
     console.log("--> mkDatumCharter", args);
     const { CharterToken: hlCharterToken } = this.onChainDatumType;
-    const govAuthority = this.extractDelegateLink(args.govAuthorityLink);
-    const mintDelegate = this.extractDelegateLink(args.mintDelegateLink);
+    const govAuthority = this.mkOnchainDelegateLink(args.govAuthorityLink);
+    const mintDelegate = this.mkOnchainDelegateLink(args.mintDelegateLink);
     const t = new hlCharterToken(govAuthority, mintDelegate);
     return Datum.inline(t._toUplcData());
   }
@@ -54364,7 +57098,7 @@ class DefaultCapo extends Capo {
   }
   async mkTxnCreatingUuts(initialTcx, uutPurposes, seedUtxo, roles) {
     const tcx = await super.mkTxnCreatingUuts(initialTcx, uutPurposes, seedUtxo, roles);
-    return this.txnAddMintAuthority(tcx);
+    return this.txnAddMintDelegate(tcx);
   }
   async getMintDelegate() {
     const charterDatum = await this.findCharterDatum();
@@ -54380,7 +57114,7 @@ class DefaultCapo extends Capo {
       charterDatum.govAuthorityLink
     );
   }
-  async txnAddMintAuthority(tcx) {
+  async txnAddMintDelegate(tcx) {
     const mintDelegate = await this.getMintDelegate();
     await mintDelegate.txnGrantAuthority(tcx);
     return tcx;
@@ -54619,82 +57353,5 @@ __decorateClass([
   txn
 ], DefaultCapo.prototype, "mkTxnUpdateCharter", 1);
 
-class DefaultCapoTestHelper extends CapoTestHelper {
-  static forCapoClass(s) {
-    class specificCapoHelper extends DefaultCapoTestHelper {
-      get stellarClass() {
-        return s;
-      }
-    }
-    return specificCapoHelper;
-  }
-  //@ts-expect-error
-  get stellarClass() {
-    return DefaultCapo;
-  }
-  //!!! todo: create type-safe ActorMap helper hasActors(), on same pattern as hasRequirements
-  setupActors() {
-    this.addActor("tina", 1100n * ADA);
-    this.addActor("tracy", 13n * ADA);
-    this.addActor("tom", 120n * ADA);
-    this.currentActor = "tina";
-  }
-  async mkCharterSpendTx() {
-    await this.mintCharterToken();
-    const treasury = this.strella;
-    const tcx = new StellarTxnContext();
-    const tcx2 = await treasury.txnAddGovAuthority(tcx);
-    return treasury.txnMustUseCharterUtxo(tcx2, treasury.usingAuthority());
-  }
-  mkDefaultCharterArgs() {
-    const addr = this.currentActor.address;
-    console.log("test helper charter -> actor addr", addr.toBech32());
-    return {
-      govAuthorityLink: {
-        strategyName: "address",
-        config: {
-          addrHint: [addr]
-        }
-      }
-      // mintDelegateLink: {
-      //     strategyName: "default",
-      // },
-    };
-  }
-  async mintCharterToken(args) {
-    this.actors;
-    if (this.state.mintedCharterToken) {
-      console.warn(
-        "reusing minted charter from existing testing-context"
-      );
-      return this.state.mintedCharterToken;
-    }
-    if (!this.strella)
-      await this.initialize();
-    const script = this.strella;
-    const goodArgs = args || this.mkDefaultCharterArgs();
-    const tcx = await script.mkTxnMintCharterToken(
-      goodArgs
-    );
-    this.state.config = tcx.state.bootstrappedConfig;
-    expect(script.network).toBe(this.network);
-    await script.submit(tcx);
-    console.log(`----- charter token minted at slot ${this.network.currentSlot}`);
-    this.network.tick(1n);
-    this.state.mintedCharterToken = tcx;
-    return tcx;
-  }
-  async updateCharter(args) {
-    await this.mintCharterToken();
-    const treasury = this.strella;
-    const { signers } = this.state;
-    const tcx = await treasury.mkTxnUpdateCharter(args);
-    return treasury.submit(tcx, { signers }).then(() => {
-      this.network.tick(1n);
-      return tcx;
-    });
-  }
-}
-
-export { ADA, Activity, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, Capo, CapoTestHelper, DefaultCapo, DefaultCapoTestHelper, DefaultMinter, StellarContract, StellarDelegate, StellarTestHelper, StellarTxnContext, UutName, addTestContext, assetsAsString, datum, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, heliosRollupLoader, lovelaceToAda, mkHeliosModule, mkUutValuesEntries, mkValuesEntry, partialTxn, stringToNumberArray, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString };
+export { Activity, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, Capo, DefaultCapo, DefaultMinter, StellarContract, StellarDelegate, StellarTxnContext, UutName, assetsAsString, datum, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, helios, heliosRollupLoader, lovelaceToAda, mkHeliosModule, mkUutValuesEntries, mkValuesEntry, partialTxn, stringToNumberArray, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString };
 //# sourceMappingURL=stellar-contracts.mjs.map

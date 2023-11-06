@@ -7,3 +7,6 @@ export const insufficientInputError =
 export type { StellarTestContext } from "./StellarTestContext.js";
 
 Error.stackTraceLimit = 100;
+
+export { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
+export { StellarTestHelper } from "./StellarTestHelper.js";

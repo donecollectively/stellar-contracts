@@ -268,19 +268,35 @@ export async function findInputsInWallets(
     );
 }
 
+/**
+ * standard setup for any Stellar Contract class
+ * @public
+ **/
 export type SetupDetails = {
     network: Network;
     networkParams: NetworkParams;
     isTest: boolean;
     myActor?: Wallet;
 };
+
+/**
+ * @public
+ * Extracts the config type for a Stellar Contract class
+ **/
 export type ConfigFor<
     SC extends StellarContract<C>,
     C extends configBase = SC extends StellarContract<infer inferredConfig>
         ? inferredConfig
         : never
 > = C;
-
+/**
+ * Initializes a stellar contract class
+ * @remarks
+ * 
+ * Includes network and other standard setup details, and any configuration needed
+ * for the specific class.
+ * @public
+ **/
 export type StellarConstructorArgs<CT extends configBase> = {
     setup: SetupDetails;
     config?: CT;

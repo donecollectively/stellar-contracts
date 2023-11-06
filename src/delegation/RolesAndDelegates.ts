@@ -67,6 +67,7 @@ export class DelegateConfigNeeded extends Error {
         options: {
             errors?: ErrorMap;
             availableStrategies?: string[];
+            errorRole? : string;
         }
     ) {
         super(message);

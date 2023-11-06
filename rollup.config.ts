@@ -2,6 +2,10 @@ import esbuild from "rollup-plugin-esbuild";
 import externals from "rollup-plugin-node-externals";
 import resolve from "@rollup/plugin-node-resolve";
 import json from "@rollup/plugin-json";
+// seems to have a bug that deletes one of the pnpm modules :/
+// import { apiExtractor } from "rollup-plugin-api-extractor";
+import execute from "rollup-plugin-shell";
+
 
 import { platformModulePaths } from "./rollup.lib.js";
 import sourcemaps from "rollup-plugin-sourcemaps";
@@ -63,6 +67,12 @@ export default [
                 tsconfig: "./tsconfig.json",                
                 target: ["node18" ],
             }),
+            execute([
+                "tsc && api-extractor run --local --verbose"
+            ])
+            // apiExtractor({
+            //     configFile: "./api-extractor.json",
+            //   }),        
         ],
         output: [
             {

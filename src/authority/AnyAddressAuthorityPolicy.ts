@@ -57,7 +57,7 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     async DelegateMustFindAuthorityToken(tcx: StellarTxnContext<any>, label: string): Promise<TxInput> {
         const v = this.tvAuthorityToken()
         const {addrHint} = this.configIn!
-        debugger;
+
         return this.mustFindActorUtxo(
             `${label}: ${bytesToText(this.configIn!.tn)}`,
             this.mkTokenPredicate(v),
@@ -80,13 +80,12 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         } else {
             if (!this.configIn?.addrHint?.[0])
                 throw new Error(
-                    `must be instantiated with a configIn having an addrHint`
+                    `missing addrHint`
                 );
             const {
                 addrHint,
                 // reqdAddress,  // removed
             } = this.configIn;
-            debugger
             dest = addrHint[0]
         }
 

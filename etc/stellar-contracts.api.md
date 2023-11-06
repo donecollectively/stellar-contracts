@@ -12,16 +12,13 @@ import { Datum } from '@hyperionbt/helios';
 import * as helios from '@hyperionbt/helios';
 import { MintingPolicyHash } from '@hyperionbt/helios';
 import { Network } from '@hyperionbt/helios';
-import { NetworkEmulator } from '@hyperionbt/helios';
 import { NetworkParams } from '@hyperionbt/helios';
 import { Program } from '@hyperionbt/helios';
 import { ReqtsMap as ReqtsMap_2 } from '../Requirements.js';
 import { ReqtsMap as ReqtsMap_3 } from './Requirements.js';
 import { RoleInfo as RoleInfo_2 } from './delegation/RolesAndDelegates.js';
-import { SimpleWallet } from '@hyperionbt/helios';
 import { StakeAddress } from '@hyperionbt/helios';
 import { StakingValidatorHash } from '@hyperionbt/helios';
-import { TestContext } from 'vitest';
 import { textToBytes } from '@hyperionbt/helios';
 import { Tx } from '@hyperionbt/helios';
 import { TxId } from '@hyperionbt/helios';
@@ -42,15 +39,7 @@ export const Activity: {
     redeemerData(proto: any, thingName: any, descriptor: any): any;
 };
 
-// @public
-export const ADA = 1000000n;
-
 export { Address }
-
-// Warning: (ae-forgotten-export) The symbol "stellarTestHelperSubclass" needs to be exported by the entry point index.d.ts
-//
-// @public
-export function addTestContext<SC extends StellarContract<any>, P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never>(context: StellarTestContext<any, SC>, TestHelperClass: stellarTestHelperSubclass<SC>, params?: P): Promise<void>;
 
 // @public
 export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
@@ -117,7 +106,6 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
 //
 // @public
 export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter, charterDatumType extends anyDatumArgs = anyDatumArgs, configType extends CapoBaseConfig = CapoBaseConfig> extends StellarContract<configType> implements hasUutCreator {
-    // Warning: (ae-forgotten-export) The symbol "StellarConstructorArgs" needs to be exported by the entry point index.d.ts
     constructor(args: StellarConstructorArgs<CapoBaseConfig>);
     // (undocumented)
     capoRequirements(): ReqtsMap_3<"is a base class for leader/Capo pattern" | "can create unique utility tokens" | "supports the Delegation pattern using roles and strategy-variants" | "supports well-typed role declarations and strategy-adding" | "supports just-in-time strategy-selection using txnCreateDelegateLink()" | "given a configured delegate-link, it can create a ready-to-use Stellar subclass with all the right settings" | "supports concrete resolution of existing role delegates" | "Each role uses a RoleVariants structure which can accept new variants" | "provides a Strategy type for binding a contract to a strategy-variant name">;
@@ -144,6 +132,8 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     };
     // (undocumented)
     importModules(): HeliosModuleSrc[];
+    // (undocumented)
+    get isConfigured(): boolean;
     // (undocumented)
     minter?: minterType;
     // Warning: (ae-forgotten-export) The symbol "BasicMinterParams" needs to be exported by the entry point index.d.ts
@@ -216,22 +206,7 @@ export type capoDelegateConfig = paramsBase & {
 };
 
 // @public
-export abstract class CapoTestHelper<SC extends Capo<DefaultMinter & MinterBaseMethods, CDT, CT>, CDT extends anyDatumArgs = SC extends Capo<DefaultMinter, infer iCDT> ? iCDT : anyDatumArgs, //prettier-ignore
-CT extends CapoBaseConfig = SC extends Capo<any, any, infer iCT> ? iCT : never> extends StellarTestHelper<SC> {
-    // Warning: (ae-forgotten-export) The symbol "MinimalDefaultCharterDatumArgs" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
-    bootstrap(args?: MinimalDefaultCharterDatumArgs): Promise<SC>;
-    // (undocumented)
-    initialize({ randomSeed, config, }?: {
-        config?: CT;
-        randomSeed?: number;
-    }): Promise<SC>;
-    // (undocumented)
-    abstract mintCharterToken(args?: MinimalDefaultCharterDatumArgs<any>): Promise<StellarTxnContext<any> & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & hasBootstrappedConfig<CapoBaseConfig>>;
-    // (undocumented)
-    abstract mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<any>>;
-}
+export type ConfigFor<SC extends StellarContract<C>, C extends paramsBase = SC extends StellarContract<infer inferredConfig> ? inferredConfig : never> = C;
 
 // @public
 export type ConfiguredDelegate<DT extends StellarDelegate<any>> = {
@@ -286,6 +261,7 @@ export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT e
     mkOnchainDelegateLink(dl: RelativeDelegateLink<any>): any;
     // (undocumented)
     mkTxnCreatingUuts<const purposes extends string, existingTcx extends StellarTxnContext<any>, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput | undefined, roles?: RM): Promise<existingTcx & hasUutContext<ROLES | purposes>>;
+    // Warning: (ae-forgotten-export) The symbol "MinimalDefaultCharterDatumArgs" needs to be exported by the entry point index.d.ts
     mkTxnMintCharterToken<TCX extends StellarTxnContext<any>>(charterDatumArgs: MinimalDefaultCharterDatumArgs<CDT>, existingTcx?: TCX): Promise<never | (TCX & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & hasBootstrappedConfig<CapoBaseConfig & configType>)>;
     // (undocumented)
     mkTxnUpdateCharter(args: CDT, tcx?: StellarTxnContext): Promise<StellarTxnContext>;
@@ -295,29 +271,9 @@ export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT e
     // (undocumented)
     txnAddGovAuthority<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX & StellarTxnContext<any>>;
     // (undocumented)
-    txnAddMintAuthority<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX>;
+    txnAddMintDelegate<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX>;
     // (undocumented)
     updatingCharter(): isActivity;
-}
-
-// @public
-export class DefaultCapoTestHelper<DC extends DefaultCapo<DefaultMinter, CDT, CT> = DefaultCapo, //prettier-ignore
-CDT extends DefaultCharterDatumArgs = DC extends Capo<DefaultMinter, infer iCDT> ? iCDT : DefaultCharterDatumArgs, //prettier-ignore
-CT extends CapoBaseConfig = DC extends Capo<any, any, infer iCT> ? iCT : never> extends CapoTestHelper<DC, CDT, CT> {
-    // (undocumented)
-    static forCapoClass<DC extends DefaultCapo<DefaultMinter, any, any>>(s: stellarSubclass<DC>): stellarTestHelperSubclass<DC>;
-    // (undocumented)
-    mintCharterToken(args?: MinimalDefaultCharterDatumArgs<CDT>): Promise<hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & StellarTxnContext<any> & hasBootstrappedConfig<CapoBaseConfig>>;
-    // (undocumented)
-    mkCharterSpendTx(): Promise<StellarTxnContext>;
-    // (undocumented)
-    mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<CDT>>;
-    // (undocumented)
-    setupActors(): void;
-    // (undocumented)
-    get stellarClass(): stellarSubclass<DC>;
-    // (undocumented)
-    updateCharter(args: CDT): Promise<StellarTxnContext>;
 }
 
 // @public
@@ -499,6 +455,13 @@ export { StakeAddress }
 
 export { StakingValidatorHash }
 
+// @public
+export type StellarConstructorArgs<CT extends paramsBase> = {
+    setup: SetupDetails;
+    config?: CT;
+    partialConfig?: Partial<CT>;
+};
+
 // @public (undocumented)
 export class StellarContract<ConfigType extends paramsBase> {
     constructor(args: StellarConstructorArgs<ConfigType>);
@@ -609,8 +572,6 @@ export class StellarContract<ConfigType extends paramsBase> {
     get scriptDatumName(): string;
     // (undocumented)
     scriptProgram?: Program;
-    // Warning: (ae-forgotten-export) The symbol "SetupDetails" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     setup: SetupDetails;
     // (undocumented)
@@ -670,86 +631,6 @@ export abstract class StellarDelegate<CT extends paramsBase & capoDelegateConfig
 export type stellarSubclass<S extends StellarContract<CT>, CT extends paramsBase = S extends StellarContract<infer iCT> ? iCT : paramsBase> = (new (args: StellarConstructorArgs<CT>) => S & StellarContract<CT>) & {
     defaultParams: Partial<CT>;
 };
-
-// Warning: (ae-forgotten-export) The symbol "canHaveRandomSeed" needs to be exported by the entry point index.d.ts
-//
-// @public
-export interface StellarTestContext<HTH extends StellarTestHelper<SC>, SC extends StellarContract<any> = HTH extends StellarTestHelper<infer iSC> ? iSC : never> extends canHaveRandomSeed, TestContext {
-    // (undocumented)
-    h: HTH;
-    // Warning: (ae-forgotten-export) The symbol "canSkipSetup" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
-    initHelper(config: Partial<ConfigFor<SC>> & canHaveRandomSeed & canSkipSetup): Promise<StellarTestHelper<SC>>;
-    // (undocumented)
-    get strella(): SC;
-}
-
-// @public
-export abstract class StellarTestHelper<SC extends StellarContract<any>> {
-    constructor(config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup);
-    // Warning: (ae-forgotten-export) The symbol "actorMap" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
-    actors: actorMap;
-    // (undocumented)
-    addActor(roleName: string, walletBalance: bigint): helios.SimpleWallet;
-    // (undocumented)
-    address?: Address;
-    // (undocumented)
-    config?: ConfigFor<SC>;
-    // (undocumented)
-    get currentActor(): SimpleWallet;
-    set currentActor(actorName: string);
-    // (undocumented)
-    currentSlot(): bigint | null;
-    // (undocumented)
-    defaultActor?: string;
-    // (undocumented)
-    delay(ms: any): Promise<unknown>;
-    // (undocumented)
-    initialize(config: ConfigFor<SC> & canHaveRandomSeed): Promise<SC>;
-    // (undocumented)
-    initStellarClass(): SC & StellarContract<SC extends StellarContract<infer inferredConfig extends paramsBase> ? inferredConfig : never>;
-    // (undocumented)
-    initStrella(TargetClass: stellarSubclass<SC, ConfigFor<SC>>, config?: ConfigFor<SC>): SC & StellarContract<SC extends StellarContract<infer inferredConfig extends paramsBase> ? inferredConfig : never>;
-    // (undocumented)
-    liveSlotParams: NetworkParams;
-    // Warning: (ae-forgotten-export) The symbol "enhancedNetworkParams" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
-    mkNetwork(): [NetworkEmulator, enhancedNetworkParams];
-    // (undocumented)
-    mkRandomBytes(length: number): number[];
-    // (undocumented)
-    mkSeedUtxo(seedIndex?: bigint): Promise<helios.TxId>;
-    // (undocumented)
-    network: NetworkEmulator;
-    // (undocumented)
-    networkParams: NetworkParams;
-    // (undocumented)
-    optimize: boolean;
-    // (undocumented)
-    rand?: () => number;
-    // (undocumented)
-    randomSeed?: number;
-    // (undocumented)
-    setupActors(): void;
-    // (undocumented)
-    setupPending?: Promise<any>;
-    // (undocumented)
-    slotToTimestamp(s: bigint): bigint | Date;
-    // (undocumented)
-    state: Record<string, any>;
-    // (undocumented)
-    abstract get stellarClass(): stellarSubclass<SC, any>;
-    // (undocumented)
-    strella: SC;
-    // (undocumented)
-    submitTx(tx: Tx, force?: "force"): Promise<TxId>;
-    // (undocumented)
-    waitUntil(time: Date): bigint;
-}
 
 // Warning: (ae-forgotten-export) The symbol "noState" needs to be exported by the entry point index.d.ts
 //
@@ -869,15 +750,17 @@ export type VariantStrategy<DT extends StellarContract<capoDelegateConfig & any>
     validateConfig?: (p: ConfigFor<DT>) => strategyValidation;
 };
 
+export { Wallet }
+
 // Warnings were encountered during analysis:
 //
 // src/DefaultCapo.ts:262:17 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
 // src/DefaultCapo.ts:266:3 - (ae-forgotten-export) The symbol "MultisigAuthorityPolicy" needs to be exported by the entry point index.d.ts
 // src/DefaultCapo.ts:267:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
-// src/DefaultCapo.ts:283:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
-// src/delegation/RolesAndDelegates.ts:294:5 - (ae-forgotten-export) The symbol "PartialParamConfig" needs to be exported by the entry point index.d.ts
-// src/delegation/RolesAndDelegates.ts:296:5 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
-// src/delegation/RolesAndDelegates.ts:339:5 - (ae-forgotten-export) The symbol "ConfigFor" needs to be exported by the entry point index.d.ts
+// src/DefaultCapo.ts:284:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
+// src/StellarContract.ts:301:5 - (ae-forgotten-export) The symbol "SetupDetails" needs to be exported by the entry point index.d.ts
+// src/delegation/RolesAndDelegates.ts:295:5 - (ae-forgotten-export) The symbol "PartialParamConfig" needs to be exported by the entry point index.d.ts
+// src/delegation/RolesAndDelegates.ts:297:5 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
 
 // (No @packageDocumentation comment for this package)
 

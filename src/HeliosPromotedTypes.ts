@@ -20,6 +20,7 @@ export type {
     Value,
     StakingValidatorHash,
     StakeAddress,
+    Wallet
 } from "@hyperionbt/helios";
 
 const DatumInline = Datum.inline;

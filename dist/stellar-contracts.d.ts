@@ -6,14 +6,13 @@ import { Datum } from '@hyperionbt/helios';
 import * as helios from '@hyperionbt/helios';
 import { MintingPolicyHash } from '@hyperionbt/helios';
 import { Network } from '@hyperionbt/helios';
-import { NetworkEmulator } from '@hyperionbt/helios';
 import { NetworkParams } from '@hyperionbt/helios';
 import { Program } from '@hyperionbt/helios';
 import { ReqtsMap as ReqtsMap_2 } from '../Requirements.js';
 import { ReqtsMap as ReqtsMap_3 } from './Requirements.js';
 import { RoleInfo as RoleInfo_2 } from './delegation/RolesAndDelegates.js';
-import { SimpleWallet } from '@hyperionbt/helios';
-import { TestContext } from 'vitest';
+import { StakeAddress } from '@hyperionbt/helios';
+import { StakingValidatorHash } from '@hyperionbt/helios';
 import { textToBytes } from '@hyperionbt/helios';
 import { Tx } from '@hyperionbt/helios';
 import { TxId } from '@hyperionbt/helios';
@@ -55,26 +54,9 @@ export declare const Activity: {
     redeemerData(proto: any, thingName: any, descriptor: any): any;
 };
 
-declare type actorMap = Record<string, SimpleWallet>;
-
-/**
- * 1 million as bigint.  Multiply by this ADA value to get lovelace
- * @public
- **/
-export declare const ADA = 1000000n;
-
 declare type addInputArgs = Parameters<Tx["addInput"]>;
 
-/**
- * Adds a test helper class to a `vitest` testing context.
- * @remarks
- *
- * @param context -  a vitest context, typically created with StellarTestContext
- * @param TestHelperClass - typically created with DefaultCapoTestHelper
- * @param params - preset configuration for the contract under test
- * @public
- **/
-export declare function addTestContext<SC extends StellarContract<any>, P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never>(context: StellarTestContext<any, SC>, TestHelperClass: stellarTestHelperSubclass<SC>, params?: P): Promise<void>;
+export { Address }
 
 /**
  * Token-based authority
@@ -176,15 +158,7 @@ declare type BasicMinterParams = SeedTxnParams & {
     capo: DefaultCapo<any, any, any>;
 };
 
-declare type canHaveRandomSeed = {
-    randomSeed?: number;
-};
-
 declare type canHaveToken = TxInput | TxOutput | Assets;
-
-declare type canSkipSetup = {
-    skipSetup?: true;
-};
 
 /**
  * Base class for the leader of a set of contracts
@@ -215,6 +189,7 @@ export declare abstract class Capo<minterType extends MinterBaseMethods & Defaul
     #private;
     abstract get delegateRoles(): RoleMap<any>;
     abstract mkFullConfig(baseConfig: CapoBaseConfig): configType;
+    get isConfigured(): boolean;
     constructor(args: StellarConstructorArgs<CapoBaseConfig>);
     abstract contractSource(): HeliosModuleSrc;
     abstract mkDatumCharterToken(args: charterDatumType): InlineDatum;
@@ -380,25 +355,10 @@ export declare type capoDelegateConfig = paramsBase & {
 };
 
 /**
- * Base class for test helpers for Capo contracts
- * @remarks
- *
- * Unless you have a custom Capo not based on DefaultCapo, you
- * should probably use DefaultCapoTestHelper instead of this class.
  * @public
+ * Extracts the config type for a Stellar Contract class
  **/
-export declare abstract class CapoTestHelper<SC extends Capo<DefaultMinter & MinterBaseMethods, CDT, CT>, CDT extends anyDatumArgs = SC extends Capo<DefaultMinter, infer iCDT> ? iCDT : anyDatumArgs, //prettier-ignore
-CT extends CapoBaseConfig = SC extends Capo<any, any, infer iCT> ? iCT : never> extends StellarTestHelper<SC> {
-    initialize({ randomSeed, config, }?: {
-        config?: CT;
-        randomSeed?: number;
-    }): Promise<SC>;
-    bootstrap(args?: MinimalDefaultCharterDatumArgs): Promise<SC>;
-    abstract mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<any>>;
-    abstract mintCharterToken(args?: MinimalDefaultCharterDatumArgs<any>): Promise<StellarTxnContext<any> & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & hasBootstrappedConfig<CapoBaseConfig>>;
-}
-
-declare type ConfigFor<SC extends StellarContract<C>, C extends paramsBase = SC extends StellarContract<infer inferredConfig> ? inferredConfig : never> = C;
+export declare type ConfigFor<SC extends StellarContract<C>, C extends paramsBase = SC extends StellarContract<infer inferredConfig> ? inferredConfig : never> = C;
 
 /**
  * A complete, validated and resolved configuration for a specific delegate
@@ -416,6 +376,8 @@ export declare type ConfiguredDelegate<DT extends StellarDelegate<any>> = {
     roleName: string;
     config: ConfigFor<DT>;
 } & RelativeDelegateLink<DT>;
+
+export { Datum }
 
 /**
  * Decorates datum-building functions
@@ -549,7 +511,7 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
         };
         }, "mintDgt", "default">;
     }>;
-    extractDelegateLink(dl: RelativeDelegateLink<any>): any;
+    mkOnchainDelegateLink(dl: RelativeDelegateLink<any>): any;
     mkDatumCharterToken(args: CDT): InlineDatum;
     findCharterDatum(): Promise<DefaultCharterDatumArgs>;
     txnAddGovAuthority<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX & StellarTxnContext<any>>;
@@ -573,7 +535,7 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
     mkTxnCreatingUuts<const purposes extends string, existingTcx extends StellarTxnContext<any>, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput | undefined, roles?: RM): Promise<existingTcx & hasUutContext<ROLES | purposes>>;
     getMintDelegate(): Promise<BasicMintDelegate>;
     getGovDelegate(): Promise<AuthorityPolicy<capoDelegateConfig_2>>;
-    txnAddMintAuthority<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX>;
+    txnAddMintDelegate<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX>;
     /**
      * {@inheritdoc Capo.mkTxnMintCharterToken}
      * @public
@@ -582,40 +544,6 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
     updatingCharter(): isActivity;
     mkTxnUpdateCharter(args: CDT, tcx?: StellarTxnContext): Promise<StellarTxnContext>;
     requirements(): ReqtsMap_3<"the trustee group can be changed" | "positively governs all administrative actions" | "has a unique, permanent charter token" | "has a unique, permanent treasury address" | "the trustee threshold is enforced on all administrative actions" | "the charter token is always kept in the contract" | "can mint other tokens, on the authority of the Charter token" | "has a singleton minting policy" | "foo">;
-}
-
-/**
- * Test helper for classes extending DefaultCapo
- * @remarks
- *
- * Arranges an test environment with predefined actor-names having various amounts of ADA in their (emulated) wallets,
- * and default helpers for setting up test scenarios.  Provides a simplified framework for testing Stellar contracts extending
- * the DefaultCapo class.
- *
- * To use it, you MUST extend DefaultCapoTestHelper<YourStellarCapoClass>.
- *
- * You MUST also implement a getter  for stellarClass, returning the specific class for YourStellarCapoClass
- *
- * You SHOULD also implement a setupActors method to arrange named actors for your test scenarios.
- * It's recommended to identify general roles of different people who will interact with the contract, and create
- * one or more actor names for each role, where the actor names start with the same letter as the role-names.
- * For example, a set of Trustees in a contract might have actor names tina, tracy and tom, while
- * unprivileged Public users might have actor names like pablo and peter.  setupActors() also
- * should pre-assign some ADA funds to each actor: e.g. `this.addActor(‹actorName›, 142n * ADA)`
- *
- * @typeParam DC - the specific DefaultCapo subclass under test
- * @public
- **/
-export declare class DefaultCapoTestHelper<DC extends DefaultCapo<DefaultMinter, CDT, CT> = DefaultCapo, //prettier-ignore
-CDT extends DefaultCharterDatumArgs = DC extends Capo<DefaultMinter, infer iCDT> ? iCDT : DefaultCharterDatumArgs, //prettier-ignore
-CT extends CapoBaseConfig = DC extends Capo<any, any, infer iCT> ? iCT : never> extends CapoTestHelper<DC, CDT, CT> {
-    static forCapoClass<DC extends DefaultCapo<DefaultMinter, any, any>>(s: stellarSubclass<DC>): stellarTestHelperSubclass<DC>;
-    get stellarClass(): stellarSubclass<DC>;
-    setupActors(): void;
-    mkCharterSpendTx(): Promise<StellarTxnContext>;
-    mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<CDT>>;
-    mintCharterToken(args?: MinimalDefaultCharterDatumArgs<CDT>): Promise<hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & StellarTxnContext<any> & hasBootstrappedConfig<CapoBaseConfig>>;
-    updateCharter(args: CDT): Promise<StellarTxnContext>;
 }
 
 /**
@@ -707,10 +635,6 @@ declare type DelegationDetail = {
  **/
 export declare function dumpAny(x: Tx | StellarTxnContext): string | undefined;
 
-declare type enhancedNetworkParams = NetworkParams & {
-    slotToTimestamp(n: bigint): Date;
-};
-
 /**
  * Reveals errors found during delegate selection
  * @remarks
@@ -789,6 +713,8 @@ declare interface hasUutCreator {
     txnWithUuts<const purposes extends string, existingTcx extends StellarTxnContext<any>, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo: TxInput, roles?: RM): Promise<existingTcx & hasUutContext<ROLES | purposes>>;
     mkTxnCreatingUuts<const purposes extends string, existingTcx extends StellarTxnContext<any>, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput, roles?: RM): Promise<existingTcx & hasUutContext<ROLES | purposes>>;
 }
+
+export { helios }
 
 /**
  * Properties for a Helios source file
@@ -1092,6 +1018,10 @@ export declare type SeedTxnParams = {
     seedIndex: bigint;
 };
 
+/**
+ * standard setup for any Stellar Contract class
+ * @public
+ **/
 declare type SetupDetails = {
     network: Network;
     networkParams: NetworkParams;
@@ -1099,7 +1029,19 @@ declare type SetupDetails = {
     myActor?: Wallet;
 };
 
-declare type StellarConstructorArgs<CT extends paramsBase> = {
+export { StakeAddress }
+
+export { StakingValidatorHash }
+
+/**
+ * Initializes a stellar contract class
+ * @remarks
+ *
+ * Includes network and other standard setup details, and any configuration needed
+ * for the specific class.
+ * @public
+ **/
+export declare type StellarConstructorArgs<CT extends paramsBase> = {
     setup: SetupDetails;
     config?: CT;
     partialConfig?: Partial<CT>;
@@ -1240,8 +1182,8 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     private get missingActorError();
     mustFindActorUtxo(name: string, predicate: (u: TxInput) => TxInput | undefined, exceptInTcx: StellarTxnContext<any>, extraErrorHint?: string): Promise<TxInput | never>;
     mustFindActorUtxo(name: string, predicate: (u: TxInput) => TxInput | undefined, extraErrorHint?: string): Promise<TxInput | never>;
-    mustFindMyUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, exceptInTcx: StellarTxnContext<any>, extraErrorHint?: string): Promise<TxInput | never>;
-    mustFindMyUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, extraErrorHint?: string): Promise<TxInput | never>;
+    mustFindMyUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, exceptInTcx: StellarTxnContext<any>, extraErrorHint?: string): Promise<TxInput>;
+    mustFindMyUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, extraErrorHint?: string): Promise<TxInput>;
     mustFindUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, { address, exceptInTcx, }: {
         address: Address;
         exceptInTcx?: StellarTxnContext<any>;
@@ -1482,60 +1424,6 @@ export declare type stellarSubclass<S extends StellarContract<CT>, CT extends pa
 };
 
 /**
- * Interface augmenting the generic vitest testing context with a convention for testing contracts created with Stellar Contracts.
- * @public
- **/
-export declare interface StellarTestContext<HTH extends StellarTestHelper<SC>, SC extends StellarContract<any> = HTH extends StellarTestHelper<infer iSC> ? iSC : never> extends canHaveRandomSeed, TestContext {
-    h: HTH;
-    get strella(): SC;
-    initHelper(config: Partial<ConfigFor<SC>> & canHaveRandomSeed & canSkipSetup): Promise<StellarTestHelper<SC>>;
-}
-
-/**
- * Base class for test-helpers on generic Stellar contracts
- * @remarks
- *
- * NOTE: DefaultCapoTestHelper is likely to be a better fit for typical testing needs and typical contract-development scenarios.
- * Use this class for specific unit-testing needs not sufficiently served by integration-testing on a Capo.
- * @public
- **/
-export declare abstract class StellarTestHelper<SC extends StellarContract<any>> {
-    state: Record<string, any>;
-    abstract get stellarClass(): stellarSubclass<SC, any>;
-    config?: ConfigFor<SC>;
-    defaultActor?: string;
-    strella: SC;
-    actors: actorMap;
-    optimize: boolean;
-    liveSlotParams: NetworkParams;
-    networkParams: NetworkParams;
-    network: NetworkEmulator;
-    private actorName;
-    get currentActor(): SimpleWallet;
-    set currentActor(actorName: string);
-    address?: Address;
-    setupPending?: Promise<any>;
-    setupActors(): void;
-    constructor(config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup);
-    initialize(config: ConfigFor<SC> & canHaveRandomSeed): Promise<SC>;
-    initStellarClass(): SC & StellarContract<SC extends StellarContract<infer inferredConfig extends paramsBase> ? inferredConfig : never>;
-    initStrella(TargetClass: stellarSubclass<SC, ConfigFor<SC>>, config?: ConfigFor<SC>): SC & StellarContract<SC extends StellarContract<infer inferredConfig extends paramsBase> ? inferredConfig : never>;
-    randomSeed?: number;
-    rand?: () => number;
-    delay(ms: any): Promise<unknown>;
-    mkSeedUtxo(seedIndex?: bigint): Promise<helios.TxId>;
-    submitTx(tx: Tx, force?: "force"): Promise<TxId>;
-    mkRandomBytes(length: number): number[];
-    addActor(roleName: string, walletBalance: bigint): helios.SimpleWallet;
-    mkNetwork(): [NetworkEmulator, enhancedNetworkParams];
-    slotToTimestamp(s: bigint): bigint | Date;
-    currentSlot(): bigint | null;
-    waitUntil(time: Date): bigint;
-}
-
-declare type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (config: ConfigFor<SC> & canHaveRandomSeed) => StellarTestHelper<SC>;
-
-/**
  * Transaction-building context for Stellar Contract transactions
  * @remarks
  *
@@ -1609,11 +1497,15 @@ declare type tokenPredicate<tokenBearer extends canHaveToken> = ((something: tok
     value: Value;
 };
 
+export { Tx }
+
 /**
  * Converts a Tx to printable form
  * @public
  **/
 export declare function txAsString(tx: Tx): string;
+
+export { TxInput }
 
 /**
  * Converts a TxInput to printable form
@@ -1632,6 +1524,8 @@ export declare function txInputAsString(x: TxInput, prefix?: string): string;
  * @public
  **/
 export declare function txn(proto: any, thingName: any, descriptor: any): any;
+
+export { TxOutput }
 
 /**
  * Converts a txOutput to printable form
@@ -1711,6 +1605,10 @@ export declare type uutPurposeMap<unionPurpose extends string> = {
     [purpose in unionPurpose]: UutName;
 };
 
+export { ValidatorHash }
+
+export { Value }
+
 /**
  * Converts a Value to printable form
  * @public
@@ -1737,5 +1635,7 @@ export declare type VariantStrategy<DT extends StellarContract<capoDelegateConfi
     partialConfig?: PartialParamConfig<ConfigFor<DT>>;
     validateConfig?: (p: ConfigFor<DT>) => strategyValidation;
 };
+
+export { Wallet }
 
 export { }

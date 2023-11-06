@@ -71,13 +71,10 @@ export type {
     utxoPredicate,
     anyDatumProps,
     configBase as paramsBase,
+    StellarConstructorArgs,
+    ConfigFor
 } from "./src/StellarContract.js";
 
-export { ADA, addTestContext } from "./src/testing/types.js";
-export type { StellarTestContext } from "./src/testing/StellarTestContext.js";
-export { CapoTestHelper } from "./src/testing/CapoTestHelper.js";
-export { DefaultCapoTestHelper } from "./src/testing/DefaultCapoTestHelper.js";
-export { StellarTestHelper } from "./src/testing/StellarTestHelper.js";
 
 export { DefaultMinter } from "./src/minting/DefaultMinter.js";
 export { DefaultCapo } from "./src/DefaultCapo.js";
@@ -96,6 +93,7 @@ export type {
     Value,
     StakingValidatorHash,
     StakeAddress,
+    Wallet
 } from "./src/HeliosPromotedTypes.js";
 
 

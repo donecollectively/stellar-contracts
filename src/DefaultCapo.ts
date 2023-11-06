@@ -261,11 +261,12 @@ export class DefaultCapo<
                 address: {
                     delegateClass: AnyAddressAuthorityPolicy,
                     validateConfig(args): strategyValidation {
-                        const { rev,tn } = args;
-                        debugger
+                        const { rev, tn, addrHint } = args;
+
                         const errors: ErrorMap = {};
                         if (!rev) errors.rev = ["required"];
-                        if (!tn?.length) errors.tn = ["token-name required"];
+                        if (!tn?.length) errors.tn = ["(token-name) required"];
+                        if (!addrHint?.length) errors.addrHint = ["destination address required"];
                         if (Object.keys(errors).length > 0) return errors;
 
                         return undefined;

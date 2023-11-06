@@ -212,7 +212,9 @@ export abstract class Capo<
 {
     abstract get delegateRoles(): RoleMap<any>;
     abstract mkFullConfig(baseConfig: CapoBaseConfig): configType;
-
+    get isConfigured() : boolean {
+        return !! this.configIn
+    }
     constructor(args: StellarConstructorArgs<CapoBaseConfig>) {
         //@ts-expect-error spurious "could be instantiated with a different subtype"
         super(args);
@@ -730,6 +732,7 @@ export abstract class Capo<
                 msg = `no selected or default delegate for role '${roleName}'.  Specify strategyName`;
             }
             const e = new DelegateConfigNeeded(msg, {
+                errorRole: roleName,
                 availableStrategies: Object.keys(foundStrategies.variants),
             });
             throw e;
@@ -746,7 +749,6 @@ export abstract class Capo<
             ...impliedDelegationDetails,
         } as unknown as ConfigFor<DT>;
 
-        debugger;
         //! it validates the net configuration so it can return a working config.
         const errors: ErrorMap | undefined =
             validateConfig && validateConfig(mergedConfig);
@@ -808,7 +810,7 @@ export abstract class Capo<
         delegateLink: RelativeDelegateLink<DelegateType>
     ): Promise<DelegateType> {
         const cache = this.#_delegateCache
-        debugger
+
         const cacheKey = JSON.stringify(delegateLink, delegateLinkSerializer, 4);
         // console.log(`   ----- delegate '${roleName}' cache key `, cacheKey);
         if(!cache[roleName]) cache[roleName] = {};
