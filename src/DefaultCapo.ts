@@ -297,7 +297,7 @@ export class DefaultCapo<
         });
     }
 
-    extractDelegateLink(dl: RelativeDelegateLink<any>) {
+    mkOnchainDelegateLink(dl: RelativeDelegateLink<any>) {
         const { 
             RelativeDelegateLink: hlRelativeDelegateLink 
         } = this.onChainTypes
@@ -330,8 +330,8 @@ export class DefaultCapo<
         console.log("--> mkDatumCharter", args);
         const {CharterToken: hlCharterToken} = this.onChainDatumType
 
-        const govAuthority = this.extractDelegateLink(args.govAuthorityLink);
-        const mintDelegate = this.extractDelegateLink(args.mintDelegateLink);
+        const govAuthority = this.mkOnchainDelegateLink(args.govAuthorityLink);
+        const mintDelegate = this.mkOnchainDelegateLink(args.mintDelegateLink);
         const t = new hlCharterToken(govAuthority, mintDelegate);
         return Datum.inline(t._toUplcData());
     }
@@ -401,7 +401,7 @@ export class DefaultCapo<
     ): Promise<existingTcx & hasUutContext<ROLES | purposes>> {
 
         const tcx = await super.mkTxnCreatingUuts(initialTcx, uutPurposes, seedUtxo, roles);
-        return this.txnAddMintAuthority(tcx)
+        return this.txnAddMintDelegate(tcx)
     }
 
     async getMintDelegate() {
@@ -420,7 +420,7 @@ export class DefaultCapo<
         );
     }
 
-    async txnAddMintAuthority<
+    async txnAddMintDelegate<
         TCX extends StellarTxnContext<any>
     >(tcx: TCX) : Promise<TCX> {
         const mintDelegate = await this.getMintDelegate()
