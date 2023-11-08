@@ -128,19 +128,15 @@ export class Vesting extends StellarContract<VestingParams> {
     requirements() {
         return {
             "can deposit with gradual maturation": {
-		// Principle: Code should make sense to a reader
                 purpose: "",
                 details: [
-                // descriptive details of the requirement (not the tech):
 			// 
 		],
                 mech: [
-                // descriptive details of the chosen mechanisms for implementing the reqts:
 			// a map : Date[] -> Amt[]
 			// parse a list of utxos
 		],
                 requires: [
-		// The vision for 'requires' is that it should link to another top-level reqts key.
 			"can claim as payee",
 			"Tx Rejected as payee",
 			"can retrieve as sponsor",
@@ -150,10 +146,8 @@ export class Vesting extends StellarContract<VestingParams> {
             mkTxnCancel: {
                 purpose: "can cancel vesting",
                 details: [
-                // descriptive details of the requirement (not the tech):
 		],
                 mech: [
-                // descriptive details of the chosen mechanisms for implementing the reqts:
 		],
                 requires: [
 			"can find the correct utxo",
@@ -165,10 +159,8 @@ export class Vesting extends StellarContract<VestingParams> {
             mkTxnClaim: {
                 purpose: "can claim vested funds",
                 details: [
-                // descriptive details of the requirement (not the tech):
 		],
                 mech: [
-                // descriptive details of the chosen mechanisms for implementing the reqts:
 		],
                 requires: [
 			"can find the correct utxo",
@@ -180,31 +172,15 @@ export class Vesting extends StellarContract<VestingParams> {
             mkDatum: {
                 purpose: "uses contract parameters to produce a serialized Datum",
                 details: [
-                // descriptive details of the requirement (not the tech):
 			// a Datum factory. Should provide convinient way to change Datum with changing reqts
 		],
                 mech: [
-                // descriptive details of the chosen mechanisms for implementing the reqts:
 
-// https://github.com/donecollectively/coco/blob/0370e87f4b9f1b6891935aebf9117224c61bb973/src/CommunityTreasury.ts#L120C28-L120C58
-//     const t = new this.configuredContract.types.Datum.CharterToken(
-//         trustees,
-//         minSigs
-//     );
-//     return Datum.inline(t._toUplcData());
-// }
-// https://github.com/donecollectively/coco/blob/0370e87f4b9f1b6891935aebf9117224c61bb973/src/CommunityTreasury.hl#L7-L9
-// enum Datum {
-//    CharterToken {
-//	    trustees: []Address
-//	    minSigs: Int
-//    }}
-// But I have:
-// struct Datum {
-//     creator: PubKeyHash
-//     beneficiary: PubKeyHash
-//     deadline: Time
-// }
+			// struct Datum {
+			//     creator: PubKeyHash
+			//     beneficiary: PubKeyHash
+			//     deadline: Time
+			// }
 		],
                 requires: [
 			"can find sponsor PubKeyHash",
