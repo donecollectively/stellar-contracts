@@ -6,8 +6,8 @@ settings:
 
 dependencies:
   '@hyperionbt/helios':
-    specifier: ^0.15.2
-    version: 0.15.2
+    specifier: ^0.15.11
+    version: 0.15.11
   semver:
     specifier: '>=7.5.2'
     version: 7.5.4
@@ -298,8 +298,8 @@ packages:
     dev: true
     optional: true
 
-  /@hyperionbt/helios@0.15.2:
-    resolution: {integrity: sha512-CKWJkC7ArWcTl53Xg6ICO/cUti76nXpijGlyOfKKb33osd0QegQfxRvF5xyjyLizcrJcPxhWbjyTRMBKVYwUiw==}
+  /@hyperionbt/helios@0.15.11:
+    resolution: {integrity: sha512-Dr48bPRTTsmrhlrtNFWg0HK6i59A2matsPrQimu3a6VhaAsXp1Sc3uYQGYyPJPa4eN72hxDC6QBCMnDOpqbBsA==}
     dev: false
 
   /@isaacs/cliui@8.0.2:

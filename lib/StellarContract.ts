@@ -16,10 +16,11 @@ import {
     Value,
     Wallet,
     extractScriptPurposeAndName,
+    Datum,
 } from "@hyperionbt/helios";
 import { StellarTxnContext } from "./StellarTxnContext.js";
-import { utxosAsString } from "./diagnostics.js";
-import { valuesEntry } from "./HeliosPromotedTypes.js";
+import { utxosAsString, valueAsString } from "./diagnostics.js";
+import { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer
@@ -42,9 +43,12 @@ export type utxoInfo = {
 
 export type stellarSubclass<
     S extends StellarContract<P>,
-    P extends paramsBase
-> = new (args: StellarConstructorArgs<S, P>) => S & StellarContract<P>;
+    P extends paramsBase = S extends StellarContract<infer SCP> ? SCP : paramsBase
+> = 
+& ( new (args: StellarConstructorArgs<S, P>) => S & StellarContract<P> )
+& { defaultParams: Partial<P> }
 
+export type anyDatumProps = Record<string, any>;
 export type paramsBase = Record<string, any>;
 
 export const Activity = {
@@ -206,6 +210,10 @@ export class StellarContract<
     _template?: Program;
     myActor?: Wallet;
 
+    static get defaultParams() {
+        return {}
+    }
+
     getContractParams(params) {
         return params;
     }
@@ -229,7 +237,9 @@ export class StellarContract<
 
         const simplify = !isTest;
         // const t = new Date().getTime();
-        console.warn(`----------------------------------------- simplify ${simplify}`);
+        if (simplify) {
+            console.warn(`Loading optimized contract code for `+this.configuredContract.name);
+        }
 
         this.compiledContract = configured.compile(simplify);
         // const t2 = new Date().getTime();
@@ -283,6 +293,34 @@ export class StellarContract<
 
     mkValuesEntry(tokenName: string, count: bigint): valuesEntry {
         return [this.stringToNumberArray(tokenName), count];
+    }
+
+    //! searches the network for utxos stored in the contract,
+    //  returning those whose datum hash is the same as the input datum
+    async outputsSentToDatum(datum: InlineDatum) {
+        const myUtxos = await this.network.getUtxos(this.address);
+
+        // const dump = utxosAsString(myUtxos)
+        // console.log({dump})
+        return myUtxos.filter((u) => {
+            return u.origOutput.datum.hash.hex == datum.hash.hex;
+        });
+    }
+
+    //! adds the values of the given TxInputs
+    totalValue(utxos: TxInput[]): Value {
+        return utxos.reduce((v: Value, u: TxInput) => {
+            return v.add(u.value);
+        }, new Value(0n));
+    }
+
+    //! adds the indicated Value to the transaction; 
+    //  ... EXPECTS  the value to already have minUtxo calculated on it.
+    @partialTxn // non-activity partial
+    txnKeepValue(tcx: StellarTxnContext, value: Value, datum: InlineDatum) {
+        tcx.addOutput(new TxOutput(this.address, value, datum));
+
+        return tcx;
     }
 
     addScriptWithParams<
@@ -345,6 +383,74 @@ export class StellarContract<
     //     return heldUtxos.filter(predicate);
     // }
 
+    async readDatum<DPROPS extends anyDatumProps>(datumName:string, datum:Datum | InlineDatum) : Promise<DPROPS> {
+        //@ts-expect-error until mainArgTypes is made public again
+        const thisDatumType = this.configuredContract.mainArgTypes.find(
+            (x) => "Datum" == x.name
+        )!.typeMembers[datumName];
+
+        if (!thisDatumType) throw new Error(`invalid datumName ${datumName}`);
+        if (!datum.isInline()) throw new Error(`datum must be an InlineDatum to be readable using readDatum()`);
+
+        const { fieldNames, instanceMembers } = thisDatumType as any;
+
+        // const heliosTypes = Object.fromEntries(
+        //     fieldNames.map((fn) => {
+        //         return [fn, instanceMembers[fn].name];
+        //     })
+        // );
+        // const inputTypes = Object.fromEntries(
+        //     fieldNames.map((fn) => {
+        //         return [fn, instanceMembers[fn].typeDetails.inputType];
+        //     })
+        // );
+        // const outputTypes = Object.fromEntries(
+        //     fieldNames.map((fn) => {
+        //         debugger
+        //         return [fn, instanceMembers[fn].typeDetails.outputType];
+        //     })
+        // );
+        const offChainTypes = Object.fromEntries(
+            fieldNames.map((fn) => {
+                return [fn, instanceMembers[fn].offChainType];
+            })
+        );
+        return Object.fromEntries(await Promise.all(
+            fieldNames.map(async (fn, i) => {
+                let current;
+                const uplcData = datum.data.fields[i];
+                const thisFieldType = instanceMembers[fn];
+                try {
+                    current = thisFieldType.uplcToJs(uplcData);
+                    if (current.then) current = await current;
+
+                    if ("Enum" === thisFieldType?.typeDetails?.internalType?.type && 0 === uplcData.fields.length) {
+                        current = Object.keys(current)[0]
+                    }
+                } catch (e: any) {
+                    if (
+                        e.message?.match(/doesn't support converting from Uplc/)
+                    ) {
+                        try {
+                            current = await offChainTypes[fn].fromUplcData(uplcData);
+                            if ("some" in current) current = current.some;
+                        } catch (e: any) {
+                            console.error(`datum: field ${fn}: ${e.message}`);
+                            // console.log({outputTypes, fieldNames, offChainTypes, inputTypes, heliosTypes, thisDatumType});
+                            debugger;
+                            throw e;
+                        }
+                    } else {
+                        throw e;
+                    }
+                }
+                return [fn, current];
+            })
+        )) as DPROPS;
+    }
+
+
+
     findSmallestUnusedUtxo(
         lovelace: bigint,
         utxos: TxInput[],
@@ -363,9 +469,11 @@ export class StellarContract<
             })
             .sort(this._utxoSortSmallerAndPureADA)
             .map(this._infoBackToUtxo)
+        console.log("smallest utxos: ", utxosAsString(found))
+        const chosen = found
             .at(0);
 
-        return found;
+        return chosen;
     }
 
     //! creates a filtering function, currently for TxInput-filtering only.
@@ -515,27 +623,29 @@ export class StellarContract<
         return o.value.ge(v);
     }
 
+    //! deprecated tokenAsValue - use Capo
     tokenAsValue(
         tokenName: string,
         quantity: bigint,
         mph?: MintingPolicyHash
     ): Value {
-        if (!mph) {
-            mph = (this as any).mph;
-            if (!mph)
-                throw new Error(
-                    `tokenAsValue: mph in arg3 required unless the stellar contract (${this.constructor.name}) has an 'mph' getter.`
-                );
-        }
+        throw new Error(`deprecated tokenAsValue on StellarContract base class (Capo has mph, not so much any StellarContract`)
+        // if (!mph) {
+        //     mph = (this as any).mph;
+        //     if (!mph)
+        //         throw new Error(
+        //             `tokenAsValue: mph in arg3 required unless the stellar contract (${this.constructor.name}) has an 'mph' getter.`
+        //         );
+        // }
 
-        const v = new Value(
-            this.ADA(0),
-            new Assets([[mph, [this.mkValuesEntry(tokenName, quantity)]]])
-        );
-        const o = new TxOutput(this.address, v);
-        v.setLovelace(o.calcMinLovelace(this.networkParams));
+        // const v = new Value(
+        //     this.ADA(0),
+        //     new Assets([[mph, [this.mkValuesEntry(tokenName, quantity)]]])
+        // );
+        // const o = new TxOutput(this.address, v);
+        // v.setLovelace(o.calcMinLovelace(this.networkParams));
 
-        return v;
+        // return v;
     }
 
     hasOnlyAda(value: Value, tcx: StellarTxnContext | undefined, u: TxInput) {
@@ -565,8 +675,8 @@ export class StellarContract<
             }
         }
         //! secondary: smaller utxos are more preferred than larger ones
-        if (free2 > free1) return 1;
-        if (free2 < free1) return -1;
+        if (free2 > free1) return -1;
+        if (free2 < free1) return 1;
         return 0;
     }
 
@@ -599,7 +709,7 @@ export class StellarContract<
         if (!this.myActor) throw this.missingActorError;
 
         const mightNeedFees = this.ADA(3.5);
-        
+
         const toSortInfo = this._mkUtxoSortInfo(mightNeedFees);
         const notReserved = tcx
             ? tcx.utxoNotReserved.bind(tcx)

@@ -1,6 +1,6 @@
 import { createFilter } from 'rollup-pluginutils';
 import * as helios from '@hyperionbt/helios';
-import { Address, Tx, Value, TxInput, TxOutput, Assets, MintingPolicyHash, Program, bytesToHex, Crypto, NetworkParams, NetworkEmulator, Datum } from '@hyperionbt/helios';
+import { Address, Tx, Value, TxOutput, TxInput, Assets, MintingPolicyHash, Program, bytesToHex, Crypto, NetworkParams, NetworkEmulator, Datum } from '@hyperionbt/helios';
 import { promises } from 'fs';
 import { expect } from 'vitest';
 
@@ -60,6 +60,7 @@ function txAsString(tx) {
     "inputs",
     "minted",
     "collateral",
+    "refInputs",
     "outputs",
     "fee",
     "lastValidSlot",
@@ -67,8 +68,7 @@ function txAsString(tx) {
     "metadataHash",
     "scriptDataHash",
     "signers",
-    "collateralReturn",
-    "refInputs"
+    "collateralReturn"
   ];
   const witnessAttrs = [
     "signatures",
@@ -93,6 +93,10 @@ function txAsString(tx) {
     if ("inputs" == x) {
       item = `
   ${item.map((x2) => txInputAsString(x2)).join("\n  ")}`;
+    }
+    if ("refInputs" == x) {
+      item = `
+  ${item.map((x2) => txInputAsString(x2, "\u2139\uFE0F  ")).join("\n  ")}`;
     }
     if ("collateral" == x) {
       //!!! todo: group collateral with inputs and reflect it being spent either way,
@@ -232,6 +236,7 @@ class StellarTxnContext {
   outputs;
   feeLimit;
   state;
+  selectedDelegates = {};
   constructor(state = {}) {
     this.tx = new Tx();
     this.inputs = [];
@@ -309,6 +314,17 @@ class StellarTxnContext {
   }
 }
 
+var __defProp$4 = Object.defineProperty;
+var __getOwnPropDesc$4 = Object.getOwnPropertyDescriptor;
+var __decorateClass$4 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$4(target, key) : target;
+  for (var i = decorators.length - 1, decorator; i >= 0; i--)
+    if (decorator = decorators[i])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result)
+    __defProp$4(target, key, result);
+  return result;
+};
 const Activity = {
   partialTxn(proto, thingName, descriptor) {
     needsActiveVerb(thingName);
@@ -415,6 +431,9 @@ class StellarContract {
   networkParams;
   _template;
   myActor;
+  static get defaultParams() {
+    return {};
+  }
   getContractParams(params) {
     return params;
   }
@@ -434,7 +453,9 @@ class StellarContract {
     const configured = this.configuredContract = this.contractTemplate();
     this.configuredContract.parameters = this.contractParams;
     const simplify = !isTest;
-    console.warn(`----------------------------------------- simplify ${simplify}`);
+    if (simplify) {
+      console.warn(`Loading optimized contract code for ` + this.configuredContract.name);
+    }
     this.compiledContract = configured.compile(simplify);
   }
   get datumType() {
@@ -470,6 +491,25 @@ class StellarContract {
   }
   mkValuesEntry(tokenName, count) {
     return [this.stringToNumberArray(tokenName), count];
+  }
+  //! searches the network for utxos stored in the contract,
+  //  returning those whose datum hash is the same as the input datum
+  async outputsSentToDatum(datum2) {
+    const myUtxos = await this.network.getUtxos(this.address);
+    return myUtxos.filter((u) => {
+      return u.origOutput.datum.hash.hex == datum2.hash.hex;
+    });
+  }
+  //! adds the values of the given TxInputs
+  totalValue(utxos) {
+    return utxos.reduce((v, u) => {
+      return v.add(u.value);
+    }, new Value(0n));
+  }
+  // non-activity partial
+  txnKeepValue(tcx, value, datum2) {
+    tcx.addOutput(new TxOutput(this.address, value, datum2));
+    return tcx;
   }
   addScriptWithParams(TargetClass, params) {
     const args = {
@@ -516,6 +556,51 @@ class StellarContract {
   //     console.log(`    - found ${heldUtxos.length} utxo:`);
   //     return heldUtxos.filter(predicate);
   // }
+  async readDatum(datumName, datum2) {
+    const thisDatumType = this.configuredContract.mainArgTypes.find(
+      (x) => "Datum" == x.name
+    ).typeMembers[datumName];
+    if (!thisDatumType)
+      throw new Error(`invalid datumName ${datumName}`);
+    if (!datum2.isInline())
+      throw new Error(`datum must be an InlineDatum to be readable using readDatum()`);
+    const { fieldNames, instanceMembers } = thisDatumType;
+    const offChainTypes = Object.fromEntries(
+      fieldNames.map((fn) => {
+        return [fn, instanceMembers[fn].offChainType];
+      })
+    );
+    return Object.fromEntries(await Promise.all(
+      fieldNames.map(async (fn, i) => {
+        let current;
+        const uplcData = datum2.data.fields[i];
+        const thisFieldType = instanceMembers[fn];
+        try {
+          current = thisFieldType.uplcToJs(uplcData);
+          if (current.then)
+            current = await current;
+          if ("Enum" === thisFieldType?.typeDetails?.internalType?.type && 0 === uplcData.fields.length) {
+            current = Object.keys(current)[0];
+          }
+        } catch (e) {
+          if (e.message?.match(/doesn't support converting from Uplc/)) {
+            try {
+              current = await offChainTypes[fn].fromUplcData(uplcData);
+              if ("some" in current)
+                current = current.some;
+            } catch (e2) {
+              console.error(`datum: field ${fn}: ${e2.message}`);
+              debugger;
+              throw e2;
+            }
+          } else {
+            throw e;
+          }
+        }
+        return [fn, current];
+      })
+    ));
+  }
   findSmallestUnusedUtxo(lovelace, utxos, tcx) {
     const value = new Value({ lovelace });
     const toSortInfo = this._mkUtxoSortInfo(value.lovelace);
@@ -523,8 +608,10 @@ class StellarContract {
       if (!tcx)
         return true;
       return !!tcx?.utxoNotReserved(uInfo.u);
-    }).sort(this._utxoSortSmallerAndPureADA).map(this._infoBackToUtxo).at(0);
-    return found;
+    }).sort(this._utxoSortSmallerAndPureADA).map(this._infoBackToUtxo);
+    console.log("smallest utxos: ", utxosAsString(found));
+    const chosen = found.at(0);
+    return chosen;
   }
   //! creates a filtering function, currently for TxInput-filtering only.
   //! with the optional tcx argument, utxo's already reserved
@@ -593,21 +680,9 @@ class StellarContract {
     const v = vOrMph instanceof MintingPolicyHash ? this.tokenAsValue(tokenName, quantity, vOrMph) : vOrMph;
     return o.value.ge(v);
   }
+  //! deprecated tokenAsValue - use Capo
   tokenAsValue(tokenName, quantity, mph) {
-    if (!mph) {
-      mph = this.mph;
-      if (!mph)
-        throw new Error(
-          `tokenAsValue: mph in arg3 required unless the stellar contract (${this.constructor.name}) has an 'mph' getter.`
-        );
-    }
-    const v = new Value(
-      this.ADA(0),
-      new Assets([[mph, [this.mkValuesEntry(tokenName, quantity)]]])
-    );
-    const o = new TxOutput(this.address, v);
-    v.setLovelace(o.calcMinLovelace(this.networkParams));
-    return v;
+    throw new Error(`deprecated tokenAsValue on StellarContract base class (Capo has mph, not so much any StellarContract`);
   }
   hasOnlyAda(value, tcx, u) {
     const toSortInfo = this._mkUtxoSortInfo(value.lovelace);
@@ -626,9 +701,9 @@ class StellarContract {
     }
     //! secondary: smaller utxos are more preferred than larger ones
     if (free2 > free1)
-      return 1;
-    if (free2 < free1)
       return -1;
+    if (free2 < free1)
+      return 1;
     return 0;
   }
   _utxoIsSufficient({ sufficient }) {
@@ -655,7 +730,8 @@ class StellarContract {
   async findAnySpareUtxos(tcx) {
     if (!this.myActor)
       throw this.missingActorError;
-    const toSortInfo = this._mkUtxoSortInfo(this.ADA(2), this.ADA(10));
+    const mightNeedFees = this.ADA(3.5);
+    const toSortInfo = this._mkUtxoSortInfo(mightNeedFees);
     const notReserved = tcx ? tcx.utxoNotReserved.bind(tcx) : (u) => u;
     return this.myActor.utxos.then((utxos) => {
       const allSpares = utxos.filter(notReserved).map(toSortInfo).filter(this._utxoIsSufficient).sort(this._utxoSortSmallerAndPureADA);
@@ -840,93 +916,104 @@ class StellarContract {
     return this.hasUtxo(name, predicate, { address: this.address });
   }
 }
+__decorateClass$4([
+  partialTxn
+], StellarContract.prototype, "txnKeepValue", 1);
 
-var contract$1 = "minting defaultMinter\n\nconst seedTxn : TxId = TxId::new(#1234)\nconst seedIndex : Int = 42\n\nimport { \n    hasSeedUtxo, \n    validateUUTminting\n} from CapoMintHelpers\n\nenum Redeemer { \n    mintingCharterToken {\n        owner: Address\n    }\n    mintingUUTs {\n        seedTxn: TxId\n        seedIndex: Int\n        //!!! todo: apply this everywhere else\n        purposes: []String\n    }\n}\n\nfunc hasContractSeedUtxo(tx: Tx) -> Bool {\n    hasSeedUtxo(tx, seedTxn, seedIndex, \"charter\")\n}\n\nfunc main(r : Redeemer, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    value_minted: Value = tx.minted;\n\n    charterToken: AssetClass = AssetClass::new(\n        mph,\n        \"charter\".encode_utf8()\n    );\n\n    ok : Bool = r.switch {\n        charter: mintingCharterToken => {       \n            assert(value_minted == Value::new(charterToken, 1), \"no charter token minted\");\n\n            hasContractSeedUtxo(tx) &&\n            tx.outputs.all( (output: TxOutput) -> Bool {\n                output.value != value_minted || (\n                    output.value == value_minted &&\n                    output.address == charter.owner\n                )\n            })\n        },\n\n        mintingUUTs{sTxId, sIdx, purposes} => validateUUTminting(ctx, sTxId, sIdx, purposes),\n        _ => true\n    };\n\n    print(\"defaultMinter: minting value: \" + value_minted.show());\n\n    ok\n}\n\n";
+var contract$2 = "minting defaultMinter\n\nconst seedTxn : TxId = TxId::new(#1234)\nconst seedIndex : Int = 42\n\nimport { \n    hasSeedUtxo, \n    validateUutMinting\n} from CapoMintHelpers\n\nenum Redeemer { \n    mintingCharterToken {\n        owner: Address\n    }\n    mintingUuts {\n        seedTxn: TxId\n        seedIndex: Int\n        //!!! todo: apply this everywhere else\n        purposes: []String\n    }\n}\n\nfunc hasContractSeedUtxo(tx: Tx) -> Bool {\n    hasSeedUtxo(tx, seedTxn, seedIndex, \"charter\")\n}\n\nfunc main(r : Redeemer, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    value_minted: Value = tx.minted;\n\n    charterToken: AssetClass = AssetClass::new(\n        mph,\n        \"charter\".encode_utf8()\n    );\n\n    ok : Bool = r.switch {\n        charter: mintingCharterToken => {       \n            assert(value_minted == Value::new(charterToken, 1), \"no charter token minted\");\n\n            hasContractSeedUtxo(tx) &&\n            tx.outputs.all( (output: TxOutput) -> Bool {\n                output.value != value_minted || (\n                    output.value == value_minted &&\n                    output.address == charter.owner\n                )\n            })\n        },\n\n        mintingUuts{sTxId, sIdx, purposes} => validateUutMinting(ctx, sTxId, sIdx, purposes),\n        _ => true\n    };\n\n    print(\"defaultMinter: minting value: \" + value_minted.show());\n\n    ok\n}\n\n";
 
-var cmh = "module CapoMintHelpers\n\n\nfunc hasSeedUtxo(tx: Tx, sTxId : TxId, sIdx: Int, reason: String) -> Bool {\n    seedUtxo: TxOutputId = TxOutputId::new(\n        sTxId,\n        sIdx\n    );\n    assert(tx.inputs.any( (input: TxInput) -> Bool {\n        input.output_id == seedUtxo\n    }),  \"seed utxo required for minting \"+reason);\n\n    true\n}\n\nfunc validateUUTminting(ctx: ScriptContext, sTxId : TxId, sIdx : Int, purposes: []String) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    value_minted: Value = tx.minted;\n    idxBytes : ByteArray = sIdx.bound_max(255).serialize();\n    // assert(idxBytes.length == 1, \"surprise!\");\n\n    //! yuck: un-CBOR...\n    rawTxId : ByteArray = sTxId.serialize().slice(5,37);\n\n    txoId : ByteArray = (rawTxId + \"@\".encode_utf8() + idxBytes);\n    assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // print( \"******** txoId \" + txoId.show());\n\n    miniHash : ByteArray = txoId.blake2b().slice(0,6);\n    assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    assetValues = Value::sum(purposes.map(\n        (purpose: String) -> Value {\n            assetName : ByteArray = (purpose + \".\" + miniHash.show()).encode_utf8();\n            assetClass : AssetClass = AssetClass::new(mph, assetName);\n\n            Value::new(assetClass, 1)\n        }\n    ));\n    expectedMint : Map[ByteArray]Int = assetValues.get_policy(mph);\n    actualMint : Map[ByteArray]Int = value_minted.get_policy(mph);\n\n    // print(\"redeemer\" + sTxId.show() + \" \" + sIdx.show() + \" asset \" + assetName.show());\n    // expectedMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"expected: \" + b.show() + \" \" + i.show() )\n    // });\n    temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {\n        l.find_safe((x : ByteArray) -> Bool { x == b }).switch{\n            None => l.prepend(b),\n            Some => error(\"UUT purposes not unique\")\n        }\n    }, []ByteArray{});\n    assert(temp == temp, \"prevent unused var\");\n\n    // actualMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"actual: \" + b.show() + \" \" + i.show() )\n    // });\n\n    assert(expectedMint == actualMint, \"bad UUT mint has mismatch;\"+ \n        \"\\n   ... expected \"+ assetValues.show()+\n        \"   ... actual \"+ value_minted.show()+\n        \"   ... diff = \" + (assetValues - value_minted).show()\n    );\n    hasSeedUtxo(tx, sTxId, sIdx, \"UUT \"+purposes.join(\"+\"))\n}";
+var cmh = "module CapoMintHelpers\n\n\nfunc hasSeedUtxo(tx: Tx, sTxId : TxId, sIdx: Int, reason: String) -> Bool {\n    seedUtxo: TxOutputId = TxOutputId::new(\n        sTxId,\n        sIdx\n    );\n    assert(tx.inputs.any( (input: TxInput) -> Bool {\n        input.output_id == seedUtxo\n    }),  \"seed utxo required for minting \"+reason);\n\n    true\n}\n\nfunc validateUutMinting(ctx: ScriptContext, sTxId : TxId, sIdx : Int, purposes: []String) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    value_minted: Value = tx.minted;\n    idxBytes : ByteArray = sIdx.bound_max(255).serialize();\n    // assert(idxBytes.length == 1, \"surprise!\");\n\n    //! yuck: un-CBOR...\n    rawTxId : ByteArray = sTxId.serialize().slice(5,37);\n\n    txoId : ByteArray = (rawTxId + \"@\".encode_utf8() + idxBytes);\n    assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // print( \"******** txoId \" + txoId.show());\n\n    miniHash : ByteArray = txoId.blake2b().slice(0,6);\n    assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    assetValues = Value::sum(purposes.sort((a:String, b:String) -> Bool { a == b }).map(\n        (purpose: String) -> Value {\n            assetName : ByteArray = (purpose + \".\" + miniHash.show()).encode_utf8();\n            assetClass : AssetClass = AssetClass::new(mph, assetName);\n\n            Value::new(assetClass, 1)\n        }\n    ));\n    expectedMint : Map[ByteArray]Int = assetValues.get_policy(mph);\n    actualMint : Map[ByteArray]Int = value_minted.get_policy(mph);\n\n    // print(\"redeemer\" + sTxId.show() + \" \" + sIdx.show() + \" asset \" + assetName.show());\n    // expectedMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"expected: \" + b.show() + \" \" + i.show() )\n    // });\n    temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {\n        l.find_safe((x : ByteArray) -> Bool { x == b }).switch{\n            None => l.prepend(b),\n            Some => error(\"UUT purposes not unique\")\n        }\n    }, []ByteArray{});\n    assert(temp == temp, \"prevent unused var\");\n\n    // actualMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"actual: \" + b.show() + \" \" + i.show() )\n    // });\n\n    assert(expectedMint == actualMint, \"bad UUT mint has mismatch;\"+ \n        \"\\n   ... expected \"+ assetValues.show()+\n        \"   ... actual \"+ value_minted.show()+\n        \"   ... diff = \" + (assetValues - value_minted).show()\n    );\n    hasSeedUtxo(tx, sTxId, sIdx, \"UUT \"+purposes.join(\"+\"))\n}";
 
 //! this file implements a workaround for a problem 
 const CapoMintHelpers = cmh;
 
-var __defProp$2 = Object.defineProperty;
-var __getOwnPropDesc$2 = Object.getOwnPropertyDescriptor;
-var __decorateClass$2 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$2(target, key) : target;
+var __defProp$3 = Object.defineProperty;
+var __getOwnPropDesc$3 = Object.getOwnPropertyDescriptor;
+var __decorateClass$3 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$3(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
   if (kind && result)
-    __defProp$2(target, key, result);
+    __defProp$3(target, key, result);
   return result;
 };
 class DefaultMinter extends StellarContract {
   contractSource() {
-    return contract$1;
+    return contract$2;
   }
   capoMinterHelpers() {
     return CapoMintHelpers;
   }
   importModules() {
-    return [
-      this.capoMinterHelpers()
-    ];
+    return [this.capoMinterHelpers()];
   }
-  async txnCreatingUUTs(tcx, purposes) {
+  async txnCreatingUuts(tcx, uutPurposes) {
     //!!! make it big enough to serve minUtxo for the new UUT
     const uutSeed = this.mkValuePredicate(BigInt(42e3), tcx);
     return this.mustFindActorUtxo(
-      `for-uut-${purposes.join("+")}`,
+      `for-uut-${uutPurposes.join("+")}`,
       uutSeed,
       tcx
     ).then(async (freeSeedUtxo) => {
       tcx.addInput(freeSeedUtxo);
-      const { txId, utxoIdx } = freeSeedUtxo;
+      const { txId, utxoIdx } = freeSeedUtxo.outputId;
       const { encodeBech32, blake2b, encodeBase32 } = Crypto;
-      const uutMap = Object.fromEntries(purposes.map((uutPurpose) => {
-        const txoId = txId.bytes.concat(["@".charCodeAt(0), utxoIdx]);
-        return [uutPurpose, `${uutPurpose}.${bytesToHex(blake2b(txoId).slice(0, 6))}`];
-      }));
+      const uutMap = Object.fromEntries(
+        uutPurposes.map((uutPurpose) => {
+          const txoId = txId.bytes.concat([
+            "@".charCodeAt(0),
+            utxoIdx
+          ]);
+          return [
+            uutPurpose,
+            `${uutPurpose}.${bytesToHex(
+              blake2b(txoId).slice(0, 6)
+            )}`
+          ];
+        })
+      );
       if (tcx.state.uuts)
         throw new Error(`uuts are already there`);
       tcx.state.uuts = uutMap;
-      const vEntries = this.mkUUTValuesEntries(uutMap);
-      const { txId: seedTxn, utxoIdx: seedIndex } = freeSeedUtxo;
+      const vEntries = this.mkUutValuesEntries(uutMap);
+      const { txId: seedTxn, utxoIdx: seedIndex } = freeSeedUtxo.outputId;
       return tcx.attachScript(this.compiledContract).mintTokens(
         this.mintingPolicyHash,
         vEntries,
-        this.mintingUUTs({
+        this.mintingUuts({
           seedTxn,
           seedIndex,
-          purposes
+          purposes: uutPurposes
         }).redeemer
       );
     });
   }
-  mkUUTValuesEntries(uutMap) {
-    return Object.entries(uutMap).map(
-      ([_purpose, assetName]) => {
-        return this.mkValuesEntry(assetName, BigInt(1));
-      }
-    );
+  mkUutValuesEntries(uutMap) {
+    return Object.entries(uutMap).map(([_purpose, assetName]) => {
+      return this.mkValuesEntry(assetName, BigInt(1));
+    });
   }
   //! overrides base getter type with undefined not being allowed
   get mintingPolicyHash() {
     return super.mintingPolicyHash;
   }
-  mintingCharterToken({ owner }) {
+  mintingCharterToken({
+    owner
+  }) {
     const t = new this.configuredContract.types.Redeemer.mintingCharterToken(
       owner
     );
     return { redeemer: t._toUplcData() };
   }
-  mintingUUTs({
+  mintingUuts({
     seedTxn,
     seedIndex: sIdx,
     purposes
   }) {
     const seedIndex = BigInt(sIdx);
     console.log("UUT redeemer seedTxn", seedTxn.hex);
-    const t = new this.configuredContract.types.Redeemer.mintingUUTs(
+    const t = new this.configuredContract.types.Redeemer.mintingUuts(
       seedTxn,
       seedIndex,
       purposes
@@ -945,7 +1032,9 @@ class DefaultMinter extends StellarContract {
     return v;
   }
   get charterTokenAsValue() {
-    console.warn("deprecated use of `get minter.charterTokenAsValue`; use tvCharter() instead");
+    console.warn(
+      "deprecated use of `get minter.charterTokenAsValue`; use tvCharter() instead"
+    );
     return this.tvCharter();
   }
   async txnMintingCharterToken(tcx, owner) {
@@ -957,31 +1046,46 @@ class DefaultMinter extends StellarContract {
     ).attachScript(this.compiledContract);
   }
 }
-__decorateClass$2([
+__decorateClass$3([
   Activity.partialTxn
-], DefaultMinter.prototype, "txnCreatingUUTs", 1);
-__decorateClass$2([
+], DefaultMinter.prototype, "txnCreatingUuts", 1);
+__decorateClass$3([
   Activity.redeemer
 ], DefaultMinter.prototype, "mintingCharterToken", 1);
-__decorateClass$2([
+__decorateClass$3([
   Activity.redeemer
-], DefaultMinter.prototype, "mintingUUTs", 1);
-__decorateClass$2([
+], DefaultMinter.prototype, "mintingUuts", 1);
+__decorateClass$3([
   Activity.partialTxn
 ], DefaultMinter.prototype, "txnMintingCharterToken", 1);
 
-var __defProp$1 = Object.defineProperty;
-var __getOwnPropDesc$1 = Object.getOwnPropertyDescriptor;
-var __decorateClass$1 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$1(target, key) : target;
+class DelegateConfigNeeded extends Error {
+  errors;
+  constructor(message, errors) {
+    super(message);
+    if (errors)
+      this.errors = errors;
+  }
+}
+function variantMap(vm) {
+  return vm;
+}
+
+var __defProp$2 = Object.defineProperty;
+var __getOwnPropDesc$2 = Object.getOwnPropertyDescriptor;
+var __decorateClass$2 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$2(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
   if (kind && result)
-    __defProp$1(target, key, result);
+    __defProp$2(target, key, result);
   return result;
 };
 class Capo extends StellarContract {
+  get roles() {
+    return {};
+  }
   constructor(args) {
     super(args);
     const { Datum: Datum2, Redeemer } = this.configuredContract.types;
@@ -1002,12 +1106,12 @@ class Capo extends StellarContract {
     return DefaultMinter;
   }
   minter;
-  async txnCreatingUUTs(tcx, uutPurposes) {
-    return this.minter.txnCreatingUUTs(tcx, uutPurposes);
+  txnCreatingUuts(tcx, uutPurposes) {
+    return this.minter.txnCreatingUuts(tcx, uutPurposes);
   }
   uutsValue(x) {
     const uutMap = x instanceof StellarTxnContext ? x.state.uuts : x;
-    const vEntries = this.minter.mkUUTValuesEntries(uutMap);
+    const vEntries = this.minter.mkUutValuesEntries(uutMap);
     return new Value(
       void 0,
       new Assets([[this.mintingPolicyHash, vEntries]])
@@ -1038,11 +1142,18 @@ class Capo extends StellarContract {
     return this.minter.tvCharter();
   }
   get charterTokenAsValue() {
-    console.warn("deprecated get charterTokenAsValue; use tvCharter() instead");
+    console.warn(
+      "deprecated get charterTokenAsValue; use tvCharter() instead"
+    );
     return this.tvCharter();
   }
   async mkTxnMintCharterToken(datumArgs, tcx = new StellarTxnContext()) {
-    console.log(`minting charter from seed ${this.paramsIn.seedTxn.hex.substring(0, 12)}\u2026@${this.paramsIn.seedIndex}`);
+    console.log(
+      `minting charter from seed ${this.paramsIn.seedTxn.hex.substring(
+        0,
+        12
+      )}\u2026@${this.paramsIn.seedIndex}`
+    );
     return this.mustGetContractSeedUtxo().then((seedUtxo) => {
       const v = this.tvCharter();
       const datum2 = this.mkDatumCharterToken(datumArgs);
@@ -1055,23 +1166,48 @@ class Capo extends StellarContract {
     const predicate = this.mkTokenPredicate(this.tvCharter());
     return predicate;
   }
+  //! forms a Value with minUtxo included
+  tokenAsValue(tokenName, quantity = 1n) {
+    const { mintingPolicyHash } = this;
+    const e = this.mkValuesEntry(tokenName, quantity);
+    const v = new Value(
+      this.ADA(0),
+      new Assets([[mintingPolicyHash, [e]]])
+    );
+    const t = new TxOutput(this.address, v);
+    const minLovelace = t.calcMinLovelace(this.networkParams);
+    v.setLovelace(minLovelace);
+    return v;
+  }
   async mustFindCharterUtxo() {
     const predicate = this.mkTokenPredicate(this.tvCharter());
-    return this.mustFindMyUtxo(
-      "charter",
-      predicate,
-      "has it been minted?"
-    );
+    return this.mustFindMyUtxo("charter", predicate, "has it been minted?");
   }
   // non-activity partial
-  async txnMustUseCharterUtxo(tcx, redeemer, newDatum) {
+  async txnMustUseCharterUtxo(tcx, redeemerOrRefInput, newDatumOrForceRefScript) {
     return this.mustFindCharterUtxo().then((ctUtxo) => {
-      tcx.addInput(
-        ctUtxo,
-        redeemer.redeemer
-      ).attachScript(this.compiledContract);
-      const datum2 = newDatum || ctUtxo.origOutput.datum;
-      this.txnKeepCharterToken(tcx, datum2);
+      if (true === redeemerOrRefInput) {
+        if (newDatumOrForceRefScript && true !== newDatumOrForceRefScript)
+          throw new Error(
+            `when using reference input for charter, arg3 can only be true (or may be omitted)`
+          );
+        tcx.tx.addRefInput(
+          ctUtxo,
+          newDatumOrForceRefScript ? this.compiledContract : void 0
+        );
+      } else {
+        const redeemer = redeemerOrRefInput;
+        const newDatum = newDatumOrForceRefScript;
+        if (true === newDatum)
+          throw new Error(
+            `wrong type for newDatum when not using reference input for charter`
+          );
+        tcx.addInput(ctUtxo, redeemer.redeemer).attachScript(
+          this.compiledContract
+        );
+        const datum2 = newDatum || ctUtxo.origOutput.datum;
+        this.txnKeepCharterToken(tcx, datum2);
+      }
       return tcx;
     });
   }
@@ -1081,9 +1217,7 @@ class Capo extends StellarContract {
   }
   // non-activity partial
   txnKeepCharterToken(tcx, datum2) {
-    tcx.addOutput(
-      new TxOutput(this.address, this.tvCharter(), datum2)
-    );
+    tcx.addOutput(new TxOutput(this.address, this.tvCharter(), datum2));
     return tcx;
   }
   async txnAddAuthority(tcx) {
@@ -1093,10 +1227,15 @@ class Capo extends StellarContract {
   getMinterParams() {
     return this.paramsIn;
   }
+  getCapoRev() {
+    return 1n;
+  }
   getContractParams(params) {
     const { mph } = this;
+    const rev = this.getCapoRev();
     return {
-      mph
+      mph,
+      rev
     };
   }
   get mph() {
@@ -1112,14 +1251,14 @@ class Capo extends StellarContract {
     const { minterClass } = this;
     this.paramsIn;
     const minter = this.addScriptWithParams(minterClass, params);
-    const { mintingCharterToken, mintingUUTs } = minter.configuredContract.types.Redeemer;
+    const { mintingCharterToken, mintingUuts } = minter.configuredContract.types.Redeemer;
     if (!mintingCharterToken)
       throw new Error(
         `minting script doesn't offer required 'mintingCharterToken' activity-redeemer`
       );
-    if (!mintingUUTs)
+    if (!mintingUuts)
       throw new Error(
-        `minting script doesn't offer required 'mintingUUTs' activity-redeemer`
+        `minting script doesn't offer required 'mintingUuts' activity-redeemer`
       );
     return this.minter = minter;
   }
@@ -1128,7 +1267,9 @@ class Capo extends StellarContract {
     //! prior to initial on-chain creation of contract,
     //! it finds that specific TxInput in the current user's wallet.
     const { seedTxn, seedIndex } = this.paramsIn;
-    console.log(`seeking seed txn ${seedTxn.hex.substring(0, 12)}\u2026@${seedIndex}`);
+    console.log(
+      `seeking seed txn ${seedTxn.hex.substring(0, 12)}\u2026@${seedIndex}`
+    );
     return this.mustFindActorUtxo(
       "seed",
       (u) => {
@@ -1139,6 +1280,59 @@ class Capo extends StellarContract {
       },
       "already spent?"
     );
+  }
+  withDelegates(delegates) {
+    const tcx = new StellarTxnContext();
+    tcx.selectedDelegates = delegates;
+    return tcx;
+  }
+  txnMustGetDelegate(tcx, roleName) {
+    const { selectedDelegates: d } = tcx;
+    let selected = d[roleName];
+    if (!selected) {
+      const role = this.roles[roleName];
+      if (role.default) {
+        selected = { strategyName: "default", addlParams: {} };
+      }
+    }
+    if (!selected)
+      throw new DelegateConfigNeeded(
+        `no delegate for role ${roleName} found in transaction-context or default`
+      );
+    const { strategyName, addlParams } = selected;
+    const { roles } = this;
+    const selectedStrategy = roles[roleName][strategyName];
+    const { delegateClass, validateScriptParams } = selectedStrategy;
+    const { defaultParams } = delegateClass;
+    const mergedParams = {
+      ...defaultParams,
+      ...selectedStrategy.scriptParams,
+      ...addlParams
+    };
+    const errors = validateScriptParams(mergedParams);
+    if (errors) {
+      throw new DelegateConfigNeeded(
+        "validation errors in contract params",
+        errors
+      );
+    }
+    try {
+      const configured = this.addScriptWithParams(
+        selectedStrategy.delegateClass,
+        mergedParams
+      );
+      return configured;
+    } catch (e) {
+      const t = e.message.match(/invalid parameter name '([^']+)'$/);
+      const [_, badParamName] = t || [];
+      if (badParamName) {
+        throw new DelegateConfigNeeded(
+          "configuration error while parameterizing contract script",
+          { [badParamName]: e.message }
+        );
+      }
+      throw e;
+    }
   }
   capoRequirements() {
     return {
@@ -1159,7 +1353,7 @@ class Capo extends StellarContract {
       "can create unique utility tokens": {
         purpose: "so the contract can use UUTs for scoped-authority semantics",
         details: [
-          "Building a txn with a UUT involves using the txnCreatingUUT partial-helper on the Capo.",
+          "Building a txn with a UUT involves using the txnCreatingUuts partial-helper on the Capo.",
           "That UUT (a Value) is returned, and then should be added to a TxOutput.",
           "Fills tcx.state.uuts with purpose-keyed unique token-names",
           "The partial-helper doesn't constrain the semantics of the UUT.",
@@ -1169,35 +1363,158 @@ class Capo extends StellarContract {
           "The UUT's token-name combines its textual purpose with a short hash ",
           "   ... of the seed UTxO, formatted with bech32"
         ]
+      },
+      "supports the Delegation pattern using roles and strategy-variants": {
+        purpose: "enables structured modularity and extensibility",
+        details: [
+          "A Capo constellation can declare a set of roles to be filled in the contract logic.",
+          "The roles are typed, so that implementers of extensibility can know ",
+          "  ... which capabilities their plugins need to provide",
+          "Each role should be filled by a StellarContract class, ",
+          "  ... which is required at the time it is needed during creation of a transaction.",
+          "Each role should normally provide a base implementation ",
+          "  ... of a delegate that can serve the role.",
+          "Strategies, strategy-variants, or simple 'variants' are all similar ways ",
+          "  ... of indicating different named plugins that can serve a particular role.",
+          "Variant-names are human-readable, while the actual code",
+          "  ... behind each variant name are the strategies"
+        ],
+        requires: [
+          "supports well-typed role declarations and strategy-adding",
+          "supports just-in-time strategy-selection",
+          "can concretely resolve role delegates"
+        ]
+      },
+      "supports well-typed role declarations and strategy-adding": {
+        purpose: "for plugin implementers to have a clear picture of what to implement",
+        details: [
+          "Each Capo class may declare a roles data structure.",
+          "GOAL: The required type for each role must be matched when adding a plugin class serving a role",
+          "A dApp using a Capo class can add strategy variants by subclassing"
+        ],
+        mech: [
+          "Capo EXPECTS a synchronous getter for 'roles' to be defined",
+          "Capo provides a default 'roles' having no specific roles (or maybe just minter - TBD)",
+          "Subclasses can define their own get roles(), return a role-map-to-variant-map structure"
+        ],
+        requires: [
+          "role definitions use a RoleMap and nested VariantMap data structure"
+        ]
+      },
+      "supports just-in-time strategy-selection using withDelegates() and txnMustGetDelegate()": {
+        purpose: "enabling each transaction to select appropriate plugins for its contextual needs",
+        details: [
+          "When a transaction having an extensibility-point is being created,",
+          "  ... it SHOULD require an explicit choice of the delegate to use in that role.",
+          "When a mkTxnDoesThings method creates a new role-delegated UTxO, ",
+          "  ... it sets essential configuration details for the delegation ",
+          "  ... and it requires the transaction-context to have delegation details.",
+          "The delegate contract, including its address and/or reference-script UTxO ",
+          "  ... and/or its parameters and its StellarContract class, MUST be captured ",
+          "  ... so that it can be easily resolved and used/referenced",
+          "  .... during a later transaction whose UTxO-spending is governed by the delegate contract.",
+          "When the delegate serving the role is selected, ",
+          "  ... that delegate will be manifested as a concrete pair of StellarContract subclass ",
+          "  ... and contract address.  The contract address MAY be pre-existing ",
+          "  ... or be instantiated as a result of the delegation details."
+        ],
+        mech: [
+          "withDelegates method starts a transaction with prepared delegate settings",
+          "txnMustGetDelegate(tcx, role) method retrieves a configured delegate",
+          "txnMustGetDelegate() will use a 'default' delegate",
+          "If there is no delegate configured (or defaulted) for the needed role, txnMustGetDelegate throws a DelegateConfigNeeded error.",
+          "If the strategy-configuration has any configuration problems, the DelegateConfigNeeded error contains an 'errors' object"
+        ]
+      },
+      "Each role uses a RoleVariants structure which can accept new variants": {
+        purpose: "provides a type-safe container for adding strategy-variants to a role",
+        details: [
+          "Adding a strategy variant requires a human-readable name for the variant",
+          "  ... and a reference to the StellarContract class implementing that variant.",
+          "Each variant may indicate a type for its configuration data-structure",
+          "  ... and may include a factory function accepting a data-structure of that type.",
+          "TBD: base configuration type?  Capo txn-builders supporting utxo-creation can provide baseline details of the base type, ",
+          "  ... with additional strategy-specific details provided in the transaction-context.",
+          "When adding strategies, existing variants cannot be removed or replaced."
+        ],
+        mech: [
+          "RoleVariants has type-parameters indicating the baseline types & interfaces for delegates in that role",
+          "TODO: variants can augment the definedRoles object without removing or replacing any existing variant"
+        ],
+        requires: [
+          "provides a Strategy type for binding a contract to a strategy-variant name"
+        ]
+      },
+      "provides a Strategy type for binding a contract to a strategy-variant name": {
+        purpose: "has all the strategy-specific bindings between a variant and the contract delegate",
+        details: [
+          "When adding a contract as a delegate serving in a role, its name",
+          "  ... and its Strategy binding creates the connection between the host contract (suite) ",
+          "  ... and the StellarContract subclass implementing the details of the strategy.",
+          "The Strategy and its underlying contract are type-matched",
+          "  ... with the interface needed by the Role.",
+          "The Strategy is a well-typed structure supporting ",
+          "  ... any strategy-specific configuration details (script parameters)",
+          "  ... and validation of script parameters"
+        ],
+        mech: [
+          "Each strategy must reference a type-matched implementation class",
+          "Each strategy may define scriptParams always used for that strategy",
+          "Each strategy may defer the definition of other script-params to be defined when a specific delegation relationship is being created",
+          "Each strategy must define a validateScriptParams(allScriptParams) function, returning an errors object if there are problems",
+          "validateScriptParams() should return undefined if there are no problems"
+        ],
+        requires: [
+          "supports concrete resolution of role delegates"
+        ]
+      },
+      "supports concrete resolution of existing role delegates": {
+        purpose: "so that transactions involving delegated responsibilities can be executed",
+        details: [
+          "When a transaction needs to involve a UTxO governed by a delegate contract",
+          "   ... the need for that delegate contract is signalled through Capo callbacks ",
+          "   ... during the transaction-building process.",
+          "Those callbacks contain key information, such as role-name, parameters, and address",
+          "  ... needed in the collaboration to find the correct concrete delegate.",
+          "Once the delegate is resolved to a configured StellarContract class, ",
+          "   ... its established transaction-building interface is triggered, ",
+          "   ... augmenting the transaction with the correct details, ",
+          "   ... and enabling the right on-chain behaviors / verifications",
+          "The Strategy adapter is expected to return the proper delegate with its matching address."
+        ],
+        mech: [
+          "TODO: with an existing delegate, the selected strategy class MUST exactly match the known delegate-address"
+        ]
       }
     };
   }
 }
-__decorateClass$1([
+__decorateClass$2([
   Activity.partialTxn
-], Capo.prototype, "txnCreatingUUTs", 1);
-__decorateClass$1([
+], Capo.prototype, "txnCreatingUuts", 1);
+__decorateClass$2([
   Activity.redeemer
 ], Capo.prototype, "usingAuthority", 1);
-__decorateClass$1([
+__decorateClass$2([
   Activity.redeemer
 ], Capo.prototype, "updatingCharter", 1);
-__decorateClass$1([
+__decorateClass$2([
   txn
 ], Capo.prototype, "mkTxnMintCharterToken", 1);
-__decorateClass$1([
+__decorateClass$2([
   partialTxn
 ], Capo.prototype, "txnMustUseCharterUtxo", 1);
-__decorateClass$1([
+__decorateClass$2([
   partialTxn
 ], Capo.prototype, "txnUpdateCharterUtxo", 1);
-__decorateClass$1([
+__decorateClass$2([
   partialTxn
 ], Capo.prototype, "txnKeepCharterToken", 1);
-__decorateClass$1([
+__decorateClass$2([
   partialTxn
 ], Capo.prototype, "txnAddAuthority", 1);
 
+helios.config.set({ EXPERIMENTAL_CEK: true });
 const preProdParams = JSON.parse(
   await promises.readFile("./src/preprod.json", "utf8")
 );
@@ -1238,6 +1555,7 @@ async function addTestContext(context, TestHelperClass, params) {
 }
 class StellarTestHelper {
   state;
+  params;
   defaultActor;
   strella;
   actors;
@@ -1271,6 +1589,8 @@ class StellarTestHelper {
   }
   constructor(params) {
     this.state = {};
+    if (params)
+      this.params = params;
     const [theNetwork, emuParams] = this.mkNetwork();
     this.liveSlotParams = emuParams;
     this.network = theNetwork;
@@ -1309,20 +1629,23 @@ class StellarTestHelper {
       this.rand = void 0;
       this.randomSeed = randomSeed;
     }
-    return this.initStrella(p);
+    return this.initStellarClass();
   }
-  initStrella(params) {
+  initStellarClass() {
     const TargetClass = this.stellarClass;
-    const strella = new TargetClass({
+    const strella = this.initStrella(TargetClass, this.params);
+    this.strella = strella;
+    this.address = strella.address;
+    return strella;
+  }
+  initStrella(TargetClass, params) {
+    return new TargetClass({
       params,
       network: this.network,
       myActor: this.currentActor,
       networkParams: this.networkParams,
       isTest: true
     });
-    this.strella = strella;
-    this.address = strella.address;
-    return strella;
   }
   //! it has a seed for mkRandomBytes, which must be set by caller
   randomSeed;
@@ -1364,11 +1687,13 @@ class StellarTestHelper {
     try {
       await tx.finalize(this.networkParams, sendChangeToCurrentActor);
     } catch (e) {
-      throw new Error(e.message + "\nin tx: " + txAsString(tx));
+      throw new Error(
+        e.message + "\nin tx: " + txAsString(tx) + "\nprofile: " + tx.profileReport
+      );
     }
     if (isAlreadyInitialized && !force) {
       throw new Error(
-        `use the submitTx from the testing-context's 'strella' object instead`
+        `helper is already initialized; use the submitTx from the testing-context's 'strella' object instead`
       );
     }
     console.log(
@@ -1376,9 +1701,16 @@ class StellarTestHelper {
 ` + txAsString(tx)
       // new Error(`at stack`).stack
     );
-    const txId = await this.network.submitTx(tx);
-    this.network.tick(1n);
-    return txId;
+    try {
+      const txId = await this.network.submitTx(tx);
+      console.log("test helper submitted direct txn:" + txAsString(tx));
+      this.network.tick(1n);
+      return txId;
+    } catch (e) {
+      console.error(`submit failed: ${e.message}
+  ... in tx ${txAsString(tx)}`);
+      throw e;
+    }
   }
   mkRandomBytes(length) {
     if (!this.randomSeed)
@@ -1464,19 +1796,20 @@ class StellarCapoTestHelper extends StellarTestHelper {
     if (!seedTxn) {
       seedTxn = await this.mkSeedUtxo(seedIndex);
     }
-    const script = this.initStrella({
+    const strella = this.initStrella(this.stellarClass, {
       seedTxn,
       seedIndex
     });
-    const { address, mintingPolicyHash: mph } = script;
-    const { name } = script.configuredContract;
+    this.strella = strella;
+    const { address, mintingPolicyHash: mph } = strella;
+    const { name } = strella.configuredContract;
     console.log(
       name,
       address.toBech32().substring(0, 18) + "\u2026",
-      "vHash \u{1F4DC} " + script.compiledContract.validatorHash.hex.substring(0, 12) + "\u2026",
+      "vHash \u{1F4DC} " + strella.compiledContract.validatorHash.hex.substring(0, 12) + "\u2026",
       "mph \u{1F3E6} " + mph?.hex.substring(0, 12) + "\u2026"
     );
-    return script;
+    return strella;
   }
   async mintCharterToken(args) {
     const { tina, tom, tracy } = this.actors;
@@ -1502,7 +1835,50 @@ class StellarCapoTestHelper extends StellarTestHelper {
 }
 const ADA = 1000000n;
 
-var contract = "spending SampleTreasury\n\n// needed in helios 0.13: defaults\nconst mph : MintingPolicyHash = MintingPolicyHash::new(#1234)\n\nenum Datum {\n    CharterToken {\n        trustees: []Address\n        minSigs: Int\n    }\n}\n\nenum Redeemer {\n    mintingOriginalCharter\n    updatingCharter{\n        trustees: []Address\n        minSigs: Int\n    }\n    usingAuthority\n}\n\nfunc didSign(ctx : ScriptContext, a: Address) -> Bool {\n    tx : Tx = ctx.tx;\n\n    pkh : PubKeyHash = a.credential.switch{\n        PubKey{h} => h,\n        _ => error(\"trustee can't be a contract\")\n    };\n    // print(\"checking if trustee signed: \" + pkh.show());\n\n    tx.is_signed_by(pkh)\n}\nfunc didSignInCtx(ctx: ScriptContext) -> (a: Address) -> Bool {\n    (a : Address) -> Bool {\n        didSign(ctx, a)\n    }\n}\n\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{trustees, minSigs} = datum;\n\n    foundSigs: Int = trustees.fold[Int](\n        (count: Int, a: Address) -> Int {            \n            count + if (didSign(ctx, a)) {1} else {0}\n        }, 0\n    );\n    assert(foundSigs >= minSigs, \n        \"not enough trustees (\"+foundSigs.show()+ \" of \" + minSigs.show() + \" needed) have signed the tx\" \n    );\n\n    true\n}\n\nfunc getCharterOutput(tx: Tx) -> TxOutput {\n    charterTokenValue : Value = Value::new(\n        AssetClass::new(mph, \"charter\".encode_utf8()), \n        1\n    );\n    tx.outputs.find_safe(\n        (txo : TxOutput) -> Bool {\n            txo.value >= charterTokenValue\n        }\n    ).switch{\n        None => error(\"this could only happen if the charter token is burned.\"),\n        Some{o} => o\n    }\n}\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        actual : String = charterOutput.address.credential.switch{\n            PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n            Validator{vh} => \"val:📜#:\" + vh.show()\n        };\n        error(\n            \"charter token must be returned to the contract \" + cvh.show() +\n            \"... but was sent to \" +actual\n        )\n    };\n\n    Datum::CharterToken{trustees, minSigs} = datum;\n    Datum::CharterToken{newTrustees, newMinSigs} = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newTrustees == trustees &&\n        newMinSigs == minSigs\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\nfunc requiresValidMinSigs(datum: Datum) -> Bool {\n    Datum::CharterToken{trustees, minSigs} = datum;\n\n    assert(\n        minSigs <= trustees.length,\n        \"minSigs can't be more than the size of the trustee-list\"\n    );\n\n    true\n}\n\nfunc requiresProofOfNewTrustees(\n    ctx: ScriptContext,\n    datum: Datum\n) -> Bool {\n    Datum::CharterToken{newTrustees, _} = datum;\n\n    assert(\n        newTrustees.all(didSignInCtx(ctx)), \n        \"all the new trustees must sign\"\n    );\n\n    requiresValidMinSigs(datum)\n}\n\n\nfunc main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    // now: Time = tx.time_range.start;\n    \n    notUpdatingCharter : Bool = redeemer.switch {\n        updatingCharter => false,  \n        _ => true\n    };\n    charterChangeAllowable : Bool = if(notUpdatingCharter) { \n        preventCharterChange(ctx, datum) // throws if it's not kosher\n     } else { \n        true // \"maybe\", really\n    };\n\n    redeemerSpecificChecks : Bool = redeemer.switch {\n        mintingOriginalCharter => {\n            true\n        },\n        updatingCharter{trustees, minSigs} => { \n            //! guards from optimizing mph out of the program, screwing up parameterization\n            assert(mph.serialize() != datum.serialize(), \"guard failed\"); // can't fail.\n            assert(trustees.serialize() == trustees.serialize(), \"guard failed\"); // can't fail.\n            assert(minSigs.serialize() == minSigs.serialize(), \"guard failed\"); // can't fail.\n            \n            charterOutput : TxOutput = getCharterOutput(tx);\n            newDatum = Datum::from_data( \n                charterOutput.datum.get_inline_data() \n            );\n            \n            requiresAuthorization(ctx, datum) &&\n            requiresProofOfNewTrustees(ctx, newDatum)\n        },\n        // authorizeByCharter{otherRedeemerData, otherSignatures} => {            \n        //     false // todo support authorizing **other** things to be done with this token\n        // },\n        usingAuthority => {\n            assert(mph.serialize() != datum.serialize(), \"guard failed\"); // can't fail.\n\n            notUpdatingCharter &&\n            requiresAuthorization(ctx, datum)\n        }\n    };\n\n    charterChangeAllowable &&\n    redeemerSpecificChecks &&\n    tx.serialize() != datum.serialize()\n}\n\nconst charterTokenBaseInfo: Datum::CharterToken = Datum::CharterToken{\n    trustees: []Address{},\n    minSigs: 1\n}\n\n// const mkCharterTokenDatum : (trustees: []Address, minSigs: Int) -> Datum::CharterSeed = (trustees: []Address, minSigs: Int) -> Datum::CharterSeed {\n//      Datum::CharterToken{\n//         nce: nce(),\n//         trustees: trustees,\n//         minSigs: minSigs\n//     }\n// }\n";
+var contract$1 = "spending SampleTreasury\n\n// needed in helios 0.13: defaults\nconst mph : MintingPolicyHash = MintingPolicyHash::new(#1234)\nconst rev : Int = 1\n\nenum Datum {\n    CharterToken {\n        trustees: []Address\n        minSigs: Int\n    }\n}\n\nenum Redeemer {\n    updatingCharter{\n        trustees: []Address\n        minSigs: Int\n    }\n    usingAuthority\n}\n\nfunc didSign(ctx : ScriptContext, a: Address) -> Bool {\n    tx : Tx = ctx.tx;\n\n    pkh : PubKeyHash = a.credential.switch{\n        PubKey{h} => h,\n        _ => error(\"trustee can't be a contract\")\n    };\n    // print(\"checking if trustee signed: \" + pkh.show());\n\n    tx.is_signed_by(pkh)\n}\nfunc didSignInCtx(ctx: ScriptContext) -> (a: Address) -> Bool {\n    (a : Address) -> Bool {\n        didSign(ctx, a)\n    }\n}\n\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{trustees, minSigs} = datum;\n\n    foundSigs: Int = trustees.fold[Int](\n        (count: Int, a: Address) -> Int {            \n            count + if (didSign(ctx, a)) {1} else {0}\n        }, 0\n    );\n    assert(foundSigs >= minSigs, \n        \"not enough trustees (\"+foundSigs.show()+ \" of \" + minSigs.show() + \" needed) have signed the tx\" \n    );\n\n    true\n}\n\nfunc getCharterOutput(tx: Tx) -> TxOutput {\n    charterTokenValue : Value = Value::new(\n        AssetClass::new(mph, \"charter\".encode_utf8()), \n        1\n    );\n    tx.outputs.find_safe(\n        (txo : TxOutput) -> Bool {\n            txo.value >= charterTokenValue\n        }\n    ).switch{\n        None => error(\"this could only happen if the charter token is burned.\"),\n        Some{o} => o\n    }\n}\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        actual : String = charterOutput.address.credential.switch{\n            PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n            Validator{vh} => \"val:📜#:\" + vh.show()\n        };\n        error(\n            \"charter token must be returned to the contract \" + cvh.show() +\n            \"... but was sent to \" +actual\n        )\n    };\n\n    Datum::CharterToken{trustees, minSigs} = datum;\n    Datum::CharterToken{newTrustees, newMinSigs} = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newTrustees == trustees &&\n        newMinSigs == minSigs\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\nfunc requiresValidMinSigs(datum: Datum) -> Bool {\n    Datum::CharterToken{trustees, minSigs} = datum;\n\n    assert(\n        minSigs <= trustees.length,\n        \"minSigs can't be more than the size of the trustee-list\"\n    );\n\n    true\n}\n\nfunc requiresProofOfNewTrustees(\n    ctx: ScriptContext,\n    datum: Datum\n) -> Bool {\n    Datum::CharterToken{newTrustees, _} = datum;\n\n    assert(\n        newTrustees.all(didSignInCtx(ctx)), \n        \"all the new trustees must sign\"\n    );\n\n    requiresValidMinSigs(datum)\n}\n\n\nfunc main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    // now: Time = tx.time_range.start;\n    \n    notUpdatingCharter : Bool = redeemer.switch {\n        updatingCharter => false,  \n        _ => true\n    };\n    charterChangeAllowable : Bool = if(notUpdatingCharter) { \n        preventCharterChange(ctx, datum) // throws if it's not kosher\n     } else { \n        true // \"maybe\", really\n    };\n\n    redeemerSpecificChecks : Bool = redeemer.switch {\n        updatingCharter{trustees, minSigs} => { \n            //! guards from optimizing mph out of the program, screwing up parameterization\n            assert(mph.serialize() != datum.serialize(), \"guard failed\"); // can't fail.\n            assert(trustees.serialize() == trustees.serialize(), \"guard failed\"); // can't fail.\n            assert(minSigs.serialize() == minSigs.serialize(), \"guard failed\"); // can't fail.\n            \n            charterOutput : TxOutput = getCharterOutput(tx);\n            newDatum = Datum::from_data( \n                charterOutput.datum.get_inline_data() \n            );\n            \n            requiresAuthorization(ctx, datum) &&\n            requiresProofOfNewTrustees(ctx, newDatum)\n        },\n        // authorizeByCharter{otherRedeemerData, otherSignatures} => {            \n        //     false // todo support authorizing **other** things to be done with this token\n        // },\n        usingAuthority => {\n            assert(mph.serialize() != datum.serialize(), \"guard failed\"); // can't fail.\n\n            notUpdatingCharter &&\n            requiresAuthorization(ctx, datum)\n        }\n    };\n\n    charterChangeAllowable &&\n    redeemerSpecificChecks &&\n    tx.serialize() != datum.serialize()\n}\n\nconst charterTokenBaseInfo: Datum::CharterToken = Datum::CharterToken{\n    trustees: []Address{},\n    minSigs: 1\n}\n\n// const mkCharterTokenDatum : (trustees: []Address, minSigs: Int) -> Datum::CharterSeed = (trustees: []Address, minSigs: Int) -> Datum::CharterSeed {\n//      Datum::CharterToken{\n//         nce: nce(),\n//         trustees: trustees,\n//         minSigs: minSigs\n//     }\n// }\n";
+
+var contract = "spending SampleMintDelegate\n\nconst rev: Int = 1\n\nfunc main(_,_,_) -> Bool {\n    true\n}\n\n// func main(d: Datum, r: Redeemer, ctx: ScriptContext) -> Bool {\n//     true\n// }";
+
+var __defProp$1 = Object.defineProperty;
+var __getOwnPropDesc$1 = Object.getOwnPropertyDescriptor;
+var __decorateClass$1 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$1(target, key) : target;
+  for (var i = decorators.length - 1, decorator; i >= 0; i--)
+    if (decorator = decorators[i])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result)
+    __defProp$1(target, key, result);
+  return result;
+};
+//!!! TODO: include adapter(s) for Datum, which has the same essential shape
+class SampleMintDelegate extends StellarContract {
+  static currentRev = 1n;
+  static get defaultParams() {
+    return { rev: this.currentRev };
+  }
+  contractSource() {
+    return contract;
+  }
+  // @Activity.redeemer
+  x(tokenName) {
+    const t = new this.configuredContract.types.Redeemer.commissioningNewToken(
+      tokenName
+    );
+    return { redeemer: t._toUplcData() };
+  }
+  async txnCreatingTokenPolicy(tcx, tokenName) {
+    return tcx;
+  }
+  servesDelegationRole(role) {
+    if ("mintingPolicy" == role)
+      return true;
+  }
+  static mkDelegateWithArgs(a) {
+  }
+}
+__decorateClass$1([
+  Activity.partialTxn
+], SampleMintDelegate.prototype, "txnCreatingTokenPolicy", 1);
 
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -1517,7 +1893,24 @@ var __decorateClass = (decorators, target, key, kind) => {
 };
 class SampleTreasury extends Capo {
   contractSource() {
-    return contract;
+    return contract$1;
+  }
+  get roles() {
+    return {
+      noDefault: variantMap({}),
+      mintDelegate: variantMap({
+        default: {
+          delegateClass: SampleMintDelegate,
+          scriptParams: {},
+          validateScriptParams(args) {
+            if (args.bad) {
+              return { bad: ["must not be provided"] };
+            }
+            return void 0;
+          }
+        }
+      })
+    };
   }
   mkDatumCharterToken({
     trustees,
@@ -1699,5 +2092,5 @@ __decorateClass([
   txn
 ], SampleTreasury.prototype, "mkTxnUpdateCharter", 1);
 
-export { ADA, Activity, Capo, DefaultMinter, SampleTreasury, StellarCapoTestHelper, StellarContract, StellarTestHelper, StellarTxnContext, addTestContext, assetsAsString, datum, heliosRollupLoader, lovelaceToAda, partialTxn, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString };
+export { ADA, Activity, Capo, DefaultMinter, SampleTreasury, StellarCapoTestHelper, StellarContract, StellarTestHelper, StellarTxnContext, addTestContext, assetsAsString, datum, heliosRollupLoader, lovelaceToAda, partialTxn, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString, variantMap };
 //# sourceMappingURL=stellar-contracts.mjs.map

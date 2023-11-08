@@ -10,6 +10,8 @@ import {
     hexToBytes
 } from "@hyperionbt/helios";
 import { txAsString } from "./diagnostics.js";
+import { paramsBase, stellarSubclass } from "./StellarContract.js";
+import { SelectedDelegates } from "./RolesAndDelegates.js";
 
 //!!! if we could access the inputs and outputs in a building Tx,
 //  this might  not be necessary (unless it becomes a
@@ -24,10 +26,12 @@ export class StellarTxnContext<S=noState> {
     collateral?: TxInput;
     outputs: TxOutput[];
     feeLimit?: bigint;
-    state : Partial<S>;
+    state : S;
+    selectedDelegates : SelectedDelegates = {}
     constructor(state: Partial<S>={}) {
         this.tx = new Tx();
         this.inputs = [];
+        //@ts-expect-error
         this.state = state;
         this.collateral = undefined;
         this.outputs = [];

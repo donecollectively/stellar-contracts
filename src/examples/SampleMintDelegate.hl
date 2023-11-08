@@ -1,0 +1,11 @@
+spending SampleMintDelegate
+
+const rev: Int = 1
+
+func main(_,_,_) -> Bool {
+    true
+}
+
+// func main(d: Datum, r: Redeemer, ctx: ScriptContext) -> Bool {
+//     true
+// }

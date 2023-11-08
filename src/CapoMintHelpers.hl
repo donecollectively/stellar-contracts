@@ -13,7 +13,7 @@ func hasSeedUtxo(tx: Tx, sTxId : TxId, sIdx: Int, reason: String) -> Bool {
     true
 }
 
-func validateUUTminting(ctx: ScriptContext, sTxId : TxId, sIdx : Int, purposes: []String) -> Bool {
+func validateUutMinting(ctx: ScriptContext, sTxId : TxId, sIdx : Int, purposes: []String) -> Bool {
     tx: Tx = ctx.tx;
     mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
     value_minted: Value = tx.minted;

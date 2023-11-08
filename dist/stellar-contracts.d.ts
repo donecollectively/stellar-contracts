@@ -1,5 +1,5 @@
 import * as helios from '@hyperionbt/helios';
-import { Value, Tx, TxInput, TxOutput, Wallet, Datum, UplcDataValue, UplcData, Network, NetworkParams, Program, UplcProgram, Address, MintingPolicyHash, Assets, TxId, NetworkEmulator, WalletEmulator } from '@hyperionbt/helios';
+import { Value, Tx, TxInput, TxOutput, Address, Wallet, Datum, UplcDataValue, UplcData, Network, NetworkParams, Program, UplcProgram, MintingPolicyHash, Assets, TxId, NetworkEmulator, WalletEmulator } from '@hyperionbt/helios';
 import { TestContext } from 'vitest';
 
 declare function heliosRollupLoader(opts?: {
@@ -23,6 +23,27 @@ declare function utxosAsString(utxos: TxInput[], joiner?: string): string;
 declare function utxoAsString(u: TxInput, prefix?: string): string;
 declare function txOutputAsString(x: TxOutput, prefix?: string): string;
 
+type ErrorMap = Record<string, string[]>;
+type strategyValidation = ErrorMap | undefined;
+type VariantStrategy<T extends StellarContract<any>> = {
+    delegateClass: stellarSubclass<T>;
+    scriptParams?: strategyParams;
+    validateScriptParams(p: strategyParams): strategyValidation;
+};
+declare function variantMap<T extends StellarContract<any>>(vm: VariantMap<T>): VariantMap<T>;
+type VariantMap<T extends StellarContract<any>> = Record<string, VariantStrategy<T>>;
+type RoleMap = Record<string, VariantMap<any>>;
+type strategyParams = paramsBase;
+type delegateScriptParams = paramsBase;
+type DelegateConfig = {
+    strategyName: string;
+    addlParams: delegateScriptParams;
+    address?: Address;
+};
+type SelectedDelegates = {
+    [roleName: string]: DelegateConfig;
+};
+
 type noState = {};
 declare class StellarTxnContext<S = noState> {
     tx: Tx;
@@ -30,7 +51,8 @@ declare class StellarTxnContext<S = noState> {
     collateral?: TxInput;
     outputs: TxOutput[];
     feeLimit?: bigint;
-    state: Partial<S>;
+    state: S;
+    selectedDelegates: SelectedDelegates;
     constructor(state?: Partial<S>);
     dump(): string;
     mintTokens(...args: Parameters<Tx["mintTokens"]>): StellarTxnContext<S>;
@@ -68,7 +90,10 @@ type utxoInfo = {
     free: bigint;
     minAdaAmount: bigint;
 };
-type stellarSubclass<S extends StellarContract<P>, P extends paramsBase> = new (args: StellarConstructorArgs<S, P>) => S & StellarContract<P>;
+type stellarSubclass<S extends StellarContract<P>, P extends paramsBase = S extends StellarContract<infer SCP> ? SCP : paramsBase> = (new (args: StellarConstructorArgs<S, P>) => S & StellarContract<P>) & {
+    defaultParams: Partial<P>;
+};
+type anyDatumProps = Record<string, any>;
 type paramsBase = Record<string, any>;
 declare const Activity: {
     partialTxn(proto: any, thingName: any, descriptor: any): any;
@@ -97,6 +122,7 @@ declare class StellarContract<ParamsType extends paramsBase> {
     networkParams: NetworkParams;
     _template?: Program;
     myActor?: Wallet;
+    static get defaultParams(): {};
     getContractParams(params: any): any;
     constructor({ params, network, networkParams, isTest, myActor, }: StellarConstructorArgs<StellarContract<ParamsType>, ParamsType>);
     get datumType(): any;
@@ -107,7 +133,11 @@ declare class StellarContract<ParamsType extends paramsBase> {
     get identity(): string;
     stringToNumberArray(str: string): number[];
     mkValuesEntry(tokenName: string, count: bigint): valuesEntry;
+    outputsSentToDatum(datum: InlineDatum): Promise<TxInput[]>;
+    totalValue(utxos: TxInput[]): Value;
+    txnKeepValue(tcx: StellarTxnContext, value: Value, datum: InlineDatum): StellarTxnContext<{}>;
     addScriptWithParams<SC extends StellarContract<any>>(TargetClass: new (a: SC extends StellarContract<any> ? StellarConstructorArgs<SC> : never) => SC, params: SC extends StellarContract<infer P> ? P : never): SC;
+    readDatum<DPROPS extends anyDatumProps>(datumName: string, datum: Datum | InlineDatum): Promise<DPROPS>;
     findSmallestUnusedUtxo(lovelace: bigint, utxos: TxInput[], tcx?: StellarTxnContext): TxInput | undefined;
     mkValuePredicate(lovelace: bigint, tcx?: StellarTxnContext): tokenPredicate<TxInput>;
     mkTokenPredicate(vOrMph: Value | MintingPolicyHash, tokenName?: string, quantity?: bigint): tokenPredicate<any>;
@@ -152,61 +182,61 @@ declare class StellarContract<ParamsType extends paramsBase> {
     hasMyUtxo(name: string, predicate: utxoPredicate): Promise<TxInput | undefined>;
 }
 
-type SeedTxnParams = {
-    seedTxn: TxId;
-    seedIndex: bigint;
-};
 declare class DefaultMinter extends StellarContract<SeedTxnParams> implements MinterBaseMethods {
     contractSource(): any;
     capoMinterHelpers(): string;
     importModules(): string[];
-    txnCreatingUUTs<uutIndex extends hasUUTs<any>>(tcx: StellarTxnContext<uutIndex>, purposes: string[]): Promise<StellarTxnContext<uutIndex>>;
-    mkUUTValuesEntries<UM extends uutPurposeMap<any>>(uutMap: UM): valuesEntry[];
+    txnCreatingUuts<UutMapType extends uutPurposeMap>(tcx: StellarTxnContext<any>, uutPurposes: (string & keyof UutMapType)[]): Promise<hasUutContext<UutMapType>>;
+    mkUutValuesEntries<UM extends uutPurposeMap>(uutMap: UM): valuesEntry[];
     get mintingPolicyHash(): MintingPolicyHash;
-    protected mintingCharterToken({ owner }: MintCharterRedeemerArgs): isActivity;
-    protected mintingUUTs({ seedTxn, seedIndex: sIdx, purposes, }: MintUUTRedeemerArgs): isActivity;
+    protected mintingCharterToken({ owner, }: MintCharterRedeemerArgs): isActivity;
+    protected mintingUuts({ seedTxn, seedIndex: sIdx, purposes, }: MintUutRedeemerArgs): isActivity;
     get charterTokenAsValuesEntry(): valuesEntry;
     tvCharter(): Value;
     get charterTokenAsValue(): Value;
     txnMintingCharterToken(tcx: StellarTxnContext, owner: Address): Promise<StellarTxnContext>;
 }
 
-type seedUtxoParams = {
+type SeedTxnParams = {
     seedTxn: TxId;
     seedIndex: bigint;
 };
-type uutPurposeMap<uutNames extends {
-    [k: string]: string;
-} = {}> = Partial<uutNames>;
-type hasUUTs<uutNames extends {} = {}> = {
-    uuts: uutPurposeMap<uutNames>;
+type uutPurposeMap = {
+    [purpose: string]: string;
 };
-interface hasUUTCreator {
-    txnCreatingUUTs(tcx: StellarTxnContext<any>, uutPurposes: string[]): Promise<StellarTxnContext<any>>;
+type hasSomeUuts<uutEntries extends uutPurposeMap = {}> = {
+    uuts: Partial<uutEntries>;
+};
+type hasAllUuts<uutEntries extends uutPurposeMap = {}> = {
+    uuts: uutEntries;
+};
+interface hasUutCreator {
+    txnCreatingUuts<UutMapType extends uutPurposeMap>(tcx: StellarTxnContext<any>, uutPurposes: (string & keyof UutMapType)[]): Promise<hasUutContext<UutMapType>>;
 }
 type MintCharterRedeemerArgs = {
     owner: Address;
 };
-type MintUUTRedeemerArgs = {
+type MintUutRedeemerArgs = {
     seedTxn: TxId;
     seedIndex: bigint | number;
     purposes: string[];
 };
-type hasUutContext = StellarTxnContext<hasUUTs<any>>;
-interface MinterBaseMethods extends hasUUTCreator {
+type hasUutContext<uutEntries extends uutPurposeMap> = StellarTxnContext<hasAllUuts<uutEntries>>;
+interface MinterBaseMethods extends hasUutCreator {
     get mintingPolicyHash(): MintingPolicyHash;
     txnMintingCharterToken(tcx: StellarTxnContext<any>, owner: Address, tVal: valuesEntry): Promise<StellarTxnContext<any>>;
 }
 type anyDatumArgs = Record<string, any>;
-declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter> extends StellarContract<SeedTxnParams> implements hasUUTCreator {
+declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter> extends StellarContract<SeedTxnParams> implements hasUutCreator {
+    get roles(): RoleMap;
     constructor(args: StellarConstructorArgs<StellarContract<SeedTxnParams>, SeedTxnParams>);
     abstract contractSource(): string;
     abstract mkDatumCharterToken(args: anyDatumArgs): InlineDatum;
-    get minterClass(): stellarSubclass<DefaultMinter, seedUtxoParams>;
+    get minterClass(): stellarSubclass<DefaultMinter, SeedTxnParams>;
     minter?: minterType;
-    txnCreatingUUTs(tcx: hasUutContext, uutPurposes: string[]): Promise<hasUutContext>;
+    txnCreatingUuts<UutMapType extends uutPurposeMap>(tcx: StellarTxnContext<any>, uutPurposes: (string & keyof UutMapType)[]): Promise<hasUutContext<UutMapType>>;
     uutsValue(uutMap: uutPurposeMap): Value;
-    uutsValue(tcx: hasUutContext): Value;
+    uutsValue(tcx: hasUutContext<any>): Value;
     protected usingAuthority(): isActivity;
     protected updatingCharter({ trustees, minSigs, }: {
         trustees: Address[];
@@ -218,19 +248,25 @@ declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter
     get charterTokenPredicate(): ((something: any) => any) & {
         value: Value;
     };
+    tokenAsValue(tokenName: string, quantity?: bigint): Value;
     mustFindCharterUtxo(): Promise<TxInput>;
     txnMustUseCharterUtxo(tcx: StellarTxnContext<any>, redeemer: isActivity, newDatum?: InlineDatum): Promise<StellarTxnContext<any> | never>;
+    txnMustUseCharterUtxo(tcx: StellarTxnContext<any>, useReferenceInput: true, forceAddRefScript?: true): Promise<StellarTxnContext<any> | never>;
     txnUpdateCharterUtxo(tcx: StellarTxnContext, redeemer: isActivity, newDatum: InlineDatum): Promise<StellarTxnContext | never>;
     txnKeepCharterToken(tcx: StellarTxnContext<any>, datum: InlineDatum): StellarTxnContext<any>;
     txnAddAuthority(tcx: StellarTxnContext<any>): Promise<StellarTxnContext<any>>;
     getMinterParams(): SeedTxnParams;
+    getCapoRev(): bigint;
     getContractParams(params: SeedTxnParams): {
         mph: MintingPolicyHash;
+        rev: bigint;
     };
     get mph(): MintingPolicyHash;
     get mintingPolicyHash(): MintingPolicyHash;
     connectMintingScript(params: SeedTxnParams): minterType;
     mustGetContractSeedUtxo(): Promise<TxInput | never>;
+    withDelegates(delegates: SelectedDelegates): StellarTxnContext;
+    txnMustGetDelegate(tcx: StellarTxnContext, roleName: string): any;
     capoRequirements(): {
         "is a base class for leader/Capo pattern": {
             purpose: string;
@@ -240,6 +276,39 @@ declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter
         "can create unique utility tokens": {
             purpose: string;
             details: string[];
+        };
+        "supports the Delegation pattern using roles and strategy-variants": {
+            purpose: string;
+            details: string[];
+            requires: string[];
+        };
+        "supports well-typed role declarations and strategy-adding": {
+            purpose: string;
+            details: string[];
+            mech: string[];
+            requires: string[];
+        };
+        "supports just-in-time strategy-selection using withDelegates() and txnMustGetDelegate()": {
+            purpose: string;
+            details: string[];
+            mech: string[];
+        };
+        "Each role uses a RoleVariants structure which can accept new variants": {
+            purpose: string;
+            details: string[];
+            mech: string[];
+            requires: string[];
+        };
+        "provides a Strategy type for binding a contract to a strategy-variant name": {
+            purpose: string;
+            details: string[];
+            mech: string[];
+            requires: string[];
+        };
+        "supports concrete resolution of existing role delegates": {
+            purpose: string;
+            details: string[];
+            mech: string[];
         };
     };
 }
@@ -263,6 +332,7 @@ declare function addTestContext<SC extends StellarContract<any>, P extends param
 declare abstract class StellarTestHelper<SC extends StellarContract<any>, P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never> {
     state: Record<string, any>;
     abstract get stellarClass(): stellarSubclass<SC, any>;
+    params?: P;
     defaultActor?: string;
     strella: SC;
     actors: actorMap;
@@ -277,8 +347,9 @@ declare abstract class StellarTestHelper<SC extends StellarContract<any>, P exte
     setupPending?: Promise<any>;
     setupActors(): void;
     constructor(params?: P & canHaveRandomSeed & canSkipSetup);
-    setup(params: P & canHaveRandomSeed): Promise<SC>;
-    initStrella(params: P): SC & StellarContract<any>;
+    setup(params: P & canHaveRandomSeed): Promise<any>;
+    initStellarClass(): any;
+    initStrella(TargetClass: stellarSubclass<any, any>, params: any): any;
     randomSeed?: number;
     rand?: () => number;
     delay(ms: any): Promise<unknown>;
@@ -306,8 +377,9 @@ type CharterDatumArgs = {
     trustees: Address[];
     minSigs: number | bigint;
 };
-declare class SampleTreasury extends Capo {
+declare class SampleTreasury extends Capo<DefaultMinter> {
     contractSource(): any;
+    get roles(): RoleMap;
     mkDatumCharterToken({ trustees, minSigs, }: {
         trustees: Address[];
         minSigs: bigint;
@@ -372,4 +444,4 @@ declare class SampleTreasury extends Capo {
     };
 }
 
-export { ADA, Activity, Capo, CharterDatumArgs, DefaultMinter, InlineDatum, MintCharterRedeemerArgs, MintUUTRedeemerArgs, SampleTreasury, StellarCapoTestHelper, StellarContract, StellarTestContext, StellarTestHelper, StellarTxnContext, addTestContext, assetsAsString, datum, hasUUTs, heliosRollupLoader, isActivity, lovelaceToAda, partialTxn, stellarSubclass, tokenNamesOrValuesEntry, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxoPredicate, utxosAsString, uutPurposeMap, valueAsString, valuesEntry };
+export { ADA, Activity, Capo, CharterDatumArgs, DefaultMinter, InlineDatum, MintCharterRedeemerArgs, MintUutRedeemerArgs, RoleMap, SampleTreasury, SeedTxnParams, StellarCapoTestHelper, StellarContract, StellarTestContext, StellarTestHelper, StellarTxnContext, addTestContext, anyDatumProps, assetsAsString, datum, hasAllUuts, hasSomeUuts, hasUutContext, heliosRollupLoader, isActivity, lovelaceToAda, paramsBase, partialTxn, stellarSubclass, strategyValidation, tokenNamesOrValuesEntry, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxoPredicate, utxosAsString, uutPurposeMap, valueAsString, valuesEntry, variantMap };

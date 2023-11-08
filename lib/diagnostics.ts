@@ -49,6 +49,7 @@ export function txAsString(tx: Tx): string {
         "inputs",
         "minted",
         "collateral",
+        "refInputs",
         "outputs",
         "fee",
         "lastValidSlot",
@@ -57,7 +58,6 @@ export function txAsString(tx: Tx): string {
         "scriptDataHash",
         "signers",
         "collateralReturn",
-        "refInputs",
     ];
     const witnessAttrs = [
         "signatures",
@@ -83,6 +83,9 @@ export function txAsString(tx: Tx): string {
         if (!item) continue;
         if ("inputs" == x) {
             item = `\n  ${item.map((x) => txInputAsString(x)).join("\n  ")}`;
+        }
+        if ("refInputs" == x) {
+            item = `\n  ${item.map((x) => txInputAsString(x, "ℹ️  ")).join("\n  ")}`;
         }
         if ("collateral" == x) {
             //!!! todo: group collateral with inputs and reflect it being spent either way,

@@ -1,0 +1,213 @@
+
+const nothing = Object.freeze({}); 
+
+const roleDefsProxy = new Proxy(nothing, {
+    get(frozenNothing, roleName: string, reg: RoleDefs<any>) : RoleVariants<any, any, any> {
+        throw new Error(`use a typed setter to apply roles before retrieving them`);
+        const found = reg[roleName];
+
+        if (found) return found;
+         // typescript will never let us get here, but we can guard Javascript
+        throw new Error(`invalid role name`)
+    },
+    set(frozenNothing, roleName: string, newValue: RoleVariants<any,any, any>, reg: RoleDefs<any>) : boolean {
+        const found = reg[roleName];
+        if (found) {
+            console.error(`existing delegate class for ${roleName}`, found);        
+            throw new Error(`role ${roleName} already has a delegate`);
+        }
+        if ("string" == typeof roleName) {
+            console.log("setting role", roleName);
+            //!!! todo: guard type of newValue (for JS client code)
+            reg[roleName] = newValue;
+            console.log("<-- set role");
+            return true
+        }
+        //! it allows a flag indicating super.defineRoles() was called
+        //   this flag flies in the face of the declared types, but it's okay 
+        //   - we treat it specially here and it works out fine.
+        if( "symbol" == typeof roleName ) {
+            //! it guards against wrong calls created from non-typescript land
+            //@ts-expect-error true is what we mean in this special treatment
+            if (true !== newValue) throw new Error(`invalid symbol assignment to roleDefs`)
+            //@ts-expect-error true is what we mean in this special treatment
+            reg[roleName] = true;
+            return true;
+        }
+        return false;
+    }
+})
+
+
+const roleDefsProxyFacade = function () {
+    //! it provides a proxy making it easy to extract the default component for a named portal.
+
+    // (that proxy is attached to the prototype of an empty function, which is then 
+    //   used as a base class for RoleDefs)
+};
+roleDefsProxyFacade.prototype = roleDefsProxy;
+
+const lockdown = Symbol("Only RoleVariants.of() is allowed")
+const roleVariantsUsage = `use RoleVariants.of(rolename, BaseClass, DefaultDelegateClass) to declare delegate roles.`;
+
+type anyStellar = stellarSubclass<StellarContract<any>>
+
+type NamedVariantDelegates<CLASS extends anyStellar> = {
+    [variantName: string]:  CLASS
+}
+
+
+type roleVariantConstructorArgs<
+    B extends anyStellar, 
+    DT extends B | null,
+> = [
+    isLockdown: typeof lockdown, 
+    defaultType: DT | null,
+    // baseType: Vmap, 
+]
+
+export class RoleVariants<
+    B extends anyStellar,
+    DT extends B | null,
+    Vmap extends NamedVariantDelegates<B>,
+> {
+    static of<
+        NB extends anyStellar,
+        NVmap extends NamedVariantDelegates<NB>,
+        //@ts-expect-error we got too complicated for TS?
+        SB extends StellarContract<SP> = NB extends StellarContract<infer iSP> ? StellarContract<iSP> : never,
+        SP extends paramsBase = SB extends StellarContract<infer iSP> ? iSP : never,
+        PRV extends RoleVariants<NB, any, any> | null = null,
+        PDT extends NB | null = 
+          PRV extends RoleVariants<any,infer iPDT,any> ? iPDT : null,
+        NDT extends NB | null = 
+            PRV extends RoleVariants<infer iNB,any,any> ? iNB : null,
+        PVmap extends NamedVariantDelegates<NB> = 
+            PRV extends RoleVariants<any, any, infer iPVmap> ? iPVmap : {},
+    >(
+        baseType: classOf<SB>,  // only needed for type-inference
+        defaultType: classOf<NDT> | null,//!!! use default role-name instead?
+        vMap: NVmap,
+        parentRoleVariants? : classOf<PRV>
+    ) : classOf<RoleVariants<SB, NDT, NVmap & PVmap>> {
+        type mergedVmapType = NVmap & PVmap;
+        const mergedVariants = { ...vMap, ...(parentRoleVariants?.prototype.variants || {}) };
+        class EnhancedVariants extends RoleVariants<NB, NDT, mergedVmapType> {
+            [lockdown] = true
+            defaultType = defaultType
+            variants : mergedVmapType = mergedVariants
+            //@ts-expect-error
+            roles! : newType = variants
+        }
+        return EnhancedVariants
+    }
+
+    //@ts-expect-error - silly typescript?  patches welcome if we missed something important here.
+    variants : Vmap = {}
+
+    #defaultVariantClass?: classOf<DT>
+    baseType: classOf<B>
+
+    constructor(...args : roleVariantConstructorArgs<B, DT>) {
+        const [ isLockdown, 
+            defaultType, 
+            // baseType 
+        ] = args;
+
+        if (this.constructor !== RoleVariants) throw new Error(roleVariantsUsage)
+        if (lockdown !== isLockdown) throw new Error(roleVariantsUsage)
+        if (!defaultType && null !== defaultType) {
+            console.warn(`no default delegate-type in RoleVariants.of(${""/*roleName,*/} ${baseType.name}, ‹defaultDelegateType›) \n  (...use null in arg3 to suppress this warning)`)
+        }
+        // this.baseType = baseType
+        Object.defineProperty(this, "baseType", {
+            enumerable: false, 
+            configurable: false, 
+            writable: false,
+            value: baseType,            
+        })
+        if (defaultType) {
+            this.#defaultVariantClass = defaultType
+        }
+    }
+
+    get default() {
+        return this.#defaultVariantClass
+    }
+    // add(variants: NamedVariantDelegates): RoleVariants<Vmap> {
+    //     if ("string" !== typeof  variantName) throw new Error(`invalid variant name`)
+    //     if (!(strategyClass.constructor instanceof this.baseType.constructor)) throw new Error(`delegate type mismatch`);
+
+    //     if (this.#variants.has(variantName)) 
+    //         throw new Error(``);
+
+    //     return this;
+    // }
+}
+Object.freeze(RoleVariants.prototype);
+
+type classOf<T> =  (new (...args: any[]) => T );
+
+type RoleDefsClass = classOf<RoleDefs<any>>
+
+//@ts-expect-error - typescript doesn't understand this pattern :/
+export abstract class RoleDefs<R extends NamedRolesDirectory> extends roleDefsProxyFacade {
+    roles!: R
+
+    static new<
+        NR extends NamedRolesDirectory, 
+        //@ts-expect-error
+        BASE extends RoleDefs<PARENT_R>=NoRoleDefs,
+        PARENT_R extends NamedRolesDirectory = BASE extends RoleDefs<infer PV> ? PV : {}
+    > (
+        variants: NR,
+        b: classOf<RoleDefs<PARENT_R>> = noSpecialBase 
+    ) : classOf<RoleDefs<NR & PARENT_R>> {
+        type newType = NR & PARENT_R;
+
+        //@ts-expect-error - it seems we got fancier than TS knows how to cope with
+        const inheritedRoles: newType = b.roles ? b.roles : {};
+        //!!! todo: merge inherited roles with variants instead of overwriting.
+
+        // const enhancedRoles = {... variants, ... (inheritedRoles) };
+        class EnhancedRoles extends b {
+            //@ts-expect-error
+            roles! : newType = variants
+        }
+        return EnhancedRoles as unknown as classOf<BASE & RoleDefs<newType>>
+    }
+}
+
+//@ts-expect-error to bypass abstract base
+//   ... so we can return a dynamic base using it.
+const noSpecialBase : RoleDefsClass = RoleDefs;
+
+type NamedRolesDirectory = {
+    [roleName: string]  : classOf<RoleVariants<any,any,any>>
+}
+
+export class NoRoleDefs extends RoleDefs<{}> {     
+    never!: RoleVariants<never, never, never>
+}
+
+//! type-level tests of syntax for making and specializing role-definition objects
+function typeTests() : void {
+    const SampleRoleDefs = RoleDefs.new({
+        minter: RoleVariants.of(DefaultMinter, null, {})
+    })
+    const t = new SampleRoleDefs();
+    t.roles.minter
+
+    const  SampleSubclass = RoleDefs.new({
+        anotherMinter: RoleVariants.of(DefaultMinter, CustomMinter)
+    }, SampleRoleDefs)
+
+    const tt = new SampleSubclass();
+    tt.roles.minter.default
+    tt.roles.minter.add({
+        friendly: CustomMinter
+    })
+    tt.roles.anotherMinter;
+}
+
+

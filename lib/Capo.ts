@@ -8,7 +8,7 @@ import {
     TxInput,
     Value,
 } from "@hyperionbt/helios";
-import { DefaultMinter, SeedTxnParams } from "../src/DefaultMinter.js";
+import { DefaultMinter } from "../src/DefaultMinter.js";
 import {
     Activity,
     StellarConstructorArgs,
@@ -22,32 +22,52 @@ import {
 } from "./StellarContract.js";
 import { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
+import {
+    DelegateConfig,
+    SelectedDelegates,
+    DelegateConfigNeeded,
+    ErrorMap,
+    RoleMap,
+} from "./RolesAndDelegates.js";
 
-export type seedUtxoParams = {
+export { variantMap } from "./RolesAndDelegates.js";
+export type { RoleMap, strategyValidation } from "./RolesAndDelegates.js";
+
+const CALLED_DEFINE_ROLES_SUPER = Symbol("didCallDRsuper");
+
+export type SeedTxnParams = {
     seedTxn: TxId;
     seedIndex: bigint;
 };
-// P extends paramsBase = SC extends StellarContract<infer PT> ? PT : never
-export type uutPurposeMap<uutNames extends {[k: string]: string} = {}> = Partial<uutNames>
-export type hasUUTs<uutNames extends {}={}> = {
-    uuts: uutPurposeMap<uutNames>
-}
 
-interface hasUUTCreator {
-    txnCreatingUUTs(tcx: StellarTxnContext<any>, uutPurposes: string[]): Promise<StellarTxnContext<any>>;
+export type uutPurposeMap = { [purpose: string]: string };
+export type hasSomeUuts<uutEntries extends uutPurposeMap = {}> = {
+    uuts: Partial<uutEntries>;
+};
+export type hasAllUuts<uutEntries extends uutPurposeMap = {}> = {
+    uuts: uutEntries;
+};
+
+interface hasUutCreator {
+    txnCreatingUuts<UutMapType extends uutPurposeMap>(
+        tcx: StellarTxnContext<any>,
+        uutPurposes: (string & keyof UutMapType)[]
+    ): Promise<hasUutContext<UutMapType>>;
 }
 
 export type MintCharterRedeemerArgs = {
     owner: Address;
 };
-export type MintUUTRedeemerArgs = {
+export type MintUutRedeemerArgs = {
     seedTxn: TxId;
     seedIndex: bigint | number;
     purposes: string[];
 };
-type hasUutContext = StellarTxnContext<hasUUTs<any>>;
+export type hasUutContext<uutEntries extends uutPurposeMap> = StellarTxnContext<
+    hasAllUuts<uutEntries>
+>;
 
-export interface MinterBaseMethods extends hasUUTCreator {
+export interface MinterBaseMethods extends hasUutCreator {
     get mintingPolicyHash(): MintingPolicyHash;
     txnMintingCharterToken(
         tcx: StellarTxnContext<any>,
@@ -62,8 +82,11 @@ export abstract class Capo<
         minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter
     >
     extends StellarContract<SeedTxnParams>
-    implements hasUUTCreator
+    implements hasUutCreator
 {
+    get roles(): RoleMap {
+        return {};
+    }
     constructor(
         args: StellarConstructorArgs<
             StellarContract<SeedTxnParams>,
@@ -85,34 +108,32 @@ export abstract class Capo<
             throw new Error("Redeemer must have a 'usingAuthority' variant");
     }
     abstract contractSource(): string;
-    abstract mkDatumCharterToken(args: anyDatumArgs) : InlineDatum;
+    abstract mkDatumCharterToken(args: anyDatumArgs): InlineDatum;
     // abstract txnMustUseCharterUtxo(
     //     tcx: StellarTxnContext,
     //     newDatum?: InlineDatum
     // ): Promise<TxInput | never>;
 
-    get minterClass(): stellarSubclass<DefaultMinter, seedUtxoParams> {
+    get minterClass(): stellarSubclass<DefaultMinter, SeedTxnParams> {
         return DefaultMinter;
     }
 
     minter?: minterType;
 
-    //!!! todo: type constraints so that the uutPurposes can only
-    //   match the expected keys in the declared hasUUTs<T> type
     @Activity.partialTxn
-    async txnCreatingUUTs(
-        tcx: hasUutContext,
-        uutPurposes: string[]
-    ): Promise<hasUutContext> {
-        return this.minter!.txnCreatingUUTs(tcx, uutPurposes);
+    txnCreatingUuts<UutMapType extends uutPurposeMap>(
+        tcx: StellarTxnContext<any>,
+        uutPurposes: (string & keyof UutMapType)[]
+    ): Promise<hasUutContext<UutMapType>> {
+        return this.minter!.txnCreatingUuts(tcx, uutPurposes);
     }
     // P extends paramsBase = SC extends StellarContract<infer P> ? P : never
 
-    uutsValue(uutMap: uutPurposeMap): Value
-    uutsValue(tcx: hasUutContext): Value
-    uutsValue(x: uutPurposeMap | hasUutContext): Value {
-        const uutMap = x instanceof StellarTxnContext ? x.state.uuts! : x
-        const vEntries = this.minter!.mkUUTValuesEntries(uutMap);
+    uutsValue(uutMap: uutPurposeMap): Value;
+    uutsValue(tcx: hasUutContext<any>): Value;
+    uutsValue(x: uutPurposeMap | hasUutContext<any>): Value {
+        const uutMap = x instanceof StellarTxnContext ? x.state.uuts! : x;
+        const vEntries = this.minter!.mkUutValuesEntries(uutMap);
 
         return new Value(
             undefined,
@@ -120,9 +141,8 @@ export abstract class Capo<
         );
     }
 
-
     @Activity.redeemer
-    protected usingAuthority() : isActivity {
+    protected usingAuthority(): isActivity {
         const r = this.configuredContract.types.Redeemer;
         const { usingAuthority } = r;
         if (!usingAuthority) {
@@ -132,7 +152,7 @@ export abstract class Capo<
         }
         const t = new usingAuthority();
 
-        return {redeemer: t._toUplcData() }
+        return { redeemer: t._toUplcData() };
     }
 
     @Activity.redeemer
@@ -142,22 +162,24 @@ export abstract class Capo<
     }: {
         trustees: Address[];
         minSigs: bigint;
-    }) : isActivity {
+    }): isActivity {
         const t = new this.configuredContract.types.Redeemer.updatingCharter(
             trustees,
             minSigs
         );
 
-        return {redeemer: t._toUplcData() }
+        return { redeemer: t._toUplcData() };
     }
 
     tvCharter() {
-        return this.minter!.tvCharter()
+        return this.minter!.tvCharter();
     }
 
     get charterTokenAsValue() {
-        console.warn("deprecated get charterTokenAsValue; use tvCharter() instead")
-        return this.tvCharter()
+        console.warn(
+            "deprecated get charterTokenAsValue; use tvCharter() instead"
+        );
+        return this.tvCharter();
     }
 
     @txn
@@ -165,11 +187,16 @@ export abstract class Capo<
         datumArgs: anyDatumArgs,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
-        console.log(`minting charter from seed ${this.paramsIn.seedTxn.hex.substring(0, 12)}…@${this.paramsIn.seedIndex}`);
+        console.log(
+            `minting charter from seed ${this.paramsIn.seedTxn.hex.substring(
+                0,
+                12
+            )}…@${this.paramsIn.seedIndex}`
+        );
 
         return this.mustGetContractSeedUtxo().then((seedUtxo) => {
-            const v = this.tvCharter()
-            
+            const v = this.tvCharter();
+
             const datum = this.mkDatumCharterToken(datumArgs);
             const outputs = [new TxOutput(this.address, v, datum)];
 
@@ -179,79 +206,122 @@ export abstract class Capo<
     }
 
     get charterTokenPredicate() {
-        const predicate = this.mkTokenPredicate(this.tvCharter())
+        const predicate = this.mkTokenPredicate(this.tvCharter());
 
-        return predicate
+        return predicate;
+    }
+
+    //! forms a Value with minUtxo included
+    tokenAsValue(tokenName: string, quantity: bigint = 1n) {
+        const { mintingPolicyHash } = this;
+
+        const e = this.mkValuesEntry(tokenName, quantity);
+
+        const v = new Value(
+            this.ADA(0),
+            new Assets([[mintingPolicyHash, [e]]])
+        );
+        const t = new TxOutput(this.address, v);
+        const minLovelace = t.calcMinLovelace(this.networkParams);
+
+        v.setLovelace(minLovelace);
+        return v;
     }
 
     async mustFindCharterUtxo() {
-        const predicate = this.mkTokenPredicate(this.tvCharter())
+        const predicate = this.mkTokenPredicate(this.tvCharter());
 
-        return this.mustFindMyUtxo(
-            "charter", predicate,
-            "has it been minted?"
-        )
+        return this.mustFindMyUtxo("charter", predicate, "has it been minted?");
     }
 
-    @partialTxn  // non-activity partial
     async txnMustUseCharterUtxo(
         tcx: StellarTxnContext<any>,
         redeemer: isActivity,
         newDatum?: InlineDatum
+    ): Promise<StellarTxnContext<any> | never>;
+    async txnMustUseCharterUtxo(
+        tcx: StellarTxnContext<any>,
+        useReferenceInput: true,
+        forceAddRefScript?: true
+    ): Promise<StellarTxnContext<any> | never>;
+    @partialTxn // non-activity partial
+    async txnMustUseCharterUtxo(
+        tcx: StellarTxnContext<any>,
+        redeemerOrRefInput: isActivity | true,
+        newDatumOrForceRefScript?: InlineDatum | true
     ): Promise<StellarTxnContext<any> | never> {
         return this.mustFindCharterUtxo().then((ctUtxo: TxInput) => {
-            tcx.addInput(
-                ctUtxo,
-                redeemer.redeemer
-            ).attachScript(this.compiledContract);
+            if (true === redeemerOrRefInput) {
+                if (
+                    newDatumOrForceRefScript &&
+                    true !== newDatumOrForceRefScript
+                )
+                    throw new Error(
+                        `when using reference input for charter, arg3 can only be true (or may be omitted)`
+                    );
+                tcx.tx.addRefInput(
+                    ctUtxo,
+                    newDatumOrForceRefScript ? this.compiledContract : undefined
+                );
+            } else {
+                const redeemer = redeemerOrRefInput;
+                const newDatum = newDatumOrForceRefScript;
+                if (true === newDatum)
+                    throw new Error(
+                        `wrong type for newDatum when not using reference input for charter`
+                    );
+                tcx.addInput(ctUtxo, redeemer.redeemer).attachScript(
+                    this.compiledContract
+                );
+                const datum =
+                    newDatum || (ctUtxo.origOutput.datum as InlineDatum);
 
-            const datum = newDatum || (ctUtxo.origOutput.datum as InlineDatum);
-
-            this.txnKeepCharterToken(tcx, datum);
-            return tcx
+                this.txnKeepCharterToken(tcx, datum);
+            }
+            return tcx;
         });
     }
 
-
-    @partialTxn  // non-activity partial
+    @partialTxn // non-activity partial
     async txnUpdateCharterUtxo(
         tcx: StellarTxnContext,
         redeemer: isActivity,
         newDatum: InlineDatum
-    ): Promise<StellarTxnContext| never> {
-        // this helper function is very simple.  Why have it?  
+    ): Promise<StellarTxnContext | never> {
+        // this helper function is very simple.  Why have it?
         //   -> its 3rd arg is required,
         //   -> and its name gives a more specific meaning.
-        return this.txnMustUseCharterUtxo(tcx, redeemer, newDatum );
+        return this.txnMustUseCharterUtxo(tcx, redeemer, newDatum);
     }
 
-    @partialTxn  // non-activity partial
+    @partialTxn // non-activity partial
     txnKeepCharterToken(tcx: StellarTxnContext<any>, datum: InlineDatum) {
-        
-        tcx.addOutput(
-            new TxOutput(this.address, this.tvCharter(), datum)
-        );
+        tcx.addOutput(new TxOutput(this.address, this.tvCharter(), datum));
 
         return tcx;
     }
 
     @partialTxn
     async txnAddAuthority(tcx: StellarTxnContext<any>) {
-        return this.txnMustUseCharterUtxo(tcx, this.usingAuthority())
+        return this.txnMustUseCharterUtxo(tcx, this.usingAuthority());
     }
-
 
     //! it can provide minter-targeted params through getMinterParams()
     getMinterParams() {
         return this.paramsIn;
     }
+    getCapoRev() {
+        return 1n;
+    }
 
     getContractParams(params: SeedTxnParams) {
         const { mph } = this;
+        const rev = this.getCapoRev();
         // console.log("this treasury uses mph", mph?.hex);
 
         return {
             mph,
+            rev,
         };
     }
 
@@ -270,15 +340,15 @@ export abstract class Capo<
         const { seedTxn, seedIndex } = this.paramsIn;
 
         const minter = this.addScriptWithParams(minterClass, params);
-        const { mintingCharterToken, mintingUUTs } =
+        const { mintingCharterToken, mintingUuts } =
             minter.configuredContract.types.Redeemer;
         if (!mintingCharterToken)
             throw new Error(
                 `minting script doesn't offer required 'mintingCharterToken' activity-redeemer`
             );
-        if (!mintingUUTs)
+        if (!mintingUuts)
             throw new Error(
-                `minting script doesn't offer required 'mintingUUTs' activity-redeemer`
+                `minting script doesn't offer required 'mintingUuts' activity-redeemer`
             );
 
         //@ts-ignore-error - can't seem to indicate to typescript that minter's type can be relied on to be enough
@@ -290,7 +360,9 @@ export abstract class Capo<
         //! prior to initial on-chain creation of contract,
         //! it finds that specific TxInput in the current user's wallet.
         const { seedTxn, seedIndex } = this.paramsIn;
-        console.log(`seeking seed txn ${seedTxn.hex.substring(0, 12)}…@${seedIndex}`);
+        console.log(
+            `seeking seed txn ${seedTxn.hex.substring(0, 12)}…@${seedIndex}`
+        );
 
         return this.mustFindActorUtxo(
             "seed",
@@ -303,6 +375,71 @@ export abstract class Capo<
             },
             "already spent?"
         );
+    }
+
+    withDelegates(delegates: SelectedDelegates): StellarTxnContext {
+        const tcx = new StellarTxnContext();
+        tcx.selectedDelegates = delegates;
+
+        return tcx;
+    }
+
+    txnMustGetDelegate(
+        tcx: StellarTxnContext,
+        roleName: string
+        // delegateConfig: DelegateConfig)
+    ) {
+        const { selectedDelegates: d } = tcx;
+        let selected = d[roleName];
+        if (!selected) {
+            const role = this.roles[roleName];
+            if (role.default) {
+                selected = { strategyName: "default", addlParams: {} };
+            }
+        }
+        if (!selected)
+            throw new DelegateConfigNeeded(
+                `no delegate for role ${roleName} found in transaction-context or default`
+            );
+
+        const { strategyName, addlParams } = selected;
+
+        const { roles } = this;
+        const selectedStrategy = roles[roleName][strategyName];
+        const { delegateClass, validateScriptParams } = selectedStrategy;
+        const { defaultParams } = delegateClass;
+        const mergedParams = {
+            ...defaultParams,
+            ...selectedStrategy.scriptParams,
+            ...addlParams,
+        };
+
+        const errors: ErrorMap | undefined = validateScriptParams(mergedParams);
+        if (errors) {
+            throw new DelegateConfigNeeded(
+                "validation errors in contract params",
+                errors
+            );
+        }
+        try {
+            // delegate
+            const configured = this.addScriptWithParams(
+                selectedStrategy.delegateClass,
+                mergedParams
+            );
+            return configured;
+        } catch (e: any) {
+            const t = e.message.match(/invalid parameter name '([^']+)'$/);
+
+            const [_, badParamName] = t || [];
+            if (badParamName) {
+                throw new DelegateConfigNeeded(
+                    "configuration error while parameterizing contract script",
+                    { [badParamName]: e.message }
+                );
+            }
+            throw e;
+        }
     }
 
     capoRequirements() {
@@ -326,7 +463,7 @@ export abstract class Capo<
                 purpose:
                     "so the contract can use UUTs for scoped-authority semantics",
                 details: [
-                    "Building a txn with a UUT involves using the txnCreatingUUT partial-helper on the Capo.",
+                    "Building a txn with a UUT involves using the txnCreatingUuts partial-helper on the Capo.",
                     "That UUT (a Value) is returned, and then should be added to a TxOutput.",
                     "Fills tcx.state.uuts with purpose-keyed unique token-names",
                     "The partial-helper doesn't constrain the semantics of the UUT.",
@@ -335,6 +472,137 @@ export abstract class Capo<
                     "The uniqueness level can be iterated in future as needed.",
                     "The UUT's token-name combines its textual purpose with a short hash ",
                     "   ... of the seed UTxO, formatted with bech32",
+                ],
+            },
+            "supports the Delegation pattern using roles and strategy-variants":
+                {
+                    purpose: "enables structured modularity and extensibility",
+                    details: [
+                        "A Capo constellation can declare a set of roles to be filled in the contract logic.",
+                        "The roles are typed, so that implementers of extensibility can know ",
+                        "  ... which capabilities their plugins need to provide",
+                        "Each role should be filled by a StellarContract class, ",
+                        "  ... which is required at the time it is needed during creation of a transaction.",
+                        "Each role should normally provide a base implementation ",
+                        "  ... of a delegate that can serve the role.",
+                        "Strategies, strategy-variants, or simple 'variants' are all similar ways ",
+                        "  ... of indicating different named plugins that can serve a particular role.",
+                        "Variant-names are human-readable, while the actual code",
+                        "  ... behind each variant name are the strategies",
+                    ],
+                    requires: [
+                        "supports well-typed role declarations and strategy-adding",
+                        "supports just-in-time strategy-selection",
+                        "can concretely resolve role delegates",
+                    ],
+                },
+            "supports well-typed role declarations and strategy-adding": {
+                purpose:
+                    "for plugin implementers to have a clear picture of what to implement",
+                details: [
+                    "Each Capo class may declare a roles data structure.",
+                    "GOAL: The required type for each role must be matched when adding a plugin class serving a role",
+                    "A dApp using a Capo class can add strategy variants by subclassing",
+                ],
+                mech: [
+                    "Capo EXPECTS a synchronous getter for 'roles' to be defined",
+                    "Capo provides a default 'roles' having no specific roles (or maybe just minter - TBD)",
+                    "Subclasses can define their own get roles(), return a role-map-to-variant-map structure",
+                ],
+                requires: [
+                    "role definitions use a RoleMap and nested VariantMap data structure",
+                ],
+            },
+            "supports just-in-time strategy-selection using withDelegates() and txnMustGetDelegate()":
+                {
+                    purpose:
+                        "enabling each transaction to select appropriate plugins for its contextual needs",
+                    details: [
+                        "When a transaction having an extensibility-point is being created,",
+                        "  ... it SHOULD require an explicit choice of the delegate to use in that role.",
+                        "When a mkTxnDoesThings method creates a new role-delegated UTxO, ",
+                        "  ... it sets essential configuration details for the delegation ",
+                        "  ... and it requires the transaction-context to have delegation details.",
+                        "The delegate contract, including its address and/or reference-script UTxO ",
+                        "  ... and/or its parameters and its StellarContract class, MUST be captured ",
+                        "  ... so that it can be easily resolved and used/referenced",
+                        "  .... during a later transaction whose UTxO-spending is governed by the delegate contract.",
+                        "When the delegate serving the role is selected, ",
+                        "  ... that delegate will be manifested as a concrete pair of StellarContract subclass ",
+                        "  ... and contract address.  The contract address MAY be pre-existing ",
+                        "  ... or be instantiated as a result of the delegation details.",
+                    ],
+                    mech: [
+                        "withDelegates method starts a transaction with prepared delegate settings",
+                        "txnMustGetDelegate(tcx, role) method retrieves a configured delegate",
+                        "txnMustGetDelegate() will use a 'default' delegate",
+                        "If there is no delegate configured (or defaulted) for the needed role, txnMustGetDelegate throws a DelegateConfigNeeded error.",
+                        "If the strategy-configuration has any configuration problems, the DelegateConfigNeeded error contains an 'errors' object",
+                    ],
+                },
+            "Each role uses a RoleVariants structure which can accept new variants":
+                {
+                    purpose:
+                        "provides a type-safe container for adding strategy-variants to a role",
+                    details: [
+                        "Adding a strategy variant requires a human-readable name for the variant",
+                        "  ... and a reference to the StellarContract class implementing that variant.",
+                        "Each variant may indicate a type for its configuration data-structure",
+                        "  ... and may include a factory function accepting a data-structure of that type.",
+                        "TBD: base configuration type?  Capo txn-builders supporting utxo-creation can provide baseline details of the base type, ",
+                        "  ... with additional strategy-specific details provided in the transaction-context.",
+                        "When adding strategies, existing variants cannot be removed or replaced.",
+                    ],
+                    mech: [
+                        "RoleVariants has type-parameters indicating the baseline types & interfaces for delegates in that role",
+                        "TODO: variants can augment the definedRoles object without removing or replacing any existing variant",
+                    ],
+                    requires: [
+                        "provides a Strategy type for binding a contract to a strategy-variant name",
+                    ],
+                },
+            "provides a Strategy type for binding a contract to a strategy-variant name":
+                {
+                    purpose:
+                        "has all the strategy-specific bindings between a variant and the contract delegate",
+                    details: [
+                        "When adding a contract as a delegate serving in a role, its name",
+                        "  ... and its Strategy binding creates the connection between the host contract (suite) ",
+                        "  ... and the StellarContract subclass implementing the details of the strategy.",
+                        "The Strategy and its underlying contract are type-matched",
+                        "  ... with the interface needed by the Role.",
+                        "The Strategy is a well-typed structure supporting ",
+                        "  ... any strategy-specific configuration details (script parameters)",
+                        "  ... and validation of script parameters",
+                    ],
+                    mech: [
+                        "Each strategy must reference a type-matched implementation class",
+                        "Each strategy may define scriptParams always used for that strategy",
+                        "Each strategy may defer the definition of other script-params to be defined when a specific delegation relationship is being created",
+                        "Each strategy must define a validateScriptParams(allScriptParams) function, returning an errors object if there are problems",
+                        "validateScriptParams() should return undefined if there are no problems",
+                    ],
+                    requires: [
+                        "supports concrete resolution of role delegates",
+                    ],
+                },
+            "supports concrete resolution of existing role delegates": {
+                purpose:
+                    "so that transactions involving delegated responsibilities can be executed",
+                details: [
+                    "When a transaction needs to involve a UTxO governed by a delegate contract",
+                    "   ... the need for that delegate contract is signalled through Capo callbacks ",
+                    "   ... during the transaction-building process.",
+                    "Those callbacks contain key information, such as role-name, parameters, and address",
+                    "  ... needed in the collaboration to find the correct concrete delegate.",
+                    "Once the delegate is resolved to a configured StellarContract class, ",
+                    "   ... its established transaction-building interface is triggered, ",
+                    "   ... augmenting the transaction with the correct details, ",
+                    "   ... and enabling the right on-chain behaviors / verifications",
+                    "The Strategy adapter is expected to return the proper delegate with its matching address.",
+                ],
+                mech: [
+                    "TODO: with an existing delegate, the selected strategy class MUST exactly match the known delegate-address",
                 ],
             },
         };

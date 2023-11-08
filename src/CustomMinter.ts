@@ -20,14 +20,9 @@ import {
 //@ts-expect-error
 import contract from "./CustomMinter.hl";
 import { StellarTxnContext } from "../lib/StellarTxnContext.js";
-import { MintCharterRedeemerArgs, MintUUTRedeemerArgs, MinterBaseMethods } from "../lib/Capo.js";
+import { MinterBaseMethods } from "../lib/Capo.js";
 import { DefaultMinter } from "./DefaultMinter.js";
 import { tokenNamesOrValuesEntry, valuesEntry } from "../lib/HeliosPromotedTypes.js";
-
-export type SeedTxnParams = {
-    seedTxn: TxId;
-    seedIndex: bigint;
-};
 
 
 export class CustomMinter 
