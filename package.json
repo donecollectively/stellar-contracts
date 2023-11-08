@@ -24,8 +24,8 @@
         "build:watch": "scripts/build --watch",
         "dev": "scripts/build --watch",
         "test": "vitest",
-        "test:debug": "vitest --inspect --threads false",
-        "testing": "vitest --inspect --threads false",
+        "testing": "vitest",
+        "testing:debug": "vitest --inspect --threads false",
         "test:ui": "vitest --ui",
         "test:run": "vitest run"
     },

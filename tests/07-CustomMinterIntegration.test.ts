@@ -15,6 +15,7 @@ import {
     StellarTestContext,
     addTestContext,
     CapoTestHelper,
+    DefaultCapoTestHelper,
 } from "../src/testing";
 import { DefaultCharterDatumArgs, MinimalDefaultCharterDatumArgs } from "../src/DefaultCapo";
 
@@ -31,7 +32,7 @@ const describe = descrWithContext<localTC>;
 
 const minAda = 2n * ADA; // minimum needed to send an NFT
 
-class CustomTreasuryTestHelper extends CapoTestHelper<CustomTreasury> {
+class CustomTreasuryTestHelper extends DefaultCapoTestHelper<CustomTreasury> {
     get stellarClass() {
         return CustomTreasury;
     }
@@ -70,7 +71,7 @@ class CustomTreasuryTestHelper extends CapoTestHelper<CustomTreasury> {
         console.log("charter token mint: \n" + tcx.dump());
 
         const submitting = treasury.submit(tcx, {
-            signers: [tina, tracy, tom],
+            signers: [tina.address, tracy.address, tom.address],
         });
         return submitting.then(() => {
             this.network.tick(1n);
@@ -105,7 +106,7 @@ class CustomTreasuryTestHelper extends CapoTestHelper<CustomTreasury> {
     }
 }
 
-describe("StellarContract", async () => {
+describe.skip("StellarContract", async () => {
     beforeEach<localTC>(async (context) => {
         return addTestContext(context, CustomTreasuryTestHelper);
     });

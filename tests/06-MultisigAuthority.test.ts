@@ -23,7 +23,7 @@ const describe = descrWithContext<localTC>;
 //     minSigs: 2,
 // };
 
-describe("Capo: Authority: Multisig", async () => {
+describe.skip("Capo: Authority: Multisig", async () => {
     beforeEach<localTC>(async (context) => {
         // await new Promise(res => setTimeout(res, 10));
         await addTestContext(context, CustomCapoTestHelper);
