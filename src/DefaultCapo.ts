@@ -357,6 +357,7 @@ export class DefaultCapo<
                 "CharterToken",
                 ctUtxo.origOutput.datum as InlineDatum
             );    
+            if (!charterDatum) throw Error(`invalid charter UTxO datum`)
             return charterDatum
         })
     }

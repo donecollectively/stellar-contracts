@@ -610,7 +610,7 @@ export class StellarContract<
     async readDatum<DPROPS extends anyDatumProps>(
         datumName: string,
         datum: Datum | InlineDatum
-    ): Promise<DPROPS> {
+    ): Promise<DPROPS | undefined> {
         const thisDatumType = this.onChainDatumType[datumName];
 
         // console.log(` ----- read datum ${datumName}`)
@@ -624,7 +624,10 @@ export class StellarContract<
         return this.readUplcDatum(
             thisDatumType,
             datum.data!
-        ) as Promise<DPROPS>;
+        ).catch((e) => {
+            if (e.message?.match(/expected constrData/)) return undefined
+            throw e
+        }) as Promise<DPROPS | undefined>;
     }
 
     private async readUplcStructList(uplcType: any, uplcData: ListData) {
@@ -661,7 +664,6 @@ export class StellarContract<
         uplcData: ConstrData & UplcData
     ) {
         const fieldNames: string[] = enumDataDef.fieldNames;
-        debugger;
         //@ts-expect-error TS doesn't understand this enum variant data
         const { fields } = uplcData;
         return Object.fromEntries(
