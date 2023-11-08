@@ -43,7 +43,7 @@ export class CustomTreasury extends DefaultCapo<CustomMinter> {
     async mkTxnMintNamedToken(
         tokenName: string,
         count: bigint,
-        tcx: StellarTxnContext = new StellarTxnContext()
+        tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
     ): Promise<StellarTxnContext> {
         console.log("minting named token ");
         return this.txnMustUseCharterUtxo(

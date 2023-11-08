@@ -247,7 +247,7 @@ describe("Capo", async () => {
             console.log("------ submit charterSpend");
             await expect(
                 treasury.submit(tcx, {
-                    signers: [actors.tracy, actors.tom],
+                    signers: [actors.tracy.address, actors.tom.address],
                 })
             ).rejects.toThrow(/missing .* capoGov/);
         });
@@ -276,7 +276,7 @@ describe("Capo", async () => {
 
             console.log("------ submit charterSpend");
             await treasury.submit(tcx, {
-                signers: [actors.tracy, actors.tom],
+                signers: [actors.tracy.address, actors.tom.address],
             });
             const u = await network.getUtxos(treasury.address);
             expect(u.find(hasCharterToken)).toBeTruthy();
@@ -300,7 +300,7 @@ describe("Capo", async () => {
             tcx.addOutput(new TxOutput(bogusPlace, treasury.tvCharter()));
 
             const submitting = treasury.submit(tcx, {
-                signers: [actors.tracy, actors.tom],
+                signers: [actors.tracy.address, actors.tom.address],
             });
             await expect(submitting).rejects.toThrow(
                 /charter token must be returned/

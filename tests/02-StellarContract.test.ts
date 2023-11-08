@@ -261,7 +261,7 @@ describe("StellarContract", async () => {
 
                         const t = await h.initialize();
 
-                        const tcx = new StellarTxnContext();
+                        const tcx = new StellarTxnContext(h.currentActor);
                         const found = await t.mustFindActorUtxo(
                             "biggest",
                             (u) => {
@@ -286,21 +286,19 @@ describe("StellarContract", async () => {
 
                         const t = await h.initialize();
 
-                        const tcx = new StellarTxnContext();
-                        let foundAddress;
+                        const tcx = new StellarTxnContext(h.currentActor);
+                        let findingInWallet;
                         const hasUtxo = vi
                             .spyOn(t, "hasUtxo")
-                            .mockImplementation(async (_a, _b, { address }) => {
-                                foundAddress = address;
+                            .mockImplementation(async (_a, _b, { wallet }) => {
+                                findingInWallet = wallet;
                                 return undefined;
                             });
                         await expect(
                             t.mustFindActorUtxo("any", (x) => x, tcx)
                         ).rejects.toThrow();
                         expect(hasUtxo).toHaveBeenCalled();
-                        expect(foundAddress.toBech32()).toEqual(
-                            actors.tina.address.toBech32()
-                        );
+                        expect(findingInWallet).toBe(actors.tina)
                     });
 
                     it("throws an error if no utxo is matched", async (context: localTC) => {
@@ -310,7 +308,7 @@ describe("StellarContract", async () => {
                         } = context;
 
                         const t = await h.initialize();
-                        const tcx = new StellarTxnContext();
+                        const tcx = new StellarTxnContext(h.currentActor);
                         await expect(
                             t.mustFindActorUtxo(
                                 "testSomeThing",
@@ -349,7 +347,7 @@ describe("StellarContract", async () => {
                             h.network.tick(1n);
 
                             const t: DefaultCapo = await h.initialize();
-                            const tcx = new StellarTxnContext();
+                            const tcx = new StellarTxnContext(h.currentActor);
                             const isEnoughT = t.mkTokenPredicate(
                                 new Value({
                                     lovelace: 42000,
@@ -417,7 +415,7 @@ describe("StellarContract", async () => {
                         } = context;
                         // await delay(1000)
                         const t: DefaultCapo = await h.initialize();
-                        const tcx = new StellarTxnContext();
+                        const tcx = new StellarTxnContext(h.currentActor);
 
                         const tina = h.currentActor;
                         const tinaMoney = await tina.utxos;
@@ -501,7 +499,7 @@ describe("StellarContract", async () => {
 
                     const t = await h.initialize();
 
-                    const tcx = new StellarTxnContext();
+                    const tcx = new StellarTxnContext(h.currentActor);
                     let foundAddress;
                     const hasUtxo = vi
                         .spyOn(t, "hasUtxo")
@@ -528,7 +526,7 @@ describe("StellarContract", async () => {
 
                     const t = await h.initialize();
 
-                    const tcx = new StellarTxnContext();
+                    const tcx = new StellarTxnContext(h.currentActor);
                     let foundAddress;
                     const hasUtxo = vi
                         .spyOn(t, "hasUtxo")

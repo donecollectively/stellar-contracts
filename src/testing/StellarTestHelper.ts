@@ -293,6 +293,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         //  ... engage in smart-contract interactions.
         this.network.tick(BigInt(2));
         this.network.createUtxo(a, 5n * ADA);
+        this.network.createUtxo(a, 5n * ADA);
+        this.network.createUtxo(a, 5n * ADA);
         this.network.tick(BigInt(1));
 
         this.actors[roleName] = a;

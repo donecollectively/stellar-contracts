@@ -114,7 +114,7 @@ describe("Capo", async () => {
                 const t = await h.bootstrap();
 
                 const tcx = await t.mkTxnMintingUuts(
-                    new StellarTxnContext(),
+                    new StellarTxnContext(h.currentActor),
                     ["mintDgt"],
                     undefined,
                     { mintDelegate: "mintDgt" }
@@ -138,7 +138,7 @@ describe("Capo", async () => {
                 const t = await h.bootstrap();
 
                 const tcx = await t.mkTxnMintingUuts(
-                    new StellarTxnContext(),
+                    new StellarTxnContext(h.currentActor),
                     ["mintDgt"],
                     undefined,
                     { mintDelegate: "mintDgt" }
@@ -179,7 +179,7 @@ describe("Capo", async () => {
                 const t = await h.bootstrap();
 
                 const tcx = await t.mkTxnMintingUuts(
-                    new StellarTxnContext(),
+                    new StellarTxnContext(h.currentActor),
                     ["x"],
                     undefined,
                     { noDefault: "x" }
@@ -198,7 +198,7 @@ describe("Capo", async () => {
                 const t = await h.bootstrap();
 
                 const tcx = await t.mkTxnMintingUuts(
-                    new StellarTxnContext(),
+                    new StellarTxnContext(h.currentActor),
                     ["mintDgt"],
                     undefined,
                     { mintDelegate: "mintDgt" }
@@ -234,7 +234,7 @@ describe("Capo", async () => {
                 const t = await h.bootstrap();
 
                 const tcx = await t.mkTxnMintingUuts(
-                    new StellarTxnContext(),
+                    new StellarTxnContext(h.currentActor),
                     ["mintDgt"],
                     undefined,
                     { mintDelegate: "mintDgt" }
@@ -267,7 +267,7 @@ describe("Capo", async () => {
                 const t = await h.bootstrap();
 
                 const tcx = await t.mkTxnMintingUuts(
-                    new StellarTxnContext(),
+                    new StellarTxnContext(h.currentActor),
                     ["mintDgt"],
                     undefined,
                     { mintDelegate: "mintDgt" }
@@ -291,7 +291,7 @@ describe("Capo", async () => {
                 const t = await h.bootstrap();
 
                 const tcx = await t.mkTxnMintingUuts(
-                    new StellarTxnContext(),
+                    new StellarTxnContext(h.currentActor),
                     ["mintDgt"],
                     undefined,
                     { mintDelegate: "mintDgt" }

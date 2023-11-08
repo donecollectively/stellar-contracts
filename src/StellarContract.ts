@@ -22,6 +22,7 @@ import {
     DataDefinition,
     ListData,
     ConstrData,
+    WalletHelper,
 } from "@hyperionbt/helios";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 import { utxosAsString, valueAsString } from "./diagnostics.js";
@@ -110,7 +111,7 @@ export const Activity = {
     /**
      * Decorates a factory-function for creating tagged redeemer data for a specific on-chain activity
      * @remarks
-     * 
+     *
      * The factory function should follow an active-verb convention by including "ing" in the name of the factory function
      * @public
      **/
@@ -292,7 +293,7 @@ export type ConfigFor<
 /**
  * Initializes a stellar contract class
  * @remarks
- * 
+ *
  * Includes network and other standard setup details, and any configuration needed
  * for the specific class.
  * @public
@@ -324,6 +325,12 @@ type scriptPurpose =
     | "endpoint";
 
 export type canHaveToken = TxInput | TxOutput | Assets;
+type UtxoSearchScope = {
+    address?: Address;
+    wallet?: Wallet;
+    exceptInTcx?: StellarTxnContext<any>;
+};
+
 //!!! todo: type configuredStellarClass = class -> networkStuff -> withParams = stellar instance.
 
 /*
@@ -361,6 +368,21 @@ export class StellarContract<
     // isTest?: boolean
     static get defaultParams() {
         return {};
+    }
+
+    /**
+     * returns the wallet connection used by the current actor
+     * @remarks
+     *
+     * Throws an error if the strella contract facade has not been initialized with a wallet in settings.myActor
+     * @public
+     **/
+    get wallet() {
+        if (!this.myActor)
+            throw new Error(
+                `wallet is not connected to strella '${this.constructor.name}'`
+            );
+        return this.myActor;
     }
 
     //! can transform input configuration to contract script params
@@ -621,12 +643,9 @@ export class StellarContract<
                 `datum must be an InlineDatum to be readable using readDatum()`
             );
 
-        return this.readUplcDatum(
-            thisDatumType,
-            datum.data!
-        ).catch((e) => {
-            if (e.message?.match(/expected constrData/)) return undefined
-            throw e
+        return this.readUplcDatum(thisDatumType, datum.data!).catch((e) => {
+            if (e.message?.match(/expected constrData/)) return undefined;
+            throw e;
         }) as Promise<DPROPS | undefined>;
     }
 
@@ -664,6 +683,7 @@ export class StellarContract<
         uplcData: ConstrData & UplcData
     ) {
         const fieldNames: string[] = enumDataDef.fieldNames;
+
         //@ts-expect-error TS doesn't understand this enum variant data
         const { fields } = uplcData;
         return Object.fromEntries(
@@ -1146,26 +1166,41 @@ export class StellarContract<
     async submit(
         tcx: StellarTxnContext,
         {
-            sign = true,
             signers = [],
         }: {
-            sign?: boolean;
-            signers?: Wallet[];
+            signers?: Address[];
         } = {}
     ) {
         let { tx, feeLimit = 2_000_000n } = tcx;
-        if (this.myActor || signers.length) {
+        const { myActor: wallet } = this;
+        if (wallet || signers.length) {
             const [changeAddress] = (await this.myActor?.usedAddresses) || [];
             const spares = await this.findAnySpareUtxos(tcx);
-            const willSign = [...signers];
-            if (sign && this.myActor) {
-                willSign.push(this.myActor);
+            const willSign = [...signers, ...tcx.neededSigners];
+
+            const wHelper = wallet && new WalletHelper(wallet);
+            if (wallet && wHelper) {
+                //@ts-expect-error on internal isSmart()
+                if (tx.isSmart() && !tcx.collateral) {
+                    let [c] = await wallet.collateral;
+                    if (!c) {
+                        c = await wHelper.pickCollateral(this.ADA(5n));
+                        if (c.value.lovelace > this.ADA(20n))
+                            throw new Error(
+                                `The only collateral-eligible utxos in this wallet have more than 20 ADA.  It's recommended to create and maintain collateral values between 2 and 20 ADA (or 5 and 20, for more complex txns)`
+                            );
+                    }
+                    tcx.addCollateral(c); // adds it also to the tx.
+                }
             }
-            for (const s of willSign) {
-                const [a] = await s.usedAddresses;
-                if (tx.body.signers.find((s) => a.pubKeyHash!.hex === s.hex))
-                    continue;
-                tx.addSigner(a.pubKeyHash!);
+            // if (sign && this.myActor) {
+            //     willSign.push(this.myActor);
+            // }
+            for (const { pubKeyHash: pkh } of willSign) {
+                if (!pkh) continue;
+                if (tx.body.signers.find((s) => pkh.eq(s))) continue;
+
+                tx.addSigner(pkh);
             }
             // const feeEstimated = tx.estimateFee(this.networkParams);
             // if (feeEstimated > feeLimit) {
@@ -1186,9 +1221,18 @@ export class StellarContract<
                 debugger;
                 throw e;
             }
-            for (const s of willSign) {
-                const sig = await s.signTx(tx);
-                tx.addSignatures(sig, true);
+            if (wallet && wHelper) {
+                let actorMustSign = false;
+                for (const a of willSign) {
+                    if (!(await wHelper.isOwnAddress(a))) continue;
+                    actorMustSign = true;
+                }
+                if (actorMustSign) {
+                    const sigs = await wallet.signTx(tx);
+                    //! doesn't need to re-verify a sig it just collected
+                    //   (sig verification is ~2x the cost of signing)
+                    tx.addSignatures(sigs, false);
+                }
             }
         } else {
             console.warn("no 'myActor'; not finalizing");
@@ -1334,16 +1378,8 @@ export class StellarContract<
         }
     }
 
-    async getMyActorAddress() {
-        if (!this.myActor) throw this.missingActorError;
-
-        const [addr] = await this.myActor.usedAddresses;
-
-        return addr;
-    }
-
     private get missingActorError(): string | undefined {
-        return `missing required 'myActor' property on ${this.constructor.name} instance`;
+        return `Wallet not connected to Stellar Contract '${this.constructor.name}'`;
     }
 
     async mustFindActorUtxo(
@@ -1364,8 +1400,9 @@ export class StellarContract<
         hintOrExcept?: string | StellarTxnContext<any>,
         hint?: string
     ): Promise<TxInput | never> {
-        const address = await this.getMyActorAddress();
+        const wallet = this.myActor;
 
+        if (!wallet) throw new Error(this.missingActorError);
         const isTcx = hintOrExcept instanceof StellarTxnContext;
         const exceptInTcx = isTcx ? hintOrExcept : undefined;
         const extraErrorHint = isTcx
@@ -1377,11 +1414,22 @@ export class StellarContract<
         return this.mustFindUtxo(
             name,
             predicate,
-            { address, exceptInTcx },
+            { wallet, exceptInTcx },
             extraErrorHint
         );
     }
 
+    /**
+     * Locates a UTxO locked in a validator contract address
+     * @remarks
+     *
+     * Throws an error if no matching UTxO can be found
+     * @param semanticName - descriptive name; used in diagnostic messages and any errors thrown
+     * @param predicate - filter function; returns its utxo if it matches expectations
+     * @param exceptInTcx - any utxos already in the transaction context are disregarded and not passed to the predicate function
+     * @param extraErrorHint - user- or developer-facing guidance for guiding them to deal with the miss
+     * @public
+     **/
     //! finds a utxo (
     async mustFindMyUtxo(
         semanticName: string,
@@ -1421,19 +1469,18 @@ export class StellarContract<
     async mustFindUtxo(
         semanticName: string,
         predicate: (u: TxInput) => TxInput | undefined,
-        {
-            address,
-            exceptInTcx,
-        }: { address: Address; exceptInTcx?: StellarTxnContext<any> },
+        { address, wallet, exceptInTcx }: UtxoSearchScope,
         extraErrorHint: string = ""
     ): Promise<TxInput | never> {
         const found = await this.hasUtxo(semanticName, predicate, {
             address,
+            wallet,
             exceptInTcx,
         });
         if (!found) {
+            const where = address ? "address" : "connected wallet";
             throw new Error(
-                `${this.constructor.name}: '${semanticName}' utxo not found (${extraErrorHint}) in address`
+                `${this.constructor.name}: '${semanticName}' utxo not found (${extraErrorHint}) in ${where}`
             );
         }
 
@@ -1443,43 +1490,39 @@ export class StellarContract<
         return `${u.outputId.txId.hex}@${u.outputId.utxoIdx}`;
     }
 
-    async txnFindUtxo(
-        tcx: StellarTxnContext<any>,
-        name: string,
-        predicate: utxoPredicate,
-        address = this.address
-    ): Promise<TxInput | undefined> {
-        return this.hasUtxo(name, predicate, {
-            address,
-            exceptInTcx: tcx,
-        });
-    }
-
     async hasUtxo(
         semanticName: string,
         predicate: utxoPredicate,
-        {
-            address,
-            exceptInTcx,
-        }: { address: Address; exceptInTcx?: StellarTxnContext<any> }
+        { address, wallet, exceptInTcx }: UtxoSearchScope
     ): Promise<TxInput | undefined> {
-        const utxos = await this.network.getUtxos(address);
-        const filterUtxos = exceptInTcx?.reservedUtxos();
+        const utxos = address
+            ? await this.network.getUtxos(address)
+            : await wallet!.utxos;
 
+        const collateral = wallet ? await wallet.collateral : [];
+        // const filterUtxos = [
+        //     ...collateral,
+        //     ...(exceptInTcx?.reservedUtxos() || []),
+        // ];
+        const notCollateral = utxos.filter(
+            (u) => !collateral.find((c) => c.eq(u))
+        );
         const filtered = exceptInTcx
-            ? utxos.filter(exceptInTcx.utxoNotReserved.bind(exceptInTcx))
-            : utxos;
+            ? notCollateral.filter(
+                  exceptInTcx.utxoNotReserved.bind(exceptInTcx)
+              )
+            : notCollateral;
 
         console.log(
             `finding '${semanticName}' utxo${
                 exceptInTcx ? " (not already being spent in txn)" : ""
-            } from set:\n  ${utxosAsString(filtered, "\n  ")}`,
-            ...(exceptInTcx && filterUtxos?.length
-                ? [
-                      "\n  ... after filtering out:\n ",
-                      utxosAsString(exceptInTcx.reservedUtxos(), "\n  "),
-                  ]
-                : [])
+            } from set:\n  ${utxosAsString(filtered, "\n  ")}`
+            // ...(exceptInTcx && filterUtxos?.length
+            //     ? [
+            //           "\n  ... after filtering out:\n ",
+            //           utxosAsString(exceptInTcx.reservedUtxos(), "\n  "),
+            //       ]
+            //     : [])
         );
 
         const found = filtered.find(predicate);

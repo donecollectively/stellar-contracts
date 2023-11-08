@@ -39,13 +39,13 @@ export class CustomCapoTestHelper extends DefaultCapoTestHelper<CustomTreasury> 
         // };
     }
 
-    async mkCharterSpendTx(): Promise<StellarTxnContext> {
+    async mkCharterSpendTx(): Promise<StellarTxnContext<any>> {
         await this.mintCharterToken();
 
         const treasury = this.strella!;
-        const tcx: StellarTxnContext = new StellarTxnContext();
-
-        return treasury.txnAddCharterWithAuthority(tcx);
+        const tcx: StellarTxnContext = new StellarTxnContext(this.currentActor);
+        return treasury.txnAddGovAuthority(tcx)
+        // return treasury.txnAddCharterWithAuthority(tcx);
     }
 
     async updateCharter(

@@ -47,7 +47,7 @@ describe("Test environment", async () => {
             const tinaMoney = await tina.utxos;
             const tomMoney = await tom.utxos;
             const tracyMoney = await tracy.utxos;
-            expect(tinaMoney.length).toBe(2);
+            expect(tinaMoney.length).toBe(4);
             expect(tinaMoney[0].value.assets.nTokenTypes).toBe(0);
             expect(tinaMoney[0].value.assets.isZero).toBeTruthy();
             expect(tinaMoney[1].value.assets.isZero).toBeTruthy();

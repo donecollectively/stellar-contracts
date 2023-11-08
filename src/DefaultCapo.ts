@@ -356,7 +356,7 @@ export class DefaultCapo<
             const charterDatum = await this.readDatum<DefaultCharterDatumArgs>(
                 "CharterToken",
                 ctUtxo.origOutput.datum as InlineDatum
-            );    
+            );
             if (!charterDatum) throw Error(`invalid charter UTxO datum`)
             return charterDatum
         })
@@ -469,7 +469,7 @@ export class DefaultCapo<
         type hasBsc = hasBootstrappedConfig<CapoBaseConfig & configType>;
         //@ts-expect-error yet another case of seemingly spurious "could be instantiated with a different subtype" (actual fixes welcome :pray:)
         const initialTcx: TCX & hasBsc =
-            existingTcx || (new StellarTxnContext() as hasBsc);
+            existingTcx || (new StellarTxnContext(this.myActor) as hasBsc);
 
         return this.txnMustGetSeedUtxo(initialTcx, "charter bootstrapping", [
             "charter",
@@ -572,7 +572,7 @@ export class DefaultCapo<
     @txn
     async mkTxnUpdateCharter(
         args: CDT,
-        tcx: StellarTxnContext = new StellarTxnContext()
+        tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
     ): Promise<StellarTxnContext> {
         return this.txnUpdateCharterUtxo(
             tcx,

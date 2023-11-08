@@ -3,8 +3,12 @@ import {
     Tx,
     TxOutput,
     TxInput,
+} from "@hyperionbt/helios";
+import type {
+    Address,
     Wallet,
 } from "@hyperionbt/helios";
+
 import { txAsString } from "./diagnostics.js";
 
 //!!! if we could access the inputs and outputs in a building Tx,
@@ -39,20 +43,20 @@ type RedeemerArg = {
  * @public
  **/
 export class StellarTxnContext<S = noState> {
-    tx: Tx;
-    inputs: TxInput[];
+    tx = new Tx();
+    inputs: TxInput[] = [];
     collateral?: TxInput;
-    outputs: TxOutput[];
+    outputs: TxOutput[] = [];
     feeLimit?: bigint;
     state: S;
-    constructor(state: Partial<S> = {}) {
-        this.tx = new Tx();
-        this.inputs = [];
+    actor?: Wallet;
+    neededSigners: Address[] = []
+    constructor(actor?: Wallet, state: Partial<S> = {}) {
+        this.actor = actor
         //@ts-expect-error
         this.state = state;
-        this.collateral = undefined;
-        this.outputs = [];
     }
+
     dump() {
         const { tx } = this;
         return txAsString(tx);
@@ -93,8 +97,10 @@ export class StellarTxnContext<S = noState> {
         input: addInputArgs[0], 
         r?: RedeemerArg
     ) : TCX  {
+        if (input.address.pubKeyHash) this.neededSigners.push(input.address)
         this.inputs.push(input);
         this.tx.addInput(input, r?.redeemer);
+
         return this;
     }
 
@@ -103,8 +109,12 @@ export class StellarTxnContext<S = noState> {
         inputs: Parameters<Tx["addInputs"]>[0], 
         r: RedeemerArg
     ): TCX {
+        for (const input of inputs) {
+            if (input.address.pubKeyHash) this.neededSigners.push(input.address)
+        }
         this.inputs.push(...inputs);
         this.tx.addInputs(inputs, r.redeemer);
+
         return this;
     }
 

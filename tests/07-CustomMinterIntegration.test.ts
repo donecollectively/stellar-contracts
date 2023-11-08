@@ -83,7 +83,7 @@ class CustomTreasuryTestHelper extends CapoTestHelper<CustomTreasury> {
         await this.mintCharterToken();
 
         const treasury = this.strella!;
-        const tcx: StellarTxnContext = new StellarTxnContext();
+        const tcx: StellarTxnContext = new StellarTxnContext(this.currentActor);
 
         return treasury.txnAddCharterWithAuthority(tcx);
     }
