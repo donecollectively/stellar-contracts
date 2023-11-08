@@ -178,6 +178,9 @@ export abstract class StellarDelegate<
         return this.address.validatorHash;
     }
 
+    mkAuthorityTokenPredicate() {
+        return this.mkTokenPredicate(this.tvAuthorityToken())
+    }
     tvAuthorityToken() {
         if (!this.configIn)
             throw new Error(`must be instantiated with a configIn`);

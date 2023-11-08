@@ -402,7 +402,7 @@ export class DefaultCapo<
         return { ...baseConfig, ...pCfg } as configType & CapoBaseConfig;
     }
 
-    async mkTxnCreatingUuts<
+    async mkTxnMintingUuts<
         const purposes extends string, 
         existingTcx extends StellarTxnContext<any>, 
         const RM extends Record<ROLES, purposes>, 
@@ -414,7 +414,8 @@ export class DefaultCapo<
         roles?: RM
     ): Promise<existingTcx & hasUutContext<ROLES | purposes>> {
 
-        const tcx = await super.mkTxnCreatingUuts(initialTcx, uutPurposes, seedUtxo, roles);
+        const tcx = await super.mkTxnMintingUuts(initialTcx, uutPurposes, seedUtxo, roles);
+        const tcx2 = await this.txnMustUseCharterUtxo(tcx, "refInput")
         return this.txnAddMintDelegate(tcx)
     }
 
@@ -493,7 +494,7 @@ export class DefaultCapo<
 
             this.scriptProgram = this.loadProgramScript(fullScriptParams);
 
-            const tcx = await this.minter!.txnWithUuts(
+            const tcx = await this.minter!.txnWillMintUuts(
                 initialTcx,
                 ["capoGov", "mintDgt"],
                 seedUtxo,

@@ -87,7 +87,7 @@ export type hasAllUuts<uutEntries extends string> = {
  * @public
  */
 interface hasUutCreator {
-    txnWithUuts<
+    txnWillMintUuts<
         const purposes extends string,
         existingTcx extends StellarTxnContext<any>,
         const RM extends Record<ROLES, purposes>,
@@ -98,7 +98,7 @@ interface hasUutCreator {
         seedUtxo: TxInput,
         roles?: RM
     ): Promise<existingTcx & hasUutContext<ROLES | purposes>>;
-    mkTxnCreatingUuts<
+    mkTxnMintingUuts<
         const purposes extends string,
         existingTcx extends StellarTxnContext<any>,
         const RM extends Record<ROLES, purposes>,
@@ -254,7 +254,7 @@ export abstract class Capo<
 
     minter?: minterType;
     @partialTxn
-    txnWithUuts<
+    txnWillMintUuts<
         const purposes extends string,
         existingTcx extends StellarTxnContext<any>,
         const RM extends Record<ROLES, purposes>,
@@ -266,7 +266,7 @@ export abstract class Capo<
         //@ts-expect-error
         roles: RM = {} as Record<string, purposes>
     ): Promise<existingTcx & hasUutContext<ROLES | purposes>> {
-        return this.minter!.txnWithUuts(
+        return this.minter!.txnWillMintUuts(
             initialTcx,
             uutPurposes,
             seedUtxo,
@@ -275,7 +275,7 @@ export abstract class Capo<
     }
 
     @txn
-    async mkTxnCreatingUuts<
+    async mkTxnMintingUuts<
         const purposes extends string,
         existingTcx extends StellarTxnContext<any>,
         const RM extends Record<ROLES, purposes>,
@@ -287,7 +287,7 @@ export abstract class Capo<
         //@ts-expect-error
         roles: RM = {} as Record<string, purposes>
     ): Promise<existingTcx & hasUutContext<ROLES | purposes>> {
-        const tcx = await this.minter!.mkTxnCreatingUuts(
+        const tcx = await this.minter!.mkTxnMintingUuts(
             initialTcx,
             uutPurposes,
             seedUtxo,
@@ -942,7 +942,7 @@ export abstract class Capo<
                     "   ... of the seed UTxO, formatted with bech32",
                 ],
                 mech: [
-                    "Building a txn with a UUT involves using the txnCreatingUuts partial-helper on the Capo.",
+                    "Building a txn with a UUT involves using the txnMintingUuts partial-helper on the Capo.",
                     "Fills tcx.state.uuts with purpose-keyed unique token-names",
                     "The UUT uses the seed-utxo pattern to form 64 bits of uniqueness, so that token-names stay short-ish.",
                 ],

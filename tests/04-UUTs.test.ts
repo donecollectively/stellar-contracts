@@ -66,7 +66,7 @@ describe("Capo", async () => {
                 vi.spyOn(mintDgt, "txnGrantAuthority"
                     ).mockImplementation(async tcx => tcx)
 
-                await t.mkTxnCreatingUuts(tcx, ["testSomeThing"]);
+                await t.mkTxnMintingUuts(tcx, ["testSomeThing"]);
             }
 
             const uutVal = t.uutsValue(tcx.state.uuts!);
@@ -100,7 +100,7 @@ describe("Capo", async () => {
                 expect(spy).toHaveBeenCalled();
             }
 
-            await t.mkTxnCreatingUuts(tcx, ["testSomeThing"]);
+            await t.mkTxnMintingUuts(tcx, ["testSomeThing"]);
             const uutVal = t.uutsValue(tcx.state.uuts!);
             tcx.addOutput(new TxOutput(tina.address, uutVal));
             expect(
@@ -125,7 +125,7 @@ describe("Capo", async () => {
             vi.spyOn(
                 mintDelegate, "txnReceiveAuthorityToken"
             ).mockImplementation(async tcx => tcx);
-            await t.mkTxnCreatingUuts(tcx2, ["testSomeThing"]);
+            await t.mkTxnMintingUuts(tcx2, ["testSomeThing"]);
 
             const uutVal = t.uutsValue(tcx.state.uuts!);
             tcx.addOutput(new TxOutput(tina.address, uutVal));
@@ -147,7 +147,7 @@ describe("Capo", async () => {
             type testSomeThing = "testSomeThing";
             const tcx = new StellarTxnContext<hasAllUuts<testSomeThing>>();
             await t.txnAddCharterAuthorityTokenRef(tcx);
-            await t.mkTxnCreatingUuts(tcx, ["testSomeThing"]);
+            await t.mkTxnMintingUuts(tcx, ["testSomeThing"]);
 
             const uutVal = t.uutsValue(tcx.state.uuts!);
             tcx.addOutput(new TxOutput(tina.address, uutVal));
@@ -243,7 +243,7 @@ describe("Capo", async () => {
             const tcx = new StellarTxnContext<hasAllUuts<uniqUutMap>>();
             await t.txnAddCharterAuthorityTokenRef(tcx);
 
-            await t.mkTxnCreatingUuts(tcx, [noMultiples, noMultiples]);
+            await t.mkTxnMintingUuts(tcx, [noMultiples, noMultiples]);
 
             const uut = t.uutsValue(tcx.state.uuts!);
 
@@ -294,7 +294,7 @@ describe("Capo", async () => {
                 }
             );
 
-            await t.mkTxnCreatingUuts(tcx3, [noMultiples]);
+            await t.mkTxnMintingUuts(tcx3, [noMultiples]);
             const uut3 = t.uutsValue(tcx3.state.uuts!);
 
             tcx3.addOutput(new TxOutput(tina.address, uut3));
@@ -332,7 +332,7 @@ describe("Capo", async () => {
                 }
             );
 
-            await t.mkTxnCreatingUuts(tcx, ["testSomeThing"]);
+            await t.mkTxnMintingUuts(tcx, ["testSomeThing"]);
             const uut = t.uutsValue(tcx);
 
             tcx.addOutput(new TxOutput(tina.address, uut));

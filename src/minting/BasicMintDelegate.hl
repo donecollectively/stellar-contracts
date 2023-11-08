@@ -44,14 +44,9 @@ func main(mdd: MintDelegateDatum, action: MintDelegateActivity, ctx: ScriptConte
                     o : []TxOutput = ctx.get_cont_outputs();
                     if (o.length != 1) { error("only one utxo allowed in return to mint delegate") };
 
-                    MintDelegateDatum::IsDelegation{
-                        ddNew, _
-                    } = MintDelegateDatum::from_data( 
-                        o.head.datum.get_inline_data() 
-                    );
-            
-                    //! the datum must be unchanged.
-                    ddNew == dd && ok
+                    // Note: unspecialized delegate requires unchanged datum
+                    //   in additionalDelegateValidation
+                    ok
                 },
                 Reassigning => {
                     // the token isn't burned, and it isn't returned back to this script

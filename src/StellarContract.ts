@@ -96,8 +96,8 @@ export const Activity = {
      * Decorates a partial-transaction function that spends a contract-locked UTxO using a specific activity ("redeemer")
      * @remarks
      *
-     * activity-linked transaction-partial functions must follow the txn\{...\} 
-     * and active-verb ("ing") naming conventions.  `txnRetiringDeletation`,
+     * activity-linked transaction-partial functions must follow the txn\{...\}
+     * and active-verb ("ing") naming conventions.  `txnRetiringDelegation`,
      * `txnModifyingVote` and `txnWithdrawingStake` would be examples
      * of function names following this guidance.
      *

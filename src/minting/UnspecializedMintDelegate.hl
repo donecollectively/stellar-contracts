@@ -12,8 +12,9 @@ module specializedMintDelegate
 // ... additional functions, imports or methods
 
 import {
-     DelegationDetail 
-} from CapoDelegateHelpers
+     DelegationDetail,
+     unmodifiedDelegation
+    } from CapoDelegateHelpers
 
 enum MintDelegateDatum {
     IsDelegation {
@@ -47,7 +48,7 @@ enum MintDelegateActivity {
     //   ... enforced in "Modifying" event the second field of IsDelegation (the "CDConfig" stand-in here)
     //   ... the BasicMintDelegate allows for that field's presence, without any assumptions
     //   ... about its type.
-    //  Note that the basic mint delegate
+    //  Note that the basic mint delegate already
     //   ... enforces the authority UUT being returned to the delegate script,
     //   ... and other basic administrative expectations, so any specialization
     //   ... can focus on higher-level policy considerations.
@@ -55,9 +56,12 @@ enum MintDelegateActivity {
         ddd: MintDelegateDatum::IsDelegation, 
         ctx: ScriptContext
     ) -> Bool {
-        // this is a no-op, structured this way only 
-        //  ... to avoid unused variable errors
+        print("  ----- checking additional delegate validation");
         self.switch {
+            Authorizing => {
+                unmodifiedDelegation(ddd.serialize(), ctx) && 
+                true
+            },
             Modifying => false,
             _ => true
         } || ctx.tx.serialize() != ddd.serialize()
@@ -69,12 +73,14 @@ enum MintDelegateActivity {
         mdd: MintDelegateDatum, 
         ctx: ScriptContext
     ) -> Bool {
-        // this is a no-op, structured this way only 
-        //  ... to avoid unused variable errors
+        neverTriggered = () -> {  error("never called") };
         self.switch{
-            Authorizing => true,
-            _ => true
-        } || ctx.tx.serialize() != mdd.serialize()
+            Authorizing => neverTriggered(),
+            Reassigning => neverTriggered(),
+            Retiring => neverTriggered(),
+            Modifying => neverTriggered(),
+            _ => false
+        } && (mdd.serialize() != ctx.serialize())
     }
 }
 

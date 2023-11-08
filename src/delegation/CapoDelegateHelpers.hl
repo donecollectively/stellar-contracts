@@ -36,6 +36,23 @@ enum BASE_DELEGATE_Datum {
     }
 }
 
+//!!! call with existing delegate Datum.serialize()
+func unmodifiedDelegation(oldDD : ByteArray, ctx: ScriptContext) -> Bool {
+    o : []TxOutput = ctx.get_cont_outputs();
+    print(":::: hi "+o.head.datum.get_inline_data().serialize().show());
+    assert(o.head.datum.get_inline_data().serialize() == oldDD,
+        "delegation datum must not be modified"
+    );
+    true
+    // MintDelegateDatum::IsDelegation{
+    //     ddNew, _
+    // } = MintDelegateDatum::from_data( 
+        
+    // );
+
+    //! the datum must be unchanged.
+    // ddNew == dd 
+}
 
 func acAuthorityToken(dd: DelegationDetail) -> AssetClass {
     AssetClass::new(dd.mph, dd.tn)

@@ -113,7 +113,7 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
 
-                const tcx = await t.mkTxnCreatingUuts(
+                const tcx = await t.mkTxnMintingUuts(
                     new StellarTxnContext(),
                     ["mintDgt"],
                     undefined,
@@ -137,7 +137,7 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
 
-                const tcx = await t.mkTxnCreatingUuts(
+                const tcx = await t.mkTxnMintingUuts(
                     new StellarTxnContext(),
                     ["mintDgt"],
                     undefined,
@@ -178,7 +178,7 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
 
-                const tcx = await t.mkTxnCreatingUuts(
+                const tcx = await t.mkTxnMintingUuts(
                     new StellarTxnContext(),
                     ["x"],
                     undefined,
@@ -197,7 +197,7 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
 
-                const tcx = await t.mkTxnCreatingUuts(
+                const tcx = await t.mkTxnMintingUuts(
                     new StellarTxnContext(),
                     ["mintDgt"],
                     undefined,
@@ -233,7 +233,7 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
 
-                const tcx = await t.mkTxnCreatingUuts(
+                const tcx = await t.mkTxnMintingUuts(
                     new StellarTxnContext(),
                     ["mintDgt"],
                     undefined,
@@ -266,7 +266,7 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
 
-                const tcx = await t.mkTxnCreatingUuts(
+                const tcx = await t.mkTxnMintingUuts(
                     new StellarTxnContext(),
                     ["mintDgt"],
                     undefined,
@@ -290,7 +290,7 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
 
-                const tcx = await t.mkTxnCreatingUuts(
+                const tcx = await t.mkTxnMintingUuts(
                     new StellarTxnContext(),
                     ["mintDgt"],
                     undefined,

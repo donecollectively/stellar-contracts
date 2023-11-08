@@ -24,6 +24,7 @@ import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import { ConfigFor } from "../src/StellarContract";
 import { dumpAny } from "../src/diagnostics";
+import { DelegationDetail } from "../src/delegation/RolesAndDelegates";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
@@ -133,11 +134,11 @@ describe("Capo", async () => {
                     h: { network, actors, delay, state },
                 } = context;
 
-                debugger
+                debugger;
                 const treasury = await h.bootstrap();
                 const tcx = await h.mintCharterToken();
 
-                const {capoGov} = tcx.state.uuts;
+                const { capoGov } = tcx.state.uuts;
                 expect(
                     tcx.outputs.find((o: TxOutput) => {
                         return (
@@ -146,34 +147,81 @@ describe("Capo", async () => {
                         );
                     })
                 ).toBeTruthy();
-    
             });
             it("creates a mintDgt UUT and deposits it in the mintDelegate contract", async (context: localTC) => {
                 const {
                     h,
                     h: { network, actors, delay, state },
                 } = context;
-                    const treasury = await h.bootstrap();
-                    const tcx = await h.mintCharterToken();
+                const treasury = await h.bootstrap();
+                const tcx = await h.mintCharterToken();
 
-                    const {
-                        mintDgt
-                    } = tcx.state.uuts
+                const { mintDgt } = tcx.state.uuts;
 
-                    const datum = await treasury.findCharterDatum()
-                    const mintDelegate = await treasury.connectDelegateWithLink("mintDelegate", datum.mintDelegateLink);
+                const datum = await treasury.findCharterDatum();
+                const mintDelegate = await treasury.connectDelegateWithLink(
+                    "mintDelegate",
+                    datum.mintDelegateLink
+                );
 
-                    expect(
-                        tcx.outputs.find((o: TxOutput) => {
-                            return (
-                                o.value.ge(treasury.tokenAsValue(mintDgt)) &&
-                                o.address.eq(mintDelegate.address)
-                            );
-                        }), "should find the mintDgt token"
-                    ).toBeTruthy();
-        
-    
-                })
+                expect(
+                    tcx.outputs.find((o: TxOutput) => {
+                        return (
+                            o.value.ge(treasury.tokenAsValue(mintDgt)) &&
+                            o.address.eq(mintDelegate.address)
+                        );
+                    }),
+                    "should find the mintDgt token"
+                ).toBeTruthy();
+            });
+        });
+    });
+
+    describe("the mint delegate token is used for enforcing minting policy", () => {
+        it("builds minting txns that include the mintDgt", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+            const t = await h.bootstrap(); 
+            
+            const tcx = await t.mkTxnMintingUuts(new StellarTxnContext(), ["anything"]);
+
+            const mintDelegate = await t.getMintDelegate()
+            const spentDgtToken = tcx.inputs.find(mintDelegate.mkAuthorityTokenPredicate());
+            const returnedToken = tcx.outputs.find(mintDelegate.mkAuthorityTokenPredicate());
+            expect(spentDgtToken).toBeTruthy()
+            expect(returnedToken).toBeTruthy()
+            expect(t.submit(tcx)).resolves.toBeTruthy()
+            
+        });
+
+        it("won't mint in a txn not including the mintDgt", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+            const t = await h.bootstrap()
+            
+            vi.spyOn(t, "txnAddMintDelegate").mockImplementation(async (tcx) => tcx);
+
+            const tcx = await t.mkTxnMintingUuts(new StellarTxnContext(), ["anything"]);
+            expect(t.submit(tcx)).rejects.toThrow(/missing required delegate.*mintDgt/)
+        });
+
+        it("requires that the mintDgt datum is unmodified", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+            const t = await h.bootstrap(); 
+            
+            const mintDelegate = await t.getMintDelegate();
+            const spy = vi.spyOn(mintDelegate, "mkDelegationDatum").mockImplementation(
+                (...args) => {
+                    const [dd, s] = args;
+                    const {capoAddr, mph, tn} = mintDelegate.configIn!
+                    return mintDelegate.mkDatumIsDelegation({capoAddr, mph, tn}, "bad change")
+                }
+            );
+            const tcx = await t.mkTxnMintingUuts(new StellarTxnContext(), ["anything"]);
+            expect(spy).toHaveBeenCalled()
+            console.log("------ submitting bogus txn with modified delegate datum")
+            expect(t.submit(tcx)).rejects.toThrow(/delegation datum must not be modified/);
         });
     });
 
@@ -211,9 +259,7 @@ describe("Capo", async () => {
             } = context;
 
             const tcx = await h.mkCharterSpendTx();
-            expect(
-                tcx.outputs
-            ).toHaveLength(2);
+            expect(tcx.outputs).toHaveLength(2);
 
             const treasury = context.strella!;
             const hasCharterToken = treasury.mkTokenPredicate(

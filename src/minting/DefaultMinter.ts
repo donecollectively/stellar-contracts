@@ -83,7 +83,7 @@ export class DefaultMinter
 
     //!!! todo: fold args 2 & 4, allowing either array or map but not both.
     @partialTxn
-    async txnWithUuts<
+    async txnWillMintUuts<
         const purposes extends string,
         existingTcx extends StellarTxnContext<any>,
         const RM extends Record<ROLES,purposes>,
@@ -124,7 +124,7 @@ export class DefaultMinter
     }
 
     @txn
-    async mkTxnCreatingUuts<
+    async mkTxnMintingUuts<
         const purposes extends string,
         existingTcx extends StellarTxnContext<any>,
         const RM extends Record<ROLES, purposes>,
@@ -146,14 +146,14 @@ export class DefaultMinter
                   );
 
                   this.mustFindActorUtxo(
-                      `for-uut-${uutPurposes.join("+")}`,
+                      `seed-for-uut ${uutPurposes.join("+")}`,
                       uutSeed,
                       initialTcx
                   ).then(res);
               });
 
         return gettingSeed.then(async (seedUtxo) => {
-            const tcx = await this.txnWithUuts(
+            const tcx = await this.txnWillMintUuts(
                 initialTcx,
                 uutPurposes,
                 seedUtxo,
