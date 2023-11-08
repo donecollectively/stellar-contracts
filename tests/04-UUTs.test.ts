@@ -60,7 +60,7 @@ describe("Capo", async () => {
             // await delay(1000);
             type testSomeThing = "testSomeThing";
             const tcx = new StellarTxnContext<hasAllUuts<testSomeThing>>();
-            await t.txnMustUseCharterUtxo(tcx, "refInput");
+            // await t.txnMustUseCharterUtxo(tcx, "refInput"); 
             {
                 const mintDgt = await t.getMintDelegate();
                 vi.spyOn(mintDgt, "txnGrantAuthority"
@@ -120,12 +120,12 @@ describe("Capo", async () => {
             // await delay(1000);
             type testSomeThing = "testSomeThing";
             const tcx = new StellarTxnContext<hasAllUuts<testSomeThing>>();
-            const tcx2 = await t.txnAddCharterAuthorityTokenRef(tcx);
+            // const tcx2 = await t.txnAddCharterAuthorityTokenRef(tcx);
             const mintDelegate = await t.getMintDelegate()
             vi.spyOn(
                 mintDelegate, "txnReceiveAuthorityToken"
             ).mockImplementation(async tcx => tcx);
-            await t.mkTxnMintingUuts(tcx2, ["testSomeThing"]);
+            await t.mkTxnMintingUuts(tcx, ["testSomeThing"]);
 
             const uutVal = t.uutsValue(tcx.state.uuts!);
             tcx.addOutput(new TxOutput(tina.address, uutVal));
@@ -146,7 +146,7 @@ describe("Capo", async () => {
             // await delay(1000);
             type testSomeThing = "testSomeThing";
             const tcx = new StellarTxnContext<hasAllUuts<testSomeThing>>();
-            await t.txnAddCharterAuthorityTokenRef(tcx);
+            // await t.txnAddCharterAuthorityTokenRef(tcx);
             await t.mkTxnMintingUuts(tcx, ["testSomeThing"]);
 
             const uutVal = t.uutsValue(tcx.state.uuts!);
@@ -175,8 +175,8 @@ describe("Capo", async () => {
 
             type fooAndBar = "foo" | "bar";
             const tcx = new StellarTxnContext<hasAllUuts<fooAndBar>>();
-            await t.txnAddCharterAuthorityTokenRef(tcx);
-            await t.mkTxnCreatingUuts(tcx, ["foo", "bar"]);
+            // await t.txnAddCharterAuthorityTokenRef(tcx);
+            await t.mkTxnMintingUuts(tcx, ["foo", "bar"]);
             const uuts = t.uutsValue(tcx.state.uuts!);
 
             tcx.addOutput(new TxOutput(tina.address, uuts));
@@ -203,8 +203,8 @@ describe("Capo", async () => {
 
             type fooAndBar = "foo" | "bar";
             const tcx = new StellarTxnContext<hasAllUuts<fooAndBar>>();
-            await t.txnAddCharterAuthorityTokenRef(tcx);
-            await t.mkTxnCreatingUuts(tcx, ["foo", "bar"]);
+            // await t.txnAddCharterAuthorityTokenRef(tcx);
+            await t.mkTxnMintingUuts(tcx, ["foo", "bar"]);
             const uuts = t.uutsValue(tcx.state.uuts!);
 
             //! fills state.uuts with named
@@ -241,7 +241,7 @@ describe("Capo", async () => {
                 "-------- case 1: using the txn-helper in unsupported way"
             );
             const tcx = new StellarTxnContext<hasAllUuts<uniqUutMap>>();
-            await t.txnAddCharterAuthorityTokenRef(tcx);
+            // await t.txnAddCharterAuthorityTokenRef(tcx);
 
             await t.mkTxnMintingUuts(tcx, [noMultiples, noMultiples]);
 
@@ -257,7 +257,7 @@ describe("Capo", async () => {
                 "------ case 2: directly creating the transaction with >1 tokens"
             );
             const tcx2 = new StellarTxnContext<hasAllUuts<uniqUutMap>>();
-            await t.txnAddCharterAuthorityTokenRef(tcx2);
+            // await t.txnAddCharterAuthorityTokenRef(tcx2);
 
             const spy = vi.spyOn(utils, "mkUutValuesEntries");
             spy.mockImplementation(
@@ -269,7 +269,7 @@ describe("Capo", async () => {
                 }
             );
 
-            await t.mkTxnCreatingUuts(tcx2, [noMultiples]);
+            await t.mkTxnMintingUuts(tcx2, [noMultiples]);
             const uut2 = t.uutsValue(tcx2.state.uuts!);
 
             tcx2.addOutput(new TxOutput(tina.address, uut2));
@@ -282,7 +282,7 @@ describe("Capo", async () => {
                 "------ case 3: directly creating the transaction with multiple mint entries"
             );
             const tcx3 = new StellarTxnContext<hasAllUuts<uniqUutMap>>();
-            await t.txnAddCharterAuthorityTokenRef(tcx3);
+            // await t.txnAddCharterAuthorityTokenRef(tcx3);
 
             spy.mockImplementation(
                 //@ts-expect-error
@@ -318,7 +318,7 @@ describe("Capo", async () => {
             type hasSomethingUut = { ["testSomeThing"]: UutName };
             const tcx = new StellarTxnContext<hasAllUuts<"testSomeThing">>();
 
-            await t.txnAddCharterAuthorityTokenRef(tcx);
+            // await t.txnAddCharterAuthorityTokenRef(tcx);
             const m: DefaultMinter = t.minter!;
 
             const spy = vi.spyOn(utils, "mkUutValuesEntries");

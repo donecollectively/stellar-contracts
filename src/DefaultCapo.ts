@@ -468,7 +468,7 @@ export class DefaultCapo<
         type hasBsc = hasBootstrappedConfig<CapoBaseConfig & configType>;
         //@ts-expect-error yet another case of seemingly spurious "could be instantiated with a different subtype" (actual fixes welcome :pray:)
         const initialTcx: TCX & hasBsc =
-            existingTcx || (new StellarTxnContext(this.myActor) as hasBsc);
+            existingTcx || (new StellarTxnContext() as hasBsc);
 
         return this.txnMustGetSeedUtxo(initialTcx, "charter bootstrapping", [
             "charter",
