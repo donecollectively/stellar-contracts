@@ -18,6 +18,7 @@ import {
     Signature,
     AssetClass,
     ValidatorHash,
+    MintingPolicyHash,
 } from "@hyperionbt/helios";
 
 import {
@@ -47,6 +48,7 @@ import {
     RoleMap,
     strategyValidation,
     defineRole,
+    delegateLinkSerializer,
 } from "./delegation/RolesAndDelegates.js";
 import { BasicMintDelegate } from "./minting/BasicMintDelegate.js";
 import { AnyAddressAuthorityPolicy } from "./authority/AnyAddressAuthorityPolicy.js";
@@ -188,6 +190,17 @@ export class DefaultCapo<
 > extends Capo<MinterType, CDT, configType> {
     contractSource() {
         return contract;
+    }
+    static parseConfig(jsonConfig) {
+        const {mph, rev, seedTxn, seedIndex} = jsonConfig;
+
+        const outputConfig : any = { };
+        if (mph) outputConfig.mph = MintingPolicyHash.fromHex(mph.bytes)
+        if (rev) outputConfig.rev = BigInt(rev);
+        if (seedTxn) outputConfig.seedTxn = TxId.fromHex(seedTxn.bytes)
+        if (seedIndex) outputConfig.seedIndex = BigInt(seedIndex)
+
+        return outputConfig    
     }
 
     /**
@@ -454,7 +467,7 @@ export class DefaultCapo<
         type hasBsc = hasBootstrappedConfig<CapoBaseConfig & configType>;
         //@ts-expect-error yet another case of seemingly spurious "could be instantiated with a different subtype" (actual fixes welcome :pray:)
         const initialTcx: TCX & hasBsc =
-            existingTcx || (new StellarTxnContext() as hasBsc);
+            existingTcx || (new StellarTxnContext(this.myActor) as hasBsc);
 
         return this.txnMustGetSeedUtxo(initialTcx, "charter bootstrapping", [
             "charter",
@@ -472,7 +485,8 @@ export class DefaultCapo<
                 seedTxn,
                 seedIndex,
             });
-            initialTcx.state.bootstrappedConfig = bsc;
+            initialTcx.state.bsc = bsc
+            initialTcx.state.bootstrappedConfig = JSON.parse(JSON.stringify(bsc, delegateLinkSerializer))
             const fullScriptParams = (this.contractParams =
                 this.getContractScriptParams(bsc));
             this.configIn = bsc;

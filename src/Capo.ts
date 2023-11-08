@@ -169,7 +169,8 @@ export type CapoBaseConfig = SeedTxnParams & {
  **/
 export type hasBootstrappedConfig<CT extends CapoBaseConfig> =
     StellarTxnContext<{
-        bootstrappedConfig: CT;
+        bsc: CT,
+        bootstrappedConfig: any;
     }>;
 
 type PreconfiguredDelegate<T extends StellarDelegate<any>> = Omit<
@@ -507,7 +508,7 @@ export abstract class Capo<
     getContractScriptParams(
         config: configType
     ): configBase & Partial<configType> {
-        if (this.configIn && config.mph && config.mph !== this.mph)
+        if (this.configIn && config.mph && !config.mph.eq(this.mph))
             throw new Error(`mph mismatch`);
         const { mph } = config;
         const rev = this.getCapoRev();
