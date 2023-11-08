@@ -115,6 +115,7 @@ describe("Vesting service", async () => {
 			const { sasha, tom, pavel } = actors;
 
 			async function splitUtxos(user: WalletEmulator ) {
+				// duplicated, abstract away
 				const margin = 45n * ADA;
 				const firstUtxo = (await user.utxos)[0]
 				const secondUtxo = (await user.utxos)[1]
@@ -191,6 +192,7 @@ describe("Vesting service", async () => {
 			const { sasha, tom, pavel } = actors;
 
 			async function splitUtxos(user: WalletEmulator ) {
+				// this needs no be in the test.
 				const margin = 45n * ADA;
 				const firstUtxo = (await user.utxos)[0]
 				const secondUtxo = (await user.utxos)[1]
