@@ -134,7 +134,7 @@ describe("Vesting service", async () => {
 					new Value(firstUtxo.value.lovelace - margin)
 				    )
 				);
-				return h.submitTx(tx, "force");
+				return h.submitTx(tx, "force"); // h. prevents abstracting
             		}
 
 			const splitUtxo = await splitUtxos(sasha);
