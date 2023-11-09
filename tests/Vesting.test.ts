@@ -115,7 +115,7 @@ describe("Vesting service", async () => {
 			const { sasha, tom, pavel } = actors;
 
 			async function splitUtxos(user: WalletEmulator ) {
-				// duplicated, abstract away
+				// duplicated
 				const margin = 45n * ADA;
 				const firstUtxo = (await user.utxos)[0]
 				const secondUtxo = (await user.utxos)[1]
@@ -143,10 +143,9 @@ describe("Vesting service", async () => {
 
 			const v = new Vesting(context);
 
-			// TODO: deadline calculation
 			const tDepo = Date.now();
 			expect(tDepo).toBeGreaterThan(1693459155930);
-			const offset =                1655683199999;
+			const offset =                1655683199999; // offset should be reasonably small
 			const deadline = BigInt(tDepo + offset);
 			expect(deadline).toBeGreaterThan(3349143163476n);
 
@@ -192,7 +191,7 @@ describe("Vesting service", async () => {
 			const { sasha, tom, pavel } = actors;
 
 			async function splitUtxos(user: WalletEmulator ) {
-				// this needs no be in the test.
+				// duplicated
 				const margin = 45n * ADA;
 				const firstUtxo = (await user.utxos)[0]
 				const secondUtxo = (await user.utxos)[1]
