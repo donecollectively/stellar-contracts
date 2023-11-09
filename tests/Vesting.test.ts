@@ -118,9 +118,9 @@ describe("Vesting service", async () => {
 
 			const tDepo = Date.now();
 			expect(tDepo).toBeGreaterThan(1693459155930);
-			const offset =                1655683199999; // offset should be reasonably small
+			const offset =                  10000000000; 
 			const deadline = BigInt(tDepo + offset);
-			expect(deadline).toBeGreaterThan(3349143163476n);
+			expect(deadline).toBeLessThan(1731162495000n); // Nov 9th, 2024
 
 			const tcx = await v.mkTxnDepositValueForVesting({
 				sponsor: sasha,
