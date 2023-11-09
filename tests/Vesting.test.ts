@@ -61,33 +61,6 @@ describe("Vesting service", async () => {
     });
 
 	describe("baseline capabilities", () => {
-	        it("gets expected wallet balances for test-scenario actor", async (context: localTC) => {
-		    const {h, h: { network, actors, delay, state }} = context;
-		    const { sasha, tom, pavel }  = actors;
-
-		    const sashaMoney = await sasha.utxos;
-		    const tomMoney = await tom.utxos;
-		    const pavelMoney = await pavel.utxos;
-		    expect(sashaMoney.length).toBe(2);
-		    expect(sashaMoney[0].value.assets.nTokenTypes).toBe(0);
-		    expect(sashaMoney[0].value.assets.isZero).toBeTruthy();
-		    expect(sashaMoney[1].value.assets.isZero).toBeTruthy();
-
-
-		    expect(sashaMoney[0].value.lovelace).toBe(1100n * ADA);
-		    expect(sashaMoney[1].value.lovelace).toBe(5n * ADA);
-
-		    expect(tomMoney[0].value.lovelace).toBe(120n * ADA);
-
-		    expect(pavelMoney[0].value.lovelace).toBe(13n * ADA);
-		});
-		it("can access StellarTestHelper", async (context: localTC) => {
-			const {h, h: { network, actors, delay, state }} = context;
-			expect(h.currentSlot()).toBeTypeOf('bigint');
-			expect(typeof(h.slotToTimestamp(h.currentSlot()))).toBe('object');
-			expect(h.liveSlotParams.timeToSlot(2n)).toBe(0n);
-			expect(h.liveSlotParams.timeToSlot(1000n)).toBe(1n);
-		});
 		it("can access validator UTXO", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
 			const { sasha, tom, pavel } = actors;
@@ -185,6 +158,36 @@ describe("Vesting service", async () => {
 
 			expect((await sasha.utxos).length).toBe(4);
 
+		});
+	});
+	describe("check context correctness", () => {
+
+	        it("gets expected wallet balances for test-scenario actor", async (context: localTC) => {
+		    const {h, h: { network, actors, delay, state }} = context;
+		    const { sasha, tom, pavel }  = actors;
+
+		    const sashaMoney = await sasha.utxos;
+		    const tomMoney = await tom.utxos;
+		    const pavelMoney = await pavel.utxos;
+		    expect(sashaMoney.length).toBe(2);
+		    expect(sashaMoney[0].value.assets.nTokenTypes).toBe(0);
+		    expect(sashaMoney[0].value.assets.isZero).toBeTruthy();
+		    expect(sashaMoney[1].value.assets.isZero).toBeTruthy();
+
+
+		    expect(sashaMoney[0].value.lovelace).toBe(1100n * ADA);
+		    expect(sashaMoney[1].value.lovelace).toBe(5n * ADA);
+
+		    expect(tomMoney[0].value.lovelace).toBe(120n * ADA);
+
+		    expect(pavelMoney[0].value.lovelace).toBe(13n * ADA);
+		});
+		it("can access StellarTestHelper", async (context: localTC) => {
+			const {h, h: { network, actors, delay, state }} = context;
+			expect(h.currentSlot()).toBeTypeOf('bigint');
+			expect(typeof(h.slotToTimestamp(h.currentSlot()))).toBe('object');
+			expect(h.liveSlotParams.timeToSlot(2n)).toBe(0n);
+			expect(h.liveSlotParams.timeToSlot(1000n)).toBe(1n);
 		});
 	});
 });
