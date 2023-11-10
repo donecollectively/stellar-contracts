@@ -184,6 +184,12 @@ describe("Vesting service", async () => {
 
 		    expect(pavelMoney[0].value.lovelace).toBe(13n * ADA);
 		});
+	        it("checks network parameters", async (context: localTC) => {
+		    const {h, h: { network, actors, delay, state }} = context;
+		    const { sasha, tom, pavel }  = actors;
+		    expect(h.network.currentSlot).toBeGreaterThan(1699619451n);
+
+		});
 		it("can access StellarTestHelper", async (context: localTC) => {
 			const {h, h: { network, actors, delay, state }} = context;
 			expect(h.currentSlot()).toBeTypeOf('bigint');
