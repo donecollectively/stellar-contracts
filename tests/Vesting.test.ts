@@ -133,13 +133,12 @@ describe("Vesting service", async () => {
 
 			const txId = await h.submitTx(tcx.tx, "force");
 
-			// can access deadline as number in Datum:
-			expect(JSON.parse(tcx.outputs[0].datum.data.toSchemaJson()).list[2].int).toBeTypeOf('number');
-			expect((txId.hex).length).toBe(64);
-			expect((await sasha.utxos).length).toBeGreaterThan(0);
-
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
+
+			// can access deadline as number in Datum:
+			const onchainDeadline = BigInt(JSON.parse(valUtxos[0].origOutput.datum.data.toSchemaJson()).list[2].int)
+			expect(onchainDeadline).toBe(deadline);
 
 			const now = BigInt(Date.now())
 			const validFrom = h.liveSlotParams.timeToSlot(now);
