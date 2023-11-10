@@ -114,14 +114,15 @@ describe("Vesting service", async () => {
 
 			const splitUtxo = await splitUtxos(sasha);
 
+			// check if user has enough utxos to proceed with transactions:
 			expect((await sasha.utxos).length).toBeGreaterThan(2);
 
 			const v = new Vesting(context);
 
-			const tDepo = Date.now();
-			expect(tDepo).toBeGreaterThan(1693459155930);
-			const offset =                  10000000000; 
-			const deadline = BigInt(tDepo + offset);
+			// calculate the deadline:
+			const timeAtDepo = Date.now();
+			const offset =             365*24*60*60*1000; // 1 year in milliseconds
+			const deadline = BigInt(timeAtDepo + offset);
 			expect(deadline).toBeLessThan(1731162495000n); // Nov 9th, 2024
 
 			const tcx = await v.mkTxnDepositValueForVesting({
