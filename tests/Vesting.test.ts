@@ -61,7 +61,7 @@ describe("Vesting service", async () => {
     });
 
 	describe("baseline capabilities", () => {
-		it("can access validator UTXO", async (context: localTC) => {
+		it("sasha can deposit correctly", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
 			const { sasha, tom, pavel } = actors;
 
@@ -79,8 +79,10 @@ describe("Vesting service", async () => {
 
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
-
-			expect(valUtxos[0].origOutput.value.lovelace).toBeTypeOf('bigint');
+			const onchainDeadline = BigInt(JSON.parse(valUtxos[0].origOutput.datum.data.toSchemaJson()).list[2].int)
+			const onchainAda = valUtxos[0].origOutput.value.lovelace
+			expect(onchainAda).toBe(1100000000n);
+			expect(onchainDeadline).toBe(deadline);
 
 		});
 		it("sasha can lock and cancel", async (context: localTC) => {
