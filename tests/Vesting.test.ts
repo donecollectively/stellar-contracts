@@ -164,30 +164,26 @@ describe("Vesting service", async () => {
 	});
 	describe("check context correctness", () => {
 
-	        it("gets expected wallet balances for test-scenario actor", async (context: localTC) => {
+	        it("verifies context correctness", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
 		    const { sasha, tom, pavel }  = actors;
+
+		    // slot before any transaction:
+		    expect(h.network.currentSlot).toBeGreaterThan(1699619451n);
 
 		    const sashaMoney = await sasha.utxos;
 		    const tomMoney = await tom.utxos;
 		    const pavelMoney = await pavel.utxos;
+
 		    expect(sashaMoney.length).toBe(2);
 		    expect(sashaMoney[0].value.assets.nTokenTypes).toBe(0);
 		    expect(sashaMoney[0].value.assets.isZero).toBeTruthy();
 		    expect(sashaMoney[1].value.assets.isZero).toBeTruthy();
-
-
 		    expect(sashaMoney[0].value.lovelace).toBe(1100n * ADA);
 		    expect(sashaMoney[1].value.lovelace).toBe(5n * ADA);
-
 		    expect(tomMoney[0].value.lovelace).toBe(120n * ADA);
-
 		    expect(pavelMoney[0].value.lovelace).toBe(13n * ADA);
-		});
-	        it("checks network parameters", async (context: localTC) => {
-		    const {h, h: { network, actors, delay, state }} = context;
-		    const { sasha, tom, pavel }  = actors;
-		    expect(h.network.currentSlot).toBeGreaterThan(1699619451n);
+
 
 		});
 		it("can access StellarTestHelper", async (context: localTC) => {
