@@ -140,10 +140,9 @@ describe("Vesting service", async () => {
 			const onchainDeadline = BigInt(JSON.parse(valUtxos[0].origOutput.datum.data.toSchemaJson()).list[2].int)
 			expect(onchainDeadline).toBe(deadline);
 
-			const now = BigInt(Date.now())
-			const validFrom = h.liveSlotParams.timeToSlot(now);
+			const validFrom = h.network.currentSlot
 
-			expect(validFrom).toBeTypeOf('bigint');
+			expect(validFrom).toBeGreaterThan(1699619812n);
 
 			// TODO: make more definitive case here:
 			// sasha spent one utxo in the fees, so the new utxo must be 
