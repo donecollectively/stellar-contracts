@@ -64,6 +64,7 @@ describe("Vesting service", async () => {
 		it("sasha can deposit correctly", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
 			const { sasha, tom, pavel } = actors;
+			const t0 = h.network.currentSlot
 
 			const v = new Vesting(context);
 			const t = BigInt(Date.now());
@@ -80,9 +81,13 @@ describe("Vesting service", async () => {
 			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
 			const valUtxos = await network.getUtxos(validatorAddress)
 			const onchainDeadline = BigInt(JSON.parse(valUtxos[0].origOutput.datum.data.toSchemaJson()).list[2].int)
+
 			const onchainAda = valUtxos[0].origOutput.value.lovelace
 			expect(onchainAda).toBe(1100000000n);
 			expect(onchainDeadline).toBe(deadline);
+
+			const t1 = h.network.currentSlot
+			expect(t1).toBeGreaterThan(t0)
 
 		});
 		it("sasha can lock and cancel", async (context: localTC) => {
