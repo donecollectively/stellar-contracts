@@ -8,8 +8,6 @@ import {
 
 import {
     SampleTreasury,
-    CharterDatumArgs,
-    chTok,
 } from "../src/examples/SampleTreasury";
 
 import {
