@@ -169,9 +169,8 @@ describe("Vesting service", async () => {
 
 		});
 	});
-	describe("check context correctness", () => {
-
-	        it("verifies context correctness", async (context: localTC) => {
+	describe("check LocalTC correctness", () => {
+	        it("actors created correctly", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
 		    const { sasha, tom, pavel }  = actors;
 
@@ -196,9 +195,6 @@ describe("Vesting service", async () => {
 		it("can access StellarTestHelper", async (context: localTC) => {
 			const {h, h: { network, actors, delay, state }} = context;
 			expect(h.currentSlot()).toBeGreaterThan(44030527n);
-			// expect(typeof(h.slotToTimestamp(h.currentSlot()))).toBe('object');
-			// expect(h.liveSlotParams.timeToSlot(2n)).toBe(0n);
-			// expect(h.liveSlotParams.timeToSlot(1000n)).toBe(1n);
 		});
 	});
 });
