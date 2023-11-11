@@ -192,7 +192,7 @@ describe("Vesting service", async () => {
 
 
 		});
-		it("can access StellarTestHelper", async (context: localTC) => {
+		it("currentSlot returns sensible value", async (context: localTC) => {
 			const {h, h: { network, actors, delay, state }} = context;
 			expect(h.currentSlot()).toBeGreaterThan(44030527n);
 		});
