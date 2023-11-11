@@ -1,9 +1,9 @@
 import { Address, Datum, TxOutput, Value} from "@hyperionbt/helios";
-import { StellarContract, redeem, datum, txn } from "../lib/StellarContract.js";
+import { StellarContract, redeem, datum, txn } from "../src/StellarContract.js";
 import contract from "./Vesting.hl";
-import { StellarTxnContext } from "../lib/StellarTxnContext";
+import { StellarTxnContext } from "../src/StellarTxnContext";
 
-import {ADA} from "../lib/StellarTestHelper";
+import {ADA} from "../src/testing/StellarTestHelper";
 
 export type VestingParams = {
     sponsor: WalletEmulator;
