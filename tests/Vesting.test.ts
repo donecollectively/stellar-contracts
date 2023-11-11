@@ -7,8 +7,8 @@ import {
 } from "vitest";
 
 import {
-    SampleTreasury,
-} from "../src/examples/SampleTreasury";
+    CustomTreasury,
+} from "./customizing/CustomTreasury";
 
 import {
     Address,
@@ -38,9 +38,9 @@ const it = itWithContext<localTC>;
 const describe = descrWithContext<localTC>;
 const fit = it.only
 
-class VestingTestHelper extends StellarCapoTestHelper<SampleTreasury> {
+class VestingTestHelper extends StellarCapoTestHelper<CustomTreasury> {
     get stellarClass() {
-        return SampleTreasury;
+        return CustomTreasury;
     }
     setupActors() {
         this.addActor("sasha", 1100n * ADA);
