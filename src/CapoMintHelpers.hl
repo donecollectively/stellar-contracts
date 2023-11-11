@@ -1,5 +1,8 @@
 module CapoMintHelpers
-
+import {
+    mkTv
+    // txHasOutput
+} from StellarHeliosHelpers
 
 func hasSeedUtxo(tx: Tx, sTxId : TxId, sIdx: Int, reason: String) -> Bool {
     seedUtxo: TxOutputId = TxOutputId::new(
@@ -8,15 +11,19 @@ func hasSeedUtxo(tx: Tx, sTxId : TxId, sIdx: Int, reason: String) -> Bool {
     );
     assert(tx.inputs.any( (input: TxInput) -> Bool {
         input.output_id == seedUtxo
-    }),  "seed utxo required for minting "+reason);
+    }),  "seed utxo required for minting "+reason 
+        + "\n"+sTxId.show() + " : " + sIdx.show()
+    );
 
     true
 }
 
-func validateUutMinting(ctx: ScriptContext, sTxId : TxId, sIdx : Int, purposes: []String) -> Bool {
-    tx: Tx = ctx.tx;
-    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
-    value_minted: Value = tx.minted;
+//! pre-computes the hash-based suffix for a token name, returning
+//  a function that makes Uut names with any given purpose, given the seed-txn details
+func tnUutFactory(
+    sTxId : TxId, sIdx : Int
+) -> (String) -> String {
+
     idxBytes : ByteArray = sIdx.bound_max(255).serialize();
     // assert(idxBytes.length == 1, "surprise!");
 
@@ -28,18 +35,47 @@ func validateUutMinting(ctx: ScriptContext, sTxId : TxId, sIdx : Int, purposes: 
     // print( "******** txoId " + txoId.show());
 
     miniHash : ByteArray = txoId.blake2b().slice(0,6);
-    assert(miniHash.length == 6, "urgh.  slice 5? expected 12, got "+ miniHash.length.show());
+    // assert(miniHash.length == 6, "urgh.  slice 5? expected 12, got "+ miniHash.length.show());
 
-    assetValues = Value::sum(purposes.sort((a:String, b:String) -> Bool { a == b }).map(
+    mhs: String = miniHash.show();
+    (p: String) -> String {
+        p + "-" + mhs
+    }
+}
+
+func validateUutMinting(
+    ctx: ScriptContext, 
+    sTxId : TxId, sIdx : Int, 
+    purposes: []String, 
+    exact:Bool=true) -> Bool {
+
+    tx: Tx = ctx.tx;
+    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
+    valueMinted: Value = tx.minted;
+
+    // idxBytes : ByteArray = sIdx.bound_max(255).serialize();
+    // // assert(idxBytes.length == 1, "surprise!");
+
+    // //! yuck: un-CBOR...
+    // rawTxId : ByteArray = sTxId.serialize().slice(5,37);
+
+    // txoId : ByteArray = (rawTxId + "@".encode_utf8() + idxBytes);
+    // assert(txoId.length == 34, "txId + @ + int should be length 34");
+    // // print( "******** txoId " + txoId.show());
+
+    // miniHash : ByteArray = txoId.blake2b().slice(0,6);
+    // // assert(miniHash.length == 6, "urgh.  slice 5? expected 12, got "+ miniHash.length.show());
+
+    mkTokenName: (String) -> String = tnUutFactory(sTxId, sIdx);
+    // tokenName1 = purpose + "." + miniHash.show();
+
+    expectedValue = Value::sum(purposes.sort((a:String, b:String) -> Bool { a == b }).map(
         (purpose: String) -> Value {
-            assetName : ByteArray = (purpose + "." + miniHash.show()).encode_utf8();
-            assetClass : AssetClass = AssetClass::new(mph, assetName);
-
-            Value::new(assetClass, 1)
+            mkTv(mph, mkTokenName(purpose))
         }
     ));
-    expectedMint : Map[ByteArray]Int = assetValues.get_policy(mph);
-    actualMint : Map[ByteArray]Int = value_minted.get_policy(mph);
+    // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);
+    actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);
 
     // print("redeemer" + sTxId.show() + " " + sIdx.show() + " asset " + assetName.show());
     // expectedMint.for_each( (b : ByteArray, i: Int) -> {
@@ -57,10 +93,17 @@ func validateUutMinting(ctx: ScriptContext, sTxId : TxId, sIdx : Int, purposes: 
     //     print( "actual: " + b.show() + " " + i.show() )
     // });
 
-    assert(expectedMint == actualMint, "bad UUT mint has mismatch;"+ 
-        "\n   ... expected "+ assetValues.show()+
-        "   ... actual "+ value_minted.show()+
-        "   ... diff = " + (assetValues - value_minted).show()
+    expectationString : String = if( exact ) {""} else {"at least "};
+    expectationsMet : Bool = if (exact) { 
+        valueMinted  == expectedValue
+    } else { 
+        valueMinted >= expectedValue
+    };
+
+    assert(expectationsMet, "bad UUT mint has mismatch;"+ 
+        "\n   ... expected "+ expectationString + expectedValue.show()+
+        "   ... actual "+ valueMinted.show()+
+        "   ... diff = \n" + (expectedValue - valueMinted).show()
     );
     hasSeedUtxo(tx, sTxId, sIdx, "UUT "+purposes.join("+"))
 }

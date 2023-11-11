@@ -1,0 +1,136 @@
+spending DefaultCapo
+
+// needed in helios 0.13: defaults
+const mph : MintingPolicyHash = MintingPolicyHash::new(#1234)
+const rev : Int = 1
+
+import { 
+    RelativeDelegateLink,
+    requiresValidDelegate
+} from CapoDelegateHelpers
+
+import {
+    mkTv,
+    txHasOutput,
+    didSign,
+    didSignInCtx
+} from StellarHeliosHelpers
+
+enum Datum {
+    CharterToken {
+        govAuthorityLink: RelativeDelegateLink
+    }
+}
+
+enum Redeemer {
+    updatingCharter    
+    usingAuthority
+}
+
+func requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {
+    Datum::CharterToken{
+        RelativeDelegateLink{uutName, _, _, _}
+    } = datum;
+
+    assert(txHasOutput(ctx.tx,  mkTv(mph, uutName)),
+        "missing required authZor token "+uutName
+    );
+    true
+}
+
+func getCharterOutput(tx: Tx) -> TxOutput {
+    charterTokenValue : Value = Value::new(
+        AssetClass::new(mph, "charter".encode_utf8()), 
+        1
+    );
+    tx.outputs.find_safe(
+        (txo : TxOutput) -> Bool {
+            txo.value >= charterTokenValue
+        }
+    ).switch{
+        None => error("this could only happen if the charter token is burned."),
+        Some{o} => o
+    }
+}
+
+func preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {
+    tx: Tx = ctx.tx;
+
+    charterOutput : TxOutput = getCharterOutput(tx);
+
+    cvh : ValidatorHash = ctx.get_current_validator_hash();
+    myself : Credential = Credential::new_validator(cvh);
+    if (charterOutput.address.credential != myself) {
+        actual : String = charterOutput.address.credential.switch{
+            PubKey{pkh} => "pkh:🔑#" + pkh.show(),
+            Validator{vh} => "val:📜#:" + vh.show()
+        };
+        error(
+            "charter token must be returned to the contract " + cvh.show() +
+            "... but was sent to " +actual
+        )
+    };
+
+    Datum::CharterToken{
+        RelativeDelegateLink{uut, strategy, reqdAddress, addressesHint}
+    } = datum;
+    Datum::CharterToken{
+        RelativeDelegateLink{newUut, newStrategy, newReqdAddress, newAddressesHint}
+    } = Datum::from_data( 
+        charterOutput.datum.get_inline_data() 
+    );
+    if ( !(
+        newUut  == uut &&
+        newStrategy == strategy  &&
+        newReqdAddress == reqdAddress &&
+        newAddressesHint == addressesHint
+    )) { 
+        error("invalid update to charter settings") 
+    };
+
+    true
+}
+
+func main(datum: Datum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
+    tx: Tx = ctx.tx;
+    // now: Time = tx.time_range.start;
+    
+    notUpdatingCharter : Bool = redeemer.switch {
+        updatingCharter => false,  
+        _ => true
+    };
+    charterChangeAllowable : Bool = if(notUpdatingCharter) { 
+        preventCharterChange(ctx, datum) // throws if it's not kosher
+     } else { 
+        true // "maybe", really
+    };
+
+    redeemerSpecificChecks : Bool = redeemer.switch {
+        updatingCharter => { 
+            //! guards from optimizing mph out of the program, screwing up parameterization
+            assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
+            
+            charterOutput : TxOutput = getCharterOutput(tx);
+            newDatum = Datum::from_data( 
+                charterOutput.datum.get_inline_data() 
+            );
+            Datum::CharterToken{delegate} = newDatum;
+
+            requiresValidDelegate(delegate, mph, ctx) &&
+            requiresAuthorization(ctx, datum)
+        },
+        // authorizeByCharter{otherRedeemerData, otherSignatures} => {            
+        //     false // todo support authorizing **other** things to be done with this token
+        // },
+        usingAuthority => {
+            assert(mph.serialize() != datum.serialize(), "guard failed"); // can't fail.
+
+            notUpdatingCharter &&
+            requiresAuthorization(ctx, datum)
+        }
+    };
+
+    charterChangeAllowable &&
+    redeemerSpecificChecks &&
+    tx.serialize() != datum.serialize()
+}

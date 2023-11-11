@@ -1,0 +1,22 @@
+{
+    "compilerOptions":{
+        "module":"NodeNext",
+        // "module": "ESNext",
+        "target": "ESNext",
+        "sourceMap": true,
+        "moduleResolution": "nodenext",
+        "importHelpers": true,
+        "baseUrl": ".",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "noEmit": true,
+        "experimentalDecorators": true,
+
+    },
+    "include":[ 
+        "./rollup.config.ts", 
+        "./src/heliosRollupLoader.ts"
+    ] 
+}

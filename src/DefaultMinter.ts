@@ -1,16 +1,10 @@
 import {
-    Program,
-    Datum,
-    TxId,
-    TxOutputId,
     Address,
     Value,
-    TxOutput,
     MintingPolicyHash,
     Assets,
     Crypto,
     TxInput,
-    ByteArrayData,
     bytesToHex,
 } from "@hyperionbt/helios";
 import {
@@ -18,24 +12,29 @@ import {
     StellarContract,
     isActivity,
     partialTxn,
-} from "../lib/StellarContract.js";
+} from "./StellarContract.js";
 
 //@ts-expect-error
 import contract from "./DefaultMinter.hl";
 import { CapoMintHelpers } from "./CapoMintHelpers.js";
 
-import { StellarTxnContext } from "../lib/StellarTxnContext.js";
+import { StellarTxnContext } from "./StellarTxnContext.js";
 import {
-    MintCharterRedeemerArgs,
     MintUutRedeemerArgs,
     MinterBaseMethods,
-    SeedTxnParams,
-    hasAllUuts,
-    hasSomeUuts,
     hasUutContext,
     uutPurposeMap,
-} from "../lib/Capo.js";
-import { valuesEntry } from "../lib/HeliosPromotedTypes.js";
+} from "./Capo.js";
+import { SeedTxnParams } from "./SeedTxn.js";
+import { valuesEntry } from "./HeliosPromotedTypes.js";
+import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";
+import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
+import { RelativeDelegateLink, UutName } from "./delegation/RolesAndDelegates.js";
+import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
+
+type MintCharterRedeemerArgs<T = {}> = T & {
+    owner: Address;
+};
 
 export class DefaultMinter
     extends StellarContract<SeedTxnParams>
@@ -44,57 +43,82 @@ export class DefaultMinter
     contractSource() {
         return contract;
     }
-
-    capoMinterHelpers(): string {
-        return CapoMintHelpers;
-    }
     
-    importModules(): string[] {
-        return [this.capoMinterHelpers()];
+    importModules(): HeliosModuleSrc[] {
+        return [ 
+            StellarHeliosHelpers, 
+            CapoDelegateHelpers,
+            CapoMintHelpers 
+        ]
     }
 
-    @Activity.partialTxn
-    async txnCreatingUuts<UutMapType extends uutPurposeMap>(
-        tcx: StellarTxnContext<any>,
-        uutPurposes: (string & keyof UutMapType)[]
-    ): Promise<hasUutContext<UutMapType>> {
-        //!!! make it big enough to serve minUtxo for the new UUT
-        const uutSeed = this.mkValuePredicate(BigInt(42_000), tcx);
-        return this.mustFindActorUtxo(
-            `for-uut-${uutPurposes.join("+")}`,
-            uutSeed,
-            tcx
-        ).then(async (freeSeedUtxo) => {
-            tcx.addInput(freeSeedUtxo);
-            const { txId, utxoIdx } = freeSeedUtxo.outputId;
+    @partialTxn
+    async txnWithUuts<
+        const purposes extends string, 
+        existingTcx extends StellarTxnContext<any>,
+        const R extends string
+    >(
+        tcx: existingTcx,
+        uutPurposes: purposes [],
+        seedUtxo: TxInput,
+        role: R,
+    ): Promise<existingTcx & hasUutContext<purposes | ( R extends "" ? never : R )>> {
+        const { txId, utxoIdx } = seedUtxo.outputId;
 
-            const { encodeBech32, blake2b, encodeBase32 } = Crypto;
-
-            const uutMap: UutMapType = Object.fromEntries(
+            const { blake2b } = Crypto;
+            if (role && uutPurposes.length !== 1) throw new Error(`role uut must have exactly one purpose`)
+            const uutMap: uutPurposeMap<purposes | R> = Object.fromEntries(
                 uutPurposes.map((uutPurpose) => {
                     const txoId = txId.bytes.concat([
                         "@".charCodeAt(0),
                         utxoIdx,
                     ]);
-                    // console.warn("txId " + txId.hex)
                     // console.warn("&&&&&&&& txoId", bytesToHex(txoId));
+                    const uutName = new UutName(uutPurpose, `${uutPurpose}-${bytesToHex(
+                        blake2b(txoId).slice(0, 6)
+                    )}`)
                     return [
                         uutPurpose,
-                        `${uutPurpose}.${bytesToHex(
-                            blake2b(txoId).slice(0, 6)
-                        )}`,
+                        uutName,
                     ];
                 })
-            ) as UutMapType;
+            ) as uutPurposeMap<purposes | R>
+            if (role) uutMap[role] = uutMap[uutPurposes[0]]
 
             if (tcx.state.uuts) throw new Error(`uuts are already there`);
             tcx.state.uuts = uutMap;
 
-            const vEntries = this.mkUutValuesEntries(uutMap);
+            return tcx
+    }
 
-            const { txId: seedTxn, utxoIdx: seedIndex } = freeSeedUtxo.outputId;
+    @Activity.partialTxn
+    async txnCreatingUuts<
+        const purposes extends string,
+        TCX extends StellarTxnContext<any>,
+    >(
+        initialTcx: TCX,
+        uutPurposes: purposes[],
+        seedUtxo?: TxInput
+    ): Promise<TCX & hasUutContext<purposes>> {
+        const gettingSeed = seedUtxo ? Promise.resolve<TxInput>(seedUtxo) :
+        new Promise<TxInput>(res => {
+            //!!! make it big enough to serve minUtxo for the new UUT(s)
+            const uutSeed = this.mkValuePredicate(BigInt(42_000), initialTcx);
+            this.mustFindActorUtxo(
+                `for-uut-${uutPurposes.join("+")}`,
+                uutSeed,
+                initialTcx
+            ).then(res)
+        });
 
-            return tcx.attachScript(this.compiledContract).mintTokens(
+        return gettingSeed.then(async (seedUtxo) => {
+            const tcx = await this.txnWithUuts(initialTcx, uutPurposes, seedUtxo, "");
+            const vEntries = this.mkUutValuesEntries(tcx.state.uuts);
+
+            tcx.addInput(seedUtxo);
+            const { txId: seedTxn, utxoIdx: seedIndex } = seedUtxo.outputId;
+
+            tcx.attachScript(this.compiledScript).mintTokens(
                 this.mintingPolicyHash!,
                 vEntries,
                 this.mintingUuts({
@@ -108,9 +132,9 @@ export class DefaultMinter
         });
     }
 
-    mkUutValuesEntries<UM extends uutPurposeMap>(uutMap: UM): valuesEntry[] {
-        return Object.entries(uutMap).map(([_purpose, assetName]) => {
-            return this.mkValuesEntry(assetName, BigInt(1));
+    mkUutValuesEntries<UM extends uutPurposeMap<any>>(uutMap: UM): valuesEntry[] {
+        return Object.entries(uutMap).map(([_purpose, uut]) => {
+            return this.mkValuesEntry(uut.name, BigInt(1));
         });
     }
 
@@ -120,13 +144,13 @@ export class DefaultMinter
     }
 
     @Activity.redeemer
-    protected mintingCharterToken({
+    protected mintingCharter({
         owner,
     }: MintCharterRedeemerArgs): isActivity {
-        // debugger
+        const { DelegateDetails: hlDelegateDetails, Redeemer } = this.scriptProgram!.types;
         const t =
-            new this.configuredContract.types.Redeemer.mintingCharterToken(
-                owner
+            new Redeemer.mintingCharter(
+                owner,
             );
 
         return { redeemer: t._toUplcData() };
@@ -141,7 +165,7 @@ export class DefaultMinter
         // debugger
         const seedIndex = BigInt(sIdx);
         console.log("UUT redeemer seedTxn", seedTxn.hex);
-        const t = new this.configuredContract.types.Redeemer.mintingUuts(
+        const t = new this.scriptProgram!.types.Redeemer.mintingUuts(
             seedTxn,
             seedIndex,
             purposes
@@ -158,7 +182,7 @@ export class DefaultMinter
         const { mintingPolicyHash } = this;
 
         const v = new Value(
-            this.ADA(1.7),
+            undefined,
             new Assets([[mintingPolicyHash, [this.charterTokenAsValuesEntry]]])
         );
         return v;
@@ -172,18 +196,24 @@ export class DefaultMinter
     }
 
     @Activity.partialTxn
-    async txnMintingCharterToken(
+    async txnMintingCharter(
         tcx: StellarTxnContext,
-        owner: Address
+        { owner, authZor } : {
+            authZor:  UutName,
+            owner: Address, 
+        }
     ): Promise<StellarTxnContext> {
-        const tVal = this.charterTokenAsValuesEntry;
+        const charterVE = this.charterTokenAsValuesEntry;
+        const authzVE = this.mkValuesEntry(authZor.name, BigInt(1));
 
         return tcx
             .mintTokens(
                 this.mintingPolicyHash!,
-                [tVal],
-                this.mintingCharterToken({ owner }).redeemer
+                [charterVE, authzVE],
+                this.mintingCharter({ 
+                    owner
+                 }).redeemer
             )
-            .attachScript(this.compiledContract);
+            .attachScript(this.compiledScript);
     }
 }

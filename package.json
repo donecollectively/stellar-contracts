@@ -2,13 +2,27 @@
     "name": "@donecollectively/stellar-contracts",
     "version": "0.7.4",
     "description": "Smart contract fusion for Cardano",
-    "main": "dist/stellar-contracts.mjs",
-    "types": "dist/stellar-contracts.d.ts",
+    "main": "./dist/stellar-contracts.mjs",
+    "types": "./dist/stellar-contracts.d.ts",
+    "XXexports": {
+        "default": {
+            "import": "./dist/stellar-contracts.mjs",
+            "require": "./dist/stellar-contracts.cjs",
+            "default": "./dist/stellar-contracts.cjs",
+            "types": "./dist/stellar-contracts.d.ts"
+        },
+        "test": {
+            "import": "./dist/testing.mjs",
+            "require": "./dist/testing.d.ts",
+            "default": "./dist/testing.d.ts",
+            "types": "./dist/testing.d.ts"
+        }
+    },
     "type": "module",
     "scripts": {
-        "build": "rollup -c",
-        "build:watch": "rollup -cw",
-        "dev": "rollup -cw",
+        "build": "scripts/build",
+        "build:watch": "scripts/build --watch",
+        "dev": "scripts/build --watch",
         "test": "vitest",
         "test:debug": "vitest --inspect --threads false",
         "testing": "vitest --inspect --threads false",
@@ -18,18 +32,19 @@
     "author": "Done Collectively",
     "license": "Cardano Community Source License",
     "dependencies": {
-        "@hyperionbt/helios": "^0.15.11",
+        "@hyperionbt/helios": "^0.15.13",
         "semver": ">=7.5.2"
     },
     "devDependencies": {
+        "@microsoft/api-extractor": "^7.38.0",
+        "@rollup/plugin-json": "^6.0.1",
         "@rollup/plugin-node-resolve": "^15.1.0",
         "@rollup/pluginutils": "^5.0.2",
         "@types/node": "^20.2.5",
-        "@vitest/browser": "^0.34.1",
-        "@vitest/ui": "^0.34.1",
+        "@vitest/ui": "^0.34.6",
+        "esbuild": "^0.19.4",
         "rollup": "^3.23.1",
-        "rollup-plugin-dts": "^5.3.0",
-        "rollup-plugin-esbuild": "^5.0.0",
+        "rollup-plugin-esbuild": "^6.1.0",
         "rollup-plugin-node-externals": "^6.1.1",
         "rollup-plugin-sourcemaps": "^0.6.3",
         "rollup-plugin-string": "^3.0.0",
@@ -37,9 +52,9 @@
         "rollup-pluginutils": "^2.8.2",
         "semver": ">=7.5.2",
         "tslib": "^2.5.3",
-        "typescript": "^4.9.4",
-        "vite": "^4.3.9",
-        "vitest": "^0.34.1",
+        "typescript": "5.0.4",
+        "vite": "^4.4.11",
+        "vitest": "^0.34.6",
         "webdriverio": "^8.10.7"
     }
 }

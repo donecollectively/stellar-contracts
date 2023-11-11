@@ -3,9 +3,9 @@
 //! this file implements a workaround for a problem 
 //  ... where a second imported .hl file in a single .ts file
 //  ... causes the dts rollup plugin to not find the second .hl file
-import cmh from "./CapoMintHelpers.hl";
-import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
+import { HeliosModuleSrc } from "lib/HeliosModuleSrc.js";
+import cdh from "./CapoDelegateHelpers.hl";
 
-export const CapoMintHelpers : HeliosModuleSrc = cmh;
+export const CapoDelegateHelpers : HeliosModuleSrc= cdh;
 
 

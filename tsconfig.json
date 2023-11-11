@@ -1,32 +1,35 @@
 {
+    "$schema": "http://json.schemastore.org/tsconfig",
     "compilerOptions": {
         "lib": ["esnext", "dom"],
-        "target": "ES2022",
-        "moduleResolution": "NodeNext",
+        "target": "ESNext",
         "module": "NodeNext",
-
+        "declaration": true,
+        "sourceMap": true,
+        "declarationMap": true,
+        "moduleResolution": "NodeNext",
         "importHelpers": true,
         "baseUrl": ".",
         "strict": true,
-        // "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-        "noEmit": true,
+        "noEmit": false,
         "experimentalDecorators": true,
-        "emitDecoratorMetadata": true,
+        // "emitDecoratorMetadata": true,
         "types": ["node"],
         "allowSyntheticDefaultImports": true,
         "allowJs": true,
         "noImplicitAny": false,
         "rootDir": ".",
-        "sourceMap": true
+        "outDir": "lib"
     },
+    "files": [ "index.ts" ],
     "include": [
+        "src/**/*.hl",
         "src/**/*.ts", 
         "src/**/*.js", 
-        "src/**/*.hl",
-        "lib/**/*.ts", 
-        "lib/**/*.js", 
     ],
     "exclude": ["**/node_modules/"]
 }

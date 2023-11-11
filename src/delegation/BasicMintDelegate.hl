@@ -1,0 +1,20 @@
+spending SampleMintDelegate
+
+const rev : Int = 1
+const instance : ByteArray = #67656e6572616c
+
+// import { 
+//     preventCharterChange
+// } from MultiSigAuthority
+
+// struct Datum {
+//     hi: String
+// }
+
+// func main(datum: Datum,_,ctx: ScriptContext) -> Bool {
+//     preventCharterChange(ctx, datum) 
+// }
+
+func main(_,_,_) -> Bool {
+    true
+}

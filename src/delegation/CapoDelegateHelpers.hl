@@ -1,0 +1,30 @@
+module CapoDelegateHelpers
+
+import {
+    txHasOutput,
+    mkTv
+} from StellarHeliosHelpers
+
+struct RelativeDelegateLink {
+    uutName: String
+    strategyName: String
+    reqdAddr: Option[Address]
+    addrHint: []Address
+}
+
+func requiresValidDelegate(
+    dd: RelativeDelegateLink, 
+    mph: MintingPolicyHash, 
+    ctx : ScriptContext
+) -> Bool {
+    RelativeDelegateLink{uut, strategy, reqdAddr, _} = dd;
+    if (!(strategy.encode_utf8().length < 4)) {
+        error("strategy must be at least 4 bytes")
+    };
+
+    //! the delegate is valid as long as the transaction pays the UUT into the indicated address
+    //   ... that address might not be the permanent address for a "bearer" strategy, but
+    //   ... for other strategies, it should be.  So we just check it the same way for all cases.
+    //! the uut can be minted in the current transaction, or transferred from anywhere.
+    txHasOutput(ctx.tx, mkTv(mph, uut), reqdAddr )
+}
