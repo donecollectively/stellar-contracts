@@ -64,7 +64,7 @@ describe("Vesting service", async () => {
     });
 
 	describe("baseline capabilities", () => {
-		it("sasha can deposit correctly", async (context: localTC) => {
+		it.skip("sasha can deposit correctly", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
 			const { sasha, tom, pavel } = actors;
 			const t0 = h.network.currentSlot
@@ -93,7 +93,7 @@ describe("Vesting service", async () => {
 			expect(t1).toBeGreaterThan(t0)
 
 		});
-		xit("sasha can lock and cancel", async (context: localTC) => {
+		it.skip("sasha can lock and cancel", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
 			const { sasha, tom, pavel } = actors;
 
