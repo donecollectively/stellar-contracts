@@ -18,7 +18,7 @@ import {
     TxOutput
 } from "@hyperionbt/helios";
 
-import { StellarTxnContext } from "../lib/StellarTxnContext";
+import { StellarTxnContext } from "../src/StellarTxnContext";
 
 import {
     ADA,
@@ -27,7 +27,7 @@ import {
     HelperFunctions,
     addTestContext,
     mkContext,
-} from "../lib/StellarTestHelper"; //HeliosTestingContext
+} from "../src/testing/StellarTestHelper"; //HeliosTestingContext
 
 import {
     VestingParams,
