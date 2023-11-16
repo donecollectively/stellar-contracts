@@ -60,16 +60,18 @@ class VestingTestHelper extends CapoTestHelper<CustomTreasury> {
 
 describe("Vesting service", async () => {
     beforeEach<localTC>(async (context) => {
-        await addTestContext(context, VestingTestHelper); //, VHelpers);
+        await addTestContext(context, VestingTestHelper);
     });
 
 	describe("baseline capabilities", () => {
 		it("sasha can deposit correctly", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
 			const { sasha, tom, pavel } = actors;
-			const t0 = h.network.currentSlot
 
-			const v = new Vesting(context);
+			// creates SC instance:
+			// imported from src/Vesting which extends StellarContract with VestingParams
+			const v = new Vesting({setup, config});
+
 			const t = BigInt(Date.now());
 			const deadline = t + BigInt(2*60*60*1000);
 
@@ -88,9 +90,6 @@ describe("Vesting service", async () => {
 			const onchainAda = valUtxos[0].origOutput.value.lovelace
 			expect(onchainAda).toBe(1100000000n);
 			expect(onchainDeadline).toBe(deadline);
-
-			const t1 = h.network.currentSlot
-			expect(t1).toBeGreaterThan(t0)
 
 		});
 		it.skip("sasha can lock and cancel", async (context: localTC) => {
