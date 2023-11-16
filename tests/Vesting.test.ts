@@ -6,7 +6,9 @@ import {
     vi,
 } from "vitest";
 
+// I should use DefaultCapo here, right?
 import { CustomTreasury } from "./customizing/CustomTreasury";
+import { DefaultCapo } from "../src/DefaultCapo";
 
 import {
     Address,
@@ -44,9 +46,10 @@ const fit = it.only
 
 type localTC = StellarTestContext<CustomTreasuryTestHelper>;
 
-class VestingTestHelper extends CapoTestHelper<CustomTreasury> {
+// see Capo.ts L157: Capo is the foundational class, DefaultCapo should be used.
+class VestingTestHelper extends CapoTestHelper<DefaultCapo> {
     get stellarClass() {
-        return CustomTreasury;
+        return DefaultCapo;
     }
 
     setupActors() {
