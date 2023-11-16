@@ -72,10 +72,10 @@ describe("Vesting service", async () => {
 			const {h, h: { network, actors, delay, state }} = context;
 			const { sasha, tom, pavel } = actors;
 
-			// creates SC instance:
 			// imported from src/Vesting which extends StellarContract with VestingParams
 			const treasury = await h.initialize()
 			const setup = treasury.setup;
+			const config = {};
 			const v = new Vesting({setup, config});
 
 			const t = BigInt(Date.now());
