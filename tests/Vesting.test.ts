@@ -65,11 +65,14 @@ describe("Vesting service", async () => {
 
 	describe("baseline capabilities", () => {
 		it("sasha can deposit correctly", async (context: localTC) => {
-		    const {h, h: { network, actors, delay, state }} = context;
+			// see the same incantation in 02 L51
+			const {h, h: { network, actors, delay, state }} = context;
 			const { sasha, tom, pavel } = actors;
 
 			// creates SC instance:
 			// imported from src/Vesting which extends StellarContract with VestingParams
+			const treasury = await h.initialize()
+			expect(treasury).toBe();
 			const v = new Vesting({setup, config});
 
 			const t = BigInt(Date.now());
