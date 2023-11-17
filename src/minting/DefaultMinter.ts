@@ -18,6 +18,9 @@ import {
 
 //@ts-expect-error
 import contract from "./DefaultMinter.hl";
+//@ts-expect-error
+import StellarHeliosHelpers from "../StellarHeliosHelpers.hl";
+
 import { CapoMintHelpers } from "../CapoMintHelpers.js";
 
 import { StellarTxnContext } from "../StellarTxnContext.js";
@@ -29,7 +32,6 @@ import {
 } from "../Capo.js";
 import { SeedTxnParams } from "../SeedTxn.js";
 import { valuesEntry } from "../HeliosPromotedTypes.js";
-import { StellarHeliosHelpers } from "../StellarHeliosHelpers.js";
 import { CapoDelegateHelpers } from "../delegation/CapoDelegateHelpers.js";
 import {
     RelativeDelegateLink,
@@ -135,7 +137,7 @@ export class DefaultMinter
         seedUtxo?: TxInput,
         //@ts-expect-error
         roles: RM = {} as Record<string, purposes>,
-    ): Promise<existingTcx & hasUutContext<ROLES | purposes>> {
+    ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {
         const gettingSeed = seedUtxo
             ? Promise.resolve<TxInput>(seedUtxo)
             : new Promise<TxInput>((res) => {

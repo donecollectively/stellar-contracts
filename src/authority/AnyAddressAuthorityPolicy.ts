@@ -34,6 +34,7 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     loadProgramScript(params) {
         return undefined;
     }
+    
 
     get delegateValidatorHash() {
         return undefined

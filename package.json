@@ -3,19 +3,20 @@
     "version": "0.8.0",
     "description": "Smart contract fusion for Cardano",
     "main": "./dist/stellar-contracts.mjs",
+    "license": "SEE LICENSE IN LICENSE.TXT",
     "types": "./dist/stellar-contracts.d.ts",
     "XXexports": {
-        "default": {
-            "import": "./dist/stellar-contracts.mjs",
-            "require": "./dist/stellar-contracts.cjs",
-            "default": "./dist/stellar-contracts.cjs",
-            "types": "./dist/stellar-contracts.d.ts"
-        },
         "test": {
             "import": "./dist/testing.mjs",
-            "require": "./dist/testing.d.ts",
-            "default": "./dist/testing.d.ts",
-            "types": "./dist/testing.d.ts"
+            "XXXrequire": "./dist/testing.cjs",
+            "types": "./dist/testing.d.ts",
+            "default": "./dist/testing.mjs"
+        },
+        "default": {
+            "import": "./dist/stellar-contracts.mjs",
+            "XXXrequire": "./dist/stellar-contracts.cjs",
+            "types": "./dist/stellar-contracts.d.ts",
+            "default": "./dist/stellar-contracts.mjs"
         }
     },
     "type": "module",
@@ -29,13 +30,12 @@
         "test:ui": "vitest --ui",
         "test:run": "vitest run"
     },
-    "author": "Done Collectively",
-    "license": "Cardano Community Source License",
+    "author": "Done Collectively LCA",
     "dependencies": {
+        "@hyperionbt/helios": "^0.16.4",
         "semver": ">=7.5.2"
     },
     "devDependencies": {
-        "@hyperionbt/helios": "^0.15.14",
         "@microsoft/api-extractor": "^7.38.2",
         "@rollup/plugin-json": "^6.0.1",
         "@rollup/plugin-node-resolve": "^15.1.0",

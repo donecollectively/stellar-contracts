@@ -301,7 +301,7 @@ describe("Capo", async () => {
             tcx3.addOutput(new TxOutput(tina.address, uut3));
             await expect(
                 t.submit(tcx3, { signers: [tom.address, tina.address, tracy.address] })
-            ).rejects.toThrow(/UUT purposes not unique/);
+            ).rejects.toThrow(/UUT duplicate purpose/);
             network.tick(1n);
         });
 

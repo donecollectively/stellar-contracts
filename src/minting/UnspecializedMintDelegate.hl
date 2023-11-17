@@ -14,7 +14,7 @@ module specializedMintDelegate
 import {
      DelegationDetail,
      unmodifiedDelegation
-    } from CapoDelegateHelpers
+} from CapoDelegateHelpers
 
 enum MintDelegateDatum {
     IsDelegation {
@@ -84,3 +84,7 @@ enum MintDelegateActivity {
     }
 }
 
+struct types {
+    redeemers: MintDelegateActivity
+    datum : MintDelegateDatum
+}

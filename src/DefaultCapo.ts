@@ -38,8 +38,15 @@ import { StellarTxnContext } from "./StellarTxnContext.js";
 
 //@ts-expect-error
 import contract from "./DefaultCapo.hl";
+export { contract }
 // import contract from "./BaselineCapo.hl";
-import { Capo, CapoBaseConfig, hasBootstrappedConfig, hasUutContext } from "./Capo.js";
+import {
+    Capo,
+    CapoBaseConfig,
+    hasBootstrappedConfig,
+    hasUutContext,
+    rootCapoConfig,
+} from "./Capo.js";
 import { DefaultMinter } from "./minting/DefaultMinter.js";
 import {
     ErrorMap,
@@ -192,29 +199,30 @@ export class DefaultCapo<
         return contract;
     }
     static parseConfig(jsonConfig) {
-        const {mph, rev, seedTxn, seedIndex} = jsonConfig;
+        const { mph, rev, seedTxn, seedIndex, rootCapoScriptHash } = jsonConfig;
 
-        const outputConfig : any = { };
-        if (mph) outputConfig.mph = MintingPolicyHash.fromHex(mph.bytes)
+        const outputConfig: any = {};
+        if (mph) outputConfig.mph = MintingPolicyHash.fromHex(mph.bytes);
         if (rev) outputConfig.rev = BigInt(rev);
-        if (seedTxn) outputConfig.seedTxn = TxId.fromHex(seedTxn.bytes)
-        if (seedIndex) outputConfig.seedIndex = BigInt(seedIndex)
+        if (seedTxn) outputConfig.seedTxn = TxId.fromHex(seedTxn.bytes);
+        if (seedIndex) outputConfig.seedIndex = BigInt(seedIndex);
+        if (rootCapoScriptHash) outputConfig.rootCapoScriptHash = ValidatorHash.fromHex(rootCapoScriptHash.bytes)
 
-        return outputConfig    
+        return outputConfig;
     }
 
     /**
      * indicates any specialization of the baseline Capo types
      * @remarks
-     * 
+     *
      * The default implementation is an UnspecialiedCapo, which
      * you can use as a template for your specialized Capo.
-     * 
+     *
      * Every specalization MUST include Datum and Activity ("redeemer") enums,
      * and MAY include additional functions, and methods on Datum / Activity.
-     * 
+     *
      * The datum SHOULD have a validateSpend(self, datum, ctx) method.
-     * 
+     *
      * The redeemer SHOULD have an allowActivity(self, datum, ctx) method.
      *
      * @public
@@ -226,15 +234,15 @@ export class DefaultCapo<
     /**
      * indicates any specialization of the baseline Capo types
      * @remarks
-     * 
+     *
      * The default implementation is an UnspecialiedCapo, which
      * you can use as a template for your specialized Capo.
-     * 
+     *
      * Every specalization MUST include Datum and  Activity ("redeemer") enums,
      * and MAY include additional functions, and methods on Datum / Activity.
-     * 
+     *
      * The datum enum SHOULD have a validateSpend(self, datum, ctx) method.
-     * 
+     *
      * The activity enum SHOULD have an allowActivity(self, datum, ctx) method.
      *
      * @public
@@ -243,30 +251,37 @@ export class DefaultCapo<
         return CapoHelpers;
     }
 
-
     importModules(): HeliosModuleSrc[] {
         const parentModules = super.importModules();
         const specializedCapo = this.specializedCapo;
         if (specializedCapo.moduleName !== "specializedCapo") {
-            throw new Error(`${
-                this.constructor.name
-            }: specializedCapo() module name must be `+
-                `'specializedCapo', not '${
-                    specializedCapo.moduleName
-            }'\n  ... in ${specializedCapo.srcFile}`)
+            throw new Error(
+                `${this.constructor.name}: specializedCapo() module name must be ` +
+                    `'specializedCapo', not '${specializedCapo.moduleName}'\n  ... in ${specializedCapo.srcFile}`
+            );
         }
 
-        return [
-            specializedCapo, 
-            this.capoHelpers,
-            ...parentModules
-        ];
+        return [specializedCapo, this.capoHelpers, ...parentModules];
     }
 
     // // @Activity.redeemer
     // updatingCharter() : isActivity {
     //     return this.updatingDefaultCharter()
     // }
+
+    /**
+     * Use the `delegateRoles` getter instead
+     * @remarks
+     * 
+     * this no-op method is a convenience for Stellar Contracts maintainers
+     * and intuitive developers using autocomplete.  Including it enables an entry
+     * in VSCode "Outline" view, which doesn't include the delegateRoles getter : /
+     * @deprecated but please keep as a kind of redirect
+     * @public
+     **/
+    getDelegateRoles() {
+        throw new Error(`use the delegateRoles getter instead`); // for javascript devs
+    }
 
     get delegateRoles() {
         return delegateRoles({
@@ -279,7 +294,9 @@ export class DefaultCapo<
                         const errors: ErrorMap = {};
                         if (!rev) errors.rev = ["required"];
                         if (!tn?.length) errors.tn = ["(token-name) required"];
-                        if (!addrHint?.length) errors.addrHint = ["destination address required"];
+
+                        if (!addrHint?.length)
+                            errors.addrHint = ["destination address required"];
                         if (Object.keys(errors).length > 0) return errors;
 
                         return undefined;
@@ -311,16 +328,47 @@ export class DefaultCapo<
         });
     }
 
+    /**
+     * Performs a validation of all critical delegate connections
+     * @remarks
+     *
+     * Checks that each delegate connection is correct and that the underlying
+     * scripts for those delegates have not been modified in unplanned ways.
+     *
+     * Every Capo subclass that adds new delegate types SHOULD implement
+     * this method, performing any checks needed to verify the scripts underlying
+     * those delegate-types.  It should return `Promise.all([ super(), ...myOwnChecks])`.
+     * @public
+     **/
+    async verifyCoreDelegates() {
+        const rcsh = this.configIn?.rootCapoScriptHash;
+        if (
+            rcsh && !rcsh.eq(this.address.validatorHash!)
+        ) {
+            console.error(`expected: `+rcsh.hex + `\n  actual: `+this.address.validatorHash!.hex);
+
+            throw new Error(`${this.constructor.name}: the leader contract script '${this.scriptProgram?.name}', or one of its dependencies, has been modified`)
+        }
+        this.connectMinter();
+
+        const charter = await this.findCharterDatum();
+        const { govAuthorityLink, mintDelegateLink } = charter;
+
+        return Promise.all([
+            this.connectDelegateWithLink("govAuthority", govAuthorityLink),
+            this.connectDelegateWithLink("mintDelegate", mintDelegateLink),
+        ]);
+    }
+
     mkOnchainDelegateLink(dl: RelativeDelegateLink<any>) {
-        const { 
-            RelativeDelegateLink: hlRelativeDelegateLink 
-        } = this.onChainTypes
+        const { RelativeDelegateLink: hlRelativeDelegateLink } =
+            this.onChainTypes;
 
         let {
             uutName,
             strategyName,
             delegateValidatorHash,
-            config
+            config,
             // reqdAddress: canRequireAddr,
             // addrHint = [],
         } = dl;
@@ -330,7 +378,7 @@ export class DefaultCapo<
         return new hlRelativeDelegateLink(
             uutName,
             strategyName,
-            new OptValidator(delegateValidatorHash),
+            new OptValidator(delegateValidatorHash)
             // config //!!! todo - support inline config if/when needed
             // needsAddr,
             // addrHint
@@ -342,7 +390,7 @@ export class DefaultCapo<
         //!!! todo: make it possible to type these datum helpers more strongly
         //  ... at the interface to Helios
         console.log("--> mkDatumCharter", args);
-        const {CharterToken: hlCharterToken} = this.onChainDatumType
+        const { CharterToken: hlCharterToken } = this.onChainDatumType;
 
         const govAuthority = this.mkOnchainDelegateLink(args.govAuthorityLink);
         const mintDelegate = this.mkOnchainDelegateLink(args.mintDelegateLink);
@@ -350,24 +398,26 @@ export class DefaultCapo<
         return Datum.inline(t._toUplcData());
     }
 
-
     async findCharterDatum() {
         return this.mustFindCharterUtxo().then(async (ctUtxo: TxInput) => {
             const charterDatum = await this.readDatum<DefaultCharterDatumArgs>(
                 "CharterToken",
                 ctUtxo.origOutput.datum as InlineDatum
             );
-            if (!charterDatum) throw Error(`invalid charter UTxO datum`)
-            return charterDatum
-        })
+            if (!charterDatum) throw Error(`invalid charter UTxO datum`);
+            return charterDatum;
+        });
     }
 
     async txnAddGovAuthority<TCX extends StellarTxnContext<any>>(
         tcx: TCX
     ): Promise<TCX & StellarTxnContext<any>> {
-        const charterDatum = await this.findCharterDatum()
+        const charterDatum = await this.findCharterDatum();
 
-        console.log("adding charter's govAuthority via delegate", charterDatum.govAuthorityLink);
+        console.log(
+            "adding charter's govAuthority via delegate",
+            charterDatum.govAuthorityLink
+        );
         const capoGov = await this.connectDelegateWithLink<AuthorityPolicy>(
             "govAuthority",
             charterDatum.govAuthorityLink
@@ -398,33 +448,48 @@ export class DefaultCapo<
      * @public
      **/
 
-    mkFullConfig(baseConfig: CapoBaseConfig): CapoBaseConfig & configType {
+    mkFullConfig(
+        baseConfig: CapoBaseConfig
+    ): CapoBaseConfig & configType & rootCapoConfig {
         const pCfg = this.partialConfig || {};
-        return { ...baseConfig, ...pCfg } as configType & CapoBaseConfig;
+
+        const newClass = this.constructor;
+        // @ts-expect-error using constructor in this way
+        const newCapo = newClass.bootstrapWith({setup:this.setup, config: {...baseConfig,...pCfg}})
+        return {
+            ...baseConfig,
+            ...pCfg,
+            rootCapoScriptHash: newCapo.compiledScript.validatorHash,
+        } as configType & CapoBaseConfig & rootCapoConfig;
     }
 
     async mkTxnMintingUuts<
-        const purposes extends string, 
-        existingTcx extends StellarTxnContext<any>, 
-        const RM extends Record<ROLES, purposes>, 
+        const purposes extends string,
+        existingTcx extends StellarTxnContext<any>,
+        const RM extends Record<ROLES, purposes>,
         const ROLES extends keyof RM & string = string & keyof RM
     >(
-        initialTcx: existingTcx, 
-        uutPurposes: purposes[], 
-        seedUtxo?: TxInput | undefined, 
+        initialTcx: existingTcx,
+        uutPurposes: purposes[],
+        seedUtxo?: TxInput | undefined,
         roles?: RM
-    ): Promise<existingTcx & hasUutContext<ROLES | purposes>> {
-
-        const tcx = await super.mkTxnMintingUuts(initialTcx, uutPurposes, seedUtxo, roles);
-        const tcx2 = await this.txnMustUseCharterUtxo(tcx, "refInput")
-        return this.txnAddMintDelegate(tcx)
+    ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {
+        const tcx = await super.mkTxnMintingUuts(
+            initialTcx,
+            uutPurposes,
+            seedUtxo,
+            roles
+        );
+        const tcx2 = await this.txnMustUseCharterUtxo(tcx, "refInput");
+        return this.txnAddMintDelegate(tcx);
     }
 
     async getMintDelegate() {
         const charterDatum = await this.findCharterDatum();
 
         return this.connectDelegateWithLink(
-            "mintDelegate", charterDatum.mintDelegateLink
+            "mintDelegate",
+            charterDatum.mintDelegateLink
         );
     }
 
@@ -432,23 +497,24 @@ export class DefaultCapo<
         const charterDatum = await this.findCharterDatum();
 
         return this.connectDelegateWithLink(
-            "govDelegate", charterDatum.govAuthorityLink
+            "govDelegate",
+            charterDatum.govAuthorityLink
         );
     }
 
-    async txnAddMintDelegate<
-        TCX extends StellarTxnContext<any>
-    >(tcx: TCX) : Promise<TCX> {
-        const mintDelegate = await this.getMintDelegate()
+    async txnAddMintDelegate<TCX extends StellarTxnContext<any>>(
+        tcx: TCX
+    ): Promise<TCX> {
+        const mintDelegate = await this.getMintDelegate();
 
-        await mintDelegate.txnGrantAuthority(tcx)
-        return tcx
+        await mintDelegate.txnGrantAuthority(tcx);
+        return tcx;
     }
 
-/**
- * {@inheritdoc Capo.mkTxnMintCharterToken}
-* @public
- **/
+    /**
+     * {@inheritdoc Capo.mkTxnMintCharterToken}
+     * @public
+     **/
     @txn
     //@ts-expect-error - typescript can't seem to understand that
     //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
@@ -456,10 +522,12 @@ export class DefaultCapo<
         charterDatumArgs: MinimalDefaultCharterDatumArgs<CDT>,
         existingTcx?: TCX
     ): Promise<
-        never | (
-            & TCX 
-            & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt">
-            & hasBootstrappedConfig<CapoBaseConfig & configType>)
+        | never
+        | (TCX &
+              hasUutContext<
+                  "govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"
+              > &
+              hasBootstrappedConfig<CapoBaseConfig & configType>)
     > {
         if (this.configIn)
             throw new Error(
@@ -487,8 +555,10 @@ export class DefaultCapo<
                 seedTxn,
                 seedIndex,
             });
-            initialTcx.state.bsc = bsc
-            initialTcx.state.bootstrappedConfig = JSON.parse(JSON.stringify(bsc, delegateLinkSerializer))
+            initialTcx.state.bsc = bsc;
+            initialTcx.state.bootstrappedConfig = JSON.parse(
+                JSON.stringify(bsc, delegateLinkSerializer)
+            );
             const fullScriptParams = (this.contractParams =
                 this.getContractScriptParams(bsc));
             this.configIn = bsc;
@@ -504,10 +574,8 @@ export class DefaultCapo<
                     mintDelegate: "mintDgt",
                 }
             );
-            const { 
-                capoGov, govAuthority,
-                mintDgt, mintDelegate
-            } = tcx.state.uuts;
+            const { capoGov, govAuthority, mintDgt, mintDelegate } =
+                tcx.state.uuts;
             {
                 if (govAuthority !== capoGov)
                     throw new Error(`assertion can't fail`);
@@ -517,7 +585,7 @@ export class DefaultCapo<
                 AuthorityPolicy,
                 "govAuthority"
             >(tcx, "govAuthority", charterDatumArgs.govAuthorityLink);
-            
+
             const mintDelegateLink = await this.txnCreateDelegateLink<
                 BasicMintDelegate,
                 "mintDelegate"
@@ -531,12 +599,15 @@ export class DefaultCapo<
             };
             const datum = this.mkDatumCharterToken(fullCharterArgs);
 
-            const charterOut = new TxOutput(this.address, this.tvCharter(), datum);
+            const charterOut = new TxOutput(
+                this.address,
+                this.tvCharter(),
+                datum
+            );
             charterOut.correctLovelace(this.networkParams);
 
-
             tcx.addInput(seedUtxo);
-            tcx.addOutputs([charterOut])
+            tcx.addOutputs([charterOut]);
 
             console.log(
                 " ---------------- CHARTER MINT ---------------------\n",
@@ -547,7 +618,7 @@ export class DefaultCapo<
             return this.minter!.txnMintingCharter(tcx, {
                 owner: this.address,
                 capoGov, // same as govAuthority,
-                mintDgt
+                mintDgt,
             });
         });
     }
@@ -555,7 +626,7 @@ export class DefaultCapo<
     @Activity.redeemer
     updatingCharter(): // args: CDT
     isActivity {
-        const {updatingCharter} = this.onChainActivitiesType;
+        const { updatingCharter } = this.onChainActivitiesType;
         // let {uut, strategyName, reqdAddress: canRequireAddr, addrHint=[]} = args.govAuthority
 
         // // const {Option} = this.onChainTypes;

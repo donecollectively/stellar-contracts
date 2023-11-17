@@ -16,6 +16,7 @@ import { mkTv } from "../utils.js";
 import { InlineDatum } from "../HeliosPromotedTypes.js";
 import { DelegationDetail, capoDelegateConfig } from "./RolesAndDelegates.js";
 import { hasReqts } from "../Requirements.js";
+import { dumpAny } from "../diagnostics.js";
 
 /**
  * Base class for modules that can serve as Capo delegates
@@ -47,18 +48,28 @@ export abstract class StellarDelegate<
      * @public
      **/
     async txnGrantAuthority<TCX extends StellarTxnContext<any>>(tcx: TCX) {
+        const label = `${this.constructor.name} authority`;
         const uutxo = await this.DelegateMustFindAuthorityToken(
             tcx,
-            `${this.constructor.name} authority`
+            label
         );
-            console.log("   ------- delegate grants authority")
-            debugger
-        const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo);
-        return this.txnReceiveAuthorityToken(
-            tcx2,
-            this.tvAuthorityToken(),
-            uutxo
-        );
+        const authorityVal = this.tvAuthorityToken();
+
+        console.log(`   ------- delegate ${label} grants authority with ${dumpAny(authorityVal)}`)
+
+        try {
+            const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo);
+            return this.txnReceiveAuthorityToken(
+                tcx2,
+                authorityVal,
+                uutxo
+            );
+        } catch(error: any) {
+            if (error.message.match(/input already added/)) {
+                throw new Error(`Delegate ${label}: already added: ${dumpAny(authorityVal)}`)
+            }
+            throw error
+        }
     }
 
     /**
@@ -170,12 +181,13 @@ export abstract class StellarDelegate<
      * A delegate that doesn't use an on-chain validator should override this method and return undefined.
      **/
     get delegateValidatorHash(): ValidatorHash | undefined {
-        if (!this.address.validatorHash) {
+        if (!this.compiledScript.validatorHash) {
             throw new Error(
-                `${this.constructor.name}: address doesn't use a validator hash!\n  ... if that's by design, you may wish to override 'get delegateValidatorHash()' -> undefined`
+                `${this.constructor.name}: address doesn't use a validator hash!\n`+
+                `  ... if that's by design, you may wish to override 'get delegateValidatorHash()' -> undefined`
             );
         }
-        return this.address.validatorHash;
+        return this.compiledScript.validatorHash;
     }
 
     mkAuthorityTokenPredicate() {

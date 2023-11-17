@@ -105,7 +105,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
         },
         _ => {
             activity.switch {
-                spendingDatum => datum.validateSpend(ctx),
+                spendingDatum => datum.validateSpend(ctx, mph),
                 _ => true
             }
         }            
@@ -130,7 +130,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                 _ => error("wrong use of usingAuthority action for non-CharterToken datum")
             }
         },
-        _ => activity.allowActivity(datum, ctx)
+        _ => activity.allowActivity(datum, ctx, mph)
     };
 
     assert(allDatumSpecificChecks, "datum-check fail");

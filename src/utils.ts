@@ -28,8 +28,11 @@ export function mkUutValuesEntries(
     uuts: UutName[] | uutPurposeMap<any>
 ): valuesEntry[] {
     const uutNs = Array.isArray(uuts) ? uuts : Object.values(uuts);
-
-    return uutNs.map((uut) => mkValuesEntry(uut.name, BigInt(1)));
+    const uniqs : UutName[] = [];
+    for (const un of uutNs) {
+        if (!uniqs.includes(un)) uniqs.push(un)
+    }
+    return uniqs.map((uut) => mkValuesEntry(uut.name, BigInt(1)));
 }
 
 /**

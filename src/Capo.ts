@@ -8,6 +8,7 @@ import {
     TxInput,
     Value,
     AssetClass,
+    ValidatorHash,
 } from "@hyperionbt/helios";
 import { BasicMinterParams, DefaultMinter } from "./minting/DefaultMinter.js";
 import {
@@ -41,7 +42,8 @@ import {
 import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
 import { SeedTxnParams } from "./SeedTxn.js";
 import { CapoMintHelpers } from "./CapoMintHelpers.js";
-import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";
+//@ts-expect-error
+import StellarHeliosHelpers from "./StellarHeliosHelpers.hl";
 import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { errorMapAsString } from "./diagnostics.js";
 import { hasReqts } from "./Requirements.js";
@@ -97,7 +99,7 @@ interface hasUutCreator {
         uutPurposes: purposes[],
         seedUtxo: TxInput,
         roles?: RM
-    ): Promise<existingTcx & hasUutContext<ROLES | purposes>>;
+    ): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
     mkTxnMintingUuts<
         const purposes extends string,
         existingTcx extends StellarTxnContext<any>,
@@ -108,7 +110,7 @@ interface hasUutCreator {
         uutPurposes: purposes[],
         seedUtxo?: TxInput,
         roles?: RM
-    ): Promise<existingTcx & hasUutContext<ROLES | purposes>>;
+    ): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
 }
 
 /**
@@ -149,27 +151,34 @@ export interface MinterBaseMethods extends hasUutCreator {
 
 export type anyDatumArgs = Record<string, any>;
 
-//!!! todo: let this be parameterized for more specificity
-export type CapoBaseConfig = SeedTxnParams & {
-    mph: MintingPolicyHash;
-    rev: bigint;
+export type rootCapoConfig = {
+    rootCapoScriptHash?: ValidatorHash;
 };
+
+//!!! todo: let this be parameterized for more specificity
+export type CapoBaseConfig = configBase &
+    rootCapoConfig &
+    SeedTxnParams & {
+        mph: MintingPolicyHash;
+        rev: bigint;
+        bootstrapping?: true;
+    };
 
 /**
  * StellarTransactionContext exposing a bootstrapped Capo configuration
  * @remarks
- * 
- * During first-time setup of a Capo contract, its manifest configuration details 
- * should be captured for reproducibility, and this type allows the bootstrap 
+ *
+ * During first-time setup of a Capo contract, its manifest configuration details
+ * should be captured for reproducibility, and this type allows the bootstrap
  * transaction to expose that configuration.
- * 
- * Capo's {@link Capo.mkTxnMintCharterToken | mkTxnMintCharterToken()} returns a transaction context 
+ *
+ * Capo's {@link Capo.mkTxnMintCharterToken | mkTxnMintCharterToken()} returns a transaction context
  * of this type, with `state.bootstrappedConfig`;
  * @public
  **/
 export type hasBootstrappedConfig<CT extends CapoBaseConfig> =
     StellarTxnContext<{
-        bsc: CT,
+        bsc: CT;
         bootstrappedConfig: any;
     }>;
 
@@ -193,7 +202,7 @@ type PreconfiguredDelegate<T extends StellarDelegate<any>> = Omit<
  *
  * The delegation pattern uses UUTs, which are non-fungible / unique utility tokens.  See DefaultCapo for more about them.
  *
- * **Capo is a foundational class**; you should consider using DefaultCapo as a starting point, 
+ * **Capo is a foundational class**; you should consider using DefaultCapo as a starting point,
  * unless its govAuthority role conflicts with your goals.
  *
  * Inherits from: {@link StellarContract}\<`configType`\> (is this a redundant doc entry?) .
@@ -212,10 +221,17 @@ export abstract class Capo<
     implements hasUutCreator
 {
     abstract get delegateRoles(): RoleMap<any>;
-    abstract mkFullConfig(baseConfig: CapoBaseConfig): configType;
-    get isConfigured() : boolean {
-        return !! this.configIn
+    abstract verifyCoreDelegates(): Promise<any>;
+    verifyConfigs(): Promise<any> {
+        return this.verifyCoreDelegates();
     }
+    abstract mkFullConfig(baseConfig: CapoBaseConfig): configType;
+    get isConfigured(): Promise<boolean> {
+        if (!this.configIn) return Promise.resolve(false);
+        if (this._verifyingConfigs) return this._verifyingConfigs;
+        return Promise.resolve(true);
+    }
+    _verifyingConfigs?: Promise<any>;
     constructor(args: StellarConstructorArgs<CapoBaseConfig>) {
         //@ts-expect-error spurious "could be instantiated with a different subtype"
         super(args);
@@ -240,6 +256,19 @@ export abstract class Capo<
             throw new Error(
                 `activities type${onChainActivitiesName} must have a 'usingAuthority' variant`
             );
+
+        if (this.configIn && !this.configIn.bootstrapping) {
+            this._verifyingConfigs = this.verifyConfigs().then((r) => {
+                this._verifyingConfigs = undefined;
+                return r;
+            });
+        }
+    }
+    static bootstrapWith(args: StellarConstructorArgs<CapoBaseConfig>) {
+        const { setup, config } = args;
+        const Class = this;
+        //@ts-expect-error this is just Javascript.  Sorry, typescript!
+        return new Class({ setup, config: { ...config, bootstrapping: true } });
     }
     abstract contractSource(): HeliosModuleSrc;
     abstract mkDatumCharterToken(args: charterDatumType): InlineDatum;
@@ -286,21 +315,37 @@ export abstract class Capo<
         seedUtxo?: TxInput,
         //@ts-expect-error
         roles: RM = {} as Record<string, purposes>
-    ): Promise<existingTcx & hasUutContext<ROLES | purposes>> {
+    ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {
         const tcx = await this.minter!.mkTxnMintingUuts(
             initialTcx,
             uutPurposes,
             seedUtxo,
             roles
         );
-        return tcx
+        return tcx;
     }
     // P extends paramsBase = SC extends StellarContract<infer P> ? P : never
 
+    /**
+     * returns a value representing the provided UUT(s)
+     * @remarks
+     *
+     * The inputs can be of a few forms - see the overload variants
+     * @param uutMap - a set of UUTs, all of which will be represented in the returned value
+     * @param tcx - a transaction context, whose `state.uuts` will be processed as in the `uutMap` variant
+     * @param uutName - a UutName object representinga single UUT
+     * @public
+     **/
     uutsValue(uutMap: uutPurposeMap<any>): Value;
     uutsValue(tcx: hasUutContext<any>): Value;
-    uutsValue(x: uutPurposeMap<any> | hasUutContext<any>): Value {
-        const uutMap = x instanceof StellarTxnContext ? x.state.uuts! : x;
+    uutsValue(uutName: UutName): Value;
+    uutsValue(x: UutName | uutPurposeMap<any> | hasUutContext<any>): Value {
+        const uutMap =
+            x instanceof StellarTxnContext
+                ? x.state.uuts!
+                : x instanceof UutName
+                ? { single: x }
+                : x;
         const vEntries = mkUutValuesEntries(uutMap);
 
         return new Value(
@@ -343,10 +388,10 @@ export abstract class Capo<
      * Initiates a seeding transaction, creating a new Capo contract of this type
      * @remarks
      *
-     * The returned transaction context has `state.bootstrappedConfig` for 
-     * capturing the details for reproducing the contract's settings and on-chain 
+     * The returned transaction context has `state.bootstrappedConfig` for
+     * capturing the details for reproducing the contract's settings and on-chain
      * address.
-     * 
+     *
      * @param charterDatumArgs - initial details for the charter datum
      * @param tcx - any existing transaction context
      * @typeParam TCX - inferred type of a provided transaction context
@@ -383,7 +428,7 @@ export abstract class Capo<
     }
 
     abstract txnAddGovAuthority<TCX extends StellarTxnContext<any>>(
-        tcx: TCX,
+        tcx: TCX
     ): Promise<TCX & StellarTxnContext<any>>;
 
     async txnMustUseCharterUtxo<TCX extends StellarTxnContext<any>>(
@@ -408,7 +453,10 @@ export abstract class Capo<
             //     ctUtxo.origOutput.datum as InlineDatum
             // );
 
-            if (true === redeemerOrRefInput || ("refInput" === redeemerOrRefInput)) {
+            if (
+                true === redeemerOrRefInput ||
+                "refInput" === redeemerOrRefInput
+            ) {
                 // using reference-input has been requested
                 if (
                     newDatumOrForceRefScript &&
@@ -465,22 +513,22 @@ export abstract class Capo<
     /**
      * adds the charter-token, along with its gov **`authZor`** UUT, to a transaction context
      * @remarks
-     * 
+     *
      * The charter-token is included as a reference input.
-     * 
+     *
      * @param tcx - the transaction context
      * @public
      **/
     //!!! todo: If the Capo's mintDelegate is using the (TODO) "undelegated" strategy, this method can be used (?)
-    // ... to approve token-minting by the authority of the gov authZor 
-   @partialTxn
+    // ... to approve token-minting by the authority of the gov authZor
+    @partialTxn
     async txnAddCharterAuthorityTokenRef<TCX extends StellarTxnContext<any>>(
-        tcx: TCX,
-    ) : Promise<TCX & StellarTxnContext<any>>{  
-        const tcx2 = await this.txnMustUseCharterUtxo(tcx, "refInput")
+        tcx: TCX
+    ): Promise<TCX & StellarTxnContext<any>> {
+        const tcx2 = await this.txnMustUseCharterUtxo(tcx, "refInput");
 
         const tcx3 = await this.txnAddGovAuthority(tcx2);
-        return tcx3  
+        return tcx3;
     }
 
     /**
@@ -520,11 +568,11 @@ export abstract class Capo<
             rev,
         };
     }
-
+    connectMinter() {
+        return this.minter || this.connectMintingScript(this.getMinterParams());
+    }
     get mph() {
-        const minter =
-            this.minter || this.connectMintingScript(this.getMinterParams());
-        return minter.mintingPolicyHash!;
+        return this.connectMinter().mintingPolicyHash!;
     }
 
     get mintingPolicyHash() {
@@ -536,6 +584,7 @@ export abstract class Capo<
             throw new Error(`just use this.minter when it's already present`);
         const { minterClass } = this;
         const { seedTxn, seedIndex } = params;
+        const { mph: expectedMph } = this.configIn || {};
 
         const minter = this.addStrellaWithConfig(minterClass, {
             seedTxn,
@@ -544,7 +593,14 @@ export abstract class Capo<
             //   isn't actively supported yet
             capo: this,
         });
-
+        if (expectedMph && !minter.mintingPolicyHash.eq(expectedMph)) {
+            throw new Error(
+                `This minter script with this seed-utxo doesn't produce the required  minting policy hash\n`
+                + "expected: "+ expectedMph.hex +"\nactual: "+minter.mintingPolicyHash.hex
+            );
+        } else if (!expectedMph) {
+            console.log(`${this.constructor.name}: seeding new minting policy`);
+        }
         const { mintingCharter, mintingUuts } = minter.onChainActivitiesType;
         if (!mintingCharter)
             throw new Error(
@@ -638,8 +694,8 @@ export abstract class Capo<
      * or can be stored off-chain in any way suitable for your dApp.
      *
      * To get a full DelegateSettings object, use txnCreateDelegateSettings() instead.
-     * 
-    * @reqt throws DelegateConfigNeeded with an `errors` entry
+     *
+     * @reqt throws DelegateConfigNeeded with an `errors` entry
      *   ... if there are any problems in validating the net configuration settings.
      * @reqt EXPECTS the `tcx` to be minting a UUT for the delegation,
      *   ... whose UutName can be found in `tcx.state.uuts[roleName]`
@@ -684,9 +740,9 @@ export abstract class Capo<
             delegateValidatorHash,
             uutName,
             config,
-            // addrHint,  //moved to config
-            // reqdAddress,  // removed
-        }: RelativeDelegateLink<DT> = configured;
+        }: // addrHint,  //moved to config
+        // reqdAddress,  // removed
+        RelativeDelegateLink<DT> = configured;
 
         return {
             strategyName,
@@ -755,7 +811,7 @@ export abstract class Capo<
             validateConfig && validateConfig(mergedConfig);
         if (errors) {
             throw new DelegateConfigNeeded(
-                `validation errors in contract params for ${roleName} '${strategyName}':\n` +
+                `validation errors in delegateInfo.config for ${roleName} '${strategyName}':\n` +
                     errorMapAsString(errors),
                 { errors }
             );
@@ -779,7 +835,7 @@ export abstract class Capo<
         //         delegateSettings.addrHint = addrHint;
         //     }
         // }
-        const {delegateValidatorHash} = delegate;
+        const { delegateValidatorHash } = delegate;
         const pcd: ConfiguredDelegate<DT> = {
             ...delegateSettings,
             delegateValidatorHash,
@@ -795,11 +851,13 @@ export abstract class Capo<
             tn: stringToNumberArray(uut.name),
         };
     }
-    #_delegateCache : {
-        [roleName: string] : {
-            [delegateLink : string] : StellarDelegate<any>
-        }
-    } = {}
+
+    #_delegateCache: {
+        [roleName: string]: {
+            [delegateLink: string]: StellarDelegate<any>;
+        };
+    } = {};
+
     // get connectDelegate()
     async connectDelegateWithLink<
         DelegateType extends StellarDelegate<any>,
@@ -810,23 +868,27 @@ export abstract class Capo<
         roleName: string,
         delegateLink: RelativeDelegateLink<DelegateType>
     ): Promise<DelegateType> {
-        const cache = this.#_delegateCache
+        const cache = this.#_delegateCache;
 
-        const cacheKey = JSON.stringify(delegateLink, delegateLinkSerializer, 4);
+        const cacheKey = JSON.stringify(
+            delegateLink,
+            delegateLinkSerializer,
+            4
+        );
         // console.log(`   ----- delegate '${roleName}' cache key `, cacheKey);
-        if(!cache[roleName]) cache[roleName] = {};
+        if (!cache[roleName]) cache[roleName] = {};
         const roleCache = cache[roleName];
         const cachedRole = roleCache[cacheKey];
-        if(cachedRole) {
+        if (cachedRole) {
             // console.log(  "   <---- cached delegate");
-            return cachedRole as DelegateType
+            return cachedRole as DelegateType;
         }
         const role = this.delegateRoles[roleName];
         //!!! work on type-safety with roleName + available roles
         const {
             strategyName,
             uutName,
-            delegateValidatorHash : edvh,
+            delegateValidatorHash: edvh,
             // addrHint,  //moved to config
             // reqdAddress,  // removed
             config: linkedConfig,
@@ -836,8 +898,12 @@ export abstract class Capo<
         ] as unknown as ConfiguredDelegate<DelegateType>;
         if (!selectedStrat) {
             throw new Error(
-                `mismatched strategyName '${strategyName}' in delegate link for role '${roleName}'\n`+
-                `  ...available strategies: ${Object.keys(role.variants).join(", ")}.\n\n link details: ${this.showDelegateLink(delegateLink)}`
+                `mismatched strategyName '${strategyName}' in delegate link for role '${roleName}'\n` +
+                    `  ...available strategies: ${Object.keys(
+                        role.variants
+                    ).join(", ")}.\n\n link details: ${this.showDelegateLink(
+                        delegateLink
+                    )}`
             );
         }
         const { delegateClass, config: stratSettings } = selectedStrat;
@@ -877,15 +943,17 @@ export abstract class Capo<
             // reqdAddress,
             // addrHint,
         });
-        const dvh = delegate.delegateValidatorHash
+        const dvh = delegate.delegateValidatorHash;
         if (edvh && dvh && !edvh.eq(dvh)) {
-            throw new Error(`${this.constructor.name}: ${roleName
-                }: mismatched delegate: expected validator ${edvh?.hex}, got ${dvh.hex}`
-            )
+            throw new Error(
+                `${this.constructor.name}: ${roleName}: mismatched delegate: expected validator ${edvh?.hex}, got ${dvh.hex}`
+            );
         }
-        console.log(`    <--- caching first instance of delegate ${roleName} @ key = ${cacheKey}`);
+        console.log(
+            `    <--- caching first instance of delegate ${roleName} @ key = ${cacheKey}`
+        );
         roleCache[cacheKey] = delegate;
-        return delegate
+        return delegate;
     }
 
     private showDelegateLink(delegateLink: RelativeDelegateLink<any>) {
@@ -912,6 +980,13 @@ export abstract class Capo<
             }
             throw e;
         }
+    }
+
+    tvForDelegate(dgtLink: RelativeDelegateLink<any>) {
+        return this.tokenAsValue(dgtLink.uutName)
+    }
+    mkDelegatePredicate(dgtLink: RelativeDelegateLink<any>) {
+        return this.mkTokenPredicate(this.tvForDelegate(dgtLink))
     }
 
     capoRequirements() {

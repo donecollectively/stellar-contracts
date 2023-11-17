@@ -6,6 +6,7 @@ import {
     TxInput,
     Value,
     bytesToText,
+    Assets,
 } from "@hyperionbt/helios";
 import { ErrorMap } from "./delegation/RolesAndDelegates.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
@@ -13,7 +14,7 @@ import { StellarTxnContext } from "./StellarTxnContext.js";
 /**
  * converts a hex string to a printable alternative, with no assumptions about the underlying data
  * @remarks
- * 
+ *
  * Unlike Helios' bytesToText, hexToPrintable() simply changes printable characters to characters,
  * and represents non-printable characters in '‹XX›' format.
  * @param ‹pName› - descr
@@ -32,27 +33,49 @@ export function hexToPrintableString(hexStr) {
         } else {
             result += `‹${hexChar}›`;
         }
+
+        // todo decode utf8 parts using bytesToText(...substring...)
+        // int         required_len;
+        // if (key[0] >> 7 == 0)
+        //     required_len = 1;
+        // else if (key[0] >> 5 == 0x6)
+        //     required_len = 2;
+        // else if (key[0] >> 4 == 0xE)
+        //     required_len = 3;
+        // else if (key[0] >> 5 == 0x1E)
+        //     required_len = 4;
+        // else
+        //     return (0);
+        // return (strlen(key) == required_len && chars_are_folow_uni(key + 1));
+    
+
     }
     return result;
 }
 /**
  * Converts an array of [ policyId, ‹tokens› ] tuples for on-screen presentation
  * @remarks
- * 
- * Presents policy-ids with shortened identifiers, and shows a readable & printable 
+ *
+ * Presents policy-ids with shortened identifiers, and shows a readable & printable
  * representation of token names even if they're not UTF-8 encoded.
  * @public
  **/
-export function assetsAsString(v: any) {
-    return Object.entries(v)
-        .map(([policyId, tokens]) => {
-            const tokenString = Object.entries(tokens as any)
+export function assetsAsString(a: Assets) {
+    //@ts-expect-error it's marked as private, but thankfully it's still accessible
+    const assets = a.assets;
+    return assets
+        .map(([policyId, tokenEntries]) => {
+            const pIdHex = policyId.hex;
+
+            const tokenString = tokenEntries
                 .map(
-                    ([name, count]) =>
-                        `${count}×💴 ${hexToPrintableString(name)}`
+                    ([nameBytes, count]) => {
+                        const nameString = hexToPrintableString(nameBytes.hex);
+                        return `${count}×💴 ${nameString}`
+                    }
                 )
                 .join(" + ");
-            return `⦑🏦 ${policyId.slice(0, 8)}…${policyId.slice(
+            return `⦑🏦 ${pIdHex.slice(0, 8)}…${pIdHex.slice(
                 -4
             )} ${tokenString}⦒`;
         })
@@ -75,7 +98,7 @@ export function lovelaceToAda(l: bigint | number) {
  **/
 export function valueAsString(v: Value) {
     const ada = lovelaceToAda(v.lovelace);
-    const assets = assetsAsString(v.assets.dump?.() || v.assets);
+    const assets = assetsAsString(v.assets);
     return [ada, assets].filter((x) => !!x).join(" + ");
 }
 
@@ -136,10 +159,7 @@ export function txAsString(tx: Tx): string {
             item = item.map((x) => txInputAsString(x, "🔪")).join("\n    ");
         }
         if ("minted" == x) {
-            const assets = item?.dump();
-            if (!Object.entries(assets || {}).length) continue;
-
-            item = ` ❇️  ${assetsAsString(assets)}`;
+            item = ` ❇️  ${assetsAsString(item)}`;
         }
         if ("outputs" == x) {
             item = `\n  ${item
@@ -181,8 +201,10 @@ export function txAsString(tx: Tx): string {
         if ("signatures" == x) {
             if (!item) continue;
             item = item.map((s) => {
-                const addr = Address.fromHash(s.pubKeyHash).toBech32();
-                return `🖊️ ${addr.slice(0, 20)}…${addr.slice(-4)} = 🔑…${s.pubKeyHash.hex.slice(-4)}`;
+                const addr = Address.fromHash(s.pubKeyHash);
+                return `🖊️ ${addrAsString(addr)} = 🔑…${s.pubKeyHash.hex.slice(
+                    -4
+                )}`;
             });
             if (item.length > 1) item.unshift("");
             item = item.join("\n    ");
@@ -212,7 +234,10 @@ export function txAsString(tx: Tx): string {
                     return `🏦 ${mph.slice(0, 8)}…${mph.slice(-4)} (minting)`;
                 } catch (e) {
                     const vh = s.validatorHash.hex;
-                    return `📜 ${vh.slice(0, 8)}…${vh.slice(-4)} (validator)`;
+                    const addr = Address.fromHash(s.validatorHash);
+                    return `📜 ${vh.slice(0, 8)}…${vh.slice(
+                        -4
+                    )} (validator at ${addrAsString(addr)})`;
                 }
             });
             if (item.length > 1) item.unshift("");
@@ -239,15 +264,14 @@ export function txAsString(tx: Tx): string {
 /**
  * Converts a TxInput to printable form
  * @remarks
- * 
+ *
  * Shortens address and output-id for visual simplicity
  * @public
  **/
 export function txInputAsString(x: TxInput, prefix = "-> "): string {
     const oid = x.outputId.txId.hex;
     const oidx = x.outputId.utxoIdx;
-    const addr = x.address.toBech32();
-    return `${prefix}${addr.slice(0, 14)}…${addr.slice(-4)} ${valueAsString(
+    return `${prefix}${addrAsString(x.address)} ${valueAsString(
         x.value
     )} = 📖 ${oid.slice(0, 6)}…${oid.slice(-4)}#${oidx}`;
 }
@@ -255,7 +279,7 @@ export function txInputAsString(x: TxInput, prefix = "-> "): string {
 /**
  * Converts a list of UTxOs to printable form
  * @remarks
- * 
+ *
  * ... using {@link txInputAsString}
  * @public
  **/
@@ -266,7 +290,7 @@ export function utxosAsString(utxos: TxInput[], joiner = "\n"): string {
 /**
  * converts a utxo to printable form
  * @remarks
- * 
+ *
  * shows shortened output-id and the value being output
  * @internal
  **/
@@ -283,7 +307,7 @@ export function utxoAsString(x: TxInput, prefix = "💵"): string {
 /**
  * converts a Datum to a printable summary
  * @remarks
- * 
+ *
  * using shortening techniques for the datumHash
  * @public
  **/
@@ -300,16 +324,26 @@ export function datumAsString(d: Datum | null | undefined): string {
 /**
  * Converts a txOutput to printable form
  * @remarks
- * 
+ *
  * including all its values, and shortened Address.
  * @public
  **/
 export function txOutputAsString(x: TxOutput, prefix = "<-"): string {
-    const bech32 = (x.address as any).bech32 || x.address.toBech32();
+    return `${prefix} ${addrAsString(x.address)} ${datumAsString(
+        x.datum
+    )} ${valueAsString(x.value)}`;
+}
 
-    return `${prefix} ${bech32.slice(0, 12)}…${bech32.slice(
-        -4
-    )} ${datumAsString(x.datum)} ${valueAsString(x.value)}`;
+/**
+ * Renders an address in shortened bech32 form, with prefix and part of the bech32 suffix
+ * @remarks
+ * @param address - address
+ * @public
+ **/
+export function addrAsString(address: Address): string {
+    const bech32 = (address as any).bech32 || address.toBech32();
+
+    return `${bech32.slice(0, 14)}…${bech32.slice(-4)}`;
 }
 
 /**
@@ -318,21 +352,41 @@ export function txOutputAsString(x: TxOutput, prefix = "<-"): string {
  **/
 export function errorMapAsString(em: ErrorMap, prefix = "  ") {
     return Object.keys(em)
-        .map((k) => `${prefix}${k}: ${JSON.stringify(em[k])}`)
+        .map((k) => `in field ${prefix}${k}: ${JSON.stringify(em[k])}`)
         .join("\n");
 }
 
 /**
  * Converts any (supported) input arg to string
  * @remarks
- * 
+ *
  * more types to be supported TODO
  * @public
  **/
-export function dumpAny(x: Tx | StellarTxnContext) {
+export function dumpAny(
+    x: Tx | StellarTxnContext | Address | Value | TxOutput
+) {
     if (x instanceof Tx) {
         return txAsString(x);
-    } else if (x instanceof StellarTxnContext) {
+    }
+    if (x instanceof TxOutput) {
+        return txOutputAsString(x);
+    }
+
+    if (x instanceof Value) {
+        return valueAsString(x);
+    }
+    if (x instanceof Address) {
+        return addrAsString(x);
+    }
+    if (x instanceof StellarTxnContext) {
         return txAsString(x.tx);
     }
+}
+
+if ("undefined" == typeof window) {
+    globalThis.peek = dumpAny;
+} else {
+    //@ts-expect-error
+    window.peek = dumpAny;
 }

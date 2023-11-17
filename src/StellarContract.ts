@@ -30,6 +30,7 @@ import { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { mkTv, stringToNumberArray } from "./utils.js";
 import { UutName } from "./delegation/RolesAndDelegates.js";
+import { helios } from "../index.js";
 
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer
@@ -276,8 +277,9 @@ export async function findInputsInWallets(
 export type SetupDetails = {
     network: Network;
     networkParams: NetworkParams;
-    isTest: boolean;
     myActor?: Wallet;
+    isTest?: boolean;
+    isDev? : boolean;
 };
 
 /**
@@ -559,7 +561,21 @@ export class StellarContract<
      * @public
      **/
     get onChainTypes() {
-        return this.scriptProgram!.types;
+        const types = {...this.scriptProgram!.types}
+        //@ts-expect-error because allStatements is marked as internal
+        const statements = this.scriptProgram!.allStatements;
+
+        for( const [statement, _someBoolThingy] of statements ) {
+            const name = statement.name.value
+            if (types[name]) continue;
+            if( "StructStatement" == Object.getPrototypeOf(statement).constructor.name) {
+                const type = statement.genOffChainType(); // an off-chain type **representing** an on-chain type
+                const name = type.name.value
+                if (types[name]) throw new Error(`ruh roh`)
+                types[name] = type
+            }
+        }
+        return types
     }
 
     /**
@@ -695,7 +711,11 @@ export class StellarContract<
                         fn,
                         fieldType,
                         fieldData
-                    );
+                    ).catch(nestedError => {
+                        console.warn("error parsing nested data inside enum variant", {fn, fieldType, fieldData})
+                        debugger
+                        throw nestedError;
+                    });
                     return [fn, value];
                 })
             )
@@ -720,11 +740,12 @@ export class StellarContract<
                         `uplcData expected constrData#${constrIndex}, got #${foundIndex}`
                     );
 
-                return this.readUplcEnumVariant(
+                const t = this.readUplcEnumVariant(
                     uplcType,
                     enumDataDef,
                     uplcData
                 );
+                return t  // caller can deal with catching the error
             }
             throw new Error(
                 `can't determine how to parse UplcDatum without 'fieldNames'.  Tried enum`
@@ -1238,8 +1259,13 @@ export class StellarContract<
             console.warn("no 'myActor'; not finalizing");
         }
         console.log("Submitting tx: ", tcx.dump());
-
-        return this.network.submitTx(tx);
+        const promises = [
+            this.network.submitTx(tx),
+        ]            
+        if (wallet) {
+           if (!this.setup.isTest) promises.push( wallet.submitTx(tx))
+        }
+        return Promise.all(promises)
     }
 
     ADA(n: bigint | number): bigint {
@@ -1300,7 +1326,7 @@ export class StellarContract<
             const script = Program.new(src, modules);
             if (params) script.parameters = params;
 
-            const simplify = !this.setup.isTest;
+            const simplify = ( !this.setup.isTest && !this.setup.isDev );
             // const t = new Date().getTime();
             if (simplify) {
                 console.warn(

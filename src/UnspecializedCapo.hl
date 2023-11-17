@@ -23,14 +23,17 @@ enum Datum {
     }
     //! datum-validation only supports checks of absolute spendability, 
     //  ... and can't check details of the Activity ("redeemer") being used.
-    func validateSpend(self, ctx: ScriptContext) -> Bool {
+    func validateSpend(self, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {
         //! Note: an overridden Datum's impl of validateSpend() 
         // ... is never called with the CharterToken variant
         assert(false, "can't happen");
         self.switch{
             CharterToken => true,
             _ => error("can't happen")
-        } || ctx.tx.serialize() != self.serialize()
+        } || (
+            ctx.tx.serialize() /* never */ == self.serialize() ||
+            mph.serialize() /* never */ == self.serialize()
+        )
     }   
 }
 
@@ -40,7 +43,7 @@ enum Activity {
     spendingDatum
     updatingCharter    
 
-    func allowActivity(self, datum: Datum, ctx: ScriptContext) -> Bool {
+    func allowActivity(self, datum: Datum, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {
         self.switch{
             //! Note: an overridden Reedeemer def doesn't have to replicate the checks
             // ... for the baseline enum variants; it's not called in those cases.
@@ -48,6 +51,14 @@ enum Activity {
             usingAuthority => true,
             _ => error("unreachable code")
             // not executed, but prevents the args from showing up as unused:
-        } || ctx.tx.serialize() != datum.serialize()
+        } || (
+            ctx.tx.serialize() /* never */ == datum.serialize() ||
+            mph.serialize() /* never */ == datum.serialize()
+        )
     }    
+}
+
+struct types {
+    redeemers: Activity
+    datum : Datum
 }

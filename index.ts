@@ -77,7 +77,9 @@ export type {
 
 
 export { DefaultMinter } from "./src/minting/DefaultMinter.js";
-export { DefaultCapo } from "./src/DefaultCapo.js";
+export { DefaultCapo, 
+    // contract as DefaultCapoContract 
+} from "./src/DefaultCapo.js";
 export type { DefaultCharterDatumArgs } from "./src/DefaultCapo.js";
 
 export type {
@@ -93,7 +95,8 @@ export type {
     Value,
     StakingValidatorHash,
     StakeAddress,
-    Wallet
+    Wallet,
+    WalletHelper,
 } from "./src/HeliosPromotedTypes.js";
 
 

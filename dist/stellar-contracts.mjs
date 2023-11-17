@@ -31,22 +31,34 @@ function heliosRollupLoader(opts = {
         ) || [];
         if (!(purpose && moduleName))
           throw new Error(`Bad format for helios file ${id}`);
-        const code = new String(
-          `const code = 
-new String(${JSON.stringify(content)});
+        const code = `const code = new String(${JSON.stringify(content)});
+
 code.srcFile = ${JSON.stringify(relPath)};
 code.purpose = ${JSON.stringify(purpose)}
 code.moduleName = ${JSON.stringify(moduleName)}
 
 export default code
-`
-        );
+`;
         return {
           code,
           map: { mappings: "" }
         };
       }
     }
+    // buildStart({ plugins }) {
+    // 	const parentName = 'esbuild';
+    // 	const parentPlugin = plugins.find(
+    // 		plugin => plugin.name === parentName
+    // 	);
+    // 	if (!parentPlugin) {
+    // 		// or handle this silently if it is optional
+    // 		throw new Error(
+    // 			`This plugin depends on the "${parentName}" plugin.`
+    // 		);
+    // 	}
+    // 	// now you can access the API methods in subsequent hooks
+    // 	esbuildApi = parentPlugin;
+    // },
   };
 }
 
@@ -59,8 +71,8 @@ export default code
 // Email:         cschmitz398@gmail.com
 // Website:       https://www.hyperion-bt.org
 // Repository:    https://github.com/hyperion-bt/helios
-// Version:       0.15.14
-// Last update:   October 2023
+// Version:       0.16.4
+// Last update:   November 2023
 // License type:  BSD-3-Clause
 //
 //
@@ -137,15 +149,18 @@ export default code
 //                                           RE_TEMPLATE_NAME, IRParametricName
 //
 //     Section 4: Cryptography functions     BLAKE2B_DIGEST_SIZE, setBlake2bDigestSize, imod32, 
-//                                           irotr, posMod, randomBytes, UInt64, 
-//                                           encodeBase32Bytes, expandBech32HumanReadablePart, 
-//                                           calcBech32Checksum, calcBech32Polymod, hmac, 
-//                                           DEFAULT_BASE32_ALPHABET, BECH32_BASE32_ALPHABET, 
-//                                           Crypto, ED25519_Q, ED25519_Q38, ED25519_CURVE_ORDER, 
-//                                           ED25519_D, ED25519_I, expMod, curveMod, curveInvert, 
-//                                           recoverX, encodeCurveInt, decodeCurveInt, getBit, 
-//                                           AffinePoint, ExtendedPoint, clamp, nonce, 
-//                                           CurvePointImpl, Ed25519, BIP39_DICT_EN
+//                                           irotr, posMod, randomBytes, UINT64_ZERO, 
+//                                           uint64FromBytes, uint64FromString, uint64ToBytes, 
+//                                           uint64Eq, uint64Not, uint64And, uint64Xor, uint64Add, 
+//                                           uint64Rotr, uint64Shiftr, UInt64, encodeBase32Bytes, 
+//                                           expandBech32HumanReadablePart, calcBech32Checksum, 
+//                                           calcBech32Polymod, hmac, DEFAULT_BASE32_ALPHABET, 
+//                                           BECH32_BASE32_ALPHABET, Crypto, ED25519_Q, 
+//                                           ED25519_Q38, ED25519_CURVE_ORDER, ED25519_D, 
+//                                           ED25519_I, expMod, curveMod, curveInvert, recoverX, 
+//                                           encodeCurveInt, decodeCurveInt, getBit, AffinePoint, 
+//                                           ExtendedPoint, clamp, nonce, CurvePointImpl, Ed25519, 
+//                                           BIP39_DICT_EN
 //
 //     Section 5: Cbor encoder/decoder       CborData, Cbor
 //
@@ -164,18 +179,20 @@ export default code
 //                                           SumArgSizesCost, ArgSizeDiffCost, ArgSizeProdCost, 
 //                                           ArgSizeDiagCost
 //
-//     Section 9: Uplc built-in functions    UPLC_BUILTINS, UPLC_MACROS_OFFSET, UPLC_MACROS, 
-//                                           dumpCostModels, findUplcBuiltin, isUplcBuiltin
+//     Section 9: Uplc built-in functions    BUILTIN_PREFIX, SAFE_BUILTIN_SUFFIX, 
+//                                           MACRO_BUILTIN_PREFIX, UPLC_BUILTINS, 
+//                                           UPLC_MACROS_OFFSET, UPLC_MACROS, dumpCostModels, 
+//                                           findUplcBuiltin, isUplcBuiltin
 //
-//     Section 10: Uplc AST                  UplcValue, UplcType, DEFAULT_UPLC_RTE_CALLBACKS, 
-//                                           UplcRte, UplcStack, UplcAny, UplcDelayedValue, 
-//                                           UplcInt, UplcByteArray, UplcString, UplcUnit, 
-//                                           UplcBool, UplcPair, UplcList, UplcDataValue, 
-//                                           UplcTerm, UplcVariable, UplcDelay, UplcLambda, 
-//                                           UplcCall, UplcConst, UplcForce, UplcError, 
-//                                           UplcBuiltin, UplcFrame, ForceFrame, PreCallFrame, 
-//                                           CallFrame, UplcTermWithEnv, UplcLambdaWithEnv, 
-//                                           UplcDelayWithEnv, UplcAnonValue, AppliedUplcBuiltin
+//     Section 10: Uplc AST                  UplcValueImpl, UplcType, DEFAULT_UPLC_RTE_CALLBACKS, 
+//                                           UplcRte, UplcStack, UplcAny, UplcInt, UplcByteArray, 
+//                                           UplcString, UplcUnit, UplcBool, UplcPair, UplcList, 
+//                                           UplcDataValue, UplcTerm, UplcVariable, UplcDelay, 
+//                                           UplcLambda, UplcCall, UplcConst, UplcForce, 
+//                                           UplcError, UplcBuiltin, UplcFrame, ForceFrame, 
+//                                           PreCallFrame, CallFrame, UplcTermWithEnv, 
+//                                           UplcLambdaWithEnv, UplcDelayWithEnv, UplcAnonValue, 
+//                                           AppliedUplcBuiltin
 //
 //     Section 11: Uplc program              UPLC_VERSION_COMPONENTS, UPLC_VERSION, 
 //                                           PLUTUS_SCRIPT_VERSION, UPLC_TAG_WIDTHS, 
@@ -186,8 +203,8 @@ export default code
 //     Section 13: Eval common types         applyTypes, Common, AllType, AnyType, ErrorType, 
 //                                           ArgType, FuncType, GenericType, 
 //                                           GenericEnumMemberType, VoidType, DataEntity, 
-//                                           ErrorEntity, NamedEntity, FuncEntity, MultiEntity, 
-//                                           TypedEntity, VoidEntity, ModuleNamespace
+//                                           ErrorEntity, NamedEntity, FuncEntity, TypedEntity, 
+//                                           VoidEntity, ModuleNamespace
 //
 //     Section 14: Eval primitive types      genCommonInstanceMembers, genCommonTypeMembers, 
 //                                           genCommonEnumTypeMembers, BoolType, ByteArrayType, 
@@ -201,8 +218,9 @@ export default code
 //
 //     Section 16: Eval builtin functions    BuiltinFunc, AssertFunc, ErrorFunc, PrintFunc
 //
-//     Section 17: Eval container types      IteratorType, ListType, ListType, MapType, MapType, 
-//                                           OptionType, OptionType
+//     Section 17: Eval container types      IteratorType, TupleType, isDataType, TupleType, 
+//                                           getTupleItemTypes, ListType, ListType, MapType, 
+//                                           MapType, OptionType, OptionType
 //
 //     Section 18: Eval time types           DurationType, TimeType, TimeRangeType
 //
@@ -242,8 +260,8 @@ export default code
 //
 //     Section 24: Helios AST expressions    Expr, RefExpr, PathExpr, ValuePathExpr, ListTypeExpr, 
 //                                           MapTypeExpr, IteratorTypeExpr, OptionTypeExpr, 
-//                                           VoidTypeExpr, FuncArgTypeExpr, FuncTypeExpr, 
-//                                           ChainExpr, AssignExpr, VoidExpr, 
+//                                           VoidTypeExpr, TupleTypeExpr, FuncArgTypeExpr, 
+//                                           FuncTypeExpr, ChainExpr, AssignExpr, VoidExpr, 
 //                                           PrimitiveLiteralExpr, LiteralDataExpr, 
 //                                           StructLiteralField, StructLiteralExpr, 
 //                                           ListLiteralExpr, MapLiteralExpr, NameTypePair, 
@@ -275,8 +293,9 @@ export default code
 //                                           buildParametricTypeExpr, buildListTypeExpr, 
 //                                           buildMapTypeExpr, buildOptionTypeExpr, 
 //                                           buildIteratorTypeExpr, buildFuncTypeExpr, 
-//                                           buildFuncArgTypeExpr, buildFuncRetTypeExprs, 
-//                                           buildTypePathExpr, buildTypeRefExpr, buildValueExpr, 
+//                                           buildFuncArgTypeExpr, buildFuncRetTypeExpr, 
+//                                           buildTypePathExpr, buildTypeRefExpr, 
+//                                           buildTupleTypeExpr, buildValueExpr, 
 //                                           buildMaybeAssignOrChainExpr, buildDestructExpr, 
 //                                           buildDestructExprs, buildAssignLhs, buildPipedExpr, 
 //                                           makeBinaryExprBuilder, makeUnaryExprBuilder, 
@@ -295,29 +314,32 @@ export default code
 //                                           buildStructLiteralNamedField, 
 //                                           buildStructLiteralUnnamedField, buildValuePathExpr
 //
-//     Section 27: IR Context objects        IRScope, ALWAYS_INLINEABLE, IRVariable, IRValue, 
-//                                           IRFuncValue, IRLiteralValue, IRDeferredValue, 
-//                                           IRCallStack
+//     Section 27: IR Context objects        IRScope, IRVariable
 //
-//     Section 28: IR AST objects            IRNameExprRegistry, IRExprRegistry, IRExpr, 
-//                                           IRNameExpr, IRLiteralExpr, IRConstExpr, IRFuncExpr, 
-//                                           IRCallExpr, IRCoreCallExpr, IRUserCallExpr, 
-//                                           IRAnonCallExpr, IRNestedAnonCallExpr, IRFuncDefExpr, 
-//                                           IRErrorCallExpr
+//     Section 28: IR AST objects            IRNameExpr, IRLiteralExpr, IRFuncExpr, IRCallExpr, 
+//                                           IRErrorExpr, loopIRExprs
 //
-//     Section 29: IR AST build functions    buildIRExpr, buildIRFuncExpr
+//     Section 29: IR AST build functions    IRExprTagger, buildIRExpr, buildIRFuncExpr
 //
-//     Section 30: IR Program                IRProgram, IRParametricProgram
+//     Section 30: IR pseudo evaluation      IRStack, IRLiteralValue, IRDataValue, 
+//                                           collectIRVariables, IRBuiltinValue, IRFuncValue, 
+//                                           IRErrorValue, IRAnyValue, IRMultiValue, 
+//                                           IRValueCodeMapper, IR_BUILTIN_CALLBACKS, IREvaluator, 
+//                                           annotateIR
 //
-//     Section 31: Helios program            Module, MainModule, DEFAULT_PROGRAM_CONFIG, 
+//     Section 31: IR optimization           INLINE_MAX_SIZE, isIdentityFunc, IROptimizer
+//
+//     Section 32: IR Program                IRProgram, IRParametricProgram
+//
+//     Section 33: Helios program            Module, MainModule, DEFAULT_PROGRAM_CONFIG, 
 //                                           RedeemerProgram, DatumRedeemerProgram, 
 //                                           GenericProgram, TestingProgram, SpendingProgram, 
 //                                           MintingProgram, StakingProgram, EndpointProgram
 //
-//     Section 32: Native scripts            NativeContext, NativeScript, NativeSig, NativeAll, 
+//     Section 34: Native scripts            NativeContext, NativeScript, NativeSig, NativeAll, 
 //                                           NativeAny, NativeAtLeast, NativeAfter, NativeBefore
 //
-//     Section 33: Tx types                  Tx, TxBody, TxWitnesses, TxInput, UTxO, TxRefInput, 
+//     Section 35: Tx types                  Tx, TxBody, TxWitnesses, TxInput, UTxO, TxRefInput, 
 //                                           TxOutput, DCert, DCertRegister, DCertDeregister, 
 //                                           DCertDelegate, DCertRegisterPool, DCertRetirePool, 
 //                                           StakeAddress, Signature, Ed25519PrivateKey, 
@@ -326,21 +348,21 @@ export default code
 //                                           HashedDatum, InlineDatum, encodeMetadata, 
 //                                           decodeMetadata, TxMetadata
 //
-//     Section 34: Highlighting function     SyntaxCategory, highlight
+//     Section 36: Highlighting function     SyntaxCategory, highlight
 //
-//     Section 35: CoinSelection             CoinSelection
+//     Section 37: CoinSelection             CoinSelection
 //
-//     Section 36: Wallets                   Cip30Wallet, WalletHelper, RemoteWallet
+//     Section 38: Wallets                   Cip30Wallet, WalletHelper, RemoteWallet
 //
-//     Section 37: Network                   BlockfrostV0, KoiosV0
+//     Section 39: Network                   BlockfrostV0, KoiosV0
 //
-//     Section 38: Emulator                  rawNetworkEmulatorParams, SimpleWallet, GenesisTx, 
+//     Section 40: Emulator                  rawNetworkEmulatorParams, SimpleWallet, GenesisTx, 
 //                                           RegularTx, NetworkEmulator, TxChainWallet, TxChain, 
 //                                           NetworkSlice
 //
-//     Section 39: Fuzzy testing framework   FuzzyTest
+//     Section 41: Fuzzy testing framework   FuzzyTest
 //
-//     Section 40: Bundling specific functionsjsToUplc, uplcToJs
+//     Section 42: Bundling specific functionsjsToUplc, uplcToJs
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -353,7 +375,7 @@ export default code
 /**
  * Current version of the Helios library.
  */
-const VERSION = "0.15.14";
+const VERSION = "0.16.4";
 
 /**
  * A tab used for indenting of the IR.
@@ -416,7 +438,7 @@ const config = {
     /**
      * If true, `Address` instances are assumed to be for a Testnet when constructing from hashes or raw bytes, otherwise for mainnet.
      * 
-     * Defaults: `true`.
+     * Default: `true`.
      * @type {boolean}
      */
     IS_TESTNET: true,
@@ -447,7 +469,7 @@ const config = {
 
 
     /**
-     * Lower offset wrt. the current system time when setting the validity range automatically.
+     * Lower offset wrt. the current system time when setting a transaction validity range automatically.
      * 
      * Defaut: 90 seconds.
      * @type {number} seconds
@@ -455,7 +477,7 @@ const config = {
     VALIDITY_RANGE_START_OFFSET: 90,
 
     /**
-     * Upper offset wrt. the current system time when setting the validity range automatically.
+     * Upper offset wrt. the current system time when setting a transaction validity range automatically.
      * 
      * Default: 300 seconds.
      * @type {number} seconds
@@ -471,7 +493,7 @@ const config = {
     IGNORE_UNEVALUATED_CONSTANTS: false,
 
     /**
-     * Check that `from_data` casts make sense during runtime. This ony impacts unsimplified UplcPrograms.
+     * Check that `from_data` casts make sense during runtime, printing a warning if it doesn't. This ony impacts unsimplified UplcPrograms.
      * 
      * Default: `false`.
      * @type {boolean}
@@ -1087,7 +1109,6 @@ class BitReader {
 /**
  * BitWriter turns a string of '0's and '1's into a list of bytes.
  * Finalization pads the bits using '0*1' if not yet aligned with the byte boundary.
- * @internal
  */
 class BitWriter {
 	/**
@@ -1627,9 +1648,9 @@ class Site {
 	 * @param {string} info 
 	 */
 	static new(type, src, startPos, endPos, info = "") {
-		let line = src.posToLine(startPos);
+		let [line, col] = src.posToLineAndCol(startPos);
 
-		let msg = `${type} on line ${line + 1}`;
+		let msg = `(${src.name}:${line+1}:${col+1}) ${type}`;
 		if (info != "") {
 			msg += `: ${info}`;
 		}
@@ -2520,6 +2541,115 @@ class StringLiteral extends PrimitiveLiteral {
 	}
 
 	/**
+	 * Can be used as a template literal tag function
+	 * @param {string | TemplateStringsArray | IR[]} content 
+	 * @param  {...(Site | string | IR | IR[] | null | number)} args 
+	 * @returns {IR}
+	 */
+	static new(content, ...args) {
+		if (typeof content == "string") {
+			if (args.length == 0) {
+				return new IR(content);
+			} else if (args.length == 1 && args[0] instanceof Site) {
+				const site = args[0];
+
+				if (site instanceof Site) {
+					return new IR(content, site);
+				} else {
+					throw new Error("unexpected second argument");
+				}
+			} else {
+				throw new Error("unexpected second argument");
+			}
+		} else if ("raw" in content) {
+			const raw = content.raw.slice();
+
+			/**
+			 * @type {IR[]}
+			 */
+			let items = [];
+			
+			/**
+			 * @type {Site | null}
+			 */
+			let lastSite = null;
+			
+			if (raw.length > 0 && raw[raw.length - 1] == "" && args.length > 0 && args[args.length -1 ] instanceof Site) {
+				raw.pop();
+				lastSite = assertClass(args.pop(), Site);
+			}
+
+			let s = "";
+
+			for (let c of raw) {
+				s += c;
+
+				const a = args.shift();
+
+				if (a instanceof Site) {
+					items.push(new IR(s, a));
+					s = "";
+				} else if (a instanceof IR) {
+					if (s != "") {
+						items.push(new IR(s));
+						s = "";
+					}
+
+					items.push(a);
+				} else if (Array.isArray(a)) {
+					if (s != "") {
+						items.push(new IR(s));
+						s = "";
+					}
+
+					a.forEach(ir => items.push(ir));
+				} else if (typeof a == "string" || typeof a == "number") {
+					s += a.toString();
+				} else if (a === undefined || a === null) {
+					if (s != "") {
+						items.push(new IR(s));
+						s = "";
+					}
+				} else {
+					throw new Error("unexpected second argument");
+				}
+			}
+
+			assert(args.length == 0);
+
+			if (s != "") {
+				items.push(new IR(s));
+			}
+
+			return new IR(items, lastSite);
+		} else if (Array.isArray(content)) {
+			/**
+			 * @type {IR[]}
+			 */
+			let items = [];
+
+			for (let c of content) {
+				items.push(c);
+			}
+
+			if (args.length == 0) {
+				return new IR(items);
+			} else if (args.length == 1) {
+				const arg = args[0];
+				if (arg instanceof Site) {
+					return new IR(items, arg);
+				} else {
+					throw new Error("unexpected second argument");
+				}
+			} else {
+				throw new Error("unexpected second argument");
+			}
+		} else {
+			throw new Error("unexpected first argument");
+		}
+	}
+
+	/**
 	 * @returns {any}
 	 */
 	dump() {
@@ -2784,10 +2914,31 @@ class IRParametricName {
 	}
 
 	/**
+	 * @type {string[]}
+	 */
+	get ttp() {
+		return this.#ttp;
+	}
+
+	/**
+	 * @type {string[]}
+	 */
+	get ftp() {
+		return this.#ftp;
+	}
+
+	/**
 	 * @type {string}
 	 */
 	get base() {
 		return this.#base;
+	}
+
+	/**
+	 * @type {string}
+	 */
+	get fn() {
+		return this.#fn;
 	}
 
 	/**
@@ -2810,10 +2961,15 @@ class IRParametricName {
 	}
 
 	/**
+	 * @param {boolean} emptyParameters
 	 * @return {string}
 	 */
-	toTemplate() {
-		return `${this.#base}${this.#ttp.length > 0 ? `[${this.#ttp.map((_, i) => `${TTPP}${i}`).join("@")}]` : ""}${this.#fn}${this.#ftp.length > 0 ? `[${this.#ftp.map((_, i) => `${FTPP}${i}`).join("@")}]` : ""}`;
+	toTemplate(emptyParameters = false) {
+		if (emptyParameters) {
+			return `${this.#base}${this.#ttp.length > 0 ? "[]" : ""}${this.#fn}${this.#ftp.length > 0 ? "[]" : ""}`;
+		} else {
+			return `${this.#base}${this.#ttp.length > 0 ? `[${this.#ttp.map((_, i) => `${TTPP}${i}`).join("@")}]` : ""}${this.#fn}${this.#ftp.length > 0 ? `[${this.#ftp.map((_, i) => `${FTPP}${i}`).join("@")}]` : ""}`;
+		}
 	}
 
 	/**
@@ -3083,16 +3239,16 @@ function randomBytes(random, n) {
  * @internal
  */
 class UInt64 {
-    #high;
-    #low;
+    high;
+    low;
 
     /**
      * @param {number} high  - uint32 number
      * @param {number} low - uint32 number
      */
     constructor(high, low) {
-        this.#high = imod32(high);
-        this.#low = imod32(low);
+        this.high = high;
+        this.low = low;
     }
 
     /**
@@ -3136,23 +3292,7 @@ class UInt64 {
         const high = parseInt(str.slice(0, 8), 16);
         const low = parseInt(str.slice(8, 16), 16);
 
-        return new UInt64(high, low);
-    }
-
-    /**
-     * @internal
-     * @type {number}
-     */
-    get high() {
-        return this.#high;
-    }
-
-    /**
-     * @internal
-     * @type {number}
-     */
-    get low() {
-        return this.#low;
+        return new UInt64(imod32(high), imod32(low));
     }
 
     /**
@@ -3163,14 +3303,14 @@ class UInt64 {
      */
     toBytes(littleEndian = true) {
         const res = [
-            (0x000000ff & this.#low),
-            (0x0000ff00 & this.#low) >>> 8,
-            (0x00ff0000 & this.#low) >>> 16,
-            (0xff000000 & this.#low) >>> 24,
-            (0x000000ff & this.#high),
-            (0x0000ff00 & this.#high) >>> 8,
-            (0x00ff0000 & this.#high) >>> 16,
-            (0xff000000 & this.#high) >>> 24,
+            (0x000000ff & this.low),
+            (0x0000ff00 & this.low) >>> 8,
+            (0x00ff0000 & this.low) >>> 16,
+            (0xff000000 & this.low) >>> 24,
+            (0x000000ff & this.high),
+            (0x0000ff00 & this.high) >>> 8,
+            (0x00ff0000 & this.high) >>> 16,
+            (0xff000000 & this.high) >>> 24,
         ];
 
         if (!littleEndian) {
@@ -3186,7 +3326,7 @@ class UInt64 {
      * @returns {boolean}
      */
     eq(other) {
-        return (this.#high == other.#high) && (this.#low == other.#low);
+        return (this.high == other.high) && (this.low == other.low);
     }
 
     /**
@@ -3194,7 +3334,7 @@ class UInt64 {
      * @returns {UInt64} 
      */
     not() {
-        return new UInt64(~this.#high, ~this.#low);
+        return new UInt64(~this.high, ~this.low);
     }
 
     /**
@@ -3203,7 +3343,7 @@ class UInt64 {
      * @returns {UInt64}
      */
     and(other) {
-        return new UInt64(this.#high & other.#high, this.#low & other.#low);
+        return new UInt64(this.high & other.high, this.low & other.low);
     }
 
     /**
@@ -3212,7 +3352,10 @@ class UInt64 {
      * @returns {UInt64}
      */
     xor(other) {
-        return new UInt64(this.#high ^ other.#high, this.#low ^ other.#low);
+        return new UInt64(
+            imod32(this.high ^ other.high),
+            imod32(this.low ^ other.low)
+        );
     }
 
     /**
@@ -3221,15 +3364,15 @@ class UInt64 {
      * @returns {UInt64}
      */
     add(other) {
-        const low = this.#low + other.#low;
+        const low = this.low + other.low;
 
-        let high = this.#high + other.#high;
+        let high = this.high + other.high;
 
         if (low >= 0x100000000) {
             high += 1;
         }
 
-        return new UInt64(high, low);
+        return new UInt64(imod32(high), imod32(low));
     }
 
     /**
@@ -3238,16 +3381,20 @@ class UInt64 {
      * @returns {UInt64}
      */
     rotr(n) {
+        let h = this.high;
+        let l = this.low;
+
         if (n == 32) {
-            return new UInt64(this.#low, this.#high);
+            return new UInt64(l, h);
         } else if (n > 32) {
-            return (new UInt64(this.#low, this.#high)).rotr(n - 32);
-        } else {
-            return new UInt64(
-                imod32((this.#high >>> n) | (this.#low << (32 - n))),
-                imod32((this.#low >>> n) | (this.#high << (32 - n)))
-            );
+            n  -= 32;
+            [h, l] = [l, h];   
         }
+
+        return new UInt64(
+            imod32((h >>> n) | (l << (32 - n))),
+            imod32((l >>> n) | (h << (32 - n)))
+        );
     }
 
     /**
@@ -3257,9 +3404,15 @@ class UInt64 {
      */
     shiftr(n) {
         if (n >= 32) {
-            return new UInt64(0, this.#high >>> n - 32);
+            return new UInt64(
+                0, 
+                this.high >>> n - 32
+            );
         } else {
-            return new UInt64(this.#high >>> n, (this.#low >>> n) | (this.#high << (32 - n)));
+            return new UInt64(
+                this.high >>> n, 
+                imod32((this.low >>> n) | this.high << (32 - n))
+            );
         }
     }
 }
@@ -3824,80 +3977,76 @@ const Crypto = {
         }
 
         /**
-         * @type {UInt64[]} - 80 uint64 numbers
+         * @type {number[]} - 80 uint64 numbers as 160 uint32 numbers
          */
         const k = [
-            new UInt64(0x428a2f98, 0xd728ae22), new UInt64(0x71374491, 0x23ef65cd),
-            new UInt64(0xb5c0fbcf, 0xec4d3b2f), new UInt64(0xe9b5dba5, 0x8189dbbc),
-            new UInt64(0x3956c25b, 0xf348b538), new UInt64(0x59f111f1, 0xb605d019),
-            new UInt64(0x923f82a4, 0xaf194f9b), new UInt64(0xab1c5ed5, 0xda6d8118),
-            new UInt64(0xd807aa98, 0xa3030242), new UInt64(0x12835b01, 0x45706fbe),
-            new UInt64(0x243185be, 0x4ee4b28c), new UInt64(0x550c7dc3, 0xd5ffb4e2),
-            new UInt64(0x72be5d74, 0xf27b896f), new UInt64(0x80deb1fe, 0x3b1696b1),
-            new UInt64(0x9bdc06a7, 0x25c71235), new UInt64(0xc19bf174, 0xcf692694),
-            new UInt64(0xe49b69c1, 0x9ef14ad2), new UInt64(0xefbe4786, 0x384f25e3),
-            new UInt64(0x0fc19dc6, 0x8b8cd5b5), new UInt64(0x240ca1cc, 0x77ac9c65),
-            new UInt64(0x2de92c6f, 0x592b0275), new UInt64(0x4a7484aa, 0x6ea6e483),
-            new UInt64(0x5cb0a9dc, 0xbd41fbd4), new UInt64(0x76f988da, 0x831153b5),
-            new UInt64(0x983e5152, 0xee66dfab), new UInt64(0xa831c66d, 0x2db43210),
-            new UInt64(0xb00327c8, 0x98fb213f), new UInt64(0xbf597fc7, 0xbeef0ee4),
-            new UInt64(0xc6e00bf3, 0x3da88fc2), new UInt64(0xd5a79147, 0x930aa725),
-            new UInt64(0x06ca6351, 0xe003826f), new UInt64(0x14292967, 0x0a0e6e70),
-            new UInt64(0x27b70a85, 0x46d22ffc), new UInt64(0x2e1b2138, 0x5c26c926),
-            new UInt64(0x4d2c6dfc, 0x5ac42aed), new UInt64(0x53380d13, 0x9d95b3df),
-            new UInt64(0x650a7354, 0x8baf63de), new UInt64(0x766a0abb, 0x3c77b2a8),
-            new UInt64(0x81c2c92e, 0x47edaee6), new UInt64(0x92722c85, 0x1482353b),
-            new UInt64(0xa2bfe8a1, 0x4cf10364), new UInt64(0xa81a664b, 0xbc423001),
-            new UInt64(0xc24b8b70, 0xd0f89791), new UInt64(0xc76c51a3, 0x0654be30),
-            new UInt64(0xd192e819, 0xd6ef5218), new UInt64(0xd6990624, 0x5565a910),
-            new UInt64(0xf40e3585, 0x5771202a), new UInt64(0x106aa070, 0x32bbd1b8),
-            new UInt64(0x19a4c116, 0xb8d2d0c8), new UInt64(0x1e376c08, 0x5141ab53),
-            new UInt64(0x2748774c, 0xdf8eeb99), new UInt64(0x34b0bcb5, 0xe19b48a8),
-            new UInt64(0x391c0cb3, 0xc5c95a63), new UInt64(0x4ed8aa4a, 0xe3418acb),
-            new UInt64(0x5b9cca4f, 0x7763e373), new UInt64(0x682e6ff3, 0xd6b2b8a3),
-            new UInt64(0x748f82ee, 0x5defb2fc), new UInt64(0x78a5636f, 0x43172f60),
-            new UInt64(0x84c87814, 0xa1f0ab72), new UInt64(0x8cc70208, 0x1a6439ec),
-            new UInt64(0x90befffa, 0x23631e28), new UInt64(0xa4506ceb, 0xde82bde9),
-            new UInt64(0xbef9a3f7, 0xb2c67915), new UInt64(0xc67178f2, 0xe372532b),
-            new UInt64(0xca273ece, 0xea26619c), new UInt64(0xd186b8c7, 0x21c0c207),
-            new UInt64(0xeada7dd6, 0xcde0eb1e), new UInt64(0xf57d4f7f, 0xee6ed178),
-            new UInt64(0x06f067aa, 0x72176fba), new UInt64(0x0a637dc5, 0xa2c898a6),
-            new UInt64(0x113f9804, 0xbef90dae), new UInt64(0x1b710b35, 0x131c471b),
-            new UInt64(0x28db77f5, 0x23047d84), new UInt64(0x32caab7b, 0x40c72493),
-            new UInt64(0x3c9ebe0a, 0x15c9bebc), new UInt64(0x431d67c4, 0x9c100d4c),
-            new UInt64(0x4cc5d4be, 0xcb3e42b6), new UInt64(0x597f299c, 0xfc657e2a),
-            new UInt64(0x5fcb6fab, 0x3ad6faec), new UInt64(0x6c44198c, 0x4a475817),
+            0x428a2f98, 0xd728ae22, 0x71374491, 0x23ef65cd,
+            0xb5c0fbcf, 0xec4d3b2f, 0xe9b5dba5, 0x8189dbbc,
+            0x3956c25b, 0xf348b538, 0x59f111f1, 0xb605d019,
+            0x923f82a4, 0xaf194f9b, 0xab1c5ed5, 0xda6d8118,
+            0xd807aa98, 0xa3030242, 0x12835b01, 0x45706fbe,
+            0x243185be, 0x4ee4b28c, 0x550c7dc3, 0xd5ffb4e2,
+            0x72be5d74, 0xf27b896f, 0x80deb1fe, 0x3b1696b1,
+            0x9bdc06a7, 0x25c71235, 0xc19bf174, 0xcf692694,
+            0xe49b69c1, 0x9ef14ad2, 0xefbe4786, 0x384f25e3,
+            0x0fc19dc6, 0x8b8cd5b5, 0x240ca1cc, 0x77ac9c65,
+            0x2de92c6f, 0x592b0275, 0x4a7484aa, 0x6ea6e483,
+            0x5cb0a9dc, 0xbd41fbd4, 0x76f988da, 0x831153b5,
+            0x983e5152, 0xee66dfab, 0xa831c66d, 0x2db43210,
+            0xb00327c8, 0x98fb213f, 0xbf597fc7, 0xbeef0ee4,
+            0xc6e00bf3, 0x3da88fc2, 0xd5a79147, 0x930aa725,
+            0x06ca6351, 0xe003826f, 0x14292967, 0x0a0e6e70,
+            0x27b70a85, 0x46d22ffc, 0x2e1b2138, 0x5c26c926,
+            0x4d2c6dfc, 0x5ac42aed, 0x53380d13, 0x9d95b3df,
+            0x650a7354, 0x8baf63de, 0x766a0abb, 0x3c77b2a8,
+            0x81c2c92e, 0x47edaee6, 0x92722c85, 0x1482353b,
+            0xa2bfe8a1, 0x4cf10364, 0xa81a664b, 0xbc423001,
+            0xc24b8b70, 0xd0f89791, 0xc76c51a3, 0x0654be30,
+            0xd192e819, 0xd6ef5218, 0xd6990624, 0x5565a910,
+            0xf40e3585, 0x5771202a, 0x106aa070, 0x32bbd1b8,
+            0x19a4c116, 0xb8d2d0c8, 0x1e376c08, 0x5141ab53,
+            0x2748774c, 0xdf8eeb99, 0x34b0bcb5, 0xe19b48a8,
+            0x391c0cb3, 0xc5c95a63, 0x4ed8aa4a, 0xe3418acb,
+            0x5b9cca4f, 0x7763e373, 0x682e6ff3, 0xd6b2b8a3,
+            0x748f82ee, 0x5defb2fc, 0x78a5636f, 0x43172f60,
+            0x84c87814, 0xa1f0ab72, 0x8cc70208, 0x1a6439ec,
+            0x90befffa, 0x23631e28, 0xa4506ceb, 0xde82bde9,
+            0xbef9a3f7, 0xb2c67915, 0xc67178f2, 0xe372532b,
+            0xca273ece, 0xea26619c, 0xd186b8c7, 0x21c0c207,
+            0xeada7dd6, 0xcde0eb1e, 0xf57d4f7f, 0xee6ed178,
+            0x06f067aa, 0x72176fba, 0x0a637dc5, 0xa2c898a6,
+            0x113f9804, 0xbef90dae, 0x1b710b35, 0x131c471b,
+            0x28db77f5, 0x23047d84, 0x32caab7b, 0x40c72493,
+            0x3c9ebe0a, 0x15c9bebc, 0x431d67c4, 0x9c100d4c,
+            0x4cc5d4be, 0xcb3e42b6, 0x597f299c, 0xfc657e2a,
+            0x5fcb6fab, 0x3ad6faec, 0x6c44198c, 0x4a475817,
         ];
 
         /**
          * Initial hash (updated during compression phase)
-         * @type {UInt64[]} - 8 uint64 numbers
+         * @type {number[]} - 8 uint64 numbers as 16 uint32 number
          */
         const hash = [
-            new UInt64(0x6a09e667, 0xf3bcc908),
-            new UInt64(0xbb67ae85, 0x84caa73b),
-            new UInt64(0x3c6ef372, 0xfe94f82b),
-            new UInt64(0xa54ff53a, 0x5f1d36f1),
-            new UInt64(0x510e527f, 0xade682d1),
-            new UInt64(0x9b05688c, 0x2b3e6c1f),
-            new UInt64(0x1f83d9ab, 0xfb41bd6b),
-            new UInt64(0x5be0cd19, 0x137e2179),
+            0x6a09e667, 0xf3bcc908,
+            0xbb67ae85, 0x84caa73b,
+            0x3c6ef372, 0xfe94f82b,
+            0xa54ff53a, 0x5f1d36f1,
+            0x510e527f, 0xade682d1,
+            0x9b05688c, 0x2b3e6c1f,
+            0x1f83d9ab, 0xfb41bd6b,
+            0x5be0cd19, 0x137e2179,
         ];
 
         /**
-         * @param {UInt64} x
-         * @returns {UInt64} 
+         * @param {number[]} hash 
+         * @param {number} i 
+         * @param {number} h 
+         * @param {number} l 
          */
-        function sigma0(x) {
-            return x.rotr(1).xor(x.rotr(8)).xor(x.shiftr(7));
-        }
-
-        /**
-         * @param {UInt64} x
-         * @returns {UInt64}
-         */
-        function sigma1(x) {
-            return x.rotr(19).xor(x.rotr(61)).xor(x.shiftr(6));
+        function updateHash(hash, i, h, l) {
+            l = hash[i+1] + l;
+            hash[i] = (hash[i] + h + Math.floor(l / 4294967296)) >>> 0;
+            hash[i+1] = l >>> 0;
         }
 
         bytes = pad(bytes);
@@ -3906,64 +4055,126 @@ const Crypto = {
         for (let chunkStart = 0; chunkStart < bytes.length; chunkStart += 128) {
             const chunk = bytes.slice(chunkStart, chunkStart + 128);
 
-            const w = (new Array(80)).fill(UInt64.zero()); // array of 32 bit numbers!
+            /**
+             * @type {number[]}
+             */
+            const w = (new Array(160)).fill(0); // array of 32 bit numbers!
 
             // copy chunk into first 16 hi/lo positions of w (i.e. into first 32 uint32 positions)
-            for (let i = 0; i < 16; i++) {
-                w[i] = UInt64.fromBytes(chunk.slice(i * 8, i * 8 + 8), false);
+            for (let i = 0; i < 32; i += 2) {
+                const bs = chunk.slice(i * 4, i * 4 + 8);
+                w[i+0] = ((bs[0] << 24) | (bs[1] << 16) | (bs[2] << 8) | (bs[3] << 0)) >>> 0;
+                w[i+1] = ((bs[4] << 24) | (bs[5] << 16) | (bs[6] << 8) | (bs[7] << 0)) >>> 0;
             }
 
-            // extends the first 16 positions into the remaining 80 positions
-            for (let i = 16; i < 80; i++) {
-                w[i] = sigma1(w[i - 2]).add(w[i - 7]).add(sigma0(w[i - 15])).add(w[i - 16]);
+            // extends the first 16 uint64 positions into the remaining 80 uint64 positions (so first 32 uint32 into remaining 160 uint32 positions)
+            for (let i = 32; i < 160; i += 2) {
+                let h = w[i - 30];
+                let l = w[i - 29];
+
+                const sigma0h = (((h >>> 1) | (l << 31)) ^ ((h >>> 8) | (l << 24)) ^ ((h >>> 7))) >>> 0;
+                const sigma0l = (((l >>> 1) | (h << 31)) ^ ((l >>> 8) | (h << 24)) ^ ((l >>> 7) | (h << 25))) >>> 0;
+
+                h = w[i - 4];
+                l = w[i - 3];
+
+                const sigma1h = (((h >>> 19) | (l << 13)) ^ ((l >>> 29) | (h << 3)) ^ ((h >>> 6))) >>> 0;
+                const sigma1l = (((l >>> 19) | (h << 13)) ^ ((h >>> 29) | (l << 3)) ^ ((l >>> 6) | (h << 26))) >>> 0;
+
+                h = sigma1h + w[i-14] + sigma0h + w[i-32];
+                l = sigma1l + w[i-13] + sigma0l + w[i-31];
+
+                w[i] = (h + Math.floor(l / 4294967296)) >>> 0;
+                w[i+1] = l >>> 0;
             }
 
             // intialize working variables to current hash value
-            let a = hash[0];
-            let b = hash[1];
-            let c = hash[2];
-            let d = hash[3];
-            let e = hash[4];
-            let f = hash[5];
-            let g = hash[6];
-            let h = hash[7];
+            let ah = hash[0];
+            let al = hash[1];
+            let bh = hash[2];
+            let bl = hash[3];
+            let ch = hash[4];
+            let cl = hash[5];
+            let dh = hash[6];
+            let dl = hash[7];
+            let eh = hash[8];
+            let el = hash[9];
+            let fh = hash[10];
+            let fl = hash[11];
+            let gh = hash[12];
+            let gl = hash[13];
+            let hh = hash[14];
+            let hl = hash[15];
 
             // compression function main loop
-            for (let i = 0; i < 80; i++) {
-                const S1 = e.rotr(14).xor(e.rotr(18)).xor(e.rotr(41));
-                const ch = e.and(f).xor(e.not().and(g));
-                const temp1 = h.add(S1).add(ch).add(k[i]).add(w[i]);
-                const S0 = a.rotr(28).xor(a.rotr(34)).xor(a.rotr(39));
-                const maj = a.and(b).xor(a.and(c)).xor(b.and(c));
-                const temp2 = S0.add(maj);
+            for (let i = 0; i < 160; i+=2) {
+                const S0h = (((ah >>> 28) | (al << 4)) ^ ((al >>> 2) | (ah << 30)) ^ ((al >>> 7) | (ah << 25))) >>> 0;
+                const S0l = (((al >>> 28) | (ah << 4)) ^ ((ah >>> 2) | (al << 30)) ^ ((ah >>> 7) | (al << 25))) >>> 0;
+                
+                const S1h = (((eh >>> 14) | (el << 18)) ^ ((eh >>> 18) | (el << 14)) ^ ((el >>> 9) | (eh << 23))) >>> 0;
+                const S1l = (((el >>> 14) | (eh << 18)) ^ ((el >>> 18) | (eh << 14)) ^ ((eh >>> 9) | (el << 23))) >>> 0;
 
-                h = g;
-                g = f;
-                f = e;
-                e = d.add(temp1);
-                d = c;
-                c = b;
-                b = a;
-                a = temp1.add(temp2);
+                const majh = ((ah & bh) ^ (ah & ch) ^ (bh & ch)) >>> 0;
+                const majl = ((al & bl) ^ (al & cl) ^ (bl & cl)) >>> 0;
+
+                const chh = ((eh & fh) ^ (~eh & gh)) >>> 0;
+                const chl = ((el & fl) ^ (~el & gl)) >>> 0;
+
+                let temp1l = hl + S1l + chl + k[i+1] + w[i+1];
+                let temp1h = (hh + S1h + chh + k[i] + w[i] + Math.floor(temp1l / 4294967296)) >>> 0;
+                temp1l = temp1l >>> 0;
+
+                let temp2l = S0l + majl;
+                const temp2h = (S0h + majh + Math.floor(temp2l / 4294967296)) >>> 0;
+                temp2l = temp2l >>> 0;
+
+                hh = gh;
+                hl = gl;
+                gh = fh;
+                gl = fl;
+                fh = eh;
+                fl = el;
+                el = dl + temp1l;
+                eh = (dh + temp1h + Math.floor(el / 4294967296)) >>> 0;
+                el = el >>> 0;
+                dh = ch;
+                dl = cl;
+                ch = bh;
+                cl = bl;
+                bh = ah;
+                bl = al;
+                al = temp1l + temp2l;
+                ah = (temp1h + temp2h + Math.floor(al / 4294967296)) >>> 0;
+                al = al >>> 0;
             }
 
-            // update the hash
-            hash[0] = hash[0].add(a);
-            hash[1] = hash[1].add(b);
-            hash[2] = hash[2].add(c);
-            hash[3] = hash[3].add(d);
-            hash[4] = hash[4].add(e);
-            hash[5] = hash[5].add(f);
-            hash[6] = hash[6].add(g);
-            hash[7] = hash[7].add(h);
+            updateHash(hash,  0, ah, al);
+            updateHash(hash,  2, bh, bl);
+            updateHash(hash,  4, ch, cl);
+            updateHash(hash,  6, dh, dl);
+            updateHash(hash,  8, eh, el);
+            updateHash(hash, 10, fh, fl);
+            updateHash(hash, 12, gh, gl);
+            updateHash(hash, 14, hh, hl);
         }
 
         // produce the final digest of uint8 numbers
         let result = [];
-        for (let i = 0; i < 8; i++) {
-            const item = hash[i];
+        for (let i = 0; i < 16; i+=2) {
+            const h = hash[i];
+            const l = hash[i+1];
+            const bs = [
+                (0xff000000 & h) >>> 24,
+                (0x00ff0000 & h) >>> 16,
+                (0x0000ff00 & h) >>> 8,
+                (0x000000ff & h),
+                (0xff000000 & l) >>> 24,
+                (0x00ff0000 & l) >>> 16,
+                (0x0000ff00 & l) >>> 8,
+                (0x000000ff & l)    
+            ];
 
-            result = result.concat(item.toBytes(false));
+            result = result.concat(bs);
         }
 
         return result;
@@ -6175,6 +6386,28 @@ class ByteArrayData extends UplcData {
 			for (let i = 0; i < a.length; i++) {
 				if (a[i] != b[i]) {
 					return lessOrGreater();
+				}
+			}
+
+			return 0;
+		}
+	}
+
+	/**
+	 * Cbor-specific Bytearray comparison (see https://datatracker.ietf.org/doc/html/rfc7049#section-3.9)
+	 * Used by Assets.sort()
+	 * @internal
+	 * @param {number[]} a
+	 * @param {number[]} b
+	 * @returns {number} - 0 -> equals, 1 -> gt, -1 -> lt
+	 */
+	static compLengthFirst(a, b) {
+		if (a.length != b.length) {
+			return a.length < b.length ? -1 : 1;
+		} else {
+			for (let i = 0; i < a.length; i++) {
+				if (a[i] != b[i]) {
+					return a[i] < b[i] ? -1 : 1;
 				}
 			}
 
@@ -9493,7 +9726,7 @@ class Assets extends CborData {
 
 		this.assets.forEach(([_, tokens]) => {
 			tokens.sort((a, b) => {
-				return ByteArrayData.comp(a[0].bytes, b[0].bytes);
+				return ByteArrayData.compLengthFirst(a[0].bytes, b[0].bytes);
 			});
 		});
 	}
@@ -9509,7 +9742,7 @@ class Assets extends CborData {
 					if (j > 0) {
 						const aa = b[1][j-1];
 
-						assert(ByteArrayData.comp(aa[0].bytes, bb[0].bytes) < 0, "tokens not sorted");
+						assert(ByteArrayData.compLengthFirst(aa[0].bytes, bb[0].bytes) < 0, "tokens not sorted");
 					}
 				});
 			}
@@ -9888,6 +10121,10 @@ class NetworkParams {
 	 * @param {null | LiveSlotGetter} liveSlotGetter
 	 */
 	constructor(raw, liveSlotGetter = null) {
+		if(typeof raw !== 'object'){
+		    throw new Error("raw param must be of type object");
+        }
+		
 		this.#raw = raw;
 		this.#liveSlotGetter = liveSlotGetter;
 	}
@@ -10633,6 +10870,23 @@ class ArgSizeDiagCost extends LinearCost {
 /////////////////////////////////////
 
 /**
+ * @internal
+ */
+const BUILTIN_PREFIX = "__core__";
+
+/**
+ * Calls to builtins that are known not to throw errors (eg. tailList inside last branch of chooseList)
+ * @internal
+ */
+const SAFE_BUILTIN_SUFFIX = "__safe"; 
+
+/**
+ * Special off-chain builtins like network.get()
+ * @internal
+ */
+const MACRO_BUILTIN_PREFIX = "__core__macro";
+
+/**
  * Cost-model configuration of UplcBuiltin.
  * Also specifies the number of times a builtin must be 'forced' before being callable.
  * @internal
@@ -10839,7 +11093,7 @@ function dumpCostModels(networkParams) {
  * @returns 
  */
 function findUplcBuiltin(name) {
-	let i = UPLC_BUILTINS.findIndex(info => { return "__core__" + info.name == name });
+	let i = UPLC_BUILTINS.findIndex(info => { return BUILTIN_PREFIX + info.name == name });
 	assert(i != -1, `${name} is not a real builtin`);
 	return i;
 }
@@ -10852,7 +11106,7 @@ function findUplcBuiltin(name) {
  * @returns {boolean}
  */
 function isUplcBuiltin(name, strict = false) {
-	if (name.startsWith("__core")) {
+	if (name.startsWith(BUILTIN_PREFIX)) {
 		if (strict) {
 			void this.findBuiltin(name); // assert that builtin exists
 		}
@@ -10872,10 +11126,40 @@ function isUplcBuiltin(name, strict = false) {
  * @typedef {"testing" | "minting" | "spending" | "staking" | "endpoint" | "module" | "unknown"} ScriptPurpose
  */
 
-/** 
- * a UplcValue is passed around by Plutus-core expressions.
+/**
+ * UplcValue is passed around by Plutus-core expressions.
+ * @interface
+ * @typedef {object} UplcValue
+ * @property {(other: TransferUplcAst) => any} transfer
+ * @property {bigint} int
+ * @property {number[]} bytes
+ * @property {string} string
+ * @property {boolean} bool
+ * @property {() => boolean} isPair
+ * @property {UplcValue} first
+ * @property {UplcValue} second
+ * @property {() => boolean} isList
+ * @property {UplcType} itemType
+ * @property {UplcValue[]} list
+ * @property {number} length only relevant for lists and maps
+ * @property {() => boolean} isData
+ * @property {UplcData} data
+ * @property {() => string} toString
+ * @property {(newSite: Site) => UplcValue} copy return a copy of the UplcValue at a different Site
+ * @property {Site} site
+ * @property {number} memSize size in words (8 bytes, 64 bits) occupied in target node
+ * @property {number} flatSize size taken up in serialized UPLC program (number of bits)
+ * @property {() => boolean} isAny
+ * @property {(bitWriter: BitWriter) => void} toFlatValue
+ * @property {(bitWriter: BitWriter) => void} toFlatValueInternal like toFlatValue(), but without the typebits
+ * @property {() => string} typeBits
+ * @property {() => UplcUnit} assertUnit
  */
-class UplcValue {
+
+/** 
+ * Base cass for UplcValue implementations.
+ */
+class UplcValueImpl {
 	#site;
 
 	/**
@@ -10886,26 +11170,7 @@ class UplcValue {
 		this.#site = site;
 	}
 
-	/**
-	 * @param {TransferUplcAst} other 
-	 * @returns {any}
-	 */
-	transfer(other) {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * Return a copy of the UplcValue at a different Site.
-     * @internal
-	 * @param {Site} newSite 
-	 * @returns {UplcValue}
-	 */
-	copy(newSite) {
-		throw new Error("not implemented");
-	}
-
     /**
-     * @internal
      * @type {Site}
      */
 	get site() {
@@ -10913,20 +11178,10 @@ class UplcValue {
 	}
 
 	/**
-	 * @internal
 	 * @type {number}
 	 */
 	get length() {
 		throw new Error("not a list nor a map");
-	}
-
-	/**
-	 * Size in words (8 bytes, 64 bits) occupied in target node
-     * @internal
-	 * @type {number}
-	 */
-	get memSize() {
-		throw new Error("not yet implemented");
 	}
 
 	/**
@@ -11023,15 +11278,6 @@ class UplcValue {
 	}
 
 	/**
-     * @internal
-	 * @returns {Promise<UplcValue>}
-	 */
-	force() {
-		throw this.site.typeError(`expected delayed value, got '${this.toString()}'`);
-	}
-
-	/**
-     * @internal
 	 * @returns {UplcUnit}
 	 */
 	assertUnit() {
@@ -11041,21 +11287,12 @@ class UplcValue {
 	/**
 	 * @returns {string}
 	 */
-	toString() {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-     * @internal
-	 * @returns {string}
-	 */
 	typeBits() {
 		throw new Error("not yet implemented");
 	}
 
 	/**
 	 * Encodes value without type header
-     * @internal
 	 * @param {BitWriter} bitWriter
 	 */
 	toFlatValueInternal(bitWriter) {
@@ -11065,7 +11302,6 @@ class UplcValue {
 	/**
 	 * Encodes value with plutus flat encoding.
 	 * Member function not named 'toFlat' as not to confuse with 'toFlat' member of terms.
-     * @internal
 	 * @param {BitWriter} bitWriter
 	 */
 	toFlatValue(bitWriter) {
@@ -11647,8 +11883,9 @@ class UplcStack {
 /**
  * Allows doing a dummy eval of a UplcProgram in order to determine some non-changing properties (eg. the address fetched via the network in an EndpointProgram)
  * @internal
+ * @implements {UplcValue}
  */
-class UplcAny extends UplcValue {
+class UplcAny extends UplcValueImpl {
 	/**
 	 * @param {Site} site 
 	 */
@@ -11673,8 +11910,15 @@ class UplcAny extends UplcValue {
 	}
 
 	/**
+	 * @type {number}
+	 */
+	get flatSize() {
+		throw new Error("UplcAny shouldn't be part of Ast");
+	}
+
+	/**
 	 * @param {Site} newSite 
-	 * @returns {UplcAny}
+	 * @returns {UplcValue}
 	 */
 	copy(newSite) {
 		return new UplcAny(
@@ -11705,14 +11949,6 @@ class UplcAny extends UplcValue {
 
 	/**
      * @internal
-	 * @returns {Promise<UplcValue>}
-	 */
-	force() {
-		return new Promise((resolve, _) => resolve(this));
-	}
-
-	/**
-     * @internal
 	 * @returns {UplcUnit}
 	 */
 	assertUnit() {
@@ -11728,81 +11964,10 @@ class UplcAny extends UplcValue {
 }
 
 /**
- * @internal
- */
-class UplcDelayedValue extends UplcValue {
-	#evaluator;
-
-	/**
-	 * @param {Site} site
-	 * @param {() => (UplcValue | Promise<UplcValue>)} evaluator
-	 */
-	constructor(site, evaluator) {
-		super(site);
-		this.#evaluator = evaluator;
-	}
-
-	/**
-	 * Should never be part of ast
-	 * @param {TransferUplcAst} other 
-	 * @returns {any}
-	 */
-	transfer(other) {
-		throw new Error("not expected to be part of uplc ast");
-	}
-
-	get memSize() {
-		return 1;
-	}
-
-	/**
-	 * @param {Site} newSite 
-	 * @returns {UplcValue}
-	 */
-	copy(newSite) {
-		return new UplcDelayedValue(newSite, this.#evaluator);
-	}
-
-	/**
-	 * @return {Promise<UplcValue>}
-	 */
-	force() {
-		let res = this.#evaluator();
-
-		if (res instanceof Promise) {
-			return res;
-		} else {
-			return new Promise((resolve, _) => {
-				resolve(res);
-			});
-		}
-	}
-
-	toString() {
-		return `delay`;
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	typeBits() {
-		throw new Error("a UplcDelayedValue value doesn't have a literal representation");
-	}
-
-	/**
-	 * Encodes value with plutus flat encoding.
-	 * Member function not named 'toFlat' as not to confuse with 'toFlat' member of terms.
-	 * @param {BitWriter} bitWriter
-	 */
-	toFlatValue(bitWriter) {
-		throw new Error("a UplcDelayedValue value doesn't have a literal representation");
-	}
-}
-
-/**
  * Primitive equivalent of `IntData`.
+ * @implements {UplcValue}
  */
-class UplcInt extends UplcValue {
+class UplcInt extends UplcValueImpl {
 	/**
 	 * @readonly
 	 * @type {bigint}
@@ -11841,6 +12006,8 @@ class UplcInt extends UplcValue {
 		}
 	}
 
+	
+
 	/**
 	 * @param {TransferUplcAst} other 
 	 * @returns {any}
@@ -11868,6 +12035,15 @@ class UplcInt extends UplcValue {
 	 */
 	get memSize() {
         return IntData.memSizeInternal(this.value);
+	}
+
+	/**
+	 * 4 for type, 7 for simple int, (7 + 1)*ceil(n/7) for large int
+	 * @type {number}
+	 */
+	get flatSize() {
+		const n = this.toUnsigned().value.toString(2).length;
+		return 4 + ((n <= 7) ? 7 : Math.ceil(n / 7)*8);
 	}
 
 	/**
@@ -12035,8 +12211,9 @@ class UplcInt extends UplcValue {
 
 /**
  * Primitive equivalent of `ByteArrayData`.
+ * @implements {UplcValue}
  */
-class UplcByteArray extends UplcValue {
+class UplcByteArray extends UplcValueImpl {
 	#bytes;
 
 	/**
@@ -12045,11 +12222,7 @@ class UplcByteArray extends UplcValue {
 	 */
 	constructor(site, bytes) {
 		super(site);
-		assert(bytes != undefined);
 		this.#bytes = bytes;
-		for (let b of this.#bytes) {
-			assert(typeof b == 'number');
-		}
 	}
 
 	/**
@@ -12092,7 +12265,16 @@ class UplcByteArray extends UplcValue {
 	}
 
 	/**
-	 * @internal
+	 * 4 for header, 8 bits per byte, 8 bits per chunk of 256 bytes, 8 bits final padding
+	 * @type {number}
+	 */
+	get flatSize() {
+		const n = this.#bytes.length;
+
+		return 4 + n*8 + Math.ceil(n/256)*8 + 8;
+	}
+
+	/**
 	 * @param {Site} newSite 
 	 * @returns {UplcByteArray}
 	 */
@@ -12176,8 +12358,9 @@ class UplcByteArray extends UplcValue {
 
 /**
  * Primitive string value.
+ * @implements {UplcValue}
  */
-class UplcString extends UplcValue {
+class UplcString extends UplcValueImpl {
 	#value;
 
 	/**
@@ -12227,6 +12410,14 @@ class UplcString extends UplcValue {
 	}
 
 	/**
+	 * @type {number}
+	 */
+	get flatSize() {
+		const bytes = Array.from((new TextEncoder()).encode(this.#value));
+		return (new UplcByteArray(Site.dummy(), bytes)).flatSize
+	}
+
+	/**
 	 * @param {Site} newSite 
 	 * @returns {UplcString}
 	 */
@@ -12267,8 +12458,9 @@ class UplcString extends UplcValue {
 
 /**
  * Primitive unit value.
+ * @implements {UplcValue}
  */
-class UplcUnit extends UplcValue {
+class UplcUnit extends UplcValueImpl {
 	/**
 	 * @param {Site} site 
 	 */
@@ -12311,6 +12503,13 @@ class UplcUnit extends UplcValue {
 	}
 
 	/**
+	 * @type {number}
+	 */
+	get flatSize() {
+		return 4;
+	}
+
+	/**
 	 * @param {Site} newSite 
 	 * @returns {UplcUnit}
 	 */
@@ -12345,8 +12544,9 @@ class UplcUnit extends UplcValue {
 
 /**
  * JS/TS equivalent of the Helios language `Bool` type.
+ * @implements {UplcValue}
  */
-class UplcBool extends UplcValue {
+class UplcBool extends UplcValueImpl {
 	#value;
 
 	/**
@@ -12393,6 +12593,14 @@ class UplcBool extends UplcValue {
 	 */
 	get memSize() {
 		return 1;
+	}
+
+	/**
+	 * 4 for type, 1 for value
+	 * @type {number}
+	 */
+	get flatSize() {
+		return 5;
 	}
 
 	/**
@@ -12445,8 +12653,9 @@ class UplcBool extends UplcValue {
 
 /**
  * Primitive pair value.
+ * @implements {UplcValue}
  */
-class UplcPair extends UplcValue {
+class UplcPair extends UplcValueImpl {
 	#first;
 	#second;
 
@@ -12502,8 +12711,15 @@ class UplcPair extends UplcValue {
 	}
 
 	/**
+	 * 16 additional type bits on top of #first and #second bits
+	 */
+	get flatSize() {
+		return 16 + this.#first.flatSize + this.#second.flatSize;
+	}
+
+	/**
 	 * @param {Site} newSite 
-	 * @returns {UplcPair}
+	 * @returns {UplcValue}
 	 */
 	copy(newSite) {
 		return new UplcPair(newSite, this.#first, this.#second);
@@ -12571,8 +12787,9 @@ class UplcPair extends UplcValue {
 /** 
  * Plutus-core list value class.
  * Only used during evaluation.
+ * @implements {UplcList}
 */
-class UplcList extends UplcValue {
+class UplcList extends UplcValueImpl {
 	#itemType;
 	#items;
 
@@ -12626,6 +12843,16 @@ class UplcList extends UplcValue {
 		}
 
 		return sum;
+	}
+
+	/**
+	 * 10 + nItemType type bits, value bits of each item (must be corrected by itemType)
+	 * @type {number}
+	 */
+	get flatSize() {
+		const nItemType = this.#itemType.typeBits.length;
+
+		return 10 + nItemType + this.#items.reduce((prev, item) => item.flatSize - nItemType + prev, 0);
 	}
 
 	/**
@@ -12701,9 +12928,10 @@ class UplcList extends UplcValue {
 }
 
 /**
- *  Child type of `UplcValue` that wraps a `UplcData` instance.
+ * `UplcValue` that wraps a `UplcData` instance.
+ * @implements {UplcValue}
  */
-class UplcDataValue extends UplcValue {
+class UplcDataValue extends UplcValueImpl {
 	#data;
 
 	/**
@@ -12732,6 +12960,16 @@ class UplcDataValue extends UplcValue {
 	 */
 	get memSize() {
 		return this.#data.memSize;
+	}
+
+	/**
+	 * Same number of header bits as UplcByteArray
+	 * @type {number}
+	 */
+	get flatSize() {
+		const bytes = this.#data.toCbor();
+
+		return (new UplcByteArray(Site.dummy(), bytes)).flatSize;
 	}
 
 	/**
@@ -13101,6 +13339,7 @@ class UplcCall extends UplcTerm {
 			bitWriter.write('1011');
 			
 			const site = this.site.codeMapSite;
+
 			(new UplcInt(site, BigInt(assertDefined(codeMapFileIndices.get(site.src.name))), false)).toFlatUnsigned(bitWriter);
 			(new UplcInt(site, BigInt(site.startPos), false)).toFlatUnsigned(bitWriter);
 		} else {
@@ -13147,6 +13386,10 @@ class UplcConst extends UplcTerm {
 		if (value instanceof UplcInt) {
 			assert(value.signed);
 		}
+	}
+
+	get flatSize() {
+		return 4 + this.value.flatSize;
 	}
 
 	/**
@@ -13370,7 +13613,7 @@ class UplcBuiltin extends UplcTerm {
 	constructor(site, name) {
 		super(site, 7);
 		this.#name = assertDefined(name);
-		this.#forceCount = (typeof this.#name === "string" && !this.#name.startsWith("macro__")) ? UPLC_BUILTINS[findUplcBuiltin("__core__" + this.#name)].forceCount : 0;
+		this.#forceCount = (typeof this.#name === "string" && !this.#name.startsWith("macro__")) ? UPLC_BUILTINS[findUplcBuiltin(BUILTIN_PREFIX + this.#name)].forceCount : 0;
 		
 		if (this.isMacro()) {
 			this.#nArgs = -1;
@@ -13508,7 +13751,7 @@ class UplcBuiltin extends UplcTerm {
 	}
 
 	/**
-	 * Used by IRCoreCallExpr
+	 * Used by IREvaluator
 	 * @internal
 	 * @param {Word} name
 	 * @param {UplcValue[]} args
@@ -13519,7 +13762,7 @@ class UplcBuiltin extends UplcTerm {
 
 		let rte = new UplcRte();
 
-		let res = builtin.evalBuiltin(rte, name.site, args);
+		let res = builtin.evalBuiltin(rte, name.site, args, true);
 
 		rte.throwError();
 
@@ -13564,9 +13807,10 @@ class UplcBuiltin extends UplcTerm {
 	 * @param {UplcRte} rte 
 	 * @param {Site} site
 	 * @param {UplcValue[]} args
+	 * @param {boolean} syncTrace if true => don't call rte.print method (used by IREvaluator)
 	 * @returns {UplcValue | Promise<UplcValue>} // trace returns a Promise (async print), all the other builtins return a synchronous value
 	 */
-	evalBuiltin(rte, site, args) {
+	evalBuiltin(rte, site, args, syncTrace = false) {
 		if (!this.allowAny() && args.some(a => a.isAny())) {
 			return new UplcAny(site);
 		} 
@@ -13728,10 +13972,10 @@ class UplcBuiltin extends UplcTerm {
 				return b;
 			},
 			trace: (a, b) => {
-				if (a.isAny()) {
+				if (a.isAny() || syncTrace) {
 					return b;
 				} else {
-					return rte.print(a.string.split("\n").map(l => `INFO  (${site.toString()}) ${l}`)).then(() => {
+					return rte.print(a.string.split("\n").map(l => `INFO (${site.toString()}) ${l}`)).then(() => {
 						return b;
 					});
 				}
@@ -13786,7 +14030,7 @@ class UplcBuiltin extends UplcTerm {
 
 					return lst[0];
 				} else {
-					throw site.typeError(`__core__head expects list or map, got '${a.toString()}'`);
+					throw site.typeError(`__core__headList expects list or map, got '${a.toString()}'`);
 				}
 			},
 			tailList: (a) => {
@@ -13798,7 +14042,7 @@ class UplcBuiltin extends UplcTerm {
 
 					return new UplcList(site, a.itemType, lst.slice(1));
 				} else {
-					throw site.typeError(`__core__tail expects list or map, got '${a.toString()}'`);
+					throw site.typeError(`__core__tailList expects list or map, got '${a.toString()}'`);
 				}
 			},
 			nullList: (a) => {
@@ -14237,8 +14481,9 @@ class UplcDelayWithEnv extends UplcTermWithEnv {
 
 /**
  * @internal
+ * @implements {UplcValue}
  */
-class UplcAnonValue extends UplcValue {
+class UplcAnonValue extends UplcValueImpl {
     /**
      * @readonly
      * @type {AppliedUplcBuiltin | UplcLambdaWithEnv | UplcDelayWithEnv}
@@ -14254,12 +14499,35 @@ class UplcAnonValue extends UplcValue {
         this.term = term;
     }
 
+	/**
+	 * @param {TransferUplcAst} other 
+	 * @returns {any}
+	 */
+	transfer(other) {
+		throw new Error("shouldn't be part of AST");
+	}
+
+	/**
+	 * @param {Site} newSite 
+	 * @returns {UplcValue}
+	 */
+	copy(newSite) {
+		throw new Error("shouldn't be part of AST");
+	}
+
     /**
      * @type {number}
      */
     get memSize() {
         return 1;
     }
+
+	/**
+	 * @type {number}
+	 */
+	get flatSize() {
+		throw new Error("shouldn't be part of AST");
+	}
 
 	/**
 	 * @returns {string}
@@ -14444,7 +14712,6 @@ class AppliedUplcBuiltin {
 	}
 
 	/**
-	 * 
 	 * @param {UplcRte} rte 
 	 * @param {UplcFrame[]} stack 
 	 * @param {ReducingState} state 
@@ -14842,20 +15109,14 @@ const UPLC_TAG_WIDTHS = {
 	 * Wrap the top-level term with consecutive UplcCall (not exported) terms.
 	 * 
 	 * Returns a new UplcProgram instance, leaving the original untouched.
-	 * 
-	 * Throws an error if you are trying to apply with an anon func.
-	 * @param {(UplcValue | HeliosData)[]} args
+	 * @param {UplcValue[]} args
 	 * @returns {UplcProgram} - a new UplcProgram instance
 	 */
 	apply(args) {
 		let expr = this.expr;
 
 		for (let arg of args) {
-			if (arg instanceof UplcValue) {
-				expr = new UplcCall(arg.site, expr, new UplcConst(arg));
-			} else if (arg instanceof HeliosData) {
-				expr = new UplcCall(Site.dummy(), expr, new UplcConst(new UplcDataValue(Site.dummy(), arg._toUplcData())));
-			}
+			expr = new UplcCall(arg.site, expr, new UplcConst(arg));
 		}
 
 		return new UplcProgram(expr, this.#properties, this.#version);
@@ -16481,7 +16742,7 @@ function tokenize(src) {
  * @param {CodeMap} codeMap 
  * @returns {Token[]}
  */
-function tokenizeIR(rawSrc, codeMap) {
+function tokenizeIR(rawSrc, codeMap = []) {
 	let src = new Source(rawSrc, "<ir>");
 
 	// the Tokenizer for Helios can simply be reused for the IR
@@ -16490,6 +16751,7 @@ function tokenizeIR(rawSrc, codeMap) {
 	const ts = tokenizer.tokenize();
 
 	if (src.errors.length > 0) {
+		console.log(src.pretty());
 		throw src.errors[0];
 	} else if (ts === null) {
 		throw new Error("should've been thrown above");
@@ -16503,8 +16765,6 @@ function tokenizeIR(rawSrc, codeMap) {
 ////////////////////////////////
 // Section 13: Eval common types
 ////////////////////////////////
-
-
 /**
  * @template {HeliosData} T
  */
@@ -16613,7 +16873,6 @@ function tokenizeIR(rawSrc, codeMap) {
  *   asEnumMemberType: (null | EnumMemberType)
  *   asFunc:           (null | Func)
  *   asInstance:       (null | Instance)
- *   asMulti:          (null | Multi)
  *   asNamed:          (null | Named)
  *   asNamespace:      (null | Namespace)
  *   asParametric:     (null | Parametric)
@@ -16629,7 +16888,7 @@ function tokenizeIR(rawSrc, codeMap) {
  * @typedef {Typed & {
  *   asFunc: Func
  * 	 funcType: FuncType
- *   call(site: Site, args: Typed[], namedArgs?: {[name: string]: Typed}): (null | Typed | Multi)
+ *   call(site: Site, args: Typed[], namedArgs?: {[name: string]: Typed}): (null | Typed)
  * }} Func
  */
 
@@ -16640,14 +16899,6 @@ function tokenizeIR(rawSrc, codeMap) {
  *   fieldNames:      string[]
  *   instanceMembers: InstanceMembers
  * }} Instance
- */
-
-/**
- * @internal
- * @typedef {EvalEntity & {
- *	 asMulti: Multi
- *   values:  Typed[]
- * }} Multi
  */
 
 /**
@@ -16764,30 +17015,6 @@ class Common {
         return t.isBaseOf(i.type);
     }
 
-    /**
-     * @param {Type | Type[]} type 
-     * @returns {Typed | Multi}
-     */
-    static toTyped(type) {
-        if (Array.isArray(type)) {
-            if (type.length === 1) {
-                return Common.toTyped(type[0]);
-            } else {
-                return new MultiEntity(type.map(t => {
-                    const typed = Common.toTyped(t).asTyped;
-                    
-                    if (!typed) {
-                        throw new Error("unexpected nested Multi");
-                    } else {
-                        return typed;
-                    }
-                }));
-            }
-        } else {
-			return type.toTyped();
-        }
-    }
-
 	/**
 	 * Compares two types. Throws an error if neither is a Type.
 	 * @example
@@ -16887,13 +17114,6 @@ class Common {
 	get asInstance() {
 		return null;
 	}
-
-    /**
-     * @type {null | Multi}
-     */
-    get asMulti() {
-        return null;
-    }
 
     /**
      * @type {null | Named}
@@ -17352,24 +17572,20 @@ class FuncType extends Common {
 	#argTypes;
 
 	/**
-	 * @type {Type[]}
+	 * @type {Type}
 	 */
-	#retTypes;
+	#retType;
 
 	/**
 	 * @param {Type[] | ArgType[]} argTypes 
-	 * @param {Type | Type[]} retTypes 
+	 * @param {Type} retType 
 	 */
-	constructor(argTypes, retTypes) {
+	constructor(argTypes, retType) {
         super();
 
 		this.#argTypes = argTypes.map(at => (at instanceof ArgType) ? at : new ArgType(null, at));
 
-		if (!Array.isArray(retTypes)) {
-			retTypes = [retTypes];
-		}
-
-		this.#retTypes = retTypes;
+		this.#retType = retType;
 	}
 
     /**
@@ -17408,10 +17624,10 @@ class FuncType extends Common {
 	}
 
     /**
-	 * @type {Type[]}
+	 * @type {Type}
 	 */
-	get retTypes() {
-		return this.#retTypes;
+	get retType() {
+		return this.#retType;
 	}
 
     /**
@@ -17428,16 +17644,56 @@ class FuncType extends Common {
 		return this;
     }
 
+	/**
+	 * Expand tuples in posArgs, if that matches argTypes better
+	 * @param {Typed[]} posArgs 
+	 * @returns {Typed[]}
+	 */
+	expandTuplesInPosArgs(posArgs) {
+		posArgs = posArgs.slice();
+		let arg = posArgs.shift();
 
+		/**
+		 * @type {Typed[]}
+		 */
+		let result = [];
+		
+		let i = 0;
+		
+		while (arg) {
+			if (i < this.#argTypes.length && Common.instanceOf(arg, this.#argTypes[i].type)) {
+				result.push(arg);
+				i++;
+			} else {
+				const tupleItemTypes = getTupleItemTypes(arg.type);
+
+				if (tupleItemTypes && tupleItemTypes.every((tit, j) => (i+j < this.#argTypes.length) && Common.instanceOf(tit.toTyped(), this.#argTypes[i+j].type))) {
+					result = result.concat(tupleItemTypes.map(tit => tit.toTyped()));
+					i += tupleItemTypes.length;
+				} else {
+					// mismatched type, but don't throw error here because better error will be thrown later
+					result.push(arg);
+					i++;
+				}
+			}
+
+			arg = posArgs.shift();
+		}
+
+		return result;
+	}
+	
 	/**
 	 * Checks if arg types are valid.
 	 * Throws errors if not valid. Returns the return type if valid. 
 	 * @param {Site} site 
 	 * @param {Typed[]} posArgs
 	 * @param {{[name: string]: Typed}} namedArgs
-	 * @returns {null | Type[]}
+	 * @returns {null | Type}
 	 */
 	checkCall(site, posArgs, namedArgs = {}) {
+		posArgs = this.expandTuplesInPosArgs(posArgs); 
+
 		if (posArgs.length < this.nNonOptArgs) {
 			// check if each nonOptArg is covered by the named args
 			for (let i = 0; i < this.nNonOptArgs; i++) {
@@ -17483,7 +17739,7 @@ class FuncType extends Common {
 			}
 		}
 
-		return this.#retTypes;
+		return this.#retType;
 	}
 
     /**
@@ -17497,13 +17753,13 @@ class FuncType extends Common {
 		if (!type) {
 			return new FuncType(
 				this.#argTypes.map(at => at.infer(site, map, null)),
-				this.#retTypes.map(rt=> rt.infer(site, map, null))
+				this.#retType.infer(site, map, null)
 			);
 		} else if (type instanceof FuncType) {
-			if (type.argTypes.length == this.#argTypes.length && type.retTypes.length == this.#retTypes.length) {
+			if (type.argTypes.length == this.#argTypes.length) {
 				return new FuncType(
 					this.#argTypes.map((at, i) => at.infer(site, map, type.argTypes[i])),
-					this.#retTypes.map((rt, i) => rt.infer(site, map, type.retTypes[i]))
+					this.#retType.infer(site, map, type.retType)
 				);
 			}
 		}
@@ -17522,7 +17778,7 @@ class FuncType extends Common {
 		if (argTypes.length == this.argTypes.length) {
 			return new FuncType(
 				this.#argTypes.map((at, i) => at.infer(site, map, argTypes[i])),
-				this.#retTypes.map(rt => rt.infer(site, map, null))
+				this.#retType.infer(site, map, null)
 			)
 		}
 
@@ -17543,10 +17799,8 @@ class FuncType extends Common {
 			}
 		}
 
-		for (let rt of this.#retTypes) {
-			if (Common.typesEq(type, rt)) {
-				return true;
-			}
+		if (Common.typesEq(type, this.#retType)) {
+			return true;
 		}
 
 		return false;
@@ -17571,17 +17825,11 @@ class FuncType extends Common {
 					}
 				}
 
-				if (this.#retTypes.length === other.#retTypes.length) {
-					for (let i = 0; i < this.#retTypes.length; i++) {
-						if (!this.#retTypes[i].isBaseOf(other.#retTypes[i])) {
-							return false;
-						}
-					}
-
-					return true;
-				} else {
+				if (!this.#retType.isBaseOf(other.#retType)) {
 					return false;
 				}
+
+				return true;
 			}
 
 		} else {
@@ -17609,11 +17857,7 @@ class FuncType extends Common {
 	 * @returns {string}
 	 */
 	toString() {
-		if (this.#retTypes.length === 1) {
-			return `(${this.#argTypes.map(a => a.toString()).join(", ")}) -> ${this.#retTypes.toString()}`;
-		} else {
-			return `(${this.#argTypes.map(a => a.toString()).join(", ")}) -> (${this.#retTypes.map(t => t.toString()).join(", ")})`;
-		}
+		return `(${this.#argTypes.map(a => a.toString()).join(", ")}) -> ${this.#retType.toString()}`;
 	}
 	
 	/**
@@ -18325,13 +18569,6 @@ class NamedEntity {
 	get asInstance() {
 		return this.#entity.asInstance;
 	}
-	
-	/**
-	 * @type {null | Multi}
-	 */
-	get asMulti() {
-		return this.#entity.asMulti;
-	}
 
 	/**
 	 * @type {Named}
@@ -18452,15 +18689,15 @@ class FuncEntity extends Common {
 	 * @param {Site} site 
 	 * @param {Typed[]} args 
 	 * @param {{[name: string]: Typed}} namedArgs
-	 * @returns {null | Typed | Multi}
+	 * @returns {null | Typed}
 	 */
 	call(site, args, namedArgs = {}) {
-		const types = this.#type.checkCall(site, args, namedArgs);
+		const type = this.#type.checkCall(site, args, namedArgs);
 
-		if (types === null) {
+		if (type === null) {
 			return null;
 		} else {
-			return Common.toTyped(types);
+			return type.toTyped();
 		}
 	}
 
@@ -18471,68 +18708,6 @@ class FuncEntity extends Common {
 	toString() {
 		return this.#type.toString();
 	}
-}
-
-/**
- * Wraps multiple return values
- * @internal
- * @implements {Multi}
- */
-class MultiEntity extends Common {
-	#values;
-
-	/**
-	 * @param {Typed[]} values 
-	 */
-	constructor(values) {
-        super();
-
-		this.#values = values;
-	}
-
-    /**
-	 * @param {(Typed | Multi)[]} vals
-	 * @returns {Typed[]}
-	 */
-    static flatten(vals) {
-        /**
-         * @type {Typed[]}
-         */
-        let result = [];
-
-        for (let v of vals) {
-            if (v.asMulti) {
-                result = result.concat(v.asMulti.values);
-            } else if (v.asTyped) {
-                result.push(v.asTyped);
-            } else {
-				throw new Error("unexpected");
-			}
-        }
-
-        return result;
-    }
-
-	/**
-	 * @type {Typed[]}
-	 */
-	get values() {
-		return this.#values;
-	}
-
-    /**
-	 * @type {Multi}
-	 */
-	get asMulti() {
-		return this;
-	}
-
-	/**
-	 * @returns {string}
-	 */
-	toString() {
-		return `(${this.#values.map(v => v.toString()).join(", ")})`;
-	}	
 }
 
 /**
@@ -18664,6 +18839,7 @@ class ModuleNamespace extends Common {
 function genCommonInstanceMembers(type) {
     return {
         serialize: new FuncType([], ByteArrayType),
+        show: new FuncType([], StringType)
     }
 }
 
@@ -18720,7 +18896,6 @@ const BoolType = new GenericType({
     },
     genInstanceMembers: (self) => ({
         ...genCommonInstanceMembers(),
-        show:      new FuncType([], StringType),
         to_int:    new FuncType([], IntType),
         trace:     new FuncType([StringType], self),
         trace_if_false: new FuncType([StringType], self),
@@ -18769,7 +18944,6 @@ const ByteArrayType = new GenericType({
         prepend: new FuncType([IntType], self),
         sha2: new FuncType([], self),
         sha3: new FuncType([], self),
-        show: new FuncType([], StringType),
         slice: new FuncType([IntType, IntType], self),
         starts_with: new FuncType([self], BoolType),
     }),
@@ -18812,7 +18986,6 @@ const IntType = new GenericType({
         bound_min: new FuncType([self], self),
         decode_zigzag: new FuncType([], self),
         encode_zigzag: new FuncType([], self),
-        show: new FuncType([], StringType),
         to_base58: new FuncType([], StringType),
         to_big_endian: new FuncType([], ByteArrayType),
         to_bool: new FuncType([], BoolType),
@@ -18890,7 +19063,6 @@ const RealType = new GenericType({
         ceil: new FuncType([], IntType),
         floor: new FuncType([], IntType),
         round: new FuncType([], IntType),
-        show: new FuncType([], StringType),
         trunc: new FuncType([], IntType)
     }),
     genTypeMembers: (self) => ({
@@ -18948,7 +19120,8 @@ const StringType = new GenericType({
     }),
     genTypeMembers: (self) => ({
         ...genCommonTypeMembers(self),
-        __add: new FuncType([self, self], self)
+        __add: new FuncType([self, self], self),
+        is_valid_utf8: new FuncType([ByteArrayType], BoolType)
     })
 });
 
@@ -19954,7 +20127,7 @@ class BuiltinFunc extends Common {
 	 * @param {Site} site 
 	 * @param {Typed[]} args 
 	 * @param {{[name: string]: Typed}} namedArgs
-	 * @returns {null | Typed | Multi}
+	 * @returns {null | Typed}
 	 */
 	call(site, args, namedArgs = {}) {
 		const res = this.#type.checkCall(site, args, namedArgs);
@@ -19962,7 +20135,7 @@ class BuiltinFunc extends Common {
 		if (!res) {
 			return null
 		} else {
-			return Common.toTyped(res);
+			return res.toTyped();
 		}
 	}
 
@@ -20017,19 +20190,23 @@ function IteratorType$(itemTypes) {
 		name: `Iterator[${itemTypes.map(it => it.toString()).join(", ")}]`,
 		path: `__helios__iterator__${itemTypes.length}`,
 		genInstanceMembers: (self) => {
+			// Note: to_list and to_map can't be part of Iterator because type information is lost (eg. we can map to an iterator over functions)
+
+			const itemType = itemTypes.length == 1 ? itemTypes[0] : TupleType$(itemTypes);
+
 			const members = {
 				any: new FuncType([new FuncType(itemTypes, BoolType)], BoolType),
 				drop: new FuncType([IntType], self),
-				head: new FuncType([], itemTypes),
 				filter: new FuncType([new FuncType(itemTypes, BoolType)], self),
-				find: new FuncType([new FuncType(itemTypes, BoolType)], itemTypes),
+				find: new FuncType([new FuncType(itemTypes, BoolType)], itemType),
 				for_each: new FuncType([new FuncType(itemTypes, new VoidType())], new VoidType()),
 				fold: (() => {
 					const a = new Parameter("a", `${FTPP}0`, new AnyTypeClass());
 					return new ParametricFunc([a], new FuncType([new FuncType([a.ref].concat(itemTypes), a.ref), a.ref], a.ref));
 				})(),
-				get: new FuncType([IntType], itemTypes),
-				get_singleton: new FuncType([], itemTypes),
+				head: itemType,
+				get: new FuncType([IntType], itemType),
+				get_singleton: new FuncType([], itemType),
 				is_empty: new FuncType([], BoolType),
 				map: (() => {
 					const a = new Parameter("a", `${FTPP}0`, new AnyTypeClass());
@@ -20039,7 +20216,7 @@ function IteratorType$(itemTypes) {
 					const a = new Parameter("a", `${FTPP}0`, new AnyTypeClass());
 					const b = new Parameter("b", `${FTPP}0`, new AnyTypeClass());
 
-					return new ParametricFunc([a, b], new FuncType([new FuncType(itemTypes, [a.ref, b.ref])], IteratorType$([a.ref, b.ref])));
+					return new ParametricFunc([a, b], new FuncType([new FuncType(itemTypes, TupleType$([a.ref, b.ref]))], IteratorType$([a.ref, b.ref])));
 				})(),
 				prepend: new FuncType(itemTypes, self),
 				tail: self,
@@ -20058,9 +20235,150 @@ function IteratorType$(itemTypes) {
 		genTypeMembers: (self) => ({})
 	};
 
-	// to_list and to_map can't be part of Iterator because type information is lost (eg. we can map to an iterator over functions)
+	// if any of the item type is parametric, this return type must also be parametric so that the item type inference methods are called correctly
+	//  (i.e. the inference method of this Iterator type calls the inference methods of the itemtypes)
 	return itemTypes.some(it => it.isParametric()) ? new GenericParametricType(props) : new GenericType(props);
 }
+/**
+ * @internal
+ * @template {HeliosData} T
+ * @implements {DataType}
+ */
+class TupleType extends GenericType {
+	#itemTypes;
+
+	/**
+	 * @param {GenericTypeProps<T>} props
+	 * @param {Type[]} itemTypes
+	 */
+	constructor(props, itemTypes) {
+		super(props);
+
+		this.#itemTypes = itemTypes;
+	}
+	
+	get itemTypes() {
+		return this.#itemTypes;
+	}
+
+	/**
+     * @param {Type} other 
+     * @returns {boolean}
+     */
+    isBaseOf(other) {
+		if (other instanceof TupleType) {
+			return other.#itemTypes.length == this.#itemTypes.length && this.#itemTypes.every((it, i) => it.isBaseOf(other.#itemTypes[i]));
+		} else {
+			return false;
+		}
+    }
+
+	/**
+	 * @internal
+	 * @param {Site} site
+	 * @param {InferenceMap} map 
+	 * @param {null | Type} type 
+	 * @returns {Type}
+	 */
+	infer(site, map, type) {
+		if (!this.#itemTypes.some(it => it.isParametric())) {
+			return this;
+		}
+
+		if (!type) {
+			const itemTypes = this.#itemTypes.map(it => it.infer(site, map, null));
+
+			return TupleType$(itemTypes);
+		} else if (type instanceof TupleType && this.#itemTypes.length == type.#itemTypes.length) {
+			const itemTypes = this.#itemTypes.map((it, i) => it.infer(site, map, type.#itemTypes[i]));
+
+			return TupleType$(itemTypes);
+		}
+
+		throw site.typeError(`unable to infer type of ${this.toString()} (${type instanceof TupleType} ${type instanceof GenericType})`);
+	}
+}
+
+/**
+ * TODO: rename DataType to something else
+ * @internal
+ * @param {Type} type 
+ * @return {boolean}
+ */
+function isDataType(type) {
+	const dt = type.asDataType;
+
+	if (!dt) {
+		return false;
+	}
+
+	// no need to check for primitives
+	if (dt == IntType || dt == StringType || dt == ByteArrayType || dt == BoolType || dt == RealType) {
+		return true;
+	}
+
+	const dataTypeClass = new DefaultTypeClass();
+
+	return dataTypeClass.isImplementedBy(dt)
+}
+
+/**
+ * @internal
+ * @param {Type[]} itemTypes
+ * @param {boolean | null} isAllDataTypes - if the all the itemTypes are known datatypes, then don't check that here (could lead to infinite recursion)
+ * @returns {Type}
+ */
+function TupleType$(itemTypes, isAllDataTypes = null) {
+	const isData = isAllDataTypes !== null ? isAllDataTypes : itemTypes.every(it => {
+		return isDataType(it);
+	});
+
+	const props = {
+		name: `(${itemTypes.map(it => it.toString()).join(", ")})`,
+		path: `__helios__tuple[${itemTypes.map(it => it.asDataType ? it.asDataType.path : "__helios__func").join("@")}]`,
+		genInstanceMembers: (self) => {
+			const members = isData ? genCommonInstanceMembers() : {};
+
+			const getters = [
+				"first",
+				"second",
+				"third",
+				"fourth",
+				"fifth"
+			];
+
+			for (let i = 0; i< 5 && i < itemTypes.length; i++) {
+				const key = getters[i];
+				members[key] = itemTypes[i];
+			}
+
+			const a = new Parameter("a", `${FTPP}0`, new AnyTypeClass());
+			members.__to_func = new ParametricFunc([a], new FuncType([new FuncType(itemTypes, a.ref)], a.ref));
+			
+			return members;
+		},
+		genTypeMembers: (self) => {
+			return isData ? genCommonTypeMembers(self) : {};
+		}
+	};
+
+	return new TupleType(props, itemTypes);
+}
+
+/**
+ * Returns null if `type` isn't a tuple
+ * @internal
+ * @param {Type} type 
+ * @returns {null | Type[]}
+ */
+function getTupleItemTypes(type) {
+	if (type instanceof TupleType) {
+		return type.itemTypes;
+	} else {
+		return null;
+	}
+}
+
 /**
  * Builtin list type
  * @internal
@@ -20136,13 +20454,13 @@ const ListType = new ParametricType({
 					fold2: (() => {
 						const a = new Parameter("a", `${FTPP}0`, new AnyTypeClass());
 						const b = new Parameter("b", `${FTPP}0`, new AnyTypeClass());
-						return new ParametricFunc([a, b], new FuncType([new FuncType([a.ref, b.ref, itemType], [a.ref, b.ref]), a.ref, b.ref], [a.ref, b.ref]));
+						return new ParametricFunc([a, b], new FuncType([new FuncType([a.ref, b.ref, itemType], TupleType$([a.ref, b.ref])), a.ref, b.ref], TupleType$([a.ref, b.ref])));
 					})(),
 					fold3: (() => {
 						const a = new Parameter("a", `${FTPP}0`, new AnyTypeClass());
 						const b = new Parameter("b", `${FTPP}0`, new AnyTypeClass());
 						const c = new Parameter("c", `${FTPP}0`, new AnyTypeClass());
-						return new ParametricFunc([a, b, c], new FuncType([new FuncType([a.ref, b.ref, c.ref, itemType], [a.ref, b.ref, c.ref]), a.ref, b.ref, c.ref], [a.ref, b.ref, c.ref]));
+						return new ParametricFunc([a, b, c], new FuncType([new FuncType([a.ref, b.ref, c.ref, itemType], TupleType$([a.ref, b.ref, c.ref])), a.ref, b.ref, c.ref], TupleType$([a.ref, b.ref, c.ref])));
 					})(),
 					fold_lazy: (() => {
 						const a = new Parameter("a", `${FTPP}0`, new AnyTypeClass());
@@ -20151,7 +20469,7 @@ const ListType = new ParametricType({
 					fold2_lazy: (() => {
 						const a = new Parameter("a", `${FTPP}0`, new AnyTypeClass());
 						const b = new Parameter("b", `${FTPP}0`, new AnyTypeClass());
-						return new ParametricFunc([a, b], new FuncType([new FuncType([itemType, new FuncType([], [a.ref, b.ref])], [a.ref, b.ref]), a.ref, b.ref], [a.ref, b.ref]));
+						return new ParametricFunc([a, b], new FuncType([new FuncType([itemType, new FuncType([], TupleType$([a.ref, b.ref]))], TupleType$([a.ref, b.ref])), a.ref, b.ref], TupleType$([a.ref, b.ref])));
 					})(),
 					for_each: new FuncType([new FuncType([itemType], new VoidType())], new VoidType()),
 					get: new FuncType([IntType], itemType),
@@ -20170,7 +20488,7 @@ const ListType = new ParametricType({
 					prepend: new FuncType([itemType], self),
 					set: new FuncType([IntType, itemType], self),
 					sort: new FuncType([new FuncType([itemType, itemType], BoolType)], self),
-					split_at: new FuncType([IntType], [self, self]),
+					split_at: new FuncType([IntType], TupleType$([self, self], true)),
 					tail: self,
 					take: new FuncType([IntType], self),
 					take_end: new FuncType([IntType], self),
@@ -20242,10 +20560,11 @@ const MapType = new ParametricType({
 				append: new FuncType([keyType, valueType], self),
 				delete: new FuncType([keyType], self),
 				filter: new FuncType([new FuncType([keyType, valueType], BoolType)], self),
-				find: new FuncType([new FuncType([keyType, valueType], BoolType)], [keyType, valueType]),
+				find: new FuncType([new FuncType([keyType, valueType], BoolType)], TupleType$([keyType, valueType], true)),
 				find_key: new FuncType([new FuncType([keyType], BoolType)], keyType),
 				find_key_safe: new FuncType([new FuncType([keyType], BoolType)], OptionType$(keyType)),
-				find_safe: new FuncType([new FuncType([keyType, valueType], BoolType)], [new FuncType([], [keyType, valueType]), BoolType]),
+				// TODO: convert return value of find_safe to an OptionType of a TupleType (requires changing the way options work internally)
+				find_safe: new FuncType([new FuncType([keyType, valueType], BoolType)], TupleType$([new FuncType([], TupleType$([keyType, valueType])), BoolType], false)),
 				find_value: new FuncType([new FuncType([valueType], BoolType)], valueType),
 				find_value_safe: new FuncType([new FuncType([valueType], BoolType)], OptionType$(valueType)),
 				fold: (() => {
@@ -20259,7 +20578,7 @@ const MapType = new ParametricType({
 				for_each: new FuncType([new FuncType([keyType, valueType], new VoidType())], new VoidType()),
 				get: new FuncType([keyType], valueType),
 				get_safe: new FuncType([keyType], OptionType$(valueType)),
-				head: new FuncType([], [keyType, valueType]),
+				head: TupleType$([keyType, valueType], true),
 				head_key: keyType,
 				head_value: valueType,
 				is_empty: new FuncType([], BoolType),
@@ -20268,7 +20587,7 @@ const MapType = new ParametricType({
 					const a = new Parameter("a", `${FTPP}0`, new DefaultTypeClass());
 					const b = new Parameter("b", `${FTPP}1`, new DefaultTypeClass());
 
-					return new ParametricFunc([a, b], new FuncType([new FuncType([keyType, valueType], [a.ref, b.ref])], MapType$(a.ref, b.ref)));
+					return new ParametricFunc([a, b], new FuncType([new FuncType([keyType, valueType], TupleType$([a.ref, b.ref], true))], MapType$(a.ref, b.ref)));
 				})(),
 				prepend: new FuncType([keyType, valueType], self),
 				set: new FuncType([keyType, valueType], self),
@@ -20494,8 +20813,7 @@ var TimeType = new GenericType({
         return new Date(Number(Time.fromUplcData(data).value));
     },
     genInstanceMembers: (self) => ({
-        ...genCommonInstanceMembers(),
-        show: new FuncType([], StringType)
+        ...genCommonInstanceMembers()
     }),
     genTypeMembers: (self) => ({
         ...genCommonTypeMembers(self),
@@ -20523,8 +20841,7 @@ var TimeRangeType = new GenericType({
         start: TimeType,
         end: TimeType,
         is_before: new FuncType([TimeType], BoolType),
-        is_after: new FuncType([TimeType], BoolType),
-        show: new FuncType([], StringType)
+        is_after: new FuncType([TimeType], BoolType)
     }),
     genTypeMembers: (self) => {
         const selfInstance = new DataEntity(assertDefined(self.asDataType));
@@ -20551,8 +20868,7 @@ var TimeRangeType = new GenericType({
  */
 function genHashInstanceMembers(self) {
     return {
-        ...genCommonInstanceMembers(),
-        show: new FuncType([], StringType)
+        ...genCommonInstanceMembers()
     };
 }
 
@@ -20670,7 +20986,6 @@ const PubKeyType = new GenericType({
     offChainType: PubKey,
     genInstanceMembers: (self) => ({
         ...genCommonInstanceMembers(),
-        show: new FuncType([], StringType),
         verify: new FuncType([ByteArrayType, ByteArrayType], BoolType)
     }),
     genTypeMembers: (self) => ({
@@ -20784,8 +21099,7 @@ const AssetClassType = new GenericType({
     genInstanceMembers: (self) => ({
         ...genCommonInstanceMembers(),
         mph: MintingPolicyHashType,
-        token_name: ByteArrayType,
-        show: new FuncType([], StringType)
+        token_name: ByteArrayType
     }),
     genTypeMembers: (self) => {
         const selfInstance = new DataEntity(assertDefined(self.asDataType));
@@ -20834,7 +21148,6 @@ const ValueType = new GenericType({
         get_policy: new FuncType([MintingPolicyHashType], MapType$(ByteArrayType, IntType)),
         get_safe: new FuncType([AssetClassType], IntType),
         is_zero: new FuncType([], BoolType),
-        show: new FuncType([], StringType),
         to_map: new FuncType([], MapType$(MintingPolicyHashType, MapType$(ByteArrayType, IntType))),
         value: self // so that Value implements Valuable itself as well
     }),
@@ -21856,8 +22169,7 @@ const TxIdType = new GenericType({
         return TxId.fromUplcData(data);
     },
     genInstanceMembers: (self) => ({
-        ...genCommonInstanceMembers(),
-        show: new FuncType([], StringType)
+        ...genCommonInstanceMembers()
     }),
     genTypeMembers: (self) => ({
         ...genCommonTypeMembers(self),
@@ -21934,8 +22246,7 @@ const TxOutputIdType = new GenericType({
     genInstanceMembers: (self) => ({
         ...genCommonInstanceMembers(),
         tx_id: TxIdType,
-        index: IntType,
-        show: new FuncType([], StringType)
+        index: IntType
     }),
     genTypeMembers: (self) => ({
         ...genCommonTypeMembers(self),
@@ -22395,7 +22706,7 @@ class ModuleScope extends Scope {
 /////////////////////////////
 /**
  * For collecting test coverage statistics
- * @type {?((name: string, count: number) => void)}
+ * @type {null | ((name: string, count: number) => void)}
  */
 var onNotifyRawUsage = null;
 
@@ -22412,68 +22723,118 @@ const RE_BUILTIN = new RegExp("(?<![@[])__helios[a-zA-Z0-9_@[\\]]*", "g");
 
 /**
  * Wrapper for a builtin function (written in IR)
+ * @internal
  */
 class RawFunc {
+	/**
+	 * @type {string}
+	 */
 	#name;
-	#definition;
 
-	/** @type {Set<string>} */
-	#dependencies;
+	/**
+	 * @type {((ttp: string[], ftp: string[]) => string)}
+	 */
+	#definition;
 
 	/**
 	 * Construct a RawFunc, and immediately scan the definition for dependencies
 	 * @param {string} name 
-	 * @param {string} definition 
+	 * @param {string | ((ttp: string[], ftp: string[]) => string)} definition
 	 */
 	constructor(name, definition) {
 		this.#name = name;
 		assert(definition != undefined);
-		this.#definition = definition;
-		this.#dependencies = new Set();
-
-		let matches = this.#definition.match(RE_BUILTIN);
-
-		if (matches !== null) {
-			for (let match of matches) {
-				this.#dependencies.add(match);
-			}
-		}
+		this.#definition = typeof definition == "string" ? 
+			(ttp, ftp) => {
+				if (IRParametricName.matches(this.#name)) {
+					// TODO: make sure definition is always a function for parametric names
+					let pName = IRParametricName.parse(this.#name);
+					pName = new IRParametricName(pName.base, ttp, pName.fn, ftp);
+					const [def, _] = pName.replaceTemplateNames(new IR(definition)).generateSource();
+					return def;
+				} else {
+					return definition;
+				}
+			} : 
+			definition;	
 	}
 
+	/**
+	 * @type {string}
+	 */
 	get name() {
 		return this.#name;
 	}
 
 	/**
+	 * @param {string[]} ttp
+	 * @param {string[]} ftp
 	 * @returns {IR}
 	 */
-	toIR() {
-		return new IR(replaceTabs(this.#definition))
+	toIR(ttp = [], ftp = []) {
+		return new IR(replaceTabs(this.#definition(ttp, ftp)));
 	}
 
 	/**
 	 * Loads 'this.#dependecies' (if not already loaded), then load 'this'
 	 * @param {Map<string, RawFunc>} db 
 	 * @param {IRDefinitions} dst 
+	 * @param {string[]} ttp
+	 * @param {string[]} ftp
 	 * @returns {void}
 	 */
-	load(db, dst) {
+	load(db, dst, ttp = [], ftp = []) {
 		if (onNotifyRawUsage !== null) {
 			onNotifyRawUsage(this.#name, 1);
 		}
 
-		if (dst.has(this.#name)) {
+		let name = this.#name;
+		if (ttp.length > 0 || ftp.length > 0){
+			let pName = IRParametricName.parse(name);
+			pName = new IRParametricName(pName.base, ttp, pName.fn, ftp);
+			name = pName.toString();
+		}
+
+		if (dst.has(name)) {
 			return;
 		} else {
-			for (let dep of this.#dependencies) {
+			const ir = this.toIR(ttp, ftp);
+
+			const [def, _] = ir.generateSource();
+			const deps = new Set();
+			def.match(RE_BUILTIN)?.forEach(match => deps.add(match));
+
+			for (let dep of deps) {
 				if (!db.has(dep)) {
-					throw new Error(`InternalError: dependency ${dep} is not a builtin`);
+					if (IRParametricName.matches(dep)) {
+						const pName = IRParametricName.parse(dep);
+						const genericName = pName.toTemplate(true);
+
+						let fn = db.get(genericName);
+
+						if (fn) {
+							fn.load(db, dst, pName.ttp, pName.ftp);
+						} else {
+							// TODO: make sure all templated defs use the functional approach instead of the replacement approach
+							fn = db.get(pName.toTemplate(false));
+
+							if (fn) {
+								const ir = pName.replaceTemplateNames(fn.toIR());
+								fn = new RawFunc(dep, ir.toString());
+								fn.load(db, dst);
+							} else {
+								throw new Error(`InternalError: dependency ${dep} not found`);	
+							}
+						}
+					} else {
+						throw new Error(`InternalError: dependency ${dep} not found`);
+					}				
 				} else {
 					assertDefined(db.get(dep)).load(db, dst);
 				}
 			}
 
-			dst.set(this.#name, this.toIR());
+			dst.set(name, ir);
 		}
 	}
 }
@@ -22541,6 +22902,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 		add(new RawFunc(`${ns}____neq`, "__helios__int____neq"));
 		add(new RawFunc(`${ns}__serialize`, "__helios__int__serialize"));
 		add(new RawFunc(`${ns}__from_data`, "__helios__int__from_data"));
+		add(new RawFunc(`${ns}__from_data_safe`, "__helios__int__from_data_safe"));
 		add(new RawFunc(`${ns}____to_data`, "__helios__int____to_data"));
 	}
 
@@ -22552,6 +22914,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 		add(new RawFunc(`${ns}____neq`, "__helios__bytearray____neq"));
 		add(new RawFunc(`${ns}__serialize`, "__helios__bytearray__serialize"));
 		add(new RawFunc(`${ns}__from_data`, "__helios__bytearray__from_data"));
+		add(new RawFunc(`${ns}__from_data_safe`, "__helios__bytearray__from_data_safe"));
 		add(new RawFunc(`${ns}____to_data`, "__helios__bytearray____to_data"));
 		add(new RawFunc(`${ns}____lt`, "__helios__bytearray____lt"));
 		add(new RawFunc(`${ns}____leq`, "__helios__bytearray____leq"));
@@ -22563,14 +22926,24 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 	/**
 	 * Adds basic auto members to a fully named type
+	 * TODO: many types that are currently treated as Data could in fact be treated as something slighly better (eg. lists or pairs)
 	 * @param {string} ns 
+	 * @param {{
+	 *   eq?: string, 
+	 *   neq?: string, 
+	 *   serialize?: string, 
+	 *   from_data?: string, 
+	 *   from_data_safe?: string, 
+	 *   to_data?: string
+	 * }} custom
 	 */
-	function addDataFuncs(ns) {
-		add(new RawFunc(`${ns}____eq`, "__helios__common____eq"));
-		add(new RawFunc(`${ns}____neq`, "__helios__common____neq"));
-		add(new RawFunc(`${ns}__serialize`, "__helios__common__serialize"));
-		add(new RawFunc(`${ns}__from_data`, "__helios__common__identity"));
-		add(new RawFunc(`${ns}____to_data`, "__helios__common__identity"));
+	function addDataFuncs(ns, custom = {}) {
+		add(new RawFunc(`${ns}____eq`, custom?.eq ?? "__helios__common____eq"));
+		add(new RawFunc(`${ns}____neq`, custom?.neq ?? "__helios__common____neq"));
+		add(new RawFunc(`${ns}__serialize`, custom?.serialize ?? "__helios__common__serialize"));
+		add(new RawFunc(`${ns}__from_data`, custom?.from_data ?? "__helios__common__identity"));
+		add(new RawFunc(`${ns}__from_data_safe`, custom?.from_data_safe  ?? `(data) -> {__helios__option__SOME_FUNC(data)}`));
+		add(new RawFunc(`${ns}____to_data`, custom?.to_data ?? "__helios__common__identity"));
 	}
 
 	/**
@@ -22586,6 +22959,27 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 		add(new RawFunc(`${ns}__from_data`, 
 		`(data) -> {
 			__helios__common__assert_constr_index(data, ${constrIndex})
+		}`));
+		add(new RawFunc(`${ns}__from_data_safe`,
+		`(data) -> {
+			__core__chooseData(
+				data,
+				() -> {
+					__core__ifThenElse(
+						__core__equalsInteger(${constrIndex}, __core__fstPair(__core__unConstrData__safe(data))),
+						() -> {
+							__helios__option__SOME_FUNC(data)
+						},
+						() -> {
+							__helios__option__NONE_FUNC
+						}
+					)()
+				},
+				() -> {__helios__option__NONE_FUNC},
+				() -> {__helios__option__NONE_FUNC},
+				() -> {__helios__option__NONE_FUNC},
+				() -> {__helios__option__NONE_FUNC}
+			)()
 		}`));
 	}
 
@@ -22623,9 +23017,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 					() -> {false}, 
 					() -> {
 						__core__ifThenElse(
-							fn(__core__headList(self)),
+							fn(__core__headList__safe(self)),
 							() -> {true}, 
-							() -> {recurse(recurse, __core__tailList(self), fn)}
+							() -> {recurse(recurse, __core__tailList__safe(self), fn)}
 						)()
 					}
 				)()
@@ -22643,8 +23037,8 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 					() -> {true},
 					() -> {
 						__core__ifThenElse(
-							fn(__core__headList(self)),
-							() -> {recurse(recurse, __core__tailList(self), fn)},
+							fn(__core__headList__safe(self)),
+							() -> {recurse(recurse, __core__tailList__safe(self), fn)},
 							() -> {false}
 						)()
 					}
@@ -22663,8 +23057,8 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 					() -> {lst},
 					() -> {
 						__core__mkCons(
-							fn(__core__headList(rem)), 
-							recurse(recurse, __core__tailList(rem), lst)
+							fn(__core__headList__safe(rem)), 
+							recurse(recurse, __core__tailList__safe(rem), lst)
 						)
 					}
 				)()
@@ -22681,11 +23075,13 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 					self, 
 					() -> {nil}, 
 					() -> {
-						__core__ifThenElse(
-							fn(__core__headList(self)),
-							() -> {__core__mkCons(__core__headList(self), recurse(recurse, __core__tailList(self), fn))}, 
-							() -> {recurse(recurse, __core__tailList(self), fn)}
-						)()
+						(head) -> {
+							__core__ifThenElse(
+								fn(head),
+								() -> {__core__mkCons(head, recurse(recurse, __core__tailList__safe(self), fn))}, 
+								() -> {recurse(recurse, __core__tailList__safe(self), fn)}
+							)()
+						}(__core__headList__safe(self))
 					}
 				)()
 			}
@@ -22709,11 +23105,13 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 					self, 
 					() -> {__helios__error("not found")}, 
 					() -> {
-						__core__ifThenElse(
-							fn(__core__headList(self)), 
-							() -> {__core__headList(self)}, 
-							() -> {recurse(recurse, __core__tailList(self), fn)}
-						)()
+						(head) -> {
+							__core__ifThenElse(
+								fn(head), 
+								() -> {head}, 
+								() -> {recurse(recurse, __core__tailList__safe(self), fn)}
+							)()
+						}(__core__headList__safe(self))
 					}
 				)()
 			}
@@ -22729,11 +23127,13 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 					self, 
 					() -> {__core__constrData(1, __helios__common__list_0)}, 
 					() -> {
-						__core__ifThenElse(
-							fn(__core__headList(self)), 
-							() -> {__core__constrData(0, __helios__common__list_1(callback(__core__headList(self))))}, 
-							() -> {recurse(recurse, __core__tailList(self), fn)}
-						)()
+						(head) -> {
+							__core__ifThenElse(
+								fn(head), 
+								() -> {__core__constrData(0, __helios__common__list_1(callback(head)))}, 
+								() -> {recurse(recurse, __core__tailList__safe(self), fn)}
+							)()
+						}(__core__headList__safe(self))
 					}
 				)()
 			}
@@ -22742,13 +23142,13 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	add(new RawFunc("__helios__common__fold",
 	`(self, fn, z) -> {
 		(recurse) -> {
-			recurse(recurse, self, fn, z)
+			recurse(recurse, self, z)
 		}(
-			(recurse, self, fn, z) -> {
+			(recurse, self, z) -> {
 				__core__chooseList(
 					self, 
 					() -> {z}, 
-					() -> {recurse(recurse, __core__tailList(self), fn, fn(z, __core__headList(self)))}
+					() -> {recurse(recurse, __core__tailList__safe(self), fn(z, __core__headList__safe(self)))}
 				)()
 			}
 		)
@@ -22756,13 +23156,13 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	add(new RawFunc("__helios__common__fold_lazy",
 	`(self, fn, z) -> {
 		(recurse) -> {
-			recurse(recurse, self, fn, z)
+			recurse(recurse, self)
 		}(
-			(recurse, self, fn, z) -> {
+			(recurse, self) -> {
 				__core__chooseList(
 					self, 
 					() -> {z}, 
-					() -> {fn(__core__headList(self), () -> {recurse(recurse, __core__tailList(self), fn, z)})}
+					() -> {fn(__core__headList__safe(self), () -> {recurse(recurse, __core__tailList__safe(self))})}
 				)()
 			}
 		)
@@ -22781,9 +23181,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							__core__ifThenElse(
 								comp(x, head),
 								() -> {__core__mkCons(x, lst)},
-								() -> {__core__mkCons(head, recurse(recurse, __core__tailList(lst)))}
+								() -> {__core__mkCons(head, recurse(recurse, __core__tailList__safe(lst)))}
 							)()
-						}(__core__headList(lst))
+						}(__core__headList__safe(lst))
 					}
 				)()
 			}
@@ -22801,7 +23201,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 					() -> {
 						(head, tail) -> {
 							__helios__common__insert_in_sorted(head, tail, comp)
-						}(__core__headList(lst), recurse(recurse, __core__tailList(lst)))
+						}(__core__headList__safe(lst), recurse(recurse, __core__tailList__safe(lst)))
 					}
 				)()
 			}
@@ -22817,11 +23217,13 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 					self, 
 					fnNotFound, 
 					() -> {
-						__core__ifThenElse(
-							__core__equalsData(key, __core__fstPair(__core__headList(self))), 
-							() -> {fnFound(__core__sndPair(__core__headList(self)))}, 
-							() -> {recurse(recurse, __core__tailList(self), key)}
-						)()
+						(head) -> {
+							__core__ifThenElse(
+								__core__equalsData(key, __core__fstPair(head)), 
+								() -> {fnFound(__core__sndPair(head))}, 
+								() -> {recurse(recurse, __core__tailList__safe(self), key)}
+							)()
+						}(__core__headList__safe(self))
 					}
 				)()
 			}
@@ -22840,7 +23242,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 				__core__chooseList(
 					lst, 
 					() -> {0}, 
-					() -> {__core__addInteger(recurse(recurse, __core__tailList(lst)), 1)}
+					() -> {__core__addInteger(recurse(recurse, __core__tailList__safe(lst)), 1)}
 				)()
 			}
 		)
@@ -22854,7 +23256,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 				__core__chooseList(
 					rem,
 					() -> {lst},
-					() -> {__core__mkCons(__core__headList(rem), recurse(recurse, lst, __core__tailList(rem)))}
+					() -> {__core__mkCons(__core__headList__safe(rem), recurse(recurse, lst, __core__tailList__safe(rem)))}
 				)()
 			}
 		)
@@ -22919,6 +23321,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 			}(selfLengthFn(self), __core__lengthOfByteString(suffix))
 		}
 	}`));
+	// TODO: inline __core__sndPair(head)
 	add(new RawFunc("__helios__common__cip68_field",
 	`(self, name) -> {
 		(map) -> {
@@ -22948,49 +23351,138 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 											value
 										},
 										() -> {
-											recurse(recurse, __core__tailList(map))
+											recurse(recurse, __core__tailList__safe(map))
 										}
 									)()
 								}(__core__fstPair(head), __core__sndPair(head))
-							}(__core__headList(map))
+							}(__core__headList__safe(map))
 						}
 					)()
 				}
 			)
 		}(__core__unMapData(__core__headList(__core__sndPair(__core__unConstrData(self)))))
 	}`));
-	add(new RawFunc("__helios__common__fields", 
+	// map is expected to already have been extracted
+	add(new RawFunc("__helios__common__cip68_field_safe",
+	`(map, name) -> {
+		(recurse) -> {
+			recurse(recurse, map)
+		}(
+			(recurse, map) -> {
+				__core__chooseList(
+					map,
+					() -> {
+						__helios__option__NONE_FUNC
+					},
+					() -> {
+						(head) -> {
+							(key) -> {
+								__core__ifThenElse(
+									__core__equalsData(key, name),
+									() -> {
+										__helios__option__SOME_FUNC(__core__sndPair(head))
+									},
+									() -> {
+										recurse(recurse, __core__tailList__safe(map))
+									}
+								)()
+							}(__core__fstPair(head))
+						}(__core__headList__safe(map))
+					}
+				)()
+			}
+		)
+	}`));
+	add(new RawFunc("__helios__common__test_cip68_field",
+	`(self, name, inner_test) -> {
+		__core__chooseData(
+			self,
+			() -> {
+				(fields) -> {
+					__core__chooseList(
+						fields,
+						() -> {false},
+						() -> {
+							(head) -> { 
+								__core__chooseData(
+									head,
+									() -> {false},
+									() -> {
+										(map) -> {
+											(recurse) -> {
+												recurse(recurse, map)
+											}(
+												(recurse, map) -> {
+													__core__chooseList(
+														map,
+														() -> {false},
+														() -> {
+															(head) -> {
+																(key, value) -> {
+																	__core__ifThenElse(
+																		__core__equalsData(key, name),
+																		() -> {
+																			inner_test(value)
+																		},
+																		() -> {
+																			recurse(recurse, __core__tailList__safe(map))
+																		}
+																	)()
+																}(__core__fstPair(head), __core__sndPair(head))
+															}(__core__headList__safe(map))
+														}
+													)()
+												}
+											)
+										}(__core__unMapData__safe(head))
+									},
+									() -> {false},
+									() -> {false},
+									() -> {false}
+								)()
+							}(__core__headList__safe(fields))
+						}
+					)()
+				}(__core__sndPair(__core__unConstrData__safe(self)))
+			},
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {false}
+		)()
+	}`));
+	add(new RawFunc("__helios__common__enum_fields", 
 	`(self) -> {
 		__core__sndPair(__core__unConstrData(self))
 	}`));
-	add(new RawFunc("__helios__common__field_0", 
+	add(new RawFunc("__helios__common__enum_field_0", 
 	`(self) -> {
-		__core__headList(__helios__common__fields(self))
+		__core__headList(__helios__common__enum_fields(self))
 	}`));
-	add(new RawFunc("__helios__common__fields_after_0",
+	add(new RawFunc("__helios__common__enum_fields_after_0",
 	`(self) -> {
-		__core__tailList(__helios__common__fields(self))
+		__core__tailList(__helios__common__enum_fields(self))
 	}`));
 	for (let i = 1; i < 20; i++) {
-		add(new RawFunc(`__helios__common__field_${i.toString()}`,
+		add(new RawFunc(`__helios__common__enum_field_${i.toString()}`,
 	`(self) -> {
-		__core__headList(__helios__common__fields_after_${(i-1).toString()}(self))
+		__core__headList(__helios__common__enum_fields_after_${(i-1).toString()}(self))
 	}`));
-		add(new RawFunc(`__helios__common__fields_after_${i.toString()}`,
+		add(new RawFunc(`__helios__common__enum_fields_after_${i.toString()}`,
 	`(self) -> {
-		__core__tailList(__helios__common__fields_after_${(i-1).toString()}(self))
+		__core__tailList(__helios__common__enum_fields_after_${(i-1).toString()}(self))
 	}`));
 	}
-	add(new RawFunc("__helios__common__tuple_field_0", "__core__headList"));
-	add(new RawFunc("__helios__common__tuple_fields_after_0", "__core__tailList"));
+	add(new RawFunc("__helios__common__struct_field_0", "__core__headList"));
+	add(new RawFunc("__helios__common__struct_fields_after_0", "__core__tailList"));
 	for (let i = 1; i < 20; i++) {
-		add(new RawFunc(`__helios__common__tuple_field_${i.toString()}`,
+		add(new RawFunc(`__helios__common__struct_field_${i.toString()}`,
 	`(self) -> {
-		__core__headList(__helios__common__tuple_fields_after_${(i-1).toString()}(self))
+		__core__headList(__helios__common__struct_fields_after_${(i-1).toString()}(self))
 	}`));
-		add(new RawFunc(`__helios__common__tuple_fields_after_${i.toString()}`,
+		add(new RawFunc(`__helios__common__struct_fields_after_${i.toString()}`,
 	`(self) -> {
-		__core__tailList(__helios__common__tuple_fields_after_${(i-1).toString()}(self))
+		__core__tailList(__helios__common__struct_fields_after_${(i-1).toString()}(self))
 	}`));
 	}
 	add(new RawFunc("__helios__common__list_0", "__core__mkNilData(())"));
@@ -23019,6 +23511,73 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	add(new RawFunc(`__helios__common__hash_datum_data[${FTPP}0]`, 
 	`(data) -> {
 		__core__blake2b_256(${FTPP}0__serialize(data)())
+	}`));
+	add(new RawFunc(`__helios__common__test_constr_data_2`,
+	`(data, index, test_a, test_b) -> {
+		__core__chooseData(
+			data,
+			() -> {
+				(pair) -> {
+					__core__ifThenElse(
+						__core__equalsInteger(__core__fstPair(pair), index),
+						() -> {
+							(fields) -> {
+								__core__chooseList(
+									fields,
+									() -> {
+										false
+									},
+									() -> {
+										__core__ifThenElse(
+											test_a(__core__headList__safe(fields)),
+											() -> {
+												(tail) -> {
+													__core__chooseList(
+														tail,
+														() -> {
+															false
+														},
+														() -> {
+															__core__ifThenElse(
+																test_b(__core__headList__safe(tail)),
+																() -> {
+																	__core__chooseList(
+																		__core__tailList__safe(tail), 
+																		() -> {
+																			true
+																		},
+																		() -> {
+																			false
+																		}
+																	)()
+																},
+																() -> {
+																	false
+																}
+															)()
+														}
+													)()
+												}(__core__tailList__safe(fields))
+											},
+											() -> {
+												false
+											}
+										)()
+									}
+								)()
+							}(__core__sndPair(pair))
+						},
+						() -> {
+							false
+						}
+					)()
+				}(__core__unConstrData__safe(data))
+			},
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {false}
+		)()
 	}`));
 
 
@@ -23058,6 +23617,22 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	// Int builtins
 	add(new RawFunc("__helios__int____eq", "__core__equalsInteger"));
 	add(new RawFunc("__helios__int__from_data", "__core__unIData"));
+	add(new RawFunc("__helios__int__from_data_safe",
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__NONE_FUNC},
+			() -> {
+				__helios__option__SOME_FUNC(__core__unIData__safe(data))
+			},
+			() -> {__helios__option__NONE_FUNC}
+		)()
+	}`));
+	add(new RawFunc("__helios__int__test_data", `(data) -> {
+		__core__chooseData(data, false, false, false, true, false)
+	}`));
 	add(new RawFunc("__helios__int____to_data", "__core__iData"));
 	addNeqFunc("__helios__int");
 	addSerializeFunc("__helios__int");
@@ -23235,7 +23810,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	`(self) -> {
 		() -> {
 			(recurse) -> {
-				__core__decodeUtf8(
+				__core__decodeUtf8__safe(
 					__core__ifThenElse(
 						__core__lessThanInteger(self, 0),
 						() -> {
@@ -23393,7 +23968,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	add(new RawFunc("__helios__int__show",
 	`(self) -> {
 		() -> {
-			__core__decodeUtf8(
+			__core__decodeUtf8__safe(
 				(recurse) -> {
 					__core__ifThenElse(
 						__core__lessThanInteger(self, 0),
@@ -23767,6 +24342,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 	// Real builtins
 	addIntLikeFuncs("__helios__real");
+	add(new RawFunc("__helios__real__test_data", "__helios__int__test_data"));
 	add(new RawFunc("__helios__real__PRECISION", REAL_PRECISION.toString()));
 	add(new RawFunc("__helios__real__ONE", '1' + new Array(REAL_PRECISION).fill('0').join('')));
 	add(new RawFunc("__helios__real__HALF", '5' + new Array(REAL_PRECISION-1).fill('0').join('')));
@@ -23925,6 +24501,48 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 	// Bool builtins
 	addSerializeFunc("__helios__bool");
+	add(new RawFunc("__helios__bool__test_data",
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {
+				(pair) -> {
+					(index, fields) -> {
+						__core__chooseList(
+							fields,
+							() -> {
+								__core__ifThenElse(
+									__core__equalsInteger(0, index),
+									() -> {
+										true
+									},
+									() -> {
+										__core__ifThenElse(
+											__core__equalsInteger(1, index),
+											() -> {
+												true
+											},
+											() -> {
+												false
+											}
+										)()
+									}
+								)()
+							},
+							() -> {
+								false
+							}
+						)()
+					}(__core__fstPair(pair), __core__sndPair(pair))
+					
+				}(__core__unConstrData__safe(data))
+			},
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {false}
+		)()
+	}`));
 	add(new RawFunc("__helios__bool____eq", 
 	`(a, b) -> {
 		__core__ifThenElse(a, b, __helios__bool____not(b))
@@ -23933,6 +24551,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	`(a, b) -> {
 		__core__ifThenElse(a, __helios__bool____not(b), b)
 	}`));
+	// TODO: optimize this drastically by simply returning the comparison to 1
 	add(new RawFunc("__helios__bool__from_data", 
 	`(d) -> {
 		__core__ifThenElse(
@@ -23940,6 +24559,26 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 			false, 
 			true
 		)
+	}`));
+	add(new RawFunc("__helios__bool__from_data_safe",
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {
+				__helios__option__SOME_FUNC(
+					__core__equalsInteger(
+						__core__fstPair(
+							__core__unConstrData__safe(data)
+						),
+						1
+					)
+				)
+			},
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__NONE_FUNC}
+		)()
 	}`));
 	add(new RawFunc("__helios__bool____to_data",  
 	`(b) -> {
@@ -24027,6 +24666,293 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	`(d) -> {
 		__core__decodeUtf8(__core__unBData(d))
 	}`));
+	add(new RawFunc("__helios__string__from_data_safe",
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__NONE_FUNC},
+			() -> {
+				(bytes) -> {
+					__core__ifThenElse(
+						__helios__string__is_valid_utf8(bytes),
+						() -> {
+							__helios__option__SOME_FUNC(__core__decodeUtf8__safe(bytes))
+						},
+						() -> {
+							__helios__option__NONE_FUNC
+						}
+					)()
+				}(__core__unBData__safe(data))
+				
+			},
+		)()
+	}`));
+	add(new RawFunc("__helios__string__show", 
+	`(self) -> {
+		() -> {
+			__core__appendString(
+				"'",
+				__core__appendString(
+					self,
+					"'"
+				)
+			)
+		}
+	}`));
+	add(new RawFunc("__helios__string__parse_utf8_cont_byte",
+	`(byte, callback) -> {
+		__core__ifThenElse(
+			__core__equalsInteger(__core__divideInteger(byte, 64), 2),
+			() -> {
+				callback(true, __core__modInteger(byte, 64))
+			},
+			() -> {
+				callback(false, 0)
+			}
+		)()
+	}`));
+	add(new RawFunc("__helios__string__is_valid_utf8",
+	`(bytes) -> {
+		(n) -> {
+			(recurse) -> {
+				recurse(recurse, 0)
+			}(
+				(recurse, i) -> {
+					__core__ifThenElse(
+						__core__equalsInteger(i, n),
+						() -> {
+							true
+						},
+						() -> {
+							(b0) -> {
+								__core__ifThenElse(
+									__core__lessThanEqualsInteger(b0, 127),
+									() -> {
+										recurse(recurse, __core__addInteger(i, 1))
+									},
+									() -> {
+										__core__ifThenElse(
+											__core__equalsInteger(__core__divideInteger(b0, 32), 6),
+											() -> {
+												(inext) -> {
+													__core__ifThenElse(
+														__core__lessThanEqualsInteger(inext, n),
+														() -> {
+															__helios__string__parse_utf8_cont_byte(
+																__core__indexByteString(bytes, __core__addInteger(i, 1)), 
+																(valid, c1) -> {
+																	__core__ifThenElse(
+																		valid,
+																		() -> {
+																			(c) -> {
+																				__core__ifThenElse(
+																					__helios__bool__and(
+																						() -> {__core__lessThanEqualsInteger(128, c)},
+																						() -> {__core__lessThanEqualsInteger(c, 2047)}
+																					),
+																					() -> {
+																						recurse(recurse, inext)
+																					},
+																					() -> {
+																						false
+																					}
+																				)()
+																			}(
+																				__core__addInteger(
+																					__core__multiplyInteger(__core__modInteger(b0, 32), 64),
+																					c1
+																				)
+																			)
+																		},
+																		() -> {
+																			false
+																		}
+																	)()
+																}
+															)
+														},
+														() -> {
+															false
+														}
+													)()
+												}(__core__addInteger(i, 2))
+											},
+											() -> {
+												__core__ifThenElse(
+													__core__equalsInteger(__core__divideInteger(b0, 16), 14),
+													() -> {
+														(inext) -> {
+															__core__ifThenElse(
+																__core__lessThanEqualsInteger(inext, n),
+																() -> {
+																	__helios__string__parse_utf8_cont_byte(
+																		__core__indexByteString(bytes, __core__addInteger(i, 1)),
+																		(valid, c1) -> {
+																			__core__ifThenElse(
+																				valid,
+																				() -> {
+																					__helios__string__parse_utf8_cont_byte(
+																						__core__indexByteString(bytes, __core__addInteger(i, 2)),
+																						(valid, c2) -> {
+																							__core__ifThenElse(
+																								valid,
+																								() -> {
+																									(c) -> {
+																										__core__ifThenElse(
+																											__helios__bool__and(
+																												() -> {__core__lessThanEqualsInteger(2048, c)},
+																												() -> {__core__lessThanEqualsInteger(c, 65535)}
+																											),
+																											() -> {
+																												recurse(recurse, inext)
+																											},
+																											() -> {
+																												false
+																											}
+																										)()
+																									}(
+																										__core__addInteger(
+																											__core__multiplyInteger(__core__modInteger(b0, 16), 4096),
+																											__core__addInteger(
+																												__core__multiplyInteger(c1, 64),
+																												c2
+																											)
+																									)
+																									)
+																								},
+																								() -> {
+																									false
+																								}
+																							)()
+																						}
+																					)
+																				},
+																				() -> {
+																					false
+																				}
+																			)()
+																		}
+																	)
+																},
+																() -> {
+																	false
+																}
+															)()
+														}(__core__addInteger(i, 3))
+													},
+													() -> {
+														__core__ifThenElse(
+															__core__equalsInteger(__core__divideInteger(b0, 8), 30),
+															() -> {
+																(inext) -> {
+																	__core__ifThenElse(
+																		__core__lessThanEqualsInteger(inext, n),
+																		() -> {
+																			__helios__string__parse_utf8_cont_byte(
+																				__core__indexByteString(bytes, __core__addInteger(i, 1)),
+																				(valid, c1) -> {
+																					__core__ifThenElse(
+																						valid,
+																						() -> {
+																							__helios__string__parse_utf8_cont_byte(
+																								__core__indexByteString(bytes, __core__addInteger(i, 2)),
+																								(valid, c2) -> {
+																									__core__ifThenElse(
+																										valid,
+																										() -> {
+																											__helios__string__parse_utf8_cont_byte(
+																												__core__indexByteString(bytes, __core__addInteger(i, 3)),
+																												(valid, c3) -> {
+																													__core__ifThenElse(
+																														valid,
+																														() -> {
+																															(c) -> {
+																																__core__ifThenElse(
+																																	__helios__bool__and(
+																																		() -> {__core__lessThanEqualsInteger(65536, c)},
+																																		() -> {__core__lessThanEqualsInteger(c, 2097151)}
+																																	),
+																																	() -> {
+																																		recurse(recurse, inext)
+																																	},
+																																	() -> {
+																																		false
+																																	}
+																																)()
+																															}(
+																																__core__addInteger(
+																																	__core__multiplyInteger(__core__modInteger(b0, 8), 262144),
+																																	__core__addInteger(
+																																		__core__multiplyInteger(c1, 4096),
+																																		__core__addInteger(
+																																			__core__multiplyInteger(c2, 64),
+																																			c3
+																																		)
+																																	)
+																																)
+																															)
+																														},
+																														() -> {
+																															false
+																														}
+																													)()
+																												}
+																											)
+																										},
+																										() -> {
+																											false
+																										}
+																									)()
+																								}
+																							)
+																						},
+																						() -> {
+																							false
+																						}
+																					)()
+																				}
+																			)
+																		},
+																		() -> {
+																			false
+																		}
+																	)()
+																}(__core__addInteger(i, 4))
+															},
+															() -> {
+																false
+															}
+														)()
+													}
+												)()
+											}
+										)()
+									}
+								)()
+							}(__core__indexByteString(bytes, i))
+						}
+					)()
+					
+				}
+			)
+		}(__core__lengthOfByteString(bytes))
+	}`));
+	add(new RawFunc("__helios__string__test_data",
+	`(data) -> {
+		__core__chooseData(
+			data, 
+			() -> {false}, 
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {
+				__helios__string__is_valid_utf8(__core__unBData__safe(data))
+			}
+		)()
+	}`));
 	add(new RawFunc("__helios__string____to_data", 
 	`(s) -> {
 		__core__bData(__core__encodeUtf8(s))
@@ -24097,6 +25023,44 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	}`));
 	add(new RawFunc("__helios__bytearray____eq", "__core__equalsByteString"));
 	add(new RawFunc("__helios__bytearray__from_data", "__core__unBData"));
+	add(new RawFunc("__helios__bytearray__from_data_safe",
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__SOME_FUNC(__core__unBData__safe(data))}
+		)()
+	}`));
+	add(new RawFunc("__helios__bytearray__test_data",
+	`(data) -> {
+		__core__chooseData(data, false, false, false, false, true)
+	}`));
+	add(new RawFunc(`__helios__bytearray__test_data_fixed_length`,
+	`(data, n) -> {
+		__core__chooseData(
+			data,
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {
+				(bytes) -> {
+					__core__ifThenElse(
+						__core__equalsInteger(__core__lengthOfByteString(bytes), n),
+						() -> {
+							true
+						},
+						() -> {
+							false
+						}
+					)()
+				}(__core__unBData__safe(data))
+			}
+		)()
+	}`));
 	add(new RawFunc("__helios__bytearray____to_data", "__core__bData"));
 	add(new RawFunc("__helios__bytearray____add", "__core__appendByteString"));
 	add(new RawFunc("__helios__bytearray____geq",
@@ -24164,7 +25128,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							__core__lessThanInteger(0, n),
 							() -> {
 								__core__appendString(
-									__core__decodeUtf8(
+									__core__decodeUtf8__safe(
 										(hexBytes) -> {
 											__core__ifThenElse(
 												__core__equalsInteger(__core__lengthOfByteString(hexBytes), 1),
@@ -24174,7 +25138,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 										}(
 											__core__encodeUtf8(
 												__helios__int__to_hex(
-													__core__indexByteString(self, 0)
+													__core__indexByteString__safe(self, 0)
 												)()
 											)
 										)
@@ -24249,13 +25213,11 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 		add(new RawFunc(`${basePath}__head`,
 	`(self) -> {
-		() -> {
-			self(
-				(is_null, ${head}, next_iterator) -> {
-					${returnHead}
-				}
-			)
-		}
+		self(
+			(is_null, ${head}, next_iterator) -> {
+				${returnHead}
+			}
+		)
 	}`
 		));
 
@@ -24628,8 +25590,8 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 											callback(
 												false,
 												${head},
-												${FTPP}0__from_data(__core__headList(lst)),
-												recurse(recurse, next_iterator, __core__tailList(lst))
+												${FTPP}0__from_data(__core__headList__safe(lst)),
+												recurse(recurse, next_iterator, __core__tailList__safe(lst))
 											)
 										}
 									)()
@@ -24645,42 +25607,361 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	}
 
 
-	// Tuple (list of data, which is used by structs which have more than 1 field)
-	addSerializeFunc("__helios__tuple");
-	addNeqFunc("__helios__tuple");
-	addDataLikeEqFunc("__helios__tuple");
-	add(new RawFunc("__helios__tuple__from_data", "__core__unListData"));
-	add(new RawFunc("__helios__tuple____to_data", "__core__listData"));
+	// Struct (list of data, which is used by structs which have more than 1 field, otherwise the internal of that single field is used directly)
+	addSerializeFunc("__helios__struct");
+	addNeqFunc("__helios__struct");
+	addDataLikeEqFunc("__helios__struct");
+	add(new RawFunc("__helios__struct__from_data", "__core__unListData"));
+	add(new RawFunc("__helios__struct____to_data", "__core__listData"));
 
+
+	// Tuple builtins
+	add(new RawFunc("__helios__tuple[]____to_func", (ttp) => `__helios__common__identity`));
+	add(new RawFunc("__helios__tuple[]__from_data", (ttp) => {
+		assert(ttp.length >= 2);
+
+		return `(data) -> {
+			(fields) -> {
+				(callback) -> {
+					callback(${ttp.map((tp, i) => {
+						let inner = "fields";
+
+						for (let j = 0; j < i; j++) {
+							inner = `__core__tailList(${inner})`;
+						}
+
+						return `${tp}__from_data(__core__headList(${inner}))`;
+					}).join(", ")})
+				}
+			}(__core__unListData(data))
+		}`;
+	}));
+	add(new RawFunc("__helios__tuple[]__from_data_safe", (ttp) => {
+		assert(ttp.length >= 2);
+
+		let inner = `__helios__option__SOME_FUNC(
+			(callback) -> {
+				callback(${ttp.map((_, i) => `opt${i}`).join(", ")})
+			}
+		}`;
+
+		for (let i = ttp.length - 1; i >= 0; i--) {
+			inner = `opt${i}(
+				(valid, value${i}) -> {
+					__core__ifThenElse(
+						valid,
+						() -> {
+							${inner}
+						},
+						() -> {
+							__helios__option__NONE_FUNC
+						}
+					)()
+				}
+			)`;
+		}
+
+		for (let i = ttp.length - 1; i >= 0; i--) {
+			inner = `(fields) -> {
+				__core__chooseList(
+					fields,
+					() -> {
+						__helios__option__NONE_FUNC
+					},
+					() -> {
+						(opt${i}) -> {
+							${i == ttp.length - 1 ? inner : `${inner}(__core__tailList__safe(fields))`}
+						}(${ttp[i]}__from_data_safe(__core__headList__safe(fields)))
+					}
+				)()
+			}`;
+		}
+
+		return `(data) -> {
+			__core__chooseData(
+				data,
+				() -> {__helios__option__NONE_FUNC},
+				() -> {__helios__option__NONE_FUNC},
+				() -> {
+					(fields) -> {
+						${ttp.map(tp => {
+							return `__core__chooseList(
+								fields,
+								() -> {
+									__helios__option__NONE_FUNC
+								},
+								() -> {
+
+								}
+							)()`
+						})}
+					}(__core__unListData__safe(data))
+				},
+				() -> {__helios__option__NONE_FUNC},
+				() -> {__helios__option__NONE_FUNC}
+			)
+		}`
+	}));
+	add(new RawFunc("__helios__tuple[]__show", (ttp) => {
+		let inner = `${ttp[ttp.length-1]}__show(x${ttp.length-1})()`;
+
+		for (let i = ttp.length - 2; i >= 0; i--) {
+			inner = `__core__appendString(
+				${ttp[i]}__show(x${i})(),
+				__core__appendString(
+					", ",
+					${inner}
+				)
+			)`;
+		}
+
+		return `(tuple) -> {
+			() -> {
+				tuple(
+					(${ttp.map((_, i) => `x${i}`).join(", ")}) -> {
+						__core__appendString(
+							"(",
+							__core__appendString(
+								${inner},
+								")"
+							)
+						)
+					}
+				)
+			}
+		}`;
+	}));
+	add(new RawFunc("__helios__tuple[]____to_data", (ttp) => {
+		assert(ttp.length >= 2);
+
+		let inner = `__core__mkNilData(())`;
+
+		for (let i = ttp.length - 1; i >= 0; i--) {
+			inner = `__core__mkCons(${ttp[i]}____to_data(x${i}), ${inner})`;
+		}
+
+		return `(tuple) -> {
+			tuple(
+				(${ttp.map((tp, i) => `x${i}`).join(", ")}) -> {
+					__core__listData(${inner})
+				}
+			)
+		}`;
+	}));
+	add(new RawFunc("__helios__tuple[]__test_data", (ttp) => {
+		assert(ttp.length >= 2);
+
+		let inner = `__core__chooseList(
+			list,
+			() -> {true},
+			() -> {false}
+		)()`;
+
+		for (let i = ttp.length - 1; i >= 0; i--) {
+			const tp = ttp[i];
+			inner = `__core__chooseList(
+				list,
+				() -> {false},
+				() -> {
+					(head, list) -> {
+						__helios__bool__and(
+							() -> {${tp}__test_data(head)},
+							() -> {
+								${inner}
+							}
+						)
+					}(__core__headList__safe(list), __core__tailList__safe(list))
+				}
+			)()`;
+		}
+
+
+		return `(data) -> {
+			__core__chooseData(
+				data,
+				() -> {false},
+				() -> {false},
+				() -> {
+					(list) -> {
+						${inner}
+					}(__core__unListData__safe(list))
+				},
+				() -> {false},
+				() -> {false}
+			)()
+		}`;
+	}));
+	add(new RawFunc("__helios__tuple[]__serialize", (ttp) => {
+		assert(ttp.length >= 2);
+
+		return `(tuple) -> {
+			__helios__common__serialize(__helios__tuple[${ttp.join("@")}]____to_data(tuple))
+		}`
+	}));
+	add(new RawFunc("__helios__tuple[]____eq", (ttp) => {
+		assert(ttp.length >= 2);
+
+		return `(a, b) -> {
+			__helios__common____eq(
+				__helios__tuple[${ttp.join("@")}]____to_data(a),
+				__helios__tuple[${ttp.join("@")}]____to_data(b)
+			)
+		}`;
+	}));
+	add(new RawFunc("__helios__tuple[]____neq", (ttp) => {
+		assert(ttp.length >= 2);
+		
+		return `(a, b) -> {
+			__helios__common____neq(
+				__helios__tuple[${ttp.join("@")}]____to_data(a),
+				__helios__tuple[${ttp.join("@")}]____to_data(b)
+			)
+		}`;
+	}));
+	["first", "second", "third", "fourth", "fifth"].forEach((getter, i) => {
+		add(new RawFunc(`__helios__tuple[]__${getter}`, (ttp) => {
+			assert(ttp.length >= 2);
+	
+			return `(tuple) -> {
+				tuple(
+					(${ttp.map((tp, j) => `x${j}`).join(", ")}) -> {
+						x${i}
+					}
+				)
+			}`
+		}));
+	});
+	
 
 	// List builtins
 	addSerializeFunc(`__helios__list[${TTPP}0]`);
 	addNeqFunc(`__helios__list[${TTPP}0]`);
 	addDataLikeEqFunc(`__helios__list[${TTPP}0]`);
-	add(new RawFunc(`__helios__list[${TTPP}0]__from_data`, (config.CHECK_CASTS && !simplify) ? `(data) -> {
-			(lst) -> {
-				(recurse) -> {
-					recurse(recurse, lst)
-				}(
-					(recurse, lst) -> {
-						__core__chooseList(
-							lst,
+	add(new RawFunc(`__helios__list[${TTPP}0]__test_data_internal`,
+	`(lst) -> {
+		(recurse) -> {
+			recurse(recurse, lst)
+		}(
+			(recurse, lst) -> {
+				__core__chooseList(
+					lst,
+					() -> {
+						true
+					},
+					() -> {
+						__core__ifThenElse(
+							${TTPP}0__test_data(__core__headList__safe(lst)),
 							() -> {
-								__core__mkNilData(())
+								recurse(recurse, __core__tailList__safe(lst))
 							},
 							() -> {
-								__core__mkCons(
-									${TTPP}0____to_data(${TTPP}0__from_data(__core__headList(lst))),
-									recurse(recurse, __core__tailList(lst))
-								)
+								false
 							}
 						)()
-						
 					}
-				)
-			}(__core__unListData(data))
-		}` : "__core__unListData"));
+				)()
+			}
+		)
+	}`));
+	add(new RawFunc(`__helios__list[${TTPP}0]__from_data`, 
+	`(data) -> {
+		(lst) -> {
+			(ignore) -> {
+				lst
+			}(
+				__core__ifThenElse(
+					__helios__list[${TTPP}0]__test_data_internal(lst),
+					() -> {
+						()
+					},
+					() -> {
+						__core__trace("Warning: invalid list data", ())
+					}
+				)()
+			)
+		}(__core__unListData(data))
+	}`));
+	add(new RawFunc(`__helios__list[${TTPP}0]__from_data_safe`,
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__NONE_FUNC},
+			() -> {
+				__helios__option__SOME_FUNC(__core__unListData__safe(data))
+			},
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__NONE_FUNC}
+		)()
+	}`));
+	add(new RawFunc(`__helios__list[${TTPP}0]__test_data`,
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {false},
+			() -> {false},
+			() -> {
+				__helios__list[${TTPP}0]__test_data_internal(__core__unListData__safe(data))
+			},
+			() -> {false},
+			() -> {false}
+		)()
+	}`));
 	add(new RawFunc(`__helios__list[${TTPP}0]____to_data`, "__core__listData"));
+	add(new RawFunc(`__helios__list[${TTPP}0]__show`, 
+	`(self) -> {
+		() -> {
+			(recurse) -> {
+				__core__appendString(
+					"[",
+					__core__appendString(
+						recurse(recurse, self, true),
+						"]"
+					)
+				)
+			}(
+				(recurse, self, first) -> {
+					__core__chooseList(
+						self,
+						() -> {
+							""
+						},
+						() -> {
+							__core__appendString(
+								__core__ifThenElse(
+									first,
+									() -> {
+										""
+									},
+									() -> {
+										", "
+									}
+								)(),
+								(head) -> {
+									__core__appendString(
+										head(
+											(valid, value) -> {
+												__core__ifThenElse(
+													valid,
+													() -> {
+														${TTPP}0__show(value)()
+													},
+													() -> {
+														"<n/a>"
+													}
+												)()
+											}
+										),
+										recurse(recurse, __core__tailList__safe(self), false)
+									)
+								}(${TTPP}0__from_data_safe(__core__headList__safe(self)))
+							)
+						}
+					)()
+				}
+			)
+		}
+	}`));
 	add(new RawFunc(`__helios__list[${TTPP}0]__new`,
 	`(n, fn) -> {
 		(recurse) -> {
@@ -24728,8 +26009,8 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							() -> {
 								callback(
 									false, 
-									__core__headList(lst),
-									recurse(recurse, __core__tailList(lst))
+									__core__headList__safe(lst),
+									recurse(recurse, __core__tailList__safe(lst))
 								)
 							}
 						)()
@@ -24754,8 +26035,8 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							() -> {
 								callback(
 									false, 
-									${TTPP}0__from_data(__core__headList(lst)),
-									recurse(recurse, __core__tailList(lst))
+									${TTPP}0__from_data(__core__headList__safe(lst)),
+									recurse(recurse, __core__tailList__safe(lst))
 								)
 							}
 						)()
@@ -24810,9 +26091,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 								() -> {
 									callback(
 										false,
-										${TTPP}0__from_data(__core__headList(lst1)),
-										${FTPP}0__from_data(__core__headList(lst2)),
-										recurse(recurse, __core__tailList(lst1), __core__tailList(lst2))
+										${TTPP}0__from_data(__core__headList__safe(lst1)),
+										${FTPP}0__from_data(__core__headList__safe(lst2)),
+										recurse(recurse, __core__tailList__safe(lst1), __core__tailList__safe(lst2))
 									)
 								}
 							)()
@@ -24844,10 +26125,10 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							__core__ifThenElse(
 								__core__equalsInteger(index, i), 
 								() -> {
-									__core__headList(self)
+									__core__headList__safe(self)
 								}, 
 								() -> {
-									recurse(recurse, __core__tailList(self), __core__addInteger(i, 1))
+									recurse(recurse, __core__tailList__safe(self), __core__addInteger(i, 1))
 								}
 							)()
 						}
@@ -24898,12 +26179,12 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							__core__ifThenElse(
 								__core__equalsInteger(i, index),
 								() -> {
-									__core__mkCons(item, __core__tailList(lst))
+									__core__mkCons(item, __core__tailList__safe(lst))
 								},
 								() -> {
 									__core__mkCons(
-										__core__headList(lst),
-										recurse(recurse, __core__tailList(lst), __core__addInteger(i, 1))
+										__core__headList__safe(lst),
+										recurse(recurse, __core__tailList__safe(lst), __core__addInteger(i, 1))
 									)
 								}
 							)()
@@ -24935,8 +26216,8 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 									}
 								},
 								() -> {
-									recurse(recurse, __core__tailList(lst), __core__addInteger(i, 1), (h) -> {
-										build_head(__core__mkCons(__core__headList(lst), h))
+									recurse(recurse, __core__tailList__safe(lst), __core__addInteger(i, 1), (h) -> {
+										build_head(__core__mkCons(__core__headList__safe(lst), h))
 									})
 								}
 							)()
@@ -25013,7 +26294,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							(callback) -> {callback(0, lst)}
 						},
 						() -> {
-							recurse(recurse, __core__tailList(lst))(
+							recurse(recurse, __core__tailList__safe(lst))(
 								(count, result) -> {
 									__core__ifThenElse(
 										__core__equalsInteger(count, n),
@@ -25022,7 +26303,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 												callback(
 													count,
 													__core__mkCons(
-														__core__headList(lst), 
+														__core__headList__safe(lst), 
 														result
 													)
 												)
@@ -25115,7 +26396,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							(callback) -> {callback(0, lst)}
 						},
 						() -> {
-							recurse(recurse, __core__tailList(lst))(
+							recurse(recurse, __core__tailList__safe(lst))(
 								(count, tail) -> {
 									__core__ifThenElse(
 										__core__equalsInteger(count, n),
@@ -25174,7 +26455,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							__core__mkCons(item, lst)
 						},
 						() -> {
-							__core__mkCons(__core__headList(lst), recurse(recurse, __core__tailList(lst)))
+							__core__mkCons(__core__headList__safe(lst), recurse(recurse, __core__tailList__safe(lst)))
 						}
 					)()
 				}
@@ -25208,9 +26489,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 								__core__ifThenElse(
 									fn(item), 
 									() -> {item}, 
-									() -> {recurse(recurse, __core__tailList(lst))}
+									() -> {recurse(recurse, __core__tailList__safe(lst))}
 								)()
-							}(${TTPP}0__from_data(__core__headList(lst)))
+							}(${TTPP}0__from_data(__core__headList__safe(lst)))
 						}
 					)()
 				}
@@ -25232,9 +26513,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 								__core__ifThenElse(
 									fn(item),
 									() -> {i},
-									() -> {recurse(recurse, __core__tailList(lst), __core__addInteger(i, 1))}
+									() -> {recurse(recurse, __core__tailList__safe(lst), __core__addInteger(i, 1))}
 								)()
-							}(${TTPP}0__from_data(__core__headList(lst)))
+							}(${TTPP}0__from_data(__core__headList__safe(lst)))
 						}
 					)()
 				}
@@ -25278,8 +26559,8 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 						},
 						() -> {
 							__core__chooseUnit(
-								fn(${TTPP}0__from_data(__core__headList(lst))),
-								recurse(recurse, __core__tailList(lst))
+								fn(${TTPP}0__from_data(__core__headList__safe(lst))),
+								recurse(recurse, __core__tailList__safe(lst))
 							)
 						}
 					)()
@@ -25402,8 +26683,8 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 									)()
 								}(__core__unConstrData(fn(head)))
 							}(
-								${TTPP}0__from_data(__core__headList(lst)),
-								recurse(recurse, __core__tailList(lst))
+								${TTPP}0__from_data(__core__headList__safe(lst)),
+								recurse(recurse, __core__tailList__safe(lst))
 							)
 						}
 					)()
@@ -25439,8 +26720,8 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 						},
 						() -> {
 							${TTPP}0____add(
-								${TTPP}0__from_data(__core__headList(lst)),
-								recurse(recurse, __core__tailList(lst))
+								${TTPP}0__from_data(__core__headList__safe(lst)),
+								recurse(recurse, __core__tailList__safe(lst))
 							)
 						}
 					)()
@@ -25465,9 +26746,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 								__helios__string____add(
 									__helios__string____add(
 										sep,
-										__helios__string__from_data(__core__headList(lst))
+										__helios__string__from_data(__core__headList__safe(lst))
 									),
-									recurse(recurse, __core__tailList(lst), separator)
+									recurse(recurse, __core__tailList__safe(lst), separator)
 								)
 							}
 						)()
@@ -25493,9 +26774,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 								__helios__bytearray____add(
 									__helios__bytearray____add(
 										sep,
-										__core__unBData(__core__headList(lst))
+										__core__unBData(__core__headList__safe(lst))
 									),
-									recurse(recurse, __core__tailList(lst), separator)
+									recurse(recurse, __core__tailList__safe(lst), separator)
 								)
 							}
 						)()
@@ -25518,8 +26799,8 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 						},
 						() -> {
 							__helios__list[${TTPP}0]____add(
-								__core__unListData(__core__headList(lst)),
-								recurse(recurse, __core__tailList(lst))
+								__core__unListData(__core__headList__safe(lst)),
+								recurse(recurse, __core__tailList__safe(lst))
 							)
 						}
 					)()
@@ -25533,35 +26814,157 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	addSerializeFunc(`__helios__map[${TTPP}0@${TTPP}1]`);
 	addNeqFunc(`__helios__map[${TTPP}0@${TTPP}1]`);
 	addDataLikeEqFunc(`__helios__map[${TTPP}0@${TTPP}1]`);
-	add(new RawFunc(`__helios__map[${TTPP}0@${TTPP}1]__from_data`, (config.CHECK_CASTS && !simplify) ? `(data) -> {
-			(map) -> {
-				(recurse) -> {
-					recurse(recurse, map)
-				}(
-					(recurse, map) -> {
-						__core__chooseList(
-							map,
-							() -> {
-								__core__mkNilPairData(())
-							},
-							() -> {
-								__core__mkCons(
-									(head) -> {
-										__core__mkPairData(
-											${TTPP}0____to_data(${TTPP}0__from_data(__core__fstPair(head))),
-											${TTPP}1____to_data(${TTPP}1__from_data(__core__sndPair(head)))
-										)
-									}(__core__headList(map)),
-									recurse(recurse, __core__tailList(map))
-								)
-							}
-						)()
+	add(new RawFunc(`__helios__map[${TTPP}0@${TTPP}1]__test_data_internal`,
+	`(map) -> {
+		(recurse) -> {
+			recurse(recurse, map)
+		}(
+			(recurse, map) -> {
+				__core__chooseList(
+					map,
+					() -> {
+						true
+					},
+					() -> {
+						(head) -> {
+							__core__ifThenElse(
+								${TTPP}0__test_data(__core__fstPair(head)),
+								() -> {
+									__core__ifThenElse(
+										${TTPP}1__test_data(__core__sndPair(head)),
+										() -> {
+											recurse(recurse, __core__tailList__safe(map))
+										},
+										() -> {
+											false
+										}
+									)()
+								},
+								() -> {
+									false
+								}
+							)()
+						}(__core__headList__safe(map))
 					}
+				)()
+			}
+		)
+	}`));
+	add(new RawFunc(`__helios__map[${TTPP}0@${TTPP}1]__from_data`, 
+	`(data) -> {
+		(map) -> {
+			(ignore) -> {
+				map
+			}(
+				__core__ifThenElse(
+					__helios__map[${TTPP}0@${TTPP}1]__test_data_internal(map),
+					() -> {
+						()
+					},
+					() -> {
+						__core__trace("Warning: invalid map data", ())
+					}
+				)()
+				
+			)
+		}(__core__unMapData(data))
+	}`));
+	add(new RawFunc(`__helios__map[${TTPP}0@${TTPP}1]__from_data_safe`,
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {__helios__option__NONE_FUNC},
+			() -> {
+				__helios__option__SOME_FUNC(__core__unMapData__safe(data))
+			},
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__NONE_FUNC}
+		)()
+	}`));
+	add(new RawFunc(`__helios__map[${TTPP}0@${TTPP}1]__show`,
+	`(self) -> {
+		() -> {
+			(recurse) -> {
+				__core__appendString(
+					"{",
+					__core__appendString(
+						recurse(recurse, self, true),
+						"}"
+					)
 				)
-			}(__core__unMapData(data))
-		}` :
-		"__core__unMapData"
-	));
+			}(
+				(recurse, self, first) -> {
+					__core__chooseList(
+						self,
+						() -> {
+							""
+						},
+						() -> {
+							__core__appendString(
+								__core__ifThenElse(
+									first,
+									() -> {""},
+									() -> {", "}
+								)(),
+								(head) -> {
+									(key, value) -> {
+										__core__appendString(
+											__core__appendString(
+												__core__appendString(
+													key(
+														(valid, key) -> {
+															__core__ifThenElse(
+																valid,
+																() -> {
+																	${TTPP}0__show(key)()
+																},
+																() -> {
+																	"<n/a>"
+																}
+															)()
+														}
+													),
+													": "
+												),
+												value(
+													(valid, value) -> {
+														__core__ifThenElse(
+															valid,
+															() -> {
+																${TTPP}1__show(value)()
+															},
+															() -> {
+																"<n/a>"
+															}
+														)
+													}
+												)
+											),
+											recurse(recurse, __core__tailList__safe(self), false)
+										)
+									}(${TTPP}0__from_data_safe(__core__fstPair(head)), ${TTPP}1__from_data_safe(__core__sndPair(head)))
+								}(__core__headList__safe(self))
+							)
+						}
+					)()
+				}
+			)
+		}
+	}`));
+	add(new RawFunc(`__helios__map[${TTPP}0@${TTPP}1]__test_data`,
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {false},
+			() -> {
+				__helios__map[${TTPP}0@${TTPP}1]__test_data_internal(__core__unMapData__safe(data))
+			},
+			() -> {false},
+			() -> {false},
+			() -> {false}
+		)()
+	}`));
 	add(new RawFunc(`__helios__map[${TTPP}0@${TTPP}1]____to_data`, "__core__mapData"));
 	add(new RawFunc(`__helios__map[${TTPP}0@${TTPP}1]____add`, "__helios__common__concat"));
 	add(new RawFunc(`__helios__map[${TTPP}0@${TTPP}1]__prepend`,
@@ -25585,10 +26988,8 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	add(new RawFunc(`__helios__map[${TTPP}0@${TTPP}1]__head`,
 	`(self) -> {
 		(head) -> {
-			() -> {
-				(callback) -> {
-					callback(${TTPP}0__from_data(__core__fstPair(head)), ${TTPP}1__from_data(__core__sndPair(head)))
-				}
+			(callback) -> {
+				callback(${TTPP}0__from_data(__core__fstPair(head)), ${TTPP}1__from_data(__core__sndPair(head)))
 			}
 		}(__core__headList(self))
 	}`));
@@ -25679,7 +27080,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 										() -> {recurse(recurse, tail)},
 										() -> {__core__mkCons(head, recurse(recurse, tail))}
 									)()
-								}(__core__headList(self), __core__tailList(self))
+								}(__core__headList__safe(self), __core__tailList__safe(self))
 							}
 						)()
 					}
@@ -25719,14 +27120,14 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 											}
 										}, 
 										() -> {
-											recurse(recurse, __core__tailList(self))
+											recurse(recurse, __core__tailList__safe(self))
 										}
 									)()
 								}(
 									${TTPP}0__from_data(__core__fstPair(head)), 
 									${TTPP}1__from_data(__core__sndPair(head))
 								)
-							}(__core__headList(self))
+							}(__core__headList__safe(self))
 						}
 					)()
 				}
@@ -25765,11 +27166,11 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 											}
 										}, 
 										() -> {
-											recurse(recurse, __core__tailList(self), fn)
+											recurse(recurse, __core__tailList__safe(self), fn)
 										}
 									)()
 								}(${TTPP}0__from_data(__core__fstPair(head)), ${TTPP}1__from_data(__core__sndPair(head)))
-							}(__core__headList(self))
+							}(__core__headList__safe(self))
 						}
 					)()
 				}
@@ -25791,9 +27192,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 								__core__ifThenElse(
 									fn(item), 
 									() -> {item}, 
-									() -> {recurse(recurse, __core__tailList(map))}
+									() -> {recurse(recurse, __core__tailList__safe(map))}
 								)()
-							}(${TTPP}0__from_data(__core__fstPair(__core__headList(map))))
+							}(${TTPP}0__from_data(__core__fstPair(__core__headList__safe(map))))
 						}
 					)()
 				}
@@ -25827,9 +27228,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 								__core__ifThenElse(
 									fn(item), 
 									() -> {item}, 
-									() -> {recurse(recurse, __core__tailList(map))}
+									() -> {recurse(recurse, __core__tailList__safe(map))}
 								)()
-							}(${TTPP}1__from_data(__core__sndPair(__core__headList(map))))
+							}(${TTPP}1__from_data(__core__sndPair(__core__headList__safe(map))))
 						}
 					)()
 				}
@@ -25904,9 +27305,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							(head) -> {
 								__core__chooseUnit(
 									fn(${TTPP}0__from_data(__core__fstPair(head)), ${TTPP}1__from_data(__core__sndPair(head))),
-									recurse(recurse, __core__tailList(map))
+									recurse(recurse, __core__tailList__safe(map))
 								)
-							}(__core__headList(map))
+							}(__core__headList__safe(map))
 						}
 					)()
 				}
@@ -25937,7 +27338,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 											__core__mkCons(head, recurse(recurse, tail))
 										}
 									)()
-								}(__core__headList(self), __core__tailList(self))
+								}(__core__headList__safe(self), __core__tailList__safe(self))
 							}
 						)()
 					}
@@ -25964,9 +27365,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 										false, 
 										${TTPP}0__from_data(__core__fstPair(head)),
 										${TTPP}1__from_data(__core__sndPair(head)),
-										recurse(recurse, __core__tailList(map))
+										recurse(recurse, __core__tailList__safe(map))
 									)
-								}(__core__headList(map))	
+								}(__core__headList__safe(map))	
 							}
 						)()
 					}
@@ -26026,10 +27427,10 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 											)
 										},
 										() -> {
-											__core__mkCons(pair, recurse(recurse, __core__tailList(map)))
+											__core__mkCons(pair, recurse(recurse, __core__tailList__safe(map)))
 										}
 									)()
-								}(__core__headList(map))
+								}(__core__headList__safe(map))
 							}
 						)()
 					}
@@ -26084,7 +27485,88 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 
 	// Option[T] builtins
-	addDataFuncs(`__helios__option[${TTPP}0]`);
+	add(new RawFunc(`__helios__option[${TTPP}0]__test_data`,
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {
+				(pair) -> {
+					(index, fields) -> {
+						__core__ifThenElse(
+							__core__equalsInteger(index, 0),
+							() -> {
+								__core__chooseList(
+									fields,
+									() -> {
+										false
+									},
+									() -> {
+										__core__chooseList(
+											__core__tailList__safe(fields),
+											() -> {
+												${TTPP}0__test_data(__core__headList__safe(fields))
+											},
+											() -> {
+												false
+											}
+										)()
+									}
+								)()
+							},
+							() -> {
+								__core__ifThenElse(
+									__core__equalsInteger(index, 1),
+									() -> {
+										__core__chooseList(
+											fields,
+											true,
+											false
+										)
+									},
+									() -> {
+										false
+									}
+								)()
+							}
+						)()
+					}(__core__fstPair(pair), __core__sndPair(pair))
+				}(__core__unConstrData__safe(data))
+			},
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {false}
+		)()
+	}`));
+	addDataFuncs(`__helios__option[${TTPP}0]`, {
+		from_data: `(data) -> {
+			(ignore) -> {
+				data
+			}(
+				__core__ifThenElse(
+					__helios__option[${TTPP}0]__test_data(data),
+					() -> {
+						()
+					},
+					() -> {
+						__core__trace("Warning: invalid option data", ())
+					}
+				)()
+			)
+		}`,
+		from_data_safe: `(data) -> {
+			__core__chooseData(
+				data,
+				() -> {
+					__helios__option__SOME_FUNC(data)
+				},
+				() -> {__helios__option__NONE_FUNC},
+				() -> {__helios__option__NONE_FUNC},
+				() -> {__helios__option__NONE_FUNC},
+				() -> {__helios__option__NONE_FUNC}
+			)()
+		}`
+	});
 	add(new RawFunc(`__helios__option[${TTPP}0]__map[${FTPP}0]`, 
 	`(self) -> {
 		(fn) -> {
@@ -26110,13 +27592,72 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	add(new RawFunc(`__helios__option[${TTPP}0]__unwrap`, 
 	`(self) -> {
 		() -> {
-			${TTPP}0__from_data(__helios__common__field_0(self))
+			${TTPP}0__from_data(__helios__common__enum_field_0(self))
 		}
+	}`));
+	add(new RawFunc(`__helios__option[${TTPP}0]__show`,
+	`(self) -> {
+		__core__chooseData(
+			self,
+			() -> {
+				(pair) -> {
+					(index) -> {
+						__core__ifThenElse(
+							__core__equalsInteger(index, 0),
+							() -> {
+								(fields) -> {
+									__core__chooseList(
+										fields,
+										() -> {
+											"Option::Some{<n/a>}"
+										},
+										() -> {
+											(some) -> {
+												some(
+													(valid, value) -> {
+														__core__ifThenElse(
+															valid,
+															() -> {
+																__core__appendString(
+																	"Option::Some{",
+																	__core__appendString(
+																		${TTPP}0__show(value)(),
+																		"}"
+																	)
+																)
+															},
+															() -> {
+																"Option::Some{<n/a>}"
+															}
+														)()
+													}
+												)
+											}(${TTPP}0__from_data_safe(__core__headList__safe(fields)))
+										}
+									)()
+								}(__core__sndPair(pair))
+							},
+							() -> {
+								"Option::None"
+							}
+						)()
+					}(__core__fstPair(pair))
+				}(__core__unConstrData__safe(self))
+			},
+			() -> {"Option{<n/a>}"},
+			() -> {"Option{<n/a>}"},
+			() -> {"Option{<n/a>}"},
+			() -> {"Option{<n/a>}"}
+		)
 	}`));
 
 
 	// Option[T]::Some
 	addEnumDataFuncs(`__helios__option[${TTPP}0]__some`, 0);
+	add(new RawFunc("__helios__option__SOME_FUNC", 
+	`(some) -> {
+		(callback) -> {callback(true, some)}
+	}`));
 	add(new RawFunc(`__helios__option[${TTPP}0]__some____new`,
 	`(some) -> {
 		__core__constrData(0, __helios__common__list_1(${TTPP}0____to_data(some)))
@@ -26128,7 +27669,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	}`));
 	add(new RawFunc(`__helios__option[${TTPP}0]__some__some`, 
 	`(self) -> {
-		${TTPP}0__from_data(__helios__common__field_0(self))
+		${TTPP}0__from_data(__helios__common__enum_field_0(self))
 	}`));
 	add(new RawFunc(`__helios__option__is_some`,
 	`(data) -> {
@@ -26139,6 +27680,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	// Option[T]::None
 	addEnumDataFuncs(`__helios__option[${TTPP}0]__none`, 1);
 	add(new RawFunc("__helios__option__NONE", "__core__constrData(1, __helios__common__list_0)"));
+	add(new RawFunc("__helios__option__NONE_FUNC", `(callback) -> {callback(false, ())}`));
 	add(new RawFunc(`__helios__option[${TTPP}0]__none____new`,
 	`() -> {
 		__helios__option__NONE
@@ -26149,20 +27691,26 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 		__helios__common__assert_constr_index(data, 1)
 	}`));
 
+
+	// ScriptHash builtin
+	addByteArrayLikeFuncs("__helios__scripthash");
+	add(new RawFunc("__helios__scripthash__test_data", `(data) -> {__helios__bytearray__test_data_fixed_length(data, 28)}`));
+
 	
 	for (let hash of ["pubkeyhash", "validatorhash", "mintingpolicyhash", "stakingvalidatorhash", "datumhash"]) {
 	// Hash builtins
 		addByteArrayLikeFuncs(`__helios__${hash}`);
+		add(new RawFunc(`__helios__${hash}__test_data`,
+		`(data) -> {
+			__helios__bytearray__test_data_fixed_length(data, ${hash == "datumhash" ? 32 : 28})
+		}`));
 		add(new RawFunc(`__helios__${hash}__from_script_hash`, "__helios__common__identity"));
 	}
 
 	
-	// ScriptHash builtin
-	addByteArrayLikeFuncs("__helios__scripthash");
-
-
 	// PubKey builtin
 	addByteArrayLikeFuncs("__helios__pubkey");
+	add(new RawFunc("__helios__pubkey__test_data", `(data) -> {__helios__bytearray__test_data_fixed_length(data, 32)}`));
 	add(new RawFunc("__helios__pubkey__verify", 
 	`(self) -> {
 		(message, signature) -> {
@@ -26173,6 +27721,20 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 	// ScriptContext builtins
 	addDataFuncs("__helios__scriptcontext");
+	// TODO: test fields
+	add(new RawFunc("__helios__scriptcontext__test_data",
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {
+				true
+			},
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {false}
+		)()
+	}`));
 	add(new RawFunc("__helios__scriptcontext__new_spending",
 	`(tx, output_id) -> {
 		__core__constrData(0, __helios__common__list_2(
@@ -26206,8 +27768,8 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 			__core__constrData(3, __helios__common__list_1(dcert))
 		))
 	}`));
-	add(new RawFunc("__helios__scriptcontext__tx", "__helios__common__field_0"));
-	add(new RawFunc("__helios__scriptcontext__purpose", "__helios__common__field_1"));
+	add(new RawFunc("__helios__scriptcontext__tx", "__helios__common__enum_field_0"));
+	add(new RawFunc("__helios__scriptcontext__purpose", "__helios__common__enum_field_1"));
 	add(new RawFunc("__helios__scriptcontext__get_current_input",
 	`(self) -> {
 		() -> {
@@ -26224,9 +27786,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 									__core__ifThenElse(
 										__core__equalsData(__helios__txinput__output_id(item), id), 
 										() -> {item}, 
-										() -> {recurse(recurse, __core__tailList(lst))}
+										() -> {recurse(recurse, __core__tailList__safe(lst))}
 									)()
-								}(__core__headList(lst))
+								}(__core__headList__safe(lst))
 							}
 						)()
 					}
@@ -26264,7 +27826,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	add(new RawFunc("__helios__scriptcontext__get_spending_purpose_output_id",
 	`(self) -> {
 		() -> {
-			__helios__common__field_0(__helios__common__field_1(self))
+			__helios__common__enum_field_0(__helios__common__enum_field_1(self))
 		}
 	}`));
 	add(new RawFunc("__helios__scriptcontext__get_current_validator_hash",
@@ -26341,13 +27903,13 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 	// Wallet builtin
 	addDataFuncs("__helios__wallet");
-	add(new RawFunc("__helios__wallet__address", `(self) -> {__helios__common__field_1(self)}`));
+	add(new RawFunc("__helios__wallet__address", `(self) -> {__helios__common__enum_field_1(self)}`));
 	add(new RawFunc("__helios__wallet__hash", 
 	`(self) -> {
 		__helios__credential__pubkey__hash(
 			__helios__credential__pubkey__cast(
 				__helios__address__credential(
-					__helios__common__field_0(self)
+					__helios__common__enum_field_0(self)
 				)
 			)
 		)
@@ -26355,27 +27917,54 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	add(new RawFunc("__helios__wallet__pick", 
 	`(self) -> {
 		(value) -> {
-			__core__macro__pick(__helios__common__field_0(self), __helios__value____to_data(value), ())
+			__core__macro__pick(__helios__common__enum_field_0(self), __helios__value____to_data(value), ())
 		}
 	}`));
 
 
 	// StakingPurpose builtins
 	addDataFuncs("__helios__stakingpurpose");
+	add(new RawFunc("__helios__stakingpurpose__testdata", 
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {
+				true
+			},
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {false}
+		)()
+	}`));
 
 
 	// StakingPurpose::Rewarding builtins
 	addEnumDataFuncs("__helios__stakingpurpose__rewarding", 2);
-	add(new RawFunc("__helios__stakingpurpose__rewarding__credential", "__helios__common__field_0"));
+	add(new RawFunc("__helios__stakingpurpose__rewarding__credential", "__helios__common__enum_field_0"));
 
 	
 	// StakingPurpose::Certifying builtins
 	addEnumDataFuncs("__helios__stakingpurpose__certifying", 3);
-	add(new RawFunc("__helios__stakingpurpose__certifying__dcert", "__helios__common__field_0"));
+	add(new RawFunc("__helios__stakingpurpose__certifying__dcert", "__helios__common__enum_field_0"));
 
 
 	// ScriptPurpose builtins
 	addDataFuncs("__helios__scriptpurpose");
+	// TODO: test fields
+	add(new RawFunc("__helios__scriptpurpose__test_data",
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {
+				true
+			},
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {false}
+		)()
+	}`));
 	add(new RawFunc("__helios__scriptpurpose__new_minting",
 	`(mph) -> {
 		__core__constrData(0, __helios__common__list_1(__helios__mintingpolicyhash____to_data(mph)))
@@ -26398,27 +27987,41 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	addEnumDataFuncs("__helios__scriptpurpose__minting", 0);
 	add(new RawFunc("__helios__scriptpurpose__minting__policy_hash", 
 	`(self) -> {
-		__helios__mintingpolicyhash__from_data(__helios__common__field_0(self))
+		__helios__mintingpolicyhash__from_data(__helios__common__enum_field_0(self))
 	}`));
 
 	
 	// ScriptPurpose::Spending builtins
 	addEnumDataFuncs("__helios__scriptpurpose__spending", 1);
-	add(new RawFunc("__helios__scriptpurpose__spending__output_id", "__helios__common__field_0"));
+	add(new RawFunc("__helios__scriptpurpose__spending__output_id", "__helios__common__enum_field_0"));
 
 	
 	// ScriptPurpose::Rewarding builtins
 	addEnumDataFuncs("__helios__scriptpurpose__rewarding", 2);
-	add(new RawFunc("__helios__scriptpurpose__rewarding__credential", "__helios__common__field_0"));
+	add(new RawFunc("__helios__scriptpurpose__rewarding__credential", "__helios__common__enum_field_0"));
 
 	
 	// ScriptPurpose::Certifying builtins
 	addEnumDataFuncs("__helios__scriptpurpose__certifying", 3);
-	add(new RawFunc("__helios__scriptpurpose__certifying__dcert", "__helios__common__field_0"));
+	add(new RawFunc("__helios__scriptpurpose__certifying__dcert", "__helios__common__enum_field_0"));
 
 
 	// DCert builtins
 	addDataFuncs("__helios__dcert");
+	// TODO: test each enum variant
+	add(new RawFunc("__helios__dcert__test_data",
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {
+				true
+			},
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {false}
+		)()
+	}`));
 	add(new RawFunc("__helios__dcert__new_register",
 	`(cred) -> {
 		__core__constrData(0, __helios__common__list_1(cred))
@@ -26443,20 +28046,20 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 	// DCert::Register builtins
 	addEnumDataFuncs("__helios__dcert__register", 0);
-	add(new RawFunc("__helios__dcert__register__credential", "__helios__common__field_0"));
+	add(new RawFunc("__helios__dcert__register__credential", "__helios__common__enum_field_0"));
 
 
 	// DCert::Deregister builtins
 	addEnumDataFuncs("__helios__dcert__deregister", 1);
-	add(new RawFunc("__helios__dcert__deregister__credential", "__helios__common__field_0"));
+	add(new RawFunc("__helios__dcert__deregister__credential", "__helios__common__enum_field_0"));
 
 
 	// DCert::Delegate builtins
 	addEnumDataFuncs("__helios__dcert__delegate", 2);
-	add(new RawFunc("__helios__dcert__delegate__delegator", "__helios__common__field_0"));
+	add(new RawFunc("__helios__dcert__delegate__delegator", "__helios__common__enum_field_0"));
 	add(new RawFunc("__helios__dcert__delegate__pool_id", 
 	`(self) -> {
-		__helios__pubkeyhash__from_data(__helios__common__field_1(self))
+		__helios__pubkeyhash__from_data(__helios__common__enum_field_1(self))
 	}`));
 
 
@@ -26464,11 +28067,11 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	addEnumDataFuncs("__helios__dcert__registerpool", 3);
 	add(new RawFunc("__helios__dcert__registerpool__pool_id", 
 	`(self) -> {
-		__helios__pubkeyhash__from_data(__helios__common__field_0(self))
+		__helios__pubkeyhash__from_data(__helios__common__enum_field_0(self))
 	}`));
 	add(new RawFunc("__helios__dcert__registerpool__pool_vrf", 
 	`(self) -> {
-		__helios__pubkeyhash__from_data(__helios__common__field_1(self))
+		__helios__pubkeyhash__from_data(__helios__common__enum_field_1(self))
 	}`));
 
 
@@ -26476,11 +28079,11 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	addEnumDataFuncs("__helios__dcert__retirepool", 4);
 	add(new RawFunc("__helios__dcert__retirepool__pool_id", 
 	`(self) -> {
-		__helios__pubkeyhash__from_data(__helios__common__field_0(self))
+		__helios__pubkeyhash__from_data(__helios__common__enum_field_0(self))
 	}`));
 	add(new RawFunc("__helios__dcert__retirepool__epoch", 
 	`(self) -> {
-		__helios__int__from_data(__helios__common__field_1(self))
+		__helios__int__from_data(__helios__common__enum_field_1(self))
 	}`));
 
 
@@ -26626,9 +28229,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 						},
 						() -> {
 							__helios__txbuilder__redeem[${FTPP}0](
-								recurse(recurse, __core__tailList(inputs))
+								recurse(recurse, __core__tailList__safe(inputs))
 							)(
-								__core__headList(inputs),
+								__core__headList__safe(inputs),
 								redeemer
 							)
 						}
@@ -26836,6 +28439,20 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 	// Tx builtins
 	addDataFuncs("__helios__tx");
+	// TODO: test fields
+	add(new RawFunc("__helios__tx__test_data",
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {
+				true
+			},
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {false}
+		)()
+	}`));
 	add(new RawFunc(`__helios__tx__new[${FTPP}0@${FTPP}1]`,
 	`(inputs, ref_inputs, outputs, fee, minted, dcerts, withdrawals, validity, signatories, redeemers, datums, txId) -> {
 		__core__constrData(0, __helios__common__list_12(
@@ -26855,46 +28472,46 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	}`));
 	add(new RawFunc("__helios__tx__inputs", 
 	`(self) -> {
-		__core__unListData(__helios__common__field_0(self))
+		__core__unListData(__helios__common__enum_field_0(self))
 	}`));
 	add(new RawFunc("__helios__tx__ref_inputs", 
 	`(self) -> {
-		__core__unListData(__helios__common__field_1(self))
+		__core__unListData(__helios__common__enum_field_1(self))
 	}`));
 	add(new RawFunc("__helios__tx__outputs", 
 	`(self) -> {
-		__core__unListData(__helios__common__field_2(self))
+		__core__unListData(__helios__common__enum_field_2(self))
 	}`));
 	add(new RawFunc("__helios__tx__fee", 
 	`(self) -> {
-		__core__unMapData(__helios__common__field_3(self))
+		__core__unMapData(__helios__common__enum_field_3(self))
 	}`));
 	add(new RawFunc("__helios__tx__minted", 
 	`(self) -> {
-		__core__unMapData(__helios__common__field_4(self))
+		__core__unMapData(__helios__common__enum_field_4(self))
 	}`));
 	add(new RawFunc("__helios__tx__dcerts", 
 	`(self) -> {
-		__core__unListData(__helios__common__field_5(self))
+		__core__unListData(__helios__common__enum_field_5(self))
 	}`));
 	add(new RawFunc("__helios__tx__withdrawals", 
 	`(self) -> {
-		__core__unMapData(__helios__common__field_6(self))
+		__core__unMapData(__helios__common__enum_field_6(self))
 	}`));
-	add(new RawFunc("__helios__tx__time_range", "__helios__common__field_7"));
+	add(new RawFunc("__helios__tx__time_range", "__helios__common__enum_field_7"));
 	add(new RawFunc("__helios__tx__signatories", 
 	`(self) -> {
-		__core__unListData(__helios__common__field_8(self))
+		__core__unListData(__helios__common__enum_field_8(self))
 	}`));
 	add(new RawFunc("__helios__tx__redeemers", 
 	`(self) -> {
-		__core__unMapData(__helios__common__field_9(self))
+		__core__unMapData(__helios__common__enum_field_9(self))
 	}`));
 	add(new RawFunc("__helios__tx__datums", 
 	`(self) -> {
-		__core__unMapData(__helios__common__field_10(self))
+		__core__unMapData(__helios__common__enum_field_10(self))
 	}`));
-	add(new RawFunc("__helios__tx__id", "__helios__common__field_11"));
+	add(new RawFunc("__helios__tx__id", "__helios__common__enum_field_11"));
 	add(new RawFunc(`__helios__tx__find_datum_hash[${FTPP}0]`,
 	`(self) -> {
 		(datum) -> {
@@ -27147,6 +28764,47 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	`(bytes) -> {
 		__core__constrData(0, __helios__common__list_1(__core__bData(bytes))) 
 	}`));
+	add(new RawFunc("__helios__txid__test_data",
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {
+				(pair) -> {
+					(index, fields) -> {
+						__core__ifThenElse(
+							__core__equalsInteger(0, index),
+							() -> {
+								__core__chooseList(
+									fields,
+									() -> {
+										false
+									},
+									() -> {
+										__core__chooseList(
+											__core__tailList__safe(fields),
+											() -> {
+												__helios__bytearray__test_data_fixed_length(__core__headList__safe(fields), 32)
+											},
+											() -> {
+												false
+											}
+										)()
+									}
+								)()
+							},
+							() -> {
+								false
+							}
+						)()
+					}(__core__fstPair(pair), __core__sndPair(pair))
+				}(__core__unConstrData__safe(data))
+			},
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {false}
+		)()
+	}`));
 	add(new RawFunc("__helios__txid__show",
 	`(self) -> {
 		__helios__bytearray__show(__helios__txid__bytes(self))
@@ -27155,12 +28813,16 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 	// TxInput builtins
 	addDataFuncs("__helios__txinput");
+	add(new RawFunc("__helios__txinput__test_data", 
+	`(data) -> {
+		__helios__common__test_constr_data_2(data 0, __helios__txoutputid__test_data, __helios__txoutput__test_data)
+	}`));
 	add(new RawFunc("__helios__txinput__new",
 	`(output_id, output) -> {
 		__core__constrData(0, __helios__common__list_2(output_id, output))
 	}`));
-	add(new RawFunc("__helios__txinput__output_id", "__helios__common__field_0"));
-	add(new RawFunc("__helios__txinput__output", "__helios__common__field_1"));
+	add(new RawFunc("__helios__txinput__output_id", "__helios__common__enum_field_0"));
+	add(new RawFunc("__helios__txinput__output", "__helios__common__enum_field_1"));
 	add(new RawFunc("__helios__txinput__address",
 	`(self) -> {
 		__helios__txoutput__address(__helios__txinput__output(self))
@@ -27177,16 +28839,30 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 	// TxOutput builtins
 	addDataFuncs("__helios__txoutput");
+	// TODO: test fields
+	add(new RawFunc("__helios__txoutput__test_data",
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {
+				true
+			},
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {false}
+		)()
+	}`));
 	add(new RawFunc("__helios__txoutput__new", 
 	`(address, value, datum) -> {
 		__core__constrData(0, __helios__common__list_4(address, __core__mapData(value), datum, __helios__option__NONE))
 	}`));
-	add(new RawFunc("__helios__txoutput__address", "__helios__common__field_0"));
+	add(new RawFunc("__helios__txoutput__address", "__helios__common__enum_field_0"));
 	add(new RawFunc("__helios__txoutput__value", `(self) -> {
-		__core__unMapData(__helios__common__field_1(self))
+		__core__unMapData(__helios__common__enum_field_1(self))
 	}`));
-	add(new RawFunc("__helios__txoutput__datum", "__helios__common__field_2"));
-	add(new RawFunc("__helios__txoutput__ref_script_hash", "__helios__common__field_3"));
+	add(new RawFunc("__helios__txoutput__datum", "__helios__common__enum_field_2"));
+	add(new RawFunc("__helios__txoutput__ref_script_hash", "__helios__common__enum_field_3"));
 	add(new RawFunc("__helios__txoutput__get_datum_hash",
 	`(self) -> {
 		() -> {
@@ -27277,6 +28953,20 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 	// OutputDatum
 	addDataFuncs("__helios__outputdatum");
+	// TODO: test each enum variant
+	add(new RawFunc("__helios__outputdatum__test_data", 
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {
+				true
+			},
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {false}
+		)()
+	}`));
 	add(new RawFunc("__helios__outputdatum__new_none",
 	`() -> {
 		__core__constrData(0, __helios__common__list_0)
@@ -27321,17 +29011,18 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	addEnumDataFuncs("__helios__outputdatum__hash", 1);
 	add(new RawFunc("__helios__outputdatum__hash__hash", 
 	`(self) -> {
-		__helios__datumhash__from_data(__helios__common__field_0(self))
+		__helios__datumhash__from_data(__helios__common__enum_field_0(self))
 	}`));
 
 
 	// OutputDatum::Inline
 	addEnumDataFuncs("__helios__outputdatum__inline", 2);
-	add(new RawFunc("__helios__outputdatum__inline__data", "__helios__common__field_0"));
+	add(new RawFunc("__helios__outputdatum__inline__data", "__helios__common__enum_field_0"));
 
 
 	// RawData
 	addDataFuncs("__helios__data");
+	add(new RawFunc("__helios__data__test_data", `(data) -> {true}`));
 	add(new RawFunc("__helios__data__tag", 
 	`(self) -> {
 		__core__fstPair(__core__unConstrData(self))
@@ -27340,10 +29031,14 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 	// TxOutputId
 	addDataFuncs("__helios__txoutputid");
-	add(new RawFunc("__helios__txoutputid__tx_id", "__helios__common__field_0"));
+	add(new RawFunc("__helios__txoutputid__test_data",
+	`(data) -> {
+		__helios__common__test_constr_data_2(data, 0, __helios__txid__test_data, __helios__int__test_data)
+	}`));
+	add(new RawFunc("__helios__txoutputid__tx_id", "__helios__common__enum_field_0"));
 	add(new RawFunc("__helios__txoutputid__index", 
 	`(self) -> {
-		__helios__int__from_data(__helios__common__field_1(self))
+		__helios__int__from_data(__helios__common__enum_field_1(self))
 	}`));
 	add(new RawFunc("__helios__txoutputid__comp", 
 	`(a, b, comp_txid, comp_index) -> {
@@ -27401,6 +29096,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	`(self) -> {
 		__helios__bytearray__show(__helios__address__to_bytes(self)())
 	}`));
+	add(new RawFunc("__helios__address__show", "__helios__address__to_hex"));
 	add(new RawFunc("__helios__address__header",
 	`(self) -> {
 		() -> {
@@ -27670,6 +29366,10 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	`(hex) -> {
 		__helios__address__from_bytes(__helios__bytearray__parse(hex))
 	}`));
+	add(new RawFunc("__helios__address__test_data", 
+	`(data) -> {
+		__helios__common__test_constr_data_2(data, 0, __helios__credential__test_data, __helios__option[__helios__stakingcredential]__test_data)
+	}`));
 	add(new RawFunc("__helios__address__new", 
 	`(cred, staking_cred) -> {
 		__core__constrData(0, __helios__common__list_2(cred, staking_cred))
@@ -27678,18 +29378,83 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	`() -> {
 		__core__constrData(0, __helios__common__list_2(__helios__credential__new_pubkey(#), __helios__option__NONE))
 	}`));
-	add(new RawFunc("__helios__address__credential", "__helios__common__field_0"));
-	add(new RawFunc("__helios__address__staking_credential", "__helios__common__field_1"));
+	add(new RawFunc("__helios__address__credential", "__helios__common__enum_field_0"));
+	add(new RawFunc("__helios__address__staking_credential", "__helios__common__enum_field_1"));
 	add(new RawFunc("__helios__address__is_staked",
 	`(self) -> {
 		() -> {
-			__core__equalsInteger(__core__fstPair(__core__unConstrData(__helios__common__field_1(self))), 0)
+			__core__equalsInteger(__core__fstPair(__core__unConstrData(__helios__common__enum_field_1(self))), 0)
 		}
 	}`));
 
 
 	// Credential builtins
 	addDataFuncs("__helios__credential");
+	add(new RawFunc("__helios__credential__test_data",
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {
+				(pair) -> {
+					(index, fields) -> {
+						__core__ifThenElse(
+							__core__equalsInteger(index, 0),
+							() -> {
+								__core__chooseList(
+									fields,
+									() -> {
+										false
+									},
+									() -> {
+										__core__chooseList(
+											__core__tailList__safe(fields),
+											() -> {
+												__helios__validatorhash__test_data(__core__headList__safe(fields))
+											}, 
+											() -> {
+												false
+											}
+										)()
+									}
+								)()
+							},
+							() -> {
+								__core__ifThenElse(
+									__core__equalsInteger(index, 1),
+									() -> {
+										__core__chooseList(
+											fields,
+											() -> {
+												false
+											},
+											() -> {
+												__core__chooseList(
+													__core__tailList__safe(fields),
+													() -> {
+														__helios__pubkeyhash__test_data(__core__headList__safe(fields))
+													}, 
+													() -> {
+														false
+													}
+												)()
+											}
+										)()
+									},
+									() -> {
+										false
+									}
+								)()
+							}
+						)()
+					}(__core__fstPair(pair), __core__sndPair(pair))
+				}(__core__unConstrData__safe(data))
+			},
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {false}
+		)()
+	}`));
 	add(new RawFunc("__helios__credential__new_pubkey",
 	`(hash) -> {
 		__core__constrData(0, __helios__common__list_1(__helios__pubkeyhash____to_data(hash)))
@@ -27716,7 +29481,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	}`));
 	add(new RawFunc("__helios__credential__pubkey__hash", 
 	`(self) -> {
-		__helios__pubkeyhash__from_data(__helios__common__field_0(self))
+		__helios__pubkeyhash__from_data(__helios__common__enum_field_0(self))
 	}`));
 
 
@@ -27729,12 +29494,13 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	}`));
 	add(new RawFunc("__helios__credential__validator__hash", 
 	`(self) -> {
-		__helios__validatorhash__from_data(__helios__common__field_0(self))
+		__helios__validatorhash__from_data(__helios__common__enum_field_0(self))
 	}`));
 
 
 	// StakingHash builtins
 	addDataFuncs("__helios__stakinghash");
+	add(new RawFunc("__helios__stakinghash__test_data", "__helios__credential__test_data"));
 	add(new RawFunc("__helios__stakinghash__new_stakekey", "__helios__credential__new_pubkey"));
 	add(new RawFunc("__helios__stakinghash__new_validator", "__helios__credential__new_validator"));
 	add(new RawFunc("__helios__stakinghash__is_stakekey", "__helios__credential__is_stakekey"));
@@ -27743,18 +29509,34 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 	// StakingHash::StakeKey builtins
 	addEnumDataFuncs("__helios__stakinghash__stakekey", 0);
+	add(new RawFunc("__helios__stakinghash__stakekey__test_data", "__helios__credential__pubkey__test_data"));
 	add(new RawFunc("__helios__stakinghash__stakekey__cast", "__helios__credential__pubkey__cast"));
 	add(new RawFunc("__helios__stakinghash__stakekey__hash", "__helios__credential__pubkey__hash"));
 
 
 	// StakingHash::Validator builtins
 	addEnumDataFuncs("__helios__stakinghash__validator", 1);
+	add(new RawFunc("__helios__stakinghash__validator__test_data", "__helios__credential__validator__test_data"));
 	add(new RawFunc("__helios__stakinghash__validator__cast", "__helios__credential__validator__cast"));
 	add(new RawFunc("__helios__stakinghash__validator__hash", "__helios__credential__validator__hash"));
 
 
 	// StakingCredential builtins
 	addDataFuncs("__helios__stakingcredential");
+	// TODO: test fields
+	add(new RawFunc("__helios__stakingcredential__test_data",
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {
+				true
+			},
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {false}
+		)()
+	}`));
 	add(new RawFunc("__helios__stakingcredential__new_hash", 
 	`(cred) -> {
 		__core__constrData(0, __helios__common__list_1(cred))
@@ -27779,7 +29561,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	
 	// StakingCredential::Hash builtins
 	addEnumDataFuncs("__helios__stakingcredential__hash", 0);
-	add(new RawFunc("__helios__stakingcredential__hash__hash", "__helios__common__field_0"));
+	add(new RawFunc("__helios__stakingcredential__hash__hash", "__helios__common__enum_field_0"));
 
 
 	// StakingCredential::Ptr builtins
@@ -27788,6 +29570,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 	// Time builtins
 	addIntLikeFuncs("__helios__time");
+	add(new RawFunc("__helios__time__test_data", `__helios__int__test_data`));
 	add(new RawFunc("__helios__time__new", `__helios__common__identity`));
 	add(new RawFunc("__helios__time____add", `__helios__int____add`));
 	add(new RawFunc("__helios__time____sub", `__helios__int____sub`));
@@ -27801,7 +29584,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 	// Duratin builtins
 	addIntLikeFuncs("__helios__duration");
+	add(new RawFunc("__helios__duration__test_data", `__helios__int__test_data`));
 	add(new RawFunc("__helios__duration__new", `__helios__common__identity`));
+	add(new RawFunc("__helios__duration__show", `__helios__int__show`));
 	add(new RawFunc("__helios__duration____add", `__helios__int____add`));
 	add(new RawFunc("__helios__duration____sub", `__helios__int____sub`));
 	add(new RawFunc("__helios__duration____mul", `__helios__int____mul`));
@@ -27821,6 +29606,20 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 	// TimeRange builtins
 	addDataFuncs("__helios__timerange");
+	// TODO: test fields
+	add(new RawFunc("__helios__timerange__test_data",
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {
+				true
+			},
+			() -> {false},
+			() -> {false},
+			() -> {false},
+			() -> {false}
+		)()
+	}`));
 	add(new RawFunc("__helios__timerange__new", `
 	(a, b) -> {
 		(a, b) -> {
@@ -27912,8 +29711,8 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							}
 						)()
 					}(__core__fstPair(__core__unConstrData(extended)))
-				}(__helios__common__field_0(upper), __helios__bool__from_data(__helios__common__field_1(upper)))
-			}(__helios__common__field_1(self))
+				}(__helios__common__enum_field_0(upper), __helios__bool__from_data(__helios__common__enum_field_1(upper)))
+			}(__helios__common__enum_field_1(self))
 		}
 	}`));
 	add(new RawFunc("__helios__timerange__is_after",
@@ -27940,8 +29739,8 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							}
 						)()
 					}(__core__fstPair(__core__unConstrData(extended)))
-				}(__helios__common__field_0(lower), __helios__bool__from_data(__helios__common__field_1(lower)))
-			}(__helios__common__field_0(self))
+				}(__helios__common__enum_field_0(lower), __helios__bool__from_data(__helios__common__enum_field_1(lower)))
+			}(__helios__common__enum_field_0(self))
 		}
 	}`));
 	add(new RawFunc("__helios__timerange__contains",
@@ -27997,20 +29796,20 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 										}
 									)()
 								}(__core__fstPair(__core__unConstrData(extended)))
-							}(__helios__common__field_0(upper), __helios__bool__from_data(__helios__common__field_1(upper)))
-						}(__helios__common__field_1(self))
+							}(__helios__common__enum_field_0(upper), __helios__bool__from_data(__helios__common__enum_field_1(upper)))
+						}(__helios__common__enum_field_1(self))
 					})
-				}(__helios__common__field_0(lower), __helios__bool__from_data(__helios__common__field_1(lower)))
-			}(__helios__common__field_0(self))
+				}(__helios__common__enum_field_0(lower), __helios__bool__from_data(__helios__common__enum_field_1(lower)))
+			}(__helios__common__enum_field_0(self))
 		}
 	}`));
 	add(new RawFunc("__helios__timerange__start",
 	`(self) -> {
-		__helios__time__from_data(__helios__common__field_0(__helios__common__field_0(__helios__common__field_0(self))))
+		__helios__time__from_data(__helios__common__enum_field_0(__helios__common__enum_field_0(__helios__common__enum_field_0(self))))
 	}`));
 	add(new RawFunc("__helios__timerange__end",
 	`(self) -> {
-		__helios__time__from_data(__helios__common__field_0(__helios__common__field_0(__helios__common__field_1(self))))
+		__helios__time__from_data(__helios__common__enum_field_0(__helios__common__enum_field_0(__helios__common__enum_field_1(self))))
 	}`));
 	add(new RawFunc("__helios__timerange__show",
 	`(self) -> {
@@ -28023,8 +29822,8 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 								__core__ifThenElse(closed, "[", "("),
 								show_extended(extended)
 							)
-						}(__helios__common__field_0(lower), __helios__bool__from_data(__helios__common__field_1(lower)))
-					}(__helios__common__field_0(self)),
+						}(__helios__common__enum_field_0(lower), __helios__bool__from_data(__helios__common__enum_field_1(lower)))
+					}(__helios__common__enum_field_0(self)),
 					__helios__string____add(
 						",",
 						(upper) -> {
@@ -28033,8 +29832,8 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 									show_extended(extended),
 									__core__ifThenElse(closed, "]", ")")
 								)
-							}(__helios__common__field_0(upper), __helios__bool__from_data(__helios__common__field_1(upper)))
-						}(__helios__common__field_1(self))
+							}(__helios__common__enum_field_0(upper), __helios__bool__from_data(__helios__common__enum_field_1(upper)))
+						}(__helios__common__enum_field_1(self))
 					)
 				)
 			}(
@@ -28066,6 +29865,10 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 
 	// AssetClass builtins
 	addDataFuncs("__helios__assetclass");
+	add(new RawFunc("__helios__assetclass__test_data",
+	`(data) -> {
+		__helios__common__test_constr_data_2(data, 0, __helios__mintingpolicyhash__test_data, __helios__bytearray__test_data)
+	}`));
 	add(new RawFunc("__helios__assetclass__ADA", `__helios__assetclass__new(#, #)`));
 	add(new RawFunc("__helios__assetclass__new",
 	`(mph, token_name) -> {
@@ -28076,11 +29879,73 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 	}`));
 	add(new RawFunc("__helios__assetclass__mph", 
 	`(self) -> {
-		__helios__mintingpolicyhash__from_data(__helios__common__field_0(self))
+		__helios__mintingpolicyhash__from_data(__helios__common__enum_field_0(self))
 	}`));
 	add(new RawFunc("__helios__assetclass__token_name", 
 	`(self) -> {
-		__helios__bytearray__from_data(__helios__common__field_1(self))
+		__helios__bytearray__from_data(__helios__common__enum_field_1(self))
+	}`));
+	add(new RawFunc("__helios__assetclass__show",
+	`(self) -> {
+		__core__chooseData(
+			self,
+			() -> {
+				(fields) -> {
+					__core__chooseList(
+						fields,
+						() -> {
+							"N/A"
+						},
+						() -> {
+							(mph) -> {
+								__core__appendString(
+									__core__chooseData(
+										mph,
+										() -> {"N/A"},
+										() -> {"N/A"},
+										() -> {"N/A"},
+										() -> {"N/A"},
+										() -> {
+											__helios__bytearray__show(__core__unBData__safe(mph))()
+										}
+									)(),
+									__core__appendString(
+										".",
+										(fields) -> {
+											__core__chooseList(
+												fields,
+												() -> {
+													"N/A"
+												},
+												() -> {
+													(token_name) -> {
+														__core__chooseData(
+															token_name,
+															() -> {"N/A"},
+															() -> {"N/A"},
+															() -> {"N/A"},
+															() -> {"N/A"},
+															() -> {
+																__helios__bytearray__show(__core__unBData__safe(token_name))()
+															}
+														)()
+													}(__core__headList__safe(fields))
+												}
+											)()
+										}(__core__tailList__safe(fields))
+										
+									)
+								)
+							}(__core__headList__safe(fields))
+						}
+					)()
+				}(__core__sndPair(__core__unConstrData__safe(self)))
+			},
+			() -> {"N/A"},
+			() -> {"N/A"},
+			() -> {"N/A"},
+			() -> {"N/A"}
+		)
 	}`));
 	add(new RawFunc("__helios__assetclass____lt",
 	`(a, b) -> {
@@ -28150,23 +30015,119 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 			)()
 		}(__helios__assetclass__mph(a), __helios__assetclass__mph(b))
 	}`));
-	add(new RawFunc("__helios__assetclass__show",
-	`(self) -> {
-		() -> {
-			__helios__string____add(
-				__helios__mintingpolicyhash__show(__helios__assetclass__mph(self))(),
-				__helios__string____add(
-					".",
-					__helios__bytearray__show(__helios__assetclass__token_name(self))()
-				)
-			)
-		}
-	}`));
 
 
 	// Value builtins
 	addSerializeFunc("__helios__value");
+	// TODO: test each entry in the map
+	add(new RawFunc("__helios__value__test_data",
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {false},
+			() -> {
+				(map) -> {
+					(recurse) -> {
+						recurse(recurse, map)
+					}(
+						(recurse, map) -> {
+							__core__chooseList(
+								map,
+								() -> {
+									true
+								},
+								() -> {
+									(head) -> {
+										(key, value) -> {
+											__core__ifThenElse(
+												__helios__mintingpolicyhash__test_data(key),
+												() -> {
+													__core__chooseData(
+														value,
+														() -> {false},
+														() -> {
+															(inner) -> {
+																__core__chooseList(
+																	inner,
+																	() -> {
+																		false
+																	},
+																	() -> {
+																		(recurse_inner) -> {
+																			recurse_inner(recurse_inner, inner)
+																		}(
+																			(recurse_inner, inner) -> {
+																				__core__chooseList(
+																					inner,
+																					() -> {
+																						true
+																					},
+																					() -> {
+																						(head) -> {
+																							(key, value) -> {
+																								__core__ifThenElse(
+																									__helios__bytearray__test_data(key),
+																									() -> {
+																										__core__ifThenElse(
+																											__helios__int__test_data(value),
+																											() -> {
+																												true
+																											},
+																											() -> {
+																												false
+																											}
+																										)()
+																									},
+																									() -> {
+																										false
+																									}
+																								)()
+																							}(__core__fstPair(head), __core__sndPair(head))
+																						}(__core__headList__safe(inner))
+																					}
+																				)()
+																			}
+																		)
+																	}
+																)()
+															}(__core__unMapData__safe(value))
+														},
+														() -> {false},
+														() -> {false},
+														() -> {false}
+													)()
+												},
+												() -> {
+													false
+												}
+											)()
+										}(__core__fstPair(head), __core__sndPair(head))
+									}(__core__headList__safe(map))
+								}
+							)()
+						}
+					)
+				}(__core__unMapData__safe(data))
+			},
+			() -> {false},
+			() -> {false},
+			() -> {false}
+		)()
+	}`));
 	add(new RawFunc("__helios__value__from_data", "__core__unMapData"));
+	add(new RawFunc("__helios__value__from_data_safe",
+	`(data) -> {
+		__core__chooseData(
+			data,
+			() -> {__helios__option__NONE_FUNC},
+			() -> {
+				__helios__option__SOME_FUNC(__core__unMapData__safe(data))
+			},
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__NONE_FUNC},
+			() -> {__helios__option__NONE_FUNC}
+		)()
+	}`));
 	add(new RawFunc("__helios__value____to_data", "__core__mapData"));
 	add(new RawFunc("__helios__value__value", "__helios__common__identity"));
 	add(new RawFunc("__helios__value__ZERO", "__core__mkNilPairData(())"));
@@ -28195,7 +30156,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 						), 
 						__core__mkNilPairData(())
 					)
-				}(__helios__common__field_0(assetClass), __helios__common__field_1(assetClass))
+				}(__helios__common__enum_field_0(assetClass), __helios__common__enum_field_1(assetClass))
 			}
 		)()
 	}`));
@@ -28215,7 +30176,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 				__core__chooseList(
 					map, 
 					() -> {__helios__common__list_0}, 
-					() -> {__core__mkCons(__core__fstPair(__core__headList(map)), recurse(recurse, __core__tailList(map)))}
+					() -> {__core__mkCons(__core__fstPair(__core__headList__safe(map)), recurse(recurse, __core__tailList__safe(map)))}
 				)()
 			}
 		)
@@ -28236,10 +30197,10 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							(key) -> {
 								__core__ifThenElse(
 									__helios__common__is_in_bytearray_list(aKeys, key), 
-									() -> {recurse(recurse, keys, __core__tailList(map))},
-									() -> {__core__mkCons(key, recurse(recurse, keys, __core__tailList(map)))}
+									() -> {recurse(recurse, keys, __core__tailList__safe(map))},
+									() -> {__core__mkCons(key, recurse(recurse, keys, __core__tailList__safe(map)))}
 								)()
-							}(__core__fstPair(__core__headList(map)))
+							}(__core__fstPair(__core__headList__safe(map)))
 						}
 					)()
 				}
@@ -28258,9 +30219,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 					() -> {__core__mkNilPairData(())},
 					() -> {
 						__core__ifThenElse(
-							__core__equalsData(__core__fstPair(__core__headList(map)), mph), 
-							() -> {__core__unMapData(__core__sndPair(__core__headList(map)))},
-							() -> {recurse(recurse, __core__tailList(map))}
+							__core__equalsData(__core__fstPair(__core__headList__safe(map)), mph), 
+							() -> {__core__unMapData(__core__sndPair(__core__headList__safe(map)))},
+							() -> {recurse(recurse, __core__tailList__safe(map))}
 						)()
 					}
 				)()
@@ -28278,9 +30239,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 					() -> {0}, 
 					() -> {
 						__core__ifThenElse(
-							__core__equalsData(__core__fstPair(__core__headList(map)), key), 
-							() -> {__core__unIData(__core__sndPair(__core__headList(map)))}, 
-							() -> {recurse(recurse, __core__tailList(map), key)}
+							__core__equalsData(__core__fstPair(__core__headList__safe(map)), key), 
+							() -> {__core__unIData(__core__sndPair(__core__headList__safe(map)))}, 
+							() -> {recurse(recurse, __core__tailList__safe(map), key)}
 						)()
 					}
 				)()
@@ -28306,7 +30267,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 										() -> {__core__mkCons(__core__mkPairData(key, __core__iData(sum)), tail)}
 									)()
 								}(op(__helios__value__get_inner_map_int(a, key), __helios__value__get_inner_map_int(b, key)))
-							}(__core__headList(keys), recurse(recurse, __core__tailList(keys), result))
+							}(__core__headList__safe(keys), recurse(recurse, __core__tailList__safe(keys), result))
 						}
 					)()
 				}
@@ -28331,7 +30292,7 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 									() -> {__core__mkCons(__core__mkPairData(key, __core__mapData(item)), tail)}
 								)()
 							}(__helios__value__add_or_subtract_inner(op)(__helios__value__get_inner_map(a, key), __helios__value__get_inner_map(b, key)))
-						}(__core__headList(keys), recurse(recurse, __core__tailList(keys), result))
+						}(__core__headList__safe(keys), recurse(recurse, __core__tailList__safe(keys), result))
 					}
 				)()
 			}
@@ -28354,9 +30315,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 										__core__fstPair(head), 
 										__core__mapData(recurseInner(recurseInner, __core__unMapData(__core__sndPair(head))))
 									),  
-									recurseOuter(recurseOuter, __core__tailList(outer))
+									recurseOuter(recurseOuter, __core__tailList__safe(outer))
 								)
-							}(__core__headList(outer))
+							}(__core__headList__safe(outer))
 						}
 					)()
 				}
@@ -28373,9 +30334,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 									__core__fstPair(head),
 									__core__iData(op(__core__unIData(__core__sndPair(head))))
 								),
-								recurseInner(recurseInner, __core__tailList(inner))
+								recurseInner(recurseInner, __core__tailList__safe(inner))
 							)
-						}(__core__headList(inner))
+						}(__core__headList__safe(inner))
 					}
 				)()
 			}
@@ -28400,9 +30361,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 									)
 								), 
 								() -> {false}, 
-								() -> {recurse(recurse, __core__tailList(keys))}
+								() -> {recurse(recurse, __core__tailList__safe(keys))}
 							)()
-						}(__core__headList(keys))
+						}(__core__headList__safe(keys))
 					}
 				)()
 			}
@@ -28428,9 +30389,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 									)
 								), 
 								() -> {false}, 
-								() -> {recurse(recurse, __core__tailList(keys))}
+								() -> {recurse(recurse, __core__tailList__safe(keys))}
 							)()
-						}(__core__headList(keys))
+						}(__core__headList__safe(keys))
 					}
 				)()
 			}
@@ -28540,10 +30501,10 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 					() -> {
 						__helios__bool__and(
 							() -> {
-								__core__equalsInteger(__core__unIData(__core__sndPair(__core__headList(tokens))), 0)
+								__core__equalsInteger(__core__unIData(__core__sndPair(__core__headList__safe(tokens))), 0)
 							},
 							() -> {
-								recurse(recurse, __core__tailList(tokens))
+								recurse(recurse, __core__tailList__safe(tokens))
 							}
 						)
 					}
@@ -28566,10 +30527,10 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 						() -> {
 							__helios__bool__and(
 								() -> {
-									__helios__value__is_zero_inner(__core__unMapData(__core__sndPair(__core__headList(map))))
+									__helios__value__is_zero_inner(__core__unMapData(__core__sndPair(__core__headList__safe(map))))
 								},
 								() -> {
-									recurse(recurse, __core__tailList(map))
+									recurse(recurse, __core__tailList__safe(map))
 								}
 							)
 						}
@@ -28601,9 +30562,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							},
 							() -> {
 								__core__ifThenElse(
-									__core__equalsData(__core__fstPair(__core__headList(map)), mph), 
-									() -> {inner(inner, __core__unMapData(__core__sndPair(__core__headList(map))))}, 
-									() -> {outer(outer, inner, __core__tailList(map))}
+									__core__equalsData(__core__fstPair(__core__headList__safe(map)), mph), 
+									() -> {inner(inner, __core__unMapData(__core__sndPair(__core__headList__safe(map))))}, 
+									() -> {outer(outer, inner, __core__tailList__safe(map))}
 								)()
 							}
 						)()
@@ -28613,19 +30574,19 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							() -> {__helios__error("tokenName not found")}, 
 							() -> {
 								__core__ifThenElse(
-									__core__equalsData(__core__fstPair(__core__headList(map)), tokenName),
+									__core__equalsData(__core__fstPair(__core__headList__safe(map)), tokenName),
 									() -> {
-										__core__unIData(__core__sndPair(__core__headList(map)))
+										__core__unIData(__core__sndPair(__core__headList__safe(map)))
 									},
 									() -> {
-										inner(inner, __core__tailList(map))
+										inner(inner, __core__tailList__safe(map))
 									}
 								)()
 							}
 						)()
 					}
 				)
-			}(__helios__common__field_0(assetClass), __helios__common__field_1(assetClass))
+			}(__helios__common__enum_field_0(assetClass), __helios__common__enum_field_1(assetClass))
 		}
 	}`));
 	add(new RawFunc("__helios__value__get_safe",
@@ -28641,9 +30602,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							() -> {0}, 
 							() -> {
 								__core__ifThenElse(
-									__core__equalsData(__core__fstPair(__core__headList(map)), mintingPolicyHash), 
-									() -> {inner(inner, __core__unMapData(__core__sndPair(__core__headList(map))))}, 
-									() -> {outer(outer, inner, __core__tailList(map))}
+									__core__equalsData(__core__fstPair(__core__headList__safe(map)), mintingPolicyHash), 
+									() -> {inner(inner, __core__unMapData(__core__sndPair(__core__headList__safe(map))))}, 
+									() -> {outer(outer, inner, __core__tailList__safe(map))}
 								)()
 							}
 						)()
@@ -28653,19 +30614,19 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							() -> {0}, 
 							() -> {
 								__core__ifThenElse(
-									__core__equalsData(__core__fstPair(__core__headList(map)), tokenName),
+									__core__equalsData(__core__fstPair(__core__headList__safe(map)), tokenName),
 									() -> {
-										__core__unIData(__core__sndPair(__core__headList(map)))
+										__core__unIData(__core__sndPair(__core__headList__safe(map)))
 									},
 									() -> {
-										inner(inner, __core__tailList(map))
+										inner(inner, __core__tailList__safe(map))
 									}
 								)()
 							}
 						)()
 					}
 				)
-			}(__helios__common__field_0(assetClass), __helios__common__field_1(assetClass))
+			}(__helios__common__enum_field_0(assetClass), __helios__common__enum_field_1(assetClass))
 		}
 	}`));
 	add(new RawFunc("__helios__value__get_lovelace",
@@ -28698,12 +30659,12 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							() -> {__helios__error("policy not found")},
 							() -> {
 								__core__ifThenElse(
-									__core__equalsData(__core__fstPair(__core__headList(map)), mph),
+									__core__equalsData(__core__fstPair(__core__headList__safe(map)), mph),
 									() -> {
-										__core__unMapData(__core__sndPair(__core__headList(map)))
+										__core__unMapData(__core__sndPair(__core__headList__safe(map)))
 									},
 									() -> {
-										recurse(recurse, __core__tailList(map))
+										recurse(recurse, __core__tailList__safe(map))
 									}
 								)()
 							}
@@ -28726,9 +30687,9 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 							() -> {false},
 							() -> {
 								__core__ifThenElse(
-									__core__equalsData(__core__fstPair(__core__headList(map)), mph),
+									__core__equalsData(__core__fstPair(__core__headList__safe(map)), mph),
 									() -> {true},
-									() -> {recurse(recurse, __core__tailList(map))}
+									() -> {recurse(recurse, __core__tailList__safe(map))}
 								)()
 							}
 						)()
@@ -28781,11 +30742,11 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 											}
 										)()
 									)
-								}(__helios__bytearray__from_data(__core__fstPair(pair)), __helios__int__from_data(__core__sndPair(pair)))
+								}(__core__unBData__safe(__core__fstPair(pair)), __core__unIData__safe(__core__sndPair(pair)))
 							},
 							prev
 						)
-					}(__helios__mintingpolicyhash__from_data(__core__fstPair(pair)), __core__unMapData(__core__sndPair(pair)))
+					}(__core__unBData__safe(__core__fstPair(pair)), __core__unMapData__safe(__core__sndPair(pair)))
 				},
 				""
 			)
@@ -28804,8 +30765,8 @@ function makeRawFunctions(simplify, isTestnet = config.IS_TESTNET) {
 					},
 					() -> {
 						__helios__value____add(
-							${FTPP}0__value(${FTPP}0__from_data(__core__headList(lst))),
-							recurse(recurse, __core__tailList(lst))
+							${FTPP}0__value(${FTPP}0__from_data(__core__headList__safe(lst))),
+							recurse(recurse, __core__tailList__safe(lst))
 						)
 					}
 				)()
@@ -28873,18 +30834,25 @@ class ToIRContext {
  * Load all raw generics so all possible implementations can be generated correctly during type parameter injection phase
  * @internal
  * @param {ToIRContext} ctx
- * @returns {IRDefinitions}
+ * @returns {Map<string, ((ttp: string[], ftp: string[]) => IR)>}
  */
 function fetchRawGenerics(ctx) {
 	/**
-	 * @type {IRDefinitions}
+	 * @type {Map<string, ((ttp: string[], ftp: string[]) => IR)>}
 	 */
 	const map = new Map();
 
 	for (let [k, v] of ctx.db) {
 		if (IRParametricName.matches(k)) {
 			// load without dependencies
-			map.set(k, v.toIR());
+			/**
+			 * 
+			 * @param {string[]} ttp 
+			 * @param {string[]} ftp 
+			 * @returns {IR}
+			 */
+			const fn = (ttp, ftp) => v.toIR(ttp, ftp);
+			map.set(k, fn);
 		}
 	}
 
@@ -28925,6 +30893,7 @@ function fetchRawFunctions(ctx, ir, userDefs = null) {
 				const builtin = ctx.db.get(m);
 
 				if (!builtin) {
+					console.log(src);
 					throw new Error(`builtin ${m} not found`);
 				}
 
@@ -29068,27 +31037,6 @@ class Expr extends Token {
 
 		return result;
 	}
-
-	/**
-	 * @param {Scope} scope 
-	 * @returns {null | Typed | Multi}
-	 */
-	evalAsTypedOrMulti(scope) {
-		const r  = this.eval(scope);
-
-		if (!r) {
-			return null;
-		}
-
-		if (r.asTyped) {
-			return r.asTyped;
-		} else if (r.asMulti) {
-			return r.asMulti;
-		} else {
-			this.typeError(`${r.toString()} isn't a value`);
-			return null;
-		}
-	}	
 
 	/**
 	 * @returns {boolean}
@@ -29531,6 +31479,64 @@ class VoidTypeExpr extends Expr {
 /**
  * @internal
  */
+class TupleTypeExpr extends Expr {
+	#itemTypeExprs;
+
+	/**
+	 * @param {Site} site
+	 * @param {Expr[]} itemTypeExprs
+	 */
+	constructor(site, itemTypeExprs) {
+		super(site);
+		this.#itemTypeExprs = itemTypeExprs;
+	}
+
+	/**
+	 * @param {Scope} scope
+	 * @returns {null | EvalEntity}
+	 */
+	evalInternal(scope) {
+		const itemTypes_ = this.#itemTypeExprs.map(ite => {
+			const ite_ = ite.eval(scope);
+
+			if (!ite_) {
+				return null;
+			}
+
+			const itemType = ite_.asType;
+
+			if (!itemType) {
+				ite.typeError("not a type");
+				return null;
+			}
+
+			return itemType;
+		});
+
+		const itemTypes = reduceNull(itemTypes_);
+		if (itemTypes === null) {
+			return null;
+		}
+
+		if (itemTypes.length > 10) {
+			this.site.typeError("too many Type type args (limited to 10)");
+			return null;
+		}
+
+		return TupleType$(itemTypes);
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		return `(${this.#itemTypeExprs.map(ite => ite.toString()).join(", ")})`;
+	}
+}
+
+/**
+ * @internal
+ */
 class FuncArgTypeExpr extends Token {
 	#name;
 	#typeExpr;
@@ -29601,17 +31607,17 @@ class FuncArgTypeExpr extends Token {
  */
 class FuncTypeExpr extends Expr {
 	#argTypeExprs;
-	#retTypeExprs;
+	#retTypeExpr;
 
 	/**
 	 * @param {Site} site
 	 * @param {FuncArgTypeExpr[]} argTypeExprs 
-	 * @param {Expr[]} retTypeExprs 
+	 * @param {Expr} retTypeExpr 
 	 */
-	constructor(site, argTypeExprs, retTypeExprs) {
+	constructor(site, argTypeExprs, retTypeExpr) {
 		super(site);
 		this.#argTypeExprs = argTypeExprs;
-		this.#retTypeExprs = retTypeExprs;
+		this.#retTypeExpr = retTypeExpr;
 	}
 
 	/**
@@ -29621,21 +31627,17 @@ class FuncTypeExpr extends Expr {
 	evalInternal(scope) {
 		const argTypes_ = this.#argTypeExprs.map(a => a.eval(scope));
 
-		const retTypes_ = this.#retTypeExprs.map(e => {
-			const retType_ = e.eval(scope);
+		const retType_ = this.#retTypeExpr.eval(scope);
 
-			if (!retType_) {
-				return null;
-			}
+		if (!retType_) {
+			return null;
+		}
 
-			const retType = retType_.asType;
-			if (!retType) {
-				e.typeError("return type isn't a type");
-				return null;
-			}
-
-			return retType;
-		});
+		const retType = retType_.asType;
+		if (!retType) {
+			this.#retTypeExpr.typeError("return type isn't a type");
+			return null;
+		}
 
 		const argTypes = reduceNull(argTypes_);
 
@@ -29643,24 +31645,14 @@ class FuncTypeExpr extends Expr {
 			return null;
 		}
 
-		const retTypes = reduceNull(retTypes_);
-
-		if (retTypes === null) {
-			return null;
-		}
-
-		return new FuncType(argTypes, retTypes);
+		return new FuncType(argTypes, retType);
 	}
 
 	/**
 	 * @returns {string}
 	 */
 	toString() {
-		if (this.#retTypeExprs.length === 1) {
-			return `(${this.#argTypeExprs.map(a => a.toString()).join(", ")}) -> ${this.#retTypeExprs.toString()}`;
-		} else {
-			return `(${this.#argTypeExprs.map(a => a.toString()).join(", ")}) -> (${this.#retTypeExprs.map(e => e.toString()).join(", ")})`;
-		}
+		return `(${this.#argTypeExprs.map(a => a.toString()).join(", ")}) -> ${this.#retTypeExpr.toString()}`;
 	}
 }
 
@@ -29740,18 +31732,20 @@ class ChainExpr extends Expr {
  * @internal
  */
 class AssignExpr extends ChainExpr {
-	#nameTypes;
+	/**
+	 * @type {DestructExpr}
+	 */
+	#nameType;
 
 	/**
 	 * @param {Site} site 
-	 * @param {DestructExpr[]} nameTypes 
+	 * @param {DestructExpr} nameType 
 	 * @param {Expr} upstreamExpr 
 	 * @param {Expr} downstreamExpr 
 	 */
-	constructor(site, nameTypes, upstreamExpr, downstreamExpr) {
+	constructor(site, nameType, upstreamExpr, downstreamExpr) {
 		super(site, assertDefined(upstreamExpr), assertDefined(downstreamExpr));
-		assert(nameTypes.length > 0);
-		this.#nameTypes = nameTypes;
+		this.#nameType = assertDefined(nameType);
 	}
 
 	/**
@@ -29763,28 +31757,10 @@ class AssignExpr extends ChainExpr {
 
 		let upstreamVal = this.upstreamExpr.eval(scope);
 
-		if (this.#nameTypes.length > 1) {
-			if (upstreamVal && !upstreamVal.asMulti) {
-				this.typeError("rhs ins't a multi-value");
-			} else if (upstreamVal && upstreamVal.asMulti) {
-				const vals = upstreamVal.asMulti.values;
-
-				if (this.#nameTypes.length != vals.length) {
-					this.typeError(`expected ${this.#nameTypes.length} rhs in multi-assign, got ${vals.length}`);
-				} else {
-					this.#nameTypes.forEach((nt, i) => {
-						nt.evalInAssignExpr(subScope, assertDefined(vals[i].type.asType), i);
-					});
-				}
-			} else {
-				this.#nameTypes.forEach((nt, i) => {
-					nt.evalInAssignExpr(subScope, null, i);
-				});
-			}
-		} else if (upstreamVal && upstreamVal.asTyped) {
-			if (this.#nameTypes[0].hasType()) {
-				this.#nameTypes[0].evalInAssignExpr(subScope, assertDefined(upstreamVal.asTyped.type.asType), 0);
-			} else if (this.upstreamExpr.isLiteral() || scope.has(this.#nameTypes[0].name)) {
+		if (upstreamVal && upstreamVal.asTyped) {
+			if (this.#nameType.hasType() || this.#nameType.isTuple()) {
+				this.#nameType.evalInAssignExpr(subScope, assertDefined(upstreamVal.asTyped.type.asType), 0);
+			} else if (this.upstreamExpr.isLiteral() || scope.has(this.#nameType.name)) {
 				// enum variant type resulting from a constructor-like associated function must be cast back into its enum type
 				if ((this.upstreamExpr instanceof CallExpr &&
 					this.upstreamExpr.fnExpr instanceof PathExpr) || 
@@ -29798,15 +31774,15 @@ class AssignExpr extends ChainExpr {
 					}
 				}
 
-				subScope.set(this.#nameTypes[0].name, upstreamVal);
+				subScope.set(this.#nameType.name, upstreamVal);
 			} else {
 				this.typeError("unable to infer type of assignment rhs");
 			}
-		} else if (this.#nameTypes[0].hasType()) {
-			this.#nameTypes[0].evalInAssignExpr(subScope, null, 0);
+		} else if (this.#nameType.hasType()) {
+			this.#nameType.evalInAssignExpr(subScope, null, 0);
 		} else {
 			this.upstreamExpr.typeError("rhs isn't an instance");
-			subScope.set(this.#nameTypes[0].name, new DataEntity(new AnyType()));
+			subScope.set(this.#nameType.name, new DataEntity(new AnyType()));
 		}
 		
 		const downstreamVal = this.downstreamExpr.eval(subScope);
@@ -29822,53 +31798,35 @@ class AssignExpr extends ChainExpr {
 	 * @returns {IR}
 	 */
 	toIR(ctx) {
-		if (this.#nameTypes.length === 1) {
-			let inner = this.downstreamExpr.toIR(ctx.tab());
+		let inner = this.downstreamExpr.toIR(ctx.tab());
 
-			inner = this.#nameTypes[0].wrapDestructIR(ctx, inner, 0);
+		inner = this.#nameType.wrapDestructIR(ctx, inner, 0);
 
-			let upstream = this.upstreamExpr.toIR(ctx);
+		let upstream = this.upstreamExpr.toIR(ctx);
 
-			// enum member run-time error IR
-			if (this.#nameTypes[0].hasType()) {
-				const t = assertDefined(this.#nameTypes[0].type);
+		// enum member run-time error IR
+		if (this.#nameType.hasType()) {
+			const t = assertDefined(this.#nameType.type);
 
-				if (t.asEnumMemberType) {
-					upstream = new IR([
-						new IR("__helios__common__assert_constr_index("),
-						upstream,
-						new IR(`, ${t.asEnumMemberType.constrIndex})`)
-					]);
-				}
+			if (t.asEnumMemberType) {
+				upstream = new IR([
+					new IR("__helios__common__assert_constr_index("),
+					upstream,
+					new IR(`, ${t.asEnumMemberType.constrIndex})`)
+				]);
 			}
-
-			return new IR([
-				new IR("("),
-				this.#nameTypes[0].toNameIR(0),
-				new IR(") "),
-				new IR("->", this.site), new IR(` {\n${ctx.indent}${TAB}`),
-				inner,
-				new IR(`\n${ctx.indent}}(`),
-				upstream,
-				new IR(")")
-			]);
-		} else {
-			let inner = this.downstreamExpr.toIR(ctx.tab().tab());
-
-			for (let i = this.#nameTypes.length - 1; i >= 0; i--) {
-				// internally generates enum-member error IR
-				inner = this.#nameTypes[i].wrapDestructIR(ctx, inner, i);
-			}
-
-			const ir = new IR([
-				this.upstreamExpr.toIR(ctx),
-				new IR(`(\n${ctx.indent + TAB}(`), new IR(this.#nameTypes.map((nt, i) => nt.toNameIR(i))).join(", "), new IR(") ->", this.site), new IR(` {\n${ctx.indent}${TAB}${TAB}`),
-				inner,
-				new IR(`\n${ctx.indent + TAB}}\n${ctx.indent})`)
-			]);
-
-			return ir;
 		}
+
+		return new IR([
+			new IR("("),
+			this.#nameType.toNameIR(0), // wrapDestructIR depends on this name
+			new IR(") "),
+			new IR("->", this.site), new IR(` {\n${ctx.indent}${TAB}`),
+			inner,
+			new IR(`\n${ctx.indent}}(`),
+			upstream,
+			new IR(")")
+		]);
 	}
 
 	/**
@@ -29878,11 +31836,7 @@ class AssignExpr extends ChainExpr {
 		let downstreamStr = this.downstreamExpr.toString();
 		assert(downstreamStr != undefined);
 
-		if (this.#nameTypes.length === 1) {
-			return `${this.#nameTypes.toString()} = ${this.upstreamExpr.toString()}; ${downstreamStr}`;
-		} else {
-			return `(${this.#nameTypes.map(nt => nt.toString()).join(", ")}) = ${this.upstreamExpr.toString()}; ${downstreamStr}`;
-		}
+		return `${this.#nameType.toString()} = ${this.upstreamExpr.toString()}; ${downstreamStr}`;
 	}
 }
 
@@ -30815,19 +32769,19 @@ class FuncArg extends NameTypePair {
  */
 class FuncLiteralExpr extends Expr {
 	#args;
-	#retTypeExprs;
+	#retTypeExpr;
 	#bodyExpr;
 
 	/**
 	 * @param {Site} site
 	 * @param {FuncArg[]} args 
-	 * @param {(null | Expr)[]} retTypeExprs 
+	 * @param {null | Expr} retTypeExpr 
 	 * @param {Expr} bodyExpr 
 	 */
-	constructor(site, args, retTypeExprs, bodyExpr) {
+	constructor(site, args, retTypeExpr, bodyExpr) {
 		super(site);
 		this.#args = args;
-		this.#retTypeExprs = retTypeExprs;
+		this.#retTypeExpr = retTypeExpr;
 		this.#bodyExpr = bodyExpr;
 	}
 
@@ -30873,16 +32827,14 @@ class FuncLiteralExpr extends Expr {
 	}
 
 	/**
-	 * @type {Type[]}
+	 * @type {Type}
 	 */
-	get retTypes() {
-		return this.#retTypeExprs.map(e => {
-			if (e == null) {
-				return new AllType();
-			} else {
-				return assertDefined(e.cache?.asType);
-			}
-		});
+	get retType() {
+		if (this.#retTypeExpr === null) {
+			return new AllType();
+		} else {
+			return assertDefined(this.#retTypeExpr.cache?.asType);
+		}
 	}
 	
 	/**
@@ -30904,19 +32856,13 @@ class FuncLiteralExpr extends Expr {
 
 		const argTypes = reduceNull(args.map(a => a.evalArgType(scope)));
 
-		const retTypes = reduceNull(this.#retTypeExprs.map(e => {
-			if (e == null) {
-				return new AllType();
-			} else {
-				return e.evalAsType(scope);
-			}
-		}));
+		const retType = this.#retTypeExpr ? this.#retTypeExpr.evalAsType(scope) : new AllType();
 
-		if (argTypes === null || retTypes === null) {
+		if (argTypes === null || retType === null) {
 			return null;
 		}
 
-		return new FuncType(argTypes, retTypes);
+		return new FuncType(argTypes, retType);
 	}
 
 	/**
@@ -30949,53 +32895,21 @@ class FuncLiteralExpr extends Expr {
 			return null;
 		}
 
-		if (this.#retTypeExprs.length === 1) {
-			if (this.#retTypeExprs[0] == null) {
-				if (bodyVal.asMulti) {
-					return new FuncEntity(new FuncType(fnType.argTypes, bodyVal.asMulti.values.map(v => v.type)));
-				} else if (bodyVal.asTyped) {
-					return new FuncEntity(new FuncType(fnType.argTypes, bodyVal.asTyped.type));
-				} else {
-					this.#bodyExpr.typeError("expect multi or typed");
-					return null;
-				}
-			} else if (bodyVal.asMulti) {
-				this.#retTypeExprs[0].typeError("unexpected multi-value body");
-				return null;
-			} else if (bodyVal.asTyped) {
-				if (!fnType.retTypes[0].isBaseOf(bodyVal.asTyped.type)) {
-					this.#retTypeExprs[0].typeError(`wrong return type, expected ${fnType.retTypes[0].toString()} but got ${bodyVal.asTyped.type.toString()}`);
-					return null;
-				}
+		if (this.#retTypeExpr == null) {
+			if (bodyVal.asTyped) {
+				return new FuncEntity(new FuncType(fnType.argTypes, bodyVal.asTyped.type));
 			} else {
 				this.#bodyExpr.typeError("expect multi or typed");
 				return null;
 			}
-		} else {
-			if (bodyVal.asMulti) {
-				/** 
-				 * @type {Typed[]} 
-				 */
-				let bodyVals = bodyVal.asMulti.values;
-
-				if (bodyVals.length !== this.#retTypeExprs.length) {
-					this.#bodyExpr.typeError(`expected multi-value function body with ${this.#retTypeExprs.length} values, but got ${bodyVals.length} values`);
-					return null;
-				} else {
-					for (let i = 0; i < bodyVals.length; i++) {
-						let v = bodyVals[i];
-
-						let retTypeExpr = assertDefined(this.#retTypeExprs[i]);
-						if (!fnType.retTypes[i].isBaseOf(v.type)) {
-							retTypeExpr.typeError(`wrong return type for value ${i}, expected ${fnType.retTypes[i].toString()} but got ${v.type.toString()}`);
-							return null;
-						}
-					}
-				}
-			} else {
-				this.#bodyExpr.typeError(`expected multi-value function body, but got ${this.#bodyExpr.toString()}`);
+		} else if (bodyVal.asTyped) {
+			if (!fnType.retType.isBaseOf(bodyVal.asTyped.type)) {
+				this.#retTypeExpr.typeError(`wrong return type, expected ${fnType.retType.toString()} but got ${bodyVal.asTyped.type.toString()}`);
 				return null;
 			}
+		} else {
+			this.#bodyExpr.typeError("expect multi or typed");
+			return null;
 		}
 
 		subScope.assertAllUsed();
@@ -31084,15 +32998,10 @@ class FuncLiteralExpr extends Expr {
 	 * @returns {string}
 	 */
 	toString() {
-		if (this.#retTypeExprs.length === 1) {
-			let retTypeExpr = this.#retTypeExprs[0];
-			if (retTypeExpr == null) {
-				return `(${this.#args.map(a => a.toString()).join(", ")}) -> {${this.#bodyExpr.toString()}}`;
-			} else {
-				return `(${this.#args.map(a => a.toString()).join(", ")}) -> ${retTypeExpr.toString()} {${this.#bodyExpr.toString()}}`;
-			}
+		if (this.#retTypeExpr == null) {
+			return `(${this.#args.map(a => a.toString()).join(", ")}) -> {${this.#bodyExpr.toString()}}`;
 		} else {
-			return `(${this.#args.map(a => a.toString()).join(", ")}) -> (${this.#retTypeExprs.map(e => assertDefined(e).toString()).join(", ")}) {${this.#bodyExpr.toString()}}`;
+			return `(${this.#args.map(a => a.toString()).join(", ")}) -> ${this.#retTypeExpr.toString()} {${this.#bodyExpr.toString()}}`;
 		}
 	}
 }
@@ -31181,7 +33090,7 @@ class ParametricExpr extends Expr {
 		if (this.#baseExpr instanceof MemberExpr) {
 			return this.#baseExpr.toIR(ctx, params);
 		} else {
-			return new IR(`${this.#baseExpr.toIR(ctx).toString()}${params}`, this.site);
+			return IR.new`${this.#baseExpr.toIR(ctx).toString()}${params}${this.site}`;
 		}
 	}
 
@@ -31267,11 +33176,7 @@ class UnaryExpr extends Expr {
 	toIR(ctx) {
 		const path = assertDefined(this.cache?.asTyped?.type?.asNamed).path;
 
-		return new IR([
-			new IR(`${path}__${this.translateOp().value}`, this.site), new IR("("),
-			this.#a.toIR(ctx),
-			new IR(")")
-		]);
+		return IR.new`${path}__${this.translateOp().value}${this.site}(${this.#a.toIR(ctx)})`;
 	}
 
 	/**
@@ -31479,6 +33384,13 @@ class ParensExpr extends Expr {
 	}
 
 	/**
+	 * @returns {boolean}
+	 */
+	isLiteral() {
+		return this.#exprs.every(e => e.isLiteral());
+	}
+
+	/**
 	 * @param {Scope} scope 
 	 * @returns {null | EvalEntity}
 	 */
@@ -31503,14 +33415,16 @@ class ParensExpr extends Expr {
 					return null;
 				}
 
-				return v;
+				return v.type;
 			}));
 
 			if (entries === null) {
 				return null;
 			}
 
-			return new MultiEntity(entries);
+			//return new MultiEntity(entries);
+
+			return TupleType$(entries).toTyped();
 		}
 	}
 
@@ -31675,7 +33589,7 @@ class CallExpr extends Expr {
 				return null;
 			}
 			
-			const av = av_.asTyped ?? av_.asMulti;
+			const av = av_.asTyped;
 
 			if (!av) {
 				ae.typeError(`arg ${i+1} not an instance`);
@@ -31690,20 +33604,15 @@ class CallExpr extends Expr {
 		}
 
 		/**
-		 * @type {(Typed | Multi)[]}
+		 * @type {Typed[]}
 		 */
-		const posArgVals_ = [];
+		const posArgVals = [];
 
 		this.#argExprs.forEach((argExpr, i) => {
 			if (!argExpr.isNamed()) {
-				posArgVals_.push(argVals[i]);
+				posArgVals.push(argVals[i]);
 			}
 		});
-
-		/**
-		 * @type {Typed[]}
-		 */
-		const posArgVals = MultiEntity.flatten(posArgVals_);
 
 		/**
 		 * @type {{[name: string]: Typed}}
@@ -31714,11 +33623,7 @@ class CallExpr extends Expr {
 			if (argExpr.isNamed()) {
 				const val = argVals[i];
 
-				// can't be multi instance
-				if (val.asMulti) {
-					argExpr.typeError("can't use multiple return values as named argument");
-					return;
-				} else if (val.asTyped) {
+				if (val.asTyped) {
 					namedArgVals[argExpr.name] = val.asTyped;
 				} else {
 					throw new Error("unexpected");
@@ -31828,6 +33733,53 @@ class CallExpr extends Expr {
 	}
 
 	/**
+	 * @private
+	 * @param {Expr[]} posExprs 
+	 * @returns {Map<Expr, number>}
+	 */
+	detectExpandedTuples(posExprs) {
+		/**
+		 * @type {Map<Expr, number>}
+		 */
+		const result = new Map();
+
+		const posArgs = reduceNull(posExprs.map(e => e.cache?.asTyped ?? null));
+
+		if (!posArgs) {
+			posExprs.forEach(e => {
+				result.set(e, 0);
+			});
+
+			return result;
+		}
+
+		const expandedPosArgs = this.fn.expandTuplesInPosArgs(posArgs);
+
+		let j = 0;
+
+		for (let i = 0; i < posArgs.length; i++) {
+			if (j >= expandedPosArgs.length) {
+				throw new Error("unexpected");
+			}
+
+			if (posArgs[i] == expandedPosArgs[j]) {
+				result.set(posExprs[i], 0);
+				j++;
+			} else {
+				const tupleItemTypes = getTupleItemTypes(posArgs[i].type);
+				if (!tupleItemTypes) {
+					throw new Error("unexpected");
+				}
+
+				result.set(posExprs[i], tupleItemTypes.length);
+				j += tupleItemTypes.length;
+			}
+		}
+
+		return result;
+	}
+
+	/**
 	 * @param {ToIRContext} ctx
 	 * @returns {IR}
 	 */
@@ -31844,25 +33796,27 @@ class CallExpr extends Expr {
 		 * First step is to eliminate the named args
 		 * @type {[Expr[], IR[]]}
 		 */
-		const [positional, namedOptional] = this.expandArgs(ctx);
+		const [posExprs, namedOptExprs] = this.expandArgs(ctx);
 
 		// some multiValued args (always positional)
-		if (positional.some(e => (!e.isLiteral()) && (e.cache?.asMulti))) {
+		const isExpandedTuple = this.detectExpandedTuples(posExprs);
+
+		if (posExprs.some(e => (isExpandedTuple.get(e) ?? 0) > 0 )) {
 			// count the number of final args
 			let n = 0;
 
-			positional.forEach((e, i) => {
-				if ((!e.isLiteral()) && (e.cache?.asMulti)) {
-					n += e.cache.asMulti.values.length;
+			posExprs.forEach((e, i) => {
+				if ((isExpandedTuple.get(e) ?? 0) > 0) {
+					n += assertDefined(isExpandedTuple.get(e));
 				} else {
 					n += 1;
 				}
 			});
 
-			n += namedOptional.length;
+			n += namedOptExprs.length;
 
 			if (n > fn.nArgs) {
-				namedOptional.splice(0, n - fn.nArgs);
+				namedOptExprs.splice(0, n - fn.nArgs);
 			}
 
 			let names = [];
@@ -31882,7 +33836,7 @@ class CallExpr extends Expr {
 				new IR(")", this.site)
 			]);
 
-			for (let namedIR of namedOptional.slice().reverse()) {
+			for (let namedIR of namedOptExprs.slice().reverse()) {
 				const n2 = assertDefined(names.pop());
 				const n1 = assertDefined(names.pop());
 				assert(n1.startsWith("__useopt__"));
@@ -31900,11 +33854,11 @@ class CallExpr extends Expr {
 				]);
 			}
 
-			for (let i = positional.length - 1; i >= 0; i--) {
-				const e = positional[i];
+			for (let i = posExprs.length - 1; i >= 0; i--) {
+				const e = posExprs[i];
 
-				if ((!e.isLiteral()) && (e.cache?.asMulti)) {
-					const nMulti = e.cache.asMulti.values.length;
+				if ((isExpandedTuple.get(e) ?? 0) > 0) {
+					const nMulti = assertDefined(isExpandedTuple.get(e));
 					const multiNames = [];
 					const multiOpt = [];
 
@@ -31962,11 +33916,11 @@ class CallExpr extends Expr {
 
 			return ir;
 		} else /* no multivalued args */ {
-			if (positional.length + namedOptional.length > fn.nArgs) {
-				namedOptional.splice(0, positional.length + namedOptional.length - fn.nArgs);
+			if (posExprs.length + namedOptExprs.length > fn.nArgs) {
+				namedOptExprs.splice(0, posExprs.length + namedOptExprs.length - fn.nArgs);
 			}
 
-			let args = positional.map((a, i) => {
+			let args = posExprs.map((a, i) => {
 				let ir = a.toIR(ctx);
 
 				if (i >= fn.nNonOptArgs) {
@@ -31977,7 +33931,7 @@ class CallExpr extends Expr {
 				}
 
 				return ir;
-			}).concat(namedOptional);
+			}).concat(namedOptExprs);
 
 			return new IR([
 				fnIR,
@@ -32149,26 +34103,21 @@ class IfElseExpr extends Expr {
 
 	/**
 	 * @param {Site} site
-	 * @param {null | Type[]} prevTypes
-	 * @param {Typed | Multi} newValue
-	 * @returns {null | Type[]}
+	 * @param {null | Type} prevType
+	 * @param {Typed} newValue
+	 * @returns {null | Type}
 	 */
-	static reduceBranchMultiType(site, prevTypes, newValue) {
-		if (!newValue.asMulti && newValue.asTyped && (new ErrorType()).isBaseOf(newValue.asTyped.type)) {
-			return prevTypes;
+	static reduceBranchMultiType(site, prevType, newValue) {
+		if (newValue.asTyped && (new ErrorType()).isBaseOf(newValue.asTyped.type)) {
+			return prevType;
 		}
 
-		const newTypes = (newValue.asMulti) ?
-			newValue.asMulti.values.map(v => v.type) :
-			[assertDefined(newValue.asTyped).type];
+		const newType = assertDefined(newValue.asTyped).type;
 
-		if (prevTypes === null) {
-			return newTypes;
-		} else if (prevTypes.length !== newTypes.length) {
-			site.typeError("inconsistent number of multi-value types");
-			return null;
+		if (prevType === null) {
+			return newType;
 		} else {
-			return reduceNull(prevTypes.map((pt, i) => IfElseExpr.reduceBranchType(site, pt, newTypes[i])));
+			return IfElseExpr.reduceBranchType(site, prevType, newType);
 		}
 	}
 
@@ -32192,8 +34141,7 @@ class IfElseExpr extends Expr {
 		}
 
 		/**
-		 * Supports multiple return values
-		 * @type {null | Type[]}
+		 * @type {null | Type}
 		 */
 		let branchMultiType = null;
 
@@ -32201,7 +34149,7 @@ class IfElseExpr extends Expr {
 			// don't allow shadowing
 			const branchScope = new Scope(scope, false);
 
-			const branchVal = b.evalAsTypedOrMulti(branchScope);
+			const branchVal = b.evalAsTyped(branchScope);
 
 			if (!branchVal) {
 				continue;
@@ -32218,7 +34166,7 @@ class IfElseExpr extends Expr {
 			// i.e. every branch throws an error
 			return new ErrorEntity();
 		} else  {
-			return Common.toTyped(branchMultiType);
+			return branchMultiType.toTyped();
 		}
 	}
 
@@ -32255,6 +34203,7 @@ class IfElseExpr extends Expr {
 
 /**
  * DestructExpr is for the lhs-side of assignments and for switch cases
+ * `NameExpr [':' TypeExpr ['{' ... '}']]`
  * @internal
  */
 class DestructExpr {
@@ -32274,16 +34223,27 @@ class DestructExpr {
 	#destructExprs;
 
 	/**
+	 * @type {boolean}
+	 */
+	#isTuple;
+
+	/**
 	 * @param {Word} name - use an underscore as a sink
 	 * @param {null | Expr} typeExpr 
 	 * @param {DestructExpr[]} destructExprs
+	 * @param {boolean} isTuple typeExpr must be `null` if isTuple is `true` and `destructExpr.length` must be `> 0`
 	 */
-	constructor(name, typeExpr, destructExprs = []) {
-		this.#name = name;
+	constructor(name, typeExpr, destructExprs = [], isTuple = false) {
+		this.#name = assertDefined(name);
 		this.#typeExpr = typeExpr;
 		this.#destructExprs = destructExprs;
+		this.#isTuple = isTuple;
 
-		assert (!(this.#typeExpr == null && this.#destructExprs.length > 0));
+		if (isTuple) {
+			assert(this.#destructExprs.length > 0 && this.#typeExpr == null);
+		} else {
+			assert(!(this.#typeExpr == null && this.#destructExprs.length > 0), `unexpected syntax: ${this.toString()}`);
+		}
 	}
 
 	/**
@@ -32303,10 +34263,20 @@ class DestructExpr {
 	/**
 	 * @returns {boolean}
 	 */
+	isTuple() {
+		return this.#isTuple;
+	}
+
+	/**
+	 * @returns {boolean}
+	 */
 	hasDestructExprs() {
 		return this.#destructExprs.length > 0;
 	}
 
+	/**
+	 * @returns {boolean}
+	 */
 	isIgnored() {
 		return this.name.value === "_";
 	}
@@ -32324,7 +34294,16 @@ class DestructExpr {
 	 */
 	get type() {
 		if (this.#typeExpr === null) {
-			if (this.isIgnored()) {
+			if (this.#isTuple) {
+				const nestedTypes = reduceNull(this.#destructExprs.map(e => e.type));
+
+				if (!nestedTypes) {
+					this.site.typeError(`invalid nested tuple in in destruct expression`);
+					return null;
+				}
+
+				return TupleType$(nestedTypes);
+			} else if (this.isIgnored()) {
 				return new AllType();
 			} else {
 				return null;
@@ -32355,7 +34334,11 @@ class DestructExpr {
 	 */
 	toString() {
 		if (this.#typeExpr === null) {
-			return this.name.toString();
+			if (this.#destructExprs.length > 0 && this.#isTuple) {
+				return `${this.name.toString()}: (${this.#destructExprs.map(de => de.toString()).join(", ")})`;
+			} else {
+				return this.name.toString();
+			}
 		} else {
 			let destructStr = "";
 
@@ -32374,17 +34357,34 @@ class DestructExpr {
 	/**
 	 * Evaluates the type, used by FuncLiteralExpr and DataDefinition
 	 * @param {Scope} scope 
+	 * @param {null | Type} upstreamType
 	 * @returns {null | Type}
 	 */
-	evalType(scope) {
+	evalType(scope, upstreamType = null) {
 		if (this.#typeExpr === null) {
-			if (this.isIgnored()) {
+			if (this.#isTuple) {
+				const upstreamItemTypes = upstreamType ? getTupleItemTypes(upstreamType) : null;
+				const nestedTypes = reduceNull(this.#destructExprs.map((e, i) => e.evalType(scope, upstreamItemTypes ? upstreamItemTypes[i] : null)));
+
+				if (!nestedTypes) {
+					this.site.typeError(`invalid nested tuple in in destruct expression`);
+					return null;
+				}
+
+				return TupleType$(nestedTypes);
+			} else if (this.isIgnored()) {
 				return new AllType();
 			} else {
 				throw new Error("typeExpr not set in " + this.site.src.raw.split("\n")[0]);
 			}
 		} else {
-			return this.#typeExpr.evalAsType(scope);
+			const t = this.#typeExpr.evalAsType(scope);
+
+			if (t && upstreamType && !upstreamType.asEnumMemberType && t.asEnumMemberType) {
+				return t.asEnumMemberType.parentType;
+			} else {
+				return t;
+			}
 		}
 	}
 
@@ -32394,25 +34394,46 @@ class DestructExpr {
 	 */
 	evalDestructExprs(scope, upstreamType) {
 		if (this.#destructExprs.length > 0) {
-			if (!upstreamType.asDataType) {
-				this.site.typeError("can't destruct a function");
-				return;
-			}
+			if (this.#isTuple) {
+				const tupleItemTypes = getTupleItemTypes(upstreamType);
 
-			const upstreamFieldNames = upstreamType.asDataType.fieldNames;
+				if (!tupleItemTypes) {
+					this.site.typeError("upstream value isn't a tuple, can't destruct");
+					return;
+				}
 
-			if (upstreamFieldNames.length != this.#destructExprs.length) {
-				this.site.typeError(`wrong number of destruct fields, expected ${upstreamFieldNames.length}, got ${this.#destructExprs.length}`);
-				return;
-			}
+				if (tupleItemTypes.length != this.#destructExprs.length) {
+					this.site.typeError(`wrong number of destruct tuple fields, expected ${tupleItemTypes.length}, got ${this.#destructExprs.length}`);
+					return;
+				}
 
-			for (let i = 0; i < this.#destructExprs.length; i++) {
+				for (let i = 0; i < this.#destructExprs.length; i++) {
+					this.#destructExprs[i].evalInternal(
+						scope, 
+						tupleItemTypes[i], 
+						i
+					);
+				}
+			} else {
+				if (!upstreamType.asDataType) {
+					this.site.typeError("can't destruct a function");
+					return;
+				}
 
-				this.#destructExprs[i].evalInternal(
-					scope, 
-					assertDefined(upstreamType.instanceMembers[upstreamFieldNames[i]].asDataType), 
-					i
-				);
+				const upstreamFieldNames = upstreamType.asDataType.fieldNames;
+
+				if (upstreamFieldNames.length != this.#destructExprs.length) {
+					this.site.typeError(`wrong number of destruct fields, expected ${upstreamFieldNames.length}, got ${this.#destructExprs.length}`);
+					return;
+				}
+
+				for (let i = 0; i < this.#destructExprs.length; i++) {
+					this.#destructExprs[i].evalInternal(
+						scope, 
+						assertDefined(upstreamType.instanceMembers[upstreamFieldNames[i]].asDataType), // we `asDataType` because methods can't be destructed
+						i
+					);
+				}
 			}
 		}
 	}
@@ -32424,14 +34445,8 @@ class DestructExpr {
 	 */
 	evalInternal(scope, upstreamType, i) {
 		if (this.hasType()) {
-			const t_ = this.evalType(scope);
-			if (!t_) {
-				return;
-			}
-
-			const t = t_.asDataType;
+			const t = this.evalType(scope);
 			if (!t) {
-				this.site.typeError("not a data type");
 				return;
 			}
 
@@ -32486,37 +34501,6 @@ class DestructExpr {
 	 * @param {number} i
 	 */
 	evalInAssignExpr(scope, upstreamType, i) {
-		/**
-		 * @param {null | Type} t 
-		 */
-		const checkType = (t) => {
-			if (!t) {
-				this.site.typeError("not a type");
-				return;
-			}
-
-			// differs from upstreamType because can be enum parent
-			let checkType = t;
-
-			if (upstreamType) {
-				// if t is enum variant, get parent instead (exact variant is checked at runtime instead)
-				if (t.asEnumMemberType && !upstreamType.asEnumMemberType) {
-					checkType = t.asEnumMemberType.parentType;
-				}
-
-				if (!checkType.isBaseOf(upstreamType)) {
-					this.site.typeError(`expected ${checkType.toString()} for rhs ${i+1}, got ${upstreamType.toString()}`);
-				}
-			}
-
-			if (!this.isIgnored()) {
-				// TODO: take into account ghost type parameters
-				scope.set(this.name, t.toTyped());
-			}
-
-			this.evalDestructExprs(scope, t);
-		};
-
 		const t = this.evalType(scope);
 
 		if (!t) {
@@ -32524,18 +34508,23 @@ class DestructExpr {
 			return;
 		}
 
-		if (t.asType) {
-			checkType(t.asType);
-		} else if (t.asMulti) {
-			if (i >= t.asMulti.values.length) {
-				this.site.typeError(`expected multi instace with only ${t.asMulti.values.length} items`);
-				return null;
-			}
+		// differs from upstreamType because can be enum parent
+		// if t is enum variant, get parent instead (exact variant is checked at runtime instead)
+		// also do this for nested as well
+		const checkType = this.evalType(scope, upstreamType);
 
-			checkType(t.asMulti.values[i].type.asDataType);
-		} else {
-			throw new Error("unexpected");
+		if (checkType && upstreamType) {
+			if (!checkType.isBaseOf(upstreamType)) {
+				this.site.typeError(`expected ${checkType.toString()} for rhs ${i+1}, got ${upstreamType.toString()}`);
+			}
 		}
+
+		if (!this.isIgnored()) {
+			// TODO: take into account ghost type parameters
+			scope.set(this.name, t.toTyped());
+		}
+
+		this.evalDestructExprs(scope, t);
 	}
 
 	/**
@@ -32565,24 +34554,37 @@ class DestructExpr {
 	}
 
 	/**
+	 * @private
 	 * @param {ToIRContext} ctx
 	 * @param {IR} inner 
 	 * @param {string} objName 
 	 * @param {number} fieldIndex 
-	 * @param {string} fieldFn
+	 * @param {string} fieldGetter
 	 * @returns {IR}
 	 */
-	wrapDestructIRInternal(ctx, inner, objName, fieldIndex, fieldFn) {
+	wrapDestructIRInternal(ctx, inner, objName, fieldIndex, fieldGetter) {
 		if (this.isIgnored() && this.#destructExprs.length == 0) {
 			return inner;
 		} else {
 			const baseName = this.isIgnored() ? `${objName}_${fieldIndex}` : this.#name.toString();
 
 			for (let i = this.#destructExprs.length - 1; i >= 0; i--) {
-				inner = this.#destructExprs[i].wrapDestructIRInternal(ctx.tab(), inner, baseName, i, this.getFieldFn(i));
+				const de = this.#destructExprs[i];
+
+				const innerGetter = this.#isTuple ? de.toNameIR(i).toString() : `${this.getFieldFn(i)}(${baseName})`;
+
+				inner = de.wrapDestructIRInternal(ctx.tab(), inner, baseName, i, innerGetter);
 			}
 
-			let getter = `${fieldFn}(${objName})`;
+			if (this.#isTuple) {
+				inner = IR.new`${baseName}(
+					(${new IR(this.#destructExprs.map((de, i) => de.toNameIR(i))).join(", ")}) -> {
+						${inner}
+					}
+				)`;
+			}
+
+			let getter = fieldGetter;
 
 			const t = this.type;
 
@@ -32605,8 +34607,9 @@ class DestructExpr {
 	}
 
 	/**
+	 * 
 	 * @param {ToIRContext} ctx
-	 * @param {IR} inner 
+	 * @param {IR} inner - downstream IR expression
 	 * @param {number} argIndex 
 	 * @returns {IR}
 	 */
@@ -32614,15 +34617,29 @@ class DestructExpr {
 		if (this.#destructExprs.length == 0) {
 			return inner;
 		} else {
+			/**
+			 * same as this.toNameIR()
+			 * TODO: can __lhs be changed to underscore?
+			 */
 			const baseName = this.isIgnored() ? `__lhs_${argIndex}` : this.#name.toString();
 
 			for (let i = this.#destructExprs.length - 1; i >= 0; i--) {
 				const de = this.#destructExprs[i];
 
-				inner = de.wrapDestructIRInternal(ctx.tab(), inner, baseName, i, this.getFieldFn(i));
+				const getter = this.#isTuple ? de.toNameIR(i).toString() : `${this.getFieldFn(i)}(${baseName})`;
+
+				inner = de.wrapDestructIRInternal(ctx.tab(), inner, baseName, i, getter);
 			}
 
-			return inner;
+			if (this.#isTuple) {
+				return IR.new`${baseName}(
+					(${new IR(this.#destructExprs.map((de, i) => de.toNameIR(i))).join(", ")}) -> {
+						${inner}
+					}
+				)`;
+			} else {
+				return inner;
+			}
 		}
 	}
 
@@ -32642,7 +34659,9 @@ class SwitchCase extends Token {
 	#lhs;
 	#bodyExpr;
 
-	/** @type {?number} */
+	/** 
+	 * @type {null | number} 
+	 */
 	#constrIndex;
 
 	/**
@@ -32672,6 +34691,9 @@ class SwitchCase extends Token {
 		return this.#lhs.typeName;
 	}
 
+	/**
+	 * @returns {boolean}
+	 */
 	isDataMember() {
 		switch (this.memberName.value) {
 			case "Int":
@@ -32706,7 +34728,7 @@ class SwitchCase extends Token {
 	 * Evaluates the switch type and body value of a case.
 	 * @param {Scope} scope 
 	 * @param {DataType} enumType
-	 * @returns {null | Multi | Typed}
+	 * @returns {null | Typed}
 	 */
 	evalEnumMember(scope, enumType) {
 		const caseType = enumType.typeMembers[this.memberName.value]?.asEnumMemberType;
@@ -32729,7 +34751,7 @@ class SwitchCase extends Token {
 			return null;
 		}
 
-		const bodyVal = bodyVal_.asTyped ?? bodyVal_?.asMulti;
+		const bodyVal = bodyVal_.asTyped;
 
 		if (!bodyVal) {
 			this.#bodyExpr.typeError("not typed");
@@ -32744,7 +34766,7 @@ class SwitchCase extends Token {
 	/**
 	 * Evaluates the switch type and body value of a case.
 	 * @param {Scope} scope
-	 * @returns {null | Typed | Multi}
+	 * @returns {null | Typed}
 	 */
 	evalDataMember(scope) {
 		/** @type {DataType} */
@@ -32794,7 +34816,7 @@ class SwitchCase extends Token {
 
 		caseScope.assertAllUsed();
 
-		const bodyVal = bodyVal_.asTyped ?? bodyVal_.asMulti;
+		const bodyVal = bodyVal_.asTyped;
 
 		if (!bodyVal) {
 			this.#bodyExpr.typeError("not typed");
@@ -32816,7 +34838,7 @@ class SwitchCase extends Token {
 
 		return new IR([
 			new IR("("),
-			this.#lhs.toNameIR(0), 
+			this.#lhs.toNameIR(0), // wrapDestructIR depends on this name
 			new IR(") "),
 			new IR("->", this.site), new IR(` {\n${ctx.indent}${TAB}`),
 			inner,
@@ -32865,11 +34887,11 @@ class UnconstrDataSwitchCase extends SwitchCase {
 	/**
 	 * Evaluates the switch type and body value of a case.
 	 * @param {Scope} scope
-	 * @returns {null | Typed | Multi}
+	 * @returns {null | Typed}
 	 */
 	evalDataMember(scope) {
 		/**
-		 * @type {null | Typed | Multi}
+		 * @type {null | Typed}
 		 */
 		let bodyVal = null;
 
@@ -32890,7 +34912,7 @@ class UnconstrDataSwitchCase extends SwitchCase {
 				return null;
 			}
 
-			bodyVal = bodyVal_.asTyped ?? bodyVal_.asMulti;
+			bodyVal = bodyVal_.asTyped;
 
 			caseScope.assertAllUsed();
 		} else {
@@ -32900,7 +34922,7 @@ class UnconstrDataSwitchCase extends SwitchCase {
 				return null;
 			}
 
-			bodyVal = bodyVal_.asTyped ?? bodyVal_.asMulti;
+			bodyVal = bodyVal_.asTyped;
 		}
 
 		if (!bodyVal) {
@@ -32951,7 +34973,7 @@ class SwitchDefault extends Token {
 
 	/**
 	 * @param {Scope} scope 
-	 * @returns {null | Typed | Multi}
+	 * @returns {null | Typed}
 	 */
 	eval(scope) {
 		const bodyVal_ = this.#bodyExpr.eval(scope);
@@ -32960,7 +34982,7 @@ class SwitchDefault extends Token {
 			return null;
 		}
 
-		const bodyVal = bodyVal_.asTyped ?? bodyVal_.asMulti;
+		const bodyVal = bodyVal_.asTyped;
 
 		if (!bodyVal) {
 			this.#bodyExpr.typeError("not typed");
@@ -33065,7 +35087,7 @@ class EnumSwitchExpr extends SwitchExpr {
 			this.setDefaultCaseToVoid();
 		}
 
-		/** @type {null | Type[]} */
+		/** @type {null | Type} */
 		let branchMultiType = null;
 
 		for (let c of this.cases) {
@@ -33097,7 +35119,7 @@ class EnumSwitchExpr extends SwitchExpr {
 		if (branchMultiType === null) {
 			return new ErrorEntity();
 		} else {
-			return Common.toTyped(branchMultiType);
+			return branchMultiType.toTyped();
 		}
 	}
 
@@ -33120,14 +35142,21 @@ class EnumSwitchExpr extends SwitchExpr {
 
 		let res = last.toIR(ctx.tab().tab().tab());
 
+		// TODO: if constrIndex is null then use the case test that is defined as a builtin (needed to be able to treat StakingCredential as an enum)
+		// TODO: once the null fallback has been implemented get rid of constrIndex
 		for (let i = n - 1; i >= 0; i--) {
-			res = new IR([
-				new IR(`__core__ifThenElse(__core__equalsInteger(i, ${cases[i].constrIndex.toString()}), () -> {`),
-				cases[i].toIR(ctx.tab().tab().tab()),
-				new IR(`}, () -> {`),
-				res,
-				new IR(`})()`)
-			]);
+			const c = cases[i];
+			
+			const test = IR.new`__core__equalsInteger(i, ${c.constrIndex.toString()})`;
+
+			res = IR.new`__core__ifThenElse(
+				${test},
+				() -> {
+					${c.toIR(ctx.tab().tab().tab())}
+				}, () -> {
+					${res}
+				}
+			)()`;
 		}
 
 		return new IR([
@@ -33178,7 +35207,7 @@ class DataSwitchExpr extends SwitchExpr {
 			this.setDefaultCaseToVoid();
 		}
 
-		/** @type {null | Type[]} */
+		/** @type {null | Type} */
 		let branchMultiType = null;
 
 		for (let c of this.cases) {
@@ -33211,7 +35240,7 @@ class DataSwitchExpr extends SwitchExpr {
 			// only possible if each branch is an error
 			return new ErrorEntity();
 		} else {
-			return Common.toTyped(branchMultiType);
+			return branchMultiType.toTyped();
 		}
 	}
 
@@ -33686,19 +35715,17 @@ class ConstStatement extends Statement {
 		let ir = assertDefined(this.#valueExpr).toIR(ctx);
 
 		if (this.#valueExpr instanceof LiteralDataExpr) {
-			ir = new IR([
+			/*ir = new IR([
 				new IR(`${this.#valueExpr.type.path}__from_data`),
-				new IR("("),
+				new IR("(", this.site),
 				ir,
 				new IR(")")
-			]);
+			]);*/
+
+			ir = IR.new`${this.#valueExpr.type.path}__from_data${null}(${this.site}${ir})`;
 		}
 
-		return new IR([
-			new IR("const(", this.site),
-			ir,
-			new IR(")")
-		]);
+		return ir;
 	}
 
 	/**
@@ -34029,11 +36056,15 @@ class DataField extends NameTypePair {
 			}
 
 			if (t.asDataType) {
-				return t.asDataType;
-			} else {
-				this.typeExpr.typeError(`'${t.toString()}' isn't a valid data field type`);
-				return null;
+				const dt = t.asDataType;
+
+				if (isDataType(dt)) {
+					return dt;
+				}
 			}
+
+			this.typeExpr.typeError(`'${t.toString()}' isn't a valid data field type`);
+			return null;
 		}
 	}
 }
@@ -34375,7 +36406,7 @@ class DataDefinition {
 	 * @param {IRDefinitions} map 
 	 * @param {number} constrIndex
 	 */
-	newToIR(ctx, path, map, constrIndex) {
+	toIR_new(ctx, path, map, constrIndex) {
 		const isConstr = constrIndex != -1;
 
 		/**
@@ -34384,92 +36415,55 @@ class DataDefinition {
 		let ir;
 
 		if (this.hasTags()) {
-			ir = new IR([
-				new IR("__core__mkNilPairData"),
-				new IR("(())")
-			]);
+			ir = IR.new`__core__mkNilPairData(())`;
 
 			for (let i = this.nFields - 1; i >= 0; i--) {
 				const f = this.#fields[i];
 
-				ir = new IR([
-					new IR("__core__mkCons"), new IR("("),
-					new IR("__core__mkPairData"), new IR("("), 
-					new IR(`__core__bData`), new IR("("), new IR(`#${bytesToHex(textToBytes(f.tag))}`), new IR(")"), new IR(", "),
-					new IR(`${f.type.path}____to_data`), new IR("("), new IR(f.name.value), new IR(")"), 
-					new IR("), "),
-					ir,
-					new IR(")")
-				]);
+				ir = IR.new`__core__mkCons(
+					__core__mkPairData(
+						__core__bData(#${bytesToHex(textToBytes(f.tag))}),
+						${f.type.path}____to_data(${f.name.value})
+					),
+					${ir}
+				)`;
 			}
 
-			ir = new IR([
-				new IR("__core__constrData"),
-				new IR("("),
-				new IR("0"),
-				new IR(", "),
-				new IR("__core__mkCons"), new IR("("),
-				new IR("__core__mapData"), new IR("("), ir, new IR(")"), new IR(", "),
-				new IR("__core__mkCons"), new IR("("),
-				new IR("__core__iData"), new IR("("), new IR("1"), new IR(")"), new IR(", "), // version
-				new IR("__core__mkNilData(())"), // TODO: according to https://cips.cardano.org/cips/cip68/#metadata an additional 'extra' (which can be unit)  should be added. Is that really necessary?
-				new IR(")"),
-				new IR(")"),
-				new IR(")")
-			]);
+			// TODO: according to https://cips.cardano.org/cips/cip68/#metadata an additional 'extra' (which can be unit)  should be added. Is that really necessary?
+			ir = IR.new`__core__constrData(
+				0,
+				__core__mkCons(
+					__core__mapData(${ir}),
+					__core__mkCons(
+						__core__iData(1),
+						__core__mkNilData(())
+					)
+				)
+			)`;
 
-			// wrap as function
-			ir = new IR([
-				new IR("("),
-				new IR(this.#fields.map(f => new IR(f.name.value))).join(", "),
-				new IR(") -> {"),
-				ir,
-				new IR("}")
-			]);
+			ir = IR.new`(${new IR(this.#fields.map(f => new IR(f.name.value))).join(", ")}) -> {${ir}}`;
 		} else if (this.nFields == 1) {
 			if (isConstr) {
-				ir = new IR(`(self) -> {
+				ir = IR.new`(self) -> {
 					__core__constrData(${constrIndex}, __helios__common__list_1(${this.getFieldType(0).path}____to_data(self)))
-				}`, this.site);
+				}${this.site}`;
 			} else {
-				ir = new IR("__helios__common__identity");
+				ir = IR.new`__helios__common__identity`;
 		}
 		} else {
-			ir = new IR([
-				new IR("__core__mkNilData"),
-				new IR("(())")
-			]);
+			ir = IR.new`__core__mkNilData(())`;
 
 			for (let i = this.nFields - 1; i >= 0; i--) {
 				const f = this.#fields[i];
 
-				ir = new IR([
-					new IR("__core__mkCons"),
-					new IR("("), new IR(`${f.type.path}____to_data`), new IR("("), new IR(f.name.value), new IR("), "),
-					ir,
-					new IR(")")
-				]);
+				ir = IR.new`__core__mkCons(${f.type.path}____to_data(${f.name.value}), ${ir})`;
 			}
 
 			if (isConstr) {
-				ir = new IR([
-					new IR("__core__constrData"),
-					new IR("("),
-					new IR(constrIndex.toString()),
-					new IR(", "),
-					ir,
-					new IR(")")
-				]);
+				ir =  IR.new`__core__constrData(${constrIndex}, ${ir})`;
 			}
 
-			// wrap as function
-			ir = new IR([
-				new IR("("),
-				new IR(this.#fields.map(f => new IR(f.name.value))).join(", "),
-				new IR(") -> {"),
-				ir,
-				new IR("}")
-			]);
+			ir = IR.new`(${new IR(this.#fields.map(f => new IR(f.name.value))).join(", ")}) -> {${ir}}`;
 		}
 
 		const key = `${path}____new`;
@@ -34485,7 +36479,7 @@ class DataDefinition {
 	 * @param {string[]} getterNames
 	 * @param {number} constrIndex
 	 */
-	copyToIR(ctx, path, map, getterNames, constrIndex = -1) {
+	toIR_copy(ctx, path, map, getterNames, constrIndex = -1) {
 		const key = `${path}__copy`;
 
 		let ir = StructLiteralExpr.toIRInternal(ctx, this.site, path, this.#fields.map(df => new IR(df.name.value)));
@@ -34495,78 +36489,352 @@ class DataDefinition {
 		for (let i = getterNames.length - 1; i >= 0; i--) {
 			const fieldName = this.#fields[i].name.toString();
 
-			ir = FuncArg.wrapWithDefaultInternal(ir, fieldName, new IR([
-				new IR(getterNames[i]),
-				new IR("(self)")
-			]));
+			ir = FuncArg.wrapWithDefaultInternal(ir, fieldName, IR.new`${getterNames[i]}(self)`);
 		}
 
-		ir = new IR([
-			new IR("("), new IR("self"), new IR(") -> {"),
-			new IR("("),
-			new IR(this.#fields.map(f => new IR([
-				new IR(`__useopt__${f.name.toString()}`),
-				new IR(", "),
-				new IR(`${f.name.toString()}`)
-			]))).join(", "),
-			new IR(") -> {"),
-			ir,
-			new IR("}"),
-			new IR("}")
-		]);
+		const args = new IR(this.#fields.map(f => new IR([
+			new IR(`__useopt__${f.name.toString()}`),
+			new IR(", "),
+			new IR(`${f.name.toString()}`)
+		]))).join(", ");
+
+		ir = IR.new`(self) -> {
+			(${args}) -> {
+				${ir}
+			}
+		}`;
 
 		map.set(key, ir);
 	}
 
 	/**
 	 * @internal
+	 * @param {string} baseName
+	 * @param {boolean} isEnumMember
 	 * @returns {IR}
 	 */
-	fromDataFieldsCheckToIR() {
+	toIR_show(baseName, isEnumMember = false) {
 		if (this.hasTags()) {
-			let ir = new IR(`(data) -> {__core__mkNilPairData(())}`);
+			assert(!isEnumMember);
+			let ir = IR.new`""`;
+
+			for (let i = 0; i < this.nFields; i++) {
+				const f = this.#fields[i];
+				const p = f.type.path;
+
+				ir = IR.new`__core__appendString(
+					${ir},
+					__core__appendString(
+						${i > 0 ? `", ${f.name}: "`: `"${f.name}: "`},
+						(opt) -> {
+							opt(
+								(valid, value) -> {
+									__core__ifThenElse(
+										valid,
+										() -> {
+											(opt) -> {
+												opt(
+													(valid, value) -> {
+														__core__ifThenElse(
+															valid,
+															() -> {
+																${p}__show(value)()
+															},
+															() -> {
+																"<n/a>"
+															}
+														)()
+													}
+												)
+											}(${p}__from_data_safe(value))
+										},
+										() -> {
+											"<n/a>"
+										}
+									)()
+								}
+							)
+						}(__helios__common__cip68_field_safe(self, __core__bData(#${bytesToHex(textToBytes(f.tag))})))
+					)
+				)`;
+			}
+
+			return IR.new`(data) -> {
+				__core__chooseData(
+					data,
+					() -> {
+						(fields) -> {
+							__core__chooseList(
+								fields,
+								() -> {"${baseName}{<n/a>}"},
+								() -> {
+									(data) -> {
+										__core__chooseData(
+											data,
+											() -> {"${baseName}{<n/a>}"},
+											() -> {
+												(self) -> {
+													__core__appendString(
+														"${baseName}{",
+														__core__appendString(
+															${ir},
+															"}"
+														)
+													)
+												}(__core__unMapData(data))
+											},
+											() -> {"${baseName}{<n/a>}"},
+											() -> {"${baseName}{<n/a>}"},
+											() -> {"${baseName}{<n/a>}"}
+										)()
+									}(__core__headList__safe(fields))
+								}
+							)()
+						}(__core__sndPair(__core__unConstrData__safe(data)))
+					},
+					() -> {"${baseName}{<n/a>}"},
+					() -> {"${baseName}{<n/a>}"},
+					() -> {"${baseName}{<n/a>}"},
+					() -> {"${baseName}{<n/a>}"}
+				)
+			}`;
+		} else if (this.nFields == 1 && !isEnumMember) {
+			return IR.new`${this.#fields[0].type.path}__show`;
+		} else {
+			let ir = IR.new`(fields) -> {""}`;
 
 			for (let i = this.nFields - 1; i >= 0; i--) {
 				const f = this.#fields[i];
-				const ftPath = f.type.path;
+				const p = f.type.path;
 
-				ir = new IR([
-					new IR(`(data) -> {__core__mkCons(
-						__core__mkPairData(
-							__core__bData(#${bytesToHex(textToBytes(f.tag))}),
-							${ftPath}____to_data(${ftPath}__from_data(__helios__common__cip68_field(data, __core__bData(#${bytesToHex(textToBytes(f.tag))}))))
-						), `),
-					ir,
-					new IR(`(data)`),
-					new IR(`)}`)
-				]);
+				ir = IR.new`(fields) -> {
+					__core__chooseList(
+						fields,
+						() -> {""},
+						() -> {
+							__core__appendString(
+								${i > 0 ? `", ${f.name}: "` : `"${f.name}: "`},
+								__core__appendString(
+									(opt) -> {
+										opt(
+											(valid, value) -> {
+												__core__ifThenElse(
+													valid,
+													() -> {
+														${p}__show(value)()
+													},
+													() -> {
+														"<n/a>"
+													}
+												)()
+											}
+										)
+									}(${p}__from_data_safe(__core__headList__safe(fields))),
+									${ir}(__core__tailList__safe(fields))
+								)
+							)
+						}
+					)()
+				}`;
 			}
 
-			ir = new IR([
-				new IR(`(data) -> {__core__constrData(`), 
-				new IR(`0, `),
-				new IR(`__core__mkCons(`), 
-				new IR(`__core__mapData(`), ir, new IR(`(data)), `), 
-				new IR(`__core__mkCons(__core__iData(1), __core__mkNilData(()))`), 
-				new IR(`)`),
-				new IR(`)}`)
-			]);
+			return IR.new`(self) -> {
+				() -> {
+					__core__appendString(
+						"${baseName}{",
+						__core__appendString(
+							${ir}(self),
+							"}"
+						)
+					)
+				}
+			}`;
+		}
+	}
+
+	/**
+	 * @internal
+	 * @returns {IR}
+	 */
+	toIR_test_data() {
+		if (this.hasTags()) {
+			const fields = this.#fields;
+
+			let ir = IR.new``;
+
+			fields.forEach((f, i) => {
+				if (i == 0) {
+					ir = IR.new`__helios__common__test_cip68_field(
+						data,
+						__core__bData(#${bytesToHex(textToBytes(f.tag))}),
+						${f.type.path}__test_data	
+					)`;
+				} else {
+					ir = IR.new`__core__ifThenElse(
+						__helios__common__test_cip68_field(
+							data,
+							__core__bData(#${bytesToHex(textToBytes(f.tag))}),
+							${f.type.path}__test_data	
+						),
+						() -> {
+							${ir}
+						},
+						() -> {
+							false
+						}
+					)()`;
+				}
+			});
+
+			return IR.new`(data) -> {
+				${ir}
+			}`;
+		} else if (this.nFields == 1) {
+			return IR.new`${this.#fields[0].type.path}__test_data`;
+		} else {
+			const reversedFields = this.#fields.slice().reverse();
+
+			let ir = IR.new`(fields) -> {
+				__core__chooseList(
+					fields,
+					true,
+					false
+				)
+			}`;
+
+			reversedFields.forEach(f => {
+				ir = IR.new`(fields) -> {
+					__core__chooseList(
+						fields,
+						() -> {
+							false
+						},
+						() -> {
+							(head) -> {
+								__core__ifThenElse(
+									${f.type.path}__test_data(head),
+									() -> {${ir}(__core__tailList__safe(fields))},
+									() -> {false}
+								)()
+							}(__core__headList__safe(fields))
+						}
+					)()
+				}`;
+			});
+
+			return IR.new`(data) -> {
+				__core__chooseData(
+					data,
+					() -> {false},
+					() -> {false},
+					() -> {
+						${ir}(__core__unListData__safe(data))
+					},
+					() -> {false},
+					() -> {false}
+				)()
+			}`;
+		}
+	}
+
+	/**
+	 * @internal
+	 * @param {string} path
+	 * @returns {IR}
+	 */
+	toIR_from_data_fields(path) {
+		if (this.hasTags()) {
+
+			//let ir = IR.new`(data) -> {__core__mkNilPairData(())}`;
+
+			let ir = IR.new(`(data) -> {
+				(ignore) -> {
+					data
+				}(
+					__core__ifThenElse(
+						${path}__test_data(data),
+						() -> {
+							()
+						},
+						() -> {
+							__core__trace("Warning: invalid ${this.name.toString()} data", ())
+						}
+					)()
+				)
+			}`);
+			/*for (let i = this.nFields - 1; i >= 0; i--) {
+				const f = this.#fields[i]
+				const ftPath = f.type.path;
+
+				ir = IR.new`(data) -> {
+					__core__mkCons(
+						__core__mkPairData(
+							__core__bData(#${bytesToHex(textToBytes(f.tag))}),
+							${ftPath}____to_data(
+								${ftPath}__from_data(
+									__helios__common__cip68_field(
+										data, 
+										__core__bData(#${bytesToHex(textToBytes(f.tag))})
+									)
+								)
+							)
+						),
+						${ir}(data)
+					)
+				}`;
+			}
+
+			ir = IR.new`(data) -> {
+				__core__constrData(
+					0, 
+					__core__mkCons(
+						__core__mapData(${ir}(data)),
+						__core__mkCons(
+							__core__iData(1),
+							__core__mkNilData(())
+						)
+					)
+				)
+			}`;*/
 
 			return ir;
 		} else {
-			let ir = new IR(`(fields) -> {__core__mkNilData(())}`);
+			let ir = IR.new(`(fields) -> {
+				(ignore) -> {
+					fields
+				}(
+					__core__ifThenElse(
+						${path}__test_data(__core__listData(fields)),
+						() -> {
+							()
+						},
+						() -> {
+							__core__trace("Warning: invalid ${this.name.toString()} data", ())
+						}
+					)()
+				)
+			}`);
+
+			return ir;
+
+			/*let ir = IR.new`(fields) -> {__core__mkNilData(())}`;
 
 			for (let i = this.nFields - 1; i >= 0; i--) {
 				const ftPath = this.getFieldType(i).path;
 
-				ir = new IR([
-					new IR(`(fields) -> {__core__mkCons(${ftPath}____to_data(${ftPath}__from_data(__core__headList(fields))), `),
-					ir,
-					new IR(`(__core__tailList(fields)))}`)
-				]);
+				ir = IR.new`(fields) -> {
+					__core__mkCons(
+						${ftPath}____to_data(
+							${ftPath}__from_data(
+								__core__headList(fields)
+							)
+						), 
+						${ir}(__core__tailList(fields))
+					)
+				}`;
 			}
 
-			return ir;
+			return ir;*/
 		}
 	}
 
@@ -34589,7 +36857,7 @@ class DataDefinition {
 				const key = `${path}__${f.name.value}`;
 
 				// equalsData is much more efficient than first converting to byteArray
-				const getter = new IR(`(self) -> {${f.type.path}__from_data(__helios__common__cip68_field(self, __core__bData(#${bytesToHex(textToBytes(f.tag))})))}`);
+				const getter = IR.new`(self) -> {${f.type.path}__from_data(__helios__common__cip68_field(self, __core__bData(#${bytesToHex(textToBytes(f.tag))})))}`;
 
 				map.set(key, getter);
 				getterNames.push(key);
@@ -34597,13 +36865,13 @@ class DataDefinition {
 		} else {
 			const isConstr = constrIndex != -1;
 
-			const getterBaseName = isConstr ? "__helios__common__field" : "__helios__common__tuple_field";
+			const getterBaseName = isConstr ? "__helios__common__enum_field" : "__helios__common__struct_field";
 
 			if (this.fields.length == 1 && !isConstr) {
 				const f = this.fields[0];
 				const key = `${path}__${f.name.value}`;
 
-				const getter =  new IR("__helios__common__identity", f.site);
+				const getter =  IR.new`__helios__common__identity${f.site}`;
 				
 				map.set(key, getter);
 
@@ -34621,50 +36889,23 @@ class DataDefinition {
 					let getter;
 
 					if (i < 20) {
-						getter = new IR(`${getterBaseName}_${i}`, f.site);
-
-						getter = new IR([
-							new IR("("), new IR("self"), new IR(") "), 
-							new IR("->", f.site), 
-							new IR(" {"), 
-							new IR(`${f.type.path}__from_data`), new IR("("),
-							new IR(`${getterBaseName}_${i}`), new IR("("), new IR("self"), new IR(")"),
-							new IR(")"),
-							new IR("}"),
-						]);
+						getter = IR.new`(self) ${null}->${f.site} {
+							${f.type.path}__from_data(${getterBaseName}_${i}(self))
+						}`;
 					} else {
 						let inner = new IR("self");
 
 						if (isConstr) {
-							inner = new IR([
-								new IR("__core__sndPair"),
-								new IR("("),
-								new IR("__core__unConstrData"), new IR("("), inner, new IR(")"),
-								new IR(")")
-							]);
+							inner = IR.new`__core__sndPair(__core__unConstrData(${inner}))`;
 						}
 
 						for (let j = 0; j < i; j++) {
-							inner = new IR([
-								new IR("__core__tailList"), new IR("("), inner, new IR(")")
-							]);
+							inner = IR.new`__core__tailList(${inner})`;
 						}
 
-						inner = new IR([
-							new IR("__core__headList"), new IR("("), inner, new IR(")")
-						]);
+						inner = IR.new`${f.type.path}__from_data(__core__headList(${inner}))`;
 
-						inner = new IR([
-							new IR(`${f.type.path}__from_data`), new IR("("), inner, new IR(")")
-						]);
-
-						getter = new IR([
-							new IR("("), new IR("self"), new IR(") "), 
-							new IR("->", f.site), 
-							new IR(" {"),
-							inner,
-							new IR("}"),
-						]);
+						getter = IR.new`(self) ${null}->${f.site} {${inner}}`;
 					}
 
 					map.set(key, getter);
@@ -34672,8 +36913,8 @@ class DataDefinition {
 			}
 		}
 
-		this.newToIR(ctx, path, map, constrIndex);
-		this.copyToIR(ctx, path, map, getterNames);
+		this.toIR_new(ctx, path, map, constrIndex);
+		this.toIR_copy(ctx, path, map, getterNames);
 	}
 }
 
@@ -34948,39 +37189,77 @@ class StructStatement extends Statement {
 	 * @param {IRDefinitions} map
 	 */
 	toIR(ctx, map) {
+		map.set(`${this.path}__test_data`, this.#dataDef.toIR_test_data());
+
 		if (this.#dataDef.hasTags()) {
-			map.set(`${this.path}____eq`, new IR("__helios__common____eq", this.site));
-			map.set(`${this.path}____neq`, new IR("__helios__common____neq", this.site));
-			map.set(`${this.path}__serialize`, new IR("__helios__common__serialize", this.site));
-			map.set(`${this.path}____to_data`, new IR("__helios__common__identity", this.site));
+			map.set(`${this.path}____eq`, IR.new`__helios__common____eq${this.site}`);
+			map.set(`${this.path}____neq`, IR.new`__helios__common____neq${this.site}`);
+			map.set(`${this.path}__serialize`, IR.new`__helios__common__serialize${this.site}`);
+			map.set(`${this.path}____to_data`, IR.new`__helios__common__identity${this.site}`);
 
 			if (config.CHECK_CASTS && !ctx.simplify) {
-				map.set(`${this.path}__from_data`, new IR([
-					new IR(`(data) -> {`),
-					this.#dataDef.fromDataFieldsCheckToIR(),
-					new IR(`(data)`),
-					new IR(`}`)
-				], this.site));
+				map.set(`${this.path}__from_data`, IR.new`(data) -> {
+					(ignore) -> {
+						data
+					}(
+						__core__ifThenElse(
+							${this.path}__test_data(data),
+							() -> {
+								()
+							},
+							() -> {
+								__core__trace("Warning: invalid ${this.name.toString()} data", ())
+							}
+						)()
+					)
+				}${this.site}`);
 			} else {
-				map.set(`${this.path}__from_data`, new IR("__helios__common__identity", this.site));
+				map.set(`${this.path}__from_data`, IR.new`__helios__common__identity${this.site}`);
 			}
-		} else {
-			const implPath = this.#dataDef.nFields == 1 ? this.#dataDef.getFieldType(0).path : "__helios__tuple";
 
-			map.set(`${this.path}____eq`, new IR(`${implPath}____eq`, this.site));
-			map.set(`${this.path}____neq`, new IR(`${implPath}____neq`, this.site));
-			map.set(`${this.path}__serialize`, new IR(`${implPath}__serialize`, this.site));
+			map.set(`${this.path}__from_data_safe`, IR.new`__helios__option__SOME_FUNC${this.site}`);
+		} else {
+			const implPath = this.#dataDef.nFields == 1 ? this.#dataDef.getFieldType(0).path : "__helios__struct";
+
+			map.set(`${this.path}____eq`, IR.new`${implPath}____eq${this.site}`);
+			map.set(`${this.path}____neq`, IR.new`${implPath}____neq${this.site}`);
+			map.set(`${this.path}__serialize`, IR.new`${implPath}__serialize${this.site}`);
 
 			// the from_data method can include field checks
 			if (this.#dataDef.fieldNames.length == 1 || (!(config.CHECK_CASTS && !ctx.simplify))) {
-				map.set(`${this.path}__from_data`, new IR(`${implPath}__from_data`, this.site));
+				map.set(`${this.path}__from_data`, IR.new`${implPath}__from_data${this.site}`);
 			} else {
-				map.set(`${this.path}__from_data`, new IR([
-					new IR(`(data) -> {`),
-					this.#dataDef.fromDataFieldsCheckToIR(),
-					new IR(`(__core__unListData(data))`),
-					new IR(`}`)
-				], this.site));
+				map.set(`${this.path}__from_data`, IR.new`(data) -> {
+					(ignore) -> {
+						__core__unListData(data)
+					}(
+						__core__ifThenElse(
+							${this.path}__test_data(data),
+							() -> {
+								()
+							},
+							() -> {
+								__core__trace("Warning: invalid ${this.name.toString()} data", ())
+							}
+						)()
+					)
+				}${this.site}`);
+			}
+			if (this.#dataDef.fieldNames.length == 1) {
+				map.set(`${this.path}__from_data_safe`, IR.new`${this.#dataDef.getFieldType(0).path}__from_data_safe${this.site}`);
+			} else {
+				map.set(`${this.path}__from_data_safe`, IR.new`(data) -> {
+					__core__chooseData(
+						data,
+						() -> {__helios__option__NONE_FUNC},
+						() -> {__helios__option__NONE_FUNC},
+						() -> {
+							__helios__option__SOME_FUNC(__core__unListData__safe(data))
+						},
+						() -> {__helios__option__NONE_FUNC},
+						() -> {__helios__option__NONE_FUNC}
+					)()
+				}`);
 			}
 
 			map.set(`${this.path}____to_data`, new IR(`${implPath}____to_data`, this.site));
@@ -34988,6 +37267,7 @@ class StructStatement extends Statement {
 
 		// super.toIR adds __new and copy, which might depend on __to_data, so must come after
 		this.#dataDef.toIR(ctx, this.path, map, -1);
+		map.set(`${this.path}__show`, this.#dataDef.toIR_show(this.name.value));
 
 		this.#impl.toIR(ctx, map);
 	}
@@ -35050,10 +37330,10 @@ class FuncStatement extends Statement {
 	}
 
 	/**
-	 * @type {Type[]}
+	 * @type {Type}
 	 */
-	get retTypes() {
-		return this.#funcExpr.retTypes;
+	get retType() {
+		return this.#funcExpr.retType;
 	}
 
 	/**
@@ -35409,32 +37689,98 @@ class EnumMember {
 	 * @param {IRDefinitions} map 
 	 */
 	toIR(ctx, map) {
-		map.set(`${this.path}____eq`, new IR("__helios__common____eq", this.#dataDef.site));
-		map.set(`${this.path}____neq`, new IR("__helios__common____neq", this.#dataDef.site));
-		map.set(`${this.path}__serialize`, new IR("__helios__common__serialize", this.#dataDef.site));
+		map.set(`${this.path}____eq`, IR.new`__helios__common____eq${this.#dataDef.site}`);
+		map.set(`${this.path}____neq`, IR.new`__helios__common____neq${this.#dataDef.site}`);
+		map.set(`${this.path}__serialize`, IR.new`__helios__common__serialize${this.#dataDef.site}`);
+
+		map.set(`${this.path}__test_data`, IR.new`(data) -> {
+			__core__chooseData(
+				data,
+				() -> {
+					(pair) -> {
+						__core__ifThenElse(
+							__core__equalsInteger(__core__fstPair(pair), ${this.#constrIndex}),
+							() -> {
+								${this.#dataDef.toIR_test_data()}(__core__listData(__core__sndPair(pair)))
+							},
+							() -> {
+								false
+							}
+						)()
+					}(__core__unConstrData__safe(data))
+				},
+				() -> {false},
+				() -> {false},
+				() -> {false},
+				() -> {false}
+			)()
+		}`);
 
 		if (config.CHECK_CASTS && !ctx.simplify) {
-			map.set(`${this.path}__from_data`, new IR([
-				new IR(`(data) -> {`),
-				new IR(`(pair) -> {`),
-				new IR(`__core__chooseUnit(`),
-				new IR(`__helios__assert(__core__equalsInteger(__core__fstPair(pair), ${this.constrIndex}), "unexpected constructor index"), `),
-				new IR(`__core__constrData(${this.constrIndex}, `),
-				this.#dataDef.fromDataFieldsCheckToIR(),
-				new IR(`(__core__sndPair(pair))))`),
-				new IR(`}(__core__unConstrData(data))`),
-				new IR(`}`)
-			]));
+			map.set(`${this.path}__from_data`, IR.new`(data) -> {
+				(ignore) -> {
+					data
+				}(
+					__core__ifThenElse(
+						${this.path}__test_data(data),
+						() -> {
+							()
+						},
+						() -> {
+							__core__trace("Warning: invalid ${this.name.toString()} data", ())
+						}
+					)()
+				)
+			}`);
 		} else {
 			map.set(`${this.path}__from_data`, new IR(`(data) -> {
 				__helios__common__assert_constr_index(data, ${this.constrIndex})
 			}`, this.#dataDef.site));
 		}
 
+		map.set(`${this.path}__from_data_safe`, IR.new`(data) -> {
+			__core__chooseData(
+				data,
+				() -> {
+					(index) -> {
+						__core__ifThenElse(
+							__core__equalsInteger(index, ${this.constrIndex}),
+							() -> {
+								__helios__option__SOME_FUNC(data)
+							},
+							() -> {
+								__helios__option__NONE_FUNC
+							}
+						)()
+					}(__core__fstPair(__core__unConstrData__safe(data)))
+				},
+				() -> {__helios__option__NONE_FUNC},
+				() -> {__helios__option__NONE_FUNC},
+				() -> {__helios__option__NONE_FUNC},
+				() -> {__helios__option__NONE_FUNC}
+			)()
+		}`);
+
 		map.set(`${this.path}____to_data`, new IR("__helios__common__identity", this.#dataDef.site));
 
 		// super.toIR adds __new and copy, which might depend on __to_data, so must come after
 		this.#dataDef.toIR(ctx, this.path, map, this.constrIndex);
+
+		const longName = (this.#parent?.name?.value ?? "") + "::" + this.name.value;
+		map.set(`${this.path}__show`, IR.new`(data) -> {
+			__core__chooseData(
+				data,
+				() -> {
+					(fields) -> {
+						${this.#dataDef.toIR_show(longName, true)}(fields)()
+					}(__core__sndPair(__core__unConstrData__safe(data)))
+				},
+				() -> {"${longName}{<n/a>}"},
+				() -> {"${longName}{<n/a>}"},
+				() -> {"${longName}{<n/a>}"},
+				() -> {"${longName}{<n/a>}"}
+			)
+		}`);
 	}
 }
 
@@ -35724,44 +38070,104 @@ class EnumStatement extends Statement {
 	}
 
 	/**
+	 * @returns {IR}
+	 */
+	toIR_test_data() {
+		let ir = IR.new`false`;
+
+		this.#members.forEach(m => {
+			ir = IR.new`__core__ifThenElse(
+				${m.path}__test_data(data),
+				() -> {
+					true
+				},
+				() -> {
+					${ir}
+				}
+			)()`;
+		});
+
+		return IR.new`(data) -> {
+			${ir}
+		}`;
+	}
+
+	/**
+	 * @internal
+	 * @returns {IR}
+	 */
+	toIR_show() {
+		const name = this.name.value;
+
+		const last = this.#members[this.#members.length-1];
+
+		let ir = IR.new`${last.path}__show(data)()`;
+
+		for (let i = this.#members.length - 2; i >= 0; i--) {
+			const m = this.#members[i];
+
+			ir = IR.new`__core__ifThenElse(
+				__core__equalsInteger(index, ${m.constrIndex}),
+				() -> {
+					${m.path}__show(data)()
+				},
+				() -> {
+					${ir}
+				}
+			)()`;
+		}
+
+		return IR.new`(data) -> {
+			__core__chooseData(
+				data,
+				() -> {
+					(index) -> {
+						${ir}
+					}(__core__fstPair(__core__unConstrData__safe(data)))
+				},
+				() -> {"${name}{<n/a>}"},
+				() -> {"${name}{<n/a>}"},
+				() -> {"${name}{<n/a>}"},
+				() -> {"${name}{<n/a>}"}
+			)
+		}`;
+	}
+
+	/**
 	 * @param {ToIRContext} ctx
 	 * @param {IRDefinitions} map 
 	 */
 	toIR(ctx, map) {
-		map.set(`${this.path}____eq`, new IR("__helios__common____eq", this.site));
-		map.set(`${this.path}____neq`, new IR("__helios__common____neq", this.site));
-		map.set(`${this.path}__serialize`, new IR("__helios__common__serialize", this.site));
-		map.set(`${this.path}____to_data`, new IR("__helios__common__identity", this.site));
+		map.set(`${this.path}____eq`, IR.new`__helios__common____eq${this.site}`);
+		map.set(`${this.path}____neq`, IR.new`__helios__common____neq${this.site}`);
+		map.set(`${this.path}__serialize`, IR.new`__helios__common__serialize${this.site}`);
+		map.set(`${this.path}____to_data`, IR.new`__helios__common__identity${this.site}`);
+
+		map.set(`${this.path}__test_data`, this.toIR_test_data());
+		map.set(`${this.path}__show`, this.toIR_show());
 
 		// there could be circular dependencies here, which is ok
 		if (config.CHECK_CASTS && !ctx.simplify) {
-			let ir = new IR(`__helios__error("invalid enum index for ${this.name}")`);
-
-			for (let i = this.nEnumMembers - 1; i >= 0; i--) {
-				const emPath = this.#members[i].path;
-				ir = new IR([
-					new IR(`__core__ifThenElse(`),
-					new IR(`__core__equalsInteger(index, ${i}), `),
-					new IR(`() -> {`),
-					new IR(`${emPath}__from_data(data)`),
-					new IR(`}, `),
-					new IR(`() -> {`),
-					ir,
-					new IR(`}`),
-					new IR(`)()`)
-				]);
-			}
-
-			map.set(`${this.path}__from_data`, new IR([
-				new IR(`(data) -> {`),
-				new IR(`(index) -> {`),
-				ir,
-				new IR(`}(__core__fstPair(__core__unConstrData(data)))`),
-				new IR(`}`, this.site)
-			]));
+			map.set(`${this.path}__from_data`, IR.new`(data) -> {
+				(ignore) -> {
+					data
+				}(
+					__core__ifThenElse(
+						${this.path}__test_data(data),
+						() -> {
+							()
+						},
+						() -> {
+							__core__trace("Warning: invalid ${this.name.toString()} data", ())
+						}
+					)()
+				)
+			}${this.site}`);
 		} else {
-			map.set(`${this.path}__from_data`, new IR("__helios__common__identity", this.site));
+			map.set(`${this.path}__from_data`, IR.new`__helios__common__identity${this.site}`);
 		}
+
+		map.set(`${this.path}__from_data_safe`, IR.new`__helios__option__SOME_FUNC${this.site}`);
 
 		// member __new and copy methods might depend on __to_data, so must be added after
 		for (let member of this.#members) {
@@ -35914,6 +38320,7 @@ const AUTOMATIC_METHODS = [
 	"__neq",
 	"copy",
 	"from_data",
+	"test_data",
 	"serialize"
 ];
 
@@ -36545,11 +38952,7 @@ function buildFuncLiteralExpr(ts, methodOf = null, allowInferredRetType = false)
 		site.syntaxError("no return type specified");
 	}
 
-	const retTypeExprs = buildFuncRetTypeExprs(arrow.site, ts.splice(0, bodyPos), allowInferredRetType);
-
-	if (retTypeExprs === null) {
-		return null;
-	}
+	const retTypeExpr = buildFuncRetTypeExpr(arrow.site, ts.splice(0, bodyPos), allowInferredRetType);
 
 	const bodyGroup = assertToken(ts.shift(), site)?.assertGroup("{", 1);
 
@@ -36563,7 +38966,7 @@ function buildFuncLiteralExpr(ts, methodOf = null, allowInferredRetType = false)
 		return null;
 	}
 
-	return new FuncLiteralExpr(arrow.site, args, retTypeExprs, bodyExpr);
+	return new FuncLiteralExpr(arrow.site, args, retTypeExpr, bodyExpr);
 }
 
 /**
@@ -37058,6 +39461,8 @@ function buildTypeExpr(site, ts) {
 		return buildParametricTypeExpr(site, ts);
 	} else if (ts.length == 1 && ts[0].isWord()) {
 		return buildTypeRefExpr(site, ts);
+	} else if (ts.length == 1 && ts[0].isGroup("(")) {
+		return buildTupleTypeExpr(ts[0]);
 	} else {
 		ts[0].syntaxError("invalid type syntax");
 		return null;
@@ -37303,19 +39708,13 @@ function buildFuncTypeExpr(site, ts) {
 		return null;
 	}
 
-	const maybeRetTypes = buildFuncRetTypeExprs(arrow.site, ts, false);
+	const retType = buildFuncRetTypeExpr(arrow.site, ts, false);
 
-	if (!maybeRetTypes) {
+	if (!retType) {
 		return null;
 	}
 
-	const retTypes = reduceNull(maybeRetTypes);
-
-	if (!retTypes) {
-		return null;
-	}
-
-	return new FuncTypeExpr(parens.site, argTypes, retTypes);
+	return new FuncTypeExpr(parens.site, argTypes, retType);
 }
 
 /**
@@ -37388,12 +39787,12 @@ function buildFuncArgTypeExpr(site, ts) {
  * @param {Site} site 
  * @param {Token[]} ts 
  * @param {boolean} allowInferredRetType
- * @returns {null | (null | Expr)[]}
+ * @returns {null | Expr}
  */
-function buildFuncRetTypeExprs(site, ts, allowInferredRetType = false) {
+function buildFuncRetTypeExpr(site, ts, allowInferredRetType = false) {
 	if (ts.length === 0) {
 		if (allowInferredRetType) {
-			return [null];
+			return null;
 		} else {
 			site.syntaxError("expected type expression after '->'");
 			return null;
@@ -37405,19 +39804,27 @@ function buildFuncRetTypeExprs(site, ts, allowInferredRetType = false) {
 			if (!group) {
 				return null;
 			} else if (group.fields.length == 0) {
-				return [new VoidTypeExpr(group.site)];
+				return new VoidTypeExpr(group.site);
 			} else if (group.fields.length == 1) {
 				group.syntaxError("expected 0 or 2 or more types in multi return type");
 				return null;
 			} else {
-				return group.fields.map(fts => {
+				const itemTypeExprs_ = group.fields.map(fts => {
 					fts = fts.slice();
 
 					return buildTypeExpr(group.site, fts);
 				});
+
+				const itemTypeExprs = reduceNull(itemTypeExprs_);
+
+				if (!itemTypeExprs) {
+					return null;
+				}
+
+				return new TupleTypeExpr(group.site, itemTypeExprs);
 			}
 		} else {
-			return [buildTypeExpr(site, ts)];
+			return buildTypeExpr(site, ts);
 		}
 	}
 }
@@ -37470,6 +39877,33 @@ function buildTypeRefExpr(site, ts) {
 	}
 
 	return new RefExpr(name);
+}
+
+/**
+ * @param {Token} t
+ * @returns {TupleTypeExpr | null}
+ */
+function buildTupleTypeExpr(t) {
+	const group = t.assertGroup("(");
+
+	if (!group) {
+		return null;
+	}
+
+	if (group.fields.length < 2) {
+		group.syntaxError("expected at least two items for tuple type");
+		return null;
+	}
+
+	const itemTypeExprs = reduceNull(group.fields.map(fts => {
+		return buildTypeExpr(group.site, fts);
+	}));
+
+	if (!itemTypeExprs) {
+		return null;
+	}
+
+	return new TupleTypeExpr(group.site, itemTypeExprs);
 }
 
 /**
@@ -37645,6 +40079,10 @@ function buildDestructExpr(site, ts, isSwitchCase = false) {
 		let name = new Word(maybeName.site, "_");
 
 		if (ts.length >= 1 && ts[0].isSymbol(":")) {
+			// name + ':' + type + optional braces
+			// or name + ':' + tuple-type
+			// or name + ':' + tuple-parens-destruct
+
 			let name_ = maybeName.assertWord()?.assertNotKeyword();
 
 			if (!name_) {
@@ -37662,22 +40100,41 @@ function buildDestructExpr(site, ts, isSwitchCase = false) {
 			if (ts.length == 0) {
 				colon.syntaxError("expected type expression after ':'");
 				return null;
-			} 
+			}
 
-			const destructExprs = buildDestructExprs(ts);
+			// the next group token might be a tuple type instead of a tuple destruct expression (if it doesn't contain a colon it is a type)
+			if (ts[0].isGroup("(") && !ts[0].assertGroup("(")?.fields.some(fs => fs.some(t => t.isSymbol(":")))) {
+				const typeExpr = buildTypeExpr(colon.site, ts);
+				return new DestructExpr(name, typeExpr);
+			}
 
-			if (destructExprs === null || destructExprs === undefined) {
+			const destructExprsIsTuple = buildDestructExprs(ts);
+
+			if (!destructExprsIsTuple) {
 				return null
 			}
 
-			const typeExpr = buildTypeExpr(colon.site, ts);
+			const [destructExprs, isTuple] = destructExprsIsTuple;
 
-			if (!typeExpr) {
-				return null;
+			/**
+			 * @type {Expr | null}
+			 */
+			let typeExpr = null;
+			
+			if (!isTuple) {
+				typeExpr = buildTypeExpr(colon.site, ts);
+
+				if (!typeExpr) {
+					return null;
+				}
+			} else if (ts.length > 0) {
+				ts[0].syntaxError("unexpected tokens");
 			}
 
-			return new DestructExpr(name, typeExpr, destructExprs);
+			return new DestructExpr(name, typeExpr, destructExprs, isTuple);
 		} else if (ts.length == 0) {
+			// only name in case of regular destruct (rhs of assign or nested in switch)
+
 			if (isSwitchCase) {
 				const typeName = maybeName.assertWord()?.assertNotKeyword();
 
@@ -37692,6 +40149,16 @@ function buildDestructExpr(site, ts, isSwitchCase = false) {
 				} 
 
 				return new DestructExpr(name, typeExpr);
+			} else if(maybeName.isGroup("(")) {
+				const destructExprsIsTuple = buildDestructExprs([maybeName]);
+
+				if (!destructExprsIsTuple) {
+					return null;
+				}
+
+				const [destructExprs, isTuple] = destructExprsIsTuple;
+
+				return new DestructExpr(new Word(maybeName.site, "_"), null, destructExprs, isTuple);
 			} else {
 				const name = maybeName.assertWord()?.assertNotKeyword();
 
@@ -37702,21 +40169,35 @@ function buildDestructExpr(site, ts, isSwitchCase = false) {
 				return new DestructExpr(name, null);
 			}
 		} else {
+			// type + braces or parenthesis
+
 			ts.unshift(maybeName);
 
-			const destructExprs = buildDestructExprs(ts);
+			const destructExprsIsTuple = buildDestructExprs(ts);
 
-			if (destructExprs === null || destructExprs === undefined) {
+			if (!destructExprsIsTuple) {
 				return null;
 			}
+
+			const [destructExprs, isTuple] = destructExprsIsTuple;
 	
-			const typeExpr = buildTypeExpr(site, ts);
+			/**
+			 * @type {Expr | null}
+			 */
+			let typeExpr = null;
 
-			if (!typeExpr) {
-				return null;
-			}
+			if (!isTuple) {
+				typeExpr = buildTypeExpr(site, ts);
 
-			return new DestructExpr(name, typeExpr, destructExprs);
+				if (!typeExpr) {
+					return null;
+				}
+			} else if (ts.length != 0) {
+				ts[0].syntaxError("unexpected tokens");
+			}		
+
+			// name is '_' (so ignored)
+			return new DestructExpr(name, typeExpr, destructExprs, isTuple);
 		}
 	}
 }
@@ -37724,11 +40205,11 @@ function buildDestructExpr(site, ts, isSwitchCase = false) {
 /**
  * Pops the last element of ts if it is a braces group
  * @param {Token[]} ts
- * @returns {null | DestructExpr[]}
+ * @returns {null | [DestructExpr[], boolean]}
  */
 function buildDestructExprs(ts) {
 	if (ts.length == 0) {
-		return [];
+		return [[], false];
 	} else if (ts[ts.length -1].isGroup("{")) {
 		const group = assertDefined(ts.pop()).assertGroup("{");
 
@@ -37745,9 +40226,38 @@ function buildDestructExprs(ts) {
 			return null;
 		}
 
-		return reduceNull(destructExprs);
+		const destructExprs_ = reduceNull(destructExprs);
+
+		if (!destructExprs_) {
+			return null;
+		}
+
+		return [destructExprs_, false];
+	} else if (ts[ts.length - 1].isGroup("(")) {
+		const group = assertDefined(ts.pop()).assertGroup("(");
+
+		if (!group) {
+			return null;
+		}
+
+		const destructExprs = group.fields.map(fts => {
+			return buildDestructExpr(group.site, fts);
+		});
+	
+		if (destructExprs.every(le => le !== null && le.isIgnored() && !le.hasDestructExprs())) {
+			group.syntaxError("expected at least one used field while destructuring a tuple");
+			return null;
+		}
+
+		const destructExprs_ = reduceNull(destructExprs);
+
+		if (!destructExprs_) {
+			return null;
+		}
+
+		return [destructExprs_, true];
 	} else {
-		return [];
+		return [[], false];
 	}	
 }
 
@@ -37755,19 +40265,14 @@ function buildDestructExprs(ts) {
  * @internal
  * @param {Site} site 
  * @param {Token[]} ts 
- * @returns {null | DestructExpr[]}
+ * @returns {null | DestructExpr}
  */
 function buildAssignLhs(site, ts) {
 	const maybeName = ts.shift();
 	if (maybeName === undefined) {
-		site.syntaxError("expected a name before '='");
+		site.syntaxError("expected a name or destruct expression before '='");
 		return null;
 	} else {
-		/**
-		 * @type {DestructExpr[]}
-		 */
-		const pairs = [];
-
 		if (maybeName.isWord()) {
 			ts.unshift(maybeName);
 
@@ -37780,8 +40285,13 @@ function buildAssignLhs(site, ts) {
 				return null;
 			}
 
-			pairs.push(lhs);
+			return lhs;
 		} else if (maybeName.isGroup("(")) {
+			/**
+			 * @type {DestructExpr[]}
+			 */
+			const inner = [];
+			
 			const group = maybeName.assertGroup("(");
 
 			if (!group) {
@@ -37813,25 +40323,25 @@ function buildAssignLhs(site, ts) {
 				}
 
 				// check that name is unique
-				pairs.forEach(p => {
+				inner.forEach(p => {
 					if (!lhs.isIgnored() && p.name.value === lhs.name.value) {
-						lhs.name.syntaxError(`duplicate name '${lhs.name.value}' in lhs of multi-assign`);
+						lhs.name.syntaxError(`duplicate name '${lhs.name.value}' in tuple destruct expr`);
 					}
 				});
 
-				pairs.push(lhs);
+				inner.push(lhs);
 			}
 
 			if (!someNoneUnderscore) {
 				group.syntaxError("expected at least one non-underscore in lhs of multi-assign");
 				return null;
 			}
+
+			return new DestructExpr(new Word(group.site, "_"), null, inner, true);
 		} else {
 			maybeName.syntaxError("unexpected syntax for lhs of =");
 			return null;
 		}
-
-		return pairs;
 	}
 }
 
@@ -39159,7 +41669,7 @@ class IRScope {
 	 * @returns {boolean}
 	 */
 	static isBuiltin(name, strict = false) {
-		if (name.startsWith("__core")) {
+		if (name.startsWith(BUILTIN_PREFIX)) {
 			if (strict) {
 				void this.findBuiltin(name); // assert that builtin exists
 			}
@@ -39176,34 +41686,11 @@ class IRScope {
 	 * @returns {number}
 	 */
 	static findBuiltin(name) {
-		let i = UPLC_BUILTINS.findIndex(info => { return "__core__" + info.name == name });
+		let i = UPLC_BUILTINS.findIndex(info => { return BUILTIN_PREFIX + info.name == name });
 		assert(i != -1, `${name} is not a real builtin`);
 		return i;
 	}
 }
-
-const ALWAYS_INLINEABLE = [
-	"__helios__int____to_data",
-	"__helios__common__identity",
-	"__helios__int____neg",
-	"__helios__common__fields",
-	"__helios__common__fields_after_0",
-	"__helios__common__field_0",
-	"__helios__common__field_1",
-	"__helios__bool__trace",
-	"__helios__bool__and",
-	"__helios__print",
-	"__helios__assert",
-	"__helios__error",
-	"__helios__assetclass__new",
-	"__helios__common__assert_constr_index",
-	"__helios__real__floor",
-	"__helios__real__ceil",
-	"__helios__real____div",
-	"__helios__real____mul",
-	"__helios__int__to_real",
-	"__helios__int____geq"
-];
 
 /**
  * IR class that represents function arguments
@@ -39227,6 +41714,9 @@ class IRVariable extends Token {
 		return this.#name.toString();
 	}
 
+	/**
+	 * @returns {string}
+	 */
 	toString() {
 		return this.name;
 	}
@@ -39242,190 +41732,6 @@ class IRVariable extends Token {
 
 		return newVar;
 	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	isAlwaysInlineable() {
-		return ALWAYS_INLINEABLE.findIndex((name_) => name_ == this.#name.value) != -1;
-	}
-}
-
-/**
- * @internal
- */
-class IRValue {
-	constructor() {
-	}
-
-	/**
-	 * @param {IRValue[]} args 
-	 * @returns {?IRValue}
-	 */
-	call(args) {
-		throw new Error("not a function");
-	}
-
-	/**
-	 * @type {null | UplcValue}
-	 */
-	get value() {
-		throw new Error("not a literal value");
-	}
-}
-
-/**
- * @internal
- */
-class IRFuncValue extends IRValue {
-	#callback;
-
-	/**
-	 * @param {(args: IRValue[]) => ?IRValue} callback
-	 */
-	constructor(callback) {
-		super();
-		this.#callback = callback;
-	}
-
-	/**
-	 * @param {IRValue[]} args 
-	 * @returns {?IRValue}
-	 */
-	call(args) {
-		return this.#callback(args);
-	}
-}
-
-/**
- * @internal
- */
-class IRLiteralValue extends IRValue {
-	#value;
-
-	/**
-	 * @param {UplcValue} value 
-	 */
-	constructor(value) {
-		super();
-		this.#value = value;
-	}
-
-	/**
-	 * @type {UplcValue}
-	 */
-	get value() {
-		return this.#value;
-	}
-}
-
-/**
- * @internal
- */
-class IRDeferredValue extends IRValue {
-    #deferred;
-
-    /**
-     * @type {undefined | null | IRValue}
-     */
-    #cache;
-
-    /**
-     * @param {() => ?IRValue} deferred
-     */
-    constructor(deferred) {
-        super();
-        this.#deferred = deferred;
-        this.#cache = undefined;
-    }
-    /**
-     * @param {IRValue[]} args 
-     * @returns {null | IRValue}
-     */
-    call(args) {
-        if (this.#cache === undefined) {
-            this.#cache = this.#deferred();
-        }
-        
-        if (this.#cache != null) {
-            return this.#cache.call(args);
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * @type {null | UplcValue}
-     */
-    get value() {
-        if (this.#cache === undefined) {
-            this.#cache = this.#deferred();
-        }
-        
-        if (this.#cache !== undefined) {
-            return this.#cache?.value ?? null;
-        } else {
-            throw new Error("not a value");
-        }
-    }
-
-}
-
-/**
- * @internal
- */
-class IRCallStack {
-	#throwRTErrors;
-	#parent;
-	#variable;
-	#value;
-
-	/**
-	 * @param {boolean} throwRTErrors
-	 * @param {?IRCallStack} parent 
-	 * @param {?IRVariable} variable 
-	 * @param {?IRValue} value 
-	 */
-	constructor(throwRTErrors, parent = null, variable = null, value = null) {
-		this.#throwRTErrors = throwRTErrors;
-		this.#parent = parent;
-		this.#variable = variable;
-		this.#value = value;
-	}
-
-	get throwRTErrors() {
-		return this.#throwRTErrors;
-	}
-
-	/**
-	 * @param {IRVariable} variable 
-	 * @returns {?IRValue}
-	 */
-	get(variable) {
-		if (this.#variable !== null && this.#variable === variable) {
-			return this.#value;
-		} else if (this.#parent !== null) {
-			return this.#parent.get(variable);
-		} else {
-			return new IRValue()
-		}
-	}
-
-	/**
-	 * @param {IRVariable} variable 
-	 * @param {IRValue} value 
-	 * @returns {IRCallStack}
-	 */
-	set(variable, value) {
-		return new IRCallStack(this.#throwRTErrors, this, variable, value);
-	}
-
-	/**
-	 * @returns {string[]}
-	 */
-	dump() {
-		return (this.#parent?.dump() ?? []).concat([this.#variable?.name ?? ""])
-	}
 }
 
 
@@ -39433,300 +41739,73 @@ class IRCallStack {
 // Section 28: IR AST objects
 /////////////////////////////
 
+
 /**
+ * The optimizer maps expressions to expected values, calling notifyCopy assures that that mapping isn't lost for copies (copying is necessary when inlining)
  * @internal
- * @typedef {Map<IRVariable, IRLiteralExpr>} IRLiteralRegistry
+ * @typedef {(oldExpr: IRExpr, newExpr: IRExpr) => void} NotifyCopy
  */
 
 /**
- * A map from variables to variable references
- * Scope-based
+ * Interface for:
+ *   * `IRErrorExpr`
+ *   * `IRCallExpr`
+ *   * `IRFuncExpr`
+ *   * `IRNameExpr`
+ *   * `IRLiteralExpr`
+ * 
+ * The `copy()` method is needed because inlining can't use the same IRNameExpr twice, 
+ *   so any inlineable expression is copied upon inlining to assure each nested IRNameExpr is unique.
+ *   This is important to do even the the inlined expression is only called once, because it might still be inlined into multiple other locations that are eliminated in the next iteration.
+ * 
+ * `flatSize` returns the number of bits occupied by the equivalent UplcTerm in the final serialized UPLC program
+ *   This is used to detect small IRFuncExprs and inline them
  * @internal
+ * @typedef {{
+ *   site: Site,
+ *   flatSize: number
+ *   resolveNames(scope: IRScope): void,
+ *   toString(indent?: string): string,
+ *   copy(notifyCopy: NotifyCopy, varMap: Map<IRVariable, IRVariable>): IRExpr,
+ *   toUplc(): UplcTerm
+ * }} IRExpr
  */
-class IRNameExprRegistry {
-	/**
-	 * @type {Map<IRVariable, Set<IRNameExpr>>}
-	 */
-	#map;
-
-	/**
-	 * @type {Set<IRVariable>}
-	 */
-	#maybeInsideLoop;
-
-	/**
-	 * Reset whenever recursion is detected.
-	 * @type {Set<IRVariable>}
-	 */
-	#variables;
-
-	/**
-	 * @param {Map<IRVariable, Set<IRNameExpr>>} map
-	 */
-	constructor(map = new Map(), maybeInsideLoop = new Set()) {
-		this.#map = map;
-		this.#maybeInsideLoop = maybeInsideLoop;
-		this.#variables = new Set();
-	}
-
-	/**
-	 * @param {IRNameExpr} nameExpr 
-	 */
-	register(nameExpr) {
-		if (!nameExpr.isCore()) {
-			const variable = nameExpr.variable;
-
-			const entry = this.#map.get(variable);
-
-			if (!entry) {
-				this.#map.set(variable, new Set([nameExpr]));
-			} else {
-				entry.add(nameExpr);
-			}
-
-			// add another reference in case of recursion
-			if (!this.#variables.has(variable)) {
-				// i.e. if the variable wasn't declared in the same non-recursive block, it might be referenced inside a recursive call
-				// variables that are added to the #maybeInsideLoop set can never be inlined 
-				this.#maybeInsideLoop.add(variable);
-			}
-		}
-	}
-
-	/**
-	 * Used to prevent inlining upon recursion
-	 * @param {IRVariable} variable
-	 */
-	registerVariable(variable) {
-		this.#variables.add(variable);
-	}
-
-	/**
-	 * @param {IRVariable} variable 
-	 * @returns {number}
-	 */
-	countReferences(variable) {
-		const set = this.#map.get(variable);
-
-		if (set == undefined) {
-			return 0;
-		} else {
-			return set.size;
-		}
-	}
-
-	/**
-	 * @param {IRVariable} variable 
-	 * @returns {boolean}
-	 */
-	maybeInsideLoop(variable) {
-		return this.#maybeInsideLoop.has(variable);
-	}
-
-	/**
-	 * Called whenever recursion is detected
-	 * @returns {IRNameExprRegistry}
-	 */
-	resetVariables() {
-		return new IRNameExprRegistry(this.#map, this.#maybeInsideLoop);
-	}
-}
-
-/**
- * @internal
- */
-class IRExprRegistry {
-	#nameExprs;
-
-	/**
-	 * @type {Map<IRVariable, IRExpr>}
-	 */
-	#inline;
-
-	/**
-	 * @param {IRNameExprRegistry} nameExprs 
-	 */
-	constructor(nameExprs) {
-		this.#nameExprs = nameExprs;
-		this.#inline = new Map();
-	}
-
-	/**
-	 * @param {IRVariable} variable 
-	 * @returns {number}
-	 */
-	countReferences(variable) {
-		return this.#nameExprs.countReferences(variable);
-	}
-
-	/**
-	 * @param {IRVariable} variable 
-	 * @returns {boolean}
-	 */
-	maybeInsideLoop(variable) {
-		return this.#nameExprs.maybeInsideLoop(variable);
-	}
-
-	/**
-	 * @param {IRVariable} variable
-	 * @returns {boolean}
-	 */
-	isInlineable(variable) {
-		return this.#inline.has(variable);
-	}
-
-	/**
-	 * @param {IRVariable} variable
-	 * @returns {IRExpr}
-	 */
-	getInlineable(variable) {
-		return assertDefined(this.#inline.get(variable), `${this.isInlineable(variable)} ????`).copy(new Map());
-	}
-
-	/**
-	 * @param {IRVariable} variable 
-	 * @param {IRExpr} expr 
-	 */
-	addInlineable(variable, expr) {
-		this.#inline.set(variable, assertDefined(expr));
-	}
-}
-
-/**
- * Base class of all Intermediate Representation expressions
- * @internal
- */
-class IRExpr extends Token {
-	/**
-	 * @param {Site} site 
-	 */
-	constructor(site) {
-		super(site);
-	}
-
-	/**
-	 * For pretty printing the IR
-	 * @param {string} indent 
-	 * @returns {string}
-	 */
-	toString(indent = "") {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * Link IRNameExprs to variables
-	 * @param {IRScope} scope 
-	 */
-	resolveNames(scope) {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * Turns all IRConstExpr instances into IRLiteralExpr instances
-	 * @param {IRCallStack} stack 
-	 * @returns {IRExpr}
-	 */
-	evalConstants(stack) {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * Evaluates an expression to something (hopefully) literal
-	 * Returns null if it the result would be worse than the current expression
-	 * Doesn't return an IRLiteral because the resulting expression might still be an improvement, even if it isn't a literal
-	 * @param {IRCallStack} stack
-	 * @returns {null | IRValue}
-	 */
-	eval(stack) {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * Used to inline literals and to evaluate IRCoreCallExpr instances with only literal args.
-	 * @param {IRLiteralRegistry} literals
-	 * @returns {IRExpr}
-	 */
-	simplifyLiterals(literals) {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * Used before simplifyTopology
-	 * @param {IRNameExprRegistry} nameExprs
-	 */
-	registerNameExprs(nameExprs) {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * Used during inlining/expansion to make sure multiple inlines of IRNameExpr don't interfere when setting the Debruijn index
-	 * @param {Map<IRVariable, IRVariable>} newVars
-	 * @returns {IRExpr}
-	 */
-	copy(newVars) {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * @param {IRExprRegistry} registry 
-	 * @returns {IRExpr}
-	 */
-	simplifyTopology(registry) {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * @param {IRVariable} fnVar
-	 * @param {number[]} remaining
-	 * @returns {IRExpr}
-	 */
-	simplifyUnusedRecursionArgs(fnVar, remaining) {
-		throw new Error("not yet implemented");
-	}
-
-	/**
-	 * @returns {UplcTerm}
-	 */
-	toUplc() {
-		throw new Error("not yet implemented");
-	}
-}
 
 /**
  * Intermediate Representation variable reference expression
  * @internal
+ * @implements {IRExpr}
  */
-class IRNameExpr extends IRExpr {
+class IRNameExpr {
+	/**
+	 * @readonly
+	 * @type {Site}
+	 */
+	site;
+
 	#name;
 
 	/**
-	 * @type {?number} - cached debruijn index 
+	 * @type {null | number} - cached debruijn index 
 	 */
 	#index;
 
 	/**
-	 * @type {?IRVariable} - cached variable
+	 * @type {null | IRVariable} - cached variable
 	 */
 	#variable;
 
 	/**
-	 * @type {?IRValue} - cached eval result (reused when eval is called within simplifyLiterals)
-	 */
-	#value;
-
-	/**
 	 * @param {Word} name 
-	 * @param {?IRVariable} variable
-	 * @param {?IRValue} value
+	 * @param {null | IRVariable} variable
 	 */
-	constructor(name, variable = null, value = null) {
-		super(name.site);
+	constructor(name, variable = null) {
+		this.site = name.site;
 		assert(name.toString() != "_");
 		assert(!name.toString().startsWith("undefined"));
 		this.#name = name;
 		this.#index = null;
 		this.#variable = variable;
-		this.#value = value;
 	}
 
 	/**
@@ -39749,13 +41828,59 @@ class IRNameExpr extends IRExpr {
 	}
 
 	/**
+	 * @type {number}
+	 */
+	get flatSize() {
+		if (this.isCore()) {
+			let nForce = 0;
+
+			let name = this.name;
+			if (!name.startsWith(MACRO_BUILTIN_PREFIX) && name.startsWith(BUILTIN_PREFIX)) {
+				if (name.endsWith(SAFE_BUILTIN_SUFFIX)) {
+					name = name.slice(0, name.length - SAFE_BUILTIN_SUFFIX.length);
+				}
+
+				nForce = UPLC_BUILTINS[IRScope.findBuiltin(name)].forceCount;
+			}
+
+			return 13 + 4*nForce; // 4 for header, 7 for builtin index, 4 per force
+		} else {
+			return 13; // 4 for term header, and assume DeBruijn index fits in 7 bits
+		}
+	}
+
+	/**
+	 * Used when inlining
+	 * @param {(oldExpr: IRExpr, newExpr: IRExpr) => void} notifyCopy
+	 * @param {Map<IRVariable, IRVariable>} varMap
+	 * @returns {IRNameExpr}
+	 */
+	copy(notifyCopy, varMap) {
+		const variable = (this.#variable ? (varMap.get(this.#variable) ?? this.#variable) : this.#variable);
+
+		const newExpr = new IRNameExpr(this.#name, variable);
+
+		notifyCopy(this, newExpr);
+
+		return newExpr;
+	}
+
+	/**
 	 * @internal
 	 * @returns {boolean}
 	 */
 	isCore() {
 		const name = this.name;
 
-		return name.startsWith("__core");
+		return name.startsWith(BUILTIN_PREFIX);
+	}
+
+	/**
+	 * @internal
+	 * @returns {boolean}
+	 */
+	isParam() {
+		return this.name.startsWith("__PARAM")
 	}
 
 	/**
@@ -39782,8 +41907,8 @@ class IRNameExpr extends IRExpr {
 	 * @param {IRScope} scope
 	 */
 	resolveNames(scope) {
-		if (!this.name.startsWith("__core")) {
-			if (this.#variable == null || this.name.startsWith("__PARAM")) {
+		if (!this.isCore()) {
+			if (this.#variable == null || this.isParam()) {
 				[this.#index, this.#variable] = scope.get(this.#name);
 			} else {
 				[this.#index, this.#variable] = scope.get(this.#variable);
@@ -39792,115 +41917,11 @@ class IRNameExpr extends IRExpr {
 	}
 
 	/**
-	 * @param {IRCallStack} stack 
-	 * @returns {IRExpr}
-	 */
-	evalConstants(stack) {
-		if (this.#variable != null) {
-			this.#value = stack.get(this.#variable);
-		}
-
-		return this;
-	}
-
-	/**
-	 * @param {IRCallStack} stack
-	 * @returns {?IRValue}
-	 */
-	eval(stack) {
-		if (this.isCore()) {
-			return new IRFuncValue((args) => {
-				return IRCoreCallExpr.evalValues(this.site, stack.throwRTErrors, this.#name.value.slice("__core__".length), args);
-			});
-		} else if (this.#variable === null) {
-			throw new Error("variable should be set");
-		} else {
-			// prefer result from stack, and use cached result as backup
-			const result = stack.get(this.#variable);
-
-			if (result == null) {
-				return this.#value;
-			} else {
-				return result;
-			}
-		}
-	}
-
-	/**
-	 * @param {IRVariable} fnVar 
-	 * @param {number[]} remaining 
-	 * @returns {IRExpr}
-	 */
-	removeUnusedCallArgs(fnVar, remaining) {
-		return this;
-	}
-	
-	/**
-	 * @param {IRLiteralRegistry} literals
-	 * @returns {IRExpr}
-	 */
-	simplifyLiterals(literals) {
-		if (this.#variable !== null && literals.has(this.#variable)) {
-			return assertDefined(literals.get(this.#variable));
-		} else if (this.#value instanceof IRLiteralExpr) {
-			return this.#value;
-		} else {
-			return this;
-		}
-	}
-
-	/**
-	 * @param {IRNameExprRegistry} nameExprs
-	 */
-	registerNameExprs(nameExprs) {
-		nameExprs.register(this);
-	}
-
-	/**
-	 * @param {Map<IRVariable, IRVariable>} newVars
-	 * @returns {IRExpr}
-	 */
-	copy(newVars) {
-		let v = this.#variable;
-
-		if (v != null) {
-			const maybeNewVar = newVars.get(v);
-
-			if (maybeNewVar != undefined) {
-				v = maybeNewVar;
-			}
-		}
-
-		return new IRNameExpr(this.#name, v, this.#value);
-	}
-
-	/**
-	 * @param {IRExprRegistry} registry 
-	 * @returns {IRExpr}
-	 */
-	simplifyTopology(registry) {
-		if (!this.isCore() && registry.isInlineable(this.variable)) {
-			return registry.getInlineable(this.variable);
-		} else {
-			return this;
-		}
-	}
-
-	/**
-	 * @param {IRVariable} fnVar 
-	 * @param {number[]} remaining 
-	 * @returns {IRExpr}
-	 */
-	simplifyUnusedRecursionArgs(fnVar, remaining) {
-		return this;
-	}
-
-	/**
 	 * @returns {UplcTerm}
 	 */
 	toUplc() {
-		if (this.name.startsWith("__core")) {
-			return IRCoreCallExpr.newUplcBuiltin(this.site, this.name);
+		if (this.isCore()) {
+			return IRCallExpr.newUplcBuiltin(this.site, this.name);
 		} else if (this.#index === null) {
 			// use a dummy index (for size calculation)
 			return new UplcVariable(
@@ -39919,8 +41940,15 @@ class IRNameExpr extends IRExpr {
 /**
  * IR wrapper for UplcValues, representing literals
  * @internal
+ * @implements {IRExpr}
  */
-class IRLiteralExpr extends IRExpr {
+class IRLiteralExpr {
+	/**
+	 * @readonly
+	 * @type {Site}
+	 */
+	site;
+
 	/**
 	 * @type {UplcValue}
 	 */
@@ -39930,7 +41958,7 @@ class IRLiteralExpr extends IRExpr {
 	 * @param {UplcValue} value 
 	 */
 	constructor(value) {
-		super(value.site);
+		this.site = value.site;
 
 		this.#value = value;
 	}
@@ -39943,6 +41971,13 @@ class IRLiteralExpr extends IRExpr {
 	}
 
 	/**
+	 * @type {number}
+	 */
+	get flatSize() {
+		return (new UplcConst(this.#value)).flatSize;
+	}
+
+	/**
 	 * @param {string} indent 
 	 * @returns {string}
 	 */
@@ -39951,73 +41986,19 @@ class IRLiteralExpr extends IRExpr {
 	}
 
 	/**
+	 * @param {NotifyCopy} notifyCopy
+	 * @param {Map<IRVariable, IRVariable>} varMap
+	 * @returns {IRExpr}
+	 */
+	copy(notifyCopy, varMap) {
+		return this;
+	}
+
+	/**
 	 * Linking doesn't do anything for literals
 	 * @param {IRScope} scope 
 	 */
 	resolveNames(scope) {
-	}
-
-	/**
-	 * @param {IRCallStack} stack
-	 */
-	evalConstants(stack) {
-		return this;
-	}
-
-	/**
-	 * @param {IRCallStack} stack
-	 * @returns {?IRValue}
-	 */
-	eval(stack) {
-		return new IRLiteralValue(this.value);
-	}
-
-	/**
-	 * @param {IRVariable} fnVar 
-	 * @param {number[]} remaining 
-	 * @returns {IRExpr}
-	 */
-	removeUnusedCallArgs(fnVar, remaining) {
-		return this;
-	}
-
-	/**
-	 * @param {IRLiteralRegistry} literals
-	 * @returns {IRExpr}
-	 */
-	simplifyLiterals(literals) {
-		return this;
-	}
-
-	/**
-	 * @param {IRNameExprRegistry} nameExprs
-	 */
-	registerNameExprs(nameExprs) {
-	}
-
-	/**
-	 * @param {Map<IRVariable, IRVariable>} newVars
-	 * @returns {IRExpr}
-	 */
-	copy(newVars) {
-		return new IRLiteralExpr(this.#value);
-	}
-
-	/**
-	 * @param {IRExprRegistry} registry 
-	 * @returns {IRExpr}
-	 */
-	simplifyTopology(registry) {
-		return this;
-	}
-
-	/**
-	 * @param {IRVariable} fnVar 
-	 * @param {number[]} remaining 
-	 * @returns {IRExpr}
-	 */
-	simplifyUnusedRecursionArgs(fnVar, remaining) {
-		return this;
 	}
 
 	/**
@@ -40029,117 +42010,71 @@ class IRLiteralExpr extends IRExpr {
 }
 
 /**
- * The IRExpr simplify methods aren't implemented because any IRConstExpr instances should've been eliminated during evalConstants.
- * @internal
- */
-class IRConstExpr extends IRExpr {
-	#expr;
-
-	/**
-	 * @param {Site} site 
-	 * @param {IRExpr} expr 
-	 */
-	constructor(site, expr) {
-		super(site);
-		this.#expr = expr;
-	}
-
-	/**
-	 * @param {string} indent 
-	 * @returns {string}
-	 */
-	toString(indent = "") {
-		return `const(${this.#expr.toString(indent)})`;
-	}
-
-	/**
-	 * @param {IRNameExprRegistry} nameExprs
-	 */
-	registerNameExprs(nameExprs) {
-		this.#expr.registerNameExprs(nameExprs);
-	}
-
-	/**
-	 * @param {IRScope} scope 
-	 */
-	resolveNames(scope) {
-		this.#expr.resolveNames(scope);
-	}
-
-	/**
-	 * @param {IRCallStack} stack
-	 * @returns {IRExpr}
-	 */
-	evalConstants(stack) {
-		const result = this.#expr.eval(stack);
-
-		if (result != null && result.value != null) {
-			return new IRLiteralExpr(result.value);
-		} else {
-			if (!config.IGNORE_UNEVALUATED_CONSTANTS) {
-				console.error("failed to evaluate:", this.toString());
-			}
-			
-			return this.#expr;
-		}
-	}
-
-	/**
-	 * @param {IRCallStack} stack 
-	 * @returns {?IRValue}
-	 */
-	eval(stack) {
-		return this.#expr.eval(stack);
-	}
-
-	/**
-	 * @param {IRVariable} fnVar 
-	 * @param {number[]} remaining 
-	 */
-	simplifyUnusedRecursionArgs(fnVar, remaining) {
-		return new IRConstExpr(this.site, this.#expr.simplifyUnusedRecursionArgs(fnVar, remaining));
-	}
-}
-
-/**
  * IR function expression with some args, that act as the header, and a body expression
  * @internal
+ * @implements {IRExpr}
  */
-class IRFuncExpr extends IRExpr {
-	#args;
-	#body;
+class IRFuncExpr {
+	/**
+	 * @readonly
+	 * @type {Site}
+	 */
+	site;
+
+	/**
+	 * Mutation is more convenient and much faster when applying some optimizations.
+	 * @readwrite
+	 * @type {IRVariable[]}
+	 */
+	args;
+
+	/**
+	 * Mutation is more convenient and much faster when applying some optimizations.
+	 * @readwrite
+	 * @type {IRExpr}
+	 */
+	body;
+
+	/**
+	 * A unique tag, that distinguishes each IRFuncExpr from each other IRFuncExpr (used for hashing)
+	 * @readonly
+	 * @type {number}
+	 */
+	tag;
 
 	/**
 	 * @param {Site} site 
 	 * @param {IRVariable[]} args 
 	 * @param {IRExpr} body 
+	 * @param {number} tag
 	 */
-	constructor(site, args, body) {
-		super(site);
-		this.#args = args;
-		this.#body = assertDefined(body);
+	constructor(site, args, body, tag) {
+		this.site = site;
+		this.args = args;
+		this.body = assertDefined(body);
+		this.tag = tag;
 	}
 
-	get args() {
-		return this.#args.slice();
-	}
-
-	get body() {
-		return this.#body;
+	/**
+	 * @type {number}
+	 */
+	get flatSize() {
+		const nArgs = this.args.length;
+		return 4 + (nArgs > 0 ? (nArgs - 1)*4 : 0) + this.body.flatSize;
 	}
 
 	/**
 	 * @returns {boolean}
 	 */
 	hasOptArgs() {
-		const b = this.#args.some(a => a.name.startsWith("__useopt__"));
+		const b = this.args.some(a => a.name.startsWith("__useopt__"));
 
 		if (b) {
 			return b;
 		}
 
-		if (this.#body instanceof IRFuncExpr) {
-			return this.#body.hasOptArgs();
+		if (this.body instanceof IRFuncExpr) {
+			return this.body.hasOptArgs();
 		} else {
 			return false;
 		}
@@ -40150,10 +42085,10 @@ class IRFuncExpr extends IRExpr {
 	 * @returns {string}
 	 */
 	toString(indent = "") {
-		let innerIndent = (this.#body instanceof IRUserCallExpr && this.#body.argExprs.length == 1 && this.#body.fnExpr instanceof IRFuncExpr && this.#body.fnExpr.args[0].name.startsWith("__")) ? indent : indent + TAB;
+		let innerIndent = (this.body instanceof IRCallExpr && this.body.func instanceof IRFuncExpr && this.body.args.length == 1 && this.body.func instanceof IRFuncExpr && this.body.func.args[0].name.startsWith("__")) ? indent : indent + TAB;
 
-		let s = "(" + this.#args.map(n => n.toString()).join(", ") + ") -> {\n" + innerIndent;
-		s += this.#body.toString(innerIndent);
+		let s = "(" + this.args.map(n => n.toString()).join(", ") + ") -> {\n" + innerIndent;
+		s += this.body.toString(innerIndent);
 		s += "\n" + indent + "}";
 
 		return s;
@@ -40165,92 +42100,39 @@ class IRFuncExpr extends IRExpr {
 	resolveNames(scope) {
 		// in the zero-arg case no Debruijn indices need to be added because we use Delay/Force
 
-		for (let arg of this.#args) {
+		for (let arg of this.args) {
 			scope = new IRScope(scope, arg);
 		}
 
-		this.#body.resolveNames(scope);
+		this.body.resolveNames(scope);
 	}
 
 	/**
-	 * @param {IRCallStack} stack 
-	 */
-	evalConstants(stack) {
-		return new IRFuncExpr(this.site, this.args, this.#body.evalConstants(stack));
-	}
-
-	/**
-	 * @param {IRCallStack} stack
-	 * @returns {?IRValue}
-	 */
-	eval(stack) {
-		return new IRFuncValue((args) => {
-			if (args.length != this.#args.length) {
-				throw this.site.syntaxError(`expected ${this.#args.length} arg(s), got ${args.length} arg(s)`);
-			}
-
-			for (let i = 0; i < args.length; i++) {
-				stack = stack.set(this.#args[i], args[i]);
-			}
-
-			return this.#body.eval(stack);
-		});
-	}
-	
-	/**
-	 * @param {IRNameExprRegistry} nameExprs
-	 */
-	registerNameExprs(nameExprs) {
-		this.#args.forEach(a => nameExprs.registerVariable(a));
-
-		this.#body.registerNameExprs(nameExprs);
-	}
-
-	/**
-	 * @param {IRVariable} fnVar 
-	 * @param {number[]} remaining
-	 * @returns {IRExpr} 
-	 */
-	simplifyUnusedRecursionArgs(fnVar, remaining) {
-		return new IRFuncExpr(this.site, this.args, this.#body.simplifyUnusedRecursionArgs(fnVar, remaining));
-	}
-
-	/**
-	 * @param {IRLiteralRegistry} literals 
+	 * @param {NotifyCopy} notifyCopy
+	 * @param {Map<IRVariable, IRVariable>} varMap
 	 * @returns {IRExpr}
 	 */
-	simplifyLiterals(literals) {
-		return new IRFuncExpr(this.site, this.args, this.#body.simplifyLiterals(literals));
-	}
+	copy(notifyCopy, varMap) {
+		const args = this.args.map(a => a.copy(varMap));
+		const newExpr = new IRFuncExpr(this.site, args, this.body.copy(notifyCopy, varMap), this.tag);
 
-	/**
-	 * @param {Map<IRVariable, IRVariable>} newVars
-	 * @returns {IRExpr}
-	 */
-	copy(newVars) {
-		return new IRFuncExpr(this.site, this.args.map(oldArg => oldArg.copy(newVars)), this.#body.copy(newVars));
-	}
+		notifyCopy(this, newExpr);
 
-	/**
-	 * @param {IRExprRegistry} registry 
-	 * @returns {IRExpr}
-	 */
-	simplifyTopology(registry) {
-		return new IRFuncExpr(this.site, this.args, this.#body.simplifyTopology(registry));
+		return newExpr;
 	}
 
 	/** 
 	 * @returns {UplcTerm}
 	 */
 	toUplc() {
-		let term = this.#body.toUplc();
+		let term = this.body.toUplc();
 
-		if (this.#args.length == 0) {
+		if (this.args.length == 0) {
 			// a zero-arg func is turned into a UplcDelay term
 			term = new UplcDelay(this.site, term);
 		} else {
-			for (let i = this.#args.length - 1; i >= 0; i--) {
-				term = new UplcLambda(this.site, term, this.#args[i].toString());
+			for (let i = this.args.length - 1; i >= 0; i--) {
+				term = new UplcLambda(this.site, term, this.args[i].toString());
 			}
 		}
 
@@ -40261,28 +42143,71 @@ class IRFuncExpr extends IRExpr {
 /**
  * Base class of IRUserCallExpr and IRCoreCallExpr
  * @internal
+ * @implements {IRExpr}
  */
-class IRCallExpr extends IRExpr {
-	#argExprs;
-	#parensSite;
+class IRCallExpr {
+	/**
+	 * @readonly
+	 * @type {Site}
+	 */
+	site;
+
+	/**
+	 * Mutation is more convenient and much faster when applying some optimizations.
+	 * @readwrite
+	 * @type {IRExpr}
+	 */
+	func;
+
+	/**
+	 * Mutation is more convenient and much faster when applying some optimizations.
+	 * @readwrite
+	 * @type {IRExpr[]}
+	 */
+	args;
 
 	/**
 	 * @param {Site} site
-	 * @param {IRExpr[]} argExprs 
-	 * @param {Site} parensSite 
+	 * @param {IRExpr} func
+	 * @param {IRExpr[]} args
 	 */
-	constructor(site, argExprs, parensSite) {
-		super(parensSite);
-		this.#argExprs = assertDefined(argExprs);
-		this.#parensSite = parensSite;
+	constructor(site, func, args) {
+		this.site = site;
+		this.func = func;
+		this.args = args;
 	}
 
-	get argExprs() {
-		return this.#argExprs.slice();
+	/**
+	 * @returns {boolean}
+	 */
+	isSafeBuiltin() {
+		if (this.func instanceof IRNameExpr && this.func.isCore()) {
+			return this.func.name.endsWith(SAFE_BUILTIN_SUFFIX);
+		} else {
+			return false;
+		}
 	}
 
-	get parensSite() {
-		return this.#parensSite;
+	/**
+	 * Returns an empty string this isn't a builtin
+	 * @type {string}
+	 */
+	get builtinName() {
+		if (this.func instanceof IRNameExpr && this.func.isCore()) {
+			let name = this.func.name.toString().slice(BUILTIN_PREFIX.length);
+
+			if (name.endsWith(SAFE_BUILTIN_SUFFIX)) {
+				name = name.slice(0, name.length - SAFE_BUILTIN_SUFFIX.length);
+			}
+
+			return name;
+		} else {
+			return "";
+		}
+	}
+
+	get flatSize() {
+		return 4 + this.args.reduce((prev, arg) => arg.flatSize + prev, 0) + this.func.flatSize;
 	}
 
 	/**
@@ -40290,121 +42215,7 @@ class IRCallExpr extends IRExpr {
 	 * @returns {string}
 	 */
 	argsToString(indent = "") {
-		return this.#argExprs.map(argExpr => argExpr.toString(indent)).join(", ")
-	}
-
-	/**
-	 * @param {IRScope} scope 
-	 */
-	resolveNamesInArgs(scope) {
-		for (let argExpr of this.#argExprs) {
-			argExpr.resolveNames(scope);
-		}
-	}
-
-	/**
-	 * @param {IRCallStack} stack 
-	 * @returns {IRExpr[]}
-	 */
-	evalConstantsInArgs(stack) {
-		return this.#argExprs.map(a => a.evalConstants(stack));
-	}
-
-	/** 
-	 * @param {IRCallStack} stack
-	 * @returns {?IRValue[]} 
-	 */
-	evalArgs(stack) {
-		/**
-		 * @type {IRValue[]}
-		 */
-		let args = [];
-
-		for (let argExpr of this.argExprs) {
-			let argVal = argExpr.eval(stack);
-			if (argVal !== null) {
-				args.push(argVal);
-			} else {
-				return null;
-			}
-		}
-
-		return args;
-	}
-
-	/**
-	 * @param {IRLiteralRegistry} literals
-	 * @returns {IRExpr[]}
-	 */
-	simplifyLiteralsInArgs(literals) {
-		return this.#argExprs.map(a => a.simplifyLiterals(literals));
-	}
-
-	/**
-	 * @param {IRNameExprRegistry} nameExprs 
-	 */
-	registerNameExprsInArgs(nameExprs) {
-		this.#argExprs.forEach(a => a.registerNameExprs(nameExprs));
-	}
-
-	/**
-	 * @param {IRExprRegistry} registry 
-	 * @returns {IRExpr[]}
-	 */
-	simplifyTopologyInArgs(registry) {
-		return this.#argExprs.map(a => assertDefined(a.simplifyTopology(registry)));
-	}
-
-	/**
-	 * @param {UplcTerm} term
-	 * @returns {UplcTerm}
-	 */
-	toUplcCall(term) {
-		if (this.#argExprs.length == 0) {
-			// assuming underlying zero-arg function has been converted into a UplcDelay term
-			term = new UplcForce(this.site, term);
-		} else {
-			for (let argExpr of this.#argExprs) {
-				
-				term = new UplcCall(this.site, term, argExpr.toUplc());
-			}
-		}
-
-		return term;
-	}
-}
-
-/**
- * IR function call of core functions
- * @internal
- */
-class IRCoreCallExpr extends IRCallExpr {
-	#name;
-
-	/**
-	 * @param {Word} name 
-	 * @param {IRExpr[]} argExprs 
-	 * @param {Site} parensSite 
-	 */
-	constructor(name, argExprs, parensSite) {
-		super(name.site, argExprs, parensSite);
-		assert(name.value !== "" && name.value !== "error");
-		this.#name = name;
-
-		assert(this.builtinName !== "", name.value);
-	}
-
-	get builtinName() {
-		return this.#name.toString().slice(8);
-	}
-
-	/**
-	 * @returns {boolean}
-	 */
-	isCast() {
-		let name = this.builtinName;
-
-		return name == "iData" || name == "bData" || name == "unIData" || name == "unBData" || name == "mapData" || name == "unMapData" || name == "listData" || name == "unListData";
+		return this.args.map(argExpr => argExpr.toString(indent)).join(", ")
 	}
 
 	/**
@@ -40413,9 +42224,22 @@ class IRCoreCallExpr extends IRCallExpr {
 	 */
 	toString(indent = "") {
 		if (this.builtinName == "ifThenElse") {
-			return `${this.#name.toString()}(\n${indent}${TAB}${this.argExprs[0].toString(indent + TAB)},\n${indent}${TAB}${this.argExprs[1].toString(indent + TAB)},\n${indent}${TAB}${this.argExprs[2].toString(indent+TAB)}\n${indent})`;
+			return `${BUILTIN_PREFIX}${this.builtinName}(\n${indent}${TAB}${this.args[0].toString(indent + TAB)},\n${indent}${TAB}${this.args[1].toString(indent + TAB)},\n${indent}${TAB}${this.args[2].toString(indent+TAB)}\n${indent})`;
+		} else if (this.builtinName != "") {
+			return `${BUILTIN_PREFIX}${this.builtinName}(${this.argsToString(indent)})`;
 		} else {
-			return `${this.#name.toString()}(${this.argsToString(indent)})`;
+			let comment = (this.func instanceof IRFuncExpr && this.func.args.length == 1 && this.func.args[0].name.startsWith("__")) ? `/*${this.func.args[0].name}*/` : "";
+
+			return `${this.func.toString(indent)}(${comment}${this.argsToString(indent)})`;
+		}
+	}
+
+	/**
+	 * @param {IRScope} scope 
+	 */
+	resolveNamesInArgs(scope) {
+		for (let argExpr of this.args) {
+			argExpr.resolveNames(scope);
 		}
 	}
 
@@ -40423,396 +42247,43 @@ class IRCoreCallExpr extends IRCallExpr {
 	 * @param {IRScope} scope 
 	 */
 	resolveNames(scope) {
-		this.resolveNamesInArgs(scope);
-	}
-
-	/**
-	 * @param {Site} site
-	 * @param {boolean} throwRTErrors
-	 * @param {string} builtinName
-	 * @param {IRValue[]} args 
-	 * @returns {?IRValue}
-	 */
-	static evalValues(site, throwRTErrors, builtinName, args) {
-		if (builtinName == "ifThenElse") {
-			let cond = args[0].value;
-			if (cond !== null && cond instanceof UplcBool) {
-				if (cond.bool) {
-					return args[1];
-				} else {
-					return args[2];
-				}
-			} else {
-				return null;
-			}
-		} else if (builtinName == "chooseList") {
-			const lst = args[0].value;
-
-			if (lst !== null && lst instanceof UplcList) {
-				if (lst.length == 0) {
-					return args[1];
-				} else {
-					return args[2];
-				}
-			} else {
-				return null;
-			}
-		} else if (builtinName == "chooseUnit") {
-			return args[1];
-		} else if (builtinName == "trace") {
-			return args[1];
+		if (this.func instanceof IRNameExpr && this.func.isCore()) {
+			this.resolveNamesInArgs(scope);
 		} else {
-			try {
-				/**
-				 * @type {UplcValue[]}
-				 */
-				let argValues = [];
-
-				for (let arg of args) {
-					if (arg.value !== null) {
-						argValues.push(arg.value);
-					} else {
-						return null;
-					}
-				}
-			
-				let result = UplcBuiltin.evalStatic(new Word(Site.dummy(), builtinName), argValues);
-
-				return new IRLiteralValue(result);
-			} catch(e) {
-				// runtime errors like division by zero are allowed if throwRTErrors is false
-				if (e instanceof RuntimeError) {
-					if (!throwRTErrors) {
-						return null;
-					} else {
-						throw e;
-					}
-				} else {
-					throw e;
-				}
-			}
+			this.func.resolveNames(scope);
+			this.resolveNamesInArgs(scope);
 		}
 	}
 
 	/**
-	 * @param {IRCallStack} stack 
+	 * @param {NotifyCopy} notifyCopy
+	 * @param {Map<IRVariable, IRVariable>} varMap
 	 * @returns {IRExpr}
 	 */
-	evalConstants(stack) {
-		return new IRCoreCallExpr(this.#name, this.evalConstantsInArgs(stack), this.parensSite);
-	}
-	
-	/**
-	 * @param {IRCallStack} stack
-	 * @returns {null | IRValue}
-	 */
-	eval(stack) {
-		let args = this.evalArgs(stack);
+	copy(notifyCopy, varMap) {
+		const newExpr = new IRCallExpr(this.site, this.func.copy(notifyCopy, varMap), this.args.map(a => a.copy(notifyCopy, varMap)));
 
-		if (args !== null) {
-			return IRCoreCallExpr.evalValues(this.site, stack.throwRTErrors, this.builtinName, args);
-		}
-		
-		return null;
+		notifyCopy(this, newExpr);
+
+		return newExpr;
 	}
 
 	/**
-	 * @param {IRVariable} fnVar 
-	 * @param {number[]} remaining 
+	 * @param {UplcTerm} term
+	 * @returns {UplcTerm}
 	 */
-	simplifyUnusedRecursionArgs(fnVar, remaining) {
-		const argExprs = this.argExprs.map(ae => ae.simplifyUnusedRecursionArgs(fnVar, remaining));
-
-		return new IRCoreCallExpr(this.#name, argExprs, this.parensSite);
-	}
-
-	/**
-	 * @param {IRLiteralRegistry} literals
-	 * @returns {IRExpr}
-	 */
-	simplifyLiterals(literals) {
-		const args = this.simplifyLiteralsInArgs(literals);
-
-		if (args.length > 0 && args.every(a => a instanceof IRLiteralExpr)) {
-			try {
-				const res = IRCoreCallExpr.evalValues(
-					this.site,
-					false,
-					this.builtinName,
-					args.map(a => new IRLiteralValue(assertClass(a, IRLiteralExpr).value))
-				);
-
-				if (res != null && res.value != null) {
-					return new IRLiteralExpr(res.value);
-				}
-			} catch (e) {
-			}
-		}
-
-		switch(this.builtinName) {
-			case "addInteger": {
-					// check if first or second arg evaluates to 0
-					const [a, b] = args;
-
-					if (a instanceof IRLiteralExpr && a.value instanceof UplcInt && a.value.int == 0n) {
-						return b;
-					} else if (b instanceof IRLiteralExpr && b.value instanceof UplcInt && b.value.int == 0n) {
-						return a;
-					}
-				}
-				break;
-			case "appendByteString": {
-					// check if either 1st or 2nd arg is the empty bytearray
-					const [a, b] = args;
-					if (a instanceof IRLiteralExpr && a.value instanceof UplcByteArray && a.value.bytes.length == 0) {
-						return b;
-					} else if (b instanceof IRLiteralExpr && b.value instanceof UplcByteArray && b.value.bytes.length == 0) {
-						return a;
-					}
-				}
-				break;
-			case "appendString": {
-					// check if either 1st or 2nd arg is the empty string
-					const [a, b] = args;
-					if (a instanceof IRLiteralExpr && a.value instanceof UplcString && a.value.string.length == 0) {
-						return b;
-					} else if (b instanceof IRLiteralExpr && b.value instanceof UplcString && b.value.string.length == 0) {
-						return a;
-					}
-				}
-				break;
-			case "divideInteger": {
-					// check if second arg is 1
-					const [a, b] = args;
-					if (b instanceof IRLiteralExpr && b.value instanceof UplcInt) {
-						if (b.value.int == 1n) {
-							return a;
-						} else if (b.value.int == 0n) {
-							return new IRCoreCallExpr(this.#name, args, this.parensSite);
-						}
-					}
-				}
-				break;
-			case "ifThenElse": {
-					const [cond, a, b] = args;
-
-					if (cond instanceof IRLiteralExpr && cond.value instanceof UplcBool) {
-						// if the condition is a literal, one the branches can be returned
-						if (cond.value.bool) {
-							return a;
-						} else {
-							return b;
-						}
-					} else if (a instanceof IRLiteralExpr && a.value instanceof UplcBool && b instanceof IRLiteralExpr && b.value instanceof UplcBool) {
-						if (a.value.bool && !b.value.bool) {
-							return cond;
-						} else if (
-							!a.value.bool && 
-							b.value.bool && 
-							cond instanceof IRUserCallExpr && 
-							cond.fnExpr instanceof IRNameExpr && 
-							cond.fnExpr.name === "__helios__bool____not"
-						) {
-							return cond.argExprs[0];
-						}	
-					}
-				}
-				break;
-			case "modInteger": {
-					// check if second arg is 1
-					const [a, b] = args;
-					if (b instanceof IRLiteralExpr && b.value instanceof UplcInt && b.value.int == 1n) {
-						return new IRLiteralExpr(new UplcInt(this.site, 0n));
-					}
-				}
-				break;
-			case "multiplyInteger": {
-					// check if first arg is 0 or 1
-					const [a, b] = args;
-					if (a instanceof IRLiteralExpr && a.value instanceof UplcInt) {
-						if (a.value.int == 0n) {
-							return a;
-						} else if (a.value.int == 1n) {
-							return b;
-						}
-					} else if (b instanceof IRLiteralExpr && b.value instanceof UplcInt) {
-						if (b.value.int == 0n) {
-							return b;
-						} else if (b.value.int == 1n) {
-							return a;
-						}
-					}
-				}
-				break;
-			case "subtractInteger": {
-					// check if second arg evaluates to 0
-					const [a, b] = args;
-					if (b instanceof IRLiteralExpr && b.value instanceof UplcInt && b.value.int == 0n) {
-						return a;
-					}
-				}
-				break;
-		}
-
-		if (args.every(a => a instanceof IRLiteralExpr)) {
-			return new IRLiteralExpr(
-				UplcBuiltin.evalStatic(
-					new Word(this.#name.site, this.builtinName),
-					args.map(a => assertClass(a, IRLiteralExpr).value)
-				)
-			);
+	toUplcCall(term) {
+		if (this.args.length == 0) {
+			// assuming underlying zero-arg function has been converted into a UplcDelay term
+			term = new UplcForce(this.site, term);
 		} else {
-			return new IRCoreCallExpr(this.#name, args, this.parensSite);
-		}
-	}
-
-	/**
-	 * @param {IRNameExprRegistry} nameExprs
-	 */
-	registerNameExprs(nameExprs) {
-		this.registerNameExprsInArgs(nameExprs);
-	}
-
-	/**
-	 * @param {Map<IRVariable, IRVariable>} newVars
-	 * @returns {IRExpr}
-	 */
-	copy(newVars) {
-		return new IRCoreCallExpr(this.#name, this.argExprs.map(a => a.copy(newVars)), this.parensSite);
-	}
-
-	/**
-	 * @param {IRExprRegistry} registry 
-	 * @returns {IRExpr}
-	 */
-	simplifyTopology(registry) {
-		const args = this.simplifyTopologyInArgs(registry);
-
-		switch(this.builtinName) {
-			case "encodeUtf8":
-				// we can't eliminate a call to decodeUtf8, as it might throw some errors
-				break;
-			case "decodeUtf8": {
-				// check if arg is a call to encodeUtf8
-				const [arg] = args;
-				if (arg instanceof IRCoreCallExpr && arg.builtinName == "encodeUtf8") {
-					return arg.argExprs[0];
-				}
+			for (let argExpr of this.args) {
 				
-				break;
-			}		
-			case "equalsData": {
-				const [a, b] = args;
-
-				if (a instanceof IRCoreCallExpr && b instanceof IRCoreCallExpr) {
-					if (a.builtinName === "iData" && b.builtinName === "iData") {
-						return new IRCoreCallExpr(new Word(this.site, "__core__equalsInteger"), [a.argExprs[0], b.argExprs[0]], this.parensSite);	
-					} else if (a.builtinName === "bData" && b.builtinName === "bData") {
-						return new IRCoreCallExpr(new Word(this.site, "__core__equalsByteString"), [a.argExprs[0], b.argExprs[0]], this.parensSite);	
-					} else if (a.builtinName === "decodeUtf8" && b.builtinName === "decodeUtf8") {
-						return new IRCoreCallExpr(new Word(this.site, "__core__equalsString"), [a.argExprs[0], b.argExprs[0]], this.parensSite);
-					}
-				}
-
-				break;
+				term = new UplcCall(this.site, term, argExpr.toUplc());
 			}
-			case "ifThenElse": {
-				const [cond, a, b] = args;
-
-				if (cond instanceof IRCoreCallExpr && cond.builtinName === "nullList") {
-					return new IRCoreCallExpr(new Word(this.site, "__core__chooseList"), [cond.argExprs[0], a, b], this.parensSite);
-				}
-
-				break;
-			}
-			case "chooseUnit": {
-				const [a, b] = args;
-
-				if (a instanceof IRLiteralExpr && a.value instanceof UplcUnit) {
-					return b;
-				} /*else if (b instanceof IRLiteralExpr && b.value instanceof UplcUnit) {
-					return a;
-				}*/
-
-				break;
-			}
-			case "trace":
-				return args[1];
-			case "unIData": {
-				// check if arg is a call to iData
-				const a = args[0];
-				if (a instanceof IRCoreCallExpr && a.builtinName == "iData") {
-					return a.argExprs[0];
-				}
-
-				break;
-			}
-			case "iData": {
-				// check if arg is a call to unIData
-				const a = args[0];
-				if (a instanceof IRCoreCallExpr && a.builtinName == "unIData") {
-					return a.argExprs[0];
-				}
-
-				break;
-			}
-			case "unBData": {
-				// check if arg is a call to bData
-				const a = args[0];
-				if (a instanceof IRCoreCallExpr && a.builtinName == "bData") {
-					return a.argExprs[0];
-				}
-
-				break;
-			}
-			case "bData": {
-				// check if arg is a call to unBData
-				const a = args[0];
-				if (a instanceof IRCoreCallExpr && a.builtinName == "unBData") {
-					return a.argExprs[0];
-				}
-
-				break;
-			}
-			case "unMapData": {
-				// check if arg is call to mapData
-				const a = args[0];
-				if (a instanceof IRCoreCallExpr && a.builtinName == "mapData") {
-					return a.argExprs[0];
-				}
-				
-				break;
-			}
-			case "mapData": {
-				// check if arg is call to unMapData
-				const a = args[0];
-				if (a instanceof IRCoreCallExpr && a.builtinName == "unMapData") {
-					return a.argExprs[0];
-				}
-
-				break;
-			}
-			case "listData": {
-				// check if arg is call to unListData
-				const a = args[0];
-				if (a instanceof IRCoreCallExpr && a.builtinName == "unListData") {
-					return a.argExprs[0];
-				}
-
-				break;
-			}
-			case "unListData": {
-				// check if arg is call to listData
-				const a = args[0];
-				if (a instanceof IRCoreCallExpr && a.builtinName == "listData") {
-					return a.argExprs[0];
-				}
-				
-				break;
-			}		
 		}
 
-		return new IRCoreCallExpr(this.#name, args, this.parensSite);
+		return term;
 	}
 
 	/**
@@ -40821,8 +42292,13 @@ class IRCoreCallExpr extends IRCallExpr {
 	 * @returns {UplcTerm}
 	 */
 	static newUplcBuiltin(site, name) {
-		let builtinName = name.slice("__core__".length);
-		assert(!builtinName.startsWith("__core__"));
+		assert(name.startsWith(BUILTIN_PREFIX));
+
+		if (name.endsWith(SAFE_BUILTIN_SUFFIX)) {
+			name = name.slice(0, name.length - SAFE_BUILTIN_SUFFIX.length);
+		}
+
+		const builtinName = name.slice(BUILTIN_PREFIX.length);
 
 		/**
 		 * @type {UplcTerm}
@@ -40844,671 +42320,28 @@ class IRCoreCallExpr extends IRCallExpr {
 	 * @returns {UplcTerm}
 	 */
 	toUplc() {
-		let term = IRCoreCallExpr.newUplcBuiltin(this.site, this.#name.value);
+		if (this.func instanceof IRNameExpr && this.func.name.startsWith(BUILTIN_PREFIX)) {
+			let term = IRCallExpr.newUplcBuiltin(this.site, this.func.name);
 
-		return this.toUplcCall(term);
-	}
-}
-
-/**
- * IR function call of non-core function
- * @internal
- */
-class IRUserCallExpr extends IRCallExpr {
-	/**
-	 * @readonly
-	 * @type {IRExpr}
-	 */
-	fnExpr;
-
-	/**
-	 * @param {IRExpr} fnExpr 
-	 * @param {IRExpr[]} argExprs 
-	 * @param {Site} parensSite 
-	 */
-	constructor(fnExpr, argExprs, parensSite) {
-		super(fnExpr.site, argExprs, parensSite);
-
-		this.fnExpr = fnExpr;
-	}
-
-	/**
-	 * Handles upgrade to more complicated IRExpr types
-	 * @param {IRExpr} fnExpr 
-	 * @param {IRExpr[]} argExprs 
-	 * @param {Site} parensSite 
-	 * @returns {IRNestedAnonCallExpr | IRAnonCallExpr | IRFuncDefExpr | IRUserCallExpr}
-	 */
-	static new(fnExpr, argExprs, parensSite) {
-		if (fnExpr instanceof IRAnonCallExpr) {
-			return new IRNestedAnonCallExpr(fnExpr, argExprs, parensSite);
-		} else if (fnExpr instanceof IRFuncExpr) {
-			return IRAnonCallExpr.new(fnExpr, argExprs, parensSite);
+			return this.toUplcCall(term);
 		} else {
-			return new IRUserCallExpr(fnExpr, argExprs, parensSite);
+			return this.toUplcCall(this.func.toUplc());
 		}
-	}
-
-	/**
-	 * @param {string} indent
-	 * @returns {string}
-	 */
-	toString(indent = "") {
-		let comment = (this.fnExpr instanceof IRFuncExpr && this.fnExpr.args.length == 1 && this.fnExpr.args[0].name.startsWith("__")) ? `/*${this.fnExpr.args[0].name}*/` : "";
-
-		return `${this.fnExpr.toString(indent)}(${comment}${this.argsToString(indent)})`;
-	}
-
-	/**
-	 * @param {IRScope} scope 
-	 */
-	resolveNames(scope) {
-		this.fnExpr.resolveNames(scope);
-
-		super.resolveNamesInArgs(scope);
-	}
-
-	/**
-	 * @param {IRCallStack} stack
-	 * @returns {IRExpr}
-	 */
-	evalConstants(stack) {
-		return IRUserCallExpr.new(
-			this.fnExpr.evalConstants(stack),
-			this.evalConstantsInArgs(stack),
-			this.parensSite
-		);
-	}
-
-	/**
-	 * @param {IRCallStack} stack 
-	 * @returns {?IRValue}
-	 */
-	eval(stack) {
-		let args = this.evalArgs(stack);
-
-		if (args === null) {
-			return null;
-		} else {
-			let fn = this.fnExpr.eval(stack);
-
-			if (fn === null) {
-				return null;
-			} else {
-				try {
-					return fn.call(args);
-				} catch (e) {
-					if (e instanceof RuntimeError) {
-						if (!stack.throwRTErrors) {
-							return null;
-						} else {
-							throw e;
-						}
-					} else {
-						throw e;
-					}
-				}
-			}
-		}
-	}
-
-	/**
-	 * @param {IRVariable} fnVar 
-	 * @param {number[]} remaining 
-	 * @returns {IRExpr}
-	 */
-	simplifyUnusedRecursionArgs(fnVar, remaining) {
-		const argExprs = this.argExprs.map(ae => ae.simplifyUnusedRecursionArgs(fnVar, remaining));
-
-		if (this.fnExpr instanceof IRNameExpr && this.fnExpr.isVariable(fnVar)) {
-			const remainingArgExprs = argExprs.filter((_, i) => remaining.some(i_ => i_ == i));
-
-			if (remainingArgExprs.length == 0) {
-				return this.fnExpr;
-			} else {
-				return new IRUserCallExpr(
-					this.fnExpr,
-					remainingArgExprs,
-					this.parensSite
-				);
-			}
-		} else {
-			const fnExpr = this.fnExpr.simplifyUnusedRecursionArgs(fnVar, remaining);
-
-			return new IRUserCallExpr(
-				fnExpr,
-				argExprs,
-				this.parensSite
-			)
-		}
-	}
-
-	/**
-	 * @param {IRLiteralRegistry} literals
-	 * @returns {(IRExpr[] | IRLiteralExpr)}
-	 */
-	simplifyLiteralsInArgsAndTryEval(literals) {
-		const args = this.simplifyLiteralsInArgs(literals);
-
-		if (args.length > 0 && args.every(a => ((a instanceof IRLiteralExpr) || (a instanceof IRFuncExpr)))) {
-			try {
-				const fn = this.fnExpr.eval(new IRCallStack(false));
-
-				if (fn != null) {
-					const res = fn.call(
-						args.map(a => {
-							const v = a.eval(new IRCallStack(false));
-
-							if (v == null) {
-								// caught by outer catch
-								throw new Error("null eval sub-result");
-							} else {
-								return v;
-							}
-						})
-					);
-
-					if (res != null && res.value != null) {
-						return new IRLiteralExpr(res.value);
-					}
-				}
-			} catch(e) {
-			}
-		}
-
-		return args;
-	}
-
-	/**
-	 * @param {IRLiteralRegistry} literals
-	 * @returns {IRExpr}
-	 */
-	simplifyLiterals(literals) {
-		const argsOrLiteral = this.simplifyLiteralsInArgsAndTryEval(literals);
-
-		if (argsOrLiteral instanceof IRLiteralExpr) {
-			return argsOrLiteral;
-		} else {
-			const args = argsOrLiteral;
-
-			return IRUserCallExpr.new(
-				this.fnExpr.simplifyLiterals(literals),
-				args, 
-				this.parensSite
-			);
-		}
-	}
-
-	/**
-	 * @param {IRNameExprRegistry} nameExprs 
-	 */
-	registerNameExprs(nameExprs) {
-		this.registerNameExprsInArgs(nameExprs);
-		
-		this.fnExpr.registerNameExprs(nameExprs);
-	}
-
-	/**
-	 * @param {Map<IRVariable, IRVariable>} newVars 
-	 * @returns {IRExpr}
-	 */
-	copy(newVars) {
-		return new IRUserCallExpr(this.fnExpr.copy(newVars), this.argExprs.map(a => a.copy(newVars)), this.parensSite);
-	}
-
-	/**
-	 * @param {IRExprRegistry} registry 
-	 * @returns {IRExpr}
-	 */
-	simplifyTopology(registry) {
-		const args = this.simplifyTopologyInArgs(registry);
-
-		if (this.fnExpr instanceof IRNameExpr) {
-			if (this.fnExpr.isCore()) {
-				return new IRCoreCallExpr(new Word(this.fnExpr.site, this.fnExpr.name), args, this.parensSite);
-			} else {
-				switch (this.fnExpr.name) {
-					case "__helios__bool____to_data": {
-							// check if arg is a call to __helios__bool__from_data
-							const a = args[0];
-							if (a instanceof IRUserCallExpr && a.fnExpr instanceof IRNameExpr && a.fnExpr.name == "__helios__bool__from_data") {
-								return a.argExprs[0];
-							}
-						}
-						break;
-					case "__helios__bool__from_data": {
-							// check if arg is a call to __helios__bool____to_data
-							const a = args[0];
-							if (a instanceof IRUserCallExpr && a.fnExpr instanceof IRNameExpr && a.fnExpr.name == "__helios__bool____to_data") {
-								return a.argExprs[0];
-							}
-						}
-						break;
-					case "__helios__bool____not": {
-							const a = args[0];
-							if (a instanceof IRUserCallExpr && a.fnExpr instanceof IRNameExpr && a.fnExpr.name == "__helios__bool____not") {
-								return a.argExprs[0];
-							}
-						}
-						break;
-					case "__helios__common__concat": {
-							// check if either 1st or 2nd arg is the empty list
-							const [a, b] = args;
-							if (a instanceof IRLiteralExpr && a.value instanceof UplcList && a.value.length == 0) {
-								return b;
-							} else {
-								if (b instanceof IRLiteralExpr && b.value instanceof UplcList && b.value.length == 0) {
-									return a;
-								}
-							}
-						}
-						break;
-				}
-			}
-		}
-
-		return IRUserCallExpr.new(
-			this.fnExpr.simplifyTopology(registry),
-			args,
-			this.parensSite
-		);
-	}
-
-	/**
-	 * @returns {UplcTerm}
-	 */
-	toUplc() {
-		return super.toUplcCall(this.fnExpr.toUplc());
-	}
-}
-
-/**
- * @internal
- */
-class IRAnonCallExpr extends IRUserCallExpr {
-	#anon;
-
-	/**
-	 * @param {IRFuncExpr} fnExpr 
-	 * @param {IRExpr[]} argExprs 
-	 * @param {Site} parensSite 
-	 */
-	constructor(fnExpr, argExprs, parensSite) {
-		super(fnExpr, argExprs, parensSite);
-
-		this.#anon = fnExpr;
-	}
-
-	/**
-	 * Handles upgrade to IRFuncDefExpr, which is very important to avoid inlining expensive expressions into potentially recursive scopes
-	 * @param {IRFuncExpr} fnExpr
-	 * @param {IRExpr[]} argExprs
-	 * @param {Site} parensSite
-	 * @returns {IRAnonCallExpr | IRFuncDefExpr}
-	 */
-	static new(fnExpr, argExprs, parensSite) {
-		const def = argExprs[0];
-
-		if (argExprs.length == 1 && def && def instanceof IRFuncExpr) {
-			return new IRFuncDefExpr(
-				fnExpr,
-				def,
-				parensSite
-			);
-		} else {
-			return new IRAnonCallExpr(
-				fnExpr,
-				argExprs,
-				parensSite
-			);
-		}
-	}
-
-	/**
-	 * Internal function
-	 * @type {IRFuncExpr}
-	 */
-	get anon() {
-		return this.#anon;
-	}
-
-	/**
-	 * @type {IRVariable[]}
-	 */
-	get argVariables() {
-		return this.#anon.args;
-	}
-
-	/**
-	 * Add args to the stack as IRDeferredValue instances
-	 * @param {IRCallStack} stack
-	 */
-	evalConstants(stack) {
-		const argExprs = this.evalConstantsInArgs(stack);
-
-		const parentStack = stack;
-
-		argExprs.forEach((argExpr, i) => {
-			stack = stack.set(this.argVariables[i], new IRDeferredValue(() => argExpr.eval(parentStack)));
-		});
-
-		const anonBody = this.#anon.body.evalConstants(stack);
-
-		if (anonBody instanceof IRLiteralExpr) {
-			return anonBody;
-		} else {
-			return IRUserCallExpr.new(
-				new IRFuncExpr(
-					this.#anon.site,
-					this.#anon.args,
-					anonBody
-				),
-				argExprs,
-				this.parensSite
-			);
-		}
-	}
-
-	/**
-	 * @param {IRVariable} fnVar 
-	 * @param {number[]} remaining 
-	 * @returns {IRExpr}
-	 */
-	simplifyUnusedRecursionArgs(fnVar, remaining) {
-		const argExprs = this.argExprs.map(ae => ae.simplifyUnusedRecursionArgs(fnVar, remaining));
-
-		let anon = assertClass(this.#anon.simplifyUnusedRecursionArgs(fnVar, remaining), IRFuncExpr);
-
-		return IRAnonCallExpr.new(anon, argExprs, this.parensSite);
-	}
-
-	/**
-	 * Add literal args to the map
-	 * @param {IRLiteralRegistry} literals
-	 * @returns {IRExpr}
-	 */
-	simplifyLiterals(literals) {
-		const argsOrLiteral = super.simplifyLiteralsInArgsAndTryEval(literals);
-
-		if (argsOrLiteral instanceof IRLiteralExpr) {
-			return argsOrLiteral;
-		} else {
-			const args = argsOrLiteral;
-
-			args.forEach((arg, i) => {
-				if (arg instanceof IRLiteralExpr) {
-					literals.set(this.argVariables[i], arg);
-				}
-			});
-
-			const anonBody = this.#anon.body.simplifyLiterals(literals);
-
-			if (anonBody instanceof IRLiteralExpr) {
-				return anonBody;
-			} else {
-				return IRAnonCallExpr.new(
-					new IRFuncExpr(
-						this.#anon.site,
-						this.#anon.args,
-						anonBody
-					),
-					args,
-					this.parensSite
-				);
-			}
-		}
-	}
-
-	/**
-	 * @param {IRNameExprRegistry} nameExprs 
-	 */
-	registerNameExprs(nameExprs) {
-		this.registerNameExprsInArgs(nameExprs);
-
-		this.argVariables.forEach(a => nameExprs.registerVariable(a));
-
-		this.#anon.body.registerNameExprs(nameExprs);
-	}
-	
-	/**
-	 * @param {IRExprRegistry} registry 
-	 * @returns {IRExpr}
-	 */
-	simplifyTopology(registry) {
-		const args = this.simplifyTopologyInArgs(registry);
-
-		assert(args.length == this.argVariables.length, `number of args should be equal to number of argVariables (${this.toString()})`);
-
-		// remove unused args, inline args that are only referenced once, inline all IRNameExprs, inline function with default args,
-		//  inline tiny builtins, inline functions whose body is simply a IRNameExpr
-		const remainingIds = this.argVariables.map((variable, i) => {
-			const n = registry.countReferences(variable);
-
-			const arg = assertDefined(args[i]);
-
-			if (
-				n == 0 
-				|| variable.isAlwaysInlineable()
-				|| (n == 1 && (!registry.maybeInsideLoop(variable) || arg instanceof IRFuncExpr)) 
-				|| arg instanceof IRNameExpr 
-				|| (arg instanceof IRFuncExpr && arg.hasOptArgs())
-				|| (arg instanceof IRFuncExpr && arg.body instanceof IRNameExpr)
-				
-			) {
-				if (n > 0) {
-					// inline
-					registry.addInlineable(variable, arg);
-				}
-
-				return -1;
-			} else {
-				return i;
-			}
-		}).filter(i => i != -1);
-
-		const remainingVars = remainingIds.map(i => this.argVariables[i]);
-		const remainingExprs = remainingIds.map(i => args[i]);
-
-		const anonBody = this.#anon.body.simplifyTopology(registry);
-
-		if (anonBody instanceof IRLiteralExpr || remainingExprs.length == 0) {
-			return anonBody;
-		} else {
-			return IRAnonCallExpr.new(
-				new IRFuncExpr(
-					this.#anon.site,
-					remainingVars,
-					anonBody
-				),
-				remainingExprs,
-				this.parensSite
-			);
-		}
-	}
-}
-
-/**
- * @internal
- */
-class IRNestedAnonCallExpr extends IRUserCallExpr {
-	#anon;
-
-	/**
-	 * @param {IRAnonCallExpr} anon
-	 * @param {IRExpr[]} outerArgExprs
-	 * @param {Site} parensSite
-	 */
-	constructor(anon, outerArgExprs, parensSite) {
-		super(anon, outerArgExprs, parensSite);
-
-		this.#anon = anon;
-	}
-
-	/**
-	 * @param {IRVariable} fnVar
-	 * @param {number[]} remaining
-	 * @returns {IRExpr}
-	 */
-	simplifyUnusedRecursionArgs(fnVar, remaining) {
-		return new IRNestedAnonCallExpr(
-			assertClass(this.#anon.simplifyUnusedRecursionArgs(fnVar, remaining), IRAnonCallExpr),
-			this.argExprs.map(ae => ae.simplifyUnusedRecursionArgs(fnVar, remaining)),
-			this.parensSite
-		)
-	}
-		
-	/**
-	 * Flattens consecutive nested calls
-	 * @param {IRExprRegistry} registry
-	 * @returns {IRExpr}
-	 */
-	simplifyTopology(registry) {
-		const anon = this.#anon.simplifyTopology(registry);
-
-		const args = this.simplifyTopologyInArgs(registry);
-
-		if (anon instanceof IRAnonCallExpr && anon.anon.body instanceof IRFuncExpr) {
-			// flatten
-			const allArgs = anon.argExprs.slice().concat(args);
-			const allVars = anon.argVariables.slice().concat(anon.anon.body.args.slice());
-
-			assert(allArgs.length == allVars.length);
-
-			return IRUserCallExpr.new(
-				new IRFuncExpr(
-					anon.anon.body.site,
-					allVars,
-					anon.anon.body.body
-				),
-				allArgs,
-				this.parensSite
-			);
-		} else {
-			return IRUserCallExpr.new(
-				anon,
-				args,
-				this.parensSite
-			);
-		}
-	}
-}
-
-/**
- * @internal
- */
-class IRFuncDefExpr extends IRAnonCallExpr {
-	#def;
-
-	/**
-	 * @param {IRFuncExpr} anon 
-	 * @param {IRFuncExpr} defExpr 
-	 * @param {Site} parensSite
-	 */
-	constructor(anon, defExpr, parensSite) {
-		super(anon, [defExpr], parensSite);
-
-		this.#def = defExpr;
-	}
-
-	/**
-	 * @param {IRNameExprRegistry} nameExprs 
-	 */
-	registerNameExprs(nameExprs) {
-		this.argVariables.forEach(a => nameExprs.registerVariable(a));
-
-		this.anon.body.registerNameExprs(nameExprs);
-
-		nameExprs = nameExprs.resetVariables();
-
-		this.#def.registerNameExprs(nameExprs);
-	}
-
-	/**
-	 * @param {IRExprRegistry} registry
-	 * @returns {[IRFuncExpr, IRExpr]}
-	 */
-	simplifyRecursionArgs(registry) {
-		let anon = this.anon;
-		let def = this.#def;
-
-		if (this.#def.args.every(a => a.name.startsWith("__module") || a.name.startsWith("__const"))) {
-			const usedArgs = this.#def.args.map((variable, i) => {
-				const n = registry.countReferences(variable);
-
-				if (n == 0) {
-					return -1;
-				} else {
-					return i;
-				}
-			}).filter(i => i != -1);
-
-			if (usedArgs.length < this.#def.args.length) {
-				anon = new IRFuncExpr(
-					anon.site,
-					anon.args,
-					anon.body.simplifyUnusedRecursionArgs(anon.args[0], usedArgs)
-				);
-
-				if (usedArgs.length == 0) {
-					// simplify the body if none of the args remain
-					return [anon, this.#def.body];
-				}
-
-				def = new IRFuncExpr(
-					this.#def.site,
-					usedArgs.map(i => def.args[i]),
-					this.#def.body
-				);
-			}
-		}
-
-		return [anon, def];
-	}
-
-	/**
-	 * Remove args that are unused in def
-	 * @param {IRExprRegistry} registry
-	 * @returns {IRExpr}
-	 */
-	simplifyTopology(registry) {
-		const [anon, def] = this.simplifyRecursionArgs(registry);
-		
-		const res = (new IRAnonCallExpr(anon, [def], this.parensSite)).simplifyTopology(registry);
-
-		if (res instanceof IRAnonCallExpr && res.argExprs.length == 0) {
-			const argExpr = res.argExprs[0];
-			
-			if (res.anon.args.length == 1 && argExpr instanceof IRFuncExpr) {
-				return new IRFuncDefExpr(
-					res.anon,
-					argExpr,
-					this.parensSite
-				)
-			}
-		}
-
-		return res;
-	}
-
-	/**
-	 * @param {IRVariable} fnVar
-	 * @param {number[]} remaining
-	 * @returns {IRExpr}
-	 */
-	simplifyUnusedRecursionArgs(fnVar, remaining) {
-		return new IRFuncDefExpr(
-			assertClass(this.anon.simplifyUnusedRecursionArgs(fnVar, remaining), IRFuncExpr),
-			assertClass(this.#def.simplifyUnusedRecursionArgs(fnVar, remaining), IRFuncExpr),
-			this.parensSite
-		);
 	}
 }
 
 /**
  * Intermediate Representation error call (with optional literal error message)
  * @internal
+ * @implements {IRExpr}
  */
-class IRErrorCallExpr extends IRExpr {
+class IRErrorExpr {
+	/**
+	 * @readonly
+	 * @type {Site}
+	 */
+	site;
+
 	#msg;
 
 	/**
@@ -41516,8 +42349,15 @@ class IRErrorCallExpr extends IRExpr {
 	 * @param {string} msg 
 	 */
 	constructor(site, msg = "") {
-		super(site);
+		this.site = site;
 		this.#msg = msg;
+	}
+
+	/**
+	 * @type {number}
+	 */
+	get flatSize() {
+		return 4;
 	}
 
 	/**
@@ -41535,61 +42375,15 @@ class IRErrorCallExpr extends IRExpr {
 	}
 
 	/**
-	 * @param {IRCallStack} stack
+	 * @param {NotifyCopy} notifyCopy
 	 * @returns {IRExpr}
 	 */
-	evalConstants(stack) {
-		return this;
-	}
+	copy(notifyCopy) {
+		const newExpr = new IRErrorExpr(this.site, this.#msg);
 
-	/**
-	 * @param {IRCallStack} stack
-	 * @returns {null | IRValue}
-	 */
-	eval(stack) {
-		if (stack.throwRTErrors) {
-			throw new RuntimeError(this.#msg);
-		} else {
-			return null;
-		}
-	}
+		notifyCopy(this, newExpr);
 
-	/**
-	 * @param {IRLiteralRegistry} literals 
-	 * @returns {IRExpr}
-	 */
-	simplifyLiterals(literals) {
-		return this;
-	}
-
-	/**
-	 * @param {IRNameExprRegistry} nameExprs
-	 */
-	registerNameExprs(nameExprs) {
-	}
-
-	/**
-	 * @param {Map<IRVariable, IRVariable>} newVars 
-	 * @returns {IRExpr}
-	 */
-	copy(newVars) {
-		return new IRErrorCallExpr(this.site, this.#msg);
-	}
-
-	/**
-	 * @param {IRExprRegistry} registry
-	 * @returns {IRExpr}
-	 */
-	simplifyTopology(registry) {
-		return this;
-	}
-	/**
-	 * @param {IRVariable} fnVar 
-	 * @param {number[]} remaining 
-	 * @returns {IRExpr}
-	 */
-	simplifyUnusedRecursionArgs(fnVar, remaining) {
-		return this;
+		return newExpr;
 	}
 
 	/**
@@ -41600,20 +42394,99 @@ class IRErrorCallExpr extends IRExpr {
 	}
 }
 
+/**
+ * @internal
+ * @param {IRExpr} root 
+ * @param {{
+ *   nameExpr?: (expr: IRNameExpr) => void
+ *   errorExpr?: (expr: IRErrorExpr) => void
+ *   literalExpr?: (expr: IRLiteralExpr) => void
+ *   callExpr?: (expr: IRCallExpr) => void
+ *   funcExpr?: (expr: IRFuncExpr) => void
+ *   exit?: () => boolean
+ * }} callbacks 
+ * @returns 
+ */
+function loopIRExprs(root, callbacks) {
+	const stack = [root];
+
+	let head = stack.pop();
+
+	while (head) {
+		if (head instanceof IRNameExpr) {
+			if (callbacks.nameExpr) {
+				callbacks.nameExpr(head);
+			}
+		} else if (head instanceof IRErrorExpr) {
+			if (callbacks.errorExpr) {
+				callbacks.errorExpr(head);
+			}
+		} else if (head instanceof IRLiteralExpr) {
+			if (callbacks.literalExpr) {
+				callbacks.literalExpr(head);
+			}
+		} else if (head instanceof IRCallExpr) {
+			stack.push(head.func);
+
+			for (let a of head.args) {
+				stack.push(a);
+			}
+
+			if (callbacks.callExpr) {
+				callbacks.callExpr(head);
+			}
+		} else if (head instanceof IRFuncExpr) {
+			if (callbacks.funcExpr) {
+				callbacks.funcExpr(head);
+			}
+
+			stack.push(head.body);
+		}
+
+		if (callbacks.exit && callbacks.exit()) {
+			return;
+		}
+
+		head = stack.pop();
+	}
+}
+
 
 /////////////////////////////////////
 // Section 29: IR AST build functions
 /////////////////////////////////////
 
 /**
+ * @internal
+ */
+class IRExprTagger {
+	#tag;
+
+	constructor() {
+		this.#tag = 0;
+	}
+
+	genTag() {
+		this.#tag += 1;
+
+		return this.#tag;
+	}
+}
+
+/**
  * Build an Intermediate Representation expression
  * @param {Token[]} ts 
+ * @param {IRExprTagger | null} funcTagger // each IRFuncExpr needs a unique tag, so that hashing different IRFuncExprs with the same args and bodies leads to a different hash
  * @returns {IRExpr}
  * @internal
  */
-function buildIRExpr(ts) {
+function buildIRExpr(ts, funcTagger = null) {
 	/** @type {null | IRExpr} */
 	let expr = null;
+
+	if (funcTagger === null) {
+		funcTagger = new IRExprTagger();
+	}
 
 	while (ts.length > 0) {
 		let t = ts.shift();
@@ -41622,17 +42495,17 @@ function buildIRExpr(ts) {
 			throw new Error("unexpected: no tokens");
 		} else {
 			if (t.isGroup("(") && ts.length > 0 && ts[0].isSymbol("->")) {
-				assert(expr === null, "should be preceded by expr (" + expr?.toString() + ")");
+				assert(expr === null, "shouldn't be preceded by an expr");
 
 				ts.unshift(t);
 
-				expr = buildIRFuncExpr(ts);
+				expr = buildIRFuncExpr(ts, funcTagger);
 			} else if (t.isGroup("(")) {
 				let group = assertDefined(t.assertGroup(), "should be a group");
 
 				if (expr === null) {
 					if (group.fields.length == 1) {
-						expr = buildIRExpr(group.fields[0]);
+						expr = buildIRExpr(group.fields[0], funcTagger);
 					} else if (group.fields.length == 0) {
 						expr = new IRLiteralExpr(new UplcUnit(t.site));
 					} else {
@@ -41641,18 +42514,10 @@ function buildIRExpr(ts) {
 				} else {
 					let args = [];
 					for (let f of group.fields) {
-						args.push(buildIRExpr(f));
+						args.push(buildIRExpr(f, funcTagger));
 					}
 
-					if (expr instanceof IRNameExpr && expr.name.startsWith("__core")) {
-						if (!IRScope.isBuiltin(expr.name)) {
-							throw expr.site.referenceError(`builtin '${expr.name}' undefined`);
-						}
-
-						expr = new IRCoreCallExpr(new Word(expr.site, expr.name), args, t.site);
-					} else {
-						expr = IRUserCallExpr.new(expr, args, t.site);
-					}
+					expr = new IRCallExpr(t.site, expr, args);
 				}
 			} else if (t.isSymbol("-")) {
 				// only makes sense next to IntegerLiterals
@@ -41685,18 +42550,6 @@ function buildIRExpr(ts) {
 			} else if (t instanceof StringLiteral) {
 				assert(expr === null);
 				expr = new IRLiteralExpr(new UplcString(t.site, t.value));
-			} else if (t.isWord("const")) {
-				assert(expr === null, "unexpected expr before 'const'");
-
-				let maybeGroup = ts.shift();
-				if (maybeGroup === undefined) {
-					throw t.site.syntaxError("expected parens after const");
-				} else {
-					let parens = assertDefined(maybeGroup.assertGroup("(", 1), "expected parens with single entry after 'const'");
-					let pts = parens.fields[0];
-
-					expr = new IRConstExpr(t.site, buildIRExpr(pts));
-				}
 			} else if (t.isWord("error")) {
 				assert(expr === null, "unexpected expr before 'error'");
 
@@ -41706,7 +42559,7 @@ function buildIRExpr(ts) {
 				} else {
 					assertDefined(maybeGroup.assertGroup("(", 0), "expected empty parens after 'error'");
 					
-					expr = new IRErrorCallExpr(t.site, "");
+					expr = new IRErrorExpr(t.site, "");
 				}
 			} else if (t.isWord()) {
 				const w = assertDefined(t.assertWord(), "expected word");
@@ -41732,9 +42585,10 @@ function buildIRExpr(ts) {
 /**
  * Build an IR function expression
  * @param {Token[]} ts 
+ * @param {IRExprTagger} funcTagger
  * @returns {IRFuncExpr}
  */
-function buildIRFuncExpr(ts) {
+function buildIRFuncExpr(ts, funcTagger) {
 	let maybeParens = ts.shift();
 	if (maybeParens === undefined) {
 		throw new Error("empty func expr");
@@ -41760,15 +42614,3011 @@ function buildIRFuncExpr(ts) {
 			throw braces.syntaxError("empty function body")
 		}
 
-		let bodyExpr = buildIRExpr(braces.fields[0]);
+		let bodyExpr = buildIRExpr(braces.fields[0], funcTagger);
 
-		return new IRFuncExpr(parens.site, argNames.map(a => new IRVariable(a)), bodyExpr)
+		return new IRFuncExpr(parens.site, argNames.map(a => new IRVariable(a)), bodyExpr, funcTagger.genTag());
 	}
 }
 
 
+///////////////////////////////////
+// Section 30: IR pseudo evaluation
+///////////////////////////////////
+
+
+/**
+ * @internal
+ * @typedef {{
+ *   toString(): string
+ *   isLiteral(): boolean
+ *   hasError(maybe: boolean): boolean
+ *   withoutLiterals(): IRValue
+ *   withoutErrors(): IRValue
+ *   dump(codeMapper: IRValueCodeMapper, depth?: number): any
+ * }} IRValue
+ */
+
+
+/**
+ * @internal
+ */
+class IRStack {
+    /**
+     * @readonly
+     * @type {[IRVariable, IRValue][]}
+     */
+    values;
+
+    #isLiteral;
+
+    /**
+     * @param {[IRVariable, IRValue][]} values 
+     * @param {boolean} isLiteral
+     */
+    constructor(values, isLiteral) {
+        this.values = values;
+        this.#isLiteral = isLiteral || values.length == 0;
+    }
+
+    /**
+     * @param {IRVariable} variable 
+     * @returns {boolean}
+     */
+    static isGlobal(variable) {
+        return variable.name.match(/^__(helios|const|module)__/) !== null;
+    }
+
+    /**
+     * @param {IRValueCodeMapper} codeMapper 
+     * @param {number} depth 
+     * @returns {any}
+     */
+    dump(codeMapper, depth = 0) {
+        return {
+            isLiteral: this.#isLiteral,
+            codes: codeMapper.getCodes(this),
+            ...(depth > 0 ? {values: this.values.map(([_, arg]) => {
+                return arg.dump(codeMapper, depth - 1)
+            })} : {})
+        }
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    isLiteral() {
+        return this.#isLiteral;
+    }
+
+    /**
+     * @return {IRStack}
+     */
+    withoutLiterals() {
+        /**
+         * @type {[IRVariable, IRValue][]}
+         */
+        const varVals = this.values.map(([vr, vl]) => {
+            if (IRStack.isGlobal(vr)) {
+                return [vr, vl];
+            } else {
+                return [vr, vl.withoutLiterals()]
+            }
+        });
+
+        return new IRStack(
+            varVals, 
+            varVals.every(([_, v]) => v.isLiteral())
+        );
+    }
+
+    /**
+     * @param {IRVariable} v 
+     * @returns {IRValue}
+     */
+    getValue(v) {
+        const j = this.values.findIndex(([va]) => va == v);
+
+        if (j != -1) {
+            return this.values[j][1];
+        }
+
+        throw new Error(`${v.name} not found in IRStack`);
+    }
+
+    /**
+     * @param {[IRVariable, IRValue][]} args 
+     * @returns {IRStack}
+     */
+    extend(args) {
+        assert(args.every(([_, v]) => !(v instanceof IRErrorValue)));
+
+        return new IRStack(
+            this.values.concat(args),
+            this.#isLiteral && args.every(([_, v]) => v.isLiteral())
+        );
+    }
+
+    /**
+     * @param {Set<IRVariable>} irVars 
+     * @returns {IRStack}
+     */
+    filter(irVars) {
+        const varVals = this.values.filter(([v]) => irVars.has(v));
+        return new IRStack(varVals, varVals.every(([_, v]) => v.isLiteral()));
+    }
+
+    /**
+     * @returns {IRStack}
+     */
+    static empty() {
+        return new IRStack([], true);
+    }
+
+    /**
+     * Both stack are expected to have the same shape
+     * TODO: get rid of this
+     * @param {IRStack} other
+     * @returns {IRStack}
+     */
+    merge(other) {
+        const n = this.values.length;
+
+        assert(n == other.values.length);
+
+        let stack = IRStack.empty();
+
+        for (let i = 0; i < n; i++) {
+            const a = this.values[i];
+            const b = other.values[i];
+
+            if (a == b) {
+                stack = stack.extend([a]);
+            } else {
+                stack = stack.extend([[a[0], IRMultiValue.flatten([a[1], b[1]])]]);
+            }
+        }
+
+        return stack;
+    }
+}
+
+/**
+ * @internal
+ * @implements {IRValue}
+ */
+class IRLiteralValue {
+	/**
+	 * @readonly
+	 */
+	value;
+
+	/**
+	 * @param {UplcValue} value 
+	 */
+	constructor(value) {
+		this.value = value;
+	}
+
+    /**
+     * @returns {string}
+     */
+    toString() {
+        return this.value.toString();
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    isLiteral() {
+        return true;
+    }
+
+    /**
+     * @param {boolean} maybe
+     * @returns {boolean}
+     */
+    hasError(maybe = true) {
+        return false;
+    }
+
+    /**
+     * @returns {IRValue}
+     */
+    withoutLiterals() {
+        if (this.value instanceof UplcUnit) {
+            return new IRAnyValue();
+        } else {
+            return new IRDataValue();
+        }
+    }
+
+    /**
+     * @returns {IRValue}
+     */
+    withoutErrors() {
+        return this;
+    }
+
+    /**
+     * @param {IRValueCodeMapper} codeMapper 
+     * @param {number} depth 
+     * @returns {any}
+     */
+    dump(codeMapper, depth = 0) {
+        return {
+            type: "Literal",
+            code: codeMapper.getCode(this),
+            value: this.toString()
+        }
+    }
+}
+
+/**
+ * @internal
+ * @implements {IRValue}
+ */
+class IRDataValue {
+    /**
+     * @returns {boolean}
+     */
+    isLiteral() {
+        return false;
+    }
+
+    /**
+     * @returns {IRValue}
+     */
+    withoutLiterals() {
+        return this;
+    }
+
+    /**
+     * @param {boolean} maybe
+     * @returns {boolean}
+     */
+    hasError(maybe = true) {
+        return false;
+    }
+
+    /**
+     * @returns {IRValue}
+     */
+    withoutErrors() {
+        return this;
+    }
+
+    /**
+     * @returns {string}
+     */
+    toString() {
+        return `Data`;
+    }
+
+    /**
+     * @param {IRValueCodeMapper} codeMapper 
+     * @param {number} depth 
+     * @returns 
+     */
+    dump(codeMapper, depth = 0) {
+        return {
+            code: codeMapper.getCode(this),
+            type: "Data"
+        }
+    }
+}
+
+/**
+ * @param {IRExpr} expr 
+ * @returns {Set<IRVariable>}
+ */
+function collectIRVariables(expr) {
+    /**
+     * @type {Set<IRVariable>}
+     */
+    const s = new Set();
+
+    loopIRExprs(expr, {
+        nameExpr: (nameExpr) => {
+            if (!nameExpr.isCore()) {
+                s.add(nameExpr.variable);
+            }
+        }
+    });
+
+    return s;
+}
+
+/**
+ * @internal
+ * @implements {IRValue}
+ */
+class IRBuiltinValue {
+    /**
+     * @readonly
+     * @type {IRNameExpr}
+     */
+    builtin;
+
+    /**
+     * @param {IRNameExpr} builtin 
+     */
+    constructor(builtin) {
+		assert(builtin.isCore());
+
+        this.builtin = builtin;
+    }
+
+    /**
+     * @type {string}
+     */
+    get builtinName() {
+        let name = this.builtin.name.slice(BUILTIN_PREFIX.length);
+
+        if (name.endsWith(SAFE_BUILTIN_SUFFIX)) {
+            name = name.slice(0, name.length - SAFE_BUILTIN_SUFFIX.length);
+        }
+
+        return name;
+    }
+
+    /**
+     * @returns {string}
+     */
+    toString() {
+        return `Builtin__${this.builtinName}`;
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    isLiteral() {
+        return true;
+    }
+
+    /**
+     * @returns {IRValue}
+     */
+    withoutLiterals() {
+        return this;
+    }
+
+    /**
+     * @param {boolean} maybe
+     * @returns {boolean}
+     */
+    hasError(maybe = true) {
+        return false;
+    }
+
+    /**
+     * @returns {IRValue}
+     */
+    withoutErrors() {
+        return this;
+    }
+
+    /**
+     * @param {IRValueCodeMapper} codeMapper 
+     * @param {number} depth 
+     * @returns {any}
+     */
+    dump(codeMapper, depth = 0) {
+        return {
+            type: "Builtin",
+            code: codeMapper.getCode(this),
+            name: this.builtin.name
+        }
+    }
+}
+
+/**
+ * @internal
+ * @implements {IRValue}
+ */
+class IRFuncValue {
+    /**
+     * @readonly
+     * @type {IRStack}
+     */
+    stack;
+
+	/**
+	 * @readonly
+	 * @type {IRFuncExpr}
+	 */
+	definition;
+
+	/**
+     * @param {IRFuncExpr} definition
+     * @param {IRStack} stack
+	 */
+	constructor(definition, stack) {
+        this.definition = definition;
+        const irVars = collectIRVariables(definition);
+        this.stack = stack.filter(irVars);
+	}
+
+    /**
+     * @param {IRFuncExpr} definition 
+     * @param {IRStack} stack 
+     * @returns {IRFuncValue}
+     */
+    static new(definition, stack) {
+        return new IRFuncValue(definition, stack);
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    isLiteral() {
+        return this.stack.isLiteral();
+    }
+
+    /**
+     * @returns {IRValue}
+     */
+    withoutLiterals() {
+        return new IRFuncValue(this.definition, this.stack.withoutLiterals());
+    }
+
+    /**
+     * @param {boolean} maybe
+     * @returns {boolean}
+     */
+    hasError(maybe = true) {
+        return false;
+    }
+
+    /**
+     * @returns {IRValue}
+     */
+    withoutErrors() {
+        return this;
+    }
+
+    /**
+     * @param {IRValueCodeMapper} codeMapper 
+     * @param {number} depth 
+     * @returns {any}
+     */
+    dump(codeMapper, depth = 0) {
+        return {
+            type: "Fn",
+            tag: this.definition.tag,
+            codes: codeMapper.getCodes(this),
+            definition: this.definition.toString(),
+            stack: this.stack.dump(codeMapper, depth)
+        }
+    }
+
+    /**
+     * @returns {string}
+     */
+    toString() {
+        return `Fn${this.definition.tag}`;
+    }
+}
+
+/**
+ * @internal
+ * @implements {IRValue}
+ */
+class IRErrorValue {
+    /**
+     * @returns {boolean}
+     */
+    isLiteral() {
+        return false;
+    }
+
+    /**
+     * @returns {IRValue}
+     */
+    withoutLiterals() {
+        return this;
+    }
+
+    /**
+     * @param {boolean} maybe
+     * @returns {boolean}
+     */
+    hasError(maybe = true) {
+        return true;
+    }
+
+    /**
+     * @returns {IRValue}
+     */
+    withoutErrors() {
+        throw new Error("can't remove IRErrorValue from IRErrorValue");
+    }
+
+    /**
+     * @returns {string}
+     */
+    toString() {
+        return `Error`;
+    }
+
+    /**
+     * @param {IRValueCodeMapper} codeMapper 
+     * @param {number} depth 
+     * @returns {any}
+     */
+    dump(codeMapper, depth = 0) {
+        return {
+            type: "Error",
+            code: codeMapper.getCode(this)
+        }
+    }
+}
+
+/**
+ * Can be Data of any function
+ * Simply eliminated when encountered in an IRMultiValue
+ * @internal
+ * @implements {IRValue}
+ */
+class IRAnyValue {
+    /**
+     * @returns {boolean}
+     */
+    isLiteral() {
+        return false;
+    }
+
+    /**
+     * @returns {IRValue}
+     */
+    withoutLiterals() {
+        return this;
+    }
+
+    /**
+     * Maybe this IRAnyValue instance represents an Error, we can't know for sure.
+     * @param {boolean} maybe
+     * @returns {boolean}
+     */
+    hasError(maybe = true) {
+        return maybe;
+    }
+
+    /**
+     * @returns {IRValue}
+     */
+    withoutErrors() {
+        return this;
+    }
+
+    /**
+     * @returns {string}
+     */
+    toString() {
+        return `Any`;
+    }
+
+    /**
+     * @param {IRValueCodeMapper} codeMapper 
+     * @param {number} depth 
+     * @returns {any}
+     */
+    dump(codeMapper, depth = 0) {
+        return {
+            type: "Any",
+            code: codeMapper.getCode(this)
+        }
+    }
+}
+
+/**
+ * @internal
+ * @implements {IRValue}
+ */
+class IRMultiValue {
+	/**
+	 * @readonly
+	 */
+	values;
+
+	/**
+	 * @param {IRValue[]} values 
+	 */
+	constructor(values) {
+        assert(values.every(v => !(v instanceof IRLiteralValue)));
+		this.values = values;
+	}
+
+    /**
+     * @param {boolean} maybe
+     * @returns {boolean}
+     */
+    hasError(maybe = true) {
+        return this.values.some(v => v.hasError(maybe));
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    isLiteral() {
+        return false;
+    }
+
+    /**
+     * @returns {IRValue}
+     */
+    withoutLiterals() {
+        return IRMultiValue.flatten(this.values.map(v => v.withoutLiterals()));
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    hasData() {
+        return this.values.some(v => v instanceof IRDataValue);
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    hasLiteral() {
+        return this.values.some(v => v instanceof IRLiteralValue);
+    }
+
+    /**
+     * @param {IRValueCodeMapper} codeMapper 
+     * @param {number} depth 
+     * @returns {any}
+     */
+    dump(codeMapper, depth = 0) {
+        return {
+            type: "Multi",
+            code: codeMapper.getCode(this),
+            values: this.values.slice().map(v => v.dump(codeMapper, depth))
+        }
+    }
+
+    toString() {
+        /**
+         * @type {string[]}
+         */
+        const parts = [];
+
+        if (this.hasError()) {
+            parts.push(`Error`);
+        }
+
+        if (this.hasData()) {
+            parts.push(`Data`);
+        }
+
+        this.values.forEach(v => {
+            if (v instanceof IRFuncValue) {
+                parts.push(`Fn${v.definition.tag}`);
+            } else if (v instanceof IRBuiltinValue) {
+                parts.push(`Builtin_${v.builtin.name.slice(("__core__").length)}`);
+            }
+        });
+
+        this.values.forEach(v => {
+            if (v instanceof IRLiteralValue) {
+                parts.push(v.toString());
+            }
+        });
+
+        if (parts.length == 1 && parts[0] == `Error` && this.values.some(v => v instanceof IRAnyValue)) {
+            parts.push("Any");
+        }
+
+        return `(${parts.join(" | ")})`;
+    }
+
+	/**
+	 * @param {IRValue[]} values 
+	 * @returns {IRValue}
+	 */
+	static flatten(values) {
+        if (values.length == 1) {
+            return values[0];
+        }
+
+		// flatten nested IRMultiValues
+		values = values.map(v => {
+			if (v instanceof IRMultiValue) {
+				return v.values
+			} else {
+				return [v]
+			}
+		}).flat();
+
+        if (values.length == 1) {
+            return values[0];
+        } else if (values.every((v, i) => v instanceof IRLiteralValue && ((i == 0) || (v.toString() == values[0].toString())))) {
+            return values[0];
+        }
+        
+        const hasError = values.some(v => v instanceof IRErrorValue);
+		const hasData = values.some(v => v instanceof IRDataValue || (v instanceof IRLiteralValue && !(v.value instanceof UplcUnit)));
+        const hasAny = values.some(v => v instanceof IRAnyValue || (v instanceof IRLiteralValue && v.value instanceof UplcUnit));
+
+		/**
+		 * @type {IRValue[]}
+		 */
+		let flattened = [];
+
+		if (values.some(v => v instanceof IRFuncValue || v instanceof IRBuiltinValue)) {
+			/**
+			 * @type {Map<IRExpr, IRFuncValue | IRBuiltinValue>}
+			 */
+			const s = new Map();
+
+			values.forEach(v => {
+				if (v instanceof IRFuncValue) {
+                    const prev = s.get(v.definition);
+
+                    if (prev instanceof IRFuncValue) {
+                        s.set(v.definition, IRFuncValue.new(v.definition, prev.stack.merge(v.stack)));
+                    } else {
+                        s.set(v.definition, v);
+                    }
+                } else if (v instanceof IRBuiltinValue) {
+                    s.set(v.builtin, v);
+                }
+			});
+
+            flattened = flattened.concat(Array.from(s.values()));
+		} else if (hasData) {
+            flattened.push(new IRDataValue());
+        } else if (hasAny) {
+            flattened.push(new IRAnyValue());
+        }
+
+        if (hasError) {
+            flattened.push(new IRErrorValue());
+        }
+
+        if (flattened.length == 1) {
+			return flattened[0];
+		} else {
+			return new IRMultiValue(flattened);
+		}
+	}
+
+	/**
+	 * @param {IRValue[]} values 
+	 * @returns {IRValue[][]}
+	 */
+	static allPermutations(values) {
+		if (!values.some(v => v instanceof IRMultiValue)) {
+			return [values];
+		} else {
+			/**
+			 * @type {IRValue[][]}
+			 */
+			const permutations = [];
+
+			let ns = values.map(v => {
+				if (v instanceof IRMultiValue) {
+					return v.values.length;
+				} else {
+					return 1;
+				}
+			});
+
+			let N = ns.reduce((prev, n) => {
+				return prev * n
+			}, 1);
+
+			for (let i = 0; i < N; i++) {
+				let j = i;
+
+				/**
+				 * @type {number[]}
+				 */
+				const is = [];
+
+				ns.forEach(n => {
+					is.push(j % n);
+
+					j = Math.floor(j / n);
+				});
+
+				permutations.push(is.map((j, i) => {
+					const v = assertDefined(values[i]);
+
+					if (v instanceof IRMultiValue) {
+						return v.values[j];
+					} else {
+						assert(j == 0);
+						return v;
+					}
+				}));
+			}
+
+			return permutations;
+		}
+	}
+
+    /**
+     * @returns {IRValue}
+     */
+    withoutErrors() {
+        return IRMultiValue.flatten(this.values.filter(v => !(v instanceof IRErrorValue)));
+    }
+}
+
+/**
+ * Codes are used to combine multiple IRValues (including nested IRStacks that are part of IRFuncValues) into a single number.
+ * 
+ * We can't have however use the full depth of IRStack values because there could be callback-recursion.
+ * @internal
+ */
+class IRValueCodeMapper {
+    /**
+     * @type {number}
+     */
+    #nextUnused;
+
+    /**
+     * @type {Map<string, number>}
+     */
+    #usedCodes;
+
+    /**
+     * @type {Map<IRValue | IRStack, number[]>}
+     */
+    #valueCodes;
+
+    constructor() {
+        this.#usedCodes = new Map([
+            ["Any", 0],
+            ["Data", 1],
+            ["Error", 2]
+        ]);
+        this.#nextUnused = 3;
+        this.#valueCodes = new Map();
+    }
+
+    static get maxDepth() {
+        return 10;
+    }
+
+    /**
+     * @private
+     * @param {string} key 
+     * @returns {number}
+     */
+    genCode(key) {
+        let code = this.#usedCodes.get(key);
+
+        if (code !== undefined) {
+            return code;
+        }
+
+        code = this.#nextUnused;
+        this.#nextUnused += 1;
+
+        this.#usedCodes.set(key, code);
+
+        return code;
+    }
+
+    /**
+     * @private
+     * @param {IRValue | IRStack} v 
+     * @returns {number[]}
+     */
+    genCodes(v) {
+        if (v instanceof IRBuiltinValue) {
+            return (new Array(IRValueCodeMapper.maxDepth)).fill(this.genCode(v.builtinName));
+        } else if (v instanceof IRDataValue) {
+            return (new Array(IRValueCodeMapper.maxDepth)).fill(this.genCode("Data"));
+        } else if (v instanceof IRErrorValue) {
+            return (new Array(IRValueCodeMapper.maxDepth)).fill(this.genCode("Error"));
+        } else if (v instanceof IRAnyValue) {
+            return (new Array(IRValueCodeMapper.maxDepth)).fill(this.genCode("Any"));
+        } else if (v instanceof IRLiteralValue) {
+            return (new Array(IRValueCodeMapper.maxDepth)).fill(this.genCode(v.value.toString()));
+        } else if (v instanceof IRFuncValue) {
+            const tag = `Fn${assertDefined(v.definition.tag)}`;
+            const stackCodes = this.getCodes(v.stack);
+
+            /**
+             * @type {number[]}
+             */
+            const codes = [];
+
+            for (let i = 0; i < IRValueCodeMapper.maxDepth; i++) {
+                const key = i == 0 ? tag : `${tag}(${stackCodes[i-1]})`;
+
+                codes.push(this.genCode(key));
+            }
+
+            return codes;
+        } else if (v instanceof IRStack) {
+            const valueCodes = v.values.map(([_, v]) => this.getCodes(v));
+
+            /**
+             * @type {number[]}
+             */
+            const codes = [];
+
+            for (let i = 0; i < IRValueCodeMapper.maxDepth - 1; i++) {
+                const key = `[${valueCodes.map(vc => vc[i]).join(",")}]`;
+                codes.push(this.genCode(key));
+            }
+
+            return codes;
+        } else if (v instanceof IRMultiValue) {
+            const valueCodes = v.values.map(v => this.getCodes(v));
+
+            /**
+             * @type {number[]}
+             */
+            const codes = [];
+
+            for (let i = 0; i < IRValueCodeMapper.maxDepth; i++) {
+                const key = `{${valueCodes.map(vc => vc[i]).sort().join(",")}}`;
+                codes.push(this.genCode(key));
+            }
+
+            return codes;
+        } else {
+            throw new Error("unhandled");
+        }
+    }
+
+    /**
+     * @param {IRValue | IRStack} v 
+     * @returns {number[]}
+     */
+    getCodes(v) {
+        const cached = this.#valueCodes.get(v);
+
+        if (cached) {
+            return cached;
+        }
+
+        const codes = this.genCodes(v);
+
+        this.#valueCodes.set(v, codes);
+
+        return codes;
+    }
+
+    /**
+     * @param {IRValue} v
+     * @returns {number}
+     */
+    getCode(v) {
+        const codes = this.getCodes(v);
+
+        return codes[IRValueCodeMapper.maxDepth-1];
+    }
+
+    /**
+     * @param {IRValue} fn 
+     * @param {IRValue[]} args 
+     */
+    getCallCode(fn, args) {
+        const key = `${assertDefined(this.getCode(fn))}(${args.map(a => this.getCode(a)).join(",")})`;
+        return this.genCode(key);
+    }
+
+    /**
+     * @param {IRValue} a 
+     * @param {IRValue} b 
+     * @returns {boolean}
+     */
+    eq(a, b) {
+        const ca = this.getCode(a);
+        const cb = this.getCode(b);
+
+        return ca == cb;
+    }
+}
+
+/**
+ * @internal
+ * @type {{[name: string]: (args: IRValue[]) => IRValue}}
+ */
+const IR_BUILTIN_CALLBACKS = {
+    addInteger: ([a, b]) => {
+        return new IRDataValue();
+    },
+    subtractInteger: ([a, b]) => {
+        return new IRDataValue();
+    },
+    multiplyInteger: ([a, b]) => {
+        if (a instanceof IRLiteralValue && a.value.int == 0n) {
+            return a;
+        } else if (b instanceof IRLiteralValue && b.value.int == 0n) {
+            return b;
+        } else {
+            return new IRDataValue();
+        }
+    },
+    divideInteger: ([a, b]) => {
+        if (a instanceof IRLiteralValue && a.value.int == 0n) {
+            return IRMultiValue.flatten([a, new IRErrorValue()]);
+        } else if (b instanceof IRLiteralValue) {
+            if (b.value.int == 0n) {
+                return new IRErrorValue();
+            } else if (b.value.int == 1n) {
+                return a;
+            } else {
+                return new IRDataValue();
+            }
+        } else {
+            return IRMultiValue.flatten([new IRDataValue(), new IRErrorValue()]);
+        }
+    },
+    modInteger: ([a, b]) => {
+        if (b instanceof IRLiteralValue) {
+            if (b.value.int == 1n) {
+                return new IRLiteralValue(new UplcInt(b.value.site, 0n, true));
+            } else if (b.value.int == 0n) {
+                return new IRErrorValue();
+            } else {
+                return new IRDataValue();
+            }
+        } else {
+            return IRMultiValue.flatten([
+                new IRDataValue(),
+                new IRErrorValue()
+            ]);
+        }
+    },
+    quotientInteger: ([a, b]) => {
+        if (a instanceof IRLiteralValue && a.value.int == 0n) {
+            return IRMultiValue.flatten([a, new IRErrorValue()]);
+        } else if (b instanceof IRLiteralValue) {
+            if (b.value.int == 0n) {
+                return new IRErrorValue();
+            } else if (b.value.int == 1n) {
+                return a;
+            } else {
+                return new IRDataValue();
+            }
+        } else {
+            return IRMultiValue.flatten([new IRDataValue(), new IRErrorValue()]);
+        }
+    },
+    remainderInteger: ([a, b]) => {
+        if (b instanceof IRLiteralValue) {
+            if (b.value.int == 1n) {
+                return new IRLiteralValue(new UplcInt(b.value.site, 0n, true));
+            } else if (b.value.int == 0n) {
+                return new IRErrorValue();
+            } else {
+                return new IRDataValue();
+            }
+        } else {
+            return IRMultiValue.flatten([
+                new IRDataValue(),
+                new IRErrorValue()
+            ]);
+        }
+    },
+    equalsInteger: ([a, b]) => {
+        return new IRDataValue();
+    },
+    lessThanInteger: ([a, b]) => {
+        return new IRDataValue();
+    },
+    lessThanEqualsInteger: ([a, b]) => {
+        return new IRDataValue();
+    },
+    appendByteString: ([a, b]) => {
+        return new IRDataValue();
+    },
+    consByteString: ([a, b]) => {
+        return new IRDataValue();
+    },
+    sliceByteString: ([a, b, c]) => {
+        if (b instanceof IRLiteralValue && b.value.int <= 0n) {
+            return new IRLiteralValue(new UplcByteArray(b.value.site, []));
+        } else {
+            return new IRDataValue();
+        }
+    },
+    lengthOfByteString: ([a]) => {
+        return new IRDataValue();
+    },
+    indexByteString: ([a, b]) => {
+        if (b instanceof IRLiteralValue && b.value.int < 0n) {
+            return new IRErrorValue();
+        } else if (a instanceof IRLiteralValue && a.value.bytes.length == 0) {
+            return new IRErrorValue();
+        } else {
+            return IRMultiValue.flatten([
+                new IRDataValue(),
+                new IRErrorValue()
+            ]);
+        }
+    },
+    equalsByteString: ([a, b]) => {
+        return new IRDataValue();
+    },
+    lessThanByteString: ([a, b]) => {
+        return new IRDataValue();
+    },
+    lessThanEqualsByteString: ([a, b]) => {
+        return new IRDataValue();
+    },
+    appendString: ([a, b]) => {
+        return new IRDataValue();
+    },
+    equalsString: ([a, b]) => {
+        return new IRDataValue();
+    },
+    encodeUtf8: ([a]) => {
+        return new IRDataValue();
+    },
+    decodeUtf8: ([a]) => {
+        return IRMultiValue.flatten([
+            new IRDataValue(),
+            new IRErrorValue()
+        ]);
+    },
+    sha2_256: ([a]) => {
+        return new IRDataValue();
+    },
+    sha3_256: ([a]) => {
+        return new IRDataValue();
+    },
+    blake2b_256: ([a]) => {
+        return new IRDataValue();
+    },
+    verifyEd25519Signature: ([a, b, c]) => {
+        if (a instanceof IRLiteralValue && a.value.bytes.length != 32) {
+            return new IRErrorValue();
+        } else if (c instanceof IRLiteralValue && c.value.bytes.length != 64) {
+            return new IRErrorValue();
+        } else {
+            return IRMultiValue.flatten([
+                new IRDataValue(),
+                new IRErrorValue()
+            ]);
+        }
+    },
+    ifThenElse: ([a, b, c]) => {
+        if (a instanceof IRLiteralValue) {
+            if (a.value.bool) {
+                return b;
+            } else {
+                return c;
+            }
+        } else {
+            return IRMultiValue.flatten([b, c]);
+        }
+    },
+    chooseUnit: ([a, b]) => {
+        return b;
+    },
+    trace: ([a, b]) => {
+        return b;
+    },
+    fstPair: ([a]) => {
+        return new IRDataValue();
+    },
+    sndPair: ([a]) => {
+        return new IRDataValue();
+    },
+    chooseList: ([a, b, c]) => {
+        if (a instanceof IRLiteralValue) {
+            if (a.value.list.length == 0) {
+                return b;
+            } else {
+                return c;
+            }
+        } else {
+            return IRMultiValue.flatten([b, c]);
+        }
+    },
+    mkCons: ([a, b]) => {
+        return new IRDataValue();
+    },
+    headList: ([a]) => {
+        return IRMultiValue.flatten([
+            new IRDataValue(),
+            new IRErrorValue()
+        ]);
+    },
+    tailList: ([a]) => {
+        return IRMultiValue.flatten([
+            new IRDataValue(),
+            new IRErrorValue()
+        ]);
+    },
+    nullList: ([a]) => {
+        return new IRDataValue();
+    },
+    chooseData: ([a, b, c, d, e, f]) => {
+        if (a instanceof IRLiteralValue) {
+            const data = a.value.data;
+
+            if (data instanceof ConstrData) {
+                return b;
+            } else if (data instanceof MapData) {
+                return c;
+            } else if (data instanceof ListData) {
+                return d;
+            } else if (data instanceof IntData) {
+                return e;
+            } else if (data instanceof ByteArrayData) {
+                return f;
+            } else {
+                throw new Error("unhandled UplcData type");
+            }
+        } else {
+            return IRMultiValue.flatten([b, c, d, e, f]);
+        }
+    },
+    constrData: ([a, b]) => {
+        return new IRDataValue();
+    },
+    mapData: ([a])  => {
+        return new IRDataValue();
+    },
+    listData: ([a]) => {
+        return new IRDataValue();
+    },
+    iData: ([a]) => {
+        return new IRDataValue();
+    },
+    bData: ([a]) => {
+        return new IRDataValue();
+    },
+    unConstrData: ([a]) => {
+        return IRMultiValue.flatten([
+            new IRDataValue(),
+            new IRErrorValue()
+        ]);
+    },
+    unMapData: ([a]) => {
+        return IRMultiValue.flatten([
+            new IRDataValue(),
+            new IRErrorValue()
+        ]);
+    },
+    unListData: ([a]) => {
+        return IRMultiValue.flatten([
+            new IRDataValue(),
+            new IRErrorValue()
+        ]);
+    },
+    unIData: ([a]) => {
+        return IRMultiValue.flatten([
+            new IRDataValue(),
+            new IRErrorValue()
+        ]);
+    },
+    unBData: ([a]) => {
+        return IRMultiValue.flatten([
+            new IRDataValue(),
+            new IRErrorValue()
+        ]);
+    },
+    equalsData: ([a, b]) => {
+        return new IRDataValue();
+    },
+    mkPairData: ([a, b]) => {
+        return new IRDataValue();
+    },
+    mkNilData: ([a]) => {
+        return new IRDataValue();
+    },
+    mkNilPairData: ([a]) => {
+        return new IRDataValue();
+    },
+    serialiseData: ([a]) => {
+        return new IRDataValue();
+    }
+};
+
+/**
+ * @internal
+ */
+class IREvaluator {
+    /**
+     * Unwraps an IR AST
+     * @type {(
+     *   {
+     *     stack: IRStack,
+     *     expr: IRErrorExpr | IRLiteralExpr | IRNameExpr | IRFuncExpr | IRCallExpr
+     *   } |
+     *   {calling: IRCallExpr, code: number, args: IRValue[]} |
+     *   {fn: IRFuncExpr, owner: null | IRExpr, stack: IRStack} | 
+     *   {multi: number, owner: null | IRExpr} | 
+     *   {value: IRValue, owner: null | IRExpr} |
+     *   {ignore: number, owner: null | IRExpr} | 
+     *   {cacheExpr: IRCallExpr, code: number, value: IRValue}
+     * )[]}
+     */
+    #compute;
+
+    /**
+     * @type {IRValue[]}
+     */
+    #reduce;
+
+    /**
+	 * Keep track of the eval result of each expression
+	 * @type {Map<IRExpr, IRValue>}
+	 */
+	#exprValues;
+
+    /**
+     * Keep track of all values passed through IRVariables
+     * @type {Map<IRVariable, IRValue>}
+     */
+    #variableValues;
+
+    /**
+     * IRFuncExpr tag as key
+     * @type {Map<number, number>}
+     */
+    #callCount;
+
+    /**
+     * @type {Map<IRFuncExpr, Set<IRCallExpr>>}
+     */
+    #funcCallExprs;
+
+    /**
+     * @type {Map<IRVariable, Set<IRNameExpr>>}
+     */
+    #variableReferences;
+
+    /**
+     * @type {Map<IRCallExpr, Map<number, IRValue>>}
+     */
+    #cachedCalls;
+
+    #evalLiterals;
+
+    /**
+     * @param {boolean} evalLiterals 
+     */
+	constructor(evalLiterals = true) {
+        this.#compute = [];
+        this.#reduce = [];
+
+        // data structures used by optimization
+        this.#exprValues = new Map();
+        this.#variableValues = new Map();
+        this.#callCount = new Map();
+        this.#funcCallExprs = new Map();
+        this.#variableReferences = new Map();
+        this.#cachedCalls = new Map();
+        this.#evalLiterals = evalLiterals;
+	}
+
+    /**
+     * @type {IRFuncExpr[]}
+     */
+    get funcExprs() {
+        return Array.from(this.#funcCallExprs.keys());
+    }
+
+    /**
+     * @param {IRExpr} expr 
+     * @returns {undefined | IRValue}
+     */
+    getExprValue(expr) {
+        return this.#exprValues.get(expr);
+    }
+
+    /**
+     * @param {IRVariable} v
+     * @returns {undefined | IRValue}
+     */
+    getVariableValue(v) {
+        return this.#variableValues.get(v);
+    }
+
+    /**
+     * @param {IRVariable} v 
+     * @returns {number}
+     */
+    countVariableReferences(v) {
+        return this.#variableReferences.get(v)?.size ?? 0;
+    }
+
+    /**
+     * @param {IRVariable} v 
+     * @returns {IRNameExpr[]}
+     */
+    getVariableReferences(v) {
+        return Array.from(this.#variableReferences.get(v) ?? [])
+    }
+
+    /**
+     * @param {IRFuncExpr} fn
+     * @returns {number}
+     */
+    countFuncCalls(fn) {
+        return this.#callCount.get(fn.tag) ?? 0;
+    }
+
+    /**
+     * @param {IRExpr} expr 
+     * @returns {boolean}
+     */
+    expectsError(expr) {
+        const v = this.getExprValue(expr);
+
+        if (v) {
+            if (v instanceof IRErrorValue) {
+                return true;
+            } else if (v instanceof IRMultiValue && v.hasError()) {
+                return true;
+            } else if (v instanceof IRAnyValue) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            // the expression might be recently formed, so if not found, better be on the safe side
+            return true;
+        }
+    }
+
+    /**
+     * @param {IRFuncExpr} fn
+     * @returns {number[]} indices
+     */
+    getUnusedFuncVariables(fn) {
+        /**
+         * @type {number[]}
+         */
+        const indices = [];
+
+        fn.args.forEach((a, i) => {
+            const s = this.#variableReferences.get(a);
+            if (!s || s.size == 0) {
+                indices.push(i);
+            }
+        });
+
+        return indices;
+    }
+
+    /**
+     * @param {IRFuncExpr} fn 
+     * @returns {IRCallExpr[]}
+     */
+    getFuncCallExprs(fn) {
+        return Array.from(this.#funcCallExprs.get(fn) ?? []);
+    }
+
+    /**
+     * @param {IRFuncExpr} fn 
+     * @returns {boolean}
+     */
+    onlyDedicatedCallExprs(fn) {
+        const callExprs = this.getFuncCallExprs(fn);
+
+        // if there are no callExprs then we don't know exactly how the function is called (eg. main), and we can't flatten
+        if (callExprs.length == 0) {
+            return false;
+        }
+
+        return callExprs.every(ce => {
+            if (ce.func == fn) {
+                // literally calling fn directly
+                return true;
+            }
+
+            const v = this.getExprValue(ce.func);
+
+            if (!v) {
+                return false;
+            } else if (v instanceof IRMultiValue) {
+                return v.values.every(vv => !(vv instanceof IRFuncValue) || (vv.definition == fn))
+            } else if (v instanceof IRFuncValue) {
+                //assert(v.definition == fn, `expected ${fn.toString()}, not ${v.definition.toString()}`);
+                return true;
+            } else {
+                throw new Error(`unexpected ${v.toString()}`);
+            }
+        });
+    }
+
+    /**
+     * @param {IRFuncExpr} fn
+     * @param {number[]} unused
+     * @returns {boolean}
+     */
+    noUnusedArgErrors(fn, unused) {
+        const callExprs = this.getFuncCallExprs(fn);
+
+        return callExprs.every(ce => {
+            return unused.every(i => {
+                return !this.expectsError(ce.args[i]);
+            });
+        });
+    }
+
+    /**
+     * @param {IRFuncExpr} first 
+     * @param {IRFuncExpr} second
+     */
+    onlyNestedCalls(first, second) {
+        const callExprs = this.getFuncCallExprs(second);
+
+        // if there are no callExprs then we don't know exactly how the function is called (eg. main), and we can't flatten
+        if (callExprs.length == 0) {
+            return false;
+        }
+
+        return callExprs.every(ce => {
+            if (ce.func instanceof IRCallExpr) {
+                const v = this.getExprValue(ce.func.func);
+
+                if (!v) {
+                    return false;
+                } else if (v instanceof IRMultiValue) {
+                    return v.values.every(vv => !(vv instanceof IRFuncValue) || (vv.definition == first))
+                } else if (v instanceof IRFuncValue) {
+                    return v.definition == first;
+                } else {
+                    throw new Error(`unexpected ${v.toString()}`);
+                }
+            } else {
+                return false;
+            }
+        });
+    }
+
+    /**
+     * The newExpr should evaluate to exactly the same values etc. as the oldExpr
+     * @param {IRExpr} oldExpr 
+     * @param {IRExpr} newExpr 
+     */
+    notifyCopyExpr(oldExpr, newExpr) {
+        const oldValue = this.#exprValues.get(oldExpr);
+        if (oldValue) {
+            this.#exprValues.set(newExpr, oldValue);
+        }
+    }
+
+    /**
+     * Push onto the computeStack, unwrapping IRCallExprs
+     * @private
+     * @param {IRStack} stack
+     * @param {IRExpr} expr
+     */
+    pushExpr(stack, expr) {
+        if (expr instanceof IRErrorExpr) {
+            this.#compute.push({stack: stack, expr: expr});
+        } else if (expr instanceof IRLiteralExpr) {
+            this.#compute.push({stack: stack, expr: expr});
+        } else if (expr instanceof IRNameExpr) {
+            this.#compute.push({stack: stack, expr: expr});
+        } else if (expr instanceof IRFuncExpr) {
+            this.#compute.push({stack: stack, expr: expr});
+        } else if (expr instanceof IRCallExpr) {
+            this.#compute.push({stack: stack, expr: expr});
+
+            this.pushExpr(stack, expr.func);
+
+            expr.args.forEach(a => this.pushExpr(stack, a));
+        } else {
+            throw new Error("unexpected expression type");
+        }
+    }
+
+    /**
+     * @private
+     * @param {IRExpr} expr 
+     * @param {IRValue} value 
+     * @returns {IRValue} combined value
+     */
+    setExprValue(expr, value) {
+        const outputs = this.#exprValues.get(expr);
+
+        if (outputs) {
+            const combined = IRMultiValue.flatten([outputs, value]);
+            this.#exprValues.set(expr, combined);
+            return combined;
+        } else {
+            this.#exprValues.set(expr, value);
+            return value;
+        }
+    }
+
+    /**
+     * @private
+     * @param {null | IRExpr} owner 
+     * @param {IRValue} value 
+     */
+    pushReductionValue(owner, value) {
+        if (owner) {
+            const combined = this.setExprValue(owner, value);
+
+            if (value instanceof IRAnyValue || (value instanceof IRMultiValue && value.values.some(v => v instanceof IRAnyValue))) {
+                value = combined;
+            }
+        }
+
+        this.#reduce.push(value);
+    }
+
+    /**
+     * @private
+     * @param {IRStack} stack
+     * @param {IRNameExpr} nameExpr
+     * @returns {IRValue}
+     */
+    getValue(stack, nameExpr) {
+        const variable = nameExpr.variable;
+
+        const s = this.#variableReferences.get(variable);
+
+        if (s) {
+            s.add(nameExpr);
+        } else {
+            this.#variableReferences.set(variable, new Set([nameExpr]));
+        }
+
+        return stack.getValue(variable);
+    }
+
+    /**
+     * @private
+     * @param {IRExpr} owner
+     * @param {IRNameExpr} nameExpr 
+     * @param {IRValue[]} args
+     */
+    callBuiltin(owner, nameExpr, args) {
+        let builtin = nameExpr.name.slice(BUILTIN_PREFIX.length);
+        const isSafe = builtin.endsWith(SAFE_BUILTIN_SUFFIX);
+        if (isSafe) {
+            builtin = builtin.slice(0, builtin.length - SAFE_BUILTIN_SUFFIX.length);
+        }
+
+        // collect results for each permutation of multivalued args
+
+        /**
+         * @type {IRValue[][]}
+         */
+        const permutations = IRMultiValue.allPermutations(args);
+
+        const resValues = permutations.map(args => {
+            if (args.every(a => a instanceof IRLiteralValue)) {
+                try {
+                    const res = UplcBuiltin.evalStatic(new Word(Site.dummy(), builtin), args.map(a => assertClass(a, IRLiteralValue).value));
+                    return new IRLiteralValue(res);
+                } catch (e) {
+                    if (e instanceof RuntimeError) {
+                        return new IRErrorValue();
+                    } else {
+                        throw e;
+                    }
+                }
+            } else if (args.some(a => a instanceof IRErrorValue)) {
+                return new IRErrorValue();
+            } else {
+                const res = assertDefined(IR_BUILTIN_CALLBACKS[builtin], `builtin ${builtin} not defined in IR_BUILTIN_CALLBACKS`)(args);
+                
+                if (isSafe && res instanceof IRMultiValue && res.hasError()) {
+                    return res.withoutErrors();
+                } else {
+                    return res;
+                }
+            }
+        });
+
+        this.pushReductionValue(owner, IRMultiValue.flatten(resValues));
+    }
+
+    /**
+     * @private
+     * @param {IRFuncExpr} fn 
+     */
+    incrCallCount(fn) {
+        const prev = this.#callCount.get(fn.tag);
+
+        if (prev) {
+            this.#callCount.set(fn.tag, Math.min(prev + 1, Number.MAX_SAFE_INTEGER));
+        } else {
+            this.#callCount.set(fn.tag, 1);
+        }
+    }
+
+    /**
+     * @private
+     * @param {IRVariable[]} variables 
+     * @param {IRValue[]} values 
+     * @returns {[IRVariable, IRValue][]}
+     */
+    mapVarsToValues(variables, values) {
+        assert(variables.length == values.length, "variables and values don't have the same length([" + variables.map(v => v.name).join(",") + "] vs [" + values.map(v => v.toString()).join(",") + "]");
+
+        /**
+         * @type {[IRVariable, IRValue][]}
+         */
+        const m = [];
+
+        variables.forEach((variable, i) => {
+            const value = values[i];
+
+            const allValues = this.#variableValues.get(variable);
+
+            if (allValues) {
+                this.#variableValues.set(variable, IRMultiValue.flatten([allValues, value]));
+            } else {
+                this.#variableValues.set(variable, value);
+            }
+
+            m.push([variable, value]);
+        });
+
+        return m;
+    }
+
+    /**
+     * @private
+     * @param {IRStack} stack
+     * @param {null | IRExpr} owner
+     * @param {IRFuncExpr} fn
+     * @param {IRValue[]} args
+     */
+    pushFuncCall(stack, owner, fn, args) {
+        if (args.some(a => a instanceof IRErrorValue)) {
+            this.pushReductionValue(owner, new IRErrorValue());
+        } else {
+            if (args.some(a => a.hasError(true))) {
+                this.#compute.push({multi: 2, owner: owner});
+                this.#compute.push({value: new IRErrorValue(), owner: owner});
+                args = args.map(a => a.withoutErrors());
+            }
+            
+            const varsToValues = this.mapVarsToValues(fn.args, args);
+            stack = stack.extend(varsToValues);
+    
+            this.incrCallCount(fn);
+            this.#compute.push({fn: fn, owner: owner, stack: stack});
+            this.pushExpr(stack, fn.body); 
+        }
+    }
+
+    /**
+     * @private
+     * @param {IRExpr} owner for entry point ths is the entry point IRFuncExpr, for all other calls this is the IRCallExpr
+     * @param {IRFuncValue} v
+     * @param {IRValue[]} args 
+     */
+    callFunc(owner, v, args) {
+        const fn = v.definition;
+        const stack = v.stack;
+
+        if (owner instanceof IRCallExpr) {
+            const s = this.#funcCallExprs.get(fn);
+
+            if (!s) {
+                this.#funcCallExprs.set(fn, new Set([owner]));
+            } else {
+                s.add(owner);
+            }
+        }
+
+        this.pushFuncCall(stack, owner, fn, args);
+    }
+
+    /**
+     * Call an unknown function (eg. returned at the deepest point of recursion)
+     * Make sure any arguments that are functions are also called so that all possible execution paths are touched (TODO: should we also called function values returned by those calls etc.?)
+     * Absorb the return values of these functions
+     * @private
+     * @param {IRExpr} owner
+     * @param {IRAnyValue} fn
+     * @param {IRValue[]} args
+     */
+    callAnyFunc(owner, fn, args) {
+        if (args.some(a => a instanceof IRErrorValue)) {
+            this.pushReductionValue(owner, new IRErrorValue());
+        } else {
+            if (args.some(a => a.hasError(false))) {
+                this.#compute.push({multi: 2, owner: owner});
+                this.#compute.push({value: new IRErrorValue(), owner: owner});
+                args = args.map(a => a.withoutErrors());
+            }
+
+            /**
+             * Only user-defined functions!
+             * @type {IRFuncValue[]}
+             */
+            const fnsInArgs = [];
+
+            args.forEach(a => {
+                if (a instanceof IRMultiValue) {
+                    a.values.forEach(aa => {
+                        if (aa instanceof IRFuncValue) {
+                            fnsInArgs.push(aa);
+                        }
+                    });
+                } else if (a instanceof IRFuncValue) {
+                    fnsInArgs.push(a);
+                }
+            });
+
+            this.#compute.push({ignore: fnsInArgs.length, owner: owner});
+
+            fnsInArgs.forEach(fn => {
+                const def = assertClass(fn.definition, IRFuncExpr);
+
+                this.pushFuncCall(fn.stack, null, def, def.args.map(a => new IRAnyValue()));
+            });
+        }
+    }
+
+    /**
+     * @private
+     * @param {IRCallExpr} expr
+     * @param {number} code
+     * @param {IRValue} value
+     */
+    cacheValue(expr, code, value) {
+        const prev = this.#cachedCalls.get(expr);
+
+        if (prev) {
+            const prevPrev = prev.get(code);
+
+            if (prevPrev && !(prevPrev instanceof IRAnyValue)) {
+                const newValue = IRMultiValue.flatten([prevPrev, value]);
+                prev.set(code, newValue);
+            } else {
+                prev.set(code, value);
+            }
+        } else {
+            this.#cachedCalls.set(expr, new Map([[code, value]]));
+        }
+    }
+
+    /**
+     * @private
+     * @param {IRCallExpr} expr 
+     * @param {number} code 
+     */
+    prepareCacheValue(expr, code) {
+        this.#compute.push({value: new IRAnyValue(), cacheExpr: expr, code: code});
+    }
+
+    /**
+     * @private
+     */
+    evalInternal() {
+        const codeMapper = new IRValueCodeMapper();
+
+        let head = this.#compute.pop();
+
+		while (head) {
+            if ("cacheExpr" in head) {
+                this.cacheValue(head.cacheExpr, head.code, head.value);
+            } else if ("expr" in head) {
+                const expr = head.expr;
+
+                if (expr instanceof IRCallExpr) {
+                    let fn = assertDefined(this.#reduce.pop());
+
+                    /**
+                     * @type {IRValue[]}
+                     */
+                    let args = [];
+
+                    for (let i = 0; i < expr.args.length; i++) {
+                        args.push(assertDefined(this.#reduce.pop()));
+                    }
+
+                    // don't allow partial literal args (could lead to infinite recursion where the partial literal keeps updating)
+                    //  except when calling builtins (partial literals are important: eg. in divideInteger(<data>, 10) we know that the callExpr doesn't return an error)
+                    const allLiteral = fn.isLiteral() && args.every(a => a.isLiteral());
+
+                    if (!allLiteral && !(fn instanceof IRBuiltinValue) && !(fn instanceof IRFuncValue && fn.definition.args.length == 1 && IRStack.isGlobal(fn.definition.args[0]))) {
+                        fn = fn.withoutLiterals();
+                        args = args.map(a => a.withoutLiterals());
+                    }
+
+                    const fns = fn instanceof IRMultiValue ? fn.values : [fn];
+
+                    if (fns.length > 1) {
+                        this.#compute.push({multi: fns.length, owner: expr});
+                    }
+
+                    for (let fn of fns) {
+                        const code = codeMapper.getCallCode(fn, args);
+                        const cached = this.#cachedCalls.get(expr)?.get(code);
+
+                        if (cached) {
+                            this.pushReductionValue(expr, cached);
+                            
+                            // increment the call count even though we are using a cached value
+                            for (let fn of fns) {
+                                if (fn instanceof IRFuncValue) {
+                                    this.incrCallCount(fn.definition);
+                                }
+                            }
+                        } else {
+                            this.#compute.push({calling: expr, code: code, args: args});
+                            //this.cacheValue(expr, code, new IRAnyValue());
+
+                            if (fn instanceof IRAnyValue) {///} || fn instanceof IRDataValue) {
+                                this.callAnyFunc(expr, fn, args);
+                            } else if (fn instanceof IRErrorValue) {
+                                this.pushReductionValue(expr, new IRErrorValue());
+                            } else if (fn instanceof IRFuncValue) {
+                                this.callFunc(expr, fn, args);
+                                this.prepareCacheValue(expr, code);
+                            } else if (fn instanceof IRBuiltinValue) {
+                                this.callBuiltin(expr, fn.builtin, args);
+                                this.prepareCacheValue(expr, code);
+                            } else {
+                                console.log(expr.toString());
+                                throw expr.site.typeError("unable to call " + fn.toString());
+                            }
+                        }
+                    }
+                } else if (expr instanceof IRErrorExpr) {
+                    this.pushReductionValue(expr, new IRErrorValue());
+                } else if (expr instanceof IRNameExpr) {
+                    if (expr.isParam()) {
+                        this.pushReductionValue(expr, new IRDataValue());
+                    } else if (expr.isCore()) {
+                        this.pushReductionValue(expr, new IRBuiltinValue(expr));
+                    } else {
+                        this.pushReductionValue(expr, this.getValue(head.stack, expr));
+                    }
+                } else if (expr instanceof IRLiteralExpr) {
+                    if (this.#evalLiterals ) {
+                        this.pushReductionValue(expr, new IRLiteralValue(expr.value));
+                    } else {
+                        if (expr.value instanceof UplcUnit) {
+                            this.pushReductionValue(expr, new IRAnyValue());
+                        } else {
+                            this.pushReductionValue(expr, new IRDataValue());
+                        }
+                    }
+                } else if (expr instanceof IRFuncExpr) {
+                    // don't set owner because it is confusing wrt. return value type
+                    this.#reduce.push(IRFuncValue.new(expr, head.stack));
+                } else {
+                    throw new Error("unexpected expr type");
+                }
+            } else if ("calling" in head) {
+                // keep track of recursive calls
+                
+                const last = assertDefined(this.#reduce.pop());
+                this.cacheValue(head.calling, head.code, last);
+                this.pushReductionValue(head.calling, last);
+			} else if ("fn" in head && head.fn instanceof IRFuncExpr) {
+                // track the owner
+                const owner = head.owner;
+                const last = assertDefined(this.#reduce.pop());
+                
+                this.setExprValue(head.fn, last);
+                this.pushReductionValue(owner, last);
+			} else if ("multi" in head) {
+                // collect multiple IRValues from the reductionStack and put it back as a single IRMultiValue
+
+				/**
+				 * @type {IRValue[]}
+				 */
+				const values = [];
+
+				for (let i = 0; i < head.multi; i++) {
+					values.push(assertDefined(this.#reduce.pop()));
+				}
+
+                this.pushReductionValue(head.owner, IRMultiValue.flatten(values));
+            } else if ("value" in head) {
+                this.pushReductionValue(head.owner, head.value);
+            } else if ("ignore" in head) {
+                const vs = [new IRAnyValue()];
+                for (let i = 0; i < head.ignore; i++) {
+                    if (assertDefined(this.#reduce.pop()) instanceof IRErrorValue) {
+                        vs.push(new IRErrorValue());
+                    }
+                }
+
+                this.pushReductionValue(head.owner, IRMultiValue.flatten(vs));
+			} else {
+				throw new Error("unexpected term");
+			}
+
+            head = this.#compute.pop();
+		}
+    }
+
+    /**
+     * @private
+     * @param {IRExpr} expr entry point
+     * @returns {IRValue}
+     */
+    evalFirstPass(expr) {
+        this.pushExpr(IRStack.empty(), expr);
+
+        this.evalInternal();
+
+        const res = assertDefined(this.#reduce.pop());
+
+        assert(this.#reduce.length == 0, "expected a single reduction value in first phase [" + this.#reduce.map(v => v.toString()).join(", ") + "]");
+
+        if (res instanceof IRFuncValue) {
+            return res;
+        } else if (res instanceof IRLiteralValue) {
+            return res; // used by const
+        } else if (res instanceof IRMultiValue && res.values.some(v => v instanceof IRAnyValue)) {
+            return res;
+        } else {
+            console.log(annotateIR(this, expr));
+            throw new Error(`expected entry point function, got ${res.toString()}`);
+        }
+    }
+
+    /**
+     * @private
+     * @param {IRFuncValue} main
+     * @returns {IRValue}
+     */
+    evalSecondPass(main) {
+        const definition = assertClass(main.definition, IRFuncExpr);
+        const args = definition.args.map(a => new IRDataValue());
+        this.callFunc(definition, main, args);
+
+        this.evalInternal();
+
+        const res = assertDefined(this.#reduce.pop());
+
+        assert(this.#reduce.length == 0, "expected a single reduction value in second phase [" + res.toString() + ", " + this.#reduce.map(v => v.toString()).join(", ") + "]");
+
+        const finalValues = (res instanceof IRMultiValue) ? res.values : [res];
+
+        for (let v of finalValues) {
+        }
+
+        return IRMultiValue.flatten(finalValues);
+    }
+
+	/**
+	 * @param {IRExpr} expr entry point
+     * @returns {IRValue}
+	 */
+	eval(expr) {
+        const res = this.evalFirstPass(expr);
+
+        if (res instanceof IRFuncValue) {
+            return this.evalSecondPass(res);
+        } else {
+            return res;
+        }
+	}
+
+    /**
+     * @param {IRExpr} expr 
+     * @returns {UplcData}
+     */
+    evalConst(expr) {
+        const res = this.evalFirstPass(expr);
+
+        if (res instanceof IRLiteralValue) {
+            let v = res.value;
+
+            if (v instanceof UplcDataValue) {
+                return v.data;
+            } else if (v instanceof UplcInt) {
+                return new IntData(v.int);
+            } else if (v instanceof UplcBool) {
+                return new ConstrData(v.bool ? 1 : 0, []);
+            } else if (v instanceof UplcList) {
+                if (v.isDataList()) {
+                    return new ListData(v.list.map(item => item.data));
+                } else if (v.isDataMap()) {
+                    return new MapData(v.list.map(item => {
+                        const pair = assertClass(item, UplcPair);
+
+                        return [pair.key, pair.value];
+                    }));
+                }
+            } else if (v instanceof UplcString) {
+                return new ByteArrayData(textToBytes(v.string));
+            } else if (v instanceof UplcByteArray) {
+                return new ByteArrayData(v.bytes);
+            }
+
+            throw new Error(`unable to turn '${v.toString()}' into data`);
+        } else {
+            throw new Error("expected IRLiteralValue");
+        }
+    }
+}
+
+
+/**
+ * Used to debug the result of IREvalation
+ * @internal
+ * @param {IREvaluator} evaluation 
+ * @param {IRExpr} expr 
+ * @returns {string}
+ */
+function annotateIR(evaluation, expr) {
+    /**
+     * @param {IRExpr} expr 
+     * @param {string} indent
+     * @returns {string}
+     */
+    const annotate = (expr, indent) => {
+        if (expr instanceof IRLiteralExpr) {
+            return expr.value.toString();
+        } else if (expr instanceof IRErrorExpr) {
+            return `error()`;
+        } else if (expr instanceof IRNameExpr) {
+            const output = evaluation.getExprValue(expr);
+
+            if (output) {
+                return `${expr.name}: ${output.toString()}`
+            } else {
+                return expr.name;
+            }
+        } else if (expr instanceof IRFuncExpr) {
+            const output = evaluation.getExprValue(expr);
+
+            const isGlobalDef = expr.args.length == 1 && expr.args[0].name.startsWith("__");
+            const innerIndent = indent + (isGlobalDef ? "" : TAB);
+
+            let countStr = "";
+            const count = evaluation.countFuncCalls(expr);
+            if (count == Number.MAX_SAFE_INTEGER) {
+                countStr = "\u221e";
+            } else {
+                countStr = count.toString();
+            }
+
+            return `Fn${expr.tag}(${expr.args.map(a => {
+                const v = evaluation.getVariableValue(a);
+
+                if (v) {
+                    return `${a.name}: ${v.toString()}`;
+                } else {
+                    return a.name;
+                }
+            }).join(", ")})${countStr} -> ${output ? output.toString() + " " : ""}{\n${innerIndent}${annotate(expr.body, innerIndent)}\n${indent}}`;
+        } else if (expr instanceof IRCallExpr) {
+            const output = evaluation.getExprValue(expr);
+
+            const isGlobalDef = expr.func instanceof IRFuncExpr && expr.func.args.length == 1 && expr.func.args[0].name.startsWith("__");
+            const globalDef = expr.func instanceof IRFuncExpr && expr.func.args.length == 1 ? expr.func.args[0].name : "";
+
+            const parens = `(${isGlobalDef ? `\n${indent}${TAB}/* ${globalDef} */` : ""}${expr.args.map(a => `\n${indent}${TAB}${annotate(a, indent + TAB)}`).join(",")}${(expr.args.length > 0) || isGlobalDef ? `\n${indent}` : ""})${output ? `: ${output.toString()}` : ""}`;
+
+            if (expr.func instanceof IRNameExpr) {
+                return `${expr.func.toString()}${parens}`;
+            } else {
+                return `${annotate(expr.func, indent)}${parens}`;
+            }
+        } else {
+            throw new Error("unhandled IRExpr");
+        }
+    };
+
+    return annotate(expr, "");
+}
+
+
+//////////////////////////////
+// Section 31: IR optimization
+//////////////////////////////
+
+/**
+ * Any IRFuncExpr that is smaller or equal to this number will be inlined.
+ * 
+ * Examples of helios builtin functions that should be inlined:
+ *   * __helios__bool__and 
+ *   * __helios__common__enum_field_0
+ * 
+ * This is a number of bits/
+ */
+const INLINE_MAX_SIZE = 128;
+
+/**
+ * @param {IRExpr} func 
+ * @returns {boolean}
+ */
+function isIdentityFunc(func) {
+    if (func instanceof IRFuncExpr && func.args.length == 1 && func.body instanceof IRNameExpr && func.body.isVariable(func.args[0])) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+/**
+ * Recursive algorithm that performs the following optimizations.
+ * 
+ * Optimizations performed in both `aggressive == false` and `aggressive == true` cases:
+ *   * replace `IRNameExpr` by `IRLiteralExpr` if the expected value is IRLiteralValue
+ *   * replace `IRCallExpr` by `IRLiteralExpr` if the expected value is IRLiteralValue
+ * 
+ * Optimizations only performed in the `aggressive == true` case:
+ *   * replace `IRNameExpr` by `IRErrorExpr` if the expected value is IRErrorValue
+ *   * replace `IRCallExpr` by `IRErrorExpr` if the expected value is IRErrorValue
+ *   * replace `__core__addInteger(<expr>, 0)` or `__core__addInteger(0, <expr>)` by `<expr>`
+ *   * replace `__core__subtractInteger(<expr>, 0)` by `<expr>`
+ *   * replace `__core__multiplyInteger(<expr>, 1)` or `__core__multiplyInteger(1, <expr>)` by `<expr>`
+ *   * replace `__core__divideInteger(<expr>, 1)` by `<expr>`
+ *   * replace `__core__quotientInteger(<expr>, 1)` by `<expr>`
+ *   * replace `__core__appendByteString(<expr>, #)` or `__core__appendByteString(#, <expr>)` by `<expr>`
+ *   * replace `__core__appendString(<expr>, "")` or `__core__appendString("", <expr>)` by `<expr>`
+ *   * replace `__core__decodeUtf8(__core__encodeUtf8(<expr>))` by `<expr>`
+ *   * replace `__core__ifThenElse(true, <expr-a>, <expr-b>)` by `<expr-a>` if `<expr-b>` doesn't expect IRErrorValue
+ *   * replace `__core__ifThenElse(false, <expr-a>, <expr-b>)` by `<expr-b>` if `<expr-a>` doesn't expect IRErrorValue
+ *   * replace `__core__ifThenElse(__core__nullList(<lst-expr>), <expr-a>, <expr-b>)` by `__core__chooseList(<lst-expr>, <expr-a>, <expr-b>)`
+ *   * replace `__core__ifThenElse(<cond-expr>, <expr-a>, <expr_a>)` by `<expr-a>` if `<cond-expr>` doesn't expect IRErrorValue
+ *   * replace `__core__chooseUnit(<expr>, ())` by `<expr>` (because `<expr>` is expected to return unit as well)
+ *   * replace `__core__chooseUnit((), <expr>)` by `<expr>`
+ *   * replace `__core__trace(<msg-expr>, <ret-expr>)` by `<ret_expr>` if `<msg-expr>` doesn't expect IRErrorValue
+ *   * replace `__core__chooseList([], <expr-a>, <expr-b>)` by `<expr-a>` if `<expr-b>` doesn't expect IRErrorValue
+ *   * replace `__core__chooseList([...], <expr-a>, <expr-b>)` by `<expr-b>` if `<expr-a>` doesn't expect IRErrorValue
+ *   * replace `__core__chooseData(ConstrData, <C-expr>, <M-expr>, <L-expr>, <I-expr>, <B-expr>)` by `<C-expr>` if none of the other expressions expect IRErrorValue
+ *   * replace `__core__chooseData(__core__constrData(<index-expr>, <fields-expr>), <C-expr>, <M-expr>, <L-expr>, <I-expr>, <B-expr>)` by `<C-expr>` if none of the other expressions expect IRErrorValue
+ *   * replace `__core__chooseData(MapData, <C-expr>, <M-expr>, <L-expr>, <I-expr>, <B-expr>)` by `<M-expr>` if none of the other expression expect IRErrorValue
+ *   * replace `__core__chooseData(__core__mapData(<data-expr>), <C-expr>, <M-expr>, <L-expr>, <I-expr>, <B-expr>)` by `<M-expr>` if none of the other expression expect IRErrorValue
+ *   * replace `__core__chooseData(ListData, <C-expr>, <M-expr>, <L-expr>, <I-expr>, <B-expr>)` by `<L-expr>` if none of the other expression expect IRErrorValue
+ *   * replace `__core__chooseData(__core__listData(<data-expr>), <C-expr>, <M-expr>, <L-expr>, <I-expr>, <B-expr>)` by `<L-expr>` if none of the other expression expect IRErrorValue
+ *   * replace `__core__chooseData(IntData, <C-expr>, <M-expr>, <L-expr>, <I-expr>, <B-expr>)` by `<I-expr>` if none of the other expression expect IRErrorValue
+ *   * replace `__core__chooseData(__core__iData(<data-expr>), <C-expr>, <M-expr>, <L-expr>, <I-expr>, <B-expr>)` by `<I-expr>` if none of the other expression expect IRErrorValue
+ *   * replace `__core__chooseData(ByteArrayData, <C-expr>, <M-expr>, <L-expr>, <I-expr>, <B-expr>)` by `<B-expr>` if none of the other expression expect IRErrorValue
+ *   * replace `__core__chooseData(__core__bData(<data-expr>), <C-expr>, <M-expr>, <L-expr>, <I-expr>, <B-expr>)` by `<B-expr>` if none of the other expression expect IRErrorValue
+ *   * replace `__core__unMapData(__core__mapData(<expr>))` by `<expr>`
+ *   * replace `__core__unListData(__core__listData(<expr>))` by `<expr>`
+ *   * replace `__core__unIData(__core__iData(<expr>))` by `<expr>`
+ *   * replace `__core__unBData(__core__bData(<expr>))` by `<expr>`
+ *   * replace `__core__equalsData(__core__iData(<expr-a>), __core__iData(<expr-b>))` by `__core__equalsInteger(<expr-a>, <expr-b>)`
+ *   * replace `__core__equalsData(__core__bData(<expr-a>), __core__bData(<expr-b>))` by `__core__equalsByteString(<expr-a>, <expr-b>)`
+ *   * remove unused IRFuncExpr arg variables if none if the corresponding IRCallExpr args expect errors and if all the the IRCallExprs expect only this IRFuncExpr
+ *   * replace IRCallExpr args that are uncalled IRFuncExprs with `()`
+ *   * flatten nested IRFuncExprs if the correspondng IRCallExprs always call them in succession
+ *   * replace `(<vars>) -> {<name-expr>(<vars>)}` by `<name-expr>` if each var is only referenced once (i.e. only referenced in the call)
+ *   * replace `(<var>) -> {<var>}(<arg-expr>)` by `<arg-expr>`
+ *   * replace `<name-expr>(<arg-expr>)` by `<arg-expr>` if the expected value of `<name-expr>` is the identity function
+ *   * replace `(<vars>) -> {<func-expr>(<vars>)}` by `<func-expr>` if each var is only referenced once (i.e. only referenced in the call)
+ *   * inline (copies) of `<name-expr>` in `(<vars>) -> {...}(<name-expr>, ...)`
+ *   * inline `<fn-expr>` in `(<vars>) -> {...}(<fn-expr>, ...)` if the corresponding var is only referenced once
+ *   * inline `<fn-expr>` in `(<vars>) -> {...}(<fn-expr>, ...)` if `<fn-expr>` has a Uplc flat size smaller than INLINE_MAX_SIZE
+ *   * inline `<call-expr>` in `(<vars>) -> {...}(<call-expr>, ...)` if the corresponding var is only referenced once and if all the nested IRFuncExprs are only evaluated once and if the IRCallExpr doesn't expect an error
+ *   * replace `() -> {<expr>}()` by `<expr>`
+ * 
+ * Optimizations that we have considered, but are NOT performed:
+ *   * replace `__core__subtractInteger(0, <expr>)` by `__core__multiplyInteger(<expr>, -1)`
+ *       reason: it is unclear if either method is cheaper for the majority of cases
+ *   * replace `__core__multiplyInteger(<expr>, -1)` by `__core__subtractInteger(0, <expr>)`
+ *       reason: it is unclear if either method is cheaper for the majority of cases
+ * 
+ * @internal
+ * @param {IREvaluator} evaluation 
+ * @param {IRExpr} expr
+ * @param {boolean} aggressive
+ * @returns {IRExpr}
+ */
+class IROptimizer {
+    #evaluator;
+    #root;
+    #aggressive;
+
+    /**
+     * @type {Map<IRVariable, IRExpr>}
+     */
+    #inlining;
+
+    /**
+     * @type {Map<IRFuncExpr, number>}
+     */
+    #callCount;
+
+    /**
+     * @param {IRExpr} root
+     * @param {boolean} aggressive 
+     */
+    constructor(root, aggressive = false) {
+        this.#evaluator = new IREvaluator();
+        this.#root = root;
+        IROptimizer.assertNoDuplicateExprs(root);
+        this.#aggressive = aggressive;
+
+        this.#inlining = new Map();
+        this.#callCount = new Map();
+
+        this.init();
+    }
+
+    /**
+     * @param {IRExpr} expr 
+     * @returns {boolean}
+     */
+    expectsError(expr) {
+        return this.#evaluator.expectsError(expr);
+    }
+
+    /**
+     * @private
+     * @param {IRFuncExpr} fn 
+     */
+    countFuncCalls(fn) {
+        return this.#evaluator.countFuncCalls(fn);
+    }
+
+    /**
+     * Makes sure the callCount is copied from IREvaluator
+     * @private
+     * @param {IRFuncExpr} old 
+     * @param {IRVariable[]} args
+     * @param {IRExpr} body
+     * @returns {IRFuncExpr}
+     */
+    newFuncExpr(old, args, body) {
+        const funcExpr = new IRFuncExpr(
+            old.site,
+            args,
+            body,
+            old.tag
+        );
+
+        this.#evaluator.notifyCopyExpr(old, funcExpr);
+
+        return funcExpr;
+    }
+
+    /**
+     * Apply optimizations that require access to the root:
+     *   * flatten nested IRFuncExpr where possible
+     *   * remove unused IRFuncExpr variables
+     * @private
+     */
+    init() {
+        this.#evaluator.eval(this.#root);
+
+        if (config.DEBUG) {
+            console.log(annotateIR(this.#evaluator, this.#root));
+        }
+
+        if (!this.#aggressive) {
+            return;
+        }
+
+        this.removeUnusedArgs();
+
+        this.replaceUncalledArgsWithUnit();
+
+        // rerun evaluation
+        this.#evaluator = new IREvaluator();
+
+        this.#evaluator.eval(this.#root);
+
+        if (config.DEBUG) {
+            console.log(annotateIR(this.#evaluator, this.#root));
+        }
+
+        this.flattenNestedFuncExprs();
+    }
+
+    /**
+     * Mutates
+     * @private
+     */
+    removeUnusedArgs() {
+        const funcExprs = this.#evaluator.funcExprs.filter(expr => {
+            const unusedIndices = this.#evaluator.getUnusedFuncVariables(expr);
+
+            return unusedIndices.length > 0 && this.#evaluator.onlyDedicatedCallExprs(expr) && this.#evaluator.noUnusedArgErrors(expr, unusedIndices);
+        });
+
+        funcExprs.forEach(expr => {
+            const unusedIndices = this.#evaluator.getUnusedFuncVariables(expr);
+            const unused = new Set(unusedIndices);
+
+            const callExprs = this.#evaluator.getFuncCallExprs(expr);
+
+            callExprs.forEach(callExpr => {
+                callExpr.args = callExpr.args.filter((a, i) => !unused.has(i));
+            });
+            
+            expr.args = expr.args.filter((a, i) => !unused.has(i));
+        });
+    }
+
+    /**
+     * TODO: improve IREvaluator to make sure all possible IRFuncExpr calls are evaluated
+     * @private
+     */
+    replaceUncalledArgsWithUnit() {
+        loopIRExprs(this.#root, {
+            callExpr: (callExpr) => {
+                callExpr.args = callExpr.args.map(a => {
+                    if (a instanceof IRFuncExpr && this.#evaluator.countFuncCalls(a) == 0) {
+                        return new IRLiteralExpr(new UplcUnit(a.site));
+                    } else {
+                        return a;
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * In scope order, call func before call args
+     * @private
+     */
+    collectFuncExprs() {
+        /**
+         * @type {IRFuncExpr[]}
+         */
+        const funcExprs = [];
+
+        loopIRExprs(this.#root, {
+            funcExpr: (funcExpr) => {
+                funcExprs.push(funcExpr);
+            }
+        });
+
+        return funcExprs;
+    }
+
+    /**
+     * @private
+     */
+    flattenNestedFuncExprs() {
+        const funcExprs = this.collectFuncExprs();
+
+        /**
+         * @type {Set<IRFuncExpr>}
+         */
+        const done = new Set();
+
+        funcExprs.forEach(expr => {
+            if (done.has(expr)) {
+                return;
+            }
+
+            let last = expr;
+            let args = expr.args.slice();
+            let depth = 1;
+
+            while (last.body instanceof IRFuncExpr && this.#evaluator.onlyDedicatedCallExprs(last.body) && this.#evaluator.onlyNestedCalls(last, last.body)) {
+                depth += 1;
+                last = last.body;
+                args = args.concat(last.args.slice());
+                done.add(last);
+            }
+
+            if (depth == 1) {
+                // don't do anything
+                return;
+            }
+
+            const callExprs = this.#evaluator.getFuncCallExprs(last);
+
+            assert(callExprs.length > 0);
+
+            callExprs.forEach(callExpr => {
+                let inner = callExpr;
+
+                /**
+                 * @type {IRExpr[][]}
+                 */
+                let allArgs = [];
+
+                for (let i = 0; i < depth; i++) {
+                    allArgs.push(inner.args.slice());
+
+                    if (i < depth - 1) {
+                        inner = assertClass(inner.func, IRCallExpr);
+                    }
+                }
+
+                callExpr.func = inner.func;
+                callExpr.args = allArgs.reverse().flat();
+            });
+                
+            expr.args = args;
+            expr.body = last.body;
+        });
+    }
+
+    /**
+     * @param {IRFuncExpr} start
+     * @param {IRNameExpr} nameExpr
+     * @returns {boolean}
+     */
+    isEvaluatedMoreThanOnce(start, nameExpr) {
+        /**
+         * @type {Map<IRExpr, IRCallExpr | IRFuncExpr>}
+         */
+        const parents = new Map();
+
+        let foundNameExpr = false;
+
+        loopIRExprs(start, {
+            funcExpr: (funcExpr) => {
+                parents.set(funcExpr.body, funcExpr);
+            },
+            callExpr: (callExpr) => {
+                parents.set(callExpr.func, callExpr);
+                callExpr.args.forEach(a => {parents.set(a, callExpr);});
+            },
+            nameExpr: (ne) => {
+                foundNameExpr = ne == nameExpr;
+            },
+            exit: () => {
+                return foundNameExpr;
+            }
+        });
+
+        let parent = parents.get(nameExpr);
+
+        while (parent && parent != start) {
+            if (parent instanceof IRFuncExpr && this.countFuncCalls(parent) > 1) {
+                return true;
+            }
+            
+            parent = parents.get(parent);
+        }
+
+        return false;
+    }
+
+    /**
+     * @param {IRVariable} v 
+     * @param {IRExpr} expr 
+     */
+    inline(v, expr) {
+        this.#inlining.set(v, expr);
+    }
+    
+    /**
+     * @private
+     * @param {IRNameExpr} expr 
+     * @returns {IRExpr}
+     */
+    optimizeNameExpr(expr) {
+        const v = this.#evaluator.getExprValue(expr);
+    
+        if (v) {
+            if (v instanceof IRLiteralValue) {
+                return new IRLiteralExpr(v.value);
+            } else if (v instanceof IRErrorValue && this.#aggressive) {
+                return new IRErrorExpr(expr.site);
+            }
+        }
+
+        if (!expr.isCore()) {
+            const newExpr = this.#inlining.get(expr.variable);
+
+            if (newExpr) {
+                // always copy to make sure any (nested) IRNameExpr is unique (=> unique DeBruijn index)
+                //  also so that functions that are inlined multiple times each get unique variables
+                return newExpr.copy((oldExpr, newExpr) => {
+                    this.#evaluator.notifyCopyExpr(oldExpr, newExpr);
+                }, new Map());
+            }
+        }
+
+        return expr;
+    }
+
+    /**
+     * The optimizations are only performed in aggressive mode
+     * @private
+     * @param {IRCallExpr} expr
+     * @returns {IRExpr}
+     */
+    optimizeBuiltinCallExpr(expr) {
+        const builtinName = expr.builtinName;
+
+        const args = expr.args;
+
+        switch (builtinName) {
+            case "addInteger": {
+                const [a, b] = args;
+
+                if (a instanceof IRLiteralExpr && a.value.int == 0n) {
+                    return b;
+                } else if (b instanceof IRLiteralExpr && b.value.int == 0n) {
+                    return a;
+                }
+
+                break;
+            }            case "subtractInteger": {
+                const [a, b] = args;
+
+                if (b instanceof IRLiteralExpr && b.value.int == 0n) {
+                    return a;
+                }
+
+                break;
+            }            case "multiplyInteger": {
+                const [a, b] = args;
+
+                if (a instanceof IRLiteralExpr && a.value.int == 1n) {
+                    return b;
+                } else if (b instanceof IRLiteralExpr && b.value.int == 1n) {
+                    return a;
+                }
+
+                break;
+            }            case "divideInteger": {
+                const [a, b] = args;
+
+                if (b instanceof IRLiteralExpr && b.value.int == 1n) {
+                    return a;
+                }
+
+                break;
+            }            case "quotientInteger": {
+                const [a, b] = args;
+
+                if (b instanceof IRLiteralExpr && b.value.int == 1n) {
+                    return a;
+                }
+
+                break;
+            }            case "appendByteString": {
+                const [a, b] = args;
+
+                if (a instanceof IRLiteralExpr && a.value.bytes.length == 0) {
+                    return b;
+                } else if (b instanceof IRLiteralExpr && b.value.bytes.length == 0) {
+                    return a;
+                }
+
+                break;
+            }            case "appendString": {
+                const [a, b] = args;
+
+                if (a instanceof IRLiteralExpr && a.value.string == "") {
+                    return b;
+                } else if (b instanceof IRLiteralExpr && b.value.string == "") {
+                    return a;
+                }
+
+                break;
+            }            case "decodeUtf8": {
+                const [arg] = args;
+
+                if (arg instanceof IRCallExpr && arg.func instanceof IRNameExpr && arg.builtinName == "encodeUtf8") {
+                    return arg.args[0];
+                }
+
+                break;
+            }            case "ifThenElse": {
+                const [cond, a, b] = args;
+
+                if (cond instanceof IRLiteralExpr) {
+                    if (cond.value.bool && !this.expectsError(b)) {
+                        return a;
+                    } else if (!cond.value.bool && !this.expectsError(a)) {
+                        return b;
+                    }
+                } else if (!this.expectsError(cond) && a.toString() == b.toString()) {
+                    return a;
+                } else if (cond instanceof IRCallExpr && cond.func instanceof IRNameExpr && cond.builtinName == "nullList") {
+                    const newExpr = new IRCallExpr(
+                        expr.site,
+                        new IRNameExpr(new Word(expr.site, `${BUILTIN_PREFIX}chooseList`)),
+                        [cond.args[0], a, b]
+                    );
+
+                    this.#evaluator.notifyCopyExpr(expr, newExpr);
+
+                    return newExpr;
+                }
+
+                break;
+            }            case "chooseUnit": {
+                const [a, b] = args;
+
+                if (a instanceof IRLiteralExpr && a.value instanceof UplcUnit) {
+                    return b;
+                } else if (b instanceof IRLiteralExpr && b.value instanceof UplcUnit) {
+                    return a;
+                }
+
+                break;
+            }            case "trace": {
+                const [a, b] = args;
+                    
+                if (!this.expectsError(a)) {
+                    return b;
+                }
+
+                break;
+            }            case "chooseList": {
+                const [lst, a, b] = args;
+
+                if (lst instanceof IRLiteralExpr) {
+                    if (lst.value.list.length == 0 && !this.expectsError(b)) {
+                        return a;
+                    } else if (lst.value.list.length > 0 && !this.expectsError(a)) {
+                        return b;
+                    }
+                }
+
+                break;
+            }            case "chooseData": {
+                const [cond, C, M, L, I, B] = args;
+
+                if (cond instanceof IRLiteralExpr) {
+                    if (cond.value.data instanceof ConstrData && !this.expectsError(M) && !this.expectsError(L) && !this.expectsError(I) && !this.expectsError(B)) {
+                        return C;
+                    } else if (cond.value.data instanceof MapData && !this.expectsError(C) && !this.expectsError(L) && !this.expectsError(I) && !this.expectsError(B)) {
+                        return M;
+                    } else if (cond.value.data instanceof ListData && !this.expectsError(C) && !this.expectsError(M) && !this.expectsError(I) && !this.expectsError(B)) {
+                        return L;
+                    } else if (cond.value.data instanceof IntData && !this.expectsError(C) && !this.expectsError(M) && !this.expectsError(L) && !this.expectsError(B)) {
+                        return I;
+                    } else if (cond.value.data instanceof ByteArrayData && !this.expectsError(C) && !this.expectsError(M) && !this.expectsError(L) && !this.expectsError(I)) {
+                        return B;
+                    }
+                } else if (cond instanceof IRCallExpr && cond.func instanceof IRNameExpr && !this.expectsError(cond)) {
+                    if (cond.builtinName == "constrData" && !this.expectsError(M) && !this.expectsError(L) && !this.expectsError(I) && !this.expectsError(B)) {
+                        return C;
+                    } else if (cond.builtinName == "mapData" && !this.expectsError(C) && !this.expectsError(L) && !this.expectsError(I) && !this.expectsError(B)) {
+                        return M;
+                    } else if (cond.builtinName == "listData" && !this.expectsError(C) && !this.expectsError(M) && !this.expectsError(I) && !this.expectsError(B)) {
+                        return L;
+                    } else if (cond.builtinName == "iData" && !this.expectsError(C) && !this.expectsError(M) && !this.expectsError(L) && !this.expectsError(B)) {
+                        return I;
+                    } else if (cond.builtinName == "bData" && !this.expectsError(C) && !this.expectsError(M) && !this.expectsError(L) && !this.expectsError(I)) {
+                        return B;
+                    }
+                }
+
+                break;
+            }            case "unMapData": {
+                const [arg] = args;
+
+                if (arg instanceof IRCallExpr && arg.func instanceof IRNameExpr && arg.builtinName == "mapData") {
+                    return arg.args[0];
+                }
+
+                break;
+            }            case "unListData": {
+                const [arg] = args;
+
+                if (arg instanceof IRCallExpr && arg.func instanceof IRNameExpr && arg.builtinName == "listData") {
+                    return arg.args[0];
+                }
+
+                break;
+            }            case "unIData": {
+                const [arg] = args;
+
+                if (arg instanceof IRCallExpr && arg.func instanceof IRNameExpr && arg.builtinName == "iData") {
+                    return arg.args[0];
+                }
+
+                break;
+            }            case "unBData": {
+                const [arg] = args;
+
+                if (arg instanceof IRCallExpr && arg.func instanceof IRNameExpr && arg.builtinName == "bData") {
+                    return arg.args[0];
+                }
+
+                break;
+            }            case "equalsData": {
+                const [a, b] = args;
+
+                if (
+                    a instanceof IRCallExpr && a.func instanceof IRNameExpr && a.builtinName == "iData" &&
+                    b instanceof IRCallExpr && b.func instanceof IRNameExpr && b.builtinName == "iData"
+                ) {
+                    const newExpr = new IRCallExpr(expr.site, new IRNameExpr(new Word(expr.site, `${BUILTIN_PREFIX}equalsInteger`)), [a.args[0], b.args[0]]);
+
+                    this.#evaluator.notifyCopyExpr(expr, newExpr);
+
+                    return newExpr;
+                } else if (
+                    a instanceof IRCallExpr && a.func instanceof IRNameExpr && a.builtinName == "bData" &&
+                    b instanceof IRCallExpr && b.func instanceof IRNameExpr && b.builtinName == "bData"
+                ) {
+                    const newExpr = new IRCallExpr(expr.site, new IRNameExpr(new Word(expr.site, `${BUILTIN_PREFIX}equalsByteString`)), [a.args[0], b.args[0]]);
+
+                    this.#evaluator.notifyCopyExpr(expr, newExpr);
+
+                    return newExpr;
+                }
+
+                break;
+            }        }
+
+        return expr;
+    }
+
+    /**
+     * @private
+     * @param {IRCallExpr} expr 
+     * @returns {IRExpr}
+     */
+    optimizeCallExpr(expr) {
+        const v = this.#evaluator.getExprValue(expr);
+    
+        if (v) {
+            if (v instanceof IRLiteralValue) {
+                return new IRLiteralExpr(v.value);
+            } else if (v instanceof IRErrorValue && this.#aggressive) {
+                return new IRErrorExpr(expr.site);
+            }
+        }
+
+        let func = expr.func;
+        
+        let args = expr.args.map(a => this.optimizeInternal(a));
+
+        if (isIdentityFunc(func)) {
+            assert(args.length == 1);
+
+            return args[0];
+        } else if (func instanceof IRNameExpr) {
+            const v = this.#evaluator.getExprValue(func);
+
+            if (v instanceof IRFuncValue && isIdentityFunc(v.definition)) {
+                assert(args.length == 1);
+
+                return args[0];
+            }
+        }
+
+        // see if any arguments can be inlined
+        if (func instanceof IRFuncExpr) {
+            let unused = new Set();
+
+            const funcExpr = func;
+            const variables = func.args;
+
+            args.forEach((a, i) => {
+                const v = variables[i];
+
+                if (a instanceof IRNameExpr) {
+                    // inline all IRNameExprs
+                    unused.add(i);
+                    this.inline(v, a);
+                } else if (a instanceof IRFuncExpr && (this.#evaluator.countVariableReferences(v) == 1 || a.flatSize <= INLINE_MAX_SIZE)) {
+                    // inline IRFuncExpr if it is only reference once
+                    unused.add(i);
+                    this.inline(v, a);
+                } else if (a instanceof IRCallExpr && this.#evaluator.countVariableReferences(v) == 1 && !this.expectsError(a)) {
+                    const nameExpr = this.#evaluator.getVariableReferences(v)[0];
+
+                    if (!this.isEvaluatedMoreThanOnce(funcExpr, nameExpr)) {
+                        unused.add(i);
+                        this.inline(v, a);
+                    }
+                }
+            });
+
+            if (unused.size > 0) {
+                args = args.filter((a, i) => !unused.has(i));
+
+                const newFuncExpr = this.newFuncExpr(
+                    func,
+                    func.args.filter((a, i) => !unused.has(i)),
+                    func.body
+                );
+
+                func = newFuncExpr;
+            }
+        }
+
+        if (args.length == 0 && func instanceof IRFuncExpr && func.args.length == 0) {
+            return this.optimizeInternal(func.body);
+        }
+
+        const newExpr = new IRCallExpr(
+            expr.site, 
+            this.optimizeInternal(func),
+            args
+        );
+
+        this.#evaluator.notifyCopyExpr(expr, newExpr);
+
+        const builtinName = newExpr.builtinName;
+
+        if (builtinName != "" && this.#aggressive) {
+            return this.optimizeBuiltinCallExpr(newExpr);
+        }
+
+        return newExpr;
+    }
+
+    /**
+     * @private
+     * @param {IRFuncExpr} expr 
+     * @returns {IRExpr}
+     */
+    optimizeFuncExpr(expr) {
+        expr = this.newFuncExpr(
+            expr, 
+            expr.args,
+            this.optimizeInternal(expr.body)
+        );
+
+        if (
+            expr.body instanceof IRCallExpr && 
+            (expr.body.func instanceof IRNameExpr || expr.body.func instanceof IRFuncExpr) && 
+            expr.body.args.length == expr.args.length && 
+            expr.body.args.every((a, i) => {
+                return a instanceof IRNameExpr && a.isVariable(expr.args[i]) && this.#evaluator.countVariableReferences(expr.args[i]) == 1;
+            })
+        ) {
+            return expr.body.func;
+        }
+
+        return expr;
+    }
+
+    /**
+     * @private
+     * @param {IRExpr} expr 
+     */
+    optimizeInternal(expr) {
+        const newExpr = (() => {
+            if (expr instanceof IRLiteralExpr) {
+                // already optimal
+                return expr;
+            } else if (expr instanceof IRErrorExpr) {
+                // already optimal
+                return expr;
+            } else if (expr instanceof IRNameExpr) {
+                return this.optimizeNameExpr(expr);
+            } else if (expr instanceof IRCallExpr) {
+                return this.optimizeCallExpr(expr);
+            } else if (expr instanceof IRFuncExpr) {
+                return this.optimizeFuncExpr(expr);
+            } else {
+                throw new Error("unhandled IRExpr");
+            }
+        })();
+
+        return newExpr;
+    }
+
+    /**
+     * @param {IRExpr} expr 
+     */
+    static assertNoDuplicateExprs(expr) {
+        /**
+         * @type {Set<IRExpr>}
+         */
+        const s = new Set();
+
+        loopIRExprs(expr, {
+            nameExpr: (nameExpr) => {
+                if (s.has(nameExpr)) {
+                    console.log(expr.toString());
+                    throw new Error("duplicate IRNameExpr " + nameExpr.name);
+                }
+
+                s.add(nameExpr);
+            }
+        });
+    }
+
+    /**
+     * @returns {IRExpr}
+     */
+    optimize() {
+        const expr = this.optimizeInternal(this.#root);
+
+        IROptimizer.assertNoDuplicateExprs(expr);
+
+        return expr;
+    }
+}
+
+
 /////////////////////////
-// Section 30: IR Program
+// Section 32: IR Program
 /////////////////////////
 
 
@@ -41820,28 +45670,37 @@ class IRProgram {
 		
 		try {
 			expr.resolveNames(scope);
+		
+			if (simplify) {
+				// inline literals and evaluate core expressions with only literal args (some can be evaluated with only partial literal args)
+				expr = IRProgram.simplify(expr);
+			}
+
+			// make sure the debruijn indices are correct (doesn't matter for simplication because names are converted into unique IRVariables, but is very important before converting to UPLC)
+			expr.resolveNames(scope);
+
+			const program = new IRProgram(IRProgram.assertValidRoot(expr), {
+				purpose: purpose,
+				callsTxTimeRange: callsTxTimeRange
+			});
+
+			return program;
 		} catch (e) {
 			console.log((new Source(irSrc, "")).pretty());
 
 			throw e;
 		}
-		
-		expr = expr.evalConstants(new IRCallStack(true));
+	}
 
-		if (simplify) {
-			// inline literals and evaluate core expressions with only literal args (some can be evaluated with only partial literal args)
-			expr = IRProgram.simplify(expr);
-		}
+	/**
+	 * @returns {string}
+	 */
+	annotate() {
+		const evaluator = new IREvaluator();
 
-		// make sure the debruijn indices are correct (doesn't matter for simplication because names are converted into unique IRVariables, but is very important before converting to UPLC)
-		expr.resolveNames(scope);
+		evaluator.eval(this.#expr);
 
-		const program = new IRProgram(IRProgram.assertValidRoot(expr), {
-			purpose: purpose,
-			callsTxTimeRange: callsTxTimeRange
-		});
-
-		return program;
+		return annotateIR(evaluator, this.#expr);
 	}
 
 	/**
@@ -41855,9 +45714,9 @@ class IRProgram {
 		while (dirty) {
 			dirty = false;
 
-			expr = IRProgram.simplifyLiterals(expr);
+			const optimizer = new IROptimizer(expr, true);
 
-			expr = IRProgram.simplifyTopology(expr);
+			expr = optimizer.optimize();
 
 			const newState = expr.toString();
 
@@ -41868,26 +45727,6 @@ class IRProgram {
 		}
 
 		return expr;
-	}
-
-	/**
-	 * @param {IRExpr} expr 
-	 * @returns {IRExpr}
-	 */
-	static simplifyLiterals(expr) {
-		return expr.simplifyLiterals(new Map());
-	}
-
-	/**
-	 * @param {IRExpr} expr 
-	 * @returns {IRExpr}
-	 */
-	static simplifyTopology(expr) {
-		const nameExprs = new IRNameExprRegistry();
-
-		expr.registerNameExprs(nameExprs);
-
-		return expr.simplifyTopology(new IRExprRegistry(nameExprs));
 	}
 
 	/**
@@ -42038,7 +45877,7 @@ class IRParametricProgram {
 
 
 /////////////////////////////
-// Section 31: Helios program
+// Section 33: Helios program
 /////////////////////////////
 
 
@@ -42789,18 +46628,31 @@ const DEFAULT_PROGRAM_CONFIG = {
 
 		const path = constStatement.path;
 
-		const inner = new IR([
-			new IR("const"),
-			new IR("("),
-			new IR(path),
-			new IR(")")
-		]);
+		const inner = new IR(path);
 
 		const ir = this.wrapInner(ctx, inner, map);
 
-		const irProgram = IRProgram.new(ir, this.#purpose, true);
+		const [irSrc, codeMap] = ir.generateSource();
 
-		return new UplcDataValue(irProgram.site, irProgram.data);
+		const irTokens = tokenizeIR(irSrc, codeMap);
+
+		const expr = buildIRExpr(irTokens);
+
+		const scope = new IRScope(null, null);
+
+		expr.resolveNames(scope);
+
+		const evaluation = new IREvaluator();
+		
+		try {
+			const data = evaluation.evalConst(expr);
+
+			return new UplcDataValue(expr.site, data);
+		} catch (e) {
+			console.log(irSrc);
+
+			throw e;
+		}
 	}
 
 	/**
@@ -43041,17 +46893,24 @@ const DEFAULT_PROGRAM_CONFIG = {
 			const pName = IRParametricName.parse(name);
 
 			const genericName = pName.toTemplate();
+			const genericFuncName = pName.toTemplate(true);
 
-			let ir = builtinGenerics.get(name) ?? builtinGenerics.get(genericName) ?? map.get(genericName);
+			let ir = builtinGenerics.get(name) ?? builtinGenerics.get(genericName) ?? builtinGenerics.get(genericFuncName) ?? map.get(genericName);
 
 			if (!ir) {
 				throw new Error(`${genericName} undefined in ir`);
-			} else {
+			} else if (ir instanceof IR) {
 				ir = pName.replaceTemplateNames(ir);
 
 				added.set(name, [location, ir]);
 
 				ir.search(RE_IR_PARAMETRIC_NAME, (name_) => add(name_, name));
+			} else {
+				const ir_ = ir(pName.ttp, pName.ftp);
+
+				added.set(name, [location, ir_]);
+
+				ir_.search(RE_IR_PARAMETRIC_NAME, (name_) => add(name_, name));
 			}
 		};
 
@@ -43275,14 +47134,21 @@ const DEFAULT_PROGRAM_CONFIG = {
 	}
 
 	/**
+	 * Returns the Intermediate Representation AST of the program.
+	 * @param {boolean} optimized if `true`, returns the IR of the optimized program
+	 * @param {boolean} annotate add internal type information annotations to the returned AST 
 	 * @returns {string}
 	 */
-	prettyIR(simplify = false) {
-		const ir = this.toIR(new ToIRContext(simplify));
+	dumpIR(optimized = false, annotate = false) {
+		const ir = this.toIR(new ToIRContext(optimized));
 
-		const irProgram = IRProgram.new(ir, this.#purpose, simplify);
+		const irProgram = IRProgram.new(ir, this.#purpose, optimized);
 
-		return new Source(irProgram.toString(), this.name).pretty();
+		if (!annotate) {
+			return new Source(irProgram.toString(), this.name).pretty();
+		} else {
+			return new Source(irProgram.annotate(), this.name).pretty();
+		}
 	}
 
 	/**
@@ -43337,7 +47203,7 @@ class RedeemerProgram extends Program {
 		const main = this.mainFunc;
 		const argTypeNames = main.argTypeNames;
 		const argTypes = main.argTypes;
-		const retTypes = main.retTypes;
+		const retType = main.retType;
 		const nArgs = argTypes.length;
 
 		if (this.config.allowPosParams) {
@@ -43364,10 +47230,8 @@ class RedeemerProgram extends Program {
 			}
 		}
 
-		if (retTypes.length !== 1) {
-			main.typeError(`illegal number of return values for main, expected 1, got ${retTypes.length}`);
-		} else if (!(BoolType.isBaseOf(retTypes[0]))) {
-			main.typeError(`illegal return type for main, expected 'Bool', got '${retTypes[0].toString()}'`);
+		if (!(BoolType.isBaseOf(retType))) {
+			main.typeError(`illegal return type for main, expected 'Bool', got '${retType.toString()}'`);
 		}
 
 		return topScope;
@@ -43495,7 +47359,7 @@ class DatumRedeemerProgram extends Program {
 		const main = this.mainFunc;
 		const argTypeNames = main.argTypeNames;
 		const argTypes = main.argTypes;
-		const retTypes = main.retTypes;
+		const retType = main.retType;
 		const nArgs = main.nArgs;
 
 		if (this.config.allowPosParams) {
@@ -43522,10 +47386,8 @@ class DatumRedeemerProgram extends Program {
 			}
 		}
 
-		if (retTypes.length !== 1) {
-			main.typeError(`illegal number of return values for main, expected 1, got ${retTypes.length}`);
-		} else if (!(BoolType.isBaseOf(retTypes[0]))) {
-			main.typeError(`illegal return type for main, expected 'Bool', got '${retTypes[0].toString()}'`);
+		if (!(BoolType.isBaseOf(retType))) {
+			main.typeError(`illegal return type for main, expected 'Bool', got '${retType.toString()}'`);
 		}
 
 		return topScope;
@@ -43666,7 +47528,7 @@ class GenericProgram extends Program {
 		const main = this.mainFunc;
 		const argTypeNames = main.argTypeNames;
 		const argTypes = main.argTypes;
-		const retTypes = main.retTypes;
+		const retType = main.retType;
 
 
 		argTypeNames.forEach((argTypeName, i) => {
@@ -43675,11 +47537,9 @@ class GenericProgram extends Program {
 			}
 		});
 
-		// TODO: support multiple return values
-		if (retTypes.length !== 1) {
-			main.typeError(`illegal number of return values for main, expected 1, got ${retTypes.length}`);
-		} else if (!((new DefaultTypeClass()).isImplementedBy(retTypes[0]))) {
-			main.typeError(`illegal return type for main: '${retTypes[0].toString()}'`);
+		// TODO: support tuple return values ?
+		if (!((new DefaultTypeClass()).isImplementedBy(retType))) {
+			main.typeError(`illegal return type for main: '${retType.toString()}'`);
 		}
 
 		return topScope;
@@ -43714,7 +47574,7 @@ class GenericProgram extends Program {
 			new IR(")"),
 		]);
 
-		const retType = assertDefined(this.mainFunc.retTypes[0].asDataType);
+		const retType = assertDefined(this.mainFunc.retType.asDataType);
 
 		ir = new IR([
 			new IR(`${retType.path}____to_data`),
@@ -43800,7 +47660,7 @@ class EndpointProgram extends GenericProgram {
 		const main = this.mainFunc;
 		const argTypes = main.argTypes;
 		const argTypeNames = main.argTypeNames;
-		const retTypes = main.retTypes;
+		const retType = main.retType;
 
 		if (argTypeNames.length == 0) {
 			main.typeError("expected at least argument 'ContractContext'");
@@ -43820,11 +47680,9 @@ class EndpointProgram extends GenericProgram {
 			}
 		}
 		
-		// TODO: support multiple return values
-		if (retTypes.length !== 1) {
-			main.typeError(`illegal number of return values for main, expected 1, got ${retTypes.length}`);
-		} else if (!((new DefaultTypeClass()).isImplementedBy(retTypes[0]))) {
-			main.typeError(`illegal return type for main: '${retTypes[0].toString()}'`);
+		// TODO: support tuple return values ?
+		if (!((new DefaultTypeClass()).isImplementedBy(retType))) {
+			main.typeError(`illegal return type for main: '${retType.toString()}'`);
 		}
 		
 		return topScope;
@@ -43833,7 +47691,7 @@ class EndpointProgram extends GenericProgram {
 
 
 /////////////////////////////
-// Section 32: Native scripts
+// Section 34: Native scripts
 /////////////////////////////
 
 /**
@@ -44436,7 +48294,7 @@ class NativeBefore extends NativeScript {
 
 
 ///////////////////////
-// Section 33: Tx types
+// Section 35: Tx types
 ///////////////////////
 
 /**
@@ -47773,18 +51631,31 @@ class TxOutput extends CborData {
 
 						let tupleBytes = Cbor.decodeBytes(fieldBytes);
 
+						let refScriptType = -1;
+
 						Cbor.decodeTuple(tupleBytes, (tupleIdx, innerTupleBytes) => {
 							assert(refScript === null);
 
 							switch(tupleIdx) {
 								case 0:
-									throw new Error("native refScript unhandled");
+									refScriptType = Number(Cbor.decodeInteger(innerTupleBytes));
+									break;
 								case 1:
-									throw new Error("plutuScriptV1 as refScript unhandled");
-								case 2:
-									refScript = UplcProgram.fromCbor(innerTupleBytes);
+									switch(refScriptType) {
+										case 0:
+											throw new Error("native refScript not handled");
+										case 1:
+											console.log("Warning: deserializing PlutusV1 refScript as PlutusV2 refScript");
+											refScript = UplcProgram.fromCbor(innerTupleBytes);		
+											break;
+										case 2:
+											refScript = UplcProgram.fromCbor(innerTupleBytes);		
+											break;
+										default:
+											throw new Error(`unhandled refScript type ${refScriptType}`);
+									}
 								default:
-									throw new Error("unhandled script type for refScript");
+									throw new Error("unhandled refScript format");
 							}
 						});
 
@@ -49957,7 +53828,7 @@ class TxMetadata {
 
 
 ////////////////////////////////////
-// Section 34: Highlighting function
+// Section 36: Highlighting function
 ////////////////////////////////////
 
 /**
@@ -50284,7 +54155,7 @@ function highlight(src) {
 
 
 ////////////////////////////
-// Section 35: CoinSelection
+// Section 37: CoinSelection
 ////////////////////////////
 
 /**
@@ -50429,21 +54300,21 @@ const CoinSelection = {
 
 
 //////////////////////
-// Section 36: Wallets
+// Section 38: Wallets
 //////////////////////
 
 /**
  * An interface type for a wallet that manages a user's UTxOs and addresses.
  * @interface
  * @typedef {object} Wallet
-*  @property {() => Promise<boolean>} isMainnet Returns `true` if the wallet is connected to the mainnet.
-*  @property {Promise<Address[]>} usedAddresses Returns a list of addresses which already contain UTxOs.
-*  @property {Promise<Address[]>} unusedAddresses Returns a list of unique unused addresses which can be used to send UTxOs to with increased anonimity.
-*  @property {Promise<TxInput[]>} utxos Returns a list of all the utxos controlled by the wallet.
-*  @property {Promise<TxInput[]>} collateral
-*  @property {(tx: Tx) => Promise<Signature[]>} signTx Signs a transaction, returning a list of signatures needed for submitting a valid transaction.
-*  @property {(tx: Tx) => Promise<TxId>} submitTx Submits a transaction to the blockchain and returns the id of that transaction upon success.
-*/
+ * @property {() => Promise<boolean>} isMainnet Returns `true` if the wallet is connected to the mainnet.
+ * @property {Promise<Address[]>} usedAddresses Returns a list of addresses which already contain UTxOs.
+ * @property {Promise<Address[]>} unusedAddresses Returns a list of unique unused addresses which can be used to send UTxOs to with increased anonimity.
+ * @property {Promise<TxInput[]>} utxos Returns a list of all the utxos controlled by the wallet.
+ * @property {Promise<TxInput[]>} collateral
+ * @property {(tx: Tx) => Promise<Signature[]>} signTx Signs a transaction, returning a list of signatures needed for submitting a valid transaction.
+ * @property {(tx: Tx) => Promise<TxId>} submitTx Submits a transaction to the blockchain and returns the id of that transaction upon success.
+ */
 
 /**
  * Convenience type for browser plugin wallets supporting the CIP 30 dApp connector standard (eg. Eternl, Nami, ...).
@@ -50849,7 +54720,7 @@ class RemoteWallet {
 
 
 //////////////////////
-// Section 37: Network
+// Section 39: Network
 //////////////////////
 
 
@@ -51022,7 +54893,7 @@ class BlockfrostV0 {
      * @returns {Promise<any>}
      */
     async getLatestEpoch() {
-        const response = await fetch(`https://cardano-preview.blockfrost.io/api/v0/epochs/latest`, {
+        const response = await fetch(`https://cardano-${this.#networkName}.blockfrost.io/api/v0/epochs/latest`, {
             method: "GET",
             headers: {
                 "project_id": this.#projectId
@@ -51415,7 +55286,6 @@ class KoiosV0 {
     }
 
      /**
-     * Throws an error if a Blockfrost project_id is missing for that specific network.
      * @param {TxInput} refUtxo
      * @returns {Promise<KoiosV0>}
      */
@@ -51541,7 +55411,7 @@ class KoiosV0 {
 
 
 ///////////////////////
-// Section 38: Emulator
+// Section 40: Emulator
 ///////////////////////
 /**
  * Raw network parameters used by Emulator
@@ -53051,7 +56921,7 @@ class NetworkSlice {
 
 
 //////////////////////////////////////
-// Section 39: Fuzzy testing framework
+// Section 41: Fuzzy testing framework
 //////////////////////////////////////
 
 /**
@@ -53080,6 +56950,8 @@ class FuzzyTest {
 
 	#simplify;
 
+	#printMessages;
+
 	/**
 	 * @type {NetworkParams}
 	 */
@@ -53091,7 +56963,7 @@ class FuzzyTest {
 	 * @param {number} runsPerTest
 	 * @param {boolean} simplify If true then also test the simplified program
 	 */
-	constructor(seed = 0, runsPerTest = 100, simplify = false) {
+	constructor(seed = 0, runsPerTest = 100, simplify = false, printMessages = false) {
 		console.log("starting fuzzy testing  with seed", seed);
 
 		this.#seed = seed;
@@ -53099,6 +56971,7 @@ class FuzzyTest {
 		this.#runsPerTest = runsPerTest;
 		this.#simplify = simplify;
 		this.#dummyNetworkParams = new NetworkParams(rawNetworkEmulatorParams);
+		this.#printMessages = printMessages;
 	}
 
 	reset() {
@@ -53448,9 +57321,10 @@ class FuzzyTest {
 		if (purposeName === null) {
 			throw new Error("failed to get script purpose and name");
 		} else {
-			let [_, testName] = purposeName;
+			const [_, testName] = purposeName;
 
-			let program = Program.new(src).compile(simplify);
+			const program = Program.new(src);
+			const uplcProgram = program.compile(simplify);
 
 			/**
 			 * @type {Cost}
@@ -53473,38 +57347,47 @@ class FuzzyTest {
 					cpu: 0n
 				};
 
-				let result = await program.run(
-					args, {
-						...DEFAULT_UPLC_RTE_CALLBACKS,
-						onPrint: async (msg) => {return},
-						onIncrCost: (name, isTerm, c) => {cost.mem = cost.mem + c.mem; cost.cpu = cost.cpu + c.cpu;}
-					},
-					this.#dummyNetworkParams
-				);
+				try {
+					let result = await uplcProgram.run(
+						args, {
+							...DEFAULT_UPLC_RTE_CALLBACKS,
+							onPrint: this.#printMessages ? async (msg) => {console.log(msg);} : async (msg) => {return},
+							onIncrCost: (name, isTerm, c) => {cost.mem = cost.mem + c.mem; cost.cpu = cost.cpu + c.cpu;}
+						},
+						this.#dummyNetworkParams
+					);
+				
+					let obj = propTest(args, result, simplify);
 
-				let obj = propTest(args, result, simplify);
-
-				if (result instanceof UplcValue) {
-					totalCost.mem += cost.mem;
-					totalCost.cpu += cost.cpu;
-					nonErrorRuns += 1;
-				}
-
-				if (typeof obj == "boolean") {
-					if (!obj) {
-						throw new Error(`property test '${testName}' failed (info: (${args.map(a => a.toString()).join(', ')}) => ${result.toString()})`);
+					if (!(result instanceof RuntimeError)) {
+						totalCost.mem += cost.mem;
+						totalCost.cpu += cost.cpu;
+						nonErrorRuns += 1;
 					}
-				} else {
-					// check for failures
-					for (let key in obj) {
-						if (!obj[key]) {
-							throw new Error(`property test '${testName}:${key}' failed (info: (${args.map(a => a.toString()).join(', ')}) => ${result.toString()})`);
+
+					if (typeof obj == "boolean") {
+						if (!obj) {
+							console.log(program.dumpIR(simplify, true));
+							throw new Error(`property test '${testName}' failed (info: (${args.map(a => a.toString()).join(', ')}) => ${result.toString()})`);
+						}
+					} else {
+						// check for failures
+						for (let key in obj) {
+							if (!obj[key]) {
+								console.log(program.dumpIR(simplify, true));
+								throw new Error(`property test '${testName}:${key}' failed (info: (${args.map(a => a.toString()).join(', ')}) => ${result.toString()})`);
+							}
 						}
 					}
+				} catch (e) {
+					console.log("UNSIMPLIFIED:", program.dumpIR(false, true));
+					console.log("SIMPLIFIED:", program.dumpIR(true, true));
+					
+					throw e;
 				}
 			}
 
-			console.log(`property tests for '${testName}' succeeded${simplify ? " (simplified)":""} (${program.calcSize()} bytes, ${nonErrorRuns > 0 ? totalCost.mem/BigInt(nonErrorRuns): "N/A"} mem, ${nonErrorRuns > 0 ? totalCost.cpu/BigInt(nonErrorRuns): "N/A"} cpu)`);
+			console.log(`property tests for '${testName}' succeeded${simplify ? " (simplified)":""} (${uplcProgram.calcSize()} bytes, ${nonErrorRuns > 0 ? totalCost.mem/BigInt(nonErrorRuns): "N/A"} mem, ${nonErrorRuns > 0 ? totalCost.cpu/BigInt(nonErrorRuns): "N/A"} cpu)`);
 		}
 
 		if (!simplify && this.#simplify) {
@@ -53539,20 +57422,32 @@ class FuzzyTest {
 
 				let args = paramArgs.map(paramArg => program.evalParam(paramArg));
 			
-				let coreProgram = Program.new(src).compile(simplify);
+				program = Program.new(src);
 
-				let result = await coreProgram.run(args);
+				let coreProgram = program.compile(simplify);
+
+				let result = await coreProgram.run(
+					args,
+					{
+						...DEFAULT_UPLC_RTE_CALLBACKS,
+						onPrint: this.#printMessages ? async (msg) => {console.log(msg);} : async (msg) => {return}
+					}
+				);
 
 				let obj = propTest(args, result, simplify);
 
 				if (typeof obj == "boolean") {
 					if (!obj) {
+						console.log(program.dumpIR(simplify, true));
+
 						throw new Error(`property test '${testName}' failed (info: (${args.map(a => a.toString()).join(', ')}) => ${result.toString()})`);
 					}
 				} else {
 					// check for failures
 					for (let key in obj) {
 						if (!obj[key]) {
+							console.log(program.dumpIR(simplify, true));
+
 							throw new Error(`property test '${testName}:${key}' failed (info: (${args.map(a => a.toString()).join(', ')}) => ${result.toString()})`);
 						}
 					}
@@ -53570,7 +57465,7 @@ class FuzzyTest {
 
 
 //////////////////////////////////////////
-// Section 40: Bundling specific functions
+// Section 42: Bundling specific functions
 //////////////////////////////////////////
 
 
@@ -53810,6 +57705,7 @@ var helios = /*#__PURE__*/Object.freeze({
     BINARY_SYMBOLS_MAP: BINARY_SYMBOLS_MAP,
     BIP32_HARDEN: BIP32_HARDEN,
     BIP39_DICT_EN: BIP39_DICT_EN,
+    BUILTIN_PREFIX: BUILTIN_PREFIX,
     BinaryExpr: BinaryExpr,
     Bip32PrivateKey: Bip32PrivateKey,
     BitReader: BitReader,
@@ -53893,29 +57789,24 @@ var helios = /*#__PURE__*/Object.freeze({
     HashedDatum: HashedDatum,
     HeliosData: HeliosData,
     IR: IR,
-    IRAnonCallExpr: IRAnonCallExpr,
+    IRAnyValue: IRAnyValue,
+    IRBuiltinValue: IRBuiltinValue,
     IRCallExpr: IRCallExpr,
-    IRCallStack: IRCallStack,
-    IRConstExpr: IRConstExpr,
-    IRCoreCallExpr: IRCoreCallExpr,
-    IRDeferredValue: IRDeferredValue,
-    IRErrorCallExpr: IRErrorCallExpr,
-    IRExpr: IRExpr,
-    IRExprRegistry: IRExprRegistry,
-    IRFuncDefExpr: IRFuncDefExpr,
+    IRDataValue: IRDataValue,
+    IRErrorExpr: IRErrorExpr,
+    IRErrorValue: IRErrorValue,
+    IREvaluator: IREvaluator,
     IRFuncExpr: IRFuncExpr,
     IRFuncValue: IRFuncValue,
     IRLiteralExpr: IRLiteralExpr,
     IRLiteralValue: IRLiteralValue,
+    IRMultiValue: IRMultiValue,
     IRNameExpr: IRNameExpr,
-    IRNameExprRegistry: IRNameExprRegistry,
-    IRNestedAnonCallExpr: IRNestedAnonCallExpr,
+    IROptimizer: IROptimizer,
     IRParametricName: IRParametricName,
     IRParametricProgram: IRParametricProgram,
     IRProgram: IRProgram,
     IRScope: IRScope,
-    IRUserCallExpr: IRUserCallExpr,
-    IRValue: IRValue,
     IRVariable: IRVariable,
     IfElseExpr: IfElseExpr,
     ImplDefinition: ImplDefinition,
@@ -53934,6 +57825,7 @@ var helios = /*#__PURE__*/Object.freeze({
     ListType$: ListType$,
     ListTypeExpr: ListTypeExpr,
     LiteralDataExpr: LiteralDataExpr,
+    MACRO_BUILTIN_PREFIX: MACRO_BUILTIN_PREFIX,
     MacroType: MacroType,
     MapData: MapData,
     MapLiteralExpr: MapLiteralExpr,
@@ -53948,7 +57840,6 @@ var helios = /*#__PURE__*/Object.freeze({
     MintingRedeemer: MintingRedeemer,
     ModuleNamespace: ModuleNamespace,
     ModuleScope: ModuleScope,
-    MultiEntity: MultiEntity,
     NameTypePair: NameTypePair,
     NamedEntity: NamedEntity,
     NativeContext: NativeContext,
@@ -53958,7 +57849,6 @@ var helios = /*#__PURE__*/Object.freeze({
     NetworkSlice: NetworkSlice,
     NetworkType: NetworkType,
     Option: Option,
-    OptionType: OptionType,
     OptionType$: OptionType$,
     OptionTypeExpr: OptionTypeExpr,
     OutputDatumType: OutputDatumType,
@@ -53987,6 +57877,7 @@ var helios = /*#__PURE__*/Object.freeze({
     RemoteWallet: RemoteWallet,
     RootPrivateKey: RootPrivateKey,
     RuntimeError: RuntimeError,
+    SAFE_BUILTIN_SUFFIX: SAFE_BUILTIN_SUFFIX,
     Scope: Scope,
     ScriptContextType: ScriptContextType,
     ScriptHash: ScriptHash,
@@ -54026,6 +57917,9 @@ var helios = /*#__PURE__*/Object.freeze({
     Token: Token,
     Tokenizer: Tokenizer,
     TopScope: TopScope,
+    TupleType: TupleType,
+    TupleType$: TupleType$,
+    TupleTypeExpr: TupleTypeExpr,
     Tx: Tx,
     TxBody: TxBody,
     TxBuilderType: TxBuilderType,
@@ -54062,7 +57956,6 @@ var helios = /*#__PURE__*/Object.freeze({
     UplcData: UplcData,
     UplcDataValue: UplcDataValue,
     UplcDelay: UplcDelay,
-    UplcDelayedValue: UplcDelayedValue,
     UplcError: UplcError,
     UplcForce: UplcForce,
     UplcFrame: UplcFrame,
@@ -54076,7 +57969,7 @@ var helios = /*#__PURE__*/Object.freeze({
     UplcTerm: UplcTerm,
     UplcType: UplcType,
     UplcUnit: UplcUnit,
-    UplcValue: UplcValue,
+    UplcValueImpl: UplcValueImpl,
     UplcVariable: UplcVariable,
     UserError: UserError,
     VERSION: VERSION,
@@ -54093,6 +57986,7 @@ var helios = /*#__PURE__*/Object.freeze({
     WalletHelper: WalletHelper,
     WalletType: WalletType,
     Word: Word,
+    annotateIR: annotateIR,
     applyTypes: applyTypes,
     assert: assert,
     assertClass: assertClass,
@@ -54126,6 +58020,7 @@ var helios = /*#__PURE__*/Object.freeze({
     genCommonEnumTypeMembers: genCommonEnumTypeMembers,
     genCommonInstanceMembers: genCommonInstanceMembers,
     genCommonTypeMembers: genCommonTypeMembers,
+    getTupleItemTypes: getTupleItemTypes,
     hexToBytes: hexToBytes,
     highlight: highlight,
     hl: hl,
@@ -54133,10 +58028,12 @@ var helios = /*#__PURE__*/Object.freeze({
     imask: imask,
     imod8: imod8,
     ipow2: ipow2,
+    isDataType: isDataType,
     isUplcBuiltin: isUplcBuiltin,
     jsToUplc: jsToUplc,
     jsToUplcInternal: jsToUplcInternal,
     leBytesToBigInt: leBytesToBigInt,
+    loopIRExprs: loopIRExprs,
     padZeroes: padZeroes,
     randomBytes: randomBytes,
     rawNetworkEmulatorParams: rawNetworkEmulatorParams,
@@ -54156,7 +58053,12 @@ var helios = /*#__PURE__*/Object.freeze({
 
 function mkUutValuesEntries(uuts) {
   const uutNs = Array.isArray(uuts) ? uuts : Object.values(uuts);
-  return uutNs.map((uut) => mkValuesEntry(uut.name, BigInt(1)));
+  const uniqs = [];
+  for (const un of uutNs) {
+    if (!uniqs.includes(un))
+      uniqs.push(un);
+  }
+  return uniqs.map((uut) => mkValuesEntry(uut.name, BigInt(1)));
 }
 const stringToNumberArray = textToBytes;
 function mkValuesEntry(tokenName, count) {
@@ -54173,18 +58075,17 @@ function mkTv(mph, tokenName, count = 1n) {
 
 //!!! if we could access the inputs and outputs in a building Tx,
 class StellarTxnContext {
-  tx;
-  inputs;
+  tx = new Tx();
+  inputs = [];
   collateral;
-  outputs;
+  outputs = [];
   feeLimit;
   state;
-  constructor(state = {}) {
-    this.tx = new Tx();
-    this.inputs = [];
+  actor;
+  neededSigners = [];
+  constructor(actor, state = {}) {
+    this.actor = actor;
     this.state = state;
-    this.collateral = void 0;
-    this.outputs = [];
   }
   dump() {
     const { tx } = this;
@@ -54217,11 +58118,17 @@ class StellarTxnContext {
     return this;
   }
   addInput(input, r) {
+    if (input.address.pubKeyHash)
+      this.neededSigners.push(input.address);
     this.inputs.push(input);
     this.tx.addInput(input, r?.redeemer);
     return this;
   }
   addInputs(inputs, r) {
+    for (const input of inputs) {
+      if (input.address.pubKeyHash)
+        this.neededSigners.push(input.address);
+    }
     this.inputs.push(...inputs);
     this.tx.addInputs(inputs, r.redeemer);
     return this;
@@ -54268,12 +58175,17 @@ function hexToPrintableString(hexStr) {
   }
   return result;
 }
-function assetsAsString(v) {
-  return Object.entries(v).map(([policyId, tokens]) => {
-    const tokenString = Object.entries(tokens).map(
-      ([name, count]) => `${count}\xD7\u{1F4B4} ${hexToPrintableString(name)}`
+function assetsAsString(a) {
+  const assets = a.assets;
+  return assets.map(([policyId, tokenEntries]) => {
+    const pIdHex = policyId.hex;
+    const tokenString = tokenEntries.map(
+      ([nameBytes, count]) => {
+        const nameString = hexToPrintableString(nameBytes.hex);
+        return `${count}\xD7\u{1F4B4} ${nameString}`;
+      }
     ).join(" + ");
-    return `\u2991\u{1F3E6} ${policyId.slice(0, 8)}\u2026${policyId.slice(
+    return `\u2991\u{1F3E6} ${pIdHex.slice(0, 8)}\u2026${pIdHex.slice(
       -4
     )} ${tokenString}\u2992`;
   }).join("\n  ");
@@ -54285,7 +58197,7 @@ function lovelaceToAda(l) {
 }
 function valueAsString(v) {
   const ada = lovelaceToAda(v.lovelace);
-  const assets = assetsAsString(v.assets.dump?.() || v.assets);
+  const assets = assetsAsString(v.assets);
   return [ada, assets].filter((x) => !!x).join(" + ");
 }
 function txAsString(tx) {
@@ -54337,10 +58249,7 @@ function txAsString(tx) {
       item = item.map((x2) => txInputAsString(x2, "\u{1F52A}")).join("\n    ");
     }
     if ("minted" == x) {
-      const assets = item?.dump();
-      if (!Object.entries(assets || {}).length)
-        continue;
-      item = ` \u2747\uFE0F  ${assetsAsString(assets)}`;
+      item = ` \u2747\uFE0F  ${assetsAsString(item)}`;
     }
     if ("outputs" == x) {
       item = `
@@ -54379,8 +58288,10 @@ function txAsString(tx) {
       if (!item)
         continue;
       item = item.map((s) => {
-        const addr = Address.fromHash(s.pubKeyHash).toBech32();
-        return `\u{1F58A}\uFE0F ${addr.slice(0, 20)}\u2026${addr.slice(-4)} = \u{1F511}\u2026${s.pubKeyHash.hex.slice(-4)}`;
+        const addr = Address.fromHash(s.pubKeyHash);
+        return `\u{1F58A}\uFE0F ${addrAsString(addr)} = \u{1F511}\u2026${s.pubKeyHash.hex.slice(
+          -4
+        )}`;
       });
       if (item.length > 1)
         item.unshift("");
@@ -54407,7 +58318,10 @@ function txAsString(tx) {
           return `\u{1F3E6} ${mph.slice(0, 8)}\u2026${mph.slice(-4)} (minting)`;
         } catch (e) {
           const vh = s.validatorHash.hex;
-          return `\u{1F4DC} ${vh.slice(0, 8)}\u2026${vh.slice(-4)} (validator)`;
+          const addr = Address.fromHash(s.validatorHash);
+          return `\u{1F4DC} ${vh.slice(0, 8)}\u2026${vh.slice(
+            -4
+          )} (validator at ${addrAsString(addr)})`;
         }
       });
       if (item.length > 1)
@@ -54433,8 +58347,7 @@ function txAsString(tx) {
 function txInputAsString(x, prefix = "-> ") {
   const oid = x.outputId.txId.hex;
   const oidx = x.outputId.utxoIdx;
-  const addr = x.address.toBech32();
-  return `${prefix}${addr.slice(0, 14)}\u2026${addr.slice(-4)} ${valueAsString(
+  return `${prefix}${addrAsString(x.address)} ${valueAsString(
     x.value
   )} = \u{1F4D6} ${oid.slice(0, 6)}\u2026${oid.slice(-4)}#${oidx}`;
 }
@@ -54459,20 +58372,38 @@ function datumAsString(d) {
   return `d\u2039hash:${dhss}\u2026\u203A`;
 }
 function txOutputAsString(x, prefix = "<-") {
-  const bech32 = x.address.bech32 || x.address.toBech32();
-  return `${prefix} ${bech32.slice(0, 12)}\u2026${bech32.slice(
-    -4
-  )} ${datumAsString(x.datum)} ${valueAsString(x.value)}`;
+  return `${prefix} ${addrAsString(x.address)} ${datumAsString(
+    x.datum
+  )} ${valueAsString(x.value)}`;
+}
+function addrAsString(address) {
+  const bech32 = address.bech32 || address.toBech32();
+  return `${bech32.slice(0, 14)}\u2026${bech32.slice(-4)}`;
 }
 function errorMapAsString(em, prefix = "  ") {
-  return Object.keys(em).map((k) => `${prefix}${k}: ${JSON.stringify(em[k])}`).join("\n");
+  return Object.keys(em).map((k) => `in field ${prefix}${k}: ${JSON.stringify(em[k])}`).join("\n");
 }
 function dumpAny(x) {
   if (x instanceof Tx) {
     return txAsString(x);
-  } else if (x instanceof StellarTxnContext) {
+  }
+  if (x instanceof TxOutput) {
+    return txOutputAsString(x);
+  }
+  if (x instanceof Value) {
+    return valueAsString(x);
+  }
+  if (x instanceof Address) {
+    return addrAsString(x);
+  }
+  if (x instanceof StellarTxnContext) {
     return txAsString(x.tx);
   }
+}
+if ("undefined" == typeof window) {
+  globalThis.peek = dumpAny;
+} else {
+  window.peek = dumpAny;
 }
 
 var __defProp$6 = Object.defineProperty;
@@ -54491,8 +58422,8 @@ const Activity = {
    * Decorates a partial-transaction function that spends a contract-locked UTxO using a specific activity ("redeemer")
    * @remarks
    *
-   * activity-linked transaction-partial functions must follow the txn\{...\} 
-   * and active-verb ("ing") naming conventions.  `txnRetiringDeletation`,
+   * activity-linked transaction-partial functions must follow the txn\{...\}
+   * and active-verb ("ing") naming conventions.  `txnRetiringDelegation`,
    * `txnModifyingVote` and `txnWithdrawingStake` would be examples
    * of function names following this guidance.
    *
@@ -54505,7 +58436,7 @@ const Activity = {
   /**
    * Decorates a factory-function for creating tagged redeemer data for a specific on-chain activity
    * @remarks
-   * 
+   *
    * The factory function should follow an active-verb convention by including "ing" in the name of the factory function
    * @public
    **/
@@ -54576,6 +58507,20 @@ class StellarContract {
   // isTest?: boolean
   static get defaultParams() {
     return {};
+  }
+  /**
+   * returns the wallet connection used by the current actor
+   * @remarks
+   *
+   * Throws an error if the strella contract facade has not been initialized with a wallet in settings.myActor
+   * @public
+   **/
+  get wallet() {
+    if (!this.myActor)
+      throw new Error(
+        `wallet is not connected to strella '${this.constructor.name}'`
+      );
+    return this.myActor;
   }
   //! can transform input configuration to contract script params
   //! by default, all the config keys are used as script params
@@ -54708,7 +58653,21 @@ class StellarContract {
    * @public
    **/
   get onChainTypes() {
-    return this.scriptProgram.types;
+    const types = { ...this.scriptProgram.types };
+    const statements = this.scriptProgram.allStatements;
+    for (const [statement, _someBoolThingy] of statements) {
+      const name = statement.name.value;
+      if (types[name])
+        continue;
+      if ("StructStatement" == Object.getPrototypeOf(statement).constructor.name) {
+        const type = statement.genOffChainType();
+        const name2 = type.name.value;
+        if (types[name2])
+          throw new Error(`ruh roh`);
+        types[name2] = type;
+      }
+    }
+    return types;
   }
   /**
    * identifies the enum used for the script Datum
@@ -54779,10 +58738,11 @@ class StellarContract {
       throw new Error(
         `datum must be an InlineDatum to be readable using readDatum()`
       );
-    return this.readUplcDatum(
-      thisDatumType,
-      datum2.data
-    );
+    return this.readUplcDatum(thisDatumType, datum2.data).catch((e) => {
+      if (e.message?.match(/expected constrData/))
+        return void 0;
+      throw e;
+    });
   }
   async readUplcStructList(uplcType, uplcData) {
     const { fieldNames, instanceMembers } = uplcType;
@@ -54807,7 +58767,6 @@ class StellarContract {
   }
   async readUplcEnumVariant(uplcType, enumDataDef, uplcData) {
     const fieldNames = enumDataDef.fieldNames;
-    debugger;
     const { fields } = uplcData;
     return Object.fromEntries(
       await Promise.all(
@@ -54818,7 +58777,11 @@ class StellarContract {
             fn,
             fieldType,
             fieldData
-          );
+          ).catch((nestedError) => {
+            console.warn("error parsing nested data inside enum variant", { fn, fieldType, fieldData });
+            debugger;
+            throw nestedError;
+          });
           return [fn, value];
         })
       )
@@ -54839,11 +58802,12 @@ class StellarContract {
           throw new Error(
             `uplcData expected constrData#${constrIndex}, got #${foundIndex}`
           );
-        return this.readUplcEnumVariant(
+        const t = this.readUplcEnumVariant(
           uplcType,
           enumDataDef,
           uplcData
         );
+        return t;
       }
       throw new Error(
         `can't determine how to parse UplcDatum without 'fieldNames'.  Tried enum`
@@ -55099,22 +59063,34 @@ class StellarContract {
     });
   }
   async submit(tcx, {
-    sign = true,
     signers = []
   } = {}) {
     let { tx, feeLimit = 2000000n } = tcx;
-    if (this.myActor || signers.length) {
+    const { myActor: wallet } = this;
+    if (wallet || signers.length) {
       const [changeAddress] = await this.myActor?.usedAddresses || [];
       const spares = await this.findAnySpareUtxos(tcx);
-      const willSign = [...signers];
-      if (sign && this.myActor) {
-        willSign.push(this.myActor);
+      const willSign = [...signers, ...tcx.neededSigners];
+      const wHelper = wallet && new WalletHelper(wallet);
+      if (wallet && wHelper) {
+        if (tx.isSmart() && !tcx.collateral) {
+          let [c] = await wallet.collateral;
+          if (!c) {
+            c = await wHelper.pickCollateral(this.ADA(5n));
+            if (c.value.lovelace > this.ADA(20n))
+              throw new Error(
+                `The only collateral-eligible utxos in this wallet have more than 20 ADA.  It's recommended to create and maintain collateral values between 2 and 20 ADA (or 5 and 20, for more complex txns)`
+              );
+          }
+          tcx.addCollateral(c);
+        }
       }
-      for (const s of willSign) {
-        const [a] = await s.usedAddresses;
-        if (tx.body.signers.find((s2) => a.pubKeyHash.hex === s2.hex))
+      for (const { pubKeyHash: pkh } of willSign) {
+        if (!pkh)
           continue;
-        tx.addSigner(a.pubKeyHash);
+        if (tx.body.signers.find((s) => pkh.eq(s)))
+          continue;
+        tx.addSigner(pkh);
       }
       try {
         await tx.finalize(this.networkParams, changeAddress, spares);
@@ -55123,15 +59099,31 @@ class StellarContract {
         debugger;
         throw e;
       }
-      for (const s of willSign) {
-        const sig = await s.signTx(tx);
-        tx.addSignatures(sig, true);
+      if (wallet && wHelper) {
+        let actorMustSign = false;
+        for (const a of willSign) {
+          if (!await wHelper.isOwnAddress(a))
+            continue;
+          actorMustSign = true;
+        }
+        if (actorMustSign) {
+          const sigs = await wallet.signTx(tx);
+          //! doesn't need to re-verify a sig it just collected
+          tx.addSignatures(sigs, false);
+        }
       }
     } else {
       console.warn("no 'myActor'; not finalizing");
     }
     console.log("Submitting tx: ", tcx.dump());
-    return this.network.submitTx(tx);
+    const promises = [
+      this.network.submitTx(tx)
+    ];
+    if (wallet) {
+      if (!this.setup.isTest)
+        promises.push(wallet.submitTx(tx));
+    }
+    return Promise.all(promises);
   }
   ADA(n) {
     const bn = "number" == typeof n ? BigInt(Math.round(1e6 * n)) : BigInt(1e6) * n;
@@ -55179,7 +59171,7 @@ class StellarContract {
       const script = Program.new(src, modules);
       if (params)
         script.parameters = params;
-      const simplify = !this.setup.isTest;
+      const simplify = !this.setup.isTest && !this.setup.isDev;
       if (simplify) {
         console.warn(
           `Loading optimized contract code for ` + script.name
@@ -55233,24 +59225,20 @@ This likely indicates a problem in Helios' error reporting -
       throw t;
     }
   }
-  async getMyActorAddress() {
-    if (!this.myActor)
-      throw this.missingActorError;
-    const [addr] = await this.myActor.usedAddresses;
-    return addr;
-  }
   get missingActorError() {
-    return `missing required 'myActor' property on ${this.constructor.name} instance`;
+    return `Wallet not connected to Stellar Contract '${this.constructor.name}'`;
   }
   async mustFindActorUtxo(name, predicate, hintOrExcept, hint) {
-    const address = await this.getMyActorAddress();
+    const wallet = this.myActor;
+    if (!wallet)
+      throw new Error(this.missingActorError);
     const isTcx = hintOrExcept instanceof StellarTxnContext;
     const exceptInTcx = isTcx ? hintOrExcept : void 0;
     const extraErrorHint = isTcx ? hint : "string" == typeof hintOrExcept ? hintOrExcept : void 0;
     return this.mustFindUtxo(
       name,
       predicate,
-      { address, exceptInTcx },
+      { wallet, exceptInTcx },
       extraErrorHint
     );
   }
@@ -55266,17 +59254,16 @@ This likely indicates a problem in Helios' error reporting -
       extraErrorHint
     );
   }
-  async mustFindUtxo(semanticName, predicate, {
-    address,
-    exceptInTcx
-  }, extraErrorHint = "") {
+  async mustFindUtxo(semanticName, predicate, { address, wallet, exceptInTcx }, extraErrorHint = "") {
     const found = await this.hasUtxo(semanticName, predicate, {
       address,
+      wallet,
       exceptInTcx
     });
     if (!found) {
+      const where = address ? "address" : "connected wallet";
       throw new Error(
-        `${this.constructor.name}: '${semanticName}' utxo not found (${extraErrorHint}) in address`
+        `${this.constructor.name}: '${semanticName}' utxo not found (${extraErrorHint}) in ${where}`
       );
     }
     return found;
@@ -55284,26 +59271,24 @@ This likely indicates a problem in Helios' error reporting -
   toUtxoId(u) {
     return `${u.outputId.txId.hex}@${u.outputId.utxoIdx}`;
   }
-  async txnFindUtxo(tcx, name, predicate, address = this.address) {
-    return this.hasUtxo(name, predicate, {
-      address,
-      exceptInTcx: tcx
-    });
-  }
-  async hasUtxo(semanticName, predicate, {
-    address,
-    exceptInTcx
-  }) {
-    const utxos = await this.network.getUtxos(address);
-    const filterUtxos = exceptInTcx?.reservedUtxos();
-    const filtered = exceptInTcx ? utxos.filter(exceptInTcx.utxoNotReserved.bind(exceptInTcx)) : utxos;
+  async hasUtxo(semanticName, predicate, { address, wallet, exceptInTcx }) {
+    const utxos = address ? await this.network.getUtxos(address) : await wallet.utxos;
+    const collateral = wallet ? await wallet.collateral : [];
+    const notCollateral = utxos.filter(
+      (u) => !collateral.find((c) => c.eq(u))
+    );
+    const filtered = exceptInTcx ? notCollateral.filter(
+      exceptInTcx.utxoNotReserved.bind(exceptInTcx)
+    ) : notCollateral;
     console.log(
       `finding '${semanticName}' utxo${exceptInTcx ? " (not already being spent in txn)" : ""} from set:
-  ${utxosAsString(filtered, "\n  ")}`,
-      ...exceptInTcx && filterUtxos?.length ? [
-        "\n  ... after filtering out:\n ",
-        utxosAsString(exceptInTcx.reservedUtxos(), "\n  ")
-      ] : []
+  ${utxosAsString(filtered, "\n  ")}`
+      // ...(exceptInTcx && filterUtxos?.length
+      //     ? [
+      //           "\n  ... after filtering out:\n ",
+      //           utxosAsString(exceptInTcx.reservedUtxos(), "\n  "),
+      //       ]
+      //     : [])
     );
     const found = filtered.find(predicate);
     if (found) {
@@ -55321,30 +59306,28 @@ __decorateClass$6([
   partialTxn
 ], StellarContract.prototype, "txnKeepValue", 1);
 
-const code$9 = 
-new String("minting DefaultMinter \n\nimport { \n    hasSeedUtxo, \n    validateUutMinting\n} from CapoMintHelpers\n\nimport {mkTv} from StellarHeliosHelpers\n\nimport {\n    requiresValidDelegateOutput\n} from CapoDelegateHelpers\n\n//!!!! todo: change to TxOutputId, rolling up these two things:\nconst seedTxn : TxId = TxId::new(#1234)\nconst seedIndex : Int = 42\n\nenum Activity { \n    mintingCharter {\n        owner: Address\n\n        // we don't have a responsiblity to enforce delivery to the right location\n        // govAuthority: RelativeDelegateLink   // not needed \n    }\n    mintingUuts {\n        //!!!! todo: change to TxOutputId, rolling up these two things:\n        seedTxn: TxId\n        seedIndex: Int\n        purposes: []String\n    }\n}\n\nfunc hasContractSeedUtxo(tx: Tx) -> Bool {\n    hasSeedUtxo(tx, seedTxn, seedIndex, \"charter\")\n}\n\nfunc main(r : Activity, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    value_minted: Value = tx.minted;\n\n    ok : Bool = r.switch {\n        charter: mintingCharter => {       \n            charterVal : Value = mkTv(mph, \"charter\");\n            authTnBase : String = \"capoGov\";\n            mintDgtTnBase : String = \"mintDgt\";\n\n            assert(value_minted >= charterVal,\n                \"charter token not minted\");\n\n            hasContractSeedUtxo(tx) &&\n            validateUutMinting(ctx:ctx, \n                seedTxId:seedTxn, \n                seedIdx:seedIndex, \n                purposes: []String{authTnBase, mintDgtTnBase}, \n                bootstrapCharter:charterVal\n            ) &&\n            tx.outputs.all( (output: TxOutput) -> Bool {\n                output.value != value_minted || (\n                    output.value == value_minted &&\n                    output.address == charter.owner\n                )\n            })\n        },\n\n        mintingUuts{sTxId, sIdx, purposes} => validateUutMinting(ctx, sTxId, sIdx, purposes),\n        _ => true\n    };\n\n    print(\"defaultMinter: minting value: \" + value_minted.show());\n\n    ok\n}\n\n");
+const code$9 = new String("minting DefaultMinter \n\nimport { \n    hasSeedUtxo, \n    validateUutMinting\n} from CapoMintHelpers\n\nimport {mkTv} from StellarHeliosHelpers\n\nimport {\n    requiresValidDelegateOutput\n} from CapoDelegateHelpers\n\n//!!!! todo: change to TxOutputId, rolling up these two things:\nconst seedTxn : TxId = TxId::new(#1234)\nconst seedIndex : Int = 42\n\nenum Activity { \n    mintingCharter {\n        owner: Address\n\n        // we don't have a responsiblity to enforce delivery to the right location\n        // govAuthority: RelativeDelegateLink   // not needed \n    }\n    mintingUuts {\n        //!!!! todo: change to TxOutputId, rolling up these two things:\n        seedTxn: TxId\n        seedIndex: Int\n        purposes: []String\n    }\n}\n\nfunc hasContractSeedUtxo(tx: Tx) -> Bool {\n    hasSeedUtxo(tx, seedTxn, seedIndex, \"charter\")\n}\n\nfunc main(r : Activity, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    value_minted: Value = tx.minted;\n\n    ok : Bool = r.switch {\n        charter: mintingCharter => {       \n            charterVal : Value = mkTv(mph, \"charter\");\n            authTnBase : String = \"capoGov\";\n            mintDgtTnBase : String = \"mintDgt\";\n\n            assert(value_minted >= charterVal,\n                \"charter token not minted\");\n\n            hasContractSeedUtxo(tx) &&\n            validateUutMinting(ctx:ctx, \n                seedTxId:seedTxn, \n                seedIdx:seedIndex, \n                purposes: []String{authTnBase, mintDgtTnBase}, \n                bootstrapCharter:charterVal\n            ) &&\n            tx.outputs.all( (output: TxOutput) -> Bool {\n                output.value != value_minted || (\n                    output.value == value_minted &&\n                    output.address == charter.owner\n                )\n            })\n        },\n\n        mintingUuts{sTxId, sIdx, purposes} => validateUutMinting(ctx, sTxId, sIdx, purposes),\n        _ => true\n    };\n\n    print(\"defaultMinter: minting value: \" + value_minted.show());\n\n    ok\n}\n\n");
+
 code$9.srcFile = "src/minting/DefaultMinter.hl";
 code$9.purpose = "minting";
 code$9.moduleName = "DefaultMinter";
 
-const code$8 = 
-new String("module CapoMintHelpers\nimport {\n    mkTv,\n    tvCharter\n} from StellarHeliosHelpers\n\nimport {\n    getRefCharterDatum\n} from CapoHelpers\n\nimport {\n    Datum, Activity\n} from specializedCapo\n\nimport {\n    RelativeDelegateLink,\n    requiresDelegateAuthorizing\n} from CapoDelegateHelpers\n\nfunc hasSeedUtxo(tx: Tx, seedTxId : TxId, seedIdx: Int, reason: String) -> Bool {\n    seedUtxo: TxOutputId = TxOutputId::new(\n        seedTxId,\n        seedIdx\n    );\n    assert(tx.inputs.any( (input: TxInput) -> Bool {\n        input.output_id == seedUtxo\n    }),  \"seed utxo required for minting \"+reason \n        + \"\\n\"+seedTxId.show() + \" : \" + seedIdx.show()\n    );\n\n    true\n}\n\n//! pre-computes the hash-based suffix for a token name, returning\n//  a function that makes Uut names with any given purpose, given the seed-txn details\nfunc tnUutFactory(\n    seedTxId : TxId, seedIdx : Int\n) -> (String) -> String {\n\n    idxBytes : ByteArray = seedIdx.bound_max(255).serialize();\n    // assert(idxBytes.length == 1, \"surprise!\");\n\n    //! yuck: un-CBOR...\n    rawTxId : ByteArray = seedTxId.serialize().slice(5,37);\n\n    txoId : ByteArray = (rawTxId + \"@\".encode_utf8() + idxBytes);\n    assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // print( \"******** txoId \" + txoId.show());\n\n    miniHash : ByteArray = txoId.blake2b().slice(0,6);\n    // assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    mhs: String = miniHash.show();\n    (p: String) -> String {\n        p + \"-\" + mhs\n    }\n}\n\nfunc validateUutMinting(\n    ctx: ScriptContext, \n    seedTxId : TxId, seedIdx : Int, \n    purposes: []String, \n    bootstrapCharter:Value = Value::new(AssetClass::ADA, 0)\n) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n\n    isBootstrapping : Bool = !( bootstrapCharter.is_zero() );\n    delegateApproval : Bool = if ( isBootstrapping ) { \n        true \n    } else {\n        // not bootstrapping; must honor the mintDelegate's authority\n        Datum::CharterToken {\n            _, mintDgt\n        } = getRefCharterDatum(ctx, mph);\n\n        requiresDelegateAuthorizing(\n            mintDgt, \n            mph, \n            ctx\n        )\n    };\n\n    valueMinted: Value = tx.minted;\n\n    // idxBytes : ByteArray = seedIdx.bound_max(255).serialize();\n    // // assert(idxBytes.length == 1, \"surprise!\");\n\n    // //! yuck: un-CBOR...\n    // rawTxId : ByteArray = seedTxId.serialize().slice(5,37);\n\n    // txoId : ByteArray = (rawTxId + \"@\".encode_utf8() + idxBytes);\n    // assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // // print( \"******** txoId \" + txoId.show());\n\n    // miniHash : ByteArray = txoId.blake2b().slice(0,6);\n    // // assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    mkTokenName: (String) -> String = tnUutFactory(seedTxId, seedIdx);\n    // tokenName1 = purpose + \".\" + miniHash.show();\n\n    expectedValue : Value = Value::sum(purposes.sort((a:String, b:String) -> Bool { a == b }).map(\n        (purpose: String) -> Value {\n            mkTv(mph, mkTokenName(purpose))\n        }\n    )) + bootstrapCharter;\n    // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);\n    actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);\n\n    // print(\"activity\" + seedTxId.show() + \" \" + seedIdx.show() + \" asset \" + assetName.show());\n    // expectedMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"expected: \" + b.show() + \" \" + i.show() )\n    // });\n    temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {\n        l.find_safe((x : ByteArray) -> Bool { x == b }).switch{\n            None => l.prepend(b),\n            Some => error(\"UUT purposes not unique\")\n        }\n    }, []ByteArray{});\n    assert(temp == temp, \"prevent unused var\");\n\n    // actualMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"actual: \" + b.show() + \" \" + i.show() )\n    // });\n\n    expectationsMet : Bool = valueMinted  == expectedValue;\n\n    assert(expectationsMet, \"bad UUT mint has mismatch;\"+ \n        \"\\n   ... expected \"+ expectedValue.show()+\n        \"   ... actual \"+ valueMinted.show()+\n        \"   ... diff = \\n\" + (expectedValue - valueMinted).show()\n    );\n\n    delegateApproval && expectationsMet &&\n    hasSeedUtxo(tx, seedTxId, seedIdx, \"UUT \"+purposes.join(\"+\"))\n}");
-code$8.srcFile = "src/CapoMintHelpers.hl";
+const code$8 = new String("module StellarHeliosHelpers\n\nfunc didSign(ctx : ScriptContext, a: Address) -> Bool {\n    tx : Tx = ctx.tx;\n\n    pkh : PubKeyHash = a.credential.switch{\n        PubKey{h} => h,\n        _ => error(\"trustee can't be a contract\")\n    };\n    // print(\"checking if trustee signed: \" + pkh.show());\n\n    tx.is_signed_by(pkh)\n}\n\nfunc didSignInCtx(ctx: ScriptContext) -> (a: Address) -> Bool {\n    (a : Address) -> Bool {\n        didSign(ctx, a)\n    }\n}\n\n//! represents the indicated token name as a Value\nfunc mkTv(mph: MintingPolicyHash, tn: String, count : Int = 1) -> Value {\n    Value::new(\n        AssetClass::new(mph, tn.encode_utf8()), \n        count\n    )\n}\n\n//! returns the charter-token from our minter, as a Value\nfunc tvCharter(mph: MintingPolicyHash)  -> Value {\n    mkTv(mph, \"charter\")\n}\n\nfunc returnsValueToScript(value : Value, ctx : ScriptContext) -> Bool {\n    input : TxInput = ctx.get_current_input();\n    input.value.contains(value) &&\n    ctx.tx.outputs.any( (txo : TxOutput) -> Bool {\n        txo.address == input.address &&\n        txo.value.contains(value)\n    } )\n}\n");
+
+code$8.srcFile = "src/StellarHeliosHelpers.hl";
 code$8.purpose = "module";
-code$8.moduleName = "CapoMintHelpers";
+code$8.moduleName = "StellarHeliosHelpers";
 
-const CapoMintHelpers = code$8;
+const code$7 = new String("module CapoMintHelpers\nimport {\n    mkTv,\n    tvCharter\n} from StellarHeliosHelpers\n\nimport {\n    getRefCharterDatum\n} from CapoHelpers\n\nimport {\n    Datum, Activity\n} from specializedCapo\n\nimport {\n    RelativeDelegateLink,\n    requiresDelegateAuthorizing\n} from CapoDelegateHelpers\n\nfunc hasSeedUtxo(tx: Tx, seedTxId : TxId, seedIdx: Int, reason: String) -> Bool {\n    seedUtxo: TxOutputId = TxOutputId::new(\n        seedTxId,\n        seedIdx\n    );\n    assert(tx.inputs.any( (input: TxInput) -> Bool {\n        input.output_id == seedUtxo\n    }),  \"seed utxo required for minting \"+reason \n        + \"\\n\"+seedTxId.show() + \" : \" + seedIdx.show()\n    );\n\n    true\n}\n\n//! pre-computes the hash-based suffix for a token name, returning\n//  a function that makes Uut names with any given purpose, given the seed-txn details\nfunc tnUutFactory(\n    seedTxId : TxId, seedIdx : Int\n) -> (String) -> String {\n\n    idxBytes : ByteArray = seedIdx.bound_max(255).serialize();\n    // assert(idxBytes.length == 1, \"surprise!\");\n\n    //! yuck: un-CBOR...\n    rawTxId : ByteArray = seedTxId.serialize().slice(5,37);\n\n    txoId : ByteArray = (rawTxId + \"@\".encode_utf8() + idxBytes);\n    assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // print( \"******** txoId \" + txoId.show());\n\n    miniHash : ByteArray = txoId.blake2b().slice(0,6);\n    // assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    mhs: String = miniHash.show();\n    (p: String) -> String {\n        p + \"-\" + mhs\n    }\n}\n\nfunc validateUutMinting(\n    ctx: ScriptContext, \n    seedTxId : TxId, seedIdx : Int, \n    purposes: []String, \n    bootstrapCharter:Value = Value::new(AssetClass::ADA, 0)\n) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n\n    isBootstrapping : Bool = !( bootstrapCharter.is_zero() );\n    delegateApproval : Bool = if ( isBootstrapping ) { \n        true \n    } else {\n        // not bootstrapping; must honor the mintDelegate's authority\n        Datum::CharterToken {\n            _, mintDgt\n        } = getRefCharterDatum(ctx, mph);\n\n        requiresDelegateAuthorizing(\n            mintDgt, \n            mph, \n            ctx\n        )\n    };\n\n    valueMinted: Value = tx.minted;\n\n    // idxBytes : ByteArray = seedIdx.bound_max(255).serialize();\n    // // assert(idxBytes.length == 1, \"surprise!\");\n\n    // //! yuck: un-CBOR...\n    // rawTxId : ByteArray = seedTxId.serialize().slice(5,37);\n\n    // txoId : ByteArray = (rawTxId + \"@\".encode_utf8() + idxBytes);\n    // assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // // print( \"******** txoId \" + txoId.show());\n\n    // miniHash : ByteArray = txoId.blake2b().slice(0,6);\n    // // assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    mkTokenName: (String) -> String = tnUutFactory(seedTxId, seedIdx);\n    // tokenName1 = purpose + \".\" + miniHash.show();\n\n    expectedValue : Value = Value::sum(purposes.sort((a:String, b:String) -> Bool { a == b }).map(\n        (purpose: String) -> Value {\n            mkTv(mph, mkTokenName(purpose))\n        }\n    )) + bootstrapCharter;\n    // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);\n    actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);\n    // actualMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"actual: \" + b.show() + \" \" + i.show() )\n    // });\n\n    // print(\"activity\" + seedTxId.show() + \" \" + seedIdx.show() + \" asset \" + assetName.show());\n    // expectedMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"expected: \" + b.show() + \" \" + i.show() )\n    // });\n    temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {\n        l.find_safe((x : ByteArray) -> Bool { x == b }).switch{\n            None => l.prepend(b),\n            Some{x} => error(\"UUT duplicate purpose \"+  x.decode_utf8())\n        }\n    }, []ByteArray{});\n    assert(temp == temp, \"prevent unused var\");\n\n\n    expectationsMet : Bool = valueMinted  == expectedValue;\n\n    assert(expectationsMet, \"bad UUT mint has mismatch;\"+ \n        \"\\n   ... expected \"+ expectedValue.show()+\n        \"   ... actual \"+ valueMinted.show()+\n        \"   ... diff = \\n\" + (expectedValue - valueMinted).show()\n    );\n\n    delegateApproval && expectationsMet &&\n    hasSeedUtxo(tx, seedTxId, seedIdx, \"UUT \"+purposes.join(\"+\"))\n}");
 
-const code$7 = 
-new String("module StellarHeliosHelpers\n\nfunc didSign(ctx : ScriptContext, a: Address) -> Bool {\n    tx : Tx = ctx.tx;\n\n    pkh : PubKeyHash = a.credential.switch{\n        PubKey{h} => h,\n        _ => error(\"trustee can't be a contract\")\n    };\n    // print(\"checking if trustee signed: \" + pkh.show());\n\n    tx.is_signed_by(pkh)\n}\n\nfunc didSignInCtx(ctx: ScriptContext) -> (a: Address) -> Bool {\n    (a : Address) -> Bool {\n        didSign(ctx, a)\n    }\n}\n\n//! represents the indicated token name as a Value\nfunc mkTv(mph: MintingPolicyHash, tn: String, count : Int = 1) -> Value {\n    Value::new(\n        AssetClass::new(mph, tn.encode_utf8()), \n        count\n    )\n}\n\n//! returns the charter-token from our minter, as a Value\nfunc tvCharter(mph: MintingPolicyHash)  -> Value {\n    mkTv(mph, \"charter\")\n}\n\nfunc returnsValueToScript(value : Value, ctx : ScriptContext) -> Bool {\n    input : TxInput = ctx.get_current_input();\n    input.value.contains(value) &&\n    ctx.tx.outputs.any( (txo : TxOutput) -> Bool {\n        txo.address == input.address &&\n        txo.value.contains(value)\n    } )\n}\n");
-code$7.srcFile = "src/StellarHeliosHelpers.hl";
+code$7.srcFile = "src/CapoMintHelpers.hl";
 code$7.purpose = "module";
-code$7.moduleName = "StellarHeliosHelpers";
+code$7.moduleName = "CapoMintHelpers";
 
-const StellarHeliosHelpers = code$7;
+const CapoMintHelpers = code$7;
 
-const code$6 = 
-new String("module CapoDelegateHelpers\n\nimport {\n    mkTv\n} from StellarHeliosHelpers\n\n// Delegates can define addtional activities in their enum variants,\n// but these 4 basic activities are essential.\nenum BASE_DELEGATE_Activity {\n    Authorizing\n    Reassigning\n    Retiring\n    Modifying\n}\n\nstruct RelativeDelegateLink {\n    uutName: String\n    strategyName: String\n    delegateValidator: Option[ValidatorHash]\n\n    // config: Data\n}\n\nstruct DelegationDetail {\n    capoAddr: Address\n    mph: MintingPolicyHash\n    tn: ByteArray\n}\n\n// Delegates can define additional Datum in their enums,\n// but this first Datum is essential\nenum BASE_DELEGATE_Datum {\n    IsDelegation {\n        dd: DelegationDetail\n        CustomConfig: Data\n    }\n}\n\n\nfunc acAuthorityToken(dd: DelegationDetail) -> AssetClass {\n    AssetClass::new(dd.mph, dd.tn)\n}\n\nfunc tvAuthorityToken(dd: DelegationDetail) -> Value {\n    Value::new(\n        acAuthorityToken(dd), 1\n    )\n}\n\nfunc requiresValidDelegateOutput(\n    dd: RelativeDelegateLink, \n    mph: MintingPolicyHash, \n    ctx : ScriptContext\n) -> Bool {\n    RelativeDelegateLink{\n        uut, strategy,\n        validatorHash\n    } = dd;\n    if (strategy.encode_utf8().length < 4) {\n        error(\"strategy must be at least 4 bytes, got: '\"+strategy +\n            \"' = \"+ strategy.encode_utf8().length.show()\n        )\n    };\n\n    v : Value = mkTv(mph, uut);\n    validatorHash.switch{\n        Some{vh} => {\n            if (ctx.tx.value_locked_by(vh).contains(v)) {\n                true \n            } else { \n                error(\"invalid delegate / missing uut output: \"+ uut + \" to validator \" +vh.show()) \n            }\n        },\n        None =>\n\n        ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {\n            o.value.contains(v)\n        }).switch{\n            Some => true, \n            None => error(\"invalid delegate or missing uut \" + uut)\n        }\n    }\n}\n\n\nfunc requiresDelegateAuthorizing(\n    dd: RelativeDelegateLink, \n    mph: MintingPolicyHash, \n    ctx : ScriptContext\n) -> Bool {\n    authzVal : Value = Value::new(AssetClass::new(mph, dd.uutName.encode_utf8()), 1);\n    print(\"finding: \" + authzVal.show());\n    targetId : TxOutputId = ctx.tx.inputs.find_safe((i: TxInput) -> {\n        // print(\"   ?  in \"+i.value.show());\n        i.value.contains(authzVal) // find my authority token\n    }).switch{\n        Some{x} => x.output_id,\n        None => error(\"missing required delegate UUT \"+dd.uutName)\n     };\n    print (\"found\");\n    k : ScriptPurpose = ctx.tx.redeemers.find_key( \n        (purpose : ScriptPurpose) -> { purpose.switch{ \n            sp: Spending => {\n                print (\"oid: \" + sp.output_id.show());\n                sp.output_id == targetId\n            }, \n            _ => false \n        } }\n    );\n    // r : Data = ctx.tx.redeemers.get(  // index redeemers by...\n    //     ScriptPurpose::new_spending(  // [spending, plus ...\n    //     );\n        \n        print(\"hi there\");\n    isAuthorizing : Bool = ctx.tx.redeemers.get(k).switch {\n        (index: Int, fields: []Data) => {\n            // a: BASE_DELEGATE_Activity => a.switch {\n            //     Authorizing => true,\n            if (index == 0 && fields.length == 0) { true } else {\n                error(\"authz token not spent with Authorizing activity!\")\n            }\n        },\n        _ => error(\"authz token not spent with Authorizing activity!\")\n    };\n\n    isAuthorizing && requiresValidDelegateOutput(dd, mph, ctx)\n}\n");
+const code$6 = new String("module CapoDelegateHelpers\n\nimport {\n    mkTv\n} from StellarHeliosHelpers\n\n// Delegates can define addtional activities in their enum variants,\n// but these 4 basic activities are essential.\nenum BASE_DELEGATE_Activity {\n    Authorizing\n    Reassigning\n    Retiring\n    Modifying\n}\n\nstruct RelativeDelegateLink {\n    uutName: String\n    strategyName: String\n    delegateValidator: Option[ValidatorHash]\n\n    // config: Data\n}\n\nstruct DelegationDetail {\n    capoAddr: Address\n    mph: MintingPolicyHash\n    tn: ByteArray\n}\n\n// Delegates can define additional Datum in their enums,\n// but this first Datum is essential\nenum BASE_DELEGATE_Datum {\n    IsDelegation {\n        dd: DelegationDetail\n        CustomConfig: Data\n    }\n}\n\n//!!! call with existing delegate Datum.serialize()\nfunc unmodifiedDelegation(oldDD : ByteArray, ctx: ScriptContext) -> Bool {\n    o : []TxOutput = ctx.get_cont_outputs();\n    print(\":::: hi \"+o.head.datum.get_inline_data().serialize().show());\n    assert(o.head.datum.get_inline_data().serialize() == oldDD,\n        \"delegation datum must not be modified\"\n    );\n    true\n    // MintDelegateDatum::IsDelegation{\n    //     ddNew, _\n    // } = MintDelegateDatum::from_data( \n        \n    // );\n\n    //! the datum must be unchanged.\n    // ddNew == dd \n}\n\nfunc acAuthorityToken(dd: DelegationDetail) -> AssetClass {\n    AssetClass::new(dd.mph, dd.tn)\n}\n\nfunc tvAuthorityToken(dd: DelegationDetail) -> Value {\n    Value::new(\n        acAuthorityToken(dd), 1\n    )\n}\n\nfunc requiresValidDelegateOutput(\n    dd: RelativeDelegateLink, \n    mph: MintingPolicyHash, \n    ctx : ScriptContext\n) -> Bool {\n    RelativeDelegateLink{\n        uut, strategy,\n        validatorHash\n    } = dd;\n    if (strategy.encode_utf8().length < 4) {\n        error(\"strategy must be at least 4 bytes, got: '\"+strategy +\n            \"' = \"+ strategy.encode_utf8().length.show()\n        )\n    };\n\n    v : Value = mkTv(mph, uut);\n    validatorHash.switch{\n        Some{vh} => {\n            if (ctx.tx.value_locked_by(vh).contains(v)) {\n                true \n            } else { \n                error(\"invalid delegate / missing uut output: \"+ uut + \" to validator \" +vh.show()) \n            }\n        },\n        None =>\n\n        ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {\n            o.value.contains(v)\n        }).switch{\n            Some => true, \n            None => error(\"invalid delegate or missing uut \" + uut)\n        }\n    }\n}\n\n\nfunc requiresDelegateAuthorizing(\n    dd: RelativeDelegateLink, \n    mph: MintingPolicyHash, \n    ctx : ScriptContext\n) -> Bool {\n    authzVal : Value = Value::new(AssetClass::new(mph, dd.uutName.encode_utf8()), 1);\n    print(\"finding: \" + authzVal.show());\n    targetId : TxOutputId = ctx.tx.inputs.find_safe((i: TxInput) -> {\n        // print(\"   ?  in \"+i.value.show());\n        i.value.contains(authzVal) // find my authority token\n    }).switch{\n        Some{x} => x.output_id,\n        None => error(\"missing required delegate UUT \"+dd.uutName)\n     };\n    print (\"found\");\n    k : ScriptPurpose = ctx.tx.redeemers.find_key( \n        (purpose : ScriptPurpose) -> { purpose.switch{ \n            sp: Spending => {\n                print (\"oid: \" + sp.output_id.show());\n                sp.output_id == targetId\n            }, \n            _ => false \n        } }\n    );\n    // r : Data = ctx.tx.redeemers.get(  // index redeemers by...\n    //     ScriptPurpose::new_spending(  // [spending, plus ...\n    //     );\n        \n        print(\"hi there\");\n    isAuthorizing : Bool = ctx.tx.redeemers.get(k).switch {\n        (index: Int, fields: []Data) => {\n            // a: BASE_DELEGATE_Activity => a.switch {\n            //     Authorizing => true,\n            if (index == 0 && fields.length == 0) { true } else {\n                error(\"authz token not spent with Authorizing activity!\")\n            }\n        },\n        _ => error(\"authz token not spent with Authorizing activity!\")\n    };\n\n    isAuthorizing && requiresValidDelegateOutput(dd, mph, ctx)\n}\n");
+
 code$6.srcFile = "src/delegation/CapoDelegateHelpers.hl";
 code$6.purpose = "module";
 code$6.moduleName = "CapoDelegateHelpers";
@@ -55439,14 +59422,14 @@ class DefaultMinter extends StellarContract {
   importModules() {
     return [
       //prettier-ignore
-      StellarHeliosHelpers,
+      code$8,
       CapoDelegateHelpers,
       CapoMintHelpers,
       this.configIn.capo.specializedCapo,
       this.configIn.capo.capoHelpers
     ];
   }
-  async txnWithUuts(tcx, uutPurposes, seedUtxo, roles = {}) {
+  async txnWillMintUuts(tcx, uutPurposes, seedUtxo, roles = {}) {
     const { txId, utxoIdx } = seedUtxo.outputId;
     const { blake2b } = Crypto;
     const uutMap = Object.fromEntries(
@@ -55469,7 +59452,7 @@ class DefaultMinter extends StellarContract {
     tcx.state.uuts = uutMap;
     return tcx;
   }
-  async mkTxnCreatingUuts(initialTcx, uutPurposes, seedUtxo, roles = {}) {
+  async mkTxnMintingUuts(initialTcx, uutPurposes, seedUtxo, roles = {}) {
     const gettingSeed = seedUtxo ? Promise.resolve(seedUtxo) : new Promise((res) => {
       //!!! make it big enough to serve minUtxo for the new UUT(s)
       const uutSeed = this.mkValuePredicate(
@@ -55477,13 +59460,13 @@ class DefaultMinter extends StellarContract {
         initialTcx
       );
       this.mustFindActorUtxo(
-        `for-uut-${uutPurposes.join("+")}`,
+        `seed-for-uut ${uutPurposes.join("+")}`,
         uutSeed,
         initialTcx
       ).then(res);
     });
     return gettingSeed.then(async (seedUtxo2) => {
-      const tcx = await this.txnWithUuts(
+      const tcx = await this.txnWillMintUuts(
         initialTcx,
         uutPurposes,
         seedUtxo2,
@@ -55569,10 +59552,10 @@ class DefaultMinter extends StellarContract {
 }
 __decorateClass$5([
   partialTxn
-], DefaultMinter.prototype, "txnWithUuts", 1);
+], DefaultMinter.prototype, "txnWillMintUuts", 1);
 __decorateClass$5([
   txn
-], DefaultMinter.prototype, "mkTxnCreatingUuts", 1);
+], DefaultMinter.prototype, "mkTxnMintingUuts", 1);
 __decorateClass$5([
   Activity.redeemer
 ], DefaultMinter.prototype, "mintingCharter", 1);
@@ -55602,9 +59585,17 @@ var __decorateClass$4 = (decorators, target, key, kind) => {
 };
 //!!! todo: let this be parameterized for more specificity
 class Capo extends StellarContract {
-  get isConfigured() {
-    return !!this.configIn;
+  verifyConfigs() {
+    return this.verifyCoreDelegates();
   }
+  get isConfigured() {
+    if (!this.configIn)
+      return Promise.resolve(false);
+    if (this._verifyingConfigs)
+      return this._verifyingConfigs;
+    return Promise.resolve(true);
+  }
+  _verifyingConfigs;
   constructor(args) {
     super(args);
     const {
@@ -55625,6 +59616,17 @@ class Capo extends StellarContract {
       throw new Error(
         `activities type${onChainActivitiesName} must have a 'usingAuthority' variant`
       );
+    if (this.configIn && !this.configIn.bootstrapping) {
+      this._verifyingConfigs = this.verifyConfigs().then((r) => {
+        this._verifyingConfigs = void 0;
+        return r;
+      });
+    }
+  }
+  static bootstrapWith(args) {
+    const { setup, config } = args;
+    const Class = this;
+    return new Class({ setup, config: { ...config, bootstrapping: true } });
   }
   // abstract txnMustUseCharterUtxo(
   //     tcx: StellarTxnContext,
@@ -55634,16 +59636,16 @@ class Capo extends StellarContract {
     return DefaultMinter;
   }
   minter;
-  txnWithUuts(initialTcx, uutPurposes, seedUtxo, roles = {}) {
-    return this.minter.txnWithUuts(
+  txnWillMintUuts(initialTcx, uutPurposes, seedUtxo, roles = {}) {
+    return this.minter.txnWillMintUuts(
       initialTcx,
       uutPurposes,
       seedUtxo,
       roles
     );
   }
-  async mkTxnCreatingUuts(initialTcx, uutPurposes, seedUtxo, roles = {}) {
-    const tcx = await this.minter.mkTxnCreatingUuts(
+  async mkTxnMintingUuts(initialTcx, uutPurposes, seedUtxo, roles = {}) {
+    const tcx = await this.minter.mkTxnMintingUuts(
       initialTcx,
       uutPurposes,
       seedUtxo,
@@ -55652,7 +59654,7 @@ class Capo extends StellarContract {
     return tcx;
   }
   uutsValue(x) {
-    const uutMap = x instanceof StellarTxnContext ? x.state.uuts : x;
+    const uutMap = x instanceof StellarTxnContext ? x.state.uuts : x instanceof UutName ? { single: x } : x;
     const vEntries = mkUutValuesEntries(uutMap);
     return new Value(
       void 0,
@@ -55679,7 +59681,7 @@ class Capo extends StellarContract {
     return this.tvCharter();
   }
   importModules() {
-    return [StellarHeliosHelpers, CapoDelegateHelpers, CapoMintHelpers];
+    return [code$8, CapoDelegateHelpers, CapoMintHelpers];
   }
   get charterTokenPredicate() {
     const predicate = this.mkTokenPredicate(this.tvCharter());
@@ -55761,7 +59763,7 @@ class Capo extends StellarContract {
    * @public
    **/
   getContractScriptParams(config) {
-    if (this.configIn && config.mph && config.mph !== this.mph)
+    if (this.configIn && config.mph && !config.mph.eq(this.mph))
       throw new Error(`mph mismatch`);
     const { mph } = config;
     const rev = this.getCapoRev();
@@ -55770,9 +59772,11 @@ class Capo extends StellarContract {
       rev
     };
   }
+  connectMinter() {
+    return this.minter || this.connectMintingScript(this.getMinterParams());
+  }
   get mph() {
-    const minter = this.minter || this.connectMintingScript(this.getMinterParams());
-    return minter.mintingPolicyHash;
+    return this.connectMinter().mintingPolicyHash;
   }
   get mintingPolicyHash() {
     return this.mph;
@@ -55782,6 +59786,7 @@ class Capo extends StellarContract {
       throw new Error(`just use this.minter when it's already present`);
     const { minterClass } = this;
     const { seedTxn, seedIndex } = params;
+    const { mph: expectedMph } = this.configIn || {};
     const minter = this.addStrellaWithConfig(minterClass, {
       seedTxn,
       seedIndex,
@@ -55789,6 +59794,14 @@ class Capo extends StellarContract {
       //   isn't actively supported yet
       capo: this
     });
+    if (expectedMph && !minter.mintingPolicyHash.eq(expectedMph)) {
+      throw new Error(
+        `This minter script with this seed-utxo doesn't produce the required  minting policy hash
+expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
+      );
+    } else if (!expectedMph) {
+      console.log(`${this.constructor.name}: seeding new minting policy`);
+    }
     const { mintingCharter, mintingUuts } = minter.onChainActivitiesType;
     if (!mintingCharter)
       throw new Error(
@@ -55864,8 +59877,8 @@ class Capo extends StellarContract {
    * or can be stored off-chain in any way suitable for your dApp.
    *
    * To get a full DelegateSettings object, use txnCreateDelegateSettings() instead.
-   * 
-  * @reqt throws DelegateConfigNeeded with an `errors` entry
+   *
+   * @reqt throws DelegateConfigNeeded with an `errors` entry
    *   ... if there are any problems in validating the net configuration settings.
    * @reqt EXPECTS the `tcx` to be minting a UUT for the delegation,
    *   ... whose UutName can be found in `tcx.state.uuts[roleName]`
@@ -55899,8 +59912,6 @@ class Capo extends StellarContract {
       delegateValidatorHash,
       uutName,
       config
-      // addrHint,  //moved to config
-      // reqdAddress,  // removed
     } = configured;
     return {
       strategyName,
@@ -55952,7 +59963,7 @@ class Capo extends StellarContract {
     const errors = validateConfig && validateConfig(mergedConfig);
     if (errors) {
       throw new DelegateConfigNeeded(
-        `validation errors in contract params for ${roleName} '${strategyName}':
+        `validation errors in delegateInfo.config for ${roleName} '${strategyName}':
 ` + errorMapAsString(errors),
         { errors }
       );
@@ -55984,7 +59995,11 @@ class Capo extends StellarContract {
   // get connectDelegate()
   async connectDelegateWithLink(roleName, delegateLink) {
     const cache = this.#_delegateCache;
-    const cacheKey = JSON.stringify(delegateLink, delegateLinkSerializer, 4);
+    const cacheKey = JSON.stringify(
+      delegateLink,
+      delegateLinkSerializer,
+      4
+    );
     if (!cache[roleName])
       cache[roleName] = {};
     const roleCache = cache[roleName];
@@ -56006,9 +60021,13 @@ class Capo extends StellarContract {
     if (!selectedStrat) {
       throw new Error(
         `mismatched strategyName '${strategyName}' in delegate link for role '${roleName}'
-  ...available strategies: ${Object.keys(role.variants).join(", ")}.
+  ...available strategies: ${Object.keys(
+          role.variants
+        ).join(", ")}.
 
- link details: ${this.showDelegateLink(delegateLink)}`
+ link details: ${this.showDelegateLink(
+          delegateLink
+        )}`
       );
     }
     const { delegateClass, config: stratSettings } = selectedStrat;
@@ -56040,7 +60059,9 @@ class Capo extends StellarContract {
         `${this.constructor.name}: ${roleName}: mismatched delegate: expected validator ${edvh?.hex}, got ${dvh.hex}`
       );
     }
-    console.log(`    <--- caching first instance of delegate ${roleName} @ key = ${cacheKey}`);
+    console.log(
+      `    <--- caching first instance of delegate ${roleName} @ key = ${cacheKey}`
+    );
     roleCache[cacheKey] = delegate;
     return delegate;
   }
@@ -56063,6 +60084,12 @@ class Capo extends StellarContract {
       }
       throw e;
     }
+  }
+  tvForDelegate(dgtLink) {
+    return this.tokenAsValue(dgtLink.uutName);
+  }
+  mkDelegatePredicate(dgtLink) {
+    return this.mkTokenPredicate(this.tvForDelegate(dgtLink));
   }
   capoRequirements() {
     return hasReqts({
@@ -56090,7 +60117,7 @@ class Capo extends StellarContract {
           "   ... of the seed UTxO, formatted with bech32"
         ],
         mech: [
-          "Building a txn with a UUT involves using the txnCreatingUuts partial-helper on the Capo.",
+          "Building a txn with a UUT involves using the txnMintingUuts partial-helper on the Capo.",
           "Fills tcx.state.uuts with purpose-keyed unique token-names",
           "The UUT uses the seed-utxo pattern to form 64 bits of uniqueness, so that token-names stay short-ish."
         ]
@@ -56238,10 +60265,10 @@ class Capo extends StellarContract {
 }
 __decorateClass$4([
   partialTxn
-], Capo.prototype, "txnWithUuts", 1);
+], Capo.prototype, "txnWillMintUuts", 1);
 __decorateClass$4([
   txn
-], Capo.prototype, "mkTxnCreatingUuts", 1);
+], Capo.prototype, "mkTxnMintingUuts", 1);
 __decorateClass$4([
   Activity.redeemer
 ], Capo.prototype, "usingAuthority", 1);
@@ -56286,18 +60313,26 @@ class StellarDelegate extends StellarContract {
    * @public
    **/
   async txnGrantAuthority(tcx) {
+    const label = `${this.constructor.name} authority`;
     const uutxo = await this.DelegateMustFindAuthorityToken(
       tcx,
-      `${this.constructor.name} authority`
+      label
     );
-    console.log("   ------- delegate grants authority");
-    debugger;
-    const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo);
-    return this.txnReceiveAuthorityToken(
-      tcx2,
-      this.tvAuthorityToken(),
-      uutxo
-    );
+    const authorityVal = this.tvAuthorityToken();
+    console.log(`   ------- delegate ${label} grants authority with ${dumpAny(authorityVal)}`);
+    try {
+      const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo);
+      return this.txnReceiveAuthorityToken(
+        tcx2,
+        authorityVal,
+        uutxo
+      );
+    } catch (error) {
+      if (error.message.match(/input already added/)) {
+        throw new Error(`Delegate ${label}: already added: ${dumpAny(authorityVal)}`);
+      }
+      throw error;
+    }
   }
   /**
    * Finds the authority token and adds it to the transaction, tagged for retirement
@@ -56337,13 +60372,16 @@ class StellarDelegate extends StellarContract {
    * A delegate that doesn't use an on-chain validator should override this method and return undefined.
    **/
   get delegateValidatorHash() {
-    if (!this.address.validatorHash) {
+    if (!this.compiledScript.validatorHash) {
       throw new Error(
         `${this.constructor.name}: address doesn't use a validator hash!
   ... if that's by design, you may wish to override 'get delegateValidatorHash()' -> undefined`
       );
     }
-    return this.address.validatorHash;
+    return this.compiledScript.validatorHash;
+  }
+  mkAuthorityTokenPredicate() {
+    return this.mkTokenPredicate(this.tvAuthorityToken());
   }
   tvAuthorityToken() {
     if (!this.configIn)
@@ -56668,14 +60706,14 @@ __decorateClass$2([
   Activity.redeemer
 ], AnyAddressAuthorityPolicy.prototype, "usingAuthority", 1);
 
-const code$5 = 
-new String("spending BasicMintDelegate\n\nconst rev : Int = 1\nconst instance : ByteArray = #67656e6572616c\n\nimport {\n    DelegationDetail,\n    acAuthorityToken,\n    tvAuthorityToken\n} from CapoDelegateHelpers\n\nimport {\n    returnsValueToScript\n} from StellarHeliosHelpers\n\nimport {\n    MintDelegateActivity,\n    MintDelegateDatum\n} from specializedMintDelegate\n\n// import { \n//     preventCharterChange\n// } from MultiSigAuthority\n// func main(datum: Datum,_,ctx: ScriptContext) -> Bool {\n//     preventCharterChange(ctx, datum) \n// }\n\nfunc mustReturnValueToScript(value : Value, ctx : ScriptContext) -> Bool {\n    if (!returnsValueToScript( value, ctx)) {\n         error(\"the authZor token MUST be returned\")\n    };\n    true\n}\n\nfunc main(mdd: MintDelegateDatum, action: MintDelegateActivity, ctx: ScriptContext) -> Bool {\n    // input = ctx.get_current_input();\n    mdd.switch{\n        isD : IsDelegation{dd, _} => {\n            // MintDelegateDatum::IsDelegation{dd, cfg} = isD;\n            action.switch {        \n                Authorizing => {\n                    ok : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);\n\n                    o : []TxOutput = ctx.get_cont_outputs();\n                    if (o.length != 1) { error(\"only one utxo allowed in return to mint delegate\") };\n\n                    MintDelegateDatum::IsDelegation{\n                        ddNew, _\n                    } = MintDelegateDatum::from_data( \n                        o.head.datum.get_inline_data() \n                    );\n            \n                    //! the datum must be unchanged.\n                    ddNew == dd && ok\n                },\n                Reassigning => {\n                    // the token isn't burned, and it isn't returned back to this script\n                    ctx.tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&\n                    !returnsValueToScript( tvAuthorityToken(dd), ctx)\n                },\n                Retiring => {\n                    // the token is burned\n                    ctx.tx.minted.get(acAuthorityToken(dd)) == -1\n                },\n                Modifying => {\n                    authorityValue : Value = tvAuthorityToken(dd);\n                    ok : Bool = mustReturnValueToScript(authorityValue, ctx);\n                    dlgt : TxOutput = ctx.get_cont_outputs().find(\n                        (o :TxOutput) -> Bool {\n                            o.value.contains(authorityValue)\n                        }\n                    );\n                            \n                    ddNew : MintDelegateDatum::IsDelegation = \n                    MintDelegateDatum::from_data( \n                        dlgt.datum.get_inline_data() \n                    );\n\n                    mdd.validateCDConfig(ddNew) && ok\n                },\n                _ => true\n            } && action.additionalDelegateValidation(isD, ctx)\n        },\n        _ => action.otherActivityValidation(mdd, ctx)\n    }\n}\n");
+const code$5 = new String("spending BasicMintDelegate\n\nconst rev : Int = 1\nconst instance : ByteArray = #67656e6572616c\n\nimport {\n    DelegationDetail,\n    acAuthorityToken,\n    tvAuthorityToken\n} from CapoDelegateHelpers\n\nimport {\n    returnsValueToScript\n} from StellarHeliosHelpers\n\nimport {\n    MintDelegateActivity,\n    MintDelegateDatum\n} from specializedMintDelegate\n\n// import { \n//     preventCharterChange\n// } from MultiSigAuthority\n// func main(datum: Datum,_,ctx: ScriptContext) -> Bool {\n//     preventCharterChange(ctx, datum) \n// }\n\nfunc mustReturnValueToScript(value : Value, ctx : ScriptContext) -> Bool {\n    if (!returnsValueToScript( value, ctx)) {\n         error(\"the authZor token MUST be returned\")\n    };\n    true\n}\n\nfunc main(mdd: MintDelegateDatum, action: MintDelegateActivity, ctx: ScriptContext) -> Bool {\n    // input = ctx.get_current_input();\n    mdd.switch{\n        isD : IsDelegation{dd, _} => {\n            // MintDelegateDatum::IsDelegation{dd, cfg} = isD;\n            action.switch {        \n                Authorizing => {\n                    ok : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);\n\n                    o : []TxOutput = ctx.get_cont_outputs();\n                    if (o.length != 1) { error(\"only one utxo allowed in return to mint delegate\") };\n\n                    // Note: unspecialized delegate requires unchanged datum\n                    //   in additionalDelegateValidation\n                    ok\n                },\n                Reassigning => {\n                    // the token isn't burned, and it isn't returned back to this script\n                    ctx.tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&\n                    !returnsValueToScript( tvAuthorityToken(dd), ctx)\n                },\n                Retiring => {\n                    // the token is burned\n                    ctx.tx.minted.get(acAuthorityToken(dd)) == -1\n                },\n                Modifying => {\n                    authorityValue : Value = tvAuthorityToken(dd);\n                    ok : Bool = mustReturnValueToScript(authorityValue, ctx);\n                    dlgt : TxOutput = ctx.get_cont_outputs().find(\n                        (o :TxOutput) -> Bool {\n                            o.value.contains(authorityValue)\n                        }\n                    );\n                            \n                    ddNew : MintDelegateDatum::IsDelegation = \n                    MintDelegateDatum::from_data( \n                        dlgt.datum.get_inline_data() \n                    );\n\n                    mdd.validateCDConfig(ddNew) && ok\n                },\n                _ => true\n            } && action.additionalDelegateValidation(isD, ctx)\n        },\n        _ => action.otherActivityValidation(mdd, ctx)\n    }\n}\n");
+
 code$5.srcFile = "src/minting/BasicMintDelegate.hl";
 code$5.purpose = "spending";
 code$5.moduleName = "BasicMintDelegate";
 
-const code$4 = 
-new String("module specializedMintDelegate\n\n//! provides a basic version, not actually specialized,\n// of the \"specializedMintDelegate\" interface, which simply\n// exports a DelegateDatum enum and DelegateActivities (redeemer enum).  \n//! these specializations MAY include additional enum variants, and \n//  ... they MUST include the same enum variants found in this\n//  ... unspecialized version.  \n//  If you're specializing and you get a Helios compiler error,\n// ... these are the first things you should check!\n//! Your specialization MAY include any \n// ... additional functions, imports or methods\n\nimport {\n     DelegationDetail \n} from CapoDelegateHelpers\n\nenum MintDelegateDatum {\n    IsDelegation {\n        dd: DelegationDetail\n        // provides structural space for (non-string) configuration data.\n        // the string case is degenerate (expect empty string always)\n        CustomConfig: String\n    }\n    \n    func validateCDConfig(self, updated: MintDelegateDatum::IsDelegation) -> Bool {\n        self.switch {\n            ddd: IsDelegation => {\n                (ddd.CustomConfig == \"\") &&\n                (updated == self)\n            },\n            _ => error(\"unreachable\")\n        }\n    }\n}\n\nenum MintDelegateActivity {\n    Authorizing\n    Reassigning\n    Retiring\n    Modifying\n    //! used only for validating IsDelegation datum, that is,\n    //   ... to approve minting requests or any customize spending modes \n    //   ... of that datum.  In this unspecialized version, \n    //   ... the \"Modifying\" activity is an unsupported stand-in for that use-case, always rejecting.\n    //! in a real-life customization case, additional custom IsDelegation config can be\n    //   ... enforced in \"Modifying\" event the second field of IsDelegation (the \"CDConfig\" stand-in here)\n    //   ... the BasicMintDelegate allows for that field's presence, without any assumptions\n    //   ... about its type.\n    //  Note that the basic mint delegate\n    //   ... enforces the authority UUT being returned to the delegate script,\n    //   ... and other basic administrative expectations, so any specialization\n    //   ... can focus on higher-level policy considerations.\n    func additionalDelegateValidation( self,\n        ddd: MintDelegateDatum::IsDelegation, \n        ctx: ScriptContext\n    ) -> Bool {\n        // this is a no-op, structured this way only \n        //  ... to avoid unused variable errors\n        self.switch {\n            Modifying => false,\n            _ => true\n        } || ctx.tx.serialize() != ddd.serialize()\n    }\n\n    //! used only for validating non-IsDelegation datum types.\n    //   if you have any admininstrative data structures that inform\n    func otherActivityValidation( self,\n        mdd: MintDelegateDatum, \n        ctx: ScriptContext\n    ) -> Bool {\n        // this is a no-op, structured this way only \n        //  ... to avoid unused variable errors\n        self.switch{\n            Authorizing => true,\n            _ => true\n        } || ctx.tx.serialize() != mdd.serialize()\n    }\n}\n\n");
+const code$4 = new String("module specializedMintDelegate\n\n//! provides a basic version, not actually specialized,\n// of the \"specializedMintDelegate\" interface, which simply\n// exports a DelegateDatum enum and DelegateActivities (redeemer enum).  \n//! these specializations MAY include additional enum variants, and \n//  ... they MUST include the same enum variants found in this\n//  ... unspecialized version.  \n//  If you're specializing and you get a Helios compiler error,\n// ... these are the first things you should check!\n//! Your specialization MAY include any \n// ... additional functions, imports or methods\n\nimport {\n     DelegationDetail,\n     unmodifiedDelegation\n} from CapoDelegateHelpers\n\nenum MintDelegateDatum {\n    IsDelegation {\n        dd: DelegationDetail\n        // provides structural space for (non-string) configuration data.\n        // the string case is degenerate (expect empty string always)\n        CustomConfig: String\n    }\n    \n    func validateCDConfig(self, updated: MintDelegateDatum::IsDelegation) -> Bool {\n        self.switch {\n            ddd: IsDelegation => {\n                (ddd.CustomConfig == \"\") &&\n                (updated == self)\n            },\n            _ => error(\"unreachable\")\n        }\n    }\n}\n\nenum MintDelegateActivity {\n    Authorizing\n    Reassigning\n    Retiring\n    Modifying\n    //! used only for validating IsDelegation datum, that is,\n    //   ... to approve minting requests or any customize spending modes \n    //   ... of that datum.  In this unspecialized version, \n    //   ... the \"Modifying\" activity is an unsupported stand-in for that use-case, always rejecting.\n    //! in a real-life customization case, additional custom IsDelegation config can be\n    //   ... enforced in \"Modifying\" event the second field of IsDelegation (the \"CDConfig\" stand-in here)\n    //   ... the BasicMintDelegate allows for that field's presence, without any assumptions\n    //   ... about its type.\n    //  Note that the basic mint delegate already\n    //   ... enforces the authority UUT being returned to the delegate script,\n    //   ... and other basic administrative expectations, so any specialization\n    //   ... can focus on higher-level policy considerations.\n    func additionalDelegateValidation( self,\n        ddd: MintDelegateDatum::IsDelegation, \n        ctx: ScriptContext\n    ) -> Bool {\n        print(\"  ----- checking additional delegate validation\");\n        self.switch {\n            Authorizing => {\n                unmodifiedDelegation(ddd.serialize(), ctx) && \n                true\n            },\n            Modifying => false,\n            _ => true\n        } || ctx.tx.serialize() != ddd.serialize()\n    }\n\n    //! used only for validating non-IsDelegation datum types.\n    //   if you have any admininstrative data structures that inform\n    func otherActivityValidation( self,\n        mdd: MintDelegateDatum, \n        ctx: ScriptContext\n    ) -> Bool {\n        neverTriggered = () -> {  error(\"never called\") };\n        self.switch{\n            Authorizing => neverTriggered(),\n            Reassigning => neverTriggered(),\n            Retiring => neverTriggered(),\n            Modifying => neverTriggered(),\n            _ => false\n        } && (mdd.serialize() != ctx.serialize())\n    }\n}\n\nstruct types {\n    redeemers: MintDelegateActivity\n    datum : MintDelegateDatum\n}\n");
+
 code$4.srcFile = "src/minting/UnspecializedMintDelegate.hl";
 code$4.purpose = "module";
 code$4.moduleName = "specializedMintDelegate";
@@ -56724,7 +60762,7 @@ class BasicMintDelegate extends StellarDelegate {
       );
     }
     return [
-      StellarHeliosHelpers,
+      code$8,
       CapoDelegateHelpers,
       CapoMintHelpers,
       specialization
@@ -56753,9 +60791,8 @@ class BasicMintDelegate extends StellarDelegate {
    **/
   async txnReceiveAuthorityToken(tcx, tokenValue, fromFoundUtxo) {
     console.log(
-      `::::::::::: minting delegate validator receiving mintDgt token at ` + this.address.validatorHash.hex
+      `     ----- minting delegate validator receiving mintDgt token at ` + this.address.validatorHash.hex
     );
-    debugger;
     const datum2 = this.mkDelegationDatum(fromFoundUtxo);
     return tcx.addOutput(new TxOutput(this.address, tokenValue, datum2));
   }
@@ -56779,14 +60816,14 @@ __decorateClass$1([
   Activity.partialTxn
 ], BasicMintDelegate.prototype, "txnCreatingTokenPolicy", 1);
 
-const code$3 = 
-new String("spending Capo\n\n// needed in helios 0.13: defaults\nconst mph : MintingPolicyHash = MintingPolicyHash::new(#1234)\nconst rev : Int = 1\n\nimport {\n    tvCharter\n} from CapoHelpers\n\nimport { \n    RelativeDelegateLink,\n    requiresValidDelegateOutput\n} from CapoDelegateHelpers\n\nimport {\n    mkTv,\n    didSign,\n    didSignInCtx\n} from StellarHeliosHelpers\n\nimport { Datum, Activity } from specializedCapo\n\n/**\n * \n */\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{\n        govDelegateLink, _\n    } = datum;\n\n    requiresValidDelegateOutput(govDelegateLink, mph, ctx)\n}\n\nfunc getCharterOutput(tx: Tx) -> TxOutput {\n    charterTokenValue : Value = Value::new(\n        AssetClass::new(mph, \"charter\".encode_utf8()), \n        1\n    );\n    tx.outputs.find_safe(\n        (txo : TxOutput) -> Bool {\n            txo.value >= charterTokenValue\n        }\n    ).switch{\n        None => error(\"this could only happen if the charter token is burned.\"),\n        Some{o} => o\n    }\n}\n\nfunc notUpdatingCharter(activity: Activity) -> Bool { activity.switch {\n    updatingCharter => false,  \n    _ => true\n}}\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        actual : String = charterOutput.address.credential.switch{\n            PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n            Validator{vh} => \"val:📜#:\" + vh.show()\n        };\n        error(\n            \"charter token must be returned to the contract \" + cvh.show() +\n            \"... but was sent to \" +actual\n        )\n    };\n\n    Datum::CharterToken{\n        govDelegate,\n        mintDelegate\n    } = datum;\n    Datum::CharterToken{\n        newGovDelegate,\n        newMintDelegate\n    } = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newGovDelegate == govDelegate &&\n        newMintDelegate == mintDelegate\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    // now: Time = tx.time_range.start;\n    \n    allDatumSpecificChecks: Bool = datum.switch {\n        ctd : CharterToken => {\n            // throws if bad\n            if(notUpdatingCharter(activity)) { \n                preventCharterChange(ctx, ctd)\n            } else {\n                true // \"maybe\", really\n            }\n        },\n        _ => {\n            activity.switch {\n                spendingDatum => datum.validateSpend(ctx),\n                _ => true\n            }\n        }            \n    };\n    allActivitySpecificChecks : Bool = activity.switch {\n        updatingCharter => {\n            charterOutput : TxOutput = getCharterOutput(tx);\n            newDatum = Datum::from_data( \n                charterOutput.datum.get_inline_data() \n            );\n            Datum::CharterToken{govDelegate, mintDelegate} = newDatum;\n\n            requiresValidDelegateOutput(govDelegate, mph, ctx) &&\n            requiresValidDelegateOutput(mintDelegate, mph, ctx) &&\n            requiresAuthorization(ctx, datum)\n        },\n        usingAuthority => {\n            // by definition, we're truly notUpdatingCharter(activity) \n            datum.switch {\n                 // throws if bad\n                ctd : CharterToken => requiresAuthorization(ctx, ctd),\n                _ => error(\"wrong use of usingAuthority action for non-CharterToken datum\")\n            }\n        },\n        _ => activity.allowActivity(datum, ctx)\n    };\n\n    assert(allDatumSpecificChecks, \"datum-check fail\");\n    assert(allActivitySpecificChecks, \"redeeemer-check fail\");\n\n    //! retains mph in parameterization\n    assert(\n        ( allDatumSpecificChecks && allActivitySpecificChecks ) ||\n            // this should never execute (much less fail), yet it also shouldn't be optimized out.\n             mph.serialize() != datum.serialize(), \n        \"unreachable\"\n    ); \n\n    allDatumSpecificChecks && \n    allActivitySpecificChecks &&\n    tx.serialize() != datum.serialize()\n}\n");
+const code$3 = new String("spending Capo\n\n// needed in helios 0.13: defaults\nconst mph : MintingPolicyHash = MintingPolicyHash::new(#1234)\nconst rev : Int = 1\n\nimport {\n    tvCharter\n} from CapoHelpers\n\nimport { \n    RelativeDelegateLink,\n    requiresValidDelegateOutput\n} from CapoDelegateHelpers\n\nimport {\n    mkTv,\n    didSign,\n    didSignInCtx\n} from StellarHeliosHelpers\n\nimport { Datum, Activity } from specializedCapo\n\n/**\n * \n */\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{\n        govDelegateLink, _\n    } = datum;\n\n    requiresValidDelegateOutput(govDelegateLink, mph, ctx)\n}\n\nfunc getCharterOutput(tx: Tx) -> TxOutput {\n    charterTokenValue : Value = Value::new(\n        AssetClass::new(mph, \"charter\".encode_utf8()), \n        1\n    );\n    tx.outputs.find_safe(\n        (txo : TxOutput) -> Bool {\n            txo.value >= charterTokenValue\n        }\n    ).switch{\n        None => error(\"this could only happen if the charter token is burned.\"),\n        Some{o} => o\n    }\n}\n\nfunc notUpdatingCharter(activity: Activity) -> Bool { activity.switch {\n    updatingCharter => false,  \n    _ => true\n}}\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        actual : String = charterOutput.address.credential.switch{\n            PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n            Validator{vh} => \"val:📜#:\" + vh.show()\n        };\n        error(\n            \"charter token must be returned to the contract \" + cvh.show() +\n            \"... but was sent to \" +actual\n        )\n    };\n\n    Datum::CharterToken{\n        govDelegate,\n        mintDelegate\n    } = datum;\n    Datum::CharterToken{\n        newGovDelegate,\n        newMintDelegate\n    } = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newGovDelegate == govDelegate &&\n        newMintDelegate == mintDelegate\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    // now: Time = tx.time_range.start;\n    \n    allDatumSpecificChecks: Bool = datum.switch {\n        ctd : CharterToken => {\n            // throws if bad\n            if(notUpdatingCharter(activity)) { \n                preventCharterChange(ctx, ctd)\n            } else {\n                true // \"maybe\", really\n            }\n        },\n        _ => {\n            activity.switch {\n                spendingDatum => datum.validateSpend(ctx, mph),\n                _ => true\n            }\n        }            \n    };\n    allActivitySpecificChecks : Bool = activity.switch {\n        updatingCharter => {\n            charterOutput : TxOutput = getCharterOutput(tx);\n            newDatum = Datum::from_data( \n                charterOutput.datum.get_inline_data() \n            );\n            Datum::CharterToken{govDelegate, mintDelegate} = newDatum;\n\n            requiresValidDelegateOutput(govDelegate, mph, ctx) &&\n            requiresValidDelegateOutput(mintDelegate, mph, ctx) &&\n            requiresAuthorization(ctx, datum)\n        },\n        usingAuthority => {\n            // by definition, we're truly notUpdatingCharter(activity) \n            datum.switch {\n                 // throws if bad\n                ctd : CharterToken => requiresAuthorization(ctx, ctd),\n                _ => error(\"wrong use of usingAuthority action for non-CharterToken datum\")\n            }\n        },\n        _ => activity.allowActivity(datum, ctx, mph)\n    };\n\n    assert(allDatumSpecificChecks, \"datum-check fail\");\n    assert(allActivitySpecificChecks, \"redeeemer-check fail\");\n\n    //! retains mph in parameterization\n    assert(\n        ( allDatumSpecificChecks && allActivitySpecificChecks ) ||\n            // this should never execute (much less fail), yet it also shouldn't be optimized out.\n             mph.serialize() != datum.serialize(), \n        \"unreachable\"\n    ); \n\n    allDatumSpecificChecks && \n    allActivitySpecificChecks &&\n    tx.serialize() != datum.serialize()\n}\n");
+
 code$3.srcFile = "src/DefaultCapo.hl";
 code$3.purpose = "spending";
 code$3.moduleName = "Capo";
 
-const code$2 = 
-new String("spending MultiSigAuthority\n\nconst rev : Int = 1\nconst instance : ByteArray = #67656e6572616c\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        actual : String = charterOutput.address.credential.switch{\n            PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n            Validator{vh} => \"val:📜#:\" + vh.show()\n        };\n        error(\n            \"charter token must be returned to the contract \" + cvh.show() +\n            \"... but was sent to \" +actual\n        )\n    };\n\n    Datum::CharterToken{trustees, minSigs} = datum;\n    Datum::CharterToken{newTrustees, newMinSigs} = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newTrustees == trustees &&\n        newMinSigs == minSigs\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc requiresValidMinSigs(datum: Datum) -> Bool {\n    Datum::CharterToken{trustees, minSigs} = datum;\n\n    assert(\n        minSigs <= trustees.length,\n        \"minSigs can't be more than the size of the trustee-list\"\n    );\n\n    true\n}\n\nfunc requiresProofOfNewTrustees(\n    ctx: ScriptContext,\n    datum: Datum\n) -> Bool {\n    Datum::CharterToken{newTrustees, _} = datum;\n\n    assert(\n        newTrustees.all(didSignInCtx(ctx)), \n        \"all the new trustees must sign\"\n    );\n\n    requiresValidMinSigs(datum)\n}\n\n//!!! adapt to use my UUT\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{trustees, minSigs} = datum;\n\n    foundSigs: Int = trustees.fold[Int](\n        (count: Int, a: Address) -> Int {            \n            count + if (didSign(ctx, a)) {1} else {0}\n        }, 0\n    );\n    assert(foundSigs >= minSigs, \n        \"not enough trustees (\"+foundSigs.show()+ \" of \" + minSigs.show() + \" needed) have signed the tx\" \n    );\n\n    true\n}\nfunc main(_,_,_) -> Bool {\n    true\n}\n// for updating trustee list:\n// requiresProofOfNewTrustees(ctx, newDatum)\n");
+const code$2 = new String("spending MultiSigAuthority\n\nconst rev : Int = 1\nconst instance : ByteArray = #67656e6572616c\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        actual : String = charterOutput.address.credential.switch{\n            PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n            Validator{vh} => \"val:📜#:\" + vh.show()\n        };\n        error(\n            \"charter token must be returned to the contract \" + cvh.show() +\n            \"... but was sent to \" +actual\n        )\n    };\n\n    Datum::CharterToken{trustees, minSigs} = datum;\n    Datum::CharterToken{newTrustees, newMinSigs} = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newTrustees == trustees &&\n        newMinSigs == minSigs\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc requiresValidMinSigs(datum: Datum) -> Bool {\n    Datum::CharterToken{trustees, minSigs} = datum;\n\n    assert(\n        minSigs <= trustees.length,\n        \"minSigs can't be more than the size of the trustee-list\"\n    );\n\n    true\n}\n\nfunc requiresProofOfNewTrustees(\n    ctx: ScriptContext,\n    datum: Datum\n) -> Bool {\n    Datum::CharterToken{newTrustees, _} = datum;\n\n    assert(\n        newTrustees.all(didSignInCtx(ctx)), \n        \"all the new trustees must sign\"\n    );\n\n    requiresValidMinSigs(datum)\n}\n\n//!!! adapt to use my UUT\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{trustees, minSigs} = datum;\n\n    foundSigs: Int = trustees.fold[Int](\n        (count: Int, a: Address) -> Int {            \n            count + if (didSign(ctx, a)) {1} else {0}\n        }, 0\n    );\n    assert(foundSigs >= minSigs, \n        \"not enough trustees (\"+foundSigs.show()+ \" of \" + minSigs.show() + \" needed) have signed the tx\" \n    );\n\n    true\n}\nfunc main(_,_,_) -> Bool {\n    true\n}\n// for updating trustee list:\n// requiresProofOfNewTrustees(ctx, newDatum)\n");
+
 code$2.srcFile = "src/authority/MultisigAuthorityPolicy.hl";
 code$2.purpose = "spending";
 code$2.moduleName = "MultiSigAuthority";
@@ -56890,16 +60927,16 @@ class MultisigAuthorityPolicy extends AuthorityPolicy {
   }
 }
 
-const code$1 = 
-new String("module specializedCapo\n\n//! provides a basic version, not actually specialized,\n// of the \"specializedCapo\" interface, which simply\n// exports Datum and Activity ('redemeer\") enum types.  \n//! the Datum and Activity of specializations\n//  MUST include the same enum variants as in this\n//  unspecialized version.  if you're specializing \n//  ... and you get a Helios compiler error,\n// ... these are the first things you should check!\n//! Your specialization MAY include any \n// ... additional functions, imports or methods\n\nimport { \n    RelativeDelegateLink\n} from CapoDelegateHelpers\n\n//! provides a basic version of Datum in default specializedCapo module\nenum Datum {\n    CharterToken {\n        govAuthorityLink: RelativeDelegateLink\n        mintDelegateLink: RelativeDelegateLink\n    }\n    //! datum-validation only supports checks of absolute spendability, \n    //  ... and can't check details of the Activity (\"redeemer\") being used.\n    func validateSpend(self, ctx: ScriptContext) -> Bool {\n        //! Note: an overridden Datum's impl of validateSpend() \n        // ... is never called with the CharterToken variant\n        assert(false, \"can't happen\");\n        self.switch{\n            CharterToken => true,\n            _ => error(\"can't happen\")\n        } || ctx.tx.serialize() != self.serialize()\n    }   \n}\n\n//! provides a basic version of Activity (\"redeemer\" type) in default specializedCapo module\nenum Activity {\n    usingAuthority\n    spendingDatum\n    updatingCharter    \n\n    func allowActivity(self, datum: Datum, ctx: ScriptContext) -> Bool {\n        self.switch{\n            //! Note: an overridden Reedeemer def doesn't have to replicate the checks\n            // ... for the baseline enum variants; it's not called in those cases.\n            updatingCharter => true,\n            usingAuthority => true,\n            _ => error(\"unreachable code\")\n            // not executed, but prevents the args from showing up as unused:\n        } || ctx.tx.serialize() != datum.serialize()\n    }    \n}\n");
+const code$1 = new String("module specializedCapo\n\n//! provides a basic version, not actually specialized,\n// of the \"specializedCapo\" interface, which simply\n// exports Datum and Activity ('redemeer\") enum types.  \n//! the Datum and Activity of specializations\n//  MUST include the same enum variants as in this\n//  unspecialized version.  if you're specializing \n//  ... and you get a Helios compiler error,\n// ... these are the first things you should check!\n//! Your specialization MAY include any \n// ... additional functions, imports or methods\n\nimport { \n    RelativeDelegateLink\n} from CapoDelegateHelpers\n\n//! provides a basic version of Datum in default specializedCapo module\nenum Datum {\n    CharterToken {\n        govAuthorityLink: RelativeDelegateLink\n        mintDelegateLink: RelativeDelegateLink\n    }\n    //! datum-validation only supports checks of absolute spendability, \n    //  ... and can't check details of the Activity (\"redeemer\") being used.\n    func validateSpend(self, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {\n        //! Note: an overridden Datum's impl of validateSpend() \n        // ... is never called with the CharterToken variant\n        assert(false, \"can't happen\");\n        self.switch{\n            CharterToken => true,\n            _ => error(\"can't happen\")\n        } || (\n            ctx.tx.serialize() /* never */ == self.serialize() ||\n            mph.serialize() /* never */ == self.serialize()\n        )\n    }   \n}\n\n//! provides a basic version of Activity (\"redeemer\" type) in default specializedCapo module\nenum Activity {\n    usingAuthority\n    spendingDatum\n    updatingCharter    \n\n    func allowActivity(self, datum: Datum, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {\n        self.switch{\n            //! Note: an overridden Reedeemer def doesn't have to replicate the checks\n            // ... for the baseline enum variants; it's not called in those cases.\n            updatingCharter => true,\n            usingAuthority => true,\n            _ => error(\"unreachable code\")\n            // not executed, but prevents the args from showing up as unused:\n        } || (\n            ctx.tx.serialize() /* never */ == datum.serialize() ||\n            mph.serialize() /* never */ == datum.serialize()\n        )\n    }    \n}\n\nstruct types {\n    redeemers: Activity\n    datum : Datum\n}\n");
+
 code$1.srcFile = "src/UnspecializedCapo.hl";
 code$1.purpose = "module";
 code$1.moduleName = "specializedCapo";
 
 const UnspecializedCapo = code$1;
 
-const code = 
-new String("module CapoHelpers\n\nimport {\n    mkTv,\n    tvCharter\n} from StellarHeliosHelpers\n\nimport { Datum, Activity } from specializedCapo\n\nfunc getRefCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::CharterToken {\n    chVal : Value = tvCharter(mph);\n    hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };\n    print(\"getting ref_input for charter\");\n    charterUtxo : TxInput = ctx.tx.ref_inputs.find_safe(hasCharter).switch{\n        Some{ch} => ch,\n        None => error(\"Missing charter in required ref_inputs\")\n    };\n    ctd : Datum::CharterToken = Datum::from_data( \n        charterUtxo.datum.get_inline_data() \n    );\n\n    ctd    \n}\n\n//! retrieves a required Charter Datum for the indicated policy - \n// ... either from the txn's reference inputs  or inputs.\nfunc getTxCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::CharterToken {\n    chVal : Value = tvCharter(mph);\n    hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };\n\n    charterUtxo : TxInput = ctx.tx.ref_inputs.find_safe(hasCharter).switch{\n        Some{ch} => ch,\n        None => ctx.tx.inputs.find_safe(hasCharter).switch{\n            Some{ch} => ch,\n            None => error(\"Missing charter inputs / ref_inputs\")\n        }\n    };\n    ctd : Datum::CharterToken = Datum::from_data( \n        charterUtxo.datum.get_inline_data() \n    );\n\n    ctd    \n}\n\n");
+const code = new String("module CapoHelpers\n\nimport {\n    mkTv,\n    tvCharter\n} from StellarHeliosHelpers\n\nimport { Datum, Activity } from specializedCapo\n\nfunc getRefCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::CharterToken {\n    chVal : Value = tvCharter(mph);\n    hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };\n    print(\"getting ref_input for charter\");\n    charterUtxo : TxInput = ctx.tx.ref_inputs.find_safe(hasCharter).switch{\n        Some{ch} => ch,\n        None => error(\"Missing charter in required ref_inputs\")\n    };\n    ctd : Datum::CharterToken = Datum::from_data( \n        charterUtxo.datum.get_inline_data() \n    );\n\n    ctd    \n}\n\n//! retrieves a required Charter Datum for the indicated policy - \n// ... either from the txn's reference inputs  or inputs.\nfunc getTxCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::CharterToken {\n    chVal : Value = tvCharter(mph);\n    hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };\n\n    charterUtxo : TxInput = ctx.tx.ref_inputs.find_safe(hasCharter).switch{\n        Some{ch} => ch,\n        None => ctx.tx.inputs.find_safe(hasCharter).switch{\n            Some{ch} => ch,\n            None => error(\"Missing charter inputs / ref_inputs\")\n        }\n    };\n    ctd : Datum::CharterToken = Datum::from_data( \n        charterUtxo.datum.get_inline_data() \n    );\n\n    ctd    \n}\n\n");
+
 code.srcFile = "src/CapoHelpers.hl";
 code.purpose = "module";
 code.moduleName = "CapoHelpers";
@@ -56922,18 +60959,33 @@ class DefaultCapo extends Capo {
   contractSource() {
     return code$3;
   }
+  static parseConfig(jsonConfig) {
+    const { mph, rev, seedTxn, seedIndex, rootCapoScriptHash } = jsonConfig;
+    const outputConfig = {};
+    if (mph)
+      outputConfig.mph = MintingPolicyHash.fromHex(mph.bytes);
+    if (rev)
+      outputConfig.rev = BigInt(rev);
+    if (seedTxn)
+      outputConfig.seedTxn = TxId.fromHex(seedTxn.bytes);
+    if (seedIndex)
+      outputConfig.seedIndex = BigInt(seedIndex);
+    if (rootCapoScriptHash)
+      outputConfig.rootCapoScriptHash = ValidatorHash.fromHex(rootCapoScriptHash.bytes);
+    return outputConfig;
+  }
   /**
    * indicates any specialization of the baseline Capo types
    * @remarks
-   * 
+   *
    * The default implementation is an UnspecialiedCapo, which
    * you can use as a template for your specialized Capo.
-   * 
+   *
    * Every specalization MUST include Datum and Activity ("redeemer") enums,
    * and MAY include additional functions, and methods on Datum / Activity.
-   * 
+   *
    * The datum SHOULD have a validateSpend(self, datum, ctx) method.
-   * 
+   *
    * The redeemer SHOULD have an allowActivity(self, datum, ctx) method.
    *
    * @public
@@ -56944,15 +60996,15 @@ class DefaultCapo extends Capo {
   /**
    * indicates any specialization of the baseline Capo types
    * @remarks
-   * 
+   *
    * The default implementation is an UnspecialiedCapo, which
    * you can use as a template for your specialized Capo.
-   * 
+   *
    * Every specalization MUST include Datum and  Activity ("redeemer") enums,
    * and MAY include additional functions, and methods on Datum / Activity.
-   * 
+   *
    * The datum enum SHOULD have a validateSpend(self, datum, ctx) method.
-   * 
+   *
    * The activity enum SHOULD have an allowActivity(self, datum, ctx) method.
    *
    * @public
@@ -56964,19 +61016,30 @@ class DefaultCapo extends Capo {
     const parentModules = super.importModules();
     const specializedCapo = this.specializedCapo;
     if (specializedCapo.moduleName !== "specializedCapo") {
-      throw new Error(`${this.constructor.name}: specializedCapo() module name must be 'specializedCapo', not '${specializedCapo.moduleName}'
-  ... in ${specializedCapo.srcFile}`);
+      throw new Error(
+        `${this.constructor.name}: specializedCapo() module name must be 'specializedCapo', not '${specializedCapo.moduleName}'
+  ... in ${specializedCapo.srcFile}`
+      );
     }
-    return [
-      specializedCapo,
-      this.capoHelpers,
-      ...parentModules
-    ];
+    return [specializedCapo, this.capoHelpers, ...parentModules];
   }
   // // @Activity.redeemer
   // updatingCharter() : isActivity {
   //     return this.updatingDefaultCharter()
   // }
+  /**
+   * Use the `delegateRoles` getter instead
+   * @remarks
+   * 
+   * this no-op method is a convenience for Stellar Contracts maintainers
+   * and intuitive developers using autocomplete.  Including it enables an entry
+   * in VSCode "Outline" view, which doesn't include the delegateRoles getter : /
+   * @deprecated but please keep as a kind of redirect
+   * @public
+   **/
+  getDelegateRoles() {
+    throw new Error(`use the delegateRoles getter instead`);
+  }
   get delegateRoles() {
     return delegateRoles({
       govAuthority: defineRole("capoGov", AuthorityPolicy, {
@@ -57023,10 +61086,35 @@ class DefaultCapo extends Capo {
       })
     });
   }
+  /**
+   * Performs a validation of all critical delegate connections
+   * @remarks
+   *
+   * Checks that each delegate connection is correct and that the underlying
+   * scripts for those delegates have not been modified in unplanned ways.
+   *
+   * Every Capo subclass that adds new delegate types SHOULD implement
+   * this method, performing any checks needed to verify the scripts underlying
+   * those delegate-types.  It should return `Promise.all([ super(), ...myOwnChecks])`.
+   * @public
+   **/
+  async verifyCoreDelegates() {
+    const rcsh = this.configIn?.rootCapoScriptHash;
+    if (rcsh && !rcsh.eq(this.address.validatorHash)) {
+      console.error(`expected: ` + rcsh.hex + `
+  actual: ` + this.address.validatorHash.hex);
+      throw new Error(`${this.constructor.name}: the leader contract script '${this.scriptProgram?.name}', or one of its dependencies, has been modified`);
+    }
+    this.connectMinter();
+    const charter = await this.findCharterDatum();
+    const { govAuthorityLink, mintDelegateLink } = charter;
+    return Promise.all([
+      this.connectDelegateWithLink("govAuthority", govAuthorityLink),
+      this.connectDelegateWithLink("mintDelegate", mintDelegateLink)
+    ]);
+  }
   mkOnchainDelegateLink(dl) {
-    const {
-      RelativeDelegateLink: hlRelativeDelegateLink
-    } = this.onChainTypes;
+    const { RelativeDelegateLink: hlRelativeDelegateLink } = this.onChainTypes;
     let {
       uutName,
       strategyName,
@@ -57060,12 +61148,17 @@ class DefaultCapo extends Capo {
         "CharterToken",
         ctUtxo.origOutput.datum
       );
+      if (!charterDatum)
+        throw Error(`invalid charter UTxO datum`);
       return charterDatum;
     });
   }
   async txnAddGovAuthority(tcx) {
     const charterDatum = await this.findCharterDatum();
-    console.log("adding charter's govAuthority via delegate", charterDatum.govAuthorityLink);
+    console.log(
+      "adding charter's govAuthority via delegate",
+      charterDatum.govAuthorityLink
+    );
     const capoGov = await this.connectDelegateWithLink(
       "govAuthority",
       charterDatum.govAuthorityLink
@@ -57094,10 +61187,22 @@ class DefaultCapo extends Capo {
    **/
   mkFullConfig(baseConfig) {
     const pCfg = this.partialConfig || {};
-    return { ...baseConfig, ...pCfg };
+    const newClass = this.constructor;
+    const newCapo = newClass.bootstrapWith({ setup: this.setup, config: { ...baseConfig, ...pCfg } });
+    return {
+      ...baseConfig,
+      ...pCfg,
+      rootCapoScriptHash: newCapo.compiledScript.validatorHash
+    };
   }
-  async mkTxnCreatingUuts(initialTcx, uutPurposes, seedUtxo, roles) {
-    const tcx = await super.mkTxnCreatingUuts(initialTcx, uutPurposes, seedUtxo, roles);
+  async mkTxnMintingUuts(initialTcx, uutPurposes, seedUtxo, roles) {
+    const tcx = await super.mkTxnMintingUuts(
+      initialTcx,
+      uutPurposes,
+      seedUtxo,
+      roles
+    );
+    await this.txnMustUseCharterUtxo(tcx, "refInput");
     return this.txnAddMintDelegate(tcx);
   }
   async getMintDelegate() {
@@ -57126,7 +61231,7 @@ class DefaultCapo extends Capo {
       throw new Error(
         `this contract suite is already configured and can't be re-chartered`
       );
-    const initialTcx = existingTcx || new StellarTxnContext();
+    const initialTcx = existingTcx || new StellarTxnContext(this.myActor);
     return this.txnMustGetSeedUtxo(initialTcx, "charter bootstrapping", [
       "charter"
     ]).then(async (seedUtxo) => {
@@ -57141,11 +61246,14 @@ class DefaultCapo extends Capo {
         seedTxn,
         seedIndex
       });
-      initialTcx.state.bootstrappedConfig = bsc;
+      initialTcx.state.bsc = bsc;
+      initialTcx.state.bootstrappedConfig = JSON.parse(
+        JSON.stringify(bsc, delegateLinkSerializer)
+      );
       const fullScriptParams = this.contractParams = this.getContractScriptParams(bsc);
       this.configIn = bsc;
       this.scriptProgram = this.loadProgramScript(fullScriptParams);
-      const tcx = await this.minter.txnWithUuts(
+      const tcx = await this.minter.txnWillMintUuts(
         initialTcx,
         ["capoGov", "mintDgt"],
         seedUtxo,
@@ -57154,12 +61262,7 @@ class DefaultCapo extends Capo {
           mintDelegate: "mintDgt"
         }
       );
-      const {
-        capoGov,
-        govAuthority,
-        mintDgt,
-        mintDelegate
-      } = tcx.state.uuts;
+      const { capoGov, govAuthority, mintDgt, mintDelegate } = tcx.state.uuts;
       {
         if (govAuthority !== capoGov)
           throw new Error(`assertion can't fail`);
@@ -57172,7 +61275,11 @@ class DefaultCapo extends Capo {
         mintDelegateLink
       };
       const datum2 = this.mkDatumCharterToken(fullCharterArgs);
-      const charterOut = new TxOutput(this.address, this.tvCharter(), datum2);
+      const charterOut = new TxOutput(
+        this.address,
+        this.tvCharter(),
+        datum2
+      );
       charterOut.correctLovelace(this.networkParams);
       tcx.addInput(seedUtxo);
       tcx.addOutputs([charterOut]);
@@ -57193,7 +61300,7 @@ class DefaultCapo extends Capo {
     const t = new updatingCharter();
     return { redeemer: t._toUplcData() };
   }
-  async mkTxnUpdateCharter(args, tcx = new StellarTxnContext()) {
+  async mkTxnUpdateCharter(args, tcx = new StellarTxnContext(this.myActor)) {
     return this.txnUpdateCharterUtxo(
       tcx,
       this.updatingCharter(),
