@@ -6,8 +6,6 @@ import {
     vi,
 } from "vitest";
 
-// I should use DefaultCapo here, right?
-import { CustomTreasury } from "./customizing/CustomTreasury";
 import { DefaultCapo } from "../src/DefaultCapo";
 
 import {
@@ -20,14 +18,6 @@ import {
 
 import { StellarTxnContext } from "../src/StellarTxnContext";
 
-// import {
-//     ADA,
-//     StellarTestContext, 
-//     StellarCapoTestHelper,
-//     HelperFunctions,
-//     addTestContext,
-//     mkContext,
-// } from "../src/testing/StellarTestHelper"; //HeliosTestingContext
 import {
     ADA,
     StellarTestContext,
@@ -46,7 +36,6 @@ const fit = it.only
 
 type localTC = StellarTestContext<CustomTreasuryTestHelper>;
 
-// see Capo.ts L157: Capo is the foundational class, DefaultCapo should be used.
 class VestingTestHelper extends CapoTestHelper<DefaultCapo> {
     get stellarClass() {
         return DefaultCapo;
@@ -68,7 +57,6 @@ describe("Vesting service", async () => {
 
 	describe("baseline capabilities", () => {
 		it("sasha can deposit correctly", async (context: localTC) => {
-			// see the same incantation in 02 L51
 			const {h, h: { network, actors, delay, state }} = context;
 			const { sasha, tom, pavel } = actors;
 
