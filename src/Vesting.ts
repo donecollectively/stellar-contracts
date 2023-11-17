@@ -49,7 +49,7 @@ export class Vesting extends StellarContract<VestingParams> {
 		const lockedVal = inUtxo.value; 
 		
 		// const validatorAddress = Address.fromValidatorHash(this.compiledContract.validatorHash)
-		const validatorAddress = super.address();
+		const validatorAddress = this.address;
 
 		const inlineDatum = this.mkDatum({
 			sponsor: sponsor.address.pubKeyHash,
