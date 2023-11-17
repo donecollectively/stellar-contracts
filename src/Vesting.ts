@@ -39,7 +39,7 @@ export class Vesting extends StellarContract<VestingParams> {
         { sponsor, payee, deadline }: VestingParams,
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
-		const margin = 5 * ADA;
+		const margin = 5000000n;
 		const inUtxo = (await sponsor.utxos)[0];
 		const inUtxoFee = (await sponsor.utxos)[1];
 
