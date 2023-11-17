@@ -27,7 +27,6 @@ export class Vesting extends StellarContract<VestingParams> {
         payee,
 	time
     }: VestingDatumArgs): InlineDatum {
-        //!!! todo: make it possible to type these datum helpers more strongly
         const t = new this.configuredContract.types.Datum(
             sponsor.bytes,
 	    payee.bytes,
@@ -49,7 +48,8 @@ export class Vesting extends StellarContract<VestingParams> {
 		// reqt: can find the Value in sponsor utxos
 		const lockedVal = inUtxo.value; 
 		
-		const validatorAddress = Address.fromValidatorHash(this.compiledContract.validatorHash)
+		// const validatorAddress = Address.fromValidatorHash(this.compiledContract.validatorHash)
+		const validatorAddress = super.address();
 
 		const inlineDatum = this.mkDatum({
 			sponsor: sponsor.address.pubKeyHash,
