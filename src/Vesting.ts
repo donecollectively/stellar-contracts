@@ -27,7 +27,7 @@ export class Vesting extends StellarContract<VestingParams> {
         payee,
 	time
     }: VestingDatumArgs): InlineDatum {
-        const t = new this.configuredContract.types.Datum(
+        const t = new this.scriptProgram.types.Datum(
             sponsor.bytes,
 	    payee.bytes,
             time
