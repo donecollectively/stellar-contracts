@@ -186,7 +186,7 @@ describe("Vesting service", async () => {
 		    const tomMoney = await tom.utxos;
 		    const pavelMoney = await pavel.utxos;
 
-		    expect(sashaMoney.length).toBe(2);
+		    expect(sashaMoney.length).toBe(3);
 		    expect(sashaMoney[0].value.assets.nTokenTypes).toBe(0);
 		    expect(sashaMoney[0].value.assets.isZero).toBeTruthy();
 		    expect(sashaMoney[1].value.assets.isZero).toBeTruthy();
