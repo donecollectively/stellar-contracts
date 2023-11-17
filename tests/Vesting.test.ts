@@ -89,7 +89,7 @@ describe("Vesting service", async () => {
 
 			const txId = await h.submitTx(tcx.tx, "force");
 
-			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
+			const validatorAddress = v.address
 			const valUtxos = await network.getUtxos(validatorAddress)
 			const onchainDeadline = BigInt(JSON.parse(valUtxos[0].origOutput.datum.data.toSchemaJson()).list[2].int)
 
