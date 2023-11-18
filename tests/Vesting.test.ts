@@ -125,9 +125,8 @@ describe("Vesting service", async () => {
 
 			// calculate the deadline:
 			const timeAtDepo = Date.now();
-			const offset =             53*365*24*60*60*1000; // years in milliseconds
+			const offset =             60*1000;
 			const deadline = BigInt(timeAtDepo + offset);
-			// expect(deadline).toBeLessThan(1731162495000n); // Nov 9th, 2024
 
 			const tcx = await v.mkTxnDepositValueForVesting({
 				sponsor: sasha,
