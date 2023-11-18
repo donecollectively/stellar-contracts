@@ -86,7 +86,7 @@ describe("Vesting service", async () => {
 			expect(onchainDeadline).toBe(deadline);
 
 		});
-		it("sasha can lock and cancel", async (context: localTC) => {
+		it("sasha can depo and cancel", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
 			const { sasha, tom, pavel } = actors;
 			const treasury = await h.initialize()
