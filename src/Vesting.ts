@@ -75,7 +75,7 @@ export class Vesting extends StellarContract<VestingParams> {
 	validFrom: bigint, // TODO: assess alternative implementations
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
-		const r = new this.configuredContract.types.Redeemer.Claim();
+		const r = new this.scriptProgram.types.Redeemer.Claim();
 		const valRedeemer = r._toUplcData();
 
 		const collateralUtxo = (await sponsor.utxos)[0];
@@ -104,7 +104,7 @@ export class Vesting extends StellarContract<VestingParams> {
 	validFrom: bigint, // TODO: assess alternative implementations
         tcx: StellarTxnContext = new StellarTxnContext()
     ): Promise<StellarTxnContext | never> {
-		const r = new this.configuredContract.types.Redeemer.Cancel();
+		const r = new this.scriptProgram.types.Redeemer.Cancel();
 		const valRedeemer = r._toUplcData();
 
 		const collateralUtxo = (await sponsor.utxos)[0];
