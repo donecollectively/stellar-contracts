@@ -29,6 +29,8 @@ import { CapoDelegateHelpers } from "../delegation/CapoDelegateHelpers.js";
 import { CapoMintHelpers } from "../CapoMintHelpers.js";
 import { HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { UnspecializedMintDelegate } from "./UnspecializedMintDelegate.js";
+import { UnspecializedCapo } from "../UnspecializedCapo.js";
+import { CapoHelpers } from "../CapoHelpers.js";
 
 export type MintDelegateArgs = capoDelegateConfig & {
     rev: bigint;
@@ -71,20 +73,26 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
         return UnspecializedMintDelegate;
     }
 
+    get specializedCapo(): HeliosModuleSrc {
+        return UnspecializedCapo;
+    }
+
     importModules(): HeliosModuleSrc[] {
-        const specialization = this.specializedMintDelegate;
-        if (specialization.moduleName !== "specializedMintDelegate") {
+        const specializedMintDelegate = this.specializedMintDelegate;
+        if (specializedMintDelegate.moduleName !== "specializedMintDelegate") {
             throw new Error(
                 `${this.constructor.name}: specializedMintDelegate() module name must be ` +
-                    `'specializedMintDelegate', not '${specialization.moduleName}'\n  ... in ${specialization.srcFile}`
+                    `'specializedMintDelegate', not '${specializedMintDelegate.moduleName}'\n  ... in ${specializedMintDelegate.srcFile}`
             );
         }
 
         return [
             StellarHeliosHelpers,
             CapoDelegateHelpers,
+            CapoHelpers,
             CapoMintHelpers,
-            specialization,
+            specializedMintDelegate,
+            this.specializedCapo
         ];
     }
 

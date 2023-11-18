@@ -32,12 +32,12 @@ func mustReturnValueToScript(value : Value, ctx : ScriptContext) -> Bool {
     true
 }
 
-func main(mdd: MintDelegateDatum, action: MintDelegateActivity, ctx: ScriptContext) -> Bool {
+func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptContext) -> Bool {
     // input = ctx.get_current_input();
     mdd.switch{
         isD : IsDelegation{dd, _} => {
             // MintDelegateDatum::IsDelegation{dd, cfg} = isD;
-            action.switch {        
+            activity.switch {        
                 Authorizing => {
                     ok : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);
 
@@ -45,7 +45,9 @@ func main(mdd: MintDelegateDatum, action: MintDelegateActivity, ctx: ScriptConte
                     if (o.length != 1) { error("only one utxo allowed in return to mint delegate") };
 
                     // Note: unspecialized delegate requires unchanged datum
-                    //   in additionalDelegateValidation
+                    // ... in additionalDelegateValidation.  ...like this:
+                    //      unmodifiedDelegation( /*isD, same as*/ ddd.serialize(), ctx) &&
+
                     ok
                 },
                 Reassigning => {
@@ -74,8 +76,17 @@ func main(mdd: MintDelegateDatum, action: MintDelegateActivity, ctx: ScriptConte
                     mdd.validateCDConfig(ddNew) && ok
                 },
                 _ => true
-            } && action.additionalDelegateValidation(isD, ctx)
+            } && activity.additionalDelegateValidation(isD, ctx)
         },
-        _ => action.otherActivityValidation(mdd, ctx)
+        _ => {
+            invalidRedeemer = () -> {  error("custom datum must not use Activities reserved for IsDelegation datum.") };
+            activity.switch{
+                Authorizing => invalidRedeemer(),
+                Reassigning => invalidRedeemer(),
+                Retiring => invalidRedeemer(),
+                Modifying => invalidRedeemer(),
+                _ => activity.otherDatumValidation(mdd, ctx)
+            }
+        }
     }
 }

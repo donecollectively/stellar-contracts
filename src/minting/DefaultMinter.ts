@@ -18,6 +18,8 @@ import {
 
 //@ts-expect-error
 import contract from "./DefaultMinter.hl";
+export const MinterContract = contract
+
 //@ts-expect-error
 import StellarHeliosHelpers from "../StellarHeliosHelpers.hl";
 

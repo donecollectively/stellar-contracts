@@ -53,24 +53,25 @@ enum MintDelegateActivity {
     //   ... and other basic administrative expectations, so any specialization
     //   ... can focus on higher-level policy considerations.
     func additionalDelegateValidation( self,
-        ddd: MintDelegateDatum::IsDelegation, 
+        priorMddd: MintDelegateDatum::IsDelegation, 
         ctx: ScriptContext
     ) -> Bool {
-        print("  ----- checking additional delegate validation");
+        // print("  ----- checking additional delegate validation");
         self.switch {
             Authorizing => {
-                unmodifiedDelegation(ddd.serialize(), ctx) && 
+                unmodifiedDelegation(priorMddd.serialize(), ctx) && 
                 true
             },
             Modifying => false,
             _ => true
-        } || ctx.tx.serialize() != ddd.serialize()
+        } || ctx.tx.serialize() != priorMddd.serialize()
     }
 
     //! used only for validating non-IsDelegation datum types.
-    //   if you have any admininstrative data structures that inform
-    func otherActivityValidation( self,
-        mdd: MintDelegateDatum, 
+    //   if you have any admininstrative data structures that inform 
+    //   your minting policy, these
+    func otherDatumValidation( self,
+        priorMdd: MintDelegateDatum, 
         ctx: ScriptContext
     ) -> Bool {
         neverTriggered = () -> {  error("never called") };
@@ -80,7 +81,7 @@ enum MintDelegateActivity {
             Retiring => neverTriggered(),
             Modifying => neverTriggered(),
             _ => false
-        } && (mdd.serialize() != ctx.serialize())
+        } && (priorMdd.serialize() != ctx.serialize())
     }
 }
 
