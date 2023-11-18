@@ -24,8 +24,9 @@ func hasSeedUtxo(tx: Tx, seedTxId : TxId, seedIdx: Int, reason: String) -> Bool 
     );
     assert(tx.inputs.any( (input: TxInput) -> Bool {
         input.output_id == seedUtxo
-    }),  "seed utxo required for minting "+reason 
-        + "\n"+seedTxId.show() + " : " + seedIdx.show()
+    }),  "seed utxo required for minting "
+        // +reason 
+        // + "\n"+seedTxId.show() + " : " + seedIdx.show()
     );
 
     true
@@ -117,7 +118,9 @@ func validateUutMinting(
     temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {
         l.find_safe((x : ByteArray) -> Bool { x == b }).switch{
             None => l.prepend(b),
-            Some{x} => error("UUT duplicate purpose "+  x.decode_utf8())
+            Some /*{x}*/ => error("UUT duplicate purpose "
+                // +  x.decode_utf8()
+            )
         }
     }, []ByteArray{});
     assert(temp == temp, "prevent unused var");
@@ -125,12 +128,14 @@ func validateUutMinting(
 
     expectationsMet : Bool = valueMinted  == expectedValue;
 
-    assert(expectationsMet, "bad UUT mint has mismatch;"+ 
-        "\n   ... expected "+ expectedValue.show()+
-        "   ... actual "+ valueMinted.show()+
-        "   ... diff = \n" + (expectedValue - valueMinted).show()
+    assert(expectationsMet, "bad UUT mint has mismatch"
+        // +";\n   ... expected "+ expectedValue.show()+
+        // "   ... actual "+ valueMinted.show()+
+        // "   ... diff = \n" + (expectedValue - valueMinted).show()
     );
 
     delegateApproval && expectationsMet &&
-    hasSeedUtxo(tx, seedTxId, seedIdx, "UUT "+purposes.join("+"))
+    hasSeedUtxo(tx, seedTxId, seedIdx
+        //, "UUT "+purposes.join("+")
+    )
 }

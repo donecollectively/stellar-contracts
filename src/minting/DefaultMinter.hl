@@ -67,7 +67,7 @@ func main(r : Activity, ctx: ScriptContext) -> Bool {
         _ => true
     };
 
-    print("defaultMinter: minting value: " + value_minted.show());
+    // print("defaultMinter: minting value: " + value_minted.show());
 
     ok
 }

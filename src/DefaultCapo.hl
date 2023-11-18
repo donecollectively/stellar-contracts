@@ -60,14 +60,15 @@ func preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Boo
     cvh : ValidatorHash = ctx.get_current_validator_hash();
     myself : Credential = Credential::new_validator(cvh);
     if (charterOutput.address.credential != myself) {
-        actual : String = charterOutput.address.credential.switch{
-            PubKey{pkh} => "pkh:🔑#" + pkh.show(),
-            Validator{vh} => "val:📜#:" + vh.show()
-        };
-        error(
-            "charter token must be returned to the contract " + cvh.show() +
-            "... but was sent to " +actual
-        )
+        error("charter token must be returned to the contract ")
+        // actual : String = charterOutput.address.credential.switch{
+        //     PubKey{pkh} => "pkh:🔑#" + pkh.show(),
+        //     Validator{vh} => "val:📜#:" + vh.show()
+        // };
+        // error(
+        //     "charter token must be returned to the contract " + cvh.show() +
+        //     "... but was sent to " +actual
+        // )
     };
 
     Datum::CharterToken{

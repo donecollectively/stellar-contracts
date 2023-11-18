@@ -39,7 +39,7 @@ enum BASE_DELEGATE_Datum {
 //!!! call with existing delegate Datum.serialize()
 func unmodifiedDelegation(oldDD : ByteArray, ctx: ScriptContext) -> Bool {
     o : []TxOutput = ctx.get_cont_outputs();
-    print(":::: hi "+o.head.datum.get_inline_data().serialize().show());
+    //    print("::::::::::::::::::::::::::::::::: hi "+o.head.datum.get_inline_data().serialize().show());
     assert(o.head.datum.get_inline_data().serialize() == oldDD,
         "delegation datum must not be modified"
     );
@@ -74,9 +74,10 @@ func requiresValidDelegateOutput(
         validatorHash
     } = dd;
     if (strategy.encode_utf8().length < 4) {
-        error("strategy must be at least 4 bytes, got: '"+strategy +
-            "' = "+ strategy.encode_utf8().length.show()
-        )
+        error("strategy too short")
+        // error("strategy must be at least 4 bytes, got: '"+strategy +
+        //     "' = "+ strategy.encode_utf8().length.show()
+        // )
     };
 
     v : Value = mkTv(mph, uut);
@@ -118,7 +119,7 @@ func requiresDelegateAuthorizing(
     k : ScriptPurpose = ctx.tx.redeemers.find_key( 
         (purpose : ScriptPurpose) -> { purpose.switch{ 
             sp: Spending => {
-                print ("oid: " + sp.output_id.show());
+                // print ("oid: " + sp.output_id.show());
                 sp.output_id == targetId
             }, 
             _ => false 

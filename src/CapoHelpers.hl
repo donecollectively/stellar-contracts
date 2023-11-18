@@ -22,6 +22,7 @@ func getRefCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::C
     ctd    
 }
 
+
 //! retrieves a required Charter Datum for the indicated policy - 
 // ... either from the txn's reference inputs  or inputs.
 func getTxCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::CharterToken {
