@@ -116,7 +116,7 @@ export class Vesting extends StellarContract<VestingParams> {
 		   .addInput(valUtxo, valRedeemer)
 		   .addOutput(new TxOutput(sponsor.address, valUtxo.value))
 
-		   .attachScript(this.compiledContract)
+		   .attachScript(this.compiledScript)
 		   .addCollateral(collateralUtxo);
 
 		tcx.tx.addSigner(sponsor.address.pubKeyHash);
