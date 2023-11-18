@@ -141,7 +141,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
     assert(
         ( allDatumSpecificChecks && allActivitySpecificChecks ) ||
             // this should never execute (much less fail), yet it also shouldn't be optimized out.
-             mph.serialize() != datum.serialize(), 
+             mph.serialize() /* never */ == datum.serialize(), 
         "unreachable"
     ); 
 

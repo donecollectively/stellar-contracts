@@ -25,7 +25,9 @@ enum Activity {
 
 
 func hasContractSeedUtxo(tx: Tx) -> Bool {
-    hasSeedUtxo(tx, seedTxn, seedIndex, "charter")
+    hasSeedUtxo(tx, seedTxn, seedIndex
+        // , "charter"
+    )
 }
 
 func main(r : Activity, ctx: ScriptContext) -> Bool {
@@ -74,7 +76,7 @@ func main(r : Activity, ctx: ScriptContext) -> Bool {
         _ => true
     };
 
-    print("custom minter: minting value: " + value_minted.show());
+    // print("custom minter: minting value: " + value_minted.show());
 
     ok
 }

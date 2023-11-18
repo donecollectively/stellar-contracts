@@ -17,7 +17,9 @@ import {
     requiresDelegateAuthorizing
 } from CapoDelegateHelpers
 
-func hasSeedUtxo(tx: Tx, seedTxId : TxId, seedIdx: Int, reason: String) -> Bool {
+func hasSeedUtxo(tx: Tx, seedTxId : TxId, seedIdx: Int
+    // , reason: String
+) -> Bool {
     seedUtxo: TxOutputId = TxOutputId::new(
         seedTxId,
         seedIdx
