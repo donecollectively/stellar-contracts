@@ -86,9 +86,12 @@ describe("Vesting service", async () => {
 			expect(onchainDeadline).toBe(deadline);
 
 		});
-		it.skip("sasha can lock and cancel", async (context: localTC) => {
+		it("sasha can lock and cancel", async (context: localTC) => {
 		    const {h, h: { network, actors, delay, state }} = context;
 			const { sasha, tom, pavel } = actors;
+			const treasury = await h.initialize()
+			const setup = treasury.setup;
+			const config = {};
 
 			async function splitUtxos(user: WalletEmulator ) {
 				// duplicated
@@ -118,7 +121,7 @@ describe("Vesting service", async () => {
 			// check if user has enough utxos to proceed with transactions:
 			expect((await sasha.utxos).length).toBeGreaterThan(2);
 
-			const v = new Vesting(context);
+			const v = new Vesting({setup, config});
 
 			// calculate the deadline:
 			const timeAtDepo = Date.now();
@@ -134,7 +137,7 @@ describe("Vesting service", async () => {
 
 			const txId = await h.submitTx(tcx.tx, "force");
 
-			const validatorAddress = Address.fromValidatorHash(v.compiledContract.validatorHash)
+			const validatorAddress = v.address
 			const valUtxos = await network.getUtxos(validatorAddress)
 
 			// can access deadline as number in Datum:
@@ -143,7 +146,7 @@ describe("Vesting service", async () => {
 
 			const validFrom = h.network.currentSlot
 
-			expect(validFrom).toBeGreaterThan(1699619812n);
+			expect(validFrom).toBeGreaterThan(44601543n);
 
 			// TODO: make more definitive case here:
 			// sasha spent one utxo in the fees, so the new utxo must be 
@@ -174,7 +177,7 @@ describe("Vesting service", async () => {
 		    const tomMoney = await tom.utxos;
 		    const pavelMoney = await pavel.utxos;
 
-		    expect(sashaMoney.length).toBe(3);
+		    expect(sashaMoney.length).toBe(2);
 		    expect(sashaMoney[0].value.assets.nTokenTypes).toBe(0);
 		    expect(sashaMoney[0].value.assets.isZero).toBeTruthy();
 		    expect(sashaMoney[1].value.assets.isZero).toBeTruthy();
