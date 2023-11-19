@@ -1,3 +1,5 @@
+const smoke = process.env.SMOKE || 0;
+
 import {
     describe as descrWithContext,
     expect,
@@ -41,6 +43,9 @@ const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTes
 
 const describe = descrWithContext<localTC>;
 
+type smokeTestType = typeof it
+const smokeTest = (smoke ? fit : it) as smokeTestType ;
+
 describe("StellarContract", async () => {
     beforeEach<localTC>(async (context) => {
         // await new Promise(res => setTimeout(res, 10));
@@ -76,7 +81,7 @@ describe("StellarContract", async () => {
             expect(treasury.onChainTypes).toBeTruthy();
         });
 
-        it("getter: purpose", async (context: localTC) => {
+        smokeTest("getter: purpose", async (context: localTC) => {
             const {
                 h,
                 h: { network, actors, delay, state },
