@@ -59171,7 +59171,7 @@ class StellarContract {
       const script = Program.new(src, modules);
       if (params)
         script.parameters = params;
-      const simplify = this.setup.optimize || !this.setup.isTest && !this.setup.isDev;
+      const simplify = "optimize" in this.setup ? this.setup.optimize : !this.setup.isTest && !this.setup.isDev;
       if (simplify) {
         console.warn(
           `Loading optimized contract code for ` + script.name
