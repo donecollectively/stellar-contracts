@@ -54,11 +54,17 @@ func unmodifiedDelegation(oldDD : ByteArray, ctx: ScriptContext) -> Bool {
     // ddNew == dd 
 }
 
+/**
+ * returns the AssetClass for the authority token found in the given DelegationDetail struct
+ */
 func acAuthorityToken(dd: DelegationDetail) -> AssetClass {
     AssetClass::new(dd.mph, dd.tn)
 }
 
-func tvAuthorityToken(dd: DelegationDetail) -> Value {
+/**
+ * returns a Value for the authority-token found in the given DelegationDetail struct
+ */
+ func tvAuthorityToken(dd: DelegationDetail) -> Value {
     Value::new(
         acAuthorityToken(dd), 1
     )

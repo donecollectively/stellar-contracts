@@ -9,7 +9,7 @@ import {
 } from CapoHelpers
 
 import {
-    Datum, Activity
+    Datum, Activity as CapoActivity
 } from specializedCapo
 
 import {
@@ -36,7 +36,7 @@ func hasSeedUtxo(tx: Tx, seedTxId : TxId, seedIdx: Int
 
 //! pre-computes the hash-based suffix for a token name, returning
 //  a function that makes Uut names with any given purpose, given the seed-txn details
-func tnUutFactory(
+func mkUutTnFactory(
     seedTxId : TxId, seedIdx : Int
 ) -> (String) -> String {
 
@@ -63,6 +63,7 @@ func validateUutMinting(
     ctx: ScriptContext, 
     seedTxId : TxId, seedIdx : Int, 
     purposes: []String, 
+    mkTokenName: (String) -> String,
     bootstrapCharter:Value = Value::new(AssetClass::ADA, 0)
 ) -> Bool {
     tx: Tx = ctx.tx;
@@ -77,6 +78,7 @@ func validateUutMinting(
             _, mintDgt
         } = getRefCharterDatum(ctx, mph);
 
+        //!!! todo: add explicit activity details in authorization
         requiresDelegateAuthorizing(
             mintDgt, 
             mph, 
@@ -99,7 +101,6 @@ func validateUutMinting(
     // miniHash : ByteArray = txoId.blake2b().slice(0,6);
     // // assert(miniHash.length == 6, "urgh.  slice 5? expected 12, got "+ miniHash.length.show());
 
-    mkTokenName: (String) -> String = tnUutFactory(seedTxId, seedIdx);
     // tokenName1 = purpose + "." + miniHash.show();
 
     expectedValue : Value = Value::sum(purposes.sort((a:String, b:String) -> Bool { a == b }).map(
@@ -140,4 +141,38 @@ func validateUutMinting(
     hasSeedUtxo(tx, seedTxId, seedIdx
         //, "UUT "+purposes.join("+")
     )
+}
+
+enum
+ Activity { 
+    mintingCharter
+     {
+        owner: Address
+
+        // we don't have a responsiblity to enforce delivery to the right location
+        // govAuthority: RelativeDelegateLink   // not needed 
+    }
+    mintingUuts {
+        seedTxn: TxId
+        seedIndex: Int
+        purposes: []String
+    }
+
+    func tvForPurpose(self, ctx: ScriptContext, purpose: String) -> Value {
+        mph : MintingPolicyHash = ctx.get_current_minting_policy_hash();
+        
+        mkTv(mph, self.uutTnFactory()(purpose))
+    }
+
+    func uutTnFactory(self) -> (String) -> String {
+        self.switch{
+            mintingUuts{MUseedTxn, MUseedIndex, _} => {
+                mkUutTnFactory(MUseedTxn, MUseedIndex)
+            },
+            // mintingCharter => {
+            //     mkUutTnFactory(seedTxn, seedIndex)
+            // },
+            _ => error("uutTnFactory called on unsupported Activity/redeemer variant")
+        } 
+    }
 }

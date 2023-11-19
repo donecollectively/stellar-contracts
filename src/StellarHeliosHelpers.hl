@@ -39,3 +39,28 @@ func returnsValueToScript(value : Value, ctx : ScriptContext) -> Bool {
         txo.value.contains(value)
     } )
 }
+
+
+func getOutputWithValue(ctx: ScriptContext, v : Value) -> TxOutput {
+    ctx.tx.outputs.find((txo: TxOutput) -> { txo.value >= v })
+}
+
+func getSingleAssetValue(input: TxInput) -> Value{
+    inputMap : Map[MintingPolicyHash]Map[ByteArray]Int = input.value.get_assets().to_map();
+    assert( inputMap.length == 1, "getSingleAssetValue needs single-asset input");
+
+    inputTokens : Map[ByteArray]Int = inputMap.head_value;
+    assert(inputTokens.length == 1, "getSingleAssetValue needs single-token input");
+
+    input.value.get_assets()
+}
+
+func outputDatum[T](newTxo : TxOutput) -> T {
+    T::from_data(newTxo.datum.get_inline_data())
+}
+
+func getOutputForInput(ctx: ScriptContext, input: TxInput) -> TxOutput {
+    inputValue : Value = getSingleAssetValue(input);
+
+    getOutputWithValue(ctx, inputValue)
+}

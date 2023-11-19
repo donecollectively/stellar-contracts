@@ -2,7 +2,9 @@ minting DefaultMinter
 
 import { 
     hasSeedUtxo, 
-    validateUutMinting
+    mkUutTnFactory,
+    validateUutMinting, 
+    Activity
 } from CapoMintHelpers
 
 import {mkTv} from StellarHeliosHelpers
@@ -15,23 +17,11 @@ import {
 const seedTxn : TxId = TxId::new(#1234)
 const seedIndex : Int = 42
 
-enum Activity { 
-    mintingCharter {
-        owner: Address
-
-        // we don't have a responsiblity to enforce delivery to the right location
-        // govAuthority: RelativeDelegateLink   // not needed 
-    }
-    mintingUuts {
-        //!!!! todo: change to TxOutputId, rolling up these two things:
-        seedTxn: TxId
-        seedIndex: Int
-        purposes: []String
-    }
-}
 
 func hasContractSeedUtxo(tx: Tx) -> Bool {
-    hasSeedUtxo(tx, seedTxn, seedIndex, "charter")
+    hasSeedUtxo(tx, seedTxn, seedIndex
+        // , "charter"
+    )
 }
 
 func main(r : Activity, ctx: ScriptContext) -> Bool {
@@ -44,16 +34,19 @@ func main(r : Activity, ctx: ScriptContext) -> Bool {
             charterVal : Value = mkTv(mph, "charter");
             authTnBase : String = "capoGov";
             mintDgtTnBase : String = "mintDgt";
+  
 
             assert(value_minted >= charterVal,
                 "charter token not minted");
 
             hasContractSeedUtxo(tx) &&
-            validateUutMinting(ctx:ctx, 
-                seedTxId:seedTxn, 
-                seedIdx:seedIndex, 
+            validateUutMinting(
+                ctx: ctx, 
+                seedTxId: seedTxn, 
+                seedIdx: seedIndex, 
                 purposes: []String{authTnBase, mintDgtTnBase}, 
-                bootstrapCharter:charterVal
+                mkTokenName: mkUutTnFactory(seedTxn, seedIndex),
+                bootstrapCharter: charterVal
             ) &&
             tx.outputs.all( (output: TxOutput) -> Bool {
                 output.value != value_minted || (
@@ -63,7 +56,13 @@ func main(r : Activity, ctx: ScriptContext) -> Bool {
             })
         },
 
-        mintingUuts{sTxId, sIdx, purposes} => validateUutMinting(ctx, sTxId, sIdx, purposes),
+        mintingUuts{sTxId, sIdx, purposes} => validateUutMinting(
+            ctx: ctx, 
+            seedTxId: sTxId, 
+            seedIdx: sIdx, 
+            purposes: purposes,
+            mkTokenName: r.uutTnFactory()
+        ),
         _ => true
     };
 
