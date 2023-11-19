@@ -1214,6 +1214,37 @@
             },
             {
               "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!BasicMintDelegate#specializedCapo:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "get specializedCapo(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "HeliosModuleSrc",
+                  "canonicalReference": "@donecollectively/stellar-contracts!HeliosModuleSrc:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": true,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "specializedCapo",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!BasicMintDelegate#specializedMintDelegate:member",
               "docComment": "/**\n * specializedMintDelegate module for customizing policies atop the basic mint delegate\n *\n * @remarks\n *\n * The basic mint delegate contains an \"unspecialized\" implementation of this customization, which doesn't have any special restrictions. It reserves a CustomConfig field at position 2 in the IsDelegation datum, allowing customizations to use any struct in that position to express any custom configurations.\n *\n * @public\n */\n",
               "excerptTokens": [

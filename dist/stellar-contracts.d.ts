@@ -134,6 +134,7 @@ export declare class BasicMintDelegate extends StellarDelegate<MintDelegateArgs>
      * struct in that position to express any custom configurations.
      **/
     get specializedMintDelegate(): HeliosModuleSrc;
+    get specializedCapo(): HeliosModuleSrc;
     importModules(): HeliosModuleSrc[];
     get scriptDatumName(): string;
     get scriptActivitiesName(): string;
@@ -1079,6 +1080,7 @@ declare type SetupDetails = {
     myActor?: Wallet;
     isTest?: boolean;
     isDev?: boolean;
+    optimize?: boolean;
 };
 
 export { StakeAddress }
