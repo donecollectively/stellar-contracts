@@ -26,10 +26,10 @@ specifiers:
   webdriverio: ^8.10.7
 
 dependencies:
-  '@hyperionbt/helios': 0.16.4
   semver: 7.5.4
 
 devDependencies:
+  '@hyperionbt/helios': 0.16.4
   '@microsoft/api-extractor': 7.38.2_@types+node@20.2.5
   '@rollup/plugin-json': 6.0.1_rollup@3.23.1
   '@rollup/plugin-node-resolve': 15.1.0_rollup@3.23.1
@@ -473,7 +473,7 @@ packages:
 
   /@hyperionbt/helios/0.16.4:
     resolution: {integrity: sha512-dkpTh3L4MPCws2sN1e7pkI1Cc2qIqTPBOH+kXvAdizFZteYHmKe4/ikth/Owg2EiKsrshHsfokysA/cL3RgefQ==}
-    dev: false
+    dev: true
 
   /@isaacs/cliui/8.0.2:
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}

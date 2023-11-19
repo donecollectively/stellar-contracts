@@ -2,8 +2,8 @@
     "name": "@donecollectively/stellar-contracts",
     "version": "0.8.1",
     "description": "Smart contract fusion for Cardano",
-    "main": "./dist/stellar-contracts.mjs",
     "license": "SEE LICENSE IN LICENSE.TXT",
+    "main": "./dist/stellar-contracts.mjs",
     "types": "./dist/stellar-contracts.d.ts",
     "XXexports": {
         "test": {
@@ -32,10 +32,10 @@
     },
     "author": "Done Collectively LCA",
     "dependencies": {
-        "@hyperionbt/helios": "^0.16.4",
         "semver": ">=7.5.2"
     },
     "devDependencies": {
+        "@hyperionbt/helios": "^0.16.4",
         "@microsoft/api-extractor": "^7.38.2",
         "@rollup/plugin-json": "^6.0.1",
         "@rollup/plugin-node-resolve": "^15.1.0",
