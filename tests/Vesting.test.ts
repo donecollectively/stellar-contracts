@@ -7,6 +7,7 @@ import {
 } from "vitest";
 
 import { DefaultCapo } from "../src/DefaultCapo";
+import { StellarTestHelper } from "../src/testing/StellarTestHelper";
 
 import {
     Address,
@@ -36,9 +37,9 @@ const fit = it.only
 
 type localTC = StellarTestContext<CustomTreasuryTestHelper>;
 
-class VestingTestHelper extends CapoTestHelper<DefaultCapo> {
+class VestingTestHelper extends StellarTestHelper<Vesting> {
     get stellarClass() {
-        return DefaultCapo;
+        return Vesting;
     }
 
     setupActors() {
