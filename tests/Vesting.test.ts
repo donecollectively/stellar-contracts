@@ -43,6 +43,7 @@ class VestingTestHelper extends CapoTestHelper<DefaultCapo> {
 
     setupActors() {
         this.addActor("sasha", 1100n * ADA);
+        this.network.createUtxo("sasha", 11n * ADA);
         this.addActor("pavel", 13n * ADA);
         this.addActor("tom", 120n * ADA);
         this.currentActor = "tom"; //TODO: try sasha
