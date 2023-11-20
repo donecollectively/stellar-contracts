@@ -93,31 +93,6 @@ describe("Vesting service", async () => {
 			const setup = treasury.setup;
 			const config = {};
 
-			async function splitUtxos(user: WalletEmulator ) {
-				// duplicated
-				const margin = 45n * ADA;
-				const firstUtxo = (await user.utxos)[0]
-				const secondUtxo = (await user.utxos)[1]
-				const tx = new Tx();
-
-				tx.addInput(firstUtxo);
-				tx.addInput(secondUtxo);
-
-				tx.addOutput(new TxOutput(user.address, new Value(10n * ADA)));
-				tx.addOutput(new TxOutput(user.address, new Value(10n * ADA)));
-				tx.addOutput(new TxOutput(user.address, new Value(10n * ADA)));
-				tx.addOutput(new TxOutput(user.address, new Value(10n * ADA)));
-				tx.addOutput(
-				    new TxOutput(
-					user.address,
-					new Value(firstUtxo.value.lovelace - margin)
-				    )
-				);
-				return h.submitTx(tx, "force"); // h. prevents abstracting
-            		}
-
-			const splitUtxo = await splitUtxos(sasha);
-
 			// check if user has enough utxos to proceed with transactions:
 			expect((await sasha.utxos).length).toBeGreaterThan(2);
 
