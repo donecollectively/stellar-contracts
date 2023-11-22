@@ -34,7 +34,7 @@ const it = itWithContext<localTC>;
 const describe = descrWithContext<localTC>;
 const fit = it.only
 
-type localTC = StellarTestContext<CustomTreasuryTestHelper>;
+type localTC = StellarTestContext<VestingTestHelper>;
 
 class VestingTestHelper extends CapoTestHelper<DefaultCapo> {
     get stellarClass() {
