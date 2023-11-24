@@ -703,6 +703,8 @@ export class StellarTxnContext<S = noState> {
     tx: Tx;
     // (undocumented)
     utxoNotReserved(u: TxInput): TxInput | undefined;
+    // (undocumented)
+    validFor<TCX extends StellarTxnContext<S>>(this: TCX, durationMs: number): TCX;
 }
 
 // Warning: (ae-internal-missing-underscore) The name "strategyValidation" should be prefixed with an underscore because the declaration is marked as @internal

@@ -92,6 +92,15 @@ export class StellarTxnContext<S = noState> {
         return this;
     }
 
+    validFor<TCX extends StellarTxnContext<S>>(
+        this: TCX, durationMs: number
+    ) : TCX {
+        this.tx.
+            validFrom(new Date(Date.now() - 60 * 1000)).
+            validTo(new Date(Date.now() + durationMs))
+        return this
+    }
+
     addInput<TCX extends StellarTxnContext<S>>(
         this: TCX, 
         input: addInputArgs[0], 

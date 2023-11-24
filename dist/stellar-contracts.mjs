@@ -58117,6 +58117,10 @@ class StellarTxnContext {
     this.tx.addCollateral(collateral);
     return this;
   }
+  validFor(durationMs) {
+    this.tx.validFrom(new Date(Date.now() - 60 * 1e3)).validTo(new Date(Date.now() + durationMs));
+    return this;
+  }
   addInput(input, r) {
     if (input.address.pubKeyHash)
       this.neededSigners.push(input.address);

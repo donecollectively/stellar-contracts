@@ -1524,6 +1524,7 @@ export declare class StellarTxnContext<S = noState> {
     reservedUtxos(): TxInput[];
     utxoNotReserved(u: TxInput): TxInput | undefined;
     addCollateral(collateral: TxInput): this;
+    validFor<TCX extends StellarTxnContext<S>>(this: TCX, durationMs: number): TCX;
     addInput<TCX extends StellarTxnContext<S>>(this: TCX, input: addInputArgs[0], r?: RedeemerArg): TCX;
     addInputs<TCX extends StellarTxnContext<S>>(this: TCX, inputs: Parameters<Tx["addInputs"]>[0], r: RedeemerArg): TCX;
     addOutput<TCX extends StellarTxnContext<S>>(this: TCX, ...args: Parameters<Tx["addOutput"]>): TCX;
