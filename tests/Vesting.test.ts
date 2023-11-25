@@ -43,10 +43,12 @@ class VestingTestHelper extends CapoTestHelper<DefaultCapo> {
 
     setupActors() {
         this.addActor("sasha", 1100n * ADA);
-        this.network.createUtxo("sasha", 11n * ADA);
         this.addActor("pavel", 13n * ADA);
         this.addActor("tom", 120n * ADA);
         this.currentActor = "tom"; //TODO: try sasha
+	this.network.createUtxo(this.actors.sasha, 5n * ADA);
+	this.network.createUtxo(this.actors.sasha, 5n * ADA);
+	this.network.tick(1n);
     }
 
 }
@@ -95,7 +97,7 @@ describe("Vesting service", async () => {
 			const config = {};
 
 			// check if user has enough utxos to proceed with transactions:
-			expect((await sasha.utxos).length).toBeGreaterThan(2);
+			expect((await sasha.utxos).length).toBe(4);
 
 			const v = new Vesting({setup, config});
 
@@ -126,7 +128,7 @@ describe("Vesting service", async () => {
 			// TODO: make more definitive case here:
 			// sasha spent one utxo in the fees, so the new utxo must be 
 			// amountVested + (inputUtxo.value - txFee)
-			expect((await sasha.utxos).length).toBe(4);
+			expect((await sasha.utxos).length).toBe(3);
 
 			const tcxCancel = await v.mkTxnCancelVesting(
 				sasha, 
@@ -136,7 +138,7 @@ describe("Vesting service", async () => {
 
 			const txIdCancel = await h.submitTx(tcxCancel.tx, "force");
 
-			expect((await sasha.utxos).length).toBe(4);
+			expect((await sasha.utxos).length).toBe(3);
 
 		});
 	});
@@ -152,7 +154,7 @@ describe("Vesting service", async () => {
 		    const tomMoney = await tom.utxos;
 		    const pavelMoney = await pavel.utxos;
 
-		    expect(sashaMoney.length).toBe(2);
+		    expect(sashaMoney.length).toBe(4);
 		    expect(sashaMoney[0].value.assets.nTokenTypes).toBe(0);
 		    expect(sashaMoney[0].value.assets.isZero).toBeTruthy();
 		    expect(sashaMoney[1].value.assets.isZero).toBeTruthy();
