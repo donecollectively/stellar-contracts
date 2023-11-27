@@ -15,6 +15,11 @@ Licensed Work:        Stellar Contracts
                       The Licensed Work is (c) 2023 Done Collectively LCA
 
 Additional Use Grant: 
+
+        You may refer to this license using the trademark "Cardano Community 
+        Source License", as long as you comply with the Covenants of Licensor
+        found in the license text.
+
         You may use the Licensed Work without commercial licensing when all of
         the following conditions are met:
 
@@ -25,10 +30,6 @@ Additional Use Grant:
             for any transferred assets) in any client-facing use case
           - they do not mediate a monthly aggregate value-transfer of more than 
             $3000 USD (at then-current market rates for any transferred assets)
-
-        You may refer to this license using the trademark "Cardano Community 
-        Source License", as long as you comply with the Covenants of Licensor
-        found in the license text.
 
 Change Date:          2027-11-11
 
