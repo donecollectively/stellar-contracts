@@ -43,7 +43,7 @@ export abstract class StellarDelegate<
      * calls the delegate-specific DelegateAddsAuthorityToken() method,
      * with the uut found by DelegateMustFindAuthorityToken().
      *
-     * returns the token back to the contract using {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
+     * returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
      * @param tcx - transaction context
      * @public
      **/
@@ -53,8 +53,8 @@ export abstract class StellarDelegate<
             tcx,
             label
         );
-        const authorityVal = this.tvAuthorityToken();
-
+        const useMinTv = true
+        const authorityVal = this.tvAuthorityToken(useMinTv);
         console.log(`   ------- delegate ${label} grants authority with ${dumpAny(authorityVal)}`)
 
         try {
@@ -193,7 +193,7 @@ export abstract class StellarDelegate<
     mkAuthorityTokenPredicate() {
         return this.mkTokenPredicate(this.tvAuthorityToken())
     }
-    tvAuthorityToken() {
+    tvAuthorityToken(useMinTv: boolean=false) {
         if (!this.configIn)
             throw new Error(`must be instantiated with a configIn`);
 
@@ -202,7 +202,9 @@ export abstract class StellarDelegate<
             tn,
             // reqdAddress,  // removed
         } = this.configIn;
+        if (useMinTv) return  this.mkMinTv(mph, tn)
         return mkTv(mph, tn);
+
     }
 
     /**

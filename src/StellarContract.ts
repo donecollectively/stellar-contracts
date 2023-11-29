@@ -875,11 +875,16 @@ export class StellarContract<
         }
     }
 
-    mkMinTv(mph: MintingPolicyHash, tn: string | UutName, count: bigint = 1n) {
-        return this.mkMinAssetValue(
-            new AssetClass([mph, stringToNumberArray(tn.toString())]),
-            count
-        );
+    mkMinTv(
+        mph: MintingPolicyHash,
+        tokenName: string | UutName | number[],
+        count: bigint = 1n
+    ) {
+        const tnBytes = Array.isArray(tokenName)
+            ? tokenName
+            : stringToNumberArray(tokenName.toString());
+
+        return this.mkMinAssetValue(new AssetClass([mph, tnBytes]), count);
     }
 
     mkAssetValue(tokenId: AssetClass, count: bigint = 1n) {
