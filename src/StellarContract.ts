@@ -562,21 +562,24 @@ export class StellarContract<
      * @public
      **/
     get onChainTypes() {
-        const types = {...this.scriptProgram!.types}
+        const types = { ...this.scriptProgram!.types };
         //@ts-expect-error because allStatements is marked as internal
         const statements = this.scriptProgram!.allStatements;
 
-        for( const [statement, _someBoolThingy] of statements ) {
-            const name = statement.name.value
+        for (const [statement, _someBoolThingy] of statements) {
+            const name = statement.name.value;
             if (types[name]) continue;
-            if( "StructStatement" == Object.getPrototypeOf(statement).constructor.name) {
+            if (
+                "StructStatement" ==
+                Object.getPrototypeOf(statement).constructor.name
+            ) {
                 const type = statement.genOffChainType(); // an off-chain type **representing** an on-chain type
-                const name = type.name.value
-                if (types[name]) throw new Error(`ruh roh`)
-                types[name] = type
+                const name = type.name.value;
+                if (types[name]) throw new Error(`ruh roh`);
+                types[name] = type;
             }
         }
-        return types
+        return types;
     }
 
     /**
@@ -712,9 +715,12 @@ export class StellarContract<
                         fn,
                         fieldType,
                         fieldData
-                    ).catch(nestedError => {
-                        console.warn("error parsing nested data inside enum variant", {fn, fieldType, fieldData})
-                        debugger
+                    ).catch((nestedError) => {
+                        console.warn(
+                            "error parsing nested data inside enum variant",
+                            { fn, fieldType, fieldData }
+                        );
+                        debugger;
                         throw nestedError;
                     });
                     return [fn, value];
@@ -746,7 +752,7 @@ export class StellarContract<
                     enumDataDef,
                     uplcData
                 );
-                return t  // caller can deal with catching the error
+                return t; // caller can deal with catching the error
             }
             throw new Error(
                 `can't determine how to parse UplcDatum without 'fieldNames'.  Tried enum`
@@ -815,7 +821,8 @@ export class StellarContract<
             if (e.message?.match(/doesn't support converting from Uplc/)) {
                 try {
                     value = await offChainType.fromUplcData(uplcDataField);
-                    if ("some" in value) value = value.some;
+                    if (value && "some" in value) value = value.some;
+                    if (value && "string" in value) value = value.string;
                 } catch (e: any) {
                     console.error(`datum: field ${fn}: ${e.message}`);
                     // console.log({outputTypes, fieldNames, offChainTypes, inputTypes, heliosTypes, thisDatumType});
