@@ -1272,13 +1272,11 @@ export class StellarContract<
             console.warn("no 'myActor'; not finalizing");
         }
         console.log("Submitting tx: ", tcx.dump());
-        const promises = [
-            this.network.submitTx(tx),
-        ]            
+        const promises = [this.network.submitTx(tx)];
         if (wallet) {
-           if (!this.setup.isTest) promises.push( wallet.submitTx(tx))
+            if (!this.setup.isTest) promises.push(wallet.submitTx(tx));
         }
-        return Promise.all(promises)
+        return Promise.any(promises);
     }
 
     ADA(n: bigint | number): bigint {
