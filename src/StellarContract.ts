@@ -1197,6 +1197,22 @@ export class StellarContract<
         });
     }
 
+    async findChangeAddr() : Promise<Address> {
+        const { myActor } = this;
+        if (!myActor) {
+            throw new Error(
+                `⚠️ ${this.constructor.name}: no this.myActor; can't get required change address!`
+            );
+        }
+        let unused = (await myActor.unusedAddresses).at(0);
+        if (!unused) unused = (await myActor.usedAddresses).at(-1);
+        if (!unused)
+            throw new Error(
+                `⚠️ ${this.constructor.name}: can't find a good change address!`
+            );
+        return unused;
+    }
+
     async submit(
         tcx: StellarTxnContext,
         {
@@ -1208,7 +1224,8 @@ export class StellarContract<
         let { tx, feeLimit = 2_000_000n } = tcx;
         const { myActor: wallet } = this;
         if (wallet || signers.length) {
-            const [changeAddress] = (await this.myActor?.usedAddresses) || [];
+            const changeAddress = await this.findChangeAddr();
+
             const spares = await this.findAnySpareUtxos(tcx);
             const willSign = [...signers, ...tcx.neededSigners];
 
