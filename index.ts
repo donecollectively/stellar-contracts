@@ -97,6 +97,7 @@ export type {
     StakeAddress,
     Wallet,
     WalletHelper,
+    Network,
 } from "./src/HeliosPromotedTypes.js";
 
 
