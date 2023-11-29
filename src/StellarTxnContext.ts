@@ -93,11 +93,12 @@ export class StellarTxnContext<S = noState> {
     }
 
     validFor<TCX extends StellarTxnContext<S>>(
-        this: TCX, durationMs: number
+        this: TCX, durationMs: number, backwardMs = 3 * 60 * 1000  // allow it to be up to ~12 slots / 3 minutes old by default
     ) : TCX {
         this.tx.
-            validFrom(new Date(Date.now() - 60 * 1000)).
+            validFrom(new Date(Date.now() - backwardMs)).  
             validTo(new Date(Date.now() + durationMs))
+            
         return this
     }
 
