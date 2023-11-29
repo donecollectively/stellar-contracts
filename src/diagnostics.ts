@@ -231,13 +231,15 @@ export function txAsString(tx: Tx): string {
             item = item.map((s) => {
                 try {
                     const mph = s.mintingPolicyHash.hex;
-                    return `🏦 ${mph.slice(0, 8)}…${mph.slice(-4)} (minting)`;
+                    // debugger
+                    return `🏦 ${mph.slice(0, 8)}…${mph.slice(-4)} (minting): ${s.serializeBytes().length} bytes`;
                 } catch (e) {
                     const vh = s.validatorHash.hex;
                     const addr = Address.fromHash(s.validatorHash);
+                    // debugger
                     return `📜 ${vh.slice(0, 8)}…${vh.slice(
                         -4
-                    )} (validator at ${addrAsString(addr)})`;
+                    )} (validator at ${addrAsString(addr)}): ${s.serializeBytes().length} bytes`;
                 }
             });
             if (item.length > 1) item.unshift("");
@@ -317,7 +319,7 @@ export function datumAsString(d: Datum | null | undefined): string {
     // debugger
     const dh = d.hash.hex;
     const dhss = `${dh.slice(0, 8)}…${dh.slice(-4)}`;
-    if (d.isInline()) return `d‹inline:${dhss}›`;
+    if (d.isInline()) return `d‹inline:${dhss} - ${d.toCbor().length} bytes›`;
     return `d‹hash:${dhss}…›`;
 }
 
@@ -329,9 +331,9 @@ export function datumAsString(d: Datum | null | undefined): string {
  * @public
  **/
 export function txOutputAsString(x: TxOutput, prefix = "<-"): string {
-    return `${prefix} ${addrAsString(x.address)} ${datumAsString(
+    return `${prefix} ${addrAsString(x.address)} ${valueAsString(x.value)} ${datumAsString(
         x.datum
-    )} ${valueAsString(x.value)}`;
+    )}`;
 }
 
 /**
