@@ -279,7 +279,7 @@ export type SetupDetails = {
     networkParams: NetworkParams;
     myActor?: Wallet;
     isTest?: boolean;
-    isDev? : boolean;
+    isDev?: boolean;
     optimize?: boolean;
 };
 
@@ -1332,7 +1332,10 @@ export class StellarContract<
             const script = Program.new(src, modules);
             if (params) script.parameters = params;
 
-            const simplify = ('optimize' in this.setup) ? this.setup.optimize : ( !this.setup.isTest && !this.setup.isDev );
+            const simplify =
+                "optimize" in this.setup
+                    ? this.setup.optimize
+                    : !this.setup.isTest && !this.setup.isDev;
             // const t = new Date().getTime();
             if (simplify) {
                 console.warn(
