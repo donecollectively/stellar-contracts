@@ -1246,6 +1246,7 @@ export class StellarContract<
     ) {
         let { tx, feeLimit = 2_000_000n } = tcx;
         const { myActor: wallet } = this;
+
         if (wallet || signers.length) {
             const changeAddress = await this.findChangeAddr();
 
@@ -1314,9 +1315,28 @@ export class StellarContract<
             console.warn("no 'myActor'; not finalizing");
         }
         console.log("Submitting tx: ", tcx.dump());
-        const promises = [this.network.submitTx(tx)];
+        const promises = [
+            this.network.submitTx(tx).catch((e) => {
+                console.warn(
+                    "submitting via helios Network failed: ",
+                    e.message
+                );
+                debugger;
+                throw e;
+            }),
+        ];
         if (wallet) {
-            if (!this.setup.isTest) promises.push(wallet.submitTx(tx));
+            if (!this.setup.isTest)
+                promises.push(
+                    wallet.submitTx(tx).catch((e) => {
+                        console.warn(
+                            "submitting via wallet failed: ",
+                            e.message
+                        );
+                        debugger;
+                        throw e;
+                    })
+                );
         }
         return Promise.any(promises);
     }
