@@ -36,6 +36,8 @@ type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer
 ) => tokenBearer | undefined) & { value: Value };
 
+type NetworkName = "testnet" | "mainnet";
+let configuredNetwork : NetworkName | undefined = undefined
 /**
  * a type for redeemer/activity-factory functions declared with \@Activity.redeemer
  *
@@ -277,6 +279,7 @@ export async function findInputsInWallets(
 export type SetupDetails = {
     network: Network;
     networkParams: NetworkParams;
+    isMainnet?: boolean;
     myActor?: Wallet;
     isTest?: boolean;
     isDev?: boolean;
@@ -403,14 +406,34 @@ export class StellarContract<
         return undefined;
     }
 
+    walletNetworkCheck?: Promise<NetworkName> | NetworkName
     constructor(args: StellarConstructorArgs<ConfigType>) {
         const { setup, config, partialConfig } = args;
         this.setup = setup;
-        const { network, networkParams, isTest, myActor } = setup;
+        const { network, networkParams, isTest, myActor, isMainnet } = setup;
+
+        const chosenNetwork = isMainnet ? "mainnet" : "testnet";
+        if ("undefined" !== typeof configuredNetwork) {
+            if (configuredNetwork != chosenNetwork) {
+                console.warn(
+                    `Possible CONFLICT:  previously configured as ${configuredNetwork}, while this setup indicates ${chosenNetwork}`+
+                    `\n   ... are you or the user switching between networks?`
+                );
+            }
+        }
+        helios.config.set({IS_TESTNET: !isMainnet});
+        configuredNetwork = chosenNetwork;
         this.network = network;
         this.networkParams = networkParams;
-        // this.isTest = isTest
-        if (myActor) this.myActor = myActor;
+        // this.isTest = isTest        
+        if (myActor) {
+            this.walletNetworkCheck = myActor.isMainnet().then((isMain) => {
+                const foundNetwork = isMain ? "mainnet" : "testnet"
+                if (foundNetwork !== chosenNetwork) return Promise.reject(new Error(`wallet on ${foundNetwork} doesn't match network from setup`));
+                return this.walletNetworkCheck = foundNetwork
+            });
+            this.myActor = myActor;
+        }
 
         if (config) {
             this.configIn = config;
@@ -1197,7 +1220,7 @@ export class StellarContract<
         });
     }
 
-    async findChangeAddr() : Promise<Address> {
+    async findChangeAddr(): Promise<Address> {
         const { myActor } = this;
         if (!myActor) {
             throw new Error(
@@ -1259,6 +1282,8 @@ export class StellarContract<
             //     throw new Error(`outrageous fee-computation found - check txn setup for correctness`)
             // }
             try {
+                await this.walletNetworkCheck;
+
                 // const t1 = new Date().getTime();
                 await tx.finalize(this.networkParams, changeAddress, spares);
                 // const t2 = new Date().getTime();
