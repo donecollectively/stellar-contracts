@@ -919,6 +919,10 @@ declare class MultisigAuthorityPolicy extends AuthorityPolicy {
     requirements(): ReqtsMap_2<"provides arms-length proof of authority to any other contract" | "positively governs spend of the UUT" | "the trustee threshold is required to spend its UUT" | "the trustee group can be changed" | "TODO: has a unique authority UUT" | "TODO: the trustee threshold is required to spend its UUT" | "TODO: the trustee group can be changed">;
 }
 
+export { Network }
+
+declare type NetworkName = "testnet" | "mainnet";
+
 declare type noState = {};
 
 /**
@@ -1077,6 +1081,7 @@ export declare type SeedTxnParams = {
 declare type SetupDetails = {
     network: Network;
     networkParams: NetworkParams;
+    isMainnet?: boolean;
     myActor?: Wallet;
     isTest?: boolean;
     isDev?: boolean;
@@ -1122,6 +1127,7 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     getContractScriptParams(config: ConfigType): paramsBase & Partial<ConfigType>;
     delegateReqdAddress(): false | Address;
     delegateAddrHint(): Address[] | undefined;
+    walletNetworkCheck?: Promise<NetworkName> | NetworkName;
     constructor(args: StellarConstructorArgs<ConfigType>);
     compiledScript: UplcProgram;
     get datumType(): any;
@@ -1199,7 +1205,7 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     private readUplcField;
     findSmallestUnusedUtxo(lovelace: bigint, utxos: TxInput[], tcx?: StellarTxnContext): TxInput | undefined;
     mkValuePredicate(lovelace: bigint, tcx?: StellarTxnContext): tokenPredicate<TxInput>;
-    mkMinTv(mph: MintingPolicyHash, tn: string | UutName, count?: bigint): Value;
+    mkMinTv(mph: MintingPolicyHash, tokenName: string | UutName | number[], count?: bigint): Value;
     mkAssetValue(tokenId: AssetClass, count?: bigint): Value;
     mkMinAssetValue(tokenId: AssetClass, count?: bigint): Value;
     mkTokenPredicate(val: Value): tokenPredicate<any>;
@@ -1234,9 +1240,10 @@ export declare class StellarContract<ConfigType extends paramsBase> {
      **/
     protected _utxoCountAdaOnly(c: number, { minAdaAmount }: utxoInfo): number;
     findAnySpareUtxos(tcx: StellarTxnContext): Promise<TxInput[] | never>;
+    findChangeAddr(): Promise<Address>;
     submit(tcx: StellarTxnContext, { signers, }?: {
         signers?: Address[];
-    }): Promise<helios.TxId[]>;
+    }): Promise<helios.TxId>;
     ADA(n: bigint | number): bigint;
     contractSource(): string | never;
     importModules(): HeliosModuleSrc[];
@@ -1283,7 +1290,7 @@ export declare abstract class StellarDelegate<CT extends paramsBase & capoDelega
      * calls the delegate-specific DelegateAddsAuthorityToken() method,
      * with the uut found by DelegateMustFindAuthorityToken().
      *
-     * returns the token back to the contract using {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
+     * returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
      * @param tcx - transaction context
      * @public
      **/
@@ -1364,7 +1371,7 @@ export declare abstract class StellarDelegate<CT extends paramsBase & capoDelega
     mkAuthorityTokenPredicate(): ((something: any) => any) & {
         value: Value;
     };
-    tvAuthorityToken(): Value;
+    tvAuthorityToken(useMinTv?: boolean): Value;
     /**
      * Finds the delegate authority token, normally in the delegate's contract address
      * @public
@@ -1524,7 +1531,7 @@ export declare class StellarTxnContext<S = noState> {
     reservedUtxos(): TxInput[];
     utxoNotReserved(u: TxInput): TxInput | undefined;
     addCollateral(collateral: TxInput): this;
-    validFor<TCX extends StellarTxnContext<S>>(this: TCX, durationMs: number): TCX;
+    validFor<TCX extends StellarTxnContext<S>>(this: TCX, durationMs: number, backwardMs?: number): TCX;
     addInput<TCX extends StellarTxnContext<S>>(this: TCX, input: addInputArgs[0], r?: RedeemerArg): TCX;
     addInputs<TCX extends StellarTxnContext<S>>(this: TCX, inputs: Parameters<Tx["addInputs"]>[0], r: RedeemerArg): TCX;
     addOutput<TCX extends StellarTxnContext<S>>(this: TCX, ...args: Parameters<Tx["addOutput"]>): TCX;

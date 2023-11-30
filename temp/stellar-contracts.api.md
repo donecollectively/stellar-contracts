@@ -436,6 +436,8 @@ export function mkUutValuesEntries(uuts: uutPurposeMap<any>): valuesEntry[];
 // @public
 export function mkValuesEntry(tokenName: string | number[], count: bigint): valuesEntry;
 
+export { Network }
+
 // @public
 export type paramsBase = Record<string, any>;
 
@@ -516,6 +518,8 @@ export class StellarContract<ConfigType extends paramsBase> {
     // (undocumented)
     findAnySpareUtxos(tcx: StellarTxnContext): Promise<TxInput[] | never>;
     // (undocumented)
+    findChangeAddr(): Promise<Address>;
+    // (undocumented)
     findSmallestUnusedUtxo(lovelace: bigint, utxos: TxInput[], tcx?: StellarTxnContext): TxInput | undefined;
     // (undocumented)
     getContractScriptParams(config: ConfigType): paramsBase & Partial<ConfigType>;
@@ -540,7 +544,7 @@ export class StellarContract<ConfigType extends paramsBase> {
     // (undocumented)
     mkMinAssetValue(tokenId: AssetClass, count?: bigint): Value;
     // (undocumented)
-    mkMinTv(mph: MintingPolicyHash, tn: string | UutName, count?: bigint): Value;
+    mkMinTv(mph: MintingPolicyHash, tokenName: string | UutName | number[], count?: bigint): Value;
     // (undocumented)
     mkTokenPredicate(val: Value): tokenPredicate<any>;
     // (undocumented)
@@ -598,7 +602,7 @@ export class StellarContract<ConfigType extends paramsBase> {
     // (undocumented)
     submit(tcx: StellarTxnContext, { signers, }?: {
         signers?: Address[];
-    }): Promise<helios.TxId[]>;
+    }): Promise<helios.TxId>;
     // (undocumented)
     tokenAsValue(tokenName: string, quantity: bigint, mph?: MintingPolicyHash): Value;
     // (undocumented)
@@ -617,6 +621,10 @@ export class StellarContract<ConfigType extends paramsBase> {
     // @internal (undocumented)
     protected _utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }: utxoInfo, { free: free2, minAdaAmount: r2 }: utxoInfo): 1 | -1 | 0;
     get wallet(): Wallet;
+    // Warning: (ae-forgotten-export) The symbol "NetworkName" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    walletNetworkCheck?: Promise<NetworkName> | NetworkName;
 }
 
 // @public
@@ -644,7 +652,7 @@ export abstract class StellarDelegate<CT extends paramsBase & capoDelegateConfig
     };
     mkDatumIsDelegation(dd: DelegationDetail, ...args: DCCT extends string ? [string] | [] : [DCCT]): InlineDatum;
     // (undocumented)
-    tvAuthorityToken(): Value;
+    tvAuthorityToken(useMinTv?: boolean): Value;
     txnGrantAuthority<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX>;
     abstract txnReceiveAuthorityToken<TCX extends StellarTxnContext<any>>(tcx: TCX, tokenValue: Value, fromFoundUtxo?: TxInput): Promise<TCX>;
     txnRetireAuthorityToken<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<StellarTxnContext<{}>>;
@@ -704,7 +712,7 @@ export class StellarTxnContext<S = noState> {
     // (undocumented)
     utxoNotReserved(u: TxInput): TxInput | undefined;
     // (undocumented)
-    validFor<TCX extends StellarTxnContext<S>>(this: TCX, durationMs: number): TCX;
+    validFor<TCX extends StellarTxnContext<S>>(this: TCX, durationMs: number, backwardMs?: number): TCX;
 }
 
 // Warning: (ae-internal-missing-underscore) The name "strategyValidation" should be prefixed with an underscore because the declaration is marked as @internal
@@ -789,7 +797,7 @@ export { WalletHelper }
 // src/DefaultCapo.ts:294:3 - (ae-forgotten-export) The symbol "MultisigAuthorityPolicy" needs to be exported by the entry point index.d.ts
 // src/DefaultCapo.ts:295:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
 // src/DefaultCapo.ts:314:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
-// src/StellarContract.ts:305:5 - (ae-forgotten-export) The symbol "SetupDetails" needs to be exported by the entry point index.d.ts
+// src/StellarContract.ts:309:5 - (ae-forgotten-export) The symbol "SetupDetails" needs to be exported by the entry point index.d.ts
 // src/delegation/RolesAndDelegates.ts:295:5 - (ae-forgotten-export) The symbol "PartialParamConfig" needs to be exported by the entry point index.d.ts
 // src/delegation/RolesAndDelegates.ts:297:5 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
 

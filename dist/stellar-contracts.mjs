@@ -58117,8 +58117,8 @@ class StellarTxnContext {
     this.tx.addCollateral(collateral);
     return this;
   }
-  validFor(durationMs) {
-    this.tx.validFrom(new Date(Date.now() - 60 * 1e3)).validTo(new Date(Date.now() + durationMs));
+  validFor(durationMs, backwardMs = 3 * 60 * 1e3) {
+    this.tx.validFrom(new Date(Date.now() - backwardMs)).validTo(new Date(Date.now() + durationMs));
     return this;
   }
   addInput(input, r) {
@@ -58319,13 +58319,13 @@ function txAsString(tx) {
       item = item.map((s) => {
         try {
           const mph = s.mintingPolicyHash.hex;
-          return `\u{1F3E6} ${mph.slice(0, 8)}\u2026${mph.slice(-4)} (minting)`;
+          return `\u{1F3E6} ${mph.slice(0, 8)}\u2026${mph.slice(-4)} (minting): ${s.serializeBytes().length} bytes`;
         } catch (e) {
           const vh = s.validatorHash.hex;
           const addr = Address.fromHash(s.validatorHash);
           return `\u{1F4DC} ${vh.slice(0, 8)}\u2026${vh.slice(
             -4
-          )} (validator at ${addrAsString(addr)})`;
+          )} (validator at ${addrAsString(addr)}): ${s.serializeBytes().length} bytes`;
         }
       });
       if (item.length > 1)
@@ -58372,13 +58372,13 @@ function datumAsString(d) {
   const dh = d.hash.hex;
   const dhss = `${dh.slice(0, 8)}\u2026${dh.slice(-4)}`;
   if (d.isInline())
-    return `d\u2039inline:${dhss}\u203A`;
+    return `d\u2039inline:${dhss} - ${d.toCbor().length} bytes\u203A`;
   return `d\u2039hash:${dhss}\u2026\u203A`;
 }
 function txOutputAsString(x, prefix = "<-") {
-  return `${prefix} ${addrAsString(x.address)} ${datumAsString(
+  return `${prefix} ${addrAsString(x.address)} ${valueAsString(x.value)} ${datumAsString(
     x.datum
-  )} ${valueAsString(x.value)}`;
+  )}`;
 }
 function addrAsString(address) {
   const bech32 = address.bech32 || address.toBech32();
@@ -58421,6 +58421,7 @@ var __decorateClass$6 = (decorators, target, key, kind) => {
     __defProp$6(target, key, result);
   return result;
 };
+let configuredNetwork = void 0;
 const Activity = {
   /**
    * Decorates a partial-transaction function that spends a contract-locked UTxO using a specific activity ("redeemer")
@@ -58537,17 +58538,36 @@ class StellarContract {
   delegateAddrHint() {
     return void 0;
   }
+  walletNetworkCheck;
   constructor(args) {
-    const { setup, config, partialConfig } = args;
+    const { setup, config: config$1, partialConfig } = args;
     this.setup = setup;
-    const { network, networkParams, isTest, myActor } = setup;
+    const { network, networkParams, isTest, myActor, isMainnet } = setup;
+    const chosenNetwork = isMainnet ? "mainnet" : "testnet";
+    if ("undefined" !== typeof configuredNetwork) {
+      if (configuredNetwork != chosenNetwork) {
+        console.warn(
+          `Possible CONFLICT:  previously configured as ${configuredNetwork}, while this setup indicates ${chosenNetwork}
+   ... are you or the user switching between networks?`
+        );
+      }
+    }
+    config.set({ IS_TESTNET: !isMainnet });
+    configuredNetwork = chosenNetwork;
     this.network = network;
     this.networkParams = networkParams;
-    if (myActor)
+    if (myActor) {
+      this.walletNetworkCheck = myActor.isMainnet().then((isMain) => {
+        const foundNetwork = isMain ? "mainnet" : "testnet";
+        if (foundNetwork !== chosenNetwork)
+          return Promise.reject(new Error(`wallet on ${foundNetwork} doesn't match network from setup`));
+        return this.walletNetworkCheck = foundNetwork;
+      });
       this.myActor = myActor;
-    if (config) {
-      this.configIn = config;
-      const fullScriptParams = this.contractParams = this.getContractScriptParams(config);
+    }
+    if (config$1) {
+      this.configIn = config$1;
+      const fullScriptParams = this.contractParams = this.getContractScriptParams(config$1);
       this.scriptProgram = this.loadProgramScript(fullScriptParams);
     } else {
       this.partialConfig = partialConfig;
@@ -58782,7 +58802,10 @@ class StellarContract {
             fieldType,
             fieldData
           ).catch((nestedError) => {
-            console.warn("error parsing nested data inside enum variant", { fn, fieldType, fieldData });
+            console.warn(
+              "error parsing nested data inside enum variant",
+              { fn, fieldType, fieldData }
+            );
             debugger;
             throw nestedError;
           });
@@ -58852,8 +58875,10 @@ class StellarContract {
       if (e.message?.match(/doesn't support converting from Uplc/)) {
         try {
           value = await offChainType.fromUplcData(uplcDataField);
-          if ("some" in value)
+          if (value && "some" in value)
             value = value.some;
+          if (value && "string" in value)
+            value = value.string;
         } catch (e2) {
           console.error(`datum: field ${fn}: ${e2.message}`);
           debugger;
@@ -58889,11 +58914,9 @@ class StellarContract {
       return this.hasOnlyAda(value, tcx2, utxo);
     }
   }
-  mkMinTv(mph, tn, count = 1n) {
-    return this.mkMinAssetValue(
-      new AssetClass([mph, stringToNumberArray(tn.toString())]),
-      count
-    );
+  mkMinTv(mph, tokenName, count = 1n) {
+    const tnBytes = Array.isArray(tokenName) ? tokenName : stringToNumberArray(tokenName.toString());
+    return this.mkMinAssetValue(new AssetClass([mph, tnBytes]), count);
   }
   mkAssetValue(tokenId, count = 1n) {
     const assets = [[tokenId, count]];
@@ -59066,13 +59089,29 @@ class StellarContract {
       return allSpares.map(this._infoBackToUtxo);
     });
   }
+  async findChangeAddr() {
+    const { myActor } = this;
+    if (!myActor) {
+      throw new Error(
+        `\u26A0\uFE0F ${this.constructor.name}: no this.myActor; can't get required change address!`
+      );
+    }
+    let unused = (await myActor.unusedAddresses).at(0);
+    if (!unused)
+      unused = (await myActor.usedAddresses).at(-1);
+    if (!unused)
+      throw new Error(
+        `\u26A0\uFE0F ${this.constructor.name}: can't find a good change address!`
+      );
+    return unused;
+  }
   async submit(tcx, {
     signers = []
   } = {}) {
     let { tx, feeLimit = 2000000n } = tcx;
     const { myActor: wallet } = this;
     if (wallet || signers.length) {
-      const [changeAddress] = await this.myActor?.usedAddresses || [];
+      const changeAddress = await this.findChangeAddr();
       const spares = await this.findAnySpareUtxos(tcx);
       const willSign = [...signers, ...tcx.neededSigners];
       const wHelper = wallet && new WalletHelper(wallet);
@@ -59097,6 +59136,7 @@ class StellarContract {
         tx.addSigner(pkh);
       }
       try {
+        await this.walletNetworkCheck;
         await tx.finalize(this.networkParams, changeAddress, spares);
       } catch (e) {
         console.log("FAILED submitting:", tcx.dump());
@@ -59121,13 +59161,29 @@ class StellarContract {
     }
     console.log("Submitting tx: ", tcx.dump());
     const promises = [
-      this.network.submitTx(tx)
+      this.network.submitTx(tx).catch((e) => {
+        console.warn(
+          "submitting via helios Network failed: ",
+          e.message
+        );
+        debugger;
+        throw e;
+      })
     ];
     if (wallet) {
       if (!this.setup.isTest)
-        promises.push(wallet.submitTx(tx));
+        promises.push(
+          wallet.submitTx(tx).catch((e) => {
+            console.warn(
+              "submitting via wallet failed: ",
+              e.message
+            );
+            debugger;
+            throw e;
+          })
+        );
     }
-    return Promise.all(promises);
+    return Promise.any(promises);
   }
   ADA(n) {
     const bn = "number" == typeof n ? BigInt(Math.round(1e6 * n)) : BigInt(1e6) * n;
@@ -59277,10 +59333,8 @@ This likely indicates a problem in Helios' error reporting -
   }
   async hasUtxo(semanticName, predicate, { address, wallet, exceptInTcx }) {
     const utxos = address ? await this.network.getUtxos(address) : await wallet.utxos;
-    const collateral = wallet ? await wallet.collateral : [];
-    const notCollateral = utxos.filter(
-      (u) => !collateral.find((c) => c.eq(u))
-    );
+    const collateral = (wallet ? await wallet.collateral : [])[0];
+    const notCollateral = utxos.filter((u) => !collateral?.eq(u));
     const filtered = exceptInTcx ? notCollateral.filter(
       exceptInTcx.utxoNotReserved.bind(exceptInTcx)
     ) : notCollateral;
@@ -59322,7 +59376,7 @@ code$8.srcFile = "src/StellarHeliosHelpers.hl";
 code$8.purpose = "module";
 code$8.moduleName = "StellarHeliosHelpers";
 
-const code$7 = new String("module CapoMintHelpers\nimport {\n    mkTv,\n    tvCharter\n} from StellarHeliosHelpers\n\nimport {\n    getRefCharterDatum\n} from CapoHelpers\n\nimport {\n    Datum, Activity as CapoActivity\n} from specializedCapo\n\nimport {\n    RelativeDelegateLink,\n    requiresDelegateAuthorizing\n} from CapoDelegateHelpers\n\nfunc hasSeedUtxo(tx: Tx, seedTxId : TxId, seedIdx: Int\n    // , reason: String\n) -> Bool {\n    seedUtxo: TxOutputId = TxOutputId::new(\n        seedTxId,\n        seedIdx\n    );\n    assert(tx.inputs.any( (input: TxInput) -> Bool {\n        input.output_id == seedUtxo\n    }),  \"seed utxo required for minting \"\n        // +reason \n        // + \"\\n\"+seedTxId.show() + \" : \" + seedIdx.show()\n    );\n\n    true\n}\n\n//! pre-computes the hash-based suffix for a token name, returning\n//  a function that makes Uut names with any given purpose, given the seed-txn details\nfunc mkUutTnFactory(\n    seedTxId : TxId, seedIdx : Int\n) -> (String) -> String {\n\n    idxBytes : ByteArray = seedIdx.bound_max(255).serialize();\n    // assert(idxBytes.length == 1, \"surprise!\");\n\n    //! yuck: un-CBOR...\n    rawTxId : ByteArray = seedTxId.serialize().slice(5,37);\n\n    txoId : ByteArray = (rawTxId + \"@\".encode_utf8() + idxBytes);\n    assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // print( \"******** txoId \" + txoId.show());\n\n    miniHash : ByteArray = txoId.blake2b().slice(0,6);\n    // assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    mhs: String = miniHash.show();\n    (p: String) -> String {\n        p + \"-\" + mhs\n    }\n}\n\nfunc validateUutMinting(\n    ctx: ScriptContext, \n    seedTxId : TxId, seedIdx : Int, \n    purposes: []String, \n    mkTokenName: (String) -> String,\n    bootstrapCharter:Value = Value::new(AssetClass::ADA, 0)\n) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n\n    isBootstrapping : Bool = !( bootstrapCharter.is_zero() );\n    delegateApproval : Bool = if ( isBootstrapping ) { \n        true \n    } else {\n        // not bootstrapping; must honor the mintDelegate's authority\n        Datum::CharterToken {\n            _, mintDgt\n        } = getRefCharterDatum(ctx, mph);\n\n        //!!! todo: add explicit activity details in authorization\n        requiresDelegateAuthorizing(\n            mintDgt, \n            mph, \n            ctx\n        )\n    };\n\n    valueMinted: Value = tx.minted;\n\n    // idxBytes : ByteArray = seedIdx.bound_max(255).serialize();\n    // // assert(idxBytes.length == 1, \"surprise!\");\n\n    // //! yuck: un-CBOR...\n    // rawTxId : ByteArray = seedTxId.serialize().slice(5,37);\n\n    // txoId : ByteArray = (rawTxId + \"@\".encode_utf8() + idxBytes);\n    // assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // // print( \"******** txoId \" + txoId.show());\n\n    // miniHash : ByteArray = txoId.blake2b().slice(0,6);\n    // // assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    // tokenName1 = purpose + \".\" + miniHash.show();\n\n    expectedValue : Value = Value::sum(purposes.sort((a:String, b:String) -> Bool { a == b }).map(\n        (purpose: String) -> Value {\n            mkTv(mph, mkTokenName(purpose))\n        }\n    )) + bootstrapCharter;\n    // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);\n    actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);\n    // actualMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"actual: \" + b.show() + \" \" + i.show() )\n    // });\n\n    // print(\"activity\" + seedTxId.show() + \" \" + seedIdx.show() + \" asset \" + assetName.show());\n    // expectedMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"expected: \" + b.show() + \" \" + i.show() )\n    // });\n    temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {\n        l.find_safe((x : ByteArray) -> Bool { x == b }).switch{\n            None => l.prepend(b),\n            Some /*{x}*/ => error(\"UUT duplicate purpose \"\n                // +  x.decode_utf8()\n            )\n        }\n    }, []ByteArray{});\n    assert(temp == temp, \"prevent unused var\");\n\n\n    expectationsMet : Bool = valueMinted  == expectedValue;\n\n    assert(expectationsMet, \"bad UUT mint has mismatch\"\n        // +\";\\n   ... expected \"+ expectedValue.show()+\n        // \"   ... actual \"+ valueMinted.show()+\n        // \"   ... diff = \\n\" + (expectedValue - valueMinted).show()\n    );\n\n    delegateApproval && expectationsMet &&\n    hasSeedUtxo(tx, seedTxId, seedIdx\n        //, \"UUT \"+purposes.join(\"+\")\n    )\n}\n\nenum\n Activity { \n    mintingCharter\n     {\n        owner: Address\n\n        // we don't have a responsiblity to enforce delivery to the right location\n        // govAuthority: RelativeDelegateLink   // not needed \n    }\n    mintingUuts {\n        seedTxn: TxId\n        seedIndex: Int\n        purposes: []String\n    }\n\n    func tvForPurpose(self, ctx: ScriptContext, purpose: String) -> Value {\n        mph : MintingPolicyHash = ctx.get_current_minting_policy_hash();\n        \n        mkTv(mph, self.uutTnFactory()(purpose))\n    }\n\n    func uutTnFactory(self) -> (String) -> String {\n        self.switch{\n            mintingUuts{MUseedTxn, MUseedIndex, _} => {\n                mkUutTnFactory(MUseedTxn, MUseedIndex)\n            },\n            // mintingCharter => {\n            //     mkUutTnFactory(seedTxn, seedIndex)\n            // },\n            _ => error(\"uutTnFactory called on unsupported Activity/redeemer variant\")\n        } \n    }\n}\n");
+const code$7 = new String("module CapoMintHelpers\nimport {\n    mkTv,\n    tvCharter\n} from StellarHeliosHelpers\n\nimport {\n    getRefCharterDatum\n} from CapoHelpers\n\nimport {\n    Datum, Activity as CapoActivity\n} from specializedCapo\n\nimport {\n    RelativeDelegateLink,\n    requiresDelegateAuthorizing\n} from CapoDelegateHelpers\n\nfunc hasSeedUtxo(tx: Tx, seedTxId : TxId, seedIdx: Int\n    // , reason: String\n) -> Bool {\n    seedUtxo: TxOutputId = TxOutputId::new(\n        seedTxId,\n        seedIdx\n    );\n    assert(tx.inputs.any( (input: TxInput) -> Bool {\n        input.output_id == seedUtxo\n    }),  \"seed utxo required for minting \"\n        // +reason \n        // + \"\\n\"+seedTxId.show() + \" : \" + seedIdx.show()\n    );\n\n    true\n}\n\n//! pre-computes the hash-based suffix for a token name, returning\n//  a function that makes Uut names with any given purpose, given the seed-txn details\nfunc mkUutTnFactory(\n    seedTxId : TxId, seedIdx : Int\n) -> (String) -> String {\n\n    idxBytes : ByteArray = seedIdx.bound_max(255).serialize();\n    // assert(idxBytes.length == 1, \"surprise!\");\n\n    //! yuck: un-CBOR...\n    rawTxId : ByteArray = seedTxId.serialize().slice(5,37);\n\n    txoId : ByteArray = (rawTxId + \"@\".encode_utf8() + idxBytes);\n    assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // print( \"******** txoId \" + txoId.show());\n\n    miniHash : ByteArray = txoId.blake2b().slice(0,6);\n    // assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    mhs: String = miniHash.show();\n    (p: String) -> String {\n        p + \"-\" + mhs\n    }\n}\n\nfunc validateUutMinting(\n    ctx: ScriptContext, \n    seedTxId : TxId, seedIdx : Int, \n    purposes: []String, \n    mkTokenName: (String) -> String,\n    bootstrapCharter:Value = Value::new(AssetClass::ADA, 0)\n) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n\n    isBootstrapping : Bool = !( bootstrapCharter.is_zero() );\n    delegateApproval : Bool = if ( isBootstrapping ) { \n        true \n    } else {\n        // not bootstrapping; must honor the mintDelegate's authority\n        Datum::CharterToken {\n            _, mintDgt\n        } = getRefCharterDatum(ctx, mph);\n\n        //!!! todo: add explicit activity details in authorization\n        requiresDelegateAuthorizing(\n            mintDgt, \n            mph, \n            ctx\n        )\n    };\n\n    valueMinted: Value = tx.minted;\n\n    // idxBytes : ByteArray = seedIdx.bound_max(255).serialize();\n    // // assert(idxBytes.length == 1, \"surprise!\");\n\n    // //! yuck: un-CBOR...\n    // rawTxId : ByteArray = seedTxId.serialize().slice(5,37);\n\n    // txoId : ByteArray = (rawTxId + \"@\".encode_utf8() + idxBytes);\n    // assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // // print( \"******** txoId \" + txoId.show());\n\n    // miniHash : ByteArray = txoId.blake2b().slice(0,6);\n    // // assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    // tokenName1 = purpose + \".\" + miniHash.show();\n\n    expectedValue : Value = Value::sum(purposes.sort((a:String, b:String) -> Bool { a == b }).map(\n        (purpose: String) -> Value {\n            mkTv(mph, mkTokenName(purpose))\n        }\n    )) + bootstrapCharter;\n    // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);\n    actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);\n    // actualMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"actual: \" + b.show() + \" \" + i.show() )\n    // });\n\n    // print(\"activity\" + seedTxId.show() + \" \" + seedIdx.show() + \" asset \" + assetName.show());\n    // expectedMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"expected: \" + b.show() + \" \" + i.show() )\n    // });\n    temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {\n        l.find_safe((x : ByteArray) -> Bool { x == b }).switch{\n            None => l.prepend(b),\n            Some /*{x}*/ => error(\"UUT duplicate purpose \"\n                // +  x.decode_utf8()\n            )\n        }\n    }, []ByteArray{});\n    assert(temp == temp, \"prevent unused var\");\n\n\n    expectationsMet : Bool = valueMinted  == expectedValue;\n\n    assert(expectationsMet, \"bad UUT mint has mismatch\"\n        // +\";\\n   ... expected \"+ expectedValue.show()+\n        // \"   ... actual \"+ valueMinted.show()+\n        // \"   ... diff = \\n\" + (expectedValue - valueMinted).show()\n    );\n\n    delegateApproval && expectationsMet &&\n    hasSeedUtxo(tx, seedTxId, seedIdx\n        //, \"UUT \"+purposes.join(\"+\")\n    )\n}\n\nenum Activity { \n    mintingCharter\n     {\n        owner: Address\n\n        // we don't have a responsiblity to enforce delivery to the right location\n        // govAuthority: RelativeDelegateLink   // not needed \n    }\n    mintingUuts {\n        seedTxn: TxId\n        seedIndex: Int\n        purposes: []String\n    }\n\n    func tvForPurpose(self, ctx: ScriptContext, purpose: String) -> Value {\n        mph : MintingPolicyHash = ctx.get_current_minting_policy_hash();\n        \n        mkTv(mph, self.uutTnFactory()(purpose))\n    }\n\n    func uutTnFactory(self) -> (String) -> String {\n        self.switch{\n            mintingUuts{MUseedTxn, MUseedIndex, _} => {\n                mkUutTnFactory(MUseedTxn, MUseedIndex)\n            },\n            // mintingCharter => {\n            //     mkUutTnFactory(seedTxn, seedIndex)\n            // },\n            _ => error(\"uutTnFactory called on unsupported Activity/redeemer variant\")\n        } \n    }\n}\n");
 
 code$7.srcFile = "src/CapoMintHelpers.hl";
 code$7.purpose = "module";
@@ -60312,7 +60366,7 @@ class StellarDelegate extends StellarContract {
    * calls the delegate-specific DelegateAddsAuthorityToken() method,
    * with the uut found by DelegateMustFindAuthorityToken().
    *
-   * returns the token back to the contract using {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
+   * returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
    * @param tcx - transaction context
    * @public
    **/
@@ -60322,7 +60376,8 @@ class StellarDelegate extends StellarContract {
       tcx,
       label
     );
-    const authorityVal = this.tvAuthorityToken();
+    const useMinTv = true;
+    const authorityVal = this.tvAuthorityToken(useMinTv);
     console.log(`   ------- delegate ${label} grants authority with ${dumpAny(authorityVal)}`);
     try {
       const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo);
@@ -60387,7 +60442,7 @@ class StellarDelegate extends StellarContract {
   mkAuthorityTokenPredicate() {
     return this.mkTokenPredicate(this.tvAuthorityToken());
   }
-  tvAuthorityToken() {
+  tvAuthorityToken(useMinTv = false) {
     if (!this.configIn)
       throw new Error(`must be instantiated with a configIn`);
     const {
@@ -60395,6 +60450,8 @@ class StellarDelegate extends StellarContract {
       tn
       // reqdAddress,  // removed
     } = this.configIn;
+    if (useMinTv)
+      return this.mkMinTv(mph, tn);
     return mkTv(mph, tn);
   }
   /**

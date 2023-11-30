@@ -10034,6 +10034,51 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#findChangeAddr:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "findChangeAddr(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Address",
+                  "canonicalReference": "@hyperionbt/helios!Address:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "findChangeAddr"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#findSmallestUnusedUtxo:member(1)",
               "docComment": "",
               "excerptTokens": [
@@ -10759,7 +10804,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", tn: "
+                  "text": ", tokenName: "
                 },
                 {
                   "kind": "Content",
@@ -10769,6 +10814,10 @@
                   "kind": "Reference",
                   "text": "UutName",
                   "canonicalReference": "@donecollectively/stellar-contracts!UutName:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": " | number[]"
                 },
                 {
                   "kind": "Content",
@@ -10794,8 +10843,8 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 8,
-                "endIndex": 9
+                "startIndex": 9,
+                "endIndex": 10
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -10810,18 +10859,18 @@
                   "isOptional": false
                 },
                 {
-                  "parameterName": "tn",
+                  "parameterName": "tokenName",
                   "parameterTypeTokenRange": {
                     "startIndex": 3,
-                    "endIndex": 5
+                    "endIndex": 6
                   },
                   "isOptional": false
                 },
                 {
                   "parameterName": "count",
                   "parameterTypeTokenRange": {
-                    "startIndex": 6,
-                    "endIndex": 7
+                    "startIndex": 7,
+                    "endIndex": 8
                   },
                   "isOptional": true
                 }
@@ -12376,7 +12425,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "[]>"
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
@@ -12712,6 +12761,55 @@
               "propertyTypeTokenRange": {
                 "startIndex": 1,
                 "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#walletNetworkCheck:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "walletNetworkCheck?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "NetworkName",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~NetworkName:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "> | "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "NetworkName",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~NetworkName:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": true,
+              "releaseTag": "Public",
+              "name": "walletNetworkCheck",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 6
               },
               "isStatic": false,
               "isProtected": false,
@@ -13390,7 +13488,15 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "tvAuthorityToken(): "
+                  "text": "tvAuthorityToken(useMinTv?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "boolean"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
                 },
                 {
                   "kind": "Reference",
@@ -13404,13 +13510,22 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 2
+                "startIndex": 3,
+                "endIndex": 4
               },
               "releaseTag": "Public",
               "isProtected": false,
               "overloadIndex": 1,
-              "parameters": [],
+              "parameters": [
+                {
+                  "parameterName": "useMinTv",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": true
+                }
+              ],
               "isOptional": false,
               "isAbstract": false,
               "name": "tvAuthorityToken"
@@ -13418,7 +13533,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarDelegate#txnGrantAuthority:member(1)",
-              "docComment": "/**\n * Finds and adds the delegate's authority token to the transaction\n *\n * @remarks\n *\n * calls the delegate-specific DelegateAddsAuthorityToken() method, with the uut found by DelegateMustFindAuthorityToken().\n *\n * returns the token back to the contract using {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken()}\n *\n * @param tcx - transaction context\n *\n * @public\n */\n",
+              "docComment": "/**\n * Finds and adds the delegate's authority token to the transaction\n *\n * @remarks\n *\n * calls the delegate-specific DelegateAddsAuthorityToken() method, with the uut found by DelegateMustFindAuthorityToken().\n *\n * returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken()}\n *\n * @param tcx - transaction context\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -15034,6 +15149,14 @@
                 },
                 {
                   "kind": "Content",
+                  "text": ", backwardMs?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "number"
+                },
+                {
+                  "kind": "Content",
                   "text": "): "
                 },
                 {
@@ -15060,8 +15183,8 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 8,
-                "endIndex": 9
+                "startIndex": 10,
+                "endIndex": 11
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -15082,6 +15205,14 @@
                     "endIndex": 7
                   },
                   "isOptional": false
+                },
+                {
+                  "parameterName": "backwardMs",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 8,
+                    "endIndex": 9
+                  },
+                  "isOptional": true
                 }
               ],
               "isOptional": false,
