@@ -38,6 +38,7 @@ type tokenPredicate<tokenBearer extends canHaveToken> = ((
 
 type NetworkName = "testnet" | "mainnet";
 let configuredNetwork : NetworkName | undefined = undefined
+
 /**
  * a type for redeemer/activity-factory functions declared with \@Activity.redeemer
  *
@@ -1601,14 +1602,12 @@ export class StellarContract<
             ? await this.network.getUtxos(address)
             : await wallet!.utxos;
 
-        const collateral = wallet ? await wallet.collateral : [];
+        const collateral = (wallet ? await wallet.collateral : [])[0];
         // const filterUtxos = [
         //     ...collateral,
         //     ...(exceptInTcx?.reservedUtxos() || []),
         // ];
-        const notCollateral = utxos.filter(
-            (u) => !collateral.find((c) => c.eq(u))
-        );
+        const notCollateral = utxos.filter((u) => !collateral?.eq(u));
         const filtered = exceptInTcx
             ? notCollateral.filter(
                   exceptInTcx.utxoNotReserved.bind(exceptInTcx)
