@@ -7,8 +7,8 @@ import {
     textToBytes,
     
 } from "@hyperionbt/helios";
-import { uutPurposeMap } from "./Capo.js";
-import { valuesEntry } from "./HeliosPromotedTypes.js";
+import type { uutPurposeMap } from "./Capo.js";
+import type { valuesEntry } from "./HeliosPromotedTypes.js";
 import { UutName } from "./delegation/RolesAndDelegates.js";
 
 

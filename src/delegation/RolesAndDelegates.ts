@@ -1,9 +1,11 @@
 import { Address, MintingPolicyHash, ValidatorHash, bytesToHex, bytesToText } from "@hyperionbt/helios";
-import {
+import type {
     ConfigFor,
-    StellarContract,
     configBase,
     stellarSubclass,
+} from "../StellarContract.js";
+import {
+    StellarContract,
 } from "../StellarContract.js";
 
 import { StellarDelegate } from "./StellarDelegate.js";

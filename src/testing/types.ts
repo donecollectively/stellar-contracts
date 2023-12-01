@@ -6,8 +6,9 @@ import {
 
 import { promises as fs } from "fs";
 import { Vitest, vitest } from "vitest";
-import { ConfigFor, StellarContract, configBase } from "../StellarContract.js";
-import { StellarTestContext } from "./StellarTestContext.js";
+// import { StellarContract } from "../StellarContract.js";
+import type { ConfigFor, StellarContract, configBase } from "../StellarContract.js";
+import type { StellarTestContext } from "./StellarTestContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
 import ppParams from "../../preprod.json" assert { type: "json" };
 

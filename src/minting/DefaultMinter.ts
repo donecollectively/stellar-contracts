@@ -10,10 +10,12 @@ import {
 import {
     Activity,
     StellarContract,
-    configBase,
-    isActivity,
     partialTxn,
     txn,
+} from "../StellarContract.js";
+import type {
+    configBase,
+    isActivity,
 } from "../StellarContract.js";
 
 //@ts-expect-error
@@ -26,20 +28,20 @@ import StellarHeliosHelpers from "../StellarHeliosHelpers.hl";
 import { CapoMintHelpers } from "../CapoMintHelpers.js";
 
 import { StellarTxnContext } from "../StellarTxnContext.js";
-import {
+import type {
     MintUutActivityArgs,
     MinterBaseMethods,
     hasUutContext,
     uutPurposeMap,
 } from "../Capo.js";
-import { SeedTxnParams } from "../SeedTxn.js";
-import { valuesEntry } from "../HeliosPromotedTypes.js";
+import type { SeedTxnParams } from "../SeedTxn.js";
+import type { valuesEntry } from "../HeliosPromotedTypes.js";
 import { CapoDelegateHelpers } from "../delegation/CapoDelegateHelpers.js";
 import {
-    RelativeDelegateLink,
     UutName,
 } from "../delegation/RolesAndDelegates.js";
-import { HeliosModuleSrc } from "../HeliosModuleSrc.js";
+
+import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { mkUutValuesEntries, mkValuesEntry } from "../utils.js";
 import { dumpAny } from "../diagnostics.js";
 import { DefaultCapo } from "../DefaultCapo.js";

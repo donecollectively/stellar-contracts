@@ -2,9 +2,11 @@ import { Address, AssetClass, TxInput, Value } from "@hyperionbt/helios";
 
 //@ts-expect-error because TS can't import non-ts content : /
 import contract from "./BasicMintDelegate.hl";
-import { Activity, StellarContract, configBase } from "../StellarContract.js";
+import { Activity,  } from "../StellarContract.js";
+import type { configBase } from "../StellarContract.js";
+
 import { StellarTxnContext } from "../StellarTxnContext.js";
-import { MintDelegateArgs } from "./BasicMintDelegate.js";
+import type { MintDelegateArgs } from "./BasicMintDelegate.js";
 import { StellarDelegate } from "../delegation/StellarDelegate.js";
 
 /**

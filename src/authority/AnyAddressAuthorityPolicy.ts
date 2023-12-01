@@ -7,13 +7,17 @@ import {
     Value,
     bytesToText,
 } from "@hyperionbt/helios";
-import { SeedTxnParams } from "../SeedTxn.js";
+import type { SeedTxnParams } from "../SeedTxn.js";
 import {
     Activity,
     StellarContract,
-    isActivity,
     partialTxn,
 } from "../StellarContract.js";
+
+import type {
+    isActivity,
+} from "../StellarContract.js";
+
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { StellarDelegate } from "../delegation/StellarDelegate.js";
 import { AuthorityPolicy } from "./AuthorityPolicy.js";
@@ -23,11 +27,9 @@ import { AuthorityPolicy } from "./AuthorityPolicy.js";
  * @remarks
  * 
  * Transferrable authority using a unique token and no smart-contract.
- * 
- * This simple strategy relies entirely on the presence of a specific, unique token
- * held in a wallet.  Authorizing activities using this strategy requires diligent review
- * by the person controlling the wallet, since it has no enforced validation logic.
- * 
+ *     Network,
+    Wallet,
+
  * @public
  **/
 export class AnyAddressAuthorityPolicy extends AuthorityPolicy {

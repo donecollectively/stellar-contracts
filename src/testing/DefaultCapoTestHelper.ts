@@ -1,22 +1,23 @@
-import {
+import type {
     DefaultCharterDatumArgs,
     DefaultCapo,
     MinimalDefaultCharterDatumArgs,
 } from "../DefaultCapo.js";
-import { Address } from "@hyperionbt/helios";
 import { StellarTxnContext } from "../StellarTxnContext.js";
-import { ADA, canHaveRandomSeed, stellarTestHelperSubclass } from "./types.js";
+import { ADA} from "./types.js";
+import type { canHaveRandomSeed, stellarTestHelperSubclass } from "./types.js";
 import { CapoTestHelper } from "./CapoTestHelper.js";
-import { stellarSubclass } from "../StellarContract.js";
+import type { stellarSubclass } from "../StellarContract.js";
 import {
     Capo,
+} from "../Capo.js";
+import type {
     CapoBaseConfig,
     hasBootstrappedConfig,
     hasUutContext,
 } from "../Capo.js";
 import { DefaultMinter } from "../minting/DefaultMinter.js";
 import { expect } from "vitest";
-import { StellarTestHelper } from "./StellarTestHelper.js";
 
 /**
  * Test helper for classes extending DefaultCapo

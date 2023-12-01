@@ -10,7 +10,8 @@ import { NetworkParams } from '@hyperionbt/helios';
 import { Program } from '@hyperionbt/helios';
 import { ReqtsMap as ReqtsMap_2 } from '../Requirements.js';
 import { ReqtsMap as ReqtsMap_3 } from './Requirements.js';
-import { RoleInfo as RoleInfo_2 } from './delegation/RolesAndDelegates.js';
+import { RoleInfo } from './delegation/RolesAndDelegates.js';
+import { RoleMap as RoleMap_2 } from './Capo.js';
 import { StakeAddress } from '@hyperionbt/helios';
 import { StakingValidatorHash } from '@hyperionbt/helios';
 import { textToBytes } from '@hyperionbt/helios';
@@ -63,11 +64,9 @@ export { Address }
  * @remarks
  *
  * Transferrable authority using a unique token and no smart-contract.
- *
- * This simple strategy relies entirely on the presence of a specific, unique token
- * held in a wallet.  Authorizing activities using this strategy requires diligent review
- * by the person controlling the wallet, since it has no enforced validation logic.
- *
+ *     Network,
+ Wallet,
+
  * @public
  **/
 export declare class AnyAddressAuthorityPolicy extends AuthorityPolicy {
@@ -526,24 +525,24 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
      * @public
      **/
     getDelegateRoles(): void;
-    get delegateRoles(): RoleMap<{
-        readonly govAuthority: RoleInfo_2<StellarContract<any>, {
-        readonly address: {
-        readonly delegateClass: typeof AnyAddressAuthorityPolicy;
-        readonly validateConfig: (args: any) => strategyValidation;
-        };
-        readonly multisig: {
-        readonly delegateClass: typeof MultisigAuthorityPolicy;
-        readonly validateConfig: (args: any) => strategyValidation;
-        };
-        }, "capoGov", "address" | "multisig">;
-        readonly mintDelegate: RoleInfo_2<StellarContract<any>, {
-        readonly default: {
-        readonly delegateClass: typeof BasicMintDelegate;
-        readonly partialConfig: {};
-        readonly validateConfig: (args: any) => strategyValidation;
-        };
-        }, "mintDgt", "default">;
+    get delegateRoles(): RoleMap_2<    {
+    readonly govAuthority: RoleInfo<StellarContract<any>, {
+    readonly address: {
+    readonly delegateClass: typeof AnyAddressAuthorityPolicy;
+    readonly validateConfig: (args: any) => strategyValidation;
+    };
+    readonly multisig: {
+    readonly delegateClass: typeof MultisigAuthorityPolicy;
+    readonly validateConfig: (args: any) => strategyValidation;
+    };
+    }, "capoGov", "address" | "multisig">;
+    readonly mintDelegate: RoleInfo<StellarContract<any>, {
+    readonly default: {
+    readonly delegateClass: typeof BasicMintDelegate;
+    readonly partialConfig: {};
+    readonly validateConfig: (args: any) => strategyValidation;
+    };
+    }, "mintDgt", "default">;
     }>;
     /**
      * Performs a validation of all critical delegate connections
@@ -643,7 +642,7 @@ export declare class DefaultMinter extends StellarContract<BasicMinterParams> im
  * @param variants - maps each strategy-variant name to a detailed {@link VariantStrategy}  definition
  * @public
  **/
-export declare function defineRole<const UUTP extends string, SC extends StellarContract<any>, const VMv extends RoleInfo<SC, any, UUTP>["variants"]>(uutBaseName: UUTP, baseClass: stellarSubclass<SC> & any, variants: VMv): RoleInfo<SC, VMv, UUTP>;
+export declare function defineRole<const UUTP extends string, SC extends StellarContract<any>, const VMv extends RoleInfo_2<SC, any, UUTP>["variants"]>(uutBaseName: UUTP, baseClass: stellarSubclass<SC> & any, variants: VMv): RoleInfo_2<SC, VMv, UUTP>;
 
 /**
  * Standalone helper method defining a specific RoleMap; used in a Capo's delegateRoles() instance method
@@ -1036,7 +1035,7 @@ export declare type RequirementEntry<reqts extends string> = {
  *
  * @public
  **/
-declare type RoleInfo<SC extends StellarContract<any>, VM extends Record<variants, VariantStrategy<SC>>, UUTP extends string, variants extends string = string & keyof VM> = {
+declare type RoleInfo_2<SC extends StellarContract<any>, VM extends Record<variants, VariantStrategy<SC>>, UUTP extends string, variants extends string = string & keyof VM> = {
     uutPurpose: UUTP;
     baseClass: stellarSubclass<SC>;
     variants: {
@@ -1055,7 +1054,7 @@ declare type RoleInfo<SC extends StellarContract<any>, VM extends Record<variant
  * delegateRoles() helper.
  * @public
  **/
-export declare type RoleMap<KR extends Record<string, RoleInfo<any, any, any, any>>> = {
+export declare type RoleMap<KR extends Record<string, RoleInfo_2<any, any, any, any>>> = {
     [roleName in keyof KR]: KR[roleName];
 };
 

@@ -6,27 +6,29 @@ import {
     NetworkParams,
     Tx,
     TxId,
-    Wallet,
     TxOutput,
     Value,
     SimpleWallet,
     SimpleWallet as WalletEmulator,
 } from "@hyperionbt/helios";
-import {
-    StellarContract,
-    findInputsInWallets,
-    configBase,
+import type { Wallet } from "@hyperionbt/helios";
+
+import { StellarContract, findInputsInWallets } from "../StellarContract.js";
+import type {
     stellarSubclass,
     ConfigFor,
     StellarConstructorArgs,
 } from "../StellarContract.js";
+
 import { lovelaceToAda, txAsString, utxosAsString } from "../diagnostics.js";
-import {
-    actorMap,
+import { 
     ADA,
+    preProdParams,
+ } from "./types.js";
+import type {
+    actorMap,
     canHaveRandomSeed,
     canSkipSetup,
-    preProdParams,
     enhancedNetworkParams,
 } from "./types.js";
 

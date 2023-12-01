@@ -8,7 +8,7 @@ import {
     bytesToText,
     Assets,
 } from "@hyperionbt/helios";
-import { ErrorMap } from "./delegation/RolesAndDelegates.js";
+import type { ErrorMap } from "./delegation/RolesAndDelegates.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 
 /**

@@ -8,7 +8,6 @@ import {
     //@ts-expect-error
     Option,
     Datum,
-    Wallet,
     TxInput,
     DatumHash,
     ByteArray,
@@ -21,27 +20,27 @@ import {
     MintingPolicyHash,
 } from "@hyperionbt/helios";
 
+import type { Wallet } from "@hyperionbt/helios";
+
+import type { isActivity } from "./StellarContract.js";
+
 import {
     Activity,
-    configBase,
-    ConfigFor,
     datum,
-    isActivity,
     partialTxn,
     StellarContract,
-    stellarSubclass,
     txn,
 } from "./StellarContract.js";
-import { InlineDatum } from "./HeliosPromotedTypes.js";
+import type { InlineDatum } from "./HeliosPromotedTypes.js";
 
 import { StellarTxnContext } from "./StellarTxnContext.js";
 
 //@ts-expect-error
 import contract from "./DefaultCapo.hl";
-export { contract }
+export { contract };
 // import contract from "./BaselineCapo.hl";
-import {
-    Capo,
+import { Capo } from "./Capo.js";
+import type {
     CapoBaseConfig,
     hasBootstrappedConfig,
     hasUutContext,
@@ -49,20 +48,21 @@ import {
 } from "./Capo.js";
 import { DefaultMinter } from "./minting/DefaultMinter.js";
 import {
-    ErrorMap,
     delegateRoles,
-    RelativeDelegateLink,
-    RoleMap,
-    strategyValidation,
     defineRole,
     delegateLinkSerializer,
+} from "./delegation/RolesAndDelegates.js";
+import type {
+    ErrorMap,
+    RelativeDelegateLink,
+    strategyValidation,
 } from "./delegation/RolesAndDelegates.js";
 import { BasicMintDelegate } from "./minting/BasicMintDelegate.js";
 import { AnyAddressAuthorityPolicy } from "./authority/AnyAddressAuthorityPolicy.js";
 import { txAsString } from "./diagnostics.js";
 import { MultisigAuthorityPolicy } from "./authority/MultisigAuthorityPolicy.js";
 import { hasReqts } from "./Requirements.js";
-import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
+import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { UnspecializedCapo } from "./UnspecializedCapo.js";
 import { NoMintDelegation } from "./minting/NoMintDelegation.js";
 import { CapoHelpers } from "./CapoHelpers.js";
@@ -206,7 +206,10 @@ export class DefaultCapo<
         if (rev) outputConfig.rev = BigInt(rev);
         if (seedTxn) outputConfig.seedTxn = TxId.fromHex(seedTxn.bytes);
         if (seedIndex) outputConfig.seedIndex = BigInt(seedIndex);
-        if (rootCapoScriptHash) outputConfig.rootCapoScriptHash = ValidatorHash.fromHex(rootCapoScriptHash.bytes)
+        if (rootCapoScriptHash)
+            outputConfig.rootCapoScriptHash = ValidatorHash.fromHex(
+                rootCapoScriptHash.bytes
+            );
 
         return outputConfig;
     }
@@ -272,7 +275,7 @@ export class DefaultCapo<
     /**
      * Use the `delegateRoles` getter instead
      * @remarks
-     * 
+     *
      * this no-op method is a convenience for Stellar Contracts maintainers
      * and intuitive developers using autocomplete.  Including it enables an entry
      * in VSCode "Outline" view, which doesn't include the delegateRoles getter : /
@@ -342,12 +345,17 @@ export class DefaultCapo<
      **/
     async verifyCoreDelegates() {
         const rcsh = this.configIn?.rootCapoScriptHash;
-        if (
-            rcsh && !rcsh.eq(this.address.validatorHash!)
-        ) {
-            console.error(`expected: `+rcsh.hex + `\n  actual: `+this.address.validatorHash!.hex);
+        if (rcsh && !rcsh.eq(this.address.validatorHash!)) {
+            console.error(
+                `expected: ` +
+                    rcsh.hex +
+                    `\n  actual: ` +
+                    this.address.validatorHash!.hex
+            );
 
-            throw new Error(`${this.constructor.name}: the leader contract script '${this.scriptProgram?.name}', or one of its dependencies, has been modified`)
+            throw new Error(
+                `${this.constructor.name}: the leader contract script '${this.scriptProgram?.name}', or one of its dependencies, has been modified`
+            );
         }
         this.connectMinter();
 
@@ -455,7 +463,10 @@ export class DefaultCapo<
 
         const newClass = this.constructor;
         // @ts-expect-error using constructor in this way
-        const newCapo = newClass.bootstrapWith({setup:this.setup, config: {...baseConfig,...pCfg}})
+        const newCapo = newClass.bootstrapWith({
+            setup: this.setup,
+            config: { ...baseConfig, ...pCfg },
+        });
         return {
             ...baseConfig,
             ...pCfg,

@@ -5,7 +5,6 @@ import {
     HInt,
     HeliosData,
     MintingPolicyHash,
-    Network,
     NetworkParams,
     Program,
     TxOutput,
@@ -14,7 +13,6 @@ import {
     UplcDataValue,
     UplcProgram,
     Value,
-    Wallet,
     extractScriptPurposeAndName,
     Datum,
     AssetClass,
@@ -24,10 +22,15 @@ import {
     ConstrData,
     WalletHelper,
 } from "@hyperionbt/helios";
+import type {
+    Network,
+    Wallet,
+} from "@hyperionbt/helios";
+
 import { StellarTxnContext } from "./StellarTxnContext.js";
 import { utxosAsString, valueAsString } from "./diagnostics.js";
-import { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
-import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
+import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
+import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { mkTv, stringToNumberArray } from "./utils.js";
 import { UutName } from "./delegation/RolesAndDelegates.js";
 import { helios } from "../index.js";

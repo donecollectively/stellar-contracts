@@ -1,4 +1,4 @@
-import { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
+import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
 import { StellarDelegate } from "../delegation/StellarDelegate.js";
 
 /**

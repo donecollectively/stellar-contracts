@@ -175,7 +175,7 @@
         {
           "kind": "Class",
           "canonicalReference": "@donecollectively/stellar-contracts!AnyAddressAuthorityPolicy:class",
-          "docComment": "/**\n * Token-based authority\n *\n * @remarks\n *\n * Transferrable authority using a unique token and no smart-contract.\n *\n * This simple strategy relies entirely on the presence of a specific, unique token held in a wallet. Authorizing activities using this strategy requires diligent review by the person controlling the wallet, since it has no enforced validation logic.\n *\n * @public\n */\n",
+          "docComment": "/**\n * Token-based authority\n *\n * @remarks\n *\n * Transferrable authority using a unique token and no smart-contract. Network, Wallet,\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -5417,6 +5417,10 @@
                   "text": "get delegateRoles(): "
                 },
                 {
+                  "kind": "Content",
+                  "text": "import(\"./Capo.js\")."
+                },
+                {
                   "kind": "Reference",
                   "text": "RoleMap",
                   "canonicalReference": "@donecollectively/stellar-contracts!RoleMap:type"
@@ -5428,7 +5432,7 @@
                 {
                   "kind": "Reference",
                   "text": "RoleInfo",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~RoleInfo:type"
+                  "canonicalReference": "@donecollectively/stellar-contracts!~RoleInfo_2:type"
                 },
                 {
                   "kind": "Content",
@@ -5482,7 +5486,7 @@
                 {
                   "kind": "Reference",
                   "text": "RoleInfo",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~RoleInfo:type"
+                  "canonicalReference": "@donecollectively/stellar-contracts!~RoleInfo_2:type"
                 },
                 {
                   "kind": "Content",
@@ -5526,7 +5530,7 @@
               "name": "delegateRoles",
               "propertyTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 23
+                "endIndex": 24
               },
               "isStatic": false,
               "isProtected": false,
@@ -7768,7 +7772,7 @@
             {
               "kind": "Reference",
               "text": "RoleInfo",
-              "canonicalReference": "@donecollectively/stellar-contracts!~RoleInfo:type"
+              "canonicalReference": "@donecollectively/stellar-contracts!~RoleInfo_2:type"
             },
             {
               "kind": "Content",
@@ -7810,7 +7814,7 @@
             {
               "kind": "Reference",
               "text": "RoleInfo",
-              "canonicalReference": "@donecollectively/stellar-contracts!~RoleInfo:type"
+              "canonicalReference": "@donecollectively/stellar-contracts!~RoleInfo_2:type"
             },
             {
               "kind": "Content",
@@ -9243,7 +9247,7 @@
             {
               "kind": "Reference",
               "text": "RoleInfo",
-              "canonicalReference": "@donecollectively/stellar-contracts!~RoleInfo:type"
+              "canonicalReference": "@donecollectively/stellar-contracts!~RoleInfo_2:type"
             },
             {
               "kind": "Content",

@@ -10,41 +10,43 @@ import {
     AssetClass,
     ValidatorHash,
 } from "@hyperionbt/helios";
-import { BasicMinterParams, DefaultMinter } from "./minting/DefaultMinter.js";
+import { DefaultMinter } from "./minting/DefaultMinter.js";
+import type { BasicMinterParams } from "./minting/DefaultMinter.js";
 import {
     Activity,
-    StellarConstructorArgs,
     StellarContract,
-    isActivity,
-    configBase,
     partialTxn,
-    stellarSubclass,
-    ConfigFor,
     txn,
 } from "./StellarContract.js";
-import { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
+import type {
+    StellarConstructorArgs,
+    isActivity,
+    configBase,
+    stellarSubclass,
+    ConfigFor,
+} from "./StellarContract.js";
+import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 import {
-    ConfiguredDelegate,
-    SelectedDelegates,
     DelegateConfigNeeded,
-    ErrorMap,
-    RoleMap,
-    SelectedDelegate,
-    VariantStrategy,
-    PartialParamConfig,
     UutName,
-    RelativeDelegateLink,
-    capoDelegateConfig,
-    RoleInfo,
     delegateLinkSerializer,
 } from "./delegation/RolesAndDelegates.js";
+import type {
+    ConfiguredDelegate,
+    ErrorMap,
+    RoleMap,
+    VariantStrategy,
+    RelativeDelegateLink,
+    RoleInfo,
+} from "./delegation/RolesAndDelegates.js";
+
 import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
-import { SeedTxnParams } from "./SeedTxn.js";
+import type { SeedTxnParams } from "./SeedTxn.js";
 import { CapoMintHelpers } from "./CapoMintHelpers.js";
 //@ts-expect-error
 import StellarHeliosHelpers from "./StellarHeliosHelpers.hl";
-import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
+import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { errorMapAsString } from "./diagnostics.js";
 import { hasReqts } from "./Requirements.js";
 import {
@@ -52,8 +54,8 @@ import {
     mkValuesEntry,
     stringToNumberArray,
 } from "./utils.js";
-import { DefaultCharterDatumArgs, MinimalDelegateLink } from "./DefaultCapo.js";
-import { DelegationDetail } from "./delegation/RolesAndDelegates.js";
+import type { DefaultCharterDatumArgs, MinimalDelegateLink } from "./DefaultCapo.js";
+import type { DelegationDetail } from "./delegation/RolesAndDelegates.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
 
 export type {

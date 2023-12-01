@@ -14,20 +14,21 @@ import StellarHeliosHelpers from "../StellarHeliosHelpers.hl";
 
 import {
     Activity,
-    StellarContract,
+} from "../StellarContract.js";
+import type {
     configBase,
-    datum,
 } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
-import {
-    DelegationDetail,
+import type {
     capoDelegateConfig,
 } from "../delegation/RolesAndDelegates.js";
+
+
 import { StellarDelegate } from "../delegation/StellarDelegate.js";
-import { InlineDatum } from "../HeliosPromotedTypes.js";
+import type { InlineDatum } from "../HeliosPromotedTypes.js";
 import { CapoDelegateHelpers } from "../delegation/CapoDelegateHelpers.js";
 import { CapoMintHelpers } from "../CapoMintHelpers.js";
-import { HeliosModuleSrc } from "../HeliosModuleSrc.js";
+import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { UnspecializedMintDelegate } from "./UnspecializedMintDelegate.js";
 import { UnspecializedCapo } from "../UnspecializedCapo.js";
 import { CapoHelpers } from "../CapoHelpers.js";

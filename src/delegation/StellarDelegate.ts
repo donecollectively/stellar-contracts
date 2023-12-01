@@ -8,13 +8,15 @@ import {
 import {
     Activity,
     StellarContract,
-    configBase,
     datum,
+} from "../StellarContract.js";
+import type {
+    configBase,
 } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { mkTv } from "../utils.js";
-import { InlineDatum } from "../HeliosPromotedTypes.js";
-import { DelegationDetail, capoDelegateConfig } from "./RolesAndDelegates.js";
+import type { InlineDatum } from "../HeliosPromotedTypes.js";
+import type { DelegationDetail, capoDelegateConfig } from "./RolesAndDelegates.js";
 import { hasReqts } from "../Requirements.js";
 import { dumpAny } from "../diagnostics.js";
 

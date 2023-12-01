@@ -16,7 +16,8 @@ import { NetworkParams } from '@hyperionbt/helios';
 import { Program } from '@hyperionbt/helios';
 import { ReqtsMap as ReqtsMap_2 } from '../Requirements.js';
 import { ReqtsMap as ReqtsMap_3 } from './Requirements.js';
-import { RoleInfo as RoleInfo_2 } from './delegation/RolesAndDelegates.js';
+import { RoleInfo } from './delegation/RolesAndDelegates.js';
+import { RoleMap as RoleMap_2 } from './Capo.js';
 import { StakeAddress } from '@hyperionbt/helios';
 import { StakingValidatorHash } from '@hyperionbt/helios';
 import { textToBytes } from '@hyperionbt/helios';
@@ -246,24 +247,24 @@ export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT e
     // (undocumented)
     contractSource(): any;
     // (undocumented)
-    get delegateRoles(): RoleMap<{
-        readonly govAuthority: RoleInfo_2<StellarContract<any>, {
-        readonly address: {
-        readonly delegateClass: typeof AnyAddressAuthorityPolicy;
-        readonly validateConfig: (args: any) => strategyValidation;
-        };
-        readonly multisig: {
-        readonly delegateClass: typeof MultisigAuthorityPolicy;
-        readonly validateConfig: (args: any) => strategyValidation;
-        };
-        }, "capoGov", "address" | "multisig">;
-        readonly mintDelegate: RoleInfo_2<StellarContract<any>, {
-        readonly default: {
-        readonly delegateClass: typeof BasicMintDelegate;
-        readonly partialConfig: {};
-        readonly validateConfig: (args: any) => strategyValidation;
-        };
-        }, "mintDgt", "default">;
+    get delegateRoles(): RoleMap_2<    {
+    readonly govAuthority: RoleInfo<StellarContract<any>, {
+    readonly address: {
+    readonly delegateClass: typeof AnyAddressAuthorityPolicy;
+    readonly validateConfig: (args: any) => strategyValidation;
+    };
+    readonly multisig: {
+    readonly delegateClass: typeof MultisigAuthorityPolicy;
+    readonly validateConfig: (args: any) => strategyValidation;
+    };
+    }, "capoGov", "address" | "multisig">;
+    readonly mintDelegate: RoleInfo<StellarContract<any>, {
+    readonly default: {
+    readonly delegateClass: typeof BasicMintDelegate;
+    readonly partialConfig: {};
+    readonly validateConfig: (args: any) => strategyValidation;
+    };
+    }, "mintDgt", "default">;
     }>;
     // (undocumented)
     findCharterDatum(): Promise<DefaultCharterDatumArgs>;
@@ -341,10 +342,10 @@ export class DefaultMinter extends StellarContract<BasicMinterParams> implements
     txnWillMintUuts<const purposes extends string, existingTcx extends StellarTxnContext<any>, const RM extends Record<ROLES, purposes>, const ROLES extends string & keyof RM = string & keyof RM>(tcx: existingTcx, uutPurposes: purposes[], seedUtxo: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
 }
 
-// Warning: (ae-forgotten-export) The symbol "RoleInfo" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "RoleInfo_2" needs to be exported by the entry point index.d.ts
 //
 // @public
-export function defineRole<const UUTP extends string, SC extends StellarContract<any>, const VMv extends RoleInfo<SC, any, UUTP>["variants"]>(uutBaseName: UUTP, baseClass: stellarSubclass<SC> & any, variants: VMv): RoleInfo<SC, VMv, UUTP>;
+export function defineRole<const UUTP extends string, SC extends StellarContract<any>, const VMv extends RoleInfo_2<SC, any, UUTP>["variants"]>(uutBaseName: UUTP, baseClass: stellarSubclass<SC> & any, variants: VMv): RoleInfo_2<SC, VMv, UUTP>;
 
 // @public
 export function delegateRoles<const RM extends RoleMap<any>>(roleMap: RM): RoleMap<RM>;
@@ -469,7 +470,7 @@ export type RequirementEntry<reqts extends string> = {
 };
 
 // @public
-export type RoleMap<KR extends Record<string, RoleInfo<any, any, any, any>>> = {
+export type RoleMap<KR extends Record<string, RoleInfo_2<any, any, any, any>>> = {
     [roleName in keyof KR]: KR[roleName];
 };
 
@@ -793,13 +794,13 @@ export { WalletHelper }
 
 // Warnings were encountered during analysis:
 //
-// src/DefaultCapo.ts:290:17 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
-// src/DefaultCapo.ts:294:3 - (ae-forgotten-export) The symbol "MultisigAuthorityPolicy" needs to be exported by the entry point index.d.ts
-// src/DefaultCapo.ts:295:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
-// src/DefaultCapo.ts:314:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
-// src/StellarContract.ts:309:5 - (ae-forgotten-export) The symbol "SetupDetails" needs to be exported by the entry point index.d.ts
-// src/delegation/RolesAndDelegates.ts:295:5 - (ae-forgotten-export) The symbol "PartialParamConfig" needs to be exported by the entry point index.d.ts
-// src/delegation/RolesAndDelegates.ts:297:5 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
+// src/DefaultCapo.ts:293:17 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
+// src/DefaultCapo.ts:297:3 - (ae-forgotten-export) The symbol "MultisigAuthorityPolicy" needs to be exported by the entry point index.d.ts
+// src/DefaultCapo.ts:298:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
+// src/DefaultCapo.ts:317:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
+// src/StellarContract.ts:312:5 - (ae-forgotten-export) The symbol "SetupDetails" needs to be exported by the entry point index.d.ts
+// src/delegation/RolesAndDelegates.ts:297:5 - (ae-forgotten-export) The symbol "PartialParamConfig" needs to be exported by the entry point index.d.ts
+// src/delegation/RolesAndDelegates.ts:299:5 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
 
 // (No @packageDocumentation comment for this package)
 
