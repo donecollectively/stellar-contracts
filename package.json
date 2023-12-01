@@ -7,18 +7,18 @@
     "types": "./dist/stellar-contracts.d.ts",
     
     "exports": {
+        "default": {
+            "import": "./dist/stellar-contracts.mjs",
+            "XXXrequire": "./dist/stellar-contracts.cjs",
+            "types": "./dist/stellar-contracts.d.ts",
+            "default": "./dist/stellar-contracts.mjs"
+        },
         "./testing": {
             "import": "./dist/testing.mjs",
             "XXXrequire": "./dist/testing.cjs",
             "types": "./dist/testing.d.ts",
             "default": "./dist/testing.mjs"
         },
-        "./xxxxdefault": {
-            "import": "./dist/stellar-contracts.mjs",
-            "XXXrequire": "./dist/stellar-contracts.cjs",
-            "types": "./dist/stellar-contracts.d.ts",
-            "default": "./dist/stellar-contracts.mjs"
-        }
     },
     "type": "module",
     "scripts": {
