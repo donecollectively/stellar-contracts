@@ -8,7 +8,12 @@ import { StellarTxnContext } from "../StellarTxnContext.js";
 import { ADA, canHaveRandomSeed, stellarTestHelperSubclass } from "./types.js";
 import { CapoTestHelper } from "./CapoTestHelper.js";
 import { stellarSubclass } from "../StellarContract.js";
-import { Capo, CapoBaseConfig, hasBootstrappedConfig, hasUutContext } from "../Capo.js";
+import {
+    Capo,
+    CapoBaseConfig,
+    hasBootstrappedConfig,
+    hasUutContext,
+} from "../Capo.js";
 import { DefaultMinter } from "../minting/DefaultMinter.js";
 import { expect } from "vitest";
 import { StellarTestHelper } from "./StellarTestHelper.js";
@@ -46,6 +51,22 @@ export class DefaultCapoTestHelper<
     //@ts-expect-error because of a mismatch between the Capo's abstract mkTxnMintCharterToken's defined constraints
     //    ... vs the only concrete impl in DefaultCapo, with types that are actually nicely matchy.
 > extends CapoTestHelper<DC, CDT, CT> {
+    /**
+     * Creates a prepared test helper for a given Capo class, with boilerplate built-in
+     *
+     * @remarks
+     *
+     * You may wish to provide an overridden setupActors() method, to arrange actor
+     * names that fit your project's user-roles / profiles.
+     *
+     * You may also wish to add methods that satisfy some of your application's key
+     * use-cases in simple predefined ways, so that your automated tests can re-use
+     * the logic and syntax instead of repeating them in multiple test-cases.
+     *
+     * @param s - your Capo class that extends DefaultCapo
+     * @typeParam DC - no need to specify it; it's inferred from your parameter
+     * @public
+     **/
     static forCapoClass<DC extends DefaultCapo<DefaultMinter, any, any>>(
         s: stellarSubclass<DC>
     ): stellarTestHelperSubclass<DC> {
@@ -77,14 +98,14 @@ export class DefaultCapoTestHelper<
         const treasury = this.strella!;
         const tcx: StellarTxnContext = new StellarTxnContext(this.currentActor);
         const tcx2 = await treasury.txnAddGovAuthority(tcx);
-        return treasury.txnMustUseCharterUtxo(tcx2, treasury.usingAuthority())
+        return treasury.txnMustUseCharterUtxo(tcx2, treasury.usingAuthority());
 
         // return treasury.txnAddCharterWithAuthority(tcx);
     }
 
     mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<CDT>> {
         const addr = this.currentActor.address;
-        console.log("test helper charter -> actor addr", addr.toBech32())
+        console.log("test helper charter -> actor addr", addr.toBech32());
         return {
             govAuthorityLink: {
                 strategyName: "address",
@@ -101,10 +122,10 @@ export class DefaultCapoTestHelper<
     async mintCharterToken(
         args?: MinimalDefaultCharterDatumArgs<CDT>
     ): Promise<
-        & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt">
-        & StellarTxnContext<any> 
-        & hasBootstrappedConfig<CapoBaseConfig>
-    >{
+        hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> &
+            StellarTxnContext<any> &
+            hasBootstrappedConfig<CapoBaseConfig>
+    > {
         const { delay } = this;
         const { tina, tom, tracy } = this.actors;
 
@@ -121,18 +142,18 @@ export class DefaultCapoTestHelper<
             this.mkDefaultCharterArgs()) as MinimalDefaultCharterDatumArgs<CDT>;
         // debugger
 
-        const tcx = await script.mkTxnMintCharterToken(
-            goodArgs
-        );
+        const tcx = await script.mkTxnMintCharterToken(goodArgs);
         this.state.config = tcx.state.bootstrappedConfig;
 
         expect(script.network).toBe(this.network);
 
         await script.submit(tcx);
-        console.log(`----- charter token minted at slot ${this.network.currentSlot}`);
+        console.log(
+            `----- charter token minted at slot ${this.network.currentSlot}`
+        );
 
         this.network.tick(1n);
-        this.state.mintedCharterToken = tcx
+        this.state.mintedCharterToken = tcx;
         return tcx;
     }
 

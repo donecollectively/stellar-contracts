@@ -6,6 +6,7 @@ import {
     NetworkParams,
     Tx,
     TxId,
+    Wallet,
     TxOutput,
     Value,
     SimpleWallet,
@@ -32,7 +33,7 @@ import {
 /**
  * Base class for test-helpers on generic Stellar contracts
  * @remarks
- * 
+ *
  * NOTE: DefaultCapoTestHelper is likely to be a better fit for typical testing needs and typical contract-development scenarios.
  * Use this class for specific unit-testing needs not sufficiently served by integration-testing on a Capo.
  * @public
@@ -274,7 +275,41 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         return bytes;
     }
 
-    addActor(roleName: string, walletBalance: bigint) {
+    /**
+     * creates a new Actor in the transaction context with initial funds, returning a Wallet object
+     * @remarks
+     *
+     * Given an actor name ("marcie") or role name ("marketer"), and a number
+     * of indicated lovelace, creates and returns a wallet having the indicated starting balance.
+     *
+     * By default, three additional, separate 5-ADA utxos are created, to ensure sufficient Collateral and
+     * small-change are existing, making typical transaction scenarios work easily.  If you want to include
+     * other utxo's instead you can supply their lovelace sizes.
+     *
+     * To suppress creation of additional utxos, use `0n` for arg3.
+     *
+     * You may wish to import {@link ADA} = 1_000_000n from the testing/ module, and
+     * multiply smaller integers by that constant.
+     *
+     * @param roleName - an actor name or role-name for this wallet
+     * @param walletBalance - initial wallet balance
+     * @param moreUtxos - additional utxos to include
+     *
+     * @example
+     *     this.addActor("cheapo", 14n * ADA, 0n);  //  14 ADA and no additional utxos
+     *     this.addActor("flexible", 14n * ADA);  //  14 ADA + default 15 ADA in 3 additional utxos
+     *     this.addActor("moneyBags", 42_000_000n * ADA, 5n, 4n);  //  many ADA and two collaterals
+     *
+     *     //  3O ADA in 6 separate utxos:
+     *     this.addActor("smallChange", 5n * ADA, 5n * ADA, 5n * ADA, 5n * ADA, 5n * ADA, 5n * ADA);
+     *
+     * @public
+     **/
+    addActor(
+        roleName: string,
+        walletBalance: bigint,
+        ...moreUtxos: bigint[]
+    ): Wallet {
         if (this.actors[roleName])
             throw new Error(`duplicate role name '${roleName}'`);
         //! it instantiates a wallet with the indicated balance pre-set
@@ -292,9 +327,12 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         //  ... so that the full balance is spendable and the actor can immediately
         //  ... engage in smart-contract interactions.
         this.network.tick(BigInt(2));
-        this.network.createUtxo(a, 5n * ADA);
-        this.network.createUtxo(a, 5n * ADA);
-        this.network.createUtxo(a, 5n * ADA);
+        if (0 == moreUtxos.length) moreUtxos = [5n, 5n, 5n];
+        for (const moreLovelace of moreUtxos) {
+            if (moreLovelace > 0n) {
+                this.network.createUtxo(a, moreLovelace);
+            }
+        }
         this.network.tick(BigInt(1));
 
         this.actors[roleName] = a;
