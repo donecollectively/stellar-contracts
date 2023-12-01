@@ -1,6 +1,6 @@
 {
     "name": "@donecollectively/stellar-contracts",
-    "version": "0.8.5alpha2",
+    "version": "0.8.5alpha3",
     "description": "Smart contract fusion for Cardano",
     "license": "SEE LICENSE IN LICENSE.TXT",
     "main": "./dist/stellar-contracts.mjs",
@@ -8,15 +8,15 @@
     
     "exports": {
         ".": {
+            "types": "./dist/stellar-contracts.d.ts",
             "import": "./dist/stellar-contracts.mjs",
             "XXXrequire": "./dist/stellar-contracts.cjs",
-            "types": "./dist/stellar-contracts.d.ts",
             "default": "./dist/stellar-contracts.mjs"
         },
         "./testing": {
+            "types": "./dist/testing.d.ts",
             "import": "./dist/testing.mjs",
             "XXXrequire": "./dist/testing.cjs",
-            "types": "./dist/testing.d.ts",
             "default": "./dist/testing.mjs"
         }
     },
