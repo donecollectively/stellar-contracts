@@ -5,14 +5,15 @@
     "license": "SEE LICENSE IN LICENSE.TXT",
     "main": "./dist/stellar-contracts.mjs",
     "types": "./dist/stellar-contracts.d.ts",
-    "XXexports": {
-        "test": {
+    
+    "exports": {
+        "./testing": {
             "import": "./dist/testing.mjs",
             "XXXrequire": "./dist/testing.cjs",
             "types": "./dist/testing.d.ts",
             "default": "./dist/testing.mjs"
         },
-        "default": {
+        "./xxxxdefault": {
             "import": "./dist/stellar-contracts.mjs",
             "XXXrequire": "./dist/stellar-contracts.cjs",
             "types": "./dist/stellar-contracts.d.ts",
