@@ -19,7 +19,7 @@
         "noEmit": false,
         "experimentalDecorators": true,
         // "emitDecoratorMetadata": true,
-        "types": ["node"],
+        "types": ["node", "vitest/globals"],
         "allowSyntheticDefaultImports": true,
         "allowJs": true,
         "noImplicitAny": false,

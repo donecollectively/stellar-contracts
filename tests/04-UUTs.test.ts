@@ -17,14 +17,15 @@ import { DefaultMinter } from "../src/minting/DefaultMinter";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { Capo, hasAllUuts } from "../src/Capo";
+import type { UutName } from "../src/delegation/UutName";
 import {
     DelegateConfigNeeded,
-    UutName,
     RoleInfo,
     VariantStrategy,
     strategyValidation,
     defineRole,
 } from "../src/delegation/RolesAndDelegates";
+
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import * as utils from "../src/utils";
 // import { RoleDefs } from "../src/RolesAndDelegates";

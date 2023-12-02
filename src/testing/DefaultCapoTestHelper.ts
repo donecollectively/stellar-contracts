@@ -1,8 +1,13 @@
 import type {
     DefaultCharterDatumArgs,
-    DefaultCapo,
     MinimalDefaultCharterDatumArgs,
 } from "../DefaultCapo.js";
+
+import {
+    DefaultCapo,
+} from "../DefaultCapo.js";
+
+
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { ADA} from "./types.js";
 import type { DefaultCapoTestHelperClass, canHaveRandomSeed, stellarTestHelperSubclass } from "./types.js";

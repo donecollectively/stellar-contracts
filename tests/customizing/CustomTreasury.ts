@@ -12,15 +12,15 @@ import { DefaultCapo } from "../../src/DefaultCapo.js";
 //@ts-expect-error importing a module provided by Rollup
 import contract from "./CustomTreasury.hl";
 import { RoleMap, defineRole } from "../../src/delegation/RolesAndDelegates.js";
-import { BasicMintDelegate } from "../../src/delegation/BasicMintDelegate.js";
-import { DefaultMinter } from "../../src/DefaultMinter.js";
+import { BasicMintDelegate } from "../../src/minting/BasicMintDelegate.js";
+import { BasicMinterParams, DefaultMinter } from "../../src/minting/DefaultMinter.js";
 
 export class CustomTreasury extends DefaultCapo<CustomMinter> {
     contractSource() {
         return contract;
     }
 
-    get minterClass(): stellarSubclass<CustomMinter, SeedTxnParams> {
+    get minterClass(): stellarSubclass<CustomMinter, BasicMinterParams> {
         return CustomMinter;
     }
     declare minter: CustomMinter;
