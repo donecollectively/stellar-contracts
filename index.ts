@@ -1,6 +1,8 @@
 export { mkHeliosModule } from "./src/HeliosModuleSrc.js";
 export type { HeliosModuleSrc } from "./src/HeliosModuleSrc.js";
 export { heliosRollupLoader } from "./src/heliosRollupLoader.js";
+export * from "./src/testing/index.js";
+
 export {
     mkValuesEntry,
     mkUutValuesEntries,

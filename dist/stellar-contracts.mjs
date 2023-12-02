@@ -1,6 +1,8 @@
 import path from 'path';
 import { createFilter } from 'rollup-pluginutils';
 import 'lib/HeliosModuleSrc.js';
+import 'fs';
+import { expect } from 'vitest';
 
 function mkHeliosModule(src, filename) {
   const module = new String(src);
@@ -58389,6 +58391,12 @@ class StellarTxnContext {
   }
 }
 
+const TODO = Symbol("needs to be implemented");
+function hasReqts(reqtsMap) {
+  return reqtsMap;
+}
+hasReqts.TODO = TODO;
+
 var __defProp$7 = Object.defineProperty;
 var __getOwnPropDesc$7 = Object.getOwnPropertyDescriptor;
 var __decorateClass$7 = (decorators, target, key, kind) => {
@@ -58398,6 +58406,437 @@ var __decorateClass$7 = (decorators, target, key, kind) => {
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
   if (kind && result)
     __defProp$7(target, key, result);
+  return result;
+};
+class StellarDelegate extends StellarContract {
+  static currentRev = 1n;
+  static get defaultParams() {
+    return { rev: this.currentRev };
+  }
+  /**
+   * Finds and adds the delegate's authority token to the transaction
+   * @remarks
+   *
+   * calls the delegate-specific DelegateAddsAuthorityToken() method,
+   * with the uut found by DelegateMustFindAuthorityToken().
+   *
+   * returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
+   * @param tcx - transaction context
+   * @public
+   **/
+  async txnGrantAuthority(tcx) {
+    const label = `${this.constructor.name} authority`;
+    const uutxo = await this.DelegateMustFindAuthorityToken(
+      tcx,
+      label
+    );
+    const useMinTv = true;
+    const authorityVal = this.tvAuthorityToken(useMinTv);
+    console.log(`   ------- delegate ${label} grants authority with ${dumpAny(authorityVal)}`);
+    try {
+      const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo);
+      return this.txnReceiveAuthorityToken(
+        tcx2,
+        authorityVal,
+        uutxo
+      );
+    } catch (error) {
+      if (error.message.match(/input already added/)) {
+        throw new Error(`Delegate ${label}: already added: ${dumpAny(authorityVal)}`);
+      }
+      throw error;
+    }
+  }
+  /**
+   * Finds the authority token and adds it to the transaction, tagged for retirement
+   * @public
+   * @remarks
+   * Doesn't return the token back to the contract.
+   **/
+  async txnRetireAuthorityToken(tcx) {
+    const uutxo = await this.DelegateMustFindAuthorityToken(
+      tcx,
+      `${this.constructor.name} authority`
+    );
+    return this.DelegateRetiresAuthorityToken(tcx, uutxo);
+  }
+  activityAuthorizing() {
+    const thisActivity = this.mustGetActivity("Authorizing");
+    const t = new thisActivity();
+    return { redeemer: t._toUplcData() };
+  }
+  activityRetiring() {
+    const thisActivity = this.mustGetActivity("Retiring");
+    const t = new thisActivity();
+    return { redeemer: t._toUplcData() };
+  }
+  mkDatumIsDelegation(dd, ...args) {
+    const [customConfig = ""] = args;
+    const { IsDelegation } = this.onChainDatumType;
+    const { DelegationDetail } = this.onChainTypes;
+    const t = new IsDelegation(new DelegationDetail(dd), customConfig);
+    return Datum.inline(t._toUplcData());
+  }
+  /**
+   * returns the ValidatorHash of the delegate script, if relevant
+   * @public
+   * @remarks
+   *
+   * A delegate that doesn't use an on-chain validator should override this method and return undefined.
+   **/
+  get delegateValidatorHash() {
+    if (!this.compiledScript.validatorHash) {
+      throw new Error(
+        `${this.constructor.name}: address doesn't use a validator hash!
+  ... if that's by design, you may wish to override 'get delegateValidatorHash()' -> undefined`
+      );
+    }
+    return this.compiledScript.validatorHash;
+  }
+  mkAuthorityTokenPredicate() {
+    return this.mkTokenPredicate(this.tvAuthorityToken());
+  }
+  tvAuthorityToken(useMinTv = false) {
+    if (!this.configIn)
+      throw new Error(`must be instantiated with a configIn`);
+    const {
+      mph,
+      tn
+      // reqdAddress,  // removed
+    } = this.configIn;
+    if (useMinTv)
+      return this.mkMinTv(mph, tn);
+    return mkTv(mph, tn);
+  }
+  /**
+   * Finds the delegate authority token, normally in the delegate's contract address
+   * @public
+   * @remarks
+   *
+   * The default implementation finds the UTxO having the authority token
+   * in the delegate's contract address.
+   *
+   * It's possible to have a delegate that doesn't have an on-chain contract script.
+   * ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a
+   * delegate-specific heuristic to locate the needed token.  It might consult the
+   * addrHint in its `configIn` or another technique for resolution.
+   *
+   * @param tcx - the transaction context
+   * @reqt It MUST resolve and return the UTxO (a TxInput type ready for spending)
+   *  ... or throw an informative error
+   **/
+  async DelegateMustFindAuthorityToken(tcx, label) {
+    return this.mustFindMyUtxo(
+      `${label}: ${bytesToText(this.configIn.tn)}`,
+      this.mkTokenPredicate(this.tvAuthorityToken()),
+      "this delegate strategy might need to override txnMustFindAuthorityToken()"
+    );
+  }
+  /**
+   * Adds the delegate's authority token to a transaction
+   * @public
+   * @remarks
+   * Given a delegate already configured by a Capo, this method implements
+   * transaction-building logic needed to include the UUT into the `tcx`.
+   * the `utxo` is discovered by {@link StellarDelegate.DelegateMustFindAuthorityToken | DelegateMustFindAuthorityToken() }
+   * 
+   * The default implementation adds the `uutxo` to the transaction 
+   * using {@link StellarDelegate.activityAuthorizing | activityAuthorizing() }.
+   * 
+   * The off-chain code shouldn't need to check the details; it can simply
+   * arrange the details properly and spend the delegate's authority token, 
+   * using this method.
+   * 
+   * ### Reliance on this delegate
+   * 
+  * Other contract scripts can rely on the delegate script to have validated its 
+   * on-chain policy and enforced its own "return to the delegate script" logic.
+   * 
+   * ### Enforcing on-chain policy
+   * 
+   * When spending the authority token in this way, the delegate's authority is typically 
+   * narrowly scoped, and it's expected that the delegate's on-chain script validates that 
+   * those parts of the transaction detail should be authorized, in accordance with the 
+   * delegate's core purpose/responsbility - i.e. that the txn does all of what the delegate 
+   * expects, and none of what it shouldn't do in that department.
+   * 
+   * The on-chain code SHOULD typically enforce:
+   *  * that the token is spent with Authorizing activity (redeemer).  NOTE:
+   *     the **CapoDelegateHelpers** helios module provides the `requiresDelegateAuthorizing()` 
+   *     function for just this purpose
+  
+   *  * that the authority token is returned to the contract with its datum unchanged 
+   *  * that any other tokens it may also hold in the same UTxO do not become 
+   *     inaccessible as a result of the transactions - perhaps by requiring them to be 
+   *     returned together with the authority token.
+   * 
+   * It MAY enforce additional requirements as well.
+   *
+   * @example
+   * A minting delegate should check that all the expected tokens are 
+   * minted, AND that no other tokens are minted.  
+   * 
+   * @example
+   * A role-based authentication/signature-checking delegate can 
+   * require an appropriate signature on the txn.
+   * 
+  * @param tcx - the transaction context
+  * @param utxo - the utxo having the authority UUT for this delegate
+  * @reqt Adds the uutxo to the transaction inputs with appropriate redeemer.
+  * @reqt Does not output the value; can EXPECT txnReceiveAuthorityToken to be called for that purpose.
+   **/
+  async DelegateAddsAuthorityToken(tcx, uutxo) {
+    return tcx.addInput(
+      uutxo,
+      this.activityAuthorizing()
+    ).attachScript(this.compiledScript);
+  }
+  /**
+   * Adds any important transaction elemements supporting the authority token being retired, closing the delegate contracts' utxo.
+   * @remarks
+   *
+   * EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
+   *
+   * EXPECTS the `burn` instruction to be separately added to the transaction.
+   *
+   * The default implementation uses the conventional `Retiring` activity
+   * to spend the token.
+   *
+   * @reqt
+   * It MUST add the indicated utxo to the transaction as an input
+   *
+   * @reqt
+   * When backed by a contract:
+   *   * it should use an activity/redeemer allowing the token to be spent
+   *      **and NOT returned**.
+   *   * the contract script SHOULD ensure any other UTXOs it may also hold, related to this delegation,
+   *      do not become inaccessible as a result.
+   *
+   * It MAY enforce additional requirements and/or block the action.
+   *
+   *
+   * @param tcx - transaction context
+   * @param fromFoundUtxo - the utxo having the authority otken
+   * @public
+   **/
+  async DelegateRetiresAuthorityToken(tcx, fromFoundUtxo) {
+    const utxo = fromFoundUtxo;
+    return tcx.addInput(
+      new TxInput(utxo.outputId, utxo.origOutput),
+      this.activityRetiring()
+    );
+  }
+  /**
+   * Captures requirements as data
+   * @remarks
+   *
+   * see reqts structure
+   * @public
+   **/
+  delegateRequirements() {
+    return hasReqts({
+      "provides an interface for providing arms-length proof of authority to any other contract": {
+        purpose: "to decouple authority administration from its effects",
+        details: [
+          "Any contract can create a UUT for use with an authority policy.",
+          "By depositing that UUT to the authority contract, it can delegate completely",
+          "  ... all the implementation details for administration of the authority itself.",
+          "It can then focus on implementing the effects of authority, requiring only ",
+          "  ... that the correct UUT has been spent, to indicate that the authority is granted.",
+          "The authority contract can have its own internal details ",
+          "A subclass of this authority policy may provide additional administrative dynamics."
+        ],
+        mech: [],
+        requires: [
+          "implementations SHOULD positively govern spend of the UUT",
+          "implementations MUST provide an essential interface for transaction-building"
+        ]
+      },
+      "implementations SHOULD positively govern spend of the UUT": {
+        purpose: "for sufficient assurance of desirable safeguards",
+        details: [
+          "A subclass of the GenericAuthority should take care of guarding the UUT's spend",
+          "  ... in whatever way is appropriate for its use-case"
+        ],
+        mech: [],
+        requires: []
+      },
+      "implementations MUST provide an essential interface for transaction-building": {
+        purpose: "enabling a strategy-agnostic interface for making transactions using any supported strategy-variant",
+        details: [
+          "Subclasses MUST implement the interface methods",
+          "  ... in whatever way is considered appropriate for its use-case.",
+          "An interface method whose requirement is marked with 'MAY/SHOULD' behavior, ",
+          "  ... MUST still implement the method satisfying the interface, ",
+          "  ... but MAY throw an UnsupportedAction error, to indicate that",
+          "  ... the strategy variant has no meaningful action to perform ",
+          "  ... that would serve the method's purpose"
+        ],
+        mech: [],
+        requires: [
+          "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)",
+          "requires a mustFindAuthorityToken(tcx)",
+          "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)",
+          "requires txnRetireCred(tcx, fromFoundUtxo)"
+        ]
+      },
+      "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)": {
+        purpose: "to deposit the authority token (back) to the delegated destination",
+        details: [
+          "impls MUST implement txnReceiveAuthorityToken",
+          "Each implemented subclass can use it's own style to match its strategy & mechanism",
+          "This is used both for the original deposit and for returning the token during a grant-of-authority"
+        ],
+        mech: [
+          "impls MUST create a UTxO depositing the indicated token-name into the delegated destination.",
+          "impls should normally preserve the datum from an already-present sourceUtxo"
+        ],
+        requires: []
+      },
+      "requires a mustFindAuthorityToken(tcx)": {
+        purpose: "to locate the given authority token",
+        details: [
+          "allows different strategies for finding the UTxO having the authority token",
+          "impls MAY use details seen in the txn context to find the indicated token"
+        ],
+        mech: [
+          "impls MUST resolve the indicated token to a specific UTxO or throw an informative error"
+        ]
+      },
+      "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)": {
+        purpose: "to use the delegated authority",
+        details: [
+          "Adds the indicated utxo to the transaction with appropriate activity/redeemer",
+          "Contracts needing the authority within a transaction can rely on the presence of this spent authority",
+          "Impls can EXPECT the token will be returned via txnReceiveAuthorityToken",
+          "a contract-backed impl SHOULD enforce the expected return in its on-chain code"
+        ],
+        mech: [
+          "the base AuthorityPolicy MUST call txnReceiveAuthorityToken() with the token's sourceUtxo"
+        ]
+      },
+      "requires txnRetireCred(tcx, fromFoundUtxo)": {
+        purpose: "to allow burning the authority token",
+        details: [
+          "Adds the indicated utxo to the transaction with appropriate activity/redeemer",
+          "  ... allowing the token to be burned by the minting policy.",
+          "Impls SHOULD ensure any other UTXOs it may hold do not become inaccessible as a result"
+        ],
+        mech: [
+          "impls MUST add the token to the txn if it can be retired",
+          "if the token cannot be retired, by appropriate policy, it SHOULD throw an informative error"
+        ]
+      }
+    });
+  }
+}
+__decorateClass$7([
+  Activity.redeemer
+], StellarDelegate.prototype, "activityAuthorizing", 1);
+__decorateClass$7([
+  Activity.redeemer
+], StellarDelegate.prototype, "activityRetiring", 1);
+__decorateClass$7([
+  datum
+], StellarDelegate.prototype, "mkDatumIsDelegation", 1);
+
+const _uutName = Symbol("uutName");
+const maxUutName = 32;
+class UutName {
+  [_uutName];
+  purpose;
+  constructor(purpose, fullUutName) {
+    this.purpose = purpose;
+    if (fullUutName.length > maxUutName) {
+      throw new Error(
+        `uut name '${fullUutName}' exceeds max length of ${maxUutName}`
+      );
+    }
+    this[_uutName] = fullUutName;
+  }
+  /**
+   * the full uniquified name of this UUT
+   * @remarks
+   *
+   * format: `purpose-‹...uniqifier...›`
+   * @public
+   **/
+  get name() {
+    return this[_uutName];
+  }
+  toString() {
+    return this[_uutName];
+  }
+}
+class DelegateConfigNeeded extends Error {
+  errors;
+  availableStrategies;
+  constructor(message, options) {
+    super(message);
+    const { errors, availableStrategies } = options;
+    if (errors)
+      this.errors = errors;
+    if (availableStrategies)
+      this.availableStrategies = availableStrategies;
+  }
+}
+function delegateRoles(roleMap) {
+  return roleMap;
+}
+function delegateLinkSerializer(key, value) {
+  if (typeof value === "bigint") {
+    return value.toString();
+  } else if ("bytes" == key && Array.isArray(value)) {
+    return bytesToHex(value);
+  } else if (value instanceof Address) {
+    return value.toBech32();
+  } else if ("tn" == key && Array.isArray(value)) {
+    return bytesToText(value);
+  }
+  return value;
+}
+function defineRole(uutBaseName, baseClass, variants) {
+  return {
+    uutPurpose: uutBaseName,
+    baseClass,
+    variants
+  };
+}
+//!!! todo: develop this further to allow easily enhancing a parent role-definition
+//! a map of delegate selections needed for a transaction
+//! a single delegate selection, where a person chooses
+
+function mkUutValuesEntries(uuts) {
+  const uutNs = Array.isArray(uuts) ? uuts : Object.values(uuts);
+  const uniqs = [];
+  for (const un of uutNs) {
+    if (!uniqs.includes(un))
+      uniqs.push(un);
+  }
+  return uniqs.map((uut) => mkValuesEntry(uut.name, BigInt(1)));
+}
+const stringToNumberArray = textToBytes;
+function mkValuesEntry(tokenName, count) {
+  const tnBytes = Array.isArray(tokenName) ? tokenName : stringToNumberArray(tokenName);
+  return [tnBytes, count];
+}
+function mkTv(mph, tokenName, count = 1n) {
+  const v = new Value(
+    void 0,
+    new Assets([[mph, [mkValuesEntry(tokenName, count)]]])
+  );
+  return v;
+}
+
+var __defProp$6 = Object.defineProperty;
+var __getOwnPropDesc$6 = Object.getOwnPropertyDescriptor;
+var __decorateClass$6 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$6(target, key) : target;
+  for (var i = decorators.length - 1, decorator; i >= 0; i--)
+    if (decorator = decorators[i])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result)
+    __defProp$6(target, key, result);
   return result;
 };
 let configuredNetwork = void 0;
@@ -58475,6 +58914,49 @@ function partialTxn(proto, thingName, descriptor) {
     );
   }
   return descriptor;
+}
+async function findInputsInWallets(v, searchIn, network) {
+  const { wallets, addresses } = searchIn;
+  const lovelaceOnly = v.assets.isZero();
+  console.warn("finding inputs", {
+    lovelaceOnly
+  });
+  for (const w of wallets) {
+    const [a] = await w.usedAddresses;
+    console.log("finding funds in wallet", a.toBech32().substring(0, 18));
+    const utxos = await w.utxos;
+    for (const u of utxos) {
+      if (lovelaceOnly) {
+        if (u.value.assets.isZero() && u.value.lovelace >= v.lovelace) {
+          return u;
+        }
+        console.log("  - too small; skipping ", u.value.dump());
+      } else {
+        if (u.value.ge(v)) {
+          return u;
+        }
+      }
+    }
+  }
+  if (lovelaceOnly) {
+    throw new Error(
+      `no ADA is present except those on token bundles.  TODO: findFreeLovelaceWithTokens`
+    );
+  }
+  //!!! todo: allow getting free ada from a contract address?
+  if (addresses) {
+    for (const a of addresses) {
+      const utxos = await network.getUtxos(a);
+      for (const u of utxos) {
+        if (u.value.ge(v)) {
+          return u;
+        }
+      }
+    }
+  }
+  throw new Error(
+    `None of these wallets${addresses && " or addresses" || ""} have the needed tokens`
+  );
 }
 //!!! todo: type configuredStellarClass = class -> networkStuff -> withParams = stellar instance.
 class StellarContract {
@@ -59339,446 +59821,9 @@ This likely indicates a problem in Helios' error reporting -
     return this.hasUtxo(semanticName, predicate, { address: this.address });
   }
 }
-__decorateClass$7([
+__decorateClass$6([
   partialTxn
 ], StellarContract.prototype, "txnKeepValue", 1);
-
-const TODO = Symbol("needs to be implemented");
-function hasReqts(reqtsMap) {
-  return reqtsMap;
-}
-hasReqts.TODO = TODO;
-
-var __defProp$6 = Object.defineProperty;
-var __getOwnPropDesc$6 = Object.getOwnPropertyDescriptor;
-var __decorateClass$6 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$6(target, key) : target;
-  for (var i = decorators.length - 1, decorator; i >= 0; i--)
-    if (decorator = decorators[i])
-      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result)
-    __defProp$6(target, key, result);
-  return result;
-};
-class StellarDelegate extends StellarContract {
-  static currentRev = 1n;
-  static get defaultParams() {
-    return { rev: this.currentRev };
-  }
-  /**
-   * Finds and adds the delegate's authority token to the transaction
-   * @remarks
-   *
-   * calls the delegate-specific DelegateAddsAuthorityToken() method,
-   * with the uut found by DelegateMustFindAuthorityToken().
-   *
-   * returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
-   * @param tcx - transaction context
-   * @public
-   **/
-  async txnGrantAuthority(tcx) {
-    const label = `${this.constructor.name} authority`;
-    const uutxo = await this.DelegateMustFindAuthorityToken(
-      tcx,
-      label
-    );
-    const useMinTv = true;
-    const authorityVal = this.tvAuthorityToken(useMinTv);
-    console.log(`   ------- delegate ${label} grants authority with ${dumpAny(authorityVal)}`);
-    try {
-      const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo);
-      return this.txnReceiveAuthorityToken(
-        tcx2,
-        authorityVal,
-        uutxo
-      );
-    } catch (error) {
-      if (error.message.match(/input already added/)) {
-        throw new Error(`Delegate ${label}: already added: ${dumpAny(authorityVal)}`);
-      }
-      throw error;
-    }
-  }
-  /**
-   * Finds the authority token and adds it to the transaction, tagged for retirement
-   * @public
-   * @remarks
-   * Doesn't return the token back to the contract.
-   **/
-  async txnRetireAuthorityToken(tcx) {
-    const uutxo = await this.DelegateMustFindAuthorityToken(
-      tcx,
-      `${this.constructor.name} authority`
-    );
-    return this.DelegateRetiresAuthorityToken(tcx, uutxo);
-  }
-  activityAuthorizing() {
-    const thisActivity = this.mustGetActivity("Authorizing");
-    const t = new thisActivity();
-    return { redeemer: t._toUplcData() };
-  }
-  activityRetiring() {
-    const thisActivity = this.mustGetActivity("Retiring");
-    const t = new thisActivity();
-    return { redeemer: t._toUplcData() };
-  }
-  mkDatumIsDelegation(dd, ...args) {
-    const [customConfig = ""] = args;
-    const { IsDelegation } = this.onChainDatumType;
-    const { DelegationDetail } = this.onChainTypes;
-    const t = new IsDelegation(new DelegationDetail(dd), customConfig);
-    return Datum.inline(t._toUplcData());
-  }
-  /**
-   * returns the ValidatorHash of the delegate script, if relevant
-   * @public
-   * @remarks
-   *
-   * A delegate that doesn't use an on-chain validator should override this method and return undefined.
-   **/
-  get delegateValidatorHash() {
-    if (!this.compiledScript.validatorHash) {
-      throw new Error(
-        `${this.constructor.name}: address doesn't use a validator hash!
-  ... if that's by design, you may wish to override 'get delegateValidatorHash()' -> undefined`
-      );
-    }
-    return this.compiledScript.validatorHash;
-  }
-  mkAuthorityTokenPredicate() {
-    return this.mkTokenPredicate(this.tvAuthorityToken());
-  }
-  tvAuthorityToken(useMinTv = false) {
-    if (!this.configIn)
-      throw new Error(`must be instantiated with a configIn`);
-    const {
-      mph,
-      tn
-      // reqdAddress,  // removed
-    } = this.configIn;
-    if (useMinTv)
-      return this.mkMinTv(mph, tn);
-    return mkTv(mph, tn);
-  }
-  /**
-   * Finds the delegate authority token, normally in the delegate's contract address
-   * @public
-   * @remarks
-   *
-   * The default implementation finds the UTxO having the authority token
-   * in the delegate's contract address.
-   *
-   * It's possible to have a delegate that doesn't have an on-chain contract script.
-   * ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a
-   * delegate-specific heuristic to locate the needed token.  It might consult the
-   * addrHint in its `configIn` or another technique for resolution.
-   *
-   * @param tcx - the transaction context
-   * @reqt It MUST resolve and return the UTxO (a TxInput type ready for spending)
-   *  ... or throw an informative error
-   **/
-  async DelegateMustFindAuthorityToken(tcx, label) {
-    return this.mustFindMyUtxo(
-      `${label}: ${bytesToText(this.configIn.tn)}`,
-      this.mkTokenPredicate(this.tvAuthorityToken()),
-      "this delegate strategy might need to override txnMustFindAuthorityToken()"
-    );
-  }
-  /**
-   * Adds the delegate's authority token to a transaction
-   * @public
-   * @remarks
-   * Given a delegate already configured by a Capo, this method implements
-   * transaction-building logic needed to include the UUT into the `tcx`.
-   * the `utxo` is discovered by {@link StellarDelegate.DelegateMustFindAuthorityToken | DelegateMustFindAuthorityToken() }
-   * 
-   * The default implementation adds the `uutxo` to the transaction 
-   * using {@link StellarDelegate.activityAuthorizing | activityAuthorizing() }.
-   * 
-   * The off-chain code shouldn't need to check the details; it can simply
-   * arrange the details properly and spend the delegate's authority token, 
-   * using this method.
-   * 
-   * ### Reliance on this delegate
-   * 
-  * Other contract scripts can rely on the delegate script to have validated its 
-   * on-chain policy and enforced its own "return to the delegate script" logic.
-   * 
-   * ### Enforcing on-chain policy
-   * 
-   * When spending the authority token in this way, the delegate's authority is typically 
-   * narrowly scoped, and it's expected that the delegate's on-chain script validates that 
-   * those parts of the transaction detail should be authorized, in accordance with the 
-   * delegate's core purpose/responsbility - i.e. that the txn does all of what the delegate 
-   * expects, and none of what it shouldn't do in that department.
-   * 
-   * The on-chain code SHOULD typically enforce:
-   *  * that the token is spent with Authorizing activity (redeemer).  NOTE:
-   *     the **CapoDelegateHelpers** helios module provides the `requiresDelegateAuthorizing()` 
-   *     function for just this purpose
-  
-   *  * that the authority token is returned to the contract with its datum unchanged 
-   *  * that any other tokens it may also hold in the same UTxO do not become 
-   *     inaccessible as a result of the transactions - perhaps by requiring them to be 
-   *     returned together with the authority token.
-   * 
-   * It MAY enforce additional requirements as well.
-   *
-   * @example
-   * A minting delegate should check that all the expected tokens are 
-   * minted, AND that no other tokens are minted.  
-   * 
-   * @example
-   * A role-based authentication/signature-checking delegate can 
-   * require an appropriate signature on the txn.
-   * 
-  * @param tcx - the transaction context
-  * @param utxo - the utxo having the authority UUT for this delegate
-  * @reqt Adds the uutxo to the transaction inputs with appropriate redeemer.
-  * @reqt Does not output the value; can EXPECT txnReceiveAuthorityToken to be called for that purpose.
-   **/
-  async DelegateAddsAuthorityToken(tcx, uutxo) {
-    return tcx.addInput(
-      uutxo,
-      this.activityAuthorizing()
-    ).attachScript(this.compiledScript);
-  }
-  /**
-   * Adds any important transaction elemements supporting the authority token being retired, closing the delegate contracts' utxo.
-   * @remarks
-   *
-   * EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
-   *
-   * EXPECTS the `burn` instruction to be separately added to the transaction.
-   *
-   * The default implementation uses the conventional `Retiring` activity
-   * to spend the token.
-   *
-   * @reqt
-   * It MUST add the indicated utxo to the transaction as an input
-   *
-   * @reqt
-   * When backed by a contract:
-   *   * it should use an activity/redeemer allowing the token to be spent
-   *      **and NOT returned**.
-   *   * the contract script SHOULD ensure any other UTXOs it may also hold, related to this delegation,
-   *      do not become inaccessible as a result.
-   *
-   * It MAY enforce additional requirements and/or block the action.
-   *
-   *
-   * @param tcx - transaction context
-   * @param fromFoundUtxo - the utxo having the authority otken
-   * @public
-   **/
-  async DelegateRetiresAuthorityToken(tcx, fromFoundUtxo) {
-    const utxo = fromFoundUtxo;
-    return tcx.addInput(
-      new TxInput(utxo.outputId, utxo.origOutput),
-      this.activityRetiring()
-    );
-  }
-  /**
-   * Captures requirements as data
-   * @remarks
-   *
-   * see reqts structure
-   * @public
-   **/
-  delegateRequirements() {
-    return hasReqts({
-      "provides an interface for providing arms-length proof of authority to any other contract": {
-        purpose: "to decouple authority administration from its effects",
-        details: [
-          "Any contract can create a UUT for use with an authority policy.",
-          "By depositing that UUT to the authority contract, it can delegate completely",
-          "  ... all the implementation details for administration of the authority itself.",
-          "It can then focus on implementing the effects of authority, requiring only ",
-          "  ... that the correct UUT has been spent, to indicate that the authority is granted.",
-          "The authority contract can have its own internal details ",
-          "A subclass of this authority policy may provide additional administrative dynamics."
-        ],
-        mech: [],
-        requires: [
-          "implementations SHOULD positively govern spend of the UUT",
-          "implementations MUST provide an essential interface for transaction-building"
-        ]
-      },
-      "implementations SHOULD positively govern spend of the UUT": {
-        purpose: "for sufficient assurance of desirable safeguards",
-        details: [
-          "A subclass of the GenericAuthority should take care of guarding the UUT's spend",
-          "  ... in whatever way is appropriate for its use-case"
-        ],
-        mech: [],
-        requires: []
-      },
-      "implementations MUST provide an essential interface for transaction-building": {
-        purpose: "enabling a strategy-agnostic interface for making transactions using any supported strategy-variant",
-        details: [
-          "Subclasses MUST implement the interface methods",
-          "  ... in whatever way is considered appropriate for its use-case.",
-          "An interface method whose requirement is marked with 'MAY/SHOULD' behavior, ",
-          "  ... MUST still implement the method satisfying the interface, ",
-          "  ... but MAY throw an UnsupportedAction error, to indicate that",
-          "  ... the strategy variant has no meaningful action to perform ",
-          "  ... that would serve the method's purpose"
-        ],
-        mech: [],
-        requires: [
-          "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)",
-          "requires a mustFindAuthorityToken(tcx)",
-          "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)",
-          "requires txnRetireCred(tcx, fromFoundUtxo)"
-        ]
-      },
-      "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)": {
-        purpose: "to deposit the authority token (back) to the delegated destination",
-        details: [
-          "impls MUST implement txnReceiveAuthorityToken",
-          "Each implemented subclass can use it's own style to match its strategy & mechanism",
-          "This is used both for the original deposit and for returning the token during a grant-of-authority"
-        ],
-        mech: [
-          "impls MUST create a UTxO depositing the indicated token-name into the delegated destination.",
-          "impls should normally preserve the datum from an already-present sourceUtxo"
-        ],
-        requires: []
-      },
-      "requires a mustFindAuthorityToken(tcx)": {
-        purpose: "to locate the given authority token",
-        details: [
-          "allows different strategies for finding the UTxO having the authority token",
-          "impls MAY use details seen in the txn context to find the indicated token"
-        ],
-        mech: [
-          "impls MUST resolve the indicated token to a specific UTxO or throw an informative error"
-        ]
-      },
-      "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)": {
-        purpose: "to use the delegated authority",
-        details: [
-          "Adds the indicated utxo to the transaction with appropriate activity/redeemer",
-          "Contracts needing the authority within a transaction can rely on the presence of this spent authority",
-          "Impls can EXPECT the token will be returned via txnReceiveAuthorityToken",
-          "a contract-backed impl SHOULD enforce the expected return in its on-chain code"
-        ],
-        mech: [
-          "the base AuthorityPolicy MUST call txnReceiveAuthorityToken() with the token's sourceUtxo"
-        ]
-      },
-      "requires txnRetireCred(tcx, fromFoundUtxo)": {
-        purpose: "to allow burning the authority token",
-        details: [
-          "Adds the indicated utxo to the transaction with appropriate activity/redeemer",
-          "  ... allowing the token to be burned by the minting policy.",
-          "Impls SHOULD ensure any other UTXOs it may hold do not become inaccessible as a result"
-        ],
-        mech: [
-          "impls MUST add the token to the txn if it can be retired",
-          "if the token cannot be retired, by appropriate policy, it SHOULD throw an informative error"
-        ]
-      }
-    });
-  }
-}
-__decorateClass$6([
-  Activity.redeemer
-], StellarDelegate.prototype, "activityAuthorizing", 1);
-__decorateClass$6([
-  Activity.redeemer
-], StellarDelegate.prototype, "activityRetiring", 1);
-__decorateClass$6([
-  datum
-], StellarDelegate.prototype, "mkDatumIsDelegation", 1);
-
-const _uutName = Symbol("uutName");
-const maxUutName = 32;
-class UutName {
-  [_uutName];
-  purpose;
-  constructor(purpose, fullUutName) {
-    this.purpose = purpose;
-    if (fullUutName.length > maxUutName) {
-      throw new Error(
-        `uut name '${fullUutName}' exceeds max length of ${maxUutName}`
-      );
-    }
-    this[_uutName] = fullUutName;
-  }
-  /**
-   * the full uniquified name of this UUT
-   * @remarks
-   *
-   * format: `purpose-‹...uniqifier...›`
-   * @public
-   **/
-  get name() {
-    return this[_uutName];
-  }
-  toString() {
-    return this[_uutName];
-  }
-}
-class DelegateConfigNeeded extends Error {
-  errors;
-  availableStrategies;
-  constructor(message, options) {
-    super(message);
-    const { errors, availableStrategies } = options;
-    if (errors)
-      this.errors = errors;
-    if (availableStrategies)
-      this.availableStrategies = availableStrategies;
-  }
-}
-function delegateRoles(roleMap) {
-  return roleMap;
-}
-function delegateLinkSerializer(key, value) {
-  if (typeof value === "bigint") {
-    return value.toString();
-  } else if ("bytes" == key && Array.isArray(value)) {
-    return bytesToHex(value);
-  } else if (value instanceof Address) {
-    return value.toBech32();
-  } else if ("tn" == key && Array.isArray(value)) {
-    return bytesToText(value);
-  }
-  return value;
-}
-function defineRole(uutBaseName, baseClass, variants) {
-  return {
-    uutPurpose: uutBaseName,
-    baseClass,
-    variants
-  };
-}
-//!!! todo: develop this further to allow easily enhancing a parent role-definition
-//! a map of delegate selections needed for a transaction
-//! a single delegate selection, where a person chooses
-
-function mkUutValuesEntries(uuts) {
-  const uutNs = Array.isArray(uuts) ? uuts : Object.values(uuts);
-  const uniqs = [];
-  for (const un of uutNs) {
-    if (!uniqs.includes(un))
-      uniqs.push(un);
-  }
-  return uniqs.map((uut) => mkValuesEntry(uut.name, BigInt(1)));
-}
-const stringToNumberArray = textToBytes;
-function mkValuesEntry(tokenName, count) {
-  const tnBytes = Array.isArray(tokenName) ? tokenName : stringToNumberArray(tokenName);
-  return [tnBytes, count];
-}
-function mkTv(mph, tokenName, count = 1n) {
-  const v = new Value(
-    void 0,
-    new Assets([[mph, [mkValuesEntry(tokenName, count)]]])
-  );
-  return v;
-}
 
 const code$9 = new String("minting DefaultMinter \n\nimport { \n    hasSeedUtxo, \n    mkUutTnFactory,\n    validateUutMinting, \n    Activity\n} from CapoMintHelpers\n\nimport {mkTv} from StellarHeliosHelpers\n\nimport {\n    requiresValidDelegateOutput\n} from CapoDelegateHelpers\n\n//!!!! todo: change to TxOutputId, rolling up these two things:\nconst seedTxn : TxId = TxId::new(#1234)\nconst seedIndex : Int = 42\n\n\nfunc hasContractSeedUtxo(tx: Tx) -> Bool {\n    hasSeedUtxo(tx, seedTxn, seedIndex\n        // , \"charter\"\n    )\n}\n\nfunc main(r : Activity, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    value_minted: Value = tx.minted;\n\n    ok : Bool = r.switch {\n        charter: mintingCharter => {       \n            charterVal : Value = mkTv(mph, \"charter\");\n            authTnBase : String = \"capoGov\";\n            mintDgtTnBase : String = \"mintDgt\";\n  \n\n            assert(value_minted >= charterVal,\n                \"charter token not minted\");\n\n            hasContractSeedUtxo(tx) &&\n            validateUutMinting(\n                ctx: ctx, \n                seedTxId: seedTxn, \n                seedIdx: seedIndex, \n                purposes: []String{authTnBase, mintDgtTnBase}, \n                mkTokenName: mkUutTnFactory(seedTxn, seedIndex),\n                bootstrapCharter: charterVal\n            ) &&\n            tx.outputs.all( (output: TxOutput) -> Bool {\n                output.value != value_minted || (\n                    output.value == value_minted &&\n                    output.address == charter.owner\n                )\n            })\n        },\n\n        mintingUuts{sTxId, sIdx, purposes} => validateUutMinting(\n            ctx: ctx, \n            seedTxId: sTxId, \n            seedIdx: sIdx, \n            purposes: purposes,\n            mkTokenName: r.uutTnFactory()\n        ),\n        _ => true\n    };\n\n    // print(\"defaultMinter: minting value: \" + value_minted.show());\n\n    ok\n}\n\n");
 
@@ -60181,7 +60226,7 @@ var __decorateClass$2 = (decorators, target, key, kind) => {
   return result;
 };
 //!!! todo enable "other" datum args - (ideally, those other than delegate-link types) to be inlcuded in MDCDA above.
-class DefaultCapo extends Capo {
+let DefaultCapo$1 = class DefaultCapo extends Capo {
   contractSource() {
     return code$5;
   }
@@ -60681,19 +60726,19 @@ class DefaultCapo extends Capo {
       }
     });
   }
-}
+};
 __decorateClass$2([
   datum
-], DefaultCapo.prototype, "mkDatumCharterToken", 1);
+], DefaultCapo$1.prototype, "mkDatumCharterToken", 1);
 __decorateClass$2([
   txn
-], DefaultCapo.prototype, "mkTxnMintCharterToken", 1);
+], DefaultCapo$1.prototype, "mkTxnMintCharterToken", 1);
 __decorateClass$2([
   Activity.redeemer
-], DefaultCapo.prototype, "updatingCharter", 1);
+], DefaultCapo$1.prototype, "updatingCharter", 1);
 __decorateClass$2([
   txn
-], DefaultCapo.prototype, "mkTxnUpdateCharter", 1);
+], DefaultCapo$1.prototype, "mkTxnUpdateCharter", 1);
 
 var __defProp$1 = Object.defineProperty;
 var __getOwnPropDesc$1 = Object.getOwnPropertyDescriptor;
@@ -61574,5 +61619,1126 @@ __decorateClass([
   partialTxn
 ], Capo.prototype, "txnAddCharterAuthorityTokenRef", 1);
 
-export { Activity, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, Capo, DefaultCapo, DefaultMinter, StellarContract, StellarDelegate, StellarTxnContext, UutName, assetsAsString, datum, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, helios, heliosRollupLoader, lovelaceToAda, mkHeliosModule, mkUutValuesEntries, mkValuesEntry, partialTxn, stringToNumberArray, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString };
+var shelleyGenesis = {
+	activeSlotsCoeff: 0.05,
+	epochLength: 432000,
+	genDelegs: {
+		"637f2e950b0fd8f8e3e811c5fbeb19e411e7a2bf37272b84b29c1a0b": {
+			delegate: "aae9293510344ddd636364c2673e34e03e79e3eefa8dbaa70e326f7d",
+			vrf: "227116365af2ed943f1a8b5e6557bfaa34996f1578eec667a5e2b361c51e4ce7"
+		},
+		"8a4b77c4f534f8b8cc6f269e5ebb7ba77fa63a476e50e05e66d7051c": {
+			delegate: "d15422b2e8b60e500a82a8f4ceaa98b04e55a0171d1125f6c58f8758",
+			vrf: "0ada6c25d62db5e1e35d3df727635afa943b9e8a123ab83785e2281605b09ce2"
+		},
+		b00470cd193d67aac47c373602fccd4195aad3002c169b5570de1126: {
+			delegate: "b3b539e9e7ed1b32fbf778bf2ebf0a6b9f980eac90ac86623d11881a",
+			vrf: "0ff0ce9b820376e51c03b27877cd08f8ba40318f1a9f85a3db0b60dd03f71a7a"
+		},
+		b260ffdb6eba541fcf18601923457307647dce807851b9d19da133ab: {
+			delegate: "7c64eb868b4ef566391a321c85323f41d2b95480d7ce56ad2abcb022",
+			vrf: "7fb22abd39d550c9a022ec8104648a26240a9ff9c88b8b89a6e20d393c03098e"
+		},
+		ced1599fd821a39593e00592e5292bdc1437ae0f7af388ef5257344a: {
+			delegate: "de7ca985023cf892f4de7f5f1d0a7181668884752d9ebb9e96c95059",
+			vrf: "c301b7fc4d1b57fb60841bcec5e3d2db89602e5285801e522fce3790987b1124"
+		},
+		dd2a7d71a05bed11db61555ba4c658cb1ce06c8024193d064f2a66ae: {
+			delegate: "1e113c218899ee7807f4028071d0e108fc790dade9fd1a0d0b0701ee",
+			vrf: "faf2702aa4893c877c622ab22dfeaf1d0c8aab98b837fe2bf667314f0d043822"
+		},
+		f3b9e74f7d0f24d2314ea5dfbca94b65b2059d1ff94d97436b82d5b4: {
+			delegate: "fd637b08cc379ef7b99c83b416458fcda8a01a606041779331008fb9",
+			vrf: "37f2ea7c843a688159ddc2c38a2f997ab465150164a9136dca69564714b73268"
+		}
+	},
+	initialFunds: {
+	},
+	maxKESEvolutions: 120,
+	maxLovelaceSupply: 45000000000000000,
+	networkId: "Testnet",
+	networkMagic: 1,
+	protocolParams: {
+		a0: 0.1,
+		decentralisationParam: 1,
+		eMax: 18,
+		extraEntropy: {
+			tag: "NeutralNonce"
+		},
+		keyDeposit: 400000,
+		maxBlockBodySize: 65536,
+		maxBlockHeaderSize: 1100,
+		maxTxSize: 16384,
+		minFeeA: 44,
+		minFeeB: 155381,
+		minPoolCost: 0,
+		minUTxOValue: 0,
+		nOpt: 50,
+		poolDeposit: 500000000,
+		protocolVersion: {
+			major: 2,
+			minor: 0
+		},
+		rho: 0.00178650067,
+		tau: 0.1
+	},
+	securityParam: 2160,
+	slotLength: 1,
+	slotsPerKESPeriod: 86400,
+	staking: {
+		pools: {
+		},
+		stake: {
+		}
+	},
+	systemStart: "2022-06-01T00:00:00Z",
+	updateQuorum: 5
+};
+var alonzoGenesis = {
+	lovelacePerUTxOWord: 34482,
+	executionPrices: {
+		prSteps: {
+			numerator: 721,
+			denominator: 10000000
+		},
+		prMem: {
+			numerator: 577,
+			denominator: 10000
+		}
+	},
+	maxTxExUnits: {
+		exUnitsMem: 10000000,
+		exUnitsSteps: 10000000000
+	},
+	maxBlockExUnits: {
+		exUnitsMem: 50000000,
+		exUnitsSteps: 40000000000
+	},
+	maxValueSize: 5000,
+	collateralPercentage: 150,
+	maxCollateralInputs: 3,
+	costModels: {
+		PlutusV1: {
+			"sha2_256-memory-arguments": 4,
+			"equalsString-cpu-arguments-constant": 1000,
+			"cekDelayCost-exBudgetMemory": 100,
+			"lessThanEqualsByteString-cpu-arguments-intercept": 103599,
+			"divideInteger-memory-arguments-minimum": 1,
+			"appendByteString-cpu-arguments-slope": 621,
+			"blake2b-cpu-arguments-slope": 29175,
+			"iData-cpu-arguments": 150000,
+			"encodeUtf8-cpu-arguments-slope": 1000,
+			"unBData-cpu-arguments": 150000,
+			"multiplyInteger-cpu-arguments-intercept": 61516,
+			"cekConstCost-exBudgetMemory": 100,
+			"nullList-cpu-arguments": 150000,
+			"equalsString-cpu-arguments-intercept": 150000,
+			"trace-cpu-arguments": 150000,
+			"mkNilData-memory-arguments": 32,
+			"lengthOfByteString-cpu-arguments": 150000,
+			"cekBuiltinCost-exBudgetCPU": 29773,
+			"bData-cpu-arguments": 150000,
+			"subtractInteger-cpu-arguments-slope": 0,
+			"unIData-cpu-arguments": 150000,
+			"consByteString-memory-arguments-intercept": 0,
+			"divideInteger-memory-arguments-slope": 1,
+			"divideInteger-cpu-arguments-model-arguments-slope": 118,
+			"listData-cpu-arguments": 150000,
+			"headList-cpu-arguments": 150000,
+			"chooseData-memory-arguments": 32,
+			"equalsInteger-cpu-arguments-intercept": 136542,
+			"sha3_256-cpu-arguments-slope": 82363,
+			"sliceByteString-cpu-arguments-slope": 5000,
+			"unMapData-cpu-arguments": 150000,
+			"lessThanInteger-cpu-arguments-intercept": 179690,
+			"mkCons-cpu-arguments": 150000,
+			"appendString-memory-arguments-intercept": 0,
+			"modInteger-cpu-arguments-model-arguments-slope": 118,
+			"ifThenElse-cpu-arguments": 1,
+			"mkNilPairData-cpu-arguments": 150000,
+			"lessThanEqualsInteger-cpu-arguments-intercept": 145276,
+			"addInteger-memory-arguments-slope": 1,
+			"chooseList-memory-arguments": 32,
+			"constrData-memory-arguments": 32,
+			"decodeUtf8-cpu-arguments-intercept": 150000,
+			"equalsData-memory-arguments": 1,
+			"subtractInteger-memory-arguments-slope": 1,
+			"appendByteString-memory-arguments-intercept": 0,
+			"lengthOfByteString-memory-arguments": 4,
+			"headList-memory-arguments": 32,
+			"listData-memory-arguments": 32,
+			"consByteString-cpu-arguments-intercept": 150000,
+			"unIData-memory-arguments": 32,
+			"remainderInteger-memory-arguments-minimum": 1,
+			"bData-memory-arguments": 32,
+			"lessThanByteString-cpu-arguments-slope": 248,
+			"encodeUtf8-memory-arguments-intercept": 0,
+			"cekStartupCost-exBudgetCPU": 100,
+			"multiplyInteger-memory-arguments-intercept": 0,
+			"unListData-memory-arguments": 32,
+			"remainderInteger-cpu-arguments-model-arguments-slope": 118,
+			"cekVarCost-exBudgetCPU": 29773,
+			"remainderInteger-memory-arguments-slope": 1,
+			"cekForceCost-exBudgetCPU": 29773,
+			"sha2_256-cpu-arguments-slope": 29175,
+			"equalsInteger-memory-arguments": 1,
+			"indexByteString-memory-arguments": 1,
+			"addInteger-memory-arguments-intercept": 1,
+			"chooseUnit-cpu-arguments": 150000,
+			"sndPair-cpu-arguments": 150000,
+			"cekLamCost-exBudgetCPU": 29773,
+			"fstPair-cpu-arguments": 150000,
+			"quotientInteger-memory-arguments-minimum": 1,
+			"decodeUtf8-cpu-arguments-slope": 1000,
+			"lessThanInteger-memory-arguments": 1,
+			"lessThanEqualsInteger-cpu-arguments-slope": 1366,
+			"fstPair-memory-arguments": 32,
+			"modInteger-memory-arguments-intercept": 0,
+			"unConstrData-cpu-arguments": 150000,
+			"lessThanEqualsInteger-memory-arguments": 1,
+			"chooseUnit-memory-arguments": 32,
+			"sndPair-memory-arguments": 32,
+			"addInteger-cpu-arguments-intercept": 197209,
+			"decodeUtf8-memory-arguments-slope": 8,
+			"equalsData-cpu-arguments-intercept": 150000,
+			"mapData-cpu-arguments": 150000,
+			"mkPairData-cpu-arguments": 150000,
+			"quotientInteger-cpu-arguments-constant": 148000,
+			"consByteString-memory-arguments-slope": 1,
+			"cekVarCost-exBudgetMemory": 100,
+			"indexByteString-cpu-arguments": 150000,
+			"unListData-cpu-arguments": 150000,
+			"equalsInteger-cpu-arguments-slope": 1326,
+			"cekStartupCost-exBudgetMemory": 100,
+			"subtractInteger-cpu-arguments-intercept": 197209,
+			"divideInteger-cpu-arguments-model-arguments-intercept": 425507,
+			"divideInteger-memory-arguments-intercept": 0,
+			"cekForceCost-exBudgetMemory": 100,
+			"blake2b-cpu-arguments-intercept": 2477736,
+			"remainderInteger-cpu-arguments-constant": 148000,
+			"tailList-cpu-arguments": 150000,
+			"encodeUtf8-cpu-arguments-intercept": 150000,
+			"equalsString-cpu-arguments-slope": 1000,
+			"lessThanByteString-memory-arguments": 1,
+			"multiplyInteger-cpu-arguments-slope": 11218,
+			"appendByteString-cpu-arguments-intercept": 396231,
+			"lessThanEqualsByteString-cpu-arguments-slope": 248,
+			"modInteger-memory-arguments-slope": 1,
+			"addInteger-cpu-arguments-slope": 0,
+			"equalsData-cpu-arguments-slope": 10000,
+			"decodeUtf8-memory-arguments-intercept": 0,
+			"chooseList-cpu-arguments": 150000,
+			"constrData-cpu-arguments": 150000,
+			"equalsByteString-memory-arguments": 1,
+			"cekApplyCost-exBudgetCPU": 29773,
+			"quotientInteger-memory-arguments-slope": 1,
+			"verifySignature-cpu-arguments-intercept": 3345831,
+			"unMapData-memory-arguments": 32,
+			"mkCons-memory-arguments": 32,
+			"sliceByteString-memory-arguments-slope": 1,
+			"sha3_256-memory-arguments": 4,
+			"ifThenElse-memory-arguments": 1,
+			"mkNilPairData-memory-arguments": 32,
+			"equalsByteString-cpu-arguments-slope": 247,
+			"appendString-cpu-arguments-intercept": 150000,
+			"quotientInteger-cpu-arguments-model-arguments-slope": 118,
+			"cekApplyCost-exBudgetMemory": 100,
+			"equalsString-memory-arguments": 1,
+			"multiplyInteger-memory-arguments-slope": 1,
+			"cekBuiltinCost-exBudgetMemory": 100,
+			"remainderInteger-memory-arguments-intercept": 0,
+			"sha2_256-cpu-arguments-intercept": 2477736,
+			"remainderInteger-cpu-arguments-model-arguments-intercept": 425507,
+			"lessThanEqualsByteString-memory-arguments": 1,
+			"tailList-memory-arguments": 32,
+			"mkNilData-cpu-arguments": 150000,
+			"chooseData-cpu-arguments": 150000,
+			"unBData-memory-arguments": 32,
+			"blake2b-memory-arguments": 4,
+			"iData-memory-arguments": 32,
+			"nullList-memory-arguments": 32,
+			"cekDelayCost-exBudgetCPU": 29773,
+			"subtractInteger-memory-arguments-intercept": 1,
+			"lessThanByteString-cpu-arguments-intercept": 103599,
+			"consByteString-cpu-arguments-slope": 1000,
+			"appendByteString-memory-arguments-slope": 1,
+			"trace-memory-arguments": 32,
+			"divideInteger-cpu-arguments-constant": 148000,
+			"cekConstCost-exBudgetCPU": 29773,
+			"encodeUtf8-memory-arguments-slope": 8,
+			"quotientInteger-cpu-arguments-model-arguments-intercept": 425507,
+			"mapData-memory-arguments": 32,
+			"appendString-cpu-arguments-slope": 1000,
+			"modInteger-cpu-arguments-constant": 148000,
+			"verifySignature-cpu-arguments-slope": 1,
+			"unConstrData-memory-arguments": 32,
+			"quotientInteger-memory-arguments-intercept": 0,
+			"equalsByteString-cpu-arguments-constant": 150000,
+			"sliceByteString-memory-arguments-intercept": 0,
+			"mkPairData-memory-arguments": 32,
+			"equalsByteString-cpu-arguments-intercept": 112536,
+			"appendString-memory-arguments-slope": 1,
+			"lessThanInteger-cpu-arguments-slope": 497,
+			"modInteger-cpu-arguments-model-arguments-intercept": 425507,
+			"modInteger-memory-arguments-minimum": 1,
+			"sha3_256-cpu-arguments-intercept": 0,
+			"verifySignature-memory-arguments": 1,
+			"cekLamCost-exBudgetMemory": 100,
+			"sliceByteString-cpu-arguments-intercept": 150000
+		}
+	}
+};
+var latestParams = {
+	collateralPercentage: 150,
+	costModels: {
+		PlutusScriptV1: {
+			"addInteger-cpu-arguments-intercept": 205665,
+			"addInteger-cpu-arguments-slope": 812,
+			"addInteger-memory-arguments-intercept": 1,
+			"addInteger-memory-arguments-slope": 1,
+			"appendByteString-cpu-arguments-intercept": 1000,
+			"appendByteString-cpu-arguments-slope": 571,
+			"appendByteString-memory-arguments-intercept": 0,
+			"appendByteString-memory-arguments-slope": 1,
+			"appendString-cpu-arguments-intercept": 1000,
+			"appendString-cpu-arguments-slope": 24177,
+			"appendString-memory-arguments-intercept": 4,
+			"appendString-memory-arguments-slope": 1,
+			"bData-cpu-arguments": 1000,
+			"bData-memory-arguments": 32,
+			"blake2b_256-cpu-arguments-intercept": 117366,
+			"blake2b_256-cpu-arguments-slope": 10475,
+			"blake2b_256-memory-arguments": 4,
+			"cekApplyCost-exBudgetCPU": 23000,
+			"cekApplyCost-exBudgetMemory": 100,
+			"cekBuiltinCost-exBudgetCPU": 23000,
+			"cekBuiltinCost-exBudgetMemory": 100,
+			"cekConstCost-exBudgetCPU": 23000,
+			"cekConstCost-exBudgetMemory": 100,
+			"cekDelayCost-exBudgetCPU": 23000,
+			"cekDelayCost-exBudgetMemory": 100,
+			"cekForceCost-exBudgetCPU": 23000,
+			"cekForceCost-exBudgetMemory": 100,
+			"cekLamCost-exBudgetCPU": 23000,
+			"cekLamCost-exBudgetMemory": 100,
+			"cekStartupCost-exBudgetCPU": 100,
+			"cekStartupCost-exBudgetMemory": 100,
+			"cekVarCost-exBudgetCPU": 23000,
+			"cekVarCost-exBudgetMemory": 100,
+			"chooseData-cpu-arguments": 19537,
+			"chooseData-memory-arguments": 32,
+			"chooseList-cpu-arguments": 175354,
+			"chooseList-memory-arguments": 32,
+			"chooseUnit-cpu-arguments": 46417,
+			"chooseUnit-memory-arguments": 4,
+			"consByteString-cpu-arguments-intercept": 221973,
+			"consByteString-cpu-arguments-slope": 511,
+			"consByteString-memory-arguments-intercept": 0,
+			"consByteString-memory-arguments-slope": 1,
+			"constrData-cpu-arguments": 89141,
+			"constrData-memory-arguments": 32,
+			"decodeUtf8-cpu-arguments-intercept": 497525,
+			"decodeUtf8-cpu-arguments-slope": 14068,
+			"decodeUtf8-memory-arguments-intercept": 4,
+			"decodeUtf8-memory-arguments-slope": 2,
+			"divideInteger-cpu-arguments-constant": 196500,
+			"divideInteger-cpu-arguments-model-arguments-intercept": 453240,
+			"divideInteger-cpu-arguments-model-arguments-slope": 220,
+			"divideInteger-memory-arguments-intercept": 0,
+			"divideInteger-memory-arguments-minimum": 1,
+			"divideInteger-memory-arguments-slope": 1,
+			"encodeUtf8-cpu-arguments-intercept": 1000,
+			"encodeUtf8-cpu-arguments-slope": 28662,
+			"encodeUtf8-memory-arguments-intercept": 4,
+			"encodeUtf8-memory-arguments-slope": 2,
+			"equalsByteString-cpu-arguments-constant": 245000,
+			"equalsByteString-cpu-arguments-intercept": 216773,
+			"equalsByteString-cpu-arguments-slope": 62,
+			"equalsByteString-memory-arguments": 1,
+			"equalsData-cpu-arguments-intercept": 1060367,
+			"equalsData-cpu-arguments-slope": 12586,
+			"equalsData-memory-arguments": 1,
+			"equalsInteger-cpu-arguments-intercept": 208512,
+			"equalsInteger-cpu-arguments-slope": 421,
+			"equalsInteger-memory-arguments": 1,
+			"equalsString-cpu-arguments-constant": 187000,
+			"equalsString-cpu-arguments-intercept": 1000,
+			"equalsString-cpu-arguments-slope": 52998,
+			"equalsString-memory-arguments": 1,
+			"fstPair-cpu-arguments": 80436,
+			"fstPair-memory-arguments": 32,
+			"headList-cpu-arguments": 43249,
+			"headList-memory-arguments": 32,
+			"iData-cpu-arguments": 1000,
+			"iData-memory-arguments": 32,
+			"ifThenElse-cpu-arguments": 80556,
+			"ifThenElse-memory-arguments": 1,
+			"indexByteString-cpu-arguments": 57667,
+			"indexByteString-memory-arguments": 4,
+			"lengthOfByteString-cpu-arguments": 1000,
+			"lengthOfByteString-memory-arguments": 10,
+			"lessThanByteString-cpu-arguments-intercept": 197145,
+			"lessThanByteString-cpu-arguments-slope": 156,
+			"lessThanByteString-memory-arguments": 1,
+			"lessThanEqualsByteString-cpu-arguments-intercept": 197145,
+			"lessThanEqualsByteString-cpu-arguments-slope": 156,
+			"lessThanEqualsByteString-memory-arguments": 1,
+			"lessThanEqualsInteger-cpu-arguments-intercept": 204924,
+			"lessThanEqualsInteger-cpu-arguments-slope": 473,
+			"lessThanEqualsInteger-memory-arguments": 1,
+			"lessThanInteger-cpu-arguments-intercept": 208896,
+			"lessThanInteger-cpu-arguments-slope": 511,
+			"lessThanInteger-memory-arguments": 1,
+			"listData-cpu-arguments": 52467,
+			"listData-memory-arguments": 32,
+			"mapData-cpu-arguments": 64832,
+			"mapData-memory-arguments": 32,
+			"mkCons-cpu-arguments": 65493,
+			"mkCons-memory-arguments": 32,
+			"mkNilData-cpu-arguments": 22558,
+			"mkNilData-memory-arguments": 32,
+			"mkNilPairData-cpu-arguments": 16563,
+			"mkNilPairData-memory-arguments": 32,
+			"mkPairData-cpu-arguments": 76511,
+			"mkPairData-memory-arguments": 32,
+			"modInteger-cpu-arguments-constant": 196500,
+			"modInteger-cpu-arguments-model-arguments-intercept": 453240,
+			"modInteger-cpu-arguments-model-arguments-slope": 220,
+			"modInteger-memory-arguments-intercept": 0,
+			"modInteger-memory-arguments-minimum": 1,
+			"modInteger-memory-arguments-slope": 1,
+			"multiplyInteger-cpu-arguments-intercept": 69522,
+			"multiplyInteger-cpu-arguments-slope": 11687,
+			"multiplyInteger-memory-arguments-intercept": 0,
+			"multiplyInteger-memory-arguments-slope": 1,
+			"nullList-cpu-arguments": 60091,
+			"nullList-memory-arguments": 32,
+			"quotientInteger-cpu-arguments-constant": 196500,
+			"quotientInteger-cpu-arguments-model-arguments-intercept": 453240,
+			"quotientInteger-cpu-arguments-model-arguments-slope": 220,
+			"quotientInteger-memory-arguments-intercept": 0,
+			"quotientInteger-memory-arguments-minimum": 1,
+			"quotientInteger-memory-arguments-slope": 1,
+			"remainderInteger-cpu-arguments-constant": 196500,
+			"remainderInteger-cpu-arguments-model-arguments-intercept": 453240,
+			"remainderInteger-cpu-arguments-model-arguments-slope": 220,
+			"remainderInteger-memory-arguments-intercept": 0,
+			"remainderInteger-memory-arguments-minimum": 1,
+			"remainderInteger-memory-arguments-slope": 1,
+			"sha2_256-cpu-arguments-intercept": 806990,
+			"sha2_256-cpu-arguments-slope": 30482,
+			"sha2_256-memory-arguments": 4,
+			"sha3_256-cpu-arguments-intercept": 1927926,
+			"sha3_256-cpu-arguments-slope": 82523,
+			"sha3_256-memory-arguments": 4,
+			"sliceByteString-cpu-arguments-intercept": 265318,
+			"sliceByteString-cpu-arguments-slope": 0,
+			"sliceByteString-memory-arguments-intercept": 4,
+			"sliceByteString-memory-arguments-slope": 0,
+			"sndPair-cpu-arguments": 85931,
+			"sndPair-memory-arguments": 32,
+			"subtractInteger-cpu-arguments-intercept": 205665,
+			"subtractInteger-cpu-arguments-slope": 812,
+			"subtractInteger-memory-arguments-intercept": 1,
+			"subtractInteger-memory-arguments-slope": 1,
+			"tailList-cpu-arguments": 41182,
+			"tailList-memory-arguments": 32,
+			"trace-cpu-arguments": 212342,
+			"trace-memory-arguments": 32,
+			"unBData-cpu-arguments": 31220,
+			"unBData-memory-arguments": 32,
+			"unConstrData-cpu-arguments": 32696,
+			"unConstrData-memory-arguments": 32,
+			"unIData-cpu-arguments": 43357,
+			"unIData-memory-arguments": 32,
+			"unListData-cpu-arguments": 32247,
+			"unListData-memory-arguments": 32,
+			"unMapData-cpu-arguments": 38314,
+			"unMapData-memory-arguments": 32,
+			"verifyEd25519Signature-cpu-arguments-intercept": 9462713,
+			"verifyEd25519Signature-cpu-arguments-slope": 1021,
+			"verifyEd25519Signature-memory-arguments": 10
+		},
+		PlutusScriptV2: {
+			"addInteger-cpu-arguments-intercept": 205665,
+			"addInteger-cpu-arguments-slope": 812,
+			"addInteger-memory-arguments-intercept": 1,
+			"addInteger-memory-arguments-slope": 1,
+			"appendByteString-cpu-arguments-intercept": 1000,
+			"appendByteString-cpu-arguments-slope": 571,
+			"appendByteString-memory-arguments-intercept": 0,
+			"appendByteString-memory-arguments-slope": 1,
+			"appendString-cpu-arguments-intercept": 1000,
+			"appendString-cpu-arguments-slope": 24177,
+			"appendString-memory-arguments-intercept": 4,
+			"appendString-memory-arguments-slope": 1,
+			"bData-cpu-arguments": 1000,
+			"bData-memory-arguments": 32,
+			"blake2b_256-cpu-arguments-intercept": 117366,
+			"blake2b_256-cpu-arguments-slope": 10475,
+			"blake2b_256-memory-arguments": 4,
+			"cekApplyCost-exBudgetCPU": 23000,
+			"cekApplyCost-exBudgetMemory": 100,
+			"cekBuiltinCost-exBudgetCPU": 23000,
+			"cekBuiltinCost-exBudgetMemory": 100,
+			"cekConstCost-exBudgetCPU": 23000,
+			"cekConstCost-exBudgetMemory": 100,
+			"cekDelayCost-exBudgetCPU": 23000,
+			"cekDelayCost-exBudgetMemory": 100,
+			"cekForceCost-exBudgetCPU": 23000,
+			"cekForceCost-exBudgetMemory": 100,
+			"cekLamCost-exBudgetCPU": 23000,
+			"cekLamCost-exBudgetMemory": 100,
+			"cekStartupCost-exBudgetCPU": 100,
+			"cekStartupCost-exBudgetMemory": 100,
+			"cekVarCost-exBudgetCPU": 23000,
+			"cekVarCost-exBudgetMemory": 100,
+			"chooseData-cpu-arguments": 19537,
+			"chooseData-memory-arguments": 32,
+			"chooseList-cpu-arguments": 175354,
+			"chooseList-memory-arguments": 32,
+			"chooseUnit-cpu-arguments": 46417,
+			"chooseUnit-memory-arguments": 4,
+			"consByteString-cpu-arguments-intercept": 221973,
+			"consByteString-cpu-arguments-slope": 511,
+			"consByteString-memory-arguments-intercept": 0,
+			"consByteString-memory-arguments-slope": 1,
+			"constrData-cpu-arguments": 89141,
+			"constrData-memory-arguments": 32,
+			"decodeUtf8-cpu-arguments-intercept": 497525,
+			"decodeUtf8-cpu-arguments-slope": 14068,
+			"decodeUtf8-memory-arguments-intercept": 4,
+			"decodeUtf8-memory-arguments-slope": 2,
+			"divideInteger-cpu-arguments-constant": 196500,
+			"divideInteger-cpu-arguments-model-arguments-intercept": 453240,
+			"divideInteger-cpu-arguments-model-arguments-slope": 220,
+			"divideInteger-memory-arguments-intercept": 0,
+			"divideInteger-memory-arguments-minimum": 1,
+			"divideInteger-memory-arguments-slope": 1,
+			"encodeUtf8-cpu-arguments-intercept": 1000,
+			"encodeUtf8-cpu-arguments-slope": 28662,
+			"encodeUtf8-memory-arguments-intercept": 4,
+			"encodeUtf8-memory-arguments-slope": 2,
+			"equalsByteString-cpu-arguments-constant": 245000,
+			"equalsByteString-cpu-arguments-intercept": 216773,
+			"equalsByteString-cpu-arguments-slope": 62,
+			"equalsByteString-memory-arguments": 1,
+			"equalsData-cpu-arguments-intercept": 1060367,
+			"equalsData-cpu-arguments-slope": 12586,
+			"equalsData-memory-arguments": 1,
+			"equalsInteger-cpu-arguments-intercept": 208512,
+			"equalsInteger-cpu-arguments-slope": 421,
+			"equalsInteger-memory-arguments": 1,
+			"equalsString-cpu-arguments-constant": 187000,
+			"equalsString-cpu-arguments-intercept": 1000,
+			"equalsString-cpu-arguments-slope": 52998,
+			"equalsString-memory-arguments": 1,
+			"fstPair-cpu-arguments": 80436,
+			"fstPair-memory-arguments": 32,
+			"headList-cpu-arguments": 43249,
+			"headList-memory-arguments": 32,
+			"iData-cpu-arguments": 1000,
+			"iData-memory-arguments": 32,
+			"ifThenElse-cpu-arguments": 80556,
+			"ifThenElse-memory-arguments": 1,
+			"indexByteString-cpu-arguments": 57667,
+			"indexByteString-memory-arguments": 4,
+			"lengthOfByteString-cpu-arguments": 1000,
+			"lengthOfByteString-memory-arguments": 10,
+			"lessThanByteString-cpu-arguments-intercept": 197145,
+			"lessThanByteString-cpu-arguments-slope": 156,
+			"lessThanByteString-memory-arguments": 1,
+			"lessThanEqualsByteString-cpu-arguments-intercept": 197145,
+			"lessThanEqualsByteString-cpu-arguments-slope": 156,
+			"lessThanEqualsByteString-memory-arguments": 1,
+			"lessThanEqualsInteger-cpu-arguments-intercept": 204924,
+			"lessThanEqualsInteger-cpu-arguments-slope": 473,
+			"lessThanEqualsInteger-memory-arguments": 1,
+			"lessThanInteger-cpu-arguments-intercept": 208896,
+			"lessThanInteger-cpu-arguments-slope": 511,
+			"lessThanInteger-memory-arguments": 1,
+			"listData-cpu-arguments": 52467,
+			"listData-memory-arguments": 32,
+			"mapData-cpu-arguments": 64832,
+			"mapData-memory-arguments": 32,
+			"mkCons-cpu-arguments": 65493,
+			"mkCons-memory-arguments": 32,
+			"mkNilData-cpu-arguments": 22558,
+			"mkNilData-memory-arguments": 32,
+			"mkNilPairData-cpu-arguments": 16563,
+			"mkNilPairData-memory-arguments": 32,
+			"mkPairData-cpu-arguments": 76511,
+			"mkPairData-memory-arguments": 32,
+			"modInteger-cpu-arguments-constant": 196500,
+			"modInteger-cpu-arguments-model-arguments-intercept": 453240,
+			"modInteger-cpu-arguments-model-arguments-slope": 220,
+			"modInteger-memory-arguments-intercept": 0,
+			"modInteger-memory-arguments-minimum": 1,
+			"modInteger-memory-arguments-slope": 1,
+			"multiplyInteger-cpu-arguments-intercept": 69522,
+			"multiplyInteger-cpu-arguments-slope": 11687,
+			"multiplyInteger-memory-arguments-intercept": 0,
+			"multiplyInteger-memory-arguments-slope": 1,
+			"nullList-cpu-arguments": 60091,
+			"nullList-memory-arguments": 32,
+			"quotientInteger-cpu-arguments-constant": 196500,
+			"quotientInteger-cpu-arguments-model-arguments-intercept": 453240,
+			"quotientInteger-cpu-arguments-model-arguments-slope": 220,
+			"quotientInteger-memory-arguments-intercept": 0,
+			"quotientInteger-memory-arguments-minimum": 1,
+			"quotientInteger-memory-arguments-slope": 1,
+			"remainderInteger-cpu-arguments-constant": 196500,
+			"remainderInteger-cpu-arguments-model-arguments-intercept": 453240,
+			"remainderInteger-cpu-arguments-model-arguments-slope": 220,
+			"remainderInteger-memory-arguments-intercept": 0,
+			"remainderInteger-memory-arguments-minimum": 1,
+			"remainderInteger-memory-arguments-slope": 1,
+			"serialiseData-cpu-arguments-intercept": 1159724,
+			"serialiseData-cpu-arguments-slope": 392670,
+			"serialiseData-memory-arguments-intercept": 0,
+			"serialiseData-memory-arguments-slope": 2,
+			"sha2_256-cpu-arguments-intercept": 806990,
+			"sha2_256-cpu-arguments-slope": 30482,
+			"sha2_256-memory-arguments": 4,
+			"sha3_256-cpu-arguments-intercept": 1927926,
+			"sha3_256-cpu-arguments-slope": 82523,
+			"sha3_256-memory-arguments": 4,
+			"sliceByteString-cpu-arguments-intercept": 265318,
+			"sliceByteString-cpu-arguments-slope": 0,
+			"sliceByteString-memory-arguments-intercept": 4,
+			"sliceByteString-memory-arguments-slope": 0,
+			"sndPair-cpu-arguments": 85931,
+			"sndPair-memory-arguments": 32,
+			"subtractInteger-cpu-arguments-intercept": 205665,
+			"subtractInteger-cpu-arguments-slope": 812,
+			"subtractInteger-memory-arguments-intercept": 1,
+			"subtractInteger-memory-arguments-slope": 1,
+			"tailList-cpu-arguments": 41182,
+			"tailList-memory-arguments": 32,
+			"trace-cpu-arguments": 212342,
+			"trace-memory-arguments": 32,
+			"unBData-cpu-arguments": 31220,
+			"unBData-memory-arguments": 32,
+			"unConstrData-cpu-arguments": 32696,
+			"unConstrData-memory-arguments": 32,
+			"unIData-cpu-arguments": 43357,
+			"unIData-memory-arguments": 32,
+			"unListData-cpu-arguments": 32247,
+			"unListData-memory-arguments": 32,
+			"unMapData-cpu-arguments": 38314,
+			"unMapData-memory-arguments": 32,
+			"verifyEcdsaSecp256k1Signature-cpu-arguments": 20000000000,
+			"verifyEcdsaSecp256k1Signature-memory-arguments": 20000000000,
+			"verifyEd25519Signature-cpu-arguments-intercept": 9462713,
+			"verifyEd25519Signature-cpu-arguments-slope": 1021,
+			"verifyEd25519Signature-memory-arguments": 10,
+			"verifySchnorrSecp256k1Signature-cpu-arguments-intercept": 20000000000,
+			"verifySchnorrSecp256k1Signature-cpu-arguments-slope": 0,
+			"verifySchnorrSecp256k1Signature-memory-arguments": 20000000000
+		}
+	},
+	executionUnitPrices: {
+		priceMemory: 0.0577,
+		priceSteps: 0.0000721
+	},
+	maxBlockBodySize: 90112,
+	maxBlockExecutionUnits: {
+		memory: 62000000,
+		steps: 40000000000
+	},
+	maxBlockHeaderSize: 1100,
+	maxCollateralInputs: 3,
+	maxTxExecutionUnits: {
+		memory: 14000000,
+		steps: 10000000000
+	},
+	maxTxSize: 16384,
+	maxValueSize: 5000,
+	minPoolCost: 340000000,
+	monetaryExpansion: 0.003,
+	poolPledgeInfluence: 0.3,
+	poolRetireMaxEpoch: 18,
+	protocolVersion: {
+		major: 7,
+		minor: 0
+	},
+	stakeAddressDeposit: 2000000,
+	stakePoolDeposit: 500000000,
+	stakePoolTargetNum: 500,
+	treasuryCut: 0.2,
+	txFeeFixed: 155381,
+	txFeePerByte: 44,
+	utxoCostPerByte: 4310
+};
+var latestTip = {
+	epoch: 29,
+	hash: "0de380c16222470e4cf4f7cce8af9a7b54d63e5aa4228520df9f2d252a0efcb5",
+	slot: 11192926,
+	time: 1666876126000
+};
+var ppParams = {
+	shelleyGenesis: shelleyGenesis,
+	alonzoGenesis: alonzoGenesis,
+	latestParams: latestParams,
+	latestTip: latestTip
+};
+
+const preProdParams = ppParams;
+async function addTestContext(context, TestHelperClass, params) {
+  console.log(" ======== ========= ======== +test context");
+  Object.defineProperty(context, "strella", {
+    get: function() {
+      return this.h.strella;
+    }
+  });
+  context.initHelper = async (params2) => {
+    const helper = new TestHelperClass(params2);
+    if (context.h) {
+      if (!params2.skipSetup)
+        throw new Error(
+          `re-initializing shouldn't be necessary without skipSetup`
+        );
+      console.log(
+        "   ............. reinitializing test helper without setup"
+      );
+    }
+    context.h = helper;
+    return helper;
+  };
+  try {
+    await context.initHelper(params);
+  } catch (e) {
+    if (!params) {
+      console.error(
+        `${TestHelperClass.name}: error during initialization; does this test helper require initialization with explicit params?`
+      );
+      throw e;
+    } else {
+      console.error("urgh");
+      throw e;
+    }
+  }
+}
+const ADA = 1000000n;
+
+class StellarTestHelper {
+  state;
+  config;
+  defaultActor;
+  strella;
+  actors;
+  optimize = false;
+  liveSlotParams;
+  networkParams;
+  network;
+  actorName;
+  //@ts-ignore type mismatch in getter/setter until ts v5
+  get currentActor() {
+    return this.actors[this.actorName];
+  }
+  set currentActor(actorName) {
+    const thisActor = this.actors[actorName];
+    if (!thisActor)
+      throw new Error(
+        `setCurrentActor: invalid actor name '${actorName}'`
+      );
+    if (this.strella)
+      this.strella.myActor = thisActor;
+    this.actorName = actorName;
+  }
+  address;
+  setupPending;
+  setupActors() {
+    console.warn(
+      `using 'hiro' as default actor because ${this.constructor.name} doesn't define setupActors()`
+    );
+    this.addActor("hiro", 1863n * ADA);
+    this.currentActor = "hiro";
+  }
+  constructor(config) {
+    this.state = {};
+    if (config) {
+      console.log(
+        "XXXXXXXXXXXXXXXXXXXXXXXXXX test helper with config",
+        config
+      );
+      this.config = config;
+    }
+    const [theNetwork, emuParams] = this.mkNetwork();
+    this.liveSlotParams = emuParams;
+    this.network = theNetwork;
+    this.networkParams = new NetworkParams(preProdParams);
+    this.actors = {};
+    this.actorName = "";
+    this.setupActors();
+    if (!this.actorName)
+      throw new Error(
+        `${this.constructor.name} doesn't set currentActor in setupActors()`
+      );
+    const now = /* @__PURE__ */ new Date();
+    this.waitUntil(now);
+    if (config?.skipSetup) {
+      console.log("test helper skipping setup");
+      return;
+    }
+    this.setupPending = this.initialize(config);
+  }
+  async initialize(config) {
+    const { randomSeed, ...p } = config;
+    if (this.setupPending)
+      await this.setupPending;
+    if (this.strella && this.randomSeed == randomSeed) {
+      console.log(
+        "       ----- skipped duplicate setup() in test helper"
+      );
+      return this.strella;
+    }
+    if (this.strella) {
+      console.warn(
+        ".... warning: new test helper setup with new seed...."
+      );
+      this.rand = void 0;
+      this.randomSeed = randomSeed;
+    } else {
+      console.log(
+        " - Test helper bootstrapping (will emit details to onInstanceCreated())"
+      );
+    }
+    return this.initStellarClass();
+  }
+  initStellarClass() {
+    const TargetClass = this.stellarClass;
+    const strella = this.initStrella(TargetClass, this.config);
+    this.strella = strella;
+    this.address = strella.address;
+    return strella;
+  }
+  //!!! reconnect tests to tcx-based config-capture
+  // onInstanceCreated: async (config: ConfigFor<SC>) => {
+  //     this.config = config
+  //     return {
+  //         evidence: this,
+  //         id: "empheral",
+  //         scope: "unit test"
+  //     }
+  // }
+  initStrella(TargetClass, config) {
+    const setup = {
+      network: this.network,
+      myActor: this.currentActor,
+      networkParams: this.networkParams,
+      isTest: true
+    };
+    let cfg = {
+      setup,
+      config
+    };
+    if (!config)
+      cfg = {
+        setup,
+        partialConfig: {}
+      };
+    return new TargetClass(cfg);
+  }
+  //! it has a seed for mkRandomBytes, which must be set by caller
+  randomSeed;
+  //! it makes a rand() function based on the randomSeed after first call to mkRandomBytes
+  rand;
+  delay(ms) {
+    return new Promise((res) => setTimeout(res, ms));
+  }
+  async mkSeedUtxo(seedIndex = 0n) {
+    const { currentActor } = this;
+    const { network } = this;
+    const tx = new Tx();
+    const actorMoney = await currentActor.utxos;
+    console.log(
+      `${this.actorName} has money: 
+` + utxosAsString(actorMoney)
+    );
+    tx.addInput(
+      await findInputsInWallets(
+        new Value(30n * ADA),
+        { wallets: [currentActor] },
+        network
+      )
+    );
+    tx.addOutput(new TxOutput(currentActor.address, new Value(10n * ADA)));
+    tx.addOutput(new TxOutput(currentActor.address, new Value(10n * ADA)));
+    let si = 2;
+    for (; si < seedIndex; si++) {
+      tx.addOutput(
+        new TxOutput(currentActor.address, new Value(10n * ADA))
+      );
+    }
+    const txId = await this.submitTx(tx, "force");
+    return txId;
+  }
+  async submitTx(tx, force) {
+    const sendChangeToCurrentActor = this.currentActor.address;
+    const isAlreadyInitialized = !!this.strella;
+    try {
+      await tx.finalize(this.networkParams, sendChangeToCurrentActor);
+    } catch (e) {
+      throw new Error(
+        e.message + "\nin tx: " + txAsString(tx) + "\nprofile: " + tx.profileReport
+      );
+    }
+    if (isAlreadyInitialized && !force) {
+      throw new Error(
+        `helper is already initialized; use the submitTx from the testing-context's 'strella' object instead`
+      );
+    }
+    console.log(
+      `Test helper ${force || ""} submitting tx${force && "" || " prior to instantiateWithParams()"}:
+` + txAsString(tx)
+      // new Error(`at stack`).stack
+    );
+    try {
+      const txId = await this.network.submitTx(tx);
+      console.log("test helper submitted direct txn:" + txAsString(tx));
+      this.network.tick(1n);
+      return txId;
+    } catch (e) {
+      console.error(
+        `submit failed: ${e.message}
+  ... in tx ${txAsString(tx)}`
+      );
+      throw e;
+    }
+  }
+  mkRandomBytes(length) {
+    if (!this.randomSeed)
+      throw new Error(
+        `test must set context.randomSeed for deterministic randomness in tests`
+      );
+    if (!this.rand)
+      this.rand = Crypto.rand(this.randomSeed);
+    const bytes = [];
+    for (let i = 0; i < length; i++) {
+      bytes.push(Math.floor(this.rand() * 256));
+    }
+    return bytes;
+  }
+  /**
+   * creates a new Actor in the transaction context with initial funds, returning a Wallet object
+   * @remarks
+   *
+   * Given an actor name ("marcie") or role name ("marketer"), and a number
+   * of indicated lovelace, creates and returns a wallet having the indicated starting balance.
+   *
+   * By default, three additional, separate 5-ADA utxos are created, to ensure sufficient Collateral and
+   * small-change are existing, making typical transaction scenarios work easily.  If you want to include
+   * other utxo's instead you can supply their lovelace sizes.
+   *
+   * To suppress creation of additional utxos, use `0n` for arg3.
+   *
+   * You may wish to import {@link ADA} = 1_000_000n from the testing/ module, and
+   * multiply smaller integers by that constant.
+   *
+   * @param roleName - an actor name or role-name for this wallet
+   * @param walletBalance - initial wallet balance
+   * @param moreUtxos - additional utxos to include
+   *
+   * @example
+   *     this.addActor("cheapo", 14n * ADA, 0n);  //  14 ADA and no additional utxos
+   *     this.addActor("flexible", 14n * ADA);  //  14 ADA + default 15 ADA in 3 additional utxos
+   *     this.addActor("moneyBags", 42_000_000n * ADA, 5n, 4n);  //  many ADA and two collaterals
+   *
+   *     //  3O ADA in 6 separate utxos:
+   *     this.addActor("smallChange", 5n * ADA, 5n * ADA, 5n * ADA, 5n * ADA, 5n * ADA, 5n * ADA);
+   *
+   * @public
+   **/
+  addActor(roleName, walletBalance, ...moreUtxos) {
+    if (this.actors[roleName])
+      throw new Error(`duplicate role name '${roleName}'`);
+    //! it instantiates a wallet with the indicated balance pre-set
+    const a = this.network.createWallet(walletBalance);
+    console.log(
+      `+\u{1F3AD} Actor: ${roleName}: ${a.address.toBech32().substring(0, 18)}\u2026 ${lovelaceToAda(
+        walletBalance
+      )} (\u{1F511}#${a.address.pubKeyHash?.hex.substring(0, 8)}\u2026)`
+    );
+    //! it makes collateral for each actor, above and beyond the initial balance,
+    this.network.tick(BigInt(2));
+    if (0 == moreUtxos.length)
+      moreUtxos = [5n, 5n, 5n];
+    for (const moreLovelace of moreUtxos) {
+      if (moreLovelace > 0n) {
+        this.network.createUtxo(a, moreLovelace);
+      }
+    }
+    this.network.tick(BigInt(1));
+    this.actors[roleName] = a;
+    return a;
+  }
+  mkNetwork() {
+    const theNetwork = new NetworkEmulator();
+    const emuParams = theNetwork.initNetworkParams({
+      ...preProdParams,
+      raw: { ...preProdParams }
+    });
+    return [theNetwork, emuParams];
+  }
+  slotToTimestamp(s) {
+    return this.networkParams.slotToTime(s);
+  }
+  currentSlot() {
+    return this.liveSlotParams.liveSlot;
+  }
+  waitUntil(time) {
+    const targetTimeMillis = BigInt(time.getTime());
+    const targetSlot = this.networkParams.timeToSlot(targetTimeMillis);
+    const c = this.currentSlot();
+    const slotsToWait = targetSlot - (c || 0n);
+    if (slotsToWait < 1) {
+      throw new Error(`the indicated time is not in the future`);
+    }
+    this.network.tick(slotsToWait);
+    return slotsToWait;
+  }
+}
+
+class CapoTestHelper extends StellarTestHelper {
+  async initialize({
+    randomSeed = 42,
+    config
+  } = {}) {
+    if (this.setupPending)
+      await this.setupPending;
+    if (this.strella && this.randomSeed == randomSeed) {
+      console.log(
+        "       ----- skipped duplicate setup() in test helper"
+      );
+      return this.strella;
+    }
+    if (this.strella)
+      console.log(
+        `  ---  new test helper setup with new seed (was ${this.randomSeed}, now ${randomSeed})...
+` + new Error("stack").stack.split("\n").slice(1).filter(
+          (line) => !line.match(/node_modules/) && !line.match(/node:internal/)
+        ).join("\n")
+      );
+    this.randomSeed = randomSeed;
+    this.state.mintedCharterToken = void 0;
+    //! when there's not a preset config, it leaves the detailed setup to be done just-in-time
+    if (!config)
+      return this.strella = this.initStrella(this.stellarClass);
+    const strella = this.initStrella(this.stellarClass, config);
+    this.strella = strella;
+    const { address, mintingPolicyHash: mph } = strella;
+    const { name } = strella.scriptProgram;
+    console.log(
+      name,
+      address.toBech32().substring(0, 18) + "\u2026",
+      "vHash \u{1F4DC} " + strella.compiledScript.validatorHash.hex.substring(0, 12) + "\u2026",
+      "mph \u{1F3E6} " + mph?.hex.substring(0, 12) + "\u2026"
+    );
+    return strella;
+  }
+  async bootstrap(args) {
+    let strella = this.strella || await this.initialize();
+    await this.mintCharterToken(args);
+    return strella;
+  }
+}
+
+class DefaultCapoTestHelper extends CapoTestHelper {
+  /**
+   * Creates a prepared test helper for a given Capo class, with boilerplate built-in
+   *
+   * @remarks
+   *
+   * You may wish to provide an overridden setupActors() method, to arrange actor
+   * names that fit your project's user-roles / profiles.
+   *
+   * You may also wish to add methods that satisfy some of your application's key
+   * use-cases in simple predefined ways, so that your automated tests can re-use
+   * the logic and syntax instead of repeating them in multiple test-cases.
+   *
+   * @param s - your Capo class that extends DefaultCapo
+   * @typeParam DC - no need to specify it; it's inferred from your parameter
+   * @public
+   **/
+  static forCapoClass(s) {
+    class specificCapoHelper extends DefaultCapoTestHelper {
+      get stellarClass() {
+        return s;
+      }
+    }
+    return specificCapoHelper;
+  }
+  //@ts-expect-error
+  get stellarClass() {
+    return DefaultCapo;
+  }
+  //!!! todo: create type-safe ActorMap helper hasActors(), on same pattern as hasRequirements
+  setupActors() {
+    this.addActor("tina", 1100n * ADA);
+    this.addActor("tracy", 13n * ADA);
+    this.addActor("tom", 120n * ADA);
+    this.currentActor = "tina";
+  }
+  async mkCharterSpendTx() {
+    await this.mintCharterToken();
+    const treasury = this.strella;
+    const tcx = new StellarTxnContext(this.currentActor);
+    const tcx2 = await treasury.txnAddGovAuthority(tcx);
+    return treasury.txnMustUseCharterUtxo(tcx2, treasury.usingAuthority());
+  }
+  mkDefaultCharterArgs() {
+    const addr = this.currentActor.address;
+    console.log("test helper charter -> actor addr", addr.toBech32());
+    return {
+      govAuthorityLink: {
+        strategyName: "address",
+        config: {
+          addrHint: [addr]
+        }
+      }
+      // mintDelegateLink: {
+      //     strategyName: "default",
+      // },
+    };
+  }
+  async mintCharterToken(args) {
+    this.actors;
+    if (this.state.mintedCharterToken) {
+      console.warn(
+        "reusing minted charter from existing testing-context"
+      );
+      return this.state.mintedCharterToken;
+    }
+    if (!this.strella)
+      await this.initialize();
+    const script = this.strella;
+    const goodArgs = args || this.mkDefaultCharterArgs();
+    const tcx = await script.mkTxnMintCharterToken(goodArgs);
+    this.state.config = tcx.state.bootstrappedConfig;
+    expect(script.network).toBe(this.network);
+    await script.submit(tcx);
+    console.log(
+      `----- charter token minted at slot ${this.network.currentSlot}`
+    );
+    this.network.tick(1n);
+    this.state.mintedCharterToken = tcx;
+    return tcx;
+  }
+  async updateCharter(args) {
+    await this.mintCharterToken();
+    const treasury = this.strella;
+    const { signers } = this.state;
+    const tcx = await treasury.mkTxnUpdateCharter(args);
+    return treasury.submit(tcx, { signers }).then(() => {
+      this.network.tick(1n);
+      return tcx;
+    });
+  }
+}
+
+const insufficientInputError = /(need .* lovelace, but only have|transaction doesn't have enough inputs)/;
+Error.stackTraceLimit = 100;
+
+export { ADA, Activity, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, Capo, CapoTestHelper, DefaultCapo$1 as DefaultCapo, DefaultCapoTestHelper, DefaultMinter, StellarContract, StellarDelegate, StellarTestHelper, StellarTxnContext, UutName, addTestContext, assetsAsString, datum, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, helios, heliosRollupLoader, insufficientInputError, lovelaceToAda, mkHeliosModule, mkUutValuesEntries, mkValuesEntry, partialTxn, stringToNumberArray, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString };
 //# sourceMappingURL=stellar-contracts.mjs.map

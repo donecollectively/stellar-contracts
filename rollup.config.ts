@@ -68,7 +68,8 @@ export default [
                 target: ["node18" ],
             }),
             execute([
-                "tsc && api-extractor run --local --verbose"
+                "tsc  && api-extractor run --local --verbose"
+                // tsc -p ./tsconfig.testing.json
             ])
             // apiExtractor({
             //     configFile: "./api-extractor.json",
@@ -82,30 +83,31 @@ export default [
             },
         ],
     }),
-    codeBundle({
-        input: "./src/testing/index.ts",
-        plugins: [
-            sourcemaps(),
-            externals(),
-            heliosRollupLoader(),
-            json(),
-            resolve({
-                ...platformModulePaths("server"),
-                extensions: [".json", ".ts"],
-            }),
-            esbuild({
-                tsconfig: "./tsconfig.json",
-                target: ["node18" ],
-            }),
-        ],
-        output: [
-            {
-                file: `dist/testing.mjs`,
-                format: "es",
-                sourcemap: true,
-            },
-        ],
-    }),
+    // codeBundle({
+    //     input: "./src/testing/index.ts",
+    //     plugins: [
+    //         sourcemaps(),
+    //         externals(),
+    //         heliosRollupLoader(),
+    //         json(),
+    //         resolve({
+    //             ...platformModulePaths("server"),
+    //             extensions: [".json", ".ts"],
+    //         }),
+    //         esbuild({
+    //             tsconfig: "./tsconfig.json",
+    //             target: ["node18" ],
+    //         }),
+    //     ],
+    //     output: [
+    //         {
+    //             file: `dist/testing.mjs`,
+    //             format: "es",
+    //             sourcemap: true,
+    //         },
+    //     ],
+    // }),
+    
     // codeBundle({
     //     input: "./index.ts",
     //     plugins: [

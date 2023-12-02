@@ -173,6 +173,188 @@
           }
         },
         {
+          "kind": "Variable",
+          "canonicalReference": "@donecollectively/stellar-contracts!ADA:var",
+          "docComment": "/**\n * 1 million as bigint. Multiply by this ADA value to get lovelace\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "ADA = "
+            },
+            {
+              "kind": "Content",
+              "text": "1000000n"
+            }
+          ],
+          "fileUrlPath": "src/testing/types.ts",
+          "initializerTokenRange": {
+            "startIndex": 1,
+            "endIndex": 2
+          },
+          "isReadonly": true,
+          "releaseTag": "Public",
+          "name": "ADA",
+          "variableTypeTokenRange": {
+            "startIndex": 0,
+            "endIndex": 0
+          }
+        },
+        {
+          "kind": "Function",
+          "canonicalReference": "@donecollectively/stellar-contracts!addTestContext:function(1)",
+          "docComment": "/**\n * Adds a test helper class to a `vitest` testing context.\n *\n * @remarks\n *\n * @param context - a vitest context, typically created with StellarTestContext\n *\n * @param TestHelperClass - typically created with DefaultCapoTestHelper\n *\n * @param params - preset configuration for the contract under test\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function addTestContext<SC extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "StellarContract",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<any>"
+            },
+            {
+              "kind": "Content",
+              "text": ", P extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "configBase",
+              "canonicalReference": "@donecollectively/stellar-contracts!paramsBase:type"
+            },
+            {
+              "kind": "Content",
+              "text": " = "
+            },
+            {
+              "kind": "Content",
+              "text": "SC extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "StellarContract",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<infer PT> ? PT : never"
+            },
+            {
+              "kind": "Content",
+              "text": ">(context: "
+            },
+            {
+              "kind": "Reference",
+              "text": "StellarTestContext",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestContext:interface"
+            },
+            {
+              "kind": "Content",
+              "text": "<any, SC>"
+            },
+            {
+              "kind": "Content",
+              "text": ", TestHelperClass: "
+            },
+            {
+              "kind": "Reference",
+              "text": "stellarTestHelperSubclass",
+              "canonicalReference": "@donecollectively/stellar-contracts!~stellarTestHelperSubclass:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<SC>"
+            },
+            {
+              "kind": "Content",
+              "text": ", params?: "
+            },
+            {
+              "kind": "Content",
+              "text": "P"
+            },
+            {
+              "kind": "Content",
+              "text": "): "
+            },
+            {
+              "kind": "Reference",
+              "text": "Promise",
+              "canonicalReference": "!Promise:interface"
+            },
+            {
+              "kind": "Content",
+              "text": "<void>"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/testing/types.ts",
+          "returnTypeTokenRange": {
+            "startIndex": 18,
+            "endIndex": 20
+          },
+          "releaseTag": "Public",
+          "overloadIndex": 1,
+          "parameters": [
+            {
+              "parameterName": "context",
+              "parameterTypeTokenRange": {
+                "startIndex": 10,
+                "endIndex": 12
+              },
+              "isOptional": false
+            },
+            {
+              "parameterName": "TestHelperClass",
+              "parameterTypeTokenRange": {
+                "startIndex": 13,
+                "endIndex": 15
+              },
+              "isOptional": false
+            },
+            {
+              "parameterName": "params",
+              "parameterTypeTokenRange": {
+                "startIndex": 16,
+                "endIndex": 17
+              },
+              "isOptional": true
+            }
+          ],
+          "typeParameters": [
+            {
+              "typeParameterName": "SC",
+              "constraintTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 0,
+                "endIndex": 0
+              }
+            },
+            {
+              "typeParameterName": "P",
+              "constraintTokenRange": {
+                "startIndex": 4,
+                "endIndex": 5
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 6,
+                "endIndex": 9
+              }
+            }
+          ],
+          "name": "addTestContext"
+        },
+        {
           "kind": "Class",
           "canonicalReference": "@donecollectively/stellar-contracts!AnyAddressAuthorityPolicy:class",
           "docComment": "/**\n * Token-based authority\n *\n * @remarks\n *\n * Transferrable authority using a unique token and no smart-contract. Network, Wallet,\n *\n * @public\n */\n",
@@ -4983,6 +5165,420 @@
           }
         },
         {
+          "kind": "Class",
+          "canonicalReference": "@donecollectively/stellar-contracts!CapoTestHelper:class",
+          "docComment": "/**\n * Base class for test helpers for Capo contracts\n *\n * @remarks\n *\n * Unless you have a custom Capo not based on DefaultCapo, you should probably use DefaultCapoTestHelper instead of this class.\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare abstract class CapoTestHelper<SC extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "Capo",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<"
+            },
+            {
+              "kind": "Reference",
+              "text": "DefaultMinter",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter:class"
+            },
+            {
+              "kind": "Content",
+              "text": " & "
+            },
+            {
+              "kind": "Reference",
+              "text": "MinterBaseMethods",
+              "canonicalReference": "@donecollectively/stellar-contracts!~MinterBaseMethods:interface"
+            },
+            {
+              "kind": "Content",
+              "text": ", CDT, CT>"
+            },
+            {
+              "kind": "Content",
+              "text": ", CDT extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "anyDatumArgs",
+              "canonicalReference": "@donecollectively/stellar-contracts!~anyDatumArgs:type"
+            },
+            {
+              "kind": "Content",
+              "text": " = "
+            },
+            {
+              "kind": "Content",
+              "text": "SC extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "Capo",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<"
+            },
+            {
+              "kind": "Reference",
+              "text": "DefaultMinter",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter:class"
+            },
+            {
+              "kind": "Content",
+              "text": ", infer iCDT> ? iCDT : "
+            },
+            {
+              "kind": "Reference",
+              "text": "anyDatumArgs",
+              "canonicalReference": "@donecollectively/stellar-contracts!~anyDatumArgs:type"
+            },
+            {
+              "kind": "Content",
+              "text": ", //prettier-ignore\nCT extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "CapoBaseConfig",
+              "canonicalReference": "@donecollectively/stellar-contracts!~CapoBaseConfig:type"
+            },
+            {
+              "kind": "Content",
+              "text": " = "
+            },
+            {
+              "kind": "Content",
+              "text": "SC extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "Capo",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<any, any, infer iCT> ? iCT : never"
+            },
+            {
+              "kind": "Content",
+              "text": "> extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "StellarTestHelper",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<SC>"
+            },
+            {
+              "kind": "Content",
+              "text": " "
+            }
+          ],
+          "fileUrlPath": "src/testing/CapoTestHelper.ts",
+          "releaseTag": "Public",
+          "typeParameters": [
+            {
+              "typeParameterName": "SC",
+              "constraintTokenRange": {
+                "startIndex": 1,
+                "endIndex": 7
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 0,
+                "endIndex": 0
+              }
+            },
+            {
+              "typeParameterName": "CDT",
+              "constraintTokenRange": {
+                "startIndex": 8,
+                "endIndex": 9
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 10,
+                "endIndex": 16
+              }
+            },
+            {
+              "typeParameterName": "CT",
+              "constraintTokenRange": {
+                "startIndex": 17,
+                "endIndex": 18
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 19,
+                "endIndex": 22
+              }
+            }
+          ],
+          "isAbstract": true,
+          "name": "CapoTestHelper",
+          "preserveMemberOrder": false,
+          "members": [
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoTestHelper#bootstrap:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "bootstrap(args?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "MinimalDefaultCharterDatumArgs",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~MinimalDefaultCharterDatumArgs:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<SC>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "args",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "bootstrap"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoTestHelper#initialize:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "initialize({ randomSeed, config, }?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "{\n        config?: CT;\n        randomSeed?: number;\n    }"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<SC>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "{ randomSeed, config, }",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "initialize"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoTestHelper#mintCharterToken:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "abstract mintCharterToken(args?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "MinimalDefaultCharterDatumArgs",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~MinimalDefaultCharterDatumArgs:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any> & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasUutContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasUutContext:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<\"govAuthority\" | \"capoGov\" | \"mintDelegate\" | \"mintDgt\"> & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasBootstrappedConfig",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasBootstrappedConfig:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "CapoBaseConfig",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoBaseConfig:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 4,
+                "endIndex": 14
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "args",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 3
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": true,
+              "name": "mintCharterToken"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoTestHelper#mkDefaultCharterArgs:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "abstract mkDefaultCharterArgs(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Partial",
+                  "canonicalReference": "!Partial:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "MinimalDefaultCharterDatumArgs",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~MinimalDefaultCharterDatumArgs:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": true,
+              "name": "mkDefaultCharterArgs"
+            }
+          ],
+          "extendsTokenRange": {
+            "startIndex": 23,
+            "endIndex": 25
+          },
+          "implementsTokenRanges": []
+        },
+        {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!ConfigFor:type",
           "docComment": "/**\n * Extracts the config type for a Stellar Contract class\n *\n * @public\n */\n",
@@ -6710,6 +7306,579 @@
           "extendsTokenRange": {
             "startIndex": 13,
             "endIndex": 15
+          },
+          "implementsTokenRanges": []
+        },
+        {
+          "kind": "Class",
+          "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapoTestHelper:class",
+          "docComment": "/**\n * Test helper for classes extending DefaultCapo\n *\n * @remarks\n *\n * Arranges an test environment with predefined actor-names having various amounts of ADA in their (emulated) wallets, and default helpers for setting up test scenarios. Provides a simplified framework for testing Stellar contracts extending the DefaultCapo class.\n *\n * To use it, you MUST extend DefaultCapoTestHelper<YourStellarCapoClass>.\n *\n * You MUST also implement a getter for stellarClass, returning the specific class for YourStellarCapoClass\n *\n * You SHOULD also implement a setupActors method to arrange named actors for your test scenarios. It's recommended to identify general roles of different people who will interact with the contract, and create one or more actor names for each role, where the actor names start with the same letter as the role-names. For example, a set of Trustees in a contract might have actor names tina, tracy and tom, while unprivileged Public users might have actor names like pablo and peter. setupActors() also should pre-assign some ADA funds to each actor: e.g. `this.addActor(‹actorName›, 142n * ADA)`\n *\n * @typeParam DC - the specific DefaultCapo subclass under test\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare class DefaultCapoTestHelper<DC extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "DefaultCapo",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<"
+            },
+            {
+              "kind": "Reference",
+              "text": "DefaultMinter",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter:class"
+            },
+            {
+              "kind": "Content",
+              "text": ", CDT, CT>"
+            },
+            {
+              "kind": "Content",
+              "text": " = "
+            },
+            {
+              "kind": "Reference",
+              "text": "DefaultCapo",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo:class"
+            },
+            {
+              "kind": "Content",
+              "text": ", //prettier-ignore\nCDT extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "DefaultCharterDatumArgs",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCharterDatumArgs:type"
+            },
+            {
+              "kind": "Content",
+              "text": " = "
+            },
+            {
+              "kind": "Content",
+              "text": "DC extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "Capo",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<"
+            },
+            {
+              "kind": "Reference",
+              "text": "DefaultMinter",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter:class"
+            },
+            {
+              "kind": "Content",
+              "text": ", infer iCDT> ? iCDT : "
+            },
+            {
+              "kind": "Reference",
+              "text": "DefaultCharterDatumArgs",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCharterDatumArgs:type"
+            },
+            {
+              "kind": "Content",
+              "text": ", //prettier-ignore\nCT extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "CapoBaseConfig",
+              "canonicalReference": "@donecollectively/stellar-contracts!~CapoBaseConfig:type"
+            },
+            {
+              "kind": "Content",
+              "text": " = "
+            },
+            {
+              "kind": "Content",
+              "text": "DC extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "Capo",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<any, any, infer iCT> ? iCT : never"
+            },
+            {
+              "kind": "Content",
+              "text": "> extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "CapoTestHelper",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoTestHelper:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<DC, CDT, CT>"
+            },
+            {
+              "kind": "Content",
+              "text": " "
+            }
+          ],
+          "fileUrlPath": "src/testing/DefaultCapoTestHelper.ts",
+          "releaseTag": "Public",
+          "typeParameters": [
+            {
+              "typeParameterName": "DC",
+              "constraintTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 6,
+                "endIndex": 7
+              }
+            },
+            {
+              "typeParameterName": "CDT",
+              "constraintTokenRange": {
+                "startIndex": 8,
+                "endIndex": 9
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 10,
+                "endIndex": 16
+              }
+            },
+            {
+              "typeParameterName": "CT",
+              "constraintTokenRange": {
+                "startIndex": 17,
+                "endIndex": 18
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 19,
+                "endIndex": 22
+              }
+            }
+          ],
+          "isAbstract": false,
+          "name": "DefaultCapoTestHelper",
+          "preserveMemberOrder": false,
+          "members": [
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapoTestHelper.forCapoClass:member(1)",
+              "docComment": "/**\n * Creates a prepared test helper for a given Capo class, with boilerplate built-in\n *\n * @remarks\n *\n * You may wish to provide an overridden setupActors() method, to arrange actor names that fit your project's user-roles / profiles.\n *\n * You may also wish to add methods that satisfy some of your application's key use-cases in simple predefined ways, so that your automated tests can re-use the logic and syntax instead of repeating them in multiple test-cases.\n *\n * @param s - your Capo class that extends DefaultCapo\n *\n * @typeParam DC - no need to specify it; it's inferred from your parameter\n *\n * @public\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "static forCapoClass<DC extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "DefaultCapo",
+                  "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "DefaultMinter",
+                  "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", any, any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">(s: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "stellarSubclass",
+                  "canonicalReference": "@donecollectively/stellar-contracts!stellarSubclass:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<DC>"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "stellarTestHelperSubclass",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~stellarTestHelperSubclass:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<DC>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "typeParameters": [
+                {
+                  "typeParameterName": "DC",
+                  "constraintTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 5
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                }
+              ],
+              "isStatic": true,
+              "returnTypeTokenRange": {
+                "startIndex": 9,
+                "endIndex": 11
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "s",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 6,
+                    "endIndex": 8
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "forCapoClass"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapoTestHelper#mintCharterToken:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "mintCharterToken(args?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "MinimalDefaultCharterDatumArgs",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~MinimalDefaultCharterDatumArgs:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<CDT>"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasUutContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasUutContext:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<\"govAuthority\" | \"capoGov\" | \"mintDelegate\" | \"mintDgt\"> & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any> & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasBootstrappedConfig",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasBootstrappedConfig:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "CapoBaseConfig",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoBaseConfig:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 4,
+                "endIndex": 14
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "args",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 3
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "mintCharterToken"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapoTestHelper#mkCharterSpendTx:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "mkCharterSpendTx(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "mkCharterSpendTx"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapoTestHelper#mkDefaultCharterArgs:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "mkDefaultCharterArgs(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Partial",
+                  "canonicalReference": "!Partial:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "MinimalDefaultCharterDatumArgs",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~MinimalDefaultCharterDatumArgs:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<CDT>>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "mkDefaultCharterArgs"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapoTestHelper#setupActors:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "setupActors(): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "void"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "setupActors"
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapoTestHelper#stellarClass:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "get stellarClass(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "stellarSubclass",
+                  "canonicalReference": "@donecollectively/stellar-contracts!stellarSubclass:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<DC>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": true,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "stellarClass",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapoTestHelper#updateCharter:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "updateCharter(args: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "CDT"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 7
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "args",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "updateCharter"
+            }
+          ],
+          "extendsTokenRange": {
+            "startIndex": 23,
+            "endIndex": 25
           },
           "implementsTokenRanges": []
         },
@@ -8567,6 +9736,30 @@
           "typeTokenRange": {
             "startIndex": 1,
             "endIndex": 5
+          }
+        },
+        {
+          "kind": "Variable",
+          "canonicalReference": "@donecollectively/stellar-contracts!insufficientInputError:var",
+          "docComment": "",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "insufficientInputError: "
+            },
+            {
+              "kind": "Reference",
+              "text": "RegExp",
+              "canonicalReference": "!RegExp:interface"
+            }
+          ],
+          "fileUrlPath": "src/testing/index.ts",
+          "isReadonly": true,
+          "releaseTag": "Public",
+          "name": "insufficientInputError",
+          "variableTypeTokenRange": {
+            "startIndex": 1,
+            "endIndex": 2
           }
         },
         {
@@ -13941,6 +15134,1601 @@
             "startIndex": 11,
             "endIndex": 18
           }
+        },
+        {
+          "kind": "Interface",
+          "canonicalReference": "@donecollectively/stellar-contracts!StellarTestContext:interface",
+          "docComment": "/**\n * Interface augmenting the generic vitest testing context with a convention for testing contracts created with Stellar Contracts.\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export interface StellarTestContext<HTH extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "StellarTestHelper",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<SC>"
+            },
+            {
+              "kind": "Content",
+              "text": ", SC extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "StellarContract",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<any>"
+            },
+            {
+              "kind": "Content",
+              "text": " = "
+            },
+            {
+              "kind": "Content",
+              "text": "HTH extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "StellarTestHelper",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<infer iSC> ? iSC : never"
+            },
+            {
+              "kind": "Content",
+              "text": "> extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "canHaveRandomSeed",
+              "canonicalReference": "@donecollectively/stellar-contracts!~canHaveRandomSeed:type"
+            },
+            {
+              "kind": "Content",
+              "text": ", "
+            },
+            {
+              "kind": "Reference",
+              "text": "TestContext",
+              "canonicalReference": "@vitest/runner!TestContext:interface"
+            },
+            {
+              "kind": "Content",
+              "text": " "
+            }
+          ],
+          "fileUrlPath": "src/testing/StellarTestContext.ts",
+          "releaseTag": "Public",
+          "typeParameters": [
+            {
+              "typeParameterName": "HTH",
+              "constraintTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 0,
+                "endIndex": 0
+              }
+            },
+            {
+              "typeParameterName": "SC",
+              "constraintTokenRange": {
+                "startIndex": 4,
+                "endIndex": 6
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 7,
+                "endIndex": 10
+              }
+            }
+          ],
+          "name": "StellarTestContext",
+          "preserveMemberOrder": false,
+          "members": [
+            {
+              "kind": "PropertySignature",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestContext#h:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "h: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "HTH"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "h",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              }
+            },
+            {
+              "kind": "MethodSignature",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestContext#initHelper:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "initHelper(config: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Partial",
+                  "canonicalReference": "!Partial:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "ConfigFor",
+                  "canonicalReference": "@donecollectively/stellar-contracts!ConfigFor:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<SC>> & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "canHaveRandomSeed",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~canHaveRandomSeed:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": " & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "canSkipSetup",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~canSkipSetup:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTestHelper",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<SC>>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isOptional": false,
+              "returnTypeTokenRange": {
+                "startIndex": 9,
+                "endIndex": 13
+              },
+              "releaseTag": "Public",
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "config",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 8
+                  },
+                  "isOptional": false
+                }
+              ],
+              "name": "initHelper"
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestContext#strella:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "get strella(): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "SC"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": true,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "strella",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            }
+          ],
+          "extendsTokenRanges": [
+            {
+              "startIndex": 11,
+              "endIndex": 12
+            },
+            {
+              "startIndex": 13,
+              "endIndex": 14
+            }
+          ]
+        },
+        {
+          "kind": "Class",
+          "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper:class",
+          "docComment": "/**\n * Base class for test-helpers on generic Stellar contracts\n *\n * @remarks\n *\n * NOTE: DefaultCapoTestHelper is likely to be a better fit for typical testing needs and typical contract-development scenarios. Use this class for specific unit-testing needs not sufficiently served by integration-testing on a Capo.\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare abstract class StellarTestHelper<SC extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "StellarContract",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<any>"
+            },
+            {
+              "kind": "Content",
+              "text": "> "
+            }
+          ],
+          "fileUrlPath": "src/testing/StellarTestHelper.ts",
+          "releaseTag": "Public",
+          "typeParameters": [
+            {
+              "typeParameterName": "SC",
+              "constraintTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 0,
+                "endIndex": 0
+              }
+            }
+          ],
+          "isAbstract": true,
+          "name": "StellarTestHelper",
+          "preserveMemberOrder": false,
+          "members": [
+            {
+              "kind": "Constructor",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper:constructor(1)",
+              "docComment": "/**\n * Constructs a new instance of the `StellarTestHelper` class\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "constructor(config?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "ConfigFor",
+                  "canonicalReference": "@donecollectively/stellar-contracts!ConfigFor:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<SC> & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "canHaveRandomSeed",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~canHaveRandomSeed:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": " & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "canSkipSetup",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~canSkipSetup:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ");"
+                }
+              ],
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "config",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 6
+                  },
+                  "isOptional": true
+                }
+              ]
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#actors:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "actors: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "actorMap",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~actorMap:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "actors",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#addActor:member(1)",
+              "docComment": "/**\n * creates a new Actor in the transaction context with initial funds, returning a Wallet object\n *\n * @remarks\n *\n * Given an actor name (\"marcie\") or role name (\"marketer\"), and a number of indicated lovelace, creates and returns a wallet having the indicated starting balance.\n *\n * By default, three additional, separate 5-ADA utxos are created, to ensure sufficient Collateral and small-change are existing, making typical transaction scenarios work easily. If you want to include other utxo's instead you can supply their lovelace sizes.\n *\n * To suppress creation of additional utxos, use `0n` for arg3.\n *\n * You may wish to import {@link ADA} = 1_000_000n from the testing/ module, and multiply smaller integers by that constant.\n *\n * @param roleName - an actor name or role-name for this wallet\n *\n * @param walletBalance - initial wallet balance\n *\n * @param moreUtxos - additional utxos to include\n *\n * @example\n *\n * this.addActor(\"cheapo\", 14n * ADA, 0n); // 14 ADA and no additional utxos this.addActor(\"flexible\", 14n * ADA); // 14 ADA + default 15 ADA in 3 additional utxos this.addActor(\"moneyBags\", 42_000_000n * ADA, 5n, 4n); // many ADA and two collaterals\n *\n * // 3O ADA in 6 separate utxos: this.addActor(\"smallChange\", 5n * ADA, 5n * ADA, 5n * ADA, 5n * ADA, 5n * ADA, 5n * ADA);\n *\n * @public\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "addActor(roleName: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", walletBalance: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "bigint"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", ...moreUtxos: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "bigint[]"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Wallet",
+                  "canonicalReference": "@hyperionbt/helios!Wallet:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 7,
+                "endIndex": 8
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "roleName",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "walletBalance",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 3,
+                    "endIndex": 4
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "moreUtxos",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 5,
+                    "endIndex": 6
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "addActor"
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#address:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "address?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Address",
+                  "canonicalReference": "@hyperionbt/helios!Address:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": true,
+              "releaseTag": "Public",
+              "name": "address",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#config:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "config?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "ConfigFor",
+                  "canonicalReference": "@donecollectively/stellar-contracts!ConfigFor:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<SC>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": true,
+              "releaseTag": "Public",
+              "name": "config",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#currentActor:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "get currentActor(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "WalletEmulator",
+                  "canonicalReference": "@hyperionbt/helios!SimpleWallet:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";\n\nset currentActor(actorName: string);"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "currentActor",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#currentSlot:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "currentSlot(): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "bigint | null"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "currentSlot"
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#defaultActor:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "defaultActor?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": true,
+              "releaseTag": "Public",
+              "name": "defaultActor",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#delay:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "delay(ms: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "any"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<unknown>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "ms",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "delay"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#initialize:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "initialize(config: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "ConfigFor",
+                  "canonicalReference": "@donecollectively/stellar-contracts!ConfigFor:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<SC> & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "canHaveRandomSeed",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~canHaveRandomSeed:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<SC>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 5,
+                "endIndex": 7
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "config",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 4
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "initialize"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#initStellarClass:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "initStellarClass(): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "SC & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarContract",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarContract:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<SC extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarContract",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarContract:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<infer inferredConfig extends import(\"../StellarContract.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "configBase",
+                  "canonicalReference": "@donecollectively/stellar-contracts!paramsBase:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "> ? inferredConfig : never>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 8
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "initStellarClass"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#initStrella:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "initStrella(TargetClass: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "stellarSubclass",
+                  "canonicalReference": "@donecollectively/stellar-contracts!stellarSubclass:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<SC, "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "ConfigFor",
+                  "canonicalReference": "@donecollectively/stellar-contracts!ConfigFor:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<SC>>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", config?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "ConfigFor",
+                  "canonicalReference": "@donecollectively/stellar-contracts!ConfigFor:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<SC>"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "SC & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarContract",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarContract:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<SC extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarContract",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarContract:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<infer inferredConfig extends import(\"../StellarContract.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "configBase",
+                  "canonicalReference": "@donecollectively/stellar-contracts!paramsBase:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "> ? inferredConfig : never>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 9,
+                "endIndex": 16
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "TargetClass",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 5
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "config",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 6,
+                    "endIndex": 8
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "initStrella"
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#liveSlotParams:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "liveSlotParams: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "NetworkParams",
+                  "canonicalReference": "@hyperionbt/helios!NetworkParams:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "liveSlotParams",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#mkNetwork:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "mkNetwork(): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "["
+                },
+                {
+                  "kind": "Reference",
+                  "text": "NetworkEmulator",
+                  "canonicalReference": "@hyperionbt/helios!NetworkEmulator:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "enhancedNetworkParams",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~enhancedNetworkParams:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "]"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 6
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "mkNetwork"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#mkRandomBytes:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "mkRandomBytes(length: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "number"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "number[]"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 4
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "length",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "mkRandomBytes"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#mkSeedUtxo:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "mkSeedUtxo(seedIndex?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "bigint"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "helios.TxId",
+                  "canonicalReference": "@hyperionbt/helios!TxId:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 7
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "seedIndex",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "mkSeedUtxo"
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#network:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "network: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "NetworkEmulator",
+                  "canonicalReference": "@hyperionbt/helios!NetworkEmulator:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "network",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#networkParams:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "networkParams: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "NetworkParams",
+                  "canonicalReference": "@hyperionbt/helios!NetworkParams:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "networkParams",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#optimize:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "optimize: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "boolean"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "optimize",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#rand:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "rand?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "() => number"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": true,
+              "releaseTag": "Public",
+              "name": "rand",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#randomSeed:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "randomSeed?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "number"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": true,
+              "releaseTag": "Public",
+              "name": "randomSeed",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#setupActors:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "setupActors(): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "void"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "setupActors"
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#setupPending:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "setupPending?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": true,
+              "releaseTag": "Public",
+              "name": "setupPending",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#slotToTimestamp:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "slotToTimestamp(s: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "bigint"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "bigint | "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Date",
+                  "canonicalReference": "!Date:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "s",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "slotToTimestamp"
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#state:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "state: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Record",
+                  "canonicalReference": "!Record:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<string, any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "state",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#stellarClass:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "abstract get stellarClass(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "stellarSubclass",
+                  "canonicalReference": "@donecollectively/stellar-contracts!stellarSubclass:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<SC, any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": true,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "stellarClass",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": true
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#strella:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "strella: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "SC"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "strella",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#submitTx:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "submitTx(tx: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Tx",
+                  "canonicalReference": "@hyperionbt/helios!Tx:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", force?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "\"force\""
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "TxId",
+                  "canonicalReference": "@hyperionbt/helios!TxId:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 5,
+                "endIndex": 9
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "tx",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "force",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 3,
+                    "endIndex": 4
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "submitTx"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#waitUntil:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "waitUntil(time: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Date",
+                  "canonicalReference": "!Date:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "bigint"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 4
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "time",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "waitUntil"
+            }
+          ],
+          "implementsTokenRanges": []
         },
         {
           "kind": "Class",
