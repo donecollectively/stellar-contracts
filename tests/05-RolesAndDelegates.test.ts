@@ -7,6 +7,7 @@ import {
     assertType,
     expectTypeOf,
 } from "vitest";
+global.expect = expect
 
 import { DefaultCapo } from "../src/DefaultCapo";
 

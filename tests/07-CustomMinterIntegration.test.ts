@@ -5,6 +5,7 @@ import {
     beforeEach,
     vi,
 } from "vitest";
+global.expect = expect
 
 import { Address, TxId, TxOutput } from "@hyperionbt/helios";
 
