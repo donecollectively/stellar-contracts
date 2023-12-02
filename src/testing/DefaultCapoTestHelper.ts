@@ -17,7 +17,15 @@ import type {
     hasUutContext,
 } from "../Capo.js";
 import { DefaultMinter } from "../minting/DefaultMinter.js";
-import { expect } from "vitest";
+
+import type { expect as expectType } from "vitest";
+
+declare namespace NodeJS {
+    interface Global {
+        expect: typeof expectType
+    }
+}
+declare const expect: typeof  expectType;
 
 /**
  * Test helper for classes extending DefaultCapo
