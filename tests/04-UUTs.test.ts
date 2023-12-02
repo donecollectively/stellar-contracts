@@ -33,7 +33,6 @@ import * as utils from "../src/utils";
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
 const wrongMinSigs = /minSigs can't be more than the size of the trustee-list/;
 const notEnoughSignaturesRegex = /not enough trustees.*have signed/;
-global.expect = expect
 
 const it = itWithContext<localTC>;
 const fit = it.only;

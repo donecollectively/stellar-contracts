@@ -16,7 +16,6 @@ import {
     TxInput,
     Value,
 } from "@hyperionbt/helios";
-global.expect = expect
 
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";

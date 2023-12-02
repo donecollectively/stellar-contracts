@@ -20,7 +20,6 @@ import {
     TxInput,
     Value,
 } from "@hyperionbt/helios";
-global.expect = expect
 
 import { StellarTxnContext } from "../src/StellarTxnContext";
 import { MintingPolicyHash } from "@hyperionbt/helios";

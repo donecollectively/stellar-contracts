@@ -14,6 +14,7 @@ export default defineConfig({
     // include: ['tests/new*.test.ts', ],
     include: ['tests/*.test.ts', 'tests/*.test.js'],
     testTimeout: 500000,
+    globals: true,
     // browser: {
     //     enabled: true,
     //     name: 'chrome', // browser name is required

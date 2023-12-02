@@ -4,7 +4,6 @@ import {
     it as itWithContext,
     beforeEach,
 } from "vitest";
-global.expect = expect
 
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { CustomCapoTestHelper } from "./customizing/CustomCapoTestHelper";

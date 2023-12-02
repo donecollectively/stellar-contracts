@@ -28,7 +28,6 @@ import { DelegationDetail } from "../src/delegation/RolesAndDelegates";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
-global.expect = expect
 
 const it = itWithContext<localTC>;
 const fit = it.only;
