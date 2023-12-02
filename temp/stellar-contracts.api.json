@@ -7516,8 +7516,8 @@
                 },
                 {
                   "kind": "Reference",
-                  "text": "stellarTestHelperSubclass",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~stellarTestHelperSubclass:type"
+                  "text": "DefaultCapoTestHelperClass",
+                  "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapoTestHelperClass:type"
                 },
                 {
                   "kind": "Content",
@@ -7881,6 +7881,94 @@
             "endIndex": 25
           },
           "implementsTokenRanges": []
+        },
+        {
+          "kind": "TypeAlias",
+          "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapoTestHelperClass:type",
+          "docComment": "",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export type DefaultCapoTestHelperClass<SC extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "StellarContract",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<any>"
+            },
+            {
+              "kind": "Content",
+              "text": "> = "
+            },
+            {
+              "kind": "Content",
+              "text": "new (config: "
+            },
+            {
+              "kind": "Reference",
+              "text": "ConfigFor",
+              "canonicalReference": "@donecollectively/stellar-contracts!ConfigFor:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<SC> & "
+            },
+            {
+              "kind": "Reference",
+              "text": "canHaveRandomSeed",
+              "canonicalReference": "@donecollectively/stellar-contracts!~canHaveRandomSeed:type"
+            },
+            {
+              "kind": "Content",
+              "text": ") => "
+            },
+            {
+              "kind": "Reference",
+              "text": "StellarTestHelper",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<SC> & {\n    stellarClass: "
+            },
+            {
+              "kind": "Reference",
+              "text": "stellarSubclass",
+              "canonicalReference": "@donecollectively/stellar-contracts!stellarSubclass:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<SC>;\n}"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/testing/types.ts",
+          "releaseTag": "Public",
+          "name": "DefaultCapoTestHelperClass",
+          "typeParameters": [
+            {
+              "typeParameterName": "SC",
+              "constraintTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 0,
+                "endIndex": 0
+              }
+            }
+          ],
+          "typeTokenRange": {
+            "startIndex": 4,
+            "endIndex": 13
+          }
         },
         {
           "kind": "TypeAlias",

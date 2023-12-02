@@ -683,7 +683,7 @@ CT extends CapoBaseConfig = DC extends Capo<any, any, infer iCT> ? iCT : never> 
      * @typeParam DC - no need to specify it; it's inferred from your parameter
      * @public
      **/
-    static forCapoClass<DC extends DefaultCapo<DefaultMinter, any, any>>(s: stellarSubclass<DC>): stellarTestHelperSubclass<DC>;
+    static forCapoClass<DC extends DefaultCapo<DefaultMinter, any, any>>(s: stellarSubclass<DC>): DefaultCapoTestHelperClass<DC>;
     get stellarClass(): stellarSubclass<DC>;
     setupActors(): void;
     mkCharterSpendTx(): Promise<StellarTxnContext>;
@@ -691,6 +691,10 @@ CT extends CapoBaseConfig = DC extends Capo<any, any, infer iCT> ? iCT : never> 
     mintCharterToken(args?: MinimalDefaultCharterDatumArgs<CDT>): Promise<hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & StellarTxnContext<any> & hasBootstrappedConfig<CapoBaseConfig>>;
     updateCharter(args: CDT): Promise<StellarTxnContext>;
 }
+
+export declare type DefaultCapoTestHelperClass<SC extends StellarContract<any>> = new (config: ConfigFor<SC> & canHaveRandomSeed) => StellarTestHelper<SC> & {
+    stellarClass: stellarSubclass<SC>;
+};
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
