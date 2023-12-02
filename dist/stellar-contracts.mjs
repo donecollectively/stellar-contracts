@@ -1,6 +1,5 @@
 import path from 'path';
 import { createFilter } from 'rollup-pluginutils';
-import 'lib/HeliosModuleSrc.js';
 import 'fs';
 import { expect } from 'vitest';
 
