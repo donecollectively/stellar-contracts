@@ -329,7 +329,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         //  ... so that the full balance is spendable and the actor can immediately
         //  ... engage in smart-contract interactions.
         this.network.tick(BigInt(2));
-        if (0 == moreUtxos.length) moreUtxos = [5n, 5n, 5n];
+        const five = 5n * ADA
+        if (0 == moreUtxos.length) moreUtxos = [five, five, five];
         for (const moreLovelace of moreUtxos) {
             if (moreLovelace > 0n) {
                 this.network.createUtxo(a, moreLovelace);
