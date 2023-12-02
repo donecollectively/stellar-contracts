@@ -5,7 +5,7 @@ import type {
 } from "../DefaultCapo.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { ADA} from "./types.js";
-import type { canHaveRandomSeed, stellarTestHelperSubclass } from "./types.js";
+import type { DefaultCapoTestHelperClass, canHaveRandomSeed, stellarTestHelperSubclass } from "./types.js";
 import { CapoTestHelper } from "./CapoTestHelper.js";
 import type { stellarSubclass } from "../StellarContract.js";
 import {
@@ -70,7 +70,7 @@ export class DefaultCapoTestHelper<
      **/
     static forCapoClass<DC extends DefaultCapo<DefaultMinter, any, any>>(
         s: stellarSubclass<DC>
-    ): stellarTestHelperSubclass<DC> {
+    ):  DefaultCapoTestHelperClass<DC> {
         class specificCapoHelper extends DefaultCapoTestHelper<DC> {
             get stellarClass() {
                 return s;

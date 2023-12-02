@@ -7,20 +7,36 @@ import {
 import { promises as fs } from "fs";
 import { Vitest, vitest } from "vitest";
 // import { StellarContract } from "../StellarContract.js";
-import type { ConfigFor, StellarContract, configBase } from "../StellarContract.js";
+import type {
+    ConfigFor,
+    StellarConstructorArgs,
+    StellarContract,
+    configBase,
+    stellarSubclass,
+} from "../StellarContract.js";
 import type { StellarTestContext } from "./StellarTestContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
 import ppParams from "../../preprod.json" assert { type: "json" };
+import type { Capo, CapoBaseConfig } from "../Capo.js";
+import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
+import type { DefaultCapo } from "../DefaultCapo.js";
 
 export const preProdParams = ppParams;
 
 export type enhancedNetworkParams = NetworkParams & {
     slotToTimestamp(n: bigint): Date;
 };
-
 export type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (
     config: ConfigFor<SC> & canHaveRandomSeed
 ) => StellarTestHelper<SC>;
+
+export type DefaultCapoTestHelperClass<SC extends StellarContract<any>> = new (
+    config: ConfigFor<SC> & canHaveRandomSeed
+) => StellarTestHelper<SC> & { stellarClass: stellarSubclass<SC> };
+
+// type DefaultCapoTestHelperSubclass<SC extends DefaultCapo<any>> = new (
+//     args: StellarConstructorArgs<CapoBaseConfig>
+// ) => DefaultCapoTestHelper<SC>;
 
 export type canHaveRandomSeed = {
     randomSeed?: number;
@@ -32,7 +48,7 @@ export type canSkipSetup = {
 /**
  * Adds a test helper class to a `vitest` testing context.
  * @remarks
- * 
+ *
  * @param context -  a vitest context, typically created with StellarTestContext
  * @param TestHelperClass - typically created with DefaultCapoTestHelper
  * @param params - preset configuration for the contract under test
