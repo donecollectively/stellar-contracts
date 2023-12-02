@@ -61673,8 +61673,9 @@ class StellarTestHelper {
     );
     //! it makes collateral for each actor, above and beyond the initial balance,
     this.network.tick(BigInt(2));
+    const five = 5n * ADA;
     if (0 == moreUtxos.length)
-      moreUtxos = [5n, 5n, 5n];
+      moreUtxos = [five, five, five];
     for (const moreLovelace of moreUtxos) {
       if (moreLovelace > 0n) {
         this.network.createUtxo(a, moreLovelace);
@@ -61755,131 +61756,41 @@ class CapoTestHelper extends StellarTestHelper {
   }
 }
 
-class DefaultCapoTestHelper extends CapoTestHelper {
-  /**
-   * Creates a prepared test helper for a given Capo class, with boilerplate built-in
-   *
-   * @remarks
-   *
-   * You may wish to provide an overridden setupActors() method, to arrange actor
-   * names that fit your project's user-roles / profiles.
-   *
-   * You may also wish to add methods that satisfy some of your application's key
-   * use-cases in simple predefined ways, so that your automated tests can re-use
-   * the logic and syntax instead of repeating them in multiple test-cases.
-   *
-   * @param s - your Capo class that extends DefaultCapo
-   * @typeParam DC - no need to specify it; it's inferred from your parameter
-   * @public
-   **/
-  static forCapoClass(s) {
-    class specificCapoHelper extends DefaultCapoTestHelper {
-      get stellarClass() {
-        return s;
-      }
-    }
-    return specificCapoHelper;
-  }
-  //@ts-expect-error
-  get stellarClass() {
-    return DefaultCapo;
-  }
-  //!!! todo: create type-safe ActorMap helper hasActors(), on same pattern as hasRequirements
-  setupActors() {
-    this.addActor("tina", 1100n * ADA);
-    this.addActor("tracy", 13n * ADA);
-    this.addActor("tom", 120n * ADA);
-    this.currentActor = "tina";
-  }
-  async mkCharterSpendTx() {
-    await this.mintCharterToken();
-    const treasury = this.strella;
-    const tcx = new StellarTxnContext(this.currentActor);
-    const tcx2 = await treasury.txnAddGovAuthority(tcx);
-    return treasury.txnMustUseCharterUtxo(tcx2, treasury.usingAuthority());
-  }
-  mkDefaultCharterArgs() {
-    const addr = this.currentActor.address;
-    console.log("test helper charter -> actor addr", addr.toBech32());
-    return {
-      govAuthorityLink: {
-        strategyName: "address",
-        config: {
-          addrHint: [addr]
-        }
-      }
-      // mintDelegateLink: {
-      //     strategyName: "default",
-      // },
-    };
-  }
-  async mintCharterToken(args) {
-    this.actors;
-    if (this.state.mintedCharterToken) {
-      console.warn(
-        "reusing minted charter from existing testing-context"
-      );
-      return this.state.mintedCharterToken;
-    }
-    if (!this.strella)
-      await this.initialize();
-    const script = this.strella;
-    const goodArgs = args || this.mkDefaultCharterArgs();
-    const tcx = await script.mkTxnMintCharterToken(goodArgs);
-    this.state.config = tcx.state.bootstrappedConfig;
-    expect(script.network).toBe(this.network);
-    await script.submit(tcx);
-    console.log(
-      `----- charter token minted at slot ${this.network.currentSlot}`
-    );
-    this.network.tick(1n);
-    this.state.mintedCharterToken = tcx;
-    return tcx;
-  }
-  async updateCharter(args) {
-    await this.mintCharterToken();
-    const treasury = this.strella;
-    const { signers } = this.state;
-    const tcx = await treasury.mkTxnUpdateCharter(args);
-    return treasury.submit(tcx, { signers }).then(() => {
-      this.network.tick(1n);
-      return tcx;
-    });
-  }
-}
+const code$5 = new String("spending Capo\n\n// needed in helios 0.13: defaults\nconst mph : MintingPolicyHash = MintingPolicyHash::new(#1234)\nconst rev : Int = 1\n\nimport {\n    tvCharter\n} from CapoHelpers\n\nimport { \n    RelativeDelegateLink,\n    requiresValidDelegateOutput\n} from CapoDelegateHelpers\n\nimport {\n    mkTv,\n    didSign,\n    didSignInCtx\n} from StellarHeliosHelpers\n\nimport { Datum, Activity } from specializedCapo\n\n/**\n * \n */\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{\n        govDelegateLink, _\n    } = datum;\n\n    requiresValidDelegateOutput(govDelegateLink, mph, ctx)\n}\n\nfunc getCharterOutput(tx: Tx) -> TxOutput {\n    charterTokenValue : Value = Value::new(\n        AssetClass::new(mph, \"charter\".encode_utf8()), \n        1\n    );\n    tx.outputs.find_safe(\n        (txo : TxOutput) -> Bool {\n            txo.value >= charterTokenValue\n        }\n    ).switch{\n        None => error(\"this could only happen if the charter token is burned.\"),\n        Some{o} => o\n    }\n}\n\nfunc notUpdatingCharter(activity: Activity) -> Bool { activity.switch {\n    updatingCharter => false,  \n    _ => true\n}}\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        error(\"charter token must be returned to the contract \")\n        // actual : String = charterOutput.address.credential.switch{\n        //     PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n        //     Validator{vh} => \"val:📜#:\" + vh.show()\n        // };\n        // error(\n        //     \"charter token must be returned to the contract \" + cvh.show() +\n        //     \"... but was sent to \" +actual\n        // )\n    };\n\n    Datum::CharterToken{\n        govDelegate,\n        mintDelegate\n    } = datum;\n    Datum::CharterToken{\n        newGovDelegate,\n        newMintDelegate\n    } = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newGovDelegate == govDelegate &&\n        newMintDelegate == mintDelegate\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    // now: Time = tx.time_range.start;\n    \n    allDatumSpecificChecks: Bool = datum.switch {\n        ctd : CharterToken => {\n            // throws if bad\n            if(notUpdatingCharter(activity)) { \n                preventCharterChange(ctx, ctd)\n            } else {\n                true // \"maybe\", really\n            }\n        },\n        _ => {\n            activity.switch {\n                spendingDatum => datum.validateSpend(ctx, mph),\n                _ => true\n            }\n        }            \n    };\n    allActivitySpecificChecks : Bool = activity.switch {\n        updatingCharter => {\n            charterOutput : TxOutput = getCharterOutput(tx);\n            newDatum = Datum::from_data( \n                charterOutput.datum.get_inline_data() \n            );\n            Datum::CharterToken{govDelegate, mintDelegate} = newDatum;\n\n            requiresValidDelegateOutput(govDelegate, mph, ctx) &&\n            requiresValidDelegateOutput(mintDelegate, mph, ctx) &&\n            requiresAuthorization(ctx, datum)\n        },\n        usingAuthority => {\n            // by definition, we're truly notUpdatingCharter(activity) \n            datum.switch {\n                 // throws if bad\n                ctd : CharterToken => requiresAuthorization(ctx, ctd),\n                _ => error(\"wrong use of usingAuthority action for non-CharterToken datum\")\n            }\n        },\n        _ => activity.allowActivity(datum, ctx, mph)\n    };\n\n    assert(allDatumSpecificChecks, \"datum-check fail\");\n    assert(allActivitySpecificChecks, \"redeeemer-check fail\");\n\n    //! retains mph in parameterization\n    assert(\n        ( allDatumSpecificChecks && allActivitySpecificChecks ) ||\n            // this should never execute (much less fail), yet it also shouldn't be optimized out.\n             mph.serialize() /* never */ == datum.serialize(), \n        \"unreachable\"\n    ); \n\n    allDatumSpecificChecks && \n    allActivitySpecificChecks &&\n    tx.serialize() != datum.serialize()\n}\n");
 
-const insufficientInputError = /(need .* lovelace, but only have|transaction doesn't have enough inputs)/;
-Error.stackTraceLimit = 100;
-
-const code$5 = new String("spending BasicMintDelegate\n\nconst rev : Int = 1\nconst instance : ByteArray = #67656e6572616c\n\nimport {\n    DelegationDetail,\n    acAuthorityToken,\n    tvAuthorityToken\n} from CapoDelegateHelpers\n\nimport {\n    returnsValueToScript\n} from StellarHeliosHelpers\n\nimport {\n    MintDelegateActivity,\n    MintDelegateDatum\n} from specializedMintDelegate\n\n// import { \n//     preventCharterChange\n// } from MultiSigAuthority\n// func main(datum: Datum,_,ctx: ScriptContext) -> Bool {\n//     preventCharterChange(ctx, datum) \n// }\n\nfunc mustReturnValueToScript(value : Value, ctx : ScriptContext) -> Bool {\n    if (!returnsValueToScript( value, ctx)) {\n         error(\"the authZor token MUST be returned\")\n    };\n    true\n}\n\nfunc main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptContext) -> Bool {\n    // input = ctx.get_current_input();\n    mdd.switch{\n        isD : IsDelegation{dd, _} => {\n            // MintDelegateDatum::IsDelegation{dd, cfg} = isD;\n            activity.switch {        \n                Authorizing => {\n                    ok : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);\n\n                    o : []TxOutput = ctx.get_cont_outputs();\n                    if (o.length != 1) { error(\"only one utxo allowed in return to mint delegate\") };\n\n                    // Note: unspecialized delegate requires unchanged datum\n                    // ... in additionalDelegateValidation.  ...like this:\n                    //      unmodifiedDelegation( /*isD, same as*/ ddd.serialize(), ctx) &&\n\n                    ok\n                },\n                Reassigning => {\n                    // the token isn't burned, and it isn't returned back to this script\n                    ctx.tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&\n                    !returnsValueToScript( tvAuthorityToken(dd), ctx)\n                },\n                Retiring => {\n                    // the token is burned\n                    ctx.tx.minted.get(acAuthorityToken(dd)) == -1\n                },\n                Modifying => {\n                    authorityValue : Value = tvAuthorityToken(dd);\n                    ok : Bool = mustReturnValueToScript(authorityValue, ctx);\n                    dlgt : TxOutput = ctx.get_cont_outputs().find(\n                        (o :TxOutput) -> Bool {\n                            o.value.contains(authorityValue)\n                        }\n                    );\n                            \n                    ddNew : MintDelegateDatum::IsDelegation = \n                    MintDelegateDatum::from_data( \n                        dlgt.datum.get_inline_data() \n                    );\n\n                    mdd.validateCDConfig(ddNew) && ok\n                },\n                _ => true\n            } && activity.additionalDelegateValidation(isD, ctx)\n        },\n        _ => {\n            invalidRedeemer = () -> {  error(\"custom datum must not use Activities reserved for IsDelegation datum.\") };\n            activity.switch{\n                Authorizing => invalidRedeemer(),\n                Reassigning => invalidRedeemer(),\n                Retiring => invalidRedeemer(),\n                Modifying => invalidRedeemer(),\n                _ => activity.otherDatumValidation(mdd, ctx)\n            }\n        }\n    }\n}\n");
-
-code$5.srcFile = "src/minting/BasicMintDelegate.hl";
+code$5.srcFile = "src/DefaultCapo.hl";
 code$5.purpose = "spending";
-code$5.moduleName = "BasicMintDelegate";
+code$5.moduleName = "Capo";
 
-const code$4 = new String("module specializedMintDelegate\n\n//! provides a basic version, not actually specialized,\n// of the \"specializedMintDelegate\" interface, which simply\n// exports a DelegateDatum enum and DelegateActivities (redeemer enum).  \n//! these specializations MAY include additional enum variants, and \n//  ... they MUST include the same enum variants found in this\n//  ... unspecialized version.  \n//  If you're specializing and you get a Helios compiler error,\n// ... these are the first things you should check!\n//! Your specialization MAY include any \n// ... additional functions, imports or methods\n\nimport {\n     DelegationDetail,\n     unmodifiedDelegation\n} from CapoDelegateHelpers\n\nenum MintDelegateDatum {\n    IsDelegation {\n        dd: DelegationDetail\n        // provides structural space for (non-string) configuration data.\n        // the string case is degenerate (expect empty string always)\n        CustomConfig: String\n    }\n    \n    func validateCDConfig(self, updated: MintDelegateDatum::IsDelegation) -> Bool {\n        self.switch {\n            ddd: IsDelegation => {\n                (ddd.CustomConfig == \"\") &&\n                (updated == self)\n            },\n            _ => error(\"unreachable\")\n        }\n    }\n}\n\nenum MintDelegateActivity {\n    Authorizing\n    Reassigning\n    Retiring\n    Modifying\n    //! used only for validating IsDelegation datum, that is,\n    //   ... to approve minting requests or any customize spending modes \n    //   ... of that datum.  In this unspecialized version, \n    //   ... the \"Modifying\" activity is an unsupported stand-in for that use-case, always rejecting.\n    //! in a real-life customization case, additional custom IsDelegation config can be\n    //   ... enforced in \"Modifying\" event the second field of IsDelegation (the \"CDConfig\" stand-in here)\n    //   ... the BasicMintDelegate allows for that field's presence, without any assumptions\n    //   ... about its type.\n    //  Note that the basic mint delegate already\n    //   ... enforces the authority UUT being returned to the delegate script,\n    //   ... and other basic administrative expectations, so any specialization\n    //   ... can focus on higher-level policy considerations.\n    func additionalDelegateValidation( self,\n        priorMddd: MintDelegateDatum::IsDelegation, \n        ctx: ScriptContext\n    ) -> Bool {\n        // print(\"  ----- checking additional delegate validation\");\n        self.switch {\n            Authorizing => {\n                unmodifiedDelegation(priorMddd.serialize(), ctx) && \n                true\n            },\n            Modifying => false,\n            _ => true\n        } || ctx.tx.serialize() != priorMddd.serialize()\n    }\n\n    //! used only for validating non-IsDelegation datum types.\n    //   if you have any admininstrative data structures that inform \n    //   your minting policy, these\n    func otherDatumValidation( self,\n        priorMdd: MintDelegateDatum, \n        ctx: ScriptContext\n    ) -> Bool {\n        neverTriggered = () -> {  error(\"never called\") };\n        self.switch{\n            Authorizing => neverTriggered(),\n            Reassigning => neverTriggered(),\n            Retiring => neverTriggered(),\n            Modifying => neverTriggered(),\n            _ => false\n        } && (priorMdd.serialize() != ctx.serialize())\n    }\n}\n\nstruct types {\n    redeemers: MintDelegateActivity\n    datum : MintDelegateDatum\n}\n");
+const code$4 = new String("spending BasicMintDelegate\n\nconst rev : Int = 1\nconst instance : ByteArray = #67656e6572616c\n\nimport {\n    DelegationDetail,\n    acAuthorityToken,\n    tvAuthorityToken\n} from CapoDelegateHelpers\n\nimport {\n    returnsValueToScript\n} from StellarHeliosHelpers\n\nimport {\n    MintDelegateActivity,\n    MintDelegateDatum\n} from specializedMintDelegate\n\n// import { \n//     preventCharterChange\n// } from MultiSigAuthority\n// func main(datum: Datum,_,ctx: ScriptContext) -> Bool {\n//     preventCharterChange(ctx, datum) \n// }\n\nfunc mustReturnValueToScript(value : Value, ctx : ScriptContext) -> Bool {\n    if (!returnsValueToScript( value, ctx)) {\n         error(\"the authZor token MUST be returned\")\n    };\n    true\n}\n\nfunc main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptContext) -> Bool {\n    // input = ctx.get_current_input();\n    mdd.switch{\n        isD : IsDelegation{dd, _} => {\n            // MintDelegateDatum::IsDelegation{dd, cfg} = isD;\n            activity.switch {        \n                Authorizing => {\n                    ok : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);\n\n                    o : []TxOutput = ctx.get_cont_outputs();\n                    if (o.length != 1) { error(\"only one utxo allowed in return to mint delegate\") };\n\n                    // Note: unspecialized delegate requires unchanged datum\n                    // ... in additionalDelegateValidation.  ...like this:\n                    //      unmodifiedDelegation( /*isD, same as*/ ddd.serialize(), ctx) &&\n\n                    ok\n                },\n                Reassigning => {\n                    // the token isn't burned, and it isn't returned back to this script\n                    ctx.tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&\n                    !returnsValueToScript( tvAuthorityToken(dd), ctx)\n                },\n                Retiring => {\n                    // the token is burned\n                    ctx.tx.minted.get(acAuthorityToken(dd)) == -1\n                },\n                Modifying => {\n                    authorityValue : Value = tvAuthorityToken(dd);\n                    ok : Bool = mustReturnValueToScript(authorityValue, ctx);\n                    dlgt : TxOutput = ctx.get_cont_outputs().find(\n                        (o :TxOutput) -> Bool {\n                            o.value.contains(authorityValue)\n                        }\n                    );\n                            \n                    ddNew : MintDelegateDatum::IsDelegation = \n                    MintDelegateDatum::from_data( \n                        dlgt.datum.get_inline_data() \n                    );\n\n                    mdd.validateCDConfig(ddNew) && ok\n                },\n                _ => true\n            } && activity.additionalDelegateValidation(isD, ctx)\n        },\n        _ => {\n            invalidRedeemer = () -> {  error(\"custom datum must not use Activities reserved for IsDelegation datum.\") };\n            activity.switch{\n                Authorizing => invalidRedeemer(),\n                Reassigning => invalidRedeemer(),\n                Retiring => invalidRedeemer(),\n                Modifying => invalidRedeemer(),\n                _ => activity.otherDatumValidation(mdd, ctx)\n            }\n        }\n    }\n}\n");
 
-code$4.srcFile = "src/minting/UnspecializedMintDelegate.hl";
-code$4.purpose = "module";
-code$4.moduleName = "specializedMintDelegate";
+code$4.srcFile = "src/minting/BasicMintDelegate.hl";
+code$4.purpose = "spending";
+code$4.moduleName = "BasicMintDelegate";
 
-const UnspecializedMintDelegate = code$4;
+const code$3 = new String("module specializedMintDelegate\n\n//! provides a basic version, not actually specialized,\n// of the \"specializedMintDelegate\" interface, which simply\n// exports a DelegateDatum enum and DelegateActivities (redeemer enum).  \n//! these specializations MAY include additional enum variants, and \n//  ... they MUST include the same enum variants found in this\n//  ... unspecialized version.  \n//  If you're specializing and you get a Helios compiler error,\n// ... these are the first things you should check!\n//! Your specialization MAY include any \n// ... additional functions, imports or methods\n\nimport {\n     DelegationDetail,\n     unmodifiedDelegation\n} from CapoDelegateHelpers\n\nenum MintDelegateDatum {\n    IsDelegation {\n        dd: DelegationDetail\n        // provides structural space for (non-string) configuration data.\n        // the string case is degenerate (expect empty string always)\n        CustomConfig: String\n    }\n    \n    func validateCDConfig(self, updated: MintDelegateDatum::IsDelegation) -> Bool {\n        self.switch {\n            ddd: IsDelegation => {\n                (ddd.CustomConfig == \"\") &&\n                (updated == self)\n            },\n            _ => error(\"unreachable\")\n        }\n    }\n}\n\nenum MintDelegateActivity {\n    Authorizing\n    Reassigning\n    Retiring\n    Modifying\n    //! used only for validating IsDelegation datum, that is,\n    //   ... to approve minting requests or any customize spending modes \n    //   ... of that datum.  In this unspecialized version, \n    //   ... the \"Modifying\" activity is an unsupported stand-in for that use-case, always rejecting.\n    //! in a real-life customization case, additional custom IsDelegation config can be\n    //   ... enforced in \"Modifying\" event the second field of IsDelegation (the \"CDConfig\" stand-in here)\n    //   ... the BasicMintDelegate allows for that field's presence, without any assumptions\n    //   ... about its type.\n    //  Note that the basic mint delegate already\n    //   ... enforces the authority UUT being returned to the delegate script,\n    //   ... and other basic administrative expectations, so any specialization\n    //   ... can focus on higher-level policy considerations.\n    func additionalDelegateValidation( self,\n        priorMddd: MintDelegateDatum::IsDelegation, \n        ctx: ScriptContext\n    ) -> Bool {\n        // print(\"  ----- checking additional delegate validation\");\n        self.switch {\n            Authorizing => {\n                unmodifiedDelegation(priorMddd.serialize(), ctx) && \n                true\n            },\n            Modifying => false,\n            _ => true\n        } || ctx.tx.serialize() != priorMddd.serialize()\n    }\n\n    //! used only for validating non-IsDelegation datum types.\n    //   if you have any admininstrative data structures that inform \n    //   your minting policy, these\n    func otherDatumValidation( self,\n        priorMdd: MintDelegateDatum, \n        ctx: ScriptContext\n    ) -> Bool {\n        neverTriggered = () -> {  error(\"never called\") };\n        self.switch{\n            Authorizing => neverTriggered(),\n            Reassigning => neverTriggered(),\n            Retiring => neverTriggered(),\n            Modifying => neverTriggered(),\n            _ => false\n        } && (priorMdd.serialize() != ctx.serialize())\n    }\n}\n\nstruct types {\n    redeemers: MintDelegateActivity\n    datum : MintDelegateDatum\n}\n");
 
-const code$3 = new String("module specializedCapo\n\n//! provides a basic version, not actually specialized,\n// of the \"specializedCapo\" interface, which simply\n// exports Datum and Activity ('redemeer\") enum types.  \n//! the Datum and Activity of specializations\n//  MUST include the same enum variants as in this\n//  unspecialized version.  if you're specializing \n//  ... and you get a Helios compiler error,\n// ... these are the first things you should check!\n//! Your specialization MAY include any \n// ... additional functions, imports or methods\n\nimport { \n    RelativeDelegateLink\n} from CapoDelegateHelpers\n\n//! provides a basic version of Datum in default specializedCapo module\nenum Datum {\n    CharterToken {\n        govAuthorityLink: RelativeDelegateLink\n        mintDelegateLink: RelativeDelegateLink\n    }\n    //! datum-validation only supports checks of absolute spendability, \n    //  ... and can't check details of the Activity (\"redeemer\") being used.\n    func validateSpend(self, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {\n        //! Note: an overridden Datum's impl of validateSpend() \n        // ... is never called with the CharterToken variant\n        assert(false, \"can't happen\");\n        self.switch{\n            CharterToken => true,\n            _ => error(\"can't happen\")\n        } || (\n            ctx.tx.serialize() /* never */ == self.serialize() ||\n            mph.serialize() /* never */ == self.serialize()\n        )\n    }   \n}\n\n//! provides a basic version of Activity (\"redeemer\" type) in default specializedCapo module\nenum Activity {\n    usingAuthority\n    spendingDatum\n    updatingCharter    \n\n    func allowActivity(self, datum: Datum, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {\n        self.switch{\n            //! Note: an overridden Reedeemer def doesn't have to replicate the checks\n            // ... for the baseline enum variants; it's not called in those cases.\n            updatingCharter => true,\n            usingAuthority => true,\n            _ => error(\"unreachable code\")\n            // not executed, but prevents the args from showing up as unused:\n        } || (\n            ctx.tx.serialize() /* never */ == datum.serialize() ||\n            mph.serialize() /* never */ == datum.serialize()\n        )\n    }    \n}\n\nstruct types {\n    redeemers: Activity\n    datum : Datum\n}\n");
-
-code$3.srcFile = "src/UnspecializedCapo.hl";
+code$3.srcFile = "src/minting/UnspecializedMintDelegate.hl";
 code$3.purpose = "module";
-code$3.moduleName = "specializedCapo";
+code$3.moduleName = "specializedMintDelegate";
 
-const UnspecializedCapo = code$3;
+const UnspecializedMintDelegate = code$3;
 
-const code$2 = new String("module CapoHelpers\n\nimport {\n    mkTv,\n    tvCharter\n} from StellarHeliosHelpers\n\nimport { Datum, Activity } from specializedCapo\n\nfunc getRefCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::CharterToken {\n    chVal : Value = tvCharter(mph);\n    hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };\n    print(\"getting ref_input for charter\");\n    charterUtxo : TxInput = ctx.tx.ref_inputs.find_safe(hasCharter).switch{\n        Some{ch} => ch,\n        None => error(\"Missing charter in required ref_inputs\")\n    };\n    ctd : Datum::CharterToken = Datum::from_data( \n        charterUtxo.datum.get_inline_data() \n    );\n\n    ctd    \n}\n\n\n//! retrieves a required Charter Datum for the indicated policy - \n// ... either from the txn's reference inputs  or inputs.\nfunc getTxCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::CharterToken {\n    chVal : Value = tvCharter(mph);\n    hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };\n\n    charterUtxo : TxInput = ctx.tx.ref_inputs.find_safe(hasCharter).switch{\n        Some{ch} => ch,\n        None => ctx.tx.inputs.find_safe(hasCharter).switch{\n            Some{ch} => ch,\n            None => error(\"Missing charter inputs / ref_inputs\")\n        }\n    };\n    ctd : Datum::CharterToken = Datum::from_data( \n        charterUtxo.datum.get_inline_data() \n    );\n\n    ctd    \n}\n\n");
+const code$2 = new String("module specializedCapo\n\n//! provides a basic version, not actually specialized,\n// of the \"specializedCapo\" interface, which simply\n// exports Datum and Activity ('redemeer\") enum types.  \n//! the Datum and Activity of specializations\n//  MUST include the same enum variants as in this\n//  unspecialized version.  if you're specializing \n//  ... and you get a Helios compiler error,\n// ... these are the first things you should check!\n//! Your specialization MAY include any \n// ... additional functions, imports or methods\n\nimport { \n    RelativeDelegateLink\n} from CapoDelegateHelpers\n\n//! provides a basic version of Datum in default specializedCapo module\nenum Datum {\n    CharterToken {\n        govAuthorityLink: RelativeDelegateLink\n        mintDelegateLink: RelativeDelegateLink\n    }\n    //! datum-validation only supports checks of absolute spendability, \n    //  ... and can't check details of the Activity (\"redeemer\") being used.\n    func validateSpend(self, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {\n        //! Note: an overridden Datum's impl of validateSpend() \n        // ... is never called with the CharterToken variant\n        assert(false, \"can't happen\");\n        self.switch{\n            CharterToken => true,\n            _ => error(\"can't happen\")\n        } || (\n            ctx.tx.serialize() /* never */ == self.serialize() ||\n            mph.serialize() /* never */ == self.serialize()\n        )\n    }   \n}\n\n//! provides a basic version of Activity (\"redeemer\" type) in default specializedCapo module\nenum Activity {\n    usingAuthority\n    spendingDatum\n    updatingCharter    \n\n    func allowActivity(self, datum: Datum, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {\n        self.switch{\n            //! Note: an overridden Reedeemer def doesn't have to replicate the checks\n            // ... for the baseline enum variants; it's not called in those cases.\n            updatingCharter => true,\n            usingAuthority => true,\n            _ => error(\"unreachable code\")\n            // not executed, but prevents the args from showing up as unused:\n        } || (\n            ctx.tx.serialize() /* never */ == datum.serialize() ||\n            mph.serialize() /* never */ == datum.serialize()\n        )\n    }    \n}\n\nstruct types {\n    redeemers: Activity\n    datum : Datum\n}\n");
 
-code$2.srcFile = "src/CapoHelpers.hl";
+code$2.srcFile = "src/UnspecializedCapo.hl";
 code$2.purpose = "module";
-code$2.moduleName = "CapoHelpers";
+code$2.moduleName = "specializedCapo";
 
-const CapoHelpers = code$2;
+const UnspecializedCapo = code$2;
+
+const code$1 = new String("module CapoHelpers\n\nimport {\n    mkTv,\n    tvCharter\n} from StellarHeliosHelpers\n\nimport { Datum, Activity } from specializedCapo\n\nfunc getRefCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::CharterToken {\n    chVal : Value = tvCharter(mph);\n    hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };\n    print(\"getting ref_input for charter\");\n    charterUtxo : TxInput = ctx.tx.ref_inputs.find_safe(hasCharter).switch{\n        Some{ch} => ch,\n        None => error(\"Missing charter in required ref_inputs\")\n    };\n    ctd : Datum::CharterToken = Datum::from_data( \n        charterUtxo.datum.get_inline_data() \n    );\n\n    ctd    \n}\n\n\n//! retrieves a required Charter Datum for the indicated policy - \n// ... either from the txn's reference inputs  or inputs.\nfunc getTxCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::CharterToken {\n    chVal : Value = tvCharter(mph);\n    hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };\n\n    charterUtxo : TxInput = ctx.tx.ref_inputs.find_safe(hasCharter).switch{\n        Some{ch} => ch,\n        None => ctx.tx.inputs.find_safe(hasCharter).switch{\n            Some{ch} => ch,\n            None => error(\"Missing charter inputs / ref_inputs\")\n        }\n    };\n    ctd : Datum::CharterToken = Datum::from_data( \n        charterUtxo.datum.get_inline_data() \n    );\n\n    ctd    \n}\n\n");
+
+code$1.srcFile = "src/CapoHelpers.hl";
+code$1.purpose = "module";
+code$1.moduleName = "CapoHelpers";
+
+const CapoHelpers = code$1;
 
 var __defProp$3 = Object.defineProperty;
 var __getOwnPropDesc$3 = Object.getOwnPropertyDescriptor;
@@ -61899,7 +61810,7 @@ class BasicMintDelegate extends StellarDelegate {
     return { rev: this.currentRev };
   }
   contractSource() {
-    return code$5;
+    return code$4;
   }
   /**
    * specializedMintDelegate module for customizing policies atop the basic mint delegate
@@ -62063,12 +61974,6 @@ __decorateClass$2([
   Activity.redeemer
 ], AnyAddressAuthorityPolicy.prototype, "usingAuthority", 1);
 
-const code$1 = new String("spending Capo\n\n// needed in helios 0.13: defaults\nconst mph : MintingPolicyHash = MintingPolicyHash::new(#1234)\nconst rev : Int = 1\n\nimport {\n    tvCharter\n} from CapoHelpers\n\nimport { \n    RelativeDelegateLink,\n    requiresValidDelegateOutput\n} from CapoDelegateHelpers\n\nimport {\n    mkTv,\n    didSign,\n    didSignInCtx\n} from StellarHeliosHelpers\n\nimport { Datum, Activity } from specializedCapo\n\n/**\n * \n */\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{\n        govDelegateLink, _\n    } = datum;\n\n    requiresValidDelegateOutput(govDelegateLink, mph, ctx)\n}\n\nfunc getCharterOutput(tx: Tx) -> TxOutput {\n    charterTokenValue : Value = Value::new(\n        AssetClass::new(mph, \"charter\".encode_utf8()), \n        1\n    );\n    tx.outputs.find_safe(\n        (txo : TxOutput) -> Bool {\n            txo.value >= charterTokenValue\n        }\n    ).switch{\n        None => error(\"this could only happen if the charter token is burned.\"),\n        Some{o} => o\n    }\n}\n\nfunc notUpdatingCharter(activity: Activity) -> Bool { activity.switch {\n    updatingCharter => false,  \n    _ => true\n}}\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        error(\"charter token must be returned to the contract \")\n        // actual : String = charterOutput.address.credential.switch{\n        //     PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n        //     Validator{vh} => \"val:📜#:\" + vh.show()\n        // };\n        // error(\n        //     \"charter token must be returned to the contract \" + cvh.show() +\n        //     \"... but was sent to \" +actual\n        // )\n    };\n\n    Datum::CharterToken{\n        govDelegate,\n        mintDelegate\n    } = datum;\n    Datum::CharterToken{\n        newGovDelegate,\n        newMintDelegate\n    } = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newGovDelegate == govDelegate &&\n        newMintDelegate == mintDelegate\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    // now: Time = tx.time_range.start;\n    \n    allDatumSpecificChecks: Bool = datum.switch {\n        ctd : CharterToken => {\n            // throws if bad\n            if(notUpdatingCharter(activity)) { \n                preventCharterChange(ctx, ctd)\n            } else {\n                true // \"maybe\", really\n            }\n        },\n        _ => {\n            activity.switch {\n                spendingDatum => datum.validateSpend(ctx, mph),\n                _ => true\n            }\n        }            \n    };\n    allActivitySpecificChecks : Bool = activity.switch {\n        updatingCharter => {\n            charterOutput : TxOutput = getCharterOutput(tx);\n            newDatum = Datum::from_data( \n                charterOutput.datum.get_inline_data() \n            );\n            Datum::CharterToken{govDelegate, mintDelegate} = newDatum;\n\n            requiresValidDelegateOutput(govDelegate, mph, ctx) &&\n            requiresValidDelegateOutput(mintDelegate, mph, ctx) &&\n            requiresAuthorization(ctx, datum)\n        },\n        usingAuthority => {\n            // by definition, we're truly notUpdatingCharter(activity) \n            datum.switch {\n                 // throws if bad\n                ctd : CharterToken => requiresAuthorization(ctx, ctd),\n                _ => error(\"wrong use of usingAuthority action for non-CharterToken datum\")\n            }\n        },\n        _ => activity.allowActivity(datum, ctx, mph)\n    };\n\n    assert(allDatumSpecificChecks, \"datum-check fail\");\n    assert(allActivitySpecificChecks, \"redeeemer-check fail\");\n\n    //! retains mph in parameterization\n    assert(\n        ( allDatumSpecificChecks && allActivitySpecificChecks ) ||\n            // this should never execute (much less fail), yet it also shouldn't be optimized out.\n             mph.serialize() /* never */ == datum.serialize(), \n        \"unreachable\"\n    ); \n\n    allDatumSpecificChecks && \n    allActivitySpecificChecks &&\n    tx.serialize() != datum.serialize()\n}\n");
-
-code$1.srcFile = "src/DefaultCapo.hl";
-code$1.purpose = "spending";
-code$1.moduleName = "Capo";
-
 const code = new String("spending MultiSigAuthority\n\nconst rev : Int = 1\nconst instance : ByteArray = #67656e6572616c\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        error(\"charter token must be returned to the contract\")\n        // actual : String = charterOutput.address.credential.switch{\n        //     PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n        //     Validator{vh} => \"val:📜#:\" + vh.show()\n        // };\n        // error(\n        //     \"charter token must be returned to the contract \" + cvh.show() +\n        //     \"... but was sent to \" +actual\n        // )\n    };\n\n    Datum::CharterToken{trustees, minSigs} = datum;\n    Datum::CharterToken{newTrustees, newMinSigs} = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newTrustees == trustees &&\n        newMinSigs == minSigs\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc requiresValidMinSigs(datum: Datum) -> Bool {\n    Datum::CharterToken{trustees, minSigs} = datum;\n\n    assert(\n        minSigs <= trustees.length,\n        \"minSigs can't be more than the size of the trustee-list\"\n    );\n\n    true\n}\n\nfunc requiresProofOfNewTrustees(\n    ctx: ScriptContext,\n    datum: Datum\n) -> Bool {\n    Datum::CharterToken{newTrustees, _} = datum;\n\n    assert(\n        newTrustees.all(didSignInCtx(ctx)), \n        \"all the new trustees must sign\"\n    );\n\n    requiresValidMinSigs(datum)\n}\n\n//!!! adapt to use my UUT\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{trustees, minSigs} = datum;\n\n    foundSigs: Int = trustees.fold[Int](\n        (count: Int, a: Address) -> Int {            \n            count + if (didSign(ctx, a)) {1} else {0}\n        }, 0\n    );\n    assert(foundSigs >= minSigs, \n        \"not enough trustees have signed the tx\" \n        // \"not enough trustees (\"+foundSigs.show()+ \" of \" + minSigs.show() + \" needed) have signed the tx\" \n    );\n\n    true\n}\nfunc main(_,_,_) -> Bool {\n    true\n}\n// for updating trustee list:\n// requiresProofOfNewTrustees(ctx, newDatum)\n");
 
 code.srcFile = "src/authority/MultisigAuthorityPolicy.hl";
@@ -62192,7 +62097,7 @@ class NoMintDelegation extends StellarDelegate {
   }
   de;
   contractSource() {
-    return code$5;
+    return code$4;
   }
   getContractScriptParams(config) {
     return {
@@ -62224,9 +62129,9 @@ var __decorateClass = (decorators, target, key, kind) => {
   return result;
 };
 //!!! todo enable "other" datum args - (ideally, those other than delegate-link types) to be inlcuded in MDCDA above.
-let DefaultCapo$1 = class DefaultCapo extends Capo {
+class DefaultCapo extends Capo {
   contractSource() {
-    return code$1;
+    return code$5;
   }
   static parseConfig(jsonConfig) {
     const { mph, rev, seedTxn, seedIndex, rootCapoScriptHash } = jsonConfig;
@@ -62724,19 +62629,115 @@ let DefaultCapo$1 = class DefaultCapo extends Capo {
       }
     });
   }
-};
+}
 __decorateClass([
   datum
-], DefaultCapo$1.prototype, "mkDatumCharterToken", 1);
+], DefaultCapo.prototype, "mkDatumCharterToken", 1);
 __decorateClass([
   txn
-], DefaultCapo$1.prototype, "mkTxnMintCharterToken", 1);
+], DefaultCapo.prototype, "mkTxnMintCharterToken", 1);
 __decorateClass([
   Activity.redeemer
-], DefaultCapo$1.prototype, "updatingCharter", 1);
+], DefaultCapo.prototype, "updatingCharter", 1);
 __decorateClass([
   txn
-], DefaultCapo$1.prototype, "mkTxnUpdateCharter", 1);
+], DefaultCapo.prototype, "mkTxnUpdateCharter", 1);
 
-export { ADA, Activity, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, Capo, CapoTestHelper, DefaultCapo$1 as DefaultCapo, DefaultCapoTestHelper, DefaultMinter, StellarContract, StellarDelegate, StellarTestHelper, StellarTxnContext, UutName, addTestContext, assetsAsString, datum, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, helios, heliosRollupLoader, insufficientInputError, lovelaceToAda, mkHeliosModule, mkUutValuesEntries, mkValuesEntry, partialTxn, stringToNumberArray, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString };
+class DefaultCapoTestHelper extends CapoTestHelper {
+  /**
+   * Creates a prepared test helper for a given Capo class, with boilerplate built-in
+   *
+   * @remarks
+   *
+   * You may wish to provide an overridden setupActors() method, to arrange actor
+   * names that fit your project's user-roles / profiles.
+   *
+   * You may also wish to add methods that satisfy some of your application's key
+   * use-cases in simple predefined ways, so that your automated tests can re-use
+   * the logic and syntax instead of repeating them in multiple test-cases.
+   *
+   * @param s - your Capo class that extends DefaultCapo
+   * @typeParam DC - no need to specify it; it's inferred from your parameter
+   * @public
+   **/
+  static forCapoClass(s) {
+    class specificCapoHelper extends DefaultCapoTestHelper {
+      get stellarClass() {
+        return s;
+      }
+    }
+    return specificCapoHelper;
+  }
+  //@ts-expect-error
+  get stellarClass() {
+    return DefaultCapo;
+  }
+  //!!! todo: create type-safe ActorMap helper hasActors(), on same pattern as hasRequirements
+  setupActors() {
+    this.addActor("tina", 1100n * ADA);
+    this.addActor("tracy", 13n * ADA);
+    this.addActor("tom", 120n * ADA);
+    this.currentActor = "tina";
+  }
+  async mkCharterSpendTx() {
+    await this.mintCharterToken();
+    const treasury = this.strella;
+    const tcx = new StellarTxnContext(this.currentActor);
+    const tcx2 = await treasury.txnAddGovAuthority(tcx);
+    return treasury.txnMustUseCharterUtxo(tcx2, treasury.usingAuthority());
+  }
+  mkDefaultCharterArgs() {
+    const addr = this.currentActor.address;
+    console.log("test helper charter -> actor addr", addr.toBech32());
+    return {
+      govAuthorityLink: {
+        strategyName: "address",
+        config: {
+          addrHint: [addr]
+        }
+      }
+      // mintDelegateLink: {
+      //     strategyName: "default",
+      // },
+    };
+  }
+  async mintCharterToken(args) {
+    this.actors;
+    if (this.state.mintedCharterToken) {
+      console.warn(
+        "reusing minted charter from existing testing-context"
+      );
+      return this.state.mintedCharterToken;
+    }
+    if (!this.strella)
+      await this.initialize();
+    const script = this.strella;
+    const goodArgs = args || this.mkDefaultCharterArgs();
+    const tcx = await script.mkTxnMintCharterToken(goodArgs);
+    this.state.config = tcx.state.bootstrappedConfig;
+    expect(script.network).toBe(this.network);
+    await script.submit(tcx);
+    console.log(
+      `----- charter token minted at slot ${this.network.currentSlot}`
+    );
+    this.network.tick(1n);
+    this.state.mintedCharterToken = tcx;
+    return tcx;
+  }
+  async updateCharter(args) {
+    await this.mintCharterToken();
+    const treasury = this.strella;
+    const { signers } = this.state;
+    const tcx = await treasury.mkTxnUpdateCharter(args);
+    return treasury.submit(tcx, { signers }).then(() => {
+      this.network.tick(1n);
+      return tcx;
+    });
+  }
+}
+
+const insufficientInputError = /(need .* lovelace, but only have|transaction doesn't have enough inputs)/;
+Error.stackTraceLimit = 100;
+
+export { ADA, Activity, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, Capo, CapoTestHelper, DefaultCapo, DefaultCapoTestHelper, DefaultMinter, StellarContract, StellarDelegate, StellarTestHelper, StellarTxnContext, UutName, addTestContext, assetsAsString, datum, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, helios, heliosRollupLoader, insufficientInputError, lovelaceToAda, mkHeliosModule, mkUutValuesEntries, mkValuesEntry, partialTxn, stringToNumberArray, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString };
 //# sourceMappingURL=stellar-contracts.mjs.map
