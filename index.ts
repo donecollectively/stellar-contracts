@@ -39,9 +39,6 @@ export {
     delegateRoles, defineRole, 
     UutName
 } from "./src/delegation/RolesAndDelegates.js"
-export { StellarDelegate } from "./src/delegation/StellarDelegate.js";
-export { AuthorityPolicy } from "./src/authority/AuthorityPolicy.js";
-export { AnyAddressAuthorityPolicy } from "./src/authority/AnyAddressAuthorityPolicy.js";
 
 export type {
     capoDelegateConfig,
@@ -62,6 +59,10 @@ export {
     partialTxn,
     datum,
 } from "./src/StellarContract.js";
+
+export { StellarDelegate } from "./src/delegation/StellarDelegate.js";
+export { AuthorityPolicy } from "./src/authority/AuthorityPolicy.js";
+export { AnyAddressAuthorityPolicy } from "./src/authority/AnyAddressAuthorityPolicy.js";
 
 export { hasReqts } from "./src/Requirements.js";
 export type { ReqtsMap, RequirementEntry } from "./src/Requirements.js";
