@@ -58388,355 +58388,6 @@ class StellarTxnContext {
   }
 }
 
-const TODO = Symbol("needs to be implemented");
-function hasReqts(reqtsMap) {
-  return reqtsMap;
-}
-hasReqts.TODO = TODO;
-
-var __defProp$7 = Object.defineProperty;
-var __getOwnPropDesc$7 = Object.getOwnPropertyDescriptor;
-var __decorateClass$7 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$7(target, key) : target;
-  for (var i = decorators.length - 1, decorator; i >= 0; i--)
-    if (decorator = decorators[i])
-      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result)
-    __defProp$7(target, key, result);
-  return result;
-};
-class StellarDelegate extends StellarContract {
-  static currentRev = 1n;
-  static get defaultParams() {
-    return { rev: this.currentRev };
-  }
-  /**
-   * Finds and adds the delegate's authority token to the transaction
-   * @remarks
-   *
-   * calls the delegate-specific DelegateAddsAuthorityToken() method,
-   * with the uut found by DelegateMustFindAuthorityToken().
-   *
-   * returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
-   * @param tcx - transaction context
-   * @public
-   **/
-  async txnGrantAuthority(tcx) {
-    const label = `${this.constructor.name} authority`;
-    const uutxo = await this.DelegateMustFindAuthorityToken(
-      tcx,
-      label
-    );
-    const useMinTv = true;
-    const authorityVal = this.tvAuthorityToken(useMinTv);
-    console.log(`   ------- delegate ${label} grants authority with ${dumpAny(authorityVal)}`);
-    try {
-      const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo);
-      return this.txnReceiveAuthorityToken(
-        tcx2,
-        authorityVal,
-        uutxo
-      );
-    } catch (error) {
-      if (error.message.match(/input already added/)) {
-        throw new Error(`Delegate ${label}: already added: ${dumpAny(authorityVal)}`);
-      }
-      throw error;
-    }
-  }
-  /**
-   * Finds the authority token and adds it to the transaction, tagged for retirement
-   * @public
-   * @remarks
-   * Doesn't return the token back to the contract.
-   **/
-  async txnRetireAuthorityToken(tcx) {
-    const uutxo = await this.DelegateMustFindAuthorityToken(
-      tcx,
-      `${this.constructor.name} authority`
-    );
-    return this.DelegateRetiresAuthorityToken(tcx, uutxo);
-  }
-  activityAuthorizing() {
-    const thisActivity = this.mustGetActivity("Authorizing");
-    const t = new thisActivity();
-    return { redeemer: t._toUplcData() };
-  }
-  activityRetiring() {
-    const thisActivity = this.mustGetActivity("Retiring");
-    const t = new thisActivity();
-    return { redeemer: t._toUplcData() };
-  }
-  mkDatumIsDelegation(dd, ...args) {
-    const [customConfig = ""] = args;
-    const { IsDelegation } = this.onChainDatumType;
-    const { DelegationDetail } = this.onChainTypes;
-    const t = new IsDelegation(new DelegationDetail(dd), customConfig);
-    return Datum.inline(t._toUplcData());
-  }
-  /**
-   * returns the ValidatorHash of the delegate script, if relevant
-   * @public
-   * @remarks
-   *
-   * A delegate that doesn't use an on-chain validator should override this method and return undefined.
-   **/
-  get delegateValidatorHash() {
-    if (!this.compiledScript.validatorHash) {
-      throw new Error(
-        `${this.constructor.name}: address doesn't use a validator hash!
-  ... if that's by design, you may wish to override 'get delegateValidatorHash()' -> undefined`
-      );
-    }
-    return this.compiledScript.validatorHash;
-  }
-  mkAuthorityTokenPredicate() {
-    return this.mkTokenPredicate(this.tvAuthorityToken());
-  }
-  tvAuthorityToken(useMinTv = false) {
-    if (!this.configIn)
-      throw new Error(`must be instantiated with a configIn`);
-    const {
-      mph,
-      tn
-      // reqdAddress,  // removed
-    } = this.configIn;
-    if (useMinTv)
-      return this.mkMinTv(mph, tn);
-    return mkTv(mph, tn);
-  }
-  /**
-   * Finds the delegate authority token, normally in the delegate's contract address
-   * @public
-   * @remarks
-   *
-   * The default implementation finds the UTxO having the authority token
-   * in the delegate's contract address.
-   *
-   * It's possible to have a delegate that doesn't have an on-chain contract script.
-   * ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a
-   * delegate-specific heuristic to locate the needed token.  It might consult the
-   * addrHint in its `configIn` or another technique for resolution.
-   *
-   * @param tcx - the transaction context
-   * @reqt It MUST resolve and return the UTxO (a TxInput type ready for spending)
-   *  ... or throw an informative error
-   **/
-  async DelegateMustFindAuthorityToken(tcx, label) {
-    return this.mustFindMyUtxo(
-      `${label}: ${bytesToText(this.configIn.tn)}`,
-      this.mkTokenPredicate(this.tvAuthorityToken()),
-      "this delegate strategy might need to override txnMustFindAuthorityToken()"
-    );
-  }
-  /**
-   * Adds the delegate's authority token to a transaction
-   * @public
-   * @remarks
-   * Given a delegate already configured by a Capo, this method implements
-   * transaction-building logic needed to include the UUT into the `tcx`.
-   * the `utxo` is discovered by {@link StellarDelegate.DelegateMustFindAuthorityToken | DelegateMustFindAuthorityToken() }
-   * 
-   * The default implementation adds the `uutxo` to the transaction 
-   * using {@link StellarDelegate.activityAuthorizing | activityAuthorizing() }.
-   * 
-   * The off-chain code shouldn't need to check the details; it can simply
-   * arrange the details properly and spend the delegate's authority token, 
-   * using this method.
-   * 
-   * ### Reliance on this delegate
-   * 
-  * Other contract scripts can rely on the delegate script to have validated its 
-   * on-chain policy and enforced its own "return to the delegate script" logic.
-   * 
-   * ### Enforcing on-chain policy
-   * 
-   * When spending the authority token in this way, the delegate's authority is typically 
-   * narrowly scoped, and it's expected that the delegate's on-chain script validates that 
-   * those parts of the transaction detail should be authorized, in accordance with the 
-   * delegate's core purpose/responsbility - i.e. that the txn does all of what the delegate 
-   * expects, and none of what it shouldn't do in that department.
-   * 
-   * The on-chain code SHOULD typically enforce:
-   *  * that the token is spent with Authorizing activity (redeemer).  NOTE:
-   *     the **CapoDelegateHelpers** helios module provides the `requiresDelegateAuthorizing()` 
-   *     function for just this purpose
-  
-   *  * that the authority token is returned to the contract with its datum unchanged 
-   *  * that any other tokens it may also hold in the same UTxO do not become 
-   *     inaccessible as a result of the transactions - perhaps by requiring them to be 
-   *     returned together with the authority token.
-   * 
-   * It MAY enforce additional requirements as well.
-   *
-   * @example
-   * A minting delegate should check that all the expected tokens are 
-   * minted, AND that no other tokens are minted.  
-   * 
-   * @example
-   * A role-based authentication/signature-checking delegate can 
-   * require an appropriate signature on the txn.
-   * 
-  * @param tcx - the transaction context
-  * @param utxo - the utxo having the authority UUT for this delegate
-  * @reqt Adds the uutxo to the transaction inputs with appropriate redeemer.
-  * @reqt Does not output the value; can EXPECT txnReceiveAuthorityToken to be called for that purpose.
-   **/
-  async DelegateAddsAuthorityToken(tcx, uutxo) {
-    return tcx.addInput(
-      uutxo,
-      this.activityAuthorizing()
-    ).attachScript(this.compiledScript);
-  }
-  /**
-   * Adds any important transaction elemements supporting the authority token being retired, closing the delegate contracts' utxo.
-   * @remarks
-   *
-   * EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
-   *
-   * EXPECTS the `burn` instruction to be separately added to the transaction.
-   *
-   * The default implementation uses the conventional `Retiring` activity
-   * to spend the token.
-   *
-   * @reqt
-   * It MUST add the indicated utxo to the transaction as an input
-   *
-   * @reqt
-   * When backed by a contract:
-   *   * it should use an activity/redeemer allowing the token to be spent
-   *      **and NOT returned**.
-   *   * the contract script SHOULD ensure any other UTXOs it may also hold, related to this delegation,
-   *      do not become inaccessible as a result.
-   *
-   * It MAY enforce additional requirements and/or block the action.
-   *
-   *
-   * @param tcx - transaction context
-   * @param fromFoundUtxo - the utxo having the authority otken
-   * @public
-   **/
-  async DelegateRetiresAuthorityToken(tcx, fromFoundUtxo) {
-    const utxo = fromFoundUtxo;
-    return tcx.addInput(
-      new TxInput(utxo.outputId, utxo.origOutput),
-      this.activityRetiring()
-    );
-  }
-  /**
-   * Captures requirements as data
-   * @remarks
-   *
-   * see reqts structure
-   * @public
-   **/
-  delegateRequirements() {
-    return hasReqts({
-      "provides an interface for providing arms-length proof of authority to any other contract": {
-        purpose: "to decouple authority administration from its effects",
-        details: [
-          "Any contract can create a UUT for use with an authority policy.",
-          "By depositing that UUT to the authority contract, it can delegate completely",
-          "  ... all the implementation details for administration of the authority itself.",
-          "It can then focus on implementing the effects of authority, requiring only ",
-          "  ... that the correct UUT has been spent, to indicate that the authority is granted.",
-          "The authority contract can have its own internal details ",
-          "A subclass of this authority policy may provide additional administrative dynamics."
-        ],
-        mech: [],
-        requires: [
-          "implementations SHOULD positively govern spend of the UUT",
-          "implementations MUST provide an essential interface for transaction-building"
-        ]
-      },
-      "implementations SHOULD positively govern spend of the UUT": {
-        purpose: "for sufficient assurance of desirable safeguards",
-        details: [
-          "A subclass of the GenericAuthority should take care of guarding the UUT's spend",
-          "  ... in whatever way is appropriate for its use-case"
-        ],
-        mech: [],
-        requires: []
-      },
-      "implementations MUST provide an essential interface for transaction-building": {
-        purpose: "enabling a strategy-agnostic interface for making transactions using any supported strategy-variant",
-        details: [
-          "Subclasses MUST implement the interface methods",
-          "  ... in whatever way is considered appropriate for its use-case.",
-          "An interface method whose requirement is marked with 'MAY/SHOULD' behavior, ",
-          "  ... MUST still implement the method satisfying the interface, ",
-          "  ... but MAY throw an UnsupportedAction error, to indicate that",
-          "  ... the strategy variant has no meaningful action to perform ",
-          "  ... that would serve the method's purpose"
-        ],
-        mech: [],
-        requires: [
-          "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)",
-          "requires a mustFindAuthorityToken(tcx)",
-          "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)",
-          "requires txnRetireCred(tcx, fromFoundUtxo)"
-        ]
-      },
-      "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)": {
-        purpose: "to deposit the authority token (back) to the delegated destination",
-        details: [
-          "impls MUST implement txnReceiveAuthorityToken",
-          "Each implemented subclass can use it's own style to match its strategy & mechanism",
-          "This is used both for the original deposit and for returning the token during a grant-of-authority"
-        ],
-        mech: [
-          "impls MUST create a UTxO depositing the indicated token-name into the delegated destination.",
-          "impls should normally preserve the datum from an already-present sourceUtxo"
-        ],
-        requires: []
-      },
-      "requires a mustFindAuthorityToken(tcx)": {
-        purpose: "to locate the given authority token",
-        details: [
-          "allows different strategies for finding the UTxO having the authority token",
-          "impls MAY use details seen in the txn context to find the indicated token"
-        ],
-        mech: [
-          "impls MUST resolve the indicated token to a specific UTxO or throw an informative error"
-        ]
-      },
-      "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)": {
-        purpose: "to use the delegated authority",
-        details: [
-          "Adds the indicated utxo to the transaction with appropriate activity/redeemer",
-          "Contracts needing the authority within a transaction can rely on the presence of this spent authority",
-          "Impls can EXPECT the token will be returned via txnReceiveAuthorityToken",
-          "a contract-backed impl SHOULD enforce the expected return in its on-chain code"
-        ],
-        mech: [
-          "the base AuthorityPolicy MUST call txnReceiveAuthorityToken() with the token's sourceUtxo"
-        ]
-      },
-      "requires txnRetireCred(tcx, fromFoundUtxo)": {
-        purpose: "to allow burning the authority token",
-        details: [
-          "Adds the indicated utxo to the transaction with appropriate activity/redeemer",
-          "  ... allowing the token to be burned by the minting policy.",
-          "Impls SHOULD ensure any other UTXOs it may hold do not become inaccessible as a result"
-        ],
-        mech: [
-          "impls MUST add the token to the txn if it can be retired",
-          "if the token cannot be retired, by appropriate policy, it SHOULD throw an informative error"
-        ]
-      }
-    });
-  }
-}
-__decorateClass$7([
-  Activity.redeemer
-], StellarDelegate.prototype, "activityAuthorizing", 1);
-__decorateClass$7([
-  Activity.redeemer
-], StellarDelegate.prototype, "activityRetiring", 1);
-__decorateClass$7([
-  datum
-], StellarDelegate.prototype, "mkDatumIsDelegation", 1);
-
 const _uutName = Symbol("uutName");
 const maxUutName = 32;
 class UutName {
@@ -58765,43 +58416,6 @@ class UutName {
     return this[_uutName];
   }
 }
-class DelegateConfigNeeded extends Error {
-  errors;
-  availableStrategies;
-  constructor(message, options) {
-    super(message);
-    const { errors, availableStrategies } = options;
-    if (errors)
-      this.errors = errors;
-    if (availableStrategies)
-      this.availableStrategies = availableStrategies;
-  }
-}
-function delegateRoles(roleMap) {
-  return roleMap;
-}
-function delegateLinkSerializer(key, value) {
-  if (typeof value === "bigint") {
-    return value.toString();
-  } else if ("bytes" == key && Array.isArray(value)) {
-    return bytesToHex(value);
-  } else if (value instanceof Address) {
-    return value.toBech32();
-  } else if ("tn" == key && Array.isArray(value)) {
-    return bytesToText(value);
-  }
-  return value;
-}
-function defineRole(uutBaseName, baseClass, variants) {
-  return {
-    uutPurpose: uutBaseName,
-    baseClass,
-    variants
-  };
-}
-//!!! todo: develop this further to allow easily enhancing a parent role-definition
-//! a map of delegate selections needed for a transaction
-//! a single delegate selection, where a person chooses
 
 function mkUutValuesEntries(uuts) {
   const uutNs = Array.isArray(uuts) ? uuts : Object.values(uuts);
@@ -58825,15 +58439,15 @@ function mkTv(mph, tokenName, count = 1n) {
   return v;
 }
 
-var __defProp$6 = Object.defineProperty;
-var __getOwnPropDesc$6 = Object.getOwnPropertyDescriptor;
-var __decorateClass$6 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$6(target, key) : target;
+var __defProp$7 = Object.defineProperty;
+var __getOwnPropDesc$7 = Object.getOwnPropertyDescriptor;
+var __decorateClass$7 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$7(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
   if (kind && result)
-    __defProp$6(target, key, result);
+    __defProp$7(target, key, result);
   return result;
 };
 let configuredNetwork = void 0;
@@ -59818,7 +59432,7 @@ This likely indicates a problem in Helios' error reporting -
     return this.hasUtxo(semanticName, predicate, { address: this.address });
   }
 }
-__decorateClass$6([
+__decorateClass$7([
   partialTxn
 ], StellarContract.prototype, "txnKeepValue", 1);
 
@@ -59850,902 +59464,15 @@ code$6.moduleName = "CapoDelegateHelpers";
 
 const CapoDelegateHelpers = code$6;
 
-const code$5 = new String("spending Capo\n\n// needed in helios 0.13: defaults\nconst mph : MintingPolicyHash = MintingPolicyHash::new(#1234)\nconst rev : Int = 1\n\nimport {\n    tvCharter\n} from CapoHelpers\n\nimport { \n    RelativeDelegateLink,\n    requiresValidDelegateOutput\n} from CapoDelegateHelpers\n\nimport {\n    mkTv,\n    didSign,\n    didSignInCtx\n} from StellarHeliosHelpers\n\nimport { Datum, Activity } from specializedCapo\n\n/**\n * \n */\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{\n        govDelegateLink, _\n    } = datum;\n\n    requiresValidDelegateOutput(govDelegateLink, mph, ctx)\n}\n\nfunc getCharterOutput(tx: Tx) -> TxOutput {\n    charterTokenValue : Value = Value::new(\n        AssetClass::new(mph, \"charter\".encode_utf8()), \n        1\n    );\n    tx.outputs.find_safe(\n        (txo : TxOutput) -> Bool {\n            txo.value >= charterTokenValue\n        }\n    ).switch{\n        None => error(\"this could only happen if the charter token is burned.\"),\n        Some{o} => o\n    }\n}\n\nfunc notUpdatingCharter(activity: Activity) -> Bool { activity.switch {\n    updatingCharter => false,  \n    _ => true\n}}\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        error(\"charter token must be returned to the contract \")\n        // actual : String = charterOutput.address.credential.switch{\n        //     PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n        //     Validator{vh} => \"val:📜#:\" + vh.show()\n        // };\n        // error(\n        //     \"charter token must be returned to the contract \" + cvh.show() +\n        //     \"... but was sent to \" +actual\n        // )\n    };\n\n    Datum::CharterToken{\n        govDelegate,\n        mintDelegate\n    } = datum;\n    Datum::CharterToken{\n        newGovDelegate,\n        newMintDelegate\n    } = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newGovDelegate == govDelegate &&\n        newMintDelegate == mintDelegate\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    // now: Time = tx.time_range.start;\n    \n    allDatumSpecificChecks: Bool = datum.switch {\n        ctd : CharterToken => {\n            // throws if bad\n            if(notUpdatingCharter(activity)) { \n                preventCharterChange(ctx, ctd)\n            } else {\n                true // \"maybe\", really\n            }\n        },\n        _ => {\n            activity.switch {\n                spendingDatum => datum.validateSpend(ctx, mph),\n                _ => true\n            }\n        }            \n    };\n    allActivitySpecificChecks : Bool = activity.switch {\n        updatingCharter => {\n            charterOutput : TxOutput = getCharterOutput(tx);\n            newDatum = Datum::from_data( \n                charterOutput.datum.get_inline_data() \n            );\n            Datum::CharterToken{govDelegate, mintDelegate} = newDatum;\n\n            requiresValidDelegateOutput(govDelegate, mph, ctx) &&\n            requiresValidDelegateOutput(mintDelegate, mph, ctx) &&\n            requiresAuthorization(ctx, datum)\n        },\n        usingAuthority => {\n            // by definition, we're truly notUpdatingCharter(activity) \n            datum.switch {\n                 // throws if bad\n                ctd : CharterToken => requiresAuthorization(ctx, ctd),\n                _ => error(\"wrong use of usingAuthority action for non-CharterToken datum\")\n            }\n        },\n        _ => activity.allowActivity(datum, ctx, mph)\n    };\n\n    assert(allDatumSpecificChecks, \"datum-check fail\");\n    assert(allActivitySpecificChecks, \"redeeemer-check fail\");\n\n    //! retains mph in parameterization\n    assert(\n        ( allDatumSpecificChecks && allActivitySpecificChecks ) ||\n            // this should never execute (much less fail), yet it also shouldn't be optimized out.\n             mph.serialize() /* never */ == datum.serialize(), \n        \"unreachable\"\n    ); \n\n    allDatumSpecificChecks && \n    allActivitySpecificChecks &&\n    tx.serialize() != datum.serialize()\n}\n");
-
-code$5.srcFile = "src/DefaultCapo.hl";
-code$5.purpose = "spending";
-code$5.moduleName = "Capo";
-
-const code$4 = new String("spending BasicMintDelegate\n\nconst rev : Int = 1\nconst instance : ByteArray = #67656e6572616c\n\nimport {\n    DelegationDetail,\n    acAuthorityToken,\n    tvAuthorityToken\n} from CapoDelegateHelpers\n\nimport {\n    returnsValueToScript\n} from StellarHeliosHelpers\n\nimport {\n    MintDelegateActivity,\n    MintDelegateDatum\n} from specializedMintDelegate\n\n// import { \n//     preventCharterChange\n// } from MultiSigAuthority\n// func main(datum: Datum,_,ctx: ScriptContext) -> Bool {\n//     preventCharterChange(ctx, datum) \n// }\n\nfunc mustReturnValueToScript(value : Value, ctx : ScriptContext) -> Bool {\n    if (!returnsValueToScript( value, ctx)) {\n         error(\"the authZor token MUST be returned\")\n    };\n    true\n}\n\nfunc main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptContext) -> Bool {\n    // input = ctx.get_current_input();\n    mdd.switch{\n        isD : IsDelegation{dd, _} => {\n            // MintDelegateDatum::IsDelegation{dd, cfg} = isD;\n            activity.switch {        \n                Authorizing => {\n                    ok : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);\n\n                    o : []TxOutput = ctx.get_cont_outputs();\n                    if (o.length != 1) { error(\"only one utxo allowed in return to mint delegate\") };\n\n                    // Note: unspecialized delegate requires unchanged datum\n                    // ... in additionalDelegateValidation.  ...like this:\n                    //      unmodifiedDelegation( /*isD, same as*/ ddd.serialize(), ctx) &&\n\n                    ok\n                },\n                Reassigning => {\n                    // the token isn't burned, and it isn't returned back to this script\n                    ctx.tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&\n                    !returnsValueToScript( tvAuthorityToken(dd), ctx)\n                },\n                Retiring => {\n                    // the token is burned\n                    ctx.tx.minted.get(acAuthorityToken(dd)) == -1\n                },\n                Modifying => {\n                    authorityValue : Value = tvAuthorityToken(dd);\n                    ok : Bool = mustReturnValueToScript(authorityValue, ctx);\n                    dlgt : TxOutput = ctx.get_cont_outputs().find(\n                        (o :TxOutput) -> Bool {\n                            o.value.contains(authorityValue)\n                        }\n                    );\n                            \n                    ddNew : MintDelegateDatum::IsDelegation = \n                    MintDelegateDatum::from_data( \n                        dlgt.datum.get_inline_data() \n                    );\n\n                    mdd.validateCDConfig(ddNew) && ok\n                },\n                _ => true\n            } && activity.additionalDelegateValidation(isD, ctx)\n        },\n        _ => {\n            invalidRedeemer = () -> {  error(\"custom datum must not use Activities reserved for IsDelegation datum.\") };\n            activity.switch{\n                Authorizing => invalidRedeemer(),\n                Reassigning => invalidRedeemer(),\n                Retiring => invalidRedeemer(),\n                Modifying => invalidRedeemer(),\n                _ => activity.otherDatumValidation(mdd, ctx)\n            }\n        }\n    }\n}\n");
-
-code$4.srcFile = "src/minting/BasicMintDelegate.hl";
-code$4.purpose = "spending";
-code$4.moduleName = "BasicMintDelegate";
-
-const code$3 = new String("module specializedMintDelegate\n\n//! provides a basic version, not actually specialized,\n// of the \"specializedMintDelegate\" interface, which simply\n// exports a DelegateDatum enum and DelegateActivities (redeemer enum).  \n//! these specializations MAY include additional enum variants, and \n//  ... they MUST include the same enum variants found in this\n//  ... unspecialized version.  \n//  If you're specializing and you get a Helios compiler error,\n// ... these are the first things you should check!\n//! Your specialization MAY include any \n// ... additional functions, imports or methods\n\nimport {\n     DelegationDetail,\n     unmodifiedDelegation\n} from CapoDelegateHelpers\n\nenum MintDelegateDatum {\n    IsDelegation {\n        dd: DelegationDetail\n        // provides structural space for (non-string) configuration data.\n        // the string case is degenerate (expect empty string always)\n        CustomConfig: String\n    }\n    \n    func validateCDConfig(self, updated: MintDelegateDatum::IsDelegation) -> Bool {\n        self.switch {\n            ddd: IsDelegation => {\n                (ddd.CustomConfig == \"\") &&\n                (updated == self)\n            },\n            _ => error(\"unreachable\")\n        }\n    }\n}\n\nenum MintDelegateActivity {\n    Authorizing\n    Reassigning\n    Retiring\n    Modifying\n    //! used only for validating IsDelegation datum, that is,\n    //   ... to approve minting requests or any customize spending modes \n    //   ... of that datum.  In this unspecialized version, \n    //   ... the \"Modifying\" activity is an unsupported stand-in for that use-case, always rejecting.\n    //! in a real-life customization case, additional custom IsDelegation config can be\n    //   ... enforced in \"Modifying\" event the second field of IsDelegation (the \"CDConfig\" stand-in here)\n    //   ... the BasicMintDelegate allows for that field's presence, without any assumptions\n    //   ... about its type.\n    //  Note that the basic mint delegate already\n    //   ... enforces the authority UUT being returned to the delegate script,\n    //   ... and other basic administrative expectations, so any specialization\n    //   ... can focus on higher-level policy considerations.\n    func additionalDelegateValidation( self,\n        priorMddd: MintDelegateDatum::IsDelegation, \n        ctx: ScriptContext\n    ) -> Bool {\n        // print(\"  ----- checking additional delegate validation\");\n        self.switch {\n            Authorizing => {\n                unmodifiedDelegation(priorMddd.serialize(), ctx) && \n                true\n            },\n            Modifying => false,\n            _ => true\n        } || ctx.tx.serialize() != priorMddd.serialize()\n    }\n\n    //! used only for validating non-IsDelegation datum types.\n    //   if you have any admininstrative data structures that inform \n    //   your minting policy, these\n    func otherDatumValidation( self,\n        priorMdd: MintDelegateDatum, \n        ctx: ScriptContext\n    ) -> Bool {\n        neverTriggered = () -> {  error(\"never called\") };\n        self.switch{\n            Authorizing => neverTriggered(),\n            Reassigning => neverTriggered(),\n            Retiring => neverTriggered(),\n            Modifying => neverTriggered(),\n            _ => false\n        } && (priorMdd.serialize() != ctx.serialize())\n    }\n}\n\nstruct types {\n    redeemers: MintDelegateActivity\n    datum : MintDelegateDatum\n}\n");
-
-code$3.srcFile = "src/minting/UnspecializedMintDelegate.hl";
-code$3.purpose = "module";
-code$3.moduleName = "specializedMintDelegate";
-
-const UnspecializedMintDelegate = code$3;
-
-const code$2 = new String("module specializedCapo\n\n//! provides a basic version, not actually specialized,\n// of the \"specializedCapo\" interface, which simply\n// exports Datum and Activity ('redemeer\") enum types.  \n//! the Datum and Activity of specializations\n//  MUST include the same enum variants as in this\n//  unspecialized version.  if you're specializing \n//  ... and you get a Helios compiler error,\n// ... these are the first things you should check!\n//! Your specialization MAY include any \n// ... additional functions, imports or methods\n\nimport { \n    RelativeDelegateLink\n} from CapoDelegateHelpers\n\n//! provides a basic version of Datum in default specializedCapo module\nenum Datum {\n    CharterToken {\n        govAuthorityLink: RelativeDelegateLink\n        mintDelegateLink: RelativeDelegateLink\n    }\n    //! datum-validation only supports checks of absolute spendability, \n    //  ... and can't check details of the Activity (\"redeemer\") being used.\n    func validateSpend(self, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {\n        //! Note: an overridden Datum's impl of validateSpend() \n        // ... is never called with the CharterToken variant\n        assert(false, \"can't happen\");\n        self.switch{\n            CharterToken => true,\n            _ => error(\"can't happen\")\n        } || (\n            ctx.tx.serialize() /* never */ == self.serialize() ||\n            mph.serialize() /* never */ == self.serialize()\n        )\n    }   \n}\n\n//! provides a basic version of Activity (\"redeemer\" type) in default specializedCapo module\nenum Activity {\n    usingAuthority\n    spendingDatum\n    updatingCharter    \n\n    func allowActivity(self, datum: Datum, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {\n        self.switch{\n            //! Note: an overridden Reedeemer def doesn't have to replicate the checks\n            // ... for the baseline enum variants; it's not called in those cases.\n            updatingCharter => true,\n            usingAuthority => true,\n            _ => error(\"unreachable code\")\n            // not executed, but prevents the args from showing up as unused:\n        } || (\n            ctx.tx.serialize() /* never */ == datum.serialize() ||\n            mph.serialize() /* never */ == datum.serialize()\n        )\n    }    \n}\n\nstruct types {\n    redeemers: Activity\n    datum : Datum\n}\n");
-
-code$2.srcFile = "src/UnspecializedCapo.hl";
-code$2.purpose = "module";
-code$2.moduleName = "specializedCapo";
-
-const UnspecializedCapo = code$2;
-
-const code$1 = new String("module CapoHelpers\n\nimport {\n    mkTv,\n    tvCharter\n} from StellarHeliosHelpers\n\nimport { Datum, Activity } from specializedCapo\n\nfunc getRefCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::CharterToken {\n    chVal : Value = tvCharter(mph);\n    hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };\n    print(\"getting ref_input for charter\");\n    charterUtxo : TxInput = ctx.tx.ref_inputs.find_safe(hasCharter).switch{\n        Some{ch} => ch,\n        None => error(\"Missing charter in required ref_inputs\")\n    };\n    ctd : Datum::CharterToken = Datum::from_data( \n        charterUtxo.datum.get_inline_data() \n    );\n\n    ctd    \n}\n\n\n//! retrieves a required Charter Datum for the indicated policy - \n// ... either from the txn's reference inputs  or inputs.\nfunc getTxCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::CharterToken {\n    chVal : Value = tvCharter(mph);\n    hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };\n\n    charterUtxo : TxInput = ctx.tx.ref_inputs.find_safe(hasCharter).switch{\n        Some{ch} => ch,\n        None => ctx.tx.inputs.find_safe(hasCharter).switch{\n            Some{ch} => ch,\n            None => error(\"Missing charter inputs / ref_inputs\")\n        }\n    };\n    ctd : Datum::CharterToken = Datum::from_data( \n        charterUtxo.datum.get_inline_data() \n    );\n\n    ctd    \n}\n\n");
-
-code$1.srcFile = "src/CapoHelpers.hl";
-code$1.purpose = "module";
-code$1.moduleName = "CapoHelpers";
-
-const CapoHelpers = code$1;
-
-var __defProp$5 = Object.defineProperty;
-var __getOwnPropDesc$5 = Object.getOwnPropertyDescriptor;
-var __decorateClass$5 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$5(target, key) : target;
+var __defProp$6 = Object.defineProperty;
+var __getOwnPropDesc$6 = Object.getOwnPropertyDescriptor;
+var __decorateClass$6 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$6(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
   if (kind && result)
-    __defProp$5(target, key, result);
-  return result;
-};
-//!!! TODO: include adapter(s) for Datum, which has the same essential shape
-class BasicMintDelegate extends StellarDelegate {
-  static currentRev = 1n;
-  static get defaultParams() {
-    return { rev: this.currentRev };
-  }
-  contractSource() {
-    return code$4;
-  }
-  /**
-   * specializedMintDelegate module for customizing policies atop the basic mint delegate
-   * @public
-   * @remarks
-   * 
-   * The basic mint delegate contains an "unspecialized" implementation of this customization,
-   * which doesn't have any special restrictions.  It reserves a CustomConfig field
-   * at position 2 in the IsDelegation datum, allowing customizations to use any 
-   * struct in that position to express any custom configurations.  
-   **/
-  get specializedMintDelegate() {
-    return UnspecializedMintDelegate;
-  }
-  get specializedCapo() {
-    return UnspecializedCapo;
-  }
-  importModules() {
-    const specializedMintDelegate = this.specializedMintDelegate;
-    if (specializedMintDelegate.moduleName !== "specializedMintDelegate") {
-      throw new Error(
-        `${this.constructor.name}: specializedMintDelegate() module name must be 'specializedMintDelegate', not '${specializedMintDelegate.moduleName}'
-  ... in ${specializedMintDelegate.srcFile}`
-      );
-    }
-    return [
-      code$8,
-      CapoDelegateHelpers,
-      CapoHelpers,
-      CapoMintHelpers,
-      specializedMintDelegate,
-      this.specializedCapo
-    ];
-  }
-  get scriptDatumName() {
-    return "MintDelegateDatum";
-  }
-  get scriptActivitiesName() {
-    return "MintDelegateActivity";
-  }
-  getContractScriptParams(config) {
-    return {
-      rev: config.rev
-    };
-  }
-  /**
-   * Adds a mint-delegate-specific authority token to the txn output
-   * @remarks
-   * 
-   * Implements {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }.
-   * 
-   * Uses {@link BasicMintDelegate.mkDelegationDatum | mkDelegationDatum()} to make the inline Datum for the output.
-   * @see {@link StellarDelegate.txnReceiveAuthorityToken | baseline txnReceiveAuthorityToken()'s doc }
-   * @public
-   **/
-  async txnReceiveAuthorityToken(tcx, tokenValue, fromFoundUtxo) {
-    console.log(
-      `     ----- minting delegate validator receiving mintDgt token at ` + this.address.validatorHash.hex
-    );
-    const datum = this.mkDelegationDatum(fromFoundUtxo);
-    return tcx.addOutput(new TxOutput(this.address, tokenValue, datum));
-  }
-  mkDelegationDatum(txin) {
-    if (txin)
-      return txin.origOutput.datum;
-    const { capoAddr, mph, tn, ..._otherCfgSettings } = this.configIn;
-    return this.mkDatumIsDelegation({
-      capoAddr,
-      mph,
-      tn
-    });
-  }
-  async txnCreatingTokenPolicy(tcx, tokenName) {
-    return tcx;
-  }
-  static mkDelegateWithArgs(a) {
-  }
-}
-__decorateClass$5([
-  Activity.partialTxn
-], BasicMintDelegate.prototype, "txnCreatingTokenPolicy", 1);
-
-class AuthorityPolicy extends StellarDelegate {
-}
-
-var __defProp$4 = Object.defineProperty;
-var __getOwnPropDesc$4 = Object.getOwnPropertyDescriptor;
-var __decorateClass$4 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$4(target, key) : target;
-  for (var i = decorators.length - 1, decorator; i >= 0; i--)
-    if (decorator = decorators[i])
-      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result)
-    __defProp$4(target, key, result);
-  return result;
-};
-class AnyAddressAuthorityPolicy extends AuthorityPolicy {
-  loadProgramScript(params) {
-    return void 0;
-  }
-  get delegateValidatorHash() {
-    return void 0;
-  }
-  usingAuthority() {
-    const { usingAuthority } = this.onChainActivitiesType;
-    if (!usingAuthority) {
-      throw new Error(
-        `invalid contract without a usingAuthority activity`
-      );
-    }
-    const t = new usingAuthority();
-    return { redeemer: t._toUplcData() };
-  }
-  //! impls MUST resolve the indicated token to a specific UTxO
-  //  ... or throw an informative error
-  async DelegateMustFindAuthorityToken(tcx, label) {
-    const v = this.tvAuthorityToken();
-    const { addrHint } = this.configIn;
-    return this.mustFindActorUtxo(
-      `${label}: ${bytesToText(this.configIn.tn)}`,
-      this.mkTokenPredicate(v),
-      tcx,
-      "are you connected to the right wallet address? " + (addrHint?.length ? "  maybe at:\n    " + addrHint.join("\n or ") : "")
-    );
-  }
-  async txnReceiveAuthorityToken(tcx, tokenValue, fromFoundUtxo) {
-    let dest;
-    if (fromFoundUtxo) {
-      dest = fromFoundUtxo.address;
-    } else {
-      if (!this.configIn?.addrHint?.[0])
-        throw new Error(
-          `missing addrHint`
-        );
-      const {
-        addrHint
-        // reqdAddress,  // removed
-      } = this.configIn;
-      dest = addrHint[0];
-    }
-    const output = new TxOutput(dest, tokenValue);
-    output.correctLovelace(this.networkParams);
-    tcx.addOutput(output);
-    return tcx;
-  }
-  //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
-  //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
-  async DelegateAddsAuthorityToken(tcx, fromFoundUtxo) {
-    //! no need to specify a redeemer
-    return tcx.addInput(fromFoundUtxo);
-  }
-  //! Adds the indicated utxo to the transaction with appropriate activity/redeemer
-  //  ... allowing the token to be burned by the minting policy.
-  //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
-  async DelegateRetiresAuthorityToken(tcx, fromFoundUtxo) {
-    //! no need to specify a redeemer
-    return tcx.addInput(fromFoundUtxo);
-  }
-}
-__decorateClass$4([
-  Activity.redeemer
-], AnyAddressAuthorityPolicy.prototype, "usingAuthority", 1);
-
-const code = new String("spending MultiSigAuthority\n\nconst rev : Int = 1\nconst instance : ByteArray = #67656e6572616c\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        error(\"charter token must be returned to the contract\")\n        // actual : String = charterOutput.address.credential.switch{\n        //     PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n        //     Validator{vh} => \"val:📜#:\" + vh.show()\n        // };\n        // error(\n        //     \"charter token must be returned to the contract \" + cvh.show() +\n        //     \"... but was sent to \" +actual\n        // )\n    };\n\n    Datum::CharterToken{trustees, minSigs} = datum;\n    Datum::CharterToken{newTrustees, newMinSigs} = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newTrustees == trustees &&\n        newMinSigs == minSigs\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc requiresValidMinSigs(datum: Datum) -> Bool {\n    Datum::CharterToken{trustees, minSigs} = datum;\n\n    assert(\n        minSigs <= trustees.length,\n        \"minSigs can't be more than the size of the trustee-list\"\n    );\n\n    true\n}\n\nfunc requiresProofOfNewTrustees(\n    ctx: ScriptContext,\n    datum: Datum\n) -> Bool {\n    Datum::CharterToken{newTrustees, _} = datum;\n\n    assert(\n        newTrustees.all(didSignInCtx(ctx)), \n        \"all the new trustees must sign\"\n    );\n\n    requiresValidMinSigs(datum)\n}\n\n//!!! adapt to use my UUT\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{trustees, minSigs} = datum;\n\n    foundSigs: Int = trustees.fold[Int](\n        (count: Int, a: Address) -> Int {            \n            count + if (didSign(ctx, a)) {1} else {0}\n        }, 0\n    );\n    assert(foundSigs >= minSigs, \n        \"not enough trustees have signed the tx\" \n        // \"not enough trustees (\"+foundSigs.show()+ \" of \" + minSigs.show() + \" needed) have signed the tx\" \n    );\n\n    true\n}\nfunc main(_,_,_) -> Bool {\n    true\n}\n// for updating trustee list:\n// requiresProofOfNewTrustees(ctx, newDatum)\n");
-
-code.srcFile = "src/authority/MultisigAuthorityPolicy.hl";
-code.purpose = "spending";
-code.moduleName = "MultiSigAuthority";
-
-//! a contract enforcing policy for a registered credential
-class MultisigAuthorityPolicy extends AuthorityPolicy {
-  static currentRev = 1n;
-  static get defaultParams() {
-    return { rev: this.currentRev };
-  }
-  contractSource() {
-    return code;
-  }
-  // @Activity.partialTxn
-  // async txnFresheningCredInfo(
-  //     tcx: StellarTxnContext,
-  //     tokenName: string
-  // ): Promise<StellarTxnContext> {
-  //     return tcx
-  // }
-  async txnReceiveAuthorityToken(tcx, val, fromFoundUtxo) {
-    throw new Error(`todo`);
-  }
-  //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
-  async DelegateAddsAuthorityToken(tcx, fromFoundUtxo) {
-    throw new Error(`todo`);
-  }
-  //! Adds the indicated utxo to the transaction with appropriate activity/redeemer
-  //  ... allowing the token to be burned by the minting policy.
-  async DelegateRetiresAuthorityToken(tcx, fromFoundUtxo) {
-    return tcx;
-  }
-  requirements() {
-    return hasReqts({
-      "provides arms-length proof of authority to any other contract": {
-        purpose: "to decouple authority administration from its effects",
-        details: [
-          "See GenericAuthority for more background on authority delegation.",
-          "This policy uses a trustee list and minSigs threshold to provide multisig-based authority"
-        ],
-        mech: [],
-        requires: [
-          "positively governs spend of the UUT",
-          "the trustee threshold is required to spend its UUT",
-          "the trustee group can be changed"
-        ]
-      },
-      "positively governs spend of the UUT": {
-        purpose: "to maintain clear control by a trustee group",
-        details: [
-          // descriptive details of the requirement (not the tech):
-          "a trustee group is defined during contract creation",
-          "the trustee list's signatures provide consent",
-          "the trustee group can evolve by consent of the trustee group",
-          "a threshold set of the trustee group can give consent for the whole group"
-        ],
-        mech: [
-          // descriptive details of the chosen mechanisms for implementing the reqts:
-          "the UUT has a trustee list in its Datum structure",
-          "the UUT has a threshold setting in its Datum structure",
-          "the Settings datum is updated when needed to reflect new trustees/thresholds"
-        ],
-        requires: [
-          "TODO: has a unique authority UUT",
-          "TODO: the trustee threshold is required to spend its UUT",
-          "TODO: the trustee group can be changed"
-        ]
-      },
-      "TODO: has a unique authority UUT": hasReqts.TODO,
-      "TODO: the trustee threshold is required to spend its UUT": hasReqts.TODO,
-      "TODO: the trustee group can be changed": hasReqts.TODO,
-      "the trustee threshold is required to spend its UUT": {
-        purpose: "allows progress in case a small fraction of trustees may not be available",
-        details: [
-          "A group can indicate how many of the trustees are required to provide their explicit approval",
-          "If a small number of trustees lose their keys, this allows the remaining trustees to directly regroup",
-          "For example, they can replace the trustee list with a new set of trustees and a new approval threshold",
-          "Normal day-to-day administrative activities can also be conducted while a small number of trustees are on vacation or otherwise temporarily unavailable"
-        ],
-        mech: [
-          "TODO: doesn't allow the UUT to be spent without enough minSigs from the trustee list"
-        ],
-        requires: []
-      },
-      "the trustee group can be changed": {
-        purpose: "to ensure administrative continuity for the group",
-        details: [
-          "When the needed threshold for administrative modifications is achieved, the Settings datum can be updated",
-          "When changing trustees, it should guard against mistakes in the new trustee list, ",
-          "  ... by validating signatures of the new trustees",
-          "  ... and by validating new minSigs"
-        ],
-        mech: [
-          "TODO: trustee list can be changed if the signature threshold is met",
-          "TODO: the new trustees must sign any change of trustees",
-          "TODO: does not allow minSigs to exceed the number of trustees"
-        ],
-        requires: []
-      }
-    });
-  }
-}
-
-var __defProp$3 = Object.defineProperty;
-var __getOwnPropDesc$3 = Object.getOwnPropertyDescriptor;
-var __decorateClass$3 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$3(target, key) : target;
-  for (var i = decorators.length - 1, decorator; i >= 0; i--)
-    if (decorator = decorators[i])
-      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result)
-    __defProp$3(target, key, result);
-  return result;
-};
-class NoMintDelegation extends StellarDelegate {
-  static currentRev = 1n;
-  static get defaultParams() {
-    return { rev: this.currentRev };
-  }
-  de;
-  contractSource() {
-    return code$4;
-  }
-  getContractScriptParams(config) {
-    return {
-      rev: config.rev
-    };
-  }
-  txnReceiveAuthorityToken(tcx, value, fromFoundUtxo) {
-    throw new Error(`todo`);
-  }
-  async txnCreatingTokenPolicy(tcx, tokenName) {
-    return tcx;
-  }
-  static mkDelegateWithArgs(a) {
-  }
-}
-__decorateClass$3([
-  Activity.partialTxn
-], NoMintDelegation.prototype, "txnCreatingTokenPolicy", 1);
-
-var __defProp$2 = Object.defineProperty;
-var __getOwnPropDesc$2 = Object.getOwnPropertyDescriptor;
-var __decorateClass$2 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$2(target, key) : target;
-  for (var i = decorators.length - 1, decorator; i >= 0; i--)
-    if (decorator = decorators[i])
-      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result)
-    __defProp$2(target, key, result);
-  return result;
-};
-//!!! todo enable "other" datum args - (ideally, those other than delegate-link types) to be inlcuded in MDCDA above.
-let DefaultCapo$1 = class DefaultCapo extends Capo {
-  contractSource() {
-    return code$5;
-  }
-  static parseConfig(jsonConfig) {
-    const { mph, rev, seedTxn, seedIndex, rootCapoScriptHash } = jsonConfig;
-    const outputConfig = {};
-    if (mph)
-      outputConfig.mph = MintingPolicyHash.fromHex(mph.bytes);
-    if (rev)
-      outputConfig.rev = BigInt(rev);
-    if (seedTxn)
-      outputConfig.seedTxn = TxId.fromHex(seedTxn.bytes);
-    if (seedIndex)
-      outputConfig.seedIndex = BigInt(seedIndex);
-    if (rootCapoScriptHash)
-      outputConfig.rootCapoScriptHash = ValidatorHash.fromHex(
-        rootCapoScriptHash.bytes
-      );
-    return outputConfig;
-  }
-  /**
-   * indicates any specialization of the baseline Capo types
-   * @remarks
-   *
-   * The default implementation is an UnspecialiedCapo, which
-   * you can use as a template for your specialized Capo.
-   *
-   * Every specalization MUST include Datum and Activity ("redeemer") enums,
-   * and MAY include additional functions, and methods on Datum / Activity.
-   *
-   * The datum SHOULD have a validateSpend(self, datum, ctx) method.
-   *
-   * The redeemer SHOULD have an allowActivity(self, datum, ctx) method.
-   *
-   * @public
-   **/
-  get specializedCapo() {
-    return UnspecializedCapo;
-  }
-  /**
-   * indicates any specialization of the baseline Capo types
-   * @remarks
-   *
-   * The default implementation is an UnspecialiedCapo, which
-   * you can use as a template for your specialized Capo.
-   *
-   * Every specalization MUST include Datum and  Activity ("redeemer") enums,
-   * and MAY include additional functions, and methods on Datum / Activity.
-   *
-   * The datum enum SHOULD have a validateSpend(self, datum, ctx) method.
-   *
-   * The activity enum SHOULD have an allowActivity(self, datum, ctx) method.
-   *
-   * @public
-   **/
-  get capoHelpers() {
-    return CapoHelpers;
-  }
-  importModules() {
-    const parentModules = super.importModules();
-    const specializedCapo = this.specializedCapo;
-    if (specializedCapo.moduleName !== "specializedCapo") {
-      throw new Error(
-        `${this.constructor.name}: specializedCapo() module name must be 'specializedCapo', not '${specializedCapo.moduleName}'
-  ... in ${specializedCapo.srcFile}`
-      );
-    }
-    return [specializedCapo, this.capoHelpers, ...parentModules];
-  }
-  // // @Activity.redeemer
-  // updatingCharter() : isActivity {
-  //     return this.updatingDefaultCharter()
-  // }
-  /**
-   * Use the `delegateRoles` getter instead
-   * @remarks
-   *
-   * this no-op method is a convenience for Stellar Contracts maintainers
-   * and intuitive developers using autocomplete.  Including it enables an entry
-   * in VSCode "Outline" view, which doesn't include the delegateRoles getter : /
-   * @deprecated but please keep as a kind of redirect
-   * @public
-   **/
-  getDelegateRoles() {
-    throw new Error(`use the delegateRoles getter instead`);
-  }
-  get delegateRoles() {
-    return delegateRoles({
-      govAuthority: defineRole("capoGov", AuthorityPolicy, {
-        address: {
-          delegateClass: AnyAddressAuthorityPolicy,
-          validateConfig(args) {
-            const { rev, tn, addrHint } = args;
-            const errors = {};
-            if (!rev)
-              errors.rev = ["required"];
-            if (!tn?.length)
-              errors.tn = ["(token-name) required"];
-            if (!addrHint?.length)
-              errors.addrHint = ["destination address required"];
-            if (Object.keys(errors).length > 0)
-              return errors;
-            return void 0;
-          }
-        },
-        multisig: {
-          delegateClass: MultisigAuthorityPolicy,
-          validateConfig(args) {
-            const { rev, uut } = args;
-            const errors = {};
-            if (!rev)
-              errors.rev = ["required"];
-            if (!uut)
-              errors.uut = ["required"];
-            if (Object.keys(errors).length > 0)
-              return errors;
-            return void 0;
-          }
-        }
-      }),
-      mintDelegate: defineRole("mintDgt", BasicMintDelegate, {
-        default: {
-          delegateClass: BasicMintDelegate,
-          partialConfig: {},
-          validateConfig(args) {
-            return void 0;
-          }
-        }
-        // undelegated: { ... todo ... }
-      })
-    });
-  }
-  /**
-   * Performs a validation of all critical delegate connections
-   * @remarks
-   *
-   * Checks that each delegate connection is correct and that the underlying
-   * scripts for those delegates have not been modified in unplanned ways.
-   *
-   * Every Capo subclass that adds new delegate types SHOULD implement
-   * this method, performing any checks needed to verify the scripts underlying
-   * those delegate-types.  It should return `Promise.all([ super(), ...myOwnChecks])`.
-   * @public
-   **/
-  async verifyCoreDelegates() {
-    const rcsh = this.configIn?.rootCapoScriptHash;
-    if (rcsh && !rcsh.eq(this.address.validatorHash)) {
-      console.error(
-        `expected: ` + rcsh.hex + `
-  actual: ` + this.address.validatorHash.hex
-      );
-      throw new Error(
-        `${this.constructor.name}: the leader contract script '${this.scriptProgram?.name}', or one of its dependencies, has been modified`
-      );
-    }
-    this.connectMinter();
-    const charter = await this.findCharterDatum();
-    const { govAuthorityLink, mintDelegateLink } = charter;
-    return Promise.all([
-      this.connectDelegateWithLink("govAuthority", govAuthorityLink),
-      this.connectDelegateWithLink("mintDelegate", mintDelegateLink)
-    ]);
-  }
-  mkOnchainDelegateLink(dl) {
-    const { RelativeDelegateLink: hlRelativeDelegateLink } = this.onChainTypes;
-    let {
-      uutName,
-      strategyName,
-      delegateValidatorHash,
-      config
-      // reqdAddress: canRequireAddr,
-      // addrHint = [],
-    } = dl;
-    const OptValidator = Option(ValidatorHash);
-    return new hlRelativeDelegateLink(
-      uutName,
-      strategyName,
-      new OptValidator(delegateValidatorHash)
-      // config //!!! todo - support inline config if/when needed
-      // needsAddr,
-      // addrHint
-    );
-  }
-  mkDatumCharterToken(args) {
-    //!!! todo: make it possible to type these datum helpers more strongly
-    console.log("--> mkDatumCharter", args);
-    const { CharterToken: hlCharterToken } = this.onChainDatumType;
-    const govAuthority = this.mkOnchainDelegateLink(args.govAuthorityLink);
-    const mintDelegate = this.mkOnchainDelegateLink(args.mintDelegateLink);
-    const t = new hlCharterToken(govAuthority, mintDelegate);
-    return Datum.inline(t._toUplcData());
-  }
-  async findCharterDatum() {
-    return this.mustFindCharterUtxo().then(async (ctUtxo) => {
-      const charterDatum = await this.readDatum(
-        "CharterToken",
-        ctUtxo.origOutput.datum
-      );
-      if (!charterDatum)
-        throw Error(`invalid charter UTxO datum`);
-      return charterDatum;
-    });
-  }
-  async txnAddGovAuthority(tcx) {
-    const charterDatum = await this.findCharterDatum();
-    console.log(
-      "adding charter's govAuthority via delegate",
-      charterDatum.govAuthorityLink
-    );
-    const capoGov = await this.connectDelegateWithLink(
-      "govAuthority",
-      charterDatum.govAuthorityLink
-    );
-    return capoGov.txnGrantAuthority(tcx);
-  }
-  // getMinterParams() {
-  //     const { seedTxn, seedIdx } = this.configIn
-  //     return { seedTxn, seedIdx }
-  // }
-  /**
-   * should emit a complete configuration structure that can reconstitute a contract (suite) after its first bootstrap transaction
-   * @remarks
-   *
-   * mkFullConfig is called during a bootstrap transaction.  The default implementation works
-   * for subclasses as long as they use CapoBaseConfig for their config type.  Or, if they're
-   * instantiated with a partialConfig that augments CapoBaseConfig with concrete details that
-   * fulfill their extensions to the config type.
-   *
-   * If you have a custom mkBootstrapTxn() that uses techniques to explicitly add config
-   * properties not provided by your usage of `partialConfig` in the constructor, then you'll
-   * need to provide a more specific impl of mkFullConfig().  It's recommended that you
-   * call super.mkFullConfig() from your impl.
-   * @param baseConfig - receives the BaseConfig properties: mph, seedTxn and seedIndex
-   * @public
-   **/
-  mkFullConfig(baseConfig) {
-    const pCfg = this.partialConfig || {};
-    const newClass = this.constructor;
-    const newCapo = newClass.bootstrapWith({
-      setup: this.setup,
-      config: { ...baseConfig, ...pCfg }
-    });
-    return {
-      ...baseConfig,
-      ...pCfg,
-      rootCapoScriptHash: newCapo.compiledScript.validatorHash
-    };
-  }
-  async mkTxnMintingUuts(initialTcx, uutPurposes, seedUtxo, roles) {
-    const tcx = await super.mkTxnMintingUuts(
-      initialTcx,
-      uutPurposes,
-      seedUtxo,
-      roles
-    );
-    await this.txnMustUseCharterUtxo(tcx, "refInput");
-    return this.txnAddMintDelegate(tcx);
-  }
-  async getMintDelegate() {
-    const charterDatum = await this.findCharterDatum();
-    return this.connectDelegateWithLink(
-      "mintDelegate",
-      charterDatum.mintDelegateLink
-    );
-  }
-  async getGovDelegate() {
-    const charterDatum = await this.findCharterDatum();
-    return this.connectDelegateWithLink(
-      "govDelegate",
-      charterDatum.govAuthorityLink
-    );
-  }
-  async txnAddMintDelegate(tcx) {
-    const mintDelegate = await this.getMintDelegate();
-    await mintDelegate.txnGrantAuthority(tcx);
-    return tcx;
-  }
-  //@ts-expect-error - typescript can't seem to understand that
-  //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
-  async mkTxnMintCharterToken(charterDatumArgs, existingTcx) {
-    if (this.configIn)
-      throw new Error(
-        `this contract suite is already configured and can't be re-chartered`
-      );
-    const initialTcx = existingTcx || new StellarTxnContext(this.myActor);
-    return this.txnMustGetSeedUtxo(initialTcx, "charter bootstrapping", [
-      "charter"
-    ]).then(async (seedUtxo) => {
-      const { txId: seedTxn, utxoIdx } = seedUtxo.outputId;
-      const seedIndex = BigInt(utxoIdx);
-      this.connectMintingScript({ seedIndex, seedTxn });
-      const { mintingPolicyHash: mph } = this.minter;
-      const rev = this.getCapoRev();
-      const bsc = this.mkFullConfig({
-        mph,
-        rev,
-        seedTxn,
-        seedIndex
-      });
-      initialTcx.state.bsc = bsc;
-      initialTcx.state.bootstrappedConfig = JSON.parse(
-        JSON.stringify(bsc, delegateLinkSerializer)
-      );
-      const fullScriptParams = this.contractParams = this.getContractScriptParams(bsc);
-      this.configIn = bsc;
-      this.scriptProgram = this.loadProgramScript(fullScriptParams);
-      const tcx = await this.minter.txnWillMintUuts(
-        initialTcx,
-        ["capoGov", "mintDgt"],
-        seedUtxo,
-        {
-          govAuthority: "capoGov",
-          mintDelegate: "mintDgt"
-        }
-      );
-      const { capoGov, govAuthority, mintDgt, mintDelegate } = tcx.state.uuts;
-      {
-        if (govAuthority !== capoGov)
-          throw new Error(`assertion can't fail`);
-      }
-      const govAuthorityLink = await this.txnCreateDelegateLink(tcx, "govAuthority", charterDatumArgs.govAuthorityLink);
-      const mintDelegateLink = await this.txnCreateDelegateLink(tcx, "mintDelegate", charterDatumArgs.mintDelegateLink);
-      const fullCharterArgs = {
-        ...charterDatumArgs,
-        govAuthorityLink,
-        mintDelegateLink
-      };
-      const datum2 = this.mkDatumCharterToken(fullCharterArgs);
-      const charterOut = new TxOutput(
-        this.address,
-        this.tvCharter(),
-        datum2
-      );
-      charterOut.correctLovelace(this.networkParams);
-      tcx.addInput(seedUtxo);
-      tcx.addOutputs([charterOut]);
-      console.log(
-        " ---------------- CHARTER MINT ---------------------\n",
-        txAsString(tcx.tx)
-      );
-      return this.minter.txnMintingCharter(tcx, {
-        owner: this.address,
-        capoGov,
-        // same as govAuthority,
-        mintDgt
-      });
-    });
-  }
-  updatingCharter() {
-    const { updatingCharter } = this.onChainActivitiesType;
-    const t = new updatingCharter();
-    return { redeemer: t._toUplcData() };
-  }
-  async mkTxnUpdateCharter(args, tcx = new StellarTxnContext(this.myActor)) {
-    return this.txnUpdateCharterUtxo(
-      tcx,
-      this.updatingCharter(),
-      this.mkDatumCharterToken(args)
-    );
-  }
-  requirements() {
-    return hasReqts({
-      "positively governs all administrative actions": {
-        purpose: "to maintain clear control by a trustee group",
-        details: [
-          // descriptive details of the requirement (not the tech):
-          "a trustee group is defined during contract creation",
-          "the trustee list's signatures provide consent",
-          "the trustee group can evolve by consent of the trustee group",
-          "a threshold set of the trustee group can give consent for the whole group"
-        ],
-        mech: [
-          // descriptive details of the chosen mechanisms for implementing the reqts:
-          "uses a 'charter' token specialized for this contract",
-          "the charter token has a trustee list in its Datum structure",
-          "the charter token has a threshold setting in its Datum structure",
-          "the charter Datum is updated when needed to reflect new trustees/thresholds"
-        ],
-        requires: [
-          "has a unique, permanent charter token",
-          "has a unique, permanent treasury address",
-          "the trustee threshold is enforced on all administrative actions",
-          "the trustee group can be changed",
-          "the charter token is always kept in the contract",
-          "can mint other tokens, on the authority of the Charter token"
-        ]
-      },
-      "has a singleton minting policy": {
-        purpose: "to mint various tokens authorized by the treasury",
-        details: [
-          "A chosen minting script is bound deterministically to the contract constellation",
-          "Its inaugural (aka 'initial Charter' or 'Charter Mint') transaction creates a charter token",
-          "The minting script can issue further tokens approved by Treasury Trustees",
-          "The minting script does not need to concern itself with details of Treasury Trustee approval"
-        ],
-        mech: [
-          "has an initial UTxO chosen arbitrarily, and that UTxO is consumed during initial Charter",
-          "makes a different address depending on (txId, outputIndex) parameters of the Minting script"
-        ],
-        requires: []
-      },
-      "has a unique, permanent treasury address": {
-        purpose: "to give continuity for its stakeholders",
-        details: [
-          "One-time creation is ensured by UTxO's unique-spendability property",
-          "Determinism is transferred from the charter utxo to the MPH and to the treasury address"
-        ],
-        mech: [
-          "uses the Minting Policy Hash as the sole parameter for the treasury spending script"
-        ],
-        requires: ["has a singleton minting policy"]
-      },
-      "has a unique, permanent charter token": {
-        purpose: "to guarantee permanent identity of a token constraining administrative actions",
-        details: [
-          "a charter token is uniquely created when bootstrapping the constellation contract",
-          "the charter token can't ever be recreated (it's non-fungible and can't be re-minted)",
-          "the treasury address, minting policy hash, and charter token are all deterministic based on input utxo"
-        ],
-        impl: "txnMintCharterToken()",
-        mech: [
-          "creates a unique 'charter' token, with assetId determined from minting-policy-hash+'charter'",
-          "TODO: fails if minSigs is longer than trustee list",
-          "doesn't work with a different spent utxo"
-        ],
-        requires: [
-          "has a singleton minting policy",
-          "the charter token is always kept in the contract"
-        ]
-      },
-      "the charter token is always kept in the contract": {
-        purpose: "so that the treasury contract is always in control of administrative changes",
-        details: [
-          "The charter token's spendability' is used as a signal of administrative authority for transactions wanting proof of authority",
-          "... thus, other scripts don't need to express any of the authority policy, but can simply verify the token's presence in the txn",
-          "It shouldn't ever be possible to interfere with its spendability, e.g. by bundling it in an inconvenient way with other assets",
-          "By enforcing that the charter token is always returned to the contract, ",
-          "... it has assurance of continuing ability to govern the next activity using that token",
-          "Note: the charter mint can bind with any contract having suitable assurances, ",
-          "... but we only focus on the case of binding to this treasury contract"
-        ],
-        mech: [
-          "builds transactions with the charter token returned to the contract",
-          "fails to spend the charter token if it's not returned to the contract",
-          "TODO: keeps the charter token separate from other assets in the contract"
-        ],
-        requires: []
-      },
-      "can mint other tokens, on the authority of the Charter token": {
-        purpose: "to simplify the logic of minting, while being sure of minting authority",
-        details: [
-          "the minting policy doesn't have to directly enforce the trustee-list policy",
-          "instead, it delegates that to the treasury spending script, ",
-          "... and simply requires that the charter token is used for minting anything else"
-        ],
-        mech: [
-          "can build transactions that mint non-'charter' tokens",
-          "requires the charter-token to be spent as proof of authority",
-          "fails if the charter-token is not returned to the treasury",
-          "fails if the charter-token parameters are modified"
-        ]
-      },
-      "the trustee group can be changed": {
-        purpose: "to ensure administrative continuity for the group",
-        details: [
-          "When the needed threshold for administrative modifications is achieved, the Charter Datum can be updated",
-          "This type of administrative action should be explicit and separate from any other administrative activity",
-          "If the CharterToken's Datum is being changed, no other redeemer activities are allowed"
-        ],
-        mech: [
-          "requires the existing threshold of existing trustees to be met",
-          "requires all of the new trustees to sign the transaction",
-          "does not allow minSigs to exceed the number of trustees"
-        ],
-        requires: [
-          "the trustee threshold is enforced on all administrative actions"
-        ]
-      },
-      "the trustee threshold is enforced on all administrative actions": {
-        purpose: "allows progress in case a small fraction of trustees may not be available",
-        details: [
-          "A group can indicate how many of the trustees are required to provide their explicit approval",
-          "If a small number of trustees lose their keys, this allows the remaining trustees to directly regroup",
-          "For example, they can replace the trustee list with a new set of trustees and a new approval threshold",
-          "Normal day-to-day administrative activities can also be conducted while a small number of trustees are on vacation or otherwise temporarily unavailable"
-        ],
-        mech: [
-          "doesn't allow the charterToken to be sent without enough minSigs from the trustee list"
-        ],
-        requires: []
-      },
-      foo: {
-        purpose: "",
-        details: [],
-        mech: [],
-        requires: []
-      }
-    });
-  }
-};
-__decorateClass$2([
-  datum
-], DefaultCapo$1.prototype, "mkDatumCharterToken", 1);
-__decorateClass$2([
-  txn
-], DefaultCapo$1.prototype, "mkTxnMintCharterToken", 1);
-__decorateClass$2([
-  Activity.redeemer
-], DefaultCapo$1.prototype, "updatingCharter", 1);
-__decorateClass$2([
-  txn
-], DefaultCapo$1.prototype, "mkTxnUpdateCharter", 1);
-
-var __defProp$1 = Object.defineProperty;
-var __getOwnPropDesc$1 = Object.getOwnPropertyDescriptor;
-var __decorateClass$1 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$1(target, key) : target;
-  for (var i = decorators.length - 1, decorator; i >= 0; i--)
-    if (decorator = decorators[i])
-      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result)
-    __defProp$1(target, key, result);
+    __defProp$6(target, key, result);
   return result;
 };
 class DefaultMinter extends StellarContract {
@@ -60887,31 +59614,418 @@ class DefaultMinter extends StellarContract {
     ).attachScript(this.compiledScript);
   }
 }
-__decorateClass$1([
+__decorateClass$6([
   partialTxn
 ], DefaultMinter.prototype, "txnWillMintUuts", 1);
-__decorateClass$1([
+__decorateClass$6([
   txn
 ], DefaultMinter.prototype, "mkTxnMintingUuts", 1);
-__decorateClass$1([
+__decorateClass$6([
   Activity.redeemer
 ], DefaultMinter.prototype, "mintingCharter", 1);
-__decorateClass$1([
+__decorateClass$6([
   Activity.redeemer
 ], DefaultMinter.prototype, "mintingUuts", 1);
-__decorateClass$1([
+__decorateClass$6([
   Activity.partialTxn
 ], DefaultMinter.prototype, "txnMintingCharter", 1);
 
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __decorateClass = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc(target, key) : target;
+const TODO = Symbol("needs to be implemented");
+function hasReqts(reqtsMap) {
+  return reqtsMap;
+}
+hasReqts.TODO = TODO;
+
+var __defProp$5 = Object.defineProperty;
+var __getOwnPropDesc$5 = Object.getOwnPropertyDescriptor;
+var __decorateClass$5 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$5(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
   if (kind && result)
-    __defProp(target, key, result);
+    __defProp$5(target, key, result);
+  return result;
+};
+class StellarDelegate extends StellarContract {
+  static currentRev = 1n;
+  static get defaultParams() {
+    return { rev: this.currentRev };
+  }
+  /**
+   * Finds and adds the delegate's authority token to the transaction
+   * @remarks
+   *
+   * calls the delegate-specific DelegateAddsAuthorityToken() method,
+   * with the uut found by DelegateMustFindAuthorityToken().
+   *
+   * returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
+   * @param tcx - transaction context
+   * @public
+   **/
+  async txnGrantAuthority(tcx) {
+    const label = `${this.constructor.name} authority`;
+    const uutxo = await this.DelegateMustFindAuthorityToken(
+      tcx,
+      label
+    );
+    const useMinTv = true;
+    const authorityVal = this.tvAuthorityToken(useMinTv);
+    console.log(`   ------- delegate ${label} grants authority with ${dumpAny(authorityVal)}`);
+    try {
+      const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo);
+      return this.txnReceiveAuthorityToken(
+        tcx2,
+        authorityVal,
+        uutxo
+      );
+    } catch (error) {
+      if (error.message.match(/input already added/)) {
+        throw new Error(`Delegate ${label}: already added: ${dumpAny(authorityVal)}`);
+      }
+      throw error;
+    }
+  }
+  /**
+   * Finds the authority token and adds it to the transaction, tagged for retirement
+   * @public
+   * @remarks
+   * Doesn't return the token back to the contract.
+   **/
+  async txnRetireAuthorityToken(tcx) {
+    const uutxo = await this.DelegateMustFindAuthorityToken(
+      tcx,
+      `${this.constructor.name} authority`
+    );
+    return this.DelegateRetiresAuthorityToken(tcx, uutxo);
+  }
+  activityAuthorizing() {
+    const thisActivity = this.mustGetActivity("Authorizing");
+    const t = new thisActivity();
+    return { redeemer: t._toUplcData() };
+  }
+  activityRetiring() {
+    const thisActivity = this.mustGetActivity("Retiring");
+    const t = new thisActivity();
+    return { redeemer: t._toUplcData() };
+  }
+  mkDatumIsDelegation(dd, ...args) {
+    const [customConfig = ""] = args;
+    const { IsDelegation } = this.onChainDatumType;
+    const { DelegationDetail } = this.onChainTypes;
+    const t = new IsDelegation(new DelegationDetail(dd), customConfig);
+    return Datum.inline(t._toUplcData());
+  }
+  /**
+   * returns the ValidatorHash of the delegate script, if relevant
+   * @public
+   * @remarks
+   *
+   * A delegate that doesn't use an on-chain validator should override this method and return undefined.
+   **/
+  get delegateValidatorHash() {
+    if (!this.compiledScript.validatorHash) {
+      throw new Error(
+        `${this.constructor.name}: address doesn't use a validator hash!
+  ... if that's by design, you may wish to override 'get delegateValidatorHash()' -> undefined`
+      );
+    }
+    return this.compiledScript.validatorHash;
+  }
+  mkAuthorityTokenPredicate() {
+    return this.mkTokenPredicate(this.tvAuthorityToken());
+  }
+  tvAuthorityToken(useMinTv = false) {
+    if (!this.configIn)
+      throw new Error(`must be instantiated with a configIn`);
+    const {
+      mph,
+      tn
+      // reqdAddress,  // removed
+    } = this.configIn;
+    if (useMinTv)
+      return this.mkMinTv(mph, tn);
+    return mkTv(mph, tn);
+  }
+  /**
+   * Finds the delegate authority token, normally in the delegate's contract address
+   * @public
+   * @remarks
+   *
+   * The default implementation finds the UTxO having the authority token
+   * in the delegate's contract address.
+   *
+   * It's possible to have a delegate that doesn't have an on-chain contract script.
+   * ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a
+   * delegate-specific heuristic to locate the needed token.  It might consult the
+   * addrHint in its `configIn` or another technique for resolution.
+   *
+   * @param tcx - the transaction context
+   * @reqt It MUST resolve and return the UTxO (a TxInput type ready for spending)
+   *  ... or throw an informative error
+   **/
+  async DelegateMustFindAuthorityToken(tcx, label) {
+    return this.mustFindMyUtxo(
+      `${label}: ${bytesToText(this.configIn.tn)}`,
+      this.mkTokenPredicate(this.tvAuthorityToken()),
+      "this delegate strategy might need to override txnMustFindAuthorityToken()"
+    );
+  }
+  /**
+   * Adds the delegate's authority token to a transaction
+   * @public
+   * @remarks
+   * Given a delegate already configured by a Capo, this method implements
+   * transaction-building logic needed to include the UUT into the `tcx`.
+   * the `utxo` is discovered by {@link StellarDelegate.DelegateMustFindAuthorityToken | DelegateMustFindAuthorityToken() }
+   * 
+   * The default implementation adds the `uutxo` to the transaction 
+   * using {@link StellarDelegate.activityAuthorizing | activityAuthorizing() }.
+   * 
+   * The off-chain code shouldn't need to check the details; it can simply
+   * arrange the details properly and spend the delegate's authority token, 
+   * using this method.
+   * 
+   * ### Reliance on this delegate
+   * 
+  * Other contract scripts can rely on the delegate script to have validated its 
+   * on-chain policy and enforced its own "return to the delegate script" logic.
+   * 
+   * ### Enforcing on-chain policy
+   * 
+   * When spending the authority token in this way, the delegate's authority is typically 
+   * narrowly scoped, and it's expected that the delegate's on-chain script validates that 
+   * those parts of the transaction detail should be authorized, in accordance with the 
+   * delegate's core purpose/responsbility - i.e. that the txn does all of what the delegate 
+   * expects, and none of what it shouldn't do in that department.
+   * 
+   * The on-chain code SHOULD typically enforce:
+   *  * that the token is spent with Authorizing activity (redeemer).  NOTE:
+   *     the **CapoDelegateHelpers** helios module provides the `requiresDelegateAuthorizing()` 
+   *     function for just this purpose
+  
+   *  * that the authority token is returned to the contract with its datum unchanged 
+   *  * that any other tokens it may also hold in the same UTxO do not become 
+   *     inaccessible as a result of the transactions - perhaps by requiring them to be 
+   *     returned together with the authority token.
+   * 
+   * It MAY enforce additional requirements as well.
+   *
+   * @example
+   * A minting delegate should check that all the expected tokens are 
+   * minted, AND that no other tokens are minted.  
+   * 
+   * @example
+   * A role-based authentication/signature-checking delegate can 
+   * require an appropriate signature on the txn.
+   * 
+  * @param tcx - the transaction context
+  * @param utxo - the utxo having the authority UUT for this delegate
+  * @reqt Adds the uutxo to the transaction inputs with appropriate redeemer.
+  * @reqt Does not output the value; can EXPECT txnReceiveAuthorityToken to be called for that purpose.
+   **/
+  async DelegateAddsAuthorityToken(tcx, uutxo) {
+    return tcx.addInput(
+      uutxo,
+      this.activityAuthorizing()
+    ).attachScript(this.compiledScript);
+  }
+  /**
+   * Adds any important transaction elemements supporting the authority token being retired, closing the delegate contracts' utxo.
+   * @remarks
+   *
+   * EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
+   *
+   * EXPECTS the `burn` instruction to be separately added to the transaction.
+   *
+   * The default implementation uses the conventional `Retiring` activity
+   * to spend the token.
+   *
+   * @reqt
+   * It MUST add the indicated utxo to the transaction as an input
+   *
+   * @reqt
+   * When backed by a contract:
+   *   * it should use an activity/redeemer allowing the token to be spent
+   *      **and NOT returned**.
+   *   * the contract script SHOULD ensure any other UTXOs it may also hold, related to this delegation,
+   *      do not become inaccessible as a result.
+   *
+   * It MAY enforce additional requirements and/or block the action.
+   *
+   *
+   * @param tcx - transaction context
+   * @param fromFoundUtxo - the utxo having the authority otken
+   * @public
+   **/
+  async DelegateRetiresAuthorityToken(tcx, fromFoundUtxo) {
+    const utxo = fromFoundUtxo;
+    return tcx.addInput(
+      new TxInput(utxo.outputId, utxo.origOutput),
+      this.activityRetiring()
+    );
+  }
+  /**
+   * Captures requirements as data
+   * @remarks
+   *
+   * see reqts structure
+   * @public
+   **/
+  delegateRequirements() {
+    return hasReqts({
+      "provides an interface for providing arms-length proof of authority to any other contract": {
+        purpose: "to decouple authority administration from its effects",
+        details: [
+          "Any contract can create a UUT for use with an authority policy.",
+          "By depositing that UUT to the authority contract, it can delegate completely",
+          "  ... all the implementation details for administration of the authority itself.",
+          "It can then focus on implementing the effects of authority, requiring only ",
+          "  ... that the correct UUT has been spent, to indicate that the authority is granted.",
+          "The authority contract can have its own internal details ",
+          "A subclass of this authority policy may provide additional administrative dynamics."
+        ],
+        mech: [],
+        requires: [
+          "implementations SHOULD positively govern spend of the UUT",
+          "implementations MUST provide an essential interface for transaction-building"
+        ]
+      },
+      "implementations SHOULD positively govern spend of the UUT": {
+        purpose: "for sufficient assurance of desirable safeguards",
+        details: [
+          "A subclass of the GenericAuthority should take care of guarding the UUT's spend",
+          "  ... in whatever way is appropriate for its use-case"
+        ],
+        mech: [],
+        requires: []
+      },
+      "implementations MUST provide an essential interface for transaction-building": {
+        purpose: "enabling a strategy-agnostic interface for making transactions using any supported strategy-variant",
+        details: [
+          "Subclasses MUST implement the interface methods",
+          "  ... in whatever way is considered appropriate for its use-case.",
+          "An interface method whose requirement is marked with 'MAY/SHOULD' behavior, ",
+          "  ... MUST still implement the method satisfying the interface, ",
+          "  ... but MAY throw an UnsupportedAction error, to indicate that",
+          "  ... the strategy variant has no meaningful action to perform ",
+          "  ... that would serve the method's purpose"
+        ],
+        mech: [],
+        requires: [
+          "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)",
+          "requires a mustFindAuthorityToken(tcx)",
+          "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)",
+          "requires txnRetireCred(tcx, fromFoundUtxo)"
+        ]
+      },
+      "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)": {
+        purpose: "to deposit the authority token (back) to the delegated destination",
+        details: [
+          "impls MUST implement txnReceiveAuthorityToken",
+          "Each implemented subclass can use it's own style to match its strategy & mechanism",
+          "This is used both for the original deposit and for returning the token during a grant-of-authority"
+        ],
+        mech: [
+          "impls MUST create a UTxO depositing the indicated token-name into the delegated destination.",
+          "impls should normally preserve the datum from an already-present sourceUtxo"
+        ],
+        requires: []
+      },
+      "requires a mustFindAuthorityToken(tcx)": {
+        purpose: "to locate the given authority token",
+        details: [
+          "allows different strategies for finding the UTxO having the authority token",
+          "impls MAY use details seen in the txn context to find the indicated token"
+        ],
+        mech: [
+          "impls MUST resolve the indicated token to a specific UTxO or throw an informative error"
+        ]
+      },
+      "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)": {
+        purpose: "to use the delegated authority",
+        details: [
+          "Adds the indicated utxo to the transaction with appropriate activity/redeemer",
+          "Contracts needing the authority within a transaction can rely on the presence of this spent authority",
+          "Impls can EXPECT the token will be returned via txnReceiveAuthorityToken",
+          "a contract-backed impl SHOULD enforce the expected return in its on-chain code"
+        ],
+        mech: [
+          "the base AuthorityPolicy MUST call txnReceiveAuthorityToken() with the token's sourceUtxo"
+        ]
+      },
+      "requires txnRetireCred(tcx, fromFoundUtxo)": {
+        purpose: "to allow burning the authority token",
+        details: [
+          "Adds the indicated utxo to the transaction with appropriate activity/redeemer",
+          "  ... allowing the token to be burned by the minting policy.",
+          "Impls SHOULD ensure any other UTXOs it may hold do not become inaccessible as a result"
+        ],
+        mech: [
+          "impls MUST add the token to the txn if it can be retired",
+          "if the token cannot be retired, by appropriate policy, it SHOULD throw an informative error"
+        ]
+      }
+    });
+  }
+}
+__decorateClass$5([
+  Activity.redeemer
+], StellarDelegate.prototype, "activityAuthorizing", 1);
+__decorateClass$5([
+  Activity.redeemer
+], StellarDelegate.prototype, "activityRetiring", 1);
+__decorateClass$5([
+  datum
+], StellarDelegate.prototype, "mkDatumIsDelegation", 1);
+
+class DelegateConfigNeeded extends Error {
+  errors;
+  availableStrategies;
+  constructor(message, options) {
+    super(message);
+    const { errors, availableStrategies } = options;
+    if (errors)
+      this.errors = errors;
+    if (availableStrategies)
+      this.availableStrategies = availableStrategies;
+  }
+}
+function delegateRoles(roleMap) {
+  return roleMap;
+}
+function delegateLinkSerializer(key, value) {
+  if (typeof value === "bigint") {
+    return value.toString();
+  } else if ("bytes" == key && Array.isArray(value)) {
+    return bytesToHex(value);
+  } else if (value instanceof Address) {
+    return value.toBech32();
+  } else if ("tn" == key && Array.isArray(value)) {
+    return bytesToText(value);
+  }
+  return value;
+}
+function defineRole(uutBaseName, baseClass, variants) {
+  return {
+    uutPurpose: uutBaseName,
+    baseClass,
+    variants
+  };
+}
+//!!! todo: develop this further to allow easily enhancing a parent role-definition
+//! a map of delegate selections needed for a transaction
+//! a single delegate selection, where a person chooses
+
+var __defProp$4 = Object.defineProperty;
+var __getOwnPropDesc$4 = Object.getOwnPropertyDescriptor;
+var __decorateClass$4 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$4(target, key) : target;
+  for (var i = decorators.length - 1, decorator; i >= 0; i--)
+    if (decorator = decorators[i])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result)
+    __defProp$4(target, key, result);
   return result;
 };
 //!!! todo: let this be parameterized for more specificity
@@ -61594,25 +60708,25 @@ expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
     });
   }
 }
-__decorateClass([
+__decorateClass$4([
   partialTxn
 ], Capo.prototype, "txnWillMintUuts", 1);
-__decorateClass([
+__decorateClass$4([
   txn
 ], Capo.prototype, "mkTxnMintingUuts", 1);
-__decorateClass([
+__decorateClass$4([
   Activity.redeemer
 ], Capo.prototype, "usingAuthority", 1);
-__decorateClass([
+__decorateClass$4([
   partialTxn
 ], Capo.prototype, "txnMustUseCharterUtxo", 1);
-__decorateClass([
+__decorateClass$4([
   partialTxn
 ], Capo.prototype, "txnUpdateCharterUtxo", 1);
-__decorateClass([
+__decorateClass$4([
   partialTxn
 ], Capo.prototype, "txnKeepCharterToken", 1);
-__decorateClass([
+__decorateClass$4([
   partialTxn
 ], Capo.prototype, "txnAddCharterAuthorityTokenRef", 1);
 
@@ -62736,6 +61850,893 @@ class DefaultCapoTestHelper extends CapoTestHelper {
 
 const insufficientInputError = /(need .* lovelace, but only have|transaction doesn't have enough inputs)/;
 Error.stackTraceLimit = 100;
+
+const code$5 = new String("spending BasicMintDelegate\n\nconst rev : Int = 1\nconst instance : ByteArray = #67656e6572616c\n\nimport {\n    DelegationDetail,\n    acAuthorityToken,\n    tvAuthorityToken\n} from CapoDelegateHelpers\n\nimport {\n    returnsValueToScript\n} from StellarHeliosHelpers\n\nimport {\n    MintDelegateActivity,\n    MintDelegateDatum\n} from specializedMintDelegate\n\n// import { \n//     preventCharterChange\n// } from MultiSigAuthority\n// func main(datum: Datum,_,ctx: ScriptContext) -> Bool {\n//     preventCharterChange(ctx, datum) \n// }\n\nfunc mustReturnValueToScript(value : Value, ctx : ScriptContext) -> Bool {\n    if (!returnsValueToScript( value, ctx)) {\n         error(\"the authZor token MUST be returned\")\n    };\n    true\n}\n\nfunc main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptContext) -> Bool {\n    // input = ctx.get_current_input();\n    mdd.switch{\n        isD : IsDelegation{dd, _} => {\n            // MintDelegateDatum::IsDelegation{dd, cfg} = isD;\n            activity.switch {        \n                Authorizing => {\n                    ok : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);\n\n                    o : []TxOutput = ctx.get_cont_outputs();\n                    if (o.length != 1) { error(\"only one utxo allowed in return to mint delegate\") };\n\n                    // Note: unspecialized delegate requires unchanged datum\n                    // ... in additionalDelegateValidation.  ...like this:\n                    //      unmodifiedDelegation( /*isD, same as*/ ddd.serialize(), ctx) &&\n\n                    ok\n                },\n                Reassigning => {\n                    // the token isn't burned, and it isn't returned back to this script\n                    ctx.tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&\n                    !returnsValueToScript( tvAuthorityToken(dd), ctx)\n                },\n                Retiring => {\n                    // the token is burned\n                    ctx.tx.minted.get(acAuthorityToken(dd)) == -1\n                },\n                Modifying => {\n                    authorityValue : Value = tvAuthorityToken(dd);\n                    ok : Bool = mustReturnValueToScript(authorityValue, ctx);\n                    dlgt : TxOutput = ctx.get_cont_outputs().find(\n                        (o :TxOutput) -> Bool {\n                            o.value.contains(authorityValue)\n                        }\n                    );\n                            \n                    ddNew : MintDelegateDatum::IsDelegation = \n                    MintDelegateDatum::from_data( \n                        dlgt.datum.get_inline_data() \n                    );\n\n                    mdd.validateCDConfig(ddNew) && ok\n                },\n                _ => true\n            } && activity.additionalDelegateValidation(isD, ctx)\n        },\n        _ => {\n            invalidRedeemer = () -> {  error(\"custom datum must not use Activities reserved for IsDelegation datum.\") };\n            activity.switch{\n                Authorizing => invalidRedeemer(),\n                Reassigning => invalidRedeemer(),\n                Retiring => invalidRedeemer(),\n                Modifying => invalidRedeemer(),\n                _ => activity.otherDatumValidation(mdd, ctx)\n            }\n        }\n    }\n}\n");
+
+code$5.srcFile = "src/minting/BasicMintDelegate.hl";
+code$5.purpose = "spending";
+code$5.moduleName = "BasicMintDelegate";
+
+const code$4 = new String("module specializedMintDelegate\n\n//! provides a basic version, not actually specialized,\n// of the \"specializedMintDelegate\" interface, which simply\n// exports a DelegateDatum enum and DelegateActivities (redeemer enum).  \n//! these specializations MAY include additional enum variants, and \n//  ... they MUST include the same enum variants found in this\n//  ... unspecialized version.  \n//  If you're specializing and you get a Helios compiler error,\n// ... these are the first things you should check!\n//! Your specialization MAY include any \n// ... additional functions, imports or methods\n\nimport {\n     DelegationDetail,\n     unmodifiedDelegation\n} from CapoDelegateHelpers\n\nenum MintDelegateDatum {\n    IsDelegation {\n        dd: DelegationDetail\n        // provides structural space for (non-string) configuration data.\n        // the string case is degenerate (expect empty string always)\n        CustomConfig: String\n    }\n    \n    func validateCDConfig(self, updated: MintDelegateDatum::IsDelegation) -> Bool {\n        self.switch {\n            ddd: IsDelegation => {\n                (ddd.CustomConfig == \"\") &&\n                (updated == self)\n            },\n            _ => error(\"unreachable\")\n        }\n    }\n}\n\nenum MintDelegateActivity {\n    Authorizing\n    Reassigning\n    Retiring\n    Modifying\n    //! used only for validating IsDelegation datum, that is,\n    //   ... to approve minting requests or any customize spending modes \n    //   ... of that datum.  In this unspecialized version, \n    //   ... the \"Modifying\" activity is an unsupported stand-in for that use-case, always rejecting.\n    //! in a real-life customization case, additional custom IsDelegation config can be\n    //   ... enforced in \"Modifying\" event the second field of IsDelegation (the \"CDConfig\" stand-in here)\n    //   ... the BasicMintDelegate allows for that field's presence, without any assumptions\n    //   ... about its type.\n    //  Note that the basic mint delegate already\n    //   ... enforces the authority UUT being returned to the delegate script,\n    //   ... and other basic administrative expectations, so any specialization\n    //   ... can focus on higher-level policy considerations.\n    func additionalDelegateValidation( self,\n        priorMddd: MintDelegateDatum::IsDelegation, \n        ctx: ScriptContext\n    ) -> Bool {\n        // print(\"  ----- checking additional delegate validation\");\n        self.switch {\n            Authorizing => {\n                unmodifiedDelegation(priorMddd.serialize(), ctx) && \n                true\n            },\n            Modifying => false,\n            _ => true\n        } || ctx.tx.serialize() != priorMddd.serialize()\n    }\n\n    //! used only for validating non-IsDelegation datum types.\n    //   if you have any admininstrative data structures that inform \n    //   your minting policy, these\n    func otherDatumValidation( self,\n        priorMdd: MintDelegateDatum, \n        ctx: ScriptContext\n    ) -> Bool {\n        neverTriggered = () -> {  error(\"never called\") };\n        self.switch{\n            Authorizing => neverTriggered(),\n            Reassigning => neverTriggered(),\n            Retiring => neverTriggered(),\n            Modifying => neverTriggered(),\n            _ => false\n        } && (priorMdd.serialize() != ctx.serialize())\n    }\n}\n\nstruct types {\n    redeemers: MintDelegateActivity\n    datum : MintDelegateDatum\n}\n");
+
+code$4.srcFile = "src/minting/UnspecializedMintDelegate.hl";
+code$4.purpose = "module";
+code$4.moduleName = "specializedMintDelegate";
+
+const UnspecializedMintDelegate = code$4;
+
+const code$3 = new String("module specializedCapo\n\n//! provides a basic version, not actually specialized,\n// of the \"specializedCapo\" interface, which simply\n// exports Datum and Activity ('redemeer\") enum types.  \n//! the Datum and Activity of specializations\n//  MUST include the same enum variants as in this\n//  unspecialized version.  if you're specializing \n//  ... and you get a Helios compiler error,\n// ... these are the first things you should check!\n//! Your specialization MAY include any \n// ... additional functions, imports or methods\n\nimport { \n    RelativeDelegateLink\n} from CapoDelegateHelpers\n\n//! provides a basic version of Datum in default specializedCapo module\nenum Datum {\n    CharterToken {\n        govAuthorityLink: RelativeDelegateLink\n        mintDelegateLink: RelativeDelegateLink\n    }\n    //! datum-validation only supports checks of absolute spendability, \n    //  ... and can't check details of the Activity (\"redeemer\") being used.\n    func validateSpend(self, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {\n        //! Note: an overridden Datum's impl of validateSpend() \n        // ... is never called with the CharterToken variant\n        assert(false, \"can't happen\");\n        self.switch{\n            CharterToken => true,\n            _ => error(\"can't happen\")\n        } || (\n            ctx.tx.serialize() /* never */ == self.serialize() ||\n            mph.serialize() /* never */ == self.serialize()\n        )\n    }   \n}\n\n//! provides a basic version of Activity (\"redeemer\" type) in default specializedCapo module\nenum Activity {\n    usingAuthority\n    spendingDatum\n    updatingCharter    \n\n    func allowActivity(self, datum: Datum, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {\n        self.switch{\n            //! Note: an overridden Reedeemer def doesn't have to replicate the checks\n            // ... for the baseline enum variants; it's not called in those cases.\n            updatingCharter => true,\n            usingAuthority => true,\n            _ => error(\"unreachable code\")\n            // not executed, but prevents the args from showing up as unused:\n        } || (\n            ctx.tx.serialize() /* never */ == datum.serialize() ||\n            mph.serialize() /* never */ == datum.serialize()\n        )\n    }    \n}\n\nstruct types {\n    redeemers: Activity\n    datum : Datum\n}\n");
+
+code$3.srcFile = "src/UnspecializedCapo.hl";
+code$3.purpose = "module";
+code$3.moduleName = "specializedCapo";
+
+const UnspecializedCapo = code$3;
+
+const code$2 = new String("module CapoHelpers\n\nimport {\n    mkTv,\n    tvCharter\n} from StellarHeliosHelpers\n\nimport { Datum, Activity } from specializedCapo\n\nfunc getRefCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::CharterToken {\n    chVal : Value = tvCharter(mph);\n    hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };\n    print(\"getting ref_input for charter\");\n    charterUtxo : TxInput = ctx.tx.ref_inputs.find_safe(hasCharter).switch{\n        Some{ch} => ch,\n        None => error(\"Missing charter in required ref_inputs\")\n    };\n    ctd : Datum::CharterToken = Datum::from_data( \n        charterUtxo.datum.get_inline_data() \n    );\n\n    ctd    \n}\n\n\n//! retrieves a required Charter Datum for the indicated policy - \n// ... either from the txn's reference inputs  or inputs.\nfunc getTxCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::CharterToken {\n    chVal : Value = tvCharter(mph);\n    hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };\n\n    charterUtxo : TxInput = ctx.tx.ref_inputs.find_safe(hasCharter).switch{\n        Some{ch} => ch,\n        None => ctx.tx.inputs.find_safe(hasCharter).switch{\n            Some{ch} => ch,\n            None => error(\"Missing charter inputs / ref_inputs\")\n        }\n    };\n    ctd : Datum::CharterToken = Datum::from_data( \n        charterUtxo.datum.get_inline_data() \n    );\n\n    ctd    \n}\n\n");
+
+code$2.srcFile = "src/CapoHelpers.hl";
+code$2.purpose = "module";
+code$2.moduleName = "CapoHelpers";
+
+const CapoHelpers = code$2;
+
+var __defProp$3 = Object.defineProperty;
+var __getOwnPropDesc$3 = Object.getOwnPropertyDescriptor;
+var __decorateClass$3 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$3(target, key) : target;
+  for (var i = decorators.length - 1, decorator; i >= 0; i--)
+    if (decorator = decorators[i])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result)
+    __defProp$3(target, key, result);
+  return result;
+};
+//!!! TODO: include adapter(s) for Datum, which has the same essential shape
+class BasicMintDelegate extends StellarDelegate {
+  static currentRev = 1n;
+  static get defaultParams() {
+    return { rev: this.currentRev };
+  }
+  contractSource() {
+    return code$5;
+  }
+  /**
+   * specializedMintDelegate module for customizing policies atop the basic mint delegate
+   * @public
+   * @remarks
+   * 
+   * The basic mint delegate contains an "unspecialized" implementation of this customization,
+   * which doesn't have any special restrictions.  It reserves a CustomConfig field
+   * at position 2 in the IsDelegation datum, allowing customizations to use any 
+   * struct in that position to express any custom configurations.  
+   **/
+  get specializedMintDelegate() {
+    return UnspecializedMintDelegate;
+  }
+  get specializedCapo() {
+    return UnspecializedCapo;
+  }
+  importModules() {
+    const specializedMintDelegate = this.specializedMintDelegate;
+    if (specializedMintDelegate.moduleName !== "specializedMintDelegate") {
+      throw new Error(
+        `${this.constructor.name}: specializedMintDelegate() module name must be 'specializedMintDelegate', not '${specializedMintDelegate.moduleName}'
+  ... in ${specializedMintDelegate.srcFile}`
+      );
+    }
+    return [
+      code$8,
+      CapoDelegateHelpers,
+      CapoHelpers,
+      CapoMintHelpers,
+      specializedMintDelegate,
+      this.specializedCapo
+    ];
+  }
+  get scriptDatumName() {
+    return "MintDelegateDatum";
+  }
+  get scriptActivitiesName() {
+    return "MintDelegateActivity";
+  }
+  getContractScriptParams(config) {
+    return {
+      rev: config.rev
+    };
+  }
+  /**
+   * Adds a mint-delegate-specific authority token to the txn output
+   * @remarks
+   * 
+   * Implements {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }.
+   * 
+   * Uses {@link BasicMintDelegate.mkDelegationDatum | mkDelegationDatum()} to make the inline Datum for the output.
+   * @see {@link StellarDelegate.txnReceiveAuthorityToken | baseline txnReceiveAuthorityToken()'s doc }
+   * @public
+   **/
+  async txnReceiveAuthorityToken(tcx, tokenValue, fromFoundUtxo) {
+    console.log(
+      `     ----- minting delegate validator receiving mintDgt token at ` + this.address.validatorHash.hex
+    );
+    const datum = this.mkDelegationDatum(fromFoundUtxo);
+    return tcx.addOutput(new TxOutput(this.address, tokenValue, datum));
+  }
+  mkDelegationDatum(txin) {
+    if (txin)
+      return txin.origOutput.datum;
+    const { capoAddr, mph, tn, ..._otherCfgSettings } = this.configIn;
+    return this.mkDatumIsDelegation({
+      capoAddr,
+      mph,
+      tn
+    });
+  }
+  async txnCreatingTokenPolicy(tcx, tokenName) {
+    return tcx;
+  }
+  static mkDelegateWithArgs(a) {
+  }
+}
+__decorateClass$3([
+  Activity.partialTxn
+], BasicMintDelegate.prototype, "txnCreatingTokenPolicy", 1);
+
+class AuthorityPolicy extends StellarDelegate {
+}
+
+var __defProp$2 = Object.defineProperty;
+var __getOwnPropDesc$2 = Object.getOwnPropertyDescriptor;
+var __decorateClass$2 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$2(target, key) : target;
+  for (var i = decorators.length - 1, decorator; i >= 0; i--)
+    if (decorator = decorators[i])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result)
+    __defProp$2(target, key, result);
+  return result;
+};
+class AnyAddressAuthorityPolicy extends AuthorityPolicy {
+  loadProgramScript(params) {
+    return void 0;
+  }
+  get delegateValidatorHash() {
+    return void 0;
+  }
+  usingAuthority() {
+    const { usingAuthority } = this.onChainActivitiesType;
+    if (!usingAuthority) {
+      throw new Error(
+        `invalid contract without a usingAuthority activity`
+      );
+    }
+    const t = new usingAuthority();
+    return { redeemer: t._toUplcData() };
+  }
+  //! impls MUST resolve the indicated token to a specific UTxO
+  //  ... or throw an informative error
+  async DelegateMustFindAuthorityToken(tcx, label) {
+    const v = this.tvAuthorityToken();
+    const { addrHint } = this.configIn;
+    return this.mustFindActorUtxo(
+      `${label}: ${bytesToText(this.configIn.tn)}`,
+      this.mkTokenPredicate(v),
+      tcx,
+      "are you connected to the right wallet address? " + (addrHint?.length ? "  maybe at:\n    " + addrHint.join("\n or ") : "")
+    );
+  }
+  async txnReceiveAuthorityToken(tcx, tokenValue, fromFoundUtxo) {
+    let dest;
+    if (fromFoundUtxo) {
+      dest = fromFoundUtxo.address;
+    } else {
+      if (!this.configIn?.addrHint?.[0])
+        throw new Error(
+          `missing addrHint`
+        );
+      const {
+        addrHint
+        // reqdAddress,  // removed
+      } = this.configIn;
+      dest = addrHint[0];
+    }
+    const output = new TxOutput(dest, tokenValue);
+    output.correctLovelace(this.networkParams);
+    tcx.addOutput(output);
+    return tcx;
+  }
+  //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
+  //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
+  async DelegateAddsAuthorityToken(tcx, fromFoundUtxo) {
+    //! no need to specify a redeemer
+    return tcx.addInput(fromFoundUtxo);
+  }
+  //! Adds the indicated utxo to the transaction with appropriate activity/redeemer
+  //  ... allowing the token to be burned by the minting policy.
+  //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
+  async DelegateRetiresAuthorityToken(tcx, fromFoundUtxo) {
+    //! no need to specify a redeemer
+    return tcx.addInput(fromFoundUtxo);
+  }
+}
+__decorateClass$2([
+  Activity.redeemer
+], AnyAddressAuthorityPolicy.prototype, "usingAuthority", 1);
+
+const code$1 = new String("spending Capo\n\n// needed in helios 0.13: defaults\nconst mph : MintingPolicyHash = MintingPolicyHash::new(#1234)\nconst rev : Int = 1\n\nimport {\n    tvCharter\n} from CapoHelpers\n\nimport { \n    RelativeDelegateLink,\n    requiresValidDelegateOutput\n} from CapoDelegateHelpers\n\nimport {\n    mkTv,\n    didSign,\n    didSignInCtx\n} from StellarHeliosHelpers\n\nimport { Datum, Activity } from specializedCapo\n\n/**\n * \n */\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{\n        govDelegateLink, _\n    } = datum;\n\n    requiresValidDelegateOutput(govDelegateLink, mph, ctx)\n}\n\nfunc getCharterOutput(tx: Tx) -> TxOutput {\n    charterTokenValue : Value = Value::new(\n        AssetClass::new(mph, \"charter\".encode_utf8()), \n        1\n    );\n    tx.outputs.find_safe(\n        (txo : TxOutput) -> Bool {\n            txo.value >= charterTokenValue\n        }\n    ).switch{\n        None => error(\"this could only happen if the charter token is burned.\"),\n        Some{o} => o\n    }\n}\n\nfunc notUpdatingCharter(activity: Activity) -> Bool { activity.switch {\n    updatingCharter => false,  \n    _ => true\n}}\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        error(\"charter token must be returned to the contract \")\n        // actual : String = charterOutput.address.credential.switch{\n        //     PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n        //     Validator{vh} => \"val:📜#:\" + vh.show()\n        // };\n        // error(\n        //     \"charter token must be returned to the contract \" + cvh.show() +\n        //     \"... but was sent to \" +actual\n        // )\n    };\n\n    Datum::CharterToken{\n        govDelegate,\n        mintDelegate\n    } = datum;\n    Datum::CharterToken{\n        newGovDelegate,\n        newMintDelegate\n    } = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newGovDelegate == govDelegate &&\n        newMintDelegate == mintDelegate\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    // now: Time = tx.time_range.start;\n    \n    allDatumSpecificChecks: Bool = datum.switch {\n        ctd : CharterToken => {\n            // throws if bad\n            if(notUpdatingCharter(activity)) { \n                preventCharterChange(ctx, ctd)\n            } else {\n                true // \"maybe\", really\n            }\n        },\n        _ => {\n            activity.switch {\n                spendingDatum => datum.validateSpend(ctx, mph),\n                _ => true\n            }\n        }            \n    };\n    allActivitySpecificChecks : Bool = activity.switch {\n        updatingCharter => {\n            charterOutput : TxOutput = getCharterOutput(tx);\n            newDatum = Datum::from_data( \n                charterOutput.datum.get_inline_data() \n            );\n            Datum::CharterToken{govDelegate, mintDelegate} = newDatum;\n\n            requiresValidDelegateOutput(govDelegate, mph, ctx) &&\n            requiresValidDelegateOutput(mintDelegate, mph, ctx) &&\n            requiresAuthorization(ctx, datum)\n        },\n        usingAuthority => {\n            // by definition, we're truly notUpdatingCharter(activity) \n            datum.switch {\n                 // throws if bad\n                ctd : CharterToken => requiresAuthorization(ctx, ctd),\n                _ => error(\"wrong use of usingAuthority action for non-CharterToken datum\")\n            }\n        },\n        _ => activity.allowActivity(datum, ctx, mph)\n    };\n\n    assert(allDatumSpecificChecks, \"datum-check fail\");\n    assert(allActivitySpecificChecks, \"redeeemer-check fail\");\n\n    //! retains mph in parameterization\n    assert(\n        ( allDatumSpecificChecks && allActivitySpecificChecks ) ||\n            // this should never execute (much less fail), yet it also shouldn't be optimized out.\n             mph.serialize() /* never */ == datum.serialize(), \n        \"unreachable\"\n    ); \n\n    allDatumSpecificChecks && \n    allActivitySpecificChecks &&\n    tx.serialize() != datum.serialize()\n}\n");
+
+code$1.srcFile = "src/DefaultCapo.hl";
+code$1.purpose = "spending";
+code$1.moduleName = "Capo";
+
+const code = new String("spending MultiSigAuthority\n\nconst rev : Int = 1\nconst instance : ByteArray = #67656e6572616c\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        error(\"charter token must be returned to the contract\")\n        // actual : String = charterOutput.address.credential.switch{\n        //     PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n        //     Validator{vh} => \"val:📜#:\" + vh.show()\n        // };\n        // error(\n        //     \"charter token must be returned to the contract \" + cvh.show() +\n        //     \"... but was sent to \" +actual\n        // )\n    };\n\n    Datum::CharterToken{trustees, minSigs} = datum;\n    Datum::CharterToken{newTrustees, newMinSigs} = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newTrustees == trustees &&\n        newMinSigs == minSigs\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc requiresValidMinSigs(datum: Datum) -> Bool {\n    Datum::CharterToken{trustees, minSigs} = datum;\n\n    assert(\n        minSigs <= trustees.length,\n        \"minSigs can't be more than the size of the trustee-list\"\n    );\n\n    true\n}\n\nfunc requiresProofOfNewTrustees(\n    ctx: ScriptContext,\n    datum: Datum\n) -> Bool {\n    Datum::CharterToken{newTrustees, _} = datum;\n\n    assert(\n        newTrustees.all(didSignInCtx(ctx)), \n        \"all the new trustees must sign\"\n    );\n\n    requiresValidMinSigs(datum)\n}\n\n//!!! adapt to use my UUT\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{trustees, minSigs} = datum;\n\n    foundSigs: Int = trustees.fold[Int](\n        (count: Int, a: Address) -> Int {            \n            count + if (didSign(ctx, a)) {1} else {0}\n        }, 0\n    );\n    assert(foundSigs >= minSigs, \n        \"not enough trustees have signed the tx\" \n        // \"not enough trustees (\"+foundSigs.show()+ \" of \" + minSigs.show() + \" needed) have signed the tx\" \n    );\n\n    true\n}\nfunc main(_,_,_) -> Bool {\n    true\n}\n// for updating trustee list:\n// requiresProofOfNewTrustees(ctx, newDatum)\n");
+
+code.srcFile = "src/authority/MultisigAuthorityPolicy.hl";
+code.purpose = "spending";
+code.moduleName = "MultiSigAuthority";
+
+//! a contract enforcing policy for a registered credential
+class MultisigAuthorityPolicy extends AuthorityPolicy {
+  static currentRev = 1n;
+  static get defaultParams() {
+    return { rev: this.currentRev };
+  }
+  contractSource() {
+    return code;
+  }
+  // @Activity.partialTxn
+  // async txnFresheningCredInfo(
+  //     tcx: StellarTxnContext,
+  //     tokenName: string
+  // ): Promise<StellarTxnContext> {
+  //     return tcx
+  // }
+  async txnReceiveAuthorityToken(tcx, val, fromFoundUtxo) {
+    throw new Error(`todo`);
+  }
+  //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
+  async DelegateAddsAuthorityToken(tcx, fromFoundUtxo) {
+    throw new Error(`todo`);
+  }
+  //! Adds the indicated utxo to the transaction with appropriate activity/redeemer
+  //  ... allowing the token to be burned by the minting policy.
+  async DelegateRetiresAuthorityToken(tcx, fromFoundUtxo) {
+    return tcx;
+  }
+  requirements() {
+    return hasReqts({
+      "provides arms-length proof of authority to any other contract": {
+        purpose: "to decouple authority administration from its effects",
+        details: [
+          "See GenericAuthority for more background on authority delegation.",
+          "This policy uses a trustee list and minSigs threshold to provide multisig-based authority"
+        ],
+        mech: [],
+        requires: [
+          "positively governs spend of the UUT",
+          "the trustee threshold is required to spend its UUT",
+          "the trustee group can be changed"
+        ]
+      },
+      "positively governs spend of the UUT": {
+        purpose: "to maintain clear control by a trustee group",
+        details: [
+          // descriptive details of the requirement (not the tech):
+          "a trustee group is defined during contract creation",
+          "the trustee list's signatures provide consent",
+          "the trustee group can evolve by consent of the trustee group",
+          "a threshold set of the trustee group can give consent for the whole group"
+        ],
+        mech: [
+          // descriptive details of the chosen mechanisms for implementing the reqts:
+          "the UUT has a trustee list in its Datum structure",
+          "the UUT has a threshold setting in its Datum structure",
+          "the Settings datum is updated when needed to reflect new trustees/thresholds"
+        ],
+        requires: [
+          "TODO: has a unique authority UUT",
+          "TODO: the trustee threshold is required to spend its UUT",
+          "TODO: the trustee group can be changed"
+        ]
+      },
+      "TODO: has a unique authority UUT": hasReqts.TODO,
+      "TODO: the trustee threshold is required to spend its UUT": hasReqts.TODO,
+      "TODO: the trustee group can be changed": hasReqts.TODO,
+      "the trustee threshold is required to spend its UUT": {
+        purpose: "allows progress in case a small fraction of trustees may not be available",
+        details: [
+          "A group can indicate how many of the trustees are required to provide their explicit approval",
+          "If a small number of trustees lose their keys, this allows the remaining trustees to directly regroup",
+          "For example, they can replace the trustee list with a new set of trustees and a new approval threshold",
+          "Normal day-to-day administrative activities can also be conducted while a small number of trustees are on vacation or otherwise temporarily unavailable"
+        ],
+        mech: [
+          "TODO: doesn't allow the UUT to be spent without enough minSigs from the trustee list"
+        ],
+        requires: []
+      },
+      "the trustee group can be changed": {
+        purpose: "to ensure administrative continuity for the group",
+        details: [
+          "When the needed threshold for administrative modifications is achieved, the Settings datum can be updated",
+          "When changing trustees, it should guard against mistakes in the new trustee list, ",
+          "  ... by validating signatures of the new trustees",
+          "  ... and by validating new minSigs"
+        ],
+        mech: [
+          "TODO: trustee list can be changed if the signature threshold is met",
+          "TODO: the new trustees must sign any change of trustees",
+          "TODO: does not allow minSigs to exceed the number of trustees"
+        ],
+        requires: []
+      }
+    });
+  }
+}
+
+var __defProp$1 = Object.defineProperty;
+var __getOwnPropDesc$1 = Object.getOwnPropertyDescriptor;
+var __decorateClass$1 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$1(target, key) : target;
+  for (var i = decorators.length - 1, decorator; i >= 0; i--)
+    if (decorator = decorators[i])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result)
+    __defProp$1(target, key, result);
+  return result;
+};
+class NoMintDelegation extends StellarDelegate {
+  static currentRev = 1n;
+  static get defaultParams() {
+    return { rev: this.currentRev };
+  }
+  de;
+  contractSource() {
+    return code$5;
+  }
+  getContractScriptParams(config) {
+    return {
+      rev: config.rev
+    };
+  }
+  txnReceiveAuthorityToken(tcx, value, fromFoundUtxo) {
+    throw new Error(`todo`);
+  }
+  async txnCreatingTokenPolicy(tcx, tokenName) {
+    return tcx;
+  }
+  static mkDelegateWithArgs(a) {
+  }
+}
+__decorateClass$1([
+  Activity.partialTxn
+], NoMintDelegation.prototype, "txnCreatingTokenPolicy", 1);
+
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __decorateClass = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc(target, key) : target;
+  for (var i = decorators.length - 1, decorator; i >= 0; i--)
+    if (decorator = decorators[i])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result)
+    __defProp(target, key, result);
+  return result;
+};
+//!!! todo enable "other" datum args - (ideally, those other than delegate-link types) to be inlcuded in MDCDA above.
+let DefaultCapo$1 = class DefaultCapo extends Capo {
+  contractSource() {
+    return code$1;
+  }
+  static parseConfig(jsonConfig) {
+    const { mph, rev, seedTxn, seedIndex, rootCapoScriptHash } = jsonConfig;
+    const outputConfig = {};
+    if (mph)
+      outputConfig.mph = MintingPolicyHash.fromHex(mph.bytes);
+    if (rev)
+      outputConfig.rev = BigInt(rev);
+    if (seedTxn)
+      outputConfig.seedTxn = TxId.fromHex(seedTxn.bytes);
+    if (seedIndex)
+      outputConfig.seedIndex = BigInt(seedIndex);
+    if (rootCapoScriptHash)
+      outputConfig.rootCapoScriptHash = ValidatorHash.fromHex(
+        rootCapoScriptHash.bytes
+      );
+    return outputConfig;
+  }
+  /**
+   * indicates any specialization of the baseline Capo types
+   * @remarks
+   *
+   * The default implementation is an UnspecialiedCapo, which
+   * you can use as a template for your specialized Capo.
+   *
+   * Every specalization MUST include Datum and Activity ("redeemer") enums,
+   * and MAY include additional functions, and methods on Datum / Activity.
+   *
+   * The datum SHOULD have a validateSpend(self, datum, ctx) method.
+   *
+   * The redeemer SHOULD have an allowActivity(self, datum, ctx) method.
+   *
+   * @public
+   **/
+  get specializedCapo() {
+    return UnspecializedCapo;
+  }
+  /**
+   * indicates any specialization of the baseline Capo types
+   * @remarks
+   *
+   * The default implementation is an UnspecialiedCapo, which
+   * you can use as a template for your specialized Capo.
+   *
+   * Every specalization MUST include Datum and  Activity ("redeemer") enums,
+   * and MAY include additional functions, and methods on Datum / Activity.
+   *
+   * The datum enum SHOULD have a validateSpend(self, datum, ctx) method.
+   *
+   * The activity enum SHOULD have an allowActivity(self, datum, ctx) method.
+   *
+   * @public
+   **/
+  get capoHelpers() {
+    return CapoHelpers;
+  }
+  importModules() {
+    const parentModules = super.importModules();
+    const specializedCapo = this.specializedCapo;
+    if (specializedCapo.moduleName !== "specializedCapo") {
+      throw new Error(
+        `${this.constructor.name}: specializedCapo() module name must be 'specializedCapo', not '${specializedCapo.moduleName}'
+  ... in ${specializedCapo.srcFile}`
+      );
+    }
+    return [specializedCapo, this.capoHelpers, ...parentModules];
+  }
+  // // @Activity.redeemer
+  // updatingCharter() : isActivity {
+  //     return this.updatingDefaultCharter()
+  // }
+  /**
+   * Use the `delegateRoles` getter instead
+   * @remarks
+   *
+   * this no-op method is a convenience for Stellar Contracts maintainers
+   * and intuitive developers using autocomplete.  Including it enables an entry
+   * in VSCode "Outline" view, which doesn't include the delegateRoles getter : /
+   * @deprecated but please keep as a kind of redirect
+   * @public
+   **/
+  getDelegateRoles() {
+    throw new Error(`use the delegateRoles getter instead`);
+  }
+  get delegateRoles() {
+    return delegateRoles({
+      govAuthority: defineRole("capoGov", AuthorityPolicy, {
+        address: {
+          delegateClass: AnyAddressAuthorityPolicy,
+          validateConfig(args) {
+            const { rev, tn, addrHint } = args;
+            const errors = {};
+            if (!rev)
+              errors.rev = ["required"];
+            if (!tn?.length)
+              errors.tn = ["(token-name) required"];
+            if (!addrHint?.length)
+              errors.addrHint = ["destination address required"];
+            if (Object.keys(errors).length > 0)
+              return errors;
+            return void 0;
+          }
+        },
+        multisig: {
+          delegateClass: MultisigAuthorityPolicy,
+          validateConfig(args) {
+            const { rev, uut } = args;
+            const errors = {};
+            if (!rev)
+              errors.rev = ["required"];
+            if (!uut)
+              errors.uut = ["required"];
+            if (Object.keys(errors).length > 0)
+              return errors;
+            return void 0;
+          }
+        }
+      }),
+      mintDelegate: defineRole("mintDgt", BasicMintDelegate, {
+        default: {
+          delegateClass: BasicMintDelegate,
+          partialConfig: {},
+          validateConfig(args) {
+            return void 0;
+          }
+        }
+        // undelegated: { ... todo ... }
+      })
+    });
+  }
+  /**
+   * Performs a validation of all critical delegate connections
+   * @remarks
+   *
+   * Checks that each delegate connection is correct and that the underlying
+   * scripts for those delegates have not been modified in unplanned ways.
+   *
+   * Every Capo subclass that adds new delegate types SHOULD implement
+   * this method, performing any checks needed to verify the scripts underlying
+   * those delegate-types.  It should return `Promise.all([ super(), ...myOwnChecks])`.
+   * @public
+   **/
+  async verifyCoreDelegates() {
+    const rcsh = this.configIn?.rootCapoScriptHash;
+    if (rcsh && !rcsh.eq(this.address.validatorHash)) {
+      console.error(
+        `expected: ` + rcsh.hex + `
+  actual: ` + this.address.validatorHash.hex
+      );
+      throw new Error(
+        `${this.constructor.name}: the leader contract script '${this.scriptProgram?.name}', or one of its dependencies, has been modified`
+      );
+    }
+    this.connectMinter();
+    const charter = await this.findCharterDatum();
+    const { govAuthorityLink, mintDelegateLink } = charter;
+    return Promise.all([
+      this.connectDelegateWithLink("govAuthority", govAuthorityLink),
+      this.connectDelegateWithLink("mintDelegate", mintDelegateLink)
+    ]);
+  }
+  mkOnchainDelegateLink(dl) {
+    const { RelativeDelegateLink: hlRelativeDelegateLink } = this.onChainTypes;
+    let {
+      uutName,
+      strategyName,
+      delegateValidatorHash,
+      config
+      // reqdAddress: canRequireAddr,
+      // addrHint = [],
+    } = dl;
+    const OptValidator = Option(ValidatorHash);
+    return new hlRelativeDelegateLink(
+      uutName,
+      strategyName,
+      new OptValidator(delegateValidatorHash)
+      // config //!!! todo - support inline config if/when needed
+      // needsAddr,
+      // addrHint
+    );
+  }
+  mkDatumCharterToken(args) {
+    //!!! todo: make it possible to type these datum helpers more strongly
+    console.log("--> mkDatumCharter", args);
+    const { CharterToken: hlCharterToken } = this.onChainDatumType;
+    const govAuthority = this.mkOnchainDelegateLink(args.govAuthorityLink);
+    const mintDelegate = this.mkOnchainDelegateLink(args.mintDelegateLink);
+    const t = new hlCharterToken(govAuthority, mintDelegate);
+    return Datum.inline(t._toUplcData());
+  }
+  async findCharterDatum() {
+    return this.mustFindCharterUtxo().then(async (ctUtxo) => {
+      const charterDatum = await this.readDatum(
+        "CharterToken",
+        ctUtxo.origOutput.datum
+      );
+      if (!charterDatum)
+        throw Error(`invalid charter UTxO datum`);
+      return charterDatum;
+    });
+  }
+  async txnAddGovAuthority(tcx) {
+    const charterDatum = await this.findCharterDatum();
+    console.log(
+      "adding charter's govAuthority via delegate",
+      charterDatum.govAuthorityLink
+    );
+    const capoGov = await this.connectDelegateWithLink(
+      "govAuthority",
+      charterDatum.govAuthorityLink
+    );
+    return capoGov.txnGrantAuthority(tcx);
+  }
+  // getMinterParams() {
+  //     const { seedTxn, seedIdx } = this.configIn
+  //     return { seedTxn, seedIdx }
+  // }
+  /**
+   * should emit a complete configuration structure that can reconstitute a contract (suite) after its first bootstrap transaction
+   * @remarks
+   *
+   * mkFullConfig is called during a bootstrap transaction.  The default implementation works
+   * for subclasses as long as they use CapoBaseConfig for their config type.  Or, if they're
+   * instantiated with a partialConfig that augments CapoBaseConfig with concrete details that
+   * fulfill their extensions to the config type.
+   *
+   * If you have a custom mkBootstrapTxn() that uses techniques to explicitly add config
+   * properties not provided by your usage of `partialConfig` in the constructor, then you'll
+   * need to provide a more specific impl of mkFullConfig().  It's recommended that you
+   * call super.mkFullConfig() from your impl.
+   * @param baseConfig - receives the BaseConfig properties: mph, seedTxn and seedIndex
+   * @public
+   **/
+  mkFullConfig(baseConfig) {
+    const pCfg = this.partialConfig || {};
+    const newClass = this.constructor;
+    const newCapo = newClass.bootstrapWith({
+      setup: this.setup,
+      config: { ...baseConfig, ...pCfg }
+    });
+    return {
+      ...baseConfig,
+      ...pCfg,
+      rootCapoScriptHash: newCapo.compiledScript.validatorHash
+    };
+  }
+  async mkTxnMintingUuts(initialTcx, uutPurposes, seedUtxo, roles) {
+    const tcx = await super.mkTxnMintingUuts(
+      initialTcx,
+      uutPurposes,
+      seedUtxo,
+      roles
+    );
+    await this.txnMustUseCharterUtxo(tcx, "refInput");
+    return this.txnAddMintDelegate(tcx);
+  }
+  async getMintDelegate() {
+    const charterDatum = await this.findCharterDatum();
+    return this.connectDelegateWithLink(
+      "mintDelegate",
+      charterDatum.mintDelegateLink
+    );
+  }
+  async getGovDelegate() {
+    const charterDatum = await this.findCharterDatum();
+    return this.connectDelegateWithLink(
+      "govDelegate",
+      charterDatum.govAuthorityLink
+    );
+  }
+  async txnAddMintDelegate(tcx) {
+    const mintDelegate = await this.getMintDelegate();
+    await mintDelegate.txnGrantAuthority(tcx);
+    return tcx;
+  }
+  //@ts-expect-error - typescript can't seem to understand that
+  //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
+  async mkTxnMintCharterToken(charterDatumArgs, existingTcx) {
+    if (this.configIn)
+      throw new Error(
+        `this contract suite is already configured and can't be re-chartered`
+      );
+    const initialTcx = existingTcx || new StellarTxnContext(this.myActor);
+    return this.txnMustGetSeedUtxo(initialTcx, "charter bootstrapping", [
+      "charter"
+    ]).then(async (seedUtxo) => {
+      const { txId: seedTxn, utxoIdx } = seedUtxo.outputId;
+      const seedIndex = BigInt(utxoIdx);
+      this.connectMintingScript({ seedIndex, seedTxn });
+      const { mintingPolicyHash: mph } = this.minter;
+      const rev = this.getCapoRev();
+      const bsc = this.mkFullConfig({
+        mph,
+        rev,
+        seedTxn,
+        seedIndex
+      });
+      initialTcx.state.bsc = bsc;
+      initialTcx.state.bootstrappedConfig = JSON.parse(
+        JSON.stringify(bsc, delegateLinkSerializer)
+      );
+      const fullScriptParams = this.contractParams = this.getContractScriptParams(bsc);
+      this.configIn = bsc;
+      this.scriptProgram = this.loadProgramScript(fullScriptParams);
+      const tcx = await this.minter.txnWillMintUuts(
+        initialTcx,
+        ["capoGov", "mintDgt"],
+        seedUtxo,
+        {
+          govAuthority: "capoGov",
+          mintDelegate: "mintDgt"
+        }
+      );
+      const { capoGov, govAuthority, mintDgt, mintDelegate } = tcx.state.uuts;
+      {
+        if (govAuthority !== capoGov)
+          throw new Error(`assertion can't fail`);
+      }
+      const govAuthorityLink = await this.txnCreateDelegateLink(tcx, "govAuthority", charterDatumArgs.govAuthorityLink);
+      const mintDelegateLink = await this.txnCreateDelegateLink(tcx, "mintDelegate", charterDatumArgs.mintDelegateLink);
+      const fullCharterArgs = {
+        ...charterDatumArgs,
+        govAuthorityLink,
+        mintDelegateLink
+      };
+      const datum2 = this.mkDatumCharterToken(fullCharterArgs);
+      const charterOut = new TxOutput(
+        this.address,
+        this.tvCharter(),
+        datum2
+      );
+      charterOut.correctLovelace(this.networkParams);
+      tcx.addInput(seedUtxo);
+      tcx.addOutputs([charterOut]);
+      console.log(
+        " ---------------- CHARTER MINT ---------------------\n",
+        txAsString(tcx.tx)
+      );
+      return this.minter.txnMintingCharter(tcx, {
+        owner: this.address,
+        capoGov,
+        // same as govAuthority,
+        mintDgt
+      });
+    });
+  }
+  updatingCharter() {
+    const { updatingCharter } = this.onChainActivitiesType;
+    const t = new updatingCharter();
+    return { redeemer: t._toUplcData() };
+  }
+  async mkTxnUpdateCharter(args, tcx = new StellarTxnContext(this.myActor)) {
+    return this.txnUpdateCharterUtxo(
+      tcx,
+      this.updatingCharter(),
+      this.mkDatumCharterToken(args)
+    );
+  }
+  requirements() {
+    return hasReqts({
+      "positively governs all administrative actions": {
+        purpose: "to maintain clear control by a trustee group",
+        details: [
+          // descriptive details of the requirement (not the tech):
+          "a trustee group is defined during contract creation",
+          "the trustee list's signatures provide consent",
+          "the trustee group can evolve by consent of the trustee group",
+          "a threshold set of the trustee group can give consent for the whole group"
+        ],
+        mech: [
+          // descriptive details of the chosen mechanisms for implementing the reqts:
+          "uses a 'charter' token specialized for this contract",
+          "the charter token has a trustee list in its Datum structure",
+          "the charter token has a threshold setting in its Datum structure",
+          "the charter Datum is updated when needed to reflect new trustees/thresholds"
+        ],
+        requires: [
+          "has a unique, permanent charter token",
+          "has a unique, permanent treasury address",
+          "the trustee threshold is enforced on all administrative actions",
+          "the trustee group can be changed",
+          "the charter token is always kept in the contract",
+          "can mint other tokens, on the authority of the Charter token"
+        ]
+      },
+      "has a singleton minting policy": {
+        purpose: "to mint various tokens authorized by the treasury",
+        details: [
+          "A chosen minting script is bound deterministically to the contract constellation",
+          "Its inaugural (aka 'initial Charter' or 'Charter Mint') transaction creates a charter token",
+          "The minting script can issue further tokens approved by Treasury Trustees",
+          "The minting script does not need to concern itself with details of Treasury Trustee approval"
+        ],
+        mech: [
+          "has an initial UTxO chosen arbitrarily, and that UTxO is consumed during initial Charter",
+          "makes a different address depending on (txId, outputIndex) parameters of the Minting script"
+        ],
+        requires: []
+      },
+      "has a unique, permanent treasury address": {
+        purpose: "to give continuity for its stakeholders",
+        details: [
+          "One-time creation is ensured by UTxO's unique-spendability property",
+          "Determinism is transferred from the charter utxo to the MPH and to the treasury address"
+        ],
+        mech: [
+          "uses the Minting Policy Hash as the sole parameter for the treasury spending script"
+        ],
+        requires: ["has a singleton minting policy"]
+      },
+      "has a unique, permanent charter token": {
+        purpose: "to guarantee permanent identity of a token constraining administrative actions",
+        details: [
+          "a charter token is uniquely created when bootstrapping the constellation contract",
+          "the charter token can't ever be recreated (it's non-fungible and can't be re-minted)",
+          "the treasury address, minting policy hash, and charter token are all deterministic based on input utxo"
+        ],
+        impl: "txnMintCharterToken()",
+        mech: [
+          "creates a unique 'charter' token, with assetId determined from minting-policy-hash+'charter'",
+          "TODO: fails if minSigs is longer than trustee list",
+          "doesn't work with a different spent utxo"
+        ],
+        requires: [
+          "has a singleton minting policy",
+          "the charter token is always kept in the contract"
+        ]
+      },
+      "the charter token is always kept in the contract": {
+        purpose: "so that the treasury contract is always in control of administrative changes",
+        details: [
+          "The charter token's spendability' is used as a signal of administrative authority for transactions wanting proof of authority",
+          "... thus, other scripts don't need to express any of the authority policy, but can simply verify the token's presence in the txn",
+          "It shouldn't ever be possible to interfere with its spendability, e.g. by bundling it in an inconvenient way with other assets",
+          "By enforcing that the charter token is always returned to the contract, ",
+          "... it has assurance of continuing ability to govern the next activity using that token",
+          "Note: the charter mint can bind with any contract having suitable assurances, ",
+          "... but we only focus on the case of binding to this treasury contract"
+        ],
+        mech: [
+          "builds transactions with the charter token returned to the contract",
+          "fails to spend the charter token if it's not returned to the contract",
+          "TODO: keeps the charter token separate from other assets in the contract"
+        ],
+        requires: []
+      },
+      "can mint other tokens, on the authority of the Charter token": {
+        purpose: "to simplify the logic of minting, while being sure of minting authority",
+        details: [
+          "the minting policy doesn't have to directly enforce the trustee-list policy",
+          "instead, it delegates that to the treasury spending script, ",
+          "... and simply requires that the charter token is used for minting anything else"
+        ],
+        mech: [
+          "can build transactions that mint non-'charter' tokens",
+          "requires the charter-token to be spent as proof of authority",
+          "fails if the charter-token is not returned to the treasury",
+          "fails if the charter-token parameters are modified"
+        ]
+      },
+      "the trustee group can be changed": {
+        purpose: "to ensure administrative continuity for the group",
+        details: [
+          "When the needed threshold for administrative modifications is achieved, the Charter Datum can be updated",
+          "This type of administrative action should be explicit and separate from any other administrative activity",
+          "If the CharterToken's Datum is being changed, no other redeemer activities are allowed"
+        ],
+        mech: [
+          "requires the existing threshold of existing trustees to be met",
+          "requires all of the new trustees to sign the transaction",
+          "does not allow minSigs to exceed the number of trustees"
+        ],
+        requires: [
+          "the trustee threshold is enforced on all administrative actions"
+        ]
+      },
+      "the trustee threshold is enforced on all administrative actions": {
+        purpose: "allows progress in case a small fraction of trustees may not be available",
+        details: [
+          "A group can indicate how many of the trustees are required to provide their explicit approval",
+          "If a small number of trustees lose their keys, this allows the remaining trustees to directly regroup",
+          "For example, they can replace the trustee list with a new set of trustees and a new approval threshold",
+          "Normal day-to-day administrative activities can also be conducted while a small number of trustees are on vacation or otherwise temporarily unavailable"
+        ],
+        mech: [
+          "doesn't allow the charterToken to be sent without enough minSigs from the trustee list"
+        ],
+        requires: []
+      },
+      foo: {
+        purpose: "",
+        details: [],
+        mech: [],
+        requires: []
+      }
+    });
+  }
+};
+__decorateClass([
+  datum
+], DefaultCapo$1.prototype, "mkDatumCharterToken", 1);
+__decorateClass([
+  txn
+], DefaultCapo$1.prototype, "mkTxnMintCharterToken", 1);
+__decorateClass([
+  Activity.redeemer
+], DefaultCapo$1.prototype, "updatingCharter", 1);
+__decorateClass([
+  txn
+], DefaultCapo$1.prototype, "mkTxnUpdateCharter", 1);
 
 export { ADA, Activity, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, Capo, CapoTestHelper, DefaultCapo$1 as DefaultCapo, DefaultCapoTestHelper, DefaultMinter, StellarContract, StellarDelegate, StellarTestHelper, StellarTxnContext, UutName, addTestContext, assetsAsString, datum, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, helios, heliosRollupLoader, insufficientInputError, lovelaceToAda, mkHeliosModule, mkUutValuesEntries, mkValuesEntry, partialTxn, stringToNumberArray, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString };
 //# sourceMappingURL=stellar-contracts.mjs.map

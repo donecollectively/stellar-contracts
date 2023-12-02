@@ -24,6 +24,7 @@ export {
 import * as helios from "@hyperionbt/helios";
 export { helios }
 
+export { UutName } from "./src/delegation/UutName.js";
 export { Capo } from "./src/Capo.js";
 export type {
     MintUutActivityArgs,
@@ -37,7 +38,6 @@ export type {
 
 export {
     delegateRoles, defineRole, 
-    UutName
 } from "./src/delegation/RolesAndDelegates.js"
 
 export type {

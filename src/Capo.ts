@@ -29,9 +29,9 @@ import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 import {
     DelegateConfigNeeded,
-    UutName,
     delegateLinkSerializer,
 } from "./delegation/RolesAndDelegates.js";
+import { UutName } from "./delegation/UutName.js";
 import type {
     ConfiguredDelegate,
     ErrorMap,

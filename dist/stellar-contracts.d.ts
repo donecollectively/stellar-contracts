@@ -1235,7 +1235,7 @@ export declare class StellarContract<ConfigType extends paramsBase> {
      * Throws an error if the strella contract facade has not been initialized with a wallet in settings.myActor
      * @public
      **/
-    get wallet(): Wallet;
+    get wallet(): helios.Wallet;
     getContractScriptParams(config: ConfigType): paramsBase & Partial<ConfigType>;
     delegateReqdAddress(): false | Address;
     delegateAddrHint(): Address[] | undefined;

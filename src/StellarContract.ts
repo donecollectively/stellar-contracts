@@ -22,6 +22,7 @@ import {
     ConstrData,
     WalletHelper,
 } from "@hyperionbt/helios";
+import * as helios from "@hyperionbt/helios";
 import type {
     Network,
     Wallet,
@@ -32,8 +33,8 @@ import { utxosAsString, valueAsString } from "./diagnostics.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { mkTv, stringToNumberArray } from "./utils.js";
-import { UutName } from "./delegation/RolesAndDelegates.js";
-import { helios } from "../index.js";
+import { UutName } from "./delegation/UutName.js";
+
 
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer

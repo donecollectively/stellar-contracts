@@ -46,7 +46,7 @@ import type {
     hasUutContext,
     rootCapoConfig,
 } from "./Capo.js";
-import { DefaultMinter } from "./minting/DefaultMinter.js";
+import type { DefaultMinter } from "./minting/DefaultMinter.js";
 import {
     delegateRoles,
     defineRole,

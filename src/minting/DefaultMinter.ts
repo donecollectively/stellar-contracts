@@ -37,14 +37,12 @@ import type {
 import type { SeedTxnParams } from "../SeedTxn.js";
 import type { valuesEntry } from "../HeliosPromotedTypes.js";
 import { CapoDelegateHelpers } from "../delegation/CapoDelegateHelpers.js";
-import {
-    UutName,
-} from "../delegation/RolesAndDelegates.js";
+import { UutName } from "../delegation/UutName.js";
 
 import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { mkUutValuesEntries, mkValuesEntry } from "../utils.js";
 import { dumpAny } from "../diagnostics.js";
-import { DefaultCapo } from "../DefaultCapo.js";
+import type { DefaultCapo } from "../DefaultCapo.js";
 
 type MintCharterActivityArgs<T = {}> = T & {
     owner: Address;

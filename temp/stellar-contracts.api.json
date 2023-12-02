@@ -14031,7 +14031,7 @@
                 },
                 {
                   "kind": "Reference",
-                  "text": "Wallet",
+                  "text": "helios.Wallet",
                   "canonicalReference": "@hyperionbt/helios!Wallet:interface"
                 },
                 {
@@ -18541,7 +18541,7 @@
               "text": "export declare class UutName "
             }
           ],
-          "fileUrlPath": "src/delegation/RolesAndDelegates.ts",
+          "fileUrlPath": "src/delegation/UutName.ts",
           "releaseTag": "Public",
           "isAbstract": false,
           "name": "UutName",

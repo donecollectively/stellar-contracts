@@ -11,7 +11,7 @@ import type {
     stellarSubclass,
 } from "../StellarContract.js";
 import type { StellarTestContext } from "./StellarTestContext.js";
-import { StellarTestHelper } from "./StellarTestHelper.js";
+import type { StellarTestHelper } from "./StellarTestHelper.js";
 import ppParams from "../../preprod.json" assert { type: "json" };
 
 export const preProdParams = ppParams;

@@ -9,7 +9,7 @@ import {
 } from "@hyperionbt/helios";
 import type { uutPurposeMap } from "./Capo.js";
 import type { valuesEntry } from "./HeliosPromotedTypes.js";
-import { UutName } from "./delegation/RolesAndDelegates.js";
+import { UutName } from "./delegation/UutName.js";
 
 
 /**
