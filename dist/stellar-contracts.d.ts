@@ -695,7 +695,7 @@ CT extends CapoBaseConfig = DC extends Capo<any, any, infer iCT> ? iCT : never> 
     updateCharter(args: CDT): Promise<StellarTxnContext>;
 }
 
-export declare type DefaultCapoTestHelperClass<SC extends StellarContract<any>> = new (config: ConfigFor<SC> & canHaveRandomSeed) => StellarTestHelper<SC> & {
+export declare type DefaultCapoTestHelperClass<SC extends DefaultCapo<any, any, any>> = new (config: ConfigFor<SC> & canHaveRandomSeed) => StellarTestHelper<SC> & DefaultCapoTestHelper<SC> & {
     stellarClass: stellarSubclass<SC>;
 };
 

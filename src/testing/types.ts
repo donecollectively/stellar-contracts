@@ -13,6 +13,9 @@ import type {
 import type { StellarTestContext } from "./StellarTestContext.js";
 import type { StellarTestHelper } from "./StellarTestHelper.js";
 import ppParams from "../../preprod.json" assert { type: "json" };
+import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
+import type { Capo } from "../Capo.js";
+import type { DefaultCapo } from "../DefaultCapo.js";
 
 export const preProdParams = ppParams;
 
@@ -23,9 +26,9 @@ export type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (
     config: ConfigFor<SC> & canHaveRandomSeed
 ) => StellarTestHelper<SC>;
 
-export type DefaultCapoTestHelperClass<SC extends StellarContract<any>> = new (
+export type DefaultCapoTestHelperClass<SC extends DefaultCapo<any,any,any>> = new (
     config: ConfigFor<SC> & canHaveRandomSeed
-) => StellarTestHelper<SC> & { stellarClass: stellarSubclass<SC> };
+) => StellarTestHelper<SC> & DefaultCapoTestHelper<SC> & { stellarClass: stellarSubclass<SC> };
 
 // type DefaultCapoTestHelperSubclass<SC extends DefaultCapo<any>> = new (
 //     args: StellarConstructorArgs<CapoBaseConfig>

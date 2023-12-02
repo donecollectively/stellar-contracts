@@ -7893,12 +7893,12 @@
             },
             {
               "kind": "Reference",
-              "text": "StellarContract",
-              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract:class"
+              "text": "DefaultCapo",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo:class"
             },
             {
               "kind": "Content",
-              "text": "<any>"
+              "text": "<any, any, any>"
             },
             {
               "kind": "Content",
@@ -7930,6 +7930,15 @@
               "kind": "Reference",
               "text": "StellarTestHelper",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<SC> & "
+            },
+            {
+              "kind": "Reference",
+              "text": "DefaultCapoTestHelper",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapoTestHelper:class"
             },
             {
               "kind": "Content",
@@ -7967,7 +7976,7 @@
           ],
           "typeTokenRange": {
             "startIndex": 4,
-            "endIndex": 13
+            "endIndex": 15
           }
         },
         {

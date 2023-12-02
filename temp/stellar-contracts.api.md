@@ -353,7 +353,7 @@ CT extends CapoBaseConfig = DC extends Capo<any, any, infer iCT> ? iCT : never> 
 // Warning: (ae-forgotten-export) The symbol "canHaveRandomSeed" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export type DefaultCapoTestHelperClass<SC extends StellarContract<any>> = new (config: ConfigFor<SC> & canHaveRandomSeed) => StellarTestHelper<SC> & {
+export type DefaultCapoTestHelperClass<SC extends DefaultCapo<any, any, any>> = new (config: ConfigFor<SC> & canHaveRandomSeed) => StellarTestHelper<SC> & DefaultCapoTestHelper<SC> & {
     stellarClass: stellarSubclass<SC>;
 };
 
