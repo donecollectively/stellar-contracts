@@ -1,6 +1,5 @@
 import path from 'path';
 import { createFilter } from 'rollup-pluginutils';
-import { expect } from 'vitest';
 
 function mkHeliosModule(src, filename) {
   const module = new String(src);
