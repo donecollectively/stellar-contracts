@@ -175,7 +175,7 @@
         {
           "kind": "Variable",
           "canonicalReference": "@donecollectively/stellar-contracts!ADA:var",
-          "docComment": "/**\n * 1 million as bigint. Multiply by this ADA value to get lovelace\n *\n * @public\n */\n",
+          "docComment": "/**\n * 1 million as bigint. Multiply by this a `Bigint` ADA value to get lovelace\n *\n * @example\n *\n * const three = 3n * ADA const four = Bigint(4) * ADA\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",

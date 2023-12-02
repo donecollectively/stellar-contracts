@@ -62,8 +62,11 @@ export declare const Activity: {
 declare type actorMap = Record<string, SimpleWallet>;
 
 /**
- * 1 million as bigint.  Multiply by this ADA value to get lovelace
+ * 1 million as bigint.  Multiply by this a `Bigint` ADA value to get lovelace
  * @public
+ * @example
+ *    const three = 3n * ADA
+ *    const four = Bigint(4) * ADA
  **/
 export declare const ADA = 1000000n;
 

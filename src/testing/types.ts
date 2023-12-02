@@ -4,12 +4,8 @@ import {
     SimpleWallet,
 } from "@hyperionbt/helios";
 
-import { promises as fs } from "fs";
-import { Vitest, vitest } from "vitest";
-// import { StellarContract } from "../StellarContract.js";
 import type {
     ConfigFor,
-    StellarConstructorArgs,
     StellarContract,
     configBase,
     stellarSubclass,
@@ -17,9 +13,6 @@ import type {
 import type { StellarTestContext } from "./StellarTestContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
 import ppParams from "../../preprod.json" assert { type: "json" };
-import type { Capo, CapoBaseConfig } from "../Capo.js";
-import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
-import type { DefaultCapo } from "../DefaultCapo.js";
 
 export const preProdParams = ppParams;
 
@@ -105,7 +98,10 @@ export async function addTestContext<
 export type actorMap = Record<string, WalletEmulator>;
 
 /**
- * 1 million as bigint.  Multiply by this ADA value to get lovelace
+ * 1 million as bigint.  Multiply by this a `Bigint` ADA value to get lovelace
  * @public
+ * @example
+ *    const three = 3n * ADA
+ *    const four = Bigint(4) * ADA
  **/
 export const ADA = 1_000_000n; // lovelace
