@@ -1,3 +1,5 @@
+// declare module "@donecollectively/stellar-contracts/testing";
+
 export { CapoTestHelper } from "./CapoTestHelper.js";
 
 export { ADA, addTestContext } from "./types.js";
