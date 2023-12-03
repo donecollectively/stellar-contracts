@@ -278,15 +278,49 @@ export declare abstract class Capo<minterType extends MinterBaseMethods & Defaul
     txnUpdateCharterUtxo(tcx: StellarTxnContext, redeemer: isActivity, newDatum: InlineDatum): Promise<StellarTxnContext | never>;
     txnKeepCharterToken(tcx: StellarTxnContext<any>, datum: InlineDatum): StellarTxnContext<any>;
     /**
-     * adds the charter-token, along with its gov **`authZor`** UUT, to a transaction context
+     * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction
      * @remarks
+     *
+     * this is a convenience method for redirecting developers to
+     * find the right method name for including a gov-authority token
+     * in a transaction
+     * @deprecated - look for txnAddGovAuthorityTokenRef() instead
+     * @public
+     **/
+    findGovAuthority(): void;
+    /**
+     * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction
+     * @remarks
+     *
+     * this is a convenience method for redirecting developers to
+     * find the right method name for including a gov-authority token
+     * in a transaction
+     * @deprecated - look for txnAddGovAuthorityTokenRef() instead
+     * @public
+     **/
+    findCharterAuthority(): void;
+    /**
+     * REDIRECT: use txnAddGovAuthorityTokenRef() instead
+     * @remarks
+     *
+     * this method was renamed.
+     * @deprecated - look for txnAddGovAuthorityTokenRef() instead
+     * @public
+     **/
+    txnAddCharterAuthorityTokenRef<TCX extends StellarTxnContext<any>>(): Promise<void>;
+    /**
+     * adds the charter-token, along with its gov-authority UUT, to a transaction context
+     * @remarks
+     *
+     * Uses txnAddGovAuthority() to locate the govAuthority delegate and txnGrantAuthority() to
+     * add its authority token to a transaction.
      *
      * The charter-token is included as a reference input.
      *
      * @param tcx - the transaction context
      * @public
      **/
-    txnAddCharterAuthorityTokenRef<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX & StellarTxnContext<any>>;
+    txnAddGovAuthorityTokenRef<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX & StellarTxnContext<any>>;
     /**
      * provides minter-targeted params extracted from the input configuration
      * @remarks

@@ -60181,7 +60181,44 @@ class Capo extends StellarContract {
     tcx.addOutput(txo);
     return tcx;
   }
-  async txnAddCharterAuthorityTokenRef(tcx) {
+  /**
+   * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction
+   * @remarks
+   *
+   * this is a convenience method for redirecting developers to
+   * find the right method name for including a gov-authority token
+   * in a transaction
+   * @deprecated - look for txnAddGovAuthorityTokenRef() instead
+   * @public
+   **/
+  findGovAuthority() {
+    throw new Error(`use txnAddGovAuthorityTokenRef() to add the gov-authority token to a txn`);
+  }
+  /**
+   * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction
+   * @remarks
+   *
+   * this is a convenience method for redirecting developers to
+   * find the right method name for including a gov-authority token
+   * in a transaction
+   * @deprecated - look for txnAddGovAuthorityTokenRef() instead
+   * @public
+   **/
+  findCharterAuthority() {
+    throw new Error(`use txnAddGovAuthorityTokenRef() to add the gov-authority token to a txn`);
+  }
+  /**
+   * REDIRECT: use txnAddGovAuthorityTokenRef() instead
+   * @remarks
+   *
+   * this method was renamed.
+   * @deprecated - look for txnAddGovAuthorityTokenRef() instead
+   * @public
+   **/
+  async txnAddCharterAuthorityTokenRef() {
+    throw new Error(`use txnAddGovAuthorityTokenRef() instead`);
+  }
+  async txnAddGovAuthorityTokenRef(tcx) {
     const tcx2 = await this.txnMustUseCharterUtxo(tcx, "refInput");
     const tcx3 = await this.txnAddGovAuthority(tcx2);
     return tcx3;
@@ -60728,7 +60765,7 @@ __decorateClass$4([
 ], Capo.prototype, "txnKeepCharterToken", 1);
 __decorateClass$4([
   partialTxn
-], Capo.prototype, "txnAddCharterAuthorityTokenRef", 1);
+], Capo.prototype, "txnAddGovAuthorityTokenRef", 1);
 
 var shelleyGenesis = {
 	activeSlotsCoeff: 0.05,

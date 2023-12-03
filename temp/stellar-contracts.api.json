@@ -2352,6 +2352,68 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#findCharterAuthority:member(1)",
+              "docComment": "/**\n * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction\n *\n * @remarks\n *\n * this is a convenience method for redirecting developers to find the right method name for including a gov-authority token in a transaction\n *\n * @deprecated\n *\n * - look for txnAddGovAuthorityTokenRef() instead\n *\n * @public\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "findCharterAuthority(): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "void"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "findCharterAuthority"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#findGovAuthority:member(1)",
+              "docComment": "/**\n * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction\n *\n * @remarks\n *\n * this is a convenience method for redirecting developers to find the right method name for including a gov-authority token in a transaction\n *\n * @deprecated\n *\n * - look for txnAddGovAuthorityTokenRef() instead\n *\n * @public\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "findGovAuthority(): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "void"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "findGovAuthority"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!Capo#getCapoRev:member(1)",
               "docComment": "",
               "excerptTokens": [
@@ -3627,7 +3689,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!Capo#txnAddCharterAuthorityTokenRef:member(1)",
-              "docComment": "/**\n * adds the charter-token, along with its gov **`authZor`** UUT, to a transaction context\n *\n * @remarks\n *\n * The charter-token is included as a reference input.\n *\n * @param tcx - the transaction context\n *\n * @public\n */\n",
+              "docComment": "/**\n * REDIRECT: use txnAddGovAuthorityTokenRef() instead\n *\n * @remarks\n *\n * this method was renamed.\n *\n * @deprecated\n *\n * - look for txnAddGovAuthorityTokenRef() instead\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -3644,15 +3706,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ">(tcx: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "TCX"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
+                  "text": ">(): "
                 },
                 {
                   "kind": "Reference",
@@ -3661,16 +3715,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<TCX & "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "StellarTxnContext",
-                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
-                },
-                {
-                  "kind": "Content",
-                  "text": "<any>>"
+                  "text": "<void>"
                 },
                 {
                   "kind": "Content",
@@ -3692,22 +3737,13 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 6,
-                "endIndex": 10
+                "startIndex": 4,
+                "endIndex": 6
               },
               "releaseTag": "Public",
               "isProtected": false,
               "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "tcx",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 4,
-                    "endIndex": 5
-                  },
-                  "isOptional": false
-                }
-              ],
+              "parameters": [],
               "isOptional": false,
               "isAbstract": false,
               "name": "txnAddCharterAuthorityTokenRef"
@@ -3799,6 +3835,94 @@
               "isOptional": false,
               "isAbstract": true,
               "name": "txnAddGovAuthority"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#txnAddGovAuthorityTokenRef:member(1)",
+              "docComment": "/**\n * adds the charter-token, along with its gov-authority UUT, to a transaction context\n *\n * @remarks\n *\n * Uses txnAddGovAuthority() to locate the govAuthority delegate and txnGrantAuthority() to add its authority token to a transaction.\n *\n * The charter-token is included as a reference input.\n *\n * @param tcx - the transaction context\n *\n * @public\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "txnAddGovAuthorityTokenRef<TCX extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">(tcx: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "TCX"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<TCX & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "typeParameters": [
+                {
+                  "typeParameterName": "TCX",
+                  "constraintTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 3
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 6,
+                "endIndex": 10
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "tcx",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 4,
+                    "endIndex": 5
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "txnAddGovAuthorityTokenRef"
             },
             {
               "kind": "Method",

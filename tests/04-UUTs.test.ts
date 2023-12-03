@@ -98,7 +98,7 @@ describe("Capo", async () => {
                     }
                 );
                     
-                await t.txnAddCharterAuthorityTokenRef(tcx);
+                await t.txnAddGovAuthorityTokenRef(tcx);
                 expect(spy).toHaveBeenCalled();
             }
 

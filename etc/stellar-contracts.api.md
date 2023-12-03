@@ -142,6 +142,10 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     abstract contractSource(): HeliosModuleSrc;
     // (undocumented)
     abstract get delegateRoles(): RoleMap<any>;
+    // @deprecated
+    findCharterAuthority(): void;
+    // @deprecated
+    findGovAuthority(): void;
     // (undocumented)
     getCapoRev(): bigint;
     getContractScriptParams(config: configType): paramsBase & Partial<configType>;
@@ -194,9 +198,11 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     tvCharter(): Value;
     // (undocumented)
     tvForDelegate(dgtLink: RelativeDelegateLink<any>): Value;
-    txnAddCharterAuthorityTokenRef<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX & StellarTxnContext<any>>;
+    // @deprecated
+    txnAddCharterAuthorityTokenRef<TCX extends StellarTxnContext<any>>(): Promise<void>;
     // (undocumented)
     abstract txnAddGovAuthority<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX & StellarTxnContext<any>>;
+    txnAddGovAuthorityTokenRef<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX & StellarTxnContext<any>>;
     txnCreateConfiguredDelegate<DT extends StellarDelegate<any>, const RN extends string>(tcx: hasUutContext<RN>, roleName: RN & keyof this["delegateRoles"], delegateInfo?: MinimalDelegateLink<DT>): ConfiguredDelegate<DT>;
     // Warning: (ae-forgotten-export) The symbol "MinimalDelegateLink" needs to be exported by the entry point index.d.ts
     txnCreateDelegateLink<DT extends StellarDelegate, const RN extends string>(tcx: hasUutContext<RN>, roleName: RN, delegateInfo?: MinimalDelegateLink<DT>): Promise<RelativeDelegateLink<DT>>;

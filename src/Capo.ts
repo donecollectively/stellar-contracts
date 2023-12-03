@@ -54,7 +54,10 @@ import {
     mkValuesEntry,
     stringToNumberArray,
 } from "./utils.js";
-import type { DefaultCharterDatumArgs, MinimalDelegateLink } from "./DefaultCapo.js";
+import type {
+    DefaultCharterDatumArgs,
+    MinimalDelegateLink,
+} from "./DefaultCapo.js";
 import type { DelegationDetail } from "./delegation/RolesAndDelegates.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
 
@@ -513,9 +516,50 @@ export abstract class Capo<
     }
 
     /**
-     * adds the charter-token, along with its gov **`authZor`** UUT, to a transaction context
+     * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction
      * @remarks
      *
+     * this is a convenience method for redirecting developers to
+     * find the right method name for including a gov-authority token
+     * in a transaction
+     * @deprecated - look for txnAddGovAuthorityTokenRef() instead
+     * @public
+     **/
+    findGovAuthority() {
+        throw new Error(`use txnAddGovAuthorityTokenRef() to add the gov-authority token to a txn`);
+    }
+    /**
+     * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction
+     * @remarks
+     *
+     * this is a convenience method for redirecting developers to
+     * find the right method name for including a gov-authority token
+     * in a transaction
+     * @deprecated - look for txnAddGovAuthorityTokenRef() instead
+     * @public
+     **/
+    findCharterAuthority() {
+        throw new Error(`use txnAddGovAuthorityTokenRef() to add the gov-authority token to a txn`);
+    }
+    /**
+     * REDIRECT: use txnAddGovAuthorityTokenRef() instead
+     * @remarks
+     *
+     * this method was renamed.
+     * @deprecated - look for txnAddGovAuthorityTokenRef() instead
+     * @public
+     **/
+    async txnAddCharterAuthorityTokenRef<TCX extends StellarTxnContext<any>>() {
+        throw new Error(`use txnAddGovAuthorityTokenRef() instead`);
+    }
+
+    /**
+     * adds the charter-token, along with its gov-authority UUT, to a transaction context
+     * @remarks
+     *
+     * Uses txnAddGovAuthority() to locate the govAuthority delegate and txnGrantAuthority() to
+     * add its authority token to a transaction.
+     * 
      * The charter-token is included as a reference input.
      *
      * @param tcx - the transaction context
@@ -524,7 +568,7 @@ export abstract class Capo<
     //!!! todo: If the Capo's mintDelegate is using the (TODO) "undelegated" strategy, this method can be used (?)
     // ... to approve token-minting by the authority of the gov authZor
     @partialTxn
-    async txnAddCharterAuthorityTokenRef<TCX extends StellarTxnContext<any>>(
+    async txnAddGovAuthorityTokenRef<TCX extends StellarTxnContext<any>>(
         tcx: TCX
     ): Promise<TCX & StellarTxnContext<any>> {
         const tcx2 = await this.txnMustUseCharterUtxo(tcx, "refInput");
@@ -597,8 +641,11 @@ export abstract class Capo<
         });
         if (expectedMph && !minter.mintingPolicyHash.eq(expectedMph)) {
             throw new Error(
-                `This minter script with this seed-utxo doesn't produce the required  minting policy hash\n`
-                + "expected: "+ expectedMph.hex +"\nactual: "+minter.mintingPolicyHash.hex
+                `This minter script with this seed-utxo doesn't produce the required  minting policy hash\n` +
+                    "expected: " +
+                    expectedMph.hex +
+                    "\nactual: " +
+                    minter.mintingPolicyHash.hex
             );
         } else if (!expectedMph) {
             console.log(`${this.constructor.name}: seeding new minting policy`);
@@ -985,10 +1032,10 @@ export abstract class Capo<
     }
 
     tvForDelegate(dgtLink: RelativeDelegateLink<any>) {
-        return this.tokenAsValue(dgtLink.uutName)
+        return this.tokenAsValue(dgtLink.uutName);
     }
     mkDelegatePredicate(dgtLink: RelativeDelegateLink<any>) {
-        return this.mkTokenPredicate(this.tvForDelegate(dgtLink))
+        return this.mkTokenPredicate(this.tvForDelegate(dgtLink));
     }
 
     capoRequirements() {
