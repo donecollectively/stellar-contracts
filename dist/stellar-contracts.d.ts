@@ -99,6 +99,25 @@ export declare class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     loadProgramScript(params: any): undefined;
     get delegateValidatorHash(): undefined;
     protected usingAuthority(): isActivity;
+    /**
+     * Finds the delegate authority token, normally in the delegate's contract address
+     * @public
+     * @remarks
+     *
+     * The default implementation finds the UTxO having the authority token
+     * in the delegate's contract address.
+     *
+     * It's possible to have a delegate that doesn't have an on-chain contract script.
+     * ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a
+     * delegate-specific heuristic to locate the needed token.  It might consult the
+     * addrHint in its `configIn` or another technique for resolution.
+     *
+     * @param tcx - the transaction context
+     * @reqt It MUST resolve and return the UTxO (a TxInput type ready for spending)
+     *  ... or throw an informative error
+     **/
+    findAuthorityToken(): Promise<TxInput | undefined>;
+    findActorAuthorityToken(): Promise<TxInput | undefined>;
     DelegateMustFindAuthorityToken(tcx: StellarTxnContext<any>, label: string): Promise<TxInput>;
     txnReceiveAuthorityToken<TCX extends StellarTxnContext<any>>(tcx: TCX, tokenValue: Value, fromFoundUtxo: TxInput): Promise<TCX>;
     DelegateAddsAuthorityToken<TCX extends StellarTxnContext<any>>(tcx: TCX, fromFoundUtxo: TxInput): Promise<TCX & StellarTxnContext<any>>;
@@ -272,30 +291,51 @@ export declare abstract class Capo<minterType extends MinterBaseMethods & Defaul
     };
     tokenAsValue(tokenName: string | UutName, count?: bigint): Value;
     mustFindCharterUtxo(): Promise<TxInput>;
+    abstract findGovDelegate(): Promise<AuthorityPolicy>;
     abstract txnAddGovAuthority<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX & StellarTxnContext<any>>;
     txnMustUseCharterUtxo<TCX extends StellarTxnContext<any>>(tcx: TCX, redeemer: isActivity, newDatum?: InlineDatum): Promise<TCX>;
     txnMustUseCharterUtxo<TCX extends StellarTxnContext<any>>(tcx: TCX, useReferenceInput: "refInput" | true, forceAddRefScript?: true): Promise<TCX>;
     txnUpdateCharterUtxo(tcx: StellarTxnContext, redeemer: isActivity, newDatum: InlineDatum): Promise<StellarTxnContext | never>;
     txnKeepCharterToken(tcx: StellarTxnContext<any>, datum: InlineDatum): StellarTxnContext<any>;
     /**
-     * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction
+     * Tries to locate the Capo charter's gov-authority token through its configured delegate
      * @remarks
      *
-     * this is a convenience method for redirecting developers to
-     * find the right method name for including a gov-authority token
-     * in a transaction
-     * @deprecated - look for txnAddGovAuthorityTokenRef() instead
+     * Uses the Capo's govAuthority delegate to locate the gov-authority token,
+     * if available.  If that token is located in a smart contract, it should always be
+     * found (note, however, that the current user may not have the direct permission
+     * to spend the token in a transaction).
+     *
+     * If the token is located in a user wallet, and that user is not the contract's current
+     * actor, then the token utxo will not be returned from this method.
+     *
      * @public
      **/
-    findGovAuthority(): void;
+    findGovAuthority(): Promise<TxInput | undefined>;
     /**
-     * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction
+     * Tries to locate the Capo charter's gov-authority token in the user's wallet, using its configured delegate
+     * @remarks
+     *
+     * Uses the Capo's govAuthority delegate to locate the gov-authority token,
+     * if available the current user's wallet.
+     *
+     * A delegate whose authority token is located in a smart contract will always return `undefined`.
+     *
+     * If the authority token is in a user wallet (not the same wallet as currently connected to the Capo contract class),
+     * it will return `undefined`.
+     *
+     * @public
+     **/
+    findActorGovAuthority(): Promise<TxInput | undefined>;
+    /**
+     * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction,
+     * or findGovAuthority() or findActorGovAuthority() for locating that txo.
      * @remarks
      *
      * this is a convenience method for redirecting developers to
-     * find the right method name for including a gov-authority token
+     * find the right method name for finding or including a gov-authority token
      * in a transaction
-     * @deprecated - look for txnAddGovAuthorityTokenRef() instead
+     * @deprecated - see other method names, depending on what result you want
      * @public
      **/
     findCharterAuthority(): void;
@@ -647,6 +687,7 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
     mkOnchainDelegateLink(dl: RelativeDelegateLink<any>): any;
     mkDatumCharterToken(args: CDT): InlineDatum;
     findCharterDatum(): Promise<DefaultCharterDatumArgs>;
+    findGovDelegate(): Promise<AuthorityPolicy<capoDelegateConfig_2>>;
     txnAddGovAuthority<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX & StellarTxnContext<any>>;
     /**
      * should emit a complete configuration structure that can reconstitute a contract (suite) after its first bootstrap transaction
@@ -1395,6 +1436,7 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     importModules(): HeliosModuleSrc[];
     loadProgramScript(params?: Partial<ConfigType>): Program | undefined;
     private get missingActorError();
+    findActorUtxo(name: string, predicate: (u: TxInput) => TxInput | undefined): Promise<TxInput | undefined>;
     mustFindActorUtxo(name: string, predicate: (u: TxInput) => TxInput | undefined, exceptInTcx: StellarTxnContext<any>, extraErrorHint?: string): Promise<TxInput | never>;
     mustFindActorUtxo(name: string, predicate: (u: TxInput) => TxInput | undefined, extraErrorHint?: string): Promise<TxInput | never>;
     /**
@@ -1410,8 +1452,17 @@ export declare class StellarContract<ConfigType extends paramsBase> {
      **/
     mustFindMyUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, exceptInTcx: StellarTxnContext<any>, extraErrorHint?: string): Promise<TxInput>;
     mustFindMyUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, extraErrorHint?: string): Promise<TxInput>;
-    mustFindUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, { address, wallet, exceptInTcx }: UtxoSearchScope, extraErrorHint?: string): Promise<TxInput | never>;
+    mustFindUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, searchScope: UtxoSearchScope, extraErrorHint?: string): Promise<TxInput | never>;
+    utxoSearchError(semanticName: string, searchScope: UtxoSearchScope, extraErrorHint?: string): string;
     toUtxoId(u: TxInput): string;
+    /**
+     * Try finding a utxo matching a predicate
+     * @remarks
+     *
+     * Finds the first matching utxo, if any, either in the indicated search-scope's `wallet` or `address`.
+     *
+     * @public
+     **/
     hasUtxo(semanticName: string, predicate: utxoPredicate, { address, wallet, exceptInTcx }: UtxoSearchScope): Promise<TxInput | undefined>;
     hasMyUtxo(semanticName: string, predicate: utxoPredicate): Promise<TxInput | undefined>;
 }
@@ -1518,6 +1569,38 @@ export declare abstract class StellarDelegate<CT extends paramsBase & capoDelega
         value: Value;
     };
     tvAuthorityToken(useMinTv?: boolean): Value;
+    /**
+     * Finds the delegate authority token, normally in the delegate's contract address
+     * @public
+     * @remarks
+     *
+     * The default implementation finds the UTxO having the authority token
+     * in the delegate's contract address.
+     *
+     * It's possible to have a delegate that doesn't have an on-chain contract script.
+     * ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a
+     * delegate-specific heuristic to locate the needed token.  It might consult the
+     * addrHint in its `configIn` or another technique for resolution.
+     *
+     * @param tcx - the transaction context
+     * @reqt It MUST resolve and return the UTxO (a TxInput type ready for spending)
+     *  ... or throw an informative error
+     **/
+    findAuthorityToken(): Promise<TxInput | undefined>;
+    /**
+     * Tries to locate the Delegates authority token in the user's wallet (ONLY for non-smart-contract delegates)
+     * @remarks
+     *
+     * Locates the authority token,if available the current user's wallet.
+     *
+     * If the token is located in a smart contract, this method will always return `undefined`.
+     *
+     * If the authority token is in a user wallet (not the same wallet as currently connected to the Capo contract class),
+     * it will return `undefined`.
+     *
+     * @public
+     **/
+    findActorAuthorityToken(): Promise<TxInput | undefined>;
     /**
      * Finds the delegate authority token, normally in the delegate's contract address
      * @public

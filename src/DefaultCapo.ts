@@ -417,21 +417,29 @@ export class DefaultCapo<
         });
     }
 
-    async txnAddGovAuthority<TCX extends StellarTxnContext<any>>(
-        tcx: TCX
-    ): Promise<TCX & StellarTxnContext<any>> {
+    async findGovDelegate() {
         const charterDatum = await this.findCharterDatum();
-
-        console.log(
-            "adding charter's govAuthority via delegate",
-            charterDatum.govAuthorityLink
-        );
-        const capoGov = await this.connectDelegateWithLink<AuthorityPolicy>(
+        const capoGovDelegate = await this.connectDelegateWithLink<AuthorityPolicy>(
             "govAuthority",
             charterDatum.govAuthorityLink
         );
+        console.log(
+            "finding charter's govDelegate via link",
+            charterDatum.govAuthorityLink
+        );
 
-        return capoGov.txnGrantAuthority(tcx);
+        return capoGovDelegate
+    }
+
+    async txnAddGovAuthority<TCX extends StellarTxnContext<any>>(
+        tcx: TCX
+    ): Promise<TCX & StellarTxnContext<any>> {
+        const capoGovDelegate = await this.findGovDelegate()
+        console.log(
+            "adding charter's govAuthority",
+        );
+
+        return capoGovDelegate.txnGrantAuthority(tcx);
     }
 
     // getMinterParams() {

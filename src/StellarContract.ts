@@ -1489,6 +1489,17 @@ export class StellarContract<
         return `Wallet not connected to Stellar Contract '${this.constructor.name}'`;
     }
 
+    async findActorUtxo(
+        name: string,
+        predicate: (u: TxInput) => TxInput | undefined,
+    ) {
+        const wallet = this.myActor;
+
+        if (!wallet) throw new Error(this.missingActorError);
+
+        return this.hasUtxo(name, predicate, {wallet})
+    }
+
     async mustFindActorUtxo(
         name: string,
         predicate: (u: TxInput) => TxInput | undefined,
@@ -1576,27 +1587,42 @@ export class StellarContract<
     async mustFindUtxo(
         semanticName: string,
         predicate: (u: TxInput) => TxInput | undefined,
-        { address, wallet, exceptInTcx }: UtxoSearchScope,
+        searchScope: UtxoSearchScope,
         extraErrorHint: string = ""
     ): Promise<TxInput | never> {
+        const { address, wallet, exceptInTcx } = searchScope;
+
         const found = await this.hasUtxo(semanticName, predicate, {
             address,
             wallet,
             exceptInTcx,
         });
         if (!found) {
-            const where = address ? "address" : "connected wallet";
             throw new Error(
-                `${this.constructor.name}: '${semanticName}' utxo not found (${extraErrorHint}) in ${where}`
+                this.utxoSearchError(semanticName, searchScope)
             );
         }
 
         return found;
     }
+
+    utxoSearchError(semanticName: string, searchScope: UtxoSearchScope, extraErrorHint?: string) : string {
+        const where = searchScope.address ? "address" : "connected wallet";
+        return `${this.constructor.name}: '${semanticName}' utxo not found (${extraErrorHint}) in ${where}`
+
+    }
     toUtxoId(u: TxInput) {
         return `${u.outputId.txId.hex}@${u.outputId.utxoIdx}`;
     }
 
+    /**
+     * Try finding a utxo matching a predicate
+     * @remarks
+     * 
+     * Finds the first matching utxo, if any, either in the indicated search-scope's `wallet` or `address`.
+     * 
+     * @public
+     **/
     async hasUtxo(
         semanticName: string,
         predicate: utxoPredicate,

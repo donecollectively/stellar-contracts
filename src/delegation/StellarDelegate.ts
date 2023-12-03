@@ -5,18 +5,15 @@ import {
     Value,
     bytesToText,
 } from "@hyperionbt/helios";
-import {
-    Activity,
-    StellarContract,
-    datum,
-} from "../StellarContract.js";
-import type {
-    configBase,
-} from "../StellarContract.js";
+import { Activity, StellarContract, datum } from "../StellarContract.js";
+import type { configBase } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { mkTv } from "../utils.js";
 import type { InlineDatum } from "../HeliosPromotedTypes.js";
-import type { DelegationDetail, capoDelegateConfig } from "./RolesAndDelegates.js";
+import type {
+    DelegationDetail,
+    capoDelegateConfig,
+} from "./RolesAndDelegates.js";
 import { hasReqts } from "../Requirements.js";
 import { dumpAny } from "../diagnostics.js";
 
@@ -51,26 +48,25 @@ export abstract class StellarDelegate<
      **/
     async txnGrantAuthority<TCX extends StellarTxnContext<any>>(tcx: TCX) {
         const label = `${this.constructor.name} authority`;
-        const uutxo = await this.DelegateMustFindAuthorityToken(
-            tcx,
-            label
-        );
-        const useMinTv = true
+        const uutxo = await this.DelegateMustFindAuthorityToken(tcx, label);
+        const useMinTv = true;
         const authorityVal = this.tvAuthorityToken(useMinTv);
-        console.log(`   ------- delegate ${label} grants authority with ${dumpAny(authorityVal)}`)
+        console.log(
+            `   ------- delegate ${label} grants authority with ${dumpAny(
+                authorityVal
+            )}`
+        );
 
         try {
             const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo);
-            return this.txnReceiveAuthorityToken(
-                tcx2,
-                authorityVal,
-                uutxo
-            );
-        } catch(error: any) {
+            return this.txnReceiveAuthorityToken(tcx2, authorityVal, uutxo);
+        } catch (error: any) {
             if (error.message.match(/input already added/)) {
-                throw new Error(`Delegate ${label}: already added: ${dumpAny(authorityVal)}`)
+                throw new Error(
+                    `Delegate ${label}: already added: ${dumpAny(authorityVal)}`
+                );
             }
-            throw error
+            throw error;
         }
     }
 
@@ -185,17 +181,17 @@ export abstract class StellarDelegate<
     get delegateValidatorHash(): ValidatorHash | undefined {
         if (!this.compiledScript.validatorHash) {
             throw new Error(
-                `${this.constructor.name}: address doesn't use a validator hash!\n`+
-                `  ... if that's by design, you may wish to override 'get delegateValidatorHash()' -> undefined`
+                `${this.constructor.name}: address doesn't use a validator hash!\n` +
+                    `  ... if that's by design, you may wish to override 'get delegateValidatorHash()' -> undefined`
             );
         }
         return this.compiledScript.validatorHash;
     }
 
     mkAuthorityTokenPredicate() {
-        return this.mkTokenPredicate(this.tvAuthorityToken())
+        return this.mkTokenPredicate(this.tvAuthorityToken());
     }
-    tvAuthorityToken(useMinTv: boolean=false) {
+    tvAuthorityToken(useMinTv: boolean = false) {
         if (!this.configIn)
             throw new Error(`must be instantiated with a configIn`);
 
@@ -204,9 +200,51 @@ export abstract class StellarDelegate<
             tn,
             // reqdAddress,  // removed
         } = this.configIn;
-        if (useMinTv) return  this.mkMinTv(mph, tn)
+        if (useMinTv) return this.mkMinTv(mph, tn);
         return mkTv(mph, tn);
+    }
 
+    /**
+     * Finds the delegate authority token, normally in the delegate's contract address
+     * @public
+     * @remarks
+     *
+     * The default implementation finds the UTxO having the authority token
+     * in the delegate's contract address.
+     *
+     * It's possible to have a delegate that doesn't have an on-chain contract script.
+     * ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a
+     * delegate-specific heuristic to locate the needed token.  It might consult the
+     * addrHint in its `configIn` or another technique for resolution.
+     *
+     * @param tcx - the transaction context
+     * @reqt It MUST resolve and return the UTxO (a TxInput type ready for spending)
+     *  ... or throw an informative error
+     **/
+    async findAuthorityToken(): Promise<TxInput | undefined> {
+        const { address } = this;
+        return this.hasUtxo(
+            `authority token: ${bytesToText(this.configIn!.tn)}`,
+            this.mkTokenPredicate(this.tvAuthorityToken()),
+            { address }
+        );
+    }
+
+    /**
+     * Tries to locate the Delegates authority token in the user's wallet (ONLY for non-smart-contract delegates)
+     * @remarks
+     *
+     * Locates the authority token,if available the current user's wallet.  
+     * 
+     * If the token is located in a smart contract, this method will always return `undefined`.
+     * 
+     * If the authority token is in a user wallet (not the same wallet as currently connected to the Capo contract class),
+     * it will return `undefined`.
+     * 
+     * @public
+     **/
+    async findActorAuthorityToken() : Promise<TxInput | undefined> {
+        return undefined
     }
 
     /**

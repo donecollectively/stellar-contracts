@@ -59360,6 +59360,12 @@ This likely indicates a problem in Helios' error reporting -
   get missingActorError() {
     return `Wallet not connected to Stellar Contract '${this.constructor.name}'`;
   }
+  async findActorUtxo(name, predicate) {
+    const wallet = this.myActor;
+    if (!wallet)
+      throw new Error(this.missingActorError);
+    return this.hasUtxo(name, predicate, { wallet });
+  }
   async mustFindActorUtxo(name, predicate, hintOrExcept, hint) {
     const wallet = this.myActor;
     if (!wallet)
@@ -59386,23 +59392,35 @@ This likely indicates a problem in Helios' error reporting -
       extraErrorHint
     );
   }
-  async mustFindUtxo(semanticName, predicate, { address, wallet, exceptInTcx }, extraErrorHint = "") {
+  async mustFindUtxo(semanticName, predicate, searchScope, extraErrorHint = "") {
+    const { address, wallet, exceptInTcx } = searchScope;
     const found = await this.hasUtxo(semanticName, predicate, {
       address,
       wallet,
       exceptInTcx
     });
     if (!found) {
-      const where = address ? "address" : "connected wallet";
       throw new Error(
-        `${this.constructor.name}: '${semanticName}' utxo not found (${extraErrorHint}) in ${where}`
+        this.utxoSearchError(semanticName, searchScope)
       );
     }
     return found;
   }
+  utxoSearchError(semanticName, searchScope, extraErrorHint) {
+    const where = searchScope.address ? "address" : "connected wallet";
+    return `${this.constructor.name}: '${semanticName}' utxo not found (${extraErrorHint}) in ${where}`;
+  }
   toUtxoId(u) {
     return `${u.outputId.txId.hex}@${u.outputId.utxoIdx}`;
   }
+  /**
+   * Try finding a utxo matching a predicate
+   * @remarks
+   * 
+   * Finds the first matching utxo, if any, either in the indicated search-scope's `wallet` or `address`.
+   * 
+   * @public
+   **/
   async hasUtxo(semanticName, predicate, { address, wallet, exceptInTcx }) {
     const utxos = address ? await this.network.getUtxos(address) : await wallet.utxos;
     const collateral = (wallet ? await wallet.collateral : [])[0];
@@ -59665,23 +59683,22 @@ class StellarDelegate extends StellarContract {
    **/
   async txnGrantAuthority(tcx) {
     const label = `${this.constructor.name} authority`;
-    const uutxo = await this.DelegateMustFindAuthorityToken(
-      tcx,
-      label
-    );
+    const uutxo = await this.DelegateMustFindAuthorityToken(tcx, label);
     const useMinTv = true;
     const authorityVal = this.tvAuthorityToken(useMinTv);
-    console.log(`   ------- delegate ${label} grants authority with ${dumpAny(authorityVal)}`);
+    console.log(
+      `   ------- delegate ${label} grants authority with ${dumpAny(
+        authorityVal
+      )}`
+    );
     try {
       const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo);
-      return this.txnReceiveAuthorityToken(
-        tcx2,
-        authorityVal,
-        uutxo
-      );
+      return this.txnReceiveAuthorityToken(tcx2, authorityVal, uutxo);
     } catch (error) {
       if (error.message.match(/input already added/)) {
-        throw new Error(`Delegate ${label}: already added: ${dumpAny(authorityVal)}`);
+        throw new Error(
+          `Delegate ${label}: already added: ${dumpAny(authorityVal)}`
+        );
       }
       throw error;
     }
@@ -59746,6 +59763,47 @@ class StellarDelegate extends StellarContract {
     if (useMinTv)
       return this.mkMinTv(mph, tn);
     return mkTv(mph, tn);
+  }
+  /**
+   * Finds the delegate authority token, normally in the delegate's contract address
+   * @public
+   * @remarks
+   *
+   * The default implementation finds the UTxO having the authority token
+   * in the delegate's contract address.
+   *
+   * It's possible to have a delegate that doesn't have an on-chain contract script.
+   * ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a
+   * delegate-specific heuristic to locate the needed token.  It might consult the
+   * addrHint in its `configIn` or another technique for resolution.
+   *
+   * @param tcx - the transaction context
+   * @reqt It MUST resolve and return the UTxO (a TxInput type ready for spending)
+   *  ... or throw an informative error
+   **/
+  async findAuthorityToken() {
+    const { address } = this;
+    return this.hasUtxo(
+      `authority token: ${bytesToText(this.configIn.tn)}`,
+      this.mkTokenPredicate(this.tvAuthorityToken()),
+      { address }
+    );
+  }
+  /**
+   * Tries to locate the Delegates authority token in the user's wallet (ONLY for non-smart-contract delegates)
+   * @remarks
+   *
+   * Locates the authority token,if available the current user's wallet.  
+   * 
+   * If the token is located in a smart contract, this method will always return `undefined`.
+   * 
+   * If the authority token is in a user wallet (not the same wallet as currently connected to the Capo contract class),
+   * it will return `undefined`.
+   * 
+   * @public
+   **/
+  async findActorAuthorityToken() {
+    return void 0;
   }
   /**
    * Finds the delegate authority token, normally in the delegate's contract address
@@ -60182,30 +60240,54 @@ class Capo extends StellarContract {
     return tcx;
   }
   /**
-   * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction
+   * Tries to locate the Capo charter's gov-authority token through its configured delegate
    * @remarks
    *
-   * this is a convenience method for redirecting developers to
-   * find the right method name for including a gov-authority token
-   * in a transaction
-   * @deprecated - look for txnAddGovAuthorityTokenRef() instead
+   * Uses the Capo's govAuthority delegate to locate the gov-authority token,
+   * if available.  If that token is located in a smart contract, it should always be
+   * found (note, however, that the current user may not have the direct permission 
+   * to spend the token in a transaction).
+   * 
+   * If the token is located in a user wallet, and that user is not the contract's current
+   * actor, then the token utxo will not be returned from this method.
+   * 
    * @public
    **/
-  findGovAuthority() {
-    throw new Error(`use txnAddGovAuthorityTokenRef() to add the gov-authority token to a txn`);
+  async findGovAuthority() {
+    const delegate = await this.findGovDelegate();
+    return delegate.findAuthorityToken();
   }
   /**
-   * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction
+   * Tries to locate the Capo charter's gov-authority token in the user's wallet, using its configured delegate
+   * @remarks
+   *
+   * Uses the Capo's govAuthority delegate to locate the gov-authority token,
+   * if available the current user's wallet.  
+   * 
+   * A delegate whose authority token is located in a smart contract will always return `undefined`.
+   * 
+   * If the authority token is in a user wallet (not the same wallet as currently connected to the Capo contract class),
+   * it will return `undefined`.
+   * 
+   * @public
+   **/
+  async findActorGovAuthority() {
+    const delegate = await this.findGovDelegate();
+    return delegate.findActorAuthorityToken();
+  }
+  /**
+   * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction,
+   * or findGovAuthority() or findActorGovAuthority() for locating that txo.
    * @remarks
    *
    * this is a convenience method for redirecting developers to
-   * find the right method name for including a gov-authority token
+   * find the right method name for finding or including a gov-authority token
    * in a transaction
-   * @deprecated - look for txnAddGovAuthorityTokenRef() instead
+   * @deprecated - see other method names, depending on what result you want
    * @public
    **/
   findCharterAuthority() {
-    throw new Error(`use txnAddGovAuthorityTokenRef() to add the gov-authority token to a txn`);
+    throw new Error(`use findGovAuthority() to locate charter's gov-authority token`);
   }
   /**
    * REDIRECT: use txnAddGovAuthorityTokenRef() instead
@@ -61961,6 +62043,34 @@ class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     const t = new usingAuthority();
     return { redeemer: t._toUplcData() };
   }
+  /**
+  * Finds the delegate authority token, normally in the delegate's contract address
+  * @public
+  * @remarks
+  *
+  * The default implementation finds the UTxO having the authority token
+  * in the delegate's contract address.
+  *
+  * It's possible to have a delegate that doesn't have an on-chain contract script.
+  * ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a
+  * delegate-specific heuristic to locate the needed token.  It might consult the
+  * addrHint in its `configIn` or another technique for resolution.
+  *
+  * @param tcx - the transaction context
+  * @reqt It MUST resolve and return the UTxO (a TxInput type ready for spending)
+  *  ... or throw an informative error
+  **/
+  async findAuthorityToken() {
+    const { wallet } = this;
+    return this.hasUtxo(
+      `authority token: ${bytesToText(this.configIn.tn)}`,
+      this.mkTokenPredicate(this.tvAuthorityToken()),
+      { wallet }
+    );
+  }
+  async findActorAuthorityToken() {
+    return this.findAuthorityToken();
+  }
   //! impls MUST resolve the indicated token to a specific UTxO
   //  ... or throw an informative error
   async DelegateMustFindAuthorityToken(tcx, label) {
@@ -62370,17 +62480,24 @@ class DefaultCapo extends Capo {
       return charterDatum;
     });
   }
-  async txnAddGovAuthority(tcx) {
+  async findGovDelegate() {
     const charterDatum = await this.findCharterDatum();
-    console.log(
-      "adding charter's govAuthority via delegate",
-      charterDatum.govAuthorityLink
-    );
-    const capoGov = await this.connectDelegateWithLink(
+    const capoGovDelegate = await this.connectDelegateWithLink(
       "govAuthority",
       charterDatum.govAuthorityLink
     );
-    return capoGov.txnGrantAuthority(tcx);
+    console.log(
+      "finding charter's govDelegate via link",
+      charterDatum.govAuthorityLink
+    );
+    return capoGovDelegate;
+  }
+  async txnAddGovAuthority(tcx) {
+    const capoGovDelegate = await this.findGovDelegate();
+    console.log(
+      "adding charter's govAuthority"
+    );
+    return capoGovDelegate.txnGrantAuthority(tcx);
   }
   // getMinterParams() {
   //     const { seedTxn, seedIdx } = this.configIn

@@ -679,6 +679,96 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!AnyAddressAuthorityPolicy#findActorAuthorityToken:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "findActorAuthorityToken(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "TxInput",
+                  "canonicalReference": "@hyperionbt/helios!TxInput:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": " | undefined>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "findActorAuthorityToken"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!AnyAddressAuthorityPolicy#findAuthorityToken:member(1)",
+              "docComment": "/**\n * Finds the delegate authority token, normally in the delegate's contract address\n *\n * @remarks\n *\n * The default implementation finds the UTxO having the authority token in the delegate's contract address.\n *\n * It's possible to have a delegate that doesn't have an on-chain contract script. ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a delegate-specific heuristic to locate the needed token. It might consult the addrHint in its `configIn` or another technique for resolution.\n *\n * @param tcx - the transaction context\n *\n * @reqt\n *\n * It MUST resolve and return the UTxO (a TxInput type ready for spending) ... or throw an informative error\n *\n * @public\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "findAuthorityToken(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "TxInput",
+                  "canonicalReference": "@hyperionbt/helios!TxInput:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": " | undefined>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "findAuthorityToken"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!AnyAddressAuthorityPolicy#loadProgramScript:member(1)",
               "docComment": "",
               "excerptTokens": [
@@ -2352,8 +2442,53 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#findActorGovAuthority:member(1)",
+              "docComment": "/**\n * Tries to locate the Capo charter's gov-authority token in the user's wallet, using its configured delegate\n *\n * @remarks\n *\n * Uses the Capo's govAuthority delegate to locate the gov-authority token, if available the current user's wallet.\n *\n * A delegate whose authority token is located in a smart contract will always return `undefined`.\n *\n * If the authority token is in a user wallet (not the same wallet as currently connected to the Capo contract class), it will return `undefined`.\n *\n * @public\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "findActorGovAuthority(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "TxInput",
+                  "canonicalReference": "@hyperionbt/helios!TxInput:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": " | undefined>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "findActorGovAuthority"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!Capo#findCharterAuthority:member(1)",
-              "docComment": "/**\n * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction\n *\n * @remarks\n *\n * this is a convenience method for redirecting developers to find the right method name for including a gov-authority token in a transaction\n *\n * @deprecated\n *\n * - look for txnAddGovAuthorityTokenRef() instead\n *\n * @public\n */\n",
+              "docComment": "/**\n * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction, or findGovAuthority() or findActorGovAuthority() for locating that txo.\n *\n * @remarks\n *\n * this is a convenience method for redirecting developers to find the right method name for finding or including a gov-authority token in a transaction\n *\n * @deprecated\n *\n * - see other method names, depending on what result you want\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -2384,15 +2519,29 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!Capo#findGovAuthority:member(1)",
-              "docComment": "/**\n * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction\n *\n * @remarks\n *\n * this is a convenience method for redirecting developers to find the right method name for including a gov-authority token in a transaction\n *\n * @deprecated\n *\n * - look for txnAddGovAuthorityTokenRef() instead\n *\n * @public\n */\n",
+              "docComment": "/**\n * Tries to locate the Capo charter's gov-authority token through its configured delegate\n *\n * @remarks\n *\n * Uses the Capo's govAuthority delegate to locate the gov-authority token, if available. If that token is located in a smart contract, it should always be found (note, however, that the current user may not have the direct permission to spend the token in a transaction).\n *\n * If the token is located in a user wallet, and that user is not the contract's current actor, then the token utxo will not be returned from this method.\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
                   "text": "findGovAuthority(): "
                 },
                 {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
                   "kind": "Content",
-                  "text": "void"
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "TxInput",
+                  "canonicalReference": "@hyperionbt/helios!TxInput:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": " | undefined>"
                 },
                 {
                   "kind": "Content",
@@ -2402,7 +2551,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 2
+                "endIndex": 5
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -2411,6 +2560,51 @@
               "isOptional": false,
               "isAbstract": false,
               "name": "findGovAuthority"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#findGovDelegate:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "abstract findGovDelegate(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "AuthorityPolicy",
+                  "canonicalReference": "@donecollectively/stellar-contracts!AuthorityPolicy:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": true,
+              "name": "findGovDelegate"
             },
             {
               "kind": "Method",
@@ -6300,6 +6494,60 @@
               "isOptional": false,
               "isAbstract": false,
               "name": "findCharterDatum"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#findGovDelegate:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "findGovDelegate(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "AuthorityPolicy",
+                  "canonicalReference": "@donecollectively/stellar-contracts!AuthorityPolicy:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<import(\"./delegation/RolesAndDelegates.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "capoDelegateConfig",
+                  "canonicalReference": "@donecollectively/stellar-contracts!capoDelegateConfig:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 7
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "findGovDelegate"
             },
             {
               "kind": "Method",
@@ -11389,6 +11637,102 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#findActorUtxo:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "findActorUtxo(name: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", predicate: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "(u: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "TxInput",
+                  "canonicalReference": "@hyperionbt/helios!TxInput:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ") => "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "TxInput",
+                  "canonicalReference": "@hyperionbt/helios!TxInput:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": " | undefined"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "TxInput",
+                  "canonicalReference": "@hyperionbt/helios!TxInput:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": " | undefined>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 9,
+                "endIndex": 13
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "name",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "predicate",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 3,
+                    "endIndex": 8
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "findActorUtxo"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#findAnySpareUtxos:member(1)",
               "docComment": "",
               "excerptTokens": [
@@ -11822,7 +12166,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#hasUtxo:member(1)",
-              "docComment": "",
+              "docComment": "/**\n * Try finding a utxo matching a predicate\n *\n * @remarks\n *\n * Finds the first matching utxo, if any, either in the indicated search-scope's `wallet` or `address`.\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -13117,7 +13461,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", { address, wallet, exceptInTcx }: "
+                  "text": ", searchScope: "
                 },
                 {
                   "kind": "Reference",
@@ -13185,7 +13529,7 @@
                   "isOptional": false
                 },
                 {
-                  "parameterName": "{ address, wallet, exceptInTcx }",
+                  "parameterName": "searchScope",
                   "parameterTypeTokenRange": {
                     "startIndex": 9,
                     "endIndex": 10
@@ -14154,6 +14498,87 @@
               "name": "txnKeepValue"
             },
             {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#utxoSearchError:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "utxoSearchError(semanticName: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", searchScope: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "UtxoSearchScope",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~UtxoSearchScope:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", extraErrorHint?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 7,
+                "endIndex": 8
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "semanticName",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "searchScope",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 3,
+                    "endIndex": 4
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "extraErrorHint",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 5,
+                    "endIndex": 6
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "utxoSearchError"
+            },
+            {
               "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#wallet:member",
               "docComment": "/**\n * returns the wallet connection used by the current actor\n *\n * @remarks\n *\n * Throws an error if the strella contract facade has not been initialized with a wallet in settings.myActor\n *\n * @public\n */\n",
@@ -14792,6 +15217,96 @@
               "isStatic": false,
               "isProtected": false,
               "isAbstract": false
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarDelegate#findActorAuthorityToken:member(1)",
+              "docComment": "/**\n * Tries to locate the Delegates authority token in the user's wallet (ONLY for non-smart-contract delegates)\n *\n * @remarks\n *\n * Locates the authority token,if available the current user's wallet.\n *\n * If the token is located in a smart contract, this method will always return `undefined`.\n *\n * If the authority token is in a user wallet (not the same wallet as currently connected to the Capo contract class), it will return `undefined`.\n *\n * @public\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "findActorAuthorityToken(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "TxInput",
+                  "canonicalReference": "@hyperionbt/helios!TxInput:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": " | undefined>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "findActorAuthorityToken"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarDelegate#findAuthorityToken:member(1)",
+              "docComment": "/**\n * Finds the delegate authority token, normally in the delegate's contract address\n *\n * @remarks\n *\n * The default implementation finds the UTxO having the authority token in the delegate's contract address.\n *\n * It's possible to have a delegate that doesn't have an on-chain contract script. ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a delegate-specific heuristic to locate the needed token. It might consult the addrHint in its `configIn` or another technique for resolution.\n *\n * @param tcx - the transaction context\n *\n * @reqt\n *\n * It MUST resolve and return the UTxO (a TxInput type ready for spending) ... or throw an informative error\n *\n * @public\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "findAuthorityToken(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "TxInput",
+                  "canonicalReference": "@hyperionbt/helios!TxInput:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": " | undefined>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "findAuthorityToken"
             },
             {
               "kind": "Method",

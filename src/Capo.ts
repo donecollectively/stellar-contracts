@@ -60,6 +60,7 @@ import type {
 } from "./DefaultCapo.js";
 import type { DelegationDetail } from "./delegation/RolesAndDelegates.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
+import type { AuthorityPolicy } from "../index.js";
 
 export type {
     RoleMap,
@@ -432,6 +433,7 @@ export abstract class Capo<
         return this.mustFindMyUtxo("charter", predicate, "has it been minted?");
     }
 
+    abstract findGovDelegate(): Promise<AuthorityPolicy>;
     abstract txnAddGovAuthority<TCX extends StellarTxnContext<any>>(
         tcx: TCX
     ): Promise<TCX & StellarTxnContext<any>>;
@@ -516,31 +518,59 @@ export abstract class Capo<
     }
 
     /**
-     * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction
+     * Tries to locate the Capo charter's gov-authority token through its configured delegate
      * @remarks
      *
-     * this is a convenience method for redirecting developers to
-     * find the right method name for including a gov-authority token
-     * in a transaction
-     * @deprecated - look for txnAddGovAuthorityTokenRef() instead
+     * Uses the Capo's govAuthority delegate to locate the gov-authority token,
+     * if available.  If that token is located in a smart contract, it should always be
+     * found (note, however, that the current user may not have the direct permission 
+     * to spend the token in a transaction).
+     * 
+     * If the token is located in a user wallet, and that user is not the contract's current
+     * actor, then the token utxo will not be returned from this method.
+     * 
      * @public
      **/
-    findGovAuthority() {
-        throw new Error(`use txnAddGovAuthorityTokenRef() to add the gov-authority token to a txn`);
+    async findGovAuthority() {
+        const delegate = await this.findGovDelegate();
+        return delegate.findAuthorityToken()
     }
+
     /**
-     * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction
+     * Tries to locate the Capo charter's gov-authority token in the user's wallet, using its configured delegate
+     * @remarks
+     *
+     * Uses the Capo's govAuthority delegate to locate the gov-authority token,
+     * if available the current user's wallet.  
+     * 
+     * A delegate whose authority token is located in a smart contract will always return `undefined`.
+     * 
+     * If the authority token is in a user wallet (not the same wallet as currently connected to the Capo contract class),
+     * it will return `undefined`.
+     * 
+     * @public
+     **/
+    async findActorGovAuthority() {
+        const delegate = await this.findGovDelegate();
+        return delegate.findActorAuthorityToken()
+    }
+
+
+    /**
+     * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction,
+     * or findGovAuthority() or findActorGovAuthority() for locating that txo.
      * @remarks
      *
      * this is a convenience method for redirecting developers to
-     * find the right method name for including a gov-authority token
+     * find the right method name for finding or including a gov-authority token
      * in a transaction
-     * @deprecated - look for txnAddGovAuthorityTokenRef() instead
+     * @deprecated - see other method names, depending on what result you want
      * @public
      **/
     findCharterAuthority() {
-        throw new Error(`use txnAddGovAuthorityTokenRef() to add the gov-authority token to a txn`);
+        throw new Error(`use findGovAuthority() to locate charter's gov-authority token`);
     }
+
     /**
      * REDIRECT: use txnAddGovAuthorityTokenRef() instead
      * @remarks

@@ -65,6 +65,9 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     // (undocumented)
     get delegateValidatorHash(): undefined;
     // (undocumented)
+    findActorAuthorityToken(): Promise<TxInput | undefined>;
+    findAuthorityToken(): Promise<TxInput | undefined>;
+    // (undocumented)
     loadProgramScript(params: any): undefined;
     // (undocumented)
     txnReceiveAuthorityToken<TCX extends StellarTxnContext<any>>(tcx: TCX, tokenValue: Value, fromFoundUtxo: TxInput): Promise<TCX>;
@@ -142,10 +145,12 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     abstract contractSource(): HeliosModuleSrc;
     // (undocumented)
     abstract get delegateRoles(): RoleMap<any>;
+    findActorGovAuthority(): Promise<TxInput | undefined>;
     // @deprecated
     findCharterAuthority(): void;
-    // @deprecated
-    findGovAuthority(): void;
+    findGovAuthority(): Promise<TxInput | undefined>;
+    // (undocumented)
+    abstract findGovDelegate(): Promise<AuthorityPolicy>;
     // (undocumented)
     getCapoRev(): bigint;
     getContractScriptParams(config: configType): paramsBase & Partial<configType>;
@@ -304,6 +309,8 @@ export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT e
     }>;
     // (undocumented)
     findCharterDatum(): Promise<DefaultCharterDatumArgs>;
+    // (undocumented)
+    findGovDelegate(): Promise<AuthorityPolicy<capoDelegateConfig_2>>;
     // @deprecated
     getDelegateRoles(): void;
     // (undocumented)
@@ -581,6 +588,8 @@ export class StellarContract<ConfigType extends paramsBase> {
     // (undocumented)
     delegateReqdAddress(): false | Address;
     // (undocumented)
+    findActorUtxo(name: string, predicate: (u: TxInput) => TxInput | undefined): Promise<TxInput | undefined>;
+    // (undocumented)
     findAnySpareUtxos(tcx: StellarTxnContext): Promise<TxInput[] | never>;
     // (undocumented)
     findChangeAddr(): Promise<Address>;
@@ -592,7 +601,6 @@ export class StellarContract<ConfigType extends paramsBase> {
     hasMyUtxo(semanticName: string, predicate: utxoPredicate): Promise<TxInput | undefined>;
     // (undocumented)
     hasOnlyAda(value: Value, tcx: StellarTxnContext | undefined, u: TxInput): TxInput | undefined;
-    // (undocumented)
     hasUtxo(semanticName: string, predicate: utxoPredicate, { address, wallet, exceptInTcx }: UtxoSearchScope): Promise<TxInput | undefined>;
     // (undocumented)
     get identity(): string;
@@ -632,7 +640,7 @@ export class StellarContract<ConfigType extends paramsBase> {
     // Warning: (ae-forgotten-export) The symbol "UtxoSearchScope" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
-    mustFindUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, { address, wallet, exceptInTcx }: UtxoSearchScope, extraErrorHint?: string): Promise<TxInput | never>;
+    mustFindUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, searchScope: UtxoSearchScope, extraErrorHint?: string): Promise<TxInput | never>;
     // (undocumented)
     mustGetActivity(activityName: any): any;
     // (undocumented)
@@ -681,6 +689,8 @@ export class StellarContract<ConfigType extends paramsBase> {
     protected _utxoIsPureADA({ u }: utxoInfo): TxInput | undefined;
     // @internal (undocumented)
     protected _utxoIsSufficient({ sufficient }: utxoInfo): boolean;
+    // (undocumented)
+    utxoSearchError(semanticName: string, searchScope: UtxoSearchScope, extraErrorHint?: string): string;
     // Warning: (ae-forgotten-export) The symbol "utxoInfo" needs to be exported by the entry point index.d.ts
     //
     // @internal (undocumented)
@@ -711,6 +721,8 @@ export abstract class StellarDelegate<CT extends paramsBase & capoDelegateConfig
     delegateRequirements(): ReqtsMap_2<"provides an interface for providing arms-length proof of authority to any other contract" | "implementations SHOULD positively govern spend of the UUT" | "implementations MUST provide an essential interface for transaction-building" | "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)" | "requires a mustFindAuthorityToken(tcx)" | "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)" | "requires txnRetireCred(tcx, fromFoundUtxo)">;
     protected DelegateRetiresAuthorityToken(tcx: StellarTxnContext, fromFoundUtxo: TxInput): Promise<StellarTxnContext>;
     get delegateValidatorHash(): ValidatorHash | undefined;
+    findActorAuthorityToken(): Promise<TxInput | undefined>;
+    findAuthorityToken(): Promise<TxInput | undefined>;
     // (undocumented)
     mkAuthorityTokenPredicate(): ((something: any) => any) & {
         value: Value;
