@@ -531,7 +531,7 @@ export abstract class Capo<
      * 
      * @public
      **/
-    async findGovAuthority() {
+    async findGovAuthority() : Promise<TxInput | undefined> {
         const delegate = await this.findGovDelegate();
         return delegate.findAuthorityToken()
     }
