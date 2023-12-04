@@ -19,6 +19,8 @@ import { txAsString } from "./diagnostics.js";
 type noState = {};
 
 type addInputArgs = Parameters<Tx["addInput"]>;
+type addRefInputArgs = Parameters<Tx["addRefInput"]>
+type addRefInputsArgs = Parameters<Tx["addRefInputs"]>
 type _redeemerArg = addInputArgs[1]
 
 type RedeemerArg = {
@@ -101,6 +103,41 @@ export class StellarTxnContext<S = noState> {
             
         return this
     }
+
+    txRefInputs: TxInput[] = []
+    /**
+     * adds a reference input to the transaction context
+     * @remarks
+     * 
+     * idempotent version of helios addRefInput()
+     * 
+     * @typeParam ‹pName› - descr (for generic types)
+     * @public
+     **/
+    addRefInput<TCX extends StellarTxnContext<S>>(
+        this: TCX, 
+        input: addRefInputArgs[0],
+    ) {
+        if ( this.txRefInputs.find(
+            (v) => v.outputId.eq(input.outputId)
+        )) {
+            console.warn("suppressing second add of refInput")
+            return
+        }
+        this.txRefInputs.push(input);
+        this.tx.addRefInput(input);
+    }
+
+    addRefInputs<TCX extends StellarTxnContext<S>>(
+        this: TCX, 
+        ...args: addRefInputsArgs
+    ) {
+        const [inputs] = args
+        for ( const input of inputs ) {
+            this.addRefInput(input);
+        }
+    }
+
 
     addInput<TCX extends StellarTxnContext<S>>(
         this: TCX, 

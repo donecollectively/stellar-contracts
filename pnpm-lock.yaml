@@ -20,7 +20,7 @@ specifiers:
   rollup-pluginutils: ^2.8.2
   semver: '>=7.5.2'
   tslib: ^2.5.3
-  typescript: 5.0.4
+  typescript: 5.2.2
   vite: ^4.4.11
   vitest: ^0.34.6
   webdriverio: ^8.10.7
@@ -44,13 +44,13 @@ devDependencies:
   rollup-plugin-shell: 1.0.9
   rollup-plugin-sourcemaps: 0.6.3_ydbslhyws7lwblmtnfo66hoiou
   rollup-plugin-string: 3.0.0
-  rollup-plugin-ts: 3.2.0_cnczlmyh5vzmua5n5nrotw47li
+  rollup-plugin-ts: 3.2.0_hnfjmqrwzhf362ryny7qhxoy7u
   rollup-pluginutils: 2.8.2
   tslib: 2.5.3
-  typescript: 5.0.4
+  typescript: 5.2.2
   vite: 4.4.11_@types+node@20.2.5
   vitest: 0.34.6_eoay54qgxdmdhojtgmynwfd2r4
-  webdriverio: 8.10.7_typescript@5.0.4
+  webdriverio: 8.10.7_typescript@5.2.2
 
 packages:
 
@@ -577,7 +577,7 @@ packages:
     resolution: {integrity: sha512-C16M+IYz0rgRhWZdCmK+h58JMv8vijAA61gmz2rspCSwKwzBebpdcsiUmwrtJRdphuY30i6BSLEOP8ppbNLyLg==}
     dev: true
 
-  /@puppeteer/browsers/1.3.0_typescript@5.0.4:
+  /@puppeteer/browsers/1.3.0_typescript@5.2.2:
     resolution: {integrity: sha512-an3QdbNPkuU6qpxpbssxAbjRLJcF+eP4L8UqIY3+6n0sbaVxw5pz7PiCLy9g32XEZuoamUlV5ZQPnA6FxvkIHA==}
     engines: {node: '>=16.0.0'}
     hasBin: true
@@ -594,7 +594,7 @@ packages:
       progress: 2.0.3
       proxy-from-env: 1.1.0
       tar-fs: 2.1.1
-      typescript: 5.0.4
+      typescript: 5.2.2
       unbzip2-stream: 1.4.3
       yargs: 17.7.1
     transitivePeerDependencies:
@@ -1260,14 +1260,14 @@ packages:
     dev: true
     optional: true
 
-  /compatfactory/2.0.9_typescript@5.0.4:
+  /compatfactory/2.0.9_typescript@5.2.2:
     resolution: {integrity: sha512-fvO+AWcmbO7P1S+A3mwm3IGr74eHMeq5ZLhNhyNQc9mVDNHT4oe0Gg0ksdIFFNXLK7k7Z/TYcLAUSQdRgh1bsA==}
     engines: {node: '>=14.9.0'}
     peerDependencies:
       typescript: '>=3.x || >= 4.x'
     dependencies:
       helpertypes: 0.0.19
-      typescript: 5.0.4
+      typescript: 5.2.2
     dev: true
 
   /compress-commons/4.1.1:
@@ -1435,7 +1435,7 @@ packages:
     resolution: {integrity: sha512-vpM8tGaYz2nrN9n8rvUEhQCgU05ocejO5WIJySsftEHxUahQ/fWuNyPxXuQNBEmaISYyMZkxCunhjtSEyBl/Dg==}
     dev: true
 
-  /devtools/8.10.7_typescript@5.0.4:
+  /devtools/8.10.7_typescript@5.2.2:
     resolution: {integrity: sha512-picJDxsjpaOW7gnQjcQVGDXvxuP1RZ4VNJpvJ+qiy86Gf3l4FGLKYkpJJFAMsIugL0XPs89bIVhjbtIv5NGL1w==}
     engines: {node: ^16.13 || >=18}
     dependencies:
@@ -1448,7 +1448,7 @@ packages:
       chrome-launcher: 0.15.2
       edge-paths: 3.0.5
       import-meta-resolve: 3.0.0
-      puppeteer-core: 20.3.0_typescript@5.0.4
+      puppeteer-core: 20.3.0_typescript@5.2.2
       query-selector-shadow-dom: 1.0.1
       ua-parser-js: 1.0.35
       uuid: 9.0.0
@@ -2592,7 +2592,7 @@ packages:
     engines: {node: '>=6'}
     dev: true
 
-  /puppeteer-core/20.3.0_typescript@5.0.4:
+  /puppeteer-core/20.3.0_typescript@5.2.2:
     resolution: {integrity: sha512-264pBrIui5bO6NJeOcbJrLa0OCwmA4+WK00JMrLIKTfRiqe2gx8KWTzLsjyw/bizErp3TKS7vt/I0i5fTC+mAw==}
     engines: {node: '>=16.0.0'}
     peerDependencies:
@@ -2601,12 +2601,12 @@ packages:
       typescript:
         optional: true
     dependencies:
-      '@puppeteer/browsers': 1.3.0_typescript@5.0.4
+      '@puppeteer/browsers': 1.3.0_typescript@5.2.2
       chromium-bidi: 0.4.9_5222unh4tkeylqma7dhccidrk4
       cross-fetch: 3.1.6
       debug: 4.3.4
       devtools-protocol: 0.0.1120988
-      typescript: 5.0.4
+      typescript: 5.2.2
       ws: 8.13.0
     transitivePeerDependencies:
       - bufferutil
@@ -2802,7 +2802,7 @@ packages:
       rollup-pluginutils: 2.8.2
     dev: true
 
-  /rollup-plugin-ts/3.2.0_cnczlmyh5vzmua5n5nrotw47li:
+  /rollup-plugin-ts/3.2.0_hnfjmqrwzhf362ryny7qhxoy7u:
     resolution: {integrity: sha512-KkTLVifkUexEiAXS9VtSjDrjKr0TyusmNJpb2ZTAzI9VuPumSu4AktIaVNnwv70iUEitHwZtET7OAM+5n1u1tg==}
     engines: {node: '>=14.9.0', npm: '>=7.0.0', pnpm: '>=3.2.0', yarn: '>=1.13'}
     peerDependencies:
@@ -2836,13 +2836,13 @@ packages:
       ansi-colors: 4.1.3
       browserslist: 4.21.9
       browserslist-generator: 2.0.3
-      compatfactory: 2.0.9_typescript@5.0.4
+      compatfactory: 2.0.9_typescript@5.2.2
       crosspath: 2.0.0
       magic-string: 0.27.0
       rollup: 3.23.1
-      ts-clone-node: 2.0.4_typescript@5.0.4
+      ts-clone-node: 2.0.4_typescript@5.2.2
       tslib: 2.5.3
-      typescript: 5.0.4
+      typescript: 5.2.2
     dev: true
 
   /rollup-pluginutils/2.8.2:
@@ -3118,14 +3118,14 @@ packages:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
     dev: true
 
-  /ts-clone-node/2.0.4_typescript@5.0.4:
+  /ts-clone-node/2.0.4_typescript@5.2.2:
     resolution: {integrity: sha512-eG6FAgmQsenhIJOIFhUcO6yyYejBKZIKcI3y21jiQmIOrth5pD6GElyPAyeihbPSyBs3u/9PVNXy+5I7jGy8jA==}
     engines: {node: '>=14.9.0'}
     peerDependencies:
       typescript: ^3.x || ^4.x
     dependencies:
-      compatfactory: 2.0.9_typescript@5.0.4
-      typescript: 5.0.4
+      compatfactory: 2.0.9_typescript@5.2.2
+      typescript: 5.2.2
     dev: true
 
   /tslib/2.5.3:
@@ -3150,6 +3150,12 @@ packages:
   /typescript/5.0.4:
     resolution: {integrity: sha512-cW9T5W9xY37cc+jfEnaUvX91foxtHkza3Nw3wkoF4sSlKn0MONdkdEndig/qPBWXNkmplh3NzayQzCiHM4/hqw==}
     engines: {node: '>=12.20'}
+    hasBin: true
+    dev: true
+
+  /typescript/5.2.2:
+    resolution: {integrity: sha512-mI4WrpHsbCIcwT9cF4FZvr80QUeKvsUsUvKDoR+X/7XHQH98xYD8YHZg7ANtz2GtZt/CBq2QJ0thkGJMHfqc1w==}
+    engines: {node: '>=14.17'}
     hasBin: true
     dev: true
 
@@ -3324,7 +3330,7 @@ packages:
       tinypool: 0.7.0
       vite: 4.4.11_@types+node@20.2.5
       vite-node: 0.34.6_@types+node@20.2.5
-      webdriverio: 8.10.7_typescript@5.0.4
+      webdriverio: 8.10.7_typescript@5.2.2
       why-is-node-running: 2.2.2
     transitivePeerDependencies:
       - less
@@ -3356,7 +3362,7 @@ packages:
       - utf-8-validate
     dev: true
 
-  /webdriverio/8.10.7_typescript@5.0.4:
+  /webdriverio/8.10.7_typescript@5.2.2:
     resolution: {integrity: sha512-TkkPE3zBxdLRdcsNLqHct2OARnfMYB9/A0ri4sccmc3C3dVFiW99NAstN88nzD1SYzXAbxALRuITVd5oswqqhg==}
     engines: {node: ^16.13 || >=18}
     dependencies:
@@ -3371,7 +3377,7 @@ packages:
       aria-query: 5.1.3
       css-shorthand-properties: 1.1.1
       css-value: 0.0.1
-      devtools: 8.10.7_typescript@5.0.4
+      devtools: 8.10.7_typescript@5.2.2
       devtools-protocol: 0.0.1149535
       grapheme-splitter: 1.0.4
       import-meta-resolve: 3.0.0
@@ -3379,7 +3385,7 @@ packages:
       lodash.clonedeep: 4.5.0
       lodash.zip: 4.2.0
       minimatch: 9.0.1
-      puppeteer-core: 20.3.0_typescript@5.0.4
+      puppeteer-core: 20.3.0_typescript@5.2.2
       query-selector-shadow-dom: 1.0.1
       resq: 1.11.0
       rgb2hex: 0.2.5

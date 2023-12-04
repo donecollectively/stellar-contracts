@@ -1,6 +1,6 @@
 {
     "name": "@donecollectively/stellar-contracts",
-    "version": "0.8.5alpha24",
+    "version": "0.8.5alpha25",
     "description": "Smart contract fusion for Cardano",
     "license": "SEE LICENSE IN LICENSE.TXT",
     "main": "./dist/stellar-contracts.mjs",
@@ -54,7 +54,7 @@
         "rollup-pluginutils": "^2.8.2",
         "semver": ">=7.5.2",
         "tslib": "^2.5.3",
-        "typescript": "5.0.4",
+        "typescript": "5.2.2",
         "vite": "^4.4.11",
         "vitest": "^0.34.6",
         "webdriverio": "^8.10.7"

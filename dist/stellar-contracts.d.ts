@@ -72,6 +72,10 @@ export declare const ADA = 1000000n;
 
 declare type addInputArgs = Parameters<Tx["addInput"]>;
 
+declare type addRefInputArgs = Parameters<Tx["addRefInput"]>;
+
+declare type addRefInputsArgs = Parameters<Tx["addRefInputs"]>;
+
 export { Address }
 
 /**
@@ -294,7 +298,7 @@ export declare abstract class Capo<minterType extends MinterBaseMethods & Defaul
     abstract findGovDelegate(): Promise<AuthorityPolicy>;
     abstract txnAddGovAuthority<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX & StellarTxnContext<any>>;
     txnMustUseCharterUtxo<TCX extends StellarTxnContext<any>>(tcx: TCX, redeemer: isActivity, newDatum?: InlineDatum): Promise<TCX>;
-    txnMustUseCharterUtxo<TCX extends StellarTxnContext<any>>(tcx: TCX, useReferenceInput: "refInput" | true, forceAddRefScript?: true): Promise<TCX>;
+    txnMustUseCharterUtxo<TCX extends StellarTxnContext<any>>(tcx: TCX, useReferenceInput: "refInput" | true): Promise<TCX>;
     txnUpdateCharterUtxo(tcx: StellarTxnContext, redeemer: isActivity, newDatum: InlineDatum): Promise<StellarTxnContext | never>;
     txnKeepCharterToken(tcx: StellarTxnContext<any>, datum: InlineDatum): StellarTxnContext<any>;
     /**
@@ -1845,6 +1849,18 @@ export declare class StellarTxnContext<S = noState> {
     utxoNotReserved(u: TxInput): TxInput | undefined;
     addCollateral(collateral: TxInput): this;
     validFor<TCX extends StellarTxnContext<S>>(this: TCX, durationMs: number, backwardMs?: number): TCX;
+    txRefInputs: TxInput[];
+    /**
+     * adds a reference input to the transaction context
+     * @remarks
+     *
+     * idempotent version of helios addRefInput()
+     *
+     * @typeParam ‹pName› - descr (for generic types)
+     * @public
+     **/
+    addRefInput<TCX extends StellarTxnContext<S>>(this: TCX, input: addRefInputArgs[0]): void;
+    addRefInputs<TCX extends StellarTxnContext<S>>(this: TCX, ...args: addRefInputsArgs): void;
     addInput<TCX extends StellarTxnContext<S>>(this: TCX, input: addInputArgs[0], r?: RedeemerArg): TCX;
     addInputs<TCX extends StellarTxnContext<S>>(this: TCX, inputs: Parameters<Tx["addInputs"]>[0], r: RedeemerArg): TCX;
     addOutput<TCX extends StellarTxnContext<S>>(this: TCX, ...args: Parameters<Tx["addOutput"]>): TCX;

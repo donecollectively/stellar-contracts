@@ -58343,6 +58343,32 @@ class StellarTxnContext {
     this.tx.validFrom(new Date(Date.now() - backwardMs)).validTo(new Date(Date.now() + durationMs));
     return this;
   }
+  txRefInputs = [];
+  /**
+   * adds a reference input to the transaction context
+   * @remarks
+   * 
+   * idempotent version of helios addRefInput()
+   * 
+   * @typeParam ‹pName› - descr (for generic types)
+   * @public
+   **/
+  addRefInput(input) {
+    if (this.txRefInputs.find(
+      (v) => v.outputId.eq(input.outputId)
+    )) {
+      console.warn("suppressing second add of refInput");
+      return;
+    }
+    this.txRefInputs.push(input);
+    this.tx.addRefInput(input);
+  }
+  addRefInputs(...args) {
+    const [inputs] = args;
+    for (const input of inputs) {
+      this.addRefInput(input);
+    }
+  }
   addInput(input, r) {
     if (input.address.pubKeyHash)
       this.neededSigners.push(input.address);
@@ -60201,24 +60227,18 @@ class Capo extends StellarContract {
     return this.mustFindMyUtxo("charter", predicate, "has it been minted?");
   }
   // non-activity partial
-  async txnMustUseCharterUtxo(tcx, redeemerOrRefInput, newDatumOrForceRefScript) {
+  async txnMustUseCharterUtxo(tcx, redeemerOrRefInput, newDatum) {
     return this.mustFindCharterUtxo().then(async (ctUtxo) => {
       if (true === redeemerOrRefInput || "refInput" === redeemerOrRefInput) {
-        if (newDatumOrForceRefScript && true !== newDatumOrForceRefScript)
+        if (newDatum)
           throw new Error(
-            `when using reference input for charter, arg3 can only be true (or may be omitted)`
+            `when using reference input for charter, arg3 must be omitted`
           );
-        tcx.tx.addRefInput(
-          ctUtxo,
-          newDatumOrForceRefScript ? this.compiledScript : void 0
+        tcx.addRefInput(
+          ctUtxo
         );
       } else {
         const redeemer = redeemerOrRefInput;
-        const newDatum = newDatumOrForceRefScript;
-        if (true === newDatum)
-          throw new Error(
-            `wrong type for newDatum when not using reference input for charter`
-          );
         tcx.addInput(ctUtxo, redeemer).attachScript(
           this.compiledScript
         );

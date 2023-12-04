@@ -217,7 +217,7 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     // (undocumented)
     txnMustUseCharterUtxo<TCX extends StellarTxnContext<any>>(tcx: TCX, redeemer: isActivity, newDatum?: InlineDatum): Promise<TCX>;
     // (undocumented)
-    txnMustUseCharterUtxo<TCX extends StellarTxnContext<any>>(tcx: TCX, useReferenceInput: "refInput" | true, forceAddRefScript?: true): Promise<TCX>;
+    txnMustUseCharterUtxo<TCX extends StellarTxnContext<any>>(tcx: TCX, useReferenceInput: "refInput" | true): Promise<TCX>;
     // (undocumented)
     txnUpdateCharterUtxo(tcx: StellarTxnContext, redeemer: isActivity, newDatum: InlineDatum): Promise<StellarTxnContext | never>;
     // (undocumented)
@@ -837,6 +837,12 @@ export class StellarTxnContext<S = noState> {
     addOutput<TCX extends StellarTxnContext<S>>(this: TCX, ...args: Parameters<Tx["addOutput"]>): TCX;
     // (undocumented)
     addOutputs<TCX extends StellarTxnContext<S>>(this: TCX, ...args: Parameters<Tx["addOutputs"]>): TCX;
+    // Warning: (ae-forgotten-export) The symbol "addRefInputArgs" needs to be exported by the entry point index.d.ts
+    addRefInput<TCX extends StellarTxnContext<S>>(this: TCX, input: addRefInputArgs[0]): void;
+    // Warning: (ae-forgotten-export) The symbol "addRefInputsArgs" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    addRefInputs<TCX extends StellarTxnContext<S>>(this: TCX, ...args: addRefInputsArgs): void;
     // @deprecated
     addScript(): void;
     // (undocumented)
@@ -863,6 +869,8 @@ export class StellarTxnContext<S = noState> {
     state: S;
     // (undocumented)
     tx: Tx;
+    // (undocumented)
+    txRefInputs: TxInput[];
     // (undocumented)
     utxoNotReserved(u: TxInput): TxInput | undefined;
     // (undocumented)

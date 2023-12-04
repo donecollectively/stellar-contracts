@@ -445,14 +445,13 @@ export abstract class Capo<
     ): Promise<TCX>;
     async txnMustUseCharterUtxo<TCX extends StellarTxnContext<any>>(
         tcx: TCX,
-        useReferenceInput: "refInput" | true,
-        forceAddRefScript?: true
+        useReferenceInput: "refInput" | true
     ): Promise<TCX>;
     @partialTxn // non-activity partial
     async txnMustUseCharterUtxo<TCX extends StellarTxnContext<any>>(
         tcx: TCX,
         redeemerOrRefInput: isActivity | "refInput" | true,
-        newDatumOrForceRefScript?: InlineDatum | true
+        newDatum?: InlineDatum
     ): Promise<TCX> {
         return this.mustFindCharterUtxo().then(async (ctUtxo: TxInput) => {
             // await this.txnAddCharterAuthz(
@@ -466,24 +465,17 @@ export abstract class Capo<
             ) {
                 // using reference-input has been requested
                 if (
-                    newDatumOrForceRefScript &&
-                    true !== newDatumOrForceRefScript
+                    newDatum
                 )
                     throw new Error(
-                        `when using reference input for charter, arg3 can only be true (or may be omitted)`
+                        `when using reference input for charter, arg3 must be omitted`
                     );
-                tcx.tx.addRefInput(
+                tcx.addRefInput(
                     ctUtxo,
-                    newDatumOrForceRefScript ? this.compiledScript : undefined
                 );
             } else {
                 // caller requested to **spend** the charter token with a speciic activity / redeemer
                 const redeemer = redeemerOrRefInput;
-                const newDatum = newDatumOrForceRefScript;
-                if (true === newDatum)
-                    throw new Error(
-                        `wrong type for newDatum when not using reference input for charter`
-                    );
                 tcx.addInput(ctUtxo, redeemer).attachScript(
                     this.compiledScript
                 );

@@ -4722,14 +4722,6 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", forceAddRefScript?: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "true"
-                },
-                {
-                  "kind": "Content",
                   "text": "): "
                 },
                 {
@@ -4761,8 +4753,8 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 10,
-                "endIndex": 12
+                "startIndex": 8,
+                "endIndex": 10
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -4783,14 +4775,6 @@
                     "endIndex": 7
                   },
                   "isOptional": false
-                },
-                {
-                  "parameterName": "forceAddRefScript",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 8,
-                    "endIndex": 9
-                  },
-                  "isOptional": true
                 }
               ],
               "isOptional": false,
@@ -18081,6 +18065,192 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext#addRefInput:member(1)",
+              "docComment": "/**\n * adds a reference input to the transaction context\n *\n * @remarks\n *\n * idempotent version of helios addRefInput()\n *\n * @typeParam  - ‹pName› - descr (for generic types)\n *\n * @public\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "addRefInput<TCX extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<S>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">(this: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "TCX"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", input: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "addRefInputArgs",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~addRefInputArgs:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "[0]"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "void"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "typeParameters": [
+                {
+                  "typeParameterName": "TCX",
+                  "constraintTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 3
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 9,
+                "endIndex": 10
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "this",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 4,
+                    "endIndex": 5
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "input",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 6,
+                    "endIndex": 8
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "addRefInput"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext#addRefInputs:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "addRefInputs<TCX extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<S>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">(this: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "TCX"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", ...args: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "addRefInputsArgs",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~addRefInputsArgs:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "void"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "typeParameters": [
+                {
+                  "typeParameterName": "TCX",
+                  "constraintTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 3
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 8,
+                "endIndex": 9
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "this",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 4,
+                    "endIndex": 5
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "args",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 6,
+                    "endIndex": 7
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "addRefInputs"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext#addScript:member(1)",
               "docComment": "/**\n * To add a script to the transaction context, use `attachScript`\n *\n * @deprecated\n *\n * - invalid method name; use attachScript\n */\n",
               "excerptTokens": [
@@ -18582,6 +18752,41 @@
               "propertyTypeTokenRange": {
                 "startIndex": 1,
                 "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext#txRefInputs:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "txRefInputs: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "TxInput",
+                  "canonicalReference": "@hyperionbt/helios!TxInput:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "[]"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "txRefInputs",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
               },
               "isStatic": false,
               "isProtected": false,
