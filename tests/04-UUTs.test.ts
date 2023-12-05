@@ -73,7 +73,7 @@ describe("Capo", async () => {
 
             const uutVal = t.uutsValue(tcx.state.uuts!);
             tcx.addOutput(new TxOutput(tina.address, uutVal));
-            expect(
+            await expect(
                 t.submit(tcx, { signers: [tom.address, tina.address, tracy.address] })
             ).rejects.toThrow(/missing.*delegate.*mintDgt/);
         });
@@ -105,7 +105,7 @@ describe("Capo", async () => {
             await t.mkTxnMintingUuts(tcx, ["testSomeThing"]);
             const uutVal = t.uutsValue(tcx.state.uuts!);
             tcx.addOutput(new TxOutput(tina.address, uutVal));
-            expect(
+            await expect(
                 t.submit(tcx, { signers: [tom.address, tina.address, tracy.address] })
             ).rejects.toThrow(/Missing charter in required ref_inputs/);
         });
@@ -131,9 +131,9 @@ describe("Capo", async () => {
 
             const uutVal = t.uutsValue(tcx.state.uuts!);
             tcx.addOutput(new TxOutput(tina.address, uutVal));
-            expect(
+            await expect(
                  t.submit(tcx, { signers: [tom.address, tina.address, tracy.address] })
-            ).rejects.toThrow(/missing uut output.*to validator/)
+            ).rejects.toThrow(/missing delegation.*to validator/)
         });
 
         it("can create a UUT and send it anywhere", async (context: localTC) => {
