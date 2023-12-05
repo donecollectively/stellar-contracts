@@ -63,7 +63,9 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             throw new Error(
                 `setCurrentActor: invalid actor name '${actorName}'`
             );
-        if (this.strella) this.strella.myActor = thisActor;
+        if (this.strella) {
+            this.initStellarClass();
+        }
         this.actorName = actorName;
     }
 
