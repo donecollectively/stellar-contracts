@@ -1817,7 +1817,8 @@ export declare abstract class StellarTestHelper<SC extends StellarContract<any>>
     liveSlotParams: NetworkParams;
     networkParams: NetworkParams;
     network: NetworkEmulator;
-    private actorName;
+    private _actorName;
+    get actorName(): string;
     get currentActor(): SimpleWallet;
     set currentActor(actorName: string);
     address?: Address;

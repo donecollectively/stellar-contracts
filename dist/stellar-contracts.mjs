@@ -61617,10 +61617,13 @@ class StellarTestHelper {
   liveSlotParams;
   networkParams;
   network;
-  actorName;
+  _actorName;
+  get actorName() {
+    return this._actorName;
+  }
   //@ts-ignore type mismatch in getter/setter until ts v5
   get currentActor() {
-    return this.actors[this.actorName];
+    return this.actors[this._actorName];
   }
   set currentActor(actorName) {
     const thisActor = this.actors[actorName];
@@ -61629,8 +61632,8 @@ class StellarTestHelper {
         `setCurrentActor: invalid actor name '${actorName}'`
       );
     console.log(`
-\u{1F3AD} -> \u{1F3AD} changing actor \u{1F3AD} ->  \u{1F3AD} from ${this.actorName} to ${actorName} ${dumpAny(thisActor.address)}`);
-    this.actorName = actorName;
+\u{1F3AD} -> \u{1F3AD} changing actor \u{1F3AD} ->  \u{1F3AD} from ${this._actorName} to ${actorName} ${dumpAny(thisActor.address)}`);
+    this._actorName = actorName;
     if (this.strella) {
       this.initStellarClass(this.state.parsedConfig || this.config);
     }
@@ -61658,9 +61661,9 @@ class StellarTestHelper {
     this.network = theNetwork;
     this.networkParams = new NetworkParams(preProdParams);
     this.actors = {};
-    this.actorName = "";
+    this._actorName = "";
     this.setupActors();
-    if (!this.actorName)
+    if (!this._actorName)
       throw new Error(
         `${this.constructor.name} doesn't set currentActor in setupActors()`
       );
@@ -61742,7 +61745,7 @@ class StellarTestHelper {
     const tx = new Tx();
     const actorMoney = await currentActor.utxos;
     console.log(
-      `${this.actorName} has money: 
+      `${this._actorName} has money: 
 ` + utxosAsString(actorMoney)
     );
     tx.addInput(

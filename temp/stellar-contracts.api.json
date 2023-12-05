@@ -16677,6 +16677,36 @@
             },
             {
               "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#actorName:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "get actorName(): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": true,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "actorName",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
+            {
+              "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarTestHelper#actors:member",
               "docComment": "",
               "excerptTokens": [

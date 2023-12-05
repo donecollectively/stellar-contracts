@@ -780,6 +780,8 @@ export interface StellarTestContext<HTH extends StellarTestHelper<SC>, SC extend
 // @public
 export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     constructor(config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup);
+    // (undocumented)
+    get actorName(): string;
     // Warning: (ae-forgotten-export) The symbol "actorMap" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)

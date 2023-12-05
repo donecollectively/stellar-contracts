@@ -51,11 +51,14 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     liveSlotParams: NetworkParams;
     networkParams: NetworkParams;
     network: NetworkEmulator;
-    private actorName: string;
+    private _actorName: string;
 
+    get actorName() {
+        return this._actorName
+    }
     //@ts-ignore type mismatch in getter/setter until ts v5
     get currentActor(): WalletEmulator {
-        return this.actors[this.actorName];
+        return this.actors[this._actorName];
     }
     set currentActor(actorName: string) {
         const thisActor = this.actors[actorName];
@@ -63,8 +66,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             throw new Error(
                 `setCurrentActor: invalid actor name '${actorName}'`
             );
-        console.log(`\n🎭 -> 🎭 changing actor 🎭 ->  🎭 from ${this.actorName} to ${actorName} ${dumpAny(thisActor.address)}`);
-        this.actorName = actorName;
+        console.log(`\n🎭 -> 🎭 changing actor 🎭 ->  🎭 from ${this._actorName} to ${actorName} ${dumpAny(thisActor.address)}`);
+        this._actorName = actorName;
         if (this.strella) {
             this.initStellarClass(this.state.parsedConfig || this.config);
         }
@@ -98,9 +101,9 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         this.networkParams = new NetworkParams(preProdParams);
 
         this.actors = {};
-        this.actorName = ""; //only to make typescript happy
+        this._actorName = ""; //only to make typescript happy
         this.setupActors();
-        if (!this.actorName)
+        if (!this._actorName)
             throw new Error(
                 `${this.constructor.name} doesn't set currentActor in setupActors()`
             );
@@ -199,7 +202,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         const tx = new Tx();
         const actorMoney = await currentActor.utxos;
         console.log(
-            `${this.actorName} has money: \n` + utxosAsString(actorMoney)
+            `${this._actorName} has money: \n` + utxosAsString(actorMoney)
         );
 
         tx.addInput(
