@@ -317,10 +317,11 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         //! it instantiates a wallet with the indicated balance pre-set
 
         const a = this.network.createWallet(walletBalance);
+        const addr = a.address
+            .toBech32();
         console.log(
-            `+🎭 Actor: ${roleName}: ${a.address
-                .toBech32()
-                .substring(0, 18)}… ${lovelaceToAda(
+            `+🎭 Actor: ${roleName}: ${addr
+                .slice(0, 12)}…${addr.slice(-4)} ${lovelaceToAda(
                 walletBalance
             )} (🔑#${a.address.pubKeyHash?.hex.substring(0, 8)}…)`
         );

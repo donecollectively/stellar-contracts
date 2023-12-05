@@ -61805,8 +61805,9 @@ class StellarTestHelper {
       throw new Error(`duplicate role name '${roleName}'`);
     //! it instantiates a wallet with the indicated balance pre-set
     const a = this.network.createWallet(walletBalance);
+    const addr = a.address.toBech32();
     console.log(
-      `+\u{1F3AD} Actor: ${roleName}: ${a.address.toBech32().substring(0, 18)}\u2026 ${lovelaceToAda(
+      `+\u{1F3AD} Actor: ${roleName}: ${addr.slice(0, 12)}\u2026${addr.slice(-4)} ${lovelaceToAda(
         walletBalance
       )} (\u{1F511}#${a.address.pubKeyHash?.hex.substring(0, 8)}\u2026)`
     );
