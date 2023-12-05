@@ -59360,7 +59360,9 @@ This likely indicates a problem in Helios' error reporting -
         );
         try {
           debugger;
-          Program.new(src, modules);
+          const script2 = Program.new(src, modules);
+          if (params)
+            script2.parameters = params;
         } catch (sameError) {
           throw sameError;
         }
