@@ -776,7 +776,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     // (undocumented)
     initialize(config: ConfigFor<SC> & canHaveRandomSeed): Promise<SC>;
     // (undocumented)
-    initStellarClass(): SC & StellarContract<SC extends StellarContract<infer inferredConfig extends configBase> ? inferredConfig : never>;
+    initStellarClass(config?: (SC extends StellarContract<infer inferredConfig extends configBase> ? inferredConfig : never) | undefined): SC & StellarContract<SC extends StellarContract<infer inferredConfig extends configBase> ? inferredConfig : never>;
     // (undocumented)
     initStrella(TargetClass: stellarSubclass<SC, ConfigFor<SC>>, config?: ConfigFor<SC>): SC & StellarContract<SC extends StellarContract<infer inferredConfig extends configBase> ? inferredConfig : never>;
     // (undocumented)

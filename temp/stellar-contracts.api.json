@@ -16597,7 +16597,33 @@
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "initStellarClass(): "
+                  "text": "initStellarClass(config?: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "(SC extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarContract",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarContract:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<infer inferredConfig extends import(\"../StellarContract.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "configBase",
+                  "canonicalReference": "@donecollectively/stellar-contracts!paramsBase:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "> ? inferredConfig : never) | undefined"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
                 },
                 {
                   "kind": "Content",
@@ -16637,13 +16663,22 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 8
+                "startIndex": 7,
+                "endIndex": 14
               },
               "releaseTag": "Public",
               "isProtected": false,
               "overloadIndex": 1,
-              "parameters": [],
+              "parameters": [
+                {
+                  "parameterName": "config",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 6
+                  },
+                  "isOptional": true
+                }
+              ],
               "isOptional": false,
               "isAbstract": false,
               "name": "initStellarClass"

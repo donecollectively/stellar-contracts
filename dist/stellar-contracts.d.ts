@@ -1769,7 +1769,7 @@ export declare abstract class StellarTestHelper<SC extends StellarContract<any>>
     setupActors(): void;
     constructor(config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup);
     initialize(config: ConfigFor<SC> & canHaveRandomSeed): Promise<SC>;
-    initStellarClass(): SC & StellarContract<SC extends StellarContract<infer inferredConfig extends configBase> ? inferredConfig : never>;
+    initStellarClass(config?: (SC extends StellarContract<infer inferredConfig extends configBase> ? inferredConfig : never) | undefined): SC & StellarContract<SC extends StellarContract<infer inferredConfig extends configBase> ? inferredConfig : never>;
     initStrella(TargetClass: stellarSubclass<SC, ConfigFor<SC>>, config?: ConfigFor<SC>): SC & StellarContract<SC extends StellarContract<infer inferredConfig extends configBase> ? inferredConfig : never>;
     randomSeed?: number;
     rand?: () => number;

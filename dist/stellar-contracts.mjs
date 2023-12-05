@@ -61595,7 +61595,7 @@ class StellarTestHelper {
         `setCurrentActor: invalid actor name '${actorName}'`
       );
     if (this.strella) {
-      this.initStellarClass();
+      this.initStellarClass(this.state.config || this.config);
     }
     this.actorName = actorName;
   }
@@ -61659,9 +61659,9 @@ class StellarTestHelper {
     }
     return this.initStellarClass();
   }
-  initStellarClass() {
+  initStellarClass(config = this.config) {
     const TargetClass = this.stellarClass;
-    const strella = this.initStrella(TargetClass, this.config);
+    const strella = this.initStrella(TargetClass, config);
     this.strella = strella;
     this.address = strella.address;
     return strella;
