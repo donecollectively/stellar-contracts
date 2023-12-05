@@ -70,7 +70,7 @@ export type utxoInfo = {
  *
  * Type of the matching literal class
  *
- * Typescript should make this pattern easier
+ * note: Typescript should make this pattern easier
  *
  * @typeParam S - the type of objects of this class
  * @typeParam CT - inferred type of the constructor args for the class
@@ -83,6 +83,7 @@ export type stellarSubclass<
         : configBase
 > = (new (args: StellarConstructorArgs<CT>) => S & StellarContract<CT>) & {
     defaultParams: Partial<CT>;
+    parseConfig(rawJsonConfig: any): any
 };
 
 /**
@@ -379,6 +380,9 @@ export class StellarContract<
     // isTest?: boolean
     static get defaultParams() {
         return {};
+    }
+    static parseConfig(rawJsonConfig: any) {
+        throw new Error(`Stellar contract subclasses should define their own static parseConfig where needed to enable connection from a specific dApp to a specific Stellar Contract.`)
     }
 
     /**

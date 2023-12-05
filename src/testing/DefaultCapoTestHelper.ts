@@ -157,7 +157,10 @@ export class DefaultCapoTestHelper<
         // debugger
 
         const tcx = await script.mkTxnMintCharterToken(goodArgs);
+        const rawConfig = this.state.rawConfig =
         this.state.config = tcx.state.bootstrappedConfig;
+        
+        this.state.parsedConfig = this.stellarClass.parseConfig(rawConfig)
 
         expect(script.network).toBe(this.network);
 

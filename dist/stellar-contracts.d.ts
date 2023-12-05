@@ -250,6 +250,7 @@ export declare abstract class Capo<minterType extends MinterBaseMethods & Defaul
     abstract mkFullConfig(baseConfig: CapoBaseConfig): configType;
     get isConfigured(): Promise<boolean>;
     _verifyingConfigs?: Promise<any>;
+    static parseConfig(rawJsonConfig: any): void;
     constructor(args: StellarConstructorArgs<CapoBaseConfig>);
     static bootstrapWith(args: StellarConstructorArgs<CapoBaseConfig>): any;
     abstract contractSource(): HeliosModuleSrc;
@@ -609,7 +610,7 @@ declare const DatumInline: typeof Datum.inline;
  */
 export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs, configType extends CapoBaseConfig = CapoBaseConfig> extends Capo<MinterType, CDT, configType> {
     contractSource(): any;
-    static parseConfig(jsonConfig: any): any;
+    static parseConfig(rawJsonConfig: any): any;
     /**
      * indicates any specialization of the baseline Capo types
      * @remarks
@@ -1307,6 +1308,7 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     networkParams: NetworkParams;
     myActor?: Wallet;
     static get defaultParams(): {};
+    static parseConfig(rawJsonConfig: any): void;
     /**
      * returns the wallet connection used by the current actor
      * @remarks
@@ -1722,7 +1724,7 @@ export declare abstract class StellarDelegate<CT extends paramsBase & capoDelega
  *
  * Type of the matching literal class
  *
- * Typescript should make this pattern easier
+ * note: Typescript should make this pattern easier
  *
  * @typeParam S - the type of objects of this class
  * @typeParam CT - inferred type of the constructor args for the class
@@ -1730,6 +1732,7 @@ export declare abstract class StellarDelegate<CT extends paramsBase & capoDelega
  **/
 export declare type stellarSubclass<S extends StellarContract<CT>, CT extends paramsBase = S extends StellarContract<infer iCT> ? iCT : paramsBase> = (new (args: StellarConstructorArgs<CT>) => S & StellarContract<CT>) & {
     defaultParams: Partial<CT>;
+    parseConfig(rawJsonConfig: any): any;
 };
 
 /**

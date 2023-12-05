@@ -196,6 +196,8 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     // (undocumented)
     mustGetDelegate<T extends StellarDelegate<any>>(configuredDelegate: PreconfiguredDelegate<T>): T;
     // (undocumented)
+    static parseConfig(rawJsonConfig: any): void;
+    // (undocumented)
     relativeLink<DT extends StellarDelegate<any>>(configured: ConfiguredDelegate<DT>): RelativeDelegateLink<DT>;
     // (undocumented)
     tokenAsValue(tokenName: string | UutName, count?: bigint): Value;
@@ -331,7 +333,7 @@ export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT e
     // (undocumented)
     mkTxnUpdateCharter(args: CDT, tcx?: StellarTxnContext): Promise<StellarTxnContext>;
     // (undocumented)
-    static parseConfig(jsonConfig: any): any;
+    static parseConfig(rawJsonConfig: any): any;
     // (undocumented)
     requirements(): ReqtsMap_3<"the trustee group can be changed" | "positively governs all administrative actions" | "has a unique, permanent charter token" | "has a unique, permanent treasury address" | "the trustee threshold is enforced on all administrative actions" | "the charter token is always kept in the contract" | "can mint other tokens, on the authority of the Charter token" | "has a singleton minting policy" | "foo">;
     get specializedCapo(): HeliosModuleSrc;
@@ -657,6 +659,8 @@ export class StellarContract<ConfigType extends paramsBase> {
     // (undocumented)
     outputsSentToDatum(datum: InlineDatum): Promise<TxInput[]>;
     // (undocumented)
+    static parseConfig(rawJsonConfig: any): void;
+    // (undocumented)
     partialConfig?: Partial<ConfigType>;
     // (undocumented)
     get purpose(): scriptPurpose | "non-script";
@@ -738,6 +742,7 @@ export abstract class StellarDelegate<CT extends paramsBase & capoDelegateConfig
 // @public
 export type stellarSubclass<S extends StellarContract<CT>, CT extends paramsBase = S extends StellarContract<infer iCT> ? iCT : paramsBase> = (new (args: StellarConstructorArgs<CT>) => S & StellarContract<CT>) & {
     defaultParams: Partial<CT>;
+    parseConfig(rawJsonConfig: any): any;
 };
 
 // @public
@@ -959,7 +964,7 @@ export { WalletHelper }
 // src/DefaultCapo.ts:297:3 - (ae-forgotten-export) The symbol "MultisigAuthorityPolicy" needs to be exported by the entry point index.d.ts
 // src/DefaultCapo.ts:298:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
 // src/DefaultCapo.ts:317:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
-// src/StellarContract.ts:313:5 - (ae-forgotten-export) The symbol "SetupDetails" needs to be exported by the entry point index.d.ts
+// src/StellarContract.ts:314:5 - (ae-forgotten-export) The symbol "SetupDetails" needs to be exported by the entry point index.d.ts
 // src/delegation/RolesAndDelegates.ts:259:5 - (ae-forgotten-export) The symbol "PartialParamConfig" needs to be exported by the entry point index.d.ts
 // src/delegation/RolesAndDelegates.ts:261:5 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
 

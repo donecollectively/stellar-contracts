@@ -58611,6 +58611,9 @@ class StellarContract {
   static get defaultParams() {
     return {};
   }
+  static parseConfig(rawJsonConfig) {
+    throw new Error(`Stellar contract subclasses should define their own static parseConfig where needed to enable connection from a specific dApp to a specific Stellar Contract.`);
+  }
   /**
    * returns the wallet connection used by the current actor
    * @remarks
@@ -60127,6 +60130,9 @@ class Capo extends StellarContract {
     return Promise.resolve(true);
   }
   _verifyingConfigs;
+  static parseConfig(rawJsonConfig) {
+    throw new Error(`Stellar contract subclasses should define their own static parseConfig where needed to enable connection from a specific dApp to a specific Stellar Contract.`);
+  }
   constructor(args) {
     super(args);
     const {
@@ -61595,7 +61601,7 @@ class StellarTestHelper {
         `setCurrentActor: invalid actor name '${actorName}'`
       );
     if (this.strella) {
-      this.initStellarClass(this.state.config || this.config);
+      this.initStellarClass(this.state.parsedConfig || this.config);
     }
     this.actorName = actorName;
   }
@@ -62304,8 +62310,8 @@ class DefaultCapo extends Capo {
   contractSource() {
     return code$5;
   }
-  static parseConfig(jsonConfig) {
-    const { mph, rev, seedTxn, seedIndex, rootCapoScriptHash } = jsonConfig;
+  static parseConfig(rawJsonConfig) {
+    const { mph, rev, seedTxn, seedIndex, rootCapoScriptHash } = rawJsonConfig;
     const outputConfig = {};
     if (mph)
       outputConfig.mph = MintingPolicyHash.fromHex(mph.bytes);
@@ -62892,7 +62898,8 @@ class DefaultCapoTestHelper extends CapoTestHelper {
     const script = this.strella;
     const goodArgs = args || this.mkDefaultCharterArgs();
     const tcx = await script.mkTxnMintCharterToken(goodArgs);
-    this.state.config = tcx.state.bootstrappedConfig;
+    const rawConfig = this.state.rawConfig = this.state.config = tcx.state.bootstrappedConfig;
+    this.state.parsedConfig = this.stellarClass.parseConfig(rawConfig);
     expect(script.network).toBe(this.network);
     await script.submit(tcx);
     console.log(

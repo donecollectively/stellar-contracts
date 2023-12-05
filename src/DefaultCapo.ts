@@ -198,8 +198,8 @@ export class DefaultCapo<
     contractSource() {
         return contract;
     }
-    static parseConfig(jsonConfig) {
-        const { mph, rev, seedTxn, seedIndex, rootCapoScriptHash } = jsonConfig;
+    static parseConfig(rawJsonConfig: any) {
+        const { mph, rev, seedTxn, seedIndex, rootCapoScriptHash } = rawJsonConfig;
 
         const outputConfig: any = {};
         if (mph) outputConfig.mph = MintingPolicyHash.fromHex(mph.bytes);

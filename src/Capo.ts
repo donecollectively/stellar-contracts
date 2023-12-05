@@ -238,6 +238,10 @@ export abstract class Capo<
         return Promise.resolve(true);
     }
     _verifyingConfigs?: Promise<any>;
+    static parseConfig(rawJsonConfig: any) {
+        throw new Error(`Stellar contract subclasses should define their own static parseConfig where needed to enable connection from a specific dApp to a specific Stellar Contract.`)
+    }
+
     constructor(args: StellarConstructorArgs<CapoBaseConfig>) {
         //@ts-expect-error spurious "could be instantiated with a different subtype"
         super(args);
