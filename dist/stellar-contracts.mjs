@@ -61628,11 +61628,12 @@ class StellarTestHelper {
       throw new Error(
         `setCurrentActor: invalid actor name '${actorName}'`
       );
-    console.log(`\u{1F3AD} -> \u{1F3AD} changing actor \u{1F3AD} ->  \u{1F3AD} from ${this.actorName} to ${actorName} ${dumpAny(thisActor.address)}`);
+    console.log(`
+\u{1F3AD} -> \u{1F3AD} changing actor \u{1F3AD} ->  \u{1F3AD} from ${this.actorName} to ${actorName} ${dumpAny(thisActor.address)}`);
+    this.actorName = actorName;
     if (this.strella) {
       this.initStellarClass(this.state.parsedConfig || this.config);
     }
-    this.actorName = actorName;
   }
   address;
   setupPending;
