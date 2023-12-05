@@ -8,6 +8,7 @@ import { Address } from '@hyperionbt/helios';
 import { AssetClass } from '@hyperionbt/helios';
 import { Assets } from '@hyperionbt/helios';
 import { ByteArray } from '@hyperionbt/helios';
+import { ByteArrayData } from '@hyperionbt/helios';
 import { capoDelegateConfig as capoDelegateConfig_2 } from './delegation/RolesAndDelegates.js';
 import { configBase } from '../StellarContract.js';
 import { Datum } from '@hyperionbt/helios';
@@ -47,6 +48,9 @@ export const Activity: {
 
 // @public
 export const ADA = 1000000n;
+
+// @public
+export function addrAsString(address: Address): string;
 
 export { Address }
 
@@ -117,6 +121,12 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     txnCreatingTokenPolicy(tcx: StellarTxnContext, tokenName: string): Promise<StellarTxnContext<{}>>;
     txnReceiveAuthorityToken<TCX extends StellarTxnContext<any>>(tcx: TCX, tokenValue: Value, fromFoundUtxo?: TxInput): Promise<TCX>;
 }
+
+// @public
+export function byteArrayAsString(ba: ByteArray | ByteArrayData): string;
+
+// @public
+export function byteArrayListAsString(items: ByteArray[] | ByteArrayData[], joiner?: string): string;
 
 // Warning: (ae-forgotten-export) The symbol "MinterBaseMethods" needs to be exported by the entry point index.d.ts
 // Warning: (ae-forgotten-export) The symbol "anyDatumArgs" needs to be exported by the entry point index.d.ts
@@ -286,6 +296,9 @@ export { Datum }
 export function datum(proto: any, thingName: any, descriptor: any): any;
 
 // @public
+export function datumAsString(d: Datum | null | undefined): string;
+
+// @public
 export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs, configType extends CapoBaseConfig = CapoBaseConfig> extends Capo<MinterType, CDT, configType> {
     get capoHelpers(): HeliosModuleSrc;
     // (undocumented)
@@ -422,7 +435,7 @@ export function defineRole<const UUTP extends string, SC extends StellarContract
 export function delegateRoles<const RM extends RoleMap<any>>(roleMap: RM): RoleMap<RM>;
 
 // @public
-export function dumpAny(x: Tx | StellarTxnContext | Address | Value | TxOutput | TxInput | TxInput[] | ByteArray): string;
+export function dumpAny(x: Tx | StellarTxnContext | Address | Value | TxOutput | TxInput | TxInput[] | ByteArray | ByteArray[] | ByteArrayData | ByteArrayData[]): string;
 
 // @public
 export type ErrorMap = Record<string, string[]>;
@@ -475,6 +488,9 @@ export function heliosRollupLoader(opts?: {
         };
     } | undefined;
 };
+
+// @public
+export function hexToPrintableString(hexStr: any): string;
 
 // Warning: (ae-forgotten-export) The symbol "DatumInline" needs to be exported by the entry point index.d.ts
 //

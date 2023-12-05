@@ -2,6 +2,7 @@ import { Address } from '@hyperionbt/helios';
 import { AssetClass } from '@hyperionbt/helios';
 import { Assets } from '@hyperionbt/helios';
 import { ByteArray } from '@hyperionbt/helios';
+import { ByteArrayData } from '@hyperionbt/helios';
 import { capoDelegateConfig as capoDelegateConfig_2 } from './delegation/RolesAndDelegates.js';
 import { configBase } from '../StellarContract.js';
 import { Datum } from '@hyperionbt/helios';
@@ -72,6 +73,14 @@ declare type actorMap = Record<string, SimpleWallet>;
 export declare const ADA = 1000000n;
 
 declare type addInputArgs = Parameters<Tx["addInput"]>;
+
+/**
+ * Renders an address in shortened bech32 form, with prefix and part of the bech32 suffix
+ * @remarks
+ * @param address - address
+ * @public
+ **/
+export declare function addrAsString(address: Address): string;
 
 declare type addRefInputArgs = Parameters<Tx["addRefInput"]>;
 
@@ -207,6 +216,26 @@ export declare class BasicMintDelegate extends StellarDelegate<MintDelegateArgs>
 declare type BasicMinterParams = SeedTxnParams & {
     capo: DefaultCapo<any, any, any>;
 };
+
+/**
+ * Renders a byteArray in printable form, assuming it contains (mostly) text
+ * @remarks
+ *
+ * Because it uses {@link hexToPrintableString()}, it will render any non-printable
+ * characters using ‹hex› notation.
+ * @param ba - the byte array
+ * @public
+ **/
+export declare function byteArrayAsString(ba: ByteArray | ByteArrayData): string;
+
+/**
+ * Converts a list of ByteArrays to printable form
+ * @remarks
+ *
+ * ... using {@link hexToPrintableString}
+ * @public
+ **/
+export declare function byteArrayListAsString(items: ByteArray[] | ByteArrayData[], joiner?: string): string;
 
 declare type canHaveRandomSeed = {
     randomSeed?: number;
@@ -547,6 +576,15 @@ export { Datum }
  **/
 export declare function datum(proto: any, thingName: any, descriptor: any): any;
 
+/**
+ * converts a Datum to a printable summary
+ * @remarks
+ *
+ * using shortening techniques for the datumHash
+ * @public
+ **/
+export declare function datumAsString(d: Datum | null | undefined): string;
+
 declare const DatumInline: typeof Datum.inline;
 
 /**
@@ -867,7 +905,7 @@ declare type DelegationDetail = {
  * more types to be supported TODO
  * @public
  **/
-export declare function dumpAny(x: Tx | StellarTxnContext | Address | Value | TxOutput | TxInput | TxInput[] | ByteArray): string;
+export declare function dumpAny(x: Tx | StellarTxnContext | Address | Value | TxOutput | TxInput | TxInput[] | ByteArray | ByteArray[] | ByteArrayData | ByteArrayData[]): string;
 
 declare type enhancedNetworkParams = NetworkParams & {
     slotToTimestamp(n: bigint): Date;
@@ -981,6 +1019,18 @@ export declare function heliosRollupLoader(opts?: {
         };
     } | undefined;
 };
+
+/**
+ * converts a hex string to a printable alternative, with no assumptions about the underlying data
+ * @remarks
+ *
+ * Unlike Helios' bytesToText, hexToPrintable() simply changes printable characters to characters,
+ * and represents non-printable characters in '‹XX›' format.
+ * @param ‹pName› - descr
+ * @typeParam ‹pName› - descr (for generic types)
+ * @public
+ **/
+export declare function hexToPrintableString(hexStr: any): string;
 
 /**
  * Inline Datum for contract outputs

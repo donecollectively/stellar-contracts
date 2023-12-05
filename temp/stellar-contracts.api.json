@@ -201,6 +201,52 @@
         },
         {
           "kind": "Function",
+          "canonicalReference": "@donecollectively/stellar-contracts!addrAsString:function(1)",
+          "docComment": "/**\n * Renders an address in shortened bech32 form, with prefix and part of the bech32 suffix\n *\n * @remarks\n *\n * @param address - address\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function addrAsString(address: "
+            },
+            {
+              "kind": "Reference",
+              "text": "Address",
+              "canonicalReference": "@hyperionbt/helios!Address:class"
+            },
+            {
+              "kind": "Content",
+              "text": "): "
+            },
+            {
+              "kind": "Content",
+              "text": "string"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/diagnostics.ts",
+          "returnTypeTokenRange": {
+            "startIndex": 3,
+            "endIndex": 4
+          },
+          "releaseTag": "Public",
+          "overloadIndex": 1,
+          "parameters": [
+            {
+              "parameterName": "address",
+              "parameterTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isOptional": false
+            }
+          ],
+          "name": "addrAsString"
+        },
+        {
+          "kind": "Function",
           "canonicalReference": "@donecollectively/stellar-contracts!addTestContext:function(1)",
           "docComment": "/**\n * Adds a test helper class to a `vitest` testing context.\n *\n * @remarks\n *\n * @param context - a vitest context, typically created with StellarTestContext\n *\n * @param TestHelperClass - typically created with DefaultCapoTestHelper\n *\n * @param params - preset configuration for the contract under test\n *\n * @public\n */\n",
           "excerptTokens": [
@@ -1744,6 +1790,136 @@
             "endIndex": 5
           },
           "implementsTokenRanges": []
+        },
+        {
+          "kind": "Function",
+          "canonicalReference": "@donecollectively/stellar-contracts!byteArrayAsString:function(1)",
+          "docComment": "/**\n * Renders a byteArray in printable form, assuming it contains (mostly) text\n *\n * @remarks\n *\n * Because it uses {@link hexToPrintableString()}, it will render any non-printable characters using ‹hex› notation.\n *\n * @param ba - the byte array\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function byteArrayAsString(ba: "
+            },
+            {
+              "kind": "Reference",
+              "text": "ByteArray",
+              "canonicalReference": "@hyperionbt/helios!ByteArray:class"
+            },
+            {
+              "kind": "Content",
+              "text": " | "
+            },
+            {
+              "kind": "Reference",
+              "text": "ByteArrayData",
+              "canonicalReference": "@hyperionbt/helios!ByteArrayData:class"
+            },
+            {
+              "kind": "Content",
+              "text": "): "
+            },
+            {
+              "kind": "Content",
+              "text": "string"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/diagnostics.ts",
+          "returnTypeTokenRange": {
+            "startIndex": 5,
+            "endIndex": 6
+          },
+          "releaseTag": "Public",
+          "overloadIndex": 1,
+          "parameters": [
+            {
+              "parameterName": "ba",
+              "parameterTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 4
+              },
+              "isOptional": false
+            }
+          ],
+          "name": "byteArrayAsString"
+        },
+        {
+          "kind": "Function",
+          "canonicalReference": "@donecollectively/stellar-contracts!byteArrayListAsString:function(1)",
+          "docComment": "/**\n * Converts a list of ByteArrays to printable form\n *\n * @remarks\n *\n * ... using {@link hexToPrintableString}\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function byteArrayListAsString(items: "
+            },
+            {
+              "kind": "Reference",
+              "text": "ByteArray",
+              "canonicalReference": "@hyperionbt/helios!ByteArray:class"
+            },
+            {
+              "kind": "Content",
+              "text": "[] | "
+            },
+            {
+              "kind": "Reference",
+              "text": "ByteArrayData",
+              "canonicalReference": "@hyperionbt/helios!ByteArrayData:class"
+            },
+            {
+              "kind": "Content",
+              "text": "[]"
+            },
+            {
+              "kind": "Content",
+              "text": ", joiner?: "
+            },
+            {
+              "kind": "Content",
+              "text": "string"
+            },
+            {
+              "kind": "Content",
+              "text": "): "
+            },
+            {
+              "kind": "Content",
+              "text": "string"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/diagnostics.ts",
+          "returnTypeTokenRange": {
+            "startIndex": 8,
+            "endIndex": 9
+          },
+          "releaseTag": "Public",
+          "overloadIndex": 1,
+          "parameters": [
+            {
+              "parameterName": "items",
+              "parameterTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "isOptional": false
+            },
+            {
+              "parameterName": "joiner",
+              "parameterTypeTokenRange": {
+                "startIndex": 6,
+                "endIndex": 7
+              },
+              "isOptional": true
+            }
+          ],
+          "name": "byteArrayListAsString"
         },
         {
           "kind": "Class",
@@ -6174,6 +6350,56 @@
           "name": "datum"
         },
         {
+          "kind": "Function",
+          "canonicalReference": "@donecollectively/stellar-contracts!datumAsString:function(1)",
+          "docComment": "/**\n * converts a Datum to a printable summary\n *\n * @remarks\n *\n * using shortening techniques for the datumHash\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function datumAsString(d: "
+            },
+            {
+              "kind": "Reference",
+              "text": "Datum",
+              "canonicalReference": "@hyperionbt/helios!Datum:class"
+            },
+            {
+              "kind": "Content",
+              "text": " | null | undefined"
+            },
+            {
+              "kind": "Content",
+              "text": "): "
+            },
+            {
+              "kind": "Content",
+              "text": "string"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/diagnostics.ts",
+          "returnTypeTokenRange": {
+            "startIndex": 4,
+            "endIndex": 5
+          },
+          "releaseTag": "Public",
+          "overloadIndex": 1,
+          "parameters": [
+            {
+              "parameterName": "d",
+              "parameterTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 3
+              },
+              "isOptional": false
+            }
+          ],
+          "name": "datumAsString"
+        },
+        {
           "kind": "Class",
           "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo:class",
           "docComment": "/**\n * Base class for leader contracts, with predefined roles for delegating governance authority and minting policies\n *\n * @remarks\n *\n * * A Capo contract provides a central contract address that can act as a treasury or data registry; it can mint tokens using its connected minting-policy, and it can delegate policies to other contract scripts. Subclasses of Capo can use these capabilities in custom ways for strong flexibility.\n *\n * Subclass and customize DefaultCapo's type-parameters if you need to customize further.\n *\n * Any Capo contract can (and must) define roles() to establish collaborating scripts; these are used for separating granular responsbilities for different functional purposes within your (on-chain and off-chain) application; this approach enables delegates to use any one of multiple strategies with different functional logic to serve in any given role, thus providing flexibility and extensibility.\n *\n * DefaultCapo provides roles for govAuthority and mintDelegate, and methods to facilitate the lifecycle of charter creation & update.\n *\n * **Example: Multisig authority delegation** - a Capo contract would get much more complicated if it contained multisig logic. Instead, the governance authority for the Capo can be delegated to a standalone multi-sig contract, which can contain all (and only) the multi-sig logic. Separating the responsibilities makes each part simpler, easing the process of ensuring each part is doing its job perfectly :pray:\n *\n * A Capo subclass can decorate an existing entry from `super.roles()` with additional strategy entries, or can add extra roles useful in the operation of its application.\n *\n * The Capo base class provides utilities for creating and using UUT's, or **unique utility tokens**, which are non-fungible assets that can form a positive linkage between the Capo (which should normally retain a reference to that UUT) and any delegate; that delegate is most commonly another contract script also referenced within the roles() definition, with a selected strategy.\n *\n * Architecturally, UUTs provide a simple and unique handle for the Capo to use as a **required transaction element** in key operational activities (like updating the charter details); so that the delegate holding the UUT is entrusted to approved the UUT's inclusion in a transaction, with all the policy-enforcement implicated on the other end of the delegation.\n *\n * Customizing Datum and Activity\n *\n * The baseline contract script can have specialized Datum and Activity (\"redeemer\") definitions by subclassing DefaultCapo with a `get specializedCapo()`. This should be an imported helios script having `module specializedCapo` at the top. It MUST export Datum and Activity enums, with variants matching those in the provided baseline/unspecializedCapo module.\n *\n * A customized Datum::validateSpend(self, ctx) -\\> Bool method should be defined, even if it doesn't put constraints on spending Datum. If it does choose to add hard constraints, note that this method doesn't have access to the Activity (\"redeemer\") type. It's a simple place to express simple constraints on spending a custom Datum that only needs one 'spendingDatum' activity.\n *\n * A customized Activity: allowActivity(self, datum, ctx) -\\> Bool method has access to both the redeemer (in self), as well as Datum and the transaction context. In this method, use self.switch\\{...\\} to implement activity-specific validations.\n *\n * See the {@link Capo | Capo base class} and {@link StellarContract} for addition context.\n *\n * @public\n */\n",
@@ -9720,6 +9946,37 @@
             },
             {
               "kind": "Content",
+              "text": " | "
+            },
+            {
+              "kind": "Reference",
+              "text": "ByteArray",
+              "canonicalReference": "@hyperionbt/helios!ByteArray:class"
+            },
+            {
+              "kind": "Content",
+              "text": "[] | "
+            },
+            {
+              "kind": "Reference",
+              "text": "ByteArrayData",
+              "canonicalReference": "@hyperionbt/helios!ByteArrayData:class"
+            },
+            {
+              "kind": "Content",
+              "text": " | "
+            },
+            {
+              "kind": "Reference",
+              "text": "ByteArrayData",
+              "canonicalReference": "@hyperionbt/helios!ByteArrayData:class"
+            },
+            {
+              "kind": "Content",
+              "text": "[]"
+            },
+            {
+              "kind": "Content",
               "text": "): "
             },
             {
@@ -9733,8 +9990,8 @@
           ],
           "fileUrlPath": "src/diagnostics.ts",
           "returnTypeTokenRange": {
-            "startIndex": 17,
-            "endIndex": 18
+            "startIndex": 24,
+            "endIndex": 25
           },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -9743,7 +10000,7 @@
               "parameterName": "x",
               "parameterTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 16
+                "endIndex": 23
               },
               "isOptional": false
             }
@@ -10225,6 +10482,51 @@
             }
           ],
           "name": "heliosRollupLoader"
+        },
+        {
+          "kind": "Function",
+          "canonicalReference": "@donecollectively/stellar-contracts!hexToPrintableString:function(1)",
+          "docComment": "/**\n * converts a hex string to a printable alternative, with no assumptions about the underlying data\n *\n * @remarks\n *\n * Unlike Helios' bytesToText, hexToPrintable() simply changes printable characters to characters, and represents non-printable characters in '‹XX›' format.\n *\n * @param  - ‹pName› - descr\n *\n * @typeParam  - ‹pName› - descr (for generic types)\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function hexToPrintableString(hexStr: "
+            },
+            {
+              "kind": "Content",
+              "text": "any"
+            },
+            {
+              "kind": "Content",
+              "text": "): "
+            },
+            {
+              "kind": "Content",
+              "text": "string"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/diagnostics.ts",
+          "returnTypeTokenRange": {
+            "startIndex": 3,
+            "endIndex": 4
+          },
+          "releaseTag": "Public",
+          "overloadIndex": 1,
+          "parameters": [
+            {
+              "parameterName": "hexStr",
+              "parameterTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isOptional": false
+            }
+          ],
+          "name": "hexToPrintableString"
         },
         {
           "kind": "TypeAlias",

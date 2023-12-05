@@ -20,6 +20,11 @@ export {
     txInputAsString,
     lovelaceToAda,
     errorMapAsString,
+    addrAsString,
+    byteArrayAsString,
+    byteArrayListAsString,
+    datumAsString,
+    hexToPrintableString,
     dumpAny,
 } from "./src/diagnostics.js";
 import * as helios from "@hyperionbt/helios";
