@@ -9711,7 +9711,12 @@
             },
             {
               "kind": "Content",
-              "text": "[]"
+              "text": "[] | "
+            },
+            {
+              "kind": "Reference",
+              "text": "ByteArray",
+              "canonicalReference": "@hyperionbt/helios!ByteArray:class"
             },
             {
               "kind": "Content",
@@ -9728,8 +9733,8 @@
           ],
           "fileUrlPath": "src/diagnostics.ts",
           "returnTypeTokenRange": {
-            "startIndex": 16,
-            "endIndex": 17
+            "startIndex": 17,
+            "endIndex": 18
           },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -9738,7 +9743,7 @@
               "parameterName": "x",
               "parameterTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 15
+                "endIndex": 16
               },
               "isOptional": false
             }

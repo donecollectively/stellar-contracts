@@ -58275,10 +58275,19 @@ function addrAsString(address) {
 function errorMapAsString(em, prefix = "  ") {
   return Object.keys(em).map((k) => `in field ${prefix}${k}: ${JSON.stringify(em[k])}`).join("\n");
 }
+function byteArrayListAsString(items, joiner = "\n  ") {
+  return "[\n  " + items.map((ba) => byteArrayAsString(ba)).join(joiner) + "\n]\n";
+}
+function byteArrayAsString(ba) {
+  return hexToPrintableString(ba.hex);
+}
 function dumpAny(x) {
   if (Array.isArray(x)) {
     if (x[0] instanceof TxInput) {
       return "utxos: \n" + utxosAsString(x);
+    }
+    if (x[0] instanceof ByteArray || x[0] instanceof ByteArrayData) {
+      return "byte array:\n" + byteArrayListAsString(x);
     }
   }
   if (x instanceof Tx) {
@@ -58301,6 +58310,9 @@ function dumpAny(x) {
   }
   if (x instanceof StellarTxnContext) {
     return txAsString(x.tx);
+  }
+  if (x instanceof ByteArray || x[0] instanceof ByteArrayData) {
+    return byteArrayAsString(x);
   }
   debugger;
   return "dumpAny(): unsupported type or library mismatch";

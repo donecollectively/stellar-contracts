@@ -8,6 +8,8 @@ import {
     bytesToText,
     Assets,
     MintingPolicyHash,
+    ByteArray,
+    ByteArrayData,
 } from "@hyperionbt/helios";
 import type { ErrorMap } from "./delegation/RolesAndDelegates.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
@@ -365,6 +367,30 @@ export function errorMapAsString(em: ErrorMap, prefix = "  ") {
 }
 
 /**
+ * Converts a list of ByteArrays to printable form
+ * @remarks
+ *
+ * ... using {@link hexToPrintableString}
+ * @public
+ **/
+export function byteArrayListAsString(items: ByteArray[] | ByteArrayData[], joiner = "\n  "): string {
+    return "[\n  "+ items.map((ba) => byteArrayAsString(ba)).join(joiner) + "\n]\n";
+}
+
+/**
+ * Renders a byteArray in printable form, assuming it contains (mostly) text
+ * @remarks
+ * 
+ * Because it uses {@link hexToPrintableString()}, it will render any non-printable 
+ * characters using ‹hex› notation.
+ * @param ba - the byte array
+ * @public
+ **/
+export function byteArrayAsString(ba: ByteArray | ByteArrayData): string {
+    return hexToPrintableString(ba.hex)
+}
+
+/**
  * Converts any (supported) input arg to string
  * @remarks
  *
@@ -372,13 +398,21 @@ export function errorMapAsString(em: ErrorMap, prefix = "  ") {
  * @public
  **/
 export function dumpAny(
-    x: Tx | StellarTxnContext | Address | Value | TxOutput | TxInput | TxInput[]
+    x: Tx | StellarTxnContext | Address | Value | 
+        TxOutput | TxInput | TxInput[] | 
+        ByteArray | ByteArray[] | ByteArrayData | ByteArrayData[]
 ) {
     if (Array.isArray(x)) {
         if (x[0] instanceof TxInput) {
-            return "utxos: \n"+ utxosAsString(x)
+        //@ts-expect-error sorry, typescript : /
+        return "utxos: \n"+ utxosAsString(x)
+        } 
+        if (x[0] instanceof ByteArray || x[0] instanceof ByteArrayData) {
+        //@ts-expect-error sorry, typescript : /
+        return "byte array:\n"+ byteArrayListAsString(x)
         }
     }
+
     if (x instanceof Tx) {
         return txAsString(x);
     }
@@ -400,6 +434,11 @@ export function dumpAny(
     if (x instanceof StellarTxnContext) {
         return txAsString(x.tx);
     }
+    if (x instanceof ByteArray || x[0] instanceof ByteArrayData) {
+        //@ts-expect-error sorry, typescript : /
+        return byteArrayAsString(x)
+    }
+
     debugger
     return "dumpAny(): unsupported type or library mismatch"
 }
