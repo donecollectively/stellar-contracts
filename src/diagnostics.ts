@@ -366,15 +366,22 @@ export function errorMapAsString(em: ErrorMap, prefix = "  ") {
  * @public
  **/
 export function dumpAny(
-    x: Tx | StellarTxnContext | Address | Value | TxOutput
+    x: Tx | StellarTxnContext | Address | Value | TxOutput | TxInput | TxInput[]
 ) {
+    if (Array.isArray(x)) {
+        if (x[0] instanceof TxInput) {
+            return "utxos: \n"+ utxosAsString(x)
+        }
+    }
     if (x instanceof Tx) {
         return txAsString(x);
     }
     if (x instanceof TxOutput) {
         return txOutputAsString(x);
     }
-
+    if (x instanceof TxInput) {
+        return utxoAsString(x)
+    }
     if (x instanceof Value) {
         return valueAsString(x);
     }

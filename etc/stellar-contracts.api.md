@@ -421,7 +421,7 @@ export function defineRole<const UUTP extends string, SC extends StellarContract
 export function delegateRoles<const RM extends RoleMap<any>>(roleMap: RM): RoleMap<RM>;
 
 // @public
-export function dumpAny(x: Tx | StellarTxnContext | Address | Value | TxOutput): string | undefined;
+export function dumpAny(x: Tx | StellarTxnContext | Address | Value | TxOutput | TxInput | TxInput[]): string;
 
 // @public
 export type ErrorMap = Record<string, string[]>;

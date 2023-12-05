@@ -866,7 +866,7 @@ declare type DelegationDetail = {
  * more types to be supported TODO
  * @public
  **/
-export declare function dumpAny(x: Tx | StellarTxnContext | Address | Value | TxOutput): string | undefined;
+export declare function dumpAny(x: Tx | StellarTxnContext | Address | Value | TxOutput | TxInput | TxInput[]): string;
 
 declare type enhancedNetworkParams = NetworkParams & {
     slotToTimestamp(n: bigint): Date;

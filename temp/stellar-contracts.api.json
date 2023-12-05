@@ -9693,11 +9693,33 @@
             },
             {
               "kind": "Content",
+              "text": " | "
+            },
+            {
+              "kind": "Reference",
+              "text": "TxInput",
+              "canonicalReference": "@hyperionbt/helios!TxInput:class"
+            },
+            {
+              "kind": "Content",
+              "text": " | "
+            },
+            {
+              "kind": "Reference",
+              "text": "TxInput",
+              "canonicalReference": "@hyperionbt/helios!TxInput:class"
+            },
+            {
+              "kind": "Content",
+              "text": "[]"
+            },
+            {
+              "kind": "Content",
               "text": "): "
             },
             {
               "kind": "Content",
-              "text": "string | undefined"
+              "text": "string"
             },
             {
               "kind": "Content",
@@ -9706,8 +9728,8 @@
           ],
           "fileUrlPath": "src/diagnostics.ts",
           "returnTypeTokenRange": {
-            "startIndex": 11,
-            "endIndex": 12
+            "startIndex": 16,
+            "endIndex": 17
           },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -9716,7 +9738,7 @@
               "parameterName": "x",
               "parameterTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 10
+                "endIndex": 15
               },
               "isOptional": false
             }

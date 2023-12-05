@@ -58273,11 +58273,19 @@ function errorMapAsString(em, prefix = "  ") {
   return Object.keys(em).map((k) => `in field ${prefix}${k}: ${JSON.stringify(em[k])}`).join("\n");
 }
 function dumpAny(x) {
+  if (Array.isArray(x)) {
+    if (x[0] instanceof TxInput) {
+      return "utxos: \n" + utxosAsString(x);
+    }
+  }
   if (x instanceof Tx) {
     return txAsString(x);
   }
   if (x instanceof TxOutput) {
     return txOutputAsString(x);
+  }
+  if (x instanceof TxInput) {
+    return utxoAsString(x);
   }
   if (x instanceof Value) {
     return valueAsString(x);
