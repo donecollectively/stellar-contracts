@@ -10752,6 +10752,52 @@
           "name": "partialTxn"
         },
         {
+          "kind": "Function",
+          "canonicalReference": "@donecollectively/stellar-contracts!policyIdAsString:function(1)",
+          "docComment": "",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function policyIdAsString(p: "
+            },
+            {
+              "kind": "Reference",
+              "text": "MintingPolicyHash",
+              "canonicalReference": "@hyperionbt/helios!MintingPolicyHash:class"
+            },
+            {
+              "kind": "Content",
+              "text": "): "
+            },
+            {
+              "kind": "Content",
+              "text": "string"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/diagnostics.ts",
+          "returnTypeTokenRange": {
+            "startIndex": 3,
+            "endIndex": 4
+          },
+          "releaseTag": "Public",
+          "overloadIndex": 1,
+          "parameters": [
+            {
+              "parameterName": "p",
+              "parameterTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isOptional": false
+            }
+          ],
+          "name": "policyIdAsString"
+        },
+        {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!RelativeDelegateLink:type",
           "docComment": "/**\n * Minimal structure for connecting a specific Capo contract to a configured StellarDelegate\n *\n * @remarks\n *\n * This structure can always resolve to a reproducible delegate class (a {@link StellarDelegate}), given a specific Capo and roleName.\n *\n * When the delegate isn't backed by a specific on-chain contract script, the delegateValidatorHash is optional.\n *\n * @typeParam DT - the base class, to which all role-strategy variants conform\n *\n * @public\n */\n",

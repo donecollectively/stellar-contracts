@@ -7,6 +7,7 @@ import {
     Value,
     bytesToText,
     Assets,
+    MintingPolicyHash,
 } from "@hyperionbt/helios";
 import type { ErrorMap } from "./delegation/RolesAndDelegates.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
@@ -65,7 +66,6 @@ export function assetsAsString(a: Assets) {
     const assets = a.assets;
     return assets
         .map(([policyId, tokenEntries]) => {
-            const pIdHex = policyId.hex;
 
             const tokenString = tokenEntries
                 .map(
@@ -75,12 +75,18 @@ export function assetsAsString(a: Assets) {
                     }
                 )
                 .join(" + ");
-            return `⦑🏦 ${pIdHex.slice(0, 8)}…${pIdHex.slice(
-                -4
-            )} ${tokenString}⦒`;
+            return `⦑${policyIdAsString(policyId)} ${tokenString}⦒`;
         })
         .join("\n  ");
 }
+
+export function policyIdAsString(p: MintingPolicyHash) {
+    const pIdHex = p.hex;
+    return `🏦 ${pIdHex.slice(0, 8)}…${pIdHex.slice(
+        -4
+    )}`
+}
+
 /**
  * Converts lovelace to approximate ADA, in consumable 3-decimal form
  * @public
@@ -387,6 +393,9 @@ export function dumpAny(
     }
     if (x instanceof Address) {
         return addrAsString(x);
+    }
+    if (x instanceof MintingPolicyHash) {
+        return policyIdAsString(x)
     }
     if (x instanceof StellarTxnContext) {
         return txAsString(x.tx);

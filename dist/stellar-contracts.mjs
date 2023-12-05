@@ -58067,17 +58067,20 @@ function hexToPrintableString(hexStr) {
 function assetsAsString(a) {
   const assets = a.assets;
   return assets.map(([policyId, tokenEntries]) => {
-    const pIdHex = policyId.hex;
     const tokenString = tokenEntries.map(
       ([nameBytes, count]) => {
         const nameString = hexToPrintableString(nameBytes.hex);
         return `${count}\xD7\u{1F4B4} ${nameString}`;
       }
     ).join(" + ");
-    return `\u2991\u{1F3E6} ${pIdHex.slice(0, 8)}\u2026${pIdHex.slice(
-      -4
-    )} ${tokenString}\u2992`;
+    return `\u2991${policyIdAsString(policyId)} ${tokenString}\u2992`;
   }).join("\n  ");
+}
+function policyIdAsString(p) {
+  const pIdHex = p.hex;
+  return `\u{1F3E6} ${pIdHex.slice(0, 8)}\u2026${pIdHex.slice(
+    -4
+  )}`;
 }
 function lovelaceToAda(l) {
   const asNum = parseInt(l.toString());
@@ -58292,6 +58295,9 @@ function dumpAny(x) {
   }
   if (x instanceof Address) {
     return addrAsString(x);
+  }
+  if (x instanceof MintingPolicyHash) {
+    return policyIdAsString(x);
   }
   if (x instanceof StellarTxnContext) {
     return txAsString(x.tx);
@@ -62935,5 +62941,5 @@ class DefaultCapoTestHelper extends CapoTestHelper {
 const insufficientInputError = /(need .* lovelace, but only have|transaction doesn't have enough inputs)/;
 Error.stackTraceLimit = 100;
 
-export { ADA, Activity, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, Capo, CapoTestHelper, DefaultCapo, DefaultCapoTestHelper, DefaultMinter, StellarContract, StellarDelegate, StellarTestHelper, StellarTxnContext, UutName, addTestContext, assetsAsString, datum, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, helios, heliosRollupLoader, insufficientInputError, lovelaceToAda, mkHeliosModule, mkUutValuesEntries, mkValuesEntry, partialTxn, stringToNumberArray, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString };
+export { ADA, Activity, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, Capo, CapoTestHelper, DefaultCapo, DefaultCapoTestHelper, DefaultMinter, StellarContract, StellarDelegate, StellarTestHelper, StellarTxnContext, UutName, addTestContext, assetsAsString, datum, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, helios, heliosRollupLoader, insufficientInputError, lovelaceToAda, mkHeliosModule, mkUutValuesEntries, mkValuesEntry, partialTxn, policyIdAsString, stringToNumberArray, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString };
 //# sourceMappingURL=stellar-contracts.mjs.map

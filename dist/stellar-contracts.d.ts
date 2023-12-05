@@ -1145,6 +1145,8 @@ declare type PartialParamConfig<CT extends paramsBase> = Partial<CT>;
  **/
 export declare function partialTxn(proto: any, thingName: any, descriptor: any): any;
 
+export declare function policyIdAsString(p: MintingPolicyHash): string;
+
 declare type PreconfiguredDelegate<T extends StellarDelegate<any>> = Omit<ConfiguredDelegate<T>, "delegate" | "delegateValidatorHash">;
 
 declare type RedeemerArg = {

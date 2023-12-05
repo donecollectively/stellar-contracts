@@ -15,6 +15,7 @@ export {
     utxoAsString,
     valueAsString,
     utxosAsString,
+    policyIdAsString,
     txOutputAsString,
     txInputAsString,
     lovelaceToAda,

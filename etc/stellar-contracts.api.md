@@ -518,6 +518,9 @@ export type paramsBase = Record<string, any>;
 // @public
 export function partialTxn(proto: any, thingName: any, descriptor: any): any;
 
+// @public (undocumented)
+export function policyIdAsString(p: MintingPolicyHash): string;
+
 // @public
 export type RelativeDelegateLink<DT extends StellarDelegate<any>> = {
     uutName: string;
