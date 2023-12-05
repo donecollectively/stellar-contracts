@@ -92,7 +92,7 @@ func requiresValidDelegateOutput(
             if (ctx.tx.value_locked_by(vh).contains(v)) {
                 true 
             } else { 
-                error("invalid delegate / missing uut output: "+ uut + " to validator " +vh.show()) 
+                error("missing delegation token: "+ uut + " to validator " +vh.show()) 
             }
         },
         None =>
@@ -101,7 +101,7 @@ func requiresValidDelegateOutput(
             o.value.contains(v)
         }).switch{
             Some => true, 
-            None => error("invalid delegate or missing uut " + uut)
+            None => error("missing delegation token: " + uut)
         }
     }
 }
