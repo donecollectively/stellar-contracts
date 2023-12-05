@@ -384,6 +384,8 @@ export function dumpAny(
     if (x instanceof StellarTxnContext) {
         return txAsString(x.tx);
     }
+    debugger
+    return "dumpAny(): unsupported type or library mismatch"
 }
 
 if ("undefined" == typeof window) {
