@@ -308,7 +308,7 @@ export function utxoAsString(x: TxInput, prefix = "💵"): string {
     const oid = x.outputId.txId.hex;
     const oidx = x.outputId.utxoIdx;
 
-    return ` 📖 ${oid.slice(0, 6)}…${oid.slice(-4)}#${oidx}: ${txOutputAsString(
+    return ` 📖 ${oid.slice(0, 6)}…${oid.slice(-4)}🔹#${oidx}: ${txOutputAsString(
         x.origOutput,
         prefix
     )}`; // or 🪙

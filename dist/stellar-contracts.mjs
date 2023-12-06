@@ -58249,7 +58249,7 @@ function utxosAsString(utxos, joiner = "\n") {
 function utxoAsString(x, prefix = "\u{1F4B5}") {
   const oid = x.outputId.txId.hex;
   const oidx = x.outputId.utxoIdx;
-  return ` \u{1F4D6} ${oid.slice(0, 6)}\u2026${oid.slice(-4)}#${oidx}: ${txOutputAsString(
+  return ` \u{1F4D6} ${oid.slice(0, 6)}\u2026${oid.slice(-4)}\u{1F539}#${oidx}: ${txOutputAsString(
     x.origOutput,
     prefix
   )}`;
