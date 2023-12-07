@@ -5876,7 +5876,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<SC>"
+                  "text": "<SC | undefined>"
                 },
                 {
                   "kind": "Content",
@@ -6096,6 +6096,36 @@
               "isOptional": false,
               "isAbstract": true,
               "name": "mkDefaultCharterArgs"
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoTestHelper#ready:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "get ready(): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "boolean"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": true,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "ready",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
             }
           ],
           "extendsTokenRange": {

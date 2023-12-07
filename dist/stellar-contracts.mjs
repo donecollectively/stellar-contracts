@@ -61695,7 +61695,7 @@ class StellarTestHelper {
       this.randomSeed = randomSeed;
     } else {
       console.log(
-        " - Test helper bootstrapping (will emit details to onInstanceCreated())"
+        "???????????????????????? Test helper initializing without this.strella"
       );
     }
     return this.initStellarClass();
@@ -61933,8 +61933,13 @@ class CapoTestHelper extends StellarTestHelper {
     );
     return strella;
   }
+  get ready() {
+    return !!(this.strella.configIn || this.state.parsedConfig);
+  }
   async bootstrap(args) {
     let strella = this.strella || await this.initialize();
+    if (this.ready)
+      return;
     await this.mintCharterToken(args);
     return strella;
   }

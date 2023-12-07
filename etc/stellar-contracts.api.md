@@ -267,7 +267,7 @@ CT extends CapoBaseConfig = SC extends Capo<any, any, infer iCT> ? iCT : never> 
     // Warning: (ae-forgotten-export) The symbol "MinimalDefaultCharterDatumArgs" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
-    bootstrap(args?: MinimalDefaultCharterDatumArgs): Promise<SC>;
+    bootstrap(args?: MinimalDefaultCharterDatumArgs): Promise<SC | undefined>;
     // (undocumented)
     initialize({ randomSeed, config, }?: {
         config?: CT;
@@ -277,6 +277,8 @@ CT extends CapoBaseConfig = SC extends Capo<any, any, infer iCT> ? iCT : never> 
     abstract mintCharterToken(args?: MinimalDefaultCharterDatumArgs<any>): Promise<StellarTxnContext<any> & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & hasBootstrappedConfig<CapoBaseConfig>>;
     // (undocumented)
     abstract mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<any>>;
+    // (undocumented)
+    get ready(): boolean;
 }
 
 // @public

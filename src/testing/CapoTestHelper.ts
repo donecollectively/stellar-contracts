@@ -80,9 +80,14 @@ export abstract class CapoTestHelper<
         );
         return strella;
     }
+    
+    get ready() {
+        return !!(this.strella.configIn || this.state.parsedConfig)
+    }
 
     async bootstrap(args?: MinimalDefaultCharterDatumArgs) {
         let strella = this.strella || (await this.initialize());
+        if (this.ready) return;
 
         await this.mintCharterToken(args);
         return strella;

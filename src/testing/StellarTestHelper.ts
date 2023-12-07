@@ -135,7 +135,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             this.randomSeed = randomSeed;
         } else {
             console.log(
-                " - Test helper bootstrapping (will emit details to onInstanceCreated())"
+                "???????????????????????? Test helper initializing without this.strella"
             );
         }
 
@@ -151,6 +151,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         this.address = strella.address;
         return strella;
     }
+
+
 
     //!!! reconnect tests to tcx-based config-capture
     // onInstanceCreated: async (config: ConfigFor<SC>) => {

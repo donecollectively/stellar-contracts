@@ -532,7 +532,8 @@ CT extends CapoBaseConfig = SC extends Capo<any, any, infer iCT> ? iCT : never> 
         config?: CT;
         randomSeed?: number;
     }): Promise<SC>;
-    bootstrap(args?: MinimalDefaultCharterDatumArgs): Promise<SC>;
+    get ready(): boolean;
+    bootstrap(args?: MinimalDefaultCharterDatumArgs): Promise<SC | undefined>;
     abstract mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<any>>;
     abstract mintCharterToken(args?: MinimalDefaultCharterDatumArgs<any>): Promise<StellarTxnContext<any> & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & hasBootstrappedConfig<CapoBaseConfig>>;
 }
