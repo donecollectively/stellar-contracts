@@ -199,7 +199,8 @@ export class DefaultCapo<
         return contract;
     }
     static parseConfig(rawJsonConfig: any) {
-        const { mph, rev, seedTxn, seedIndex, rootCapoScriptHash } = rawJsonConfig;
+        const { mph, rev, seedTxn, seedIndex, rootCapoScriptHash } =
+            rawJsonConfig;
 
         const outputConfig: any = {};
         if (mph) outputConfig.mph = MintingPolicyHash.fromHex(mph.bytes);
@@ -419,25 +420,24 @@ export class DefaultCapo<
 
     async findGovDelegate() {
         const charterDatum = await this.findCharterDatum();
-        const capoGovDelegate = await this.connectDelegateWithLink<AuthorityPolicy>(
-            "govAuthority",
-            charterDatum.govAuthorityLink
-        );
+        const capoGovDelegate =
+            await this.connectDelegateWithLink<AuthorityPolicy>(
+                "govAuthority",
+                charterDatum.govAuthorityLink
+            );
         console.log(
             "finding charter's govDelegate via link",
             charterDatum.govAuthorityLink
         );
 
-        return capoGovDelegate
+        return capoGovDelegate;
     }
 
     async txnAddGovAuthority<TCX extends StellarTxnContext<any>>(
         tcx: TCX
     ): Promise<TCX & StellarTxnContext<any>> {
-        const capoGovDelegate = await this.findGovDelegate()
-        console.log(
-            "adding charter's govAuthority",
-        );
+        const capoGovDelegate = await this.findGovDelegate();
+        console.log("adding charter's govAuthority");
 
         return capoGovDelegate.txnGrantAuthority(tcx);
     }
@@ -564,9 +564,9 @@ export class DefaultCapo<
             const { txId: seedTxn, utxoIdx } = seedUtxo.outputId;
             const seedIndex = BigInt(utxoIdx);
 
-            this.connectMintingScript({ seedIndex, seedTxn });
+            const minter = this.connectMintingScript({ seedIndex, seedTxn });
 
-            const { mintingPolicyHash: mph } = this.minter!;
+            const { mintingPolicyHash: mph } = minter;
             const rev = this.getCapoRev();
             const bsc = this.mkFullConfig({
                 mph,
@@ -584,7 +584,7 @@ export class DefaultCapo<
 
             this.scriptProgram = this.loadProgramScript(fullScriptParams);
 
-            const tcx = await this.minter!.txnWillMintUuts(
+            const tcx = await minter.txnWillMintUuts(
                 initialTcx,
                 ["capoGov", "mintDgt"],
                 seedUtxo,
@@ -634,7 +634,7 @@ export class DefaultCapo<
             );
             // debugger
 
-            return this.minter!.txnMintingCharter(tcx, {
+            return minter.txnMintingCharter(tcx, {
                 owner: this.address,
                 capoGov, // same as govAuthority,
                 mintDgt,

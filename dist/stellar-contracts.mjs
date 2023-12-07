@@ -58325,7 +58325,7 @@ if ("undefined" == typeof window) {
 
 //!!! if we could access the inputs and outputs in a building Tx,
 class StellarTxnContext {
-  tx = new Tx();
+  tx = Tx.new();
   inputs = [];
   collateral;
   outputs = [];
@@ -60202,7 +60202,8 @@ class Capo extends StellarContract {
   }
   minter;
   txnWillMintUuts(initialTcx, uutPurposes, seedUtxo, roles = {}) {
-    return this.minter.txnWillMintUuts(
+    const minter = this.connectMinter();
+    return minter.txnWillMintUuts(
       initialTcx,
       uutPurposes,
       seedUtxo,
@@ -60210,7 +60211,8 @@ class Capo extends StellarContract {
     );
   }
   async mkTxnMintingUuts(initialTcx, uutPurposes, seedUtxo, roles = {}) {
-    const tcx = await this.minter.mkTxnMintingUuts(
+    const minter = this.connectMinter();
+    const tcx = await minter.mkTxnMintingUuts(
       initialTcx,
       uutPurposes,
       seedUtxo,
@@ -60237,7 +60239,7 @@ class Capo extends StellarContract {
     return { redeemer: t._toUplcData() };
   }
   tvCharter() {
-    return this.minter.tvCharter();
+    return this.connectMinter().tvCharter();
   }
   get charterTokenAsValue() {
     console.warn(
@@ -62557,9 +62559,7 @@ class DefaultCapo extends Capo {
   }
   async txnAddGovAuthority(tcx) {
     const capoGovDelegate = await this.findGovDelegate();
-    console.log(
-      "adding charter's govAuthority"
-    );
+    console.log("adding charter's govAuthority");
     return capoGovDelegate.txnGrantAuthority(tcx);
   }
   // getMinterParams() {
@@ -62637,8 +62637,8 @@ class DefaultCapo extends Capo {
     ]).then(async (seedUtxo) => {
       const { txId: seedTxn, utxoIdx } = seedUtxo.outputId;
       const seedIndex = BigInt(utxoIdx);
-      this.connectMintingScript({ seedIndex, seedTxn });
-      const { mintingPolicyHash: mph } = this.minter;
+      const minter = this.connectMintingScript({ seedIndex, seedTxn });
+      const { mintingPolicyHash: mph } = minter;
       const rev = this.getCapoRev();
       const bsc = this.mkFullConfig({
         mph,
@@ -62653,7 +62653,7 @@ class DefaultCapo extends Capo {
       const fullScriptParams = this.contractParams = this.getContractScriptParams(bsc);
       this.configIn = bsc;
       this.scriptProgram = this.loadProgramScript(fullScriptParams);
-      const tcx = await this.minter.txnWillMintUuts(
+      const tcx = await minter.txnWillMintUuts(
         initialTcx,
         ["capoGov", "mintDgt"],
         seedUtxo,
@@ -62687,7 +62687,7 @@ class DefaultCapo extends Capo {
         " ---------------- CHARTER MINT ---------------------\n",
         txAsString(tcx.tx)
       );
-      return this.minter.txnMintingCharter(tcx, {
+      return minter.txnMintingCharter(tcx, {
         owner: this.address,
         capoGov,
         // same as govAuthority,

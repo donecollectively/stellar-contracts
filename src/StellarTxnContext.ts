@@ -45,7 +45,7 @@ type RedeemerArg = {
  * @public
  **/
 export class StellarTxnContext<S = noState> {
-    tx = new Tx();
+    tx = Tx.new();
     inputs: TxInput[] = [];
     collateral?: TxInput;
     outputs: TxOutput[] = [];

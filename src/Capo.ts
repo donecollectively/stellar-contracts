@@ -305,7 +305,8 @@ export abstract class Capo<
         //@ts-expect-error
         roles: RM = {} as Record<string, purposes>
     ): Promise<existingTcx & hasUutContext<ROLES | purposes>> {
-        return this.minter!.txnWillMintUuts(
+        const minter = this.connectMinter()
+        return minter.txnWillMintUuts(
             initialTcx,
             uutPurposes,
             seedUtxo,
@@ -326,7 +327,8 @@ export abstract class Capo<
         //@ts-expect-error
         roles: RM = {} as Record<string, purposes>
     ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {
-        const tcx = await this.minter!.mkTxnMintingUuts(
+        const minter = this.connectMinter()
+        const tcx = await minter.mkTxnMintingUuts(
             initialTcx,
             uutPurposes,
             seedUtxo,
@@ -380,7 +382,7 @@ export abstract class Capo<
     protected abstract updatingCharter(args: charterDatumType): isActivity;
 
     tvCharter() {
-        return this.minter!.tvCharter();
+        return this.connectMinter().tvCharter();
     }
 
     get charterTokenAsValue() {

@@ -982,10 +982,10 @@ export { WalletHelper }
 
 // Warnings were encountered during analysis:
 //
-// src/DefaultCapo.ts:293:17 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
-// src/DefaultCapo.ts:297:3 - (ae-forgotten-export) The symbol "MultisigAuthorityPolicy" needs to be exported by the entry point index.d.ts
-// src/DefaultCapo.ts:298:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
-// src/DefaultCapo.ts:317:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
+// src/DefaultCapo.ts:294:17 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
+// src/DefaultCapo.ts:298:3 - (ae-forgotten-export) The symbol "MultisigAuthorityPolicy" needs to be exported by the entry point index.d.ts
+// src/DefaultCapo.ts:299:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
+// src/DefaultCapo.ts:318:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
 // src/StellarContract.ts:314:5 - (ae-forgotten-export) The symbol "SetupDetails" needs to be exported by the entry point index.d.ts
 // src/delegation/RolesAndDelegates.ts:259:5 - (ae-forgotten-export) The symbol "PartialParamConfig" needs to be exported by the entry point index.d.ts
 // src/delegation/RolesAndDelegates.ts:261:5 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
