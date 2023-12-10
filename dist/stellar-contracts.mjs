@@ -58386,16 +58386,18 @@ class StellarTxnContext {
       (v) => v.outputId.eq(input.outputId)
     )) {
       console.warn("suppressing second add of refInput");
-      return;
+      return this;
     }
     this.txRefInputs.push(input);
     this.tx.addRefInput(input);
+    return this;
   }
   addRefInputs(...args) {
     const [inputs] = args;
     for (const input of inputs) {
       this.addRefInput(input);
     }
+    return this;
   }
   addInput(input, r) {
     if (input.address.pubKeyHash)
@@ -62155,8 +62157,10 @@ class AnyAddressAuthorityPolicy extends AuthorityPolicy {
   }
   async txnReceiveAuthorityToken(tcx, tokenValue, fromFoundUtxo) {
     let dest;
+    console.log("\u{1F41E}\u{1F41E}  receive authority token");
     if (fromFoundUtxo) {
       dest = fromFoundUtxo.address;
+      console.log("    \u{1F41E}\u{1F41E}  " + dumpAny(fromFoundUtxo.address));
     } else {
       if (!this.configIn?.addrHint?.[0])
         throw new Error(
@@ -62171,6 +62175,7 @@ class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     const output = new TxOutput(dest, tokenValue);
     output.correctLovelace(this.networkParams);
     tcx.addOutput(output);
+    console.log("    \u{1F41E}\u{1F41E}  ...with output" + dumpAny(output));
     return tcx;
   }
   //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer

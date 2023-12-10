@@ -122,10 +122,12 @@ export class StellarTxnContext<S = noState> {
             (v) => v.outputId.eq(input.outputId)
         )) {
             console.warn("suppressing second add of refInput")
-            return
+            return this;
         }
         this.txRefInputs.push(input);
         this.tx.addRefInput(input);
+
+        return this
     }
 
     addRefInputs<TCX extends StellarTxnContext<S>>(
@@ -136,6 +138,7 @@ export class StellarTxnContext<S = noState> {
         for ( const input of inputs ) {
             this.addRefInput(input);
         }
+        return this
     }
 
 

@@ -1917,8 +1917,8 @@ export declare class StellarTxnContext<S = noState> {
      * @typeParam ‹pName› - descr (for generic types)
      * @public
      **/
-    addRefInput<TCX extends StellarTxnContext<S>>(this: TCX, input: addRefInputArgs[0]): void;
-    addRefInputs<TCX extends StellarTxnContext<S>>(this: TCX, ...args: addRefInputsArgs): void;
+    addRefInput<TCX extends StellarTxnContext<S>>(this: TCX, input: addRefInputArgs[0]): TCX;
+    addRefInputs<TCX extends StellarTxnContext<S>>(this: TCX, ...args: addRefInputsArgs): TCX;
     addInput<TCX extends StellarTxnContext<S>>(this: TCX, input: addInputArgs[0], r?: RedeemerArg): TCX;
     addInputs<TCX extends StellarTxnContext<S>>(this: TCX, inputs: Parameters<Tx["addInputs"]>[0], r: RedeemerArg): TCX;
     addOutput<TCX extends StellarTxnContext<S>>(this: TCX, ...args: Parameters<Tx["addOutput"]>): TCX;

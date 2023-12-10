@@ -867,11 +867,11 @@ export class StellarTxnContext<S = noState> {
     // (undocumented)
     addOutputs<TCX extends StellarTxnContext<S>>(this: TCX, ...args: Parameters<Tx["addOutputs"]>): TCX;
     // Warning: (ae-forgotten-export) The symbol "addRefInputArgs" needs to be exported by the entry point index.d.ts
-    addRefInput<TCX extends StellarTxnContext<S>>(this: TCX, input: addRefInputArgs[0]): void;
+    addRefInput<TCX extends StellarTxnContext<S>>(this: TCX, input: addRefInputArgs[0]): TCX;
     // Warning: (ae-forgotten-export) The symbol "addRefInputsArgs" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
-    addRefInputs<TCX extends StellarTxnContext<S>>(this: TCX, ...args: addRefInputsArgs): void;
+    addRefInputs<TCX extends StellarTxnContext<S>>(this: TCX, ...args: addRefInputsArgs): TCX;
     // @deprecated
     addScript(): void;
     // (undocumented)

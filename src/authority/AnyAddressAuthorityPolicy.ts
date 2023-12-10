@@ -21,6 +21,7 @@ import type {
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { StellarDelegate } from "../delegation/StellarDelegate.js";
 import { AuthorityPolicy } from "./AuthorityPolicy.js";
+import { dumpAny } from "../diagnostics.js";
 
 /**
  * Token-based authority
@@ -109,8 +110,10 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         fromFoundUtxo: TxInput
     ): Promise<TCX> {
         let dest : Address;
+        console.log("🐞🐞  receive authority token");
         if (fromFoundUtxo) { 
             dest = fromFoundUtxo.address
+            console.log("    🐞🐞  "+dumpAny(fromFoundUtxo.address));
         } else {
             if (!this.configIn?.addrHint?.[0])
                 throw new Error(
@@ -126,6 +129,7 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         const output = new TxOutput(dest, tokenValue);
         output.correctLovelace(this.networkParams);
         tcx.addOutput(output);
+        console.log("    🐞🐞  ...with output"+dumpAny(output));
 
         return tcx;
     }
