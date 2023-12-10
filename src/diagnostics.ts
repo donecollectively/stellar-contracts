@@ -10,6 +10,8 @@ import {
     MintingPolicyHash,
     ByteArray,
     ByteArrayData,
+    TxId,
+    TxOutputId,
 } from "@hyperionbt/helios";
 import type { ErrorMap } from "./delegation/RolesAndDelegates.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
@@ -275,15 +277,13 @@ export function txAsString(tx: Tx): string {
  * Converts a TxInput to printable form
  * @remarks
  *
- * Shortens address and output-id for visual simplicity
+ * Shortens address and output-id for visual simplicity; doesn't include datum info
  * @public
  **/
 export function txInputAsString(x: TxInput, prefix = "-> "): string {
-    const oid = x.outputId.txId.hex;
-    const oidx = x.outputId.utxoIdx;
     return `${prefix}${addrAsString(x.address)} ${valueAsString(
         x.value
-    )} = 📖 ${oid.slice(0, 6)}…${oid.slice(-4)}#${oidx}`;
+    )} = 📖 ${txOutputIdAsString(x.outputId)}`;
 }
 
 /**
@@ -297,18 +297,26 @@ export function utxosAsString(utxos: TxInput[], joiner = "\n"): string {
     return utxos.map((u) => utxoAsString(u, " 💵")).join(joiner);
 }
 
+export function txOutputIdAsString(x: TxOutputId) : string {
+    return txidAsString(x.txId) + 
+        "🔹" /* <-- unicode blue bullet */ +
+        `#${x.utxoIdx}`;
+}
+
+export function txidAsString(x: TxId) : string {
+    const tid = x.hex
+    return `${tid.slice(0, 6)}…${tid.slice(-4)}`
+}
+
 /**
  * converts a utxo to printable form
  * @remarks
  *
- * shows shortened output-id and the value being output
+ * shows shortened output-id and the value being output, plus its datum
  * @internal
  **/
 export function utxoAsString(x: TxInput, prefix = "💵"): string {
-    const oid = x.outputId.txId.hex;
-    const oidx = x.outputId.utxoIdx;
-
-    return ` 📖 ${oid.slice(0, 6)}…${oid.slice(-4)}🔹#${oidx}: ${txOutputAsString(
+    return ` 📖 ${txOutputIdAsString(x.outputId)}: ${txOutputAsString(
         x.origOutput,
         prefix
     )}`; // or 🪙
@@ -400,6 +408,7 @@ export function byteArrayAsString(ba: ByteArray | ByteArrayData): string {
 export function dumpAny(
     x: Tx | StellarTxnContext | Address | Value | 
         TxOutput | TxInput | TxInput[] | 
+        TxId |
         ByteArray | ByteArray[] | ByteArrayData | ByteArrayData[]
 ) {
     if (Array.isArray(x)) {
@@ -416,9 +425,19 @@ export function dumpAny(
     if (x instanceof Tx) {
         return txAsString(x);
     }
+
     if (x instanceof TxOutput) {
         return txOutputAsString(x);
     }
+
+    if (x instanceof TxOutputId) {
+        return txOutputIdAsString(x);
+    }
+
+    if (x instanceof TxId) {
+        return txidAsString(x);
+    }
+
     if (x instanceof TxInput) {
         return utxoAsString(x)
     }

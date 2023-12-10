@@ -22,6 +22,8 @@ export {
     errorMapAsString,
     addrAsString,
     byteArrayAsString,
+    txidAsString,
+    txOutputIdAsString,
     byteArrayListAsString,
     datumAsString,
     hexToPrintableString,

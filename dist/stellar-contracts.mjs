@@ -58237,19 +58237,22 @@ function txAsString(tx) {
   return details;
 }
 function txInputAsString(x, prefix = "-> ") {
-  const oid = x.outputId.txId.hex;
-  const oidx = x.outputId.utxoIdx;
   return `${prefix}${addrAsString(x.address)} ${valueAsString(
     x.value
-  )} = \u{1F4D6} ${oid.slice(0, 6)}\u2026${oid.slice(-4)}#${oidx}`;
+  )} = \u{1F4D6} ${txOutputIdAsString(x.outputId)}`;
 }
 function utxosAsString(utxos, joiner = "\n") {
   return utxos.map((u) => utxoAsString(u, " \u{1F4B5}")).join(joiner);
 }
+function txOutputIdAsString(x) {
+  return txidAsString(x.txId) + `\u{1F539}#${x.utxoIdx}`;
+}
+function txidAsString(x) {
+  const tid = x.hex;
+  return `${tid.slice(0, 6)}\u2026${tid.slice(-4)}`;
+}
 function utxoAsString(x, prefix = "\u{1F4B5}") {
-  const oid = x.outputId.txId.hex;
-  const oidx = x.outputId.utxoIdx;
-  return ` \u{1F4D6} ${oid.slice(0, 6)}\u2026${oid.slice(-4)}\u{1F539}#${oidx}: ${txOutputAsString(
+  return ` \u{1F4D6} ${txOutputIdAsString(x.outputId)}: ${txOutputAsString(
     x.origOutput,
     prefix
   )}`;
@@ -58295,6 +58298,12 @@ function dumpAny(x) {
   }
   if (x instanceof TxOutput) {
     return txOutputAsString(x);
+  }
+  if (x instanceof TxOutputId) {
+    return txOutputIdAsString(x);
+  }
+  if (x instanceof TxId) {
+    return txidAsString(x);
   }
   if (x instanceof TxInput) {
     return utxoAsString(x);
@@ -62967,5 +62976,5 @@ class DefaultCapoTestHelper extends CapoTestHelper {
 const insufficientInputError = /(need .* lovelace, but only have|transaction doesn't have enough inputs)/;
 Error.stackTraceLimit = 100;
 
-export { ADA, Activity, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, Capo, CapoTestHelper, DefaultCapo, DefaultCapoTestHelper, DefaultMinter, StellarContract, StellarDelegate, StellarTestHelper, StellarTxnContext, UutName, addTestContext, addrAsString, assetsAsString, byteArrayAsString, byteArrayListAsString, datum, datumAsString, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, helios, heliosRollupLoader, hexToPrintableString, insufficientInputError, lovelaceToAda, mkHeliosModule, mkUutValuesEntries, mkValuesEntry, partialTxn, policyIdAsString, stringToNumberArray, txAsString, txInputAsString, txOutputAsString, txn, utxoAsString, utxosAsString, valueAsString };
+export { ADA, Activity, AnyAddressAuthorityPolicy, AuthorityPolicy, BasicMintDelegate, Capo, CapoTestHelper, DefaultCapo, DefaultCapoTestHelper, DefaultMinter, StellarContract, StellarDelegate, StellarTestHelper, StellarTxnContext, UutName, addTestContext, addrAsString, assetsAsString, byteArrayAsString, byteArrayListAsString, datum, datumAsString, defineRole, delegateRoles, dumpAny, errorMapAsString, hasReqts, helios, heliosRollupLoader, hexToPrintableString, insufficientInputError, lovelaceToAda, mkHeliosModule, mkUutValuesEntries, mkValuesEntry, partialTxn, policyIdAsString, stringToNumberArray, txAsString, txInputAsString, txOutputAsString, txOutputIdAsString, txidAsString, txn, utxoAsString, utxosAsString, valueAsString };
 //# sourceMappingURL=stellar-contracts.mjs.map
