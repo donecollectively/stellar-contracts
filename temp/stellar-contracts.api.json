@@ -19035,7 +19035,24 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ">(uutName: "
+                  "text": ", TCX extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">(this: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "TCX"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", uutName: "
                 },
                 {
                   "kind": "Reference",
@@ -19061,12 +19078,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<T> & typeof "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "this",
-                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                  "text": "<T> & TCX"
                 },
                 {
                   "kind": "Content",
@@ -19084,30 +19096,49 @@
                     "startIndex": 0,
                     "endIndex": 0
                   }
+                },
+                {
+                  "typeParameterName": "TCX",
+                  "constraintTokenRange": {
+                    "startIndex": 3,
+                    "endIndex": 4
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
                 }
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 7,
-                "endIndex": 10
+                "startIndex": 11,
+                "endIndex": 13
               },
               "releaseTag": "Public",
               "isProtected": false,
               "overloadIndex": 1,
               "parameters": [
                 {
+                  "parameterName": "this",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 5,
+                    "endIndex": 6
+                  },
+                  "isOptional": false
+                },
+                {
                   "parameterName": "uutName",
                   "parameterTypeTokenRange": {
-                    "startIndex": 3,
-                    "endIndex": 4
+                    "startIndex": 7,
+                    "endIndex": 8
                   },
                   "isOptional": false
                 },
                 {
                   "parameterName": "names",
                   "parameterTypeTokenRange": {
-                    "startIndex": 5,
-                    "endIndex": 6
+                    "startIndex": 9,
+                    "endIndex": 10
                   },
                   "isOptional": false
                 }

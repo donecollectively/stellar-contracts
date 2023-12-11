@@ -97,17 +97,20 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     addUut<
-        T extends string
+        T extends string,
+        TCX extends  StellarTxnContext
     >(
+        this: TCX,
+        //!!! todo: type this more strongly by adding strong typing to the UutName itself?
         uutName: UutName, ...names : T[]
-    ):  hasUutContext<T> & typeof this {
+    ):  hasUutContext<T> & TCX {
         this.state.uuts = this.state.uuts || {};
         
         for( const name of names ) {
             this.state.uuts[name] = uutName
         }
 
-        return this as (typeof this & hasUutContext<T>)
+        return this as (hasUutContext<T> & TCX)
     }
 
     addState<

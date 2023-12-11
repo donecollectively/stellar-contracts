@@ -891,7 +891,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         [keyName in K]: V;
     } & anyState> & TCX;
     // (undocumented)
-    addUut<T extends string>(uutName: UutName, ...names: T[]): hasUutContext<T> & typeof StellarTxnContext;
+    addUut<T extends string, TCX extends StellarTxnContext>(this: TCX, uutName: UutName, ...names: T[]): hasUutContext<T> & TCX;
     // (undocumented)
     attachScript(...args: Parameters<Tx["attachScript"]>): this;
     // (undocumented)
