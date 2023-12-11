@@ -1902,7 +1902,7 @@ declare type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (c
  * @typeParam S - type of the context's `state` prop
  * @public
  **/
-export declare class StellarTxnContext<S extends emptyState = anyState> {
+export declare class StellarTxnContext<S extends anyState = anyState> {
     tx: Tx;
     inputs: TxInput[];
     collateral?: TxInput;
@@ -1917,6 +1917,9 @@ export declare class StellarTxnContext<S extends emptyState = anyState> {
     reservedUtxos(): TxInput[];
     utxoNotReserved(u: TxInput): TxInput | undefined;
     addUut<T extends string>(uutName: UutName, ...names: T[]): hasUutContext<T> & typeof StellarTxnContext;
+    addState<TCX extends StellarTxnContext, K extends string, V>(this: TCX, key: K, value: V): StellarTxnContext<{
+        [keyName in K]: V;
+    } & anyState> & TCX;
     addCollateral(collateral: TxInput): this;
     validFor<TCX extends StellarTxnContext<S>>(this: TCX, durationMs: number, backwardMs?: number): TCX;
     txRefInputs: TxInput[];

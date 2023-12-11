@@ -51,7 +51,7 @@ type RedeemerArg = {
  * @typeParam S - type of the context's `state` prop
  * @public
  **/
-export class StellarTxnContext<S extends emptyState = anyState> {
+export class StellarTxnContext<S extends anyState = anyState> {
     tx = Tx.new();
     inputs: TxInput[] = [];
     collateral?: TxInput;
@@ -108,6 +108,18 @@ export class StellarTxnContext<S extends emptyState = anyState> {
         }
 
         return this as (typeof this & hasUutContext<T>)
+    }
+
+    addState<
+        TCX extends StellarTxnContext, K extends string, V
+    >(this: TCX, key: K, value: V) : StellarTxnContext<
+        { [keyName in K]: V } & anyState
+    > & TCX {
+        //@ts-expect-error
+        this.state[key] = value;
+        return this as StellarTxnContext<
+            { [keyName in K]: V } & anyState
+        > & TCX;
     }
 
     addCollateral(collateral: TxInput) {

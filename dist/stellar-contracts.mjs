@@ -58407,6 +58407,10 @@ class StellarTxnContext {
     }
     return this;
   }
+  addState(key, value) {
+    this.state[key] = value;
+    return this;
+  }
   addCollateral(collateral) {
     if (!collateral.value.assets.isZero()) {
       throw new Error(

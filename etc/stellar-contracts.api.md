@@ -859,7 +859,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
 }
 
 // @public
-export class StellarTxnContext<S extends emptyState = anyState> {
+export class StellarTxnContext<S extends anyState = anyState> {
     constructor(actor?: Wallet, state?: Partial<S>);
     // (undocumented)
     actor?: Wallet;
@@ -886,6 +886,10 @@ export class StellarTxnContext<S extends emptyState = anyState> {
     addScript(): void;
     // (undocumented)
     addSignature(wallet: Wallet): Promise<void>;
+    // (undocumented)
+    addState<TCX extends StellarTxnContext, K extends string, V>(this: TCX, key: K, value: V): StellarTxnContext<{
+        [keyName in K]: V;
+    } & anyState> & TCX;
     // (undocumented)
     addUut<T extends string>(uutName: UutName, ...names: T[]): hasUutContext<T> & typeof StellarTxnContext;
     // (undocumented)
