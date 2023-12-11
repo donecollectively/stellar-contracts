@@ -137,7 +137,6 @@ export class DefaultCapoTestHelper<
         args?: MinimalDefaultCharterDatumArgs<CDT>
     ): Promise<
         hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> &
-            StellarTxnContext<any> &
             hasBootstrappedConfig<CapoBaseConfig>
     > {
         const { delay } = this;

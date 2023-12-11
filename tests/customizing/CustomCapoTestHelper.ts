@@ -39,7 +39,7 @@ export class CustomCapoTestHelper extends DefaultCapoTestHelper<CustomTreasury> 
         // };
     }
 
-    async mkCharterSpendTx(): Promise<StellarTxnContext<any>> {
+    async mkCharterSpendTx(): Promise<StellarTxnContext> {
         await this.mintCharterToken();
 
         const treasury = this.strella!;

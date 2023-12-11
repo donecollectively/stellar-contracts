@@ -34,7 +34,7 @@ de
             rev: config.rev,
         };
     }
-    txnReceiveAuthorityToken<TCX extends StellarTxnContext<any>>(
+    txnReceiveAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
         value: Value,
         fromFoundUtxo?: TxInput | undefined

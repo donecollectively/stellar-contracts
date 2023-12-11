@@ -58332,7 +58332,37 @@ if ("undefined" == typeof window) {
   window.peek = dumpAny;
 }
 
+const _uutName = Symbol("uutName");
+const maxUutName = 32;
+class UutName {
+  [_uutName];
+  purpose;
+  constructor(purpose, fullUutName) {
+    this.purpose = purpose;
+    if (fullUutName.length > maxUutName) {
+      throw new Error(
+        `uut name '${fullUutName}' exceeds max length of ${maxUutName}`
+      );
+    }
+    this[_uutName] = fullUutName;
+  }
+  /**
+   * the full uniquified name of this UUT
+   * @remarks
+   *
+   * format: `purpose-‹...uniqifier...›`
+   * @public
+   **/
+  get name() {
+    return this[_uutName];
+  }
+  toString() {
+    return this[_uutName];
+  }
+}
+
 //!!! if we could access the inputs and outputs in a building Tx,
+const emptyUuts = Object.freeze({});
 class StellarTxnContext {
   tx = Tx.new();
   inputs = [];
@@ -58344,7 +58374,11 @@ class StellarTxnContext {
   neededSigners = [];
   constructor(actor, state = {}) {
     this.actor = actor;
-    this.state = state;
+    const { uuts = { ...emptyUuts }, ...moreState } = state;
+    this.state = {
+      uuts,
+      ...moreState
+    };
   }
   dump() {
     const { tx } = this;
@@ -58365,6 +58399,13 @@ class StellarTxnContext {
     if (this.inputs.find((i) => i.eq(u)))
       return void 0;
     return u;
+  }
+  addUut(uutName, ...names) {
+    this.state.uuts = this.state.uuts || {};
+    for (const name of names) {
+      this.state.uuts[name] = uutName;
+    }
+    return this;
   }
   addCollateral(collateral) {
     if (!collateral.value.assets.isZero()) {
@@ -58450,35 +58491,6 @@ class StellarTxnContext {
    * @deprecated - invalid method name; use attachScript
    **/
   addScript() {
-  }
-}
-
-const _uutName = Symbol("uutName");
-const maxUutName = 32;
-class UutName {
-  [_uutName];
-  purpose;
-  constructor(purpose, fullUutName) {
-    this.purpose = purpose;
-    if (fullUutName.length > maxUutName) {
-      throw new Error(
-        `uut name '${fullUutName}' exceeds max length of ${maxUutName}`
-      );
-    }
-    this[_uutName] = fullUutName;
-  }
-  /**
-   * the full uniquified name of this UUT
-   * @remarks
-   *
-   * format: `purpose-‹...uniqifier...›`
-   * @public
-   **/
-  get name() {
-    return this[_uutName];
-  }
-  toString() {
-    return this[_uutName];
   }
 }
 
@@ -59598,10 +59610,11 @@ class DefaultMinter extends StellarContract {
       uutMap[role] = uutMap[uutPurpose];
     }
     if (!tcx.state)
-      tcx.state = {};
-    if (tcx.state.uuts)
-      throw new Error(`uuts are already there`);
-    tcx.state.uuts = uutMap;
+      tcx.state = { uuts: {} };
+    tcx.state.uuts = {
+      ...tcx.state.uuts,
+      ...uutMap
+    };
     return tcx;
   }
   async mkTxnMintingUuts(initialTcx, uutPurposes, seedUtxo, roles = {}) {
@@ -59686,6 +59699,7 @@ class DefaultMinter extends StellarContract {
     capoGov,
     mintDgt
   }) {
+    //!!! todo: can we expect capoGov & mintDgt in tcx.state.uuts? and update the type constraint here?
     const charterVE = this.charterTokenAsValuesEntry;
     const capoGovVE = mkValuesEntry(capoGov.name, BigInt(1));
     const mintDgtVE = mkValuesEntry(mintDgt.name, BigInt(1));
@@ -60556,9 +60570,12 @@ expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
     };
   }
   /**
-   * Returns a complete set of delegate settings, given a delegation role and strategy-selection details
+   * Generates and returns a complete set of delegate settings, given a delegation role and strategy-selection details. 
    * @remarks
    *
+   * Maps the indicated delegation role to specific UUT details from the provided transaction-context 
+   * to provide the resulting settings.  The transaction context isn't modified.
+   * 
    * Behaves exactly like (and provides the core implementation of) {@link Capo.txnCreateDelegateLink | txnCreateDelegateLink()},
    * returning additional `roleName` and `delegateClass`, to conform with the DelegateSettings type.
    *
@@ -62125,22 +62142,22 @@ class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     return { redeemer: t._toUplcData() };
   }
   /**
-  * Finds the delegate authority token, normally in the delegate's contract address
-  * @public
-  * @remarks
-  *
-  * The default implementation finds the UTxO having the authority token
-  * in the delegate's contract address.
-  *
-  * It's possible to have a delegate that doesn't have an on-chain contract script.
-  * ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a
-  * delegate-specific heuristic to locate the needed token.  It might consult the
-  * addrHint in its `configIn` or another technique for resolution.
-  *
-  * @param tcx - the transaction context
-  * @reqt It MUST resolve and return the UTxO (a TxInput type ready for spending)
-  *  ... or throw an informative error
-  **/
+   * Finds the delegate authority token, normally in the delegate's contract address
+   * @public
+   * @remarks
+   *
+   * The default implementation finds the UTxO having the authority token
+   * in the delegate's contract address.
+   *
+   * It's possible to have a delegate that doesn't have an on-chain contract script.
+   * ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a
+   * delegate-specific heuristic to locate the needed token.  It might consult the
+   * addrHint in its `configIn` or another technique for resolution.
+   *
+   * @param tcx - the transaction context
+   * @reqt It MUST resolve and return the UTxO (a TxInput type ready for spending)
+   *  ... or throw an informative error
+   **/
   async findAuthorityToken() {
     const { wallet } = this;
     return this.hasUtxo(
@@ -62172,9 +62189,7 @@ class AnyAddressAuthorityPolicy extends AuthorityPolicy {
       console.log("    \u{1F41E}\u{1F41E}  " + dumpAny(fromFoundUtxo.address));
     } else {
       if (!this.configIn?.addrHint?.[0])
-        throw new Error(
-          `missing addrHint`
-        );
+        throw new Error(`missing addrHint`);
       const {
         addrHint
         // reqdAddress,  // removed

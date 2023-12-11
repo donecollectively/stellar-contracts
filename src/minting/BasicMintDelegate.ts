@@ -120,7 +120,7 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
      * @see {@link StellarDelegate.txnReceiveAuthorityToken | baseline txnReceiveAuthorityToken()'s doc }
      * @public
      **/
-    async txnReceiveAuthorityToken<TCX extends StellarTxnContext<any>>(
+    async txnReceiveAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
         tokenValue: Value,
         fromFoundUtxo?: TxInput

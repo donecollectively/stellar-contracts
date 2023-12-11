@@ -8,15 +8,9 @@ import {
     bytesToText,
 } from "@hyperionbt/helios";
 import type { SeedTxnParams } from "../SeedTxn.js";
-import {
-    Activity,
-    StellarContract,
-    partialTxn,
-} from "../StellarContract.js";
+import { Activity, StellarContract, partialTxn } from "../StellarContract.js";
 
-import type {
-    isActivity,
-} from "../StellarContract.js";
+import type { isActivity } from "../StellarContract.js";
 
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { StellarDelegate } from "../delegation/StellarDelegate.js";
@@ -37,10 +31,9 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     loadProgramScript(params) {
         return undefined;
     }
-    
 
     get delegateValidatorHash() {
-        return undefined
+        return undefined;
     }
 
     @Activity.redeemer
@@ -56,7 +49,7 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         return { redeemer: t._toUplcData() };
     }
 
-        /**
+    /**
      * Finds the delegate authority token, normally in the delegate's contract address
      * @public
      * @remarks
@@ -73,25 +66,27 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
      * @reqt It MUST resolve and return the UTxO (a TxInput type ready for spending)
      *  ... or throw an informative error
      **/
-        async findAuthorityToken(
-        ): Promise<TxInput | undefined> {
-            const { wallet } = this;
-            return this.hasUtxo(
-                `authority token: ${bytesToText(this.configIn!.tn)}`,
-                this.mkTokenPredicate(this.tvAuthorityToken()),
-                { wallet }
-            );
-        }
-
-    async findActorAuthorityToken() : Promise<TxInput | undefined> {
-        return this.findAuthorityToken()
+    async findAuthorityToken(): Promise<TxInput | undefined> {
+        const { wallet } = this;
+        return this.hasUtxo(
+            `authority token: ${bytesToText(this.configIn!.tn)}`,
+            this.mkTokenPredicate(this.tvAuthorityToken()),
+            { wallet }
+        );
     }
-            
+
+    async findActorAuthorityToken(): Promise<TxInput | undefined> {
+        return this.findAuthorityToken();
+    }
+
     //! impls MUST resolve the indicated token to a specific UTxO
     //  ... or throw an informative error
-    async DelegateMustFindAuthorityToken(tcx: StellarTxnContext<any>, label: string): Promise<TxInput> {
-        const v = this.tvAuthorityToken()
-        const {addrHint} = this.configIn!
+    async DelegateMustFindAuthorityToken(
+        tcx: StellarTxnContext,
+        label: string
+    ): Promise<TxInput> {
+        const v = this.tvAuthorityToken();
+        const { addrHint } = this.configIn!;
 
         return this.mustFindActorUtxo(
             `${label}: ${bytesToText(this.configIn!.tn)}`,
@@ -104,42 +99,40 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         );
     }
 
-    async txnReceiveAuthorityToken<TCX extends StellarTxnContext<any>>(
+    async txnReceiveAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
         tokenValue: Value,
         fromFoundUtxo: TxInput
     ): Promise<TCX> {
-        let dest : Address;
+        let dest: Address;
         console.log("🐞🐞  receive authority token");
-        if (fromFoundUtxo) { 
-            dest = fromFoundUtxo.address
-            console.log("    🐞🐞  "+dumpAny(fromFoundUtxo.address));
+        if (fromFoundUtxo) {
+            dest = fromFoundUtxo.address;
+            console.log("    🐞🐞  " + dumpAny(fromFoundUtxo.address));
         } else {
             if (!this.configIn?.addrHint?.[0])
-                throw new Error(
-                    `missing addrHint`
-                );
+                throw new Error(`missing addrHint`);
             const {
                 addrHint,
                 // reqdAddress,  // removed
             } = this.configIn;
-            dest = addrHint[0]
+            dest = addrHint[0];
         }
 
         const output = new TxOutput(dest, tokenValue);
         output.correctLovelace(this.networkParams);
         tcx.addOutput(output);
-        console.log("    🐞🐞  ...with output"+dumpAny(output));
+        console.log("    🐞🐞  ...with output" + dumpAny(output));
 
         return tcx;
     }
 
     //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
     //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
-    async DelegateAddsAuthorityToken<TCX extends StellarTxnContext<any>>(
+    async DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
         fromFoundUtxo: TxInput
-    ): Promise<TCX & StellarTxnContext<any>> {
+    ): Promise<TCX> {
         //! no need to specify a redeemer
         return tcx.addInput(fromFoundUtxo);
     }

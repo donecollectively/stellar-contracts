@@ -75,7 +75,12 @@ export { AnyAddressAuthorityPolicy } from "./src/authority/AnyAddressAuthorityPo
 export { hasReqts } from "./src/Requirements.js";
 export type { ReqtsMap, RequirementEntry } from "./src/Requirements.js";
 
-export { StellarTxnContext } from "./src/StellarTxnContext.js";
+export { 
+    StellarTxnContext,
+    type emptyState,    
+    type anyState,
+ } from "./src/StellarTxnContext.js";
+
 export type {
     stellarSubclass,
     isActivity,

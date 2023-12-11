@@ -46,7 +46,7 @@ export abstract class StellarDelegate<
      * @param tcx - transaction context
      * @public
      **/
-    async txnGrantAuthority<TCX extends StellarTxnContext<any>>(tcx: TCX) {
+    async txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX) {
         const label = `${this.constructor.name} authority`;
         const uutxo = await this.DelegateMustFindAuthorityToken(tcx, label);
         const useMinTv = true;
@@ -76,7 +76,7 @@ export abstract class StellarDelegate<
      * @remarks
      * Doesn't return the token back to the contract.
      **/
-    async txnRetireAuthorityToken<TCX extends StellarTxnContext<any>>(
+    async txnRetireAuthorityToken<TCX extends StellarTxnContext> (
         tcx: TCX
     ) {
         const uutxo = await this.DelegateMustFindAuthorityToken(
@@ -109,7 +109,7 @@ export abstract class StellarDelegate<
      * @public
      **/
 
-    abstract txnReceiveAuthorityToken<TCX extends StellarTxnContext<any>>(
+    abstract txnReceiveAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
         tokenValue: Value,
         // delegateAddr: Address,
@@ -265,7 +265,7 @@ export abstract class StellarDelegate<
      *  ... or throw an informative error
      **/
     async DelegateMustFindAuthorityToken(
-        tcx: StellarTxnContext<any>,
+        tcx: StellarTxnContext,
         label: string
     ): Promise<TxInput> {
         return this.mustFindMyUtxo(
@@ -329,8 +329,8 @@ export abstract class StellarDelegate<
     * @reqt Does not output the value; can EXPECT txnReceiveAuthorityToken to be called for that purpose.
      **/
     protected async DelegateAddsAuthorityToken<
-        TCX extends StellarTxnContext<any>
-    >(tcx: TCX, uutxo: TxInput) {
+        TCX extends StellarTxnContext
+    >(tcx: TCX, uutxo: TxInput) : Promise<TCX> {
         return tcx
             .addInput(
                 uutxo,

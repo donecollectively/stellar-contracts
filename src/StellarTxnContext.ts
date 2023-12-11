@@ -10,13 +10,20 @@ import type {
 } from "@hyperionbt/helios";
 
 import { txAsString } from "./diagnostics.js";
+import type { hasUutContext } from "./Capo.js";
+import { UutName } from "./delegation/UutName.js";
 
 //!!! if we could access the inputs and outputs in a building Tx,
 //  this might  not be necessary (unless it becomes a
 //   bigger-picture contextual container that serves various Stellar
 //   contract scripts with non-txn context for building a Tx)
 
-type noState = {};
+export type emptyState = {
+    uuts: Record<string, UutName>
+};
+export type anyState = emptyState;
+export type uutMap = Record<string, UutName>;
+export const emptyUuts: uutMap = Object.freeze({});
 
 type addInputArgs = Parameters<Tx["addInput"]>;
 type addRefInputArgs = Parameters<Tx["addRefInput"]>
@@ -44,7 +51,7 @@ type RedeemerArg = {
  * @typeParam S - type of the context's `state` prop
  * @public
  **/
-export class StellarTxnContext<S = noState> {
+export class StellarTxnContext<S extends emptyState = anyState> {
     tx = Tx.new();
     inputs: TxInput[] = [];
     collateral?: TxInput;
@@ -53,10 +60,17 @@ export class StellarTxnContext<S = noState> {
     state: S;
     actor?: Wallet;
     neededSigners: Address[] = []
-    constructor(actor?: Wallet, state: Partial<S> = {}) {
+    constructor(
+        actor?: Wallet, 
+        state: Partial<S> = {
+    }) {
         this.actor = actor
+        const {uuts = {...emptyUuts}, ...moreState} = state;
         //@ts-expect-error
-        this.state = state;
+        this.state = {
+            uuts,
+            ...moreState
+        }
     }
 
     dump() {
@@ -80,6 +94,20 @@ export class StellarTxnContext<S = noState> {
         if (this.collateral?.eq(u)) return undefined;
         if (this.inputs.find((i) => i.eq(u))) return undefined;
         return u;
+    }
+
+    addUut<
+        T extends string
+    >(
+        uutName: UutName, ...names : T[]
+    ):  hasUutContext<T> & typeof this {
+        this.state.uuts = this.state.uuts || {};
+        
+        for( const name of names ) {
+            this.state.uuts[name] = uutName
+        }
+
+        return this as (typeof this & hasUutContext<T>)
     }
 
     addCollateral(collateral: TxInput) {

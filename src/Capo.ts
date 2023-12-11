@@ -26,7 +26,10 @@ import type {
     ConfigFor,
 } from "./StellarContract.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
-import { StellarTxnContext } from "./StellarTxnContext.js";
+import { 
+    StellarTxnContext, 
+    type uutMap ,
+} from "./StellarTxnContext.js";
 import {
     DelegateConfigNeeded,
     delegateLinkSerializer,
@@ -97,7 +100,7 @@ export type hasAllUuts<uutEntries extends string> = {
 interface hasUutCreator {
     txnWillMintUuts<
         const purposes extends string,
-        existingTcx extends StellarTxnContext<any>,
+        existingTcx extends StellarTxnContext,
         const RM extends Record<ROLES, purposes>,
         const ROLES extends keyof RM & string = string & keyof RM
     >(
@@ -108,7 +111,7 @@ interface hasUutCreator {
     ): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
     mkTxnMintingUuts<
         const purposes extends string,
-        existingTcx extends StellarTxnContext<any>,
+        existingTcx extends StellarTxnContext,
         const RM extends Record<ROLES, purposes>,
         const ROLES extends keyof RM & string = string & keyof RM
     >(
@@ -145,14 +148,14 @@ export type hasUutContext<uutEntries extends string> = StellarTxnContext<
  */
 export interface MinterBaseMethods extends hasUutCreator {
     get mintingPolicyHash(): MintingPolicyHash;
-    txnMintingCharter<TCX extends StellarTxnContext<any>>(
+    txnMintingCharter<TCX extends StellarTxnContext>(
         tcx: TCX,
         charterMintArgs: {
             owner: Address;
             capoGov: UutName;
         },
         tVal: valuesEntry
-    ): Promise<TCX & StellarTxnContext<any>>;
+    ): Promise<TCX>;
 }
 
 export type anyDatumArgs = Record<string, any>;
@@ -185,6 +188,7 @@ export type CapoBaseConfig = configBase &
 export type hasBootstrappedConfig<CT extends CapoBaseConfig> =
     StellarTxnContext<{
         bsc: CT;
+        uuts: uutMap;
         bootstrappedConfig: any;
     }>;
 
@@ -295,7 +299,7 @@ export abstract class Capo<
     @partialTxn
     txnWillMintUuts<
         const purposes extends string,
-        existingTcx extends StellarTxnContext<any>,
+        existingTcx extends StellarTxnContext,
         const RM extends Record<ROLES, purposes>,
         const ROLES extends keyof RM & string = string & keyof RM
     >(
@@ -304,7 +308,7 @@ export abstract class Capo<
         seedUtxo: TxInput,
         //@ts-expect-error
         roles: RM = {} as Record<string, purposes>
-    ): Promise<existingTcx & hasUutContext<ROLES | purposes>> {
+    ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {
         const minter = this.connectMinter()
         return minter.txnWillMintUuts(
             initialTcx,
@@ -317,7 +321,7 @@ export abstract class Capo<
     @txn
     async mkTxnMintingUuts<
         const purposes extends string,
-        existingTcx extends StellarTxnContext<any>,
+        existingTcx extends StellarTxnContext,
         const RM extends Record<ROLES, purposes>,
         const ROLES extends keyof RM & string = string & keyof RM
     >(
@@ -440,21 +444,23 @@ export abstract class Capo<
     }
 
     abstract findGovDelegate(): Promise<AuthorityPolicy>;
-    abstract txnAddGovAuthority<TCX extends StellarTxnContext<any>>(
+    abstract txnAddGovAuthority<TCX extends StellarTxnContext>(
         tcx: TCX
-    ): Promise<TCX & StellarTxnContext<any>>;
+    ): Promise<TCX>;
 
-    async txnMustUseCharterUtxo<TCX extends StellarTxnContext<any>>(
+    async txnMustUseCharterUtxo<TCX extends StellarTxnContext>(
         tcx: TCX,
         redeemer: isActivity,
         newDatum?: InlineDatum
     ): Promise<TCX>;
-    async txnMustUseCharterUtxo<TCX extends StellarTxnContext<any>>(
+
+    async txnMustUseCharterUtxo<TCX extends StellarTxnContext>(
         tcx: TCX,
         useReferenceInput: "refInput" | true
     ): Promise<TCX>;
+
     @partialTxn // non-activity partial
-    async txnMustUseCharterUtxo<TCX extends StellarTxnContext<any>>(
+    async txnMustUseCharterUtxo<TCX extends StellarTxnContext>(
         tcx: TCX,
         redeemerOrRefInput: isActivity | "refInput" | true,
         newDatum?: InlineDatum
@@ -507,7 +513,7 @@ export abstract class Capo<
     }
 
     @partialTxn // non-activity partial
-    txnKeepCharterToken(tcx: StellarTxnContext<any>, datum: InlineDatum) {
+    txnKeepCharterToken<TCX extends StellarTxnContext>(tcx: TCX, datum: InlineDatum) : TCX {
         const txo = new TxOutput(this.address, this.tvCharter(), datum);
         txo.correctLovelace(this.networkParams);
         tcx.addOutput(txo);
@@ -577,7 +583,7 @@ export abstract class Capo<
      * @deprecated - look for txnAddGovAuthorityTokenRef() instead
      * @public
      **/
-    async txnAddCharterAuthorityTokenRef<TCX extends StellarTxnContext<any>>() {
+    async txnAddCharterAuthorityTokenRef<TCX extends StellarTxnContext>() {
         throw new Error(`use txnAddGovAuthorityTokenRef() instead`);
     }
 
@@ -596,9 +602,9 @@ export abstract class Capo<
     //!!! todo: If the Capo's mintDelegate is using the (TODO) "undelegated" strategy, this method can be used (?)
     // ... to approve token-minting by the authority of the gov authZor
     @partialTxn
-    async txnAddGovAuthorityTokenRef<TCX extends StellarTxnContext<any>>(
+    async txnAddGovAuthorityTokenRef<TCX extends StellarTxnContext>(
         tcx: TCX
-    ): Promise<TCX & StellarTxnContext<any>> {
+    ): Promise<TCX> {
         const tcx2 = await this.txnMustUseCharterUtxo(tcx, "refInput");
 
         const tcx3 = await this.txnAddGovAuthority(tcx2);
@@ -832,9 +838,12 @@ export abstract class Capo<
     }
 
     /**
-     * Returns a complete set of delegate settings, given a delegation role and strategy-selection details
+     * Generates and returns a complete set of delegate settings, given a delegation role and strategy-selection details. 
      * @remarks
      *
+     * Maps the indicated delegation role to specific UUT details from the provided transaction-context 
+     * to provide the resulting settings.  The transaction context isn't modified.
+     * 
      * Behaves exactly like (and provides the core implementation of) {@link Capo.txnCreateDelegateLink | txnCreateDelegateLink()},
      * returning additional `roleName` and `delegateClass`, to conform with the DelegateSettings type.
      *

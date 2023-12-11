@@ -433,9 +433,9 @@ export class DefaultCapo<
         return capoGovDelegate;
     }
 
-    async txnAddGovAuthority<TCX extends StellarTxnContext<any>>(
+    async txnAddGovAuthority<TCX extends StellarTxnContext>(
         tcx: TCX
-    ): Promise<TCX & StellarTxnContext<any>> {
+    ): Promise<TCX> {
         const capoGovDelegate = await this.findGovDelegate();
         console.log("adding charter's govAuthority");
 
@@ -484,7 +484,7 @@ export class DefaultCapo<
 
     async mkTxnMintingUuts<
         const purposes extends string,
-        existingTcx extends StellarTxnContext<any>,
+        existingTcx extends StellarTxnContext,
         const RM extends Record<ROLES, purposes>,
         const ROLES extends keyof RM & string = string & keyof RM
     >(
@@ -521,7 +521,7 @@ export class DefaultCapo<
         );
     }
 
-    async txnAddMintDelegate<TCX extends StellarTxnContext<any>>(
+    async txnAddMintDelegate<TCX extends StellarTxnContext>(
         tcx: TCX
     ): Promise<TCX> {
         const mintDelegate = await this.getMintDelegate();
@@ -537,15 +537,15 @@ export class DefaultCapo<
     @txn
     //@ts-expect-error - typescript can't seem to understand that
     //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
-    async mkTxnMintCharterToken<TCX extends StellarTxnContext<any>>(
+    async mkTxnMintCharterToken<TCX extends StellarTxnContext>(
         charterDatumArgs: MinimalDefaultCharterDatumArgs<CDT>,
         existingTcx?: TCX
     ): Promise<
         | never
-        | (TCX &
-              hasUutContext<
-                  "govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"
-              > &
+        | (hasUutContext<
+              "govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"
+          > &
+              TCX &
               hasBootstrappedConfig<CapoBaseConfig & configType>)
     > {
         if (this.configIn)

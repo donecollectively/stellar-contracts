@@ -28,7 +28,9 @@ import type {
     Wallet,
 } from "@hyperionbt/helios";
 
-import { StellarTxnContext } from "./StellarTxnContext.js";
+import { 
+    StellarTxnContext,
+ } from "./StellarTxnContext.js";
 import { utxosAsString, valueAsString } from "./diagnostics.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
@@ -340,7 +342,7 @@ export type canHaveToken = TxInput | TxOutput | Assets;
 type UtxoSearchScope = {
     address?: Address;
     wallet?: Wallet;
-    exceptInTcx?: StellarTxnContext<any>;
+    exceptInTcx?: StellarTxnContext;
 };
 
 //!!! todo: type configuredStellarClass = class -> networkStuff -> withParams = stellar instance.
@@ -1508,7 +1510,7 @@ export class StellarContract<
     async mustFindActorUtxo(
         name: string,
         predicate: (u: TxInput) => TxInput | undefined,
-        exceptInTcx: StellarTxnContext<any>,
+        exceptInTcx: StellarTxnContext,
         extraErrorHint?: string
     ): Promise<TxInput | never>;
     async mustFindActorUtxo(
@@ -1520,7 +1522,7 @@ export class StellarContract<
     async mustFindActorUtxo(
         name: string,
         predicate: (u: TxInput) => TxInput | undefined,
-        hintOrExcept?: string | StellarTxnContext<any>,
+        hintOrExcept?: string | StellarTxnContext,
         hint?: string
     ): Promise<TxInput | never> {
         const wallet = this.myActor;
@@ -1557,7 +1559,7 @@ export class StellarContract<
     async mustFindMyUtxo(
         semanticName: string,
         predicate: (u: TxInput) => TxInput | undefined,
-        exceptInTcx: StellarTxnContext<any>,
+        exceptInTcx: StellarTxnContext,
         extraErrorHint?: string
     ): Promise<TxInput>;
     async mustFindMyUtxo(
@@ -1569,7 +1571,7 @@ export class StellarContract<
     async mustFindMyUtxo(
         semanticName: string,
         predicate: (u: TxInput) => TxInput | undefined,
-        hintOrExcept?: string | StellarTxnContext<any>,
+        hintOrExcept?: string | StellarTxnContext,
         hint?: string
     ): Promise<TxInput> {
         const { address } = this;

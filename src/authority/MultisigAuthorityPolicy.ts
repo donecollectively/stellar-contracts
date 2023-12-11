@@ -4,7 +4,7 @@ import { Address, AssetClass, TxInput, Value } from "@hyperionbt/helios";
 import contract from "./MultisigAuthorityPolicy.hl";
 export const MultisigAuthorityScript = contract;
 
-import { StellarTxnContext } from "../StellarTxnContext.js";
+import { StellarTxnContext} from "../StellarTxnContext.js";
 import { hasReqts } from "../Requirements.js";
 import { AuthorityPolicy } from "./AuthorityPolicy.js";
 
@@ -27,7 +27,7 @@ export class MultisigAuthorityPolicy extends AuthorityPolicy {
     // }
 
     async txnReceiveAuthorityToken<
-        TCX extends StellarTxnContext<any>
+        TCX extends StellarTxnContext
     >(
         tcx: TCX, 
         val: Value, 
@@ -37,10 +37,10 @@ export class MultisigAuthorityPolicy extends AuthorityPolicy {
     }
 
     //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
-    async DelegateAddsAuthorityToken<TCX extends StellarTxnContext<any>>(
+    async DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
         fromFoundUtxo: TxInput
-    ): Promise<TCX & StellarTxnContext<any>> {
+    ): Promise<TCX> {
         throw new Error(`todo`)
         return tcx;
     }

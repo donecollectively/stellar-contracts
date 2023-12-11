@@ -27,7 +27,7 @@ import StellarHeliosHelpers from "../StellarHeliosHelpers.hl";
 
 import { CapoMintHelpers } from "../CapoMintHelpers.js";
 
-import { StellarTxnContext } from "../StellarTxnContext.js";
+import { StellarTxnContext, emptyUuts } from "../StellarTxnContext.js";
 import type {
     MintUutActivityArgs,
     MinterBaseMethods,
@@ -89,7 +89,7 @@ export class DefaultMinter
     @partialTxn
     async txnWillMintUuts<
         const purposes extends string,
-        existingTcx extends StellarTxnContext<any>,
+        existingTcx extends StellarTxnContext,
         const RM extends Record<ROLES,purposes>,
         const ROLES extends string & keyof RM = string & keyof RM
     >(
@@ -120,9 +120,11 @@ export class DefaultMinter
             uutMap[role] = uutMap[uutPurpose as string];
         }
         
-        if (!tcx.state) tcx.state = {};
-        if (tcx.state.uuts) throw new Error(`uuts are already there`);
-        tcx.state.uuts = uutMap;
+        if (!tcx.state) tcx.state = {uuts: {}};
+        tcx.state.uuts = {
+            ...(tcx.state.uuts),
+            ...(uutMap)
+        };
 
         return tcx as hasUutContext<ROLES | purposes> & existingTcx 
     }
@@ -130,7 +132,7 @@ export class DefaultMinter
     @txn
     async mkTxnMintingUuts<
         const purposes extends string,
-        existingTcx extends StellarTxnContext<any>,
+        existingTcx extends StellarTxnContext,
         const RM extends Record<ROLES, purposes>,
         const ROLES extends keyof RM & string = string & keyof RM,
     >(
@@ -237,7 +239,7 @@ export class DefaultMinter
     }
 
     @Activity.partialTxn
-    async txnMintingCharter<TCX extends StellarTxnContext<any>>(
+    async txnMintingCharter<TCX extends StellarTxnContext>(
         tcx: TCX,
         {
             owner,
@@ -248,7 +250,9 @@ export class DefaultMinter
             capoGov: UutName;
             mintDgt: UutName;
         }
-    ): Promise<TCX & StellarTxnContext<any>> {
+    ): Promise<TCX> {
+        //!!! todo: can we expect capoGov & mintDgt in tcx.state.uuts? and update the type constraint here?
+
         const charterVE = this.charterTokenAsValuesEntry;
         const capoGovVE = mkValuesEntry(capoGov.name, BigInt(1));
         const mintDgtVE = mkValuesEntry(mintDgt.name, BigInt(1));

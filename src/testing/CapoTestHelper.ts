@@ -97,7 +97,6 @@ export abstract class CapoTestHelper<
     abstract mintCharterToken(
         args?: MinimalDefaultCharterDatumArgs<any>
     ): Promise<
-        & StellarTxnContext<any> 
         & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt">
         & hasBootstrappedConfig<CapoBaseConfig>
     >
