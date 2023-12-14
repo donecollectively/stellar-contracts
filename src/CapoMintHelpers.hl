@@ -47,7 +47,8 @@ func mkUutTnFactory(
     rawTxId : ByteArray = seedTxId.serialize().slice(5,37);
 
     txoId : ByteArray = (rawTxId + "@".encode_utf8() + idxBytes);
-    assert(txoId.length == 34, "txId + @ + int should be length 34");
+    assert(txoId.length == 34, "txId + @ + int should be length 34, got "+ txoId.length.show());
+    // assert(txoId.length == 34, "txId + @ + int should be length 34");
     // print( "******** txoId " + txoId.show());
 
     miniHash : ByteArray = txoId.blake2b().slice(0,6);
