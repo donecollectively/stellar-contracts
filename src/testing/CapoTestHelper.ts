@@ -87,7 +87,7 @@ export abstract class CapoTestHelper<
 
     async bootstrap(args?: MinimalDefaultCharterDatumArgs) {
         let strella = this.strella || (await this.initialize());
-        if (this.ready) return;
+        if (this.ready) return strella;
 
         await this.mintCharterToken(args);
         return strella;

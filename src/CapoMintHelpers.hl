@@ -39,22 +39,34 @@ func hasSeedUtxo(tx: Tx, seedTxId : TxId, seedIdx: Int
 func mkUutTnFactory(
     seedTxId : TxId, seedIdx : Int
 ) -> (String) -> String {
-
-    idxBytes : ByteArray = seedIdx.bound_max(255).serialize();
+   
+    idxBytes : ByteArray = seedIdx.serialize();
     // assert(idxBytes.length == 1, "surprise!");
 
     //! yuck: un-CBOR...
     rawTxId : ByteArray = seedTxId.serialize().slice(5,37);
 
-    txoId : ByteArray = (rawTxId + "@".encode_utf8() + idxBytes);
-    assert(txoId.length == 34, "txId + @ + int should be length 34, got "+ txoId.length.show());
+    txoInfo : ByteArray = if (idxBytes.length > 9) { 
+        // allows 9 bytes to ensure we can support 
+        // the largest possible cbor encoding of txo-index integers, 
+        // even though we only expect integers < 256 currently
+        assert(false, 
+            "expected cbor(txo index) to be at most 9 bytes, got cbor( index="+ 
+             seedIdx.show() + " ).hex = " + idxBytes.show()
+        );
+        idxBytes // never used
+    } else {
+       ( rawTxId + "@".encode_utf8() )+ idxBytes
+    };
     // assert(txoId.length == 34, "txId + @ + int should be length 34");
     // print( "******** txoId " + txoId.show());
 
-    miniHash : ByteArray = txoId.blake2b().slice(0,6);
+    miniHash : ByteArray = txoInfo.blake2b().slice(0,6);
     // assert(miniHash.length == 6, "urgh.  slice 5? expected 12, got "+ miniHash.length.show());
 
     mhs: String = miniHash.show();
+
+    // returns a function computing a lightweight prefix + miniHash
     (p: String) -> String {
         p + "-" + mhs
     }

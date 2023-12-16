@@ -273,7 +273,7 @@ CT extends CapoBaseConfig = SC extends Capo<any, any, infer iCT> ? iCT : never> 
     // Warning: (ae-forgotten-export) The symbol "MinimalDefaultCharterDatumArgs" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
-    bootstrap(args?: MinimalDefaultCharterDatumArgs): Promise<SC | undefined>;
+    bootstrap(args?: MinimalDefaultCharterDatumArgs): Promise<SC>;
     // (undocumented)
     initialize({ randomSeed, config, }?: {
         config?: CT;

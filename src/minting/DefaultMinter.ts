@@ -6,6 +6,7 @@ import {
     Crypto,
     TxInput,
     bytesToHex,
+    HInt,
 } from "@hyperionbt/helios";
 import {
     Activity,
@@ -107,7 +108,8 @@ export class DefaultMinter
 
         const uutMap: uutPurposeMap<ROLES | purposes> = Object.fromEntries(
             uutPurposes.map((uutPurpose) => {
-                const txoId = txId.bytes.concat(["@".charCodeAt(0), utxoIdx]);
+                const idx = new HInt(utxoIdx).toCbor()
+                const txoId = txId.bytes.concat(["@".charCodeAt(0)], idx);
                 // console.warn("&&&&&&&& txoId", bytesToHex(txoId));
                 const uutName = new UutName(
                     uutPurpose,
