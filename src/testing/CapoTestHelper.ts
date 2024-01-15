@@ -56,6 +56,7 @@ export abstract class CapoTestHelper<
             );
         this.randomSeed = randomSeed;
         this.state.mintedCharterToken = undefined;
+        this.state.parsedConfig = undefined;
         // console.log(new Error("setup from").stack)
 
         //! when there's not a preset config, it leaves the detailed setup to be done just-in-time
