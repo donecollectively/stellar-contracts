@@ -643,7 +643,7 @@ export class DefaultCapo<
     }
 
     @Activity.redeemer
-    updatingCharter(): // args: CDT
+    activityUpdatingCharter(): // args: CDT
     isActivity {
         const { updatingCharter } = this.onChainActivitiesType;
         // let {uut, strategyName, reqdAddress: canRequireAddr, addrHint=[]} = args.govAuthority
@@ -666,7 +666,7 @@ export class DefaultCapo<
     ): Promise<StellarTxnContext> {
         return this.txnUpdateCharterUtxo(
             tcx,
-            this.updatingCharter(),
+            this.activityUpdatingCharter(),
             this.mkDatumCharterToken(args)
         );
     }
@@ -695,6 +695,7 @@ export class DefaultCapo<
                     "the trustee threshold is enforced on all administrative actions",
                     "the trustee group can be changed",
                     "the charter token is always kept in the contract",
+                    "the charter details can be updated",
                     "can mint other tokens, on the authority of the Charter token",
                 ],
             },
@@ -712,6 +713,20 @@ export class DefaultCapo<
                     "makes a different address depending on (txId, outputIndex) parameters of the Minting script",
                 ],
                 requires: [],
+            },
+
+            "the charter details can be updated": {
+                purpose: "to support configuration changes over time",
+                details: [
+                    "The Capo's ability to accept charter-configuration changes allows its behavior to evolve. ",
+                    "These configuration changes can accept a new minting-delegate configuration ,",
+                    " ... or other details of the Charter datum that may be specialized."
+                ],
+                mech: [
+                    "TODO: TEST updates details of the datum",
+                    "TODO: TEST doesn't update without the capoGov-* authority",
+                    "TODO: TEST keeps the charter token in the contract address",
+                ]
             },
 
             "has a unique, permanent treasury address": {
@@ -787,7 +802,8 @@ export class DefaultCapo<
                 details: [
                     "When the needed threshold for administrative modifications is achieved, the Charter Datum can be updated",
                     "This type of administrative action should be explicit and separate from any other administrative activity",
-                    "If the CharterToken's Datum is being changed, no other redeemer activities are allowed",
+                    "If the CharterToken's Datum is being changed, no other redeemer activities are allowed.",
+                    "This requires a separate multi-sig delegate policy (TODO: move out of core reqts"
                 ],
                 mech: [
                     "requires the existing threshold of existing trustees to be met",

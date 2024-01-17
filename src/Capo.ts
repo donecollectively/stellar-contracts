@@ -371,7 +371,7 @@ export abstract class Capo<
     }
 
     @Activity.redeemer
-    usingAuthority(): isActivity {
+    activityUsingAuthority(): isActivity {
         const { usingAuthority } = this.onChainActivitiesType;
         if (!usingAuthority) {
             throw new Error(
@@ -383,7 +383,7 @@ export abstract class Capo<
         return { redeemer: t._toUplcData() };
     }
 
-    protected abstract updatingCharter(args: charterDatumType): isActivity;
+    protected abstract activityUpdatingCharter(args: charterDatumType): isActivity;
 
     tvCharter() {
         return this.connectMinter().tvCharter();

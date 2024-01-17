@@ -112,7 +112,7 @@ export class DefaultCapoTestHelper<
         const treasury = this.strella!;
         const tcx: StellarTxnContext = new StellarTxnContext(this.currentActor);
         const tcx2 = await treasury.txnAddGovAuthority(tcx);
-        return treasury.txnMustUseCharterUtxo(tcx2, treasury.usingAuthority());
+        return treasury.txnMustUseCharterUtxo(tcx2, treasury.activityUsingAuthority());
 
         // return treasury.txnAddCharterWithAuthority(tcx);
     }

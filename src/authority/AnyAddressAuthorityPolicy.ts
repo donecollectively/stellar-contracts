@@ -37,7 +37,7 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     }
 
     @Activity.redeemer
-    protected usingAuthority(): isActivity {
+    protected activityUsingAuthority(): isActivity {
         const { usingAuthority } = this.onChainActivitiesType;
         if (!usingAuthority) {
             throw new Error(

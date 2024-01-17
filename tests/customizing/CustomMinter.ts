@@ -34,7 +34,7 @@ export class CustomMinter extends DefaultMinter implements MinterBaseMethods {
     }
 
     @Activity.redeemer
-    protected mintingNamedToken(v: Value): isActivity {
+    protected activityMintingNamedToken(v: Value): isActivity {
         const {mintingNamedToken} = this.onChainActivitiesType;
         const t = new mintingNamedToken(v);
 

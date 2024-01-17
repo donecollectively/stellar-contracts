@@ -127,6 +127,11 @@ export const Activity = {
      * @public
      **/
     redeemer(proto, thingName, descriptor) {
+        if (!thingName.match(/^activity[A-Z]/)) {
+            throw new Error(
+                `@Activity.redeemer: ${thingName}: name should start with 'activity[A-Z]...'`
+            );
+        }
         needsActiveVerb(thingName, !!"okwhatever");
         return Activity.redeemerData(proto, thingName, descriptor);
     },

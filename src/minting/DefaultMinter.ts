@@ -174,7 +174,7 @@ export class DefaultMinter
             tcx.attachScript(this.compiledScript).mintTokens(
                 this.mintingPolicyHash!,
                 vEntries,
-                this.mintingUuts({
+                this.activityMintingUuts({
                     seedTxn,
                     seedIndex,
                     purposes: uutPurposes,
@@ -191,7 +191,8 @@ export class DefaultMinter
     }
 
     @Activity.redeemer
-    protected mintingCharter({ owner }: MintCharterActivityArgs): isActivity {
+    @Activity.redeemer
+    activityMintingCharter({ owner }: MintCharterActivityArgs): isActivity {
         const {mintingCharter} =this.onChainActivitiesType;
         const { DelegateDetails: hlDelegateDetails } = this.onChainTypes;
         const t = new mintingCharter(owner);
@@ -201,7 +202,7 @@ export class DefaultMinter
 
 
     @Activity.redeemer
-    protected mintingUuts({
+    activityMintingUuts({
         seedTxn,
         seedIndex: sIdx,
         purposes,
@@ -267,7 +268,7 @@ export class DefaultMinter
                     capoGovVE,
                     mintDgtVE
                 ],
-                this.mintingCharter({
+                this.activityMintingCharter({
                     owner,
                 }).redeemer
             )

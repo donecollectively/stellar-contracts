@@ -50,10 +50,8 @@ describe("Capo", async () => {
 
     describe("UUTs for contract utility", () => {
         it("won't create a UUT without the minting delegate's involvement", async (context: localTC) => {
-            const {
-                h,
-                h: { network, actors, delay, state },
-            } = context;
+            // prettier-ignore
+            const {h, h: { network, actors, delay, state }} = context;
             const { tina, tom, tracy } = actors;
 
             const t: DefaultCapo = await h.initialize();
@@ -102,7 +100,7 @@ describe("Capo", async () => {
             for (let i = 0; i < 44; i++) {
                 tcx.addOutput(new TxOutput(actors.tracy.address, tinyValue));
             }
-            //! when teh current actor has only outputs with high txo-index:
+            //! when the current actor has only outputs with high txo-index:
             tcx.addOutput(new TxOutput(h.currentActor.address, tinyValue));
             tcx.addOutput(
                 new TxOutput(h.currentActor.address, collateralValue)
@@ -119,17 +117,17 @@ describe("Capo", async () => {
                 h.currentActor
             );
             // await t.txnAddCharterAuthorityTokenRef(tcx);
-            const tcx2a = await strella.mkTxnMintingUuts(tcx2, ["testSomeThing"]);
+            const tcx2a = await strella.mkTxnMintingUuts(tcx2, [
+                "testSomeThing",
+            ]);
             await strella.submit(tcx2a);
             network.tick(1n);
 
         });
 
         it("requires the charter to be used as reference input", async (context: localTC) => {
-            const {
-                h,
-                h: { network, actors, delay, state },
-            } = context;
+            // prettier-ignore
+            const {h, h: { network, actors, delay, state }} = context;
             const { tina, tom, tracy } = actors;
 
             const t: DefaultCapo = await h.bootstrap();
@@ -139,7 +137,7 @@ describe("Capo", async () => {
                 h.currentActor
             );
             {
-                await t.txnMustUseCharterUtxo(tcx, t.usingAuthority());
+                await t.txnMustUseCharterUtxo(tcx, t.activityUsingAuthority());
                 const spy = vi
                     .spyOn(t, "txnMustUseCharterUtxo")
                     .mockImplementation(async (tcx: any, isRef: any) => {
@@ -151,7 +149,6 @@ describe("Capo", async () => {
                 expect(spy).toHaveBeenCalled();
             }
 
-            console.log("-------------- minting uut using large-index seed-utxo")
             await t.mkTxnMintingUuts(tcx, ["testSomeThing"]);
             const uutVal = t.uutsValue(tcx.state.uuts!);
             tcx.addOutput(new TxOutput(tina.address, uutVal));
@@ -163,10 +160,8 @@ describe("Capo", async () => {
         });
 
         it("fails when the mint-delegate authZor isn't returned", async (context: localTC) => {
-            const {
-                h,
-                h: { network, actors, delay, state },
-            } = context;
+            // prettier-ignore
+            const {h, h: { network, actors, delay, state }} = context;
             const { tina, tom, tracy } = actors;
 
             const t: DefaultCapo = await h.initialize();
@@ -194,10 +189,8 @@ describe("Capo", async () => {
         });
 
         it("can create a UUT and send it anywhere", async (context: localTC) => {
-            const {
-                h,
-                h: { network, actors, delay, state },
-            } = context;
+            // prettier-ignore
+            const {h, h: { network, actors, delay, state }} = context;
             const { tina, tom, tracy } = actors;
 
             const t: DefaultCapo = await h.initialize();
@@ -225,10 +218,8 @@ describe("Capo", async () => {
         });
 
         it("can create multiple UUTs", async (context: localTC) => {
-            const {
-                h,
-                h: { network, actors, delay, state },
-            } = context;
+            // prettier-ignore
+            const {h, h: { network, actors, delay, state }} = context;
             const { tina, tom, tracy } = actors;
 
             const t: DefaultCapo = await h.initialize();
@@ -257,10 +248,8 @@ describe("Capo", async () => {
         });
 
         it("fills tcx.state.uuts with purpose-keyed unique token-names", async (context: localTC) => {
-            const {
-                h,
-                h: { network, actors, delay, state },
-            } = context;
+            // prettier-ignore
+            const {h, h: { network, actors, delay, state }} = context;
             const { tina, tom, tracy } = actors;
 
             const t: DefaultCapo = await h.initialize();
@@ -293,10 +282,8 @@ describe("Capo", async () => {
         });
 
         it("won't mint multiple UUTs of the same name", async (context: localTC) => {
-            const {
-                h,
-                h: { network, actors, delay, state },
-            } = context;
+            // prettier-ignore
+            const {h, h: { network, actors, delay, state }} = context;
             const { tina, tom, tracy } = actors;
 
             const t: DefaultCapo = await h.initialize();
@@ -387,10 +374,8 @@ describe("Capo", async () => {
         });
 
         it("won't mint extra UUTs", async (context: localTC) => {
-            const {
-                h,
-                h: { network, actors, delay, state },
-            } = context;
+            // prettier-ignore
+            const {h, h: { network, actors, delay, state }} = context;
             const { tina, tom, tracy } = actors;
 
             const t: DefaultCapo = await h.initialize();

@@ -335,6 +335,11 @@ describe("Capo", async () => {
             }
         );
     });
+    describe("the charter details can be updated by authority of the capoGov-* token", () => {
+        it.todo("TODO: updates details of the datum");
+        it.todo("TODO: doesn't update without the capoGov-* authority");
+        it.todo("TODO: keeps the charter token in the contract address")
+    });
 });
 
 xit("rewards the first 256 buyers with 2.56x bonus credit", async () => {});
