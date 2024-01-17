@@ -123,6 +123,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
             requiresValidDelegateOutput(mintDelegate, mph, ctx) &&
             requiresAuthorization(ctx, datum)
         },
+
         usingAuthority => {
             // by definition, we're truly notUpdatingCharter(activity) 
             datum.switch {

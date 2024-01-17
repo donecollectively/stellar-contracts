@@ -185,12 +185,37 @@ export class DefaultMinter
         });
     }
 
+    @partialTxn
+    async txnBurnUuts<
+        existingTcx extends StellarTxnContext
+    >(
+        initialTcx: existingTcx,
+        uutNames: UutName[],
+    ): Promise<existingTcx> {
+        const tokenNames = uutNames.map(un => un.name)
+        const tcx2 = initialTcx.attachScript(this.compiledScript).mintTokens(
+            this.mintingPolicyHash!, 
+            tokenNames.map((tokenName) => mkValuesEntry(tokenName, BigInt(-1))),
+            this.activityBurningUuts(...tokenNames).redeemer
+        );
+
+        return tcx2 as existingTcx & typeof tcx2;
+    }
+
     //! overrides base getter type with undefined not being allowed
     get mintingPolicyHash(): MintingPolicyHash {
         return super.mintingPolicyHash!;
     }
 
     @Activity.redeemer
+    activityBurningUuts(...uutNames: string[]) : isActivity {
+        const {burningUuts} =this.onChainActivitiesType;
+        const { DelegateDetails: hlDelegateDetails } = this.onChainTypes;
+        const t = new burningUuts(uutNames);
+
+        return { redeemer: t._toUplcData() };
+    }
+
     @Activity.redeemer
     activityMintingCharter({ owner }: MintCharterActivityArgs): isActivity {
         const {mintingCharter} =this.onChainActivitiesType;

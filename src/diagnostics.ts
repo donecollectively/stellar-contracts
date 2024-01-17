@@ -75,7 +75,9 @@ export function assetsAsString(a: Assets) {
                 .map(
                     ([nameBytes, count]) => {
                         const nameString = hexToPrintableString(nameBytes.hex);
-                        return `${count}×💴 ${nameString}`
+                        const burn = count < 1 ? "🔥" : "";
+                        const burned = count < 1 ? "- BURN 🔥 " : "";
+                        return `${burn} ${count}×💴 ${nameString} ${burned}`
                     }
                 )
                 .join(" + ");

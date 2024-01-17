@@ -109,6 +109,7 @@ interface hasUutCreator {
         seedUtxo: TxInput,
         roles?: RM
     ): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
+
     mkTxnMintingUuts<
         const purposes extends string,
         existingTcx extends StellarTxnContext,
@@ -120,6 +121,13 @@ interface hasUutCreator {
         seedUtxo?: TxInput,
         roles?: RM
     ): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
+
+    txnBurnUuts<
+        existingTcx extends StellarTxnContext,
+    >(
+        initialTcx: existingTcx,
+        uutNames: UutName[],
+    ): Promise<existingTcx>;
 }
 
 /**
@@ -340,6 +348,22 @@ export abstract class Capo<
         );
         return tcx;
     }
+    
+    @partialTxn
+    async txnBurnUuts<
+        existingTcx extends StellarTxnContext,
+    >(
+        initialTcx: existingTcx,
+        uutNames: UutName[],
+    ): Promise<existingTcx> {
+        const minter = this.connectMinter();
+        const tcx = await minter.txnBurnUuts(
+            initialTcx,
+            uutNames,
+        );
+        return tcx;
+    }
+
     // P extends paramsBase = SC extends StellarContract<infer P> ? P : never
 
     /**

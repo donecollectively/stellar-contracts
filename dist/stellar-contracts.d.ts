@@ -115,7 +115,7 @@ export declare function addTestContext<SC extends StellarContract<any>, P extend
 export declare class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     loadProgramScript(params: any): undefined;
     get delegateValidatorHash(): undefined;
-    protected usingAuthority(): isActivity;
+    protected activityUsingAuthority(): isActivity;
     /**
      * Finds the delegate authority token, normally in the delegate's contract address
      * @public
@@ -294,6 +294,7 @@ export declare abstract class Capo<minterType extends MinterBaseMethods & Defaul
     minter?: minterType;
     txnWillMintUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
     mkTxnMintingUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
+    txnBurnUuts<existingTcx extends StellarTxnContext>(initialTcx: existingTcx, uutNames: UutName[]): Promise<existingTcx>;
     /**
      * returns a value representing the provided UUT(s)
      * @remarks
@@ -307,8 +308,8 @@ export declare abstract class Capo<minterType extends MinterBaseMethods & Defaul
     uutsValue(uutMap: uutPurposeMap<any>): Value;
     uutsValue(tcx: hasUutContext<any>): Value;
     uutsValue(uutName: UutName): Value;
-    usingAuthority(): isActivity;
-    protected abstract updatingCharter(args: charterDatumType): isActivity;
+    activityUsingAuthority(): isActivity;
+    protected abstract activityUpdatingCharter(args: charterDatumType): isActivity;
     tvCharter(): Value;
     get charterTokenAsValue(): Value;
     importModules(): HeliosModuleSrc[];
@@ -759,6 +760,7 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
      * @public
      **/
     mkFullConfig(baseConfig: CapoBaseConfig): CapoBaseConfig & configType & rootCapoConfig;
+    txnBurnUuts<existingTcx extends StellarTxnContext>(initialTcx: existingTcx, uutNames: UutName[]): Promise<existingTcx>;
     mkTxnMintingUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput | undefined, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
     getMintDelegate(): Promise<BasicMintDelegate>;
     getGovDelegate(): Promise<AuthorityPolicy<capoDelegateConfig_2>>;
@@ -768,9 +770,9 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
      * @public
      **/
     mkTxnMintCharterToken<TCX extends StellarTxnContext>(charterDatumArgs: MinimalDefaultCharterDatumArgs<CDT>, existingTcx?: TCX): Promise<never | (hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & TCX & hasBootstrappedConfig<CapoBaseConfig & configType>)>;
-    updatingCharter(): isActivity;
+    activityUpdatingCharter(): isActivity;
     mkTxnUpdateCharter(args: CDT, tcx?: StellarTxnContext): Promise<StellarTxnContext>;
-    requirements(): ReqtsMap_3<"the trustee group can be changed" | "positively governs all administrative actions" | "has a unique, permanent charter token" | "has a unique, permanent treasury address" | "the trustee threshold is enforced on all administrative actions" | "the charter token is always kept in the contract" | "can mint other tokens, on the authority of the Charter token" | "has a singleton minting policy" | "foo">;
+    requirements(): ReqtsMap_3<"the trustee group can be changed" | "positively governs all administrative actions" | "has a unique, permanent charter token" | "has a unique, permanent treasury address" | "the trustee threshold is enforced on all administrative actions" | "the charter token is always kept in the contract" | "the charter details can be updated" | "can mint other tokens, on the authority of the Charter token" | "has a singleton minting policy" | "foo">;
 }
 
 /**
@@ -851,9 +853,11 @@ export declare class DefaultMinter extends StellarContract<BasicMinterParams> im
     importModules(): HeliosModuleSrc[];
     txnWillMintUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends string & keyof RM = string & keyof RM>(tcx: existingTcx, uutPurposes: purposes[], seedUtxo: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
     mkTxnMintingUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
+    txnBurnUuts<existingTcx extends StellarTxnContext>(initialTcx: existingTcx, uutNames: UutName[]): Promise<existingTcx>;
     get mintingPolicyHash(): MintingPolicyHash;
-    protected mintingCharter({ owner }: MintCharterActivityArgs): isActivity;
-    protected mintingUuts({ seedTxn, seedIndex: sIdx, purposes, }: MintUutActivityArgs): isActivity;
+    activityBurningUuts(...uutNames: string[]): isActivity;
+    activityMintingCharter({ owner }: MintCharterActivityArgs): isActivity;
+    activityMintingUuts({ seedTxn, seedIndex: sIdx, purposes, }: MintUutActivityArgs): isActivity;
     get charterTokenAsValuesEntry(): valuesEntry;
     tvCharter(): Value;
     get charterTokenAsValue(): Value;
@@ -1003,6 +1007,7 @@ export declare type hasUutContext<uutEntries extends string> = StellarTxnContext
 declare interface hasUutCreator {
     txnWillMintUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
     mkTxnMintingUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
+    txnBurnUuts<existingTcx extends StellarTxnContext>(initialTcx: existingTcx, uutNames: UutName[]): Promise<existingTcx>;
 }
 
 export { helios }

@@ -13,6 +13,7 @@ export default defineConfig({
   test: {
     // include: ['tests/new*.test.ts', ],
     include: ['tests/*.test.ts', 'tests/*.test.js'],
+    restoreMocks: true,
     testTimeout: 500000,
     globals: true,
     // browser: {

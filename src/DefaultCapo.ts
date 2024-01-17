@@ -68,6 +68,7 @@ import { NoMintDelegation } from "./minting/NoMintDelegation.js";
 import { CapoHelpers } from "./CapoHelpers.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
+import type { UutName } from "../index.js";
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
@@ -481,6 +482,20 @@ export class DefaultCapo<
             rootCapoScriptHash: newCapo.compiledScript.validatorHash,
         } as configType & CapoBaseConfig & rootCapoConfig;
     }
+
+    async txnBurnUuts<
+        existingTcx extends StellarTxnContext,
+    >(
+        initialTcx: existingTcx,
+        uutNames: UutName[],
+    ): Promise<existingTcx> {
+        const tcx = await super.txnBurnUuts(
+            initialTcx,
+            uutNames,
+        );
+        const tcx2 = await this.txnMustUseCharterUtxo(tcx, "refInput");
+        return this.txnAddMintDelegate(tcx2);
+    }    
 
     async mkTxnMintingUuts<
         const purposes extends string,

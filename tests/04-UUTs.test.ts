@@ -6,6 +6,7 @@ import {
     vi,
     assertType,
     expectTypeOf,
+    SpyInstance,
 } from "vitest";
 
 import { DefaultCapo } from "../src/DefaultCapo";
@@ -122,7 +123,6 @@ describe("Capo", async () => {
             ]);
             await strella.submit(tcx2a);
             network.tick(1n);
-
         });
 
         it("requires the charter to be used as reference input", async (context: localTC) => {
@@ -409,6 +409,145 @@ describe("Capo", async () => {
                 })
             ).rejects.toThrow(/bad UUT mint/);
             network.tick(1n);
+        });
+    });
+
+    describe("burning UUTs", () => {
+        type testSomeThing = "testSomeThing";
+
+        async function setup(context: localTC) {
+            // prettier-ignore
+            const {h, h: { network, actors, delay, state }} = context;
+            const { tina, tom, tracy } = actors;
+
+            const t: DefaultCapo = await h.initialize();
+
+            await h.mintCharterToken();
+            const tcx = new StellarTxnContext<hasAllUuts<testSomeThing>>(
+                h.currentActor
+            );
+            // await t.txnAddCharterAuthorityTokenRef(tcx);
+            await t.mkTxnMintingUuts(tcx, ["testSomeThing"]);
+            const uutVal = t.uutsValue(tcx.state.uuts!);
+            tcx.addOutput(new TxOutput(tina.address, uutVal));
+            await t.submit(tcx, {
+                signers: [tom.address, tina.address, tracy.address],
+            });
+            network.tick(1n);
+
+            return tcx;
+        }
+
+        it("can't burn a UUT without the minting delegate", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h: { network, actors, delay, state }} = context;
+            const { tina, tom, tracy } = actors;
+
+            const tcx = await setup(context);
+            const t: DefaultCapo = await h.initialize();
+
+            const { testSomeThing } = tcx.state.uuts;
+
+            const uutUtxo = await t.findActorUtxo(
+                "theUut",
+                t.mkTokenPredicate(t.mph, testSomeThing.name)
+            );
+            expect(uutUtxo).toBeTruthy();
+            console.log("---- test will fail to burn a UUT with no delegate");
+
+            const burnTcx = new StellarTxnContext<hasAllUuts<testSomeThing>>(
+                h.currentActor
+            );
+            await burnTcx.addInput(uutUtxo!);
+
+            const mintDgt = await t.getMintDelegate();
+            let mock: SpyInstance = vi
+                .spyOn(mintDgt, "txnGrantAuthority")
+                .mockImplementation(async (tcx) => tcx);
+
+            const bTcx2 = await t.txnBurnUuts(burnTcx, [testSomeThing]);
+            expect(mock).toHaveBeenCalled();
+            const submitting = t.submit(bTcx2, {
+                signers: [tom.address, tina.address, tracy.address],
+            });
+            await expect(submitting).rejects.toThrow(
+                /missing.*delegate.*mintDgt/
+            );
+        });
+
+        it("can burn a UUT, if approved by the minting delegate", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h: { network, actors, delay, state }} = context;
+            const { tina, tom, tracy } = actors;
+
+            const t: DefaultCapo = await h.initialize();
+            debugger
+            const tcx = await setup(context);
+
+            const { testSomeThing: tst } = tcx.state.uuts;
+
+            const uutUtxo = await t.findActorUtxo(
+                "theUut",
+                t.mkTokenPredicate(t.mph, tst.name)
+            );
+            expect(uutUtxo).toBeTruthy();
+            console.log("---- test will burn a UUT  with delegate approval");
+
+            const burnTcx = new StellarTxnContext<hasAllUuts<testSomeThing>>(
+                h.currentActor
+            );
+            burnTcx.addInput(uutUtxo!);
+
+            const bTcx2 = await t.txnBurnUuts(burnTcx, [tst]);
+            const submitting = t.submit(bTcx2, {
+                signers: [tom.address, tina.address, tracy.address],
+            });
+            await expect(submitting).resolves.toBeTruthy();
+        });
+
+        it("burns only the UUTs identified in the Activity/redeemer", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h: { network, actors, delay, state }} = context;
+            const { tina, tom, tracy } = actors;
+
+            const t: DefaultCapo = await h.initialize();
+            const tcx = await setup(context);
+            const tcx2 = await setup(context);
+            const { testSomeThing: tst } = tcx.state.uuts;
+            const { testSomeThing: tst2 } = tcx2.state.uuts;
+
+            const uutUtxo = await t.findActorUtxo(
+                "theUut",
+                t.mkTokenPredicate(t.mph, tst.name)
+            );
+            expect(uutUtxo).toBeTruthy();
+            console.log("---- test will burn a UUT  with delegate approval");
+
+            const uutUtxo2 = await t.findActorUtxo(
+                "theUut",
+                t.mkTokenPredicate(t.mph, tst2.name)
+            );
+            expect(uutUtxo).toBeTruthy();
+            const burnTcx = new StellarTxnContext<hasAllUuts<testSomeThing>>(
+                h.currentActor
+            );
+            burnTcx.addInput(uutUtxo!);
+            burnTcx.addInput(uutUtxo2!);
+
+            const minter = t.minter!;
+            const activityBurningUuts = minter.activityBurningUuts.bind(minter);
+            vi.spyOn(minter, "activityBurningUuts")
+                .mockImplementation((tn1, tn2) => activityBurningUuts(tn1));
+
+            const bTcx2 = await t.txnBurnUuts(burnTcx, [tst, tst2]);
+            
+            const submitting = t.submit(bTcx2, {
+                signers: [tom.address, tina.address, tracy.address],
+            });
+            await expect(submitting).rejects.toThrow(
+                /bad UUT burn has mismatch/
+            );
+
         });
     });
 });

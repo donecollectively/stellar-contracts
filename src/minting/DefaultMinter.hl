@@ -4,6 +4,7 @@ import {
     hasSeedUtxo, 
     mkUutTnFactory,
     validateUutMinting, 
+    validateUutBurning,
     Activity
 } from CapoMintHelpers
 
@@ -62,6 +63,10 @@ func main(r : Activity, ctx: ScriptContext) -> Bool {
             seedIdx: sIdx, 
             purposes: purposes,
             mkTokenName: r.uutTnFactory()
+        ),
+        burningUuts{tns} => validateUutBurning(
+            ctx: ctx,
+            tns: tns
         ),
         _ => true
     };

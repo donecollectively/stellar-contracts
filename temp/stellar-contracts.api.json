@@ -427,6 +427,38 @@
           "members": [
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!AnyAddressAuthorityPolicy#activityUsingAuthority:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "protected activityUsingAuthority(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "isActivity",
+                  "canonicalReference": "@donecollectively/stellar-contracts!isActivity:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "releaseTag": "Public",
+              "isProtected": true,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "activityUsingAuthority"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!AnyAddressAuthorityPolicy#DelegateAddsAuthorityToken:member(1)",
               "docComment": "",
               "excerptTokens": [
@@ -952,38 +984,6 @@
               "isOptional": false,
               "isAbstract": false,
               "name": "txnReceiveAuthorityToken"
-            },
-            {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!AnyAddressAuthorityPolicy#usingAuthority:member(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "protected usingAuthority(): "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "isActivity",
-                  "canonicalReference": "@donecollectively/stellar-contracts!isActivity:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 2
-              },
-              "releaseTag": "Public",
-              "isProtected": true,
-              "overloadIndex": 1,
-              "parameters": [],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "usingAuthority"
             }
           ],
           "extendsTokenRange": {
@@ -2148,6 +2148,87 @@
                   "isOptional": false
                 }
               ]
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#activityUpdatingCharter:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "protected abstract activityUpdatingCharter(args: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "charterDatumType"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "isActivity",
+                  "canonicalReference": "@donecollectively/stellar-contracts!isActivity:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 4
+              },
+              "releaseTag": "Public",
+              "isProtected": true,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "args",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": true,
+              "name": "activityUpdatingCharter"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#activityUsingAuthority:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "activityUsingAuthority(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "isActivity",
+                  "canonicalReference": "@donecollectively/stellar-contracts!isActivity:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "activityUsingAuthority"
             },
             {
               "kind": "Method",
@@ -4321,6 +4402,102 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#txnBurnUuts:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "txnBurnUuts<existingTcx extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">(initialTcx: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "existingTcx"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", uutNames: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "UutName",
+                  "canonicalReference": "@donecollectively/stellar-contracts!UutName:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "[]"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<existingTcx>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "typeParameters": [
+                {
+                  "typeParameterName": "existingTcx",
+                  "constraintTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 8,
+                "endIndex": 10
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "initialTcx",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 3,
+                    "endIndex": 4
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "uutNames",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 5,
+                    "endIndex": 7
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "txnBurnUuts"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!Capo#txnCreateConfiguredDelegate:member(1)",
               "docComment": "/**\n * Generates and returns a complete set of delegate settings, given a delegation role and strategy-selection details.\n *\n * @remarks\n *\n * Maps the indicated delegation role to specific UUT details from the provided transaction-context to provide the resulting settings. The transaction context isn't modified.\n *\n * Behaves exactly like (and provides the core implementation of) {@link Capo.txnCreateDelegateLink | txnCreateDelegateLink()}, returning additional `roleName` and `delegateClass`, to conform with the DelegateSettings type.\n *\n * See txnCreateDelegateLink for further details.\n *\n * @public\n */\n",
               "excerptTokens": [
@@ -5285,87 +5462,6 @@
               "isOptional": false,
               "isAbstract": false,
               "name": "txnWillMintUuts"
-            },
-            {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!Capo#updatingCharter:member(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "protected abstract updatingCharter(args: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "charterDatumType"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "isActivity",
-                  "canonicalReference": "@donecollectively/stellar-contracts!isActivity:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 3,
-                "endIndex": 4
-              },
-              "releaseTag": "Public",
-              "isProtected": true,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "args",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 2
-                  },
-                  "isOptional": false
-                }
-              ],
-              "isOptional": false,
-              "isAbstract": true,
-              "name": "updatingCharter"
-            },
-            {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!Capo#usingAuthority:member(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "usingAuthority(): "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "isActivity",
-                  "canonicalReference": "@donecollectively/stellar-contracts!isActivity:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 2
-              },
-              "releaseTag": "Public",
-              "isProtected": false,
-              "overloadIndex": 1,
-              "parameters": [],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "usingAuthority"
             },
             {
               "kind": "Method",
@@ -6516,6 +6612,38 @@
           "preserveMemberOrder": false,
           "members": [
             {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#activityUpdatingCharter:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "activityUpdatingCharter(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "isActivity",
+                  "canonicalReference": "@donecollectively/stellar-contracts!isActivity:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "activityUpdatingCharter"
+            },
+            {
               "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#capoHelpers:member",
               "docComment": "/**\n * indicates any specialization of the baseline Capo types\n *\n * @remarks\n *\n * The default implementation is an UnspecialiedCapo, which you can use as a template for your specialized Capo.\n *\n * Every specalization MUST include Datum and Activity (\"redeemer\") enums, and MAY include additional functions, and methods on Datum / Activity.\n *\n * The datum enum SHOULD have a validateSpend(self, datum, ctx) method.\n *\n * The activity enum SHOULD have an allowActivity(self, datum, ctx) method.\n *\n * @public\n */\n",
@@ -7609,7 +7737,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<\"the trustee group can be changed\" | \"positively governs all administrative actions\" | \"has a unique, permanent charter token\" | \"has a unique, permanent treasury address\" | \"the trustee threshold is enforced on all administrative actions\" | \"the charter token is always kept in the contract\" | \"can mint other tokens, on the authority of the Charter token\" | \"has a singleton minting policy\" | \"foo\">"
+                  "text": "<\"the trustee group can be changed\" | \"positively governs all administrative actions\" | \"has a unique, permanent charter token\" | \"has a unique, permanent treasury address\" | \"the trustee threshold is enforced on all administrative actions\" | \"the charter token is always kept in the contract\" | \"the charter details can be updated\" | \"can mint other tokens, on the authority of the Charter token\" | \"has a singleton minting policy\" | \"foo\">"
                 },
                 {
                   "kind": "Content",
@@ -7812,35 +7940,99 @@
             },
             {
               "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#updatingCharter:member(1)",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#txnBurnUuts:member(1)",
               "docComment": "",
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "updatingCharter(): "
+                  "text": "txnBurnUuts<existingTcx extends "
                 },
                 {
                   "kind": "Reference",
-                  "text": "isActivity",
-                  "canonicalReference": "@donecollectively/stellar-contracts!isActivity:type"
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">(initialTcx: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "existingTcx"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", uutNames: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "UutName",
+                  "canonicalReference": "@donecollectively/stellar-contracts!UutName:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "[]"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<existingTcx>"
                 },
                 {
                   "kind": "Content",
                   "text": ";"
                 }
               ],
+              "typeParameters": [
+                {
+                  "typeParameterName": "existingTcx",
+                  "constraintTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                }
+              ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 2
+                "startIndex": 8,
+                "endIndex": 10
               },
               "releaseTag": "Public",
               "isProtected": false,
               "overloadIndex": 1,
-              "parameters": [],
+              "parameters": [
+                {
+                  "parameterName": "initialTcx",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 3,
+                    "endIndex": 4
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "uutNames",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 5,
+                    "endIndex": 7
+                  },
+                  "isOptional": false
+                }
+              ],
               "isOptional": false,
               "isAbstract": false,
-              "name": "updatingCharter"
+              "name": "txnBurnUuts"
             },
             {
               "kind": "Method",
@@ -8683,6 +8875,164 @@
           "preserveMemberOrder": false,
           "members": [
             {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter#activityBurningUuts:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "activityBurningUuts(...uutNames: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string[]"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "isActivity",
+                  "canonicalReference": "@donecollectively/stellar-contracts!isActivity:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 4
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "uutNames",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "activityBurningUuts"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter#activityMintingCharter:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "activityMintingCharter({ owner }: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "MintCharterActivityArgs",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~MintCharterActivityArgs:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "isActivity",
+                  "canonicalReference": "@donecollectively/stellar-contracts!isActivity:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 4
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "{ owner }",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "activityMintingCharter"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter#activityMintingUuts:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "activityMintingUuts({ seedTxn, "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "seedIndex",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~__type#seedIndex"
+                },
+                {
+                  "kind": "Content",
+                  "text": ": sIdx, purposes, }: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "MintUutActivityArgs",
+                  "canonicalReference": "@donecollectively/stellar-contracts!MintUutActivityArgs:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "isActivity",
+                  "canonicalReference": "@donecollectively/stellar-contracts!isActivity:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 5,
+                "endIndex": 6
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "{ seedTxn, seedIndex: sIdx, purposes, }",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 3,
+                    "endIndex": 4
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "activityMintingUuts"
+            },
+            {
               "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter#charterTokenAsValue:member",
               "docComment": "",
@@ -8871,56 +9221,6 @@
               "name": "importModules"
             },
             {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter#mintingCharter:member(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "protected mintingCharter({ owner }: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "MintCharterActivityArgs",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~MintCharterActivityArgs:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "isActivity",
-                  "canonicalReference": "@donecollectively/stellar-contracts!isActivity:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 3,
-                "endIndex": 4
-              },
-              "releaseTag": "Public",
-              "isProtected": true,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "{ owner }",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 2
-                  },
-                  "isOptional": false
-                }
-              ],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "mintingCharter"
-            },
-            {
               "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter#mintingPolicyHash:member",
               "docComment": "",
@@ -8950,65 +9250,6 @@
               "isStatic": false,
               "isProtected": false,
               "isAbstract": false
-            },
-            {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter#mintingUuts:member(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "protected mintingUuts({ seedTxn, "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "seedIndex",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~__type#seedIndex"
-                },
-                {
-                  "kind": "Content",
-                  "text": ": sIdx, purposes, }: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "MintUutActivityArgs",
-                  "canonicalReference": "@donecollectively/stellar-contracts!MintUutActivityArgs:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "isActivity",
-                  "canonicalReference": "@donecollectively/stellar-contracts!isActivity:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 5,
-                "endIndex": 6
-              },
-              "releaseTag": "Public",
-              "isProtected": true,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "{ seedTxn, seedIndex: sIdx, purposes, }",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 3,
-                    "endIndex": 4
-                  },
-                  "isOptional": false
-                }
-              ],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "mintingUuts"
             },
             {
               "kind": "Method",
@@ -9244,6 +9485,102 @@
               "isOptional": false,
               "isAbstract": false,
               "name": "tvCharter"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter#txnBurnUuts:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "txnBurnUuts<existingTcx extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">(initialTcx: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "existingTcx"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", uutNames: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "UutName",
+                  "canonicalReference": "@donecollectively/stellar-contracts!UutName:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "[]"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<existingTcx>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "typeParameters": [
+                {
+                  "typeParameterName": "existingTcx",
+                  "constraintTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 8,
+                "endIndex": 10
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "initialTcx",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 3,
+                    "endIndex": 4
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "uutNames",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 5,
+                    "endIndex": 7
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "txnBurnUuts"
             },
             {
               "kind": "Method",
