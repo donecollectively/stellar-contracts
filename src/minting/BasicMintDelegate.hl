@@ -35,9 +35,14 @@ func mustReturnValueToScript(value : Value, ctx : ScriptContext) -> Bool {
 func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptContext) -> Bool {
     // input = ctx.get_current_input();
     mdd.switch{
+        //! performs essential checks of policy for spending the minting delegate's authority token "mintDgt-*"
+        //! It also calls any additionalDelegateValidation() defined in a specialized minting delegate.
         isD : IsDelegation{dd, _} => {
             // MintDelegateDatum::IsDelegation{dd, cfg} = isD;
             activity.switch {        
+                // authorizing minting of a new token or burning an existing token:
+                //   guards that the authority token is returned to this script.
+                // specialized minting delegates should likely perform additional checks.
                 Authorizing => {
                     ok : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);
 
@@ -50,15 +55,29 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
 
                     ok
                 },
+                // reassigning the authority token to a new minting delegate
                 Reassigning => {
                     // the token isn't burned, and it isn't returned back to this script
                     ctx.tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&
                     !returnsValueToScript( tvAuthorityToken(dd), ctx)
                 },
+                // the token is being burned, retiring the authority token for this minting delegate
+                // as a result, this minting delegate will no longer be consulted.  This could be combined
+                // with the creation of a new minting delegate with a new authority token, registered
+                // with the Capo in place of this one (or Reassigning could be used for such a case).
+                // If there is no replacement minting delegate, then the Capo will not be able to perform 
+                // any further minting activities.
+                //
+                // Retiring is not suitable for authorizing token-burning.
                 Retiring => {
-                    // the token is burned
                     ctx.tx.minted.get(acAuthorityToken(dd)) == -1
                 },
+                // adjusting any configuration details for this mint delegate:
+                // guards that the authority token is returned to this script, 
+                // ... and calls additional validateCDConfig() defined in a specialized minting delegate.
+                // specialized minting delegates can perform additional checks, but
+                // ... if they only need to validate custom mint-delegate configuration, 
+                // ... they can simply implement a validateCDConfig() method.
                 Modifying => {
                     authorityValue : Value = tvAuthorityToken(dd);
                     ok : Bool = mustReturnValueToScript(authorityValue, ctx);
