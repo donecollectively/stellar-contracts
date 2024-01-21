@@ -7,7 +7,8 @@ import {
     DelegationDetail,
     acAuthorityToken,
     tvAuthorityToken,
-    unmodifiedDelegation
+    unmodifiedDelegation,
+    mustReturnValueToScript
 } from CapoDelegateHelpers
 
 import {
@@ -31,12 +32,7 @@ import {
 //     preventCharterChange(ctx, datum) 
 // }
 
-func mustReturnValueToScript(value : Value, ctx : ScriptContext) -> Bool {
-    if (!returnsValueToScript( value, ctx)) {
-         error("the authZor token MUST be returned")
-    };
-    true
-}
+
 
 func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptContext) -> Bool {
     // input = ctx.get_current_input();
@@ -63,23 +59,14 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                 //     ok
                 // },
 
-                mintingUuts{sTxId, sIdx, purposes} => {
-                    assert(activity.usesGenericUutMinting(), "no genericUutMinting");
-                    o : []TxOutput = ctx.get_cont_outputs();
-                    if (o.length != 1) { error("single utxo only") };
-
-                    isOk : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx) &&                    
-                    unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize(), ctx) &&
-                    validateUutMinting(
-                        ctx: ctx, 
-                        mph: dd.mph,
-                        seedTxId: sTxId, 
-                        seedIdx: sIdx, 
-                        purposes: purposes,
-                        mkTokenName: mkUutTnFactory(sTxId, sIdx)
-                    );
-
-                    isOk
+                mintingUuts => {
+                    if (!activity.usesGenericUutMinting()) { // this may throw an error when this entire actviity is disabled by the specialization
+                        // if we arrive here, then the minting delegate should handle validation
+                        // of this activity in additionalDelegateValidation().
+                        true                                    
+                    } else {
+                         activity.genericUutMinting(mdd, ctx)
+                    }
                 },
 
                 // reassigning the authority token to a new minting delegate

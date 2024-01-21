@@ -126,11 +126,15 @@ func validateUutBurning(
 
 }
 
+// checks all of the following:
+//  - there's an approving delegate (or we're bootstrapping)
+//  - the mint includes the seed UTXO
+//  - the mint matches the UUTs indicated by the list of purposes
 func validateUutMinting(
     ctx: ScriptContext, 
     mph: MintingPolicyHash,
     seedTxId : TxId, seedIdx : Int, 
-    purposes: []String, 
+    purposes: []String,     
     mkTokenName: (String) -> String,
     bootstrapCharter:Value = Value::new(AssetClass::ADA, 0)
 ) -> Bool {

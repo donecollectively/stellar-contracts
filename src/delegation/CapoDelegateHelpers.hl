@@ -1,7 +1,8 @@
 module CapoDelegateHelpers
 
 import {
-    mkTv
+    mkTv,
+    returnsValueToScript
 } from StellarHeliosHelpers
 
 // Delegates can define addtional activities in their enum variants,
@@ -34,6 +35,13 @@ enum BASE_DELEGATE_Datum {
         dd: DelegationDetail
         CustomConfig: Data
     }
+}
+
+func mustReturnValueToScript(value : Value, ctx : ScriptContext) -> Bool {
+    if (!returnsValueToScript( value, ctx)) {
+         error("the authZor token MUST be returned")
+    };
+    true
 }
 
 //!!! call with existing delegate Datum.serialize()

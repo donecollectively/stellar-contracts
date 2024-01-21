@@ -1,20 +1,42 @@
 module specializedMintDelegate
 
-//! provides a basic version, not actually specialized,
+//! provides a basic version, not yet specialized,
 // of the "specializedMintDelegate" interface, which simply
 // exports a DelegateDatum enum and DelegateActivities (redeemer enum).  
+
 //! these specializations MAY include additional enum variants, and 
 //  ... they MUST include the same enum variants found in this
-//  ... unspecialized version.  
-//  If you're specializing and you get a Helios compiler error,
-// ... these are the first things you should check!
+//  ... unspecialized version.   If you're specializing and you get a Helios 
+//  ... compiler error, these are the first things you should check!
+
+// The MintDelegateActivity (redeemer) enum reserves the first 10
+// ... variants for use-cases inside the script, with the remaining
+// ... available for authorizing application-specific use-cases.
+
+// The mintingUuts activity
+
+// The MintDelegateDatum enum reserves the first variant for the
+// ... "IsDelegation" datum, which can contain any delegate-specific 
+// ... configuration.  Its CustomConfig field is specified as a String 
+// ... in the unspecialized version, but may be redefined to use different
+// ... type in your specialization.  The Modifying activity may be used for
+// ... applying updates to that datum, with validation of that activity
+// ... provided by your specialization.
+
 //! Your specialization MAY include any 
 // ... additional functions, imports or methods
 
 import {
      DelegationDetail,
+     mustReturnValueToScript,
+     tvAuthorityToken,
      unmodifiedDelegation
 } from CapoDelegateHelpers
+
+import {
+    validateUutMinting,
+    mkUutTnFactory
+} from CapoMintHelpers
 
 enum MintDelegateDatum {
     IsDelegation {
@@ -66,9 +88,50 @@ enum MintDelegateActivity {
     //xxx }
 
     func usesGenericUutMinting(self) -> Bool {
+        // use this error to completely disable the uutMinting activity in
+        // favor of app-specific activities with more directed validations:
+        //   error("no generic UUT minting in this delegate");
+
         self == self
         && true
     }
+
+    // this function gives a general-purpose implementation of checking for 
+    // valid uut mints. A specialization might modify it use different policies
+    // or enforce additional requirements
+    func genericUutMinting(self, 
+        mdd: MintDelegateDatum,
+        ctx: ScriptContext
+    ) -> Bool {
+        MintDelegateActivity::mintingUuts{sTxId, sIdx, purposes} = self;
+
+        assert(self.usesGenericUutMinting(), "no genericUutMinting");
+        o : []TxOutput = ctx.get_cont_outputs();
+        if (o.length != 1) { error("single utxo only") };
+
+        MintDelegateDatum::IsDelegation{dd, _} = mdd;
+        isOk : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx) &&                    
+
+        // A project that wants to evolve the Datum's isDelegation.CustomConfig 
+        // should enforce that requirement instead of this "not modified" check.
+        unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize(), ctx) &&
+
+        // This call can serve as a template for enforcing expected mints 
+        // of uuts (and additional token values) in validation of application-
+        // specific activities.
+        validateUutMinting(
+            ctx: ctx, 
+            mph: dd.mph,
+            seedTxId: sTxId, 
+            seedIdx: sIdx, 
+            purposes: purposes,
+            // additionalValues: ()
+            mkTokenName: mkUutTnFactory(sTxId, sIdx)
+        );
+
+        isOk
+    }
+
     //! used only for validating IsDelegation datum, that is,
     //   ... to approve minting requests or any customize spending modes 
     //   ... of that datum.  In this unspecialized version, 
@@ -77,10 +140,9 @@ enum MintDelegateActivity {
     //   ... enforced in "Modifying" event the second field of IsDelegation (the "CDConfig" stand-in here)
     //   ... the BasicMintDelegate allows for that field's presence, without any assumptions
     //   ... about its type.
-    //  Note that the basic mint delegate already
-    //   ... enforces the authority UUT being returned to the delegate script,
-    //   ... and other basic administrative expectations, so any specialization
-    //   ... can focus on higher-level policy considerations.
+    //  Note that the basic mint delegate already enforces some basic
+    //    administrative expectations for Reassigning, Retiring, Modifying activites, 
+    //    so a specialization doesn't need to re-implement those checks.
     func additionalDelegateValidation( self,
         priorMddd: MintDelegateDatum::IsDelegation, 
         ctx: ScriptContext
@@ -91,14 +153,17 @@ enum MintDelegateActivity {
             //     unmodifiedDelegation(priorMddd.serialize(), ctx) && 
             //     true
             // },
-            Modifying => false,
-            _ => true
+            mintingUuts => self.genericUutMinting(priorMddd, ctx),
+            // Modifying => false,
+            // Reassigning => false,
+            // Retiring => false,
+            _ => false
         } || ctx.tx.serialize() != priorMddd.serialize()
     }
 
     //! used only for validating non-IsDelegation datum types.
     //   if you have any admininstrative data structures that inform 
-    //   your minting policy, these
+    //   your minting policy, this might be useful
     func otherDatumValidation( self,
         priorMdd: MintDelegateDatum, 
         ctx: ScriptContext
