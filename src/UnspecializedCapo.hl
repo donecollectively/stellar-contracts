@@ -40,7 +40,6 @@ enum Datum {
 //! provides a basic version of Activity ("redeemer" type) in default specializedCapo module
 enum Activity {
     usingAuthority
-    spendingDatum
     updatingCharter    
 
     func allowActivity(self, datum: Datum, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {

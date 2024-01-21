@@ -105,10 +105,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
             }
         },
         _ => {
-            activity.switch {
-                spendingDatum => datum.validateSpend(ctx, mph),
-                _ => true
-            }
+            datum.validateSpend(ctx, mph)
         }            
     };
     allActivitySpecificChecks : Bool = activity.switch {
