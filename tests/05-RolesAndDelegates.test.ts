@@ -113,7 +113,7 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
 
-                const tcx = await t.mkTxnMintingUuts(
+                const tcx = await t.txnMintingUuts(
                     new StellarTxnContext(h.currentActor),
                     ["mintDgt"],
                     undefined,
@@ -137,7 +137,7 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
 
-                const tcx = await t.mkTxnMintingUuts(
+                const tcx = await t.txnMintingUuts(
                     new StellarTxnContext(h.currentActor),
                     ["mintDgt"],
                     undefined,
@@ -178,7 +178,7 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
 
-                const tcx = await t.mkTxnMintingUuts(
+                const tcx = await t.txnMintingUuts(
                     new StellarTxnContext(h.currentActor),
                     ["x"],
                     undefined,
@@ -197,7 +197,7 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
 
-                const tcx = await t.mkTxnMintingUuts(
+                const tcx = await t.txnMintingUuts(
                     new StellarTxnContext(h.currentActor),
                     ["mintDgt"],
                     undefined,
@@ -233,7 +233,7 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
 
-                const tcx = await t.mkTxnMintingUuts(
+                const tcx = await t.txnMintingUuts(
                     new StellarTxnContext(h.currentActor),
                     ["mintDgt"],
                     undefined,
@@ -266,7 +266,7 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
 
-                const tcx = await t.mkTxnMintingUuts(
+                const tcx = await t.txnMintingUuts(
                     new StellarTxnContext(h.currentActor),
                     ["mintDgt"],
                     undefined,
@@ -290,7 +290,7 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
 
-                const tcx = await t.mkTxnMintingUuts(
+                const tcx = await t.txnMintingUuts(
                     new StellarTxnContext(h.currentActor),
                     ["mintDgt"],
                     undefined,
@@ -301,7 +301,7 @@ describe("Capo", async () => {
                     "mintDelegate"
                 );
 
-                console.log(" delegateTxn :::::::::::: ", txAsString(tcx.tx));
+                console.log(" delegateTxn :::::::::::: ", txAsString(tcx.tx, t.networkParams));
                 const createdDelegate = await t.connectDelegateWithLink(
                     "mintDelegate",
                     mintDelegateLink

@@ -108,7 +108,7 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         console.log("🐞🐞  receive authority token");
         if (fromFoundUtxo) {
             dest = fromFoundUtxo.address;
-            console.log("    🐞🐞  " + dumpAny(fromFoundUtxo.address));
+            console.log("    🐞🐞  " + dumpAny(fromFoundUtxo.address, this.networkParams));
         } else {
             if (!this.configIn?.addrHint?.[0])
                 throw new Error(`missing addrHint`);
@@ -122,7 +122,7 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         const output = new TxOutput(dest, tokenValue);
         output.correctLovelace(this.networkParams);
         tcx.addOutput(output);
-        console.log("    🐞🐞  ...with output" + dumpAny(output));
+        console.log("    🐞🐞  ...with output" + dumpAny(output, this.networkParams));
 
         return tcx;
     }
@@ -131,10 +131,11 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
     async DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
-        fromFoundUtxo: TxInput
+        fromFoundUtxo: TxInput,
+        redeemer?: isActivity
     ): Promise<TCX> {
         //! no need to specify a redeemer
-        return tcx.addInput(fromFoundUtxo);
+        return tcx.addInput(fromFoundUtxo, redeemer);
     }
 
     //! Adds the indicated utxo to the transaction with appropriate activity/redeemer

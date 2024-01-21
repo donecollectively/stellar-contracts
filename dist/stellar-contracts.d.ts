@@ -137,7 +137,7 @@ export declare class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     findActorAuthorityToken(): Promise<TxInput | undefined>;
     DelegateMustFindAuthorityToken(tcx: StellarTxnContext, label: string): Promise<TxInput>;
     txnReceiveAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, tokenValue: Value, fromFoundUtxo: TxInput): Promise<TCX>;
-    DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, fromFoundUtxo: TxInput): Promise<TCX>;
+    DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, fromFoundUtxo: TxInput, redeemer?: isActivity): Promise<TCX>;
     DelegateRetiresAuthorityToken(tcx: StellarTxnContext, fromFoundUtxo: TxInput): Promise<StellarTxnContext>;
 }
 
@@ -198,6 +198,7 @@ export declare class BasicMintDelegate extends StellarDelegate<MintDelegateArgs>
      **/
     get specializedMintDelegate(): HeliosModuleSrc;
     get specializedCapo(): HeliosModuleSrc;
+    activityMintingUuts({ seedTxn, seedIndex: sIdx, purposes, }: MintUutActivityArgs): isActivity;
     importModules(): HeliosModuleSrc[];
     get scriptDatumName(): string;
     get scriptActivitiesName(): string;
@@ -213,6 +214,24 @@ export declare class BasicMintDelegate extends StellarDelegate<MintDelegateArgs>
      * @public
      **/
     txnReceiveAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, tokenValue: Value, fromFoundUtxo?: TxInput): Promise<TCX>;
+    /**
+     * Depreciated: Add a generic minting-UUTs actvity to the transaction
+     * @remarks
+     *
+     * This is a generic helper function that can be used to mint any UUTs,
+     * but **only if the specialized minting delegate has not disabled generic UUT minting**.
+     *
+     * Generally, it's recommended to use an application-specific activity
+     * that validates a particular minting use-case, instead of this generic one.
+     *
+     * See {@link Capo.txnMintingUuts | Capo.txnMintingUuts() } for further guidance.
+     *
+     * @param tcx - the transaction context
+     * @param uutPurposes - a list of string prefixes for the UUTs
+     * @typeParam TCX - for the `tcx`, which must already include the indicated `uutPurposes`
+     * @public
+     **/
+    txnGenericMintingUuts<TCX extends hasUutContext<purposes> & hasSeedUtxo, purposes extends string>(tcx: TCX, uutPurposes: purposes[]): Promise<TCX>;
     mkDelegationDatum(txin?: TxInput): Datum;
     txnCreatingTokenPolicy(tcx: StellarTxnContext, tokenName: string): Promise<StellarTxnContext<emptyState_3>>;
     static mkDelegateWithArgs(a: MintDelegateArgs): void;
@@ -277,7 +296,7 @@ declare type canSkipSetup = {
  * @typeParam configType - specifies schema for details required to pre-configure the contract suite, or to reproduce it in a specific application instance.
  * @public
  */
-export declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter, charterDatumType extends anyDatumArgs = anyDatumArgs, configType extends CapoBaseConfig = CapoBaseConfig> extends StellarContract<configType> implements hasUutCreator {
+export declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter, charterDatumType extends anyDatumArgs = anyDatumArgs, configType extends CapoBaseConfig = CapoBaseConfig> extends StellarContract<configType> {
     #private;
     abstract get delegateRoles(): RoleMap<any>;
     abstract verifyCoreDelegates(): Promise<any>;
@@ -292,9 +311,6 @@ export declare abstract class Capo<minterType extends MinterBaseMethods & Defaul
     abstract mkDatumCharterToken(args: charterDatumType): InlineDatum;
     get minterClass(): stellarSubclass<DefaultMinter, BasicMinterParams>;
     minter?: minterType;
-    txnWillMintUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
-    mkTxnMintingUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
-    txnBurnUuts<existingTcx extends StellarTxnContext>(initialTcx: existingTcx, uutNames: UutName[]): Promise<existingTcx>;
     /**
      * returns a value representing the provided UUT(s)
      * @remarks
@@ -645,9 +661,8 @@ declare const DatumInline: typeof Datum.inline;
  * A customized Datum::validateSpend(self, ctx) -\> Bool method
  * should be defined, even if it doesn't put constraints on spending Datum.
  * If it does choose to add hard constraints, note that this method doesn't
- * have access to the Activity ("redeemer") type.  It's a simple place to express simple
- * constraints on spending a custom Datum that only needs one 'spendingDatum'
- * activity.
+ * have access to the Activity ("redeemer") type.  It's a simple place that can
+ * only express simple constraints on spending ANY utxo from the contract.
  *
  * A customized Activity: allowActivity(self, datum, ctx) -\> Bool method
  * has access to both the redeemer (in self), as well as Datum and the transaction
@@ -657,7 +672,7 @@ declare const DatumInline: typeof Datum.inline;
  * See the {@link Capo | Capo base class} and {@link StellarContract} for addition context.
  * @public
  */
-export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs, configType extends CapoBaseConfig = CapoBaseConfig> extends Capo<MinterType, CDT, configType> {
+export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs, configType extends CapoBaseConfig = CapoBaseConfig> extends Capo<MinterType, CDT, configType> implements hasUutCreator {
     contractSource(): any;
     static parseConfig(rawJsonConfig: any): any;
     /**
@@ -695,13 +710,15 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
      **/
     get capoHelpers(): HeliosModuleSrc;
     importModules(): HeliosModuleSrc[];
+    activityUpdatingCharter(): isActivity;
     /**
-     * Use the `delegateRoles` getter instead
+     * USE THE `delegateRoles` GETTER INSTEAD
      * @remarks
      *
-     * this no-op method is a convenience for Stellar Contracts maintainers
-     * and intuitive developers using autocomplete.  Including it enables an entry
-     * in VSCode "Outline" view, which doesn't include the delegateRoles getter : /
+     * - this no-op method is a convenience for Stellar Contracts maintainers
+     *   and intuitive developers using autocomplete.
+     * - Including it enables an entry
+     *   in VSCode "Outline" view, which doesn't include the delegateRoles getter : /
      * @deprecated but please keep as a kind of redirect
      * @public
      **/
@@ -760,18 +777,72 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
      * @public
      **/
     mkFullConfig(baseConfig: CapoBaseConfig): CapoBaseConfig & configType & rootCapoConfig;
-    txnBurnUuts<existingTcx extends StellarTxnContext>(initialTcx: existingTcx, uutNames: UutName[]): Promise<existingTcx>;
-    mkTxnMintingUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput | undefined, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
     getMintDelegate(): Promise<BasicMintDelegate>;
     getGovDelegate(): Promise<AuthorityPolicy<capoDelegateConfig_2>>;
-    txnAddMintDelegate<TCX extends StellarTxnContext>(tcx: TCX): Promise<TCX>;
+    /**
+     * USE getMintDelegate() AND ITS txnGrantAuthority() METHOD INSTED
+     * @remarks
+     *
+     * detailed remarks
+     * @param ‹pName› - descr
+     * @typeParam ‹pName› - descr (for generic types)
+     * @deprecated
+     **/
+    txnAddMintDelegate<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX>;
     /**
      * {@inheritdoc Capo.mkTxnMintCharterToken}
      * @public
      **/
     mkTxnMintCharterToken<TCX extends StellarTxnContext>(charterDatumArgs: MinimalDefaultCharterDatumArgs<CDT>, existingTcx?: TCX): Promise<never | (hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & TCX & hasBootstrappedConfig<CapoBaseConfig & configType>)>;
-    activityUpdatingCharter(): isActivity;
     mkTxnUpdateCharter(args: CDT, tcx?: StellarTxnContext): Promise<StellarTxnContext>;
+    findUutSeedUtxo(uutPurposes: string[], tcx: StellarTxnContext<any>): Promise<TxInput>;
+    /**
+     * Generic method for minting UUTs, as part of an application-specific use-case.
+     * @remarks
+     *
+     * NOTE: was mkTxnMintingUuts (fix)
+     *
+     * Constructs UUTs with the indicated purposes, and adds them to the contract state.
+     * This is a useful generic capability to support any application-specific purpose.
+     *
+     * If a seedUtxo is not provided, one from the current user's wallet is used.   The utxo is
+     * consumed, so it can never be used again; its value will be returned to the user wallet.
+     * All the uuts named in the uutPurposes argument will be minted from the same seedUtxo,
+     * and will share the same suffix, because it is derived from the seedUtxo's outputId.
+     *
+     * If additional mints or burns are needed in the transaction, they can be included in the
+     * additionalMintValues argument.  See {@link mkValuesEntry | mkValuesEntry()}.  These
+     * should be validated by your mint-delegate to ensure that all-and-only the expected
+     * values are minted.
+     *
+     * NOTE: This method does not include any minting delegate activity in the transaction,
+     * although the transaction will require the minting delegate's authority to complete the
+     * indicated mint.  Use  {@link getMintDelegate | getMintDelegate()}
+     * and its {@link BasicMintDelegate.txnGrantAuthority | txnGrantAuthority()} method,
+     * or an application-specific method that calls txnGrantAuthority(tcx, ...) to spend that authority
+     * using an application-specific activity that validates exactly the expected mint.
+     *
+     * In special cases, you might make use of the mintDelegate's
+     * {@link BasicMintDelegate.txnGenericMintingUuts | txnMintingUuts()} method,
+     * but application-specific activities are recommended instead.
+     *
+     * @param initialTcx - an existing transaction context
+     * @param uutPurposes - a set of purpose-names (prefixes) for the UUTs to be minted
+     * @param usingSeedUtxo - an optional seedUtxo to use for minting the UUTs (a user-wallet utxo
+     *    is used if not provided)
+     * @param
+     * @public
+     **/
+    txnMintingUuts<const purposes extends string, existingTcx extends StellarTxnContext<any>, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], usingSeedUtxo?: TxInput | undefined, roles?: RM, additionalMintValues?: valuesEntry[]): Promise<hasUutContext<ROLES | purposes> & hasSeedUtxo & existingTcx>;
+    /**
+     * DEPRECIATED: Triggers generic uut minting in the mintDelegate
+     * @remarks
+     *
+     * convenience method mainly for use in tests of the basic mint delegate.
+     * @public
+     **/
+    txnGenericUutMinting<TCX extends StellarTxnContext<any>, purposes extends string>(tcx: TCX, uutPurposes: purposes[]): Promise<hasUutContext<purposes> & hasSeedUtxo & TCX>;
+    txnWillMintUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends string & keyof RM = string & keyof RM>(tcx: existingTcx, uutPurposes: purposes[], seedUtxo: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
     requirements(): ReqtsMap_3<"the trustee group can be changed" | "positively governs all administrative actions" | "has a unique, permanent charter token" | "has a unique, permanent treasury address" | "the trustee threshold is enforced on all administrative actions" | "the charter token is always kept in the contract" | "the charter details can be updated" | "can mint other tokens, on the authority of the Charter token" | "has a singleton minting policy" | "foo">;
 }
 
@@ -851,13 +922,35 @@ export declare class DefaultMinter extends StellarContract<BasicMinterParams> im
     contractSource(): any;
     getContractScriptParams(config: BasicMinterParams): paramsBase & SeedTxnParams;
     importModules(): HeliosModuleSrc[];
-    txnWillMintUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends string & keyof RM = string & keyof RM>(tcx: existingTcx, uutPurposes: purposes[], seedUtxo: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
-    mkTxnMintingUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
-    txnBurnUuts<existingTcx extends StellarTxnContext>(initialTcx: existingTcx, uutNames: UutName[]): Promise<existingTcx>;
-    get mintingPolicyHash(): MintingPolicyHash;
+    /**
+     * Mints initial charter token for a Capo contract
+     * @remarks
+     *
+     * This is the fundamental bootstrapping event for a Capo.
+     * @param ownerInfo - contains the {owner} address of the Capo contract
+     * @public
+     **/
+    activityMintingCharter(ownerInfo: MintCharterActivityArgs): isActivity;
+    /**
+     * Mints any tokens on sole authority of the Capo contract's minting delegage
+     * @remarks
+     *
+     * The Capo's minting delegate takes on the responsibility of validating a mint.
+     * It can validate mintingUuts, burningUuts and any application-specific use-cases
+     * for minting and/or burning tokens from the policy.
+     * @public
+     **/
+    activityMintWithDelegateAuthorizing(): isActivity;
+    /**
+     * @deprecated
+     **/
+    activityMintingUuts({ seedTxn, seedIndex, purposes, }: MintUutActivityArgs): isActivity;
+    /**
+     * @deprecated
+     **/
     activityBurningUuts(...uutNames: string[]): isActivity;
-    activityMintingCharter({ owner }: MintCharterActivityArgs): isActivity;
-    activityMintingUuts({ seedTxn, seedIndex: sIdx, purposes, }: MintUutActivityArgs): isActivity;
+    txnBurnUuts<existingTcx extends StellarTxnContext<any>>(initialTcx: existingTcx, uutNames: UutName[]): Promise<existingTcx>;
+    get mintingPolicyHash(): MintingPolicyHash;
     get charterTokenAsValuesEntry(): valuesEntry;
     tvCharter(): Value;
     get charterTokenAsValue(): Value;
@@ -866,6 +959,7 @@ export declare class DefaultMinter extends StellarContract<BasicMinterParams> im
         capoGov: UutName;
         mintDgt: UutName;
     }): Promise<TCX>;
+    txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(tcx: TCX, vEntries: valuesEntry[]): Promise<TCX>;
 }
 
 /**
@@ -918,7 +1012,7 @@ declare type DelegationDetail = {
  * more types to be supported TODO
  * @public
  **/
-export declare function dumpAny(x: Tx | StellarTxnContext | Address | Value | TxOutput | TxInput | TxInput[] | TxId | ByteArray | ByteArray[] | ByteArrayData | ByteArrayData[]): string;
+export declare function dumpAny(x: Tx | StellarTxnContext | Address | Value | TxOutput | TxInput | TxInput[] | TxId | ByteArray | ByteArray[] | ByteArrayData | ByteArrayData[], networkParams?: NetworkParams): string;
 
 export declare type emptyState = {
     uuts: Record<string, UutName>;
@@ -993,8 +1087,15 @@ export declare namespace hasReqts {
 }
 
 /**
+ * A txn context having a seedUtxo in its state
+ * @public
+ **/
+declare type hasSeedUtxo = StellarTxnContext<anyState & {
+    seedUtxo: TxInput;
+}>;
+
+/**
  * A txn context having specifically-purposed UUTs in its state
- *
  * @public
  */
 export declare type hasUutContext<uutEntries extends string> = StellarTxnContext<hasAllUuts<uutEntries>>;
@@ -1006,8 +1107,7 @@ export declare type hasUutContext<uutEntries extends string> = StellarTxnContext
  */
 declare interface hasUutCreator {
     txnWillMintUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
-    mkTxnMintingUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
-    txnBurnUuts<existingTcx extends StellarTxnContext>(initialTcx: existingTcx, uutNames: UutName[]): Promise<existingTcx>;
+    txnMintingUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
 }
 
 export { helios }
@@ -1122,12 +1222,13 @@ declare type MintDelegateArgs = capoDelegateConfig & {
  *
  * @public
  */
-declare interface MinterBaseMethods extends hasUutCreator {
+declare interface MinterBaseMethods {
     get mintingPolicyHash(): MintingPolicyHash;
     txnMintingCharter<TCX extends StellarTxnContext>(tcx: TCX, charterMintArgs: {
         owner: Address;
         capoGov: UutName;
     }, tVal: valuesEntry): Promise<TCX>;
+    txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(tcx: TCX, vEntries: valuesEntry[]): Promise<TCX>;
 }
 
 /**
@@ -1176,7 +1277,7 @@ declare class MultisigAuthorityPolicy extends AuthorityPolicy {
     };
     contractSource(): any;
     txnReceiveAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, val: Value, fromFoundUtxo?: TxInput | undefined): Promise<TCX>;
-    DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, fromFoundUtxo: TxInput): Promise<TCX>;
+    DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, fromFoundUtxo: TxInput, redeemer?: isActivity): Promise<TCX>;
     DelegateRetiresAuthorityToken(tcx: StellarTxnContext, fromFoundUtxo: TxInput): Promise<StellarTxnContext>;
     requirements(): ReqtsMap_2<"provides arms-length proof of authority to any other contract" | "positively governs spend of the UUT" | "the trustee threshold is required to spend its UUT" | "the trustee group can be changed" | "TODO: has a unique authority UUT" | "TODO: the trustee threshold is required to spend its UUT" | "TODO: the trustee group can be changed">;
 }
@@ -1484,7 +1585,7 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     /**
      * @internal
      **/
-    protected _utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }: utxoInfo, { free: free2, minAdaAmount: r2 }: utxoInfo): 1 | -1 | 0;
+    protected _utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }: utxoInfo, { free: free2, minAdaAmount: r2 }: utxoInfo): 1 | 0 | -1;
     /**
      * @internal
      **/
@@ -1513,7 +1614,7 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     loadProgramScript(params?: Partial<ConfigType>): Program | undefined;
     private get missingActorError();
     findActorUtxo(name: string, predicate: (u: TxInput) => TxInput | undefined): Promise<TxInput | undefined>;
-    mustFindActorUtxo(name: string, predicate: (u: TxInput) => TxInput | undefined, exceptInTcx: StellarTxnContext, extraErrorHint?: string): Promise<TxInput | never>;
+    mustFindActorUtxo(name: string, predicate: (u: TxInput) => TxInput | undefined, exceptInTcx: StellarTxnContext<any>, extraErrorHint?: string): Promise<TxInput | never>;
     mustFindActorUtxo(name: string, predicate: (u: TxInput) => TxInput | undefined, extraErrorHint?: string): Promise<TxInput | never>;
     /**
      * Locates a UTxO locked in a validator contract address
@@ -1567,7 +1668,7 @@ export declare abstract class StellarDelegate<CT extends paramsBase & capoDelega
      * @param tcx - transaction context
      * @public
      **/
-    txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX): Promise<TCX>;
+    txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemer?: isActivity): Promise<TCX>;
     /**
      * Finds the authority token and adds it to the transaction, tagged for retirement
      * @public
@@ -1670,6 +1771,7 @@ export declare abstract class StellarDelegate<CT extends paramsBase & capoDelega
      * Locates the authority token,if available the current user's wallet.
      *
      * If the token is located in a smart contract, this method will always return `undefined`.
+     * Use {@link StellarDelegate.findAuthorityToken | findAuthorityToken()} in that case.
      *
      * If the authority token is in a user wallet (not the same wallet as currently connected to the Capo contract class),
      * it will return `undefined`.
@@ -1748,7 +1850,9 @@ export declare abstract class StellarDelegate<CT extends paramsBase & capoDelega
      * @reqt Adds the uutxo to the transaction inputs with appropriate redeemer.
      * @reqt Does not output the value; can EXPECT txnReceiveAuthorityToken to be called for that purpose.
      **/
-    protected DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, uutxo: TxInput): Promise<TCX>;
+    protected DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, uutxo: TxInput, redeemer?: {
+        redeemer: any;
+    }): Promise<TCX>;
     /**
      * Adds any important transaction elemements supporting the authority token being retired, closing the delegate contracts' utxo.
      * @remarks
@@ -1917,7 +2021,7 @@ export declare class StellarTxnContext<S extends anyState = anyState> {
     actor?: Wallet;
     neededSigners: Address[];
     constructor(actor?: Wallet, state?: Partial<S>);
-    dump(): string;
+    dump(networkParams?: NetworkParams): string;
     mintTokens(...args: Parameters<Tx["mintTokens"]>): StellarTxnContext<S>;
     reservedUtxos(): TxInput[];
     utxoNotReserved(u: TxInput): TxInput | undefined;
@@ -1989,7 +2093,7 @@ export { Tx }
  * Converts a Tx to printable form
  * @public
  **/
-export declare function txAsString(tx: Tx): string;
+export declare function txAsString(tx: Tx, networkParams?: NetworkParams): string;
 
 export declare function txidAsString(x: TxId): string;
 

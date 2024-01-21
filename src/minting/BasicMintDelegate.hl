@@ -6,8 +6,14 @@ const instance : ByteArray = #67656e6572616c
 import {
     DelegationDetail,
     acAuthorityToken,
-    tvAuthorityToken
+    tvAuthorityToken,
+    unmodifiedDelegation
 } from CapoDelegateHelpers
+
+import {
+    mkUutTnFactory,
+    validateUutMinting
+} from CapoMintHelpers
 
 import {
     returnsValueToScript
@@ -43,18 +49,39 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                 // authorizing minting of a new token or burning an existing token:
                 //   guards that the authority token is returned to this script.
                 // specialized minting delegates should likely perform additional checks.
-                Authorizing => {
-                    ok : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);
+                // Authorizing => {
+                //     assert(activity.usesGenericAuthorization(), "no generic authz");
+                //     ok : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);
 
+                //     o : []TxOutput = ctx.get_cont_outputs();
+                //     if (o.length != 1) { error("single utxo only") };
+
+                //     // Note: unspecialized delegate requires unchanged datum
+                //     // ... in additionalDelegateValidation.  ...like this:
+                //     //      unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize(), ctx) &&
+
+                //     ok
+                // },
+
+                mintingUuts{sTxId, sIdx, purposes} => {
+                    assert(activity.usesGenericUutMinting(), "no genericUutMinting");
                     o : []TxOutput = ctx.get_cont_outputs();
-                    if (o.length != 1) { error("only one utxo allowed in return to mint delegate") };
+                    if (o.length != 1) { error("single utxo only") };
 
-                    // Note: unspecialized delegate requires unchanged datum
-                    // ... in additionalDelegateValidation.  ...like this:
-                    //      unmodifiedDelegation( /*isD, same as*/ ddd.serialize(), ctx) &&
+                    isOk : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx) &&                    
+                    unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize(), ctx) &&
+                    validateUutMinting(
+                        ctx: ctx, 
+                        mph: dd.mph,
+                        seedTxId: sTxId, 
+                        seedIdx: sIdx, 
+                        purposes: purposes,
+                        mkTokenName: mkUutTnFactory(sTxId, sIdx)
+                    );
 
-                    ok
+                    isOk
                 },
+
                 // reassigning the authority token to a new minting delegate
                 Reassigning => {
                     // the token isn't burned, and it isn't returned back to this script
@@ -100,7 +127,7 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
         _ => {
             invalidRedeemer = () -> {  error("custom datum must not use Activities reserved for IsDelegation datum.") };
             activity.switch{
-                Authorizing => invalidRedeemer(),
+                // Authorizing => invalidRedeemer(),
                 Reassigning => invalidRedeemer(),
                 Retiring => invalidRedeemer(),
                 Modifying => invalidRedeemer(),

@@ -85,109 +85,81 @@ export class DefaultMinter
         ];
     }
 
+    /**
+     * Mints initial charter token for a Capo contract
+     * @remarks
+     * 
+     * This is the fundamental bootstrapping event for a Capo.
+     * @param ownerInfo - contains the {owner} address of the Capo contract
+     * @public
+     **/
+    @Activity.redeemer
+    activityMintingCharter(ownerInfo: MintCharterActivityArgs): isActivity {
+        const {owner} = ownerInfo
+        const {mintingCharter} =this.onChainActivitiesType;
+        const { DelegateDetails: hlDelegateDetails } = this.onChainTypes;
+        const t = new mintingCharter(owner);
 
-    //!!! todo: fold args 2 & 4, allowing either array or map but not both.
-    @partialTxn
-    async txnWillMintUuts<
-        const purposes extends string,
-        existingTcx extends StellarTxnContext,
-        const RM extends Record<ROLES,purposes>,
-        const ROLES extends string & keyof RM = string & keyof RM
-    >(
-        tcx: existingTcx,
-        uutPurposes: purposes[],
-        seedUtxo: TxInput,
-        //@ts-expect-error
-        roles: RM = {} as Record<string, purposes>,
-    ): Promise<
-        hasUutContext<ROLES | purposes> & existingTcx 
-    > {
-        const { txId, utxoIdx } = seedUtxo.outputId;
-
-        const { blake2b } = Crypto;
-
-        const uutMap: uutPurposeMap<ROLES | purposes> = Object.fromEntries(
-            uutPurposes.map((uutPurpose) => {
-                const idx = new HInt(utxoIdx).toCbor()
-                const txoId = txId.bytes.concat(["@".charCodeAt(0)], idx);
-                // console.warn("&&&&&&&& txoId", bytesToHex(txoId));
-                const uutName = new UutName(
-                    uutPurpose,
-                    `${uutPurpose}-${bytesToHex(blake2b(txoId).slice(0, 6))}`
-                );
-                return [uutPurpose, uutName];
-            })
-        ) as uutPurposeMap<ROLES | purposes>;
-        for (const [role, uutPurpose] of Object.entries(roles)) {
-            uutMap[role] = uutMap[uutPurpose as string];
-        }
-        
-        if (!tcx.state) tcx.state = {uuts: {}};
-        tcx.state.uuts = {
-            ...(tcx.state.uuts),
-            ...(uutMap)
-        };
-
-        return tcx as hasUutContext<ROLES | purposes> & existingTcx 
+        return { redeemer: t._toUplcData() };
     }
 
-    @txn
-    async mkTxnMintingUuts<
-        const purposes extends string,
-        existingTcx extends StellarTxnContext,
-        const RM extends Record<ROLES, purposes>,
-        const ROLES extends keyof RM & string = string & keyof RM,
-    >(
-        initialTcx: existingTcx,
-        uutPurposes: purposes[],
-        seedUtxo?: TxInput,
-        //@ts-expect-error
-        roles: RM = {} as Record<string, purposes>,
-    ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {
-        const gettingSeed = seedUtxo
-            ? Promise.resolve<TxInput>(seedUtxo)
-            : new Promise<TxInput>((res) => {
-                  //!!! make it big enough to serve minUtxo for the new UUT(s)
-                  const uutSeed = this.mkValuePredicate(
-                      BigInt(42_000),
-                      initialTcx
-                  );
+    /**
+     * Mints any tokens on sole authority of the Capo contract's minting delegage
+     * @remarks
+     * 
+     * The Capo's minting delegate takes on the responsibility of validating a mint.
+     * It can validate mintingUuts, burningUuts and any application-specific use-cases 
+     * for minting and/or burning tokens from the policy.
+     * @public
+     **/
+    @Activity.redeemer
+    activityMintWithDelegateAuthorizing(): isActivity {
+        const {
+            mintWithDelegateAuthorizing,
+        } = this.onChainActivitiesType;
+        const t = new mintWithDelegateAuthorizing();
 
-                  this.mustFindActorUtxo(
-                      `seed-for-uut ${uutPurposes.join("+")}`,
-                      uutSeed,
-                      initialTcx
-                  ).then(res);
-              });
+        return { redeemer: t._toUplcData() };
+    }
 
-        return gettingSeed.then(async (seedUtxo) => {
-            const tcx = await this.txnWillMintUuts(
-                initialTcx,
-                uutPurposes,
-                seedUtxo,
-                roles,
-            );
-            const vEntries = mkUutValuesEntries(tcx.state.uuts);
+    /**
+     * @deprecated
+     **/
+    @Activity.redeemer
+    activityMintingUuts({
+        seedTxn,
+        seedIndex: sIdx,
+        purposes,
+    }: MintUutActivityArgs): isActivity {
+        throw new Error(`minter:mintingUuts obsolete; use minter:followingDelegate with delegate:mintingUuts or another application-specific activity`)                
+        // const seedIndex = BigInt(sIdx);
+        // console.log("UUT redeemer seedTxn", seedTxn.hex);
+        // const {mintingUuts} = this.onChainActivitiesType;
+        // const t = new mintingUuts(
+        //     seedTxn,
+        //     seedIndex,
+        //     purposes
+        // );
 
-            tcx.addInput(seedUtxo);
-            const { txId: seedTxn, utxoIdx: seedIndex } = seedUtxo.outputId;
-            tcx.attachScript(this.compiledScript).mintTokens(
-                this.mintingPolicyHash!,
-                vEntries,
-                this.activityMintingUuts({
-                    seedTxn,
-                    seedIndex,
-                    purposes: uutPurposes,
-                }).redeemer
-            );
+        // return { redeemer: t._toUplcData() };
+    }
 
-            return tcx;
-        });
+    /**
+     * @deprecated
+     **/
+    @Activity.redeemer
+    activityBurningUuts(...uutNames: string[]) : isActivity {
+        throw new Error(`minter:burningUuts obsolete; use minter:followingDelegate with delegate:burningUuts or another application-specific activity`)
+        // const {burningUuts} =this.onChainActivitiesType;
+        // const { DelegateDetails: hlDelegateDetails } = this.onChainTypes;
+        // const t = new burningUuts(uutNames);
+
+        // return { redeemer: t._toUplcData() };
     }
 
     @partialTxn
     async txnBurnUuts<
-        existingTcx extends StellarTxnContext
+        existingTcx extends StellarTxnContext<any>
     >(
         initialTcx: existingTcx,
         uutNames: UutName[],
@@ -205,44 +177,6 @@ export class DefaultMinter
     //! overrides base getter type with undefined not being allowed
     get mintingPolicyHash(): MintingPolicyHash {
         return super.mintingPolicyHash!;
-    }
-
-    @Activity.redeemer
-    activityBurningUuts(...uutNames: string[]) : isActivity {
-        const {burningUuts} =this.onChainActivitiesType;
-        const { DelegateDetails: hlDelegateDetails } = this.onChainTypes;
-        const t = new burningUuts(uutNames);
-
-        return { redeemer: t._toUplcData() };
-    }
-
-    @Activity.redeemer
-    activityMintingCharter({ owner }: MintCharterActivityArgs): isActivity {
-        const {mintingCharter} =this.onChainActivitiesType;
-        const { DelegateDetails: hlDelegateDetails } = this.onChainTypes;
-        const t = new mintingCharter(owner);
-
-        return { redeemer: t._toUplcData() };
-    }
-
-
-    @Activity.redeemer
-    activityMintingUuts({
-        seedTxn,
-        seedIndex: sIdx,
-        purposes,
-    }: MintUutActivityArgs): isActivity {
-        // debugger
-        const seedIndex = BigInt(sIdx);
-        console.log("UUT redeemer seedTxn", seedTxn.hex);
-        const {mintingUuts} = this.onChainActivitiesType;
-        const t = new mintingUuts(
-            seedTxn,
-            seedIndex,
-            purposes
-        );
-
-        return { redeemer: t._toUplcData() };
     }
 
     get charterTokenAsValuesEntry(): valuesEntry {
@@ -299,4 +233,19 @@ export class DefaultMinter
             )
             .attachScript(this.compiledScript) as TCX;
     }
+
+    @Activity.partialTxn
+    async txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(
+        tcx: TCX,
+        vEntries: valuesEntry[],
+    ): Promise<TCX> {
+
+        return tcx.attachScript(this.compiledScript).mintTokens(
+            this.mintingPolicyHash!,
+            vEntries,
+            this.activityMintWithDelegateAuthorizing().redeemer
+        ) as TCX;
+    }
+
+
 }

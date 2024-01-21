@@ -34,6 +34,21 @@ func hasSeedUtxo(tx: Tx, seedTxId : TxId, seedIdx: Int
     true
 }
 
+func requiresDelegateApproval(
+    ctx: ScriptContext, 
+    mph: MintingPolicyHash
+) -> Bool {
+    Datum::CharterToken {
+        _, mintDgt
+    } = getRefCharterDatum(ctx, mph);
+
+    requiresDelegateAuthorizing(
+        mintDgt, 
+        mph, 
+        ctx
+    )
+}
+
 //! pre-computes the hash-based suffix for a token name, returning
 //  a function that makes Uut names with any given purpose, given the seed-txn details
 func mkUutTnFactory(
@@ -92,14 +107,14 @@ func validateUutBurning(
     actualBurn : Map[ByteArray]Int = valueBurned.get_policy(mph);
     hasExpectedBurn : Bool = actualBurn == expectedBurn.get_policy(mph);
     if (!hasExpectedBurn)  {
-        actualBurn.for_each( (b : ByteArray, i: Int) -> {
-            print( "actual: " + b.show() + " " + i.show() )
-        });
-        expectedBurn.get_policy(mph).for_each( (b : ByteArray, i: Int) -> {
-            print( "expected: " + b.show() + " " + i.show() )
-        });
-        assert(false, "bad UUT burn has mismatch"
-            + "   ... diff = \n" + (expectedBurn - valueBurned).show()
+        // actualBurn.for_each( (b : ByteArray, i: Int) -> {
+        //     print( "actual: " + b.show() + " " + i.show() )
+        // });
+        // expectedBurn.get_policy(mph).for_each( (b : ByteArray, i: Int) -> {
+        //     print( "expected: " + b.show() + " " + i.show() )
+        // });
+        assert(false, "mismatch in UUT burn with diff:\n"
+            + (expectedBurn - valueBurned).show()
         )
     };
 
@@ -113,13 +128,13 @@ func validateUutBurning(
 
 func validateUutMinting(
     ctx: ScriptContext, 
+    mph: MintingPolicyHash,
     seedTxId : TxId, seedIdx : Int, 
     purposes: []String, 
     mkTokenName: (String) -> String,
     bootstrapCharter:Value = Value::new(AssetClass::ADA, 0)
 ) -> Bool {
     tx: Tx = ctx.tx;
-    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
 
     isBootstrapping : Bool = !( bootstrapCharter.is_zero() );
     delegateApproval : Bool = if ( isBootstrapping ) { 
@@ -183,7 +198,7 @@ func validateUutMinting(
 
     expectationsMet : Bool = valueMinted  == expectedValue;
 
-    assert(expectationsMet, "bad UUT mint has mismatch"
+    assert(expectationsMet, "mismatch in UUT mint"
         // +";\n   ... expected "+ expectedValue.show()+
         // "   ... actual "+ valueMinted.show()+
         // "   ... diff = \n" + (expectedValue - valueMinted).show()
@@ -203,6 +218,8 @@ enum Activity {
         // we don't have a responsiblity to enforce delivery to the right location
         // govAuthority: RelativeDelegateLink   // not needed 
     }
+    mintWithDelegateAuthorizing // delegate is handling all mints
+
     mintingUuts {
         seedTxn: TxId
         seedIndex: Int
@@ -229,7 +246,7 @@ enum Activity {
             // mintingCharter => {
             //     mkUutTnFactory(seedTxn, seedIndex)
             // },
-            _ => error("uutTnFactory called on unsupported Activity/redeemer variant")
+            _ => error("uutTnFactory: not mintingUuts!")
         } 
     }
 }

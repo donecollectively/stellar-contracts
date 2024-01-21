@@ -16,7 +16,7 @@ import {
     Activity,
 } from "../StellarContract.js";
 import type {
-    configBase,
+    configBase, isActivity,
 } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import type {
@@ -32,6 +32,7 @@ import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { UnspecializedMintDelegate } from "./UnspecializedMintDelegate.js";
 import { UnspecializedCapo } from "../UnspecializedCapo.js";
 import { CapoHelpers } from "../CapoHelpers.js";
+import type { MintUutActivityArgs, hasSeedUtxo, hasUutContext } from "../Capo.js";
 
 export type MintDelegateArgs = capoDelegateConfig & {
     rev: bigint;
@@ -77,6 +78,37 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     get specializedCapo(): HeliosModuleSrc {
         return UnspecializedCapo;
     }
+
+    // NOTE: prefer application-specific activities that validate
+    // particular mints, instead of this generic one
+    @Activity.redeemer
+    activityMintingUuts({
+        seedTxn,
+        seedIndex: sIdx,
+        purposes,
+    }: MintUutActivityArgs): isActivity {
+        const seedIndex = BigInt(sIdx);
+        console.log("UUT redeemer seedTxn", seedTxn.hex);
+        const {mintingUuts} = this.onChainActivitiesType;
+        const t = new mintingUuts(
+            seedTxn,
+            seedIndex,
+            purposes
+        );
+
+        return { redeemer: t._toUplcData() };
+    }
+
+    // NOTE: prefer application-specific activities
+    // @Activity.redeemer
+    // activityBurningUuts(...uutNames: string[]) : isActivity {
+    //     const {burningUuts} =this.onChainActivitiesType;
+    //     const { DelegateDetails: hlDelegateDetails } = this.onChainTypes;
+    //     const t = new burningUuts(uutNames);
+
+    //     return { redeemer: t._toUplcData() };
+    // }
+
 
     importModules(): HeliosModuleSrc[] {
         const specializedMintDelegate = this.specializedMintDelegate;
@@ -133,6 +165,40 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
         // const v : Value = ffu?.value || this.mkMinAssetValue(this.configIn!.uut);
         const datum = this.mkDelegationDatum(fromFoundUtxo);
         return tcx.addOutput(new TxOutput(this.address, tokenValue, datum));
+    }
+
+    /**
+     * Depreciated: Add a generic minting-UUTs actvity to the transaction
+     * @remarks
+     * 
+     * This is a generic helper function that can be used to mint any UUTs,
+     * but **only if the specialized minting delegate has not disabled generic UUT minting**.
+     * 
+     * Generally, it's recommended to use an application-specific activity
+     * that validates a particular minting use-case, instead of this generic one.
+     * 
+     * See {@link Capo.txnMintingUuts | Capo.txnMintingUuts() } for further guidance.
+     * 
+     * @param tcx - the transaction context
+     * @param uutPurposes - a list of string prefixes for the UUTs
+     * @typeParam TCX - for the `tcx`, which must already include the indicated `uutPurposes`
+     * @public
+     **/
+    txnGenericMintingUuts<
+        TCX extends hasUutContext<purposes> & hasSeedUtxo,
+        purposes extends string
+    >(
+        tcx: TCX,
+        uutPurposes: purposes[],
+        // seedUtxo: TxInput,
+    ) {
+        const {seedUtxo} = tcx.state
+        const { txId: seedTxn, utxoIdx: seedIndex } = seedUtxo.outputId;
+        return this.txnGrantAuthority(tcx, this.activityMintingUuts({
+            purposes: uutPurposes,
+            seedTxn,
+            seedIndex,
+        }))
     }
 
     mkDelegationDatum(txin?: TxInput) {

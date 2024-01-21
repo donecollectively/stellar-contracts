@@ -7,6 +7,7 @@ export const MultisigAuthorityScript = contract;
 import { StellarTxnContext} from "../StellarTxnContext.js";
 import { hasReqts } from "../Requirements.js";
 import { AuthorityPolicy } from "./AuthorityPolicy.js";
+import type { isActivity } from "../StellarContract.js";
 
 //! a contract enforcing policy for a registered credential
 export class MultisigAuthorityPolicy extends AuthorityPolicy {
@@ -39,7 +40,8 @@ export class MultisigAuthorityPolicy extends AuthorityPolicy {
     //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
     async DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
-        fromFoundUtxo: TxInput
+        fromFoundUtxo: TxInput,
+        redeemer: isActivity = this.activityAuthorizing()
     ): Promise<TCX> {
         throw new Error(`todo`)
         return tcx;

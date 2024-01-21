@@ -183,7 +183,7 @@ describe("Capo", async () => {
             const {h, h:{network, actors, delay, state} } = context;
             const t = await h.bootstrap(); 
             
-            const tcx = await t.mkTxnMintingUuts(new StellarTxnContext(), ["anything"]);
+            const tcx = await t.txnGenericUutMinting(new StellarTxnContext(), ["anything"]);
 
             const mintDelegate = await t.getMintDelegate()
             const spentDgtToken = tcx.inputs.find(mintDelegate.mkAuthorityTokenPredicate());
@@ -199,9 +199,10 @@ describe("Capo", async () => {
             const {h, h:{network, actors, delay, state} } = context;
             const t = await h.bootstrap()
             
-            vi.spyOn(t, "txnAddMintDelegate").mockImplementation(async (tcx) => tcx);
+            const mintDelegate = await t.getMintDelegate()
+            vi.spyOn(mintDelegate, "txnGrantAuthority").mockImplementation(async (tcx) => tcx);
 
-            const tcx = await t.mkTxnMintingUuts(new StellarTxnContext(), ["anything"]);
+            const tcx = await t.txnGenericUutMinting(new StellarTxnContext(), ["anything"]);
             expect(t.submit(tcx)).rejects.toThrow(/missing required delegate.*mintDgt/)
         });
 
@@ -218,7 +219,7 @@ describe("Capo", async () => {
                     return mintDelegate.mkDatumIsDelegation({capoAddr, mph, tn}, "bad change")
                 }
             );
-            const tcx = await t.mkTxnMintingUuts(new StellarTxnContext(), ["anything"]);
+            const tcx = await t.txnGenericUutMinting(new StellarTxnContext(), ["anything"]);
             expect(spy).toHaveBeenCalled()
             console.log("------ submitting bogus txn with modified delegate datum")
             expect(t.submit(tcx)).rejects.toThrow(/delegation datum must not be modified/);

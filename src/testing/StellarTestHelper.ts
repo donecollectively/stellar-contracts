@@ -66,7 +66,9 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             throw new Error(
                 `setCurrentActor: invalid actor name '${actorName}'`
             );
-        console.log(`\n🎭 -> 🎭 changing actor 🎭 ->  🎭 from ${this._actorName} to ${actorName} ${dumpAny(thisActor.address)}`);
+        console.log(`\n🎭 -> 🎭 changing actor 🎭 ->  🎭 from ${
+            this._actorName} to ${actorName
+        } ${dumpAny(thisActor.address)}`);
         this._actorName = actorName;
         if (this.strella) {
             this.initStellarClass(this.state.parsedConfig || this.config);
@@ -237,7 +239,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             throw new Error(
                 e.message +
                     "\nin tx: " +
-                    txAsString(tx) +
+                    txAsString(tx, this.networkParams) +
                     "\nprofile: " +
                     tx.profileReport
             );
@@ -251,13 +253,13 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         console.log(
             `Test helper ${force || ""} submitting tx${
                 (force && "") || " prior to instantiateWithParams()"
-            }:\n` + txAsString(tx)
+            }:\n` + txAsString(tx, this.networkParams)
             // new Error(`at stack`).stack
         );
 
         try {
             const txId = await this.network.submitTx(tx);
-            console.log("test helper submitted direct txn:" + txAsString(tx));
+            console.log("test helper submitted direct txn:" + txAsString(tx, this.networkParams));
             this.network.tick(1n);
             // await this.delay(1000)
             // debugger

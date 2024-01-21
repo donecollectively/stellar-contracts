@@ -1310,7 +1310,7 @@ export class StellarContract<
                 //  - validations with simplify:true, ~250ms - but ...
                 //    ... with elided error messages that don't support negative-testing very well
             } catch (e) {
-                console.log("FAILED submitting:", tcx.dump());
+                console.log("FAILED submitting:", tcx.dump(this.networkParams));
                 debugger;
                 throw e;
             }
@@ -1330,7 +1330,7 @@ export class StellarContract<
         } else {
             console.warn("no 'myActor'; not finalizing");
         }
-        console.log("Submitting tx: ", tcx.dump());
+        console.log("Submitting tx: ", tcx.dump(this.networkParams));
         const promises = [
             this.network.submitTx(tx).catch((e) => {
                 console.warn(
@@ -1515,7 +1515,7 @@ export class StellarContract<
     async mustFindActorUtxo(
         name: string,
         predicate: (u: TxInput) => TxInput | undefined,
-        exceptInTcx: StellarTxnContext,
+        exceptInTcx: StellarTxnContext<any>,
         extraErrorHint?: string
     ): Promise<TxInput | never>;
     async mustFindActorUtxo(

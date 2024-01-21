@@ -68,7 +68,7 @@ class CustomTreasuryTestHelper extends DefaultCapoTestHelper<CustomTreasury> {
 
         tcx.addOutput(new TxOutput(destination, v));
 
-        console.log("charter token mint: \n" + tcx.dump());
+        console.log("charter token mint: \n" + tcx.dump(treasury.networkParams));
 
         const submitting = treasury.submit(tcx, {
             signers: [tina.address, tracy.address, tom.address],

@@ -3,6 +3,7 @@ minting DefaultMinter
 import { 
     hasSeedUtxo, 
     mkUutTnFactory,
+    requiresDelegateApproval,
     validateUutMinting, 
     validateUutBurning,
     Activity
@@ -10,9 +11,9 @@ import {
 
 import {mkTv} from StellarHeliosHelpers
 
-import {
-    requiresValidDelegateOutput
-} from CapoDelegateHelpers
+// import {
+//     requiresValidDelegateOutput
+// } from CapoDelegateHelpers
 
 //!!!! todo: change to TxOutputId, rolling up these two things:
 const seedTxn : TxId = TxId::new(#1234)
@@ -43,6 +44,7 @@ func main(r : Activity, ctx: ScriptContext) -> Bool {
             hasContractSeedUtxo(tx) &&
             validateUutMinting(
                 ctx: ctx, 
+                mph: mph,
                 seedTxId: seedTxn, 
                 seedIdx: seedIndex, 
                 purposes: []String{authTnBase, mintDgtTnBase}, 
@@ -56,18 +58,27 @@ func main(r : Activity, ctx: ScriptContext) -> Bool {
                 )
             })
         },
+        mintWithDelegateAuthorizing => {
+            requiresDelegateApproval(ctx, mph)
+        },
 
-        mintingUuts{sTxId, sIdx, purposes} => validateUutMinting(
-            ctx: ctx, 
-            seedTxId: sTxId, 
-            seedIdx: sIdx, 
-            purposes: purposes,
-            mkTokenName: r.uutTnFactory()
-        ),
-        burningUuts{tns} => validateUutBurning(
-            ctx: ctx,
-            tns: tns
-        ),
+        mintingUuts => { // {sTxId, sIdx, purposes} => {
+            error("minter:mintingUuts obsolete; use minter:followingDelegate with delegate:mintingUuts or a more application-specific activity")
+            // validateUutMinting(
+            //     ctx: ctx, 
+            //     seedTxId: sTxId, 
+            //     seedIdx: sIdx, 
+            //     purposes: purposes,
+            //     mkTokenName: r.uutTnFactory()
+            // )
+        },
+        burningUuts => { // {tns} => {
+            error("minter:burningUuts obslete; use minter:followingDelegate with delegate:burningUuts or a more application-specific activity")
+            // validateUutBurning(
+            //     ctx: ctx,
+            //     tns: tns
+            // ) 
+        },
         _ => true
     };
 

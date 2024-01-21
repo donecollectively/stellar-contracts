@@ -36,10 +36,39 @@ enum MintDelegateDatum {
 }
 
 enum MintDelegateActivity {
-    Authorizing
+    // Authorizing  - obsolete
     Reassigning
     Retiring
     Modifying
+    _reserved3
+    _reserved4
+    _reserved5
+    _reserved6
+    _reserved7
+    _reserved8
+    _reserved9
+    // note: all activities at index > 9 are reserved for application-specific use-cases
+
+    // NOTE: prefer application-specific use-cases with particular minting validations,
+    // ... rather than generic mintingUuts
+    mintingUuts {
+        seedTxn: TxId
+        seedIndex: Int
+        purposes: []String
+    }
+
+    //prefer application-specific use-cases with particular minting validations,
+    // ... rather than generic mintingUuts
+    //xxx //??? have the charter know about the UUT purposes, 
+    //xxx // ... so we can limit the mint/burns to match the known list??
+    //xxx burningUuts {
+    // xxx    tns: []String
+    //xxx }
+
+    func usesGenericUutMinting(self) -> Bool {
+        self == self
+        && true
+    }
     //! used only for validating IsDelegation datum, that is,
     //   ... to approve minting requests or any customize spending modes 
     //   ... of that datum.  In this unspecialized version, 
@@ -58,10 +87,10 @@ enum MintDelegateActivity {
     ) -> Bool {
         // print("  ----- checking additional delegate validation");
         self.switch {
-            Authorizing => {
-                unmodifiedDelegation(priorMddd.serialize(), ctx) && 
-                true
-            },
+            // Authorizing => {
+            //     unmodifiedDelegation(priorMddd.serialize(), ctx) && 
+            //     true
+            // },
             Modifying => false,
             _ => true
         } || ctx.tx.serialize() != priorMddd.serialize()
@@ -76,7 +105,7 @@ enum MintDelegateActivity {
     ) -> Bool {
         neverTriggered = () -> {  error("never called") };
         self.switch{
-            Authorizing => neverTriggered(),
+            // Authorizing => neverTriggered(),
             Reassigning => neverTriggered(),
             Retiring => neverTriggered(),
             Modifying => neverTriggered(),

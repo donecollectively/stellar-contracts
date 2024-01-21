@@ -12,9 +12,12 @@ import {
     ByteArrayData,
     TxId,
     TxOutputId,
+    NetworkParams,
 } from "@hyperionbt/helios";
 import type { ErrorMap } from "./delegation/RolesAndDelegates.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
+
+
 
 /**
  * converts a hex string to a printable alternative, with no assumptions about the underlying data
@@ -118,7 +121,7 @@ export function valueAsString(v: Value) {
  * Converts a Tx to printable form
  * @public
  **/
-export function txAsString(tx: Tx): string {
+export function txAsString(tx: Tx, networkParams? : NetworkParams): string {
     const bodyAttrs = [
         "inputs",
         "minted",
@@ -143,6 +146,9 @@ export function txAsString(tx: Tx): string {
     ];
 
     let details = "";
+    if (!networkParams) {
+        console.warn( new Error(`dumpAny: no networkParams; can't show txn size info!?!`) )
+    }
 
     const d = tx.dump();
     //!!! todo: improve interface of tx so useful things have a non-private api
@@ -204,6 +210,8 @@ export function txAsString(tx: Tx): string {
 
         details += `${skipLabel ? "" : "  " + x + ": "}${item}\n`;
     }
+    let indeterminateRedeemerDetails = false
+
     let hasWinfo = false;
     const winfo = {};
     for (const x of witnessAttrs) {
@@ -226,8 +234,10 @@ export function txAsString(tx: Tx): string {
             //!!! todo: augment with mph when that's available from the Activity.
             item = item.map((x) => {
                 // console.log("redeemer keys", ...[ ...Object.keys(x2) ], x2.dump());
+                const isIndeterminate = x.inputIndex == -1
+                if (isIndeterminate) indeterminateRedeemerDetails = true;
                 const indexInfo =
-                    x.inputIndex == -1
+                    isIndeterminate 
                         ? `spend txin #‹tbd›`
                         : "inputIndex" in x
                         ? `spend txin #${1 + x.inputIndex}`
@@ -268,9 +278,11 @@ export function txAsString(tx: Tx): string {
             .join("");
     }
     try {
-        details = details + `  txId: ${tx.id().hex}`;
+        details += `  txId: ${tx.id().hex}`;
+        if (networkParams) details += `  size: ${tx.toTxData(networkParams).toCbor().length} bytes`;
     } catch (e) {
-        details = details + `  (Tx not yet finalized!)`;
+        details = details + `(Tx not yet finalized!)`
+        if( networkParams) details += `\n  - NOTE: can't determine txn size\n`;
     }
     return details;
 }
@@ -412,7 +424,9 @@ export function dumpAny(
         TxOutput | TxInput | TxInput[] | 
         TxId |
         ByteArray | ByteArray[] | ByteArrayData | ByteArrayData[]
+    , networkParams? : NetworkParams
 ) {
+
     if (Array.isArray(x)) {
         if (x[0] instanceof TxInput) {
         //@ts-expect-error sorry, typescript : /
@@ -425,7 +439,7 @@ export function dumpAny(
     }
 
     if (x instanceof Tx) {
-        return txAsString(x);
+        return txAsString(x, networkParams);
     }
 
     if (x instanceof TxOutput) {

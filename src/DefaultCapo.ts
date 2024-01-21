@@ -1,28 +1,34 @@
 import {
     Address,
-    Program,
-    Tx,
-    UplcProgram,
-    TxOutput,
-    Value,
+    AssetClass,
+    Assets,
+    ByteArray,
+    Crypto,
+    Datum,
+    DatumHash,
+    MintingPolicyHash,
     //@ts-expect-error
     Option,
-    Datum,
-    TxInput,
-    DatumHash,
-    ByteArray,
-    Assets,
-    TxId,
-    UplcData,
+    Program,
     Signature,
-    AssetClass,
+    Tx,
+    TxId,
+    TxInput,
+    TxOutput,
+    UplcProgram,
     ValidatorHash,
-    MintingPolicyHash,
+    Value,
+    UplcData,
+    HInt,
+    bytesToHex,
 } from "@hyperionbt/helios";
 
 import type { Wallet } from "@hyperionbt/helios";
 
 import type { isActivity } from "./StellarContract.js";
+import {
+    mkUutValuesEntries
+ } from "./utils.js"
 
 import {
     Activity,
@@ -31,9 +37,9 @@ import {
     StellarContract,
     txn,
 } from "./StellarContract.js";
-import type { InlineDatum } from "./HeliosPromotedTypes.js";
+import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 
-import { StellarTxnContext } from "./StellarTxnContext.js";
+import { StellarTxnContext, type anyState } from "./StellarTxnContext.js";
 
 //@ts-expect-error
 import contract from "./DefaultCapo.hl";
@@ -43,8 +49,11 @@ import { Capo } from "./Capo.js";
 import type {
     CapoBaseConfig,
     hasBootstrappedConfig,
+    hasSeedUtxo,
     hasUutContext,
+    hasUutCreator,
     rootCapoConfig,
+    uutPurposeMap,
 } from "./Capo.js";
 import type { DefaultMinter } from "./minting/DefaultMinter.js";
 import {
@@ -68,7 +77,7 @@ import { NoMintDelegation } from "./minting/NoMintDelegation.js";
 import { CapoHelpers } from "./CapoHelpers.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
-import type { UutName } from "../index.js";
+import { UutName } from "../index.js";
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
@@ -130,6 +139,8 @@ export type HeldAssetsArgs = {
     purpose?: string;
 };
 
+
+
 /**
  * Base class for leader contracts, with predefined roles for delegating governance authority and minting policies
  * @remarks
@@ -178,9 +189,8 @@ export type HeldAssetsArgs = {
  * A customized Datum::validateSpend(self, ctx) -\> Bool method
  * should be defined, even if it doesn't put constraints on spending Datum.  
  * If it does choose to add hard constraints, note that this method doesn't
- * have access to the Activity ("redeemer") type.  It's a simple place to express simple
- * constraints on spending a custom Datum that only needs one 'spendingDatum' 
- * activity.  
+ * have access to the Activity ("redeemer") type.  It's a simple place that can
+ * only express simple constraints on spending ANY utxo from the contract.  
  * 
  * A customized Activity: allowActivity(self, datum, ctx) -\> Bool method
  * has access to both the redeemer (in self), as well as Datum and the transaction 
@@ -195,7 +205,9 @@ export class DefaultCapo<
     MinterType extends DefaultMinter = DefaultMinter,
     CDT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs,
     configType extends CapoBaseConfig = CapoBaseConfig
-> extends Capo<MinterType, CDT, configType> {
+> extends Capo<MinterType, CDT, configType> 
+    implements hasUutCreator
+{
     contractSource() {
         return contract;
     }
@@ -269,18 +281,32 @@ export class DefaultCapo<
         return [specializedCapo, this.capoHelpers, ...parentModules];
     }
 
-    // // @Activity.redeemer
-    // updatingCharter() : isActivity {
-    //     return this.updatingDefaultCharter()
-    // }
+    @Activity.redeemer
+    activityUpdatingCharter(): // args: CDT
+    isActivity {
+        const { updatingCharter } = this.onChainActivitiesType;
+        // let {uut, strategyName, reqdAddress: canRequireAddr, addrHint=[]} = args.govAuthority
+
+        // // const {Option} = this.onChainTypes;
+        // debugger
+        // const OptAddr = Option(Address);
+        // const needsAddr = new OptAddr(canRequireAddr);
+        const t = new updatingCharter();
+        // args.govDelegate,
+        // new hlRelativeDelegateLink(uut, strategyName, needsAddr, addrHint)
+
+        return { redeemer: t._toUplcData() };
+    }
+
 
     /**
-     * Use the `delegateRoles` getter instead
+     * USE THE `delegateRoles` GETTER INSTEAD
      * @remarks
      *
-     * this no-op method is a convenience for Stellar Contracts maintainers
-     * and intuitive developers using autocomplete.  Including it enables an entry
-     * in VSCode "Outline" view, which doesn't include the delegateRoles getter : /
+     * - this no-op method is a convenience for Stellar Contracts maintainers
+     *   and intuitive developers using autocomplete.  
+     * - Including it enables an entry
+     *   in VSCode "Outline" view, which doesn't include the delegateRoles getter : /
      * @deprecated but please keep as a kind of redirect
      * @public
      **/
@@ -483,40 +509,23 @@ export class DefaultCapo<
         } as configType & CapoBaseConfig & rootCapoConfig;
     }
 
-    async txnBurnUuts<
-        existingTcx extends StellarTxnContext,
-    >(
-        initialTcx: existingTcx,
-        uutNames: UutName[],
-    ): Promise<existingTcx> {
-        const tcx = await super.txnBurnUuts(
-            initialTcx,
-            uutNames,
-        );
-        const tcx2 = await this.txnMustUseCharterUtxo(tcx, "refInput");
-        return this.txnAddMintDelegate(tcx2);
-    }    
+    // async txnBurnUuts<
+    //     existingTcx extends StellarTxnContext<any>,
+    // >(
+    //     initialTcx: existingTcx,
+    //     uutNames: UutName[],
+    // ): Promise<existingTcx> {
+    //     const minter = this.connectMinter();
+    //     const tcx = await minter.txnBurnUuts(
+    //         initialTcx,
+    //         uutNames,
+    //     );
 
-    async mkTxnMintingUuts<
-        const purposes extends string,
-        existingTcx extends StellarTxnContext,
-        const RM extends Record<ROLES, purposes>,
-        const ROLES extends keyof RM & string = string & keyof RM
-    >(
-        initialTcx: existingTcx,
-        uutPurposes: purposes[],
-        seedUtxo?: TxInput | undefined,
-        roles?: RM
-    ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {
-        const tcx = await super.mkTxnMintingUuts(
-            initialTcx,
-            uutPurposes,
-            seedUtxo,
-            roles
-        );
-        const tcx2 = await this.txnMustUseCharterUtxo(tcx, "refInput");
-        return this.txnAddMintDelegate(tcx);
-    }
+    //     const tcx2 = await this.txnMustUseCharterUtxo(tcx, "refInput");
+    //     return this.txnAddMintDelegate(tcx2);
+    // }   
+
+
 
     async getMintDelegate() {
         const charterDatum = await this.findCharterDatum();
@@ -536,7 +545,16 @@ export class DefaultCapo<
         );
     }
 
-    async txnAddMintDelegate<TCX extends StellarTxnContext>(
+    /**
+     * USE getMintDelegate() AND ITS txnGrantAuthority() METHOD INSTED
+     * @remarks
+     * 
+     * detailed remarks
+     * @param ‹pName› - descr
+     * @typeParam ‹pName› - descr (for generic types)
+     * @deprecated
+     **/
+    async txnAddMintDelegate<TCX extends StellarTxnContext<any>>(
         tcx: TCX
     ): Promise<TCX> {
         const mintDelegate = await this.getMintDelegate();
@@ -544,7 +562,7 @@ export class DefaultCapo<
         await mintDelegate.txnGrantAuthority(tcx);
         return tcx;
     }
-
+   
     /**
      * {@inheritdoc Capo.mkTxnMintCharterToken}
      * @public
@@ -599,7 +617,7 @@ export class DefaultCapo<
 
             this.scriptProgram = this.loadProgramScript(fullScriptParams);
 
-            const tcx = await minter.txnWillMintUuts(
+            const tcx = await this.txnWillMintUuts(
                 initialTcx,
                 ["capoGov", "mintDgt"],
                 seedUtxo,
@@ -645,7 +663,7 @@ export class DefaultCapo<
 
             console.log(
                 " ---------------- CHARTER MINT ---------------------\n",
-                txAsString(tcx.tx)
+                txAsString(tcx.tx, this.networkParams)
             );
             // debugger
 
@@ -655,23 +673,6 @@ export class DefaultCapo<
                 mintDgt,
             });
         });
-    }
-
-    @Activity.redeemer
-    activityUpdatingCharter(): // args: CDT
-    isActivity {
-        const { updatingCharter } = this.onChainActivitiesType;
-        // let {uut, strategyName, reqdAddress: canRequireAddr, addrHint=[]} = args.govAuthority
-
-        // // const {Option} = this.onChainTypes;
-        // debugger
-        // const OptAddr = Option(Address);
-        // const needsAddr = new OptAddr(canRequireAddr);
-        const t = new updatingCharter();
-        // args.govDelegate,
-        // new hlRelativeDelegateLink(uut, strategyName, needsAddr, addrHint)
-
-        return { redeemer: t._toUplcData() };
     }
 
     @txn
@@ -684,6 +685,165 @@ export class DefaultCapo<
             this.activityUpdatingCharter(),
             this.mkDatumCharterToken(args)
         );
+    }
+
+    async findUutSeedUtxo(uutPurposes: string[], tcx: StellarTxnContext<any>) {
+        //!!! make it big enough to serve minUtxo for the new UUT(s)
+        const uutSeed = this.mkValuePredicate(
+            BigInt(42_000),
+            tcx
+        );
+        return this.mustFindActorUtxo(
+            `seed-for-uut ${uutPurposes.join("+")}`,
+            uutSeed,
+            tcx    
+        )
+    }
+
+    /**
+     * Generic method for minting UUTs, as part of an application-specific use-case.
+     * @remarks
+     * 
+     * NOTE: was mkTxnMintingUuts (fix)
+     * 
+     * Constructs UUTs with the indicated purposes, and adds them to the contract state.
+     * This is a useful generic capability to support any application-specific purpose.
+     * 
+     * If a seedUtxo is not provided, one from the current user's wallet is used.   The utxo is 
+     * consumed, so it can never be used again; its value will be returned to the user wallet.
+     * All the uuts named in the uutPurposes argument will be minted from the same seedUtxo, 
+     * and will share the same suffix, because it is derived from the seedUtxo's outputId.
+     * 
+     * If additional mints or burns are needed in the transaction, they can be included in the 
+     * additionalMintValues argument.  See {@link mkValuesEntry | mkValuesEntry()}.  These
+     * should be validated by your mint-delegate to ensure that all-and-only the expected 
+     * values are minted.
+     * 
+     * NOTE: This method does not include any minting delegate activity in the transaction, 
+     * although the transaction will require the minting delegate's authority to complete the 
+     * indicated mint.  Use  {@link getMintDelegate | getMintDelegate()} 
+     * and its {@link BasicMintDelegate.txnGrantAuthority | txnGrantAuthority()} method,
+     * or an application-specific method that calls txnGrantAuthority(tcx, ...) to spend that authority 
+     * using an application-specific activity that validates exactly the expected mint.
+     * 
+     * In special cases, you might make use of the mintDelegate's  
+     * {@link BasicMintDelegate.txnGenericMintingUuts | txnMintingUuts()} method, 
+     * but application-specific activities are recommended instead.
+     * 
+     * @param initialTcx - an existing transaction context
+     * @param uutPurposes - a set of purpose-names (prefixes) for the UUTs to be minted
+     * @param usingSeedUtxo - an optional seedUtxo to use for minting the UUTs (a user-wallet utxo 
+     *    is used if not provided) 
+     * @param 
+     * @public
+     **/
+    @partialTxn
+    async txnMintingUuts<
+        const purposes extends string,
+        existingTcx extends StellarTxnContext<any>,
+        const RM extends Record<ROLES, purposes>,
+        const ROLES extends keyof RM & string = string & keyof RM
+    >(
+        initialTcx: existingTcx,
+        uutPurposes: purposes[],
+        usingSeedUtxo?: TxInput | undefined,
+        //@ts-expect-error
+        roles: RM = {} as Record<string, purposes>,
+        additionalMintValues: valuesEntry[] = []
+    ): Promise<hasUutContext<ROLES | purposes> & hasSeedUtxo & existingTcx> {
+        const minter = this.connectMinter()
+        const mintDelegate = await this.getMintDelegate();
+
+        const seedUtxo = usingSeedUtxo || await this.findUutSeedUtxo(uutPurposes, initialTcx);
+
+        const tcx = await this.txnWillMintUuts(
+            initialTcx,
+            uutPurposes,
+            seedUtxo,
+            roles,
+        );
+        const tcx1 = tcx as typeof tcx & hasSeedUtxo
+        tcx1.state.seedUtxo = seedUtxo;
+        const tcx2 = await this.txnMustUseCharterUtxo(tcx, "refInput");
+        tcx2.addInput(seedUtxo);
+
+        return  minter.txnMintWithDelegateAuthorizing(
+            tcx2, [
+                ... mkUutValuesEntries(tcx.state.uuts),
+                ... additionalMintValues
+            ]
+        );
+        // const tcx4 = await mintDelegate.txnMintingUuts(tcx3, 
+        //     uutPurposes,
+        //     seedUtxo,
+        //     roles
+        // );
+
+        // return this.txnAddMintDelegate(tcx4);
+    }
+
+    /**
+     * DEPRECIATED: Triggers generic uut minting in the mintDelegate
+     * @remarks
+     * 
+     * convenience method mainly for use in tests of the basic mint delegate.
+     * @public
+     **/
+    @partialTxn
+    async txnGenericUutMinting<
+        TCX extends StellarTxnContext<any>,
+        purposes extends string
+    >(
+        tcx: TCX, 
+        uutPurposes: purposes[]
+    ) {
+        const tcx2 = await this.txnMintingUuts(tcx, uutPurposes);
+        const delegate = await this.getMintDelegate();
+        return delegate.txnGenericMintingUuts(tcx2, uutPurposes);
+    }
+
+    @partialTxn
+    async txnWillMintUuts<
+        const purposes extends string,
+        existingTcx extends StellarTxnContext,
+        const RM extends Record<ROLES,purposes>,
+        const ROLES extends string & keyof RM = string & keyof RM
+    >(
+        tcx: existingTcx,
+        uutPurposes: purposes[],
+        seedUtxo: TxInput,
+        //@ts-expect-error
+        roles: RM = {} as Record<string, purposes>,
+    ): Promise<
+        hasUutContext<ROLES | purposes> & existingTcx 
+    > {
+        const { txId, utxoIdx } = seedUtxo.outputId;
+
+        const { blake2b } = Crypto;
+
+        const uutMap: uutPurposeMap<ROLES | purposes> = Object.fromEntries(
+            uutPurposes.map((uutPurpose) => {
+                const idx = new HInt(utxoIdx).toCbor()
+                const txoId = txId.bytes.concat(["@".charCodeAt(0)], idx);
+                // console.warn("&&&&&&&& txoId", bytesToHex(txoId));
+                const uutName = new UutName(
+                    uutPurpose,
+                    `${uutPurpose}-${bytesToHex(blake2b(txoId).slice(0, 6))}`
+                );
+                return [uutPurpose, uutName];
+            })
+        ) as uutPurposeMap<ROLES | purposes>;
+        for (const [role, uutPurpose] of Object.entries(roles)) {
+            uutMap[role] = uutMap[uutPurpose as string];
+        }
+        
+        if (!tcx.state) tcx.state = {uuts: {}};
+        tcx.state.uuts = {
+            ...(tcx.state.uuts),
+            ...(uutMap)
+        };
+
+        return tcx as hasUutContext<ROLES | purposes> & existingTcx 
     }
 
     requirements() {

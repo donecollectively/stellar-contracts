@@ -73,7 +73,8 @@ func acAuthorityToken(dd: DelegationDetail) -> AssetClass {
 func requiresValidDelegateOutput(
     dd: RelativeDelegateLink, 
     mph: MintingPolicyHash, 
-    ctx : ScriptContext
+    ctx : ScriptContext,
+    required: Bool = true
 ) -> Bool {
     RelativeDelegateLink{
         uut, strategy,
@@ -87,23 +88,23 @@ func requiresValidDelegateOutput(
     };
 
     v : Value = mkTv(mph, uut);
-    validatorHash.switch{
+    hasDelegate : Bool = validatorHash.switch{
         Some{vh} => {
-            if (ctx.tx.value_locked_by(vh).contains(v)) {
-                true 
-            } else { 
-                error("missing delegation token: "+ uut + " to validator " +vh.show()) 
-            }
+            print(" - expecting delegation token in validator hash" + vh.show());
+            ctx.tx.value_locked_by(vh).contains(v)
         },
-        None =>
-
-        ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {
+        None => ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {
             o.value.contains(v)
         }).switch{
             Some => true, 
-            None => error("missing delegation token: " + uut)
+            None => false
         }
-    }
+    };
+
+    if (!hasDelegate && required) {
+        error("missing required delegation token: "+ uut )
+    };
+    hasDelegate
 }
 
 
@@ -113,7 +114,7 @@ func requiresDelegateAuthorizing(
     ctx : ScriptContext
 ) -> Bool {
     authzVal : Value = Value::new(AssetClass::new(mph, dd.uutName.encode_utf8()), 1);
-    print("finding: " + authzVal.show());
+    print("finding my "+ dd.uutName);
     targetId : TxOutputId = ctx.tx.inputs.find_safe((i: TxInput) -> {
         // print("   ?  in "+i.value.show());
         i.value.contains(authzVal) // find my authority token
@@ -121,7 +122,7 @@ func requiresDelegateAuthorizing(
         Some{x} => x.output_id,
         None => error("missing required delegate UUT "+dd.uutName)
      };
-    print ("found");
+    print ("     found ^");
     k : ScriptPurpose = ctx.tx.redeemers.find_key( 
         (purpose : ScriptPurpose) -> { purpose.switch{ 
             sp: Spending => {
@@ -135,16 +136,17 @@ func requiresDelegateAuthorizing(
     //     ScriptPurpose::new_spending(  // [spending, plus ...
     //     );
         
-        print("hi there");
     isAuthorizing : Bool = ctx.tx.redeemers.get(k).switch {
         (index: Int, fields: []Data) => {
             // a: BASE_DELEGATE_Activity => a.switch {
             //     Authorizing => true,
-            if (index == 0 && fields.length == 0) { true } else {
-                error("authz token not spent with Authorizing activity!")
+            fields == fields && 
+            if (index >= 10) { true } else {
+                print("index: "+index.show());
+                error("authz token "+dd.uutName+" not spent with an authorizing activity!")
             }
         },
-        _ => error("authz token not spent with Authorizing activity!")
+        _ => error("authz token "+dd.uutName+"not spent with an authorizing activity!")
     };
 
     isAuthorizing && requiresValidDelegateOutput(dd, mph, ctx)

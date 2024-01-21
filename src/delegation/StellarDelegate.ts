@@ -6,7 +6,7 @@ import {
     bytesToText,
 } from "@hyperionbt/helios";
 import { Activity, StellarContract, datum } from "../StellarContract.js";
-import type { configBase } from "../StellarContract.js";
+import type { configBase, isActivity } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { mkTv } from "../utils.js";
 import type { InlineDatum } from "../HeliosPromotedTypes.js";
@@ -46,24 +46,28 @@ export abstract class StellarDelegate<
      * @param tcx - transaction context
      * @public
      **/
-    async txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX) {
+    async txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemer? : isActivity) {
         const label = `${this.constructor.name} authority`;
         const uutxo = await this.DelegateMustFindAuthorityToken(tcx, label);
         const useMinTv = true;
         const authorityVal = this.tvAuthorityToken(useMinTv);
         console.log(
             `   ------- delegate ${label} grants authority with ${dumpAny(
-                authorityVal
+                authorityVal,
+                this.networkParams
             )}`
         );
 
         try {
-            const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo);
+            const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo, redeemer);
             return this.txnReceiveAuthorityToken(tcx2, authorityVal, uutxo);
         } catch (error: any) {
             if (error.message.match(/input already added/)) {
                 throw new Error(
-                    `Delegate ${label}: already added: ${dumpAny(authorityVal)}`
+                    `Delegate ${label}: already added: ${dumpAny(
+                        authorityVal,
+                        this.networkParams
+                    )}`
                 );
             }
             throw error;
@@ -76,9 +80,7 @@ export abstract class StellarDelegate<
      * @remarks
      * Doesn't return the token back to the contract.
      **/
-    async txnRetireAuthorityToken<TCX extends StellarTxnContext> (
-        tcx: TCX
-    ) {
+    async txnRetireAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX) {
         const uutxo = await this.DelegateMustFindAuthorityToken(
             tcx,
             `${this.constructor.name} authority`
@@ -234,17 +236,18 @@ export abstract class StellarDelegate<
      * Tries to locate the Delegates authority token in the user's wallet (ONLY for non-smart-contract delegates)
      * @remarks
      *
-     * Locates the authority token,if available the current user's wallet.  
-     * 
-     * If the token is located in a smart contract, this method will always return `undefined`.
-     * 
+     * Locates the authority token,if available the current user's wallet.
+     *
+     * If the token is located in a smart contract, this method will always return `undefined`.  
+     * Use {@link StellarDelegate.findAuthorityToken | findAuthorityToken()} in that case.
+     *
      * If the authority token is in a user wallet (not the same wallet as currently connected to the Capo contract class),
      * it will return `undefined`.
-     * 
+     *
      * @public
      **/
-    async findActorAuthorityToken() : Promise<TxInput | undefined> {
-        return undefined
+    async findActorAuthorityToken(): Promise<TxInput | undefined> {
+        return undefined;
     }
 
     /**
@@ -328,17 +331,13 @@ export abstract class StellarDelegate<
     * @reqt Adds the uutxo to the transaction inputs with appropriate redeemer.
     * @reqt Does not output the value; can EXPECT txnReceiveAuthorityToken to be called for that purpose.
      **/
-    protected async DelegateAddsAuthorityToken<
-        TCX extends StellarTxnContext
-    >(tcx: TCX, uutxo: TxInput) : Promise<TCX> {
+    protected async DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(
+        tcx: TCX,
+        uutxo: TxInput,
+        redeemer = this.activityAuthorizing()
+    ): Promise<TCX> {
         return tcx
-            .addInput(
-                uutxo,
-                this
-                    .activityAuthorizing
-                    //!!!!! todo: include tagged info on which specific activity is being authorized
-                    ()
-            )
+            .addInput(uutxo, redeemer)
             .attachScript(this.compiledScript);
 
         // return this.txnKeepValue(

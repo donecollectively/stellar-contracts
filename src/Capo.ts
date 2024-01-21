@@ -63,7 +63,7 @@ import type {
 } from "./DefaultCapo.js";
 import type { DelegationDetail } from "./delegation/RolesAndDelegates.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
-import type { AuthorityPolicy } from "../index.js";
+import type { AuthorityPolicy, anyState } from "../index.js";
 
 export type {
     RoleMap,
@@ -97,7 +97,7 @@ export type hasAllUuts<uutEntries extends string> = {
  *
  * @public
  */
-interface hasUutCreator {
+export interface hasUutCreator {
     txnWillMintUuts<
         const purposes extends string,
         existingTcx extends StellarTxnContext,
@@ -110,7 +110,7 @@ interface hasUutCreator {
         roles?: RM
     ): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
 
-    mkTxnMintingUuts<
+    txnMintingUuts<
         const purposes extends string,
         existingTcx extends StellarTxnContext,
         const RM extends Record<ROLES, purposes>,
@@ -122,12 +122,12 @@ interface hasUutCreator {
         roles?: RM
     ): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
 
-    txnBurnUuts<
-        existingTcx extends StellarTxnContext,
-    >(
-        initialTcx: existingTcx,
-        uutNames: UutName[],
-    ): Promise<existingTcx>;
+    // txnBurnUuts<
+    //     existingTcx extends StellarTxnContext<any>,
+    // >(
+    //     initialTcx: existingTcx,
+    //     uutNames: UutName[],
+    // ): Promise<existingTcx>;
 }
 
 /**
@@ -142,19 +142,27 @@ export type MintUutActivityArgs = {
 };
 /**
  * A txn context having specifically-purposed UUTs in its state
- *
  * @public
  */
 export type hasUutContext<uutEntries extends string> = StellarTxnContext<
     hasAllUuts<uutEntries>
 >;
 
+
+/**
+ * A txn context having a seedUtxo in its state
+ * @public
+ **/
+export type hasSeedUtxo = StellarTxnContext<anyState & {
+    seedUtxo: TxInput;
+}>;
+
 /**
  * charter-minting interface
  *
  * @public
  */
-export interface MinterBaseMethods extends hasUutCreator {
+export interface MinterBaseMethods {
     get mintingPolicyHash(): MintingPolicyHash;
     txnMintingCharter<TCX extends StellarTxnContext>(
         tcx: TCX,
@@ -163,6 +171,10 @@ export interface MinterBaseMethods extends hasUutCreator {
             capoGov: UutName;
         },
         tVal: valuesEntry
+    ): Promise<TCX>;
+    txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(
+        tcx: TCX,
+        vEntries: valuesEntry[],
     ): Promise<TCX>;
 }
 
@@ -236,7 +248,6 @@ export abstract class Capo<
         configType extends CapoBaseConfig = CapoBaseConfig
     >
     extends StellarContract<configType>
-    implements hasUutCreator
 {
     abstract get delegateRoles(): RoleMap<any>;
     abstract verifyCoreDelegates(): Promise<any>;
@@ -304,65 +315,27 @@ export abstract class Capo<
     }
 
     minter?: minterType;
-    @partialTxn
-    txnWillMintUuts<
-        const purposes extends string,
-        existingTcx extends StellarTxnContext,
-        const RM extends Record<ROLES, purposes>,
-        const ROLES extends keyof RM & string = string & keyof RM
-    >(
-        initialTcx: existingTcx,
-        uutPurposes: purposes[],
-        seedUtxo: TxInput,
-        //@ts-expect-error
-        roles: RM = {} as Record<string, purposes>
-    ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {
-        const minter = this.connectMinter()
-        return minter.txnWillMintUuts(
-            initialTcx,
-            uutPurposes,
-            seedUtxo,
-            roles
-        );
-    }
-
-    @txn
-    async mkTxnMintingUuts<
-        const purposes extends string,
-        existingTcx extends StellarTxnContext,
-        const RM extends Record<ROLES, purposes>,
-        const ROLES extends keyof RM & string = string & keyof RM
-    >(
-        initialTcx: existingTcx,
-        uutPurposes: purposes[],
-        seedUtxo?: TxInput,
-        //@ts-expect-error
-        roles: RM = {} as Record<string, purposes>
-    ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {
-        const minter = this.connectMinter()
-        const tcx = await minter.mkTxnMintingUuts(
-            initialTcx,
-            uutPurposes,
-            seedUtxo,
-            roles
-        );
-        return tcx;
-    }
-    
-    @partialTxn
-    async txnBurnUuts<
-        existingTcx extends StellarTxnContext,
-    >(
-        initialTcx: existingTcx,
-        uutNames: UutName[],
-    ): Promise<existingTcx> {
-        const minter = this.connectMinter();
-        const tcx = await minter.txnBurnUuts(
-            initialTcx,
-            uutNames,
-        );
-        return tcx;
-    }
+    // @partialTxn
+    // txnWillMintUuts<
+    //     const purposes extends string,
+    //     existingTcx extends StellarTxnContext,
+    //     const RM extends Record<ROLES, purposes>,
+    //     const ROLES extends keyof RM & string = string & keyof RM
+    // >(
+    //     initialTcx: existingTcx,
+    //     uutPurposes: purposes[],
+    //     seedUtxo: TxInput,
+    //     //@ts-expect-error
+    //     roles: RM = {} as Record<string, purposes>
+    // ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {
+    //     const minter = this.connectMinter()
+    //     return this.txnWillMintUuts(
+    //         initialTcx,
+    //         uutPurposes,
+    //         seedUtxo,
+    //         roles
+    //     );
+    // }
 
     // P extends paramsBase = SC extends StellarContract<infer P> ? P : never
 

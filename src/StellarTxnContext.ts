@@ -6,6 +6,7 @@ import {
 } from "@hyperionbt/helios";
 import type {
     Address,
+    NetworkParams,
     Wallet,
 } from "@hyperionbt/helios";
 
@@ -73,9 +74,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }
     }
 
-    dump() {
+    dump(networkParams?: NetworkParams) {
         const { tx } = this;
-        return txAsString(tx);
+        return txAsString(tx, networkParams);
     }
 
     mintTokens(...args: Parameters<Tx["mintTokens"]>): StellarTxnContext<S> {
