@@ -127,8 +127,7 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     get specializedMintDelegate(): HeliosModuleSrc;
     // (undocumented)
     txnCreatingTokenPolicy(tcx: StellarTxnContext, tokenName: string): Promise<StellarTxnContext<emptyState_3>>;
-    // Warning: (ae-forgotten-export) The symbol "hasSeedUtxo" needs to be exported by the entry point index.d.ts
-    txnGenericMintingUuts<TCX extends hasUutContext<purposes> & hasSeedUtxo, purposes extends string>(tcx: TCX, uutPurposes: purposes[]): Promise<TCX>;
+    txnGenericMintingUuts<TCX extends hasSeedUtxo & hasUutContext<purposes>, purposes extends string>(tcx: TCX, uutPurposes: purposes[], activity?: isActivity): Promise<TCX>;
     txnReceiveAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, tokenValue: Value, fromFoundUtxo?: TxInput): Promise<TCX>;
 }
 
@@ -282,6 +281,7 @@ CT extends CapoBaseConfig = SC extends Capo<any, any, infer iCT> ? iCT : never> 
     abstract mintCharterToken(args?: MinimalDefaultCharterDatumArgs<any>): Promise<hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & hasBootstrappedConfig<CapoBaseConfig>>;
     // (undocumented)
     abstract mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<any>>;
+    mkTcx(): StellarTxnContext<emptyState_3>;
     // (undocumented)
     get ready(): boolean;
 }
@@ -311,6 +311,7 @@ export function datumAsString(d: Datum | null | undefined): string;
 export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs, configType extends CapoBaseConfig = CapoBaseConfig> extends Capo<MinterType, CDT, configType> implements hasUutCreator {
     // (undocumented)
     activityUpdatingCharter(): isActivity;
+    addSeedUtxo<TCX extends StellarTxnContext>(tcx: TCX): Promise<TCX & hasSeedUtxo>;
     get capoHelpers(): HeliosModuleSrc;
     // (undocumented)
     contractSource(): any;
@@ -366,10 +367,12 @@ export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT e
     txnAddGovAuthority<TCX extends StellarTxnContext>(tcx: TCX): Promise<TCX>;
     // @deprecated
     txnAddMintDelegate<TCX extends StellarTxnContext<any>>(tcx: TCX): Promise<TCX>;
-    txnGenericUutMinting<TCX extends StellarTxnContext<any>, purposes extends string>(tcx: TCX, uutPurposes: purposes[]): Promise<hasUutContext<purposes> & hasSeedUtxo & TCX>;
-    txnMintingUuts<const purposes extends string, existingTcx extends StellarTxnContext<any>, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], usingSeedUtxo?: TxInput | undefined, roles?: RM, additionalMintValues?: valuesEntry[]): Promise<hasUutContext<ROLES | purposes> & hasSeedUtxo & existingTcx>;
+    // Warning: (ae-forgotten-export) The symbol "UutCreationAttrs" needs to be exported by the entry point index.d.ts
+    txnMintingUuts<const purposes extends string, existingTcx extends StellarTxnContext & hasSeedUtxo, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], options?: UutCreationAttrs, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
+    // Warning: (ae-forgotten-export) The symbol "UutCreationAttrsWithSeed" needs to be exported by the entry point index.d.ts
+    //
     // (undocumented)
-    txnWillMintUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends string & keyof RM = string & keyof RM>(tcx: existingTcx, uutPurposes: purposes[], seedUtxo: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
+    txnWillMintUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends string & keyof RM = string & keyof RM>(tcx: existingTcx, uutPurposes: purposes[], { usingSeedUtxo, additionalMintValues, activity, }: UutCreationAttrsWithSeed, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
     verifyCoreDelegates(): Promise<[AuthorityPolicy<capoDelegateConfig_2>, BasicMintDelegate]>;
 }
 
@@ -484,6 +487,11 @@ export namespace hasReqts {
 }
 
 // @public
+export type hasSeedUtxo = StellarTxnContext<anyState & {
+    seedUtxo: TxInput;
+}>;
+
+// @public
 export type hasUutContext<uutEntries extends string> = StellarTxnContext<hasAllUuts<uutEntries>>;
 
 export { helios }
@@ -585,6 +593,12 @@ export type RequirementEntry<reqts extends string> = {
 // @public
 export type RoleMap<KR extends Record<string, RoleInfo_2<any, any, any, any>>> = {
     [roleName in keyof KR]: KR[roleName];
+};
+
+// @public (undocumented)
+export type SeedAttrs = {
+    seedTxn: TxId;
+    seedIndex: bigint;
 };
 
 // @public
@@ -738,7 +752,7 @@ export class StellarContract<ConfigType extends paramsBase> {
     // Warning: (ae-forgotten-export) The symbol "utxoInfo" needs to be exported by the entry point index.d.ts
     //
     // @internal (undocumented)
-    protected _utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }: utxoInfo, { free: free2, minAdaAmount: r2 }: utxoInfo): 1 | 0 | -1;
+    protected _utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }: utxoInfo, { free: free2, minAdaAmount: r2 }: utxoInfo): 1 | -1 | 0;
     get wallet(): helios.Wallet;
     // Warning: (ae-forgotten-export) The symbol "NetworkName" needs to be exported by the entry point index.d.ts
     //
@@ -909,6 +923,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
     // (undocumented)
     feeLimit?: bigint;
     // (undocumented)
+    getSeedAttrs<TCX extends hasSeedUtxo>(this: TCX): SeedAttrs;
+    // (undocumented)
     inputs: TxInput[];
     // (undocumented)
     mintTokens(...args: Parameters<Tx["mintTokens"]>): StellarTxnContext<S>;
@@ -1014,11 +1030,11 @@ export { WalletHelper }
 
 // Warnings were encountered during analysis:
 //
-// src/Capo.ts:211:9 - (ae-forgotten-export) The symbol "uutMap" needs to be exported by the entry point index.d.ts
-// src/DefaultCapo.ts:321:17 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
-// src/DefaultCapo.ts:325:3 - (ae-forgotten-export) The symbol "MultisigAuthorityPolicy" needs to be exported by the entry point index.d.ts
-// src/DefaultCapo.ts:326:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
-// src/DefaultCapo.ts:345:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
+// src/Capo.ts:214:9 - (ae-forgotten-export) The symbol "uutMap" needs to be exported by the entry point index.d.ts
+// src/DefaultCapo.ts:322:17 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
+// src/DefaultCapo.ts:326:3 - (ae-forgotten-export) The symbol "MultisigAuthorityPolicy" needs to be exported by the entry point index.d.ts
+// src/DefaultCapo.ts:327:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
+// src/DefaultCapo.ts:346:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
 // src/StellarContract.ts:321:5 - (ae-forgotten-export) The symbol "SetupDetails" needs to be exported by the entry point index.d.ts
 // src/delegation/RolesAndDelegates.ts:259:5 - (ae-forgotten-export) The symbol "PartialParamConfig" needs to be exported by the entry point index.d.ts
 // src/delegation/RolesAndDelegates.ts:261:5 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal

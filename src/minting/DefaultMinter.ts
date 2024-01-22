@@ -131,7 +131,7 @@ export class DefaultMinter
         seedIndex: sIdx,
         purposes,
     }: MintUutActivityArgs): isActivity {
-        throw new Error(`minter:mintingUuts obsolete; use minter:followingDelegate with delegate:mintingUuts or another application-specific activity`)                
+        throw new Error(`minter:mintingUuts obsolete; use minter:MintWithDelegateAuthorizing with delegate:mintingUuts or another application-specific activity`);
         // const seedIndex = BigInt(sIdx);
         // console.log("UUT redeemer seedTxn", seedTxn.hex);
         // const {mintingUuts} = this.onChainActivitiesType;
@@ -149,7 +149,7 @@ export class DefaultMinter
      **/
     @Activity.redeemer
     activityBurningUuts(...uutNames: string[]) : isActivity {
-        throw new Error(`minter:burningUuts obsolete; use minter:followingDelegate with delegate:burningUuts or another application-specific activity`)
+        throw new Error(`minter:burningUuts obsolete; use minter:MintWithDelegateAuthorizing with delegate:burningUuts or another application-specific activity`)
         // const {burningUuts} =this.onChainActivitiesType;
         // const { DelegateDetails: hlDelegateDetails } = this.onChainTypes;
         // const t = new burningUuts(uutNames);

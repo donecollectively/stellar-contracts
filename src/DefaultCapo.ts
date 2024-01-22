@@ -26,9 +26,7 @@ import {
 import type { Wallet } from "@hyperionbt/helios";
 
 import type { isActivity } from "./StellarContract.js";
-import {
-    mkUutValuesEntries
- } from "./utils.js"
+import { mkUutValuesEntries } from "./utils.js";
 
 import {
     Activity,
@@ -39,7 +37,11 @@ import {
 } from "./StellarContract.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 
-import { StellarTxnContext, type anyState } from "./StellarTxnContext.js";
+import {
+    StellarTxnContext,
+    type anyState,
+    type hasSeedUtxo,
+} from "./StellarTxnContext.js";
 
 //@ts-expect-error
 import contract from "./DefaultCapo.hl";
@@ -49,10 +51,11 @@ import { Capo } from "./Capo.js";
 import type {
     CapoBaseConfig,
     hasBootstrappedConfig,
-    hasSeedUtxo,
     hasUutContext,
     hasUutCreator,
     rootCapoConfig,
+    UutCreationAttrs,
+    UutCreationAttrsWithSeed,
     uutPurposeMap,
 } from "./Capo.js";
 import type { DefaultMinter } from "./minting/DefaultMinter.js";
@@ -68,7 +71,7 @@ import type {
 } from "./delegation/RolesAndDelegates.js";
 import { BasicMintDelegate } from "./minting/BasicMintDelegate.js";
 import { AnyAddressAuthorityPolicy } from "./authority/AnyAddressAuthorityPolicy.js";
-import { txAsString } from "./diagnostics.js";
+import { dumpAny, txAsString } from "./diagnostics.js";
 import { MultisigAuthorityPolicy } from "./authority/MultisigAuthorityPolicy.js";
 import { hasReqts } from "./Requirements.js";
 import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
@@ -139,8 +142,6 @@ export type HeldAssetsArgs = {
     purpose?: string;
 };
 
-
-
 /**
  * Base class for leader contracts, with predefined roles for delegating governance authority and minting policies
  * @remarks
@@ -202,10 +203,11 @@ export type HeldAssetsArgs = {
  */
 
 export class DefaultCapo<
-    MinterType extends DefaultMinter = DefaultMinter,
-    CDT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs,
-    configType extends CapoBaseConfig = CapoBaseConfig
-> extends Capo<MinterType, CDT, configType> 
+        MinterType extends DefaultMinter = DefaultMinter,
+        CDT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs,
+        configType extends CapoBaseConfig = CapoBaseConfig
+    >
+    extends Capo<MinterType, CDT, configType>
     implements hasUutCreator
 {
     contractSource() {
@@ -298,13 +300,12 @@ export class DefaultCapo<
         return { redeemer: t._toUplcData() };
     }
 
-
     /**
      * USE THE `delegateRoles` GETTER INSTEAD
      * @remarks
      *
      * - this no-op method is a convenience for Stellar Contracts maintainers
-     *   and intuitive developers using autocomplete.  
+     *   and intuitive developers using autocomplete.
      * - Including it enables an entry
      *   in VSCode "Outline" view, which doesn't include the delegateRoles getter : /
      * @deprecated but please keep as a kind of redirect
@@ -523,9 +524,7 @@ export class DefaultCapo<
 
     //     const tcx2 = await this.txnMustUseCharterUtxo(tcx, "refInput");
     //     return this.txnAddMintDelegate(tcx2);
-    // }   
-
-
+    // }
 
     async getMintDelegate() {
         const charterDatum = await this.findCharterDatum();
@@ -548,7 +547,7 @@ export class DefaultCapo<
     /**
      * USE getMintDelegate() AND ITS txnGrantAuthority() METHOD INSTED
      * @remarks
-     * 
+     *
      * detailed remarks
      * @param ‹pName› - descr
      * @typeParam ‹pName› - descr (for generic types)
@@ -562,7 +561,7 @@ export class DefaultCapo<
         await mintDelegate.txnGrantAuthority(tcx);
         return tcx;
     }
-   
+
     /**
      * {@inheritdoc Capo.mkTxnMintCharterToken}
      * @public
@@ -620,7 +619,7 @@ export class DefaultCapo<
             const tcx = await this.txnWillMintUuts(
                 initialTcx,
                 ["capoGov", "mintDgt"],
-                seedUtxo,
+                { usingSeedUtxo: seedUtxo },
                 {
                     govAuthority: "capoGov",
                     mintDelegate: "mintDgt",
@@ -689,91 +688,100 @@ export class DefaultCapo<
 
     async findUutSeedUtxo(uutPurposes: string[], tcx: StellarTxnContext<any>) {
         //!!! make it big enough to serve minUtxo for the new UUT(s)
-        const uutSeed = this.mkValuePredicate(
-            BigInt(42_000),
-            tcx
-        );
+        const uutSeed = this.mkValuePredicate(BigInt(42_000), tcx);
         return this.mustFindActorUtxo(
             `seed-for-uut ${uutPurposes.join("+")}`,
             uutSeed,
-            tcx    
-        )
+            tcx
+        );
     }
 
     /**
-     * Generic method for minting UUTs, as part of an application-specific use-case.
+     * Adds UUT minting to a transaction
      * @remarks
-     * 
-     * NOTE: was mkTxnMintingUuts (fix)
-     * 
+     *
      * Constructs UUTs with the indicated purposes, and adds them to the contract state.
      * This is a useful generic capability to support any application-specific purpose.
-     * 
-     * If a seedUtxo is not provided, one from the current user's wallet is used.   The utxo is 
-     * consumed, so it can never be used again; its value will be returned to the user wallet.
-     * All the uuts named in the uutPurposes argument will be minted from the same seedUtxo, 
-     * and will share the same suffix, because it is derived from the seedUtxo's outputId.
-     * 
-     * If additional mints or burns are needed in the transaction, they can be included in the 
-     * additionalMintValues argument.  See {@link mkValuesEntry | mkValuesEntry()}.  These
-     * should be validated by your mint-delegate to ensure that all-and-only the expected 
-     * values are minted.
-     * 
-     * NOTE: This method does not include any minting delegate activity in the transaction, 
-     * although the transaction will require the minting delegate's authority to complete the 
-     * indicated mint.  Use  {@link getMintDelegate | getMintDelegate()} 
-     * and its {@link BasicMintDelegate.txnGrantAuthority | txnGrantAuthority()} method,
-     * or an application-specific method that calls txnGrantAuthority(tcx, ...) to spend that authority 
-     * using an application-specific activity that validates exactly the expected mint.
-     * 
-     * In special cases, you might make use of the mintDelegate's  
-     * {@link BasicMintDelegate.txnGenericMintingUuts | txnMintingUuts()} method, 
-     * but application-specific activities are recommended instead.
-     * 
+     *
+     * The provided transaction context must have a seedUtxo - use {@link addSeedUtxo()} to add one
+     * from the current user's wallet. The seed utxo is consumed, so it can never be used again; its
+     * value will be returned to the user wallet.  All the uuts named in the uutPurposes argument will
+     * be minted from the same seedUtxo, and will share the same suffix, because it is derived from the
+     * seedUtxo's outputId.
+     *
+     * This method uses a generic uutMinting activity in the transaction by default, which may
+     * fail if the mint delegate has disabled that generic minting.   In this case, add an `options.activity`
+     * matching an app-specific activity/redeemer.
+     *
+     * It's recommended to create custom activities in the minting delegate, to go with your
+     * application's use-cases for minting UUTs.  To include the seedUtxo details in the transaction,
+     * you can follow the SeedAttrs pattern  seen in {@link activityMintingUuts | activityMintingUuts()},
+     * using the StellarTxnContext's {@link StellarTxnContext.getSeedAttrs | getSeedAttrs()}
+     * method to access the seedUtxo details.
+     *
+     * The mintingUuts{...} activity defined in the on-chain specialized mint delegate demonstrates
+     * the inclusion of seedUtxo details in the activity/redeemer type, and the use of those details in
+     * its on-chain call to `validateUutMinting()`.
+     *
+     * If additional mints or burns are needed in the transaction, they can be included in
+     * `options.additionalMintValues`.  See {@link mkValuesEntry | mkValuesEntry()} to create
+     * these.  In this case, you'll need to provide a `options.activity`, whose on-chain
+     * validation should ensure that all-and-only the expected values are minted.
+     *
      * @param initialTcx - an existing transaction context
      * @param uutPurposes - a set of purpose-names (prefixes) for the UUTs to be minted
-     * @param usingSeedUtxo - an optional seedUtxo to use for minting the UUTs (a user-wallet utxo 
-     *    is used if not provided) 
-     * @param 
+     * @param options - additional options for the minting operation.  In particular, you likely want
+     * to provide a custom activity instead of the default uutMinting activity.
+     * @param roles - a map of role-names to purpose-names
      * @public
      **/
     @partialTxn
     async txnMintingUuts<
         const purposes extends string,
-        existingTcx extends StellarTxnContext<any>,
+        existingTcx extends StellarTxnContext & hasSeedUtxo,
         const RM extends Record<ROLES, purposes>,
         const ROLES extends keyof RM & string = string & keyof RM
     >(
         initialTcx: existingTcx,
         uutPurposes: purposes[],
-        usingSeedUtxo?: TxInput | undefined,
+        options: UutCreationAttrs = {},
         //@ts-expect-error
-        roles: RM = {} as Record<string, purposes>,
-        additionalMintValues: valuesEntry[] = []
-    ): Promise<hasUutContext<ROLES | purposes> & hasSeedUtxo & existingTcx> {
-        const minter = this.connectMinter()
+        roles: RM = {} as Record<ROLES, purposes>
+    ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {
+        const minter = this.connectMinter();
+        const { usingSeedUtxo, additionalMintValues = [], activity } = options;
+        if (additionalMintValues.length && !activity) {
+            throw new Error(
+                `additionalMintValues requires a custom activity provided by your mint delegate specalization`
+            );
+        }
         const mintDelegate = await this.getMintDelegate();
-
-        const seedUtxo = usingSeedUtxo || await this.findUutSeedUtxo(uutPurposes, initialTcx);
+        const { seedUtxo } = initialTcx.state;
 
         const tcx = await this.txnWillMintUuts(
             initialTcx,
             uutPurposes,
-            seedUtxo,
-            roles,
+            { usingSeedUtxo: seedUtxo, additionalMintValues, activity },
+            roles
         );
-        const tcx1 = tcx as typeof tcx & hasSeedUtxo
-        tcx1.state.seedUtxo = seedUtxo;
-        const tcx2 = await this.txnMustUseCharterUtxo(tcx, "refInput");
-        tcx2.addInput(seedUtxo);
+        const tcx1 = await this.txnMustUseCharterUtxo(tcx, "refInput");
 
-        return  minter.txnMintWithDelegateAuthorizing(
-            tcx2, [
-                ... mkUutValuesEntries(tcx.state.uuts),
-                ... additionalMintValues
-            ]
+        const tcx2 = await mintDelegate.txnGenericMintingUuts(
+            tcx1,
+            uutPurposes,
+            activity
         );
-        // const tcx4 = await mintDelegate.txnMintingUuts(tcx3, 
+
+        const tcx3 = await minter.txnMintWithDelegateAuthorizing(tcx2, [
+            ...mkUutValuesEntries(tcx.state.uuts),
+            ...additionalMintValues,
+        ]);
+        console.log(
+            "    🐞🐞 @end of txnMintingUuts",
+            dumpAny(tcx3, this.networkParams)
+        );
+        return tcx3;
+        // const tcx4 = await mintDelegate.txnMintingUuts(tcx3,
         //     uutPurposes,
         //     seedUtxo,
         //     roles
@@ -783,47 +791,50 @@ export class DefaultCapo<
     }
 
     /**
-     * DEPRECIATED: Triggers generic uut minting in the mintDelegate
+     * Finds a free seed-utxo from the user wallet, and adds it to the transaction
      * @remarks
-     * 
-     * convenience method mainly for use in tests of the basic mint delegate.
+     *
+     * The seedUtxo will be consumed in the transaction, so it can never be used
+     * again; its value will be returned to the user wallet.
+     *
+     * The seedUtxo is needed for UUT minting, and the transaction is typed with
+     * the presence of that seed (found in tcx.state.seedUtxo).
      * @public
      **/
-    @partialTxn
-    async txnGenericUutMinting<
-        TCX extends StellarTxnContext<any>,
-        purposes extends string
-    >(
-        tcx: TCX, 
-        uutPurposes: purposes[]
-    ) {
-        const tcx2 = await this.txnMintingUuts(tcx, uutPurposes);
-        const delegate = await this.getMintDelegate();
-        return delegate.txnGenericMintingUuts(tcx2, uutPurposes);
+    async addSeedUtxo<TCX extends StellarTxnContext>(
+        tcx: TCX
+    ): Promise<TCX & hasSeedUtxo> {
+        const seedUtxo = await this.findUutSeedUtxo([], tcx);
+
+        const tcx2 = tcx.addInput(seedUtxo) as TCX & hasSeedUtxo;
+        tcx2.state.seedUtxo = seedUtxo;
+        return tcx2;
     }
 
     @partialTxn
     async txnWillMintUuts<
         const purposes extends string,
         existingTcx extends StellarTxnContext,
-        const RM extends Record<ROLES,purposes>,
+        const RM extends Record<ROLES, purposes>,
         const ROLES extends string & keyof RM = string & keyof RM
     >(
         tcx: existingTcx,
         uutPurposes: purposes[],
-        seedUtxo: TxInput,
+        {
+            usingSeedUtxo,
+            additionalMintValues = [],
+            activity,
+        }: UutCreationAttrsWithSeed,
         //@ts-expect-error
-        roles: RM = {} as Record<string, purposes>,
-    ): Promise<
-        hasUutContext<ROLES | purposes> & existingTcx 
-    > {
-        const { txId, utxoIdx } = seedUtxo.outputId;
+        roles: RM = {} as Record<string, purposes>
+    ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {
+        const { txId, utxoIdx } = usingSeedUtxo.outputId;
 
         const { blake2b } = Crypto;
 
         const uutMap: uutPurposeMap<ROLES | purposes> = Object.fromEntries(
             uutPurposes.map((uutPurpose) => {
-                const idx = new HInt(utxoIdx).toCbor()
+                const idx = new HInt(utxoIdx).toCbor();
                 const txoId = txId.bytes.concat(["@".charCodeAt(0)], idx);
                 // console.warn("&&&&&&&& txoId", bytesToHex(txoId));
                 const uutName = new UutName(
@@ -836,14 +847,14 @@ export class DefaultCapo<
         for (const [role, uutPurpose] of Object.entries(roles)) {
             uutMap[role] = uutMap[uutPurpose as string];
         }
-        
-        if (!tcx.state) tcx.state = {uuts: {}};
+
+        if (!tcx.state) tcx.state = { uuts: {} };
         tcx.state.uuts = {
-            ...(tcx.state.uuts),
-            ...(uutMap)
+            ...tcx.state.uuts,
+            ...uutMap,
         };
 
-        return tcx as hasUutContext<ROLES | purposes> & existingTcx 
+        return tcx as hasUutContext<ROLES | purposes> & existingTcx;
     }
 
     requirements() {
@@ -895,13 +906,13 @@ export class DefaultCapo<
                 details: [
                     "The Capo's ability to accept charter-configuration changes allows its behavior to evolve. ",
                     "These configuration changes can accept a new minting-delegate configuration ,",
-                    " ... or other details of the Charter datum that may be specialized."
+                    " ... or other details of the Charter datum that may be specialized.",
                 ],
                 mech: [
                     "TODO: TEST updates details of the datum",
                     "TODO: TEST doesn't update without the capoGov-* authority",
                     "TODO: TEST keeps the charter token in the contract address",
-                ]
+                ],
             },
 
             "has a unique, permanent treasury address": {
@@ -978,7 +989,7 @@ export class DefaultCapo<
                     "When the needed threshold for administrative modifications is achieved, the Charter Datum can be updated",
                     "This type of administrative action should be explicit and separate from any other administrative activity",
                     "If the CharterToken's Datum is being changed, no other redeemer activities are allowed.",
-                    "This requires a separate multi-sig delegate policy (TODO: move out of core reqts"
+                    "This requires a separate multi-sig delegate policy (TODO: move out of core reqts",
                 ],
                 mech: [
                     "requires the existing threshold of existing trustees to be met",

@@ -104,14 +104,15 @@ enum MintDelegateActivity {
         ctx: ScriptContext
     ) -> Bool {
         MintDelegateActivity::mintingUuts{sTxId, sIdx, purposes} = self;
+        MintDelegateDatum::IsDelegation{dd, _} = mdd;
+        returnsAuthzToken : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);
 
         assert(self.usesGenericUutMinting(), "no genericUutMinting");
         o : []TxOutput = ctx.get_cont_outputs();
         if (o.length != 1) { error("single utxo only") };
 
-        MintDelegateDatum::IsDelegation{dd, _} = mdd;
-        isOk : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx) &&                    
 
+        isOk : Bool = returnsAuthzToken && 
         // A project that wants to evolve the Datum's isDelegation.CustomConfig 
         // should enforce that requirement instead of this "not modified" check.
         unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize(), ctx) &&

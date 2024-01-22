@@ -79,6 +79,8 @@ export {
     StellarTxnContext,
     type emptyState,    
     type anyState,
+    type SeedAttrs,
+    type hasSeedUtxo
  } from "./src/StellarTxnContext.js";
 
 export type {

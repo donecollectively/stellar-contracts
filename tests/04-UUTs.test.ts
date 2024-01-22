@@ -60,16 +60,16 @@ describe("Capo", async () => {
             // await delay(1000);
             type testSomeThing = "testSomeThing";
 
-            const tcx1 = new StellarTxnContext(
-                h.currentActor
-            );
             {
                 const mintDgt = await t.getMintDelegate();
                 vi.spyOn(mintDgt, "txnGrantAuthority").mockImplementation(
                     async (tcx) => tcx
                 );
             }
-            const tcx1a = await t.txnGenericUutMinting(tcx1, [ "testSomeThing"]);
+            const tcx1a = await t.txnMintingUuts(
+                await t.addSeedUtxo(h.mkTcx()),
+                [ "testSomeThing"]
+            );
 
             const uutVal = t.uutsValue(tcx1a.state.uuts!);
             tcx1a.addOutput(new TxOutput(tina.address, uutVal));
@@ -84,7 +84,7 @@ describe("Capo", async () => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            const tcx = new StellarTxnContext(h.currentActor);
+            const tcx = h.mkTcx()
 
             const strella = await h.bootstrap();
             const tx = new Tx();
@@ -112,12 +112,14 @@ describe("Capo", async () => {
             console.log("-------------- minting UUT from high-index txo");
 
             type testSomeThing = "testSomeThing";
-            const tcx2 = new StellarTxnContext(
-                h.currentActor
-            );
 
-            const tcx2a = await strella.txnGenericUutMinting(tcx2, [ "testSomeThing"]);
-            await strella.submit(tcx2a);
+            const tcx2 = await strella.txnMintingUuts(await strella.addSeedUtxo(
+                new StellarTxnContext(
+                    h.currentActor
+                )), 
+                [ "testSomeThing"]
+            );
+            await strella.submit(tcx2);
             network.tick(1n);
         });
 
@@ -129,9 +131,7 @@ describe("Capo", async () => {
             const t: DefaultCapo = await h.bootstrap();
 
             type testSomeThing = "testSomeThing";
-            const tcx1 = new StellarTxnContext<hasAllUuts<testSomeThing>>(
-                h.currentActor
-            );
+            const tcx1 = h.mkTcx()
             {
                 await t.txnMustUseCharterUtxo(tcx1, t.activityUsingAuthority());
                 const spy = vi
@@ -144,7 +144,10 @@ describe("Capo", async () => {
                 await t.txnAddGovAuthorityTokenRef(tcx1);
                 expect(spy).toHaveBeenCalled();
             }
-            const tcx1a = await t.txnGenericUutMinting(tcx1, [ "testSomeThing"]);
+            const tcx1a = await t.txnMintingUuts(
+                await t.addSeedUtxo(tcx1), 
+                [ "testSomeThing"]
+            );
 
             const uutVal = t.uutsValue(tcx1a.state.uuts!);
             tcx1a.addOutput(new TxOutput(tina.address, uutVal));
@@ -164,24 +167,27 @@ describe("Capo", async () => {
             await h.mintCharterToken();
             // await delay(1000);
             type testSomeThing = "testSomeThing";
-            const tcx1 = new StellarTxnContext<hasAllUuts<testSomeThing>>(
-                h.currentActor
-            );
+
             // const tcx2 = await t.txnAddCharterAuthorityTokenRef(tcx);
             const mintDelegate = await t.getMintDelegate();
-            vi.spyOn(
+            const mock = vi.spyOn(
                 mintDelegate,
                 "txnReceiveAuthorityToken"
             ).mockImplementation(async (tcx) => tcx);
-            const tcx1a = await t.txnGenericUutMinting(tcx1, [ "testSomeThing"]);
+            const tcx1 = await t.txnMintingUuts(
+                await t.addSeedUtxo(h.mkTcx()), 
+                [ "testSomeThing"]
+            );
 
-            const uutVal = t.uutsValue(tcx1a.state.uuts!);
-            tcx1a.addOutput(new TxOutput(tina.address, uutVal));
+            expect(mock).toHaveBeenCalled();
+
+            const uutVal = t.uutsValue(tcx1.state.uuts!);
+            tcx1.addOutput(new TxOutput(tina.address, uutVal));
             await expect(
-                t.submit(tcx1a, {
+                t.submit(tcx1, {
                     signers: [tom.address, tina.address, tracy.address],
                 })
-            ).rejects.toThrow(/missing.*delegat/);
+            ).rejects.toThrow(/the authZor token MUST be returned/);
         });
 
         it("can create a UUT and send it anywhere", async (context: localTC) => {
@@ -192,15 +198,14 @@ describe("Capo", async () => {
             const t: DefaultCapo = await h.initialize();
             await h.mintCharterToken();
             // await delay(1000);
-            type testSomeThing = "testSomeThing";
-            const tcx1 = new StellarTxnContext<hasAllUuts<testSomeThing>>(
-                h.currentActor
-            );
-            const tcx1a = await t.txnGenericUutMinting(tcx1, [ "testSomeThing"]);
 
-            const uutVal = t.uutsValue(tcx1a.state.uuts!);
-            tcx1a.addOutput(new TxOutput(tina.address, uutVal));
-            await t.submit(tcx1a, {
+            const tcx1 = await t.txnMintingUuts(
+                await t.addSeedUtxo(h.mkTcx()), 
+            [ "testSomeThing"]);
+
+            const uutVal = t.uutsValue(tcx1.state.uuts!);
+            tcx1.addOutput(new TxOutput(tina.address, uutVal));
+            await t.submit(tcx1, {
                 signers: [tom.address, tina.address, tracy.address],
             });
             network.tick(1n);
@@ -226,7 +231,12 @@ describe("Capo", async () => {
                 h.currentActor
             );
             // await t.txnAddCharterAuthorityTokenRef(tcx);
-            const tcx1a = await t.txnGenericUutMinting(tcx1, [ "foo", "bar"]);
+            const tcx1a = await t.txnMintingUuts(
+                await t.addSeedUtxo(
+                    h.mkTcx()
+                ), 
+                [ "foo", "bar"]
+            );
             const uuts = t.uutsValue(tcx1a.state.uuts!);
 
             tcx1a.addOutput(new TxOutput(tina.address, uuts));
@@ -252,11 +262,14 @@ describe("Capo", async () => {
             // await delay(1000);
 
             type fooAndBar = "foo" | "bar";
-            const tcx1 = new StellarTxnContext<hasAllUuts<fooAndBar>>(
-                h.currentActor
-            );
+
             // await t.txnAddCharterAuthorityTokenRef(tcx);
-            const tcx1a = await t.txnGenericUutMinting(tcx1, [ "foo", "bar"]);
+            const tcx1a = await t.txnMintingUuts(
+                await t.addSeedUtxo(
+                    h.mkTcx()
+                )
+                , [ "foo", "bar"]
+            );
 
             const uuts = t.uutsValue(tcx1a.state.uuts!);
 
@@ -293,12 +306,10 @@ describe("Capo", async () => {
             console.log(
                 "-------- case 1: using the txn-helper in unsupported way"
             );
-            const tcx1 = new StellarTxnContext<hasAllUuts<uniqUutMap>>(
-                h.currentActor
+            const tcx1a = await t.txnMintingUuts(
+                await t.addSeedUtxo(h.mkTcx()),                
+                [noMultiples, noMultiples]
             );
-            // await t.txnAddCharterAuthorityTokenRef(tcx);
-
-            const tcx1a = await t.txnGenericUutMinting(tcx1, [noMultiples, noMultiples]);
 
             const uut = t.uutsValue(tcx1a.state.uuts!);
 
@@ -328,7 +339,10 @@ describe("Capo", async () => {
                 }
             );
 
-            const tcx2a = await t.txnGenericUutMinting(tcx2, [noMultiples]);
+            const tcx2a = await t.txnMintingUuts(
+                await t.addSeedUtxo(h.mkTcx()),
+                [noMultiples]
+            );
 
             const uut2 = t.uutsValue(tcx2a.state.uuts!);
 
@@ -343,9 +357,6 @@ describe("Capo", async () => {
             console.log(
                 "------ case 3: directly creating the transaction with multiple mint entries"
             );
-            const tcx3 = new StellarTxnContext<hasAllUuts<uniqUutMap>>(
-                h.currentActor
-            );
             // await t.txnAddCharterAuthorityTokenRef(tcx3);
 
             spy.mockImplementation(
@@ -358,9 +369,12 @@ describe("Capo", async () => {
                 }
             );
 
-            const tcx3a = await t.txnGenericUutMinting(tcx3, [noMultiples]);
+            const tcx3 = await t.txnMintingUuts(
+                await t.addSeedUtxo(h.mkTcx()),
+                [noMultiples]
+            );
 
-            const uut3 = t.uutsValue(tcx3a.state.uuts!);
+            const uut3 = t.uutsValue(tcx3.state.uuts!);
 
             tcx3.addOutput(new TxOutput(tina.address, uut3));
             await expect(
@@ -381,7 +395,6 @@ describe("Capo", async () => {
             // await delay(1000);
 
             type hasSomethingUut = { ["testSomeThing"]: UutName };
-            const tcx = new StellarTxnContext<hasAllUuts<"testSomeThing">>();
 
             // await t.txnAddCharterAuthorityTokenRef(tcx);
             const m: DefaultMinter = t.minter!;
@@ -397,7 +410,9 @@ describe("Capo", async () => {
                 }
             );
 
-            const tcx2 = await t.txnGenericUutMinting(tcx, ["testSomeThing"]);
+            const tcx2 = await t.txnMintingUuts(
+                await t.addSeedUtxo(h.mkTcx())
+                , ["testSomeThing"]);
             const uut = t.uutsValue(tcx2);
 
             tcx2.addOutput(new TxOutput(tina.address, uut));
@@ -422,11 +437,11 @@ describe("Capo", async () => {
             const t: DefaultCapo = await h.initialize();
 
             await h.mintCharterToken();
-            const tcx = new StellarTxnContext<hasAllUuts<testSomeThing>>(
-                h.currentActor
-            );
             // await t.txnAddCharterAuthorityTokenRef(tcx);
-            const tcx2 = await t.txnGenericUutMinting(tcx, ["testSomeThing"]);
+            const tcx2 = await t.txnMintingUuts(
+                await t.addSeedUtxo(h.mkTcx()),
+                ["testSomeThing"],
+            );
 
             const uutVal = t.uutsValue(tcx2.state.uuts!);
             tcx2.addOutput(new TxOutput(tina.address, uutVal));

@@ -86,6 +86,14 @@ export abstract class CapoTestHelper<
         return !!(this.strella.configIn || this.state.parsedConfig)
     }
 
+    /**
+     * Creates a new transaction-context with the helper's current or default actor
+     * @public
+     **/
+    mkTcx() {
+        return new StellarTxnContext(this.currentActor);
+    }
+    
     async bootstrap(args?: MinimalDefaultCharterDatumArgs) {
         let strella = this.strella || (await this.initialize());
         if (this.ready) return strella;

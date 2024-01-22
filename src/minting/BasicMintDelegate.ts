@@ -2,6 +2,7 @@ import {
     Address,
     AssetClass,
     Datum,
+    TxId,
     TxInput,
     TxOutput,
     Value,
@@ -12,17 +13,10 @@ import contract from "./BasicMintDelegate.hl";
 //@ts-expect-error because TS can't import non-ts content : /
 import StellarHeliosHelpers from "../StellarHeliosHelpers.hl";
 
-import {
-    Activity,
-} from "../StellarContract.js";
-import type {
-    configBase, isActivity,
-} from "../StellarContract.js";
-import { StellarTxnContext } from "../StellarTxnContext.js";
-import type {
-    capoDelegateConfig,
-} from "../delegation/RolesAndDelegates.js";
-
+import { Activity } from "../StellarContract.js";
+import type { configBase, isActivity } from "../StellarContract.js";
+import { StellarTxnContext, type hasSeedUtxo } from "../StellarTxnContext.js";
+import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
 
 import { StellarDelegate } from "../delegation/StellarDelegate.js";
 import type { InlineDatum } from "../HeliosPromotedTypes.js";
@@ -32,7 +26,10 @@ import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { UnspecializedMintDelegate } from "./UnspecializedMintDelegate.js";
 import { UnspecializedCapo } from "../UnspecializedCapo.js";
 import { CapoHelpers } from "../CapoHelpers.js";
-import type { MintUutActivityArgs, hasSeedUtxo, hasUutContext } from "../Capo.js";
+import type {
+    MintUutActivityArgs,
+    hasUutContext,
+} from "../Capo.js";
 
 export type MintDelegateArgs = capoDelegateConfig & {
     rev: bigint;
@@ -47,7 +44,7 @@ type MintDelegateDatumProps = {
 /**
  * Serves a delegated minting-policy role for Capo contracts
  * @remarks
- * 
+ *
  * shifts detailed minting policy out of the minter and into the delegate.
  * @public
  **/
@@ -65,11 +62,11 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
      * specializedMintDelegate module for customizing policies atop the basic mint delegate
      * @public
      * @remarks
-     * 
+     *
      * The basic mint delegate contains an "unspecialized" implementation of this customization,
      * which doesn't have any special restrictions.  It reserves a CustomConfig field
-     * at position 2 in the IsDelegation datum, allowing customizations to use any 
-     * struct in that position to express any custom configurations.  
+     * at position 2 in the IsDelegation datum, allowing customizations to use any
+     * struct in that position to express any custom configurations.
      **/
     get specializedMintDelegate(): HeliosModuleSrc {
         return UnspecializedMintDelegate;
@@ -89,12 +86,8 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     }: MintUutActivityArgs): isActivity {
         const seedIndex = BigInt(sIdx);
         console.log("UUT redeemer seedTxn", seedTxn.hex);
-        const {mintingUuts} = this.onChainActivitiesType;
-        const t = new mintingUuts(
-            seedTxn,
-            seedIndex,
-            purposes
-        );
+        const { mintingUuts } = this.onChainActivitiesType;
+        const t = new mintingUuts(seedTxn, seedIndex, purposes);
 
         return { redeemer: t._toUplcData() };
     }
@@ -108,7 +101,6 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
 
     //     return { redeemer: t._toUplcData() };
     // }
-
 
     importModules(): HeliosModuleSrc[] {
         const specializedMintDelegate = this.specializedMintDelegate;
@@ -125,7 +117,7 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
             CapoHelpers,
             CapoMintHelpers,
             specializedMintDelegate,
-            this.specializedCapo
+            this.specializedCapo,
         ];
     }
 
@@ -145,9 +137,9 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     /**
      * Adds a mint-delegate-specific authority token to the txn output
      * @remarks
-     * 
+     *
      * Implements {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }.
-     * 
+     *
      * Uses {@link BasicMintDelegate.mkDelegationDatum | mkDelegationDatum()} to make the inline Datum for the output.
      * @see {@link StellarDelegate.txnReceiveAuthorityToken | baseline txnReceiveAuthorityToken()'s doc }
      * @public
@@ -158,9 +150,9 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
         fromFoundUtxo?: TxInput
     ): Promise<TCX> {
         console.log(
-            `     ----- minting delegate validator receiving mintDgt token at `+
-            this.address.validatorHash!.hex
-        )
+            `     ----- minting delegate validator receiving mintDgt token at ` +
+                this.address.validatorHash!.hex
+        );
         // const ffu = fromFoundUtxo;
         // const v : Value = ffu?.value || this.mkMinAssetValue(this.configIn!.uut);
         const datum = this.mkDelegationDatum(fromFoundUtxo);
@@ -170,35 +162,35 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     /**
      * Depreciated: Add a generic minting-UUTs actvity to the transaction
      * @remarks
-     * 
+     *
      * This is a generic helper function that can be used to mint any UUTs,
      * but **only if the specialized minting delegate has not disabled generic UUT minting**.
-     * 
+     *
      * Generally, it's recommended to use an application-specific activity
      * that validates a particular minting use-case, instead of this generic one.
-     * 
+     *
      * See {@link Capo.txnMintingUuts | Capo.txnMintingUuts() } for further guidance.
-     * 
+     *
      * @param tcx - the transaction context
      * @param uutPurposes - a list of string prefixes for the UUTs
      * @typeParam TCX - for the `tcx`, which must already include the indicated `uutPurposes`
      * @public
      **/
     txnGenericMintingUuts<
-        TCX extends hasUutContext<purposes> & hasSeedUtxo,
+        TCX extends hasSeedUtxo & hasUutContext<purposes>,
         purposes extends string
     >(
         tcx: TCX,
         uutPurposes: purposes[],
+        activity?: isActivity
         // seedUtxo: TxInput,
     ) {
-        const {seedUtxo} = tcx.state
-        const { txId: seedTxn, utxoIdx: seedIndex } = seedUtxo.outputId;
-        return this.txnGrantAuthority(tcx, this.activityMintingUuts({
+        let useActivity = activity || this.activityMintingUuts({ 
             purposes: uutPurposes,
-            seedTxn,
-            seedIndex,
-        }))
+            ...(tcx.getSeedAttrs()),
+        });
+
+        return this.txnGrantAuthority(tcx, useActivity);
     }
 
     mkDelegationDatum(txin?: TxInput) {

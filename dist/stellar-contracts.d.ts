@@ -231,7 +231,7 @@ export declare class BasicMintDelegate extends StellarDelegate<MintDelegateArgs>
      * @typeParam TCX - for the `tcx`, which must already include the indicated `uutPurposes`
      * @public
      **/
-    txnGenericMintingUuts<TCX extends hasUutContext<purposes> & hasSeedUtxo, purposes extends string>(tcx: TCX, uutPurposes: purposes[]): Promise<TCX>;
+    txnGenericMintingUuts<TCX extends hasSeedUtxo & hasUutContext<purposes>, purposes extends string>(tcx: TCX, uutPurposes: purposes[], activity?: isActivity): Promise<TCX>;
     mkDelegationDatum(txin?: TxInput): Datum;
     txnCreatingTokenPolicy(tcx: StellarTxnContext, tokenName: string): Promise<StellarTxnContext<emptyState_3>>;
     static mkDelegateWithArgs(a: MintDelegateArgs): void;
@@ -558,6 +558,11 @@ CT extends CapoBaseConfig = SC extends Capo<any, any, infer iCT> ? iCT : never> 
         randomSeed?: number;
     }): Promise<SC>;
     get ready(): boolean;
+    /**
+     * Creates a new transaction-context with the helper's current or default actor
+     * @public
+     **/
+    mkTcx(): StellarTxnContext<emptyState_3>;
     bootstrap(args?: MinimalDefaultCharterDatumArgs): Promise<SC>;
     abstract mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<any>>;
     abstract mintCharterToken(args?: MinimalDefaultCharterDatumArgs<any>): Promise<hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & hasBootstrappedConfig<CapoBaseConfig>>;
@@ -797,52 +802,58 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
     mkTxnUpdateCharter(args: CDT, tcx?: StellarTxnContext): Promise<StellarTxnContext>;
     findUutSeedUtxo(uutPurposes: string[], tcx: StellarTxnContext<any>): Promise<TxInput>;
     /**
-     * Generic method for minting UUTs, as part of an application-specific use-case.
+     * Adds UUT minting to a transaction
      * @remarks
-     *
-     * NOTE: was mkTxnMintingUuts (fix)
      *
      * Constructs UUTs with the indicated purposes, and adds them to the contract state.
      * This is a useful generic capability to support any application-specific purpose.
      *
-     * If a seedUtxo is not provided, one from the current user's wallet is used.   The utxo is
-     * consumed, so it can never be used again; its value will be returned to the user wallet.
-     * All the uuts named in the uutPurposes argument will be minted from the same seedUtxo,
-     * and will share the same suffix, because it is derived from the seedUtxo's outputId.
+     * The provided transaction context must have a seedUtxo - use {@link addSeedUtxo()} to add one
+     * from the current user's wallet. The seed utxo is consumed, so it can never be used again; its
+     * value will be returned to the user wallet.  All the uuts named in the uutPurposes argument will
+     * be minted from the same seedUtxo, and will share the same suffix, because it is derived from the
+     * seedUtxo's outputId.
      *
-     * If additional mints or burns are needed in the transaction, they can be included in the
-     * additionalMintValues argument.  See {@link mkValuesEntry | mkValuesEntry()}.  These
-     * should be validated by your mint-delegate to ensure that all-and-only the expected
-     * values are minted.
+     * This method uses a generic uutMinting activity in the transaction by default, which may
+     * fail if the mint delegate has disabled that generic minting.   In this case, add an `options.activity`
+     * matching an app-specific activity/redeemer.
      *
-     * NOTE: This method does not include any minting delegate activity in the transaction,
-     * although the transaction will require the minting delegate's authority to complete the
-     * indicated mint.  Use  {@link getMintDelegate | getMintDelegate()}
-     * and its {@link BasicMintDelegate.txnGrantAuthority | txnGrantAuthority()} method,
-     * or an application-specific method that calls txnGrantAuthority(tcx, ...) to spend that authority
-     * using an application-specific activity that validates exactly the expected mint.
+     * It's recommended to create custom activities in the minting delegate, to go with your
+     * application's use-cases for minting UUTs.  To include the seedUtxo details in the transaction,
+     * you can follow the SeedAttrs pattern  seen in {@link activityMintingUuts | activityMintingUuts()},
+     * using the StellarTxnContext's {@link StellarTxnContext.getSeedAttrs | getSeedAttrs()}
+     * method to access the seedUtxo details.
      *
-     * In special cases, you might make use of the mintDelegate's
-     * {@link BasicMintDelegate.txnGenericMintingUuts | txnMintingUuts()} method,
-     * but application-specific activities are recommended instead.
+     * The mintingUuts{...} activity defined in the on-chain specialized mint delegate demonstrates
+     * the inclusion of seedUtxo details in the activity/redeemer type, and the use of those details in
+     * its on-chain call to `validateUutMinting()`.
+     *
+     * If additional mints or burns are needed in the transaction, they can be included in
+     * `options.additionalMintValues`.  See {@link mkValuesEntry | mkValuesEntry()} to create
+     * these.  In this case, you'll need to provide a `options.activity`, whose on-chain
+     * validation should ensure that all-and-only the expected values are minted.
      *
      * @param initialTcx - an existing transaction context
      * @param uutPurposes - a set of purpose-names (prefixes) for the UUTs to be minted
-     * @param usingSeedUtxo - an optional seedUtxo to use for minting the UUTs (a user-wallet utxo
-     *    is used if not provided)
-     * @param
+     * @param options - additional options for the minting operation.  In particular, you likely want
+     * to provide a custom activity instead of the default uutMinting activity.
+     * @param roles - a map of role-names to purpose-names
      * @public
      **/
-    txnMintingUuts<const purposes extends string, existingTcx extends StellarTxnContext<any>, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], usingSeedUtxo?: TxInput | undefined, roles?: RM, additionalMintValues?: valuesEntry[]): Promise<hasUutContext<ROLES | purposes> & hasSeedUtxo & existingTcx>;
+    txnMintingUuts<const purposes extends string, existingTcx extends StellarTxnContext & hasSeedUtxo, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], options?: UutCreationAttrs, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
     /**
-     * DEPRECIATED: Triggers generic uut minting in the mintDelegate
+     * Finds a free seed-utxo from the user wallet, and adds it to the transaction
      * @remarks
      *
-     * convenience method mainly for use in tests of the basic mint delegate.
+     * The seedUtxo will be consumed in the transaction, so it can never be used
+     * again; its value will be returned to the user wallet.
+     *
+     * The seedUtxo is needed for UUT minting, and the transaction is typed with
+     * the presence of that seed (found in tcx.state.seedUtxo).
      * @public
      **/
-    txnGenericUutMinting<TCX extends StellarTxnContext<any>, purposes extends string>(tcx: TCX, uutPurposes: purposes[]): Promise<hasUutContext<purposes> & hasSeedUtxo & TCX>;
-    txnWillMintUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends string & keyof RM = string & keyof RM>(tcx: existingTcx, uutPurposes: purposes[], seedUtxo: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
+    addSeedUtxo<TCX extends StellarTxnContext>(tcx: TCX): Promise<TCX & hasSeedUtxo>;
+    txnWillMintUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends string & keyof RM = string & keyof RM>(tcx: existingTcx, uutPurposes: purposes[], { usingSeedUtxo, additionalMintValues, activity, }: UutCreationAttrsWithSeed, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
     requirements(): ReqtsMap_3<"the trustee group can be changed" | "positively governs all administrative actions" | "has a unique, permanent charter token" | "has a unique, permanent treasury address" | "the trustee threshold is enforced on all administrative actions" | "the charter token is always kept in the contract" | "the charter details can be updated" | "can mint other tokens, on the authority of the Charter token" | "has a singleton minting policy" | "foo">;
 }
 
@@ -1090,7 +1101,7 @@ export declare namespace hasReqts {
  * A txn context having a seedUtxo in its state
  * @public
  **/
-declare type hasSeedUtxo = StellarTxnContext<anyState & {
+export declare type hasSeedUtxo = StellarTxnContext<anyState & {
     seedUtxo: TxInput;
 }>;
 
@@ -1106,8 +1117,8 @@ export declare type hasUutContext<uutEntries extends string> = StellarTxnContext
  * @public
  */
 declare interface hasUutCreator {
-    txnWillMintUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
-    txnMintingUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], seedUtxo?: TxInput, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
+    txnWillMintUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], uutArgs: UutCreationAttrsWithSeed, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
+    txnMintingUuts<const purposes extends string, existingTcx extends StellarTxnContext & hasSeedUtxo, const RM extends Record<ROLES, purposes>, const ROLES extends keyof RM & string = string & keyof RM>(initialTcx: existingTcx, uutPurposes: purposes[], uutArgs?: UutCreationAttrs, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
 }
 
 export { helios }
@@ -1428,6 +1439,11 @@ declare type rootCapoConfig = {
 
 declare type scriptPurpose = "testing" | "minting" | "spending" | "staking" | "module" | "endpoint";
 
+export declare type SeedAttrs = {
+    seedTxn: TxId;
+    seedIndex: bigint;
+};
+
 /**
  * details of seed transaction
  * @public
@@ -1585,7 +1601,7 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     /**
      * @internal
      **/
-    protected _utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }: utxoInfo, { free: free2, minAdaAmount: r2 }: utxoInfo): 1 | 0 | -1;
+    protected _utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }: utxoInfo, { free: free2, minAdaAmount: r2 }: utxoInfo): 1 | -1 | 0;
     /**
      * @internal
      **/
@@ -2023,6 +2039,7 @@ export declare class StellarTxnContext<S extends anyState = anyState> {
     constructor(actor?: Wallet, state?: Partial<S>);
     dump(networkParams?: NetworkParams): string;
     mintTokens(...args: Parameters<Tx["mintTokens"]>): StellarTxnContext<S>;
+    getSeedAttrs<TCX extends hasSeedUtxo>(this: TCX): SeedAttrs;
     reservedUtxos(): TxInput[];
     utxoNotReserved(u: TxInput): TxInput | undefined;
     addUut<T extends string, TCX extends StellarTxnContext>(this: TCX, uutName: UutName, ...names: T[]): hasUutContext<T> & TCX;
@@ -2169,6 +2186,14 @@ declare type UtxoSearchScope = {
     wallet?: Wallet;
     exceptInTcx?: StellarTxnContext;
 };
+
+declare type UutCreationAttrs = {
+    usingSeedUtxo?: TxInput | undefined;
+    additionalMintValues?: valuesEntry[];
+    activity?: isActivity;
+};
+
+declare type UutCreationAttrsWithSeed = UutCreationAttrs & Required<Pick<UutCreationAttrs, "usingSeedUtxo">>;
 
 declare type uutMap = Record<string, UutName>;
 

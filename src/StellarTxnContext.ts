@@ -7,12 +7,27 @@ import {
 import type {
     Address,
     NetworkParams,
+    TxId,
     Wallet,
 } from "@hyperionbt/helios";
 
 import { txAsString } from "./diagnostics.js";
 import type { hasUutContext } from "./Capo.js";
 import { UutName } from "./delegation/UutName.js";
+
+/**
+ * A txn context having a seedUtxo in its state
+ * @public
+ **/
+export type hasSeedUtxo = StellarTxnContext<anyState & {
+    seedUtxo: TxInput;
+}>;
+
+
+export type SeedAttrs = { 
+    seedTxn: TxId; 
+    seedIndex: bigint
+};
 
 //!!! if we could access the inputs and outputs in a building Tx,
 //  this might  not be necessary (unless it becomes a
@@ -83,6 +98,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
         this.tx.mintTokens(...args);
 
         return this;
+    }
+
+    getSeedAttrs<TCX extends hasSeedUtxo>(this: TCX): SeedAttrs {
+        const { seedUtxo } = this.state;
+        const { txId: seedTxn, utxoIdx: seedIndex } = seedUtxo.outputId;
+        return { seedTxn, seedIndex: BigInt(seedIndex) };
     }
 
     reservedUtxos(): TxInput[] {

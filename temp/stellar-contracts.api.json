@@ -1773,17 +1773,21 @@
                 },
                 {
                   "kind": "Reference",
+                  "text": "hasSeedUtxo",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasSeedUtxo:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": " & "
+                },
+                {
+                  "kind": "Reference",
                   "text": "hasUutContext",
                   "canonicalReference": "@donecollectively/stellar-contracts!hasUutContext:type"
                 },
                 {
                   "kind": "Content",
-                  "text": "<purposes> & "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "hasSeedUtxo",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~hasSeedUtxo:type"
+                  "text": "<purposes>"
                 },
                 {
                   "kind": "Content",
@@ -1811,6 +1815,15 @@
                 },
                 {
                   "kind": "Content",
+                  "text": ", activity?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "isActivity",
+                  "canonicalReference": "@donecollectively/stellar-contracts!isActivity:type"
+                },
+                {
+                  "kind": "Content",
                   "text": "): "
                 },
                 {
@@ -1832,7 +1845,7 @@
                   "typeParameterName": "TCX",
                   "constraintTokenRange": {
                     "startIndex": 1,
-                    "endIndex": 4
+                    "endIndex": 5
                   },
                   "defaultTypeTokenRange": {
                     "startIndex": 0,
@@ -1842,8 +1855,8 @@
                 {
                   "typeParameterName": "purposes",
                   "constraintTokenRange": {
-                    "startIndex": 5,
-                    "endIndex": 6
+                    "startIndex": 6,
+                    "endIndex": 7
                   },
                   "defaultTypeTokenRange": {
                     "startIndex": 0,
@@ -1853,8 +1866,8 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 11,
-                "endIndex": 13
+                "startIndex": 14,
+                "endIndex": 16
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -1863,18 +1876,26 @@
                 {
                   "parameterName": "tcx",
                   "parameterTypeTokenRange": {
-                    "startIndex": 7,
-                    "endIndex": 8
+                    "startIndex": 8,
+                    "endIndex": 9
                   },
                   "isOptional": false
                 },
                 {
                   "parameterName": "uutPurposes",
                   "parameterTypeTokenRange": {
-                    "startIndex": 9,
-                    "endIndex": 10
+                    "startIndex": 10,
+                    "endIndex": 11
                   },
                   "isOptional": false
+                },
+                {
+                  "parameterName": "activity",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 12,
+                    "endIndex": 13
+                  },
+                  "isOptional": true
                 }
               ],
               "isOptional": false,
@@ -5841,6 +5862,51 @@
               "name": "mkDefaultCharterArgs"
             },
             {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!CapoTestHelper#mkTcx:member(1)",
+              "docComment": "/**\n * Creates a new transaction-context with the helper's current or default actor\n *\n * @public\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "mkTcx(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<import(\"../StellarTxnContext.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "emptyState",
+                  "canonicalReference": "@donecollectively/stellar-contracts!emptyState:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "mkTcx"
+            },
+            {
               "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!CapoTestHelper#ready:member",
               "docComment": "",
@@ -6330,6 +6396,90 @@
               "isOptional": false,
               "isAbstract": false,
               "name": "activityUpdatingCharter"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#addSeedUtxo:member(1)",
+              "docComment": "/**\n * Finds a free seed-utxo from the user wallet, and adds it to the transaction\n *\n * @remarks\n *\n * The seedUtxo will be consumed in the transaction, so it can never be used again; its value will be returned to the user wallet.\n *\n * The seedUtxo is needed for UUT minting, and the transaction is typed with the presence of that seed (found in tcx.state.seedUtxo).\n *\n * @public\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "addSeedUtxo<TCX extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">(tcx: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "TCX"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<TCX & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasSeedUtxo",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasSeedUtxo:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "typeParameters": [
+                {
+                  "typeParameterName": "TCX",
+                  "constraintTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 5,
+                "endIndex": 9
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "tcx",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 3,
+                    "endIndex": 4
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "addSeedUtxo"
             },
             {
               "kind": "Property",
@@ -7508,140 +7658,8 @@
             },
             {
               "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#txnGenericUutMinting:member(1)",
-              "docComment": "/**\n * DEPRECIATED: Triggers generic uut minting in the mintDelegate\n *\n * @remarks\n *\n * convenience method mainly for use in tests of the basic mint delegate.\n *\n * @public\n */\n",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "txnGenericUutMinting<TCX extends "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "StellarTxnContext",
-                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
-                },
-                {
-                  "kind": "Content",
-                  "text": "<any>"
-                },
-                {
-                  "kind": "Content",
-                  "text": ", purposes extends "
-                },
-                {
-                  "kind": "Content",
-                  "text": "string"
-                },
-                {
-                  "kind": "Content",
-                  "text": ">(tcx: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "TCX"
-                },
-                {
-                  "kind": "Content",
-                  "text": ", uutPurposes: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "purposes[]"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "Promise",
-                  "canonicalReference": "!Promise:interface"
-                },
-                {
-                  "kind": "Content",
-                  "text": "<"
-                },
-                {
-                  "kind": "Reference",
-                  "text": "hasUutContext",
-                  "canonicalReference": "@donecollectively/stellar-contracts!hasUutContext:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": "<purposes> & "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "hasSeedUtxo",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~hasSeedUtxo:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": " & TCX>"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "typeParameters": [
-                {
-                  "typeParameterName": "TCX",
-                  "constraintTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 3
-                  },
-                  "defaultTypeTokenRange": {
-                    "startIndex": 0,
-                    "endIndex": 0
-                  }
-                },
-                {
-                  "typeParameterName": "purposes",
-                  "constraintTokenRange": {
-                    "startIndex": 4,
-                    "endIndex": 5
-                  },
-                  "defaultTypeTokenRange": {
-                    "startIndex": 0,
-                    "endIndex": 0
-                  }
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 10,
-                "endIndex": 16
-              },
-              "releaseTag": "Public",
-              "isProtected": false,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "tcx",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 6,
-                    "endIndex": 7
-                  },
-                  "isOptional": false
-                },
-                {
-                  "parameterName": "uutPurposes",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 8,
-                    "endIndex": 9
-                  },
-                  "isOptional": false
-                }
-              ],
-              "isOptional": false,
-              "isAbstract": false,
-              "name": "txnGenericUutMinting"
-            },
-            {
-              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#txnMintingUuts:member(1)",
-              "docComment": "/**\n * Generic method for minting UUTs, as part of an application-specific use-case.\n *\n * @remarks\n *\n * NOTE: was mkTxnMintingUuts (fix)\n *\n * Constructs UUTs with the indicated purposes, and adds them to the contract state. This is a useful generic capability to support any application-specific purpose.\n *\n * If a seedUtxo is not provided, one from the current user's wallet is used. The utxo is consumed, so it can never be used again; its value will be returned to the user wallet. All the uuts named in the uutPurposes argument will be minted from the same seedUtxo, and will share the same suffix, because it is derived from the seedUtxo's outputId.\n *\n * If additional mints or burns are needed in the transaction, they can be included in the additionalMintValues argument. See {@link mkValuesEntry | mkValuesEntry()}. These should be validated by your mint-delegate to ensure that all-and-only the expected values are minted.\n *\n * NOTE: This method does not include any minting delegate activity in the transaction, although the transaction will require the minting delegate's authority to complete the indicated mint. Use {@link getMintDelegate | getMintDelegate()} and its {@link BasicMintDelegate.txnGrantAuthority | txnGrantAuthority()} method, or an application-specific method that calls txnGrantAuthority(tcx, ...) to spend that authority using an application-specific activity that validates exactly the expected mint.\n *\n * In special cases, you might make use of the mintDelegate's {@link BasicMintDelegate.txnGenericMintingUuts | txnMintingUuts()} method, but application-specific activities are recommended instead.\n *\n * @param initialTcx - an existing transaction context\n *\n * @param uutPurposes - a set of purpose-names (prefixes) for the UUTs to be minted\n *\n * @param usingSeedUtxo - an optional seedUtxo to use for minting the UUTs (a user-wallet utxo is used if not provided)\n *\n * @param  - \n *\n * @public\n */\n",
+              "docComment": "/**\n * Adds UUT minting to a transaction\n *\n * @remarks\n *\n * Constructs UUTs with the indicated purposes, and adds them to the contract state. This is a useful generic capability to support any application-specific purpose.\n *\n * The provided transaction context must have a seedUtxo - use {@link addSeedUtxo()} to add one from the current user's wallet. The seed utxo is consumed, so it can never be used again; its value will be returned to the user wallet. All the uuts named in the uutPurposes argument will be minted from the same seedUtxo, and will share the same suffix, because it is derived from the seedUtxo's outputId.\n *\n * This method uses a generic uutMinting activity in the transaction by default, which may fail if the mint delegate has disabled that generic minting. In this case, add an `options.activity` matching an app-specific activity/redeemer.\n *\n * It's recommended to create custom activities in the minting delegate, to go with your application's use-cases for minting UUTs. To include the seedUtxo details in the transaction, you can follow the SeedAttrs pattern seen in {@link activityMintingUuts | activityMintingUuts()}, using the StellarTxnContext's {@link StellarTxnContext.getSeedAttrs | getSeedAttrs()} method to access the seedUtxo details.\n *\n * The mintingUuts{...} activity defined in the on-chain specialized mint delegate demonstrates the inclusion of seedUtxo details in the activity/redeemer type, and the use of those details in its on-chain call to `validateUutMinting()`.\n *\n * If additional mints or burns are needed in the transaction, they can be included in `options.additionalMintValues`. See {@link mkValuesEntry | mkValuesEntry()} to create these. In this case, you'll need to provide a `options.activity`, whose on-chain validation should ensure that all-and-only the expected values are minted.\n *\n * @param initialTcx - an existing transaction context\n *\n * @param uutPurposes - a set of purpose-names (prefixes) for the UUTs to be minted\n *\n * @param options - additional options for the minting operation. In particular, you likely want to provide a custom activity instead of the default uutMinting activity.\n *\n * @param roles - a map of role-names to purpose-names\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -7662,7 +7680,12 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<any>"
+                  "text": " & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasSeedUtxo",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasSeedUtxo:type"
                 },
                 {
                   "kind": "Content",
@@ -7711,16 +7734,12 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", usingSeedUtxo?: "
+                  "text": ", options?: "
                 },
                 {
                   "kind": "Reference",
-                  "text": "TxInput",
-                  "canonicalReference": "@hyperionbt/helios!TxInput:class"
-                },
-                {
-                  "kind": "Content",
-                  "text": " | undefined"
+                  "text": "UutCreationAttrs",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~UutCreationAttrs:type"
                 },
                 {
                   "kind": "Content",
@@ -7729,19 +7748,6 @@
                 {
                   "kind": "Content",
                   "text": "RM"
-                },
-                {
-                  "kind": "Content",
-                  "text": ", additionalMintValues?: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "valuesEntry",
-                  "canonicalReference": "@donecollectively/stellar-contracts!valuesEntry:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": "[]"
                 },
                 {
                   "kind": "Content",
@@ -7763,16 +7769,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<ROLES | purposes> & "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "hasSeedUtxo",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~hasSeedUtxo:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": " & existingTcx>"
+                  "text": "<ROLES | purposes> & existingTcx>"
                 },
                 {
                   "kind": "Content",
@@ -7795,7 +7792,7 @@
                   "typeParameterName": "existingTcx",
                   "constraintTokenRange": {
                     "startIndex": 3,
-                    "endIndex": 5
+                    "endIndex": 6
                   },
                   "defaultTypeTokenRange": {
                     "startIndex": 0,
@@ -7805,8 +7802,8 @@
                 {
                   "typeParameterName": "RM",
                   "constraintTokenRange": {
-                    "startIndex": 6,
-                    "endIndex": 8
+                    "startIndex": 7,
+                    "endIndex": 9
                   },
                   "defaultTypeTokenRange": {
                     "startIndex": 0,
@@ -7816,19 +7813,19 @@
                 {
                   "typeParameterName": "ROLES",
                   "constraintTokenRange": {
-                    "startIndex": 9,
-                    "endIndex": 10
+                    "startIndex": 10,
+                    "endIndex": 11
                   },
                   "defaultTypeTokenRange": {
-                    "startIndex": 11,
-                    "endIndex": 12
+                    "startIndex": 12,
+                    "endIndex": 13
                   }
                 }
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 25,
-                "endIndex": 31
+                "startIndex": 22,
+                "endIndex": 26
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -7837,23 +7834,23 @@
                 {
                   "parameterName": "initialTcx",
                   "parameterTypeTokenRange": {
-                    "startIndex": 13,
-                    "endIndex": 14
+                    "startIndex": 14,
+                    "endIndex": 15
                   },
                   "isOptional": false
                 },
                 {
                   "parameterName": "uutPurposes",
                   "parameterTypeTokenRange": {
-                    "startIndex": 15,
-                    "endIndex": 16
+                    "startIndex": 16,
+                    "endIndex": 17
                   },
                   "isOptional": false
                 },
                 {
-                  "parameterName": "usingSeedUtxo",
+                  "parameterName": "options",
                   "parameterTypeTokenRange": {
-                    "startIndex": 17,
+                    "startIndex": 18,
                     "endIndex": 19
                   },
                   "isOptional": true
@@ -7863,14 +7860,6 @@
                   "parameterTypeTokenRange": {
                     "startIndex": 20,
                     "endIndex": 21
-                  },
-                  "isOptional": true
-                },
-                {
-                  "parameterName": "additionalMintValues",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 22,
-                    "endIndex": 24
                   },
                   "isOptional": true
                 }
@@ -7948,12 +7937,12 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", seedUtxo: "
+                  "text": ", { usingSeedUtxo, additionalMintValues, activity, }: "
                 },
                 {
                   "kind": "Reference",
-                  "text": "TxInput",
-                  "canonicalReference": "@hyperionbt/helios!TxInput:class"
+                  "text": "UutCreationAttrsWithSeed",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~UutCreationAttrsWithSeed:type"
                 },
                 {
                   "kind": "Content",
@@ -8062,7 +8051,7 @@
                   "isOptional": false
                 },
                 {
-                  "parameterName": "seedUtxo",
+                  "parameterName": "{ usingSeedUtxo, additionalMintValues, activity, }",
                   "parameterTypeTokenRange": {
                     "startIndex": 16,
                     "endIndex": 17
@@ -10482,6 +10471,55 @@
         },
         {
           "kind": "TypeAlias",
+          "canonicalReference": "@donecollectively/stellar-contracts!hasSeedUtxo:type",
+          "docComment": "/**\n * A txn context having a seedUtxo in its state\n *\n * @public\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export type hasSeedUtxo = "
+            },
+            {
+              "kind": "Reference",
+              "text": "StellarTxnContext",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<"
+            },
+            {
+              "kind": "Reference",
+              "text": "anyState",
+              "canonicalReference": "@donecollectively/stellar-contracts!anyState:type"
+            },
+            {
+              "kind": "Content",
+              "text": " & {\n    seedUtxo: "
+            },
+            {
+              "kind": "Reference",
+              "text": "TxInput",
+              "canonicalReference": "@hyperionbt/helios!TxInput:class"
+            },
+            {
+              "kind": "Content",
+              "text": ";\n}>"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/StellarTxnContext.ts",
+          "releaseTag": "Public",
+          "name": "hasSeedUtxo",
+          "typeTokenRange": {
+            "startIndex": 1,
+            "endIndex": 7
+          }
+        },
+        {
+          "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!hasUutContext:type",
           "docComment": "/**\n * A txn context having specifically-purposed UUTs in its state\n *\n * @public\n */\n",
           "excerptTokens": [
@@ -11483,6 +11521,41 @@
           "typeTokenRange": {
             "startIndex": 6,
             "endIndex": 7
+          }
+        },
+        {
+          "kind": "TypeAlias",
+          "canonicalReference": "@donecollectively/stellar-contracts!SeedAttrs:type",
+          "docComment": "",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export type SeedAttrs = "
+            },
+            {
+              "kind": "Content",
+              "text": "{\n    seedTxn: "
+            },
+            {
+              "kind": "Reference",
+              "text": "TxId",
+              "canonicalReference": "@hyperionbt/helios!TxId:class"
+            },
+            {
+              "kind": "Content",
+              "text": ";\n    seedIndex: bigint;\n}"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/StellarTxnContext.ts",
+          "releaseTag": "Public",
+          "name": "SeedAttrs",
+          "typeTokenRange": {
+            "startIndex": 1,
+            "endIndex": 4
           }
         },
         {
@@ -19479,6 +19552,77 @@
               "isStatic": false,
               "isProtected": false,
               "isAbstract": false
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext#getSeedAttrs:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "getSeedAttrs<TCX extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasSeedUtxo",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasSeedUtxo:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">(this: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "TCX"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "SeedAttrs",
+                  "canonicalReference": "@donecollectively/stellar-contracts!SeedAttrs:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "typeParameters": [
+                {
+                  "typeParameterName": "TCX",
+                  "constraintTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 5,
+                "endIndex": 6
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "this",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 3,
+                    "endIndex": 4
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "getSeedAttrs"
             },
             {
               "kind": "Property",

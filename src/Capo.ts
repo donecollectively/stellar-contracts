@@ -28,6 +28,7 @@ import type {
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import { 
     StellarTxnContext, 
+    type hasSeedUtxo, 
     type uutMap ,
 } from "./StellarTxnContext.js";
 import {
@@ -92,6 +93,17 @@ export type hasAllUuts<uutEntries extends string> = {
     uuts: uutPurposeMap<uutEntries>;
 };
 
+export type UutCreationAttrs = {
+            usingSeedUtxo?: TxInput | undefined,
+            additionalMintValues?: valuesEntry[] 
+            activity?: isActivity
+        } 
+export type UutCreationAttrsWithSeed = 
+& UutCreationAttrs 
+& Required<Pick<
+    UutCreationAttrs, "usingSeedUtxo"
+>>
+
 /**
  * the uut-factory interface
  *
@@ -106,19 +118,19 @@ export interface hasUutCreator {
     >(
         initialTcx: existingTcx,
         uutPurposes: purposes[],
-        seedUtxo: TxInput,
+        uutArgs: UutCreationAttrsWithSeed,
         roles?: RM
     ): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
 
     txnMintingUuts<
         const purposes extends string,
-        existingTcx extends StellarTxnContext,
+        existingTcx extends StellarTxnContext & hasSeedUtxo,
         const RM extends Record<ROLES, purposes>,
         const ROLES extends keyof RM & string = string & keyof RM
     >(
         initialTcx: existingTcx,
         uutPurposes: purposes[],
-        seedUtxo?: TxInput,
+        uutArgs?: UutCreationAttrs,
         roles?: RM
     ): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
 
@@ -147,15 +159,6 @@ export type MintUutActivityArgs = {
 export type hasUutContext<uutEntries extends string> = StellarTxnContext<
     hasAllUuts<uutEntries>
 >;
-
-
-/**
- * A txn context having a seedUtxo in its state
- * @public
- **/
-export type hasSeedUtxo = StellarTxnContext<anyState & {
-    seedUtxo: TxInput;
-}>;
 
 /**
  * charter-minting interface
