@@ -136,6 +136,7 @@ export function delegateLinkSerializer(key: string, value: any) {
     } else if ("tn" == key && Array.isArray(value)) {
         return bytesToText(value)
     }
+    if (key === "capo") return undefined;
     return value; // return everything else unchanged
 }
 

@@ -58689,7 +58689,9 @@ class StellarContract {
     return {};
   }
   static parseConfig(rawJsonConfig) {
-    throw new Error(`Stellar contract subclasses should define their own static parseConfig where needed to enable connection from a specific dApp to a specific Stellar Contract.`);
+    throw new Error(
+      `Stellar contract subclasses should define their own static parseConfig where needed to enable connection from a specific dApp to a specific Stellar Contract.`
+    );
   }
   /**
    * returns the wallet connection used by the current actor
@@ -58738,7 +58740,11 @@ class StellarContract {
       this.walletNetworkCheck = myActor.isMainnet().then((isMain) => {
         const foundNetwork = isMain ? "mainnet" : "testnet";
         if (foundNetwork !== chosenNetwork)
-          return Promise.reject(new Error(`wallet on ${foundNetwork} doesn't match network from setup`));
+          return Promise.reject(
+            new Error(
+              `wallet on ${foundNetwork} doesn't match network from setup`
+            )
+          );
         return this.walletNetworkCheck = foundNetwork;
       });
       this.myActor = myActor;
@@ -58805,6 +58811,7 @@ class StellarContract {
     return tcx;
   }
   addStrellaWithConfig(TargetClass, config) {
+    debugger;
     const args = {
       config,
       setup: this.setup
@@ -59405,6 +59412,16 @@ class StellarContract {
   loadProgramScript(params) {
     const src = this.contractSource();
     const modules = this.importModules();
+    for (const module of modules) {
+      const { srcFile, purpose, moduleName } = module;
+      if (!(srcFile && purpose && moduleName)) {
+        throw new Error(
+          `${this.constructor.name}: invalid module returned from importModules():
+${module.split("\n").slice(0, 3).join("\n")}
+... you may need to create it with mkHeliosModule() if heliosRollupLoader() isn't suitable for your project`
+        );
+      }
+    }
     try {
       const script = Program.new(src, modules);
       if (params)
@@ -59458,8 +59475,8 @@ This likely indicates a problem in Helios' error reporting -
       const modifiedStack = t.stack.split("\n").slice(1).join("\n");
       const additionalErrors = e.src.errors.slice(1).map((x) => `       |         \u26A0\uFE0F  also: ${x}`);
       const addlErrorText = additionalErrors.length ? ["", ...additionalErrors, "       v"].join("\n") : "";
-      t.message = e.message + addlErrorText;
-      t.stack = `${e.message}
+      t.message = this.constructor.name + ":" + e.message + addlErrorText;
+      t.stack = `${this.constructor.name}: ${e.message}
     at ${moduleName} (${srcFile}:${1 + sl}:${1 + sc})
 ` + modifiedStack;
       throw t;
@@ -59508,9 +59525,7 @@ This likely indicates a problem in Helios' error reporting -
       exceptInTcx
     });
     if (!found) {
-      throw new Error(
-        this.utxoSearchError(semanticName, searchScope)
-      );
+      throw new Error(this.utxoSearchError(semanticName, searchScope));
     }
     return found;
   }
@@ -59524,9 +59539,9 @@ This likely indicates a problem in Helios' error reporting -
   /**
    * Try finding a utxo matching a predicate
    * @remarks
-   * 
+   *
    * Finds the first matching utxo, if any, either in the indicated search-scope's `wallet` or `address`.
-   * 
+   *
    * @public
    **/
   async hasUtxo(semanticName, predicate, { address, wallet, exceptInTcx }) {
@@ -59610,14 +59625,7 @@ class DefaultMinter extends StellarContract {
     return { seedIndex, seedTxn };
   }
   importModules() {
-    return [
-      //prettier-ignore
-      code$8,
-      CapoDelegateHelpers,
-      CapoMintHelpers,
-      this.configIn.capo.specializedCapo,
-      this.configIn.capo.capoHelpers
-    ];
+    return this.configIn.capo.importModules();
   }
   activityMintingCharter(ownerInfo) {
     const { owner } = ownerInfo;
@@ -60140,6 +60148,8 @@ function delegateLinkSerializer(key, value) {
   } else if ("tn" == key && Array.isArray(value)) {
     return bytesToText(value);
   }
+  if (key === "capo")
+    return void 0;
   return value;
 }
 function defineRole(uutBaseName, baseClass, variants) {
@@ -60582,7 +60592,8 @@ expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
       ...defaultParamsFromDelegateClass,
       ...scriptParamsFromStrategyVariant || {},
       ...selectedConfig,
-      ...impliedDelegationDetails
+      ...impliedDelegationDetails,
+      capo: this
     };
     //! it validates the net configuration so it can return a working config.
     const errors = validateConfig && validateConfig(mergedConfig);
@@ -60666,7 +60677,8 @@ expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
       // addrHint,  //moved to config
       // reqdAddress,  // removed
       ...linkedConfig,
-      ...impliedDelegationDetails
+      ...impliedDelegationDetails,
+      capo: this
     };
     //!  //  delegate: DT // omitted in "pre-configured";
     const delegate = this.mustGetDelegate({
@@ -62050,12 +62062,13 @@ class BasicMintDelegate extends StellarDelegate {
       );
     }
     return [
-      code$8,
-      CapoDelegateHelpers,
-      CapoHelpers,
-      CapoMintHelpers,
+      // StellarHeliosHelpers,
+      // CapoDelegateHelpers,
+      // CapoHelpers,
+      // CapoMintHelpers,
       specializedMintDelegate,
-      this.specializedCapo
+      ...this.configIn.capo.importModules()
+      // this.specializedCapo,
     ];
   }
   get scriptDatumName() {

@@ -890,6 +890,7 @@ export abstract class Capo<
             ...(scriptParamsFromStrategyVariant || {}),
             ...selectedConfig,
             ...impliedDelegationDetails,
+            capo: this,
         } as unknown as ConfigFor<DT>;
 
         //! it validates the net configuration so it can return a working config.
@@ -1000,6 +1001,10 @@ export abstract class Capo<
 
         //@xxxts-expect-error because this stack of generically partial
         //  ... config elements isn't recognized as adding up to a full config type.
+        // NOTE: THIS GETS AN EXISTING DELEGATE, and includes baseline config details.
+        // See also the create-delegate code path in txnCreateConfiguredDelegate(), which 
+        // ... which also includes baseline config details.  IF YOU'RE ADDING STUFF HERE,
+        // ... consider that it might also be needed there. 
         const config: configType = {
             ...defaultParamsFromDelegateClass,
             ...stratSettings,
@@ -1007,6 +1012,7 @@ export abstract class Capo<
             // reqdAddress,  // removed
             ...linkedConfig,
             ...impliedDelegationDetails,
+            capo: this
         };
         //configured delegate:
         // delegateClass: stellarSubclass<DT>;

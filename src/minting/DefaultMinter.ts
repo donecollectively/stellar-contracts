@@ -75,14 +75,7 @@ export class DefaultMinter
     }
 
     importModules(): HeliosModuleSrc[] {
-        return [
-            //prettier-ignore
-            StellarHeliosHelpers,
-            CapoDelegateHelpers,
-            CapoMintHelpers,
-            this.configIn!.capo.specializedCapo,
-            this.configIn!.capo.capoHelpers,
-        ];
+        return this.configIn!.capo.importModules()
     }
 
     /**

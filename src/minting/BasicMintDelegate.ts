@@ -112,12 +112,13 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
         }
 
         return [
-            StellarHeliosHelpers,
-            CapoDelegateHelpers,
-            CapoHelpers,
-            CapoMintHelpers,
+            // StellarHeliosHelpers,
+            // CapoDelegateHelpers,
+            // CapoHelpers,
+            // CapoMintHelpers,
             specializedMintDelegate,
-            this.specializedCapo,
+            ...this.configIn!.capo.importModules(),
+            // this.specializedCapo,
         ];
     }
 
