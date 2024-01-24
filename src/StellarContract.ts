@@ -23,27 +23,21 @@ import {
     WalletHelper,
 } from "@hyperionbt/helios";
 import * as helios from "@hyperionbt/helios";
-import type {
-    Network,
-    Wallet,
-} from "@hyperionbt/helios";
+import type { Network, Wallet } from "@hyperionbt/helios";
 
-import { 
-    StellarTxnContext,
- } from "./StellarTxnContext.js";
+import { StellarTxnContext } from "./StellarTxnContext.js";
 import { utxosAsString, valueAsString } from "./diagnostics.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { mkTv, stringToNumberArray } from "./utils.js";
 import { UutName } from "./delegation/UutName.js";
 
-
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer
 ) => tokenBearer | undefined) & { value: Value };
 
 type NetworkName = "testnet" | "mainnet";
-let configuredNetwork : NetworkName | undefined = undefined
+let configuredNetwork: NetworkName | undefined = undefined;
 
 /**
  * a type for redeemer/activity-factory functions declared with \@Activity.redeemer
@@ -85,7 +79,7 @@ export type stellarSubclass<
         : configBase
 > = (new (args: StellarConstructorArgs<CT>) => S & StellarContract<CT>) & {
     defaultParams: Partial<CT>;
-    parseConfig(rawJsonConfig: any): any
+    parseConfig(rawJsonConfig: any): any;
 };
 
 /**
@@ -389,7 +383,9 @@ export class StellarContract<
         return {};
     }
     static parseConfig(rawJsonConfig: any) {
-        throw new Error(`Stellar contract subclasses should define their own static parseConfig where needed to enable connection from a specific dApp to a specific Stellar Contract.`)
+        throw new Error(
+            `Stellar contract subclasses should define their own static parseConfig where needed to enable connection from a specific dApp to a specific Stellar Contract.`
+        );
     }
 
     /**
@@ -422,7 +418,7 @@ export class StellarContract<
         return undefined;
     }
 
-    walletNetworkCheck?: Promise<NetworkName> | NetworkName
+    walletNetworkCheck?: Promise<NetworkName> | NetworkName;
     constructor(args: StellarConstructorArgs<ConfigType>) {
         const { setup, config, partialConfig } = args;
         this.setup = setup;
@@ -432,21 +428,26 @@ export class StellarContract<
         if ("undefined" !== typeof configuredNetwork) {
             if (configuredNetwork != chosenNetwork) {
                 console.warn(
-                    `Possible CONFLICT:  previously configured as ${configuredNetwork}, while this setup indicates ${chosenNetwork}`+
-                    `\n   ... are you or the user switching between networks?`
+                    `Possible CONFLICT:  previously configured as ${configuredNetwork}, while this setup indicates ${chosenNetwork}` +
+                        `\n   ... are you or the user switching between networks?`
                 );
             }
         }
-        helios.config.set({IS_TESTNET: !isMainnet});
+        helios.config.set({ IS_TESTNET: !isMainnet });
         configuredNetwork = chosenNetwork;
         this.network = network;
         this.networkParams = networkParams;
-        // this.isTest = isTest        
+        // this.isTest = isTest
         if (myActor) {
             this.walletNetworkCheck = myActor.isMainnet().then((isMain) => {
-                const foundNetwork = isMain ? "mainnet" : "testnet"
-                if (foundNetwork !== chosenNetwork) return Promise.reject(new Error(`wallet on ${foundNetwork} doesn't match network from setup`));
-                return this.walletNetworkCheck = foundNetwork
+                const foundNetwork = isMain ? "mainnet" : "testnet";
+                if (foundNetwork !== chosenNetwork)
+                    return Promise.reject(
+                        new Error(
+                            `wallet on ${foundNetwork} doesn't match network from setup`
+                        )
+                    );
+                return (this.walletNetworkCheck = foundNetwork);
             });
             this.myActor = myActor;
         }
@@ -1408,8 +1409,19 @@ export class StellarContract<
     loadProgramScript(params?: Partial<ConfigType>): Program | undefined {
         const src = this.contractSource();
         const modules = this.importModules();
-
-        // console.log({src, Program)
+        for (const module of modules) {
+            const { srcFile, purpose, moduleName } = module;
+            if (!(srcFile && purpose && moduleName)) {
+                throw new Error(
+                    `${
+                        this.constructor.name
+                    }: invalid module returned from importModules():\n${
+                        module.split("\n").slice(0, 3).join("\n") // prettier-ignore
+                    }\n... you may need to create it with mkHeliosModule() if heliosRollupLoader() isn't suitable for your project`
+                );
+            }
+        }
+        // console.log({src, Program, modules})
 
         try {
             const script = Program.new(src, modules);
@@ -1486,10 +1498,10 @@ export class StellarContract<
             const addlErrorText = additionalErrors.length
                 ? ["", ...additionalErrors, "       v"].join("\n")
                 : "";
-            t.message = e.message + addlErrorText;
+            t.message = this.constructor.name + ":"+ e.message + addlErrorText;
 
             t.stack =
-                `${e.message}\n    at ${moduleName} (${srcFile}:${1 + sl}:${
+                `${this.constructor.name}: ${e.message}\n    at ${moduleName} (${srcFile}:${1 + sl}:${
                     1 + sc
                 })\n` + modifiedStack;
 
@@ -1503,13 +1515,13 @@ export class StellarContract<
 
     async findActorUtxo(
         name: string,
-        predicate: (u: TxInput) => TxInput | undefined,
+        predicate: (u: TxInput) => TxInput | undefined
     ) {
         const wallet = this.myActor;
 
         if (!wallet) throw new Error(this.missingActorError);
 
-        return this.hasUtxo(name, predicate, {wallet})
+        return this.hasUtxo(name, predicate, { wallet });
     }
 
     async mustFindActorUtxo(
@@ -1610,18 +1622,19 @@ export class StellarContract<
             exceptInTcx,
         });
         if (!found) {
-            throw new Error(
-                this.utxoSearchError(semanticName, searchScope)
-            );
+            throw new Error(this.utxoSearchError(semanticName, searchScope));
         }
 
         return found;
     }
 
-    utxoSearchError(semanticName: string, searchScope: UtxoSearchScope, extraErrorHint?: string) : string {
+    utxoSearchError(
+        semanticName: string,
+        searchScope: UtxoSearchScope,
+        extraErrorHint?: string
+    ): string {
         const where = searchScope.address ? "address" : "connected wallet";
-        return `${this.constructor.name}: '${semanticName}' utxo not found (${extraErrorHint}) in ${where}`
-
+        return `${this.constructor.name}: '${semanticName}' utxo not found (${extraErrorHint}) in ${where}`;
     }
     toUtxoId(u: TxInput) {
         return `${u.outputId.txId.hex}@${u.outputId.utxoIdx}`;
@@ -1630,9 +1643,9 @@ export class StellarContract<
     /**
      * Try finding a utxo matching a predicate
      * @remarks
-     * 
+     *
      * Finds the first matching utxo, if any, either in the indicated search-scope's `wallet` or `address`.
-     * 
+     *
      * @public
      **/
     async hasUtxo(
