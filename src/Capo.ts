@@ -278,7 +278,8 @@ export abstract class Capo<
         } = this;
 
         const { CharterToken } = this.onChainDatumType;
-        const { updatingCharter, usingAuthority } = this.onChainActivitiesType;
+        const updatingCharter = this.mustGetActivity("updatingCharter");
+        const usingAuthority = this.mustGetActivity("usingAuthority");
 
         if (!CharterToken)
             throw new Error(
@@ -372,7 +373,7 @@ export abstract class Capo<
 
     @Activity.redeemer
     activityUsingAuthority(): isActivity {
-        const { usingAuthority } = this.onChainActivitiesType;
+        const usingAuthority = this.mustGetActivity("usingAuthority")
         if (!usingAuthority) {
             throw new Error(
                 `invalid contract without a usingAuthority redeemer`
@@ -684,15 +685,15 @@ export abstract class Capo<
         } else if (!expectedMph) {
             console.log(`${this.constructor.name}: seeding new minting policy`);
         }
-        const { mintingCharter, mintingUuts } = minter.onChainActivitiesType;
+        const mintingCharter = minter.mustGetActivity("mintingCharter")
         if (!mintingCharter)
             throw new Error(
                 `minting script doesn't offer required 'mintingCharter' activity-redeemer`
             );
-        if (!mintingUuts)
-            throw new Error(
-                `minting script doesn't offer required 'mintingUuts' activity-redeemer`
-            );
+        // if (!mintingUuts)
+        //     throw new Error(
+        //         `minting script doesn't offer required 'mintingUuts' activity-redeemer`
+        //     );
 
         //@ts-ignore-error - can't seem to indicate to typescript that minter's type can be relied on to be enough
         return (this.minter = minter);

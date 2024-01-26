@@ -661,29 +661,53 @@ export class StellarContract<
     }
 
     /**
-     * returns the on-chain type for activites ("redeemers")
+     * returns the on-chain type for activities ("redeemers")
      * @remarks
      *
+     * Use mustGetActivityName() instead, to get the type for a specific activity.
+     * 
      * returns the on-chain enum used for spending contract utxos or for different use-cases of minting (in a minting script).
      * the returned type (and its enum variants) are suitable for off-chain txn-creation
      * override `get onChainActivitiesName()` if needed to match your contract script.
-     * @public
+     * @private
      **/
-    get onChainActivitiesType() {
+    private get onChainActivitiesType() {
         const { scriptActivitiesName: onChainActivitiesName } = this;
+        if (!this.scriptProgram) throw new Error(`no scriptProgram`);
+
         const { [onChainActivitiesName]: ActivitiesType } =
             this.scriptProgram!.types;
         return ActivitiesType;
     }
-    mustGetActivity(activityName) {
-        const { [activityName]: activityType } = this.onChainActivitiesType;
+
+    /**
+     * Retrieves an on-chain type for a specific named activity ("redeemer")
+     * @remarks
+     * 
+     * Cross-checks the requested name against the available activities in the script.
+     * Throws a helpful error if the requested activity name isn't present.
+     * @param activityName - the name of the requested activity
+     * @public
+     **/
+    mustGetActivity(activityName : string) {
+        const ocat = this.onChainActivitiesType;
+        const { [activityName]: activityType } = ocat;
         if (!activityType) {
             const { scriptActivitiesName: onChainActivitiesName } = this;
+            const activityNames : string[] = [];
+            //inspect the properties in `this`, using property descriptors.  
+            for (const [name, _] of Object.entries(Object.getOwnPropertyDescriptors(ocat))) {
+                //Some of them will point to Class definitions.
+                // check if any of those classes inherit from HeliosData.
+                if (ocat[name].prototype instanceof HeliosData) {
+                    // if so, add the name to activityNames.
+                    activityNames.push(name);
+                }
+            }
+
             throw new Error(
                 `$${this.constructor.name}: activity name mismatch ${onChainActivitiesName}::${activityName}''\n` +
-                    `   known activities in this script: ${Object.keys(
-                        this.onChainActivitiesType
-                    ).join(", ")}`
+                    `   known activities in this script: ${activityNames.join(", ")}`
             );
         }
         return activityType;

@@ -89,7 +89,7 @@ export class DefaultMinter
     @Activity.redeemer
     activityMintingCharter(ownerInfo: MintCharterActivityArgs): isActivity {
         const {owner} = ownerInfo
-        const {mintingCharter} =this.onChainActivitiesType;
+        const mintingCharter = this.mustGetActivity("mintingCharter");
         const { DelegateDetails: hlDelegateDetails } = this.onChainTypes;
         const t = new mintingCharter(owner);
 
@@ -107,9 +107,7 @@ export class DefaultMinter
      **/
     @Activity.redeemer
     activityMintWithDelegateAuthorizing(): isActivity {
-        const {
-            mintWithDelegateAuthorizing,
-        } = this.onChainActivitiesType;
+        const mintWithDelegateAuthorizing = this.mustGetActivity("mintWithDelegateAuthorizing");
         const t = new mintWithDelegateAuthorizing();
 
         return { redeemer: t._toUplcData() };

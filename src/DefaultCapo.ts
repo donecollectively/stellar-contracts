@@ -286,7 +286,7 @@ export class DefaultCapo<
     @Activity.redeemer
     activityUpdatingCharter(): // args: CDT
     isActivity {
-        const { updatingCharter } = this.onChainActivitiesType;
+        const updatingCharter = this.mustGetActivity("updatingCharter")
         // let {uut, strategyName, reqdAddress: canRequireAddr, addrHint=[]} = args.govAuthority
 
         // // const {Option} = this.onChainTypes;
@@ -545,7 +545,7 @@ export class DefaultCapo<
     }
 
     /**
-     * USE getMintDelegate() AND ITS txnGrantAuthority() METHOD INSTED
+     * USE getMintDelegate() AND ITS txnGrantAuthority() METHOD INSTEAD
      * @remarks
      *
      * detailed remarks

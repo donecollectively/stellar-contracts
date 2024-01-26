@@ -86,7 +86,7 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     }: MintUutActivityArgs): isActivity {
         const seedIndex = BigInt(sIdx);
         console.log("UUT redeemer seedTxn", seedTxn.hex);
-        const { mintingUuts } = this.onChainActivitiesType;
+        const mintingUuts = this.mustGetActivity("mintingUuts")
         const t = new mintingUuts(seedTxn, seedIndex, purposes);
 
         return { redeemer: t._toUplcData() };
