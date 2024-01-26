@@ -98,7 +98,7 @@ func requiresValidDelegateOutput(
     v : Value = mkTv(mph, uut);
     hasDelegate : Bool = validatorHash.switch{
         Some{vh} => {
-            print(" - expecting delegation token in validator hash" + vh.show());
+            print(" - expecting delegation token in validator hash " + vh.show());
             ctx.tx.value_locked_by(vh).contains(v)
         },
         None => ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {

@@ -17,8 +17,6 @@ import {
 import type { ErrorMap } from "./delegation/RolesAndDelegates.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 
-
-
 /**
  * converts a hex string to a printable alternative, with no assumptions about the underlying data
  * @remarks
@@ -55,8 +53,6 @@ export function hexToPrintableString(hexStr) {
         // else
         //     return (0);
         // return (strlen(key) == required_len && chars_are_folow_uni(key + 1));
-    
-
     }
     return result;
 }
@@ -73,16 +69,13 @@ export function assetsAsString(a: Assets) {
     const assets = a.assets;
     return assets
         .map(([policyId, tokenEntries]) => {
-
             const tokenString = tokenEntries
-                .map(
-                    ([nameBytes, count]) => {
-                        const nameString = hexToPrintableString(nameBytes.hex);
-                        const burn = count < 1 ? "🔥" : "";
-                        const burned = count < 1 ? "- BURN 🔥 " : "";
-                        return `${burn} ${count}×💴 ${nameString} ${burned}`
-                    }
-                )
+                .map(([nameBytes, count]) => {
+                    const nameString = hexToPrintableString(nameBytes.hex);
+                    const burn = count < 1 ? "🔥" : "";
+                    const burned = count < 1 ? "- BURN 🔥 " : "";
+                    return `${burn} ${count}×💴 ${nameString} ${burned}`;
+                })
                 .join(" + ");
             return `⦑${policyIdAsString(policyId)} ${tokenString}⦒`;
         })
@@ -91,9 +84,7 @@ export function assetsAsString(a: Assets) {
 
 export function policyIdAsString(p: MintingPolicyHash) {
     const pIdHex = p.hex;
-    return `🏦 ${pIdHex.slice(0, 8)}…${pIdHex.slice(
-        -4
-    )}`
+    return `🏦 ${pIdHex.slice(0, 8)}…${pIdHex.slice(-4)}`;
 }
 
 /**
@@ -121,7 +112,7 @@ export function valueAsString(v: Value) {
  * Converts a Tx to printable form
  * @public
  **/
-export function txAsString(tx: Tx, networkParams? : NetworkParams): string {
+export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
     const bodyAttrs = [
         "inputs",
         "minted",
@@ -147,7 +138,9 @@ export function txAsString(tx: Tx, networkParams? : NetworkParams): string {
 
     let details = "";
     if (!networkParams) {
-        console.warn( new Error(`dumpAny: no networkParams; can't show txn size info!?!`) )
+        console.warn(
+            new Error(`dumpAny: no networkParams; can't show txn size info!?!`)
+        );
     }
 
     const d = tx.dump();
@@ -162,7 +155,9 @@ export function txAsString(tx: Tx, networkParams? : NetworkParams): string {
 
         if (!item) continue;
         if ("inputs" == x) {
-            item = `\n  ${item.map((x) => txInputAsString(x)).join("\n  ")}`;
+            item = `\n  ${item.map((x, i) => txInputAsString(x, 
+                "➡️  " /* <- unicode blue arrow right */ + `@${1+i} `
+            )).join("\n  ")}`;
         }
         if ("refInputs" == x) {
             item = `\n  ${item
@@ -181,7 +176,12 @@ export function txAsString(tx: Tx, networkParams? : NetworkParams): string {
         }
         if ("outputs" == x) {
             item = `\n  ${item
-                .map((x, i) => txOutputAsString(x, `${i}  <-`))
+                .map((x, i) =>
+                    txOutputAsString(
+                        x,
+                        "🔹" /* <-- unicode blue bullet */ + `${i} <-`
+                    )
+                )
                 .join("\n  ")}`;
         }
         if ("signers" == x) {
@@ -210,7 +210,7 @@ export function txAsString(tx: Tx, networkParams? : NetworkParams): string {
 
         details += `${skipLabel ? "" : "  " + x + ": "}${item}\n`;
     }
-    let indeterminateRedeemerDetails = false
+    let indeterminateRedeemerDetails = false;
 
     let hasWinfo = false;
     const winfo = {};
@@ -234,14 +234,13 @@ export function txAsString(tx: Tx, networkParams? : NetworkParams): string {
             //!!! todo: augment with mph when that's available from the Activity.
             item = item.map((x) => {
                 // console.log("redeemer keys", ...[ ...Object.keys(x2) ], x2.dump());
-                const isIndeterminate = x.inputIndex == -1
+                const isIndeterminate = x.inputIndex == -1;
                 if (isIndeterminate) indeterminateRedeemerDetails = true;
-                const indexInfo =
-                    isIndeterminate 
-                        ? `spend txin #‹tbd›`
-                        : "inputIndex" in x
-                        ? `spend txin #${1 + x.inputIndex}`
-                        : `mint policy#${1 + x.mphIndex}`;
+                const indexInfo = isIndeterminate
+                    ? `spend txin #‹tbd›`
+                    : "inputIndex" in x
+                    ? `spend txin ➡️  @${1 + x.inputIndex}`
+                    : `mint policy#${1 + x.mphIndex}`;
 
                 return `🏧  ${indexInfo} ${x.data.toString()}`;
             });
@@ -254,14 +253,18 @@ export function txAsString(tx: Tx, networkParams? : NetworkParams): string {
                 try {
                     const mph = s.mintingPolicyHash.hex;
                     // debugger
-                    return `🏦 ${mph.slice(0, 8)}…${mph.slice(-4)} (minting): ${s.serializeBytes().length} bytes`;
+                    return `🏦 ${mph.slice(0, 8)}…${mph.slice(-4)} (minting): ${
+                        s.serializeBytes().length
+                    } bytes`;
                 } catch (e) {
                     const vh = s.validatorHash.hex;
                     const addr = Address.fromHash(s.validatorHash);
                     // debugger
                     return `📜 ${vh.slice(0, 8)}…${vh.slice(
                         -4
-                    )} (validator at ${addrAsString(addr)}): ${s.serializeBytes().length} bytes`;
+                    )} (validator at ${addrAsString(addr)}): ${
+                        s.serializeBytes().length
+                    } bytes`;
                 }
             });
             if (item.length > 1) item.unshift("");
@@ -279,10 +282,13 @@ export function txAsString(tx: Tx, networkParams? : NetworkParams): string {
     }
     try {
         details += `  txId: ${tx.id().hex}`;
-        if (networkParams) details += `  size: ${tx.toTxData(networkParams).toCbor().length} bytes`;
+        if (networkParams)
+            details += `  size: ${
+                tx.toTxData(networkParams).toCbor().length
+            } bytes`;
     } catch (e) {
-        details = details + `(Tx not yet finalized!)`
-        if( networkParams) details += `\n  - NOTE: can't determine txn size\n`;
+        details = details + `(Tx not yet finalized!)`;
+        if (networkParams) details += `\n  - NOTE: can't determine txn size\n`;
     }
     return details;
 }
@@ -311,15 +317,17 @@ export function utxosAsString(utxos: TxInput[], joiner = "\n"): string {
     return utxos.map((u) => utxoAsString(u, " 💵")).join(joiner);
 }
 
-export function txOutputIdAsString(x: TxOutputId) : string {
-    return txidAsString(x.txId) + 
+export function txOutputIdAsString(x: TxOutputId): string {
+    return (
+        txidAsString(x.txId) +
         "🔹" /* <-- unicode blue bullet */ +
-        `#${x.utxoIdx}`;
+        `#${x.utxoIdx}`
+    );
 }
 
-export function txidAsString(x: TxId) : string {
-    const tid = x.hex
-    return `${tid.slice(0, 6)}…${tid.slice(-4)}`
+export function txidAsString(x: TxId): string {
+    const tid = x.hex;
+    return `${tid.slice(0, 6)}…${tid.slice(-4)}`;
 }
 
 /**
@@ -361,9 +369,9 @@ export function datumAsString(d: Datum | null | undefined): string {
  * @public
  **/
 export function txOutputAsString(x: TxOutput, prefix = "<-"): string {
-    return `${prefix} ${addrAsString(x.address)} ${valueAsString(x.value)} ${datumAsString(
-        x.datum
-    )}`;
+    return `${prefix} ${addrAsString(x.address)} ${valueAsString(
+        x.value
+    )} ${datumAsString(x.datum)}`;
 }
 
 /**
@@ -395,21 +403,28 @@ export function errorMapAsString(em: ErrorMap, prefix = "  ") {
  * ... using {@link hexToPrintableString}
  * @public
  **/
-export function byteArrayListAsString(items: ByteArray[] | ByteArrayData[], joiner = "\n  "): string {
-    return "[\n  "+ items.map((ba) => byteArrayAsString(ba)).join(joiner) + "\n]\n";
+export function byteArrayListAsString(
+    items: ByteArray[] | ByteArrayData[],
+    joiner = "\n  "
+): string {
+    return (
+        "[\n  " +
+        items.map((ba) => byteArrayAsString(ba)).join(joiner) +
+        "\n]\n"
+    );
 }
 
 /**
  * Renders a byteArray in printable form, assuming it contains (mostly) text
  * @remarks
- * 
- * Because it uses {@link hexToPrintableString()}, it will render any non-printable 
+ *
+ * Because it uses {@link hexToPrintableString()}, it will render any non-printable
  * characters using ‹hex› notation.
  * @param ba - the byte array
  * @public
  **/
 export function byteArrayAsString(ba: ByteArray | ByteArrayData): string {
-    return hexToPrintableString(ba.hex)
+    return hexToPrintableString(ba.hex);
 }
 
 /**
@@ -420,21 +435,29 @@ export function byteArrayAsString(ba: ByteArray | ByteArrayData): string {
  * @public
  **/
 export function dumpAny(
-    x: Tx | StellarTxnContext | Address | Value | 
-        TxOutput | TxInput | TxInput[] | 
-        TxId |
-        ByteArray | ByteArray[] | ByteArrayData | ByteArrayData[]
-    , networkParams? : NetworkParams
+    x:
+        | Tx
+        | StellarTxnContext
+        | Address
+        | Value
+        | TxOutput
+        | TxInput
+        | TxInput[]
+        | TxId
+        | ByteArray
+        | ByteArray[]
+        | ByteArrayData
+        | ByteArrayData[],
+    networkParams?: NetworkParams
 ) {
-
     if (Array.isArray(x)) {
         if (x[0] instanceof TxInput) {
-        //@ts-expect-error sorry, typescript : /
-        return "utxos: \n"+ utxosAsString(x)
-        } 
+            //@ts-expect-error sorry, typescript : /
+            return "utxos: \n" + utxosAsString(x);
+        }
         if (x[0] instanceof ByteArray || x[0] instanceof ByteArrayData) {
-        //@ts-expect-error sorry, typescript : /
-        return "byte array:\n"+ byteArrayListAsString(x)
+            //@ts-expect-error sorry, typescript : /
+            return "byte array:\n" + byteArrayListAsString(x);
         }
     }
 
@@ -455,7 +478,7 @@ export function dumpAny(
     }
 
     if (x instanceof TxInput) {
-        return utxoAsString(x)
+        return utxoAsString(x);
     }
     if (x instanceof Value) {
         return valueAsString(x);
@@ -464,18 +487,18 @@ export function dumpAny(
         return addrAsString(x);
     }
     if (x instanceof MintingPolicyHash) {
-        return policyIdAsString(x)
+        return policyIdAsString(x);
     }
     if (x instanceof StellarTxnContext) {
         return txAsString(x.tx);
     }
     if (x instanceof ByteArray || x[0] instanceof ByteArrayData) {
         //@ts-expect-error sorry, typescript : /
-        return byteArrayAsString(x)
+        return byteArrayAsString(x);
     }
 
-    debugger
-    return "dumpAny(): unsupported type or library mismatch"
+    debugger;
+    return "dumpAny(): unsupported type or library mismatch";
 }
 
 if ("undefined" == typeof window) {
