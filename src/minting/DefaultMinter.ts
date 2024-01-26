@@ -44,6 +44,7 @@ import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { mkUutValuesEntries, mkValuesEntry } from "../utils.js";
 import { dumpAny } from "../diagnostics.js";
 import type { DefaultCapo } from "../DefaultCapo.js";
+import type { BasicMintDelegate } from "./BasicMintDelegate.js";
 
 type MintCharterActivityArgs<T = {}> = T & {
     owner: Address;
@@ -229,9 +230,15 @@ export class DefaultMinter
     async txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(
         tcx: TCX,
         vEntries: valuesEntry[],
+        mintDelegate : BasicMintDelegate,
+        mintDgtRedeemer: isActivity
     ): Promise<TCX> {
+        const {capo} = this.configIn!
+        const md = mintDelegate || await capo.getMintDelegate(); 
+        const tcx1 = await this.configIn!.capo.txnMustUseCharterUtxo(tcx, "refInput");
+        const tcx2 = await md.txnGrantAuthority(tcx1, mintDgtRedeemer);
 
-        return tcx.attachScript(this.compiledScript).mintTokens(
+        return tcx2.attachScript(this.compiledScript).mintTokens(
             this.mintingPolicyHash!,
             vEntries,
             this.activityMintWithDelegateAuthorizing().redeemer

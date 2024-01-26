@@ -96,7 +96,7 @@ export type hasAllUuts<uutEntries extends string> = {
 export type UutCreationAttrs = {
             usingSeedUtxo?: TxInput | undefined,
             additionalMintValues?: valuesEntry[] 
-            activity?: isActivity
+            mintDelegateActivity?: isActivity
         } 
 export type UutCreationAttrsWithSeed = 
 & UutCreationAttrs 
@@ -178,6 +178,8 @@ export interface MinterBaseMethods {
     txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(
         tcx: TCX,
         vEntries: valuesEntry[],
+        delegate: StellarDelegate<any>,
+        redeemer: isActivity
     ): Promise<TCX>;
 }
 

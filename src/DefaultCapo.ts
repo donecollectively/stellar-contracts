@@ -237,7 +237,7 @@ export class DefaultCapo<
      * The default implementation is an UnspecialiedCapo, which
      * you can use as a template for your specialized Capo.
      *
-     * Every specalization MUST include Datum and Activity ("redeemer") enums,
+     * Every specialization MUST include Datum and Activity ("redeemer") enums,
      * and MAY include additional functions, and methods on Datum / Activity.
      *
      * The datum SHOULD have a validateSpend(self, datum, ctx) method.
@@ -257,7 +257,7 @@ export class DefaultCapo<
      * The default implementation is an UnspecialiedCapo, which
      * you can use as a template for your specialized Capo.
      *
-     * Every specalization MUST include Datum and  Activity ("redeemer") enums,
+     * Every specialization MUST include Datum and  Activity ("redeemer") enums,
      * and MAY include additional functions, and methods on Datum / Activity.
      *
      * The datum enum SHOULD have a validateSpend(self, datum, ctx) method.
@@ -556,6 +556,7 @@ export class DefaultCapo<
     async txnAddMintDelegate<TCX extends StellarTxnContext<any>>(
         tcx: TCX
     ): Promise<TCX> {
+        throw new Error(`deprecated`);
         const mintDelegate = await this.getMintDelegate();
 
         await mintDelegate.txnGrantAuthority(tcx);
@@ -749,10 +750,10 @@ export class DefaultCapo<
         roles: RM = {} as Record<ROLES, purposes>
     ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {
         const minter = this.connectMinter();
-        const { usingSeedUtxo, additionalMintValues = [], activity } = options;
-        if (additionalMintValues.length && !activity) {
+        const { usingSeedUtxo, additionalMintValues = [], mintDelegateActivity } = options;
+        if (additionalMintValues.length && !mintDelegateActivity) {
             throw new Error(
-                `additionalMintValues requires a custom activity provided by your mint delegate specalization`
+                `additionalMintValues requires a custom activity provided by your mint delegate specialization`
             );
         }
         const mintDelegate = await this.getMintDelegate();
@@ -761,26 +762,33 @@ export class DefaultCapo<
         const tcx = await this.txnWillMintUuts(
             initialTcx,
             uutPurposes,
-            { usingSeedUtxo: seedUtxo, additionalMintValues, activity },
+            { usingSeedUtxo: seedUtxo, additionalMintValues, mintDelegateActivity },
             roles
         );
-        const tcx1 = await this.txnMustUseCharterUtxo(tcx, "refInput");
+        const dgtActivity = mintDelegateActivity || mintDelegate.activityMintingUuts({ 
+            purposes: uutPurposes,
+            ...(tcx.getSeedAttrs()),
+        });
 
-        const tcx2 = await mintDelegate.txnGenericMintingUuts(
-            tcx1,
-            uutPurposes,
-            activity
+        // const tcx2 = await mintDelegate.txnGenericMintingUuts(
+        //     tcx,
+        //     uutPurposes,
+        //     mintDelegateActivity
+        // );
+
+        const tcx2 = await minter.txnMintWithDelegateAuthorizing(tcx, 
+            [ 
+                ...mkUutValuesEntries(tcx.state.uuts),
+                ...additionalMintValues,
+            ],
+            mintDelegate,
+            dgtActivity
         );
-
-        const tcx3 = await minter.txnMintWithDelegateAuthorizing(tcx2, [
-            ...mkUutValuesEntries(tcx.state.uuts),
-            ...additionalMintValues,
-        ]);
         console.log(
             "    🐞🐞 @end of txnMintingUuts",
-            dumpAny(tcx3, this.networkParams)
+            dumpAny(tcx2, this.networkParams)
         );
-        return tcx3;
+        return tcx2;
         // const tcx4 = await mintDelegate.txnMintingUuts(tcx3,
         //     uutPurposes,
         //     seedUtxo,
@@ -822,8 +830,6 @@ export class DefaultCapo<
         uutPurposes: purposes[],
         {
             usingSeedUtxo,
-            additionalMintValues = [],
-            activity,
         }: UutCreationAttrsWithSeed,
         //@ts-expect-error
         roles: RM = {} as Record<string, purposes>

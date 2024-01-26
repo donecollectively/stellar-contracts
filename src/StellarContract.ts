@@ -44,8 +44,8 @@ let configuredNetwork: NetworkName | undefined = undefined;
  *
  * @public
  */
-export type isActivity = {
-    redeemer: UplcDataValue | UplcData;
+export type isActivity<T=never> = {
+    redeemer: UplcDataValue | UplcData | T;
     // | HeliosData
 };
 

@@ -76,6 +76,17 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
         return UnspecializedCapo;
     }
 
+    @Activity.redeemer
+    activityAuthorizing(): isActivity {
+        throw new Error(`generic Authorizing activity invalid for mint delegates`)
+    }
+
+    async txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemer : isActivity) {
+        if (!redeemer) throw new Error(`mint delegate requires an explicit redeemer for txnGrantAuthority()`);
+
+        return super.txnGrantAuthority(tcx, redeemer);
+    }
+
     // NOTE: prefer application-specific activities that validate
     // particular mints, instead of this generic one
     @Activity.redeemer

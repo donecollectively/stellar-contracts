@@ -58067,22 +58067,18 @@ function hexToPrintableString(hexStr) {
 function assetsAsString(a) {
   const assets = a.assets;
   return assets.map(([policyId, tokenEntries]) => {
-    const tokenString = tokenEntries.map(
-      ([nameBytes, count]) => {
-        const nameString = hexToPrintableString(nameBytes.hex);
-        const burn = count < 1 ? "\u{1F525}" : "";
-        const burned = count < 1 ? "- BURN \u{1F525} " : "";
-        return `${burn} ${count}\xD7\u{1F4B4} ${nameString} ${burned}`;
-      }
-    ).join(" + ");
+    const tokenString = tokenEntries.map(([nameBytes, count]) => {
+      const nameString = hexToPrintableString(nameBytes.hex);
+      const burn = count < 1 ? "\u{1F525}" : "";
+      const burned = count < 1 ? "- BURN \u{1F525} " : "";
+      return `${burn} ${count}\xD7\u{1F4B4} ${nameString} ${burned}`;
+    }).join(" + ");
     return `\u2991${policyIdAsString(policyId)} ${tokenString}\u2992`;
   }).join("\n  ");
 }
 function policyIdAsString(p) {
   const pIdHex = p.hex;
-  return `\u{1F3E6} ${pIdHex.slice(0, 8)}\u2026${pIdHex.slice(
-    -4
-  )}`;
+  return `\u{1F3E6} ${pIdHex.slice(0, 8)}\u2026${pIdHex.slice(-4)}`;
 }
 function lovelaceToAda(l) {
   const asNum = parseInt(l.toString());
@@ -58119,7 +58115,9 @@ function txAsString(tx, networkParams) {
   ];
   let details = "";
   if (!networkParams) {
-    console.warn(new Error(`dumpAny: no networkParams; can't show txn size info!?!`));
+    console.warn(
+      new Error(`dumpAny: no networkParams; can't show txn size info!?!`)
+    );
   }
   const d = tx.dump();
   //!!! todo: improve interface of tx so useful things have a non-private api
@@ -58134,7 +58132,10 @@ function txAsString(tx, networkParams) {
       continue;
     if ("inputs" == x) {
       item = `
-  ${item.map((x2) => txInputAsString(x2)).join("\n  ")}`;
+  ${item.map((x2, i) => txInputAsString(
+        x2,
+        `\u27A1\uFE0F  @${1 + i} `
+      )).join("\n  ")}`;
     }
     if ("refInputs" == x) {
       item = `
@@ -58150,7 +58151,12 @@ function txAsString(tx, networkParams) {
     }
     if ("outputs" == x) {
       item = `
-  ${item.map((x2, i) => txOutputAsString(x2, `${i}  <-`)).join("\n  ")}`;
+  ${item.map(
+        (x2, i) => txOutputAsString(
+          x2,
+          `\u{1F539}${i} <-`
+        )
+      ).join("\n  ")}`;
     }
     if ("signers" == x) {
       item = item.map((x2) => {
@@ -58200,7 +58206,7 @@ function txAsString(tx, networkParams) {
       //!!! todo: augment with mph when that's available from the Activity.
       item = item.map((x2) => {
         const isIndeterminate = x2.inputIndex == -1;
-        const indexInfo = isIndeterminate ? `spend txin #\u2039tbd\u203A` : "inputIndex" in x2 ? `spend txin #${1 + x2.inputIndex}` : `mint policy#${1 + x2.mphIndex}`;
+        const indexInfo = isIndeterminate ? `spend txin #\u2039tbd\u203A` : "inputIndex" in x2 ? `spend txin \u27A1\uFE0F  @${1 + x2.inputIndex}` : `mint policy#${1 + x2.mphIndex}`;
         return `\u{1F3E7}  ${indexInfo} ${x2.data.toString()}`;
       });
       if (item.length > 1)
@@ -58279,9 +58285,9 @@ function datumAsString(d) {
   return `d\u2039hash:${dhss}\u2026\u203A`;
 }
 function txOutputAsString(x, prefix = "<-") {
-  return `${prefix} ${addrAsString(x.address)} ${valueAsString(x.value)} ${datumAsString(
-    x.datum
-  )}`;
+  return `${prefix} ${addrAsString(x.address)} ${valueAsString(
+    x.value
+  )} ${datumAsString(x.datum)}`;
 }
 function addrAsString(address) {
   const bech32 = address.bech32 || address.toBech32();
@@ -58811,7 +58817,6 @@ class StellarContract {
     return tcx;
   }
   addStrellaWithConfig(TargetClass, config) {
-    debugger;
     const args = {
       config,
       setup: this.setup
@@ -58913,28 +58918,46 @@ class StellarContract {
     return "Activity";
   }
   /**
-   * returns the on-chain type for activites ("redeemers")
+   * returns the on-chain type for activities ("redeemers")
    * @remarks
    *
+   * Use mustGetActivityName() instead, to get the type for a specific activity.
+   * 
    * returns the on-chain enum used for spending contract utxos or for different use-cases of minting (in a minting script).
    * the returned type (and its enum variants) are suitable for off-chain txn-creation
    * override `get onChainActivitiesName()` if needed to match your contract script.
-   * @public
+   * @private
    **/
   get onChainActivitiesType() {
     const { scriptActivitiesName: onChainActivitiesName } = this;
+    if (!this.scriptProgram)
+      throw new Error(`no scriptProgram`);
     const { [onChainActivitiesName]: ActivitiesType } = this.scriptProgram.types;
     return ActivitiesType;
   }
+  /**
+   * Retrieves an on-chain type for a specific named activity ("redeemer")
+   * @remarks
+   * 
+   * Cross-checks the requested name against the available activities in the script.
+   * Throws a helpful error if the requested activity name isn't present.
+   * @param activityName - the name of the requested activity
+   * @public
+   **/
   mustGetActivity(activityName) {
-    const { [activityName]: activityType } = this.onChainActivitiesType;
+    const ocat = this.onChainActivitiesType;
+    const { [activityName]: activityType } = ocat;
     if (!activityType) {
       const { scriptActivitiesName: onChainActivitiesName } = this;
+      const activityNames = [];
+      for (const [name, _] of Object.entries(Object.getOwnPropertyDescriptors(ocat))) {
+        if (ocat[name].prototype instanceof HeliosData) {
+          activityNames.push(name);
+        }
+      }
       throw new Error(
         `$${this.constructor.name}: activity name mismatch ${onChainActivitiesName}::${activityName}''
-   known activities in this script: ${Object.keys(
-          this.onChainActivitiesType
-        ).join(", ")}`
+   known activities in this script: ${activityNames.join(", ")}`
       );
     }
     return activityType;
@@ -59583,7 +59606,7 @@ code$9.srcFile = "src/minting/DefaultMinter.hl";
 code$9.purpose = "minting";
 code$9.moduleName = "DefaultMinter";
 
-const code$8 = new String("module StellarHeliosHelpers\n\nfunc didSign(ctx : ScriptContext, a: Address) -> Bool {\n    tx : Tx = ctx.tx;\n\n    pkh : PubKeyHash = a.credential.switch{\n        PubKey{h} => h,\n        _ => error(\"trustee can't be a contract\")\n    };\n    // print(\"checking if trustee signed: \" + pkh.show());\n\n    tx.is_signed_by(pkh)\n}\n\nfunc didSignInCtx(ctx: ScriptContext) -> (a: Address) -> Bool {\n    (a : Address) -> Bool {\n        didSign(ctx, a)\n    }\n}\n\n//! represents the indicated token name as a Value\nfunc mkTv(mph: MintingPolicyHash, tn: String, count : Int = 1) -> Value {\n    Value::new(\n        AssetClass::new(mph, tn.encode_utf8()), \n        count\n    )\n}\n\n//! returns the charter-token from our minter, as a Value\nfunc tvCharter(mph: MintingPolicyHash)  -> Value {\n    mkTv(mph, \"charter\")\n}\n\nfunc returnsValueToScript(value : Value, ctx : ScriptContext) -> Bool {\n    input : TxInput = ctx.get_current_input();\n    input.value.contains(value) &&\n    ctx.tx.outputs.any( (txo : TxOutput) -> Bool {\n        txo.address == input.address &&\n        txo.value.contains(value)\n    } )\n}\n\n\nfunc getOutputWithValue(ctx: ScriptContext, v : Value) -> TxOutput {\n    ctx.tx.outputs.find((txo: TxOutput) -> { txo.value >= v })\n}\n\nfunc getSingleAssetValue(input: TxInput) -> Value{\n    inputMap : Map[MintingPolicyHash]Map[ByteArray]Int = input.value.get_assets().to_map();\n    assert( inputMap.length == 1, \"getSingleAssetValue needs single-asset input\");\n\n    inputTokens : Map[ByteArray]Int = inputMap.head_value;\n    assert(inputTokens.length == 1, \"getSingleAssetValue needs single-token input\");\n\n    input.value.get_assets()\n}\n\nfunc outputDatum[T](newTxo : TxOutput) -> T {\n    T::from_data(newTxo.datum.get_inline_data())\n}\n\nfunc getOutputForInput(ctx: ScriptContext, input: TxInput) -> TxOutput {\n    inputValue : Value = getSingleAssetValue(input);\n\n    getOutputWithValue(ctx, inputValue)\n}");
+const code$8 = new String("module StellarHeliosHelpers\n\nfunc didSign(ctx : ScriptContext, a: Address) -> Bool {\n    tx : Tx = ctx.tx;\n\n    pkh : PubKeyHash = a.credential.switch{\n        PubKey{h} => h,\n        _ => error(\"trustee can't be a contract\")\n    };\n    // print(\"checking if trustee signed: \" + pkh.show());\n\n    tx.is_signed_by(pkh)\n}\n\nfunc didSignInCtx(ctx: ScriptContext) -> (a: Address) -> Bool {\n    (a : Address) -> Bool {\n        didSign(ctx, a)\n    }\n}\n\n//! represents the indicated token name as a Value\nfunc mkTv(mph: MintingPolicyHash, tn: String, count : Int = 1) -> Value {\n    Value::new(\n        AssetClass::new(mph, tn.encode_utf8()), \n        count\n    )\n}\n\n//! returns the charter-token from our minter, as a Value\nfunc tvCharter(mph: MintingPolicyHash)  -> Value {\n    mkTv(mph, \"charter\")\n}\n\nfunc returnsValue(value : Value, ctx : ScriptContext, input: TxInput) -> Bool {\n    input.value.contains(value) &&\n    ctx.tx.outputs.any( (txo : TxOutput) -> Bool {\n        txo.address == input.address &&\n        txo.value.contains(value)\n    } )\n}\nfunc returnsValueToScript(value : Value, ctx : ScriptContext) -> Bool {\n    input : TxInput = ctx.get_current_input();\n    input.value.contains(value) &&\n    ctx.tx.outputs.any( (txo : TxOutput) -> Bool {\n        txo.address == input.address &&\n        txo.value.contains(value)\n    } )\n}\n\n\nfunc getOutputWithValue(ctx: ScriptContext, v : Value) -> TxOutput {\n    ctx.tx.outputs.find((txo: TxOutput) -> { txo.value >= v })\n}\n\nfunc getSingleAssetValue(input: TxInput) -> Value{\n    inputMap : Map[MintingPolicyHash]Map[ByteArray]Int = input.value.get_assets().to_map();\n    assert( inputMap.length == 1, \"getSingleAssetValue needs single-asset input\");\n\n    inputTokens : Map[ByteArray]Int = inputMap.head_value;\n    assert(inputTokens.length == 1, \"getSingleAssetValue needs single-token input\");\n\n    input.value.get_assets()\n}\n\nfunc outputDatum[T](newTxo : TxOutput) -> T {\n    T::from_data(newTxo.datum.get_inline_data())\n}\n\nfunc getOutputForInput(ctx: ScriptContext, input: TxInput) -> TxOutput {\n    inputValue : Value = getSingleAssetValue(input);\n\n    getOutputWithValue(ctx, inputValue)\n}");
 
 code$8.srcFile = "src/StellarHeliosHelpers.hl";
 code$8.purpose = "module";
@@ -59629,15 +59652,13 @@ class DefaultMinter extends StellarContract {
   }
   activityMintingCharter(ownerInfo) {
     const { owner } = ownerInfo;
-    const { mintingCharter } = this.onChainActivitiesType;
+    const mintingCharter = this.mustGetActivity("mintingCharter");
     this.onChainTypes;
     const t = new mintingCharter(owner);
     return { redeemer: t._toUplcData() };
   }
   activityMintWithDelegateAuthorizing() {
-    const {
-      mintWithDelegateAuthorizing
-    } = this.onChainActivitiesType;
+    const mintWithDelegateAuthorizing = this.mustGetActivity("mintWithDelegateAuthorizing");
     const t = new mintWithDelegateAuthorizing();
     return { redeemer: t._toUplcData() };
   }
@@ -59702,8 +59723,12 @@ class DefaultMinter extends StellarContract {
       }).redeemer
     ).attachScript(this.compiledScript);
   }
-  async txnMintWithDelegateAuthorizing(tcx, vEntries) {
-    return tcx.attachScript(this.compiledScript).mintTokens(
+  async txnMintWithDelegateAuthorizing(tcx, vEntries, mintDelegate, mintDgtRedeemer) {
+    const { capo } = this.configIn;
+    const md = mintDelegate || await capo.getMintDelegate();
+    const tcx1 = await this.configIn.capo.txnMustUseCharterUtxo(tcx, "refInput");
+    const tcx2 = await md.txnGrantAuthority(tcx1, mintDgtRedeemer);
+    return tcx2.attachScript(this.compiledScript).mintTokens(
       this.mintingPolicyHash,
       vEntries,
       this.activityMintWithDelegateAuthorizing().redeemer
@@ -59771,13 +59796,13 @@ class StellarDelegate extends StellarContract {
     const useMinTv = true;
     const authorityVal = this.tvAuthorityToken(useMinTv);
     console.log(
-      `   ------- delegate ${label} grants authority with ${dumpAny(
+      `   ------- delegate '${label}' grants authority with ${dumpAny(
         authorityVal,
         this.networkParams
       )}`
     );
     try {
-      const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo, redeemer);
+      const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo, redeemer || this.activityAuthorizing());
       return this.txnReceiveAuthorityToken(tcx2, authorityVal, uutxo);
     } catch (error) {
       if (error.message.match(/input already added/)) {
@@ -59805,7 +59830,7 @@ class StellarDelegate extends StellarContract {
     return this.DelegateRetiresAuthorityToken(tcx, uutxo);
   }
   activityAuthorizing() {
-    const thisActivity = this.mustGetActivity("Authorizing");
+    const thisActivity = this.mustGetActivity("AuthorizingFFF");
     const t = new thisActivity();
     return { redeemer: t._toUplcData() };
   }
@@ -59971,7 +59996,7 @@ class StellarDelegate extends StellarContract {
   * @reqt Adds the uutxo to the transaction inputs with appropriate redeemer.
   * @reqt Does not output the value; can EXPECT txnReceiveAuthorityToken to be called for that purpose.
    **/
-  async DelegateAddsAuthorityToken(tcx, uutxo, redeemer = this.activityAuthorizing()) {
+  async DelegateAddsAuthorityToken(tcx, uutxo, redeemer) {
     return tcx.addInput(uutxo, redeemer).attachScript(this.compiledScript);
   }
   /**
@@ -60197,7 +60222,8 @@ class Capo extends StellarContract {
       scriptActivitiesName: onChainActivitiesName
     } = this;
     const { CharterToken } = this.onChainDatumType;
-    const { updatingCharter, usingAuthority } = this.onChainActivitiesType;
+    const updatingCharter = this.mustGetActivity("updatingCharter");
+    const usingAuthority = this.mustGetActivity("usingAuthority");
     if (!CharterToken)
       throw new Error(
         `datum type ${onChainDatumName} must have a 'CharterToken' variant`
@@ -60239,7 +60265,7 @@ class Capo extends StellarContract {
     );
   }
   activityUsingAuthority() {
-    const { usingAuthority } = this.onChainActivitiesType;
+    const usingAuthority = this.mustGetActivity("usingAuthority");
     if (!usingAuthority) {
       throw new Error(
         `invalid contract without a usingAuthority redeemer`
@@ -60434,14 +60460,10 @@ expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
     } else if (!expectedMph) {
       console.log(`${this.constructor.name}: seeding new minting policy`);
     }
-    const { mintingCharter, mintingUuts } = minter.onChainActivitiesType;
+    const mintingCharter = minter.mustGetActivity("mintingCharter");
     if (!mintingCharter)
       throw new Error(
         `minting script doesn't offer required 'mintingCharter' activity-redeemer`
-      );
-    if (!mintingUuts)
-      throw new Error(
-        `minting script doesn't offer required 'mintingUuts' activity-redeemer`
       );
     return this.minter = minter;
   }
@@ -62034,6 +62056,14 @@ class BasicMintDelegate extends StellarDelegate {
   get specializedCapo() {
     return UnspecializedCapo;
   }
+  activityAuthorizing() {
+    throw new Error(`generic Authorizing activity invalid for mint delegates`);
+  }
+  async txnGrantAuthority(tcx, redeemer) {
+    if (!redeemer)
+      throw new Error(`mint delegate requires an explicit redeemer for txnGrantAuthority()`);
+    return super.txnGrantAuthority(tcx, redeemer);
+  }
   activityMintingUuts({
     seedTxn,
     seedIndex: sIdx,
@@ -62041,7 +62071,7 @@ class BasicMintDelegate extends StellarDelegate {
   }) {
     const seedIndex = BigInt(sIdx);
     console.log("UUT redeemer seedTxn", seedTxn.hex);
-    const { mintingUuts } = this.onChainActivitiesType;
+    const mintingUuts = this.mustGetActivity("mintingUuts");
     const t = new mintingUuts(seedTxn, seedIndex, purposes);
     return { redeemer: t._toUplcData() };
   }
@@ -62141,6 +62171,9 @@ class BasicMintDelegate extends StellarDelegate {
 }
 __decorateClass$3([
   Activity.redeemer
+], BasicMintDelegate.prototype, "activityAuthorizing", 1);
+__decorateClass$3([
+  Activity.redeemer
 ], BasicMintDelegate.prototype, "activityMintingUuts", 1);
 __decorateClass$3([
   Activity.partialTxn
@@ -62167,15 +62200,11 @@ class AnyAddressAuthorityPolicy extends AuthorityPolicy {
   get delegateValidatorHash() {
     return void 0;
   }
+  activityAuthorizing() {
+    return { redeemer: void 0 };
+  }
   activityUsingAuthority() {
-    const { usingAuthority } = this.onChainActivitiesType;
-    if (!usingAuthority) {
-      throw new Error(
-        `invalid contract without a usingAuthority activity`
-      );
-    }
-    const t = new usingAuthority();
-    return { redeemer: t._toUplcData() };
+    throw new Error(`usingAuthority is only used in capo contracts.  use activityAuthorizing() for delegates`);
   }
   /**
    * Finds the delegate authority token, normally in the delegate's contract address
@@ -62241,7 +62270,7 @@ class AnyAddressAuthorityPolicy extends AuthorityPolicy {
   //! Adds the indicated token to the txn as an input with apporpriate activity/redeemer
   //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
   async DelegateAddsAuthorityToken(tcx, fromFoundUtxo, redeemer) {
-    //! no need to specify a redeemer
+    //! no need to specify a redeemer, but we pass it through 
     return tcx.addInput(fromFoundUtxo, redeemer);
   }
   //! Adds the indicated utxo to the transaction with appropriate activity/redeemer
@@ -62252,6 +62281,9 @@ class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     return tcx.addInput(fromFoundUtxo);
   }
 }
+__decorateClass$2([
+  Activity.redeemer
+], AnyAddressAuthorityPolicy.prototype, "activityAuthorizing", 1);
 __decorateClass$2([
   Activity.redeemer
 ], AnyAddressAuthorityPolicy.prototype, "activityUsingAuthority", 1);
@@ -62482,7 +62514,7 @@ class DefaultCapo extends Capo {
     return [specializedCapo, this.capoHelpers, ...parentModules];
   }
   activityUpdatingCharter() {
-    const { updatingCharter } = this.onChainActivitiesType;
+    const updatingCharter = this.mustGetActivity("updatingCharter");
     const t = new updatingCharter();
     return { redeemer: t._toUplcData() };
   }
@@ -62696,7 +62728,7 @@ class DefaultCapo extends Capo {
     );
   }
   /**
-   * USE getMintDelegate() AND ITS txnGrantAuthority() METHOD INSTED
+   * USE getMintDelegate() AND ITS txnGrantAuthority() METHOD INSTEAD
    * @remarks
    *
    * detailed remarks
@@ -62705,9 +62737,7 @@ class DefaultCapo extends Capo {
    * @deprecated
    **/
   async txnAddMintDelegate(tcx) {
-    const mintDelegate = await this.getMintDelegate();
-    await mintDelegate.txnGrantAuthority(tcx);
-    return tcx;
+    throw new Error(`deprecated`);
   }
   //@ts-expect-error - typescript can't seem to understand that
   //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
@@ -62798,8 +62828,8 @@ class DefaultCapo extends Capo {
   }
   async txnMintingUuts(initialTcx, uutPurposes, options = {}, roles = {}) {
     const minter = this.connectMinter();
-    const { usingSeedUtxo, additionalMintValues = [], activity } = options;
-    if (additionalMintValues.length && !activity) {
+    const { usingSeedUtxo, additionalMintValues = [], mintDelegateActivity } = options;
+    if (additionalMintValues.length && !mintDelegateActivity) {
       throw new Error(
         `additionalMintValues requires a custom activity provided by your mint delegate specalization`
       );
@@ -62809,24 +62839,27 @@ class DefaultCapo extends Capo {
     const tcx = await this.txnWillMintUuts(
       initialTcx,
       uutPurposes,
-      { usingSeedUtxo: seedUtxo, additionalMintValues, activity },
+      { usingSeedUtxo: seedUtxo, additionalMintValues, mintDelegateActivity },
       roles
     );
-    const tcx1 = await this.txnMustUseCharterUtxo(tcx, "refInput");
-    const tcx2 = await mintDelegate.txnGenericMintingUuts(
-      tcx1,
-      uutPurposes,
-      activity
+    const dgtActivity = mintDelegateActivity || mintDelegate.activityMintingUuts({
+      purposes: uutPurposes,
+      ...tcx.getSeedAttrs()
+    });
+    const tcx2 = await minter.txnMintWithDelegateAuthorizing(
+      tcx,
+      [
+        ...mkUutValuesEntries(tcx.state.uuts),
+        ...additionalMintValues
+      ],
+      mintDelegate,
+      dgtActivity
     );
-    const tcx3 = await minter.txnMintWithDelegateAuthorizing(tcx2, [
-      ...mkUutValuesEntries(tcx.state.uuts),
-      ...additionalMintValues
-    ]);
     console.log(
       "    \u{1F41E}\u{1F41E} @end of txnMintingUuts",
-      dumpAny(tcx3, this.networkParams)
+      dumpAny(tcx2, this.networkParams)
     );
-    return tcx3;
+    return tcx2;
   }
   /**
    * Finds a free seed-utxo from the user wallet, and adds it to the transaction
@@ -62846,9 +62879,7 @@ class DefaultCapo extends Capo {
     return tcx2;
   }
   async txnWillMintUuts(tcx, uutPurposes, {
-    usingSeedUtxo,
-    additionalMintValues = [],
-    activity
+    usingSeedUtxo
   }, roles = {}) {
     const { txId, utxoIdx } = usingSeedUtxo.outputId;
     const { blake2b } = Crypto;

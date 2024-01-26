@@ -52,14 +52,14 @@ export abstract class StellarDelegate<
         const useMinTv = true;
         const authorityVal = this.tvAuthorityToken(useMinTv);
         console.log(
-            `   ------- delegate ${label} grants authority with ${dumpAny(
+            `   ------- delegate '${label}' grants authority with ${dumpAny(
                 authorityVal,
                 this.networkParams
             )}`
         );
 
         try {
-            const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo, redeemer);
+            const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo, redeemer || this.activityAuthorizing());
             return this.txnReceiveAuthorityToken(tcx2, authorityVal, uutxo);
         } catch (error: any) {
             if (error.message.match(/input already added/)) {
@@ -334,7 +334,7 @@ export abstract class StellarDelegate<
     protected async DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
         uutxo: TxInput,
-        redeemer = this.activityAuthorizing()
+        redeemer: isActivity
     ): Promise<TCX> {
         return tcx
             .addInput(uutxo, redeemer)

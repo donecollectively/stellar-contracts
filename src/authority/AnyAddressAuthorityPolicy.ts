@@ -37,16 +37,13 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     }
 
     @Activity.redeemer
-    protected activityUsingAuthority(): isActivity {
-        const { usingAuthority } = this.onChainActivitiesType;
-        if (!usingAuthority) {
-            throw new Error(
-                `invalid contract without a usingAuthority activity`
-            );
-        }
-        const t = new usingAuthority();
+    activityAuthorizing() : isActivity<undefined> {
+        return { redeemer: undefined};
+    }
 
-        return { redeemer: t._toUplcData() };
+    @Activity.redeemer
+    protected activityUsingAuthority(): isActivity {
+        throw new Error(`usingAuthority is only used in capo contracts.  use activityAuthorizing() for delegates`);
     }
 
     /**
@@ -134,7 +131,10 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         fromFoundUtxo: TxInput,
         redeemer?: isActivity
     ): Promise<TCX> {
-        //! no need to specify a redeemer
+        //! no need to specify a redeemer, but we pass it through 
+        //  ... in case the authority token is stored in a contract,
+        //  ... which would need a redeemer to spend it.  In that case,
+        //  ... the caller will need to add the script to the transaction.
         return tcx.addInput(fromFoundUtxo, redeemer);
     }
 

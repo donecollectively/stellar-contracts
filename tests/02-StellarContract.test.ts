@@ -62,14 +62,16 @@ describe("StellarContract", async () => {
             const treasury = await h.initialize();
             expect(treasury.onChainDatumType).toBeTruthy();
         });
-        it("getter: onChainActivitiesType", async (context: localTC) => {
+        it("private getter: onChainActivitiesType", async (context: localTC) => {
             const {
                 h,
                 h: { network, actors, delay, state },
             } = context;
 
             const treasury = await h.initialize();
-            expect(treasury.onChainActivitiesType).toBeTruthy();
+            //@ts-expect-error private getter
+            const ocat = treasury.onChainActivitiesType
+            expect(ocat).toBeTruthy();
         });
         it("getter: onChainTypes", async (context: localTC) => {
             const {
@@ -161,7 +163,7 @@ describe("StellarContract", async () => {
 
         describe("transaction context: state", () => {
             it("allows keys to be added to the tcx state", async () => {
-                type FOO = { foo: "bar" };
+                type FOO = { foo: "bar", uuts:{} };
                 const tcx = new StellarTxnContext<FOO>();
                 //! basic type-checks only
                 tcx.state.foo = "bar";

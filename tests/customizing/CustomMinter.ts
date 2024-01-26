@@ -80,7 +80,7 @@ export class CustomMinter extends DefaultMinter implements MinterBaseMethods {
             .mintTokens(
                 this.mintingPolicyHash!,
                 values,
-                this.mintingNamedToken(value).redeemer
+                this.activityMintingNamedToken(value).redeemer
             )
             .attachScript(this.compiledScript);
     }

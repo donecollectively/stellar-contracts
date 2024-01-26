@@ -65,6 +65,8 @@ export function addTestContext<SC extends StellarContract<any>, P extends params
 // @public
 export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     // (undocumented)
+    activityAuthorizing(): isActivity<undefined>;
+    // (undocumented)
     protected activityUsingAuthority(): isActivity;
     // (undocumented)
     DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, fromFoundUtxo: TxInput, redeemer?: isActivity): Promise<TCX>;
@@ -101,6 +103,8 @@ export abstract class AuthorityPolicy<T extends capoDelegateConfig = capoDelegat
 // @public
 export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     // (undocumented)
+    activityAuthorizing(): isActivity;
+    // (undocumented)
     activityMintingUuts({ seedTxn, seedIndex: sIdx, purposes, }: MintUutActivityArgs): isActivity;
     // (undocumented)
     contractSource(): any;
@@ -128,6 +132,8 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     // (undocumented)
     txnCreatingTokenPolicy(tcx: StellarTxnContext, tokenName: string): Promise<StellarTxnContext<emptyState_3>>;
     txnGenericMintingUuts<TCX extends hasSeedUtxo & hasUutContext<purposes>, purposes extends string>(tcx: TCX, uutPurposes: purposes[], activity?: isActivity): Promise<TCX>;
+    // (undocumented)
+    txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemer?: isActivity): Promise<TCX>;
     txnReceiveAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, tokenValue: Value, fromFoundUtxo?: TxInput): Promise<TCX>;
 }
 
@@ -372,7 +378,7 @@ export class DefaultCapo<MinterType extends DefaultMinter = DefaultMinter, CDT e
     // Warning: (ae-forgotten-export) The symbol "UutCreationAttrsWithSeed" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
-    txnWillMintUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends string & keyof RM = string & keyof RM>(tcx: existingTcx, uutPurposes: purposes[], { usingSeedUtxo, additionalMintValues, activity, }: UutCreationAttrsWithSeed, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
+    txnWillMintUuts<const purposes extends string, existingTcx extends StellarTxnContext, const RM extends Record<ROLES, purposes>, const ROLES extends string & keyof RM = string & keyof RM>(tcx: existingTcx, uutPurposes: purposes[], { usingSeedUtxo, }: UutCreationAttrsWithSeed, roles?: RM): Promise<hasUutContext<ROLES | purposes> & existingTcx>;
     verifyCoreDelegates(): Promise<[AuthorityPolicy<capoDelegateConfig_2>, BasicMintDelegate]>;
 }
 
@@ -440,7 +446,7 @@ export class DefaultMinter extends StellarContract<BasicMinterParams> implements
         mintDgt: UutName;
     }): Promise<TCX>;
     // (undocumented)
-    txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(tcx: TCX, vEntries: valuesEntry[]): Promise<TCX>;
+    txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(tcx: TCX, vEntries: valuesEntry[], mintDelegate: BasicMintDelegate, mintDgtRedeemer: isActivity): Promise<TCX>;
 }
 
 // Warning: (ae-forgotten-export) The symbol "RoleInfo_2" needs to be exported by the entry point index.d.ts
@@ -529,8 +535,8 @@ export type InlineDatum = ReturnType<typeof DatumInline>;
 export const insufficientInputError: RegExp;
 
 // @public
-export type isActivity = {
-    redeemer: UplcDataValue | UplcData;
+export type isActivity<T = never> = {
+    redeemer: UplcDataValue | UplcData | T;
 };
 
 // @public
@@ -697,15 +703,13 @@ export class StellarContract<ConfigType extends paramsBase> {
     //
     // (undocumented)
     mustFindUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, searchScope: UtxoSearchScope, extraErrorHint?: string): Promise<TxInput | never>;
-    // (undocumented)
-    mustGetActivity(activityName: any): any;
+    mustGetActivity(activityName: string): any;
     // (undocumented)
     myActor?: Wallet;
     // (undocumented)
     network: Network;
     // (undocumented)
     networkParams: NetworkParams;
-    get onChainActivitiesType(): any;
     get onChainDatumType(): any;
     get onChainTypes(): {
         [x: string]: any;
@@ -774,9 +778,7 @@ export abstract class StellarDelegate<CT extends paramsBase & capoDelegateConfig
     static get defaultParams(): {
         rev: bigint;
     };
-    protected DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, uutxo: TxInput, redeemer?: {
-        redeemer: any;
-    }): Promise<TCX>;
+    protected DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, uutxo: TxInput, redeemer: isActivity): Promise<TCX>;
     DelegateMustFindAuthorityToken(tcx: StellarTxnContext, label: string): Promise<TxInput>;
     delegateRequirements(): ReqtsMap_2<"provides an interface for providing arms-length proof of authority to any other contract" | "implementations SHOULD positively govern spend of the UUT" | "implementations MUST provide an essential interface for transaction-building" | "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)" | "requires a mustFindAuthorityToken(tcx)" | "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)" | "requires txnRetireCred(tcx, fromFoundUtxo)">;
     protected DelegateRetiresAuthorityToken(tcx: StellarTxnContext, fromFoundUtxo: TxInput): Promise<StellarTxnContext>;
@@ -1030,7 +1032,7 @@ export { WalletHelper }
 
 // Warnings were encountered during analysis:
 //
-// src/Capo.ts:214:9 - (ae-forgotten-export) The symbol "uutMap" needs to be exported by the entry point index.d.ts
+// src/Capo.ts:216:9 - (ae-forgotten-export) The symbol "uutMap" needs to be exported by the entry point index.d.ts
 // src/DefaultCapo.ts:322:17 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
 // src/DefaultCapo.ts:326:3 - (ae-forgotten-export) The symbol "MultisigAuthorityPolicy" needs to be exported by the entry point index.d.ts
 // src/DefaultCapo.ts:327:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
