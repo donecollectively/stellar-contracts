@@ -31,6 +31,14 @@ func tvCharter(mph: MintingPolicyHash)  -> Value {
     mkTv(mph, "charter")
 }
 
+func returnsValue(value : Value, ctx : ScriptContext, input: TxInput) -> Bool {
+    input.value.contains(value) &&
+    ctx.tx.outputs.any( (txo : TxOutput) -> Bool {
+        txo.address == input.address &&
+        txo.value.contains(value)
+    } )
+}
+
 func returnsValueToScript(value : Value, ctx : ScriptContext) -> Bool {
     input : TxInput = ctx.get_current_input();
     input.value.contains(value) &&
