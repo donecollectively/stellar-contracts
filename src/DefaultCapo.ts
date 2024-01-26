@@ -557,10 +557,10 @@ export class DefaultCapo<
         tcx: TCX
     ): Promise<TCX> {
         throw new Error(`deprecated`);
-        const mintDelegate = await this.getMintDelegate();
+        // const mintDelegate = await this.getMintDelegate();
 
-        await mintDelegate.txnGrantAuthority(tcx);
-        return tcx;
+        // await mintDelegate.txnGrantAuthority(tcx);
+        // return tcx;
     }
 
     /**
