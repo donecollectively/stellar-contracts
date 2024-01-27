@@ -113,17 +113,27 @@ export const Activity = {
         needsActiveVerb(thingName);
         return partialTxn(proto, thingName, descriptor);
     },
+
     /**
      * Decorates a factory-function for creating tagged redeemer data for a specific on-chain activity
      * @remarks
      *
-     * The factory function should follow an active-verb convention by including "ing" in the name of the factory function
+     * The factory function should follow an active-verb convention by including "ing" in 
+     * the name of the factory function
+     * 
+     * Its leading prefix should also match one of 'activity', 'burn', or 'mint'.  These 
+     * conventions don't affect the way the activity is verified on-chain, but they 
+     * provide guard-rails for naming consistency.
      * @public
      **/
     redeemer(proto, thingName, descriptor) {
-        if (!thingName.match(/^activity[A-Z]/)) {
+        const isActivity  = thingName.match(/^activity[A-Z]/)
+        const isBurn = thingName.match(/^burn[A-Z]/)
+        const isMint = thingName.match(/^mint[A-Z]/)
+
+        if (!isActivity && !isBurn) {
             throw new Error(
-                `@Activity.redeemer: ${thingName}: name should start with 'activity[A-Z]...'`
+                `@Activity.redeemer: ${thingName}: name should start with '(activity|burn|mint)[A-Z]...'`
             );
         }
         needsActiveVerb(thingName, !!"okwhatever");
