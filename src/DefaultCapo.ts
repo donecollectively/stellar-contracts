@@ -626,11 +626,12 @@ export class DefaultCapo<
                     mintDelegate: "mintDgt",
                 }
             );
-            const { capoGov, govAuthority, mintDgt, mintDelegate } =
-                tcx.state.uuts;
-            {
-                if (govAuthority !== capoGov)
-                    throw new Error(`assertion can't fail`);
+            const { 
+                capoGov, govAuthority, // same
+                mintDgt // same as mintDelegate 
+            } = tcx.state.uuts;
+            if (govAuthority !== capoGov) {
+                throw new Error(`assertion can't fail`);
             }
 
             const govAuthorityLink = await this.txnCreateDelegateLink<
@@ -638,23 +639,28 @@ export class DefaultCapo<
                 "govAuthority"
             >(tcx, "govAuthority", charterDatumArgs.govAuthorityLink);
 
-            const mintDelegateLink = await this.txnCreateDelegateLink<
+            const mintDelegate = await this.txnCreateDelegateLink<
                 BasicMintDelegate,
                 "mintDelegate"
             >(tcx, "mintDelegate", charterDatumArgs.mintDelegateLink);
+
+            
+            mintDelegate.delegate.txnCreateRefScript(tcx);
+
             //@ts-expect-error - typescript can't seem to understand that
             //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
             const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
                 ...charterDatumArgs,
                 govAuthorityLink,
-                mintDelegateLink,
+                mintDelegateLink: mintDelegate,
             };
             const datum = this.mkDatumCharterToken(fullCharterArgs);
 
             const charterOut = new TxOutput(
                 this.address,
                 this.tvCharter(),
-                datum
+                datum,
+                // this.compiledScript
             );
             charterOut.correctLovelace(this.networkParams);
 

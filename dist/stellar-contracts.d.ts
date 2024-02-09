@@ -57,7 +57,12 @@ export declare const Activity: {
      * Decorates a factory-function for creating tagged redeemer data for a specific on-chain activity
      * @remarks
      *
-     * The factory function should follow an active-verb convention by including "ing" in the name of the factory function
+     * The factory function should follow an active-verb convention by including "ing" in
+     * the name of the factory function
+     *
+     * Its leading prefix should also match one of 'activity', 'burn', or 'mint'.  These
+     * conventions don't affect the way the activity is verified on-chain, but they
+     * provide guard-rails for naming consistency.
      * @public
      **/
     redeemer(proto: any, thingName: any, descriptor: any): any;
@@ -187,6 +192,7 @@ export declare class BasicMintDelegate extends StellarDelegate<MintDelegateArgs>
         rev: bigint;
     };
     contractSource(): any;
+    mkDatumScriptReference(): Datum;
     /**
      * specializedMintDelegate module for customizing policies atop the basic mint delegate
      * @public
@@ -200,7 +206,7 @@ export declare class BasicMintDelegate extends StellarDelegate<MintDelegateArgs>
     get specializedMintDelegate(): HeliosModuleSrc;
     get specializedCapo(): HeliosModuleSrc;
     activityAuthorizing(): isActivity;
-    txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemer?: isActivity): Promise<TCX>;
+    txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemer: isActivity): Promise<TCX>;
     activityMintingUuts({ seedTxn, seedIndex: sIdx, purposes, }: MintUutActivityArgs): isActivity;
     importModules(): HeliosModuleSrc[];
     get scriptDatumName(): string;
@@ -217,6 +223,17 @@ export declare class BasicMintDelegate extends StellarDelegate<MintDelegateArgs>
      * @public
      **/
     txnReceiveAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, tokenValue: Value, fromFoundUtxo?: TxInput): Promise<TCX>;
+    /**
+     * Creates a reference-script utxo for the minting delegate
+     * @remarks
+     *
+     * detailed remarks
+     * @param ‹pName› - descr
+     * @typeParam ‹pName› - descr (for generic types)
+     * @public
+     **/
+    txnCreateRefScript<TCX extends StellarTxnContext>(tcx: TCX): TCX;
+    txnMustAddMyRefScript<TCX extends StellarTxnContext>(tcx: TCX): Promise<TCX>;
     /**
      * Depreciated: Add a generic minting-UUTs actvity to the transaction
      * @remarks
@@ -494,7 +511,7 @@ export declare abstract class Capo<minterType extends MinterBaseMethods & Defaul
      *     details required by the particular role.  Its delegate type must be matchy with the type indicated by the `roleName`.
      * @public
      **/
-    txnCreateDelegateLink<DT extends StellarDelegate, const RN extends string>(tcx: hasUutContext<RN>, roleName: RN, delegateInfo?: MinimalDelegateLink<DT>): Promise<RelativeDelegateLink<DT>>;
+    txnCreateDelegateLink<DT extends StellarDelegate, const RN extends string>(tcx: hasUutContext<RN>, roleName: RN, delegateInfo?: MinimalDelegateLink<DT>): Promise<ConfiguredDelegate<DT> & RelativeDelegateLink<DT>>;
     relativeLink<DT extends StellarDelegate<any>>(configured: ConfiguredDelegate<DT>): RelativeDelegateLink<DT>;
     /**
      * Generates and returns a complete set of delegate settings, given a delegation role and strategy-selection details.
@@ -690,7 +707,7 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
      * The default implementation is an UnspecialiedCapo, which
      * you can use as a template for your specialized Capo.
      *
-     * Every specalization MUST include Datum and Activity ("redeemer") enums,
+     * Every specialization MUST include Datum and Activity ("redeemer") enums,
      * and MAY include additional functions, and methods on Datum / Activity.
      *
      * The datum SHOULD have a validateSpend(self, datum, ctx) method.
@@ -707,7 +724,7 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
      * The default implementation is an UnspecialiedCapo, which
      * you can use as a template for your specialized Capo.
      *
-     * Every specalization MUST include Datum and  Activity ("redeemer") enums,
+     * Every specialization MUST include Datum and  Activity ("redeemer") enums,
      * and MAY include additional functions, and methods on Datum / Activity.
      *
      * The datum enum SHOULD have a validateSpend(self, datum, ctx) method.
@@ -1499,6 +1516,7 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     myActor?: Wallet;
     static get defaultParams(): {};
     static parseConfig(rawJsonConfig: any): void;
+    get isConnected(): boolean;
     /**
      * returns the wallet connection used by the current actor
      * @remarks
@@ -1615,7 +1633,7 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     /**
      * @internal
      **/
-    protected _utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }: utxoInfo, { free: free2, minAdaAmount: r2 }: utxoInfo): 1 | -1 | 0;
+    protected _utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }: utxoInfo, { free: free2, minAdaAmount: r2 }: utxoInfo): 0 | 1 | -1;
     /**
      * @internal
      **/
@@ -1657,9 +1675,9 @@ export declare class StellarContract<ConfigType extends paramsBase> {
      * @param extraErrorHint - user- or developer-facing guidance for guiding them to deal with the miss
      * @public
      **/
-    mustFindMyUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, exceptInTcx: StellarTxnContext, extraErrorHint?: string): Promise<TxInput>;
-    mustFindMyUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, extraErrorHint?: string): Promise<TxInput>;
-    mustFindUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, searchScope: UtxoSearchScope, extraErrorHint?: string): Promise<TxInput | never>;
+    mustFindMyUtxo(semanticName: string, predicate: utxoPredicate, exceptInTcx: StellarTxnContext, extraErrorHint?: string): Promise<TxInput>;
+    mustFindMyUtxo(semanticName: string, predicate: utxoPredicate, extraErrorHint?: string): Promise<TxInput>;
+    mustFindUtxo(semanticName: string, predicate: utxoPredicate, searchScope: UtxoSearchScope, extraErrorHint?: string): Promise<TxInput | never>;
     utxoSearchError(semanticName: string, searchScope: UtxoSearchScope, extraErrorHint?: string): string;
     toUtxoId(u: TxInput): string;
     /**
@@ -2070,7 +2088,7 @@ export declare class StellarTxnContext<S extends anyState = anyState> {
      * @typeParam ‹pName› - descr (for generic types)
      * @public
      **/
-    addRefInput<TCX extends StellarTxnContext<S>>(this: TCX, input: addRefInputArgs[0]): TCX;
+    addRefInput<TCX extends StellarTxnContext<S>>(this: TCX, ...inputArgs: addRefInputArgs): TCX;
     addRefInputs<TCX extends StellarTxnContext<S>>(this: TCX, ...args: addRefInputsArgs): TCX;
     addInput<TCX extends StellarTxnContext<S>>(this: TCX, input: addInputArgs[0], r?: RedeemerArg): TCX;
     addInputs<TCX extends StellarTxnContext<S>>(this: TCX, inputs: Parameters<Tx["addInputs"]>[0], r: RedeemerArg): TCX;

@@ -77,7 +77,7 @@ describe("Capo", async () => {
                 t.submit(tcx1a, {
                     signers: [tom.address, tina.address, tracy.address],
                 })
-            ).rejects.toThrow(/missing.*delegat.*mintDgt/);
+            ).rejects.toThrow(/missing.*mintDgt/);
         });
 
         it("works when the seed utxo has a large utxoIdx", async (context: localTC) => {
@@ -187,7 +187,7 @@ describe("Capo", async () => {
                 t.submit(tcx1, {
                     signers: [tom.address, tina.address, tracy.address],
                 })
-            ).rejects.toThrow(/the authZor token MUST be returned/);
+            ).rejects.toThrow(/authZor not returned/);
         });
 
         it("can create a UUT and send it anywhere", async (context: localTC) => {

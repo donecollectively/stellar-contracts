@@ -398,6 +398,9 @@ export class StellarContract<
         );
     }
 
+    get isConnected() {
+        return !!this.myActor
+    }
     /**
      * returns the wallet connection used by the current actor
      * @remarks
@@ -1609,19 +1612,19 @@ export class StellarContract<
     //! finds a utxo (
     async mustFindMyUtxo(
         semanticName: string,
-        predicate: (u: TxInput) => TxInput | undefined,
+        predicate: utxoPredicate,
         exceptInTcx: StellarTxnContext,
         extraErrorHint?: string
     ): Promise<TxInput>;
     async mustFindMyUtxo(
         semanticName: string,
-        predicate: (u: TxInput) => TxInput | undefined,
+        predicate: utxoPredicate,
         extraErrorHint?: string
     ): Promise<TxInput>;
 
     async mustFindMyUtxo(
         semanticName: string,
-        predicate: (u: TxInput) => TxInput | undefined,
+        predicate: utxoPredicate,
         hintOrExcept?: string | StellarTxnContext,
         hint?: string
     ): Promise<TxInput> {
@@ -1644,7 +1647,7 @@ export class StellarContract<
 
     async mustFindUtxo(
         semanticName: string,
-        predicate: (u: TxInput) => TxInput | undefined,
+        predicate: utxoPredicate,
         searchScope: UtxoSearchScope,
         extraErrorHint: string = ""
     ): Promise<TxInput | never> {

@@ -804,7 +804,7 @@ export abstract class Capo<
         tcx: hasUutContext<RN>,
         roleName: RN,
         delegateInfo: MinimalDelegateLink<DT> = { strategyName: "default" }
-    ) {
+    ) : Promise<ConfiguredDelegate<DT> & RelativeDelegateLink<DT>> {
         const configured = this.txnCreateConfiguredDelegate(
             tcx,
             roleName,
@@ -815,9 +815,10 @@ export abstract class Capo<
             this.mkMinTv(this.mph, tcx.state.uuts[roleName])
         );
 
-        return this.relativeLink(configured);
+        return configured
     }
 
+    // this is just type sugar - a configured delegate already has all the relative-delegate link properties.
     relativeLink<DT extends StellarDelegate<any>>(
         configured: ConfiguredDelegate<DT>
     ): RelativeDelegateLink<DT> {

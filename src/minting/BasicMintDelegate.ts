@@ -13,7 +13,7 @@ import contract from "./BasicMintDelegate.hl";
 //@ts-expect-error because TS can't import non-ts content : /
 import StellarHeliosHelpers from "../StellarHeliosHelpers.hl";
 
-import { Activity } from "../StellarContract.js";
+import { Activity, datum } from "../StellarContract.js";
 import type { configBase, isActivity } from "../StellarContract.js";
 import { StellarTxnContext, type hasSeedUtxo } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
@@ -26,10 +26,7 @@ import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { UnspecializedMintDelegate } from "./UnspecializedMintDelegate.js";
 import { UnspecializedCapo } from "../UnspecializedCapo.js";
 import { CapoHelpers } from "../CapoHelpers.js";
-import type {
-    MintUutActivityArgs,
-    hasUutContext,
-} from "../Capo.js";
+import type { MintUutActivityArgs, hasUutContext } from "../Capo.js";
 
 export type MintDelegateArgs = capoDelegateConfig & {
     rev: bigint;
@@ -58,6 +55,17 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
         return contract;
     }
 
+    @datum
+    mkDatumScriptReference() {
+        const { ScriptReference: hlScriptReference } = this.onChainDatumType;
+
+        // this is a simple enum tag, indicating the role of this utxo: holding the script
+        // on-chain, so it can be used in later transactions without bloating those txns
+        // every time.
+        const t = new hlScriptReference();
+        return Datum.inline(t._toUplcData());
+    }
+
     /**
      * specializedMintDelegate module for customizing policies atop the basic mint delegate
      * @public
@@ -78,12 +86,21 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
 
     @Activity.redeemer
     activityAuthorizing(): isActivity {
-        throw new Error(`generic Authorizing activity invalid for mint delegates`)
+        throw new Error(
+            `generic Authorizing activity invalid for mint delegates`
+        );
     }
 
-    async txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemer : isActivity) {
-        if (!redeemer) throw new Error(`mint delegate requires an explicit redeemer for txnGrantAuthority()`);
+    async txnGrantAuthority<TCX extends StellarTxnContext>(
+        tcx: TCX,
+        redeemer: isActivity
+    ) {
+        if (!redeemer)
+            throw new Error(
+                `mint delegate requires an explicit redeemer for txnGrantAuthority()`
+            );
 
+        await this.txnMustAddMyRefScript(tcx);
         return super.txnGrantAuthority(tcx, redeemer);
     }
 
@@ -97,7 +114,7 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     }: MintUutActivityArgs): isActivity {
         const seedIndex = BigInt(sIdx);
         console.log("UUT redeemer seedTxn", seedTxn.hex);
-        const mintingUuts = this.mustGetActivity("mintingUuts")
+        const mintingUuts = this.mustGetActivity("mintingUuts");
         const t = new mintingUuts(seedTxn, seedIndex, purposes);
 
         return { redeemer: t._toUplcData() };
@@ -172,6 +189,44 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     }
 
     /**
+     * Creates a reference-script utxo for the minting delegate
+     * @remarks
+     *
+     * detailed remarks
+     * @param ‹pName› - descr
+     * @typeParam ‹pName› - descr (for generic types)
+     * @public
+     **/
+    txnCreateRefScript<TCX extends StellarTxnContext>(tcx: TCX): TCX {
+        const refScriptUtxo = new TxOutput(
+            this.address,
+            new Value(this.ADA(0n)),
+            this.mkDatumScriptReference(),
+            this.compiledScript
+        );
+        refScriptUtxo.correctLovelace(this.networkParams);
+
+        return tcx.addOutput(refScriptUtxo);
+    }
+
+    async txnMustAddMyRefScript<TCX extends StellarTxnContext>(tcx: TCX): Promise<TCX> {
+        const expectedRefScript = this.compiledScript
+        const isMyRefScript = (txin: TxInput) => {
+            if (txin.origOutput.refScript?.properties.purpose != expectedRefScript.properties.purpose) return false;
+            return (txin.origOutput.refScript?.hash().toString() == expectedRefScript.hash().toString())
+        }
+
+        if (tcx.txRefInputs.find( isMyRefScript )) {
+            console.warn("suppressing second add of refScript");
+            return tcx;
+        }
+
+        const foundUtxo = await this.mustFindMyUtxo("refScript", isMyRefScript);
+
+        return tcx.addRefInput(foundUtxo, expectedRefScript)
+    }
+
+    /**
      * Depreciated: Add a generic minting-UUTs actvity to the transaction
      * @remarks
      *
@@ -197,10 +252,12 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
         activity?: isActivity
         // seedUtxo: TxInput,
     ) {
-        let useActivity = activity || this.activityMintingUuts({ 
-            purposes: uutPurposes,
-            ...(tcx.getSeedAttrs()),
-        });
+        let useActivity =
+            activity ||
+            this.activityMintingUuts({
+                purposes: uutPurposes,
+                ...tcx.getSeedAttrs(),
+            });
 
         return this.txnGrantAuthority(tcx, useActivity);
     }

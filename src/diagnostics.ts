@@ -13,6 +13,8 @@ import {
     TxId,
     TxOutputId,
     NetworkParams,
+    UplcProgram,
+    Hash,
 } from "@hyperionbt/helios";
 import type { ErrorMap } from "./delegation/RolesAndDelegates.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
@@ -215,6 +217,7 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
     let hasWinfo = false;
     const winfo = {};
     for (const x of witnessAttrs) {
+        if ("scripts" == x) debugger;
         let item = tx.witnesses[x] || (d.witnesses[x] as any);
         if (Array.isArray(item) && !item.length) continue;
         if ("datums" == x && !Object.entries(item || {}).length) continue;
@@ -270,6 +273,10 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
             if (item.length > 1) item.unshift("");
             item = item.join("\n    ");
         }
+        if ("refScripts" == x) {
+            item = `${item.length} - see refInputs`;
+            // todo: @helios give us refScripts outside of dump(), which only shows us hex.
+        }
 
         if (!item) continue;
         hasWinfo = true;
@@ -301,7 +308,7 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
  * @public
  **/
 export function txInputAsString(x: TxInput, prefix = "-> "): string {
-    return `${prefix}${addrAsString(x.address)} ${valueAsString(
+    return `${prefix}${addrAsString(x.address)}${showRefScript(x.origOutput.refScript)} ${valueAsString(
         x.value
     )} = 📖 ${txOutputIdAsString(x.outputId)}`;
 }
@@ -362,6 +369,33 @@ export function datumAsString(d: Datum | null | undefined): string {
 }
 
 /**
+ * Displays a short summary of any provided reference script
+ * @remarks
+ * 
+ * detailed remarks
+ * @param ‹pName› - descr
+ * @typeParam ‹pName› - descr (for generic types)
+ * @public
+ **/
+export function showRefScript(rs?: UplcProgram | null) {
+    if (!rs) return "";
+    const thisPurpose = rs.properties?.purpose;
+    if (!thisPurpose) {
+        debugger
+        return "um?"
+    }
+    const whichHash = 
+        thisPurpose == "minting" ? "mintingPolicyHash" 
+        : thisPurpose == "staking" ? "stakingValidatorHash" 
+        : thisPurpose == "spending" ?  "validatorHash" : ""
+    const expected : Hash = rs[whichHash];
+
+    const rsh = expected.hex;
+    const rshInfo = `${rsh.slice(0, 8)}…${rsh.slice(-4)}`
+    return ` ‹📀 refScript📜 ${rshInfo}: ${rs.calcSize()} bytes› +`
+}
+
+/**
  * Converts a txOutput to printable form
  * @remarks
  *
@@ -369,7 +403,7 @@ export function datumAsString(d: Datum | null | undefined): string {
  * @public
  **/
 export function txOutputAsString(x: TxOutput, prefix = "<-"): string {
-    return `${prefix} ${addrAsString(x.address)} ${valueAsString(
+    return `${prefix} ${addrAsString(x.address)}${showRefScript(x.refScript)} ${valueAsString(
         x.value
     )} ${datumAsString(x.datum)}`;
 }
@@ -490,7 +524,7 @@ export function dumpAny(
         return policyIdAsString(x);
     }
     if (x instanceof StellarTxnContext) {
-        return txAsString(x.tx);
+        return txAsString(x.tx, networkParams);
     }
     if (x instanceof ByteArray || x[0] instanceof ByteArrayData) {
         //@ts-expect-error sorry, typescript : /

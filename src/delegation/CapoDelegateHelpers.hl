@@ -39,7 +39,8 @@ enum BASE_DELEGATE_Datum {
 
 func mustReturnValueToScript(value : Value, ctx : ScriptContext) -> Bool {
     if (!returnsValueToScript( value, ctx)) {
-         error("the authZor token MUST be returned")
+        error("authZor not returned")
+        // error("the authZor token MUST be returned")
     };
     true
 }
@@ -49,8 +50,9 @@ func unmodifiedDelegation(oldDD : ByteArray, ctx: ScriptContext) -> Bool {
     o : []TxOutput = ctx.get_cont_outputs();
     //    print("::::::::::::::::::::::::::::::::: hi "+o.head.datum.get_inline_data().serialize().show());
     assert(o.head.datum.get_inline_data().serialize() == oldDD,
-        "delegation datum must not be modified"
-    );
+    // "delegation datum must not be modified"
+    "modified dgtDtm"
+);
     true
     // MintDelegateDatum::IsDelegation{
     //     ddNew, _
@@ -98,7 +100,7 @@ func requiresValidDelegateOutput(
     v : Value = mkTv(mph, uut);
     hasDelegate : Bool = validatorHash.switch{
         Some{vh} => {
-            print(" - expecting delegation token in validator hash " + vh.show());
+            print(" - seek dgTkn in vh " + vh.show());
             ctx.tx.value_locked_by(vh).contains(v)
         },
         None => ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {
@@ -110,7 +112,7 @@ func requiresValidDelegateOutput(
     };
 
     if (!hasDelegate && required) {
-        error("missing required delegation token: "+ uut )
+        error("missing dgTkn "+ uut )
     };
     hasDelegate
 }
@@ -128,7 +130,7 @@ func requiresDelegateAuthorizing(
         i.value.contains(authzVal) // find my authority token
     }).switch{
         Some{x} => x.output_id,
-        None => error("missing required delegate UUT "+dd.uutName)
+        None => error("missing dgTkn "+dd.uutName)
      };
     print ("     found ^");
     k : ScriptPurpose = ctx.tx.redeemers.find_key( 
@@ -144,6 +146,7 @@ func requiresDelegateAuthorizing(
     //     ScriptPurpose::new_spending(  // [spending, plus ...
     //     );
         
+    err : String = "dgTkn "+dd.uutName+" not Authz'ing"; // "not spent with an authorizing activity!")
     isAuthorizing : Bool = ctx.tx.redeemers.get(k).switch {
         (index: Int, fields: []Data) => {
             // a: BASE_DELEGATE_Activity => a.switch {
@@ -151,10 +154,10 @@ func requiresDelegateAuthorizing(
             fields == fields && 
             if (index >= 10) { true } else {
                 print("index: "+index.show());
-                error("authz token "+dd.uutName+" not spent with an authorizing activity!")
+                error(err)
             }
         },
-        _ => error("authz token "+dd.uutName+"not spent with an authorizing activity!")
+        _ => error(err)
     };
 
     isAuthorizing && requiresValidDelegateOutput(dd, mph, ctx)

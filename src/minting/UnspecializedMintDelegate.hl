@@ -45,6 +45,7 @@ enum MintDelegateDatum {
         // the string case is degenerate (expect empty string always)
         CustomConfig: String
     }
+    ScriptReference
     
     func validateCDConfig(self, updated: MintDelegateDatum::IsDelegation) -> Bool {
         self.switch {

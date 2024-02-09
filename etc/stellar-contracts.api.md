@@ -119,6 +119,8 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     // (undocumented)
     importModules(): HeliosModuleSrc[];
     // (undocumented)
+    mkDatumScriptReference(): Datum;
+    // (undocumented)
     static mkDelegateWithArgs(a: MintDelegateArgs): void;
     // (undocumented)
     mkDelegationDatum(txin?: TxInput): Datum;
@@ -129,11 +131,14 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     // (undocumented)
     get specializedCapo(): HeliosModuleSrc;
     get specializedMintDelegate(): HeliosModuleSrc;
+    txnCreateRefScript<TCX extends StellarTxnContext>(tcx: TCX): TCX;
     // (undocumented)
     txnCreatingTokenPolicy(tcx: StellarTxnContext, tokenName: string): Promise<StellarTxnContext<emptyState_3>>;
     txnGenericMintingUuts<TCX extends hasSeedUtxo & hasUutContext<purposes>, purposes extends string>(tcx: TCX, uutPurposes: purposes[], activity?: isActivity): Promise<TCX>;
     // (undocumented)
-    txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemer?: isActivity): Promise<TCX>;
+    txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemer: isActivity): Promise<TCX>;
+    // (undocumented)
+    txnMustAddMyRefScript<TCX extends StellarTxnContext>(tcx: TCX): Promise<TCX>;
     txnReceiveAuthorityToken<TCX extends StellarTxnContext>(tcx: TCX, tokenValue: Value, fromFoundUtxo?: TxInput): Promise<TCX>;
 }
 
@@ -239,7 +244,7 @@ export abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter 
     txnAddGovAuthorityTokenRef<TCX extends StellarTxnContext>(tcx: TCX): Promise<TCX>;
     txnCreateConfiguredDelegate<DT extends StellarDelegate<any>, const RN extends string>(tcx: hasUutContext<RN>, roleName: RN & keyof this["delegateRoles"], delegateInfo?: MinimalDelegateLink<DT>): ConfiguredDelegate<DT>;
     // Warning: (ae-forgotten-export) The symbol "MinimalDelegateLink" needs to be exported by the entry point index.d.ts
-    txnCreateDelegateLink<DT extends StellarDelegate, const RN extends string>(tcx: hasUutContext<RN>, roleName: RN, delegateInfo?: MinimalDelegateLink<DT>): Promise<RelativeDelegateLink<DT>>;
+    txnCreateDelegateLink<DT extends StellarDelegate, const RN extends string>(tcx: hasUutContext<RN>, roleName: RN, delegateInfo?: MinimalDelegateLink<DT>): Promise<ConfiguredDelegate<DT> & RelativeDelegateLink<DT>>;
     // (undocumented)
     txnKeepCharterToken<TCX extends StellarTxnContext>(tcx: TCX, datum: InlineDatum): TCX;
     txnMustGetSeedUtxo(tcx: StellarTxnContext, purpose: string, tokenNames: string[]): Promise<TxInput | never>;
@@ -671,6 +676,8 @@ export class StellarContract<ConfigType extends paramsBase> {
     // (undocumented)
     protected _infoBackToUtxo({ u }: utxoInfo): TxInput;
     // (undocumented)
+    get isConnected(): boolean;
+    // (undocumented)
     loadProgramScript(params?: Partial<ConfigType>): Program | undefined;
     // (undocumented)
     get mintingPolicyHash(): MintingPolicyHash | undefined;
@@ -696,13 +703,13 @@ export class StellarContract<ConfigType extends paramsBase> {
     mustFindActorUtxo(name: string, predicate: (u: TxInput) => TxInput | undefined, exceptInTcx: StellarTxnContext<any>, extraErrorHint?: string): Promise<TxInput | never>;
     // (undocumented)
     mustFindActorUtxo(name: string, predicate: (u: TxInput) => TxInput | undefined, extraErrorHint?: string): Promise<TxInput | never>;
-    mustFindMyUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, exceptInTcx: StellarTxnContext, extraErrorHint?: string): Promise<TxInput>;
+    mustFindMyUtxo(semanticName: string, predicate: utxoPredicate, exceptInTcx: StellarTxnContext, extraErrorHint?: string): Promise<TxInput>;
     // (undocumented)
-    mustFindMyUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, extraErrorHint?: string): Promise<TxInput>;
+    mustFindMyUtxo(semanticName: string, predicate: utxoPredicate, extraErrorHint?: string): Promise<TxInput>;
     // Warning: (ae-forgotten-export) The symbol "UtxoSearchScope" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
-    mustFindUtxo(semanticName: string, predicate: (u: TxInput) => TxInput | undefined, searchScope: UtxoSearchScope, extraErrorHint?: string): Promise<TxInput | never>;
+    mustFindUtxo(semanticName: string, predicate: utxoPredicate, searchScope: UtxoSearchScope, extraErrorHint?: string): Promise<TxInput | never>;
     mustGetActivity(activityName: string): any;
     // (undocumented)
     myActor?: Wallet;
@@ -756,7 +763,7 @@ export class StellarContract<ConfigType extends paramsBase> {
     // Warning: (ae-forgotten-export) The symbol "utxoInfo" needs to be exported by the entry point index.d.ts
     //
     // @internal (undocumented)
-    protected _utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }: utxoInfo, { free: free2, minAdaAmount: r2 }: utxoInfo): 1 | -1 | 0;
+    protected _utxoSortSmallerAndPureADA({ free: free1, minAdaAmount: r1 }: utxoInfo, { free: free2, minAdaAmount: r2 }: utxoInfo): 0 | 1 | -1;
     get wallet(): helios.Wallet;
     // Warning: (ae-forgotten-export) The symbol "NetworkName" needs to be exported by the entry point index.d.ts
     //
@@ -901,7 +908,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     // (undocumented)
     addOutputs<TCX extends StellarTxnContext<S>>(this: TCX, ...args: Parameters<Tx["addOutputs"]>): TCX;
     // Warning: (ae-forgotten-export) The symbol "addRefInputArgs" needs to be exported by the entry point index.d.ts
-    addRefInput<TCX extends StellarTxnContext<S>>(this: TCX, input: addRefInputArgs[0]): TCX;
+    addRefInput<TCX extends StellarTxnContext<S>>(this: TCX, ...inputArgs: addRefInputArgs): TCX;
     // Warning: (ae-forgotten-export) The symbol "addRefInputsArgs" needs to be exported by the entry point index.d.ts
     //
     // (undocumented)
@@ -1037,7 +1044,7 @@ export { WalletHelper }
 // src/DefaultCapo.ts:326:3 - (ae-forgotten-export) The symbol "MultisigAuthorityPolicy" needs to be exported by the entry point index.d.ts
 // src/DefaultCapo.ts:327:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
 // src/DefaultCapo.ts:346:3 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
-// src/StellarContract.ts:315:5 - (ae-forgotten-export) The symbol "SetupDetails" needs to be exported by the entry point index.d.ts
+// src/StellarContract.ts:325:5 - (ae-forgotten-export) The symbol "SetupDetails" needs to be exported by the entry point index.d.ts
 // src/delegation/RolesAndDelegates.ts:260:5 - (ae-forgotten-export) The symbol "PartialParamConfig" needs to be exported by the entry point index.d.ts
 // src/delegation/RolesAndDelegates.ts:262:5 - (ae-incompatible-release-tags) The symbol "validateConfig" is marked as @public, but its signature references "strategyValidation" which is marked as @internal
 

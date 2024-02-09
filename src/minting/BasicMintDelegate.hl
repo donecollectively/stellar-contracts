@@ -112,7 +112,7 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
             } && activity.additionalDelegateValidation(isD, ctx)
         },
         _ => {
-            invalidRedeemer = () -> {  error("custom datum must not use Activities reserved for IsDelegation datum.") };
+            invalidRedeemer = () -> {  error("wrong Actvy/dtm") }; ///Acvty custom datum must not use Activities reserved for IsDelegation datum.") };
             activity.switch{
                 // Authorizing => invalidRedeemer(),
                 Reassigning => invalidRedeemer(),

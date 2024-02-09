@@ -173,64 +173,111 @@ describe("Capo", async () => {
                     }),
                     "should find the mintDgt token"
                 ).toBeTruthy();
+
+                // test t3m2n4d
+                // has the mint-delegate script ready to use as a referenceScript
+                debugger
+                expect(
+                    tcx.outputs.find(                
+                        (o: TxOutput) => {
+                           return o.refScript?.serialize() ==
+                            mintDelegate.compiledScript.serialize();
+                    })
+                ).toBeTruthy();
+            });
+
+            it("includes the mintDgt script so it can be used as a referenceScript", async (context: localTC) => {
+                // tested with t3m2n4d
             });
         });
     });
 
     describe("the mint delegate token is used for enforcing minting policy", () => {
-        it("builds minting txns that include the mintDgt", async (context: localTC) => {
+        it("builds minting txns that include the mintDgt and reference script", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
-            const t = await h.bootstrap(); 
-            
-            const tcx = new StellarTxnContext<any>()
-            const tcx2 = await t.txnMintingUuts(await t.addSeedUtxo(tcx), ["anything"]);
 
-            const mintDelegate = await t.getMintDelegate()
-            const spentDgtToken = tcx2.inputs.find(mintDelegate.mkAuthorityTokenPredicate());
-            const returnedToken = tcx2.outputs.find(mintDelegate.mkAuthorityTokenPredicate());
-            expect(spentDgtToken).toBeTruthy()
-            expect(returnedToken).toBeTruthy()
-            expect(t.submit(tcx2)).resolves.toBeTruthy()            
+            // initial mint-delegate creation creates an on-chain reference script:
+            const t = await h.bootstrap();
+
+            const tcx = new StellarTxnContext<any>();
+            const tcx2 = await t.txnMintingUuts(await t.addSeedUtxo(tcx), [
+                "anything",
+            ]);
+
+            const mintDelegate = await t.getMintDelegate();
+            const spentDgtToken = tcx2.inputs.find(
+                mintDelegate.mkAuthorityTokenPredicate()
+            );
+            const returnedToken = tcx2.outputs.find(
+                mintDelegate.mkAuthorityTokenPredicate()
+            );
+            expect(spentDgtToken).toBeTruthy();
+            expect(returnedToken).toBeTruthy();
+            expect(t.submit(tcx2)).resolves.toBeTruthy();
+            
+            // uses the reference script in the minting txn:
+            expect( tcx2.txRefInputs.find(
+                (i) => i.origOutput.refScript?.serialize() == mintDelegate.compiledScript.serialize()
+            )).toBeTruthy();
+        });
+
+        it.todo("can spend the ReferenceScript utxo and recover its minUtxo", async (context: localTC) => {
+            // ... when the mintDgt token is retired, the ReferenceScript is also retired
+            // the ReferenceScript spend (Retiring) requires the mintDgt token to be spent
+            // ... the mintDgt token spend (Retiring) requires 
+            //   - must get govAuthz from the Capo (ref: charter token + govAuthz token)
+            //   - must spend ReferenceScript datum (not back into the mint-delegate
+            //   - must burn the mintDgt token?  or just as good possibly: put it into a replacement delegate script
         });
 
         it("won't mint in a txn not including the mintDgt", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
-            const t = await h.bootstrap()
-            
-            const mintDelegate = await t.getMintDelegate()
-            vi.spyOn(mintDelegate, "txnGrantAuthority").mockImplementation(async (tcx) => tcx);
+            const t = await h.bootstrap();
+
+            const mintDelegate = await t.getMintDelegate();
+            vi.spyOn(mintDelegate, "txnGrantAuthority").mockImplementation(
+                async (tcx) => tcx
+            );
 
             const tcx = await t.txnMintingUuts(
-                await t.addSeedUtxo(
-                    new StellarTxnContext<any>()
-                ), 
+                await t.addSeedUtxo(new StellarTxnContext<any>()),
                 ["anything"]
             );
-            expect(t.submit(tcx)).rejects.toThrow(/missing required delegate.*mintDgt/)
+            expect(t.submit(tcx)).rejects.toThrow(
+                /missing .*mintDgt/
+            );
         });
 
         it("requires that the mintDgt datum is unmodified", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
-            const t = await h.bootstrap(); 
-            
+            const t = await h.bootstrap();
+
             const mintDelegate = await t.getMintDelegate();
-            const spy = vi.spyOn(mintDelegate, "mkDelegationDatum").mockImplementation(
-                (...args) => {
+            const spy = vi
+                .spyOn(mintDelegate, "mkDelegationDatum")
+                .mockImplementation((...args) => {
                     const [dd, s] = args;
-                    const {capoAddr, mph, tn} = mintDelegate.configIn!
-                    return mintDelegate.mkDatumIsDelegation({capoAddr, mph, tn}, "bad change")
-                }
-            );
+                    const { capoAddr, mph, tn } = mintDelegate.configIn!;
+                    return mintDelegate.mkDatumIsDelegation(
+                        { capoAddr, mph, tn },
+                        "bad change"
+                    );
+                });
             const tcx = await t.txnMintingUuts(
-                await t.addSeedUtxo(new StellarTxnContext<any>()), 
+                await t.addSeedUtxo(new StellarTxnContext<any>()),
                 ["anything"]
             );
-            expect(spy).toHaveBeenCalled()
-            console.log("------ submitting bogus txn with modified delegate datum")
-            expect(t.submit(tcx)).rejects.toThrow(/delegation datum must not be modified/);
+            expect(spy).toHaveBeenCalled();
+            console.log(
+                "------ submitting bogus txn with modified delegate datum"
+            );
+            expect(t.submit(tcx)).rejects.toThrow(
+                // /delegation datum must not be modified/
+                /modified dgtDtm/
+            );
         });
     });
 
@@ -347,7 +394,7 @@ describe("Capo", async () => {
     describe("the charter details can be updated by authority of the capoGov-* token", () => {
         it.todo("TODO: updates details of the datum");
         it.todo("TODO: doesn't update without the capoGov-* authority");
-        it.todo("TODO: keeps the charter token in the contract address")
+        it.todo("TODO: keeps the charter token in the contract address");
     });
 });
 

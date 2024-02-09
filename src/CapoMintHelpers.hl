@@ -66,8 +66,9 @@ func mkUutTnFactory(
         // the largest possible cbor encoding of txo-index integers, 
         // even though we only expect integers < 256 currently
         assert(false, 
-            "expected cbor(txo index) to be at most 9 bytes, got cbor( index="+ 
-             seedIdx.show() + " ).hex = " + idxBytes.show()
+            //"expected cbor(txo index) to be at most 9 bytes, got cbor( index=
+            //  + seedIdx.show() + " ).hex = " + idxBytes.show()
+            "cbor(txoId) len > 9 !!"  
         );
         idxBytes // never used
     } else {
@@ -113,7 +114,7 @@ func validateUutBurning(
         // expectedBurn.get_policy(mph).for_each( (b : ByteArray, i: Int) -> {
         //     print( "expected: " + b.show() + " " + i.show() )
         // });
-        assert(false, "mismatch in UUT burn with diff:\n"
+        assert(false, "mismatch in UUT burn, diff:\n"
             + (expectedBurn - valueBurned).show()
         )
     };

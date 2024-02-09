@@ -55,10 +55,16 @@ func getOutputWithValue(ctx: ScriptContext, v : Value) -> TxOutput {
 
 func getSingleAssetValue(input: TxInput) -> Value{
     inputMap : Map[MintingPolicyHash]Map[ByteArray]Int = input.value.get_assets().to_map();
-    assert( inputMap.length == 1, "getSingleAssetValue needs single-asset input");
+    assert( inputMap.length == 1, 
+        "multiple assets"
+        // "getSingleAssetValue needs single-asset input"
+    );
 
     inputTokens : Map[ByteArray]Int = inputMap.head_value;
-    assert(inputTokens.length == 1, "getSingleAssetValue needs single-token input");
+    assert(inputTokens.length == 1, 
+        "multiple tokens"
+        // "getSingleAssetValue needs single-token input"
+    );
 
     input.value.get_assets()
 }
