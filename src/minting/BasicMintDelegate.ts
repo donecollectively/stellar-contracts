@@ -211,8 +211,10 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
 
     async txnMustAddMyRefScript<TCX extends StellarTxnContext>(tcx: TCX): Promise<TCX> {
         const expectedRefScript = this.compiledScript
+        const {purpose:expectedPurpose} = expectedRefScript.properties;
         const isMyRefScript = (txin: TxInput) => {
-            if (txin.origOutput.refScript?.properties.purpose != expectedRefScript.properties.purpose) return false;
+            const {purpose} = txin.origOutput.refScript?.properties || {};
+            if (purpose && (purpose != expectedPurpose)) return false;
             return (txin.origOutput.refScript?.hash().toString() == expectedRefScript.hash().toString())
         }
 

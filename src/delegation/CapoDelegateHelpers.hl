@@ -17,7 +17,7 @@ enum BASE_DELEGATE_Activity {
 struct RelativeDelegateLink {
     uutName: String
     strategyName: String
-    delegateValidator: Option[ValidatorHash]
+    delegateValidatorHash: Option[ValidatorHash]
 
     // config: Data
 }

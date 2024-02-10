@@ -184,7 +184,7 @@ export abstract class StellarDelegate<
         if (!this.compiledScript.validatorHash) {
             throw new Error(
                 `${this.constructor.name}: address doesn't use a validator hash!\n` +
-                    `  ... if that's by design, you may wish to override 'get delegateValidatorHash()' -> undefined`
+                    `  ... if that's by design, you may wish to override 'get delegateValidatorHash()'`
             );
         }
         return this.compiledScript.validatorHash;

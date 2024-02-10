@@ -278,6 +278,7 @@ describe("Capo", async () => {
                     "mintDelegate"
                 );
                 expect(delegate).toBeTruthy();
+                expect(delegateValidatorHash).toBeTruthy();
                 expect(
                     delegate.address.eq(Address.fromHash(delegateValidatorHash!)),
                     "addresses should have matched"

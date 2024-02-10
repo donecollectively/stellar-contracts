@@ -272,7 +272,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
             if (this.txRefInputs?.find((ri) => {
                     const rs = ri.origOutput.refScript;
                     if (!rs) return false;
-                    if (rs.properties.purpose != thisPurpose) return false;
+                    const {purpose} = rs.properties;
+                    if (purpose && (purpose != thisPurpose)) return false;
 
                     const foundHash : Hash =  ri.origOutput.refScript?.[whichHash];
                     return foundHash.eq(expected);

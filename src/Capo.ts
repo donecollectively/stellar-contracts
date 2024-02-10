@@ -1042,7 +1042,7 @@ export abstract class Capo<
         const dvh = delegate.delegateValidatorHash;
         if (edvh && dvh && !edvh.eq(dvh)) {
             throw new Error(
-                `${this.constructor.name}: ${roleName}: mismatched delegate: expected validator ${edvh?.hex}, got ${dvh.hex}`
+                `${this.constructor.name}: ${roleName}: mismatched or modified delegate: expected validator ${edvh?.hex}, got ${dvh.hex}`
             );
         }
         console.log(
