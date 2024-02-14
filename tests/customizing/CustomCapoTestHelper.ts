@@ -13,11 +13,11 @@ export class CustomCapoTestHelper extends DefaultCapoTestHelper<CustomTreasury> 
     get stellarClass() {
         return CustomTreasury;
     }
-    setupActors() {
+    async setupActors() {
         this.addActor("tina", 1100n * ADA);
         this.addActor("tracy", 13n * ADA);
         this.addActor("tom", 120n * ADA);
-        this.currentActor = "tina";
+        return this.setActor("tina");
     }
 
     mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs> {

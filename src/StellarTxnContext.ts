@@ -190,9 +190,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
         //     return this
         // }
 
-        console.log("in addRefInput, scripts is ", this.tx.witnesses.scripts.map(x => x.hash().slice(0,8)))
+        const t =  this.tx.witnesses.scripts.length
         this.tx.addRefInput(input, ...moreArgs);
-        console.log("after addRefInput, scripts is ", this.tx.witnesses.scripts.map(x => x.hash().slice(0,8)))
+        const t2 =  this.tx.witnesses.scripts.length;
+        if (t2 > t) {
+            console.log("      --- addRefInput added ", this.tx.witnesses.scripts.length - t, " to tx.scripts")
+        }
 
         return this;
     }
@@ -259,7 +262,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
     attachScript(...args: Parameters<Tx["attachScript"]>) {
         const script = args[0];
-        console.log("in attachScript, scripts is ", this.tx.witnesses.scripts.map(x => x.hash().slice(0,8)))
+        // console.log("in attachScript, scripts is ", this.tx.witnesses.scripts.map(x => x.hash().slice(0,8)))
         if (script instanceof UplcProgram) {
             const thisPurpose = script.properties.purpose
             const whichHash = 
@@ -278,7 +281,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     const foundHash : Hash =  ri.origOutput.refScript?.[whichHash];
                     return foundHash.eq(expected);
             })) {
-                console.warn("txn already has this script as a refScript");
+                console.log("     --- txn already has this script as a refScript; not re-adding");
                 return this;
             }
         }

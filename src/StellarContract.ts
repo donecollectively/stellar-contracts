@@ -44,7 +44,7 @@ let configuredNetwork: NetworkName | undefined = undefined;
  *
  * @public
  */
-export type isActivity<T=never> = {
+export type isActivity<T = never> = {
     redeemer: UplcDataValue | UplcData | T;
     // | HeliosData
 };
@@ -77,8 +77,9 @@ export type stellarSubclass<
     CT extends configBase = S extends StellarContract<infer iCT>
         ? iCT
         : configBase
-> = (new (args: StellarConstructorArgs<CT>) => S & StellarContract<CT>) & {
+> = (new (setup: SetupDetails, internal: typeof isInternalConstructor) => S) & { // & StellarContract<CT>
     defaultParams: Partial<CT>;
+    createWith(args: StellarFactoryArgs<CT>): Promise<S>;
     parseConfig(rawJsonConfig: any): any;
 };
 
@@ -91,7 +92,12 @@ export type anyDatumProps = Record<string, any>;
  * Configuration details for StellarContract classes
  * @public
  **/
-export type configBase = Record<string, any>;
+export type configBase = { rev: bigint } & Record<string, any>;
+
+export type devConfigProps = {
+    isDev: boolean;
+    devGen: bigint;
+};
 
 /**
  * Decorators for on-chain activity (redeemer) factory functions
@@ -118,18 +124,18 @@ export const Activity = {
      * Decorates a factory-function for creating tagged redeemer data for a specific on-chain activity
      * @remarks
      *
-     * The factory function should follow an active-verb convention by including "ing" in 
+     * The factory function should follow an active-verb convention by including "ing" in
      * the name of the factory function
-     * 
-     * Its leading prefix should also match one of 'activity', 'burn', or 'mint'.  These 
-     * conventions don't affect the way the activity is verified on-chain, but they 
+     *
+     * Its leading prefix should also match one of 'activity', 'burn', or 'mint'.  These
+     * conventions don't affect the way the activity is verified on-chain, but they
      * provide guard-rails for naming consistency.
      * @public
      **/
     redeemer(proto, thingName, descriptor) {
-        const isActivity  = thingName.match(/^activity[A-Z]/)
-        const isBurn = thingName.match(/^burn[A-Z]/)
-        const isMint = thingName.match(/^mint[A-Z]/)
+        const isActivity = thingName.match(/^activity[A-Z]/);
+        const isBurn = thingName.match(/^burn[A-Z]/);
+        const isMint = thingName.match(/^mint[A-Z]/);
 
         if (!isActivity && !isBurn) {
             throw new Error(
@@ -313,6 +319,7 @@ export type ConfigFor<
         ? inferredConfig
         : never
 > = C;
+
 /**
  * Initializes a stellar contract class
  * @remarks
@@ -321,7 +328,7 @@ export type ConfigFor<
  * for the specific class.
  * @public
  **/
-export type StellarConstructorArgs<CT extends configBase> = {
+export type StellarFactoryArgs<CT extends configBase> = {
     setup: SetupDetails;
     config?: CT;
     partialConfig?: Partial<CT>;
@@ -353,6 +360,8 @@ type UtxoSearchScope = {
     wallet?: Wallet;
     exceptInTcx?: StellarTxnContext;
 };
+
+const isInternalConstructor = Symbol("internalConstructor");
 
 //!!! todo: type configuredStellarClass = class -> networkStuff -> withParams = stellar instance.
 
@@ -399,7 +408,7 @@ export class StellarContract<
     }
 
     get isConnected() {
-        return !!this.myActor
+        return !!this.myActor;
     }
     /**
      * returns the wallet connection used by the current actor
@@ -432,11 +441,51 @@ export class StellarContract<
     }
 
     walletNetworkCheck?: Promise<NetworkName> | NetworkName;
-    constructor(args: StellarConstructorArgs<ConfigType>) {
-        const { setup, config, partialConfig } = args;
+    /**
+     * Factory function for a configured instance of the contract
+     * @remarks
+     * 
+     * Due to boring details of initialization order, this factory function is needed
+     * for creating a new instance of the contract.
+     * @param args - setup and configuration details
+     * @public
+     **/
+    static async createWith<
+        thisType extends StellarContract<configType>, 
+        configType extends configBase = thisType extends StellarContract<infer iCT> ? iCT : never,
+    >(
+        this: stellarSubclass<any>,
+        args: StellarFactoryArgs<configType>
+    ) : Promise<StellarContract<configType> & InstanceType<typeof this>> {
+        const Class = this;
+        const {setup, config, partialConfig} = args
+        const c = new Class(setup, isInternalConstructor);
+
+        // now all internal property assignements have been triggered, 
+        //  (e.g. class-level currentRev = .... declarations)
+        // so we can do initialization activities post-construction  
+        return c.init(args);
+    }
+    /**
+     * obsolete public constructor.  Use the createWith() factory function instead.
+     * 
+     * @public
+     **/
+    constructor(setup: SetupDetails, internal: typeof isInternalConstructor) {
         this.setup = setup;
+        if (internal !== isInternalConstructor) {
+            throw new Error(`StellarContract: use createWith() factory function`);
+        }
         const { network, networkParams, isTest, myActor, isMainnet } = setup;
 
+        helios.config.set({ IS_TESTNET: !isMainnet });
+        this.network = network;
+        this.networkParams = networkParams;
+        // this.isTest = isTest
+    }
+
+    async init(args: StellarFactoryArgs<ConfigType>) {
+        const {isMainnet,myActor} = this.setup
         const chosenNetwork = isMainnet ? "mainnet" : "testnet";
         if ("undefined" !== typeof configuredNetwork) {
             if (configuredNetwork != chosenNetwork) {
@@ -446,25 +495,19 @@ export class StellarContract<
                 );
             }
         }
-        helios.config.set({ IS_TESTNET: !isMainnet });
         configuredNetwork = chosenNetwork;
-        this.network = network;
-        this.networkParams = networkParams;
-        // this.isTest = isTest
         if (myActor) {
-            this.walletNetworkCheck = myActor.isMainnet().then((isMain) => {
-                const foundNetwork = isMain ? "mainnet" : "testnet";
-                if (foundNetwork !== chosenNetwork)
-                    return Promise.reject(
-                        new Error(
-                            `wallet on ${foundNetwork} doesn't match network from setup`
-                        )
-                    );
-                return (this.walletNetworkCheck = foundNetwork);
-            });
+            const isMain = await myActor.isMainnet()
+            const foundNetwork = isMain ? "mainnet" : "testnet";
+            if (foundNetwork !== chosenNetwork) {
+                throw new Error(
+                    `wallet on ${foundNetwork} doesn't match network from setup`
+                )
+            }
             this.myActor = myActor;
         }
 
+        const { config, partialConfig } = args;
         if (config) {
             this.configIn = config;
 
@@ -476,7 +519,9 @@ export class StellarContract<
             this.partialConfig = partialConfig;
             this.scriptProgram = this.loadProgramScript();
         }
+        return this;
     }
+
     compiledScript!: UplcProgram; // initialized in loadProgramScript
 
     get datumType() {
@@ -549,23 +594,19 @@ export class StellarContract<
         return tcx;
     }
 
-    addStrellaWithConfig<
+    async addStrellaWithConfig<
         SC extends StellarContract<any>
         // P = SC extends StellarContract<infer P> ? P : never
     >(
-        TargetClass: new (
-            a: SC extends StellarContract<any>
-                ? StellarConstructorArgs<ConfigFor<SC>>
-                : never
-        ) => SC,
+        TargetClass: stellarSubclass<SC>,
         config: SC extends StellarContract<infer iCT> ? iCT : never
     ) {
-        const args: StellarConstructorArgs<ConfigFor<SC>> = {
+        const args: StellarFactoryArgs<ConfigFor<SC>> = {
             config,
             setup: this.setup,
         };
-        //@ts-expect-error todo: why is the conditional type not matching enough?
-        const strella = new TargetClass(args);
+
+        const strella = await TargetClass.createWith(args);
         return strella;
     }
 
@@ -678,7 +719,7 @@ export class StellarContract<
      * @remarks
      *
      * Use mustGetActivityName() instead, to get the type for a specific activity.
-     * 
+     *
      * returns the on-chain enum used for spending contract utxos or for different use-cases of minting (in a minting script).
      * the returned type (and its enum variants) are suitable for off-chain txn-creation
      * override `get onChainActivitiesName()` if needed to match your contract script.
@@ -696,20 +737,22 @@ export class StellarContract<
     /**
      * Retrieves an on-chain type for a specific named activity ("redeemer")
      * @remarks
-     * 
+     *
      * Cross-checks the requested name against the available activities in the script.
      * Throws a helpful error if the requested activity name isn't present.
      * @param activityName - the name of the requested activity
      * @public
      **/
-    mustGetActivity(activityName : string) {
+    mustGetActivity(activityName: string) {
         const ocat = this.onChainActivitiesType;
         const { [activityName]: activityType } = ocat;
         if (!activityType) {
             const { scriptActivitiesName: onChainActivitiesName } = this;
-            const activityNames : string[] = [];
-            //inspect the properties in `this`, using property descriptors.  
-            for (const [name, _] of Object.entries(Object.getOwnPropertyDescriptors(ocat))) {
+            const activityNames: string[] = [];
+            //inspect the properties in `this`, using property descriptors.
+            for (const [name, _] of Object.entries(
+                Object.getOwnPropertyDescriptors(ocat)
+            )) {
                 //Some of them will point to Class definitions.
                 // check if any of those classes inherit from HeliosData.
                 if (ocat[name].prototype instanceof HeliosData) {
@@ -720,7 +763,9 @@ export class StellarContract<
 
             throw new Error(
                 `$${this.constructor.name}: activity name mismatch ${onChainActivitiesName}::${activityName}''\n` +
-                    `   known activities in this script: ${activityNames.join(", ")}`
+                    `   known activities in this script: ${activityNames.join(
+                        ", "
+                    )}`
             );
         }
         return activityType;
@@ -1337,8 +1382,6 @@ export class StellarContract<
             //     throw new Error(`outrageous fee-computation found - check txn setup for correctness`)
             // }
             try {
-                await this.walletNetworkCheck;
-
                 // const t1 = new Date().getTime();
                 await tx.finalize(this.networkParams, changeAddress, spares);
                 // const t2 = new Date().getTime();
@@ -1514,6 +1557,7 @@ export class StellarContract<
                     //  reminder: ensure "pause on caught exceptions" is enabled
                     //  before playing this next line to dig deeper into the error.
                     const script2 = Program.new(src, modules);
+                    console.log({ params });
                     if (params) script2.parameters = params;
                 } catch (sameError) {
                     throw sameError;
@@ -1535,12 +1579,13 @@ export class StellarContract<
             const addlErrorText = additionalErrors.length
                 ? ["", ...additionalErrors, "       v"].join("\n")
                 : "";
-            t.message = this.constructor.name + ":"+ e.message + addlErrorText;
+            t.message = this.constructor.name + ":" + e.message + addlErrorText;
 
             t.stack =
-                `${this.constructor.name}: ${e.message}\n    at ${moduleName} (${srcFile}:${1 + sl}:${
-                    1 + sc
-                })\n` + modifiedStack;
+                `${this.constructor.name}: ${
+                    e.message
+                }\n    at ${moduleName} (${srcFile}:${1 + sl}:${1 + sc})\n` +
+                modifiedStack;
 
             throw t;
         }
@@ -1670,8 +1715,8 @@ export class StellarContract<
         searchScope: UtxoSearchScope,
         extraErrorHint?: string
     ): string {
-        const where = searchScope.address ? "address" : "connected wallet";
-        return `${this.constructor.name}: '${semanticName}' utxo not found (${extraErrorHint}) in ${where}`;
+        const where = searchScope.address ? `address ${searchScope.address.toBech32()}` : `connected wallet`;
+        return `${this.constructor.name}: '${semanticName}' utxo not found (${extraErrorHint || "sorry, no extra clues available"}) in ${where}`;
     }
     toUtxoId(u: TxInput) {
         return `${u.outputId.txId.hex}@${u.outputId.utxoIdx}`;

@@ -23,9 +23,9 @@ import { DefaultMinter } from "../minting/DefaultMinter.js";
  * @public
  **/
 export abstract class CapoTestHelper<
-    SC extends Capo<DefaultMinter & MinterBaseMethods, CDT, CT>,
+    SC extends Capo<MinterBaseMethods & DefaultMinter, CDT, CT>,
     CDT extends anyDatumArgs = //prettier-ignore
-        SC extends Capo<DefaultMinter, infer iCDT> ? iCDT : anyDatumArgs, //prettier-ignore
+        SC extends Capo<any, infer iCDT> ? iCDT : anyDatumArgs, //prettier-ignore
     CT extends CapoBaseConfig  =  //prettier-ignore
         SC extends Capo<any, any, infer iCT> ? iCT : never //prettier-ignore
 > extends StellarTestHelper<SC> {
@@ -33,7 +33,9 @@ export abstract class CapoTestHelper<
         randomSeed = 42,
         config,
     }: { config?: CT; randomSeed?: number } = {}): Promise<SC> {
-        if (this.setupPending) await this.setupPending;
+        // Note: This method diverges from the base class impl, due to type difficulties.
+        // Patches welcome.
+
         if (this.strella && this.randomSeed == randomSeed) {
             console.log(
                 "       ----- skipped duplicate setup() in test helper"
@@ -41,7 +43,9 @@ export abstract class CapoTestHelper<
 
             return this.strella;
         }
-        if (this.strella)
+        // console.log("A in capo test helper")
+
+        if (this.strella) {
             console.log(
                 `  ---  new test helper setup with new seed (was ${this.randomSeed}, now ${randomSeed})...\n` +
                     new Error("stack")
@@ -54,18 +58,27 @@ export abstract class CapoTestHelper<
                         )
                         .join("\n")
             );
+            this.setupPending = undefined;
+            this.actors = {};
+        }
+        if (this.setupPending) {
+            return this.setupPending;
+        }
+        await this.delay(1);
+        const actorSetup = this.setupActors();
+        await actorSetup
+    
         this.randomSeed = randomSeed;
         this.state.mintedCharterToken = undefined;
         this.state.parsedConfig = undefined;
-        // console.log(new Error("setup from").stack)
 
         //! when there's not a preset config, it leaves the detailed setup to be done just-in-time
         //   based on seedUtxo in mkTxnMintCharterToken
         if (!config)
-            return (this.strella = this.initStrella(this.stellarClass));
+            return (this.strella = await this.initStrella(this.stellarClass));
 
         //@ts-expect-error either we got too fancy for Typescript, or the other way round
-        const strella = this.initStrella(this.stellarClass, config);
+        const strella = await this.initStrella(this.stellarClass, config);
 
         this.strella = strella;
         const { address, mintingPolicyHash: mph } = strella;

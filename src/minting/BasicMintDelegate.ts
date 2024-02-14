@@ -47,8 +47,32 @@ type MintDelegateDatumProps = {
  **/
 export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     static currentRev = 1n;
+
     static get defaultParams() {
-        return { rev: this.currentRev };
+        const params = { 
+            rev: this.currentRev,
+            devGen: 0n,
+         };
+         return params;
+    }
+
+    getContractScriptParams(config) {
+        const params = {
+            rev: config.rev,
+            isDev: false,
+            devGen: 0n,
+        };
+
+        if ("development" === process.env.NODE_ENV) {
+            params.isDev = true;
+            if (!config.devGen) {
+                throw new Error(
+                    `Missing expected devGen in config for BasicMintDelegate`
+                );
+            }
+            params.devGen = config.devGen ;
+        }
+        return params
     }
 
     contractSource() {
@@ -155,12 +179,6 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     }
     get scriptActivitiesName() {
         return "MintDelegateActivity";
-    }
-
-    getContractScriptParams(config: MintDelegateArgs): configBase {
-        return {
-            rev: config.rev,
-        };
     }
 
     /**

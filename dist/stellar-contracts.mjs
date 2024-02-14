@@ -58128,9 +58128,12 @@ class StellarTxnContext {
     }
     this.txRefInputs.push(input);
     debugger;
-    console.log("in addRefInput, scripts is ", this.tx.witnesses.scripts.map((x) => x.hash().slice(0, 8)));
+    const t = this.tx.witnesses.scripts.length;
     this.tx.addRefInput(input, ...moreArgs);
-    console.log("after addRefInput, scripts is ", this.tx.witnesses.scripts.map((x) => x.hash().slice(0, 8)));
+    const t2 = this.tx.witnesses.scripts.length;
+    if (t2 > t) {
+      console.log("      --- addRefInput added ", this.tx.witnesses.scripts.length - t, " to tx.scripts");
+    }
     return this;
   }
   addRefInputs(...args) {
@@ -58170,30 +58173,26 @@ class StellarTxnContext {
   }
   attachScript(...args) {
     const script = args[0];
-    console.log("in attachScript, scripts is ", this.tx.witnesses.scripts.map((x) => x.hash().slice(0, 8)));
     if (script instanceof UplcProgram) {
-      debugger;
       const thisPurpose = script.properties.purpose;
       const whichHash = thisPurpose == "minting" ? "mintingPolicyHash" : thisPurpose == "staking" ? "stakingValidatorHash" : thisPurpose == "spending" ? "validatorHash" : "";
       const expected = script[whichHash];
       if (!whichHash || !expected)
         throw new Error(`unexpected script purpose ${script.properties.purpose} in attachScript()`);
-      debugger;
       if (this.txRefInputs?.find((ri) => {
         const rs = ri.origOutput.refScript;
         if (!rs)
           return false;
-        if (rs.properties.purpose != thisPurpose)
+        const { purpose } = rs.properties;
+        if (purpose && purpose != thisPurpose)
           return false;
         const foundHash = ri.origOutput.refScript?.[whichHash];
         return foundHash.eq(expected);
       })) {
-        console.warn("txn already has this script as a refScript");
+        console.log("     --- txn already has this script as a refScript; not re-adding");
         return this;
       }
-      console.log(new Error("attachScript hash" + expected.hex));
     }
-    debugger;
     this.tx.attachScript(...args);
     return this;
   }
@@ -58560,11 +58559,11 @@ const Activity = {
    * Decorates a factory-function for creating tagged redeemer data for a specific on-chain activity
    * @remarks
    *
-   * The factory function should follow an active-verb convention by including "ing" in 
+   * The factory function should follow an active-verb convention by including "ing" in
    * the name of the factory function
-   * 
-   * Its leading prefix should also match one of 'activity', 'burn', or 'mint'.  These 
-   * conventions don't affect the way the activity is verified on-chain, but they 
+   *
+   * Its leading prefix should also match one of 'activity', 'burn', or 'mint'.  These
+   * conventions don't affect the way the activity is verified on-chain, but they
    * provide guard-rails for naming consistency.
    * @public
    **/
@@ -58671,6 +58670,7 @@ async function findInputsInWallets(v, searchIn, network) {
     `None of these wallets${addresses && " or addresses" || ""} have the needed tokens`
   );
 }
+const isInternalConstructor = Symbol("internalConstructor");
 //!!! todo: type configuredStellarClass = class -> networkStuff -> withParams = stellar instance.
 class StellarContract {
   //! it has scriptProgram: a parameterized instance of the contract
@@ -58721,10 +58721,38 @@ class StellarContract {
     return void 0;
   }
   walletNetworkCheck;
-  constructor(args) {
-    const { setup, config: config$1, partialConfig } = args;
+  /**
+   * Factory function for a configured instance of the contract
+   * @remarks
+   * 
+   * Due to boring details of initialization order, this factory function is needed
+   * for creating a new instance of the contract.
+   * @param args - setup and configuration details
+   * @public
+   **/
+  static async createWith(args) {
+    const Class = this;
+    const { setup, config, partialConfig } = args;
+    const c = new Class(setup, isInternalConstructor);
+    return c.init(args);
+  }
+  /**
+   * obsolete public constructor.  Use the createWith() factory function instead.
+   * 
+   * @public
+   **/
+  constructor(setup, internal) {
     this.setup = setup;
+    if (internal !== isInternalConstructor) {
+      throw new Error(`StellarContract: use createWith() factory function`);
+    }
     const { network, networkParams, isTest, myActor, isMainnet } = setup;
+    config.set({ IS_TESTNET: !isMainnet });
+    this.network = network;
+    this.networkParams = networkParams;
+  }
+  async init(args) {
+    const { isMainnet, myActor } = this.setup;
     const chosenNetwork = isMainnet ? "mainnet" : "testnet";
     if ("undefined" !== typeof configuredNetwork) {
       if (configuredNetwork != chosenNetwork) {
@@ -58734,31 +58762,27 @@ class StellarContract {
         );
       }
     }
-    config.set({ IS_TESTNET: !isMainnet });
     configuredNetwork = chosenNetwork;
-    this.network = network;
-    this.networkParams = networkParams;
     if (myActor) {
-      this.walletNetworkCheck = myActor.isMainnet().then((isMain) => {
-        const foundNetwork = isMain ? "mainnet" : "testnet";
-        if (foundNetwork !== chosenNetwork)
-          return Promise.reject(
-            new Error(
-              `wallet on ${foundNetwork} doesn't match network from setup`
-            )
-          );
-        return this.walletNetworkCheck = foundNetwork;
-      });
+      const isMain = await myActor.isMainnet();
+      const foundNetwork = isMain ? "mainnet" : "testnet";
+      if (foundNetwork !== chosenNetwork) {
+        throw new Error(
+          `wallet on ${foundNetwork} doesn't match network from setup`
+        );
+      }
       this.myActor = myActor;
     }
-    if (config$1) {
-      this.configIn = config$1;
-      const fullScriptParams = this.contractParams = this.getContractScriptParams(config$1);
+    const { config, partialConfig } = args;
+    if (config) {
+      this.configIn = config;
+      const fullScriptParams = this.contractParams = this.getContractScriptParams(config);
       this.scriptProgram = this.loadProgramScript(fullScriptParams);
     } else {
       this.partialConfig = partialConfig;
       this.scriptProgram = this.loadProgramScript();
     }
+    return this;
   }
   compiledScript;
   // initialized in loadProgramScript
@@ -58812,12 +58836,12 @@ class StellarContract {
     tcx.addOutput(new TxOutput(this.address, value, datum2));
     return tcx;
   }
-  addStrellaWithConfig(TargetClass, config) {
+  async addStrellaWithConfig(TargetClass, config) {
     const args = {
       config,
       setup: this.setup
     };
-    const strella = new TargetClass(args);
+    const strella = await TargetClass.createWith(args);
     return strella;
   }
   // async findDatum(d: Datum | DatumHash): Promise<TxInput[]>;
@@ -58918,7 +58942,7 @@ class StellarContract {
    * @remarks
    *
    * Use mustGetActivityName() instead, to get the type for a specific activity.
-   * 
+   *
    * returns the on-chain enum used for spending contract utxos or for different use-cases of minting (in a minting script).
    * the returned type (and its enum variants) are suitable for off-chain txn-creation
    * override `get onChainActivitiesName()` if needed to match your contract script.
@@ -58934,7 +58958,7 @@ class StellarContract {
   /**
    * Retrieves an on-chain type for a specific named activity ("redeemer")
    * @remarks
-   * 
+   *
    * Cross-checks the requested name against the available activities in the script.
    * Throws a helpful error if the requested activity name isn't present.
    * @param activityName - the name of the requested activity
@@ -58946,14 +58970,18 @@ class StellarContract {
     if (!activityType) {
       const { scriptActivitiesName: onChainActivitiesName } = this;
       const activityNames = [];
-      for (const [name, _] of Object.entries(Object.getOwnPropertyDescriptors(ocat))) {
+      for (const [name, _] of Object.entries(
+        Object.getOwnPropertyDescriptors(ocat)
+      )) {
         if (ocat[name].prototype instanceof HeliosData) {
           activityNames.push(name);
         }
       }
       throw new Error(
         `$${this.constructor.name}: activity name mismatch ${onChainActivitiesName}::${activityName}''
-   known activities in this script: ${activityNames.join(", ")}`
+   known activities in this script: ${activityNames.join(
+          ", "
+        )}`
       );
     }
     return activityType;
@@ -59340,7 +59368,6 @@ class StellarContract {
         tx.addSigner(pkh);
       }
       try {
-        await this.walletNetworkCheck;
         await tx.finalize(this.networkParams, changeAddress, spares);
       } catch (e) {
         console.log("FAILED submitting:", tcx.dump(this.networkParams));
@@ -59477,6 +59504,7 @@ This likely indicates a problem in Helios' error reporting -
         try {
           debugger;
           const script2 = Program.new(src, modules);
+          console.log({ params });
           if (params)
             script2.parameters = params;
         } catch (sameError) {
@@ -59549,8 +59577,8 @@ This likely indicates a problem in Helios' error reporting -
     return found;
   }
   utxoSearchError(semanticName, searchScope, extraErrorHint) {
-    const where = searchScope.address ? "address" : "connected wallet";
-    return `${this.constructor.name}: '${semanticName}' utxo not found (${extraErrorHint}) in ${where}`;
+    const where = searchScope.address ? `address ${searchScope.address.toBech32()}` : `connected wallet`;
+    return `${this.constructor.name}: '${semanticName}' utxo not found (${extraErrorHint || "sorry, no extra clues available"}) in ${where}`;
   }
   toUtxoId(u) {
     return `${u.outputId.txId.hex}@${u.outputId.utxoIdx}`;
@@ -59596,7 +59624,7 @@ __decorateClass$7([
   partialTxn
 ], StellarContract.prototype, "txnKeepValue", 1);
 
-const code$9 = new String("minting DefaultMinter \n\nimport { \n    hasSeedUtxo, \n    mkUutTnFactory,\n    requiresDelegateApproval,\n    validateUutMinting, \n    validateUutBurning,\n    Activity\n} from CapoMintHelpers\n\nimport {mkTv} from StellarHeliosHelpers\n\n// import {\n//     requiresValidDelegateOutput\n// } from CapoDelegateHelpers\n\n//!!!! todo: change to TxOutputId, rolling up these two things:\nconst seedTxn : TxId = TxId::new(#1234)\nconst seedIndex : Int = 42\n\n\nfunc hasContractSeedUtxo(tx: Tx) -> Bool {\n    hasSeedUtxo(tx, seedTxn, seedIndex\n        // , \"charter\"\n    )\n}\n\nfunc main(r : Activity, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    value_minted: Value = tx.minted;\n\n    ok : Bool = r.switch {\n        charter: mintingCharter => {       \n            charterVal : Value = mkTv(mph, \"charter\");\n            authTnBase : String = \"capoGov\";\n            mintDgtTnBase : String = \"mintDgt\";\n  \n\n            assert(value_minted >= charterVal,\n                \"charter token not minted\");\n\n            hasContractSeedUtxo(tx) &&\n            validateUutMinting(\n                ctx: ctx, \n                mph: mph,\n                seedTxId: seedTxn, \n                seedIdx: seedIndex, \n                purposes: []String{authTnBase, mintDgtTnBase}, \n                mkTokenName: mkUutTnFactory(seedTxn, seedIndex),\n                bootstrapCharter: charterVal\n            ) &&\n            tx.outputs.all( (output: TxOutput) -> Bool {\n                output.value != value_minted || (\n                    output.value == value_minted &&\n                    output.address == charter.owner\n                )\n            })\n        },\n        mintWithDelegateAuthorizing => {\n            requiresDelegateApproval(ctx, mph)\n        },\n\n        mintingUuts => { // {sTxId, sIdx, purposes} => {\n            error(\"minter:mintingUuts obsolete; use minter:followingDelegate with delegate:mintingUuts or a more application-specific activity\")\n            // validateUutMinting(\n            //     ctx: ctx, \n            //     seedTxId: sTxId, \n            //     seedIdx: sIdx, \n            //     purposes: purposes,\n            //     mkTokenName: r.uutTnFactory()\n            // )\n        },\n        burningUuts => { // {tns} => {\n            error(\"minter:burningUuts obslete; use minter:followingDelegate with delegate:burningUuts or a more application-specific activity\")\n            // validateUutBurning(\n            //     ctx: ctx,\n            //     tns: tns\n            // ) \n        },\n        _ => true\n    };\n\n    // print(\"defaultMinter: minting value: \" + value_minted.show());\n\n    ok\n}\n\n");
+const code$9 = new String("minting DefaultMinter \n\nimport { \n    hasSeedUtxo, \n    mkUutTnFactory,\n    requiresDelegateApproval,\n    validateUutMinting, \n    validateUutBurning,\n    Activity\n} from CapoMintHelpers\n\nimport {mkTv} from StellarHeliosHelpers\n\n// import {\n//     requiresValidDelegateOutput\n// } from CapoDelegateHelpers\n\n//!!!! todo: change to TxOutputId, rolling up these two things:\nconst seedTxn : TxId = TxId::new(#1234)\nconst seedIndex : Int = 42\nconst rev : Int = 1\n\nfunc hasContractSeedUtxo(tx: Tx) -> Bool {\n    hasSeedUtxo(tx, seedTxn, seedIndex\n        // , \"charter\"\n    )\n}\n\nfunc main(r : Activity, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    value_minted: Value = tx.minted;\n    assert(rev.serialize() == rev.serialize(), \"impossible!\");\n\n    ok : Bool = r.switch {\n        charter: mintingCharter => {       \n            charterVal : Value = mkTv(mph, \"charter\");\n            authTnBase : String = \"capoGov\";\n            mintDgtTnBase : String = \"mintDgt\";\n  \n\n            assert(value_minted >= charterVal,\n                \"charter token not minted\");\n\n            hasContractSeedUtxo(tx) &&\n            validateUutMinting(\n                ctx: ctx, \n                mph: mph,\n                seedTxId: seedTxn, \n                seedIdx: seedIndex, \n                purposes: []String{authTnBase, mintDgtTnBase}, \n                mkTokenName: mkUutTnFactory(seedTxn, seedIndex),\n                bootstrapCharter: charterVal\n            ) &&\n            tx.outputs.all( (output: TxOutput) -> Bool {\n                output.value != value_minted || (\n                    output.value == value_minted &&\n                    output.address == charter.owner\n                )\n            })\n        },\n        mintWithDelegateAuthorizing => {\n            requiresDelegateApproval(ctx, mph)\n        },\n\n        mintingUuts => { // {sTxId, sIdx, purposes} => {\n            error(\"minter:mintingUuts obsolete; use minter:followingDelegate with delegate:mintingUuts or a more application-specific activity\")\n            // validateUutMinting(\n            //     ctx: ctx, \n            //     seedTxId: sTxId, \n            //     seedIdx: sIdx, \n            //     purposes: purposes,\n            //     mkTokenName: r.uutTnFactory()\n            // )\n        },\n        burningUuts => { // {tns} => {\n            error(\"minter:burningUuts obslete; use minter:followingDelegate with delegate:burningUuts or a more application-specific activity\")\n            // validateUutBurning(\n            //     ctx: ctx,\n            //     tns: tns\n            // ) \n        },\n        _ => true\n    };\n\n    // print(\"defaultMinter: minting value: \" + value_minted.show());\n\n    ok\n}\n\n");
 
 code$9.srcFile = "src/minting/DefaultMinter.hl";
 code$9.purpose = "minting";
@@ -59608,7 +59636,7 @@ code$8.srcFile = "src/StellarHeliosHelpers.hl";
 code$8.purpose = "module";
 code$8.moduleName = "StellarHeliosHelpers";
 
-const code$7 = new String("module CapoMintHelpers\nimport {\n    mkTv,\n    tvCharter\n} from StellarHeliosHelpers\n\nimport {\n    getRefCharterDatum\n} from CapoHelpers\n\nimport {\n    Datum, Activity as CapoActivity\n} from specializedCapo\n\nimport {\n    RelativeDelegateLink,\n    requiresDelegateAuthorizing\n} from CapoDelegateHelpers\n\nfunc hasSeedUtxo(tx: Tx, seedTxId : TxId, seedIdx: Int\n    // , reason: String\n) -> Bool {\n    seedUtxo: TxOutputId = TxOutputId::new(\n        seedTxId,\n        seedIdx\n    );\n    assert(tx.inputs.any( (input: TxInput) -> Bool {\n        input.output_id == seedUtxo\n    }),  \"seed utxo required for minting \"\n        // +reason \n        // + \"\\n\"+seedTxId.show() + \" : \" + seedIdx.show()\n    );\n\n    true\n}\n\nfunc requiresDelegateApproval(\n    ctx: ScriptContext, \n    mph: MintingPolicyHash\n) -> Bool {\n    Datum::CharterToken {\n        _, mintDgt\n    } = getRefCharterDatum(ctx, mph);\n\n    requiresDelegateAuthorizing(\n        mintDgt, \n        mph, \n        ctx\n    )\n}\n\n//! pre-computes the hash-based suffix for a token name, returning\n//  a function that makes Uut names with any given purpose, given the seed-txn details\nfunc mkUutTnFactory(\n    seedTxId : TxId, seedIdx : Int\n) -> (String) -> String {\n   \n    idxBytes : ByteArray = seedIdx.serialize();\n    // assert(idxBytes.length == 1, \"surprise!\");\n\n    //! yuck: un-CBOR...\n    rawTxId : ByteArray = seedTxId.serialize().slice(5,37);\n\n    txoInfo : ByteArray = if (idxBytes.length > 9) { \n        // allows 9 bytes to ensure we can support \n        // the largest possible cbor encoding of txo-index integers, \n        // even though we only expect integers < 256 currently\n        assert(false, \n            \"cbor(txoId) len > 9 !!\"\n            //  + seedIdx.show() + \" ).hex = \" + idxBytes.show()\n        );\n        idxBytes // never used\n    } else {\n       ( rawTxId + \"@\".encode_utf8() )+ idxBytes\n    };\n    // assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // print( \"******** txoId \" + txoId.show());\n\n    miniHash : ByteArray = txoInfo.blake2b().slice(0,6);\n    // assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    mhs: String = miniHash.show();\n\n    // returns a function computing a lightweight prefix + miniHash\n    (p: String) -> String {\n        p + \"-\" + mhs\n    }\n}\n\nfunc validateUutBurning(\n    ctx: ScriptContext, \n    tns: []String\n) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    Datum::CharterToken {\n        _, mintDgt\n    } = getRefCharterDatum(ctx, mph);\n\n    valueBurned: Value = tx.minted;\n\n    expectedBurn : Value = Value::sum(tns.map(\n        (tn: String) -> Value {\n            mkTv(mph, tn, -1)\n        }\n    ));\n    actualBurn : Map[ByteArray]Int = valueBurned.get_policy(mph);\n    hasExpectedBurn : Bool = actualBurn == expectedBurn.get_policy(mph);\n    if (!hasExpectedBurn)  {\n        // actualBurn.for_each( (b : ByteArray, i: Int) -> {\n        //     print( \"actual: \" + b.show() + \" \" + i.show() )\n        // });\n        // expectedBurn.get_policy(mph).for_each( (b : ByteArray, i: Int) -> {\n        //     print( \"expected: \" + b.show() + \" \" + i.show() )\n        // });\n        assert(false, \"mismatch in UUT burn, diff:\\n\"\n            + (expectedBurn - valueBurned).show()\n        )\n    };\n\n    hasExpectedBurn && requiresDelegateAuthorizing(\n        mintDgt, \n        mph, \n        ctx\n    )\n\n}\n\n// checks all of the following:\n//  - there's an approving delegate (or we're bootstrapping)\n//  - the mint includes the seed UTXO\n//  - the mint matches the UUTs indicated by the list of purposes\nfunc validateUutMinting(\n    ctx: ScriptContext, \n    mph: MintingPolicyHash,\n    seedTxId : TxId, seedIdx : Int, \n    purposes: []String,     \n    mkTokenName: (String) -> String,\n    bootstrapCharter:Value = Value::new(AssetClass::ADA, 0)\n) -> Bool {\n    tx: Tx = ctx.tx;\n\n    isBootstrapping : Bool = !( bootstrapCharter.is_zero() );\n    delegateApproval : Bool = if ( isBootstrapping ) { \n        true \n    } else {\n        // not bootstrapping; must honor the mintDelegate's authority\n        Datum::CharterToken {\n            _, mintDgt\n        } = getRefCharterDatum(ctx, mph);\n\n        //!!! todo: add explicit activity details in authorization\n        requiresDelegateAuthorizing(\n            mintDgt, \n            mph, \n            ctx\n        )\n    };\n\n    valueMinted: Value = tx.minted;\n\n    // idxBytes : ByteArray = seedIdx.bound_max(255).serialize();\n    // // assert(idxBytes.length == 1, \"surprise!\");\n\n    // //! yuck: un-CBOR...\n    // rawTxId : ByteArray = seedTxId.serialize().slice(5,37);\n\n    // txoId : ByteArray = (rawTxId + \"@\".encode_utf8() + idxBytes);\n    // assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // // print( \"******** txoId \" + txoId.show());\n\n    // miniHash : ByteArray = txoId.blake2b().slice(0,6);\n    // // assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    // tokenName1 = purpose + \".\" + miniHash.show();\n\n    expectedValue : Value = Value::sum(purposes.sort((a:String, b:String) -> Bool { a == b }).map(\n        (purpose: String) -> Value {\n            mkTv(mph, mkTokenName(purpose))\n        }\n    )) + bootstrapCharter;\n    // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);\n    actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);\n    // actualMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"actual: \" + b.show() + \" \" + i.show() )\n    // });\n\n    // print(\"activity\" + seedTxId.show() + \" \" + seedIdx.show() + \" asset \" + assetName.show());\n    // expectedMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"expected: \" + b.show() + \" \" + i.show() )\n    // });\n    temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {\n        l.find_safe((x : ByteArray) -> Bool { x == b }).switch{\n            None => l.prepend(b),\n            Some /*{x}*/ => error(\"UUT duplicate purpose \"\n                // +  x.decode_utf8()\n            )\n        }\n    }, []ByteArray{});\n    assert(temp == temp, \"prevent unused var\");\n\n\n    expectationsMet : Bool = valueMinted  == expectedValue;\n\n    assert(expectationsMet, \"mismatch in UUT mint\"\n        // +\";\\n   ... expected \"+ expectedValue.show()+\n        // \"   ... actual \"+ valueMinted.show()+\n        // \"   ... diff = \\n\" + (expectedValue - valueMinted).show()\n    );\n\n    delegateApproval && expectationsMet &&\n    hasSeedUtxo(tx, seedTxId, seedIdx\n        //, \"UUT \"+purposes.join(\"+\")\n    )\n}\n\nenum Activity { \n    mintingCharter\n     {\n        owner: Address\n\n        // we don't have a responsiblity to enforce delivery to the right location\n        // govAuthority: RelativeDelegateLink   // not needed \n    }\n    mintWithDelegateAuthorizing // delegate is handling all mints\n\n    mintingUuts {\n        seedTxn: TxId\n        seedIndex: Int\n        purposes: []String\n    }\n\n    //??? have the charter know about the UUT purposes, \n    // ... so we can limit the mint/burns to match the known list??\n    burningUuts {\n        tns: []String\n    }\n\n    func tvForPurpose(self, ctx: ScriptContext, purpose: String) -> Value {\n        mph : MintingPolicyHash = ctx.get_current_minting_policy_hash();\n        \n        mkTv(mph, self.uutTnFactory()(purpose))\n    }\n\n    func uutTnFactory(self) -> (String) -> String {\n        self.switch{\n            mintingUuts{MUseedTxn, MUseedIndex, _} => {\n                mkUutTnFactory(MUseedTxn, MUseedIndex)\n            },\n            // mintingCharter => {\n            //     mkUutTnFactory(seedTxn, seedIndex)\n            // },\n            _ => error(\"uutTnFactory: not mintingUuts!\")\n        } \n    }\n}\n");
+const code$7 = new String("module CapoMintHelpers\nimport {\n    mkTv,\n    tvCharter\n} from StellarHeliosHelpers\n\nimport {\n    getRefCharterDatum\n} from CapoHelpers\n\nimport {\n    Datum, Activity as CapoActivity\n} from specializedCapo\n\nimport {\n    RelativeDelegateLink,\n    requiresDelegateAuthorizing\n} from CapoDelegateHelpers\n\nfunc hasSeedUtxo(tx: Tx, seedTxId : TxId, seedIdx: Int\n    // , reason: String\n) -> Bool {\n    seedUtxo: TxOutputId = TxOutputId::new(\n        seedTxId,\n        seedIdx\n    );\n    assert(tx.inputs.any( (input: TxInput) -> Bool {\n        input.output_id == seedUtxo\n    }),  \"seed utxo required for minting \"\n        // +reason \n        // + \"\\n\"+seedTxId.show() + \" : \" + seedIdx.show()\n    );\n\n    true\n}\n\nfunc requiresDelegateApproval(\n    ctx: ScriptContext, \n    mph: MintingPolicyHash\n) -> Bool {\n    Datum::CharterToken {\n        _, mintDgt\n    } = getRefCharterDatum(ctx, mph);\n\n    requiresDelegateAuthorizing(\n        mintDgt, \n        mph, \n        ctx\n    )\n}\n\n//! pre-computes the hash-based suffix for a token name, returning\n//  a function that makes Uut names with any given purpose, given the seed-txn details\nfunc mkUutTnFactory(\n    seedTxId : TxId, seedIdx : Int\n) -> (String) -> String {\n   \n    idxBytes : ByteArray = seedIdx.serialize();\n    // assert(idxBytes.length == 1, \"surprise!\");\n\n    //! yuck: un-CBOR...\n    rawTxId : ByteArray = seedTxId.serialize().slice(5,37);\n\n    txoInfo : ByteArray = if (idxBytes.length > 9) { \n        // allows 9 bytes to ensure we can support \n        // the largest possible cbor encoding of txo-index integers, \n        // even though we only expect integers < 256 currently\n        assert(false, \n            //\"expected cbor(txo index) to be at most 9 bytes, got cbor( index=\n            //  + seedIdx.show() + \" ).hex = \" + idxBytes.show()\n            \"cbor(txoId) len > 9 !!\"  \n        );\n        idxBytes // never used\n    } else {\n       ( rawTxId + \"@\".encode_utf8() )+ idxBytes\n    };\n    // assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // print( \"******** txoId \" + txoId.show());\n\n    miniHash : ByteArray = txoInfo.blake2b().slice(0,6);\n    // assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    mhs: String = miniHash.show();\n\n    // returns a function computing a lightweight prefix + miniHash\n    (p: String) -> String {\n        p + \"-\" + mhs\n    }\n}\n\nfunc validateUutBurning(\n    ctx: ScriptContext, \n    tns: []String\n) -> Bool {\n    tx: Tx = ctx.tx;\n    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();\n    Datum::CharterToken {\n        _, mintDgt\n    } = getRefCharterDatum(ctx, mph);\n\n    valueBurned: Value = tx.minted;\n\n    expectedBurn : Value = Value::sum(tns.map(\n        (tn: String) -> Value {\n            mkTv(mph, tn, -1)\n        }\n    ));\n    actualBurn : Map[ByteArray]Int = valueBurned.get_policy(mph);\n    hasExpectedBurn : Bool = actualBurn == expectedBurn.get_policy(mph);\n    if (!hasExpectedBurn)  {\n        // actualBurn.for_each( (b : ByteArray, i: Int) -> {\n        //     print( \"actual: \" + b.show() + \" \" + i.show() )\n        // });\n        // expectedBurn.get_policy(mph).for_each( (b : ByteArray, i: Int) -> {\n        //     print( \"expected: \" + b.show() + \" \" + i.show() )\n        // });\n        assert(false, \"mismatch in UUT burn, diff:\\n\"\n            + (expectedBurn - valueBurned).show()\n        )\n    };\n\n    hasExpectedBurn && requiresDelegateAuthorizing(\n        mintDgt, \n        mph, \n        ctx\n    )\n\n}\n\n// checks all of the following:\n//  - there's an approving delegate (or we're bootstrapping)\n//  - the mint includes the seed UTXO\n//  - the mint matches the UUTs indicated by the list of purposes\nfunc validateUutMinting(\n    ctx: ScriptContext, \n    mph: MintingPolicyHash,\n    seedTxId : TxId, seedIdx : Int, \n    purposes: []String,     \n    mkTokenName: (String) -> String,\n    bootstrapCharter:Value = Value::new(AssetClass::ADA, 0)\n) -> Bool {\n    tx: Tx = ctx.tx;\n\n    isBootstrapping : Bool = !( bootstrapCharter.is_zero() );\n    delegateApproval : Bool = if ( isBootstrapping ) { \n        true \n    } else {\n        // not bootstrapping; must honor the mintDelegate's authority\n        Datum::CharterToken {\n            _, mintDgt\n        } = getRefCharterDatum(ctx, mph);\n\n        //!!! todo: add explicit activity details in authorization\n        requiresDelegateAuthorizing(\n            mintDgt, \n            mph, \n            ctx\n        )\n    };\n\n    valueMinted: Value = tx.minted;\n\n    // idxBytes : ByteArray = seedIdx.bound_max(255).serialize();\n    // // assert(idxBytes.length == 1, \"surprise!\");\n\n    // //! yuck: un-CBOR...\n    // rawTxId : ByteArray = seedTxId.serialize().slice(5,37);\n\n    // txoId : ByteArray = (rawTxId + \"@\".encode_utf8() + idxBytes);\n    // assert(txoId.length == 34, \"txId + @ + int should be length 34\");\n    // // print( \"******** txoId \" + txoId.show());\n\n    // miniHash : ByteArray = txoId.blake2b().slice(0,6);\n    // // assert(miniHash.length == 6, \"urgh.  slice 5? expected 12, got \"+ miniHash.length.show());\n\n    // tokenName1 = purpose + \".\" + miniHash.show();\n\n    expectedValue : Value = Value::sum(purposes.sort((a:String, b:String) -> Bool { a == b }).map(\n        (purpose: String) -> Value {\n            mkTv(mph, mkTokenName(purpose))\n        }\n    )) + bootstrapCharter;\n    // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);\n    actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);\n    // actualMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"actual: \" + b.show() + \" \" + i.show() )\n    // });\n\n    // print(\"activity\" + seedTxId.show() + \" \" + seedIdx.show() + \" asset \" + assetName.show());\n    // expectedMint.for_each( (b : ByteArray, i: Int) -> {\n    //     print( \"expected: \" + b.show() + \" \" + i.show() )\n    // });\n    temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {\n        l.find_safe((x : ByteArray) -> Bool { x == b }).switch{\n            None => l.prepend(b),\n            Some /*{x}*/ => error(\"UUT duplicate purpose \"\n                // +  x.decode_utf8()\n            )\n        }\n    }, []ByteArray{});\n    assert(temp == temp, \"prevent unused var\");\n\n\n    expectationsMet : Bool = valueMinted  == expectedValue;\n\n    assert(expectationsMet, \"mismatch in UUT mint\"\n        // +\";\\n   ... expected \"+ expectedValue.show()+\n        // \"   ... actual \"+ valueMinted.show()+\n        // \"   ... diff = \\n\" + (expectedValue - valueMinted).show()\n    );\n\n    delegateApproval && expectationsMet &&\n    hasSeedUtxo(tx, seedTxId, seedIdx\n        //, \"UUT \"+purposes.join(\"+\")\n    )\n}\n\nenum Activity { \n    mintingCharter\n     {\n        owner: Address\n\n        // we don't have a responsiblity to enforce delivery to the right location\n        // govAuthority: RelativeDelegateLink   // not needed \n    }\n    mintWithDelegateAuthorizing // delegate is handling all mints\n\n    mintingUuts {\n        seedTxn: TxId\n        seedIndex: Int\n        purposes: []String\n    }\n\n    //??? have the charter know about the UUT purposes, \n    // ... so we can limit the mint/burns to match the known list??\n    burningUuts {\n        tns: []String\n    }\n\n    func tvForPurpose(self, ctx: ScriptContext, purpose: String) -> Value {\n        mph : MintingPolicyHash = ctx.get_current_minting_policy_hash();\n        \n        mkTv(mph, self.uutTnFactory()(purpose))\n    }\n\n    func uutTnFactory(self) -> (String) -> String {\n        self.switch{\n            mintingUuts{MUseedTxn, MUseedIndex, _} => {\n                mkUutTnFactory(MUseedTxn, MUseedIndex)\n            },\n            // mintingCharter => {\n            //     mkUutTnFactory(seedTxn, seedIndex)\n            // },\n            _ => error(\"uutTnFactory: not mintingUuts!\")\n        } \n    }\n}\n");
 
 code$7.srcFile = "src/CapoMintHelpers.hl";
 code$7.purpose = "module";
@@ -59616,7 +59644,7 @@ code$7.moduleName = "CapoMintHelpers";
 
 const CapoMintHelpers = code$7;
 
-const code$6 = new String("module CapoDelegateHelpers\n\nimport {\n    mkTv,\n    returnsValueToScript\n} from StellarHeliosHelpers\n\n// Delegates can define addtional activities in their enum variants,\n// but these 4 basic activities are essential.\nenum BASE_DELEGATE_Activity {\n    Authorizing\n    Reassigning\n    Retiring\n    Modifying\n}\n\nstruct RelativeDelegateLink {\n    uutName: String\n    strategyName: String\n    delegateValidator: Option[ValidatorHash]\n\n    // config: Data\n}\n\nstruct DelegationDetail {\n    capoAddr: Address\n    mph: MintingPolicyHash\n    tn: ByteArray\n}\n\n// Delegates can define additional Datum in their enums,\n// but this first Datum is essential\nenum BASE_DELEGATE_Datum {\n    IsDelegation {\n        dd: DelegationDetail\n        CustomConfig: Data\n    }\n}\n\nfunc mustReturnValueToScript(value : Value, ctx : ScriptContext) -> Bool {\n    if (!returnsValueToScript( value, ctx)) {\n        error(\"authZor not returned\")\n        // error(\"the authZor token MUST be returned\")\n    };\n    true\n}\n\n//!!! call with existing delegate Datum.serialize()\nfunc unmodifiedDelegation(oldDD : ByteArray, ctx: ScriptContext) -> Bool {\n    o : []TxOutput = ctx.get_cont_outputs();\n    //    print(\"::::::::::::::::::::::::::::::::: hi \"+o.head.datum.get_inline_data().serialize().show());\n    assert(o.head.datum.get_inline_data().serialize() == oldDD,\n    // \"delegation datum must not be modified\"\n    \"modified dgtDtm\"\n);\n    true\n    // MintDelegateDatum::IsDelegation{\n    //     ddNew, _\n    // } = MintDelegateDatum::from_data( \n        \n    // );\n\n    //! the datum must be unchanged.\n    // ddNew == dd \n}\n\n/**\n * returns the AssetClass for the authority token found in the given DelegationDetail struct\n */\nfunc acAuthorityToken(dd: DelegationDetail) -> AssetClass {\n    AssetClass::new(dd.mph, dd.tn)\n}\n\n/**\n * returns a Value for the authority-token found in the given DelegationDetail struct\n */\n func tvAuthorityToken(dd: DelegationDetail) -> Value {\n    Value::new(\n        acAuthorityToken(dd), 1\n    )\n}\n\nfunc requiresValidDelegateOutput(\n    dd: RelativeDelegateLink, \n    mph: MintingPolicyHash, \n    ctx : ScriptContext,\n    required: Bool = true\n) -> Bool {\n    RelativeDelegateLink{\n        uut, strategy,\n        validatorHash\n    } = dd;\n    if (strategy.encode_utf8().length < 4) {\n        error(\"strategy too short\")\n        // error(\"strategy must be at least 4 bytes, got: '\"+strategy +\n        //     \"' = \"+ strategy.encode_utf8().length.show()\n        // )\n    };\n\n    v : Value = mkTv(mph, uut);\n    hasDelegate : Bool = validatorHash.switch{\n        Some{vh} => {\n            print(\" - seek dgTkn in vh \" + vh.show());\n            ctx.tx.value_locked_by(vh).contains(v)\n        },\n        None => ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {\n            o.value.contains(v)\n        }).switch{\n            Some => true, \n            None => false\n        }\n    };\n\n    if (!hasDelegate && required) {\n        error(\"missing dgTkn \"+ uut )\n    };\n    hasDelegate\n}\n\n\nfunc requiresDelegateAuthorizing(\n    dd: RelativeDelegateLink, \n    mph: MintingPolicyHash, \n    ctx : ScriptContext\n) -> Bool {\n    authzVal : Value = Value::new(AssetClass::new(mph, dd.uutName.encode_utf8()), 1);\n    print(\"finding my \"+ dd.uutName);\n    targetId : TxOutputId = ctx.tx.inputs.find_safe((i: TxInput) -> {\n        // print(\"   ?  in \"+i.value.show());\n        i.value.contains(authzVal) // find my authority token\n    }).switch{\n        Some{x} => x.output_id,\n        None => error(\"missing dgTkn \"+dd.uutName)\n     };\n    print (\"     found ^\");\n    k : ScriptPurpose = ctx.tx.redeemers.find_key( \n        (purpose : ScriptPurpose) -> { purpose.switch{ \n            sp: Spending => {\n                // print (\"oid: \" + sp.output_id.show());\n                sp.output_id == targetId\n            }, \n            _ => false \n        } }\n    );\n    // r : Data = ctx.tx.redeemers.get(  // index redeemers by...\n    //     ScriptPurpose::new_spending(  // [spending, plus ...\n    //     );\n        \n    err : String = \"dgTkn \"+dd.uutName+\" not Authz'ing\"; // \"not spent with an authorizing activity!\")\n    isAuthorizing : Bool = ctx.tx.redeemers.get(k).switch {\n        (index: Int, fields: []Data) => {\n            // a: BASE_DELEGATE_Activity => a.switch {\n            //     Authorizing => true,\n            fields == fields && \n            if (index >= 10) { true } else {\n                print(\"index: \"+index.show());\n                error(err)\n            }\n        },\n        _ => error(err)\n    };\n\n    isAuthorizing && requiresValidDelegateOutput(dd, mph, ctx)\n}\n");
+const code$6 = new String("module CapoDelegateHelpers\n\nimport {\n    mkTv,\n    returnsValueToScript\n} from StellarHeliosHelpers\n\n// Delegates can define addtional activities in their enum variants,\n// but these 4 basic activities are essential.\nenum BASE_DELEGATE_Activity {\n    Authorizing\n    Reassigning\n    Retiring\n    Modifying\n}\n\nstruct RelativeDelegateLink {\n    uutName: String\n    strategyName: String\n    delegateValidatorHash: Option[ValidatorHash]\n\n    // config: Data\n}\n\nstruct DelegationDetail {\n    capoAddr: Address\n    mph: MintingPolicyHash\n    tn: ByteArray\n}\n\n// Delegates can define additional Datum in their enums,\n// but this first Datum is essential\nenum BASE_DELEGATE_Datum {\n    IsDelegation {\n        dd: DelegationDetail\n        CustomConfig: Data\n    }\n}\n\nfunc mustReturnValueToScript(value : Value, ctx : ScriptContext) -> Bool {\n    if (!returnsValueToScript( value, ctx)) {\n        error(\"authZor not returned\")\n        // error(\"the authZor token MUST be returned\")\n    };\n    true\n}\n\n//!!! call with existing delegate Datum.serialize()\nfunc unmodifiedDelegation(oldDD : ByteArray, ctx: ScriptContext) -> Bool {\n    o : []TxOutput = ctx.get_cont_outputs();\n    //    print(\"::::::::::::::::::::::::::::::::: hi \"+o.head.datum.get_inline_data().serialize().show());\n    assert(o.head.datum.get_inline_data().serialize() == oldDD,\n    // \"delegation datum must not be modified\"\n    \"modified dgtDtm\"\n);\n    true\n    // MintDelegateDatum::IsDelegation{\n    //     ddNew, _\n    // } = MintDelegateDatum::from_data( \n        \n    // );\n\n    //! the datum must be unchanged.\n    // ddNew == dd \n}\n\n/**\n * returns the AssetClass for the authority token found in the given DelegationDetail struct\n */\nfunc acAuthorityToken(dd: DelegationDetail) -> AssetClass {\n    AssetClass::new(dd.mph, dd.tn)\n}\n\n/**\n * returns a Value for the authority-token found in the given DelegationDetail struct\n */\n func tvAuthorityToken(dd: DelegationDetail) -> Value {\n    Value::new(\n        acAuthorityToken(dd), 1\n    )\n}\n\nfunc requiresValidDelegateOutput(\n    dd: RelativeDelegateLink, \n    mph: MintingPolicyHash, \n    ctx : ScriptContext,\n    required: Bool = true\n) -> Bool {\n    RelativeDelegateLink{\n        uut, strategy,\n        validatorHash\n    } = dd;\n    if (strategy.encode_utf8().length < 4) {\n        error(\"strategy too short\")\n        // error(\"strategy must be at least 4 bytes, got: '\"+strategy +\n        //     \"' = \"+ strategy.encode_utf8().length.show()\n        // )\n    };\n\n    v : Value = mkTv(mph, uut);\n    hasDelegate : Bool = validatorHash.switch{\n        Some{vh} => {\n            print(\" - seek dgTkn in vh \" + vh.show());\n            ctx.tx.value_locked_by(vh).contains(v)\n        },\n        None => ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {\n            o.value.contains(v)\n        }).switch{\n            Some => true, \n            None => false\n        }\n    };\n\n    if (!hasDelegate && required) {\n        error(\"missing dgTkn \"+ uut )\n    };\n    hasDelegate\n}\n\n\nfunc requiresDelegateAuthorizing(\n    dd: RelativeDelegateLink, \n    mph: MintingPolicyHash, \n    ctx : ScriptContext\n) -> Bool {\n    authzVal : Value = Value::new(AssetClass::new(mph, dd.uutName.encode_utf8()), 1);\n    print(\"finding my \"+ dd.uutName);\n    targetId : TxOutputId = ctx.tx.inputs.find_safe((i: TxInput) -> {\n        // print(\"   ?  in \"+i.value.show());\n        i.value.contains(authzVal) // find my authority token\n    }).switch{\n        Some{x} => x.output_id,\n        None => error(\"missing dgTkn \"+dd.uutName)\n     };\n    print (\"     found ^\");\n    k : ScriptPurpose = ctx.tx.redeemers.find_key( \n        (purpose : ScriptPurpose) -> { purpose.switch{ \n            sp: Spending => {\n                // print (\"oid: \" + sp.output_id.show());\n                sp.output_id == targetId\n            }, \n            _ => false \n        } }\n    );\n    // r : Data = ctx.tx.redeemers.get(  // index redeemers by...\n    //     ScriptPurpose::new_spending(  // [spending, plus ...\n    //     );\n        \n    err : String = \"dgTkn \"+dd.uutName+\" not Authz'ing\"; // \"not spent with an authorizing activity!\")\n    isAuthorizing : Bool = ctx.tx.redeemers.get(k).switch {\n        (index: Int, fields: []Data) => {\n            // a: BASE_DELEGATE_Activity => a.switch {\n            //     Authorizing => true,\n            fields == fields && \n            if (index >= 10) { true } else {\n                print(\"index: \"+index.show());\n                error(err)\n            }\n        },\n        _ => error(err)\n    };\n\n    isAuthorizing && requiresValidDelegateOutput(dd, mph, ctx)\n}\n");
 
 code$6.srcFile = "src/delegation/CapoDelegateHelpers.hl";
 code$6.purpose = "module";
@@ -59636,12 +59664,23 @@ var __decorateClass$6 = (decorators, target, key, kind) => {
   return result;
 };
 class DefaultMinter extends StellarContract {
+  currentRev = 1n;
   contractSource() {
     return code$9;
   }
   getContractScriptParams(config) {
-    const { seedIndex, seedTxn } = config;
-    return { seedIndex, seedTxn };
+    const {
+      seedIndex,
+      seedTxn,
+      rev = this.currentRev,
+      isDev,
+      devGen
+    } = config;
+    return {
+      rev,
+      seedIndex,
+      seedTxn
+    };
   }
   importModules() {
     return this.configIn.capo.importModules();
@@ -59853,7 +59892,7 @@ class StellarDelegate extends StellarContract {
     if (!this.compiledScript.validatorHash) {
       throw new Error(
         `${this.constructor.name}: address doesn't use a validator hash!
-  ... if that's by design, you may wish to override 'get delegateValidatorHash()' -> undefined`
+  ... if that's by design, you may wish to override 'get delegateValidatorHash()'`
       );
     }
     return this.compiledScript.validatorHash;
@@ -60197,22 +60236,59 @@ var __decorateClass$4 = (decorators, target, key, kind) => {
 };
 //!!! todo: let this be parameterized for more specificity
 class Capo extends StellarContract {
+  static currentRev = 1n;
+  devGen = 0n;
   verifyConfigs() {
     return this.verifyCoreDelegates();
   }
   get isConfigured() {
     if (!this.configIn)
       return Promise.resolve(false);
-    if (this._verifyingConfigs)
-      return this._verifyingConfigs;
     return Promise.resolve(true);
   }
-  _verifyingConfigs;
   static parseConfig(rawJsonConfig) {
-    throw new Error(`Stellar contract subclasses should define their own static parseConfig where needed to enable connection from a specific dApp to a specific Stellar Contract.`);
+    throw new Error(
+      `Stellar contract subclasses should define their own static parseConfig where needed to enable connection from a specific dApp to a specific Stellar Contract.`
+    );
   }
-  constructor(args) {
-    super(args);
+  static get defaultParams() {
+    const params = {
+      rev: this.currentRev,
+      devGen: 0n
+    };
+    return params;
+  }
+  /**
+   * extracts from the input configuration the key details needed to construct/reconstruct the on-chain contract address
+   * @remarks
+   *
+   * extracts the details that are key to parameterizing the Capo / leader's on-chain contract script
+   * @public
+   **/
+  getContractScriptParams(config) {
+    if (this.configIn && config.mph && this.minter && !config.mph.eq(this.mph))
+      throw new Error(`mph mismatch`);
+    const { mph } = config;
+    const rev = this.constructor.currentRev;
+    const params = {
+      mph,
+      rev,
+      isDev: false,
+      devGen: 0n
+    };
+    if ("production" !== process.env.NODE_ENV) {
+      if (0n === this.devGen && "test" !== process.env.NODE_ENV) {
+        throw new Error(
+          `${this.constructor.name}: missing required instance property devGen : bigint > 0n`
+        );
+      }
+      params.isDev = true;
+      params.devGen = this.devGen;
+    }
+    return params;
+  }
+  async init(args) {
+    await super.init(args);
     const {
       scriptDatumName: onChainDatumName,
       scriptActivitiesName: onChainActivitiesName
@@ -60233,11 +60309,11 @@ class Capo extends StellarContract {
         `activities type${onChainActivitiesName} must have a 'usingAuthority' variant`
       );
     if (this.configIn && !this.configIn.bootstrapping) {
-      this._verifyingConfigs = this.verifyConfigs().then((r) => {
-        this._verifyingConfigs = void 0;
-        return r;
-      });
+      const { seedIndex, seedTxn } = this.configIn;
+      await this.connectMintingScript({ seedIndex, seedTxn });
+      await this.verifyConfigs();
     }
+    return this;
   }
   static bootstrapWith(args) {
     const { setup, config } = args;
@@ -60271,7 +60347,7 @@ class Capo extends StellarContract {
     return { redeemer: t._toUplcData() };
   }
   tvCharter() {
-    return this.connectMinter().tvCharter();
+    return this.minter.tvCharter();
   }
   get charterTokenAsValue() {
     console.warn(
@@ -60304,9 +60380,7 @@ class Capo extends StellarContract {
           throw new Error(
             `when using reference input for charter, arg3 must be omitted`
           );
-        tcx.addRefInput(
-          ctUtxo
-        );
+        tcx.addRefInput(ctUtxo);
       } else {
         const redeemer = redeemerOrRefInput;
         tcx.addInput(ctUtxo, redeemer).attachScript(
@@ -60335,12 +60409,12 @@ class Capo extends StellarContract {
    *
    * Uses the Capo's govAuthority delegate to locate the gov-authority token,
    * if available.  If that token is located in a smart contract, it should always be
-   * found (note, however, that the current user may not have the direct permission 
+   * found (note, however, that the current user may not have the direct permission
    * to spend the token in a transaction).
-   * 
+   *
    * If the token is located in a user wallet, and that user is not the contract's current
    * actor, then the token utxo will not be returned from this method.
-   * 
+   *
    * @public
    **/
   async findGovAuthority() {
@@ -60352,13 +60426,13 @@ class Capo extends StellarContract {
    * @remarks
    *
    * Uses the Capo's govAuthority delegate to locate the gov-authority token,
-   * if available the current user's wallet.  
-   * 
+   * if available the current user's wallet.
+   *
    * A delegate whose authority token is located in a smart contract will always return `undefined`.
-   * 
+   *
    * If the authority token is in a user wallet (not the same wallet as currently connected to the Capo contract class),
    * it will return `undefined`.
-   * 
+   *
    * @public
    **/
   async findActorGovAuthority() {
@@ -60377,7 +60451,9 @@ class Capo extends StellarContract {
    * @public
    **/
   findCharterAuthority() {
-    throw new Error(`use findGovAuthority() to locate charter's gov-authority token`);
+    throw new Error(
+      `use findGovAuthority() to locate charter's gov-authority token`
+    );
   }
   /**
    * REDIRECT: use txnAddGovAuthorityTokenRef() instead
@@ -60406,42 +60482,31 @@ class Capo extends StellarContract {
     const { seedTxn, seedIndex } = this.configIn;
     return { seedTxn, seedIndex };
   }
-  getCapoRev() {
-    return 1n;
-  }
-  /**
-   * extracts from the input configuration the key details needed to construct/reconstruct the on-chain contract address
-   * @remarks
-   *
-   * extracts the details that are key to parameterizing the Capo / leader's on-chain contract script
-   * @public
-   **/
-  getContractScriptParams(config) {
-    if (this.configIn && config.mph && !config.mph.eq(this.mph))
-      throw new Error(`mph mismatch`);
-    const { mph } = config;
-    const rev = this.getCapoRev();
-    return {
-      mph,
-      rev
-    };
-  }
-  connectMinter() {
-    return this.minter || this.connectMintingScript(this.getMinterParams());
-  }
+  // getCapoRev() {
+  //     return 1n;
+  // }
   get mph() {
-    return this.connectMinter().mintingPolicyHash;
+    return this.minter.mintingPolicyHash;
   }
   get mintingPolicyHash() {
     return this.mph;
   }
-  connectMintingScript(params) {
+  async connectMintingScript(params) {
     if (this.minter)
       throw new Error(`just use this.minter when it's already present`);
     const { minterClass } = this;
     const { seedTxn, seedIndex } = params;
-    const { mph: expectedMph } = this.configIn || {};
-    const minter = this.addStrellaWithConfig(minterClass, {
+    const {
+      mph: expectedMph,
+      devGen,
+      isDev
+    } = this.configIn || {
+      isDev: false,
+      devGen: 0n
+    };
+    const minter = await this.addStrellaWithConfig(minterClass, {
+      isDev,
+      devGen,
       seedTxn,
       seedIndex,
       //@ts-expect-error - subclassing Capo in a different way than DefaultCapo
@@ -60545,7 +60610,7 @@ expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
    * @public
    **/
   async txnCreateDelegateLink(tcx, roleName, delegateInfo = { strategyName: "default" }) {
-    const configured = this.txnCreateConfiguredDelegate(
+    const configured = await this.txnCreateConfiguredDelegate(
       tcx,
       roleName,
       delegateInfo
@@ -60574,19 +60639,19 @@ expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
     };
   }
   /**
-   * Generates and returns a complete set of delegate settings, given a delegation role and strategy-selection details. 
+   * Generates and returns a complete set of delegate settings, given a delegation role and strategy-selection details.
    * @remarks
    *
-   * Maps the indicated delegation role to specific UUT details from the provided transaction-context 
+   * Maps the indicated delegation role to specific UUT details from the provided transaction-context
    * to provide the resulting settings.  The transaction context isn't modified.
-   * 
+   *
    * Behaves exactly like (and provides the core implementation of) {@link Capo.txnCreateDelegateLink | txnCreateDelegateLink()},
    * returning additional `roleName` and `delegateClass`, to conform with the DelegateSettings type.
    *
    * See txnCreateDelegateLink for further details.
    * @public
    **/
-  txnCreateConfiguredDelegate(tcx, roleName, delegateInfo = { strategyName: "default" }) {
+  async txnCreateConfiguredDelegate(tcx, roleName, delegateInfo = { strategyName: "default" }) {
     const { strategyName, config: selectedConfig = {} } = delegateInfo;
     const { delegateRoles } = this;
     const uut = tcx.state.uuts[roleName];
@@ -60612,6 +60677,7 @@ expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
       ...scriptParamsFromStrategyVariant || {},
       ...selectedConfig,
       ...impliedDelegationDetails,
+      devGen: this.devGen,
       capo: this
     };
     //! it validates the net configuration so it can return a working config.
@@ -60630,7 +60696,7 @@ expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
       uutName: uut.name,
       config: mergedConfig
     };
-    let delegate = this.mustGetDelegate(delegateSettings);
+    let delegate = await this.mustGetDelegate(delegateSettings);
     const { delegateValidatorHash } = delegate;
     const pcd = {
       ...delegateSettings,
@@ -60654,6 +60720,7 @@ expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
       delegateLink,
       delegateLinkSerializer,
       4
+      // indent 4 spaces 
     );
     if (!cache[roleName])
       cache[roleName] = {};
@@ -60697,10 +60764,11 @@ expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
       // reqdAddress,  // removed
       ...linkedConfig,
       ...impliedDelegationDetails,
+      devGen: this.devGen,
       capo: this
     };
     //!  //  delegate: DT // omitted in "pre-configured";
-    const delegate = this.mustGetDelegate({
+    const delegate = await this.mustGetDelegate({
       delegateClass,
       config,
       roleName,
@@ -60712,7 +60780,7 @@ expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
     const dvh = delegate.delegateValidatorHash;
     if (edvh && dvh && !edvh.eq(dvh)) {
       throw new Error(
-        `${this.constructor.name}: ${roleName}: mismatched delegate: expected validator ${edvh?.hex}, got ${dvh.hex}`
+        `${this.constructor.name}: ${roleName}: mismatched or modified delegate: expected validator ${edvh?.hex}, got ${dvh.hex}`
       );
     }
     console.log(
@@ -60724,10 +60792,13 @@ expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
   showDelegateLink(delegateLink) {
     return JSON.stringify(delegateLink, null, 2);
   }
-  mustGetDelegate(configuredDelegate) {
+  async mustGetDelegate(configuredDelegate) {
     const { delegateClass, config } = configuredDelegate;
     try {
-      const configured = this.addStrellaWithConfig(delegateClass, config);
+      const configured = await this.addStrellaWithConfig(
+        delegateClass,
+        config
+      );
       return configured;
     } catch (e) {
       const t = e.message.match(/invalid parameter name '([^']+)'$/);
@@ -60935,7 +61006,7 @@ __decorateClass$4([
   partialTxn
 ], Capo.prototype, "txnAddGovAuthorityTokenRef", 1);
 
-const code$5 = new String("spending BasicMintDelegate\n\nconst rev : Int = 1\nconst instance : ByteArray = #67656e6572616c\n\nimport {\n    DelegationDetail,\n    acAuthorityToken,\n    tvAuthorityToken,\n    unmodifiedDelegation,\n    mustReturnValueToScript\n} from CapoDelegateHelpers\n\nimport {\n    mkUutTnFactory,\n    validateUutMinting\n} from CapoMintHelpers\n\nimport {\n    returnsValueToScript\n} from StellarHeliosHelpers\n\nimport {\n    MintDelegateActivity,\n    MintDelegateDatum\n} from specializedMintDelegate\n\n// import { \n//     preventCharterChange\n// } from MultiSigAuthority\n// func main(datum: Datum,_,ctx: ScriptContext) -> Bool {\n//     preventCharterChange(ctx, datum) \n// }\n\n\n\nfunc main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptContext) -> Bool {\n    // input = ctx.get_current_input();\n    mdd.switch{\n        //! performs essential checks of policy for spending the minting delegate's authority token \"mintDgt-*\"\n        //! It also calls any additionalDelegateValidation() defined in a specialized minting delegate.\n        isD : IsDelegation{dd, _} => {\n            // MintDelegateDatum::IsDelegation{dd, cfg} = isD;\n            activity.switch {        \n                // authorizing minting of a new token or burning an existing token:\n                //   guards that the authority token is returned to this script.\n                // specialized minting delegates should likely perform additional checks.\n                // Authorizing => {\n                //     assert(activity.usesGenericAuthorization(), \"no generic authz\");\n                //     ok : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);\n\n                //     o : []TxOutput = ctx.get_cont_outputs();\n                //     if (o.length != 1) { error(\"single utxo only\") };\n\n                //     // Note: unspecialized delegate requires unchanged datum\n                //     // ... in additionalDelegateValidation.  ...like this:\n                //     //      unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize(), ctx) &&\n\n                //     ok\n                // },\n\n                mintingUuts => {\n                    if (!activity.usesGenericUutMinting()) { // this may throw an error when this entire actviity is disabled by the specialization\n                        // if we arrive here, then the minting delegate should handle validation\n                        // of this activity in additionalDelegateValidation().\n                        true                                    \n                    } else {\n                         activity.genericUutMinting(mdd, ctx)\n                    }\n                },\n\n                // reassigning the authority token to a new minting delegate\n                Reassigning => {\n                    // the token isn't burned, and it isn't returned back to this script\n                    ctx.tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&\n                    !returnsValueToScript( tvAuthorityToken(dd), ctx)\n                },\n                // the token is being burned, retiring the authority token for this minting delegate\n                // as a result, this minting delegate will no longer be consulted.  This could be combined\n                // with the creation of a new minting delegate with a new authority token, registered\n                // with the Capo in place of this one (or Reassigning could be used for such a case).\n                // If there is no replacement minting delegate, then the Capo will not be able to perform \n                // any further minting activities.\n                //\n                // Retiring is not suitable for authorizing token-burning.\n                Retiring => {\n                    ctx.tx.minted.get(acAuthorityToken(dd)) == -1\n                },\n                // adjusting any configuration details for this mint delegate:\n                // guards that the authority token is returned to this script, \n                // ... and calls additional validateCDConfig() defined in a specialized minting delegate.\n                // specialized minting delegates can perform additional checks, but\n                // ... if they only need to validate custom mint-delegate configuration, \n                // ... they can simply implement a validateCDConfig() method.\n                Modifying => {\n                    authorityValue : Value = tvAuthorityToken(dd);\n                    ok : Bool = mustReturnValueToScript(authorityValue, ctx);\n                    dlgt : TxOutput = ctx.get_cont_outputs().find(\n                        (o :TxOutput) -> Bool {\n                            o.value.contains(authorityValue)\n                        }\n                    );\n                            \n                    ddNew : MintDelegateDatum::IsDelegation = \n                    MintDelegateDatum::from_data( \n                        dlgt.datum.get_inline_data() \n                    );\n\n                    mdd.validateCDConfig(ddNew) && ok\n                },\n                _ => true\n            } && activity.additionalDelegateValidation(isD, ctx)\n        },\n        _ => {\n            invalidRedeemer = () -> {  error(\"wrong Actvy/dtm\") }; ///Acvty custom datum must not use Activities reserved for IsDelegation datum.\") };\n            activity.switch{\n                // Authorizing => invalidRedeemer(),\n                Reassigning => invalidRedeemer(),\n                Retiring => invalidRedeemer(),\n                Modifying => invalidRedeemer(),\n                _ => activity.otherDatumValidation(mdd, ctx)\n            }\n        }\n    }\n}\n");
+const code$5 = new String("spending BasicMintDelegate\n\nconst rev : Int = 1\nconst instance : ByteArray = #67656e6572616c\nconst devGen : Int = 0\nconst isDev: Bool = false\n\nimport {\n    DelegationDetail,\n    acAuthorityToken,\n    tvAuthorityToken,\n    unmodifiedDelegation,\n    mustReturnValueToScript\n} from CapoDelegateHelpers\n\nimport {\n    mkUutTnFactory,\n    validateUutMinting\n} from CapoMintHelpers\n\nimport {\n    returnsValueToScript\n} from StellarHeliosHelpers\n\nimport {\n    MintDelegateActivity,\n    MintDelegateDatum\n} from specializedMintDelegate\n\n\n// import { \n//     preventCharterChange\n// } from MultiSigAuthority\n// func main(datum: Datum,_,ctx: ScriptContext) -> Bool {\n//     preventCharterChange(ctx, datum) \n// }\n\n\n\nfunc main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptContext) -> Bool {\n    if (isDev) {\n        print(\"is dev @gen \" + devGen.show() )\n    };\n\n    // input = ctx.get_current_input();\n    mdd.switch{\n        //! performs essential checks of policy for spending the minting delegate's authority token \"mintDgt-*\"\n        //! It also calls any additionalDelegateValidation() defined in a specialized minting delegate.\n        isD : IsDelegation{dd, _} => {\n            // MintDelegateDatum::IsDelegation{dd, cfg} = isD;\n            activity.switch {        \n                // authorizing minting of a new token or burning an existing token:\n                //   guards that the authority token is returned to this script.\n                // specialized minting delegates should likely perform additional checks.\n                // Authorizing => {\n                //     assert(activity.usesGenericAuthorization(), \"no generic authz\");\n                //     ok : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);\n\n                //     o : []TxOutput = ctx.get_cont_outputs();\n                //     if (o.length != 1) { error(\"single utxo only\") };\n\n                //     // Note: unspecialized delegate requires unchanged datum\n                //     // ... in additionalDelegateValidation.  ...like this:\n                //     //      unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize(), ctx) &&\n\n                //     ok\n                // },\n\n                mintingUuts => {\n                    if (!activity.usesGenericUutMinting()) { // this may throw an error when this entire actviity is disabled by the specialization\n                        // if we arrive here, then the minting delegate should handle validation\n                        // of this activity in additionalDelegateValidation().\n                        true                                    \n                    } else {\n                         activity.genericUutMinting(mdd, ctx)\n                    }\n                },\n\n                // reassigning the authority token to a new minting delegate\n                Reassigning => {\n                    // the token isn't burned, and it isn't returned back to this script\n                    ctx.tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&\n                    !returnsValueToScript( tvAuthorityToken(dd), ctx)\n                },\n                // the token is being burned, retiring the authority token for this minting delegate\n                // as a result, this minting delegate will no longer be consulted.  This could be combined\n                // with the creation of a new minting delegate with a new authority token, registered\n                // with the Capo in place of this one (or Reassigning could be used for such a case).\n                // If there is no replacement minting delegate, then the Capo will not be able to perform \n                // any further minting activities.\n                //\n                // Retiring is not suitable for authorizing token-burning.\n                Retiring => {\n                    ctx.tx.minted.get(acAuthorityToken(dd)) == -1\n                },\n                // adjusting any configuration details for this mint delegate:\n                // guards that the authority token is returned to this script, \n                // ... and calls additional validateCDConfig() defined in a specialized minting delegate.\n                // specialized minting delegates can perform additional checks, but\n                // ... if they only need to validate custom mint-delegate configuration, \n                // ... they can simply implement a validateCDConfig() method.\n                Modifying => {\n                    authorityValue : Value = tvAuthorityToken(dd);\n                    ok : Bool = mustReturnValueToScript(authorityValue, ctx);\n                    dlgt : TxOutput = ctx.get_cont_outputs().find(\n                        (o :TxOutput) -> Bool {\n                            o.value.contains(authorityValue)\n                        }\n                    );\n                            \n                    ddNew : MintDelegateDatum::IsDelegation = \n                    MintDelegateDatum::from_data( \n                        dlgt.datum.get_inline_data() \n                    );\n\n                    mdd.validateCDConfig(ddNew) && ok\n                },\n                _ => true\n            } && activity.additionalDelegateValidation(isD, ctx)\n        },\n        _ => {\n            invalidRedeemer = () -> {  error(\"wrong Actvy/dtm\") }; ///Acvty custom datum must not use Activities reserved for IsDelegation datum.\") };\n            activity.switch{\n                // Authorizing => invalidRedeemer(),\n                Reassigning => invalidRedeemer(),\n                Retiring => invalidRedeemer(),\n                Modifying => invalidRedeemer(),\n                _ => activity.otherDatumValidation(mdd, ctx)\n            }\n        }\n    }\n}\n");
 
 code$5.srcFile = "src/minting/BasicMintDelegate.hl";
 code$5.purpose = "spending";
@@ -60980,7 +61051,28 @@ var __decorateClass$3 = (decorators, target, key, kind) => {
 class BasicMintDelegate extends StellarDelegate {
   static currentRev = 1n;
   static get defaultParams() {
-    return { rev: this.currentRev };
+    const params = {
+      rev: this.currentRev,
+      devGen: 0n
+    };
+    return params;
+  }
+  getContractScriptParams(config) {
+    const params = {
+      rev: config.rev,
+      isDev: false,
+      devGen: 0n
+    };
+    if ("development" === process.env.NODE_ENV) {
+      params.isDev = true;
+      if (!config.devGen) {
+        throw new Error(
+          `Missing expected devGen in config for BasicMintDelegate`
+        );
+      }
+      params.devGen = config.devGen;
+    }
+    return params;
   }
   contractSource() {
     return code$5;
@@ -61062,11 +61154,6 @@ class BasicMintDelegate extends StellarDelegate {
   get scriptActivitiesName() {
     return "MintDelegateActivity";
   }
-  getContractScriptParams(config) {
-    return {
-      rev: config.rev
-    };
-  }
   /**
    * Adds a mint-delegate-specific authority token to the txn output
    * @remarks
@@ -61105,8 +61192,10 @@ class BasicMintDelegate extends StellarDelegate {
   }
   async txnMustAddMyRefScript(tcx) {
     const expectedRefScript = this.compiledScript;
+    const { purpose: expectedPurpose } = expectedRefScript.properties;
     const isMyRefScript = (txin) => {
-      if (txin.origOutput.refScript?.properties.purpose != expectedRefScript.properties.purpose)
+      const { purpose } = txin.origOutput.refScript?.properties || {};
+      if (purpose && purpose != expectedPurpose)
         return false;
       return txin.origOutput.refScript?.hash().toString() == expectedRefScript.hash().toString();
     };
@@ -61149,6 +61238,7 @@ class BasicMintDelegate extends StellarDelegate {
       capoAddr,
       mph,
       tn
+      // devGen: this.configIn?.devGen || 0n
     });
   }
   async txnCreatingTokenPolicy(tcx, tokenName) {
@@ -61279,7 +61369,7 @@ __decorateClass$2([
   Activity.redeemer
 ], AnyAddressAuthorityPolicy.prototype, "activityUsingAuthority", 1);
 
-const code$1 = new String("spending Capo\n\n// needed in helios 0.13: defaults\nconst mph : MintingPolicyHash = MintingPolicyHash::new(#1234)\nconst rev : Int = 1\n\nimport {\n    tvCharter\n} from CapoHelpers\n\nimport { \n    RelativeDelegateLink,\n    requiresValidDelegateOutput\n} from CapoDelegateHelpers\n\nimport {\n    mkTv,\n    didSign,\n    didSignInCtx\n} from StellarHeliosHelpers\n\nimport { Datum, Activity } from specializedCapo\n\n/**\n * \n */\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{\n        govDelegateLink, _\n    } = datum;\n\n    requiresValidDelegateOutput(govDelegateLink, mph, ctx)\n}\n\nfunc getCharterOutput(tx: Tx) -> TxOutput {\n    charterTokenValue : Value = Value::new(\n        AssetClass::new(mph, \"charter\".encode_utf8()), \n        1\n    );\n    tx.outputs.find_safe(\n        (txo : TxOutput) -> Bool {\n            txo.value >= charterTokenValue\n        }\n    ).switch{\n        None => error(\"this could only happen if the charter token is burned.\"),\n        Some{o} => o\n    }\n}\n\nfunc notUpdatingCharter(activity: Activity) -> Bool { activity.switch {\n    updatingCharter => false,  \n    _ => true\n}}\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        error(\"charter token must be returned to the contract \")\n        // actual : String = charterOutput.address.credential.switch{\n        //     PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n        //     Validator{vh} => \"val:📜#:\" + vh.show()\n        // };\n        // error(\n        //     \"charter token must be returned to the contract \" + cvh.show() +\n        //     \"... but was sent to \" +actual\n        // )\n    };\n\n    Datum::CharterToken{\n        govDelegate,\n        mintDelegate\n    } = datum;\n    Datum::CharterToken{\n        newGovDelegate,\n        newMintDelegate\n    } = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newGovDelegate == govDelegate &&\n        newMintDelegate == mintDelegate\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    // now: Time = tx.time_range.start;\n    \n    allDatumSpecificChecks: Bool = datum.switch {\n        ctd : CharterToken => {\n            // throws if bad\n            if(notUpdatingCharter(activity)) { \n                preventCharterChange(ctx, ctd)\n            } else {\n                true // \"maybe\", really\n            }\n        },\n        _ => {\n            datum.validateSpend(ctx, mph)\n        }            \n    };\n    allActivitySpecificChecks : Bool = activity.switch {\n        updatingCharter => {\n            charterOutput : TxOutput = getCharterOutput(tx);\n            newDatum = Datum::from_data( \n                charterOutput.datum.get_inline_data() \n            );\n            Datum::CharterToken{govDelegate, mintDelegate} = newDatum;\n\n            requiresValidDelegateOutput(govDelegate, mph, ctx) &&\n            requiresValidDelegateOutput(mintDelegate, mph, ctx) &&\n            requiresAuthorization(ctx, datum)\n        },\n\n        usingAuthority => {\n            // by definition, we're truly notUpdatingCharter(activity) \n            datum.switch {\n                 // throws if bad\n                ctd : CharterToken => requiresAuthorization(ctx, ctd),\n                _ => error(\"wrong use of usingAuthority action for non-CharterToken datum\")\n            }\n        },\n        _ => activity.allowActivity(datum, ctx, mph)\n    };\n\n    assert(allDatumSpecificChecks, \"datum-check fail\");\n    assert(allActivitySpecificChecks, \"redeeemer-check fail\");\n\n    //! retains mph in parameterization\n    assert(\n        ( allDatumSpecificChecks && allActivitySpecificChecks ) ||\n            // this should never execute (much less fail), yet it also shouldn't be optimized out.\n             mph.serialize() /* never */ == datum.serialize(), \n        \"unreachable\"\n    ); \n\n    allDatumSpecificChecks && \n    allActivitySpecificChecks &&\n    tx.serialize() != datum.serialize()\n}\n");
+const code$1 = new String("spending Capo\n\n// needed in helios 0.13: defaults\nconst mph : MintingPolicyHash = MintingPolicyHash::new(#1234)\nconst rev : Int = 1\nconst devGen : Int = 0\nconst isDev: Bool = false\n\nimport {\n    tvCharter\n} from CapoHelpers\n\nimport { \n    RelativeDelegateLink,\n    requiresValidDelegateOutput\n} from CapoDelegateHelpers\n\nimport {\n    mkTv,\n    didSign,\n    didSignInCtx\n} from StellarHeliosHelpers\n\nimport { \n    Datum, \n    Activity\n } from specializedCapo\n\n/**\n * \n */\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{\n        govDelegateLink, _\n    } = datum;\n\n    requiresValidDelegateOutput(govDelegateLink, mph, ctx)\n}\n\nfunc getCharterOutput(tx: Tx) -> TxOutput {\n    charterTokenValue : Value = Value::new(\n        AssetClass::new(mph, \"charter\".encode_utf8()), \n        1\n    );\n    tx.outputs.find_safe(\n        (txo : TxOutput) -> Bool {\n            txo.value >= charterTokenValue\n        }\n    ).switch{\n        None => error(\"this could only happen if the charter token is burned.\"),\n        Some{o} => o\n    }\n}\n\nfunc notUpdatingCharter(activity: Activity) -> Bool { activity.switch {\n    updatingCharter => false,  \n    _ => true\n}}\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        error(\"charter token must be returned to the contract \")\n        // actual : String = charterOutput.address.credential.switch{\n        //     PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n        //     Validator{vh} => \"val:📜#:\" + vh.show()\n        // };\n        // error(\n        //     \"charter token must be returned to the contract \" + cvh.show() +\n        //     \"... but was sent to \" +actual\n        // )\n    };\n\n    Datum::CharterToken{\n        govDelegate,\n        mintDelegate\n    } = datum;\n    Datum::CharterToken{\n        newGovDelegate,\n        newMintDelegate\n    } = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newGovDelegate == govDelegate &&\n        newMintDelegate == mintDelegate\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    // now: Time = tx.time_range.start;\n\n    if (isDev) {\n        print(\"is dev @gen \" + devGen.show() )\n    };\n    \n    allDatumSpecificChecks: Bool = datum.switch {\n        ctd : CharterToken => {\n            // throws if bad\n            if(notUpdatingCharter(activity)) { \n                preventCharterChange(ctx, ctd)\n            } else {\n                true // \"maybe\", really\n            }\n        },\n        _ => {\n            datum.validateSpend(ctx, mph)\n        }            \n    };\n    allActivitySpecificChecks : Bool = activity.switch {\n        updatingCharter => {\n            charterOutput : TxOutput = getCharterOutput(tx);\n            newDatum = Datum::from_data( \n                charterOutput.datum.get_inline_data() \n            );\n            Datum::CharterToken{govDelegate, mintDelegate} = newDatum;\n\n            requiresValidDelegateOutput(govDelegate, mph, ctx) &&\n            requiresValidDelegateOutput(mintDelegate, mph, ctx) &&\n            requiresAuthorization(ctx, datum)\n        },\n\n        usingAuthority => {\n            // by definition, we're truly notUpdatingCharter(activity) \n            datum.switch {\n                 // throws if bad\n                ctd : CharterToken => requiresAuthorization(ctx, ctd),\n                _ => error(\"wrong use of usingAuthority action for non-CharterToken datum\")\n            }\n        },\n        _ => activity.allowActivity(datum, ctx, mph)\n    };\n\n    assert(allDatumSpecificChecks, \"datum-check fail\");\n    assert(allActivitySpecificChecks, \"redeeemer-check fail\");\n\n    //! retains mph in parameterization\n    assert(\n        ( allDatumSpecificChecks && allActivitySpecificChecks ) ||\n            // this should never execute (much less fail), yet it also shouldn't be optimized out.\n             mph.serialize() /* never */ == datum.serialize(), \n        \"unreachable\"\n    ); \n\n    allDatumSpecificChecks && \n    allActivitySpecificChecks &&\n    tx.serialize() != datum.serialize()\n}\n");
 
 code$1.srcFile = "src/DefaultCapo.hl";
 code$1.purpose = "spending";
@@ -61598,7 +61688,6 @@ class DefaultCapo extends Capo {
         `${this.constructor.name}: the leader contract script '${this.scriptProgram?.name}', or one of its dependencies, has been modified`
       );
     }
-    this.connectMinter();
     const charter = await this.findCharterDatum();
     const { govAuthorityLink, mintDelegateLink } = charter;
     return Promise.all([
@@ -61667,35 +61756,6 @@ class DefaultCapo extends Capo {
   //     const { seedTxn, seedIdx } = this.configIn
   //     return { seedTxn, seedIdx }
   // }
-  /**
-   * should emit a complete configuration structure that can reconstitute a contract (suite) after its first bootstrap transaction
-   * @remarks
-   *
-   * mkFullConfig is called during a bootstrap transaction.  The default implementation works
-   * for subclasses as long as they use CapoBaseConfig for their config type.  Or, if they're
-   * instantiated with a partialConfig that augments CapoBaseConfig with concrete details that
-   * fulfill their extensions to the config type.
-   *
-   * If you have a custom mkBootstrapTxn() that uses techniques to explicitly add config
-   * properties not provided by your usage of `partialConfig` in the constructor, then you'll
-   * need to provide a more specific impl of mkFullConfig().  It's recommended that you
-   * call super.mkFullConfig() from your impl.
-   * @param baseConfig - receives the BaseConfig properties: mph, seedTxn and seedIndex
-   * @public
-   **/
-  mkFullConfig(baseConfig) {
-    const pCfg = this.partialConfig || {};
-    const newClass = this.constructor;
-    const newCapo = newClass.bootstrapWith({
-      setup: this.setup,
-      config: { ...baseConfig, ...pCfg }
-    });
-    return {
-      ...baseConfig,
-      ...pCfg,
-      rootCapoScriptHash: newCapo.compiledScript.validatorHash
-    };
-  }
   // async txnBurnUuts<
   //     existingTcx extends StellarTxnContext<any>,
   // >(
@@ -61749,15 +61809,19 @@ class DefaultCapo extends Capo {
     ]).then(async (seedUtxo) => {
       const { txId: seedTxn, utxoIdx } = seedUtxo.outputId;
       const seedIndex = BigInt(utxoIdx);
-      const minter = this.connectMintingScript({ seedIndex, seedTxn });
+      const minter = await this.connectMintingScript({ seedIndex, seedTxn });
       const { mintingPolicyHash: mph } = minter;
-      const rev = this.getCapoRev();
-      const bsc = this.mkFullConfig({
+      const csp = this.getContractScriptParams(
+        this.configIn || this.partialConfig
+      );
+      const bsc = {
+        ...csp,
         mph,
-        rev,
         seedTxn,
         seedIndex
-      });
+      };
+      this.loadProgramScript({ ...csp, mph });
+      bsc.rootCapoScriptHash = this.compiledScript.validatorHash;
       initialTcx.state.bsc = bsc;
       initialTcx.state.bootstrappedConfig = JSON.parse(
         JSON.stringify(bsc, delegateLinkSerializer)
@@ -61806,7 +61870,7 @@ class DefaultCapo extends Capo {
         " ---------------- CHARTER MINT ---------------------\n",
         txAsString(tcx.tx, this.networkParams)
       );
-      return minter.txnMintingCharter(tcx, {
+      return this.minter.txnMintingCharter(tcx, {
         owner: this.address,
         capoGov,
         // same as govAuthority,
@@ -61831,7 +61895,6 @@ class DefaultCapo extends Capo {
     );
   }
   async txnMintingUuts(initialTcx, uutPurposes, options = {}, roles = {}) {
-    const minter = this.connectMinter();
     const { usingSeedUtxo, additionalMintValues = [], mintDelegateActivity } = options;
     if (additionalMintValues.length && !mintDelegateActivity) {
       throw new Error(
@@ -61850,7 +61913,7 @@ class DefaultCapo extends Capo {
       purposes: uutPurposes,
       ...tcx.getSeedAttrs()
     });
-    const tcx2 = await minter.txnMintWithDelegateAuthorizing(
+    const tcx2 = await this.minter.txnMintWithDelegateAuthorizing(
       tcx,
       [
         ...mkUutValuesEntries(tcx.state.uuts),
@@ -62818,6 +62881,7 @@ async function addTestContext(context, TestHelperClass, params) {
   });
   context.initHelper = async (params2) => {
     const helper = new TestHelperClass(params2);
+    await helper.setupPending;
     if (context.h) {
       if (!params2.skipSetup)
         throw new Error(
@@ -62860,31 +62924,52 @@ class StellarTestHelper {
   get actorName() {
     return this._actorName;
   }
-  //@ts-ignore type mismatch in getter/setter until ts v5
   get currentActor() {
     return this.actors[this._actorName];
   }
+  /**
+   * obsolete; use setActor() instead
+   * @deprecated
+   *
+   * @internal
+   **/
   set currentActor(actorName) {
+    throw new Error(`deprecated; use async setActor()`);
+  }
+  async setActor(actorName) {
     const thisActor = this.actors[actorName];
     if (!thisActor)
       throw new Error(
         `setCurrentActor: invalid actor name '${actorName}'`
       );
-    console.log(`
-\u{1F3AD} -> \u{1F3AD} changing actor \u{1F3AD} ->  \u{1F3AD} from ${this._actorName} to ${actorName} ${dumpAny(thisActor.address)}`);
+    if (this._actorName) {
+      console.log(
+        `
+\u{1F3AD} -> \u{1F3AD} changing actor from \u{1F3AD} ${this._actorName} to  \u{1F3AD} ${actorName} ${dumpAny(thisActor.address)}`
+      );
+    } else {
+      console.log(
+        `
+\u{1F3AD}\u{1F3AD} initial actor ${actorName} ${dumpAny(
+          thisActor.address
+        )}`
+      );
+    }
     this._actorName = actorName;
     if (this.strella) {
-      this.initStellarClass(this.state.parsedConfig || this.config);
+      this.strella = await this.initStellarClass(
+        this.state.parsedConfig || this.config
+      );
     }
   }
   address;
   setupPending;
-  setupActors() {
+  async setupActors() {
     console.warn(
       `using 'hiro' as default actor because ${this.constructor.name} doesn't define setupActors()`
     );
     this.addActor("hiro", 1863n * ADA);
-    this.currentActor = "hiro";
+    return this.setActor("hiro");
   }
   constructor(config) {
     this.state = {};
@@ -62900,12 +62985,6 @@ class StellarTestHelper {
     this.network = theNetwork;
     this.networkParams = new NetworkParams(preProdParams);
     this.actors = {};
-    this._actorName = "";
-    this.setupActors();
-    if (!this._actorName)
-      throw new Error(
-        `${this.constructor.name} doesn't set currentActor in setupActors()`
-      );
     const now = /* @__PURE__ */ new Date();
     this.waitUntil(now);
     if (config?.skipSetup) {
@@ -62916,8 +62995,6 @@ class StellarTestHelper {
   }
   async initialize(config) {
     const { randomSeed, ...p } = config;
-    if (this.setupPending)
-      await this.setupPending;
     if (this.strella && this.randomSeed == randomSeed) {
       console.log(
         "       ----- skipped duplicate setup() in test helper"
@@ -62930,16 +63007,27 @@ class StellarTestHelper {
       );
       this.rand = void 0;
       this.randomSeed = randomSeed;
+      this.actors = {};
+      this.setupPending = void 0;
     } else {
       console.log(
         "???????????????????????? Test helper initializing without this.strella"
       );
     }
+    if (this.setupPending)
+      return this.setupPending;
+    this._actorName = "";
+    const actorSetup = this.setupActors();
+    await actorSetup;
+    if (!this._actorName)
+      throw new Error(
+        `${this.constructor.name} doesn't setActor()  in setupActors()`
+      );
     return this.initStellarClass();
   }
-  initStellarClass(config = this.config) {
+  async initStellarClass(config = this.config) {
     const TargetClass = this.stellarClass;
-    const strella = this.initStrella(TargetClass, config);
+    const strella = await this.initStrella(TargetClass, config);
     this.strella = strella;
     this.address = strella.address;
     return strella;
@@ -62953,7 +63041,7 @@ class StellarTestHelper {
   //         scope: "unit test"
   //     }
   // }
-  initStrella(TargetClass, config) {
+  async initStrella(TargetClass, config) {
     const setup = {
       network: this.network,
       myActor: this.currentActor,
@@ -62969,7 +63057,15 @@ class StellarTestHelper {
         setup,
         partialConfig: {}
       };
-    return new TargetClass(cfg);
+    if (setup.myActor) {
+      console.log(
+        "+strella init with actor addr",
+        setup.myActor.address.toBech32()
+      );
+    } else {
+      console.log("+strella init without actor");
+    }
+    return TargetClass.createWith(cfg);
   }
   //! it has a seed for mkRandomBytes, which must be set by caller
   randomSeed;
@@ -63027,7 +63123,9 @@ class StellarTestHelper {
     );
     try {
       const txId = await this.network.submitTx(tx);
-      console.log("test helper submitted direct txn:" + txAsString(tx, this.networkParams));
+      console.log(
+        "test helper submitted direct txn:" + txAsString(tx, this.networkParams)
+      );
       this.network.tick(1n);
       return txId;
     } catch (e) {
@@ -63088,7 +63186,9 @@ class StellarTestHelper {
     const a = this.network.createWallet(walletBalance);
     const addr = a.address.toBech32();
     console.log(
-      `+\u{1F3AD} Actor: ${roleName}: ${addr.slice(0, 12)}\u2026${addr.slice(-4)} ${lovelaceToAda(
+      `+\u{1F3AD} Actor: ${roleName}: ${addr.slice(0, 12)}\u2026${addr.slice(
+        -4
+      )} ${lovelaceToAda(
         walletBalance
       )} (\u{1F511}#${a.address.pubKeyHash?.hex.substring(0, 8)}\u2026)`
     );
@@ -63138,28 +63238,35 @@ class CapoTestHelper extends StellarTestHelper {
     randomSeed = 42,
     config
   } = {}) {
-    if (this.setupPending)
-      await this.setupPending;
     if (this.strella && this.randomSeed == randomSeed) {
       console.log(
         "       ----- skipped duplicate setup() in test helper"
       );
       return this.strella;
     }
-    if (this.strella)
+    if (this.strella) {
       console.log(
         `  ---  new test helper setup with new seed (was ${this.randomSeed}, now ${randomSeed})...
 ` + new Error("stack").stack.split("\n").slice(1).filter(
           (line) => !line.match(/node_modules/) && !line.match(/node:internal/)
         ).join("\n")
       );
+      this.setupPending = void 0;
+      this.actors = {};
+    }
+    if (this.setupPending) {
+      return this.setupPending;
+    }
+    await this.delay(1);
+    const actorSetup = this.setupActors();
+    await actorSetup;
     this.randomSeed = randomSeed;
     this.state.mintedCharterToken = void 0;
     this.state.parsedConfig = void 0;
     //! when there's not a preset config, it leaves the detailed setup to be done just-in-time
     if (!config)
-      return this.strella = this.initStrella(this.stellarClass);
-    const strella = this.initStrella(this.stellarClass, config);
+      return this.strella = await this.initStrella(this.stellarClass);
+    const strella = await this.initStrella(this.stellarClass, config);
     this.strella = strella;
     const { address, mintingPolicyHash: mph } = strella;
     const { name } = strella.scriptProgram;
@@ -63220,15 +63327,15 @@ class DefaultCapoTestHelper extends CapoTestHelper {
     return DefaultCapo;
   }
   //!!! todo: create type-safe ActorMap helper hasActors(), on same pattern as hasRequirements
-  setupActors() {
+  async setupActors() {
     this.addActor("tina", 1100n * ADA);
     this.addActor("tracy", 13n * ADA);
     this.addActor("tom", 120n * ADA);
-    this.currentActor = "tina";
+    return this.setActor("tina");
   }
   async mkCharterSpendTx() {
     await this.mintCharterToken();
-    const treasury = this.strella;
+    const treasury = await this.strella;
     const tcx = new StellarTxnContext(this.currentActor);
     const tcx2 = await treasury.txnAddGovAuthority(tcx);
     return treasury.txnMustUseCharterUtxo(tcx2, treasury.activityUsingAuthority());
@@ -63258,7 +63365,7 @@ class DefaultCapoTestHelper extends CapoTestHelper {
     }
     if (!this.strella)
       await this.initialize();
-    const script = this.strella;
+    const script = await this.strella;
     const goodArgs = args || this.mkDefaultCharterArgs();
     const tcx = await script.mkTxnMintCharterToken(goodArgs);
     const rawConfig = this.state.rawConfig = this.state.config = tcx.state.bootstrappedConfig;
@@ -63274,7 +63381,7 @@ class DefaultCapoTestHelper extends CapoTestHelper {
   }
   async updateCharter(args) {
     await this.mintCharterToken();
-    const treasury = this.strella;
+    const treasury = await this.strella;
     const { signers } = this.state;
     const tcx = await treasury.mkTxnUpdateCharter(args);
     return treasury.submit(tcx, { signers }).then(() => {

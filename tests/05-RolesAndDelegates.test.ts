@@ -33,11 +33,13 @@ import { Address } from "@hyperionbt/helios";
 class DelegationTestCapo extends DefaultCapo {
     get delegateRoles() {
         const inherited = super.delegateRoles;
-        const { 
-            mintDelegate: parentMintDelegate,
-             ...othersInherited 
-        } = inherited;
-        const {baseClass, uutPurpose, variants: pVariants} = parentMintDelegate
+        const { mintDelegate: parentMintDelegate, ...othersInherited } =
+            inherited;
+        const {
+            baseClass,
+            uutPurpose,
+            variants: pVariants,
+        } = parentMintDelegate;
         const mt = defineRole("mintDgt", BasicMintDelegate, {
             failsWhenBad: {
                 delegateClass: BasicMintDelegate,
@@ -51,20 +53,19 @@ class DelegationTestCapo extends DefaultCapo {
                 },
             },
         });
-        const mintDelegate : typeof  parentMintDelegate & typeof mt
-        = {
+        const mintDelegate: typeof parentMintDelegate & typeof mt = {
             uutPurpose,
             baseClass,
             variants: {
-                ... pVariants,
-                ... mt.variants
+                ...pVariants,
+                ...mt.variants,
             },
         };
-        
+
         return delegateRoles({
             ...othersInherited,
             noDefault: defineRole("noDef", DefaultMinter, {}),
-            mintDelegate
+            mintDelegate,
         });
     }
 }
@@ -104,7 +105,9 @@ describe("Capo", async () => {
                 const t = await h.initialize();
                 expect(t.delegateRoles).toBeTruthy();
                 expect(t.delegateRoles.mintDelegate.variants).toBeTruthy();
-                expect(t.delegateRoles.mintDelegate.variants.default).toBeTruthy();
+                expect(
+                    t.delegateRoles.mintDelegate.variants.default
+                ).toBeTruthy();
             });
         });
         describe("supports just-in-time strategy-selection using txnCreateDelegateLink()", () => {
@@ -143,7 +146,9 @@ describe("Capo", async () => {
                     undefined,
                     { mintDelegate: "mintDgt" }
                 );
-                console.log("multiple 'txnReceiveAuthorityToken' calls are ok/expected here");
+                console.log(
+                    "multiple 'txnReceiveAuthorityToken' calls are ok/expected here"
+                );
                 const mintDelegateLink = await t.txnCreateDelegateLink(
                     tcx,
                     "mintDelegate"
@@ -167,9 +172,8 @@ describe("Capo", async () => {
                 );
 
                 expect(
-                    createdDelegate.address.eq(
-                        createdDelegate2.address!
-                    ), "the default and explicitly-selected 'default' delegates should have the same address"
+                    createdDelegate.address.eq(createdDelegate2.address!),
+                    "the default and explicitly-selected 'default' delegates should have the same address"
                 ).toBeTruthy();
             });
 
@@ -185,12 +189,10 @@ describe("Capo", async () => {
                     { noDefault: "x" }
                 );
 
-                const problem =t.txnCreateDelegateLink(
-                        tcx,
-                        "noDefault"
-                    );
+                const problem = t.txnCreateDelegateLink(tcx, "noDefault");
                 expect(problem).rejects.toThrow(/no .* delegate for role/);
-                expect(problem).rejects.toThrow(DelegateConfigNeeded);            });
+                expect(problem).rejects.toThrow(DelegateConfigNeeded);
+            });
 
             it("If the strategy-configuration doesn't match available variants, the DelegateConfigNeeded error offers suggested strategy-names", async (context: localTC) => {
                 // prettier-ignore
@@ -210,13 +212,13 @@ describe("Capo", async () => {
                 ).rejects.toThrow(/invalid strategyName .*badStratName/);
 
                 const problem = t.txnCreateDelegateLink(tcx, "mintDelegate", {
-                        strategyName: "badStratName",
-                        config: { bad: true },
-                    });
+                    strategyName: "badStratName",
+                    config: { bad: true },
+                });
                 expect(problem).rejects.toThrow(DelegateConfigNeeded);
 
                 try {
-                    await problem
+                    await problem;
                 } catch (e) {
                     expect(
                         Array.isArray(e.availableStrategies),
@@ -239,7 +241,7 @@ describe("Capo", async () => {
                     undefined,
                     { mintDelegate: "mintDgt" }
                 );
-                let config: configBase = { badSomeUnplannedWay: true };
+                let config: configBase = { rev: 1n, badSomeUnplannedWay: true };
                 const getDelegate = () => {
                     return t.txnCreateDelegateLink(tcx, "mintDelegate", {
                         strategyName: "failsWhenBad",
@@ -247,10 +249,10 @@ describe("Capo", async () => {
                     });
                 };
 
-                expect(getDelegate()).resolves.toBeTruthy()
+                expect(getDelegate()).resolves.toBeTruthy();
 
-                config = { bad: true };
-                const p = getDelegate()
+                config = { rev: 1n, bad: true };
+                const p = getDelegate();
                 expect(p).rejects.toThrow(/validation errors/);
                 expect(p).rejects.toThrow(DelegateConfigNeeded);
 
@@ -269,18 +271,18 @@ describe("Capo", async () => {
                 const tcx = await t.txnMintingUuts(
                     await t.addSeedUtxo(h.mkTcx()),
                     ["mintDgt"],
-                    
+
                     undefined,
                     { mintDelegate: "mintDgt" }
                 );
-                const { delegate, delegateValidatorHash } = t.txnCreateConfiguredDelegate(
-                    tcx,
-                    "mintDelegate"
-                );
+                const { delegate, delegateValidatorHash } =
+                    await t.txnCreateConfiguredDelegate(tcx, "mintDelegate");
                 expect(delegate).toBeTruthy();
                 expect(delegateValidatorHash).toBeTruthy();
                 expect(
-                    delegate.address.eq(Address.fromHash(delegateValidatorHash!)),
+                    delegate.address.eq(
+                        Address.fromHash(delegateValidatorHash!)
+                    ),
                     "addresses should have matched"
                 ).toBeTruthy();
             });
@@ -303,13 +305,16 @@ describe("Capo", async () => {
                     "mintDelegate"
                 );
 
-                console.log(" delegateTxn :::::::::::: ", txAsString(tcx.tx, t.networkParams));
+                console.log(
+                    " delegateTxn :::::::::::: ",
+                    txAsString(tcx.tx, t.networkParams)
+                );
                 const createdDelegate = await t.connectDelegateWithLink(
                     "mintDelegate",
                     mintDelegateLink
                 );
 
-                expect(createdDelegate.address.toBech32()).toBeTruthy()
+                expect(createdDelegate.address.toBech32()).toBeTruthy();
             });
         });
 
@@ -335,7 +340,9 @@ describe("Capo", async () => {
                         return undefined;
                     },
                 };
-                assertType<RoleInfo<BasicMintDelegate, any,any,any>["variants"]>({
+                assertType<
+                    RoleInfo<BasicMintDelegate, any, any, any>["variants"]
+                >({
                     ok,
                     wrong: bad,
                 });

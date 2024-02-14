@@ -43,8 +43,8 @@ const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTes
 
 const describe = descrWithContext<localTC>;
 
-type smokeTestType = typeof it
-const smokeTest = (smoke ? fit : it) as smokeTestType ;
+type smokeTestType = typeof it;
+const smokeTest = (smoke ? fit : it) as smokeTestType;
 
 describe("StellarContract", async () => {
     beforeEach<localTC>(async (context) => {
@@ -70,7 +70,7 @@ describe("StellarContract", async () => {
 
             const treasury = await h.initialize();
             //@ts-expect-error private getter
-            const ocat = treasury.onChainActivitiesType
+            const ocat = treasury.onChainActivitiesType;
             expect(ocat).toBeTruthy();
         });
         it("getter: onChainTypes", async (context: localTC) => {
@@ -163,7 +163,7 @@ describe("StellarContract", async () => {
 
         describe("transaction context: state", () => {
             it("allows keys to be added to the tcx state", async () => {
-                type FOO = { foo: "bar", uuts:{} };
+                type FOO = { foo: "bar"; uuts: {} };
                 const tcx = new StellarTxnContext<FOO>();
                 //! basic type-checks only
                 tcx.state.foo = "bar";
@@ -305,7 +305,7 @@ describe("StellarContract", async () => {
                             t.mustFindActorUtxo("any", (x) => x, tcx)
                         ).rejects.toThrow();
                         expect(hasUtxo).toHaveBeenCalled();
-                        expect(findingInWallet).toBe(actors.tina)
+                        expect(findingInWallet).toBe(actors.tina);
                     });
 
                     it("throws an error if no utxo is matched", async (context: localTC) => {

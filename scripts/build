@@ -9,8 +9,9 @@ rollup \
   $*
 
 wait
-
-api-extractor run --local --verbose
+echo -n "build finished at "
+date
+# api-extractor run --local --verbose
 
 # to debug rollup plugins:
 #   pnpm exec node --inspect-brk \

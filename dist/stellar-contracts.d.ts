@@ -4,7 +4,6 @@ import { Assets } from '@hyperionbt/helios';
 import { ByteArray } from '@hyperionbt/helios';
 import { ByteArrayData } from '@hyperionbt/helios';
 import { capoDelegateConfig as capoDelegateConfig_2 } from './delegation/RolesAndDelegates.js';
-import { configBase } from '../StellarContract.js';
 import { Datum } from '@hyperionbt/helios';
 import { emptyState as emptyState_2 } from './StellarTxnContext.js';
 import { emptyState as emptyState_3 } from '../StellarTxnContext.js';
@@ -190,6 +189,12 @@ export declare class BasicMintDelegate extends StellarDelegate<MintDelegateArgs>
     static currentRev: bigint;
     static get defaultParams(): {
         rev: bigint;
+        devGen: bigint;
+    };
+    getContractScriptParams(config: any): {
+        rev: any;
+        isDev: boolean;
+        devGen: bigint;
     };
     contractSource(): any;
     mkDatumScriptReference(): Datum;
@@ -211,7 +216,6 @@ export declare class BasicMintDelegate extends StellarDelegate<MintDelegateArgs>
     importModules(): HeliosModuleSrc[];
     get scriptDatumName(): string;
     get scriptActivitiesName(): string;
-    getContractScriptParams(config: MintDelegateArgs): paramsBase;
     /**
      * Adds a mint-delegate-specific authority token to the txn output
      * @remarks
@@ -257,7 +261,7 @@ export declare class BasicMintDelegate extends StellarDelegate<MintDelegateArgs>
     static mkDelegateWithArgs(a: MintDelegateArgs): void;
 }
 
-declare type BasicMinterParams = SeedTxnParams & {
+declare type BasicMinterParams = paramsBase & SeedTxnParams & {
     capo: DefaultCapo<any, any, any>;
 };
 
@@ -318,19 +322,31 @@ declare type canSkipSetup = {
  */
 export declare abstract class Capo<minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter, charterDatumType extends anyDatumArgs = anyDatumArgs, configType extends CapoBaseConfig = CapoBaseConfig> extends StellarContract<configType> {
     #private;
+    static currentRev: bigint;
+    devGen: bigint;
     abstract get delegateRoles(): RoleMap<any>;
     abstract verifyCoreDelegates(): Promise<any>;
     verifyConfigs(): Promise<any>;
-    abstract mkFullConfig(baseConfig: CapoBaseConfig): configType;
     get isConfigured(): Promise<boolean>;
-    _verifyingConfigs?: Promise<any>;
     static parseConfig(rawJsonConfig: any): void;
-    constructor(args: StellarConstructorArgs<CapoBaseConfig>);
-    static bootstrapWith(args: StellarConstructorArgs<CapoBaseConfig>): any;
+    static get defaultParams(): {
+        rev: bigint;
+        devGen: bigint;
+    };
+    /**
+     * extracts from the input configuration the key details needed to construct/reconstruct the on-chain contract address
+     * @remarks
+     *
+     * extracts the details that are key to parameterizing the Capo / leader's on-chain contract script
+     * @public
+     **/
+    getContractScriptParams(config: configType): paramsBase & devConfigProps & Partial<configType>;
+    init(args: StellarFactoryArgs<configType>): Promise<this>;
+    static bootstrapWith(args: StellarFactoryArgs<CapoBaseConfig>): any;
     abstract contractSource(): HeliosModuleSrc;
     abstract mkDatumCharterToken(args: charterDatumType): InlineDatum;
     get minterClass(): stellarSubclass<DefaultMinter, BasicMinterParams>;
-    minter?: minterType;
+    minter: minterType;
     /**
      * returns a value representing the provided UUT(s)
      * @remarks
@@ -449,19 +465,9 @@ export declare abstract class Capo<minterType extends MinterBaseMethods & Defaul
         seedTxn: TxId;
         seedIndex: bigint;
     };
-    getCapoRev(): bigint;
-    /**
-     * extracts from the input configuration the key details needed to construct/reconstruct the on-chain contract address
-     * @remarks
-     *
-     * extracts the details that are key to parameterizing the Capo / leader's on-chain contract script
-     * @public
-     **/
-    getContractScriptParams(config: configType): paramsBase & Partial<configType>;
-    connectMinter(): minterType;
     get mph(): MintingPolicyHash;
     get mintingPolicyHash(): MintingPolicyHash;
-    connectMintingScript(params: SeedTxnParams): minterType;
+    connectMintingScript(params: SeedTxnParams): Promise<minterType>;
     /**
      * Finds a sufficient-sized utxo for seeding one or more named tokens
      * @remarks
@@ -526,11 +532,11 @@ export declare abstract class Capo<minterType extends MinterBaseMethods & Defaul
      * See txnCreateDelegateLink for further details.
      * @public
      **/
-    txnCreateConfiguredDelegate<DT extends StellarDelegate<any>, const RN extends string>(tcx: hasUutContext<RN>, roleName: RN & keyof this["delegateRoles"], delegateInfo?: MinimalDelegateLink<DT>): ConfiguredDelegate<DT>;
+    txnCreateConfiguredDelegate<DT extends StellarDelegate<any>, const RN extends string>(tcx: hasUutContext<RN>, roleName: RN & keyof this["delegateRoles"], delegateInfo?: MinimalDelegateLink<DT>): Promise<ConfiguredDelegate<DT>>;
     mkImpliedDelegationDetails(uut: UutName): DelegationDetail;
     connectDelegateWithLink<DelegateType extends StellarDelegate<any>, configType extends (DelegateType extends StellarContract<infer c> ? c : paramsBase) = DelegateType extends StellarContract<infer c> ? c : paramsBase>(roleName: string, delegateLink: RelativeDelegateLink<DelegateType>): Promise<DelegateType>;
     private showDelegateLink;
-    mustGetDelegate<T extends StellarDelegate<any>>(configuredDelegate: PreconfiguredDelegate<T>): T;
+    mustGetDelegate<T extends StellarDelegate<any>>(configuredDelegate: PreconfiguredDelegate<T>): Promise<T>;
     tvForDelegate(dgtLink: RelativeDelegateLink<any>): Value;
     mkDelegatePredicate(dgtLink: RelativeDelegateLink<any>): ((something: any) => any) & {
         value: Value;
@@ -555,7 +561,7 @@ declare type CapoBaseConfig = paramsBase & rootCapoConfig & SeedTxnParams & {
  *
  * @public
  **/
-export declare type capoDelegateConfig = paramsBase & {
+export declare type capoDelegateConfig = paramsBase & devConfigProps & {
     capoAddr: Address;
     mph: MintingPolicyHash;
     tn: number[];
@@ -571,7 +577,7 @@ export declare type capoDelegateConfig = paramsBase & {
  * should probably use DefaultCapoTestHelper instead of this class.
  * @public
  **/
-export declare abstract class CapoTestHelper<SC extends Capo<DefaultMinter & MinterBaseMethods, CDT, CT>, CDT extends anyDatumArgs = SC extends Capo<DefaultMinter, infer iCDT> ? iCDT : anyDatumArgs, //prettier-ignore
+export declare abstract class CapoTestHelper<SC extends Capo<MinterBaseMethods & DefaultMinter, CDT, CT>, CDT extends anyDatumArgs = SC extends Capo<any, infer iCDT> ? iCDT : anyDatumArgs, //prettier-ignore
 CT extends CapoBaseConfig = SC extends Capo<any, any, infer iCT> ? iCT : never> extends StellarTestHelper<SC> {
     initialize({ randomSeed, config, }?: {
         config?: CT;
@@ -785,23 +791,6 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
     findCharterDatum(): Promise<DefaultCharterDatumArgs>;
     findGovDelegate(): Promise<AuthorityPolicy<capoDelegateConfig_2>>;
     txnAddGovAuthority<TCX extends StellarTxnContext>(tcx: TCX): Promise<TCX>;
-    /**
-     * should emit a complete configuration structure that can reconstitute a contract (suite) after its first bootstrap transaction
-     * @remarks
-     *
-     * mkFullConfig is called during a bootstrap transaction.  The default implementation works
-     * for subclasses as long as they use CapoBaseConfig for their config type.  Or, if they're
-     * instantiated with a partialConfig that augments CapoBaseConfig with concrete details that
-     * fulfill their extensions to the config type.
-     *
-     * If you have a custom mkBootstrapTxn() that uses techniques to explicitly add config
-     * properties not provided by your usage of `partialConfig` in the constructor, then you'll
-     * need to provide a more specific impl of mkFullConfig().  It's recommended that you
-     * call super.mkFullConfig() from your impl.
-     * @param baseConfig - receives the BaseConfig properties: mph, seedTxn and seedIndex
-     * @public
-     **/
-    mkFullConfig(baseConfig: CapoBaseConfig): CapoBaseConfig & configType & rootCapoConfig;
     getMintDelegate(): Promise<BasicMintDelegate>;
     getGovDelegate(): Promise<AuthorityPolicy<capoDelegateConfig_2>>;
     /**
@@ -900,7 +889,7 @@ export declare class DefaultCapo<MinterType extends DefaultMinter = DefaultMinte
  * @public
  **/
 export declare class DefaultCapoTestHelper<DC extends DefaultCapo<DefaultMinter, CDT, CT> = DefaultCapo, //prettier-ignore
-CDT extends DefaultCharterDatumArgs = DC extends Capo<DefaultMinter, infer iCDT> ? iCDT : DefaultCharterDatumArgs, //prettier-ignore
+CDT extends DefaultCharterDatumArgs = DC extends Capo<any, infer iCDT> ? iCDT : DefaultCharterDatumArgs, //prettier-ignore
 CT extends CapoBaseConfig = DC extends Capo<any, any, infer iCT> ? iCT : never> extends CapoTestHelper<DC, CDT, CT> {
     /**
      * Creates a prepared test helper for a given Capo class, with boilerplate built-in
@@ -920,7 +909,7 @@ CT extends CapoBaseConfig = DC extends Capo<any, any, infer iCT> ? iCT : never> 
      **/
     static forCapoClass<DC extends DefaultCapo<DefaultMinter, any, any>>(s: stellarSubclass<DC>): DefaultCapoTestHelperClass<DC>;
     get stellarClass(): stellarSubclass<DC>;
-    setupActors(): void;
+    setupActors(): Promise<void>;
     mkCharterSpendTx(): Promise<StellarTxnContext>;
     mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<CDT>>;
     mintCharterToken(args?: MinimalDefaultCharterDatumArgs<CDT>): Promise<hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> & hasBootstrappedConfig<CapoBaseConfig>>;
@@ -950,6 +939,7 @@ export declare type DefaultCharterDatumArgs = {
  * @public
  **/
 export declare class DefaultMinter extends StellarContract<BasicMinterParams> implements MinterBaseMethods {
+    currentRev: bigint;
     contractSource(): any;
     getContractScriptParams(config: BasicMinterParams): paramsBase & SeedTxnParams;
     importModules(): HeliosModuleSrc[];
@@ -1034,6 +1024,11 @@ declare type DelegationDetail = {
     capoAddr: Address;
     mph: MintingPolicyHash;
     tn: number[];
+};
+
+declare type devConfigProps = {
+    isDev: boolean;
+    devGen: bigint;
 };
 
 /**
@@ -1199,6 +1194,8 @@ export declare type isActivity<T = never> = {
     redeemer: UplcDataValue | UplcData | T;
 };
 
+declare const isInternalConstructor: unique symbol;
+
 /**
  * Converts lovelace to approximate ADA, in consumable 3-decimal form
  * @public
@@ -1321,7 +1318,9 @@ declare type NetworkName = "testnet" | "mainnet";
  * Configuration details for StellarContract classes
  * @public
  **/
-export declare type paramsBase = Record<string, any>;
+export declare type paramsBase = {
+    rev: bigint;
+} & Record<string, any>;
 
 declare type PartialParamConfig<CT extends paramsBase> = Partial<CT>;
 
@@ -1453,7 +1452,7 @@ export declare type RoleMap<KR extends Record<string, RoleInfo_2<any, any, any, 
     [roleName in keyof KR]: KR[roleName];
 };
 
-declare type rootCapoConfig = {
+declare type rootCapoConfig = devConfigProps & {
     rootCapoScriptHash?: ValidatorHash;
 };
 
@@ -1491,20 +1490,6 @@ export { StakeAddress }
 
 export { StakingValidatorHash }
 
-/**
- * Initializes a stellar contract class
- * @remarks
- *
- * Includes network and other standard setup details, and any configuration needed
- * for the specific class.
- * @public
- **/
-export declare type StellarConstructorArgs<CT extends paramsBase> = {
-    setup: SetupDetails;
-    config?: CT;
-    partialConfig?: Partial<CT>;
-};
-
 export declare class StellarContract<ConfigType extends paramsBase> {
     scriptProgram?: Program;
     configIn?: ConfigType;
@@ -1529,7 +1514,23 @@ export declare class StellarContract<ConfigType extends paramsBase> {
     delegateReqdAddress(): false | Address;
     delegateAddrHint(): Address[] | undefined;
     walletNetworkCheck?: Promise<NetworkName> | NetworkName;
-    constructor(args: StellarConstructorArgs<ConfigType>);
+    /**
+     * Factory function for a configured instance of the contract
+     * @remarks
+     *
+     * Due to boring details of initialization order, this factory function is needed
+     * for creating a new instance of the contract.
+     * @param args - setup and configuration details
+     * @public
+     **/
+    static createWith<thisType extends StellarContract<configType>, configType extends paramsBase = thisType extends StellarContract<infer iCT> ? iCT : never>(this: stellarSubclass<any>, args: StellarFactoryArgs<configType>): Promise<StellarContract<configType> & InstanceType<typeof this>>;
+    /**
+     * obsolete public constructor.  Use the createWith() factory function instead.
+     *
+     * @public
+     **/
+    constructor(setup: SetupDetails, internal: typeof isInternalConstructor);
+    init(args: StellarFactoryArgs<ConfigType>): Promise<this>;
     compiledScript: UplcProgram;
     get datumType(): any;
     /**
@@ -1550,7 +1551,7 @@ export declare class StellarContract<ConfigType extends paramsBase> {
      * @param datum - inline datum
      **/
     txnKeepValue(tcx: StellarTxnContext, value: Value, datum: InlineDatum): StellarTxnContext<emptyState_2>;
-    addStrellaWithConfig<SC extends StellarContract<any>>(TargetClass: new (a: SC extends StellarContract<any> ? StellarConstructorArgs<ConfigFor<SC>> : never) => SC, config: SC extends StellarContract<infer iCT> ? iCT : never): SC;
+    addStrellaWithConfig<SC extends StellarContract<any>>(TargetClass: stellarSubclass<SC>, config: SC extends StellarContract<infer iCT> ? iCT : never): Promise<SC>;
     /**
      * Returns all the types exposed by the contract script
      * @remarks
@@ -1939,6 +1940,20 @@ export declare abstract class StellarDelegate<CT extends paramsBase & capoDelega
 }
 
 /**
+ * Initializes a stellar contract class
+ * @remarks
+ *
+ * Includes network and other standard setup details, and any configuration needed
+ * for the specific class.
+ * @public
+ **/
+export declare type StellarFactoryArgs<CT extends paramsBase> = {
+    setup: SetupDetails;
+    config?: CT;
+    partialConfig?: Partial<CT>;
+};
+
+/**
  * Type for the Class that constructs to a given type
  * @remarks
  *
@@ -1950,8 +1965,9 @@ export declare abstract class StellarDelegate<CT extends paramsBase & capoDelega
  * @typeParam CT - inferred type of the constructor args for the class
  * @public
  **/
-export declare type stellarSubclass<S extends StellarContract<CT>, CT extends paramsBase = S extends StellarContract<infer iCT> ? iCT : paramsBase> = (new (args: StellarConstructorArgs<CT>) => S & StellarContract<CT>) & {
+export declare type stellarSubclass<S extends StellarContract<CT>, CT extends paramsBase = S extends StellarContract<infer iCT> ? iCT : paramsBase> = (new (setup: SetupDetails, internal: typeof isInternalConstructor) => S) & {
     defaultParams: Partial<CT>;
+    createWith(args: StellarFactoryArgs<CT>): Promise<S>;
     parseConfig(rawJsonConfig: any): any;
 };
 
@@ -1987,14 +2003,23 @@ export declare abstract class StellarTestHelper<SC extends StellarContract<any>>
     private _actorName;
     get actorName(): string;
     get currentActor(): SimpleWallet;
+    /**
+     * obsolete; use setActor() instead
+     * @deprecated
+     *
+     * @internal
+     **/
     set currentActor(actorName: string);
+    setActor(actorName: string): Promise<void>;
     address?: Address;
     setupPending?: Promise<any>;
-    setupActors(): void;
+    setupActors(): Promise<void>;
     constructor(config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup);
     initialize(config: ConfigFor<SC> & canHaveRandomSeed): Promise<SC>;
-    initStellarClass(config?: (SC extends StellarContract<infer inferredConfig extends configBase> ? inferredConfig : never) | undefined): SC & StellarContract<SC extends StellarContract<infer inferredConfig extends configBase> ? inferredConfig : never>;
-    initStrella(TargetClass: stellarSubclass<SC, ConfigFor<SC>>, config?: ConfigFor<SC>): SC & StellarContract<SC extends StellarContract<infer inferredConfig extends configBase> ? inferredConfig : never>;
+    initStellarClass(config?: (SC extends StellarContract<infer inferredConfig extends {
+        rev: bigint;
+    } & Record<string, any>> ? inferredConfig : never) | undefined): Promise<SC>;
+    initStrella(TargetClass: stellarSubclass<SC, ConfigFor<SC>>, config?: ConfigFor<SC>): Promise<SC>;
     randomSeed?: number;
     rand?: () => number;
     delay(ms: any): Promise<unknown>;

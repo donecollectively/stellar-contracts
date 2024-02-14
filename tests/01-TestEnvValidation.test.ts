@@ -65,7 +65,7 @@ describe("Test environment", async () => {
                 h,
                 h: { network, actors, delay, state },
             } = context;
-            h.currentActor = "tom";
+            await h.setActor("tom");
 
             const { tom } = actors;
             const tomMoney = await tom.utxos;
@@ -118,9 +118,9 @@ describe("Test environment", async () => {
                 h: { network, actors, delay, state },
             } = context;
 
-            const waitedSlots = h.waitUntil(
-                new Date(new Date().getTime() + 100 * seconds)
-            );
+            const now = new Date().getTime();
+            h.waitUntil(new Date(now + 10 * seconds));
+            const waitedSlots = h.waitUntil(new Date(now + 110 * seconds));
 
             expect(waitedSlots).toBe(100n);
         });

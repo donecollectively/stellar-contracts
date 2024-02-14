@@ -2,6 +2,8 @@ spending BasicMintDelegate
 
 const rev : Int = 1
 const instance : ByteArray = #67656e6572616c
+const devGen : Int = 0
+const isDev: Bool = false
 
 import {
     DelegationDetail,
@@ -25,6 +27,7 @@ import {
     MintDelegateDatum
 } from specializedMintDelegate
 
+
 // import { 
 //     preventCharterChange
 // } from MultiSigAuthority
@@ -35,6 +38,10 @@ import {
 
 
 func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptContext) -> Bool {
+    if (isDev) {
+        print("is dev @gen " + devGen.show() )
+    };
+
     // input = ctx.get_current_input();
     mdd.switch{
         //! performs essential checks of policy for spending the minting delegate's authority token "mintDgt-*"

@@ -50,7 +50,7 @@ type MintCharterActivityArgs<T = {}> = T & {
     owner: Address;
 };
 
-export type BasicMinterParams = SeedTxnParams & {
+export type BasicMinterParams = configBase & SeedTxnParams & {
     capo: DefaultCapo<any, any,any>
 }
 
@@ -66,13 +66,24 @@ export class DefaultMinter
     extends StellarContract<BasicMinterParams>
     implements MinterBaseMethods
 {
+    currentRev: bigint = 1n;
     contractSource() {
         return contract;
     }
     getContractScriptParams(config: BasicMinterParams): configBase & SeedTxnParams {
-        const {seedIndex, seedTxn} = config
+        const {
+            seedIndex, 
+            seedTxn,
+            rev = this.currentRev,
+            isDev,
+            devGen,
+        } = config
 
-        return { seedIndex, seedTxn }
+        return {       
+            rev,      
+            seedIndex, 
+            seedTxn
+         }
     }
 
     importModules(): HeliosModuleSrc[] {

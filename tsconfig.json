@@ -5,7 +5,7 @@
         "target": "ESNext",
         "module": "NodeNext",
         "declaration": true,
-        "sourceMap": true,
+        // "sourceMap": true,
         "declarationMap": true,
         "moduleResolution": "NodeNext",
         "importHelpers": true,

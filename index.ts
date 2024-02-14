@@ -1,8 +1,3 @@
-export { mkHeliosModule } from "./src/HeliosModuleSrc.js";
-export type { HeliosModuleSrc } from "./src/HeliosModuleSrc.js";
-export { heliosRollupLoader } from "./src/heliosRollupLoader.js";
-export * from "./src/testing/index.js";
-
 export {
     mkValuesEntry,
     mkUutValuesEntries,
@@ -29,8 +24,6 @@ export {
     hexToPrintableString,
     dumpAny,
 } from "./src/diagnostics.js";
-import * as helios from "@hyperionbt/helios";
-export { helios }
 
 export { UutName } from "./src/delegation/UutName.js";
 export { Capo } from "./src/Capo.js";
@@ -89,7 +82,7 @@ export type {
     utxoPredicate,
     anyDatumProps,
     configBase as paramsBase,
-    StellarConstructorArgs,
+    StellarFactoryArgs,
     ConfigFor
 } from "./src/StellarContract.js";
 
@@ -130,3 +123,10 @@ export type {
 //     StakingValidatorHash,
 //     StakeAddress,
 // } from "./src/HeliosPromotedTypes.js";
+
+import * as helios from "@hyperionbt/helios";
+export { helios }
+export { mkHeliosModule } from "./src/HeliosModuleSrc.js";
+export type { HeliosModuleSrc } from "./src/HeliosModuleSrc.js";
+export { heliosRollupLoader } from "./src/heliosRollupLoader.js";
+export * from "./src/testing/index.js";

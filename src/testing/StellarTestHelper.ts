@@ -17,14 +17,16 @@ import { StellarContract, findInputsInWallets } from "../StellarContract.js";
 import type {
     stellarSubclass,
     ConfigFor,
-    StellarConstructorArgs,
+    StellarFactoryArgs,
 } from "../StellarContract.js";
 
-import { dumpAny, lovelaceToAda, txAsString, utxosAsString } from "../diagnostics.js";
-import { 
-    ADA,
-    preProdParams,
- } from "./types.js";
+import {
+    dumpAny,
+    lovelaceToAda,
+    txAsString,
+    utxosAsString,
+} from "../diagnostics.js";
+import { ADA, preProdParams } from "./types.js";
 import type {
     actorMap,
     canHaveRandomSeed,
@@ -51,39 +53,61 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     liveSlotParams: NetworkParams;
     networkParams: NetworkParams;
     network: NetworkEmulator;
-    private _actorName: string;
+    private _actorName!: string;
 
     get actorName() {
-        return this._actorName
+        return this._actorName;
     }
-    //@ts-ignore type mismatch in getter/setter until ts v5
     get currentActor(): WalletEmulator {
         return this.actors[this._actorName];
     }
+    /**
+     * obsolete; use setActor() instead
+     * @deprecated
+     *
+     * @internal
+     **/
     set currentActor(actorName: string) {
+        throw new Error(`deprecated; use async setActor()`);
+    }
+
+    async setActor(actorName: string) {
         const thisActor = this.actors[actorName];
         if (!thisActor)
             throw new Error(
                 `setCurrentActor: invalid actor name '${actorName}'`
             );
-        console.log(`\n🎭 -> 🎭 changing actor 🎭 ->  🎭 from ${
-            this._actorName} to ${actorName
-        } ${dumpAny(thisActor.address)}`);
+        if (this._actorName) {
+            console.log(
+                `\n🎭 -> 🎭 changing actor from 🎭 ${
+                    this._actorName
+                } to  🎭 ${actorName} ${dumpAny(thisActor.address)}`
+            );
+        } else {
+            console.log(
+                `\n🎭🎭 initial actor ${actorName} ${dumpAny(
+                    thisActor.address
+                )}`
+            );
+        }
         this._actorName = actorName;
+
         if (this.strella) {
-            this.initStellarClass(this.state.parsedConfig || this.config);
+            this.strella = await this.initStellarClass(
+                this.state.parsedConfig || this.config
+            );
         }
     }
 
     address?: Address;
 
     setupPending?: Promise<any>;
-    setupActors() {
+    async setupActors() {
         console.warn(
             `using 'hiro' as default actor because ${this.constructor.name} doesn't define setupActors()`
         );
         this.addActor("hiro", 1863n * ADA);
-        this.currentActor = "hiro";
+        return this.setActor("hiro");
     }
 
     constructor(config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup) {
@@ -103,12 +127,6 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         this.networkParams = new NetworkParams(preProdParams);
 
         this.actors = {};
-        this._actorName = ""; //only to make typescript happy
-        this.setupActors();
-        if (!this._actorName)
-            throw new Error(
-                `${this.constructor.name} doesn't set currentActor in setupActors()`
-            );
         const now = new Date();
         this.waitUntil(now);
         if (config?.skipSetup) {
@@ -120,9 +138,9 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         this.setupPending = this.initialize(config);
     }
 
-    async initialize(config: ConfigFor<SC> & canHaveRandomSeed) {
+    async initialize(config: ConfigFor<SC> & canHaveRandomSeed): Promise<SC> {
         const { randomSeed, ...p } = config;
-        if (this.setupPending) await this.setupPending;
+
         if (this.strella && this.randomSeed == randomSeed) {
             console.log(
                 "       ----- skipped duplicate setup() in test helper"
@@ -135,26 +153,35 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             );
             this.rand = undefined;
             this.randomSeed = randomSeed;
+            this.actors = {};
+            this.setupPending = undefined;
         } else {
             console.log(
                 "???????????????????????? Test helper initializing without this.strella"
             );
         }
+        if (this.setupPending) return this.setupPending;
+        this._actorName = ""; //only to make typescript happy
+        const actorSetup = this.setupActors();
+        await actorSetup;
+
+        if (!this._actorName)
+            throw new Error(
+                `${this.constructor.name} doesn't setActor()  in setupActors()`
+            );
 
         return this.initStellarClass();
     }
 
-    initStellarClass(config = this.config) {
+    async initStellarClass(config = this.config) {
         const TargetClass = this.stellarClass;
 
-        const strella = this.initStrella(TargetClass, config);
+        const strella = await this.initStrella(TargetClass, config);
 
         this.strella = strella;
         this.address = strella.address;
         return strella;
     }
-
-
 
     //!!! reconnect tests to tcx-based config-capture
     // onInstanceCreated: async (config: ConfigFor<SC>) => {
@@ -166,7 +193,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     //     }
     // }
 
-    initStrella(
+    async initStrella(
         TargetClass: stellarSubclass<SC, ConfigFor<SC>>,
         config?: ConfigFor<SC>
     ) {
@@ -177,7 +204,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             isTest: true,
         };
 
-        let cfg: StellarConstructorArgs<ConfigFor<SC>> = {
+        let cfg: StellarFactoryArgs<ConfigFor<SC>> = {
             setup,
             config: config!,
         };
@@ -187,7 +214,15 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
                 setup,
                 partialConfig: {},
             };
-        return new TargetClass(cfg);
+        if (setup.myActor) {
+            console.log(
+                "+strella init with actor addr",
+                setup.myActor.address.toBech32()
+            );
+        } else {
+            console.log("+strella init without actor");
+        }
+        return TargetClass.createWith(cfg);
     }
 
     //! it has a seed for mkRandomBytes, which must be set by caller
@@ -259,7 +294,10 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
 
         try {
             const txId = await this.network.submitTx(tx);
-            console.log("test helper submitted direct txn:" + txAsString(tx, this.networkParams));
+            console.log(
+                "test helper submitted direct txn:" +
+                    txAsString(tx, this.networkParams)
+            );
             this.network.tick(1n);
             // await this.delay(1000)
             // debugger
@@ -325,13 +363,13 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         if (this.actors[roleName])
             throw new Error(`duplicate role name '${roleName}'`);
         //! it instantiates a wallet with the indicated balance pre-set
-
+        // console.log(new Error(`add actor ${roleName}`).stack);
         const a = this.network.createWallet(walletBalance);
-        const addr = a.address
-            .toBech32();
+        const addr = a.address.toBech32();
         console.log(
-            `+🎭 Actor: ${roleName}: ${addr
-                .slice(0, 12)}…${addr.slice(-4)} ${lovelaceToAda(
+            `+🎭 Actor: ${roleName}: ${addr.slice(0, 12)}…${addr.slice(
+                -4
+            )} ${lovelaceToAda(
                 walletBalance
             )} (🔑#${a.address.pubKeyHash?.hex.substring(0, 8)}…)`
         );
@@ -340,7 +378,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         //  ... so that the full balance is spendable and the actor can immediately
         //  ... engage in smart-contract interactions.
         this.network.tick(BigInt(2));
-        const five = 5n * ADA
+        const five = 5n * ADA;
         if (0 == moreUtxos.length) moreUtxos = [five, five, five];
         for (const moreLovelace of moreUtxos) {
             if (moreLovelace > 0n) {

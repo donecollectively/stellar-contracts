@@ -68,6 +68,7 @@ export async function addTestContext<
     context.initHelper = async (params) => {
         //@ts-expect-error
         const helper = new TestHelperClass(params);
+        await helper.setupPending;
         if (context.h) {
             if (!params.skipSetup)
                 throw new Error(

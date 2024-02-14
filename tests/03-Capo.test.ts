@@ -176,12 +176,13 @@ describe("Capo", async () => {
 
                 // test t3m2n4d
                 // has the mint-delegate script ready to use as a referenceScript
-                debugger
+                debugger;
                 expect(
-                    tcx.outputs.find(                
-                        (o: TxOutput) => {
-                           return o.refScript?.serialize() ==
-                            mintDelegate.compiledScript.serialize();
+                    tcx.outputs.find((o: TxOutput) => {
+                        return (
+                            o.refScript?.serialize() ==
+                            mintDelegate.compiledScript.serialize()
+                        );
                     })
                 ).toBeTruthy();
             });
@@ -215,21 +216,28 @@ describe("Capo", async () => {
             expect(spentDgtToken).toBeTruthy();
             expect(returnedToken).toBeTruthy();
             expect(t.submit(tcx2)).resolves.toBeTruthy();
-            
+
             // uses the reference script in the minting txn:
-            expect( tcx2.txRefInputs.find(
-                (i) => i.origOutput.refScript?.serialize() == mintDelegate.compiledScript.serialize()
-            )).toBeTruthy();
+            expect(
+                tcx2.txRefInputs.find(
+                    (i) =>
+                        i.origOutput.refScript?.serialize() ==
+                        mintDelegate.compiledScript.serialize()
+                )
+            ).toBeTruthy();
         });
 
-        it.todo("can spend the ReferenceScript utxo and recover its minUtxo", async (context: localTC) => {
-            // ... when the mintDgt token is retired, the ReferenceScript is also retired
-            // the ReferenceScript spend (Retiring) requires the mintDgt token to be spent
-            // ... the mintDgt token spend (Retiring) requires 
-            //   - must get govAuthz from the Capo (ref: charter token + govAuthz token)
-            //   - must spend ReferenceScript datum (not back into the mint-delegate
-            //   - must burn the mintDgt token?  or just as good possibly: put it into a replacement delegate script
-        });
+        it.todo(
+            "can spend the ReferenceScript utxo and recover its minUtxo",
+            async (context: localTC) => {
+                // ... when the mintDgt token is retired, the ReferenceScript is also retired
+                // the ReferenceScript spend (Retiring) requires the mintDgt token to be spent
+                // ... the mintDgt token spend (Retiring) requires
+                //   - must get govAuthz from the Capo (ref: charter token + govAuthz token)
+                //   - must spend ReferenceScript datum (not back into the mint-delegate
+                //   - must burn the mintDgt token?  or just as good possibly: put it into a replacement delegate script
+            }
+        );
 
         it("won't mint in a txn not including the mintDgt", async (context: localTC) => {
             // prettier-ignore
@@ -245,9 +253,7 @@ describe("Capo", async () => {
                 await t.addSeedUtxo(new StellarTxnContext<any>()),
                 ["anything"]
             );
-            expect(t.submit(tcx)).rejects.toThrow(
-                /missing .*mintDgt/
-            );
+            expect(t.submit(tcx)).rejects.toThrow(/missing .*mintDgt/);
         });
 
         it("requires that the mintDgt datum is unmodified", async (context: localTC) => {

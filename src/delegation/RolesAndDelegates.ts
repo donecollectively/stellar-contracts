@@ -2,6 +2,7 @@ import { Address, MintingPolicyHash, ValidatorHash, bytesToHex, bytesToText } fr
 import type {
     ConfigFor,
     configBase,
+    devConfigProps,
     stellarSubclass,
 } from "../StellarContract.js";
 import {
@@ -81,7 +82,7 @@ export type DelegationDetail = {
  *
  * @public
  **/
-export type capoDelegateConfig = configBase & {
+export type capoDelegateConfig = configBase & devConfigProps & {
     capoAddr: Address;
     mph: MintingPolicyHash;
     tn: number[];

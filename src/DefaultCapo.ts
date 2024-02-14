@@ -386,7 +386,6 @@ export class DefaultCapo<
                 `${this.constructor.name}: the leader contract script '${this.scriptProgram?.name}', or one of its dependencies, has been modified`
             );
         }
-        this.connectMinter();
 
         const charter = await this.findCharterDatum();
         const { govAuthorityLink, mintDelegateLink } = charter;
@@ -475,41 +474,6 @@ export class DefaultCapo<
     //     return { seedTxn, seedIdx }
     // }
 
-    /**
-     * should emit a complete configuration structure that can reconstitute a contract (suite) after its first bootstrap transaction
-     * @remarks
-     *
-     * mkFullConfig is called during a bootstrap transaction.  The default implementation works
-     * for subclasses as long as they use CapoBaseConfig for their config type.  Or, if they're
-     * instantiated with a partialConfig that augments CapoBaseConfig with concrete details that
-     * fulfill their extensions to the config type.
-     *
-     * If you have a custom mkBootstrapTxn() that uses techniques to explicitly add config
-     * properties not provided by your usage of `partialConfig` in the constructor, then you'll
-     * need to provide a more specific impl of mkFullConfig().  It's recommended that you
-     * call super.mkFullConfig() from your impl.
-     * @param baseConfig - receives the BaseConfig properties: mph, seedTxn and seedIndex
-     * @public
-     **/
-
-    mkFullConfig(
-        baseConfig: CapoBaseConfig
-    ): CapoBaseConfig & configType & rootCapoConfig {
-        const pCfg = this.partialConfig || {};
-
-        const newClass = this.constructor;
-        // @ts-expect-error using constructor in this way
-        const newCapo = newClass.bootstrapWith({
-            setup: this.setup,
-            config: { ...baseConfig, ...pCfg },
-        });
-        return {
-            ...baseConfig,
-            ...pCfg,
-            rootCapoScriptHash: newCapo.compiledScript.validatorHash,
-        } as configType & CapoBaseConfig & rootCapoConfig;
-    }
-
     // async txnBurnUuts<
     //     existingTcx extends StellarTxnContext<any>,
     // >(
@@ -596,17 +560,24 @@ export class DefaultCapo<
         ]).then(async (seedUtxo) => {
             const { txId: seedTxn, utxoIdx } = seedUtxo.outputId;
             const seedIndex = BigInt(utxoIdx);
-
-            const minter = this.connectMintingScript({ seedIndex, seedTxn });
-
+            
+            const minter = await this.connectMintingScript({ seedIndex, seedTxn });
             const { mintingPolicyHash: mph } = minter;
-            const rev = this.getCapoRev();
-            const bsc = this.mkFullConfig({
+
+            // const rev = this.getCapoRev();
+            const csp = this.getContractScriptParams(
+                ( this.configIn || this.partialConfig ) as configType
+            );
+            
+            const bsc = {
+                ...csp,
                 mph,
-                rev,
                 seedTxn,
                 seedIndex,
-            });
+            } as configType;
+            this.loadProgramScript({...csp, mph})
+            bsc.rootCapoScriptHash = this.compiledScript.validatorHash;      
+
             initialTcx.state.bsc = bsc;
             initialTcx.state.bootstrappedConfig = JSON.parse(
                 JSON.stringify(bsc, delegateLinkSerializer)
@@ -673,7 +644,7 @@ export class DefaultCapo<
             );
             // debugger
 
-            return minter.txnMintingCharter(tcx, {
+            return this.minter.txnMintingCharter(tcx, {
                 owner: this.address,
                 capoGov, // same as govAuthority,
                 mintDgt,
@@ -755,7 +726,6 @@ export class DefaultCapo<
         //@ts-expect-error
         roles: RM = {} as Record<ROLES, purposes>
     ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {
-        const minter = this.connectMinter();
         const { usingSeedUtxo, additionalMintValues = [], mintDelegateActivity } = options;
         if (additionalMintValues.length && !mintDelegateActivity) {
             throw new Error(
@@ -782,7 +752,7 @@ export class DefaultCapo<
         //     mintDelegateActivity
         // );
 
-        const tcx2 = await minter.txnMintWithDelegateAuthorizing(tcx, 
+        const tcx2 = await this.minter.txnMintWithDelegateAuthorizing(tcx, 
             [ 
                 ...mkUutValuesEntries(tcx.state.uuts),
                 ...additionalMintValues,

@@ -3,6 +3,8 @@ spending Capo
 // needed in helios 0.13: defaults
 const mph : MintingPolicyHash = MintingPolicyHash::new(#1234)
 const rev : Int = 1
+const devGen : Int = 0
+const isDev: Bool = false
 
 import {
     tvCharter
@@ -19,7 +21,10 @@ import {
     didSignInCtx
 } from StellarHeliosHelpers
 
-import { Datum, Activity } from specializedCapo
+import { 
+    Datum, 
+    Activity
+ } from specializedCapo
 
 /**
  * 
@@ -94,6 +99,10 @@ func preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Boo
 func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
     // now: Time = tx.time_range.start;
+
+    if (isDev) {
+        print("is dev @gen " + devGen.show() )
+    };
     
     allDatumSpecificChecks: Bool = datum.switch {
         ctd : CharterToken => {

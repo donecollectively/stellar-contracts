@@ -17,7 +17,10 @@ import {
     CapoTestHelper,
     DefaultCapoTestHelper,
 } from "../src/testing";
-import { DefaultCharterDatumArgs, MinimalDefaultCharterDatumArgs } from "../src/DefaultCapo";
+import {
+    DefaultCharterDatumArgs,
+    MinimalDefaultCharterDatumArgs,
+} from "../src/DefaultCapo";
 
 type localTC = StellarTestContext<CustomTreasuryTestHelper>;
 
@@ -46,11 +49,11 @@ class CustomTreasuryTestHelper extends DefaultCapoTestHelper<CustomTreasury> {
         };
     }
 
-    setupActors() {
+    async setupActors() {
         this.addActor("tina", 1100n * ADA);
         this.addActor("tracy", 13n * ADA);
         this.addActor("tom", 120n * ADA);
-        this.currentActor = "tina";
+        return this.setActor("tina");
     }
     async mintNamedToken(
         tokenName: string,
@@ -68,7 +71,9 @@ class CustomTreasuryTestHelper extends DefaultCapoTestHelper<CustomTreasury> {
 
         tcx.addOutput(new TxOutput(destination, v));
 
-        console.log("charter token mint: \n" + tcx.dump(treasury.networkParams));
+        console.log(
+            "charter token mint: \n" + tcx.dump(treasury.networkParams)
+        );
 
         const submitting = treasury.submit(tcx, {
             signers: [tina.address, tracy.address, tom.address],

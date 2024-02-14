@@ -68,7 +68,7 @@ describe("Capo", async () => {
             }
             const tcx1a = await t.txnMintingUuts(
                 await t.addSeedUtxo(h.mkTcx()),
-                [ "testSomeThing"]
+                ["testSomeThing"]
             );
 
             const uutVal = t.uutsValue(tcx1a.state.uuts!);
@@ -84,7 +84,7 @@ describe("Capo", async () => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            const tcx = h.mkTcx()
+            const tcx = h.mkTcx();
 
             const strella = await h.bootstrap();
             const tx = new Tx();
@@ -113,11 +113,11 @@ describe("Capo", async () => {
 
             type testSomeThing = "testSomeThing";
 
-            const tcx2 = await strella.txnMintingUuts(await strella.addSeedUtxo(
-                new StellarTxnContext(
-                    h.currentActor
-                )), 
-                [ "testSomeThing"]
+            const tcx2 = await strella.txnMintingUuts(
+                await strella.addSeedUtxo(
+                    new StellarTxnContext(h.currentActor)
+                ),
+                ["testSomeThing"]
             );
             await strella.submit(tcx2);
             network.tick(1n);
@@ -131,7 +131,7 @@ describe("Capo", async () => {
             const t: DefaultCapo = await h.bootstrap();
 
             type testSomeThing = "testSomeThing";
-            const tcx1 = h.mkTcx()
+            const tcx1 = h.mkTcx();
             {
                 await t.txnMustUseCharterUtxo(tcx1, t.activityUsingAuthority());
                 const spy = vi
@@ -144,10 +144,9 @@ describe("Capo", async () => {
                 await t.txnAddGovAuthorityTokenRef(tcx1);
                 expect(spy).toHaveBeenCalled();
             }
-            const tcx1a = await t.txnMintingUuts(
-                await t.addSeedUtxo(tcx1), 
-                [ "testSomeThing"]
-            );
+            const tcx1a = await t.txnMintingUuts(await t.addSeedUtxo(tcx1), [
+                "testSomeThing",
+            ]);
 
             const uutVal = t.uutsValue(tcx1a.state.uuts!);
             tcx1a.addOutput(new TxOutput(tina.address, uutVal));
@@ -170,13 +169,12 @@ describe("Capo", async () => {
 
             // const tcx2 = await t.txnAddCharterAuthorityTokenRef(tcx);
             const mintDelegate = await t.getMintDelegate();
-            const mock = vi.spyOn(
-                mintDelegate,
-                "txnReceiveAuthorityToken"
-            ).mockImplementation(async (tcx) => tcx);
+            const mock = vi
+                .spyOn(mintDelegate, "txnReceiveAuthorityToken")
+                .mockImplementation(async (tcx) => tcx);
             const tcx1 = await t.txnMintingUuts(
-                await t.addSeedUtxo(h.mkTcx()), 
-                [ "testSomeThing"]
+                await t.addSeedUtxo(h.mkTcx()),
+                ["testSomeThing"]
             );
 
             expect(mock).toHaveBeenCalled();
@@ -200,8 +198,9 @@ describe("Capo", async () => {
             // await delay(1000);
 
             const tcx1 = await t.txnMintingUuts(
-                await t.addSeedUtxo(h.mkTcx()), 
-            [ "testSomeThing"]);
+                await t.addSeedUtxo(h.mkTcx()),
+                ["testSomeThing"]
+            );
 
             const uutVal = t.uutsValue(tcx1.state.uuts!);
             tcx1.addOutput(new TxOutput(tina.address, uutVal));
@@ -223,8 +222,8 @@ describe("Capo", async () => {
             const { tina, tom, tracy } = actors;
 
             const t: DefaultCapo = await h.initialize();
+
             await h.mintCharterToken();
-            // await delay(1000);
 
             type fooAndBar = "foo" | "bar";
             const tcx1 = new StellarTxnContext<hasAllUuts<fooAndBar>>(
@@ -232,11 +231,10 @@ describe("Capo", async () => {
             );
             // await t.txnAddCharterAuthorityTokenRef(tcx);
             const tcx1a = await t.txnMintingUuts(
-                await t.addSeedUtxo(
-                    h.mkTcx()
-                ), 
-                [ "foo", "bar"]
+                await t.addSeedUtxo(h.mkTcx()),
+                ["foo", "bar"]
             );
+            // await delay(4000);
             const uuts = t.uutsValue(tcx1a.state.uuts!);
 
             tcx1a.addOutput(new TxOutput(tina.address, uuts));
@@ -265,10 +263,8 @@ describe("Capo", async () => {
 
             // await t.txnAddCharterAuthorityTokenRef(tcx);
             const tcx1a = await t.txnMintingUuts(
-                await t.addSeedUtxo(
-                    h.mkTcx()
-                )
-                , [ "foo", "bar"]
+                await t.addSeedUtxo(h.mkTcx()),
+                ["foo", "bar"]
             );
 
             const uuts = t.uutsValue(tcx1a.state.uuts!);
@@ -307,7 +303,7 @@ describe("Capo", async () => {
                 "-------- case 1: using the txn-helper in unsupported way"
             );
             const tcx1a = await t.txnMintingUuts(
-                await t.addSeedUtxo(h.mkTcx()),                
+                await t.addSeedUtxo(h.mkTcx()),
                 [noMultiples, noMultiples]
             );
 
@@ -411,8 +407,9 @@ describe("Capo", async () => {
             );
 
             const tcx2 = await t.txnMintingUuts(
-                await t.addSeedUtxo(h.mkTcx())
-                , ["testSomeThing"]);
+                await t.addSeedUtxo(h.mkTcx()),
+                ["testSomeThing"]
+            );
             const uut = t.uutsValue(tcx2);
 
             tcx2.addOutput(new TxOutput(tina.address, uut));
@@ -440,7 +437,7 @@ describe("Capo", async () => {
             // await t.txnAddCharterAuthorityTokenRef(tcx);
             const tcx2 = await t.txnMintingUuts(
                 await t.addSeedUtxo(h.mkTcx()),
-                ["testSomeThing"],
+                ["testSomeThing"]
             );
 
             const uutVal = t.uutsValue(tcx2.state.uuts!);
@@ -551,18 +548,16 @@ describe("Capo", async () => {
 
             const minter = t.minter!;
             const activityBurningUuts = minter.activityBurningUuts.bind(minter);
-            vi.spyOn(minter, "activityBurningUuts")
-                .mockImplementation((tn1, tn2) => activityBurningUuts(tn1));
+            vi.spyOn(minter, "activityBurningUuts").mockImplementation(
+                (tn1, tn2) => activityBurningUuts(tn1)
+            );
 
             const bTcx2 = await t.txnBurnUuts(burnTcx, [tst, tst2]);
-            
+
             const submitting = t.submit(bTcx2, {
                 signers: [tom.address, tina.address, tracy.address],
             });
-            await expect(submitting).rejects.toThrow(
-                /mismatch in UUT burn/
-            );
-
+            await expect(submitting).rejects.toThrow(/mismatch in UUT burn/);
         });
     });
 });

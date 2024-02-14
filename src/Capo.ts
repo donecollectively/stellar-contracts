@@ -19,17 +19,19 @@ import {
     txn,
 } from "./StellarContract.js";
 import type {
-    StellarConstructorArgs,
+    StellarFactoryArgs,
     isActivity,
     configBase,
     stellarSubclass,
     ConfigFor,
+    devConfigProps,
+    SetupDetails,
 } from "./StellarContract.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
-import { 
-    StellarTxnContext, 
-    type hasSeedUtxo, 
-    type uutMap ,
+import {
+    StellarTxnContext,
+    type hasSeedUtxo,
+    type uutMap,
 } from "./StellarTxnContext.js";
 import {
     DelegateConfigNeeded,
@@ -94,15 +96,12 @@ export type hasAllUuts<uutEntries extends string> = {
 };
 
 export type UutCreationAttrs = {
-            usingSeedUtxo?: TxInput | undefined,
-            additionalMintValues?: valuesEntry[] 
-            mintDelegateActivity?: isActivity
-        } 
-export type UutCreationAttrsWithSeed = 
-& UutCreationAttrs 
-& Required<Pick<
-    UutCreationAttrs, "usingSeedUtxo"
->>
+    usingSeedUtxo?: TxInput | undefined;
+    additionalMintValues?: valuesEntry[];
+    mintDelegateActivity?: isActivity;
+};
+export type UutCreationAttrsWithSeed = UutCreationAttrs &
+    Required<Pick<UutCreationAttrs, "usingSeedUtxo">>;
 
 /**
  * the uut-factory interface
@@ -185,7 +184,7 @@ export interface MinterBaseMethods {
 
 export type anyDatumArgs = Record<string, any>;
 
-export type rootCapoConfig = {
+export type rootCapoConfig = devConfigProps & {
     rootCapoScriptHash?: ValidatorHash;
 };
 
@@ -248,31 +247,79 @@ type PreconfiguredDelegate<T extends StellarDelegate<any>> = Omit<
  * @public
  */
 export abstract class Capo<
-        minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter,
-        charterDatumType extends anyDatumArgs = anyDatumArgs,
-        configType extends CapoBaseConfig = CapoBaseConfig
-    >
-    extends StellarContract<configType>
-{
+    minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter,
+    charterDatumType extends anyDatumArgs = anyDatumArgs,
+    configType extends CapoBaseConfig = CapoBaseConfig
+> extends StellarContract<configType> {
+    static currentRev: bigint = 1n;
+    devGen: bigint = 0n;
     abstract get delegateRoles(): RoleMap<any>;
     abstract verifyCoreDelegates(): Promise<any>;
     verifyConfigs(): Promise<any> {
         return this.verifyCoreDelegates();
     }
-    abstract mkFullConfig(baseConfig: CapoBaseConfig): configType;
     get isConfigured(): Promise<boolean> {
         if (!this.configIn) return Promise.resolve(false);
-        if (this._verifyingConfigs) return this._verifyingConfigs;
+        // if (this._verifyingConfigs) return this._verifyingConfigs;
         return Promise.resolve(true);
     }
-    _verifyingConfigs?: Promise<any>;
     static parseConfig(rawJsonConfig: any) {
-        throw new Error(`Stellar contract subclasses should define their own static parseConfig where needed to enable connection from a specific dApp to a specific Stellar Contract.`)
+        throw new Error(
+            `Stellar contract subclasses should define their own static parseConfig where needed to enable connection from a specific dApp to a specific Stellar Contract.`
+        );
     }
 
-    constructor(args: StellarConstructorArgs<CapoBaseConfig>) {
-        //@ts-expect-error spurious "could be instantiated with a different subtype"
-        super(args);
+    static get defaultParams() {
+        const params = {
+            rev: this.currentRev,
+            devGen: 0n,
+        };
+        return params;
+    }
+
+    /**
+     * extracts from the input configuration the key details needed to construct/reconstruct the on-chain contract address
+     * @remarks
+     *
+     * extracts the details that are key to parameterizing the Capo / leader's on-chain contract script
+     * @public
+     **/
+    getContractScriptParams(
+        config: configType
+    ): configBase & devConfigProps & Partial<configType> {
+        if (
+            this.configIn &&
+            config.mph &&
+            this.minter &&
+            !config.mph.eq(this.mph)
+        )
+            throw new Error(`mph mismatch`);
+        const { mph } = config;
+        const rev = (this.constructor as typeof Capo).currentRev;
+        // console.log("this treasury uses mph", mph?.hex);
+
+        const params = {
+            mph,
+            rev,
+            isDev: false,
+            devGen: 0n,
+        } as configType;
+
+        if ("production" !== process.env.NODE_ENV) {
+            if (0n === this.devGen && "test" !== process.env.NODE_ENV) {
+                throw new Error(
+                    `${this.constructor.name}: missing required instance property devGen : bigint > 0n`
+                );
+            }
+            params.isDev = true;
+            params.devGen = this.devGen;
+        }
+
+        return params;
+    }
+
+    async init(args: StellarFactoryArgs<configType>) {
+        await super.init(args);
 
         const {
             scriptDatumName: onChainDatumName,
@@ -297,13 +344,22 @@ export abstract class Capo<
             );
 
         if (this.configIn && !this.configIn.bootstrapping) {
-            this._verifyingConfigs = this.verifyConfigs().then((r) => {
-                this._verifyingConfigs = undefined;
-                return r;
-            });
+            const { seedIndex, seedTxn } = this.configIn;
+            await this.connectMintingScript({ seedIndex, seedTxn });
+
+            await this.verifyConfigs();
+            // this._verifyingConfigs = this.verifyConfigs().then((r) => {
+            //     this._verifyingConfigs = undefined;
+            //     return r;
+            // });
+        } else {
+            // this.connectMintingScript(this.getMinterParams());
         }
+
+        return this;
     }
-    static bootstrapWith(args: StellarConstructorArgs<CapoBaseConfig>) {
+
+    static bootstrapWith(args: StellarFactoryArgs<CapoBaseConfig>) {
         const { setup, config } = args;
         const Class = this;
         //@ts-expect-error this is just Javascript.  Sorry, typescript!
@@ -320,7 +376,7 @@ export abstract class Capo<
         return DefaultMinter;
     }
 
-    minter?: minterType;
+    minter!: minterType;
     // @partialTxn
     // txnWillMintUuts<
     //     const purposes extends string,
@@ -375,7 +431,7 @@ export abstract class Capo<
 
     @Activity.redeemer
     activityUsingAuthority(): isActivity {
-        const usingAuthority = this.mustGetActivity("usingAuthority")
+        const usingAuthority = this.mustGetActivity("usingAuthority");
         if (!usingAuthority) {
             throw new Error(
                 `invalid contract without a usingAuthority redeemer`
@@ -386,10 +442,12 @@ export abstract class Capo<
         return { redeemer: t._toUplcData() };
     }
 
-    protected abstract activityUpdatingCharter(args: charterDatumType): isActivity;
+    protected abstract activityUpdatingCharter(
+        args: charterDatumType
+    ): isActivity;
 
     tvCharter() {
-        return this.connectMinter().tvCharter();
+        return this.minter.tvCharter();
     }
 
     get charterTokenAsValue() {
@@ -479,15 +537,11 @@ export abstract class Capo<
                 "refInput" === redeemerOrRefInput
             ) {
                 // using reference-input has been requested
-                if (
-                    newDatum
-                )
+                if (newDatum)
                     throw new Error(
                         `when using reference input for charter, arg3 must be omitted`
                     );
-                tcx.addRefInput(
-                    ctUtxo,
-                );
+                tcx.addRefInput(ctUtxo);
             } else {
                 // caller requested to **spend** the charter token with a speciic activity / redeemer
                 const redeemer = redeemerOrRefInput;
@@ -516,7 +570,10 @@ export abstract class Capo<
     }
 
     @partialTxn // non-activity partial
-    txnKeepCharterToken<TCX extends StellarTxnContext>(tcx: TCX, datum: InlineDatum) : TCX {
+    txnKeepCharterToken<TCX extends StellarTxnContext>(
+        tcx: TCX,
+        datum: InlineDatum
+    ): TCX {
         const txo = new TxOutput(this.address, this.tvCharter(), datum);
         txo.correctLovelace(this.networkParams);
         tcx.addOutput(txo);
@@ -530,17 +587,17 @@ export abstract class Capo<
      *
      * Uses the Capo's govAuthority delegate to locate the gov-authority token,
      * if available.  If that token is located in a smart contract, it should always be
-     * found (note, however, that the current user may not have the direct permission 
+     * found (note, however, that the current user may not have the direct permission
      * to spend the token in a transaction).
-     * 
+     *
      * If the token is located in a user wallet, and that user is not the contract's current
      * actor, then the token utxo will not be returned from this method.
-     * 
+     *
      * @public
      **/
-    async findGovAuthority() : Promise<TxInput | undefined> {
+    async findGovAuthority(): Promise<TxInput | undefined> {
         const delegate = await this.findGovDelegate();
-        return delegate.findAuthorityToken()
+        return delegate.findAuthorityToken();
     }
 
     /**
@@ -548,20 +605,19 @@ export abstract class Capo<
      * @remarks
      *
      * Uses the Capo's govAuthority delegate to locate the gov-authority token,
-     * if available the current user's wallet.  
-     * 
+     * if available the current user's wallet.
+     *
      * A delegate whose authority token is located in a smart contract will always return `undefined`.
-     * 
+     *
      * If the authority token is in a user wallet (not the same wallet as currently connected to the Capo contract class),
      * it will return `undefined`.
-     * 
+     *
      * @public
      **/
     async findActorGovAuthority() {
         const delegate = await this.findGovDelegate();
-        return delegate.findActorAuthorityToken()
+        return delegate.findActorAuthorityToken();
     }
-
 
     /**
      * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction,
@@ -575,7 +631,9 @@ export abstract class Capo<
      * @public
      **/
     findCharterAuthority() {
-        throw new Error(`use findGovAuthority() to locate charter's gov-authority token`);
+        throw new Error(
+            `use findGovAuthority() to locate charter's gov-authority token`
+        );
     }
 
     /**
@@ -596,7 +654,7 @@ export abstract class Capo<
      *
      * Uses txnAddGovAuthority() to locate the govAuthority delegate and txnGrantAuthority() to
      * add its authority token to a transaction.
-     * 
+     *
      * The charter-token is included as a reference input.
      *
      * @param tcx - the transaction context
@@ -625,51 +683,35 @@ export abstract class Capo<
         const { seedTxn, seedIndex } = this.configIn!;
         return { seedTxn, seedIndex };
     }
-    getCapoRev() {
-        return 1n;
-    }
+    // getCapoRev() {
+    //     return 1n;
+    // }
 
-    /**
-     * extracts from the input configuration the key details needed to construct/reconstruct the on-chain contract address
-     * @remarks
-     *
-     * extracts the details that are key to parameterizing the Capo / leader's on-chain contract script
-     * @public
-     **/
-    getContractScriptParams(
-        config: configType
-    ): configBase & Partial<configType> {
-        if (this.configIn && config.mph && !config.mph.eq(this.mph))
-            throw new Error(`mph mismatch`);
-        const { mph } = config;
-        const rev = this.getCapoRev();
-        // console.log("this treasury uses mph", mph?.hex);
-
-        //@ts-expect-error because TS only sees the abstract configType, not its constraint's props
-        return {
-            mph,
-            rev,
-        };
-    }
-    connectMinter() {
-        return this.minter || this.connectMintingScript(this.getMinterParams());
-    }
     get mph() {
-        return this.connectMinter().mintingPolicyHash!;
+        return this.minter.mintingPolicyHash!;
     }
 
     get mintingPolicyHash() {
         return this.mph;
     }
 
-    connectMintingScript(params: SeedTxnParams): minterType {
+    async connectMintingScript(params: SeedTxnParams): Promise<minterType> {
         if (this.minter)
             throw new Error(`just use this.minter when it's already present`);
         const { minterClass } = this;
         const { seedTxn, seedIndex } = params;
-        const { mph: expectedMph } = this.configIn || {};
+        const {
+            mph: expectedMph,
+            devGen,
+            isDev,
+        } = this.configIn || {
+            isDev: false,
+            devGen: 0n,
+        };
 
-        const minter = this.addStrellaWithConfig(minterClass, {
+        const minter = await this.addStrellaWithConfig(minterClass, {
+            isDev,
+            devGen,
             seedTxn,
             seedIndex,
             //@ts-expect-error - subclassing Capo in a different way than DefaultCapo
@@ -687,7 +729,7 @@ export abstract class Capo<
         } else if (!expectedMph) {
             console.log(`${this.constructor.name}: seeding new minting policy`);
         }
-        const mintingCharter = minter.mustGetActivity("mintingCharter")
+        const mintingCharter = minter.mustGetActivity("mintingCharter");
         if (!mintingCharter)
             throw new Error(
                 `minting script doesn't offer required 'mintingCharter' activity-redeemer`
@@ -804,8 +846,8 @@ export abstract class Capo<
         tcx: hasUutContext<RN>,
         roleName: RN,
         delegateInfo: MinimalDelegateLink<DT> = { strategyName: "default" }
-    ) : Promise<ConfiguredDelegate<DT> & RelativeDelegateLink<DT>> {
-        const configured = this.txnCreateConfiguredDelegate(
+    ): Promise<ConfiguredDelegate<DT> & RelativeDelegateLink<DT>> {
+        const configured = await this.txnCreateConfiguredDelegate(
             tcx,
             roleName,
             delegateInfo
@@ -815,7 +857,7 @@ export abstract class Capo<
             this.mkMinTv(this.mph, tcx.state.uuts[roleName])
         );
 
-        return configured
+        return configured;
     }
 
     // this is just type sugar - a configured delegate already has all the relative-delegate link properties.
@@ -842,26 +884,26 @@ export abstract class Capo<
     }
 
     /**
-     * Generates and returns a complete set of delegate settings, given a delegation role and strategy-selection details. 
+     * Generates and returns a complete set of delegate settings, given a delegation role and strategy-selection details.
      * @remarks
      *
-     * Maps the indicated delegation role to specific UUT details from the provided transaction-context 
+     * Maps the indicated delegation role to specific UUT details from the provided transaction-context
      * to provide the resulting settings.  The transaction context isn't modified.
-     * 
+     *
      * Behaves exactly like (and provides the core implementation of) {@link Capo.txnCreateDelegateLink | txnCreateDelegateLink()},
      * returning additional `roleName` and `delegateClass`, to conform with the DelegateSettings type.
      *
      * See txnCreateDelegateLink for further details.
      * @public
      **/
-    txnCreateConfiguredDelegate<
+    async txnCreateConfiguredDelegate<
         DT extends StellarDelegate<any>,
         const RN extends string
     >(
         tcx: hasUutContext<RN>,
         roleName: RN & keyof this["delegateRoles"],
         delegateInfo: MinimalDelegateLink<DT> = { strategyName: "default" }
-    ): ConfiguredDelegate<DT> {
+    ): Promise<ConfiguredDelegate<DT>> {
         const { strategyName, config: selectedConfig = {} } = delegateInfo;
 
         const { delegateRoles } = this;
@@ -894,6 +936,7 @@ export abstract class Capo<
             ...(scriptParamsFromStrategyVariant || {}),
             ...selectedConfig,
             ...impliedDelegationDetails,
+            devGen: this.devGen,
             capo: this,
         } as unknown as ConfigFor<DT>;
 
@@ -915,7 +958,7 @@ export abstract class Capo<
             uutName: uut.name,
             config: mergedConfig,
         };
-        let delegate: DT = this.mustGetDelegate(delegateSettings);
+        let delegate: DT = await this.mustGetDelegate(delegateSettings);
 
         // const reqdAddress = delegate.delegateReqdAddress();
         // if (reqdAddress) {
@@ -964,7 +1007,7 @@ export abstract class Capo<
         const cacheKey = JSON.stringify(
             delegateLink,
             delegateLinkSerializer,
-            4
+            4 // indent 4 spaces 
         );
         // console.log(`   ----- delegate '${roleName}' cache key `, cacheKey);
         if (!cache[roleName]) cache[roleName] = {};
@@ -1006,9 +1049,9 @@ export abstract class Capo<
         //@xxxts-expect-error because this stack of generically partial
         //  ... config elements isn't recognized as adding up to a full config type.
         // NOTE: THIS GETS AN EXISTING DELEGATE, and includes baseline config details.
-        // See also the create-delegate code path in txnCreateConfiguredDelegate(), which 
+        // See also the create-delegate code path in txnCreateConfiguredDelegate(), which
         // ... which also includes baseline config details.  IF YOU'RE ADDING STUFF HERE,
-        // ... consider that it might also be needed there. 
+        // ... consider that it might also be needed there.
         const config: configType = {
             ...defaultParamsFromDelegateClass,
             ...stratSettings,
@@ -1016,7 +1059,8 @@ export abstract class Capo<
             // reqdAddress,  // removed
             ...linkedConfig,
             ...impliedDelegationDetails,
-            capo: this
+            devGen: this.devGen,
+            capo: this,
         };
         //configured delegate:
         // delegateClass: stellarSubclass<DT>;
@@ -1030,7 +1074,7 @@ export abstract class Capo<
         //      reqdAddress?: Address;
         //      addrHint?: Address[];
 
-        const delegate = this.mustGetDelegate({
+        const delegate = await this.mustGetDelegate({
             delegateClass,
             config,
             roleName,
@@ -1056,13 +1100,16 @@ export abstract class Capo<
         return JSON.stringify(delegateLink, null, 2);
     }
 
-    mustGetDelegate<T extends StellarDelegate<any>>(
+    async mustGetDelegate<T extends StellarDelegate<any>>(
         configuredDelegate: PreconfiguredDelegate<T>
-    ): T {
+    ): Promise<T> {
         const { delegateClass, config } = configuredDelegate;
         try {
             // delegate
-            const configured = this.addStrellaWithConfig(delegateClass, config);
+            const configured = await this.addStrellaWithConfig(
+                delegateClass,
+                config
+            );
             return configured as T;
         } catch (e: any) {
             const t = e.message.match(/invalid parameter name '([^']+)'$/);

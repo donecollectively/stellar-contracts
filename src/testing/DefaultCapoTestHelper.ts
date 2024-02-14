@@ -55,11 +55,11 @@ declare const expect: typeof  expectType;
  * @public
  **/
 export class DefaultCapoTestHelper<
-    //@ts-expect-error spurious fail on mkFullConfig type; it tries to strongly match the generic abstract type
+    //@ts-expect-error spurious fail  type; it tries to strongly match the generic abstract type
     //    from (abstract) Capo, instead of paying attention to the clearly-matching concrete version in DefaultCapo
     DC extends DefaultCapo<DefaultMinter, CDT, CT> = DefaultCapo, //prettier-ignore
     CDT extends DefaultCharterDatumArgs =        
-        DC extends Capo<DefaultMinter, infer iCDT> ? iCDT : DefaultCharterDatumArgs, //prettier-ignore
+        DC extends Capo<any, infer iCDT> ? iCDT : DefaultCharterDatumArgs, //prettier-ignore
     CT extends CapoBaseConfig  = 
         DC extends Capo<any, any, infer iCT> ? iCT : never //prettier-ignore
     //@ts-expect-error because of a mismatch between the Capo's abstract mkTxnMintCharterToken's defined constraints
@@ -99,17 +99,19 @@ export class DefaultCapoTestHelper<
     }
 
     //!!! todo: create type-safe ActorMap helper hasActors(), on same pattern as hasRequirements
-    setupActors() {
+    async setupActors() {
+        // console.log("DCTH: setupActors")
+
         this.addActor("tina", 1100n * ADA);
         this.addActor("tracy", 13n * ADA);
         this.addActor("tom", 120n * ADA);
-        this.currentActor = "tina";
+        return this.setActor("tina")
     }
 
     async mkCharterSpendTx(): Promise<StellarTxnContext> {
         await this.mintCharterToken();
 
-        const treasury = this.strella!;
+        const treasury = await this.strella!;
         const tcx: StellarTxnContext = new StellarTxnContext(this.currentActor);
         const tcx2 = await treasury.txnAddGovAuthority(tcx);
         return treasury.txnMustUseCharterUtxo(tcx2, treasury.activityUsingAuthority());
@@ -150,7 +152,7 @@ export class DefaultCapoTestHelper<
         }
 
         if (!this.strella) await this.initialize();
-        const script = this.strella!;
+        const script = await this.strella!;
         const goodArgs = (args ||
             this.mkDefaultCharterArgs()) as MinimalDefaultCharterDatumArgs<CDT>;
         // debugger
@@ -175,7 +177,7 @@ export class DefaultCapoTestHelper<
 
     async updateCharter(args: CDT): Promise<StellarTxnContext> {
         await this.mintCharterToken();
-        const treasury = this.strella!;
+        const treasury = await this.strella!;
 
         const { signers } = this.state;
 
