@@ -21,6 +21,26 @@ export type hasSeedUtxo = StellarTxnContext<
     }
 >;
 
+export type FutureTxInfo<T extends StellarTxnContext> = {
+    tx: T;
+    description: string,
+    moreInfo: string,
+    optional: boolean
+}
+
+export type hasFutureTxn<
+    TCX extends StellarTxnContext,
+    txnName extends string,
+    FUTURE_TX_TYPE extends StellarTxnContext,
+    FT  = TCX extends StellarTxnContext<anyState & {futureTxns: infer FTT}> ? FTT : {},
+> = TCX & StellarTxnContext<
+    anyState & {
+        futureTxns:  FT & { 
+            [key in txnName]: FutureTxInfo<FUTURE_TX_TYPE>
+        }
+    } 
+>
+
 export type SeedAttrs = {
     seedTxn: TxId;
     seedIndex: bigint;
@@ -86,6 +106,23 @@ export class StellarTxnContext<S extends anyState = anyState> {
     dump(networkParams?: NetworkParams) {
         const { tx } = this;
         return txAsString(tx, networkParams);
+    }
+
+    addFutureTxn<
+        TCX extends StellarTxnContext<anyState>, 
+        txnName extends string, 
+        FUTURE_TX_TYPE extends StellarTxnContext
+    >(
+        this: TCX,
+        txnName: txnName, 
+        txInfo: FutureTxInfo<FUTURE_TX_TYPE>
+    ): hasFutureTxn<TCX, txnName, FUTURE_TX_TYPE> {
+        const thisWithMoreType : hasFutureTxn<TCX, txnName, FUTURE_TX_TYPE> = this as any;
+        thisWithMoreType.state.futureTxns = {
+        ... (thisWithMoreType.state.futureTxns || {}),
+            [txnName]: txInfo
+        }
+        return thisWithMoreType 
     }
 
     mintTokens(...args: Parameters<Tx["mintTokens"]>): StellarTxnContext<S> {

@@ -15,7 +15,7 @@ import StellarHeliosHelpers from "../StellarHeliosHelpers.hl";
 
 import { Activity, datum } from "../StellarContract.js";
 import type { configBase, isActivity } from "../StellarContract.js";
-import { StellarTxnContext, type hasSeedUtxo } from "../StellarTxnContext.js";
+import { StellarTxnContext, type anyState, type hasFutureTxn, type hasSeedUtxo } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
 
 import { StellarDelegate } from "../delegation/StellarDelegate.js";
@@ -215,7 +215,12 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
      * @typeParam ‹pName› - descr (for generic types)
      * @public
      **/
-    txnCreateRefScript<TCX extends StellarTxnContext>(tcx: TCX): TCX {
+    txnCreateRefScript<
+        TCX extends StellarTxnContext<anyState>, 
+        scriptName extends string
+    >(
+        tcx: TCX, scriptName: scriptName
+    ): TCX & hasFutureTxn<TCX, `refScript${scriptName}`, StellarTxnContext<anyState>>{
         const refScriptUtxo = new TxOutput(
             this.address,
             new Value(this.ADA(0n)),
@@ -224,7 +229,14 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
         );
         refScriptUtxo.correctLovelace(this.networkParams);
 
-        return tcx.addOutput(refScriptUtxo);
+        return tcx.addFutureTxn(
+            `refScript${scriptName}`, {
+                "description": "create reference script for minting delegate",
+                "moreInfo": "saves txn fees and txn space in future txns",
+                "optional": false,
+                tx: new StellarTxnContext(this.myActor).addOutput(refScriptUtxo)
+            }
+        );
     }
 
     async txnMustAddMyRefScript<TCX extends StellarTxnContext>(tcx: TCX): Promise<TCX> {

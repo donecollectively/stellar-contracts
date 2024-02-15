@@ -1611,19 +1611,19 @@ export class StellarContract<
         predicate: (u: TxInput) => TxInput | undefined,
         exceptInTcx: StellarTxnContext<any>,
         extraErrorHint?: string
-    ): Promise<TxInput | never>;
+    ): Promise<TxInput>;
     async mustFindActorUtxo(
         name: string,
         predicate: (u: TxInput) => TxInput | undefined,
         extraErrorHint?: string
-    ): Promise<TxInput | never>;
+    ): Promise<TxInput>;
 
     async mustFindActorUtxo(
         name: string,
         predicate: (u: TxInput) => TxInput | undefined,
         hintOrExcept?: string | StellarTxnContext,
         hint?: string
-    ): Promise<TxInput | never> {
+    ): Promise<TxInput> {
         const wallet = this.myActor;
 
         if (!wallet) throw new Error(this.missingActorError);
@@ -1695,7 +1695,7 @@ export class StellarContract<
         predicate: utxoPredicate,
         searchScope: UtxoSearchScope,
         extraErrorHint: string = ""
-    ): Promise<TxInput | never> {
+    ): Promise<TxInput> {
         const { address, wallet, exceptInTcx } = searchScope;
 
         const found = await this.hasUtxo(semanticName, predicate, {

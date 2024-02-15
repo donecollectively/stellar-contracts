@@ -40,6 +40,7 @@ import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import {
     StellarTxnContext,
     type anyState,
+    type hasFutureTxn,
     type hasSeedUtxo,
 } from "./StellarTxnContext.js";
 
@@ -286,7 +287,7 @@ export class DefaultCapo<
     @Activity.redeemer
     activityUpdatingCharter(): // args: CDT
     isActivity {
-        const updatingCharter = this.mustGetActivity("updatingCharter")
+        const updatingCharter = this.mustGetActivity("updatingCharter");
         // let {uut, strategyName, reqdAddress: canRequireAddr, addrHint=[]} = args.govAuthority
 
         // // const {Option} = this.onChainTypes;
@@ -537,14 +538,7 @@ export class DefaultCapo<
     async mkTxnMintCharterToken<TCX extends StellarTxnContext>(
         charterDatumArgs: MinimalDefaultCharterDatumArgs<CDT>,
         existingTcx?: TCX
-    ): Promise<
-        | never
-        | (hasUutContext<
-              "govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"
-          > &
-              TCX &
-              hasBootstrappedConfig<CapoBaseConfig & configType>)
-    > {
+    ) {
         if (this.configIn)
             throw new Error(
                 `this contract suite is already configured and can't be re-chartered`
@@ -560,23 +554,26 @@ export class DefaultCapo<
         ]).then(async (seedUtxo) => {
             const { txId: seedTxn, utxoIdx } = seedUtxo.outputId;
             const seedIndex = BigInt(utxoIdx);
-            
-            const minter = await this.connectMintingScript({ seedIndex, seedTxn });
+
+            const minter = await this.connectMintingScript({
+                seedIndex,
+                seedTxn,
+            });
             const { mintingPolicyHash: mph } = minter;
 
             // const rev = this.getCapoRev();
             const csp = this.getContractScriptParams(
-                ( this.configIn || this.partialConfig ) as configType
+                (this.configIn || this.partialConfig) as configType
             );
-            
+
             const bsc = {
                 ...csp,
                 mph,
                 seedTxn,
                 seedIndex,
             } as configType;
-            this.loadProgramScript({...csp, mph})
-            bsc.rootCapoScriptHash = this.compiledScript.validatorHash;      
+            this.loadProgramScript({ ...csp, mph });
+            bsc.rootCapoScriptHash = this.compiledScript.validatorHash;
 
             initialTcx.state.bsc = bsc;
             initialTcx.state.bootstrappedConfig = JSON.parse(
@@ -597,9 +594,10 @@ export class DefaultCapo<
                     mintDelegate: "mintDgt",
                 }
             );
-            const { 
-                capoGov, govAuthority, // same
-                mintDgt // same as mintDelegate 
+            const {
+                capoGov,
+                govAuthority, // same
+                mintDgt, // same as mintDelegate
             } = tcx.state.uuts;
             if (govAuthority !== capoGov) {
                 throw new Error(`assertion can't fail`);
@@ -614,9 +612,11 @@ export class DefaultCapo<
                 BasicMintDelegate,
                 "mintDelegate"
             >(tcx, "mintDelegate", charterDatumArgs.mintDelegateLink);
-
-            
-            mintDelegate.delegate.txnCreateRefScript(tcx);
+            // creates a future-txn
+            const tcx2 = mintDelegate.delegate.txnCreateRefScript(
+                tcx,
+                "MintDelegate"
+            );
 
             //@ts-expect-error - typescript can't seem to understand that
             //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
@@ -630,21 +630,20 @@ export class DefaultCapo<
             const charterOut = new TxOutput(
                 this.address,
                 this.tvCharter(),
-                datum,
+                datum
                 // this.compiledScript
             );
             charterOut.correctLovelace(this.networkParams);
 
-            tcx.addInput(seedUtxo);
-            tcx.addOutputs([charterOut]);
-
+            tcx2.addInput(seedUtxo);
+            tcx2.addOutputs([charterOut]);
             console.log(
                 " ---------------- CHARTER MINT ---------------------\n",
                 txAsString(tcx.tx, this.networkParams)
             );
             // debugger
 
-            return this.minter.txnMintingCharter(tcx, {
+            return this.minter.txnMintingCharter(tcx2, {
                 owner: this.address,
                 capoGov, // same as govAuthority,
                 mintDgt,
@@ -726,7 +725,11 @@ export class DefaultCapo<
         //@ts-expect-error
         roles: RM = {} as Record<ROLES, purposes>
     ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {
-        const { usingSeedUtxo, additionalMintValues = [], mintDelegateActivity } = options;
+        const {
+            usingSeedUtxo,
+            additionalMintValues = [],
+            mintDelegateActivity,
+        } = options;
         if (additionalMintValues.length && !mintDelegateActivity) {
             throw new Error(
                 `additionalMintValues requires a custom activity provided by your mint delegate specialization`
@@ -738,13 +741,19 @@ export class DefaultCapo<
         const tcx = await this.txnWillMintUuts(
             initialTcx,
             uutPurposes,
-            { usingSeedUtxo: seedUtxo, additionalMintValues, mintDelegateActivity },
+            {
+                usingSeedUtxo: seedUtxo,
+                additionalMintValues,
+                mintDelegateActivity,
+            },
             roles
         );
-        const dgtActivity = mintDelegateActivity || mintDelegate.activityMintingUuts({ 
-            purposes: uutPurposes,
-            ...(tcx.getSeedAttrs()),
-        });
+        const dgtActivity =
+            mintDelegateActivity ||
+            mintDelegate.activityMintingUuts({
+                purposes: uutPurposes,
+                ...tcx.getSeedAttrs(),
+            });
 
         // const tcx2 = await mintDelegate.txnGenericMintingUuts(
         //     tcx,
@@ -752,11 +761,9 @@ export class DefaultCapo<
         //     mintDelegateActivity
         // );
 
-        const tcx2 = await this.minter.txnMintWithDelegateAuthorizing(tcx, 
-            [ 
-                ...mkUutValuesEntries(tcx.state.uuts),
-                ...additionalMintValues,
-            ],
+        const tcx2 = await this.minter.txnMintWithDelegateAuthorizing(
+            tcx,
+            [...mkUutValuesEntries(tcx.state.uuts), ...additionalMintValues],
             mintDelegate,
             dgtActivity
         );
@@ -804,9 +811,7 @@ export class DefaultCapo<
     >(
         tcx: existingTcx,
         uutPurposes: purposes[],
-        {
-            usingSeedUtxo,
-        }: UutCreationAttrsWithSeed,
+        { usingSeedUtxo }: UutCreationAttrsWithSeed,
         //@ts-expect-error
         roles: RM = {} as Record<string, purposes>
     ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {

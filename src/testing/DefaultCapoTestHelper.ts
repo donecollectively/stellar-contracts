@@ -3,19 +3,18 @@ import type {
     MinimalDefaultCharterDatumArgs,
 } from "../DefaultCapo.js";
 
-import {
-    DefaultCapo,
-} from "../DefaultCapo.js";
-
+import { DefaultCapo } from "../DefaultCapo.js";
 
 import { StellarTxnContext } from "../StellarTxnContext.js";
-import { ADA} from "./types.js";
-import type { DefaultCapoTestHelperClass, canHaveRandomSeed, stellarTestHelperSubclass } from "./types.js";
+import { ADA } from "./types.js";
+import type {
+    DefaultCapoTestHelperClass,
+    canHaveRandomSeed,
+    stellarTestHelperSubclass,
+} from "./types.js";
 import { CapoTestHelper } from "./CapoTestHelper.js";
 import type { stellarSubclass } from "../StellarContract.js";
-import {
-    Capo,
-} from "../Capo.js";
+import { Capo } from "../Capo.js";
 import type {
     CapoBaseConfig,
     hasBootstrappedConfig,
@@ -27,10 +26,10 @@ import type { expect as expectType } from "vitest";
 
 declare namespace NodeJS {
     interface Global {
-        expect: typeof expectType
+        expect: typeof expectType;
     }
 }
-declare const expect: typeof  expectType;
+declare const expect: typeof expectType;
 
 /**
  * Test helper for classes extending DefaultCapo
@@ -83,7 +82,7 @@ export class DefaultCapoTestHelper<
      **/
     static forCapoClass<DC extends DefaultCapo<DefaultMinter, any, any>>(
         s: stellarSubclass<DC>
-    ):  DefaultCapoTestHelperClass<DC> {
+    ): DefaultCapoTestHelperClass<DC> {
         class specificCapoHelper extends DefaultCapoTestHelper<DC> {
             get stellarClass() {
                 return s;
@@ -105,7 +104,7 @@ export class DefaultCapoTestHelper<
         this.addActor("tina", 1100n * ADA);
         this.addActor("tracy", 13n * ADA);
         this.addActor("tom", 120n * ADA);
-        return this.setActor("tina")
+        return this.setActor("tina");
     }
 
     async mkCharterSpendTx(): Promise<StellarTxnContext> {
@@ -114,7 +113,10 @@ export class DefaultCapoTestHelper<
         const treasury = await this.strella!;
         const tcx: StellarTxnContext = new StellarTxnContext(this.currentActor);
         const tcx2 = await treasury.txnAddGovAuthority(tcx);
-        return treasury.txnMustUseCharterUtxo(tcx2, treasury.activityUsingAuthority());
+        return treasury.txnMustUseCharterUtxo(
+            tcx2,
+            treasury.activityUsingAuthority()
+        );
 
         // return treasury.txnAddCharterWithAuthority(tcx);
     }
@@ -158,14 +160,18 @@ export class DefaultCapoTestHelper<
         // debugger
 
         const tcx = await script.mkTxnMintCharterToken(goodArgs);
-        const rawConfig = this.state.rawConfig =
-        this.state.config = tcx.state.bootstrappedConfig;
-        
-        this.state.parsedConfig = this.stellarClass.parseConfig(rawConfig)
+        const rawConfig =
+            (this.state.rawConfig =
+            this.state.config =
+                tcx.state.bootstrappedConfig);
+
+        this.state.parsedConfig = this.stellarClass.parseConfig(rawConfig);
 
         expect(script.network).toBe(this.network);
 
         await script.submit(tcx);
+        this.network.tick(1n);
+        await script.submit(tcx.state.futureTxns.refScriptMintDelegate.tx);
         console.log(
             `----- charter token minted at slot ${this.network.currentSlot}`
         );

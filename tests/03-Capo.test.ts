@@ -148,6 +148,7 @@ describe("Capo", async () => {
                     })
                 ).toBeTruthy();
             });
+
             it("creates a mintDgt UUT and deposits it in the mintDelegate contract", async (context: localTC) => {
                 const {
                     h,
@@ -177,14 +178,17 @@ describe("Capo", async () => {
                 // test t3m2n4d
                 // has the mint-delegate script ready to use as a referenceScript
                 debugger;
-                expect(
-                    tcx.outputs.find((o: TxOutput) => {
+                const findingRefScript = mintDelegate.mustFindMyUtxo(
+                    "mint delegate refScript",
+                    (utxo) => {
                         return (
-                            o.refScript?.serialize() ==
+                            utxo.origOutput.refScript?.serialize() ==
                             mintDelegate.compiledScript.serialize()
                         );
-                    })
-                ).toBeTruthy();
+                    }
+                );
+                await findingRefScript
+                expect(findingRefScript).resolves.toBeTruthy();
             });
 
             it("includes the mintDgt script so it can be used as a referenceScript", async (context: localTC) => {
