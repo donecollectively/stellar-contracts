@@ -31,6 +31,7 @@ import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { mkTv, stringToNumberArray } from "./utils.js";
 import { UutName } from "./delegation/UutName.js";
+import type { Capo } from "./Capo.js";
 
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer
