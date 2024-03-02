@@ -361,6 +361,13 @@ type UtxoSearchScope = {
     exceptInTcx?: StellarTxnContext;
 };
 
+type ComputedScriptProperties = Partial<{
+    vh: helios.ValidatorHash,
+    addr: Address,
+    mph: MintingPolicyHash,
+    identity: string,
+}>
+
 const isInternalConstructor = Symbol("internalConstructor");
 
 //!!! todo: type configuredStellarClass = class -> networkStuff -> withParams = stellar instance.
@@ -539,24 +546,43 @@ export class StellarContract<
         return (this._purpose = purpose as scriptPurpose);
     }
 
+    get validatorHash() {
+        const {vh} = this._cache
+        if (vh) return vh;
+        // console.log(this.constructor.name, "cached vh", vh?.hex || "none");
+        const nvh = this.compiledScript.validatorHash;
+        return (this._cache.vh = nvh)
     get address(): Address {
-        return Address.fromHashes(this.compiledScript.validatorHash);
+        const {addr} = this._cache
+        console.log(this.constructor.name, "cached addr", addr?.toBech32() || "none");
+        if (addr) return addr;
+        const nAddr = Address.fromHashes(this.validatorHash);
+        return this._cache.addr = nAddr
     }
 
     get mintingPolicyHash() {
         if ("minting" != this.purpose) return undefined;
-
-        return this.compiledScript.mintingPolicyHash;
+        const {mph} = this._cache;
+        if (mph) return mph;
+        // console.log(this.constructor.name, "_mph", this._mph?.hex || "none");
+        const nMph = this.compiledScript.mintingPolicyHash;
+        return this._cache.mph = nMph
     }
 
     get identity() {
+        const {identity} = this._cache
+        if (identity) return identity;        
+        console.log(this.constructor.name, "_identity", this._identity || "none");
+        
+        let result: string;
         if ("minting" == this.purpose) {
-            const b32 = this.compiledScript.mintingPolicyHash.toBech32();
+            const b32 = this.mintingPolicyHash!.toBech32();
             //!!! todo: verify bech32 checksum isn't messed up by this:
-            return b32.replace(/^asset/, "mph");
+            result = b32.replace(/^asset/, "mph");
+        } else {
+            result = this.address.toBech32();
         }
-
-        return this.address.toBech32();
+        return this._cache.identity = result;
     }
 
     //! searches the network for utxos stored in the contract,
@@ -1509,6 +1535,7 @@ export class StellarContract<
     importModules(): HeliosModuleSrc[] {
         return [];
     }
+    _cache: ComputedScriptProperties = {}
 
     loadProgramScript(params?: Partial<ConfigType>): Program | undefined {
         const src = this.contractSource();
@@ -1542,8 +1569,10 @@ export class StellarContract<
                 );
             }
 
+            console.log(`${this.constructor.name}: setting compiledScript with simplify=${simplify} + params:`, params)
             //!!! todo: consider pushing this to JIT or async
             this.compiledScript = script.compile(simplify);
+            this._cache = {}
             // const t2 = new Date().getTime();
 
             // Result: ~80ms cold-start or (much) faster on additional compiles
