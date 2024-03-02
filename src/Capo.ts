@@ -461,28 +461,6 @@ export abstract class Capo<
         return [StellarHeliosHelpers, CapoDelegateHelpers, CapoMintHelpers];
     }
 
-    /**
-     * Initiates a seeding transaction, creating a new Capo contract of this type
-     * @remarks
-     *
-     * The returned transaction context has `state.bootstrappedConfig` for
-     * capturing the details for reproducing the contract's settings and on-chain
-     * address.
-     *
-     * @param charterDatumArgs - initial details for the charter datum
-     * @param tcx - any existing transaction context
-     * @typeParam TCX - inferred type of a provided transaction context
-     * @public
-     **/
-    abstract mkTxnMintCharterToken<TCX extends StellarTxnContext>(
-        charterDatumArgs: Partial<charterDatumType>,
-        existingTcx?: TCX
-    ): Promise<
-        | never
-        | (TCX &
-              // & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt">
-              hasBootstrappedConfig<CapoBaseConfig & configType>)
-    >;
 
     get charterTokenPredicate() {
         const predicate = this.mkTokenPredicate(this.tvCharter());
@@ -1022,7 +1000,7 @@ export abstract class Capo<
         const {
             strategyName,
             uutName,
-            delegateValidatorHash: edvh,
+            delegateValidatorHash: expectedDvh,
             // addrHint,  //moved to config
             // reqdAddress,  // removed
             config: linkedConfig,
@@ -1083,10 +1061,13 @@ export abstract class Capo<
             // reqdAddress,
             // addrHint,
         });
+
+        
         const dvh = delegate.delegateValidatorHash;
-        if (edvh && dvh && !edvh.eq(dvh)) {
+
+        if (expectedDvh && dvh && !expectedDvh.eq(dvh)) {
             throw new Error(
-                `${this.constructor.name}: ${roleName}: mismatched or modified delegate: expected validator ${edvh?.hex}, got ${dvh.hex}`
+                `${this.constructor.name}: ${roleName}: mismatched or modified delegate: expected validator ${expectedDvh?.hex}, got ${dvh.hex}`
             );
         }
         console.log(

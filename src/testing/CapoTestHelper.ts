@@ -88,7 +88,7 @@ export abstract class CapoTestHelper<
             name,
             address.toBech32().substring(0, 18) + "…",
             "vHash 📜 " +
-                strella.compiledScript.validatorHash.hex.substring(0, 12) +
+                strella.validatorHash.hex.substring(0, 12) +
                 "…",
             "mph 🏦 " + mph?.hex.substring(0, 12) + "…"
         );

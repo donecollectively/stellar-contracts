@@ -28,7 +28,7 @@ import StellarHeliosHelpers from "../StellarHeliosHelpers.hl";
 
 import { CapoMintHelpers } from "../CapoMintHelpers.js";
 
-import { StellarTxnContext, emptyUuts } from "../StellarTxnContext.js";
+import { StellarTxnContext, emptyUuts, type anyState } from "../StellarTxnContext.js";
 import type {
     MintUutActivityArgs,
     MinterBaseMethods,
@@ -204,7 +204,7 @@ export class DefaultMinter
     }
 
     @Activity.partialTxn
-    async txnMintingCharter<TCX extends StellarTxnContext>(
+    async txnMintingCharter<TCX extends StellarTxnContext<anyState>>(
         tcx: TCX,
         {
             owner,

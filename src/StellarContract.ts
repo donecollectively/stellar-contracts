@@ -1346,6 +1346,9 @@ export class StellarContract<
         let { tx, feeLimit = 2_000_000n } = tcx;
         const { myActor: wallet } = this;
 
+        let walletMustSign = false;
+        let sigs: helios.Signature[] | null = [];
+
         if (wallet || signers.length) {
             const changeAddress = await this.findChangeAddr();
 
@@ -1353,7 +1356,7 @@ export class StellarContract<
             const willSign = [...signers, ...tcx.neededSigners];
 
             const wHelper = wallet && new WalletHelper(wallet);
-            if (wallet && wHelper) {
+            if (false && wallet && wHelper) {
                 //@ts-expect-error on internal isSmart()
                 if (tx.isSmart() && !tcx.collateral) {
                     let [c] = await wallet.collateral;
@@ -1391,25 +1394,46 @@ export class StellarContract<
                 //  - validations with simplify:true, ~250ms - but ...
                 //    ... with elided error messages that don't support negative-testing very well
             } catch (e) {
+                // todo: find a way to run the same scripts again, with tracing retained
+                // for client-facing transparency of failures that can be escalated in a meaningful
+                // way to users.
                 console.log("FAILED submitting:", tcx.dump(this.networkParams));
                 debugger;
                 throw e;
             }
             if (wallet && wHelper) {
-                let actorMustSign = false;
                 for (const a of willSign) {
                     if (!(await wHelper.isOwnAddress(a))) continue;
-                    actorMustSign = true;
+                    walletMustSign = true;
+                    break;
                 }
-                if (actorMustSign) {
-                    const sigs = await wallet.signTx(tx);
+                // if any inputs from the wallet were added as part of finalizing,
+                // add the wallet's signature to the txn
+                if (!walletMustSign) for (const input of tx.body.inputs) {
+                    if (!(await wHelper.isOwnAddress(input.address))) continue;
+                    walletMustSign = true;
+                    tcx.neededSigners.push(input.address)
+                    break;
+                }
+                if (walletMustSign) {
+                    const walletSign = wallet.signTx(tx);
+                    sigs = await walletSign.catch((e) => {
+                        console.warn(
+                            "signing via wallet failed: "+ e.message,
+                            tcx.dump(this.networkParams)
+                        );
+                        return null
+                    });
                     //! doesn't need to re-verify a sig it just collected
                     //   (sig verification is ~2x the cost of signing)
-                    tx.addSignatures(sigs, false);
+                    if (sigs) tx.addSignatures(sigs, false);
                 }
             }
         } else {
             console.warn("no 'myActor'; not finalizing");
+        }
+        if (walletMustSign && !sigs) {
+            throw new Error(`wallet signing failed`);
         }
         console.log("Submitting tx: ", tcx.dump(this.networkParams));
         const promises = [

@@ -69,8 +69,7 @@ export function hexToPrintableString(hexStr) {
 export function assetsAsString(a: Assets) {
     //@ts-expect-error it's marked as private, but thankfully it's still accessible
     const assets = a.assets;
-    return assets
-        .map(([policyId, tokenEntries]) => {
+    return (assets?.map(([policyId, tokenEntries]) => {
             const tokenString = tokenEntries
                 .map(([nameBytes, count]) => {
                     const nameString = hexToPrintableString(nameBytes.hex);
@@ -80,7 +79,7 @@ export function assetsAsString(a: Assets) {
                 })
                 .join(" + ");
             return `⦑${policyIdAsString(policyId)} ${tokenString}⦒`;
-        })
+        }) || [])
         .join("\n  ");
 }
 
@@ -217,7 +216,7 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
     let hasWinfo = false;
     const winfo = {};
     for (const x of witnessAttrs) {
-        if ("scripts" == x) debugger;
+        // if ("scripts" == x) debugger;
         let item = tx.witnesses[x] || (d.witnesses[x] as any);
         if (Array.isArray(item) && !item.length) continue;
         if ("datums" == x && !Object.entries(item || {}).length) continue;
@@ -260,10 +259,11 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
                         s.serializeBytes().length
                     } bytes`;
                 } catch (e) {
-                    const vh = s.validatorHash.hex;
-                    const addr = Address.fromHash(s.validatorHash);
+                    const vh = s.validatorHash;
+                    const vhh = vh.hex;
+                    const addr = Address.fromHash(vh);
                     // debugger
-                    return `📜 ${vh.slice(0, 8)}…${vh.slice(
+                    return `📜 ${vhh.slice(0, 8)}…${vhh.slice(
                         -4
                     )} (validator at ${addrAsString(addr)}): ${
                         s.serializeBytes().length
@@ -380,14 +380,12 @@ export function datumAsString(d: Datum | null | undefined): string {
 export function showRefScript(rs?: UplcProgram | null) {
     if (!rs) return "";
     const thisPurpose = rs.properties?.purpose;
-    if (!thisPurpose) {
-        debugger
-        return "um?"
-    }
     const whichHash = 
         thisPurpose == "minting" ? "mintingPolicyHash" 
         : thisPurpose == "staking" ? "stakingValidatorHash" 
-        : thisPurpose == "spending" ?  "validatorHash" : ""
+        : "validatorHash" // : thisPurpose == "spending" ?  "validatorHash" : ""
+        // when thisPurpose is empty, it's a refScript from on-chain, and it doesn't have a purpose
+        // ... but all its hash properties are the same, so it doesn't matter which one we use.
     const expected : Hash = rs[whichHash];
 
     const rsh = expected.hex;

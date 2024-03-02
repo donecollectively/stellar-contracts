@@ -32,10 +32,9 @@ export type hasFutureTxn<
     TCX extends StellarTxnContext,
     txnName extends string,
     FUTURE_TX_TYPE extends StellarTxnContext,
-    FT  = TCX extends StellarTxnContext<anyState & {futureTxns: infer FTT}> ? FTT : {},
 > = TCX & StellarTxnContext<
-    anyState & {
-        futureTxns:  FT & { 
+    emptyState & {
+        futureTxns:  { 
             [key in txnName]: FutureTxInfo<FUTURE_TX_TYPE>
         }
     } 
@@ -219,7 +218,6 @@ export class StellarTxnContext<S extends anyState = anyState> {
             return this;
         }
         this.txRefInputs.push(input);
-        debugger        
         
         // if (moreArgs.length) {
         //     //@ts-expect-error

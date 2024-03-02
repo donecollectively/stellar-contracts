@@ -181,13 +181,13 @@ export abstract class StellarDelegate<
      * A delegate that doesn't use an on-chain validator should override this method and return undefined.
      **/
     get delegateValidatorHash(): ValidatorHash | undefined {
-        if (!this.compiledScript.validatorHash) {
+        if (!this.validatorHash) {
             throw new Error(
                 `${this.constructor.name}: address doesn't use a validator hash!\n` +
                     `  ... if that's by design, you may wish to override 'get delegateValidatorHash()'`
             );
         }
-        return this.compiledScript.validatorHash;
+        return this.validatorHash;
     }
 
     mkAuthorityTokenPredicate() {

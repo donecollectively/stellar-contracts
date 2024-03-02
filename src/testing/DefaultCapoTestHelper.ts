@@ -121,7 +121,7 @@ export class DefaultCapoTestHelper<
         // return treasury.txnAddCharterWithAuthority(tcx);
     }
 
-    mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<CDT>> {
+    mkDefaultCharterArgs(): MinimalDefaultCharterDatumArgs<CDT> {
         const addr = this.currentActor.address;
         console.log("test helper charter -> actor addr", addr.toBech32());
         return {
@@ -139,10 +139,7 @@ export class DefaultCapoTestHelper<
 
     async mintCharterToken(
         args?: MinimalDefaultCharterDatumArgs<CDT>
-    ): Promise<
-        hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt"> &
-            hasBootstrappedConfig<CapoBaseConfig>
-    > {
+    ) {
         const { delay } = this;
         const { tina, tom, tracy } = this.actors;
 
@@ -150,7 +147,7 @@ export class DefaultCapoTestHelper<
             console.warn(
                 "reusing minted charter from existing testing-context"
             );
-            return this.state.mintedCharterToken;
+            return this.state.mintedCharterToken as typeof tcx;
         }
 
         if (!this.strella) await this.initialize();

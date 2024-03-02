@@ -15,7 +15,12 @@ import StellarHeliosHelpers from "../StellarHeliosHelpers.hl";
 
 import { Activity, datum } from "../StellarContract.js";
 import type { configBase, isActivity } from "../StellarContract.js";
-import { StellarTxnContext, type anyState, type hasFutureTxn, type hasSeedUtxo } from "../StellarTxnContext.js";
+import {
+    StellarTxnContext,
+    type anyState,
+    type hasFutureTxn,
+    type hasSeedUtxo,
+} from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
 
 import { StellarDelegate } from "../delegation/StellarDelegate.js";
@@ -49,11 +54,11 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     static currentRev = 1n;
 
     static get defaultParams() {
-        const params = { 
+        const params = {
             rev: this.currentRev,
             devGen: 0n,
-         };
-         return params;
+        };
+        return params;
     }
 
     getContractScriptParams(config) {
@@ -70,9 +75,9 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
                     `Missing expected devGen in config for BasicMintDelegate`
                 );
             }
-            params.devGen = config.devGen ;
+            params.devGen = config.devGen;
         }
-        return params
+        return params;
     }
 
     contractSource() {
@@ -198,7 +203,7 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     ): Promise<TCX> {
         console.log(
             `     ----- minting delegate validator receiving mintDgt token at ` +
-                this.address.validatorHash!.hex
+                this.validatorHash!.hex
         );
         // const ffu = fromFoundUtxo;
         // const v : Value = ffu?.value || this.mkMinAssetValue(this.configIn!.uut);
@@ -210,17 +215,20 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
      * Creates a reference-script utxo for the minting delegate
      * @remarks
      *
-     * detailed remarks
-     * @param ‹pName› - descr
-     * @typeParam ‹pName› - descr (for generic types)
+     * Creates a future-txn for the minting delegate to create a reference-script utxo
+     * @param tcx - the transaction context
+     * @param scriptName - the name of the script, used in the future-txn name
      * @public
      **/
-    txnCreateRefScript<
-        TCX extends StellarTxnContext<anyState>, 
+    async txnCreateRefScript<
+        TCX extends StellarTxnContext<anyState>,
         scriptName extends string
     >(
-        tcx: TCX, scriptName: scriptName
-    ): TCX & hasFutureTxn<TCX, `refScript${scriptName}`, StellarTxnContext<anyState>>{
+        tcx: TCX,
+        scriptName: scriptName
+    ): Promise<
+        hasFutureTxn<TCX, `refScript${scriptName}`, StellarTxnContext<anyState>>
+    > {
         const refScriptUtxo = new TxOutput(
             this.address,
             new Value(this.ADA(0n)),
@@ -228,34 +236,52 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
             this.compiledScript
         );
         refScriptUtxo.correctLovelace(this.networkParams);
-
-        return tcx.addFutureTxn(
-            `refScript${scriptName}`, {
-                "description": "create reference script for minting delegate",
-                "moreInfo": "saves txn fees and txn space in future txns",
-                "optional": false,
-                tx: new StellarTxnContext(this.myActor).addOutput(refScriptUtxo)
-            }
+        const payment = refScriptUtxo.value.lovelace;
+        const fuTcx = new StellarTxnContext(this.myActor).addOutput(
+            refScriptUtxo
         );
+        // fuTcx.neededSigners.push(this.myActor!);
+
+        this.myActor!;
+
+        // input will be added by txn-balancing code
+        // .addInput(
+        //     await this.mustFindActorUtxo(
+        //         "payment for refScript",
+        //         this.mkValuePredicate(payment),
+        //         tcx
+        //     )
+        // );
+
+        return tcx.addFutureTxn(`refScript${scriptName}`, {
+            description:
+                "creates on-chain reference script for minting delegate",
+            moreInfo: "saves txn fees and txn space in future txns",
+            optional: false,
+            tx: fuTcx,
+        });
     }
 
-    async txnMustAddMyRefScript<TCX extends StellarTxnContext>(tcx: TCX): Promise<TCX> {
-        const expectedRefScript = this.compiledScript
-        const {purpose:expectedPurpose} = expectedRefScript.properties;
+    async txnMustAddMyRefScript<TCX extends StellarTxnContext>(
+        tcx: TCX
+    ): Promise<TCX> {
+        const expectedVh = this.compiledScript.hash().toString();
+        const { purpose: expectedPurpose } = this.compiledScript.properties;
         const isMyRefScript = (txin: TxInput) => {
-            const {purpose} = txin.origOutput.refScript?.properties || {};
-            if (purpose && (purpose != expectedPurpose)) return false;
-            return (txin.origOutput.refScript?.hash().toString() == expectedRefScript.hash().toString())
-        }
+            const { purpose } = txin.origOutput.refScript?.properties || {};
+            if (purpose && purpose != expectedPurpose) return false;
 
-        if (tcx.txRefInputs.find( isMyRefScript )) {
+            return txin.origOutput.refScript?.hash().toString() == expectedVh;
+        };
+
+        if (tcx.txRefInputs.find(isMyRefScript)) {
             console.warn("suppressing second add of refScript");
             return tcx;
         }
 
         const foundUtxo = await this.mustFindMyUtxo("refScript", isMyRefScript);
 
-        return tcx.addRefInput(foundUtxo, expectedRefScript)
+        return tcx.addRefInput(foundUtxo, this.compiledScript);
     }
 
     /**

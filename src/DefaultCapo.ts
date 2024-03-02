@@ -23,7 +23,7 @@ import {
     bytesToHex,
 } from "@hyperionbt/helios";
 
-import type { Wallet } from "@hyperionbt/helios";
+import type { ScriptHash, Wallet } from "@hyperionbt/helios";
 
 import type { isActivity } from "./StellarContract.js";
 import { mkUutValuesEntries } from "./utils.js";
@@ -375,12 +375,12 @@ export class DefaultCapo<
      **/
     async verifyCoreDelegates() {
         const rcsh = this.configIn?.rootCapoScriptHash;
-        if (rcsh && !rcsh.eq(this.address.validatorHash!)) {
+        if (rcsh && !rcsh.eq(this.validatorHash!)) {
             console.error(
                 `expected: ` +
                     rcsh.hex +
                     `\n  actual: ` +
-                    this.address.validatorHash!.hex
+                    this.validatorHash!.hex
             );
 
             throw new Error(
@@ -432,6 +432,23 @@ export class DefaultCapo<
         const govAuthority = this.mkOnchainDelegateLink(args.govAuthorityLink);
         const mintDelegate = this.mkOnchainDelegateLink(args.mintDelegateLink);
         const t = new hlCharterToken(govAuthority, mintDelegate);
+        return Datum.inline(t._toUplcData());
+    }
+
+    @datum
+    mkDatumScriptReference({label, scriptHash}: {
+        label: string,
+        scriptHash: ByteArray,
+    }) {
+        const { ScriptReference: hlScriptReference } = this.onChainDatumType;
+
+        // this is a simple enum tag, indicating the role of this utxo: holding the script
+        // on-chain, so it can be used in later transactions without bloating those txns
+        // every time.
+        const t = new hlScriptReference(
+            label,
+            scriptHash
+        );
         return Datum.inline(t._toUplcData());
     }
 
@@ -510,32 +527,23 @@ export class DefaultCapo<
     }
 
     /**
-     * USE getMintDelegate() AND ITS txnGrantAuthority() METHOD INSTEAD
+     * Initiates a seeding transaction, creating a new Capo contract of this type
      * @remarks
      *
-     * detailed remarks
-     * @param ‹pName› - descr
-     * @typeParam ‹pName› - descr (for generic types)
-     * @deprecated
-     **/
-    async txnAddMintDelegate<TCX extends StellarTxnContext<any>>(
-        tcx: TCX
-    ): Promise<TCX> {
-        throw new Error(`deprecated`);
-        // const mintDelegate = await this.getMintDelegate();
-
-        // await mintDelegate.txnGrantAuthority(tcx);
-        // return tcx;
-    }
-
-    /**
-     * {@inheritdoc Capo.mkTxnMintCharterToken}
+     * The returned transaction context has `state.bootstrappedConfig` for
+     * capturing the details for reproducing the contract's settings and on-chain
+     * address.
+     *
+     * @param charterDatumArgs - initial details for the charter datum
+     * @param existinTcx - any existing transaction context
+     * @typeParam TCX - inferred type of a provided transaction context
      * @public
      **/
-    @txn
-    //@ts-expect-error - typescript can't seem to understand that
-    //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
-    async mkTxnMintCharterToken<TCX extends StellarTxnContext>(
+    // @txn
+    async mkTxnMintCharterToken<
+        TCX extends undefined | StellarTxnContext<anyState>,
+        TCX2 = TCX extends StellarTxnContext<infer TCXT> ? StellarTxnContext<TCXT> : {}
+    >(
         charterDatumArgs: MinimalDefaultCharterDatumArgs<CDT>,
         existingTcx?: TCX
     ) {
@@ -546,10 +554,10 @@ export class DefaultCapo<
 
         type hasBsc = hasBootstrappedConfig<CapoBaseConfig & configType>;
         //@ts-expect-error yet another case of seemingly spurious "could be instantiated with a different subtype" (actual fixes welcome :pray:)
-        const initialTcx: TCX & hasBsc =
+        const initialTcx: TCX2 & hasBsc =
             existingTcx || (new StellarTxnContext(this.myActor) as hasBsc);
 
-        return this.txnMustGetSeedUtxo(initialTcx, "charter bootstrapping", [
+        const promise = this.txnMustGetSeedUtxo(initialTcx, "charter bootstrapping", [
             "charter",
         ]).then(async (seedUtxo) => {
             const { txId: seedTxn, utxoIdx } = seedUtxo.outputId;
@@ -612,11 +620,6 @@ export class DefaultCapo<
                 BasicMintDelegate,
                 "mintDelegate"
             >(tcx, "mintDelegate", charterDatumArgs.mintDelegateLink);
-            // creates a future-txn
-            const tcx2 = mintDelegate.delegate.txnCreateRefScript(
-                tcx,
-                "MintDelegate"
-            );
 
             //@ts-expect-error - typescript can't seem to understand that
             //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
@@ -635,21 +638,94 @@ export class DefaultCapo<
             );
             charterOut.correctLovelace(this.networkParams);
 
-            tcx2.addInput(seedUtxo);
-            tcx2.addOutputs([charterOut]);
+            tcx.addInput(seedUtxo);
+            tcx.addOutputs([charterOut]);
+
+            // creates a future-txn, to make a refScript stored in the delegate
+            //   that refScript could be stored somewhere else instead (e.g. the Capo)
+            //   but for now it's in the delegate addr.
+            const tcx2 = await mintDelegate.delegate.txnCreateRefScript(
+                tcx,
+                "MintDelegate"
+            );
+            
+            const tcx3 = await this.txnMkFutureRefScriptTxn(
+                tcx2, "capo", this.compiledScript
+            );
+            const tcx4 = await this.txnMkFutureRefScriptTxn(
+                tcx3, "minter", minter.compiledScript
+            );    
             console.log(
                 " ---------------- CHARTER MINT ---------------------\n",
-                txAsString(tcx.tx, this.networkParams)
+                txAsString(tcx4.tx, this.networkParams)
             );
             // debugger
-
-            return this.minter.txnMintingCharter(tcx2, {
+         
+            const minting = this.minter.txnMintingCharter(tcx4, {
                 owner: this.address,
                 capoGov, // same as govAuthority,
                 mintDgt,
             });
+            return minting 
         });
+        return promise
     }
+
+        /**
+     * Creates a future reference-script-creation txn
+     * @remarks
+     *
+     * Creates a future-txn for reference-script creation, and 
+     * adds it to the current transaction context.
+     * 
+     * The reference script is stored in the Capo contract with a specific
+     * 
+     * @param tcx - the transaction context
+     * @param scriptName - the name of the script, used in the future-txn name
+     * @param script - the script to be stored in the future-txn
+     * @public
+     **/
+    async txnMkFutureRefScriptTxn<
+        TCX extends StellarTxnContext<anyState>,
+        scriptName extends string
+    >(
+        tcx: TCX,
+        scriptName: scriptName,
+        script: UplcProgram
+    ): Promise<
+        hasFutureTxn<TCX, `refScript${Capitalize<scriptName>}`, StellarTxnContext<anyState>>
+    > {
+        let scriptHash : ByteArray; try {
+            scriptHash = new ByteArray(script.validatorHash.bytes)
+        }catch(e) {
+            scriptHash = new ByteArray(script.mintingPolicyHash.bytes)
+        }
+        const refScriptUtxo = new TxOutput(
+            this.address,
+            new Value(this.ADA(0n)),
+            this.mkDatumScriptReference({
+                label: scriptName,
+                scriptHash
+            }),
+            script
+        );
+        refScriptUtxo.correctLovelace(this.networkParams);
+        const fuTcx = new StellarTxnContext(this.myActor).addOutput(
+            refScriptUtxo
+        );
+
+        const sn = scriptName[0].toUpperCase() + scriptName.slice(1);
+
+        return tcx.addFutureTxn(`refScript${sn}`, {
+            description:
+                `creates on-chain reference script for ${scriptName}`,
+            moreInfo: "saves txn fees and txn space in future txns",
+            optional: false,
+            tx: fuTcx,
+        });
+
+    }
+
 
     @txn
     async mkTxnUpdateCharter(
@@ -870,6 +946,7 @@ export class DefaultCapo<
                     "the charter token is always kept in the contract",
                     "the charter details can be updated",
                     "can mint other tokens, on the authority of the Charter token",
+                    "can handle large transactions with reference scripts"
                 ],
             },
 
@@ -967,6 +1044,24 @@ export class DefaultCapo<
                     "requires the charter-token to be spent as proof of authority",
                     "fails if the charter-token is not returned to the treasury",
                     "fails if the charter-token parameters are modified",
+                ],
+            },
+
+            "can handle large transactions with reference scripts": {
+                purpose: "to support large transactions and reduce per-transaction costs",
+                details: [
+                    "Each Capo involves the leader contract, a short minting script, ",
+                    "  ... and a minting delegate.  Particularly in pre-production, these ",
+                    "  ... can easily add up to more than the basic 16kB transaction size limit.",
+                    "By creating reference scripts, the size budget overhead for later ",
+                    "  ... transactions is reduced, at cost of an initial deposit for each refScript. ",
+                    "Very small validators may get away without refScripts, but more complicated ",
+                    "  ... transactions will need them.  So creating them is recommended in all cases."
+                ], 
+                mech: [
+                    "creates refScript for minter during charter creation",
+                    "creates refScript for capo during charter creation",
+                    "creates refScript for mintDgt during charter creation"
                 ],
             },
 

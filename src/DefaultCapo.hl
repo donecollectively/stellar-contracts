@@ -6,9 +6,9 @@ const rev : Int = 1
 const devGen : Int = 0
 const isDev: Bool = false
 
-import {
-    tvCharter
-} from CapoHelpers
+// import {
+//     tvCharter
+// } from CapoHelpers
 
 import { 
     RelativeDelegateLink,
@@ -16,6 +16,7 @@ import {
 } from CapoDelegateHelpers
 
 import {
+    tvCharter,
     mkTv,
     didSign,
     didSignInCtx
@@ -113,6 +114,11 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                 true // "maybe", really
             }
         },
+        scriptRef : ScriptReference => {
+            // only here to ensure specializations are properly arranged
+            assert(true || (scriptRef == scriptRef), "never");
+            true
+        },
         _ => {
             datum.validateSpend(ctx, mph)
         }            
@@ -128,6 +134,28 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
             requiresValidDelegateOutput(govDelegate, mph, ctx) &&
             requiresValidDelegateOutput(mintDelegate, mph, ctx) &&
             requiresAuthorization(ctx, datum)
+        },
+        retiringRefScript => {
+            // the ref script is being spent:
+            isSpendingRefScript : Bool = datum.switch{
+                ScriptReference => true,
+                _ => error("wrong use of retiringRefScript action for non-ScriptRef datum")
+            };
+
+            hasGovAuthority : Bool = datum.hasCharterRefInput(
+                ctx, mph
+            ).switch{
+                None => error("no reqd charter ref"),
+                Some {Datum::CharterToken{
+                    govAuthority, _
+                }} => requiresValidDelegateOutput(govAuthority, mph, ctx)
+             };
+
+             isSpendingRefScript && 
+             hasGovAuthority &&
+             true
+             // no other constraints; the ref script could be re-created or
+             // replaced with a new one, or simply destroyed.
         },
 
         usingAuthority => {
