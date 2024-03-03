@@ -436,19 +436,13 @@ export class DefaultCapo<
     }
 
     @datum
-    mkDatumScriptReference({label, scriptHash}: {
-        label: string,
-        scriptHash: ByteArray,
-    }) {
+    mkDatumScriptReference() {
         const { ScriptReference: hlScriptReference } = this.onChainDatumType;
 
         // this is a simple enum tag, indicating the role of this utxo: holding the script
         // on-chain, so it can be used in later transactions without bloating those txns
         // every time.
-        const t = new hlScriptReference(
-            label,
-            scriptHash
-        );
+        const t = new hlScriptReference();
         return Datum.inline(t._toUplcData());
     }
 
@@ -542,7 +536,9 @@ export class DefaultCapo<
     // @txn
     async mkTxnMintCharterToken<
         TCX extends undefined | StellarTxnContext<anyState>,
-        TCX2 = TCX extends StellarTxnContext<infer TCXT> ? StellarTxnContext<TCXT> : {}
+        TCX2 = TCX extends StellarTxnContext<infer TCXT>
+            ? StellarTxnContext<TCXT>
+            : {}
     >(
         charterDatumArgs: MinimalDefaultCharterDatumArgs<CDT>,
         existingTcx?: TCX
@@ -557,9 +553,11 @@ export class DefaultCapo<
         const initialTcx: TCX2 & hasBsc =
             existingTcx || (new StellarTxnContext(this.myActor) as hasBsc);
 
-        const promise = this.txnMustGetSeedUtxo(initialTcx, "charter bootstrapping", [
-            "charter",
-        ]).then(async (seedUtxo) => {
+        const promise = this.txnMustGetSeedUtxo(
+            initialTcx,
+            "charter bootstrapping",
+            ["charter"]
+        ).then(async (seedUtxo) => {
             const { txId: seedTxn, utxoIdx } = seedUtxo.outputId;
             const seedIndex = BigInt(utxoIdx);
 
@@ -648,38 +646,42 @@ export class DefaultCapo<
                 tcx,
                 "MintDelegate"
             );
-            
+
             const tcx3 = await this.txnMkFutureRefScriptTxn(
-                tcx2, "capo", this.compiledScript
+                tcx2,
+                "capo",
+                this.compiledScript
             );
             const tcx4 = await this.txnMkFutureRefScriptTxn(
-                tcx3, "minter", minter.compiledScript
-            );    
+                tcx3,
+                "minter",
+                minter.compiledScript
+            );
             console.log(
                 " ---------------- CHARTER MINT ---------------------\n",
                 txAsString(tcx4.tx, this.networkParams)
             );
             // debugger
-         
+
             const minting = this.minter.txnMintingCharter(tcx4, {
                 owner: this.address,
                 capoGov, // same as govAuthority,
                 mintDgt,
             });
-            return minting 
+            return minting;
         });
-        return promise
+        return promise;
     }
 
-        /**
+    /**
      * Creates a future reference-script-creation txn
      * @remarks
      *
-     * Creates a future-txn for reference-script creation, and 
+     * Creates a future-txn for reference-script creation, and
      * adds it to the current transaction context.
-     * 
+     *
      * The reference script is stored in the Capo contract with a specific
-     * 
+     *
      * @param tcx - the transaction context
      * @param scriptName - the name of the script, used in the future-txn name
      * @param script - the script to be stored in the future-txn
@@ -693,20 +695,16 @@ export class DefaultCapo<
         scriptName: scriptName,
         script: UplcProgram
     ): Promise<
-        hasFutureTxn<TCX, `refScript${Capitalize<scriptName>}`, StellarTxnContext<anyState>>
+        hasFutureTxn<
+            TCX,
+            `refScript${Capitalize<scriptName>}`,
+            StellarTxnContext<anyState>
+        >
     > {
-        let scriptHash : ByteArray; try {
-            scriptHash = new ByteArray(script.validatorHash.bytes)
-        }catch(e) {
-            scriptHash = new ByteArray(script.mintingPolicyHash.bytes)
-        }
         const refScriptUtxo = new TxOutput(
             this.address,
             new Value(this.ADA(0n)),
-            this.mkDatumScriptReference({
-                label: scriptName,
-                scriptHash
-            }),
+            this.mkDatumScriptReference(),
             script
         );
         refScriptUtxo.correctLovelace(this.networkParams);
@@ -717,15 +715,119 @@ export class DefaultCapo<
         const sn = scriptName[0].toUpperCase() + scriptName.slice(1);
 
         return tcx.addFutureTxn(`refScript${sn}`, {
-            description:
-                `creates on-chain reference script for ${scriptName}`,
+            description: `creates on-chain reference script for ${scriptName}`,
             moreInfo: "saves txn fees and txn space in future txns",
             optional: false,
-            tx: fuTcx,
+            tcx: fuTcx,
         });
-
     }
 
+    /**
+     * Attach the given script by reference to a transaction
+     * @remarks
+     *
+     * If the given script is found in the Capo's known list of reference scripts,
+     * it is used to attach the refScript to the transaction context.  Otherwise,
+     * the script's bytes are added directly to the transaction.
+     *
+     * The script name is expected to be found in the Capo's refScript datum.
+     * If a different name is found, a mismatch warning is emitted.
+     *
+     * If the given program is not found in the Capo's refScript datum, a
+     * missing-refScript warning is emitted, and the program is added directly
+     * to the transaction.  If this makes the transaction too big, the console
+     * warning will be followed by a thrown error during the transaction's
+     * wallet-submission sequence.
+     * @param program - the UPLC program to attach to the script
+     * @public
+     **/
+    @partialTxn
+    async txnAttachScriptOrRefScript<TCX extends StellarTxnContext>(
+        tcx: TCX,
+        program: UplcProgram = this.compiledScript
+    ): Promise<TCX> {
+        let expectedVh: string = this.getProgramHash(program);
+        const { purpose: expectedPurpose } = program.properties;
+        const isCorrectRefScript = (txin: TxInput) => {
+            const refScript = txin.origOutput.refScript;
+            if (!refScript) return false;
+            const { purpose } = refScript.properties || {};
+            if (purpose && purpose != expectedPurpose) return false;
+
+            const foundHash = this.getProgramHash(refScript);
+            return foundHash == expectedVh;
+        };
+        if (tcx.txRefInputs.find(isCorrectRefScript)) {
+            console.warn("suppressing second add of refScript");
+            return tcx;
+        }
+        const scriptReferences = await this.findScriptReferences();
+        // for (const [txin, refScript] of scriptReferences) {
+        //     console.log("refScript", dumpAny(txin));
+        // }
+        
+        const matchingScriptRefs = scriptReferences.find(
+            ([txin, refScript]) => isCorrectRefScript(txin)
+        )
+        if (!matchingScriptRefs) {
+            console.warn(
+                `missing refScript in Capo ${
+                    this.address.toBech32()
+                } for expected script hash ${expectedVh}; adding script directly to txn`
+            );
+            // console.log("------------------- NO REF SCRIPT")
+            return tcx.addScriptProgram(program);
+        }
+        // console.log("------------------- REF SCRIPT")
+        return tcx.addRefInput(matchingScriptRefs[0], program);
+    }
+
+    private getProgramHash(program: UplcProgram) {
+        let hash: string; try {
+            hash = program.validatorHash.toString();
+        } catch (e1: any) {
+            try {
+                hash = program.mintingPolicyHash.toString();
+            } catch (e2: any) {
+                try {
+                    hash = program.stakingValidatorHash.toString();
+                } catch (e3: any) {
+                    debugger;
+                    throw new Error(`can't get script hash from program:` +
+                        `\n  - tried validatorHash: ${e1.message}` +
+                        `\n  - tried mintingPolicyHash: ${e2.message}` +
+                        `\n  - tried stakingValidatorHash: ${e3.message}`
+                    );
+                }
+            }
+        }
+        return hash;
+    }
+
+    async findScriptReferences() {
+        const utxos = await this.network.getUtxos(this.address);
+        type TxoWithScriptRefs = [TxInput, any];
+        // console.log("finding script refs", utxos);
+        const utxosWithDatum = (await Promise.all(
+            utxos.map((utxo) => {
+                const {datum} = utxo.origOutput;
+                // console.log("datum", datum);
+                if (!datum) return null;
+                return this.readDatum(
+                    "ScriptReference", datum
+                ).catch(() => {
+                    // console.log("failed to parse")
+                    return  null
+                }).then((scriptRef) => {
+                    if (!scriptRef) return null;
+                    // console.log("scriptRef", scriptRef);
+                    return [ utxo, scriptRef ] as TxoWithScriptRefs
+                })
+            })
+        )).filter(x => !!x) as TxoWithScriptRefs[];
+
+        return utxosWithDatum
+    }
 
     @txn
     async mkTxnUpdateCharter(
@@ -946,7 +1048,7 @@ export class DefaultCapo<
                     "the charter token is always kept in the contract",
                     "the charter details can be updated",
                     "can mint other tokens, on the authority of the Charter token",
-                    "can handle large transactions with reference scripts"
+                    "can handle large transactions with reference scripts",
                 ],
             },
 
@@ -1048,7 +1150,8 @@ export class DefaultCapo<
             },
 
             "can handle large transactions with reference scripts": {
-                purpose: "to support large transactions and reduce per-transaction costs",
+                purpose:
+                    "to support large transactions and reduce per-transaction costs",
                 details: [
                     "Each Capo involves the leader contract, a short minting script, ",
                     "  ... and a minting delegate.  Particularly in pre-production, these ",
@@ -1056,12 +1159,14 @@ export class DefaultCapo<
                     "By creating reference scripts, the size budget overhead for later ",
                     "  ... transactions is reduced, at cost of an initial deposit for each refScript. ",
                     "Very small validators may get away without refScripts, but more complicated ",
-                    "  ... transactions will need them.  So creating them is recommended in all cases."
-                ], 
+                    "  ... transactions will need them.  So creating them is recommended in all cases.",
+                ],
                 mech: [
                     "creates refScript for minter during charter creation",
                     "creates refScript for capo during charter creation",
-                    "creates refScript for mintDgt during charter creation"
+                    "creates refScript for mintDgt during charter creation",
+                    "finds refScripts in the Capo's utxos",
+                    "txnAttachScriptOrRefScript(): uses scriptRefs in txns on request",
                 ],
             },
 

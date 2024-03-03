@@ -76,13 +76,15 @@ export class CustomMinter extends DefaultMinter implements MinterBaseMethods {
         });
         const value = this._mkMintingValue(values);
 
-        return tcx
-            .mintTokens(
+        const {capo} = this.configIn!
+        return capo.txnAttachScriptOrRefScript(
+            tcx.mintTokens(
                 this.mintingPolicyHash!,
                 values,
                 this.activityMintingNamedToken(value).redeemer
-            )
-            .attachScript(this.compiledScript);
+            ),
+            this.compiledScript
+        );
     }
     private _mkMintingValue(values: valuesEntry[]) {
         return new Value(0, new Assets([[this.mintingPolicyHash, values]]));

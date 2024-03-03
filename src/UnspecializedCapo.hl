@@ -24,10 +24,7 @@ enum Datum {
         govAuthorityLink: RelativeDelegateLink
         mintDelegateLink: RelativeDelegateLink
     }
-    ScriptReference {
-        label: String
-        scriptHash: ByteArray
-    }    
+    ScriptReference
 
     //! datum-validation only supports checks of absolute spendability, 
     //  ... and can't check details of the Activity ("redeemer") being used.

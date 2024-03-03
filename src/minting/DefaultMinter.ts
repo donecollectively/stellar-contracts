@@ -148,7 +148,8 @@ export class DefaultMinter
     }
 
     /**
-     * @deprecated
+     * @deprecated - use minter:MintWithDelegateAuthorizing with delegate:burningUuts 
+     * or another application-specific activity
      **/
     @Activity.redeemer
     activityBurningUuts(...uutNames: string[]) : isActivity {
@@ -166,12 +167,14 @@ export class DefaultMinter
     >(
         initialTcx: existingTcx,
         uutNames: UutName[],
-    ): Promise<existingTcx> {
+    ) {
         const tokenNames = uutNames.map(un => un.name)
-        const tcx2 = initialTcx.attachScript(this.compiledScript).mintTokens(
-            this.mintingPolicyHash!, 
-            tokenNames.map((tokenName) => mkValuesEntry(tokenName, BigInt(-1))),
-            this.activityBurningUuts(...tokenNames).redeemer
+        const tcx2 = this.attachRefScript(
+            initialTcx.mintTokens(
+                this.mintingPolicyHash!, 
+                tokenNames.map((tokenName) => mkValuesEntry(tokenName, BigInt(-1))),
+                this.activityBurningUuts(...tokenNames).redeemer
+            ),
         );
 
         return tcx2 as existingTcx & typeof tcx2;
@@ -222,8 +225,8 @@ export class DefaultMinter
         const capoGovVE = mkValuesEntry(capoGov.name, BigInt(1));
         const mintDgtVE = mkValuesEntry(mintDgt.name, BigInt(1));
 
-        return tcx
-            .mintTokens(
+        return this.attachRefScript(
+             tcx.mintTokens(
                 this.mintingPolicyHash!,
                 [
                     charterVE, 
@@ -234,7 +237,14 @@ export class DefaultMinter
                     owner,
                 }).redeemer
             )
-            .attachScript(this.compiledScript) as TCX;
+        );
+            // as TCX;
+    }
+    attachRefScript(tcx) {
+        return this.configIn!.capo.txnAttachScriptOrRefScript(
+            tcx, 
+            this.compiledScript, 
+        );
     }
 
     @Activity.partialTxn
@@ -246,14 +256,15 @@ export class DefaultMinter
     ): Promise<TCX> {
         const {capo} = this.configIn!
         const md = mintDelegate || await capo.getMintDelegate(); 
-        const tcx1 = await this.configIn!.capo.txnMustUseCharterUtxo(tcx, "refInput");
+        const tcx1 = await capo.txnMustUseCharterUtxo(tcx, "refInput");
         const tcx2 = await md.txnGrantAuthority(tcx1, mintDgtRedeemer);
 
-        return tcx2.attachScript(this.compiledScript).mintTokens(
+        return this.attachRefScript(tcx2.mintTokens(
             this.mintingPolicyHash!,
             vEntries,
             this.activityMintWithDelegateAuthorizing().redeemer
-        ) as TCX;
+        ))
+        //  as TCX;
     }
 
 

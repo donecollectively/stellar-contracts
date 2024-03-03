@@ -9,6 +9,7 @@ import {
     Value,
     AssetClass,
     ValidatorHash,
+    UplcProgram,
 } from "@hyperionbt/helios";
 import { DefaultMinter } from "./minting/DefaultMinter.js";
 import type { BasicMinterParams } from "./minting/DefaultMinter.js";
@@ -206,7 +207,7 @@ export type CapoBaseConfig = configBase &
  * should be captured for reproducibility, and this type allows the bootstrap
  * transaction to expose that configuration.
  *
- * Capo's {@link Capo.mkTxnMintCharterToken | mkTxnMintCharterToken()} returns a transaction context
+ * DefaultCapo's {@link DefautlCapo.mkTxnMintCharterToken | mkTxnMintCharterToken()} returns a transaction context
  * of this type, with `state.bootstrappedConfig`;
  * @public
  **/
@@ -524,9 +525,10 @@ export abstract class Capo<
             } else {
                 // caller requested to **spend** the charter token with a speciic activity / redeemer
                 const redeemer = redeemerOrRefInput;
-                tcx.addInput(ctUtxo, redeemer).attachScript(
-                    this.compiledScript
-                );
+                this.txnAttachScriptOrRefScript(
+                    tcx.addInput(ctUtxo, redeemer), 
+                    this.compiledScript,
+                )
                 const datum =
                     newDatum || (ctUtxo.origOutput.datum as InlineDatum);
 
@@ -789,8 +791,6 @@ export abstract class Capo<
         return seedUtxo;
     }
 
-    mockMinter?: minterType;
-
     /**
      * Creates a new delegate link, given a delegation role and and strategy-selection details
      * @remarks
@@ -838,6 +838,10 @@ export abstract class Capo<
 
         return configured;
     }
+    abstract txnAttachScriptOrRefScript<TCX extends StellarTxnContext>(
+        tcx: TCX,
+        program?: UplcProgram,
+    ): Promise<TCX>;
 
     // this is just type sugar - a configured delegate already has all the relative-delegate link properties.
     relativeLink<DT extends StellarDelegate<any>>(

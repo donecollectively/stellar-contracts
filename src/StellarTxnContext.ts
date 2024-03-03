@@ -22,7 +22,7 @@ export type hasSeedUtxo = StellarTxnContext<
 >;
 
 export type FutureTxInfo<T extends StellarTxnContext> = {
-    tx: T;
+    tcx: T;
     description: string,
     moreInfo: string,
     optional: boolean
@@ -296,6 +296,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     attachScript(...args: Parameters<Tx["attachScript"]>) {
+        throw new Error(`use addScriptProgram(), increasing the txn size, if you don't have a referenceScript.\n`+
+          `Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.`
+          );
+    }
+
+    addScriptProgram(...args: Parameters<Tx["attachScript"]>) {
         const script = args[0];
         // console.log("in attachScript, scripts is ", this.tx.witnesses.scripts.map(x => x.hash().slice(0,8)))
         if (script instanceof UplcProgram) {

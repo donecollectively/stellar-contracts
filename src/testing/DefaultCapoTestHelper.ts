@@ -112,7 +112,11 @@ export class DefaultCapoTestHelper<
 
         const treasury = await this.strella!;
         const tcx: StellarTxnContext = new StellarTxnContext(this.currentActor);
-        const tcx2 = await treasury.txnAddGovAuthority(tcx);
+        const tcx2 = await treasury.txnAttachScriptOrRefScript(
+             await treasury.txnAddGovAuthority(tcx),
+            treasury.compiledScript
+        )
+
         return treasury.txnMustUseCharterUtxo(
             tcx2,
             treasury.activityUsingAuthority()
@@ -167,11 +171,17 @@ export class DefaultCapoTestHelper<
         expect(script.network).toBe(this.network);
 
         await script.submit(tcx);
-        this.network.tick(1n);
-        await script.submit(tcx.state.futureTxns.refScriptMintDelegate.tx);
         console.log(
             `----- charter token minted at slot ${this.network.currentSlot}`
         );
+        this.network.tick(1n);
+        for (const fuTxn in tcx.state.futureTxns) {
+            await script.submit(tcx.state.futureTxns[fuTxn].tx);
+            console.log(
+                `           ------- submitted addl txn ${fuTxn} at slot ${this.network.currentSlot}`
+            );
+            this.network.tick(1n);
+        }
 
         this.network.tick(1n);
         this.state.mintedCharterToken = tcx;

@@ -336,9 +336,11 @@ export abstract class StellarDelegate<
         uutxo: TxInput,
         redeemer: isActivity
     ): Promise<TCX> {
-        return tcx
-            .addInput(uutxo, redeemer)
-            .attachScript(this.compiledScript);
+        const {capo} = this.configIn!;
+        return capo.txnAttachScriptOrRefScript(
+            tcx.addInput(uutxo, redeemer),
+            this.compiledScript
+        )
 
         // return this.txnKeepValue(
         //     tcx,

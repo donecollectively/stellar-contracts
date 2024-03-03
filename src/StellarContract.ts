@@ -573,7 +573,7 @@ export class StellarContract<
     get identity() {
         const {identity} = this._cache
         if (identity) return identity;        
-        console.log(this.constructor.name, "_identity", this._identity || "none");
+        console.log(this.constructor.name, "identity", identity || "none");
         
         let result: string;
         if ("minting" == this.purpose) {

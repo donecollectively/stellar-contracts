@@ -10,6 +10,7 @@ import {
 } from "../StellarContract.js";
 
 import { StellarDelegate } from "./StellarDelegate.js";
+import type { Capo } from "../Capo.js";
 
 /**
  * An error type for reflecting configuration problems at time of delegate setup
@@ -84,6 +85,7 @@ export type DelegationDetail = {
  **/
 export type capoDelegateConfig = configBase & devConfigProps & {
     capoAddr: Address;
+    capo: Capo<any, any, any>;
     mph: MintingPolicyHash;
     tn: number[];
     rev: bigint;

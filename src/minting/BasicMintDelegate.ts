@@ -258,7 +258,7 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
                 "creates on-chain reference script for minting delegate",
             moreInfo: "saves txn fees and txn space in future txns",
             optional: false,
-            tx: fuTcx,
+            tcx: fuTcx,
         });
     }
 

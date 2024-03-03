@@ -156,7 +156,6 @@ describe("Capo", async () => {
                 } = context;
                 const treasury = await h.bootstrap();
                 const tcx = await h.mintCharterToken();
-
                 const { mintDgt } = tcx.state.uuts;
 
                 const datum = await treasury.findCharterDatum();
@@ -174,7 +173,6 @@ describe("Capo", async () => {
                     }),
                     "should find the mintDgt token"
                 ).toBeTruthy();
-
                 // test t3m2n4d
                 // has the mint-delegate script ready to use as a referenceScript
                 debugger;
@@ -187,7 +185,7 @@ describe("Capo", async () => {
                         );
                     }
                 );
-                await findingRefScript
+                await findingRefScript;
                 expect(findingRefScript).resolves.toBeTruthy();
             });
 
@@ -305,7 +303,7 @@ describe("Capo", async () => {
                 }
             );
             console.log(
-                "------ mkCharterSpend (mocked out txnAddCharterAuthz)"
+                "------ mkCharterSpend (mocked out txnAddGovAuthority)"
             );
             const tcx = await h.mkCharterSpendTx();
             expect(tcx.outputs).toHaveLength(1);
@@ -405,6 +403,99 @@ describe("Capo", async () => {
         it.todo("TODO: updates details of the datum");
         it.todo("TODO: doesn't update without the capoGov-* authority");
         it.todo("TODO: keeps the charter token in the contract address");
+    });
+
+    describe("can handle large transactions with reference scripts", () => {
+        it("creates refScript for minter during charter creation", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+
+            const strella = await h.bootstrap();
+            const tcx: Awaited<ReturnType<typeof h.mintCharterToken>> =
+                h.state.mintedCharterToken;
+            const minter = strella.minter;
+            // console.log("             ---------- ", mintDelegate.compiledScript.toString());
+            expect(
+                tcx.state.futureTxns.refScriptMinter.tcx.outputs.find((txo) => {
+                    return (
+                        txo.refScript?.toString() ==
+                        minter.compiledScript.toString()
+                    );
+                })
+            ).toBeTruthy();
+        });
+
+        it("creates refScript for capo during charter creation", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+
+            const strella = await h.bootstrap();
+            const tcx: Awaited<ReturnType<typeof h.mintCharterToken>> =
+                h.state.mintedCharterToken;
+
+            expect(
+                tcx.state.futureTxns.refScriptCapo.tcx.outputs.find((txo) => {
+                    return (
+                        txo.refScript?.toString() ==
+                        strella.compiledScript.toString()
+                    );
+                })
+            ).toBeTruthy();
+        });
+
+        it("creates refScript for mintDgt during charter creation", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+
+            const strella = await h.bootstrap();
+            const tcx: Awaited<ReturnType<typeof h.mintCharterToken>> =
+                h.state.mintedCharterToken;
+            const mintDelegate = await strella.getMintDelegate();
+            // console.log("             ---------- ", mintDelegate.compiledScript.toString());
+            expect(
+                tcx.state.futureTxns.refScriptMintDelegate.tcx.outputs.find(
+                    (txo) => {
+                        return (
+                            txo.refScript?.toString() ==
+                            mintDelegate.compiledScript.toString()
+                        );
+                    }
+                )
+            ).toBeTruthy();
+        });
+
+        it("finds refScripts in the Capo's utxos", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+
+            const strella = await h.bootstrap();
+            const refScripts = await strella.findScriptReferences();
+            expect(refScripts.length).toBe(2);
+        });
+
+        it("txnAttachScriptOrRefScript(): uses scriptRefs in txns on request", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+
+            const strella = await h.bootstrap();
+            const tcx = new StellarTxnContext<any>();
+            const tcx2 = await strella.txnAttachScriptOrRefScript(tcx);
+            expect(
+                tcx2.txRefInputs[0].origOutput.refScript?.validatorHash.eq(
+                    strella.compiledScript.validatorHash
+                )
+            ).toBeTruthy();
+            const tcx3 = await strella.txnAttachScriptOrRefScript(
+                tcx,
+                strella.minter.compiledScript
+            );
+            expect(
+                tcx3.txRefInputs[1].origOutput.refScript?.mintingPolicyHash.eq(
+                    strella.minter.compiledScript.mintingPolicyHash
+                )
+            ).toBeTruthy();
+            expect(tcx3.tx.dump().witnesses.refScripts.length).toBe(2);
+        });
     });
 });
 
