@@ -73,7 +73,8 @@ export {
     type emptyState,    
     type anyState,
     type SeedAttrs,
-    type hasSeedUtxo
+    type hasSeedUtxo,
+    type hasAddlTxn,    
  } from "./src/StellarTxnContext.js";
 
 export type {

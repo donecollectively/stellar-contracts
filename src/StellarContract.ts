@@ -25,7 +25,12 @@ import {
 import * as helios from "@hyperionbt/helios";
 import type { Network, Wallet } from "@hyperionbt/helios";
 
-import { StellarTxnContext } from "./StellarTxnContext.js";
+import {
+    StellarTxnContext,
+    type AddlTxInfo,
+    type AddlTxnCallback,
+    type hasAddlTxn,
+} from "./StellarTxnContext.js";
 import { utxosAsString, valueAsString } from "./diagnostics.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
@@ -1487,6 +1492,35 @@ export class StellarContract<
                 );
         }
         return Promise.any(promises);
+    }
+
+    /**
+     * Executes additional transactions indicated by an existing transaction
+     * @remarks
+     *
+     * During the off-chain txn-creation process, additional transactions may be
+     * queued for execution.  This method is used to execute those transactions.
+     * @param tcx: the prior txn context having the additional txns to execute
+     * @param callback: an optional async callback that you can use to notify a user, or to log the results of the additional txns
+     * @public
+     **/
+    async submitAddlTxns(
+        tcx: StellarTxnContext<any> &
+            hasAddlTxn<StellarTxnContext<any>, any, any>,
+        callback?: AddlTxnCallback
+    ) {
+        const { addlTxns } = tcx.state;
+        for (const [txName, addlTxInfo] of 
+            Object.entries(addlTxns) as [ string, AddlTxInfo<any> ][]
+        ) {
+            const { description, moreInfo, optional, tcx } = addlTxInfo;
+            // todo: allow the txn to be skipped, perhaps by letting
+            // the callback throw a new SkipAddlTxn error.
+            const replacementTcx = callback && ( 
+                await callback({txName, ...addlTxInfo})
+            );
+            await this.submit(replacementTcx || tcx);
+        }
     }
 
     ADA(n: bigint | number): bigint {

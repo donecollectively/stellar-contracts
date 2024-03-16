@@ -18,7 +18,7 @@ import type { configBase, isActivity } from "../StellarContract.js";
 import {
     StellarTxnContext,
     type anyState,
-    type hasFutureTxn,
+    type hasAddlTxn,
     type hasSeedUtxo,
 } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
@@ -215,9 +215,9 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
      * Creates a reference-script utxo for the minting delegate
      * @remarks
      *
-     * Creates a future-txn for the minting delegate to create a reference-script utxo
+     * Creates an addl txn for the minting delegate to create a reference-script utxo
      * @param tcx - the transaction context
-     * @param scriptName - the name of the script, used in the future-txn name
+     * @param scriptName - the name of the script, used in the addlTxn name
      * @public
      **/
     async txnCreateRefScript<
@@ -227,7 +227,7 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
         tcx: TCX,
         scriptName: scriptName
     ): Promise<
-        hasFutureTxn<TCX, `refScript${scriptName}`, StellarTxnContext<anyState>>
+        hasAddlTxn<TCX, `refScript${scriptName}`, StellarTxnContext<anyState>>
     > {
         const refScriptUtxo = new TxOutput(
             this.address,
@@ -253,7 +253,7 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
         //     )
         // );
 
-        return tcx.addFutureTxn(`refScript${scriptName}`, {
+        return tcx.includeAddlTxn(`refScript${scriptName}`, {
             description:
                 "creates on-chain reference script for minting delegate",
             moreInfo: "saves txn fees and txn space in future txns",

@@ -416,7 +416,7 @@ describe("Capo", async () => {
             const minter = strella.minter;
             // console.log("             ---------- ", mintDelegate.compiledScript.toString());
             expect(
-                tcx.state.futureTxns.refScriptMinter.tcx.outputs.find((txo) => {
+                tcx.state.addlTxns.refScriptMinter.tcx.outputs.find((txo) => {
                     return (
                         txo.refScript?.toString() ==
                         minter.compiledScript.toString()
@@ -434,7 +434,7 @@ describe("Capo", async () => {
                 h.state.mintedCharterToken;
 
             expect(
-                tcx.state.futureTxns.refScriptCapo.tcx.outputs.find((txo) => {
+                tcx.state.addlTxns.refScriptCapo.tcx.outputs.find((txo) => {
                     return (
                         txo.refScript?.toString() ==
                         strella.compiledScript.toString()
@@ -453,7 +453,7 @@ describe("Capo", async () => {
             const mintDelegate = await strella.getMintDelegate();
             // console.log("             ---------- ", mintDelegate.compiledScript.toString());
             expect(
-                tcx.state.futureTxns.refScriptMintDelegate.tcx.outputs.find(
+                tcx.state.addlTxns.refScriptMintDelegate.tcx.outputs.find(
                     (txo) => {
                         return (
                             txo.refScript?.toString() ==

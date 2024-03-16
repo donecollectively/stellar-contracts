@@ -21,21 +21,28 @@ export type hasSeedUtxo = StellarTxnContext<
     }
 >;
 
-export type FutureTxInfo<T extends StellarTxnContext> = {
+export type AddlTxInfo<T extends StellarTxnContext> = {
     tcx: T;
     description: string,
     moreInfo: string,
-    optional: boolean
+    optional: boolean,
+    txName?: string,
 }
 
-export type hasFutureTxn<
+export type AddlTxnCallback = 
+| ( (futTx:  AddlTxInfo<any>) => void )
+| ( (futTx:  AddlTxInfo<any>) => Promise<void> ) 
+| ( (futTx:  AddlTxInfo<any>) => StellarTxnContext<any> ) 
+| ( (futTx:  AddlTxInfo<any>) => Promise<StellarTxnContext<any>> ) 
+
+export type hasAddlTxn<
     TCX extends StellarTxnContext,
     txnName extends string,
     FUTURE_TX_TYPE extends StellarTxnContext,
 > = TCX & StellarTxnContext<
     emptyState & {
-        futureTxns:  { 
-            [key in txnName]: FutureTxInfo<FUTURE_TX_TYPE>
+        addlTxns:  { 
+            [key in txnName]: AddlTxInfo<FUTURE_TX_TYPE>
         }
     } 
 >
@@ -107,18 +114,18 @@ export class StellarTxnContext<S extends anyState = anyState> {
         return txAsString(tx, networkParams);
     }
 
-    addFutureTxn<
+    includeAddlTxn<
         TCX extends StellarTxnContext<anyState>, 
         txnName extends string, 
         FUTURE_TX_TYPE extends StellarTxnContext
     >(
         this: TCX,
         txnName: txnName, 
-        txInfo: FutureTxInfo<FUTURE_TX_TYPE>
-    ): hasFutureTxn<TCX, txnName, FUTURE_TX_TYPE> {
-        const thisWithMoreType : hasFutureTxn<TCX, txnName, FUTURE_TX_TYPE> = this as any;
-        thisWithMoreType.state.futureTxns = {
-        ... (thisWithMoreType.state.futureTxns || {}),
+        txInfo: AddlTxInfo<FUTURE_TX_TYPE>
+    ): hasAddlTxn<TCX, txnName, FUTURE_TX_TYPE> {
+        const thisWithMoreType : hasAddlTxn<TCX, txnName, FUTURE_TX_TYPE> = this as any;
+        thisWithMoreType.state.addlTxns = {
+        ... (thisWithMoreType.state.addlTxns || {}),
             [txnName]: txInfo
         }
         return thisWithMoreType 

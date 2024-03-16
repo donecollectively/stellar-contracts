@@ -40,7 +40,7 @@ import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import {
     StellarTxnContext,
     type anyState,
-    type hasFutureTxn,
+    type hasAddlTxn,
     type hasSeedUtxo,
 } from "./StellarTxnContext.js";
 
@@ -639,7 +639,7 @@ export class DefaultCapo<
             tcx.addInput(seedUtxo);
             tcx.addOutputs([charterOut]);
 
-            // creates a future-txn, to make a refScript stored in the delegate
+            // creates an addl txn that stores a refScript in the delegate;
             //   that refScript could be stored somewhere else instead (e.g. the Capo)
             //   but for now it's in the delegate addr.
             const tcx2 = await mintDelegate.delegate.txnCreateRefScript(
@@ -647,12 +647,12 @@ export class DefaultCapo<
                 "MintDelegate"
             );
 
-            const tcx3 = await this.txnMkFutureRefScriptTxn(
+            const tcx3 = await this.txnMkAddlRefScriptTxn(
                 tcx2,
                 "capo",
                 this.compiledScript
             );
-            const tcx4 = await this.txnMkFutureRefScriptTxn(
+            const tcx4 = await this.txnMkAddlRefScriptTxn(
                 tcx3,
                 "minter",
                 minter.compiledScript
@@ -674,20 +674,21 @@ export class DefaultCapo<
     }
 
     /**
-     * Creates a future reference-script-creation txn
+     * Creates an additional reference-script-creation txn
      * @remarks
      *
-     * Creates a future-txn for reference-script creation, and
-     * adds it to the current transaction context.
+     * Creates a txn for reference-script creation, and
+     * adds it to the current transaction context to also be submitted.
      *
-     * The reference script is stored in the Capo contract with a specific
+     * The reference script is stored in the Capo contract with a special
+     * Datum, and it can be used in future transactions to save space and fees.
      *
      * @param tcx - the transaction context
-     * @param scriptName - the name of the script, used in the future-txn name
-     * @param script - the script to be stored in the future-txn
+     * @param scriptName - the name of the script, used in the addlTxn's  name
+     * @param script - the script to be stored onchain for future reference
      * @public
      **/
-    async txnMkFutureRefScriptTxn<
+    async txnMkAddlRefScriptTxn<
         TCX extends StellarTxnContext<anyState>,
         scriptName extends string
     >(
@@ -695,7 +696,7 @@ export class DefaultCapo<
         scriptName: scriptName,
         script: UplcProgram
     ): Promise<
-        hasFutureTxn<
+        hasAddlTxn<
             TCX,
             `refScript${Capitalize<scriptName>}`,
             StellarTxnContext<anyState>
@@ -708,17 +709,17 @@ export class DefaultCapo<
             script
         );
         refScriptUtxo.correctLovelace(this.networkParams);
-        const fuTcx = new StellarTxnContext(this.myActor).addOutput(
+        const nextTcx = new StellarTxnContext(this.myActor).addOutput(
             refScriptUtxo
         );
 
         const sn = scriptName[0].toUpperCase() + scriptName.slice(1);
 
-        return tcx.addFutureTxn(`refScript${sn}`, {
+        return tcx.includeAddlTxn(`refScript${sn}`, {
             description: `creates on-chain reference script for ${scriptName}`,
             moreInfo: "saves txn fees and txn space in future txns",
             optional: false,
-            tcx: fuTcx,
+            tcx: nextTcx,
         });
     }
 

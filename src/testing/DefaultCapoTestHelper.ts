@@ -175,13 +175,14 @@ export class DefaultCapoTestHelper<
             `----- charter token minted at slot ${this.network.currentSlot}`
         );
         this.network.tick(1n);
-        for (const fuTxn in tcx.state.futureTxns) {
-            await script.submit(tcx.state.futureTxns[fuTxn].tx);
-            console.log(
-                `           ------- submitted addl txn ${fuTxn} at slot ${this.network.currentSlot}`
-            );
+        await script.submitAddlTxns(tcx, ({
+            txName, description
+        }) => {
             this.network.tick(1n);
-        }
+            console.log(
+                `           ------- submitting addl txn ${txName} at slot ${this.network.currentSlot}:`
+            );
+        })
 
         this.network.tick(1n);
         this.state.mintedCharterToken = tcx;
