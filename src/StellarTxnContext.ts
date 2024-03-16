@@ -35,6 +35,19 @@ export type AddlTxnCallback =
 | ( (futTx:  AddlTxInfo<any>) => StellarTxnContext<any> ) 
 | ( (futTx:  AddlTxInfo<any>) => Promise<StellarTxnContext<any>> ) 
 
+/**
+ * A transaction context that includes additional transactions in its state for later execution
+ * @remarks
+ * 
+ * During the course of creating a transaction, the transaction-building functions for a contract
+ * suite may suggest or require further transactions, which may not be executable until after the
+ * current transaction is executed.  This type allows the transaction context to include such
+ * future transactions in its state, so that they can be executed later.
+ * 
+ * The future transactions can be executed using the {@link StellarContract.submitAddlTxns}
+ * helper method.
+ * @public
+ **/
 export type hasAddlTxn<
     TCX extends StellarTxnContext,
     txnName extends string,
@@ -47,6 +60,16 @@ export type hasAddlTxn<
     } 
 >
 
+/**
+ * unique seed for creating UUTs and other uniqueness
+ * @remarks
+ * 
+ * The attributes of a seed utxo.  When the Utxo is used in a transaction,
+ * the seedTxn and seedIndex constitute a unique identifier that won't be
+ * repeated in the future, and that uniqueness can be used as a seed for
+ * a minting policy, a UUT, or for other uniqueness purposes.
+ * @public
+ **/
 export type SeedAttrs = {
     seedTxn: TxId;
     seedIndex: bigint;
@@ -57,9 +80,17 @@ export type SeedAttrs = {
 //   bigger-picture contextual container that serves various Stellar
 //   contract scripts with non-txn context for building a Tx)
 
+/**
+ * A base state for a transaction context
+ * @public
+ **/
 export type emptyState = {
     uuts: Record<string, UutName>;
 };
+/**
+ * A base state for a transaction context
+ * @public
+ **/
 export type anyState = emptyState;
 export type uutMap = Record<string, UutName>;
 export const emptyUuts: uutMap = Object.freeze({});
@@ -212,7 +243,6 @@ export class StellarTxnContext<S extends anyState = anyState> {
      *
      * idempotent version of helios addRefInput()
      *
-     * @typeParam ‹pName› - descr (for generic types)
      * @public
      **/
     addRefInput<TCX extends StellarTxnContext<S>>(

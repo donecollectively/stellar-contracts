@@ -207,7 +207,7 @@ export type CapoBaseConfig = configBase &
  * should be captured for reproducibility, and this type allows the bootstrap
  * transaction to expose that configuration.
  *
- * DefaultCapo's {@link DefautlCapo.mkTxnMintCharterToken | mkTxnMintCharterToken()} returns a transaction context
+ * DefaultCapo's {@link DefaultCapo.mkTxnMintCharterToken | mkTxnMintCharterToken()} returns a transaction context
  * of this type, with `state.bootstrappedConfig`;
  * @public
  **/

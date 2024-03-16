@@ -859,7 +859,7 @@ export class DefaultCapo<
      * Constructs UUTs with the indicated purposes, and adds them to the contract state.
      * This is a useful generic capability to support any application-specific purpose.
      *
-     * The provided transaction context must have a seedUtxo - use {@link addSeedUtxo()} to add one
+     * The provided transaction context must have a seedUtxo - use {@link DefaultCapo.addSeedUtxo | addSeedUtxo()} to add one
      * from the current user's wallet. The seed utxo is consumed, so it can never be used again; its
      * value will be returned to the user wallet.  All the uuts named in the uutPurposes argument will
      * be minted from the same seedUtxo, and will share the same suffix, because it is derived from the
@@ -871,11 +871,11 @@ export class DefaultCapo<
      *
      * It's recommended to create custom activities in the minting delegate, to go with your
      * application's use-cases for minting UUTs.  To include the seedUtxo details in the transaction,
-     * you can follow the SeedAttrs pattern  seen in {@link activityMintingUuts | activityMintingUuts()},
+     * you can follow the SeedAttrs pattern  seen in {@link DefaultMinter.activityMintingUuts | activityMintingUuts()},
      * using the StellarTxnContext's {@link StellarTxnContext.getSeedAttrs | getSeedAttrs()}
      * method to access the seedUtxo details.
      *
-     * The mintingUuts{...} activity defined in the on-chain specialized mint delegate demonstrates
+     * The mintingUuts\{...\} activity defined in the on-chain specialized mint delegate demonstrates
      * the inclusion of seedUtxo details in the activity/redeemer type, and the use of those details in
      * its on-chain call to `validateUutMinting()`.
      *
@@ -1026,29 +1026,30 @@ export class DefaultCapo<
     requirements() {
         return hasReqts({
             "positively governs all administrative actions": {
-                purpose: "to maintain clear control by a trustee group",
+                purpose: "to maintain clear control by an abstract entity",
                 details: [
                     // descriptive details of the requirement (not the tech):
-                    "a trustee group is defined during contract creation",
-                    "the trustee list's signatures provide consent",
-                    "the trustee group can evolve by consent of the trustee group",
-                    "a threshold set of the trustee group can give consent for the whole group",
+                    "A governance delegate is defined during contract creation",
+                    "The contract's policy for allowing governance actions is abstract, ",
+                    "  ... enforced only by a delegation pattern. ",
+                    "Thus, the Capo doesn't contain any of the policy details.",
+                    "The delegate can be evolved through governance action"
                 ],
                 mech: [
                     // descriptive details of the chosen mechanisms for implementing the reqts:
                     "uses a 'charter' token specialized for this contract",
-                    "the charter token has a trustee list in its Datum structure",
-                    "the charter token has a threshold setting in its Datum structure",
-                    "the charter Datum is updated when needed to reflect new trustees/thresholds",
+                    "the charter token has a govDgt (governance delegate) in its Datum structure",
+                    "the gov delegate's token can provide authorization for administrative actions",
+                    "the charter Datum is updated when needed to reflect a new gov delegation config",
                 ],
                 requires: [
                     "has a unique, permanent charter token",
                     "has a unique, permanent treasury address",
-                    "the trustee threshold is enforced on all administrative actions",
-                    "the trustee group can be changed",
+                    // "the trustee threshold is enforced on all administrative actions",
+                    // "the trustee group can be changed",
                     "the charter token is always kept in the contract",
                     "the charter details can be updated",
-                    "can mint other tokens, on the authority of the Charter token",
+                    "can mint other tokens, on the authority of the charter's registered mintDgt- token",
                     "can handle large transactions with reference scripts",
                 ],
             },
@@ -1058,14 +1059,16 @@ export class DefaultCapo<
                 details: [
                     "A chosen minting script is bound deterministically to the contract constellation",
                     "Its inaugural (aka 'initial Charter' or 'Charter Mint') transaction creates a charter token",
-                    "The minting script can issue further tokens approved by Treasury Trustees",
-                    "The minting script does not need to concern itself with details of Treasury Trustee approval",
+                    "The minting script can issue further tokens approved by the Capo's minting delegate",
+                    "The minting script does not need to concern itself with details of the delegate's approval",
                 ],
                 mech: [
                     "has an initial UTxO chosen arbitrarily, and that UTxO is consumed during initial Charter",
                     "makes a different address depending on (txId, outputIndex) parameters of the Minting script",
                 ],
-                requires: [],
+                requires: [
+                    "can mint other tokens, on the authority of the charter's registered mintDgt- token",
+                ],
             },
 
             "the charter details can be updated": {
@@ -1074,12 +1077,14 @@ export class DefaultCapo<
                     "The Capo's ability to accept charter-configuration changes allows its behavior to evolve. ",
                     "These configuration changes can accept a new minting-delegate configuration ,",
                     " ... or other details of the Charter datum that may be specialized.",
+                    "Charter updates are authorized by the gov delegate",
                 ],
                 mech: [
                     "TODO: TEST updates details of the datum",
                     "TODO: TEST doesn't update without the capoGov-* authority",
                     "TODO: TEST keeps the charter token in the contract address",
                 ],
+                requires: []
             },
 
             "has a unique, permanent treasury address": {
@@ -1087,6 +1092,7 @@ export class DefaultCapo<
                 details: [
                     "One-time creation is ensured by UTxO's unique-spendability property",
                     "Determinism is transferred from the charter utxo to the MPH and to the treasury address",
+                    "Further software development lifecycle is enabled by evolution of details stored in the Charter datum"
                 ],
                 mech: [
                     "uses the Minting Policy Hash as the sole parameter for the treasury spending script",
@@ -1105,7 +1111,7 @@ export class DefaultCapo<
                 impl: "txnMintCharterToken()",
                 mech: [
                     "creates a unique 'charter' token, with assetId determined from minting-policy-hash+'charter'",
-                    "TODO: fails if minSigs is longer than trustee list",
+                    // "XXX - move to multi-sig Delegate - TODO: fails if minSigs is longer than trustee list",
                     "doesn't work with a different spent utxo",
                 ],
                 requires: [
@@ -1134,13 +1140,15 @@ export class DefaultCapo<
                 requires: [],
             },
 
-            "can mint other tokens, on the authority of the Charter token": {
+            "can mint other tokens, on the authority of the charter's registered mintDgt- token": {
                 purpose:
                     "to simplify the logic of minting, while being sure of minting authority",
                 details: [
-                    "the minting policy doesn't have to directly enforce the trustee-list policy",
-                    "instead, it delegates that to the treasury spending script, ",
-                    "... and simply requires that the charter token is used for minting anything else",
+                    "the minting policy doesn't have to directly express detailed policy for authorization",
+                    "instead, it defers authority to the minting delegate, ",
+                    "... which can implement its own policy for minting",
+                    "... and by simply requiring that the mintDgt token is being spent.",
+                    "The minting delegate decides whether that's to be allowed."
                 ],
                 mech: [
                     "can build transactions that mint non-'charter' tokens",
@@ -1171,7 +1179,7 @@ export class DefaultCapo<
                 ],
             },
 
-            "the trustee group can be changed": {
+            "XXX - move to multi-sig Delegate - the trustee group can be changed": {
                 purpose: "to ensure administrative continuity for the group",
                 details: [
                     "When the needed threshold for administrative modifications is achieved, the Charter Datum can be updated",
@@ -1185,11 +1193,11 @@ export class DefaultCapo<
                     "does not allow minSigs to exceed the number of trustees",
                 ],
                 requires: [
-                    "the trustee threshold is enforced on all administrative actions",
+                    // "the trustee threshold is enforced on all administrative actions",
                 ],
             },
 
-            "the trustee threshold is enforced on all administrative actions": {
+            "XXX - move to multi-sig Delegate - the trustee threshold is enforced on all administrative actions": {
                 purpose:
                     "allows progress in case a small fraction of trustees may not be available",
                 details: [
