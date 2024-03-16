@@ -73,3 +73,11 @@ export function hasReqts<
 }
 /** @public **/
 hasReqts.TODO = TODO;
+
+export function inheritsReqts<
+    IR extends ReqtsMap<any>,
+    R extends ReqtsMap<validReqts>,
+    const validReqts extends string = string & keyof R
+>(inherits: IR, reqtsMap: R): ReqtsMap<validReqts> & IR {
+    return { ...inherits, ...reqtsMap };
+}

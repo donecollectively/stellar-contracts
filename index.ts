@@ -65,7 +65,7 @@ export { StellarDelegate } from "./src/delegation/StellarDelegate.js";
 export { AuthorityPolicy } from "./src/authority/AuthorityPolicy.js";
 export { AnyAddressAuthorityPolicy } from "./src/authority/AnyAddressAuthorityPolicy.js";
 
-export { hasReqts } from "./src/Requirements.js";
+export { hasReqts, inheritsReqts } from "./src/Requirements.js";
 export type { ReqtsMap, RequirementEntry } from "./src/Requirements.js";
 
 export { 
