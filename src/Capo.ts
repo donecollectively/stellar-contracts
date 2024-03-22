@@ -10,6 +10,7 @@ import {
     AssetClass,
     ValidatorHash,
     UplcProgram,
+    bytesToText,
 } from "@hyperionbt/helios";
 import { DefaultMinter } from "./minting/DefaultMinter.js";
 import type { BasicMinterParams } from "./minting/DefaultMinter.js";
@@ -74,6 +75,9 @@ export type {
     RoleMap,
     strategyValidation,
 } from "./delegation/RolesAndDelegates.js";
+
+export type FoundUut = { utxo: TxInput; uut: UutName };
+
 
 /**
  * strongly-typed map of purpose-names to Uut objects
@@ -676,6 +680,36 @@ export abstract class Capo<
         return this.mph;
     }
 
+    async findActorUut(
+        uutPrefix: string,
+        mph: MintingPolicyHash = this.mph
+    ): Promise<FoundUut | undefined> {
+        const foundUtxo = await this.findActorUtxo(`uut ${uutPrefix}-`, (utxo) => {
+            if (getMatchingTokenName(utxo, mph)) {
+                return utxo
+            }
+        });
+        if (!foundUtxo) return undefined;
+        
+        return {
+            utxo: foundUtxo,
+            uut: new UutName(uutPrefix, getMatchingTokenName(foundUtxo, mph))
+        };
+
+        function getMatchingTokenName(utxo: TxInput, mph: MintingPolicyHash) {
+            const tokenNamesExisting = utxo.value.assets
+                .getTokenNames(mph)
+                .map((x) => bytesToText(x.bytes));
+
+            const tokenNames = tokenNamesExisting.filter((x) => {
+                // console.info("   - found token name: "+x);
+                return !!x.startsWith(`${uutPrefix}-`);
+            });
+
+            return tokenNames[0];
+        }
+    }
+
     async connectMintingScript(params: SeedTxnParams): Promise<minterType> {
         if (this.minter)
             throw new Error(`just use this.minter when it's already present`);
@@ -699,6 +733,7 @@ export abstract class Capo<
             //   isn't actively supported yet
             capo: this,
         });
+
         if (expectedMph && !minter.mintingPolicyHash.eq(expectedMph)) {
             throw new Error(
                 `This minter script with this seed-utxo doesn't produce the required  minting policy hash\n` +
@@ -1304,6 +1339,19 @@ export abstract class Capo<
                     "TODO: with an existing delegate, the selected strategy class MUST exactly match the known delegate-address",
                 ],
             },
+            "can locate UUTs in the user's wallet": {
+                purpose: "for finding UUTs representing user's authority",
+                details: [
+                    "A Capo contract can locate UUTs in the user's wallet",
+                    "  ... using the findActorUut() method",
+                    "This is useful for finding authority tokens, ",
+                    "  ... such as a charter-governance token, ",
+                    "  ... or a token representing a user's authority in a smart contract",
+                ],
+                mech: [
+                    "findActorUut() returns a FoundUut object, ",
+                ]
+            }
         });
     }
 }
