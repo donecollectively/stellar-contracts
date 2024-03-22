@@ -58,12 +58,17 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     get actorName() {
         return this._actorName;
     }
+    /**
+     * Gets the current actor wallet
+     *
+     * @public
+     **/
     get currentActor(): WalletEmulator {
         return this.actors[this._actorName];
     }
     /**
-     * obsolete; use setActor() instead
      * @deprecated
+     * NOTE: setting currentActor = <string> is obsolete; use setActor() instead
      *
      * @internal
      **/

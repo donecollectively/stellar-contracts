@@ -13,7 +13,11 @@ module specializedMintDelegate
 // ... variants for use-cases inside the script, with the remaining
 // ... available for authorizing application-specific use-cases.
 
-// The mintingUuts activity
+// The mintingUuts activity is deprecated, and should be replaced with
+// ... application-specific activities that validate minting of UUTs.
+// It's recommended to retain the error-throwing behavior of the
+// ... genericUutMinting function, and expect that it will no longer 
+// ... be called after Stellar Contracts v1.0
 
 // The MintDelegateDatum enum reserves the first variant for the
 // ... "IsDelegation" datum, which can contain any delegate-specific 
@@ -69,12 +73,12 @@ enum MintDelegateActivity {
     _reserved6
     _reserved7
     _reserved8
-    _reserved9
+    //     _reserved9 // temporarily held by the mintingUuts activity 
     // note: all activities at index > 9 are reserved for application-specific use-cases
 
     // NOTE: prefer application-specific use-cases with particular minting validations,
     // ... rather than generic mintingUuts
-    mintingUuts {
+    mintingUuts {  // index 9
         seedTxn: TxId
         seedIndex: Int
         purposes: []String
@@ -136,10 +140,10 @@ enum MintDelegateActivity {
 
     //! used only for validating IsDelegation datum, that is,
     //   ... to approve minting requests or any customize spending modes 
-    //   ... of that datum.  In this unspecialized version, 
-    //   ... the "Modifying" activity is an unsupported stand-in for that use-case, always rejecting.
-    //! in a real-life customization case, additional custom IsDelegation config can be
-    //   ... enforced in "Modifying" event the second field of IsDelegation (the "CDConfig" stand-in here)
+    //   ... of that datum.  In the unspecialized version, 
+    //   ... the "Modifying" activity is a stand-in for that use-case, that always rejects.
+    //! To customize further, additional custom IsDelegation config can be
+    //   ... enforced in the "Modifying" event - see the second field of IsDelegation (see the "CustomConfig" stand-in)
     //   ... the BasicMintDelegate allows for that field's presence, without any assumptions
     //   ... about its type.
     //  Note that the basic mint delegate already enforces some basic
@@ -155,7 +159,9 @@ enum MintDelegateActivity {
             //     unmodifiedDelegation(priorMddd.serialize(), ctx) && 
             //     true
             // },
+            // todo: delete this obsolete activity.
             mintingUuts => self.genericUutMinting(priorMddd, ctx),
+
             // Modifying => false,
             // Reassigning => false,
             // Retiring => false,
@@ -163,9 +169,10 @@ enum MintDelegateActivity {
         } || ctx.tx.serialize() != priorMddd.serialize()
     }
 
-    //! used only for validating non-IsDelegation datum types.
+    //! used only for validating non-IsDelegation datum types and activities.
     //   if you have any admininstrative data structures that inform 
-    //   your minting policy, this might be useful
+    //   your minting policy, this might be useful.  Activities that
+    //   you might validate here would be specific to your application.
     func otherDatumValidation( self,
         priorMdd: MintDelegateDatum, 
         ctx: ScriptContext
@@ -173,10 +180,16 @@ enum MintDelegateActivity {
         neverTriggered = () -> {  error("never called") };
         self.switch{
             // Authorizing => neverTriggered(),
-            Reassigning => neverTriggered(),
+            // Note: these activities are reserved for the IsDelegation datum.
+            //   ... using these activities on any other Datum type will always fail
+            //   ... BEFORE execution reaches this point.
+            Reassigning => neverTriggered(), 
             Retiring => neverTriggered(),
             Modifying => neverTriggered(),
-            _ => false
+            
+            // ------------------- application-specific activities can be added here
+
+            _ => false  // prevents non-exhaustive match errors, even if you remove the above neverTriggered() calls
         } && (priorMdd.serialize() != ctx.serialize())
     }
 }

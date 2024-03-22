@@ -895,6 +895,9 @@ export abstract class Capo<
 
         const foundStrategies = 
             delegateRoles[roleName] as RoleInfo<DT, any, any, RN>; //prettier-ignore
+        if (!foundStrategies) {
+            throw new Error(`no delegateRoles entry for role '${roleName}'`);
+        }
         const selectedStrategy = foundStrategies.variants[
             strategyName
         ] as VariantStrategy<DT>;
