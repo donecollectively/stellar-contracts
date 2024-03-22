@@ -423,7 +423,7 @@ export class DefaultCapo<
     }
 
     @datum
-    mkDatumCharterToken(args: CDT): InlineDatum {
+    async mkDatumCharterToken(args: CDT): Promise<Datum> {
         //!!! todo: make it possible to type these datum helpers more strongly
         //  ... at the interface to Helios
         console.log("--> mkDatumCharter", args);
@@ -663,6 +663,8 @@ export class DefaultCapo<
             );
             // debugger
 
+            // mints the charter, along with the capoGov and mintDgt UUTs.
+            // TODO: if there are additional UUTs needed for other delegates, include them here.
             const minting = this.minter.txnMintingCharter(tcx4, {
                 owner: this.address,
                 capoGov, // same as govAuthority,
@@ -838,7 +840,7 @@ export class DefaultCapo<
         return this.txnUpdateCharterUtxo(
             tcx,
             this.activityUpdatingCharter(),
-            this.mkDatumCharterToken(args)
+            await this.mkDatumCharterToken(args)
         );
     }
 
