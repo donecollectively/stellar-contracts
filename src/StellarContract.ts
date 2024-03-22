@@ -755,7 +755,7 @@ export class StellarContract<
      * returns the on-chain enum used for spending contract utxos or for different use-cases of minting (in a minting script).
      * the returned type (and its enum variants) are suitable for off-chain txn-creation
      * override `get onChainActivitiesName()` if needed to match your contract script.
-     * @private
+     * @internal
      **/
     private get onChainActivitiesType() {
         const { scriptActivitiesName: onChainActivitiesName } = this;
@@ -827,7 +827,11 @@ export class StellarContract<
         const { fieldNames, instanceMembers } = uplcType as any;
 
         if (uplcType.fieldNames?.length == 1) {
-            throw new Error(`todo: support for single-field nested structs?`);
+            const fn = fieldNames[0];
+            const singleFieldStruct = {
+                [fn]: await this.readUplcField(fn, instanceMembers[fn], uplcData)
+            }
+            return singleFieldStruct
         }
 
         //@ts-expect-error until Helios exposes right type info for the list element
@@ -1531,9 +1535,9 @@ export class StellarContract<
         return bn;
     }
 
-    //! it requires an subclass to define a contractSource
+    //! it requires each subclass to define a contractSource
     contractSource(): string | never {
-        throw new Error(`missing contractSource impl`);
+        throw new Error(`${this.constructor.name}: missing required implementation of contractSource()`);
     }
 
     //!!! todo: implement more and/or test me:
