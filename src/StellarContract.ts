@@ -83,7 +83,8 @@ export type stellarSubclass<
     CT extends configBase = S extends StellarContract<infer iCT>
         ? iCT
         : configBase
-> = (new (setup: SetupDetails, internal: typeof isInternalConstructor) => S) & { // & StellarContract<CT>
+> = (new (setup: SetupDetails, internal: typeof isInternalConstructor) => S) & {
+    // & StellarContract<CT>
     defaultParams: Partial<CT>;
     createWith(args: StellarFactoryArgs<CT>): Promise<S>;
     parseConfig(rawJsonConfig: any): any;
@@ -368,17 +369,17 @@ type UtxoSearchScope = {
 };
 
 type ComputedScriptProperties = Partial<{
-    vh: helios.ValidatorHash,
-    addr: Address,
-    mph: MintingPolicyHash,
-    identity: string,
-}>
+    vh: helios.ValidatorHash;
+    addr: Address;
+    mph: MintingPolicyHash;
+    identity: string;
+}>;
 
 const isInternalConstructor = Symbol("internalConstructor");
 
 //!!! todo: type configuredStellarClass = class -> networkStuff -> withParams = stellar instance.
 
-/*
+/** 
  * Basic wrapper and off-chain facade for interacting with a single Plutus contract script
  * @remarks
  *
@@ -457,37 +458,43 @@ export class StellarContract<
     /**
      * Factory function for a configured instance of the contract
      * @remarks
-     * 
+     *
      * Due to boring details of initialization order, this factory function is needed
      * for creating a new instance of the contract.
      * @param args - setup and configuration details
      * @public
      **/
     static async createWith<
-        thisType extends StellarContract<configType>, 
-        configType extends configBase = thisType extends StellarContract<infer iCT> ? iCT : never,
+        thisType extends StellarContract<configType>,
+        configType extends configBase = thisType extends StellarContract<
+            infer iCT
+        >
+            ? iCT
+            : never
     >(
         this: stellarSubclass<any>,
         args: StellarFactoryArgs<configType>
-    ) : Promise<StellarContract<configType> & InstanceType<typeof this>> {
+    ): Promise<StellarContract<configType> & InstanceType<typeof this>> {
         const Class = this;
-        const {setup, config, partialConfig} = args
+        const { setup, config, partialConfig } = args;
         const c = new Class(setup, isInternalConstructor);
 
-        // now all internal property assignements have been triggered, 
+        // now all internal property assignments have been triggered,
         //  (e.g. class-level currentRev = .... declarations)
-        // so we can do initialization activities post-construction  
+        // so we can do initialization activities post-construction
         return c.init(args);
     }
     /**
      * obsolete public constructor.  Use the createWith() factory function instead.
-     * 
+     *
      * @public
      **/
     constructor(setup: SetupDetails, internal: typeof isInternalConstructor) {
         this.setup = setup;
         if (internal !== isInternalConstructor) {
-            throw new Error(`StellarContract: use createWith() factory function`);
+            throw new Error(
+                `StellarContract: use createWith() factory function`
+            );
         }
         const { network, networkParams, isTest, myActor, isMainnet } = setup;
 
@@ -498,7 +505,7 @@ export class StellarContract<
     }
 
     async init(args: StellarFactoryArgs<ConfigType>) {
-        const {isMainnet,myActor} = this.setup
+        const { isMainnet, myActor } = this.setup;
         const chosenNetwork = isMainnet ? "mainnet" : "testnet";
         if ("undefined" !== typeof configuredNetwork) {
             if (configuredNetwork != chosenNetwork) {
@@ -510,12 +517,12 @@ export class StellarContract<
         }
         configuredNetwork = chosenNetwork;
         if (myActor) {
-            const isMain = await myActor.isMainnet()
+            const isMain = await myActor.isMainnet();
             const foundNetwork = isMain ? "mainnet" : "testnet";
             if (foundNetwork !== chosenNetwork) {
                 throw new Error(
                     `wallet on ${foundNetwork} doesn't match network from setup`
-                )
+                );
             }
             this.myActor = myActor;
         }
@@ -553,33 +560,62 @@ export class StellarContract<
     }
 
     get validatorHash() {
-        const {vh} = this._cache
+        const { vh } = this._cache;
         if (vh) return vh;
         // console.log(this.constructor.name, "cached vh", vh?.hex || "none");
         const nvh = this.compiledScript.validatorHash;
-        return (this._cache.vh = nvh)
+        // console.log("nvh", nvh.hex);
+        // if (vh) {
+        //     if (!vh.eq(nvh)) {
+        //         console.warn(`validatorHash mismatch: ${vh.hex} != ${nvh.hex}`);
+        //         debugger
+        //     }
+        // }
+        return (this._cache.vh = nvh);
+    }
+
     get address(): Address {
-        const {addr} = this._cache
-        console.log(this.constructor.name, "cached addr", addr?.toBech32() || "none");
+        const { addr } = this._cache;
+        console.log(
+            this.constructor.name,
+            "cached addr",
+            addr?.toBech32() || "none"
+        );
         if (addr) return addr;
         const nAddr = Address.fromHashes(this.validatorHash);
-        return this._cache.addr = nAddr
+        // console.log("nAddr", nAddr.toBech32());
+        // if (this._address) {
+        //     if (!this._address.eq(nAddr)) {
+        //         console.warn(`address mismatch: ${this._address.toBech32()} != ${nAddr.toBech32()}`);
+        //         debugger
+        //     }
+        // }
+        return (this._cache.addr = nAddr);
     }
 
     get mintingPolicyHash() {
         if ("minting" != this.purpose) return undefined;
-        const {mph} = this._cache;
+        const { mph } = this._cache;
         if (mph) return mph;
         // console.log(this.constructor.name, "_mph", this._mph?.hex || "none");
         const nMph = this.compiledScript.mintingPolicyHash;
-        return this._cache.mph = nMph
+        // console.log("nMph", nMph.hex);
+        // if (this._mph) {
+        //     if (!this._mph.eq(nMph)) {
+        //         console.warn(
+        //             `mintingPolicyHash mismatch: ${this._mph.hex} != ${nMph.hex}`
+        //         );
+        //         debugger
+        //     }
+        // }
+        return (this._cache.mph = nMph);
     }
 
     get identity() {
-        const {identity} = this._cache
-        if (identity) return identity;        
+        const { identity } = this._cache;
+        if (identity) return identity;
         console.log(this.constructor.name, "identity", identity || "none");
-        
+
         let result: string;
         if ("minting" == this.purpose) {
             const b32 = this.mintingPolicyHash!.toBech32();
@@ -588,7 +624,16 @@ export class StellarContract<
         } else {
             result = this.address.toBech32();
         }
-        return this._cache.identity = result;
+        // if (this._identity) {
+        //     if (this._identity != result) {
+        //         console.warn(
+        //             `identity mismatch: ${this._identity} != ${result}`
+        //         );
+        //         debugger
+        //     }
+        // }
+        // console.log("nIdentity", result);
+        return (this._cache.identity = result);
     }
 
     //! searches the network for utxos stored in the contract,
@@ -1392,20 +1437,20 @@ export class StellarContract<
             const willSign = [...signers, ...tcx.neededSigners];
 
             const wHelper = wallet && new WalletHelper(wallet);
-            if (false && wallet && wHelper) {
-                //@ts-expect-error on internal isSmart()
-                if (tx.isSmart() && !tcx.collateral) {
-                    let [c] = await wallet.collateral;
-                    if (!c) {
-                        c = await wHelper.pickCollateral(this.ADA(5n));
-                        if (c.value.lovelace > this.ADA(20n))
-                            throw new Error(
-                                `The only collateral-eligible utxos in this wallet have more than 20 ADA.  It's recommended to create and maintain collateral values between 2 and 20 ADA (or 5 and 20, for more complex txns)`
-                            );
-                    }
-                    tcx.addCollateral(c); // adds it also to the tx.
-                }
-            }
+            // if (false)  { if (wallet && wHelper) {
+            //     //@ts-expect-error on internal isSmart()
+            //     if (tx.isSmart() && !tcx.collateral) {
+            //         let [c] = await wallet.collateral;
+            //         if (!c) {
+            //             c = await wHelper.pickCollateral(this.ADA(5n));
+            //             if (c.value.lovelace > this.ADA(20n))
+            //                 throw new Error(
+            //                     `The only collateral-eligible utxos in this wallet have more than 20 ADA.  It's recommended to create and maintain collateral values between 2 and 20 ADA (or 5 and 20, for more complex txns)`
+            //                 );
+            //         }
+            //         tcx.addCollateral(c); // adds it also to the tx.
+            //     }
+            // } }
             // if (sign && this.myActor) {
             //     willSign.push(this.myActor);
             // }
@@ -1445,20 +1490,22 @@ export class StellarContract<
                 }
                 // if any inputs from the wallet were added as part of finalizing,
                 // add the wallet's signature to the txn
-                if (!walletMustSign) for (const input of tx.body.inputs) {
-                    if (!(await wHelper.isOwnAddress(input.address))) continue;
-                    walletMustSign = true;
-                    tcx.neededSigners.push(input.address)
-                    break;
-                }
+                if (!walletMustSign)
+                    for (const input of tx.body.inputs) {
+                        if (!(await wHelper.isOwnAddress(input.address)))
+                            continue;
+                        walletMustSign = true;
+                        tcx.neededSigners.push(input.address);
+                        break;
+                    }
                 if (walletMustSign) {
                     const walletSign = wallet.signTx(tx);
                     sigs = await walletSign.catch((e) => {
                         console.warn(
-                            "signing via wallet failed: "+ e.message,
+                            "signing via wallet failed: " + e.message,
                             tcx.dump(this.networkParams)
                         );
-                        return null
+                        return null;
                     });
                     //! doesn't need to re-verify a sig it just collected
                     //   (sig verification is ~2x the cost of signing)
@@ -1504,8 +1551,8 @@ export class StellarContract<
      *
      * During the off-chain txn-creation process, additional transactions may be
      * queued for execution.  This method is used to execute those transactions.
-     * @param tcx: the prior txn context having the additional txns to execute
-     * @param callback: an optional async callback that you can use to notify a user, or to log the results of the additional txns
+     * @param tcx - the prior txn context having the additional txns to execute
+     * @param callback - an optional async callback that you can use to notify a user, or to log the results of the additional txns
      * @public
      **/
     async submitAddlTxns(
@@ -1574,7 +1621,7 @@ export class StellarContract<
     importModules(): HeliosModuleSrc[] {
         return [];
     }
-    _cache: ComputedScriptProperties = {}
+    _cache: ComputedScriptProperties = {};
 
     loadProgramScript(params?: Partial<ConfigType>): Program | undefined {
         const src = this.contractSource();
@@ -1608,10 +1655,13 @@ export class StellarContract<
                 );
             }
 
-            console.log(`${this.constructor.name}: setting compiledScript with simplify=${simplify} + params:`, params)
+            console.log(
+                `${this.constructor.name}: setting compiledScript with simplify=${simplify} + params:`,
+                params
+            );
             //!!! todo: consider pushing this to JIT or async
             this.compiledScript = script.compile(simplify);
-            this._cache = {}
+            this._cache = {};
             // const t2 = new Date().getTime();
 
             // Result: ~80ms cold-start or (much) faster on additional compiles
@@ -1807,8 +1857,12 @@ export class StellarContract<
         searchScope: UtxoSearchScope,
         extraErrorHint?: string
     ): string {
-        const where = searchScope.address ? `address ${searchScope.address.toBech32()}` : `connected wallet`;
-        return `${this.constructor.name}: '${semanticName}' utxo not found (${extraErrorHint || "sorry, no extra clues available"}) in ${where}`;
+        const where = searchScope.address
+            ? `address ${searchScope.address.toBech32()}`
+            : `connected wallet`;
+        return `${this.constructor.name}: '${semanticName}' utxo not found (${
+            extraErrorHint || "sorry, no extra clues available"
+        }) in ${where}`;
     }
     toUtxoId(u: TxInput) {
         return `${u.outputId.txId.hex}@${u.outputId.utxoIdx}`;
