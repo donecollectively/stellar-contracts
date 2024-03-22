@@ -983,6 +983,27 @@ export class DefaultCapo<
         return tcx2;
     }
 
+    /**
+     * Adds UUT types to the transaction context
+     * @remarks
+     * 
+     * adds tcx.state.uut entries for each purpose.
+     * 
+     * also adds a second uut entry for each role-name found in the roles map, corresponding to the uut entry for its purpose.
+     * 
+     * NOTE: this method doesn't add a minting instruction to the transaction, so that
+     * all the minting/burning needed for the txn can (because it must) be done in one minting instruction.
+     * 
+     * If the uuts being minted are the only minting/burning needed in the transaction, then
+     * you can use {@link txnMintingUuts | txnMintingUuts()} instead of this method.
+     *  
+     * @param tcx - the transaction context
+     * @param uutPurposes - a list of short names for the UUTs (will be augmented with unique suffixes)
+     * @param usingSeedUtxo - the seed utxo to be used for minting the UUTs (consumed in the transaction, and controls the suffixes)
+     * @param roles - a map of role-names to purpose-names
+     * @typeParam ‹pName› - descr (for generic types)
+     * @public
+     **/
     @partialTxn
     async txnWillMintUuts<
         const purposes extends string,

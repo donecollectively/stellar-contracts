@@ -368,7 +368,7 @@ export abstract class Capo<
         return new Class({ setup, config: { ...config, bootstrapping: true } });
     }
     abstract contractSource(): HeliosModuleSrc;
-    abstract mkDatumCharterToken(args: charterDatumType): InlineDatum;
+    abstract mkDatumCharterToken(args: charterDatumType): InlineDatum | Promise<InlineDatum>;
     // abstract txnMustUseCharterUtxo(
     //     tcx: StellarTxnContext,
     //     newDatum?: InlineDatum

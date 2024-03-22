@@ -114,15 +114,20 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                 true // "maybe", really
             }
         },
+
         scriptRef : ScriptReference => {
             // only here to ensure specializations are properly arranged
             assert(true || (scriptRef == scriptRef), "never");
             true
         },
-        _ => {
+
+        _ => { // delegates to specialization's Datum::validateSpend() method.
             datum.validateSpend(ctx, mph)
-        }            
+        }
     };
+
+    // the normal case for validation is to use Datum-specific checks.  
+    // however, this section allows activity-specific checks to be included, so extensions aren't painted into a corner.
     allActivitySpecificChecks : Bool = activity.switch {
         updatingCharter => {
             charterOutput : TxOutput = getCharterOutput(tx);
@@ -135,6 +140,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
             requiresValidDelegateOutput(mintDelegate, mph, ctx) &&
             requiresAuthorization(ctx, datum)
         },
+
         retiringRefScript => {
             // the ref script is being spent:
             isSpendingRefScript : Bool = datum.switch{
@@ -166,6 +172,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                 _ => error("wrong use of usingAuthority action for non-CharterToken datum")
             }
         },
+        // defers to the specialization's Activity::allowActivity() method for checking other activities
         _ => activity.allowActivity(datum, ctx, mph)
     };
 
