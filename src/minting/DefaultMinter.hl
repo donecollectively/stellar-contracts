@@ -9,11 +9,21 @@ import {
     Activity
 } from CapoMintHelpers
 
-import {mkTv} from StellarHeliosHelpers
+import { Datum } from specializedCapo
 
-// import {
-//     requiresValidDelegateOutput
-// } from CapoDelegateHelpers
+import {
+    getRefCharterUtxo,
+    mustFindInputRedeemer
+} from CapoHelpers
+
+import {
+    mkTv,
+    tvCharter
+} from StellarHeliosHelpers
+
+import {
+    requiresValidDelegateOutput
+} from CapoDelegateHelpers
 
 //!!!! todo: change to TxOutputId, rolling up these two things:
 const seedTxn : TxId = TxId::new(#1234)
@@ -23,6 +33,54 @@ const rev : Int = 1
 func hasContractSeedUtxo(tx: Tx) -> Bool {
     hasSeedUtxo(tx, seedTxn, seedIndex
         // , "charter"
+    )
+}
+
+func mustUpdateInvariantListAtRedeemerIndex(
+    ctx: ScriptContext,
+    mph: MintingPolicyHash,
+    redeemerIndex: Int, 
+    sTxId: TxId,
+    sIdx: Int,
+    purpose: String
+) -> Bool {
+            // only has to check that a) it's minting all-and-only the invariant-uut,
+            // and b) the contract charter is BEING SPENT WITH THE ACTIVITY at the indicated index.
+            // ------> The charter-spend policy for that activity checks all the other necessaries
+            //     given that activity.
+
+            // NOT needed; the charter-spend policy ensures the expected delegate output is created when adding a spend invariant.
+            // hasRightDestination : Bool = output.value == value_minted &&
+            //     output.address == charterUtxo.address;
+
+    chVal : Value = tvCharter(mph);
+    hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
+    print("  --- finding required charter input ");
+    charterInput : TxInput = ctx.tx.inputs.find(hasCharter);
+    print ("  <-- found charter input");
+    redeemer : Data  = mustFindInputRedeemer(ctx, charterInput);
+    redeemer.switch{
+        (index: Int, _fields: []Data) => {
+            /* avoids unused-variable warning: */ _fields == _fields && 
+
+            if (index == redeemerIndex) { 
+                true 
+            } else {  
+                error("wrong activity for adding spend invariant; expected "+ 
+                    redeemerIndex.show()+
+                     ", got "+index.show()
+                )
+            }
+        },
+        _ => error("incontheeivable!")
+    } &&
+    validateUutMinting(
+        ctx: ctx, 
+        mph: mph,
+        seedTxId: sTxId, 
+        seedIdx: sIdx, 
+        purposes: []String{purpose}, 
+        mkTokenName: mkUutTnFactory(sTxId, sIdx)
     )
 }
 
@@ -36,31 +94,68 @@ func main(r : Activity, ctx: ScriptContext) -> Bool {
         charter: mintingCharter => {       
             charterVal : Value = mkTv(mph, "charter");
             authTnBase : String = "capoGov";
-            mintDgtTnBase : String = "mintDgt";
-  
-
+            mintDgtTnBase : String = "mintDgt";  
+            spendDgtTnBase: String = "spendDgt";
             assert(value_minted >= charterVal,
                 "charter token not minted");
 
-            hasContractSeedUtxo(tx) &&
-            validateUutMinting(
+            hasSeed: Bool = hasContractSeedUtxo(tx);
+            mintsUuts : Bool = validateUutMinting(
                 ctx: ctx, 
                 mph: mph,
                 seedTxId: seedTxn, 
                 seedIdx: seedIndex, 
-                purposes: []String{authTnBase, mintDgtTnBase}, 
+                purposes: []String{authTnBase, mintDgtTnBase, spendDgtTnBase}, 
                 mkTokenName: mkUutTnFactory(seedTxn, seedIndex),
                 bootstrapCharter: charterVal
-            ) &&
-            tx.outputs.all( (output: TxOutput) -> Bool {
-                output.value != value_minted || (
-                    output.value == value_minted &&
-                    output.address == charter.owner
-                )
-            })
+            );
+            charterOutput: TxOutput = tx.outputs.find( (output: TxOutput) -> Bool {
+                output.address == charter.owner &&
+                    output.value.contains(charterVal)
+            });
+            // ^^ fails if there's no charter output to the right address
+
+            charterData : Data = charterOutput.datum.get_inline_data();
+            Datum::CharterToken{authDgt, mintDgt, spendDgt, mintInvariants, spendInvariants}  = charterData.switch{
+                    // c: Datum => c.switch{ 
+                    // c:CharterToken => c, _ => error("unexpected datum type") },
+                (index: Int, fields: []Data) => {
+                    assert(index==0, "charter token must be at index 0");
+                    assert(fields.length == 5, "charter token must have 5 fields");
+                    // {authDgt, mintDgt, spendDgt, mintInvariants, spendInvariants}
+                    Datum::CharterToken::from_data(charterData)
+                },
+                _ => error("unexpected datum type")  
+            };
+
+            // once we have burned down the test backlog a bit, we can add these in:
+            assert(mintInvariants.length == 0, "no mint invariants allowed at charter creation");
+            assert(spendInvariants.length == 0, "no spend invariants allowed at charter creation");
+
+            hasGoodDelegates : Bool = requiresValidDelegateOutput(authDgt, mph, ctx) &&
+                requiresValidDelegateOutput(mintDgt, mph, ctx) &&
+                requiresValidDelegateOutput(spendDgt, mph, ctx);
+
+            print("     -- hasSeed: " + hasSeed.show());
+            print("     -- mintsUuts: " + mintsUuts.show());
+            print("     -- hasGoodDelegates: " + hasGoodDelegates.show());
+            hasGoodDelegates && mintsUuts && hasSeed
         },
+
         mintWithDelegateAuthorizing => {
+            if (true) {
+                // todo: enforces minting invariants.
+                error("must enforce minting invariants")
+            }; 
             requiresDelegateApproval(ctx, mph)
+        },
+
+        addingMintInvariant{sTxId, sIdx} => {
+            mustUpdateInvariantListAtRedeemerIndex(ctx, mph, 3, sTxId, sIdx, "mintInvar")
+        },
+
+        addingSpendInvariant{sTxId, sIdx} => {
+            mustUpdateInvariantListAtRedeemerIndex(ctx, mph, 4, sTxId, sIdx, "spendInvar")
         },
 
         mintingUuts => { // {sTxId, sIdx, purposes} => {

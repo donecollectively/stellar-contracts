@@ -25,6 +25,7 @@ import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import { ConfigFor } from "../src/StellarContract";
 import { dumpAny } from "../src/diagnostics";
 import { DelegationDetail } from "../src/delegation/RolesAndDelegates";
+import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
@@ -186,7 +187,7 @@ describe("Capo", async () => {
                     }
                 );
                 await findingRefScript;
-                expect(findingRefScript).resolves.toBeTruthy();
+                await expect(findingRefScript).resolves.toBeTruthy();
             });
 
             it("includes the mintDgt script so it can be used as a referenceScript", async (context: localTC) => {
@@ -217,7 +218,7 @@ describe("Capo", async () => {
             );
             expect(spentDgtToken).toBeTruthy();
             expect(returnedToken).toBeTruthy();
-            expect(t.submit(tcx2)).resolves.toBeTruthy();
+            await expect(t.submit(tcx2)).resolves.toBeTruthy();
 
             // uses the reference script in the minting txn:
             expect(
@@ -255,7 +256,7 @@ describe("Capo", async () => {
                 await t.addSeedUtxo(new StellarTxnContext<any>()),
                 ["anything"]
             );
-            expect(t.submit(tcx)).rejects.toThrow(/missing .*mintDgt/);
+            await expect(t.submit(tcx)).rejects.toThrow(/missing .*mintDgt/);
         });
 
         it("requires that the mintDgt datum is unmodified", async (context: localTC) => {
@@ -282,7 +283,7 @@ describe("Capo", async () => {
             console.log(
                 "------ submitting bogus txn with modified delegate datum"
             );
-            expect(t.submit(tcx)).rejects.toThrow(
+            await expect(t.submit(tcx)).rejects.toThrow(
                 // /delegation datum must not be modified/
                 /modified dgtDtm/
             );
@@ -399,11 +400,159 @@ describe("Capo", async () => {
             }
         );
     });
+
     describe("the charter details can be updated by authority of the capoGov-* token", () => {
-        it.todo("TODO: updates details of the datum");
+        fit(" updates details of the datum", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+
+            const capo = await h.bootstrap();
+            const tcx = await h.mintCharterToken();
+            const datum = await capo.findCharterDatum();
+
+            const tcxq = await capo.txnCreatingMintDelegate(BasicMintDelegate);
+
+            const tcx2a = new StellarTxnContext<any>();
+            const seedUtxo = await capo.txnMustGetSeedUtxo(tcx2a, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
+            const tcx2b = await capo.txnMintingUuts(
+                tcx2a.addInput(seedUtxo),
+                ["mintDgt"],
+                {
+                    usingSeedUtxo: seedUtxo,                                                
+                }, {
+                    mintDelegate: "mintDgt",
+                }
+            );
+
+            const newDatum = {
+                ...datum,
+                mintDelegateLink: capo.txnCreateDelegateLink<BasicMintDelegate, "mintDelegate">(
+                    tcx2b,
+                    "mintDelegate",
+                    {
+                        strategyName: "default",
+                    }
+                ),
+            };
+            const tcx2c = await capo.mkTxnUpdateCharter(newDatum, tcx2b);
+            await capo.submit(tcx2b);
+            const updatedDatum = await capo.findCharterDatum();
+            expect(updatedDatum).toEqual(newDatum);
+        });
+
         it.todo("TODO: doesn't update without the capoGov-* authority");
         it.todo("TODO: keeps the charter token in the contract address");
     });
+
+    describe("can update the minting delegate in the charter settings", () => {
+        it("can install an updated minting delegate", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+            
+              // const strella = 
+            await h.bootstrap(); 
+            
+        
+        });
+        it("fails without the capoGov- authority uut", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+            
+              // const strella = 
+            await h.bootstrap(); 
+        
+        });
+
+        it("uses the new minting delegate after it is installed", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+            
+              // const strella = 
+            await h.bootstrap(); 
+            
+        });
+
+        it("can't use the old minting delegate after it is replaced", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+            
+              // const strella = 
+            await h.bootstrap(); 
+                    
+        });
+    });
+
+    describe("can update the spending delegate in the charter settings", () => {
+        it("can install an updated spending delegate", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+            
+              // const strella = 
+            await h.bootstrap(); 
+            
+        });
+        it("fails without the capoGov- authority uut", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+            
+              // const strella = 
+            await h.bootstrap(); 
+        
+        });
+
+        it("uses the new spending delegate after it is installed", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+            
+              // const strella = 
+            await h.bootstrap(); 
+            
+        });
+
+        it("can't use the old spending delegate after it is replaced", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+            
+              // const strella = 
+            await h.bootstrap(); 
+                    
+        });
+    });
+
+    // describe("can add invariant minting delegates to the charter settings", () => {
+    //     it("can add a minting invariant", async (context: localTC) => {
+    //         // prettier-ignore
+    //         const {h, h:{network, actors, delay, state} } = context;            
+    //           // const strella = 
+    //         await h.bootstrap(); 
+    //     });
+    //
+    //     it("fails without the capoGov- authority uut", async (context: localTC) => {
+    //         // prettier-ignore
+    //         const {h, h:{network, actors, delay, state} } = context;
+    //           // const strella = 
+    //         await h.bootstrap();         
+    //     });
+    //
+    //     it("cannot change mint invariants when updating other charter settings", async (context: localTC) => {
+    //         // prettier-ignore
+    //         const {h, h:{network, actors, delay, state} } = context;
+    //           // const strella = 
+    //         await h.bootstrap();             
+    //     })
+    //     it("can never remove a mint invariants after it is added", async (context: localTC) => {
+    //         // prettier-ignore
+    //         const {h, h:{network, actors, delay, state} } = context;            
+    //           // const strella = 
+    //         await h.bootstrap(); 
+    //     });
+    //     it("always enforces new mint invariants after they are added", async (context: localTC) => {
+    //         // prettier-ignore
+    //         const {h, h:{network, actors, delay, state} } = context;
+    //           // const strella = 
+    //         await h.bootstrap(); 
+    //     });
+    // });
 
     describe("can handle large transactions with reference scripts", () => {
         it("creates refScript for minter during charter creation", async (context: localTC) => {

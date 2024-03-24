@@ -114,6 +114,7 @@ func requiresValidDelegateOutput(
     if (!hasDelegate && required) {
         error("missing dgTkn "+ uut )
     };
+    print ("has delegate output: ok");
     hasDelegate
 }
 
@@ -133,7 +134,7 @@ func requiresDelegateAuthorizing(
         None => error("missing dgTkn "+dd.uutName)
      };
     print ("     found ^");
-    k : ScriptPurpose = ctx.tx.redeemers.find_key( 
+    spendsAuthorityUut : ScriptPurpose = ctx.tx.redeemers.find_key( 
         (purpose : ScriptPurpose) -> { purpose.switch{ 
             sp: Spending => {
                 // print ("oid: " + sp.output_id.show());
@@ -147,18 +148,18 @@ func requiresDelegateAuthorizing(
     //     );
         
     err : String = "dgTkn "+dd.uutName+" not Authz'ing"; // "not spent with an authorizing activity!")
-    isAuthorizing : Bool = ctx.tx.redeemers.get(k).switch {
-        (index: Int, fields: []Data) => {
+    isAuthorizing : Bool = ctx.tx.redeemers.get(spendsAuthorityUut).switch {
+        (index: Int, _fields: []Data) => {
             // a: BASE_DELEGATE_Activity => a.switch {
             //     Authorizing => true,
-            fields == fields && 
-            if (index >= 10) { true } else {
-                print("index: "+index.show());
+            /* avoids unused-variable warning: */ _fields == _fields && 
+            if (index >= 9) { true } else {
+                print("expected mint-delegation activity with index >= 9, not: "+index.show());
                 error(err)
             }
         },
         _ => error(err)
     };
-
+    print (" -- delegate is authorizing: ok");
     isAuthorizing && requiresValidDelegateOutput(dd, mph, ctx)
 }

@@ -30,7 +30,7 @@ func hasSeedUtxo(tx: Tx, seedTxId : TxId, seedIdx: Int
         // +reason 
         // + "\n"+seedTxId.show() + " : " + seedIdx.show()
     );
-
+    print( "   -- has seed -> ok");
     true
 }
 
@@ -39,7 +39,7 @@ func requiresDelegateApproval(
     mph: MintingPolicyHash
 ) -> Bool {
     Datum::CharterToken {
-        _, mintDgt
+        _, mintDgt,  /*spendDgt*/ _,  /* mintInvariants */ _, /* spendInvariants */ _
     } = getRefCharterDatum(ctx, mph);
 
     requiresDelegateAuthorizing(
@@ -95,7 +95,7 @@ func validateUutBurning(
     tx: Tx = ctx.tx;
     mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
     Datum::CharterToken {
-        _, mintDgt
+        _, mintDgt, _, _, _
     } = getRefCharterDatum(ctx, mph);
 
     valueBurned: Value = tx.minted;
@@ -147,7 +147,7 @@ func validateUutMinting(
     } else {
         // not bootstrapping; must honor the mintDelegate's authority
         Datum::CharterToken {
-            _, mintDgt
+            _, mintDgt, /* spendDgt */ _, /* mintInvariants */ _, /* spendInvariants */ _
         } = getRefCharterDatum(ctx, mph);
 
         //!!! todo: add explicit activity details in authorization
@@ -175,21 +175,29 @@ func validateUutMinting(
 
     // tokenName1 = purpose + "." + miniHash.show();
 
-    expectedValue : Value = Value::sum(purposes.sort((a:String, b:String) -> Bool { a == b }).map(
-        (purpose: String) -> Value {
-            mkTv(mph, mkTokenName(purpose))
-        }
-    )) + bootstrapCharter;
-    // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);
-    actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);
-    // actualMint.for_each( (b : ByteArray, i: Int) -> {
-    //     print( "actual: " + b.show() + " " + i.show() )
-    // });
+    // print(" purposes: " + purposes.join(", "));
+    expectedValue : Value = bootstrapCharter + Value::sum(
+        purposes.sort((a:String, b:String) -> Bool { a != b }).map(
+            (purpose: String) -> Value {
+                // print("purpose: " + purpose);
+                mkTv(mph, mkTokenName(purpose))
+            }
+        )
+    );
 
-    // print("activity" + seedTxId.show() + " " + seedIdx.show() + " asset " + assetName.show());
-    // expectedMint.for_each( (b : ByteArray, i: Int) -> {
-    //     print( "expected: " + b.show() + " " + i.show() )
-    // });
+    actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);
+    // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);
+    if (false) {
+        actualMint.for_each( (b : ByteArray, i: Int) -> {
+            print( "actual: " + b.decode_utf8() + " " + i.show() )
+        });
+
+        print("uut-minting seed: " + seedTxId.show() + "🔹#" + seedIdx.show());
+        expectedValue.get_policy(mph).for_each( (b : ByteArray, i: Int) -> {
+            print( "expected: " + b.decode_utf8() + " " + i.show() )
+        })
+    };
+
     temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {
         l.find_safe((x : ByteArray) -> Bool { x == b }).switch{
             None => l.prepend(b),
@@ -219,11 +227,20 @@ enum Activity {
     mintingCharter
      {
         owner: Address
-
         // we don't have a responsiblity to enforce delivery to the right location
         // govAuthority: RelativeDelegateLink   // not needed 
     }
     mintWithDelegateAuthorizing // delegate is handling all mints
+
+    addingMintInvariant {
+        seedTxn: TxId
+        seedIndex: Int
+    }
+    
+    addingSpendInvariant {
+        seedTxn: TxId
+        seedIndex: Int
+    }
 
     mintingUuts {
         seedTxn: TxId

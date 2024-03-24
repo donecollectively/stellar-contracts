@@ -173,7 +173,7 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
             item = item.map((x) => txInputAsString(x, "🔪")).join("\n    ");
         }
         if ("minted" == x) {
-            if (!item.length) {
+            if (!item.assets.length) {
                 continue;
             }
             item = ` ❇️  ${assetsAsString(item)}`;

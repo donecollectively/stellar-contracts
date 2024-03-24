@@ -135,9 +135,14 @@ export class DefaultCapoTestHelper<
                     addrHint: [addr],
                 },
             },
-            // mintDelegateLink: {
-            //     strategyName: "default",
-            // },
+            mintDelegateLink: {
+                strategyName: "default",
+            },
+            spendDelegateLink: {
+                strategyName: "default",
+            },
+            mintInvariants: [],
+            spendInvariants: []
         };
     }
 

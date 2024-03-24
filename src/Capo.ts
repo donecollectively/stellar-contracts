@@ -104,7 +104,9 @@ export type hasAllUuts<uutEntries extends string> = {
 export type UutCreationAttrs = {
     usingSeedUtxo?: TxInput | undefined;
     additionalMintValues?: valuesEntry[];
+    omitDelegate?: true;
     mintDelegateActivity?: isActivity;
+    minterActivity?: isActivity
 };
 export type UutCreationAttrsWithSeed = UutCreationAttrs &
     Required<Pick<UutCreationAttrs, "usingSeedUtxo">>;

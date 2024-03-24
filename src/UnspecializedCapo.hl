@@ -23,6 +23,9 @@ enum Datum {
     CharterToken {
         govAuthorityLink: RelativeDelegateLink
         mintDelegateLink: RelativeDelegateLink
+        spendDelegateLink: RelativeDelegateLink
+        mintInvariants: []RelativeDelegateLink
+        spendInvariants: []RelativeDelegateLink
     }
     ScriptReference
 
@@ -76,10 +79,11 @@ enum Datum {
 
 //! provides a basic version of Activity ("redeemer" type) in default specializedCapo module
 enum Activity {
-    usingAuthority
-    updatingCharter    
-
-    retiringRefScript 
+    usingAuthority // variant 0
+    updatingCharter // variant 1
+    retiringRefScript // variant 2
+    addingSpendInvariant // variant 3
+    spendingDelegatedDatum // variant 4
 
     func allowActivity(self, datum: Datum, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {
         self.switch{

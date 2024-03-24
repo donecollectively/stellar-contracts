@@ -52,29 +52,33 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                 // authorizing minting of a new token or burning an existing token:
                 //   guards that the authority token is returned to this script.
                 // specialized minting delegates should likely perform additional checks.
-                // Authorizing => {
-                //     assert(activity.usesGenericAuthorization(), "no generic authz");
-                //     ok : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);
 
-                //     o : []TxOutput = ctx.get_cont_outputs();
-                //     if (o.length != 1) { error("single utxo only") };
+                // obsoleted by application-specific minting activities
+                //  //  Authorizing => {
+                //  //     assert(activity.usesGenericAuthorization(), "no generic authz");
+                //  //     ok : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);
 
-                //     // Note: unspecialized delegate requires unchanged datum
-                //     // ... in additionalDelegateValidation.  ...like this:
-                //     //      unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize(), ctx) &&
+                //  //     o : []TxOutput = ctx.get_cont_outputs();
+                //  //     if (o.length != 1) { error("single utxo only") };
 
-                //     ok
+                //  //     // Note: unspecialized delegate requires unchanged datum
+                //  //     // ... in additionalDelegateValidation.  ...like this:
+                //  //     //      unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize(), ctx) &&
+
+                //  //     ok
+                //  //  },
+
+                // mintingUuts => {
+                //     error("obsolete activity index 9 (was mintingUuts).  Use application-specific minting activities instead")
+
+                //     // if (!activity.usesGenericUutMinting()) { // this may throw an error when this entire actviity is disabled by the specialization
+                //     //     // if we arrive here, then the minting delegate should handle validation
+                //     //     // of this activity in additionalDelegateValidation().
+                //     //     true                                    
+                //     // } else {
+                //     //      activity.genericUutMinting(mdd, ctx)
+                //     // }
                 // },
-
-                mintingUuts => {
-                    if (!activity.usesGenericUutMinting()) { // this may throw an error when this entire actviity is disabled by the specialization
-                        // if we arrive here, then the minting delegate should handle validation
-                        // of this activity in additionalDelegateValidation().
-                        true                                    
-                    } else {
-                         activity.genericUutMinting(mdd, ctx)
-                    }
-                },
 
                 // reassigning the authority token to a new minting delegate
                 Reassigning => {

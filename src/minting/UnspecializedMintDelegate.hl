@@ -67,6 +67,8 @@ enum MintDelegateActivity {
     Reassigning
     Retiring
     Modifying
+    // reserved activities for possible maintenance of utxos within the mint-delegate script.
+    //  - these could be application-specific, but not used for mint delegation use-cases.
     _reserved3
     _reserved4
     _reserved5
@@ -74,7 +76,8 @@ enum MintDelegateActivity {
     _reserved7
     _reserved8
     //     _reserved9 // temporarily held by the mintingUuts activity 
-    // note: all activities at index > 9 are reserved for application-specific use-cases
+    // NOTE: all activities at index > 9 are reserved for application-specific use-cases
+    //    of delegated control for mint/burn scenarios
 
     // NOTE: prefer application-specific use-cases with particular minting validations,
     // ... rather than generic mintingUuts

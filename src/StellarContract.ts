@@ -1626,8 +1626,13 @@ export class StellarContract<
     loadProgramScript(params?: Partial<ConfigType>): Program | undefined {
         const src = this.contractSource();
         const modules = this.importModules();
+        console.log(`${this.constructor.name}: loading program script from`, 
+            //@ts-expect-error
+            src.srcFile || "‹unknown path›"
+        );
         for (const module of modules) {
             const { srcFile, purpose, moduleName } = module;
+            console.log(  `  -- ${purpose}: ${moduleName} from ${srcFile}`);
             if (!(srcFile && purpose && moduleName)) {
                 throw new Error(
                     `${

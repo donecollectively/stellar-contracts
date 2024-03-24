@@ -91,6 +91,9 @@ import { UutName } from "../index.js";
 export type DefaultCharterDatumArgs = {
     govAuthorityLink: RelativeDelegateLink<AuthorityPolicy>;
     mintDelegateLink: RelativeDelegateLink<BasicMintDelegate>;
+    spendDelegateLink: RelativeDelegateLink<StellarDelegate<any>>;
+    mintInvariants: RelativeDelegateLink<StellarDelegate<any>>[];
+    spendInvariants: RelativeDelegateLink<StellarDelegate<any>>[];
 };
 
 /**
@@ -131,12 +134,15 @@ export type MinimalDefaultCharterDatumArgs<
 > = {
     // RemainingMinimalCharterDatumArgs<DAT> & {
     govAuthorityLink: MinimalDelegateLink<AuthorityPolicy>;
-    mintDelegateLink?: MinimalDelegateLink<BasicMintDelegate>;
+    mintDelegateLink: MinimalDelegateLink<BasicMintDelegate>;
+    spendDelegateLink: MinimalDelegateLink<StellarDelegate<any>>;
+    mintInvariants: MinimalDelegateLink<StellarDelegate<any>>[];
+    spendInvariants: MinimalDelegateLink<StellarDelegate<any>>[];
 };
 //!!! todo enable "other" datum args - (ideally, those other than delegate-link types) to be inlcuded in MDCDA above.
 export type RemainingMinimalCharterDatumArgs<
     DAT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs
-> = Omit<DAT, "govAuthorityLink" | "mintDelegateLink">;
+> = Omit<DAT, "govAuthorityLink" | "mintDelegateLink" | "spendDelegateLink">;
 
 export type HeldAssetsArgs = {
     purposeId?: string;
@@ -358,6 +364,16 @@ export class DefaultCapo<
                 },
                 // undelegated: { ... todo ... }
             }),
+
+            spendDelegate: defineRole("spendDgt", StellarDelegate<any>, {
+                default: {
+                    delegateClass: BasicMintDelegate,
+                    partialConfig: {},
+                    validateConfig(args): strategyValidation {
+                        return undefined;
+                    },
+                },
+            }),
         });
     }
 
@@ -389,11 +405,13 @@ export class DefaultCapo<
         }
 
         const charter = await this.findCharterDatum();
-        const { govAuthorityLink, mintDelegateLink } = charter;
+        const { govAuthorityLink, mintDelegateLink, spendDelegateLink } =
+            charter;
 
         return Promise.all([
             this.connectDelegateWithLink("govAuthority", govAuthorityLink),
             this.connectDelegateWithLink("mintDelegate", mintDelegateLink),
+            this.connectDelegateWithLink("spendDelegate", spendDelegateLink),
         ]);
     }
 
@@ -431,7 +449,22 @@ export class DefaultCapo<
 
         const govAuthority = this.mkOnchainDelegateLink(args.govAuthorityLink);
         const mintDelegate = this.mkOnchainDelegateLink(args.mintDelegateLink);
-        const t = new hlCharterToken(govAuthority, mintDelegate);
+        const spendDelegate = this.mkOnchainDelegateLink(
+            args.spendDelegateLink
+        );
+        const mintInvariants = args.mintInvariants.map((dl) => {
+            return this.mkOnchainDelegateLink(dl);
+        });
+        const spendInvariants = args.spendInvariants.map((dl) => {
+            return this.mkOnchainDelegateLink(dl);
+        });
+        const t = new hlCharterToken(
+            govAuthority,
+            mintDelegate,
+            spendDelegate,
+            mintInvariants,
+            spendInvariants
+        );
         return Datum.inline(t._toUplcData());
     }
 
@@ -508,6 +541,15 @@ export class DefaultCapo<
         return this.connectDelegateWithLink(
             "mintDelegate",
             charterDatum.mintDelegateLink
+        );
+    }
+
+    async getSpendDelegate() {
+        const charterDatum = await this.findCharterDatum();
+
+        return this.connectDelegateWithLink(
+            "spendDelegate",
+            charterDatum.spendDelegateLink
         );
     }
 
@@ -591,25 +633,28 @@ export class DefaultCapo<
 
             this.scriptProgram = this.loadProgramScript(fullScriptParams);
 
+            const uutPurposes = ["capoGov", "mintDgt", "spendDgt"];
             const tcx = await this.txnWillMintUuts(
                 initialTcx,
-                ["capoGov", "mintDgt"],
+                uutPurposes,
                 { usingSeedUtxo: seedUtxo },
                 {
                     govAuthority: "capoGov",
                     mintDelegate: "mintDgt",
+                    spendDelegate: "spendDgt",
                 }
             );
-            const {
-                capoGov,
-                govAuthority, // same
-                mintDgt, // same as mintDelegate
-            } = tcx.state.uuts;
-            if (govAuthority !== capoGov) {
+            const { uuts } = tcx.state;
+            //     capoGov,
+            //     govAuthority, // same
+            //     mintDgt, // same as mintDelegate
+            //     spendDelegate
+            // } = tcx.state.uuts;
+            if (uuts.govAuthority !== uuts.capoGov) {
                 throw new Error(`assertion can't fail`);
             }
 
-            const govAuthorityLink = await this.txnCreateDelegateLink<
+            const govAuthority = await this.txnCreateDelegateLink<
                 AuthorityPolicy,
                 "govAuthority"
             >(tcx, "govAuthority", charterDatumArgs.govAuthorityLink);
@@ -619,14 +664,20 @@ export class DefaultCapo<
                 "mintDelegate"
             >(tcx, "mintDelegate", charterDatumArgs.mintDelegateLink);
 
+            const spendDelegate = await this.txnCreateDelegateLink<
+                StellarDelegate<any>,
+                "spendDelegate"
+            >(tcx, "spendDelegate", charterDatumArgs.spendDelegateLink);
+
             //@ts-expect-error - typescript can't seem to understand that
             //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
             const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
                 ...charterDatumArgs,
-                govAuthorityLink,
+                govAuthorityLink: govAuthority,
                 mintDelegateLink: mintDelegate,
+                spendDelegateLink: spendDelegate,
             };
-            const datum = this.mkDatumCharterToken(fullCharterArgs);
+            const datum = await this.mkDatumCharterToken(fullCharterArgs);
 
             const charterOut = new TxOutput(
                 this.address,
@@ -667,8 +718,9 @@ export class DefaultCapo<
             // TODO: if there are additional UUTs needed for other delegates, include them here.
             const minting = this.minter.txnMintingCharter(tcx4, {
                 owner: this.address,
-                capoGov, // same as govAuthority,
-                mintDgt,
+                capoGov: uuts.capoGov, // same as govAuthority,
+                mintDelegate: uuts.mintDelegate,
+                spendDelegate: uuts.spendDelegate,
             });
             return minting;
         });
@@ -768,15 +820,13 @@ export class DefaultCapo<
         // for (const [txin, refScript] of scriptReferences) {
         //     console.log("refScript", dumpAny(txin));
         // }
-        
-        const matchingScriptRefs = scriptReferences.find(
-            ([txin, refScript]) => isCorrectRefScript(txin)
-        )
+
+        const matchingScriptRefs = scriptReferences.find(([txin, refScript]) =>
+            isCorrectRefScript(txin)
+        );
         if (!matchingScriptRefs) {
             console.warn(
-                `missing refScript in Capo ${
-                    this.address.toBech32()
-                } for expected script hash ${expectedVh}; adding script directly to txn`
+                `missing refScript in Capo ${this.address.toBech32()} for expected script hash ${expectedVh}; adding script directly to txn`
             );
             // console.log("------------------- NO REF SCRIPT")
             return tcx.addScriptProgram(program);
@@ -786,7 +836,8 @@ export class DefaultCapo<
     }
 
     private getProgramHash(program: UplcProgram) {
-        let hash: string; try {
+        let hash: string;
+        try {
             hash = program.validatorHash.toString();
         } catch (e1: any) {
             try {
@@ -796,10 +847,11 @@ export class DefaultCapo<
                     hash = program.stakingValidatorHash.toString();
                 } catch (e3: any) {
                     debugger;
-                    throw new Error(`can't get script hash from program:` +
-                        `\n  - tried validatorHash: ${e1.message}` +
-                        `\n  - tried mintingPolicyHash: ${e2.message}` +
-                        `\n  - tried stakingValidatorHash: ${e3.message}`
+                    throw new Error(
+                        `can't get script hash from program:` +
+                            `\n  - tried validatorHash: ${e1.message}` +
+                            `\n  - tried mintingPolicyHash: ${e2.message}` +
+                            `\n  - tried stakingValidatorHash: ${e3.message}`
                     );
                 }
             }
@@ -811,25 +863,27 @@ export class DefaultCapo<
         const utxos = await this.network.getUtxos(this.address);
         type TxoWithScriptRefs = [TxInput, any];
         // console.log("finding script refs", utxos);
-        const utxosWithDatum = (await Promise.all(
-            utxos.map((utxo) => {
-                const {datum} = utxo.origOutput;
-                // console.log("datum", datum);
-                if (!datum) return null;
-                return this.readDatum(
-                    "ScriptReference", datum
-                ).catch(() => {
-                    // console.log("failed to parse")
-                    return  null
-                }).then((scriptRef) => {
-                    if (!scriptRef) return null;
-                    // console.log("scriptRef", scriptRef);
-                    return [ utxo, scriptRef ] as TxoWithScriptRefs
+        const utxosWithDatum = (
+            await Promise.all(
+                utxos.map((utxo) => {
+                    const { datum } = utxo.origOutput;
+                    // console.log("datum", datum);
+                    if (!datum) return null;
+                    return this.readDatum("ScriptReference", datum)
+                        .catch(() => {
+                            // console.log("failed to parse")
+                            return null;
+                        })
+                        .then((scriptRef) => {
+                            if (!scriptRef) return null;
+                            // console.log("scriptRef", scriptRef);
+                            return [utxo, scriptRef] as TxoWithScriptRefs;
+                        });
                 })
-            })
-        )).filter(x => !!x) as TxoWithScriptRefs[];
+            )
+        ).filter((x) => !!x) as TxoWithScriptRefs[];
 
-        return utxosWithDatum
+        return utxosWithDatum;
     }
 
     @txn
@@ -842,6 +896,108 @@ export class DefaultCapo<
             this.activityUpdatingCharter(),
             await this.mkDatumCharterToken(args)
         );
+    }
+
+    @txn
+    async mkTxnCreatingMintDelegate<
+        DT extends StellarDelegate,
+        thisType extends DefaultCapo<MinterType, CDT, configType>
+    >(
+        this: thisType,
+        tcx: StellarTxnContext = new StellarTxnContext(this.myActor),
+        delegateInfo: MinimalDelegateLink<DT> & {
+            strategyName: string &
+                keyof thisType["delegateRoles"]["mintDelegate"];
+        }
+    ): Promise<StellarTxnContext> {
+        const currentDatum = await this.findCharterDatum();
+
+        // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
+        const tcx2 = await this.txnMintingUuts(
+            await this.addSeedUtxo(tcx),
+            ["mintDgt"],
+            {},
+            {
+                mintDelegate: "mintDgt",
+            }
+        );
+        const mintDelegate = await this.txnCreateDelegateLink<
+            DT,
+            "mintDelegate"
+        >(tcx2, "mintDelegate", delegateInfo);
+        // currentDatum.mintDelegateLink);
+
+        // const spendDelegate = await this.txnCreateDelegateLink<
+        //     StellarDelegate<any>,
+        //     "spendDelegate"
+        // >(tcx, "spendDelegate", charterDatumArgs.spendDelegateLink);
+
+        //@ts-expect-error "could be instantiated with different subtype"
+        const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
+            ...currentDatum,
+            mintDelegateLink: mintDelegate,
+        };
+        const datum = await this.mkDatumCharterToken(fullCharterArgs);
+
+        const charterOut = new TxOutput(
+            this.address,
+            this.tvCharter(),
+            datum
+            // this.compiledScript
+        );
+
+        return tcx2.addOutput(charterOut);
+    }
+
+    @txn
+    async mkTxnCreatingSpendDelegate<
+        DT extends StellarDelegate,
+        thisType extends DefaultCapo<MinterType, CDT, configType>
+    >(
+        this: thisType,
+        tcx: StellarTxnContext = new StellarTxnContext(this.myActor),
+        delegateInfo: MinimalDelegateLink<DT> & {
+            strategyName: string &
+                keyof thisType["delegateRoles"]["spendDelegate"];
+        }
+    ): Promise<StellarTxnContext> {
+        const currentDatum = await this.findCharterDatum();
+
+        // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
+        const tcx2 = await this.txnMintingUuts(
+            await this.addSeedUtxo(tcx),
+            ["spendDgt"],
+            {},
+            {
+                spendDelegate: "spendDgt",
+            }
+        );
+        const spendDelegate = await this.txnCreateDelegateLink<
+            DT,
+            "spendDelegate"
+        >(tcx2, "spendDelegate", delegateInfo);
+        // currentDatum.mintDelegateLink);
+
+        // const spendDelegate = await this.txnCreateDelegateLink<
+        //     StellarDelegate<any>,
+        //     "spendDelegate"
+        // >(tcx, "spendDelegate", charterDatumArgs.spendDelegateLink);
+
+        //@ts-expect-error "could be instantiated with different subtype"
+        const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
+            ...currentDatum,
+            spendDelegateLink: spendDelegate,
+        };
+        const datum = await this.mkDatumCharterToken(fullCharterArgs);
+
+        const charterOut = new TxOutput(
+            this.address,
+            this.tvCharter(),
+            datum
+            // this.compiledScript
+        );
+
+        return tcx2.addOutput(charterOut);
     }
 
     async findUutSeedUtxo(uutPurposes: string[], tcx: StellarTxnContext<any>) {
@@ -910,6 +1066,8 @@ export class DefaultCapo<
             usingSeedUtxo,
             additionalMintValues = [],
             mintDelegateActivity,
+            omitDelegate = false,
+            minterActivity,
         } = options;
         if (additionalMintValues.length && !mintDelegateActivity) {
             throw new Error(
@@ -929,6 +1087,30 @@ export class DefaultCapo<
             },
             roles
         );
+
+        if (omitDelegate) {
+            if (mintDelegateActivity)
+                throw new Error(
+                    `omitDelegate and mintDelegateActivity are mutually exclusive`
+                );
+            if (!minterActivity) {
+                throw new Error(
+                    `omitDelegate requires a minterActivity to be specified`
+                );
+            }
+
+            // directly mint the UUTs, without involving the mint delegate
+            const tcx2 = await this.minter.txnMIntingWithoutDelegate(
+                tcx,
+                [
+                    ...mkUutValuesEntries(tcx.state.uuts),
+                    ...additionalMintValues,
+                ],
+                minterActivity
+            );
+            return tcx2;
+        }
+
         const dgtActivity =
             mintDelegateActivity ||
             mintDelegate.activityMintingUuts({
@@ -1056,7 +1238,7 @@ export class DefaultCapo<
                     "The contract's policy for allowing governance actions is abstract, ",
                     "  ... enforced only by a delegation pattern. ",
                     "Thus, the Capo doesn't contain any of the policy details.",
-                    "The delegate can be evolved through governance action"
+                    "The delegate can be evolved through governance action",
                 ],
                 mech: [
                     // descriptive details of the chosen mechanisms for implementing the reqts:
@@ -1071,7 +1253,7 @@ export class DefaultCapo<
                     // "the trustee threshold is enforced on all administrative actions",
                     // "the trustee group can be changed",
                     "the charter token is always kept in the contract",
-                    "the charter details can be updated",
+                    "the charter details can be updated by authority of the capoGov-* token",
                     "can mint other tokens, on the authority of the charter's registered mintDgt- token",
                     "can handle large transactions with reference scripts",
                 ],
@@ -1094,20 +1276,92 @@ export class DefaultCapo<
                 ],
             },
 
-            "the charter details can be updated": {
-                purpose: "to support configuration changes over time",
+            "the charter details can be updated by authority of the capoGov-* token":
+                {
+                    purpose:
+                        "to support behavioral changes over time by repointing the delegate links",
+                    details: [
+                        "The Capo's ability to accept charter-configuration changes allows its behavior to evolve. ",
+                        "These configuration changes can accept a new minting-delegate configuration ,",
+                        " ... or other details of the Charter datum that may be specialized.",
+                        "Charter updates are authorized by the gov delegate",
+                    ],
+                    mech: [
+                        "TODO: TEST updates details of the datum",
+                        "TODO: TEST doesn't update without the capoGov-* authority",
+                        "TODO: TEST keeps the charter token in the contract address",
+                    ],
+                    requires: [
+                        "can update the minting delegate in the charter settings",
+                        "can update the spending delegate in the charter settings",
+                        "can add invariant minting delegates to the charter settings",
+                        "can add invariant spending delegates to the charter settings",
+                    ],
+                },
+            "can update the minting delegate in the charter settings": {
+                purpose: "to evolve the minting policy for the contract",
                 details: [
-                    "The Capo's ability to accept charter-configuration changes allows its behavior to evolve. ",
-                    "These configuration changes can accept a new minting-delegate configuration ,",
-                    " ... or other details of the Charter datum that may be specialized.",
-                    "Charter updates are authorized by the gov delegate",
+                    "when updating the minting policy delegate, the gov authority is used to authorize the change",
+                    "the minting policy is updated in the charter datum",
+                    "the old minting policy should be retired when changing policies",
+                ],
+                impl: "mkTxnUpdatingMintDelegate()",
+                mech: [
+                    "can install an updated minting delegate",
+                    "fails without the capoGov- authority uut",
+                    "uses the new minting delegate after it is installed",
+                    "can't use the old minting delegate after it is replaced",
+                ],
+            },
+            "can update the spending delegate in the charter settings": {
+                purpose:
+                    "to evolve the spending policy for the contract's delegated-datum types",
+                details: [
+                    "when updating the spending policy delegate, the gov authority is used to authorize the change",
+                    "the spending policy is updated in the charter datum",
+                    "the old spending policy should be retired when changing policies",
                 ],
                 mech: [
-                    "TODO: TEST updates details of the datum",
-                    "TODO: TEST doesn't update without the capoGov-* authority",
-                    "TODO: TEST keeps the charter token in the contract address",
+                    "can install an updated spending delegate",
+                    "fails without the capoGov- authority uut",
+                    "uses the new spending delegate after it is installed",
+                    "can't use the old spending delegate after it is replaced",
                 ],
-                requires: []
+            },
+
+            "can add invariant spending delegates to the charter settings": {
+                purpose:
+                    "to arrange permanent spending policies for custom data types",
+                details: [
+                    "The Capo can add invariant spending policies for custom data types",
+                    "These invariants are enforced forever, and can't be changed",
+                    "The baseline scripts directly enforce these invariants, so that a delegate-swap actvity can't undermine the invariant",
+                ],
+                mech: [
+                    "TODO: TEST can add an invariant spending delegate for a datum type",
+                    "TODO: TEST cannot change any other charter settings when adding an invariant",
+                    "TODO: TEST cannot change spend invariants when updating other charter settings",
+                    "TODO: TEST new invariants are always enforced",
+                    "TODO: TEST can never remove an invariant spending delegate for a datum type",
+                ],
+            },
+
+            "can add invariant minting delegates to the charter settings": {
+                purpose:
+                    "to arrange permanent minting policies constraining what can be minted",
+                details: [
+                    "The Capo can add invariant mint policies",
+                    "These invariants are enforced forever, and can't be changed",
+                    "The baseline scripts directly enforce these invariants, so that a mint-delegate-swap actvity can't undermine the invariant",
+                ],
+                mech: [
+                    "TODO: TEST can add an invariant mint delegate",
+                    "TODO: TEST fails without the capoGov- authority uut",
+                    "TODO: TEST cannot change any other charter settings when adding the mint invariant",
+                    "TODO: TEST can never remove an mint invariant mint after it is added",
+                    "TODO: TEST cannot change mint invariants when updating other charter settings",
+                    "TODO: TEST always enforces new mint invariants",
+                ],
             },
 
             "has a unique, permanent treasury address": {
@@ -1115,7 +1369,7 @@ export class DefaultCapo<
                 details: [
                     "One-time creation is ensured by UTxO's unique-spendability property",
                     "Determinism is transferred from the charter utxo to the MPH and to the treasury address",
-                    "Further software development lifecycle is enabled by evolution of details stored in the Charter datum"
+                    "Further software development lifecycle is enabled by evolution of details stored in the Charter datum",
                 ],
                 mech: [
                     "uses the Minting Policy Hash as the sole parameter for the treasury spending script",
@@ -1163,23 +1417,24 @@ export class DefaultCapo<
                 requires: [],
             },
 
-            "can mint other tokens, on the authority of the charter's registered mintDgt- token": {
-                purpose:
-                    "to simplify the logic of minting, while being sure of minting authority",
-                details: [
-                    "the minting policy doesn't have to directly express detailed policy for authorization",
-                    "instead, it defers authority to the minting delegate, ",
-                    "... which can implement its own policy for minting",
-                    "... and by simply requiring that the mintDgt token is being spent.",
-                    "The minting delegate decides whether that's to be allowed."
-                ],
-                mech: [
-                    "can build transactions that mint non-'charter' tokens",
-                    "requires the charter-token to be spent as proof of authority",
-                    "fails if the charter-token is not returned to the treasury",
-                    "fails if the charter-token parameters are modified",
-                ],
-            },
+            "can mint other tokens, on the authority of the charter's registered mintDgt- token":
+                {
+                    purpose:
+                        "to simplify the logic of minting, while being sure of minting authority",
+                    details: [
+                        "the minting policy doesn't have to directly express detailed policy for authorization",
+                        "instead, it defers authority to the minting delegate, ",
+                        "... which can implement its own policy for minting",
+                        "... and by simply requiring that the mintDgt token is being spent.",
+                        "The minting delegate decides whether that's to be allowed.",
+                    ],
+                    mech: [
+                        "can build transactions that mint non-'charter' tokens",
+                        "requires the charter-token to be spent as proof of authority",
+                        "fails if the charter-token is not returned to the treasury",
+                        "fails if the charter-token parameters are modified",
+                    ],
+                },
 
             "can handle large transactions with reference scripts": {
                 purpose:
@@ -1202,38 +1457,41 @@ export class DefaultCapo<
                 ],
             },
 
-            "XXX - move to multi-sig Delegate - the trustee group can be changed": {
-                purpose: "to ensure administrative continuity for the group",
-                details: [
-                    "When the needed threshold for administrative modifications is achieved, the Charter Datum can be updated",
-                    "This type of administrative action should be explicit and separate from any other administrative activity",
-                    "If the CharterToken's Datum is being changed, no other redeemer activities are allowed.",
-                    "This requires a separate multi-sig delegate policy (TODO: move out of core reqts",
-                ],
-                mech: [
-                    "requires the existing threshold of existing trustees to be met",
-                    "requires all of the new trustees to sign the transaction",
-                    "does not allow minSigs to exceed the number of trustees",
-                ],
-                requires: [
-                    // "the trustee threshold is enforced on all administrative actions",
-                ],
-            },
+            "XXX - move to multi-sig Delegate - the trustee group can be changed":
+                {
+                    purpose:
+                        "to ensure administrative continuity for the group",
+                    details: [
+                        "When the needed threshold for administrative modifications is achieved, the Charter Datum can be updated",
+                        "This type of administrative action should be explicit and separate from any other administrative activity",
+                        "If the CharterToken's Datum is being changed, no other redeemer activities are allowed.",
+                        "This requires a separate multi-sig delegate policy (TODO: move out of core reqts",
+                    ],
+                    mech: [
+                        "requires the existing threshold of existing trustees to be met",
+                        "requires all of the new trustees to sign the transaction",
+                        "does not allow minSigs to exceed the number of trustees",
+                    ],
+                    requires: [
+                        // "the trustee threshold is enforced on all administrative actions",
+                    ],
+                },
 
-            "XXX - move to multi-sig Delegate - the trustee threshold is enforced on all administrative actions": {
-                purpose:
-                    "allows progress in case a small fraction of trustees may not be available",
-                details: [
-                    "A group can indicate how many of the trustees are required to provide their explicit approval",
-                    "If a small number of trustees lose their keys, this allows the remaining trustees to directly regroup",
-                    "For example, they can replace the trustee list with a new set of trustees and a new approval threshold",
-                    "Normal day-to-day administrative activities can also be conducted while a small number of trustees are on vacation or otherwise temporarily unavailable",
-                ],
-                mech: [
-                    "doesn't allow the charterToken to be sent without enough minSigs from the trustee list",
-                ],
-                requires: [],
-            },
+            "XXX - move to multi-sig Delegate - the trustee threshold is enforced on all administrative actions":
+                {
+                    purpose:
+                        "allows progress in case a small fraction of trustees may not be available",
+                    details: [
+                        "A group can indicate how many of the trustees are required to provide their explicit approval",
+                        "If a small number of trustees lose their keys, this allows the remaining trustees to directly regroup",
+                        "For example, they can replace the trustee list with a new set of trustees and a new approval threshold",
+                        "Normal day-to-day administrative activities can also be conducted while a small number of trustees are on vacation or otherwise temporarily unavailable",
+                    ],
+                    mech: [
+                        "doesn't allow the charterToken to be sent without enough minSigs from the trustee list",
+                    ],
+                    requires: [],
+                },
 
             foo: {
                 purpose: "",

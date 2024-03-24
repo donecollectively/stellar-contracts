@@ -126,6 +126,54 @@ export class DefaultMinter
     }
 
     /**
+     * Mints a new UUT specifically for a minting invariant
+     * @remarks
+     * 
+     * When adding a minting invariant, the Capo's existing mint delegate
+     * doesn't get to be involved, as it could otherwise block a critical administrative
+     * change needed.  The Capo's authority token is all the minter requires
+     * to create the needed UUT. 
+     * 
+     * @public
+     **/
+    @Activity.redeemer
+    activityAddingMintInvariant({
+        seedTxn,
+        seedIndex: sIdx,
+    }: Omit<MintUutActivityArgs, "purposes">): isActivity {
+        const addingMintInvariant = this.mustGetActivity("addingMintInvariant");
+        const t = new addingMintInvariant(
+            seedTxn,
+            BigInt(sIdx)
+        );
+
+        return { redeemer: t._toUplcData() };
+    }
+
+/** Mints a new UUT specifically for a spending invariant
+ * @remarks
+ * 
+ * When adding a spending invariant, the Capo's existing mint delegate
+ * is not consulted, as this administrative function works on a higher
+ * level than the usual minting delegate's authority. 
+ * 
+ * @public
+ * **/
+    @Activity.redeemer
+    activityAddingSpendInvariant({
+        seedTxn,
+        seedIndex: sIdx,
+    }: Omit<MintUutActivityArgs, "purposes">): isActivity {
+        const addingSpendInvariant = this.mustGetActivity("addingSpendInvariant");
+        const t = new addingSpendInvariant(
+            seedTxn,
+            BigInt(sIdx)
+        );
+
+        return { redeemer: t._toUplcData() };
+    }
+
+    /**
      * @deprecated
      **/
     @Activity.redeemer
@@ -212,27 +260,32 @@ export class DefaultMinter
         {
             owner,
             capoGov,
-            mintDgt,
+            mintDelegate,
+            spendDelegate,
         }: {
             owner: Address;
             capoGov: UutName;
-            mintDgt: UutName;
+            mintDelegate: UutName;
+            spendDelegate: UutName;
         }
     ): Promise<TCX> {
         //!!! todo: can we expect capoGov & mintDgt in tcx.state.uuts? and update the type constraint here?
-
+        //   ^^^ possibly based on role names instead of UUT names.
         const charterVE = this.charterTokenAsValuesEntry;
         const capoGovVE = mkValuesEntry(capoGov.name, BigInt(1));
-        const mintDgtVE = mkValuesEntry(mintDgt.name, BigInt(1));
+        const mintDgtVE = mkValuesEntry(mintDelegate.name, BigInt(1));
+        const spendDgtVE = mkValuesEntry(spendDelegate.name, BigInt(1));
 
+        const values = [
+            charterVE, 
+            capoGovVE,
+            mintDgtVE,
+            spendDgtVE
+        ]
         return this.attachRefScript(
              tcx.mintTokens(
                 this.mintingPolicyHash!,
-                [
-                    charterVE, 
-                    capoGovVE,
-                    mintDgtVE
-                ],
+                values,
                 this.activityMintingCharter({
                     owner,
                 }).redeemer
@@ -246,6 +299,23 @@ export class DefaultMinter
             this.compiledScript, 
         );
     }
+
+
+    @Activity.partialTxn
+    async txnMIntingWithoutDelegate<TCX extends StellarTxnContext>(
+        tcx: TCX,
+        vEntries: valuesEntry[],
+        minterActivity: isActivity
+    ): Promise<TCX> {
+        return this.attachRefScript(
+            tcx.mintTokens(
+                this.mintingPolicyHash!,
+                vEntries,
+                minterActivity.redeemer
+            )
+        );
+    }
+
 
     @Activity.partialTxn
     async txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(
