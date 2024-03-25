@@ -145,7 +145,7 @@ func requiresDelegateAuthorizingMint(
     extraMintDelegateRedeemerCheck: Bool = true
 ) -> Bool {
     authzVal : Value = Value::new(AssetClass::new(mph, delegateLink.uutName.encode_utf8()), 1);
-    print("finding my "+ delegateLink.uutName);
+    print("finding my inp "+ delegateLink.uutName);
     targetId: TxOutputId = ctx.tx.inputs.find_safe((i: TxInput) -> {
         // print("   ?  in "+i.value.show());
         i.value.contains(authzVal) // find my authority token

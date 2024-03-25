@@ -44,7 +44,7 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
     value_minted: Value = tx.minted;
     assert(rev.serialize() == rev.serialize(), "impossible!");
     print("hi from minter");
-    
+
     ok : Bool = r.switch {
         charter: mintingCharter => {       
             charterVal : Value = mkTv(mph, "charter");
@@ -116,7 +116,7 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                 purpose: "mintInvar", 
                 seedTxId: sTxId, 
                 seedIdx: sIdx, 
-                redeemerIndex: addMintInvariant                
+                charterRedeemerIndex: addMintInvariant                
             )
         },
 
@@ -129,7 +129,7 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                 purpose: "spendInvar", 
                 seedTxId: sTxId, 
                 seedIdx: sIdx, 
-                redeemerIndex: addSpendInvariant
+                charterRedeemerIndex: addSpendInvariant
             )
         },
 
@@ -142,21 +142,35 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                 purpose: "mintDgt", 
                 seedTxId: sTxId, 
                 seedIdx: sIdx, 
-                redeemerIndex: updateCharter,
+                charterRedeemerIndex: updateCharter,
                 needsMintDelegateApproval: false
             )
         },
 
-        ForcingNewSpendDelegate{sTxId, sIdx} => {
+        CreatingNewSpendDelegate{seedTxId, seedIdx, replaceExisting} => {
             updateCharter : Int = 1; // general update to charter
-            print("checking for ForcingNewSpendDelegate");
+            print("checking for CreatingNewSpendDelegate");
+
+            otherMintedValue : Value = replaceExisting.switch {
+                Some{oldTokenName} => {
+                    BURNED: Int = -1;
+                    Value::new(
+                        AssetClass::new(mph, oldTokenName), 
+                        BURNED
+                    )
+                },
+                None => Value::ZERO
+            };
+            
             mintsUutForCharterUsingRedeemerIndex(
                 ctx : ctx,
                 mph: mph,
                 purpose: "spendDgt",
-                seedTxId: sTxId,
-                seedIdx: sIdx,                
-                redeemerIndex: updateCharter
+                seedTxId: seedTxId,
+                seedIdx: seedIdx,                
+                charterRedeemerIndex: updateCharter,
+                needsMintDelegateApproval: false,
+                otherMintedValue: otherMintedValue
             )
         },
 

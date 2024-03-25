@@ -17,6 +17,7 @@ import {
     TxOutput,
     TxInput,
     Value,
+    bytesToText,
 } from "@hyperionbt/helios";
 
 import { StellarTxnContext } from "../src/StellarTxnContext";
@@ -520,7 +521,7 @@ describe("Capo", async () => {
             const didGrantMockedAuthority = vi.spyOn(md, "txnGrantAuthority").mockImplementation(
                 async (tcx) => tcx
             );
-            const didntBurnBecauseMocked = vi.spyOn(capo, "mkValuesBurningMintDelegate").mockImplementation(
+            const didntBurnBecauseMocked = vi.spyOn(capo, "mkValuesBurningDelegateUut").mockImplementation(
                  () => []
             );
             const tcx2 = await capo.mkTxnUpdatingMintDelegate(
@@ -625,7 +626,7 @@ describe("Capo", async () => {
     });
 
     describe("can update the spending delegate in the charter settings", () => {
-        fit("can install an updated spending delegate", async (context: localTC) => {
+        it("can install an updated spending delegate", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
@@ -651,19 +652,145 @@ describe("Capo", async () => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            // const strella =
-            await h.bootstrap();
+            const capo = await h.bootstrap();
+            const addedGovToken = vi
+                .spyOn(capo, "txnAddGovAuthority")
+                .mockImplementation(
+                    //@ts-expect-error
+                    (tcx) => tcx!
+                );
+            console.log(
+                " ------- case 1: with spend delegate involved in the replacement"
+            );
+            const tcx1 = await capo.mkTxnUpdatingSpendDelegate(
+                {
+                    strategyName: "default",
+                },
+                {}
+            );
+            expect(addedGovToken).toHaveBeenCalledTimes(1);
+            await expect(capo.submit(tcx1)).rejects.toThrow(
+                /missing dgTkn capoGov-/
+            );
+
+            console.log(" ------- case 2: forced replacement of spend delegate");
+            const tcx2 = await capo.mkTxnUpdatingSpendDelegate(
+                {
+                    strategyName: "default",
+                },
+                {
+                    forcedUpdate: true,
+                }
+            );
+            expect(addedGovToken).toHaveBeenCalledTimes(2);
+            await expect(capo.submit(tcx2)).rejects.toThrow(
+                /missing dgTkn capoGov-/
+            );        
         });
 
-        it("uses the new spending delegate after it is installed", async (context: localTC) => {
+        it("can force-replace the spending delegate if needed", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+                        
+            const capo = await h.bootstrap();
+            const originalDatum = await capo.findCharterDatum();
+            const oldSpendDelegate = await capo.getSpendDelegate();
+            const oldPredicate = oldSpendDelegate.mkAuthorityTokenPredicate();
+
+            const tcx = await capo.mkTxnUpdatingSpendDelegate(
+                {
+                    strategyName: "default",
+                },
+                {
+                    forcedUpdate: true,
+                }
+            );
+            await capo.submit(tcx);
+            network.tick(1n);
+            const updatedDatum = await capo.findCharterDatum();
+            expect(updatedDatum.spendDelegateLink.uutName).not.toEqual(
+                originalDatum.spendDelegateLink.uutName
+            );
+
+            const stillExists = await oldSpendDelegate.mustFindMyUtxo("old delegate UUT",
+                oldPredicate
+            );
+            expect(stillExists).toBeTruthy();
+            const newDelegate = await capo.getSpendDelegate();
+            const newPredicate = newDelegate.mkAuthorityTokenPredicate();
+            const newExists = await newDelegate.mustFindMyUtxo("new delegate UUT",
+                newPredicate
+            );
+            expect(newExists).toBeTruthy();
+            expect(stillExists.outputId.eq(newExists.outputId)).toBeFalsy();            
+        });
+        
+        it("normally requires the existing spending delegate to be involved in the replacement", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+            
+            const capo = await h.bootstrap();
+
+            const sd = await capo.getSpendDelegate();
+            console.log("  ----------- mocking spend delegate's txnGrantAuthority()");
+            const didGrantMockedAuthority = vi.spyOn(sd, "txnGrantAuthority").mockImplementation(
+                async (tcx) => tcx
+            );
+            const didntBurnBecauseMocked = vi.spyOn(capo, "mkValuesBurningDelegateUut").mockImplementation(
+                 () => []
+            );
+            const tcx2 = await capo.mkTxnUpdatingSpendDelegate(
+                {
+                    strategyName: "default",
+                },
+            );
+            expect(didGrantMockedAuthority).toHaveBeenCalledTimes(1);
+            expect(didntBurnBecauseMocked).toHaveBeenCalledTimes(1);
+
+            const submission = capo.submit(tcx2);
+            await expect(submission).rejects.toThrow(
+                /* \X matches any char including line breaks */
+                new RegExp(`expected: ${bytesToText(sd.authorityTokenName)} -1`)
+            );
+            await expect(submission).rejects.toThrow(
+                /\X*mismatch in UUT mint/
+            );
+        });
+
+        it.todo("TODO uses the new spending delegate after it is installed", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            // const strella =
-            await h.bootstrap();
+            const capo = await h.bootstrap();
+
+            const sd = await capo.getSpendDelegate();
+            const oldPredicate = sd.mkAuthorityTokenPredicate();
+            console.log(
+                " ------- case 1: with spend delegate involved in the replacement"
+            );
+            const tcx = await capo.mkTxnUpdatingSpendDelegate(
+                {
+                    strategyName: "default",
+                },
+            );
+            await capo.submit(tcx);
+            network.tick(1n);
+            console.log("    ---- spending with the new delegate");
+
+            // TODO: Make a different txn type for delegated-spend (config record?)
+            const tcx1 = await capo.txnSpendingUuts(
+                await capo.addSeedUtxo(new StellarTxnContext<any>()),
+                ["anything"]
+            );
+
+            console.log(" ------------------------------------------------------------------\n", dumpAny(tcx1));
+            expect(tcx1.outputs.find(oldPredicate)).toBeFalsy();
+            const newerPredicate = (await capo.getSpendDelegate()).mkAuthorityTokenPredicate();
+            expect(tcx1.outputs.find(newerPredicate)).toBeTruthy();
+            await expect(capo.submit(tcx1)).resolves.toBeTruthy();            
         });
 
-        it("can't use the old spending delegate after it is replaced", async (context: localTC) => {
+        it.todo("TODO: can't use the old spending delegate after it is replaced", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 

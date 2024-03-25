@@ -31,7 +31,7 @@ import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { UnspecializedMintDelegate } from "./UnspecializedMintDelegate.js";
 import { UnspecializedCapo } from "../UnspecializedCapo.js";
 import { CapoHelpers } from "../CapoHelpers.js";
-import type { MintUutActivityArgs, hasUutContext } from "../Capo.js";
+import type { MintUutActivityArgs, UutCreationAttrsWithSeed, hasUutContext } from "../Capo.js";
 
 export type MintDelegateArgs = capoDelegateConfig & {
     rev: bigint;
@@ -125,17 +125,19 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
         );
     }
 
-    @Activity.redeemer
-    activityReplacingMe({
-        seedTxn,
-        seedIndex: sIdx,
-    }){
-        const hlReplacingMe = this.mustGetActivity("ReplacingMe");
-        const t = new hlReplacingMe(
-            seedTxn, sIdx
-        );
-        return { redeemer: t._toUplcData() };        
-    }
+    // inherited from StellarDelegate.
+    // @Activity.redeemer
+    // activityReplacingMe({
+    //     seedTxn,
+    //     seedIndex: sIdx,
+    //     purpose,
+    // } :  Omit<MintUutActivityArgs, "purposes"> & {purpose?: string}) {
+    //     const hlReplacingMe = this.mustGetActivity("ReplacingMe");
+    //     const t = new hlReplacingMe(
+    //         seedTxn, sIdx, purpose
+    //     );
+    //     return { redeemer: t._toUplcData() };
+    // }
 
     @Activity.redeemer
     activityRetiringDelegate(): isActivity {
@@ -166,6 +168,9 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
         purposes,
     }: MintUutActivityArgs): isActivity {
         const seedIndex = BigInt(sIdx);
+        console.log("----------- USING DEPRECATED mintingUuts ACTIVITY -----------"+
+          "\n       (prefer application-specific mint-delegate activities instead)"
+        );
         console.log("UUT redeemer seedTxn", seedTxn.hex);
         const mintingUuts = this.mustGetActivity("mintingUuts");
         const t = new mintingUuts(seedTxn, seedIndex, purposes);

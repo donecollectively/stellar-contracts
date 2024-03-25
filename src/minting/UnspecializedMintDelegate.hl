@@ -67,6 +67,7 @@ enum MintDelegateActivity {
     ReplacingMe { // replaces this mint delegate with a different one
         seedTxn: TxId
         seedIndex: Int
+        purpose: String
     }
     Retiring
     Modifying

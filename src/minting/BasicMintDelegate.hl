@@ -85,7 +85,7 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                 // },
 
                 // reassigning the authority token to a new minting delegate
-                ReplacingMe{seedTxId, seedIdx} => {
+                ReplacingMe{seedTxId, seedIdx, purpose} => {
                     // should burn the old UUT, mint the new UUT, and update the Charter
                     // with the new mint authority
 
@@ -99,15 +99,16 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                         BURNED
                     );
                 
-                    print("checking that ReplacingMe is all set up right");
+                    print("checking ReplacingMe on "+purpose+": "+dd.tn.decode_utf8());
                     mintsUutForCharterUsingRedeemerIndex(
                         ctx: ctx, 
                         mph: dd.mph,
-                        purpose: "mintDgt",
+                        purpose: purpose,
                         seedTxId: seedTxId,
                         seedIdx: seedIdx,
-                        redeemerIndex: updatingCharter,
+                        charterRedeemerIndex: updatingCharter,
                         otherMintedValue: otherMintedValue,
+                        needsMintDelegateApproval: false,
                         extraMintDelegateRedeemerCheck: false
                     )
                 },

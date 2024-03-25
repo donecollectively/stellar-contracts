@@ -16,6 +16,7 @@ import type {
 } from "./RolesAndDelegates.js";
 import { hasReqts } from "../Requirements.js";
 import { dumpAny } from "../diagnostics.js";
+import type { MintUutActivityArgs } from "../Capo.js";
 
 /**
  * Base class for modules that can serve as Capo delegates
@@ -48,7 +49,11 @@ export abstract class StellarDelegate<
      **/
     async txnGrantAuthority<
         TCX extends StellarTxnContext
-    >(tcx: TCX, redeemer? : isActivity, returnExistingDelegate : boolean = true) {
+    >(
+        tcx: TCX, 
+        redeemer? : isActivity, 
+        returnExistingDelegate : boolean = true
+    ) {
         const label = `${this.constructor.name} authority`;
         const uutxo = await this.DelegateMustFindAuthorityToken(tcx, label);
         const useMinTv = true;
@@ -151,9 +156,10 @@ export abstract class StellarDelegate<
     activityReplacingMe({ // todo: add type for seedTxnDetails
         seedTxn,
         seedIndex,
-    }) {
+        purpose        
+    } :  Omit<MintUutActivityArgs, "purposes"> & {purpose?: string}) {
         const thisActivity = this.mustGetActivity("ReplacingMe");
-        const t = new thisActivity(seedTxn, seedIndex);
+        const t = new thisActivity(seedTxn, seedIndex, purpose);
 
         return { redeemer: t._toUplcData() };
     }
@@ -216,6 +222,10 @@ export abstract class StellarDelegate<
     mkAuthorityTokenPredicate() {
         return this.mkTokenPredicate(this.tvAuthorityToken());
     }
+    get authorityTokenName() {
+        return this.configIn!.tn
+    }
+
     tvAuthorityToken(useMinTv: boolean = false) {
         if (!this.configIn)
             throw new Error(`must be instantiated with a configIn`);

@@ -7,6 +7,9 @@ import {
     TxInput,
     bytesToHex,
     HInt,
+    ByteArray,
+    //@ts-expect-error
+    Option,
 } from "@hyperionbt/helios";
 import {
     Activity,
@@ -41,7 +44,7 @@ import { CapoDelegateHelpers } from "../delegation/CapoDelegateHelpers.js";
 import { UutName } from "../delegation/UutName.js";
 
 import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
-import { mkUutValuesEntries, mkValuesEntry } from "../utils.js";
+import { mkUutValuesEntries, mkValuesEntry, stringToNumberArray } from "../utils.js";
 import { dumpAny } from "../diagnostics.js";
 import type { DefaultCapo } from "../DefaultCapo.js";
 import type { BasicMintDelegate } from "./BasicMintDelegate.js";
@@ -191,15 +194,15 @@ export class DefaultMinter
     @Activity.redeemer
     activityForcingNewMintDelegate({
         seedTxn,
-        seedIndex: sIdx,
-    }) {
+        seedIndex,
+    } : Omit<MintUutActivityArgs, "purposes">) {
         console.warn("NOTE: REPLACING THE MINT DELEGATE USING A DIRECT MINTER ACTIVITY\n"+
             "THIS IS NOT THE RECOMMENDED PATH - prefer using the existing mint delegate's ReplacingMe activity'"
         );
         const ReplacingMintDelegate = this.mustGetActivity("ForcingNewMintDelegate");
         const t = new ReplacingMintDelegate(
             seedTxn,
-            BigInt(sIdx)
+            BigInt(seedIndex)
         );
         return { redeemer: t._toUplcData() };
     }
@@ -215,17 +218,20 @@ export class DefaultMinter
      * @public
      **/
     @Activity.redeemer
-    activityForcingNewSpendDelegate({
+    activityCreatingNewSpendDelegate({
         seedTxn,
-        seedIndex: sIdx,
-    }) {
-        console.warn("NOTE: REPLACING THE SPEND DELEGATE USING A DIRECT MINTER ACTIVITY\n"+
-            "THIS IS NOT THE RECOMMENDED PATH - prefer using the existing spend delegate's ReplacingMe actvity'"
+        seedIndex: seedIndex,
+        replacingUut,
+    } : Omit<MintUutActivityArgs, "purposes"> & {replacingUut?: number[]}) {
+        const ReplacingSpendDelegate = this.mustGetActivity("CreatingNewSpendDelegate");
+        const OptByteArray = Option(ByteArray);
+        const uutName = new OptByteArray(
+            replacingUut
         );
-        const ReplacingSpendDelegate = this.mustGetActivity("ForcingNewSpendDelegate");
         const t = new ReplacingSpendDelegate(
             seedTxn,
-            BigInt(sIdx)
+            BigInt(seedIndex),
+            uutName
         );
         return { redeemer: t._toUplcData() };
     }

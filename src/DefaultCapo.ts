@@ -942,19 +942,19 @@ export class DefaultCapo<
         const {minter} = this;
         const tcxWithSeed = await this.addSeedUtxo(tcx);
         const uutOptions : UutCreationAttrs = options.forcedUpdate ? {
-             omitExistingDelegate: true,
+             omitMintDelegate: true,
              minterActivity: minter.activityForcingNewMintDelegate({
                 seedTxn: tcxWithSeed.state.seedUtxo.outputId.txId,
                 seedIndex: tcxWithSeed.state.seedUtxo.outputId.utxoIdx,
              })
          } : {
-             mintDelegateActivity: mintDelegate.activityReplacingMe({
+             usingMintDelegateActivity: mintDelegate.activityReplacingMe({
                 seedTxn: tcxWithSeed.state.seedUtxo.outputId.txId,
                 seedIndex: tcxWithSeed.state.seedUtxo.outputId.utxoIdx,
+                purpose: "mintDgt"
             }),
+            additionalMintValues: this.mkValuesBurningDelegateUut(currentDatum.mintDelegateLink),
             returnExistingDelegateToScript: false, // so it can be burned without a txn imbalance
-            additionalMintValues: 
-                this.mkValuesBurningMintDelegate(currentDatum.mintDelegateLink)
         };
         debugger
         const tcx2 = await this.txnMintingUuts(
@@ -999,7 +999,7 @@ export class DefaultCapo<
         // return tcx2.addOutput(charterOut);
     }
 
-    mkValuesBurningMintDelegate(current: RelativeDelegateLink<any> ) {
+    mkValuesBurningDelegateUut(current: RelativeDelegateLink<any> ) {
         return [mkValuesEntry(
             current.uutName, 
             -1n
@@ -1024,20 +1024,20 @@ export class DefaultCapo<
         const currentDatum = await this.findCharterDatum(currentCharter);
         const spendDelegate = await this.getSpendDelegate();
         const tcxWithSeed = await this.addSeedUtxo(tcx);
-        const uutOptions : UutCreationAttrs = options.forcedUpdate ? {
-             omitExistingDelegate: true,
-             minterActivity: this.minter.activityForcingNewSpendDelegate({
+        const uutOptions : UutCreationAttrs = {
+            omitMintDelegate: true,
+            minterActivity: this.minter.activityCreatingNewSpendDelegate({
                 seedTxn: tcxWithSeed.state.seedUtxo.outputId.txId,
                 seedIndex: tcxWithSeed.state.seedUtxo.outputId.utxoIdx,
-             })
-         } : {
-             existingDelegateReplacementActivity: spendDelegate.activityReplacingMe({
-                seedTxn: tcxWithSeed.state.seedUtxo.outputId.txId,
-                seedIndex: tcxWithSeed.state.seedUtxo.outputId.utxoIdx,
+                ... (options.forcedUpdate ? {} : {
+                    replacingUut: spendDelegate.authorityTokenName
+                })
             }),
-            additionalMintValues: 
-                this.mkValuesBurningMintDelegate(currentDatum.spendDelegateLink),
-            returnExistingDelegateToScript: false, // so it can be burned without a txn imbalance
+            ... (options.forcedUpdate ? { 
+                returnExistingDelegateToScript: false,   // so it can be burned without a txn imbalance
+             } : {
+                additionalMintValues: this.mkValuesBurningDelegateUut(currentDatum.spendDelegateLink),
+             })
         };
         debugger
         const tcx2 = await this.txnMintingUuts(
@@ -1050,11 +1050,23 @@ export class DefaultCapo<
                 spendDelegate: "spendDgt",
             }
         );
-        const newSpendDelegate = await this.txnCreateDelegateLink<
+        const newSpendDelegate = await this.txnCreateConfiguredDelegate<
             DT,
             "spendDelegate"
         >(tcx2, "spendDelegate", delegateInfo);
         // currentDatum.mintDelegateLink);
+
+        const tcx2a = options.forcedUpdate ? tcx2 : await spendDelegate.txnGrantAuthority(tcx2,
+            spendDelegate.activityReplacingMe({
+                seedTxn: tcxWithSeed.state.seedUtxo.outputId.txId,
+                seedIndex: tcxWithSeed.state.seedUtxo.outputId.utxoIdx,
+                purpose: "spendDgt"
+            }),
+            false
+        );
+        const tcx2b = await newSpendDelegate.delegate.txnReceiveAuthorityToken(
+            tcx2a, newSpendDelegate.delegate.tvAuthorityToken()
+        );
         
         //@ts-expect-error "could be instantiated with different subtype"
         const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
@@ -1063,7 +1075,7 @@ export class DefaultCapo<
         };
         return this.mkTxnUpdateCharter(fullCharterArgs, 
             undefined,
-            await this.txnAddGovAuthority(tcx2)
+            await this.txnAddGovAuthority(tcx2b)
         );
     }
 
@@ -1237,16 +1249,11 @@ export class DefaultCapo<
         const {
             usingSeedUtxo,
             additionalMintValues = [],
-            mintDelegateActivity,
-            omitExistingDelegate: omitDelegate = false,
+            usingMintDelegateActivity,
+            omitMintDelegate = false,
             minterActivity,
-            returnExistingDelegateToScript: returnExistingDelegate = true,
+            returnExistingDelegateToScript = true,            
         } = options;
-        if (additionalMintValues.length && !mintDelegateActivity) {
-            throw new Error(
-                `additionalMintValues requires a custom activity provided by your mint delegate specialization`
-            );
-        }
         const mintDelegate = await this.getMintDelegate();
         const { seedUtxo } = initialTcx.state;
 
@@ -1255,25 +1262,25 @@ export class DefaultCapo<
             uutPurposes,
             {
                 usingSeedUtxo: seedUtxo,
-                additionalMintValues,
-                mintDelegateActivity,
+                // additionalMintValues,
+                // existingDelegateReplacementActivity,
             },
             roles
         );
 
-        if (omitDelegate) {
-            if (mintDelegateActivity)
+        if (omitMintDelegate) {
+            if (usingMintDelegateActivity)
                 throw new Error(
-                    `omitDelegate and mintDelegateActivity are mutually exclusive`
+                    `omitMintDelegate and usingMintDelegateActivity are mutually exclusive`
                 );
             if (!minterActivity) {
                 throw new Error(
-                    `txnMintingUuts: omitDelegate requires a minterActivity to be specified\n`+
+                    `txnMintingUuts: omitMintDelegate requires a minterActivity to be specified\n`+
                     `  ... this indicates an activity in the MINTER (not the minting delegate), `+
                      ` ... the minter should be able to honor that activity/redeemer.` 
                 );
             }
-
+    
             // directly mint the UUTs, without involving the mint delegate
             const tcx2 = await this.minter.txnMIntingWithoutDelegate(
                 tcx,
@@ -1285,9 +1292,14 @@ export class DefaultCapo<
             );
             return tcx2;
         }
+        if (additionalMintValues.length && !usingMintDelegateActivity) {
+            throw new Error(
+                `additionalMintValues requires a custom activity provided by your mint delegate specialization`
+            );
+        }
 
         const dgtActivity =
-            mintDelegateActivity ||
+            usingMintDelegateActivity ||
             mintDelegate.activityMintingUuts({
                 purposes: uutPurposes,
                 ...tcx.getSeedAttrs(),
@@ -1304,7 +1316,7 @@ export class DefaultCapo<
             [...mkUutValuesEntries(tcx.state.uuts), ...additionalMintValues],
             mintDelegate,
             dgtActivity,
-            returnExistingDelegate
+            returnExistingDelegateToScript
         );
         console.log(
             "    🐞🐞 @end of txnMintingUuts",
@@ -1371,7 +1383,7 @@ export class DefaultCapo<
     >(
         tcx: existingTcx,
         uutPurposes: purposes[],
-        { usingSeedUtxo }: UutCreationAttrsWithSeed,
+        { usingSeedUtxo }: Pick<UutCreationAttrsWithSeed, "usingSeedUtxo">,
         //@ts-expect-error
         roles: RM = {} as Record<string, purposes>
     ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {

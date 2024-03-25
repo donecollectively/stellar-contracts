@@ -239,7 +239,7 @@ func mintsUutForCharterUsingRedeemerIndex(
     purpose: String,
     seedTxId: TxId,
     seedIdx: Int,
-    redeemerIndex: Int,
+    charterRedeemerIndex: Int,
     otherMintedValue: Value = Value::new(AssetClass::ADA, 0),
     needsMintDelegateApproval: Bool = true,
     extraMintDelegateRedeemerCheck: Bool = true
@@ -265,12 +265,12 @@ func mintsUutForCharterUsingRedeemerIndex(
         (index: Int, _fields: []Data) => {
             /* avoids unused-variable warning: */ _fields == _fields && 
 
-            if (index == redeemerIndex) { 
+            if (index == charterRedeemerIndex) { 
                 // ok, good charter-redeemer as expected; print("ok here");
                 true 
             } else {  
                 error("wrong charter Activity for adding spend invariant; expected redeemer #"+ 
-                    redeemerIndex.show()+
+                    charterRedeemerIndex.show()+
                      ", got "+index.show()
                 )
             }
@@ -288,7 +288,7 @@ func mintsUutForCharterUsingRedeemerIndex(
         needsMintDelegateApproval: needsMintDelegateApproval,
         extraMintDelegateRedeemerCheck: extraMintDelegateRedeemerCheck
     ) && if (/* more debug info? */ true) {
-        print ("  -- CMH: mint UUT "+purpose+" w/ charter redeemer #"+redeemerIndex.show());
+        print ("  -- CMH: mint UUT "+purpose+" w/ charter redeemer #"+charterRedeemerIndex.show());
         true
     } else { true } 
 }
@@ -317,9 +317,10 @@ enum MinterActivity {
         seedIndex: Int
     }
 
-    ForcingNewSpendDelegate {
+    CreatingNewSpendDelegate {
         seedTxn: TxId
         seedIndex: Int
+        replacingUut: Option[ByteArray]
     }
 
     mintingUuts {

@@ -104,9 +104,10 @@ export type hasAllUuts<uutEntries extends string> = {
 export type UutCreationAttrs = {
     usingSeedUtxo?: TxInput | undefined;
     additionalMintValues?: valuesEntry[];
-    omitDelegate?: true;
-    mintDelegateActivity?: isActivity;
-    minterActivity?: isActivity
+    omitMintDelegate?: true;
+    usingMintDelegateActivity?: isActivity;
+    minterActivity?: isActivity;
+    returnExistingDelegateToScript? : false
 };
 export type UutCreationAttrsWithSeed = UutCreationAttrs &
     Required<Pick<UutCreationAttrs, "usingSeedUtxo">>;
@@ -1032,12 +1033,12 @@ export abstract class Capo<
             delegateLinkSerializer,
             4 // indent 4 spaces 
         );
-        // console.log(`   ----- delegate '${roleName}' cache key `, cacheKey);
+        console.log(`   ----- delegate '${roleName}' cache key `, cacheKey);
         if (!cache[roleName]) cache[roleName] = {};
         const roleCache = cache[roleName];
         const cachedRole = roleCache[cacheKey];
         if (cachedRole) {
-            // console.log(  "   <---- cached delegate");
+            console.log(  "   <---- cached delegate");
             return cachedRole as DelegateType;
         }
         const role = this.delegateRoles[roleName];
