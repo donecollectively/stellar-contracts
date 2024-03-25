@@ -12,7 +12,8 @@ const isDev: Bool = false
 
 import { 
     RelativeDelegateLink,
-    requiresValidDelegateOutput
+    requiresValidDelegateOutput,
+    requiresNoDelegateInput
 } from CapoDelegateHelpers
 
 import {
@@ -106,9 +107,15 @@ func preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Boo
     true
 }
 
+func checkpoint(s: String) -> Bool {
+    print("checkpoint: " + s);
+    true
+}
+
 func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
     // now: Time = tx.time_range.start;
+    print("hi from capo");
 
     if (isDev) {
         print("is dev @gen " + devGen.show() )
@@ -139,27 +146,68 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
     // however, this section allows activity-specific checks to be included, so extensions aren't painted into a corner.
     allActivitySpecificChecks : Bool = activity.switch {
         updatingCharter => {
+            // print("hi from updatingCharter");
+
             charterOutput : TxOutput = getCharterOutput(tx);
             newDatum = Datum::from_data( 
                 charterOutput.datum.get_inline_data() 
             );
-            Datum::CharterToken{govDelegate, mintDelegate, spendDelegate, spendInvariants, mintInvariants} = newDatum;
+            Datum::CharterToken{
+                govDelegate, mintDelegate, spendDelegate, 
+                spendInvariants, mintInvariants
+            } = newDatum;
 
-            mustNotModifyMintInvariants : Bool = datum.switch{
-                CharterToken{_,_,_,oldMintInvariants, _} => mintInvariants == oldMintInvariants,
-                _ => error("wrong input, can't happen")
-            };
-            mustNotModifySpendInvariants : Bool = datum.switch{
-                CharterToken{_,_,_,_,oldSpendInvariants} => spendInvariants == oldSpendInvariants,
-                _ => error("wrong input, can't happen")
-            };
+            Datum::CharterToken{
+                /* _oldGovDelegate */ _ , oldMintDelegate, oldSpendDelegate, 
+                oldSpendInvariants, oldMintInvariants
+            } = datum;
 
+            mustNotModifyMintInvariants : Bool =  ( mintInvariants == oldMintInvariants );
+            mustNotModifySpendInvariants : Bool = ( spendInvariants == oldSpendInvariants );
+
+            unchangedSpendDgt : Bool = ( spendDelegate.serialize() == oldSpendDelegate.serialize() );
+            unchangedMintDgt : Bool = ( mintDelegate.serialize() == oldMintDelegate.serialize() );
+
+            print("is spendDgt unchanged? " + unchangedSpendDgt.show() +
+                "\n  - old: "+ oldSpendDelegate.uutName + " = " + oldSpendDelegate.strategyName +
+                " => "+  oldSpendDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"} +
+               "\n  - new: "+ spendDelegate.uutName + " = " + spendDelegate.strategyName +
+                " => "+ spendDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"} 
+            );
+            print("is mintDgt unchanged?  " + unchangedMintDgt.show() + 
+                "\n  - old: "+ oldMintDelegate.uutName + " = " + oldMintDelegate.strategyName +
+                " => "+  oldMintDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"} +
+                "\n  - new: "+ mintDelegate.uutName + " = " + mintDelegate.strategyName +
+                " => "+ mintDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"}
+             );
+
+            // govDelegate is always spent, so we always check its destination is kosher.
             requiresValidDelegateOutput(govDelegate, mph, ctx) &&
-            requiresValidDelegateOutput(mintDelegate, mph, ctx) &&
-            requiresValidDelegateOutput(spendDelegate, mph, ctx) &&
+            checkpoint("1") &&
+            if (unchangedMintDgt) {
+                // unchanged mintDgt must not be included in the tx
+                checkpoint("2b") &&
+                requiresNoDelegateInput(mintDelegate, mph, ctx)
+            } else {
+                //  the new one has to go to the right place
+                checkpoint("2a") &&
+                 requiresValidDelegateOutput(mintDelegate, mph, ctx)
+            } && 
+            checkpoint("3") &&
+            if ( unchangedSpendDgt) {
+                // unchanged spendDgt must not be included in the tx
+                checkpoint("4b") &&
+                requiresNoDelegateInput(spendDelegate, mph, ctx)
+            } else {
+                //  the new one has to go to the right place
+                checkpoint("4a") &&
+                requiresValidDelegateOutput(spendDelegate, mph, ctx)
+            } &&
+            checkpoint("5") &&
             mustNotModifyMintInvariants &&
             mustNotModifySpendInvariants &&
-            requiresAuthorization(ctx, datum)
+            requiresAuthorization(ctx, datum) &&
+            checkpoint("6")
         },
 
         retiringRefScript => {
@@ -197,8 +245,8 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
         _ => activity.allowActivity(datum, ctx, mph)
     };
 
-    assert(allDatumSpecificChecks, "datum-check fail");
-    assert(allActivitySpecificChecks, "redeeemer-check fail");
+    assert(allDatumSpecificChecks, "some datum-check failed");
+    assert(allActivitySpecificChecks, "some redeeemer-check failed");
 
     //! retains mph in parameterization
     assert(

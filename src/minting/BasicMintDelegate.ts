@@ -113,16 +113,40 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
         return UnspecializedCapo;
     }
 
+    /**
+     * Deprecated
+     * @deprecated  - mint delegate should have specific activities for specific use-cases, starting at redeemer index 10
+     * @internal
+     **/
     @Activity.redeemer
     activityAuthorizing(): isActivity {
         throw new Error(
-            `generic Authorizing activity invalid for mint delegates`
+            `obsolete generic Authorizing activity invalid for mint delegates`
         );
+    }
+
+    @Activity.redeemer
+    activityReplacingMe({
+        seedTxn,
+        seedIndex: sIdx,
+    }){
+        const hlReplacingMe = this.mustGetActivity("ReplacingMe");
+        const t = new hlReplacingMe(
+            seedTxn, sIdx
+        );
+        return { redeemer: t._toUplcData() };        
+    }
+
+    @Activity.redeemer
+    activityRetiringDelegate(): isActivity {
+        const Retiring = this.mustGetActivity("Retiring");
+        return { redeemer: new Retiring()._toUplcData() };
     }
 
     async txnGrantAuthority<TCX extends StellarTxnContext>(
         tcx: TCX,
-        redeemer: isActivity
+        redeemer: isActivity,
+        returnExistingDelegate : boolean = true
     ) {
         if (!redeemer)
             throw new Error(
@@ -130,7 +154,7 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
             );
 
         await this.txnMustAddMyRefScript(tcx);
-        return super.txnGrantAuthority(tcx, redeemer);
+        return super.txnGrantAuthority(tcx, redeemer, returnExistingDelegate);
     }
 
     // NOTE: prefer application-specific activities that validate

@@ -64,7 +64,10 @@ enum MintDelegateDatum {
 
 enum MintDelegateActivity {
     // Authorizing  - obsolete
-    Reassigning
+    ReplacingMe { // replaces this mint delegate with a different one
+        seedTxn: TxId
+        seedIndex: Int
+    }
     Retiring
     Modifying
     // reserved activities for possible maintenance of utxos within the mint-delegate script.
@@ -120,6 +123,7 @@ enum MintDelegateActivity {
         if (o.length != 1) { error("single utxo only") };
 
 
+        print ("in unsp_MD");
         isOk : Bool = returnsAuthzToken && 
         // A project that wants to evolve the Datum's isDelegation.CustomConfig 
         // should enforce that requirement instead of this "not modified" check.
@@ -186,7 +190,7 @@ enum MintDelegateActivity {
             // Note: these activities are reserved for the IsDelegation datum.
             //   ... using these activities on any other Datum type will always fail
             //   ... BEFORE execution reaches this point.
-            Reassigning => neverTriggered(), 
+            ReplacingMe => neverTriggered(), 
             Retiring => neverTriggered(),
             Modifying => neverTriggered(),
             

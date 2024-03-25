@@ -5,7 +5,9 @@ import {
 } from StellarHeliosHelpers
 
 import {
-    getRefCharterDatum
+    getTxCharterDatum,
+    getRefCharterDatum,
+    mustFindInputRedeemer
 } from CapoHelpers
 
 import {
@@ -14,7 +16,7 @@ import {
 
 import {
     RelativeDelegateLink,
-    requiresDelegateAuthorizing
+    requiresDelegateAuthorizingMint // todo: move it into this file instead.
 } from CapoDelegateHelpers
 
 func hasSeedUtxo(tx: Tx, seedTxId : TxId, seedIdx: Int
@@ -30,11 +32,11 @@ func hasSeedUtxo(tx: Tx, seedTxId : TxId, seedIdx: Int
         // +reason 
         // + "\n"+seedTxId.show() + " : " + seedIdx.show()
     );
-    print( "   -- has seed -> ok");
+    print( "  -- has seed -> ok");
     true
 }
 
-func requiresDelegateApproval(
+func requiresMintDelegateApproval(
     ctx: ScriptContext, 
     mph: MintingPolicyHash
 ) -> Bool {
@@ -42,10 +44,10 @@ func requiresDelegateApproval(
         _, mintDgt,  /*spendDgt*/ _,  /* mintInvariants */ _, /* spendInvariants */ _
     } = getRefCharterDatum(ctx, mph);
 
-    requiresDelegateAuthorizing(
-        mintDgt, 
-        mph, 
-        ctx
+    requiresDelegateAuthorizingMint(
+        delegateLink: mintDgt, 
+        mph: mph,
+        ctx: ctx
     )
 }
 
@@ -119,7 +121,7 @@ func validateUutBurning(
         )
     };
 
-    hasExpectedBurn && requiresDelegateAuthorizing(
+    hasExpectedBurn && requiresDelegateAuthorizingMint(
         mintDgt, 
         mph, 
         ctx
@@ -137,7 +139,10 @@ func validateUutMinting(
     seedTxId : TxId, seedIdx : Int, 
     purposes: []String,     
     mkTokenName: (String) -> String,
-    bootstrapCharter:Value = Value::new(AssetClass::ADA, 0)
+    bootstrapCharter:Value = Value::new(AssetClass::ADA, 0),
+    otherMintedValue: Value = Value::new(AssetClass::ADA, 0),
+    needsMintDelegateApproval: Bool = true,
+    extraMintDelegateRedeemerCheck: Bool = true
 ) -> Bool {
     tx: Tx = ctx.tx;
 
@@ -148,14 +153,19 @@ func validateUutMinting(
         // not bootstrapping; must honor the mintDelegate's authority
         Datum::CharterToken {
             _, mintDgt, /* spendDgt */ _, /* mintInvariants */ _, /* spendInvariants */ _
-        } = getRefCharterDatum(ctx, mph);
+        } = getTxCharterDatum(ctx, mph);
 
-        //!!! todo: add explicit activity details in authorization
-        requiresDelegateAuthorizing(
-            mintDgt, 
-            mph, 
-            ctx
-        )
+        if (needsMintDelegateApproval) {
+            //!!! todo: add explicit activity details in authorization
+            requiresDelegateAuthorizingMint(
+                delegateLink: mintDgt, 
+                mph: mph, 
+                ctx: ctx,
+                extraMintDelegateRedeemerCheck: extraMintDelegateRedeemerCheck
+            )
+        } else {
+            true
+        }
     };
 
     valueMinted: Value = tx.minted;
@@ -176,7 +186,7 @@ func validateUutMinting(
     // tokenName1 = purpose + "." + miniHash.show();
 
     // print(" purposes: " + purposes.join(", "));
-    expectedValue : Value = bootstrapCharter + Value::sum(
+    expectedValue : Value = bootstrapCharter + otherMintedValue + Value::sum(
         purposes.sort((a:String, b:String) -> Bool { a != b }).map(
             (purpose: String) -> Value {
                 // print("purpose: " + purpose);
@@ -223,7 +233,67 @@ func validateUutMinting(
     )
 }
 
-enum Activity { 
+func mintsUutForCharterUsingRedeemerIndex(
+    ctx: ScriptContext,
+    mph: MintingPolicyHash,
+    purpose: String,
+    seedTxId: TxId,
+    seedIdx: Int,
+    redeemerIndex: Int,
+    otherMintedValue: Value = Value::new(AssetClass::ADA, 0),
+    needsMintDelegateApproval: Bool = true,
+    extraMintDelegateRedeemerCheck: Bool = true
+) -> Bool {
+            // only has to check that a) it's minting all-and-only the invariant-uut,
+            // and b) the contract charter is BEING SPENT WITH THE ACTIVITY at the indicated index.
+            // ------> The charter-spend policy for that activity checks all the other necessaries
+            //     given that activity.
+
+            // NOT needed; the charter-spend policy ensures the expected delegate output is created when adding a spend invariant.
+            // hasRightDestination : Bool = output.value == value_minted &&
+            //     output.address == charterUtxo.address;
+
+    chVal : Value = tvCharter(mph);
+    hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
+    print("  --- finding required charter input ");
+    charterInput : TxInput = ctx.tx.inputs.find(hasCharter);
+    print ("  <-- found charter input");
+    charterRedeemer : Data  = mustFindInputRedeemer(ctx, charterInput);
+    // print("defaultMinter @A");
+
+    charterRedeemer.switch{
+        (index: Int, _fields: []Data) => {
+            /* avoids unused-variable warning: */ _fields == _fields && 
+
+            if (index == redeemerIndex) { 
+                // ok, good charter-redeemer as expected; print("ok here");
+                true 
+            } else {  
+                error("wrong charter Activity for adding spend invariant; expected redeemer #"+ 
+                    redeemerIndex.show()+
+                     ", got "+index.show()
+                )
+            }
+        },
+        _ => error("incontheeivable!")
+    } &&
+    validateUutMinting(
+        ctx: ctx, 
+        mph: mph,
+        seedTxId: seedTxId, 
+        seedIdx: seedIdx, 
+        purposes: []String{purpose}, 
+        mkTokenName: mkUutTnFactory(seedTxId, seedIdx),
+        otherMintedValue: otherMintedValue,
+        needsMintDelegateApproval: needsMintDelegateApproval,
+        extraMintDelegateRedeemerCheck: extraMintDelegateRedeemerCheck
+    ) && if (/* more debug info? */ true) {
+        print ("  -- CMH: mint UUT "+purpose+" w/ charter redeemer #"+redeemerIndex.show());
+        true
+    } else { true } 
+}
+
+enum MinterActivity { 
     mintingCharter
      {
         owner: Address
@@ -236,8 +306,18 @@ enum Activity {
         seedTxn: TxId
         seedIndex: Int
     }
-    
+
     addingSpendInvariant {
+        seedTxn: TxId
+        seedIndex: Int
+    }
+
+    ForcingNewMintDelegate {
+        seedTxn: TxId
+        seedIndex: Int
+    }
+
+    ForcingNewSpendDelegate {
         seedTxn: TxId
         seedIndex: Int
     }

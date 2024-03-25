@@ -46,7 +46,9 @@ export abstract class StellarDelegate<
      * @param tcx - transaction context
      * @public
      **/
-    async txnGrantAuthority<TCX extends StellarTxnContext>(tcx: TCX, redeemer? : isActivity) {
+    async txnGrantAuthority<
+        TCX extends StellarTxnContext
+    >(tcx: TCX, redeemer? : isActivity, returnExistingDelegate : boolean = true) {
         const label = `${this.constructor.name} authority`;
         const uutxo = await this.DelegateMustFindAuthorityToken(tcx, label);
         const useMinTv = true;
@@ -60,6 +62,7 @@ export abstract class StellarDelegate<
 
         try {
             const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo, redeemer || this.activityAuthorizing());
+            if (!returnExistingDelegate) return tcx2;
             return this.txnReceiveAuthorityToken(tcx2, authorityVal, uutxo);
         } catch (error: any) {
             if (error.message.match(/input already added/)) {
@@ -131,6 +134,26 @@ export abstract class StellarDelegate<
     activityAuthorizing() {
         const thisActivity = this.mustGetActivity("Authorizing");
         const t = new thisActivity();
+
+        return { redeemer: t._toUplcData() };
+    }
+
+    /**
+     * redeemer for replacing the authority UUT with a new one
+     * @remarks
+     * 
+     * When replacing the delegate, the current UUT will be burned,
+     * and a new one will be minted.  It can be deposited to any next delegate address.
+     * 
+     * @param seedTxnDetails - seed details for the new UUT
+     * @public
+     **/
+    activityReplacingMe({ // todo: add type for seedTxnDetails
+        seedTxn,
+        seedIndex,
+    }) {
+        const thisActivity = this.mustGetActivity("ReplacingMe");
+        const t = new thisActivity(seedTxn, seedIndex);
 
         return { redeemer: t._toUplcData() };
     }

@@ -26,7 +26,7 @@ import {
 import type { ScriptHash, Wallet } from "@hyperionbt/helios";
 
 import type { isActivity } from "./StellarContract.js";
-import { mkUutValuesEntries } from "./utils.js";
+import { mkUutValuesEntries, mkValuesEntry } from "./utils.js";
 
 import {
     Activity,
@@ -479,15 +479,16 @@ export class DefaultCapo<
         return Datum.inline(t._toUplcData());
     }
 
-    async findCharterDatum() {
-        return this.mustFindCharterUtxo().then(async (ctUtxo: TxInput) => {
-            const charterDatum = await this.readDatum<DefaultCharterDatumArgs>(
-                "CharterToken",
-                ctUtxo.origOutput.datum as InlineDatum
-            );
-            if (!charterDatum) throw Error(`invalid charter UTxO datum`);
-            return charterDatum;
-        });
+    async findCharterDatum(currentCharterUtxo? : TxInput) {
+        if (!currentCharterUtxo) {
+            currentCharterUtxo = await this.mustFindCharterUtxo();
+        }
+        const charterDatum = await this.readDatum<DefaultCharterDatumArgs>(
+            "CharterToken",
+            currentCharterUtxo.origOutput.datum as InlineDatum
+        );
+        if (!charterDatum) throw Error(`invalid charter UTxO datum`);
+        return charterDatum;
     }
 
     async findGovDelegate() {
@@ -889,17 +890,185 @@ export class DefaultCapo<
     @txn
     async mkTxnUpdateCharter(
         args: CDT,
+        activity: isActivity = this.activityUpdatingCharter(),
         tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
     ): Promise<StellarTxnContext> {
+        console.log("update charter", {activity});
         return this.txnUpdateCharterUtxo(
             tcx,
-            this.activityUpdatingCharter(),
+            activity,
             await this.mkDatumCharterToken(args)
         );
     }
 
+    /**
+     * Installs a new Minting delegate to the Capo contract
+     * @remarks
+     * 
+     * Updates the policy by which minting under the contract's minting policy is allowed.
+     * 
+     * This supports the evolution of logic for token-minting.
+     * Note that updating the minting policy can't modify or interfere with constraints
+     * enforced by any existing mintInvariants.
+     * 
+     * Normally, the existing minting delegate is signalled to be Retiring its delegation token,
+     * burning it as part of the update transaction and cleaning things up.  The minUtxo from
+     * the old delegation UUT will be recycled for use in the new delegate.
+     * 
+     * @param delegateInfo - the new minting delegate's info
+     * @param options - allows a forced update, which leaves a dangling delegation token
+     *   in the old minting delegate, but allows the new minting delegate to take over without
+     *   involving the old delegate in the transaction.
+     * @param tcx - any existing transaction context
+     * @public
+     **/
     @txn
-    async mkTxnCreatingMintDelegate<
+    async mkTxnUpdatingMintDelegate<
+        DT extends StellarDelegate,
+        thisType extends DefaultCapo<MinterType, CDT, configType>
+    >(
+        this: thisType,
+        delegateInfo: MinimalDelegateLink<DT> & {
+            strategyName: string & keyof thisType["delegateRoles"]["mintDelegate"]["variants"];
+        },
+        options: {
+            forcedUpdate?: true;
+        } = {},
+        tcx: StellarTxnContext = new StellarTxnContext(this.myActor),
+    ): Promise<StellarTxnContext> {
+        const currentCharter = await this.mustFindCharterUtxo();
+        const currentDatum = await this.findCharterDatum(currentCharter);
+        const mintDelegate = await this.getMintDelegate();
+        const {minter} = this;
+        const tcxWithSeed = await this.addSeedUtxo(tcx);
+        const uutOptions : UutCreationAttrs = options.forcedUpdate ? {
+             omitExistingDelegate: true,
+             minterActivity: minter.activityForcingNewMintDelegate({
+                seedTxn: tcxWithSeed.state.seedUtxo.outputId.txId,
+                seedIndex: tcxWithSeed.state.seedUtxo.outputId.utxoIdx,
+             })
+         } : {
+             mintDelegateActivity: mintDelegate.activityReplacingMe({
+                seedTxn: tcxWithSeed.state.seedUtxo.outputId.txId,
+                seedIndex: tcxWithSeed.state.seedUtxo.outputId.utxoIdx,
+            }),
+            returnExistingDelegateToScript: false, // so it can be burned without a txn imbalance
+            additionalMintValues: 
+                this.mkValuesBurningMintDelegate(currentDatum.mintDelegateLink)
+        };
+        debugger
+        const tcx2 = await this.txnMintingUuts(
+            // todo: make sure seed-utxo is selected with enough minUtxo ADA for the new UUT name.
+            // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
+            tcxWithSeed,
+            ["mintDgt"],
+            uutOptions,
+            {
+                mintDelegate: "mintDgt",
+            }
+        );
+        const newMintDelegate = await this.txnCreateDelegateLink<
+            DT,
+            "mintDelegate"
+        >(tcx2, "mintDelegate", delegateInfo);
+        // currentDatum.mintDelegateLink);
+
+        // const spendDelegate = await this.txnCreateDelegateLink<
+        //     StellarDelegate<any>,
+        //     "spendDelegate"
+        // >(tcx, "spendDelegate", charterDatumArgs.spendDelegateLink);
+
+        //@ts-expect-error "could be instantiated with different subtype"
+        const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
+            ...currentDatum,
+            mintDelegateLink: newMintDelegate,
+        };
+        return this.mkTxnUpdateCharter(fullCharterArgs, 
+            undefined,
+            await this.txnAddGovAuthority(tcx2)
+        );
+        // const datum = await this.mkDatumCharterToken(fullCharterArgs);
+
+        // const charterOut = new TxOutput(
+        //     this.address,
+        //     this.tvCharter(),
+        //     datum
+        //     // this.compiledScript
+        // );
+
+        // return tcx2.addOutput(charterOut);
+    }
+
+    mkValuesBurningMintDelegate(current: RelativeDelegateLink<any> ) {
+        return [mkValuesEntry(
+            current.uutName, 
+            -1n
+        )]
+    }
+
+    @txn
+    async mkTxnUpdatingSpendDelegate<
+        DT extends StellarDelegate,
+        thisType extends DefaultCapo<MinterType, CDT, configType>
+    >(
+        this: thisType,
+        delegateInfo: MinimalDelegateLink<DT> & {
+            strategyName: string & keyof thisType["delegateRoles"]["spendDelegate"]["variants"];
+        },
+        options: {
+            forcedUpdate?: true;
+        } = {},
+        tcx: StellarTxnContext = new StellarTxnContext(this.myActor),
+    ): Promise<StellarTxnContext> {
+        const currentCharter = await this.mustFindCharterUtxo();
+        const currentDatum = await this.findCharterDatum(currentCharter);
+        const spendDelegate = await this.getSpendDelegate();
+        const tcxWithSeed = await this.addSeedUtxo(tcx);
+        const uutOptions : UutCreationAttrs = options.forcedUpdate ? {
+             omitExistingDelegate: true,
+             minterActivity: this.minter.activityForcingNewSpendDelegate({
+                seedTxn: tcxWithSeed.state.seedUtxo.outputId.txId,
+                seedIndex: tcxWithSeed.state.seedUtxo.outputId.utxoIdx,
+             })
+         } : {
+             existingDelegateReplacementActivity: spendDelegate.activityReplacingMe({
+                seedTxn: tcxWithSeed.state.seedUtxo.outputId.txId,
+                seedIndex: tcxWithSeed.state.seedUtxo.outputId.utxoIdx,
+            }),
+            additionalMintValues: 
+                this.mkValuesBurningMintDelegate(currentDatum.spendDelegateLink),
+            returnExistingDelegateToScript: false, // so it can be burned without a txn imbalance
+        };
+        debugger
+        const tcx2 = await this.txnMintingUuts(
+            // todo: make sure seed-utxo is selected with enough minUtxo ADA for the new UUT name.
+            // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
+            tcxWithSeed,
+            ["spendDgt"],
+            uutOptions,
+            {
+                spendDelegate: "spendDgt",
+            }
+        );
+        const newSpendDelegate = await this.txnCreateDelegateLink<
+            DT,
+            "spendDelegate"
+        >(tcx2, "spendDelegate", delegateInfo);
+        // currentDatum.mintDelegateLink);
+        
+        //@ts-expect-error "could be instantiated with different subtype"
+        const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
+            ...currentDatum,
+            spendDelegateLink: newSpendDelegate,
+        };
+        return this.mkTxnUpdateCharter(fullCharterArgs, 
+            undefined,
+            await this.txnAddGovAuthority(tcx2)
+        );
+    }
+
+    @txn
+    async mkTxnAddingMintInvariant<
         DT extends StellarDelegate,
         thisType extends DefaultCapo<MinterType, CDT, configType>
     >(
@@ -935,7 +1104,7 @@ export class DefaultCapo<
         //@ts-expect-error "could be instantiated with different subtype"
         const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
             ...currentDatum,
-            mintDelegateLink: mintDelegate,
+            mintInvariants: [...currentDatum.mintInvariants, mintDelegate],
         };
         const datum = await this.mkDatumCharterToken(fullCharterArgs);
 
@@ -950,7 +1119,7 @@ export class DefaultCapo<
     }
 
     @txn
-    async mkTxnCreatingSpendDelegate<
+    async mkTxnAddingSpendInvariant<
         DT extends StellarDelegate,
         thisType extends DefaultCapo<MinterType, CDT, configType>
     >(
@@ -960,7 +1129,7 @@ export class DefaultCapo<
             strategyName: string &
                 keyof thisType["delegateRoles"]["spendDelegate"];
         }
-    ): Promise<StellarTxnContext> {
+    ) {
         const currentDatum = await this.findCharterDatum();
 
         // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
@@ -986,7 +1155,7 @@ export class DefaultCapo<
         //@ts-expect-error "could be instantiated with different subtype"
         const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
             ...currentDatum,
-            spendDelegateLink: spendDelegate,
+            spendInvariants: [...currentDatum.spendInvariants, spendDelegate],
         };
         const datum = await this.mkDatumCharterToken(fullCharterArgs);
 
@@ -1042,6 +1211,9 @@ export class DefaultCapo<
      * these.  In this case, you'll need to provide a `options.activity`, whose on-chain
      * validation should ensure that all-and-only the expected values are minted.
      *
+     * The returnExistingDelegate option can be used if needed to prevent a burned delegate
+     * token from being returned to the delegate contract's script address, creating an imbalanced txn.
+     * 
      * @param initialTcx - an existing transaction context
      * @param uutPurposes - a set of purpose-names (prefixes) for the UUTs to be minted
      * @param options - additional options for the minting operation.  In particular, you likely want
@@ -1066,8 +1238,9 @@ export class DefaultCapo<
             usingSeedUtxo,
             additionalMintValues = [],
             mintDelegateActivity,
-            omitDelegate = false,
+            omitExistingDelegate: omitDelegate = false,
             minterActivity,
+            returnExistingDelegateToScript: returnExistingDelegate = true,
         } = options;
         if (additionalMintValues.length && !mintDelegateActivity) {
             throw new Error(
@@ -1095,7 +1268,9 @@ export class DefaultCapo<
                 );
             if (!minterActivity) {
                 throw new Error(
-                    `omitDelegate requires a minterActivity to be specified`
+                    `txnMintingUuts: omitDelegate requires a minterActivity to be specified\n`+
+                    `  ... this indicates an activity in the MINTER (not the minting delegate), `+
+                     ` ... the minter should be able to honor that activity/redeemer.` 
                 );
             }
 
@@ -1128,7 +1303,8 @@ export class DefaultCapo<
             tcx,
             [...mkUutValuesEntries(tcx.state.uuts), ...additionalMintValues],
             mintDelegate,
-            dgtActivity
+            dgtActivity,
+            returnExistingDelegate
         );
         console.log(
             "    🐞🐞 @end of txnMintingUuts",
@@ -1287,9 +1463,7 @@ export class DefaultCapo<
                         "Charter updates are authorized by the gov delegate",
                     ],
                     mech: [
-                        "TODO: TEST updates details of the datum",
-                        "TODO: TEST doesn't update without the capoGov-* authority",
-                        "TODO: TEST keeps the charter token in the contract address",
+                        "can update details of the datum",
                     ],
                     requires: [
                         "can update the minting delegate in the charter settings",
@@ -1309,6 +1483,9 @@ export class DefaultCapo<
                 mech: [
                     "can install an updated minting delegate",
                     "fails without the capoGov- authority uut",
+                    "normally requires the eixsting mint delegate to be involved in the replacement",
+                    "can force-replace the mint delegate if needed",
+                    "keeps the charter token in the contract address",
                     "uses the new minting delegate after it is installed",
                     "can't use the old minting delegate after it is replaced",
                 ],
@@ -1324,6 +1501,9 @@ export class DefaultCapo<
                 mech: [
                     "can install an updated spending delegate",
                     "fails without the capoGov- authority uut",
+                    "normally requires the eixsting mint delegate to be involved in the replacement",
+                    "can force-replace the mint delegate if needed",
+                    "keeps the charter token in the contract address",
                     "uses the new spending delegate after it is installed",
                     "can't use the old spending delegate after it is replaced",
                 ],

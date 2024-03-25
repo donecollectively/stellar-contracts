@@ -15,11 +15,14 @@ import {
 
 import {
     mkUutTnFactory,
-    validateUutMinting
+    validateUutMinting,
+    mintsUutForCharterUsingRedeemerIndex
 } from CapoMintHelpers
 
 import {
-    returnsValueToScript
+    returnsValueToScript,
+    mkTv,
+    tvCharter
 } from StellarHeliosHelpers
 
 import {
@@ -38,6 +41,7 @@ import {
 
 
 func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptContext) -> Bool {
+    print("hi from mint delegate");
     if (isDev) {
         print("is dev @gen " + devGen.show() )
     };
@@ -81,10 +85,31 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                 // },
 
                 // reassigning the authority token to a new minting delegate
-                Reassigning => {
-                    // the token isn't burned, and it isn't returned back to this script
-                    ctx.tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&
-                    !returnsValueToScript( tvAuthorityToken(dd), ctx)
+                ReplacingMe{seedTxId, seedIdx} => {
+                    // should burn the old UUT, mint the new UUT, and update the Charter
+                    // with the new mint authority
+
+                    //xxx -   ctx.tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&
+                    //xxx -   !returnsValueToScript( tvAuthorityToken(dd), ctx)
+
+                    updatingCharter: Int = 1;
+                    BURNED: Int = -1;
+                    otherMintedValue: Value = Value::new(
+                        AssetClass::new(dd.mph, dd.tn), 
+                        BURNED
+                    );
+                
+                    print("checking that ReplacingMe is all set up right");
+                    mintsUutForCharterUsingRedeemerIndex(
+                        ctx: ctx, 
+                        mph: dd.mph,
+                        purpose: "mintDgt",
+                        seedTxId: seedTxId,
+                        seedIdx: seedIdx,
+                        redeemerIndex: updatingCharter,
+                        otherMintedValue: otherMintedValue,
+                        extraMintDelegateRedeemerCheck: false
+                    )
                 },
                 // the token is being burned, retiring the authority token for this minting delegate
                 // as a result, this minting delegate will no longer be consulted.  This could be combined
@@ -123,10 +148,10 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
             } && activity.additionalDelegateValidation(isD, ctx)
         },
         _ => {
-            invalidRedeemer = () -> {  error("wrong Actvy/dtm") }; ///Acvty custom datum must not use Activities reserved for IsDelegation datum.") };
+            invalidRedeemer = () -> {  error("wrong Actvy/dtm") }; ///Activity custom datum must not use Activities reserved for IsDelegation datum.") };
             activity.switch{
                 // Authorizing => invalidRedeemer(),
-                Reassigning => invalidRedeemer(),
+                ReplacingMe => invalidRedeemer(),
                 Retiring => invalidRedeemer(),
                 Modifying => invalidRedeemer(),
                 _ => activity.otherDatumValidation(mdd, ctx)

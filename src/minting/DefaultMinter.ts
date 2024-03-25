@@ -86,6 +86,11 @@ export class DefaultMinter
          }
     }
 
+    get scriptActivitiesName() {
+        return "MinterActivity";
+    }
+
+
     importModules(): HeliosModuleSrc[] {
         return this.configIn!.capo.importModules()
     }
@@ -150,15 +155,15 @@ export class DefaultMinter
         return { redeemer: t._toUplcData() };
     }
 
-/** Mints a new UUT specifically for a spending invariant
- * @remarks
- * 
- * When adding a spending invariant, the Capo's existing mint delegate
- * is not consulted, as this administrative function works on a higher
- * level than the usual minting delegate's authority. 
- * 
- * @public
- * **/
+    /** Mints a new UUT specifically for a spending invariant
+     * @remarks
+     * 
+     * When adding a spending invariant, the Capo's existing mint delegate
+     * is not consulted, as this administrative function works on a higher
+     * level than the usual minting delegate's authority. 
+     * 
+     * @public
+     * **/
     @Activity.redeemer
     activityAddingSpendInvariant({
         seedTxn,
@@ -173,6 +178,57 @@ export class DefaultMinter
         return { redeemer: t._toUplcData() };
     }
 
+    /**
+     * Forces replacement of the Capo's mint delegate
+     * @remarks
+     * 
+     * Forces the minting of a new UUT to replace the Capo's mint delegate.
+     *
+     * @param ‹pName› - descr
+     * @typeParam ‹pName› - descr (for generic types)
+     * @public
+     **/
+    @Activity.redeemer
+    activityForcingNewMintDelegate({
+        seedTxn,
+        seedIndex: sIdx,
+    }) {
+        console.warn("NOTE: REPLACING THE MINT DELEGATE USING A DIRECT MINTER ACTIVITY\n"+
+            "THIS IS NOT THE RECOMMENDED PATH - prefer using the existing mint delegate's ReplacingMe activity'"
+        );
+        const ReplacingMintDelegate = this.mustGetActivity("ForcingNewMintDelegate");
+        const t = new ReplacingMintDelegate(
+            seedTxn,
+            BigInt(sIdx)
+        );
+        return { redeemer: t._toUplcData() };
+    }
+
+    /**
+     * Forces replacement of the Capo's spend delegate
+     * @remarks
+     * 
+     * Forces the minting of a new UUT to replace the Capo's spend delegate.
+     *
+     * @param ‹pName› - descr
+     * @typeParam ‹pName› - descr (for generic types)
+     * @public
+     **/
+    @Activity.redeemer
+    activityForcingNewSpendDelegate({
+        seedTxn,
+        seedIndex: sIdx,
+    }) {
+        console.warn("NOTE: REPLACING THE SPEND DELEGATE USING A DIRECT MINTER ACTIVITY\n"+
+            "THIS IS NOT THE RECOMMENDED PATH - prefer using the existing spend delegate's ReplacingMe actvity'"
+        );
+        const ReplacingSpendDelegate = this.mustGetActivity("ForcingNewSpendDelegate");
+        const t = new ReplacingSpendDelegate(
+            seedTxn,
+            BigInt(sIdx)
+        );
+        return { redeemer: t._toUplcData() };
+    }
     /**
      * @deprecated
      **/
@@ -322,12 +378,13 @@ export class DefaultMinter
         tcx: TCX,
         vEntries: valuesEntry[],
         mintDelegate : BasicMintDelegate,
-        mintDgtRedeemer: isActivity
+        mintDgtRedeemer: isActivity,
+        returnExistingDelegate: boolean = true
     ): Promise<TCX> {
         const {capo} = this.configIn!
         const md = mintDelegate || await capo.getMintDelegate(); 
         const tcx1 = await capo.txnMustUseCharterUtxo(tcx, "refInput");
-        const tcx2 = await md.txnGrantAuthority(tcx1, mintDgtRedeemer);
+        const tcx2 = await md.txnGrantAuthority(tcx1, mintDgtRedeemer, returnExistingDelegate);
 
         return this.attachRefScript(tcx2.mintTokens(
             this.mintingPolicyHash!,

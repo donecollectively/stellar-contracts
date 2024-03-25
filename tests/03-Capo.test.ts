@@ -297,8 +297,8 @@ describe("Capo", async () => {
                 h: { network, actors, delay, state },
             } = context;
 
-            const treasury = await h.initialize();
-            vi.spyOn(treasury, "txnAddGovAuthority").mockImplementation(
+            const capo = await h.initialize();
+            vi.spyOn(capo, "txnAddGovAuthority").mockImplementation(
                 async (tcx) => {
                     return tcx;
                 }
@@ -311,7 +311,7 @@ describe("Capo", async () => {
 
             console.log("------ submit charterSpend");
             await expect(
-                treasury.submit(tcx, {
+                capo.submit(tcx, {
                     signers: [actors.tracy.address, actors.tom.address],
                 })
             ).rejects.toThrow(/missing .* capoGov/);
@@ -402,155 +402,308 @@ describe("Capo", async () => {
     });
 
     describe("the charter details can be updated by authority of the capoGov-* token", () => {
-        fit(" updates details of the datum", async (context: localTC) => {
+        it(" updates details of the datum", async (context: localTC) => {
+            // tested with kc983ndk
+            // and other cases with new mint/spend delegates
+        });
+    });
+
+    describe("can update the minting delegate in the charter settings", () => {
+        // kc983ndk
+        it("can install an updated minting delegate", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
             const capo = await h.bootstrap();
-            const tcx = await h.mintCharterToken();
-            const datum = await capo.findCharterDatum();
+            const originalDatum = await capo.findCharterDatum();
 
-            const tcxq = await capo.txnCreatingMintDelegate(BasicMintDelegate);
-
-            const tcx2a = new StellarTxnContext<any>();
-            const seedUtxo = await capo.txnMustGetSeedUtxo(tcx2a, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
-            const tcx2b = await capo.txnMintingUuts(
-                tcx2a.addInput(seedUtxo),
-                ["mintDgt"],
+            const tcx = await capo.mkTxnUpdatingMintDelegate(
                 {
-                    usingSeedUtxo: seedUtxo,                                                
-                }, {
-                    mintDelegate: "mintDgt",
-                }
+                    strategyName: "default",
+                },
+                {}
             );
+            await capo.submit(tcx);
+            network.tick(1n);
 
-            const newDatum = {
-                ...datum,
-                mintDelegateLink: capo.txnCreateDelegateLink<BasicMintDelegate, "mintDelegate">(
-                    tcx2b,
-                    "mintDelegate",
-                    {
-                        strategyName: "default",
-                    }
-                ),
-            };
-            const tcx2c = await capo.mkTxnUpdateCharter(newDatum, tcx2b);
-            await capo.submit(tcx2b);
             const updatedDatum = await capo.findCharterDatum();
-            expect(updatedDatum).toEqual(newDatum);
+            expect(updatedDatum.mintDelegateLink.uutName).not.toEqual(
+                originalDatum.mintDelegateLink.uutName
+            );
         });
 
-        it.todo("TODO: doesn't update without the capoGov-* authority");
-        it.todo("TODO: keeps the charter token in the contract address");
-    });
-
-    describe("can update the minting delegate in the charter settings", () => {
-        it("can install an updated minting delegate", async (context: localTC) => {
-            // prettier-ignore
-            const {h, h:{network, actors, delay, state} } = context;
-            
-              // const strella = 
-            await h.bootstrap(); 
-            
-        
-        });
         it("fails without the capoGov- authority uut", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
-            
-              // const strella = 
-            await h.bootstrap(); 
-        
+
+            const capo = await h.bootstrap();
+            const addedGovToken = vi
+                .spyOn(capo, "txnAddGovAuthority")
+                .mockImplementation(
+                    //@ts-expect-error
+                    (tcx) => tcx!
+                );
+            console.log(
+                " ------- case 1: with mint delegate involved in the replacement"
+            );
+            const tcx1 = await capo.mkTxnUpdatingMintDelegate(
+                {
+                    strategyName: "default",
+                },
+                {}
+            );
+            expect(addedGovToken).toHaveBeenCalledTimes(1);
+            await expect(capo.submit(tcx1)).rejects.toThrow(
+                /missing dgTkn capoGov-/
+            );
+
+            console.log(" ------- case 2: forced replacement of mint delegate");
+            const tcx2 = await capo.mkTxnUpdatingMintDelegate(
+                {
+                    strategyName: "default",
+                },
+                {
+                    forcedUpdate: true,
+                }
+            );
+            expect(addedGovToken).toHaveBeenCalledTimes(2);
+            await expect(capo.submit(tcx2)).rejects.toThrow(
+                /missing dgTkn capoGov-/
+            );
+        });
+
+        it("can force-replace the mint delegate if needed", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+
+            const capo = await h.bootstrap();
+            const originalDatum = await capo.findCharterDatum();
+            const oldMintDelegate = await capo.getMintDelegate();
+            const oldPredicate = oldMintDelegate.mkAuthorityTokenPredicate();
+
+            const tcx = await capo.mkTxnUpdatingMintDelegate(
+                {
+                    strategyName: "default",
+                },
+                {
+                    forcedUpdate: true,
+                }
+            );
+            await capo.submit(tcx);
+            network.tick(1n);
+            const updatedDatum = await capo.findCharterDatum();
+            expect(updatedDatum.mintDelegateLink.uutName).not.toEqual(
+                originalDatum.mintDelegateLink.uutName
+            );
+
+            const stillExists = await oldMintDelegate.mustFindMyUtxo("old delegate UUT",
+                oldPredicate
+            );
+            expect(stillExists).toBeTruthy();
+            const newDelegate = await capo.getMintDelegate();
+            const newPredicate = newDelegate.mkAuthorityTokenPredicate();
+            const newExists = await newDelegate.mustFindMyUtxo("new delegate UUT",
+                newPredicate
+            );
+            expect(newExists).toBeTruthy();
+            expect(stillExists.outputId.eq(newExists.outputId)).toBeFalsy();
+        });
+
+        it("normally requires the existing minting delegate to be involved in the replacement", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+
+            const capo = await h.bootstrap();
+
+            const md = await capo.getMintDelegate();
+            console.log("  ----------- mocking mint delegate's txnGrantAuthority()");
+            const didGrantMockedAuthority = vi.spyOn(md, "txnGrantAuthority").mockImplementation(
+                async (tcx) => tcx
+            );
+            const didntBurnBecauseMocked = vi.spyOn(capo, "mkValuesBurningMintDelegate").mockImplementation(
+                 () => []
+            );
+            const tcx2 = await capo.mkTxnUpdatingMintDelegate(
+                {
+                    strategyName: "default",
+                },
+            );
+            expect(didGrantMockedAuthority).toHaveBeenCalledTimes(1);
+            expect(didntBurnBecauseMocked).toHaveBeenCalledTimes(1);
+
+            await expect(capo.submit(tcx2)).rejects.toThrow(
+                /missing dgTkn mintDgt-/
+            );
         });
 
         it("uses the new minting delegate after it is installed", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
-            
-              // const strella = 
-            await h.bootstrap(); 
-            
+
+            const capo = await h.bootstrap();
+
+            const md = await capo.getMintDelegate();
+            const oldPredicate = md.mkAuthorityTokenPredicate();
+            console.log(
+                " ------- case 1: with mint delegate involved in the replacement"
+            );
+            const tcx = await capo.mkTxnUpdatingMintDelegate(
+                {
+                    strategyName: "default",
+                },
+            );
+            await capo.submit(tcx);
+            network.tick(1n);
+            console.log("    ---- minting with the new delegate");
+            const tcx1 = await capo.txnMintingUuts(
+                await capo.addSeedUtxo(new StellarTxnContext<any>()),
+                ["anything"]
+            );
+
+            console.log(" ------------------------------------------------------------------\n", dumpAny(tcx1));
+            expect(tcx1.outputs.find(oldPredicate)).toBeFalsy();
+            const newerPredicate = (await capo.getMintDelegate()).mkAuthorityTokenPredicate();
+            expect(tcx1.outputs.find(newerPredicate)).toBeTruthy();
+            await expect(capo.submit(tcx1)).resolves.toBeTruthy();
+            network.tick(1n);
+
+            console.log(" ------- case 2: forced replacement of mint delegate");
+            const tcx2 = await capo.mkTxnUpdatingMintDelegate(
+                {
+                    strategyName: "default",
+                },
+                {
+                    forcedUpdate: true,
+                }                
+            );
+            await capo.submit(tcx2);
+            network.tick(1n);
+            const tcx2a = await capo.txnMintingUuts(
+                await capo.addSeedUtxo(new StellarTxnContext<any>()),
+                ["anything2"]
+            );
+            expect(tcx2a.outputs.find(oldPredicate)).toBeFalsy();
+            expect(tcx2a.outputs.find(newerPredicate)).toBeFalsy();
+            const newestPredicate = (await capo.getMintDelegate()).mkAuthorityTokenPredicate();
+            expect(tcx2a.outputs.find(newestPredicate)).toBeTruthy();
         });
 
         it("can't use the old minting delegate after it is replaced", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
-            
-              // const strella = 
-            await h.bootstrap(); 
-                    
+
+            const capo = await h.bootstrap();
+            const oldMintDelegate = await capo.getMintDelegate();
+            const oldPredicate = oldMintDelegate.mkAuthorityTokenPredicate();
+
+            // NO CASE 1 - there's no delegate UUT remaining to spend
+            //  if the old delegate is replaced.
+            //   console.log( " ------- case 1: with mint delegate involved in the replacement");
+            console.log(" ------- case 2: forced replacement of mint delegate");
+            const tcx = await capo.mkTxnUpdatingMintDelegate(
+                {
+                    strategyName: "default",
+                },
+                {
+                    forcedUpdate: true,
+                }
+            );
+            await capo.submit(tcx);
+            network.tick(1n);
+
+            vi.spyOn(capo, "getMintDelegate").mockImplementation(async () => {
+                return oldMintDelegate;
+            });
+            const tcx2 = await capo.txnMintingUuts(
+                await capo.addSeedUtxo(new StellarTxnContext<any>()),
+                ["anything"]
+            );
+            expect(tcx2.outputs.find(oldPredicate)).toBeTruthy();
+
+            await expect(capo.submit(tcx2)).rejects.toThrow(/missing .*mintDgt/);
         });
     });
 
     describe("can update the spending delegate in the charter settings", () => {
-        it("can install an updated spending delegate", async (context: localTC) => {
+        fit("can install an updated spending delegate", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
-            
-              // const strella = 
-            await h.bootstrap(); 
-            
+
+            const capo = await h.bootstrap();
+            const originalDatum = await capo.findCharterDatum();
+
+            const tcx = await capo.mkTxnUpdatingSpendDelegate(
+                {
+                    strategyName: "default",
+                },
+                {}
+            );
+            await capo.submit(tcx);
+            network.tick(1n);
+
+            const updatedDatum = await capo.findCharterDatum();
+            expect(updatedDatum.spendDelegateLink.uutName).not.toEqual(
+                originalDatum.spendDelegateLink.uutName
+            );
         });
+
         it("fails without the capoGov- authority uut", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
-            
-              // const strella = 
-            await h.bootstrap(); 
-        
+
+            // const strella =
+            await h.bootstrap();
         });
 
         it("uses the new spending delegate after it is installed", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
-            
-              // const strella = 
-            await h.bootstrap(); 
-            
+
+            // const strella =
+            await h.bootstrap();
         });
 
         it("can't use the old spending delegate after it is replaced", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
-            
-              // const strella = 
-            await h.bootstrap(); 
-                    
+
+            // const strella =
+            await h.bootstrap();
         });
     });
 
     // describe("can add invariant minting delegates to the charter settings", () => {
     //     it("can add a minting invariant", async (context: localTC) => {
     //         // prettier-ignore
-    //         const {h, h:{network, actors, delay, state} } = context;            
-    //           // const strella = 
-    //         await h.bootstrap(); 
+    //         const {h, h:{network, actors, delay, state} } = context;
+    //           // const strella =
+    //         await h.bootstrap();
     //     });
     //
     //     it("fails without the capoGov- authority uut", async (context: localTC) => {
     //         // prettier-ignore
     //         const {h, h:{network, actors, delay, state} } = context;
-    //           // const strella = 
-    //         await h.bootstrap();         
+    //           // const strella =
+    //         await h.bootstrap();
     //     });
     //
     //     it("cannot change mint invariants when updating other charter settings", async (context: localTC) => {
     //         // prettier-ignore
     //         const {h, h:{network, actors, delay, state} } = context;
-    //           // const strella = 
-    //         await h.bootstrap();             
+    //           // const strella =
+    //         await h.bootstrap();
     //     })
     //     it("can never remove a mint invariants after it is added", async (context: localTC) => {
     //         // prettier-ignore
-    //         const {h, h:{network, actors, delay, state} } = context;            
-    //           // const strella = 
-    //         await h.bootstrap(); 
+    //         const {h, h:{network, actors, delay, state} } = context;
+    //           // const strella =
+    //         await h.bootstrap();
     //     });
     //     it("always enforces new mint invariants after they are added", async (context: localTC) => {
     //         // prettier-ignore
     //         const {h, h:{network, actors, delay, state} } = context;
-    //           // const strella = 
-    //         await h.bootstrap(); 
+    //           // const strella =
+    //         await h.bootstrap();
     //     });
     // });
 
