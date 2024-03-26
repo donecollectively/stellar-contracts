@@ -41,7 +41,11 @@ func requiresMintDelegateApproval(
     mph: MintingPolicyHash
 ) -> Bool {
     Datum::CharterToken {
-        _, mintDgt,  /*spendDgt*/ _,  /* mintInvariants */ _, /* spendInvariants */ _
+        /*spendDgt*/ _,  
+        /* spendInvariants */ _,
+        mintDgt, 
+        /* mintInvariants */ _, 
+        /* govAuthority */ _
     } = getRefCharterDatum(ctx, mph);
 
     requiresDelegateAuthorizingMint(
@@ -97,7 +101,11 @@ func validateUutBurning(
     tx: Tx = ctx.tx;
     mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
     Datum::CharterToken {
-        _, mintDgt, _, _, _
+        /*spendDgt*/ _,  
+        /* spendInvariants */ _,
+        mintDgt, 
+        /* mintInvariants */ _, 
+        /* govAuthority */ _
     } = getRefCharterDatum(ctx, mph);
 
     valueBurned: Value = tx.minted;
@@ -152,7 +160,11 @@ func validateUutMinting(
     } else {
         // not bootstrapping; must honor the mintDelegate's authority
         Datum::CharterToken {
-            _, mintDgt, /* spendDgt */ _, /* mintInvariants */ _, /* spendInvariants */ _
+            /*spendDgt*/ _,  
+            /* spendInvariants */ _,
+            mintDgt, 
+            /* mintInvariants */ _, 
+            /* govAuthority */ _
         } = getTxCharterDatum(ctx, mph);
 
         if (needsMintDelegateApproval) {

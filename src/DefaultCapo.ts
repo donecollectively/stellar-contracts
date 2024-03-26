@@ -459,11 +459,11 @@ export class DefaultCapo<
             return this.mkOnchainDelegateLink(dl);
         });
         const t = new hlCharterToken(
-            govAuthority,
-            mintDelegate,
             spendDelegate,
+            spendInvariants,
+            mintDelegate,
             mintInvariants,
-            spendInvariants
+            govAuthority,
         );
         return Datum.inline(t._toUplcData());
     }

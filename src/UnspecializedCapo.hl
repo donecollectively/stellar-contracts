@@ -21,11 +21,11 @@ import {
 //! provides a basic version of Datum in default specializedCapo module
 enum Datum {
     CharterToken {
-        govAuthorityLink: RelativeDelegateLink
-        mintDelegateLink: RelativeDelegateLink
         spendDelegateLink: RelativeDelegateLink
-        mintInvariants: []RelativeDelegateLink
         spendInvariants: []RelativeDelegateLink
+        mintDelegateLink: RelativeDelegateLink
+        mintInvariants: []RelativeDelegateLink 
+        govAuthorityLink: RelativeDelegateLink
     }
     ScriptReference
 
