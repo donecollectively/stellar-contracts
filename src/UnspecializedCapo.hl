@@ -18,6 +18,14 @@ import {
     tvCharter
 } from StellarHeliosHelpers
 
+// field-names style of struct, arbitrary & extensible
+// field list, can be interpreted by any script that defines a 
+// field-names style of struct with its own fields & data types.
+struct AnyData {
+    id: String "@id"  // same as the UUT name for this data
+    // can have other fields; receiver will interpret their target types.
+}
+
 //! provides a basic version of Datum in default specializedCapo module
 enum Datum {
     CharterToken {
