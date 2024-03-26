@@ -43,6 +43,7 @@ func requiresMintDelegateApproval(
     Datum::CharterToken {
         /*spendDgt*/ _,  
         /* spendInvariants */ _,
+        /* config */ _,
         mintDgt, 
         /* mintInvariants */ _, 
         /* govAuthority */ _
@@ -103,6 +104,7 @@ func validateUutBurning(
     Datum::CharterToken {
         /*spendDgt*/ _,  
         /* spendInvariants */ _,
+        /* config */ _,
         mintDgt, 
         /* mintInvariants */ _, 
         /* govAuthority */ _
@@ -162,6 +164,7 @@ func validateUutMinting(
         Datum::CharterToken {
             /*spendDgt*/ _,  
             /* spendInvariants */ _,
+            /* config */ _,
             mintDgt, 
             /* mintInvariants */ _, 
             /* govAuthority */ _
