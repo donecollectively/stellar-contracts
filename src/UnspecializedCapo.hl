@@ -31,7 +31,6 @@ enum Datum {
     CharterToken {
         spendDelegateLink: RelativeDelegateLink
         spendInvariants: []RelativeDelegateLink
-        config: AnyData
         mintDelegateLink: RelativeDelegateLink
         mintInvariants: []RelativeDelegateLink 
         govAuthorityLink: RelativeDelegateLink

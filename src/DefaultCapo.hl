@@ -35,7 +35,6 @@ func requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {
     Datum::CharterToken{
             /*spendDgt*/ _,  
             /* spendInvariants */ _,
-            /* config */ _,
             /* mintDgt */ _, 
             /* mintInvariants */ _, 
         govDelegateLink
@@ -86,7 +85,6 @@ func preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Boo
     Datum::CharterToken{
         spendDelegate,
         spendInvariants,
-        config,
         mintDelegate,
         mintInvariants,
         govDelegate
@@ -94,7 +92,6 @@ func preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Boo
     Datum::CharterToken{
         newSpendDelegate,
         newSpendInvariants,
-        newConfig,
         newMintDelegate,
         newMintInvariants,
         newGovDelegate
@@ -106,8 +103,7 @@ func preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Boo
         newMintDelegate == mintDelegate &&
         newSpendDelegate == spendDelegate &&
         newMintInvariants == mintInvariants &&
-        newSpendInvariants == spendInvariants &&
-        newConfig == config
+        newSpendInvariants == spendInvariants
     )) { 
         error("invalid update to charter settings") 
     };
@@ -163,7 +159,6 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
             Datum::CharterToken{                
                 spendDelegate, 
                 spendInvariants,
-                config, 
                 mintDelegate, 
                 mintInvariants,
                 govDelegate
@@ -172,7 +167,6 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
             Datum::CharterToken{
                 oldSpendDelegate, 
                 oldSpendInvariants, 
-                oldConfig,
                 oldMintDelegate, 
                 oldMintInvariants,
                 /* _oldGovDelegate */ _ 
@@ -183,7 +177,6 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
 
             unchangedSpendDgt : Bool = ( spendDelegate.serialize() == oldSpendDelegate.serialize() );
             unchangedMintDgt : Bool = ( mintDelegate.serialize() == oldMintDelegate.serialize() );
-            mustNotModifyConfig : Bool = ( config.serialize() == oldConfig.serialize() );
 
             print("is spendDgt unchanged? " + unchangedSpendDgt.show() +
                 "\n  - old: "+ oldSpendDelegate.uutName + " = " + oldSpendDelegate.strategyName +
@@ -197,7 +190,6 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                 "\n  - new: "+ mintDelegate.uutName + " = " + mintDelegate.strategyName +
                 " => "+ mintDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"}
              );
-             print("is config unchanged? " + mustNotModifyConfig.show());
 
             // govDelegate is always spent, so we always check its destination is kosher.
             requiresValidDelegateOutput(govDelegate, mph, ctx) &&
@@ -224,7 +216,6 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
             checkpoint("5") &&
             mustNotModifyMintInvariants &&
             mustNotModifySpendInvariants &&
-            mustNotModifyConfig &&
             requiresAuthorization(ctx, datum) &&
             checkpoint("6")
         },
@@ -243,7 +234,6 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                 Some {Datum::CharterToken{
                     /*spendDgt*/ _,  
                     /* spendInvariants */ _,
-                    /* config */ _,
                     /* mintDgt */ _, 
                     /* mintInvariants */ _, 
                     govAuthority

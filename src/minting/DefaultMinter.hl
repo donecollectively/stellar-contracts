@@ -71,12 +71,10 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
             });
             // ^^ fails if there's no charter output to the right address
 
-            print("defaultMinter @C");
             charterData : Data = charterOutput.datum.get_inline_data();
             (Datum::CharterToken{
                 spendDgt, 
                 spendInvariants,
-                _, // config, 
                 mintDgt, 
                 mintInvariants, 
                 authDgt
@@ -85,27 +83,12 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                     // c:CharterToken => c, _ => error("unexpected datum type") },
                 (index: Int, fields: []Data) => {
                     assert(index==0, "charter token must be at index 0");
-                    assert(fields.length == 6, "charter token must have 6 fields");
+                    assert(fields.length == 5, "charter token must have 5 fields");
                     // {authDgt, mintDgt, spendDgt, mintInvariants, spendInvariants}
-                    print("defaultMinter @D");
-                    configIndex : Int = 2;
-                    t : Data = fields.get(configIndex);
-                    print("ok: "+ t.serialize().show());
-                    ( 
-                        Datum::CharterToken::from_data(charterData), 
-                        fields.get(configIndex)
-                    )
+                    Datum::CharterToken::from_data(charterData)
                 },
                 _ => error("unexpected datum type")  
             };
-            print("defaultMinter @E");
-            print("" + configMap.tag.show());
-            // configMap.switch {
-
-            // };
-            // print(configMap.show());
-            // assert(config.id == "cfg", "must have config.id='cfg'");
-            // assert(configMap.length == 1, "no config fields allowed at charter creation");
 
             // once we have burned down the test backlog a bit, we can add these in:
             assert(mintInvariants.length == 0, "no mint invariants allowed at charter creation");
@@ -184,13 +167,13 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                 },
                 None => Value::ZERO
             };
-
+            
             mintsUutForCharterUsingRedeemerIndex(
                 ctx : ctx,
                 mph: mph,
                 purpose: "spendDgt",
                 seedTxId: seedTxId,
-                seedIdx: seedIdx,
+                seedIdx: seedIdx,                
                 charterRedeemerIndex: updateCharter,
                 needsMintDelegateApproval: false,
                 otherMintedValue: otherMintedValue
