@@ -447,6 +447,11 @@ export class DefaultCapo<
         console.log("--> mkDatumCharter", args);
         const { CharterToken: hlCharterToken } = this.onChainDatumType;
 
+        // ugh, we've been here before - weaving back and forth between
+        // library essentials and application-layer types makes things hard
+        // and complicated.  -> use the spending delegate and separate UTXO
+        // for config data, instead of keeping config data in the charter datum.
+        const {AnyData: hlConfig} = this.onChainTypes;
         const govAuthority = this.mkOnchainDelegateLink(args.govAuthorityLink);
         const mintDelegate = this.mkOnchainDelegateLink(args.mintDelegateLink);
         const spendDelegate = this.mkOnchainDelegateLink(
@@ -461,6 +466,7 @@ export class DefaultCapo<
         const t = new hlCharterToken(
             spendDelegate,
             spendInvariants,
+            new hlConfig({ id: "cfg" }),
             mintDelegate,
             mintInvariants,
             govAuthority
