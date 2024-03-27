@@ -64,7 +64,7 @@ export default [
                 extensions: [".json", ".ts"],
             }),
             esbuild({
-                tsconfig: "./tsconfig.json",                
+                tsconfig: "./tsconfig.json",
                 target: ["node18" ],
             }),
             execute([
@@ -80,18 +80,19 @@ export default [
                 file: `${name}.mjs`,
                 format: "es",
                 sourcemap: true,
-                sourcemapIgnoreList: (relativeSourcePath, sourcemapPath) => {
-                    // console.warn("ignore list? ", relativeSourcePath);
-                    if (relativeSourcePath.includes('helios')) {
-                        // console.warn("INCLUDING");
-                        return false;
-                    }
+                // tells Chrome devtools to automatically omit these files from the stack presentation 
+                // sourcemapIgnoreList: (relativeSourcePath, sourcemapPath) => {
+                //     // console.warn("ignore list? ", relativeSourcePath);
+                //     if (relativeSourcePath.includes('helios')) {
+                //         // console.warn("INCLUDING");
+                //         return false;
+                //     }
 
-                    // will ignore-list all files with node_modules in their paths
-                    if (relativeSourcePath.includes('node_modules')) return true;
-                    // console.warn("INCLUDING");
-                    return false
-                },
+                //     // will ignore-list all files with node_modules in their paths
+                //     if (relativeSourcePath.includes('node_modules')) return true;
+                //     // console.warn("INCLUDING");
+                //     return false
+                // },
     
             },
         ],
