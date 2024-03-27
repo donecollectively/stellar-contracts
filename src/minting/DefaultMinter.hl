@@ -72,13 +72,13 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
             // ^^ fails if there's no charter output to the right address
 
             charterData : Data = charterOutput.datum.get_inline_data();
-            (Datum::CharterToken{
+            Datum::CharterToken{
                 spendDgt, 
                 spendInvariants,
                 mintDgt, 
                 mintInvariants, 
                 authDgt
-            }, configMap : Data ) = charterData.switch{
+            } = charterData.switch{
                     // c: Datum => c.switch{ 
                     // c:CharterToken => c, _ => error("unexpected datum type") },
                 (index: Int, fields: []Data) => {
