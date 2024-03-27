@@ -15,6 +15,7 @@
         "resolveJsonModule": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
+        "noErrorTruncation": true,
         "forceConsistentCasingInFileNames": true,
         "noEmit": false,
         "experimentalDecorators": true,
