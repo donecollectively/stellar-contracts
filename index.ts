@@ -1,8 +1,10 @@
+import * as helios from "@hyperionbt/helios";
 export {
     mkValuesEntry,
     mkUutValuesEntries,
     stringToNumberArray,
 } from "./src/utils.js";
+
 
 export {
     assetsAsString,
@@ -26,9 +28,10 @@ export {
 } from "./src/diagnostics.js";
 
 export { UutName } from "./src/delegation/UutName.js";
-export { Capo } from "./src/Capo.js";
+export { Capo, type CapoBaseConfig } from "./src/Capo.js";
 export type {
     MintUutActivityArgs,
+    FoundUut,
     uutPurposeMap,
     hasAllUuts,
     hasUutContext,
@@ -65,7 +68,7 @@ export { StellarDelegate } from "./src/delegation/StellarDelegate.js";
 export { AuthorityPolicy } from "./src/authority/AuthorityPolicy.js";
 export { AnyAddressAuthorityPolicy } from "./src/authority/AnyAddressAuthorityPolicy.js";
 
-export { hasReqts, inheritsReqts } from "./src/Requirements.js";
+export { hasReqts, mergesInheritedReqts } from "./src/Requirements.js";
 export type { ReqtsMap, RequirementEntry } from "./src/Requirements.js";
 
 export { 
@@ -89,7 +92,8 @@ export type {
 
 
 export { DefaultMinter } from "./src/minting/DefaultMinter.js";
-export { DefaultCapo, 
+export { 
+    DefaultCapo, 
     // contract as DefaultCapoContract 
 } from "./src/DefaultCapo.js";
 export type { DefaultCharterDatumArgs } from "./src/DefaultCapo.js";
@@ -125,7 +129,6 @@ export type {
 //     StakeAddress,
 // } from "./src/HeliosPromotedTypes.js";
 
-import * as helios from "@hyperionbt/helios";
 export { helios }
 export { mkHeliosModule } from "./src/HeliosModuleSrc.js";
 export type { HeliosModuleSrc } from "./src/HeliosModuleSrc.js";
