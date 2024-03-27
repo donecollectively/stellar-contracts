@@ -904,17 +904,17 @@ export class DefaultCapo<
     /**
      * Installs a new Minting delegate to the Capo contract
      * @remarks
-     * 
+     *
      * Updates the policy by which minting under the contract's minting policy is allowed.
-     * 
+     *
      * This supports the evolution of logic for token-minting.
      * Note that updating the minting policy can't modify or interfere with constraints
      * enforced by any existing mintInvariants.
-     * 
+     *
      * Normally, the existing minting delegate is signalled to be Retiring its delegation token,
      * burning it as part of the update transaction and cleaning things up.  The minUtxo from
      * the old delegation UUT will be recycled for use in the new delegate.
-     * 
+     *
      * @param delegateInfo - the new minting delegate's info
      * @param options - allows a forced update, which leaves a dangling delegation token
      *   in the old minting delegate, but allows the new minting delegate to take over without
@@ -1607,70 +1607,48 @@ export class DefaultCapo<
                     purpose:
                         "allows configuration details that can evolve to support Capo-related scripts as needed",
                     details: [
-                        "The Configuration structure is stored in the contract's CharterDatum. ",
+                        "The Configuration structure can be stored in the contract, separately from the CharterDatum. ",
                         "It can be updated by the govAuthority, and can be used to store any ",
                         "  ... data needed by the Capo's scripts, such as minting and spending delegates.",
+                        "The charter datum references the config uut, and shouldn't ",
+                        "  ... ever need to change that reference, since the config data can be updated in place.",
                         "The config can store additional delegates or other key/value data, ",
                         "  ... with keys and data-types being defined by conventions in the Capo's scripts.",
                         "The minting delegate is expected to validate all updates to the configuration data.",
                         "The spending delegate is expected to validate all updates to the configuration data.",
-                        "Note: when updating delegates, the (unchanged) configuration data can slip out of sync with new expectations, ",
-                        "  ... requiring a separate update to the configuration data to bring up to the new expectations, ",
+                        "#### Design notes",
+                        "When updating delegates, the (unchanged) configuration data can slip out of sync with new expectations, ",
+                        "  ... requiring a separate update to the configuration data, bringing it up to the new expectations, ",
                         "  ... it would be nicer to have a way to transactionally update both the delegate and the config, ",
                         "  ... but meanwhile, new delegates should be tested to ensure they can handle the transitional state, ",
                         "  ... and that they'll be able to accept the intended config update. ",
-                        "  ... If they can't accept the intended config update, the Capo can temporarily be bricked, ",
+                        "  ... If they can't accept the intended config update, the Capo can temporarily be nonoperational, ",
                         "  ... until new delegates are deployed that can handle the updated config. ",
                         "Delegate updaters can mitigate the window of configuration-mismatch ",
                         "  ... by queuing a config-update txn that immediately follows the delegate update txn, ",
                         "  ... and with off-chain code that checks for the presence of the expected config details; ",
                         "  ... When the expected config details are not present, the off-chain code can show people ",
-                        "  ... a 'please wait ...' message indicating that a contract update is in progress.",
+                        "  ... a 'please wait ...' message indicating that a contract update is in progress ",
+                        "  ... during the expected short interval in which the update sequence is executed.",
                     ],
                     impl: "mkTxnUpdateConfig()",
                     mech: [
-                        "has 'config' in the CharterDatum",
-                        "the initial charter must use an empty config structure",
-                        "the normal updatingCharter activity MUST NOT change the config data",
-                        "can update the config data with a separate charter Activity",
-                        "must not change any other charter settings",
-                        "requires the capoGov- authority uut",
-                        "the spending delegate must validate the config data",
-                        "the minting delegate must validate the config data",
+                        "has a 'ConfigData' datum variant & utxo in the contract",
+                        "charter creation requires presence of an empty ConfigData and a CharterDatum reference to that minted UUT",
+                        "updatingCharter activity MUST NOT change the cfg-UUT reference",
+                        "can update the config data with a separate UpdatingConfig Activity on the Config",
+                        "requires the capoGov- authority uut to update the config data",
+                        "the spending delegate must validate the UpdatingConfig details",
+                        "the minting delegate must validate the UpdatingConfig details",
                     ],
                 },
 
                 details: [
-                    "The Configuration structure is stored in the contract's CharterDatum. ",
-                    "It can be updated by the govAuthority, and can be used to store any ",
-                    "  ... data needed by the Capo's scripts, such as minting and spending delegates.",
-                    "The config can store additional delegates or other key/value data, ",
-                    "  ... with keys and data-types being defined by conventions in the Capo's scripts.",
-                    "The minting delegate is expected to validate all updates to the configuration data.",
-                    "The spending delegate is expected to validate all updates to the configuration data.",
-                    "Note: when updating delegates, the (unchanged) configuration data can slip out of sync with new expectations, ",
-                    "  ... requiring a separate update to the configuration data to bring up to the new expectations, ",
-                    "  ... it would be nicer to have a way to transactionally update both the delegate and the config, ",
-                    "  ... but meanwhile, new delegates should be tested to ensure they can handle the transitional state, ",
-                    "  ... and that they'll be able to accept the intended config update. ",
-                    "  ... If they can't accept the intended config update, the Capo can temporarily be bricked, ",
-                    "  ... until new delegates are deployed that can handle the updated config. ",
-                    "Delegate updaters can mitigate the window of configuration-mismatch ",
-                    "  ... by queuing a config-update txn that immediately follows the delegate update txn, ",
-                    "  ... and with off-chain code that checks for the presence of the expected config details; ",
-                    "  ... When the expected config details are not present, the off-chain code can show people ",
-                    "  ... a 'please wait ...' message indicating that a contract update is in progress."
                 ],
-                impl: "mkTxnUpdateConfig()",
                 mech: [
-                    "has 'config' in the CharterDatum",
-                    "the initial charter must use an empty config structure",
-                    "the normal updatingCharter actvity MUST NOT change the config data",
-                    "can update the config data with a separate charter Activity",
-                    "must not change any other charter settings",
-                    "requires the capoGov- authority uut",
-                    "the spending delegate must validate the config data",
-                    "the minting delegate must validate the config data",
+                    "adds an entry to the Charter's spendingDelegates list",
+                    "won't create a duplicate spendingDelegates entry with the same tag",
+                    "mints a spndDgt UUT and sends it to the policy-delegate address",
                 ],
             },
 
