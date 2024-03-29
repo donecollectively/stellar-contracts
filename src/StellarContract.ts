@@ -1125,7 +1125,7 @@ export class StellarContract<
         quantity?: bigint
     ): tokenPredicate<any>;
     mkTokenPredicate(
-        specifier: Value | MintingPolicyHash | AssetClass,
+        specifier: Value | MintingPolicyHash | AssetClass | UutName | number[],
         quantOrTokenName?: string | bigint,
         quantity?: bigint
     ): tokenPredicate<any> {
@@ -1135,13 +1135,22 @@ export class StellarContract<
         //!!! todo: support (AssetClass, quantity) input form
         if (!specifier)
             throw new Error(
-                `missing required Value or MintingPolicyHash in arg1`
+                `missing required Value or MintingPolicyHash or UutName (or uut-name as byte-array) in arg1`
             );
         const predicate = _tokenPredicate.bind(this) as tokenPredicate<any>;
 
         const isValue = specifier instanceof Value;
+        const isUut = specifier instanceof Array || specifier instanceof UutName;
         if (isValue) {
             v = predicate.value = specifier;
+            return predicate;
+        } else if (isUut) {
+            const uutNameOrBytes = specifier instanceof Array ? specifier : specifier.name;
+            const quant = quantOrTokenName ? BigInt(quantOrTokenName) : 1n;
+            v = predicate.value = this.tokenAsValue(
+                uutNameOrBytes, 
+                quant // quantity if any
+            );
             return predicate;
         } else if (specifier instanceof MintingPolicyHash) {
             mph = specifier;
@@ -1272,7 +1281,7 @@ export class StellarContract<
 
     //! deprecated tokenAsValue - use Capo
     tokenAsValue(
-        tokenName: string,
+        tokenName: string | number[],
         quantity: bigint,
         mph?: MintingPolicyHash
     ): Value {

@@ -1,3 +1,4 @@
+import { bytesToText } from "@hyperionbt/helios";
 
 export const _uutName = Symbol("uutName");
 export const maxUutName = 32;
@@ -14,8 +15,11 @@ export const maxUutName = 32;
 export class UutName {
     private [_uutName]: string;
     purpose: string;
-    constructor(purpose: string, fullUutName: string) {
+    constructor(purpose: string, fullUutName: string | number[]) {
         this.purpose = purpose;
+        if (Array.isArray(fullUutName)) {
+            fullUutName = bytesToText(fullUutName);
+        }
         if (fullUutName.length > maxUutName) {
             throw new Error(
                 `uut name '${fullUutName}' exceeds max length of ${maxUutName}`

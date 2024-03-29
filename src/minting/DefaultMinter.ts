@@ -324,11 +324,13 @@ export class DefaultMinter
             capoGov,
             mintDelegate,
             spendDelegate,
+            configUut,
         }: {
             owner: Address;
             capoGov: UutName;
             mintDelegate: UutName;
             spendDelegate: UutName;
+            configUut: UutName,
         }
     ): Promise<TCX> {
         //!!! todo: can we expect capoGov & mintDgt in tcx.state.uuts? and update the type constraint here?
@@ -337,13 +339,20 @@ export class DefaultMinter
         const capoGovVE = mkValuesEntry(capoGov.name, BigInt(1));
         const mintDgtVE = mkValuesEntry(mintDelegate.name, BigInt(1));
         const spendDgtVE = mkValuesEntry(spendDelegate.name, BigInt(1));
+        const configUutVE = mkValuesEntry(configUut.name, BigInt(1));
 
+        // these are listed in the order they're expected to be found in the txn
+        // even though the txn builder would take care of reordering them.
+        //  a) shortest-first,
+        //  b) then same-length items are sorted according to byte values.
         const values = [
             charterVE, 
-            capoGovVE,
+            configUutVE, 
+            capoGovVE, 
             mintDgtVE,
-            spendDgtVE
-        ]
+            spendDgtVE,
+        ];
+
         return this.attachRefScript(
              tcx.mintTokens(
                 this.mintingPolicyHash!,

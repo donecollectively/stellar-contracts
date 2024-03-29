@@ -23,6 +23,10 @@ import {
     didSignInCtx
 } from StellarHeliosHelpers
 
+import {
+    mustHaveGovAuthority
+} from CapoHelpers
+
 import { 
     Datum, 
     Activity
@@ -31,17 +35,10 @@ import {
 /**
  * 
  */
-func requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {
-    Datum::CharterToken{
-            /*spendDgt*/ _,  
-            /* spendInvariants */ _,
-            /* config */ _,
-            /* mintDgt */ _, 
-            /* mintInvariants */ _, 
-        govDelegateLink
-    } = datum;
+func requiresAuthorization(ctx: ScriptContext, ctd: Datum::CharterToken) -> Bool {
+    govDelegate : RelativeDelegateLink = ctd.govAuthorityLink;
 
-    requiresValidDelegateOutput(govDelegateLink, mph, ctx)
+    requiresValidDelegateOutput(govDelegate, mph, ctx)
 }
 
 func getCharterOutput(tx: Tx) -> TxOutput {
@@ -83,32 +80,10 @@ func preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Boo
         // )
     };
 
-    Datum::CharterToken{
-        spendDelegate,
-        spendInvariants,
-        config,
-        mintDelegate,
-        mintInvariants,
-        govDelegate
-    } = datum;
-    Datum::CharterToken{
-        newSpendDelegate,
-        newSpendInvariants,
-        newConfig,
-        newMintDelegate,
-        newMintInvariants,
-        newGovDelegate
-    } = Datum::from_data( 
+    newDatum : Datum = Datum::from_data( 
         charterOutput.datum.get_inline_data() 
     );
-    if ( !(
-        newGovDelegate == govDelegate &&
-        newMintDelegate == mintDelegate &&
-        newSpendDelegate == spendDelegate &&
-        newMintInvariants == mintInvariants &&
-        newSpendInvariants == spendInvariants &&
-        newConfig == config
-    )) { 
+    if (datum.serialize() != newDatum.serialize()) {
         error("invalid update to charter settings") 
     };
 
@@ -135,8 +110,11 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
             if (notUpdatingCharter(activity)) { 
                 preventCharterChange(ctx, ctd)
             } else {
-                true // "maybe", really
+                true // "maybe", really -> depends on the activity
             }
+        },
+        ConfigData => {
+            true // maybe -> activity updatingConfig will check
         },
 
         scriptRef : ScriptReference => {
@@ -157,49 +135,60 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
             // print("hi from updatingCharter");
 
             charterOutput : TxOutput = getCharterOutput(tx);
-            newDatum = Datum::from_data( 
+            newCtDatum = Datum::CharterToken::from_data( 
                 charterOutput.datum.get_inline_data() 
             );
+            oldCtDatum : Datum::CharterToken = datum.switch {
+                octd: CharterToken => octd,
+                _ => error("wrong use of updatingCharter action for non-CharterToken datum")
+            };
             Datum::CharterToken{                
                 spendDelegate, 
                 spendInvariants,
-                config, 
+                configUut,
                 mintDelegate, 
                 mintInvariants,
                 govDelegate
-            } = newDatum;
+            } = newCtDatum;
 
             Datum::CharterToken{
                 oldSpendDelegate, 
                 oldSpendInvariants, 
-                oldConfig,
+                oldConfigUut,
                 oldMintDelegate, 
                 oldMintInvariants,
                 /* _oldGovDelegate */ _ 
-            } = datum;
+            } = oldCtDatum;
 
             mustNotModifyMintInvariants : Bool =  ( mintInvariants == oldMintInvariants );
             mustNotModifySpendInvariants : Bool = ( spendInvariants == oldSpendInvariants );
 
             unchangedSpendDgt : Bool = ( spendDelegate.serialize() == oldSpendDelegate.serialize() );
             unchangedMintDgt : Bool = ( mintDelegate.serialize() == oldMintDelegate.serialize() );
-            mustNotModifyConfig : Bool = ( config.serialize() == oldConfig.serialize() );
+            mustNotModifyConfig : Bool = ( configUut == oldConfigUut );
 
-            print("is spendDgt unchanged? " + unchangedSpendDgt.show() +
-                "\n  - old: "+ oldSpendDelegate.uutName + " = " + oldSpendDelegate.strategyName +
-                " => "+  oldSpendDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"} +
-               "\n  - new: "+ spendDelegate.uutName + " = " + spendDelegate.strategyName +
-                " => "+ spendDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"} 
-            );
-            print("is mintDgt unchanged?  " + unchangedMintDgt.show() + 
-                "\n  - old: "+ oldMintDelegate.uutName + " = " + oldMintDelegate.strategyName +
-                " => "+  oldMintDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"} +
-                "\n  - new: "+ mintDelegate.uutName + " = " + mintDelegate.strategyName +
-                " => "+ mintDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"}
-             );
-             print("is config unchanged? " + mustNotModifyConfig.show());
+            if (isDev) {
+                print("is spendDgt unchanged? " + unchangedSpendDgt.show() +
+                    "\n  - old: "+ oldSpendDelegate.uutName + " = " + oldSpendDelegate.strategyName +
+                    " => "+  oldSpendDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"} +
+                "\n  - new: "+ spendDelegate.uutName + " = " + spendDelegate.strategyName +
+                    " => "+ spendDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"} 
+                );
+                print("is mintDgt unchanged?  " + unchangedMintDgt.show() + 
+                    "\n  - old: "+ oldMintDelegate.uutName + " = " + oldMintDelegate.strategyName +
+                    " => "+  oldMintDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"} +
+                    "\n  - new: "+ mintDelegate.uutName + " = " + mintDelegate.strategyName +
+                    " => "+ mintDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"}
+                );
+                print("is config unchanged? " + mustNotModifyConfig.show() +
+                    "\n  - old: "+ oldConfigUut.decode_utf8() +
+                    "\n  - new: "+ configUut.decode_utf8()
+                )
+            };
+            assert(mustNotModifyConfig, "cannot change cfg-uut");
 
             // govDelegate is always spent, so we always check its destination is kosher.
+            mustNotModifyConfig &&
             requiresValidDelegateOutput(govDelegate, mph, ctx) &&
             checkpoint("1") &&
             if (unchangedMintDgt) {
@@ -224,8 +213,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
             checkpoint("5") &&
             mustNotModifyMintInvariants &&
             mustNotModifySpendInvariants &&
-            mustNotModifyConfig &&
-            requiresAuthorization(ctx, datum) &&
+            requiresAuthorization(ctx, oldCtDatum) &&
             checkpoint("6")
         },
 
@@ -236,25 +224,13 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                 _ => error("wrong use of retiringRefScript action for non-ScriptRef datum")
             };
 
-            hasGovAuthority : Bool = datum.hasCharterRefInput(
-                ctx, mph
-            ).switch{
-                None => error("no reqd charter ref"),
-                Some {Datum::CharterToken{
-                    /*spendDgt*/ _,  
-                    /* spendInvariants */ _,
-                    /* config */ _,
-                    /* mintDgt */ _, 
-                    /* mintInvariants */ _, 
-                    govAuthority
-                }} => requiresValidDelegateOutput(govAuthority, mph, ctx)
-             };
+            hasGovAuthority : Bool = mustHaveGovAuthority(ctx,mph);
 
-             isSpendingRefScript && 
-             hasGovAuthority &&
-             true
-             // no other constraints; the ref script could be re-created or
-             // replaced with a new one, or simply destroyed.
+            isSpendingRefScript && 
+            hasGovAuthority &&
+            true
+            // no other constraints; the ref script could be re-created or
+            // replaced with a new one, or simply destroyed.
         },
 
         usingAuthority => {
@@ -264,6 +240,31 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                 ctd : CharterToken => requiresAuthorization(ctx, ctd),
                 _ => error("wrong use of usingAuthority action for non-CharterToken datum")
             }
+        },
+
+        updatingConfig => {
+
+            datum.switch {
+                cfg : ConfigData => {
+                    // it requires the govAuthority to be present
+                    hasGovAuthority : Bool = mustHaveGovAuthority(ctx,mph);
+                    // spending delegates are checking the config
+
+                    print(cfg.serialize().show());
+
+                    cfg.serialize() == cfg.serialize() &&
+                    // todo: minting delegates are checking the config
+                    // todo: govAuthority is checking the config
+                    // todo: spendInvariants are checking the config
+                    // todo: mintInvariants are checking the config
+
+                    hasGovAuthority
+                },
+                _ => error("wrong use of updatingConfig action for non-ConfigData datum")
+            }
+        },
+        retiringConfig => {
+            error("implement me")
         },
         // defers to the specialization's Activity::allowActivity() method for checking other activities
         _ => activity.allowActivity(datum, ctx, mph)

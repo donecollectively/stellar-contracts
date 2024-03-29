@@ -21,6 +21,8 @@ import {
     UplcData,
     HInt,
     bytesToHex,
+    bytesToText,
+    textToBytes,
 } from "@hyperionbt/helios";
 
 import type { ScriptHash, Wallet } from "@hyperionbt/helios";
@@ -81,20 +83,32 @@ import { NoMintDelegation } from "./minting/NoMintDelegation.js";
 import { CapoHelpers } from "./CapoHelpers.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
-import { UutName } from "../index.js";
+import { UutName } from "./delegation/UutName.js";
+import type { Expand } from "./testing/types.js";
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
  * together with it's primary or "charter" utxo.
  * @public
  **/
-export type DefaultCharterDatumArgs = {
-    govAuthorityLink: RelativeDelegateLink<AuthorityPolicy>;
-    mintDelegateLink: RelativeDelegateLink<BasicMintDelegate>;
+export interface DefaultCharterDatumArgs {
     spendDelegateLink: RelativeDelegateLink<StellarDelegate<any>>;
-    mintInvariants: RelativeDelegateLink<StellarDelegate<any>>[];
     spendInvariants: RelativeDelegateLink<StellarDelegate<any>>[];
+    configUut: UutName | number[];
+    mintDelegateLink: RelativeDelegateLink<BasicMintDelegate>;
+    mintInvariants: RelativeDelegateLink<StellarDelegate<any>>[];
+    govAuthorityLink: RelativeDelegateLink<AuthorityPolicy>;
 };
+
+export type OnchainContractConfigData<
+    CAPO_TYPE extends DefaultCapo<any, any, any>
+> = {
+    data: Array<{ name: string; microInt: bigint }>;
+}
+
+export type ContractConfigData<
+    CAPO_TYPE extends DefaultCapo<any, any, any>
+> = Awaited<ReturnType<CAPO_TYPE["mkInitialConfig"]>>
 
 /**
  * Includes key details needed to create a delegate link
@@ -148,6 +162,25 @@ export type HeldAssetsArgs = {
     purposeId?: string;
     purpose?: string;
 };
+
+interface RawGenericConfig {
+    data:{meaning:number}
+}
+
+// class GenericConfigDetails extends DatumAdapter<RawGenericConfig, GenericConfigDetails> {
+//     meaning: number;
+//     datumName = "ConfigData";
+//     constructor(raw: RawGenericConfig) {
+//         super(raw)
+//         this.meaning = raw.data.meaning;
+//     }
+//     toAppType(raw: RawGenericConfig) {
+//         return new GenericConfigDetails(raw.data)
+//     }
+//     toOnchainDatum() : Datum {
+
+//     }
+// }
 
 /**
  * Base class for leader contracts, with predefined roles for delegating governance authority and minting policies
@@ -307,6 +340,15 @@ export class DefaultCapo<
         return { redeemer: t._toUplcData() };
     }
 
+    @Activity.redeemer
+    activityUpdatingConfig(): // args: CDT
+    isActivity {
+        const updatingConfig = this.mustGetActivity("updatingConfig");
+        const t = new updatingConfig();
+
+        return { redeemer: t._toUplcData() };
+    }
+
     /**
      * USE THE `delegateRoles` GETTER INSTEAD
      * @remarks
@@ -451,7 +493,6 @@ export class DefaultCapo<
         // library essentials and application-layer types makes things hard
         // and complicated.  -> use the spending delegate and separate UTXO
         // for config data, instead of keeping config data in the charter datum.
-        const {AnyData: hlConfig} = this.onChainTypes;
         const govAuthority = this.mkOnchainDelegateLink(args.govAuthorityLink);
         const mintDelegate = this.mkOnchainDelegateLink(args.mintDelegateLink);
         const spendDelegate = this.mkOnchainDelegateLink(
@@ -463,10 +504,13 @@ export class DefaultCapo<
         const spendInvariants = args.spendInvariants.map((dl) => {
             return this.mkOnchainDelegateLink(dl);
         });
+        const configUutNameBytes = args.configUut instanceof UutName ?
+            textToBytes(args.configUut.name)
+            : args.configUut;
         const t = new hlCharterToken(
             spendDelegate,
             spendInvariants,
-            new hlConfig({ id: "cfg" }),
+            configUutNameBytes,
             mintDelegate,
             mintInvariants,
             govAuthority
@@ -484,6 +528,78 @@ export class DefaultCapo<
         const t = new hlScriptReference();
         return Datum.inline(t._toUplcData());
     }
+
+    @datum
+    mkDatumConfigData(
+        config: ContractConfigData<this>
+    ) {
+        const { ConfigData: hlConfigData } = this.onChainDatumType;
+        const {ConfigValue} = this.onChainTypes;
+
+        // const variant = hlConfigData.prototype._enumVariantStatement;
+        // const cfgConstrIndex = new hlConfigData(
+        //     "placeholder")._enumVariantStatement.constrIndex;
+        // const def = variant.dataDefinition
+        // const f0 = def.fields[0];
+        // const t = this.configDataToUplc(config);
+        const t2 = new hlConfigData(
+            Object.entries(config).map(([k, v]) => {
+                const microInt = BigInt(v) * 1_000_000n;
+                if (microInt > Number.MAX_SAFE_INTEGER) {
+                    throw new Error(`microInt value too large for Number: ${microInt}`)
+                }
+    
+                return new ConfigValue(k, microInt) 
+            })
+        );
+        // const t2 = new ConstrData(cfgConstrIndex, [t])
+        // const a = hlConfigData.fromCbor(
+        //     ConstrData.fromCbor(t.toCbor())        
+        // )
+        // const tt = t.toCborHex()
+        // console.log("--------", tt)
+        // throw new Error("ffff");
+        return Datum.inline(t2);
+    }
+
+    async readConfigDatum(
+        rawDatum: OnchainContractConfigData<this>
+    ) : Promise<ContractConfigData<this>> {
+        console.log("-------------------------------------> ", rawDatum)
+        const configMap : Record<string, number> = {};
+        for (const {name, microInt} of rawDatum.data) {
+            // get the number found in the microInt 
+            if (microInt > Number.MAX_SAFE_INTEGER) {
+                throw new Error(`microInt value too large for Number: ${microInt}`)
+            }
+            configMap[name] = (0.0 + Number(microInt)) / 1_000_000;
+        }
+        return configMap as ContractConfigData<this>
+    }
+
+    mkInitialConfig() {
+        return { meaning: 42 }
+    }
+
+    // configDataToUplc(config: ContractConfigData<this>) {
+    //     const {ConfigValue} = this.onChainTypes;
+    //     return
+    //     //  new ListData([
+    //         //@ts-expect-error
+    //         Object.entries(config).map(([k, v]) => {
+    //             debugger
+    //             return new ConfigValue(k, BigInt(v) * 1_000_000n)._toUplcData();
+    //         })
+    //     // ])
+    //     // return new MapData([
+    //     //     [new ByteArrayData(textToBytes("empty")), new ByteArrayData(
+    //     //         textToBytes(config.empty)
+    //     //     )],
+    //     //     [new ByteArrayData(textToBytes("hi")), new ByteArrayData(
+    //     //         textToBytes("there")
+    //     //     )]
+    //     // ])
+    // }
 
     async findCharterDatum(currentCharterUtxo?: TxInput) {
         if (!currentCharterUtxo) {
@@ -640,7 +756,7 @@ export class DefaultCapo<
 
             this.scriptProgram = this.loadProgramScript(fullScriptParams);
 
-            const uutPurposes = ["capoGov", "mintDgt", "spendDgt"];
+            const uutPurposes = ["capoGov", "mintDgt", "spendDgt", "cfg"];
             const tcx = await this.txnWillMintUuts(
                 initialTcx,
                 uutPurposes,
@@ -680,6 +796,7 @@ export class DefaultCapo<
             //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
             const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
                 ...charterDatumArgs,
+                configUut: uuts.cfg,
                 govAuthorityLink: govAuthority,
                 mintDelegateLink: mintDelegate,
                 spendDelegateLink: spendDelegate,
@@ -719,19 +836,62 @@ export class DefaultCapo<
                 " ---------------- CHARTER MINT ---------------------\n",
                 txAsString(tcx4.tx, this.networkParams)
             );
+
+            // type Normalize<T> =
+            //     T extends (...args: infer A) => infer R ? (...args: Normalize<A>) => Normalize<R>  
+            //     : T extends any ? {[K in keyof T]: Normalize<T[K]>} : never
+
+            const config = this.mkInitialConfig() as ContractConfigData<this>;
+            const tcx5 = this.txnAddConfigOutput(tcx4, config)
+            
             // debugger
 
             // mints the charter, along with the capoGov and mintDgt UUTs.
             // TODO: if there are additional UUTs needed for other delegates, include them here.
-            const minting = this.minter.txnMintingCharter(tcx4, {
+            const minting = this.minter.txnMintingCharter(tcx5, {
                 owner: this.address,
                 capoGov: uuts.capoGov, // same as govAuthority,
                 mintDelegate: uuts.mintDelegate,
                 spendDelegate: uuts.spendDelegate,
+                configUut: uuts.cfg,
             });
             return minting;
         });
         return promise;
+    }
+    
+    async findConfigDatum() {
+        const charterDatum = await this.findCharterDatum();
+        // it's always read as a number[], never a UutName : /
+        const uutName : number[] = charterDatum.configUut as number[];
+
+        const s = bytesToText(uutName)
+
+        const t = new UutName("cfg", s)
+        const t2 = this.uutsValue(    t        )
+        const configUtxo = await this.mustFindMyUtxo("cfg-uut", 
+            this.mkTokenPredicate(t2)
+        );
+
+        const configDatum = await this.readDatum<OnchainContractConfigData<this>>(
+            "ConfigData",
+            configUtxo.origOutput.datum as InlineDatum
+        );
+        if (!configDatum) throw Error(`invalid config UTxO datum`);
+        return this.readConfigDatum(configDatum);
+    }
+
+    txnAddConfigOutput<TCX extends StellarTxnContext>(
+        tcx: TCX,
+        config: ContractConfigData<this>
+    ): TCX {
+        const configOut = new TxOutput(
+            this.address,
+            this.uutsValue(tcx.state.uuts.cfg),
+            this.mkDatumConfigData(config)
+        );
+        configOut.correctLovelace(this.networkParams);
+        return tcx.addOutput(configOut);
     }
 
     /**
@@ -827,7 +987,7 @@ export class DefaultCapo<
         // for (const [txin, refScript] of scriptReferences) {
         //     console.log("refScript", dumpAny(txin));
         // }
-
+        
         const matchingScriptRefs = scriptReferences.find(([txin, refScript]) =>
             isCorrectRefScript(txin)
         );
@@ -905,6 +1065,58 @@ export class DefaultCapo<
             activity,
             await this.mkDatumCharterToken(args)
         );
+    }
+
+    async findConfigUtxo(charterUtxo? : TxInput) {
+        const chUtxo = charterUtxo || await this.mustFindCharterUtxo();
+        const charterDatum = await this.findCharterDatum(chUtxo);
+        const uutName = charterDatum.configUut;
+        const uutValue = this.uutsValue(
+            uutName);
+
+        return await this.mustFindMyUtxo("cfg-uut", 
+            this.mkTokenPredicate(uutValue)
+        );
+    }
+
+    async getConfigDatum({
+        configUtxo, charterUtxo
+    }: {
+        configUtxo? : TxInput, charterUtxo? : TxInput
+    } = {}) {
+        const cfgUtxo = configUtxo || await this.findConfigUtxo(charterUtxo);
+        const raw = await this.readDatum<OnchainContractConfigData<this>>(
+            "ConfigData",
+            cfgUtxo.origOutput.datum as InlineDatum
+        );        
+        if (!raw) throw Error(`missing or invalid config UTxO datum`);
+        return this.readConfigDatum(raw);
+    }
+
+    @txn
+    async mkTxnUpdateConfig<TCX extends StellarTxnContext>(
+        data: ContractConfigData<this>, 
+        configUtxo? : TxInput,
+        tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
+    ): Promise<TCX> {
+        // uses the charter ref input
+        configUtxo = configUtxo || await this.findConfigUtxo();
+
+        console.log("HI")
+        const tcx2 = await this.txnAddGovAuthority(tcx);
+        const tcx2a = await this.txnMustUseCharterUtxo(tcx2, "refInput");
+        const tcx2b = await this.txnAttachScriptOrRefScript(tcx2a);
+        const tcx3 = tcx2b.addInput(
+            configUtxo, 
+            this.activityUpdatingConfig()
+        ).addOutput(
+            new TxOutput(
+                this.address, 
+                configUtxo.origOutput.value, 
+                this.mkDatumConfigData(data)
+            )
+        );
+        return tcx3 as TCX & typeof tcx3
     }
 
     /**
@@ -1087,6 +1299,8 @@ export class DefaultCapo<
             tcx2a,
             newSpendDelegate.delegate.tvAuthorityToken()
         );
+
+        debugger
 
         //@ts-expect-error "could be instantiated with different subtype"
         const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
@@ -1642,10 +1856,12 @@ export class DefaultCapo<
                         "has a 'ConfigData' datum variant & utxo in the contract",
                         "charter creation requires presence of an empty ConfigData and a CharterDatum reference to that minted UUT",
                         "updatingCharter activity MUST NOT change the cfg-UUT reference",
-                        "can update the config data with a separate UpdatingConfig Activity on the Config",
+                        "can update the config data with a separate updatingConfig Activity on the Config",
                         "requires the capoGov- authority uut to update the config data",
                         "the spending delegate must validate the UpdatingConfig details",
                         "the minting delegate must validate the UpdatingConfig details",
+                        "the spending invariant delegates must validate the UpdatingConfig details",
+                        "the minting invariant delegates must validate the UpdatingConfig details",
                     ],
                 },
 

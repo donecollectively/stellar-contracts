@@ -7,6 +7,11 @@ import {
 
 import { Datum, Activity } from specializedCapo
 
+import {
+    requiresValidDelegateOutput
+} from CapoDelegateHelpers
+
+
 func getRefCharterUtxo(ctx: ScriptContext, mph : MintingPolicyHash) -> TxInput {
     chVal : Value = tvCharter(mph);
     hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
@@ -28,7 +33,6 @@ func getRefCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::C
     ctd
 }
 
-
 //! retrieves a required Charter Datum for the indicated policy - 
 // ... either from the txn's reference inputs  or inputs.
 func getTxCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::CharterToken {
@@ -42,13 +46,17 @@ func getTxCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::Ch
             None => error("Missing charter inputs / ref_inputs")
         }
     };
-    ctd : Datum::CharterToken = Datum::from_data( 
+    ctd : Datum::CharterToken = Datum::CharterToken::from_data( 
         charterUtxo.datum.get_inline_data() 
     );
 
     ctd    
 }
 
+func mustHaveGovAuthority(ctx: ScriptContext, mph : MintingPolicyHash) -> Bool {
+    charterDatum : Datum::CharterToken = getTxCharterDatum(ctx, mph);
+    requiresValidDelegateOutput(charterDatum.govAuthorityLink, mph, ctx)
+}
 
 //! retrieves the redeemer for a specific input
 func mustFindInputRedeemer(

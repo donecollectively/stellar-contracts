@@ -381,6 +381,8 @@ export abstract class Capo<
     //     newDatum?: InlineDatum
     // ): Promise<TxInput | never>;
 
+    abstract mkInitialConfig() : { [k : string]: number | bigint }
+
     get minterClass(): stellarSubclass<DefaultMinter, BasicMinterParams> {
         return DefaultMinter;
     }
@@ -421,14 +423,21 @@ export abstract class Capo<
      * @public
      **/
     uutsValue(uutMap: uutPurposeMap<any>): Value;
+    /**
+     * from all the uuts in the transaction context
+     **/
     uutsValue(tcx: hasUutContext<any>): Value;
-    uutsValue(uutName: UutName): Value;
-    uutsValue(x: UutName | uutPurposeMap<any> | hasUutContext<any>): Value {
-        const uutMap =
+    /**
+     * from a single uut name or byte array
+     */
+    uutsValue(uutName: UutName | number[]): Value;
+    uutsValue(x: UutName | number[] | uutPurposeMap<any> | hasUutContext<any>): Value {
+        let uutMap =
             x instanceof StellarTxnContext
                 ? x.state.uuts!
-                : x instanceof UutName
+                : x instanceof UutName 
                 ? { single: x }
+                : Array.isArray(x) ? { single: new UutName("some-uut", x) }
                 : x;
         const vEntries = mkUutValuesEntries(uutMap);
 
@@ -478,7 +487,7 @@ export abstract class Capo<
     }
 
     //! forms a Value with minUtxo included
-    tokenAsValue(tokenName: string | UutName, count: bigint = 1n) {
+    tokenAsValue(tokenName: string | number[] | UutName, count: bigint = 1n) {
         const { mph } = this;
 
         const tn = tokenName.toString();

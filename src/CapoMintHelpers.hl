@@ -57,7 +57,8 @@ func requiresMintDelegateApproval(
 }
 
 //! pre-computes the hash-based suffix for a token name, returning
-//  a function that makes Uut names with any given purpose, given the seed-txn details
+//  a function that cheaply makes Uut names with any given purpose, 
+// given the initial seed-txn details
 func mkUutTnFactory(
     seedTxId : TxId, seedIdx : Int
 ) -> (String) -> String {

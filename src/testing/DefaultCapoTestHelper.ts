@@ -1,4 +1,5 @@
 import type {
+    ContractConfigData,
     DefaultCharterDatumArgs,
     MinimalDefaultCharterDatumArgs,
 } from "../DefaultCapo.js";
@@ -202,6 +203,16 @@ export class DefaultCapoTestHelper<
 
         const tcx = await treasury.mkTxnUpdateCharter(args);
         return treasury.submit(tcx, { signers }).then(() => {
+            this.network.tick(1n);
+            return tcx;
+        });
+    }
+
+    async updateConfig(args: ContractConfigData<DC>) {
+        await this.mintCharterToken();
+        const capo = await this.strella!;
+        const tcx = await capo.mkTxnUpdateConfig(args);
+        return capo.submit(tcx).then(() => {
             this.network.tick(1n);
             return tcx;
         });
