@@ -23,11 +23,11 @@ import { DefaultMinter } from "../minting/DefaultMinter.js";
  * @public
  **/
 export abstract class CapoTestHelper<
-    SC extends Capo<MinterBaseMethods & DefaultMinter, CDT, CT>,
+    SC extends Capo<any, MinterBaseMethods & DefaultMinter, CDT, CT>,
     CDT extends anyDatumArgs = //prettier-ignore
         SC extends Capo<any, infer iCDT> ? iCDT : anyDatumArgs, //prettier-ignore
     CT extends CapoBaseConfig  =  //prettier-ignore
-        SC extends Capo<any, any, infer iCT> ? iCT : never //prettier-ignore
+        SC extends Capo<any, any, any, infer iCT> ? iCT : never //prettier-ignore
 > extends StellarTestHelper<SC> {
     async initialize({
         randomSeed = 42,

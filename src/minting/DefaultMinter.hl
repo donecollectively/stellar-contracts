@@ -53,12 +53,12 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
 
             // these must be sorted by length first, then lexicographically
             //   (actually byte-wise, but ~same diff)
-            configTnBase: String = "cfg";
+            settingsTnBase: String = "set";
             authTnBase : String = "capoGov";
             mintDgtTnBase : String = "mintDgt";  
             spendDgtTnBase: String = "spendDgt";
             purposes = []String{
-                configTnBase,
+                settingsTnBase,
                 authTnBase, 
                 mintDgtTnBase, 
                 spendDgtTnBase
@@ -85,31 +85,31 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
             });
             // ^^ fails if there's no charter output to the right address
 
-            configVal : Value = mkTv(mph, mkUutName(configTnBase));
-            print( "finding config output" );
-            configOutput: TxOutput = tx.outputs.find_safe( (output: TxOutput) -> Bool {
+            settingsVal : Value = mkTv(mph, mkUutName(settingsTnBase));
+            print( "finding settings output" );
+            settingsOutput: TxOutput = tx.outputs.find_safe( (output: TxOutput) -> Bool {
                 output.address == charter.owner &&
-                    output.value.contains(configVal)
+                    output.value.contains(settingsVal)
             }).switch {
                 Some{output} => {
-                    assert(configVal.contains(output.value.get_assets()), "excess value in cfg output: "+
-                        (output.value - configVal).show()
+                    assert(settingsVal.contains(output.value.get_assets()), "excess value in settings output: "+
+                        (output.value - settingsVal).show()
                     );
                     output
                 },
-                None => error("missing cfg output to contract")
+                None => error("missing settings output to contract")
             };
 
-            // ^^ fails if there's no config output to the right address
-            // the config output should be empty.
-            print("configOutput: "+ configOutput.serialize().show());
+            // ^^ fails if there's no settings output to the right address
+            // the settings output should be empty.
+            print("settingsOutput: "+ settingsOutput.serialize().show());
 
             print("defaultMinter @C");
             charterData : Data = charterOutput.datum.get_inline_data();
             Datum::CharterToken{
                 spendDgt, 
                 spendInvariants,
-                _, // config, 
+                _, // settings, 
                 mintDgt, 
                 mintInvariants, 
                 authDgt
@@ -121,9 +121,9 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                     assert(fields.length == 6, "charter token must have 6 fields");
                     // {authDgt, mintDgt, spendDgt, mintInvariants, spendInvariants}
                     print("defaultMinter @D");
-                    configIndex : Int = 2;
+                    settingsIndex : Int = 2;
 
-                    t : Data = fields.get(configIndex);
+                    t : Data = fields.get(settingsIndex);
                     print("ok: "+ t.serialize().show());
 
                     Datum::CharterToken::from_data(charterData)
@@ -131,13 +131,13 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                 _ => error("unexpected datum type")  
             };
             print("defaultMinter @E");
-            // print("" + configMap.tag.show());
-            // configMap.switch {
+            // print("" + settingsMap.tag.show());
+            // settingsMap.switch {
 
             // };
-            // print(configMap.show());
-            // assert(config.id == "cfg", "must have config.id='cfg'");
-            // assert(configMap.length == 1, "no config fields allowed at charter creation");
+            // print(settingsMap.show());
+            // assert(settings.id == "set", "must have settings.id='set'");
+            // assert(settingsMap.length == 1, "no settings fields allowed at charter creation");
 
             // once we have burned down the test backlog a bit, we can add these in:
             assert(mintInvariants.length == 0, "no mint invariants allowed at charter creation");

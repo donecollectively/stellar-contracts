@@ -69,6 +69,7 @@ import type {
 import type { DelegationDetail } from "./delegation/RolesAndDelegates.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
 import type { AuthorityPolicy, anyState } from "../index.js";
+import type { DatumAdapter } from "./DatumAdapter.js";
 
 export type {
     RoleMap,
@@ -255,6 +256,7 @@ type PreconfiguredDelegate<T extends StellarDelegate<any>> = Omit<
  * @public
  */
 export abstract class Capo<
+    settingsType,
     minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter,
     charterDatumType extends anyDatumArgs = anyDatumArgs,
     configType extends CapoBaseConfig = CapoBaseConfig
@@ -363,7 +365,7 @@ export abstract class Capo<
         } else {
             // this.connectMintingScript(this.getMinterParams());
         }
-
+        this.settingsAdapter = this.initSettingsAdapter()
         return this;
     }
 
@@ -380,7 +382,17 @@ export abstract class Capo<
     //     newDatum?: InlineDatum
     // ): Promise<TxInput | never>;
 
-    abstract mkInitialConfig() : { [k : string]: number | bigint }
+    
+    abstract initSettingsAdapter():DatumAdapter<any, settingsType>;
+    settingsAdapter! : ReturnType<
+        this["initSettingsAdapter"]
+    > extends DatumAdapter<any, infer Onchain> ? Onchain : never
+    abstract mkInitialSettings() : settingsType
+    abstract mkDatumSettingsData(settings: settingsType): Datum;
+    abstract readSettingsDatum(settings: 
+        ReturnType<this["initSettingsAdapter"]> extends DatumAdapter<any, infer Onchain> ? 
+        Onchain : never
+    );
 
     get minterClass(): stellarSubclass<DefaultMinter, BasicMinterParams> {
         return DefaultMinter;

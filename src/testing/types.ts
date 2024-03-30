@@ -26,7 +26,7 @@ export type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (
     config: ConfigFor<SC> & canHaveRandomSeed
 ) => StellarTestHelper<SC>;
 
-export type DefaultCapoTestHelperClass<SC extends DefaultCapo<any,any,any>> = new (
+export type DefaultCapoTestHelperClass<SC extends DefaultCapo<any,any,any,any>> = new (
     config: ConfigFor<SC> & canHaveRandomSeed
 ) => StellarTestHelper<SC> & DefaultCapoTestHelper<SC> 
 // & { get stellarClass(): stellarSubclass<SC> };

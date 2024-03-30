@@ -14,8 +14,10 @@ module specializedCapo
 import { 
     RelativeDelegateLink
 } from CapoDelegateHelpers
+
 import {
-    tvCharter
+    tvCharter,
+    RealnumSettingsValueV1
 } from StellarHeliosHelpers
 
 // field-names style of struct, arbitrary & extensible
@@ -26,24 +28,20 @@ struct AnyData {
     // can have other fields; receiver will interpret their target types.
 }
 
-struct ConfigValue {
-    name: String
-    microInt: Int // "Real" semantics, times 1_000_000
-}
 
 //! provides a basic version of Datum in default specializedCapo module
 enum Datum {
     CharterToken {
         spendDelegateLink: RelativeDelegateLink
         spendInvariants: []RelativeDelegateLink
-        configUut: ByteArray // a UUT-name link to a ConfigData
+        settingsUut: ByteArray // a UUT-name link to a SettingsData
         mintDelegateLink: RelativeDelegateLink
-        mintInvariants: []RelativeDelegateLink 
+        mintInvariants: []RelativeDelegateLink
         govAuthorityLink: RelativeDelegateLink
     }
     ScriptReference
-    ConfigData {
-        data:  []ConfigValue
+    SettingsData {
+        data:  []RealnumSettingsValueV1
     }
 
     //! datum-validation only supports checks of absolute spendability, 
@@ -101,8 +99,8 @@ enum Activity {
     retiringRefScript // variant 2
     addingSpendInvariant // variant 3
     spendingDelegatedDatum // variant 4
-    updatingConfig // variant 5
-    retiringConfig // variant 6
+    updatingSettings // variant 5
+    retiringSettings // variant 6
 
     func allowActivity(self, datum: Datum, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {
         self.switch{

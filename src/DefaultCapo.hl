@@ -113,8 +113,8 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                 true // "maybe", really -> depends on the activity
             }
         },
-        ConfigData => {
-            true // maybe -> activity updatingConfig will check
+        SettingsData => {
+            true // maybe -> activity updatingSettings will check
         },
 
         scriptRef : ScriptReference => {
@@ -145,7 +145,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
             Datum::CharterToken{                
                 spendDelegate, 
                 spendInvariants,
-                configUut,
+                settingsUut,
                 mintDelegate, 
                 mintInvariants,
                 govDelegate
@@ -154,7 +154,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
             Datum::CharterToken{
                 oldSpendDelegate, 
                 oldSpendInvariants, 
-                oldConfigUut,
+                oldSettingsUut,
                 oldMintDelegate, 
                 oldMintInvariants,
                 /* _oldGovDelegate */ _ 
@@ -165,7 +165,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
 
             unchangedSpendDgt : Bool = ( spendDelegate.serialize() == oldSpendDelegate.serialize() );
             unchangedMintDgt : Bool = ( mintDelegate.serialize() == oldMintDelegate.serialize() );
-            mustNotModifyConfig : Bool = ( configUut == oldConfigUut );
+            mustNotModifySettings : Bool = ( settingsUut == oldSettingsUut );
 
             if (isDev) {
                 print("is spendDgt unchanged? " + unchangedSpendDgt.show() +
@@ -180,15 +180,15 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                     "\n  - new: "+ mintDelegate.uutName + " = " + mintDelegate.strategyName +
                     " => "+ mintDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"}
                 );
-                print("is config unchanged? " + mustNotModifyConfig.show() +
-                    "\n  - old: "+ oldConfigUut.decode_utf8() +
-                    "\n  - new: "+ configUut.decode_utf8()
+                print("is config unchanged? " + mustNotModifySettings.show() +
+                    "\n  - old: "+ oldSettingsUut.decode_utf8() +
+                    "\n  - new: "+ settingsUut.decode_utf8()
                 )
             };
-            assert(mustNotModifyConfig, "cannot change cfg-uut");
+            assert(mustNotModifySettings, "cannot change settings uut");
 
             // govDelegate is always spent, so we always check its destination is kosher.
-            mustNotModifyConfig &&
+            mustNotModifySettings &&
             requiresValidDelegateOutput(govDelegate, mph, ctx) &&
             checkpoint("1") &&
             if (unchangedMintDgt) {
@@ -242,28 +242,25 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
             }
         },
 
-        updatingConfig => {
+        updatingSettings => {
 
             datum.switch {
-                cfg : ConfigData => {
+                SettingsData => {
                     // it requires the govAuthority to be present
                     hasGovAuthority : Bool = mustHaveGovAuthority(ctx,mph);
-                    // spending delegates are checking the config
+                    // spending delegates are checking the settings
 
-                    print(cfg.serialize().show());
-
-                    cfg.serialize() == cfg.serialize() &&
-                    // todo: minting delegates are checking the config
-                    // todo: govAuthority is checking the config
-                    // todo: spendInvariants are checking the config
-                    // todo: mintInvariants are checking the config
+                    // todo: minting delegates are checking the settings
+                    // todo: govAuthority is checking the settings
+                    // todo: spendInvariants are checking the settings
+                    // todo: mintInvariants are checking the settings
 
                     hasGovAuthority
                 },
-                _ => error("wrong use of updatingConfig action for non-ConfigData datum")
+                _ => error("wrong use of updatingSettings action for non-SettingsData datum")
             }
         },
-        retiringConfig => {
+        retiringSettings => {
             error("implement me")
         },
         // defers to the specialization's Activity::allowActivity() method for checking other activities

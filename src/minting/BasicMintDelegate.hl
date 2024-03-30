@@ -52,7 +52,7 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
         //! It also calls any additionalDelegateValidation() defined in a specialized minting delegate.
         isD : IsDelegation{dd, _} => {
             // MintDelegateDatum::IsDelegation{dd, cfg} = isD;
-            activity.switch {        
+            activity.switch {
                 // authorizing minting of a new token or burning an existing token:
                 //   guards that the authority token is returned to this script.
                 // specialized minting delegates should likely perform additional checks.
@@ -98,7 +98,7 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                         AssetClass::new(dd.mph, dd.tn), 
                         BURNED
                     );
-                
+
                     print("checking ReplacingMe on "+purpose+": "+dd.tn.decode_utf8());
                     mintsUutForCharterUsingRedeemerIndex(
                         ctx: ctx, 

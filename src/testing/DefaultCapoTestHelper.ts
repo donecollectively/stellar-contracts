@@ -1,5 +1,5 @@
 import type {
-    ContractConfigData,
+    ContractSettingsData,
     DefaultCharterDatumArgs,
     MinimalDefaultCharterDatumArgs,
 } from "../DefaultCapo.js";
@@ -57,13 +57,14 @@ declare const expect: typeof expectType;
 export class DefaultCapoTestHelper<
     //@ts-expect-error spurious fail  type; it tries to strongly match the generic abstract type
     //    from (abstract) Capo, instead of paying attention to the clearly-matching concrete version in DefaultCapo
-    DC extends DefaultCapo<DefaultMinter, CDT, CT> = DefaultCapo, //prettier-ignore
+    DC extends DefaultCapo<any, DefaultMinter, CDT, CT> = DefaultCapo, //prettier-ignore
     CDT extends DefaultCharterDatumArgs =        
-        DC extends Capo<any, infer iCDT> ? iCDT : DefaultCharterDatumArgs, //prettier-ignore
+        DC extends Capo<any, any, infer iCDT> ? iCDT : DefaultCharterDatumArgs, //prettier-ignore
     CT extends CapoBaseConfig  = 
-        DC extends Capo<any, any, infer iCT> ? iCT : never //prettier-ignore
-    //@ts-expect-error because of a mismatch between the Capo's abstract mkTxnMintCharterToken's defined constraints
+        DC extends Capo<any, any, any, infer iCT> ? iCT : never //prettier-ignore
+    //@ts-ignore because of a mismatch between the Capo's abstract mkTxnMintCharterToken's defined constraints
     //    ... vs the only concrete impl in DefaultCapo, with types that are actually nicely matchy.
+    //    vscode is okay with it, but api-extractor is not :/
 > extends CapoTestHelper<DC, CDT, CT> {
     /**
      * Creates a prepared test helper for a given Capo class, with boilerplate built-in
@@ -81,7 +82,7 @@ export class DefaultCapoTestHelper<
      * @typeParam DC - no need to specify it; it's inferred from your parameter
      * @public
      **/
-    static forCapoClass<DC extends DefaultCapo<DefaultMinter, any, any>>(
+    static forCapoClass<DC extends DefaultCapo<any, DefaultMinter, any, any>>(
         s: stellarSubclass<DC>
     ): DefaultCapoTestHelperClass<DC> {
         class specificCapoHelper extends DefaultCapoTestHelper<DC> {
@@ -208,10 +209,10 @@ export class DefaultCapoTestHelper<
         });
     }
 
-    async updateConfig(args: ContractConfigData<DC>) {
+    async updateSettings(args: ContractSettingsData<DC>) {
         await this.mintCharterToken();
         const capo = await this.strella!;
-        const tcx = await capo.mkTxnUpdateConfig(args);
+        const tcx = await capo.mkTxnUpdateOnchainSettings(args);
         return capo.submit(tcx).then(() => {
             this.network.tick(1n);
             return tcx;

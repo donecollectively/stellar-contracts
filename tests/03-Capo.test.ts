@@ -156,12 +156,12 @@ describe("Capo", async () => {
                     h,
                     h: { network, actors, delay, state },
                 } = context;
-                const treasury = await h.bootstrap();
+                const capo = await h.bootstrap();
                 const tcx = await h.mintCharterToken();
                 const { mintDgt } = tcx.state.uuts;
 
-                const datum = await treasury.findCharterDatum();
-                const mintDelegate = await treasury.connectDelegateWithLink(
+                const datum = await capo.findCharterDatum();
+                const mintDelegate = await capo.connectDelegateWithLink(
                     "mintDelegate",
                     datum.mintDelegateLink
                 );
@@ -169,7 +169,7 @@ describe("Capo", async () => {
                 expect(
                     tcx.outputs.find((o: TxOutput) => {
                         return (
-                            o.value.ge(treasury.tokenAsValue(mintDgt)) &&
+                            o.value.ge(capo.tokenAsValue(mintDgt)) &&
                             o.address.eq(mintDelegate.address)
                         );
                     }),
@@ -178,7 +178,7 @@ describe("Capo", async () => {
                 // test t3m2n4d
                 // has the mint-delegate script ready to use as a referenceScript
                 debugger;
-                const findingRefScript = mintDelegate.mustFindMyUtxo(
+                const findingRefScript = capo.mustFindMyUtxo(
                     "mint delegate refScript",
                     (utxo) => {
                         return (
@@ -899,7 +899,7 @@ describe("Capo", async () => {
 
             const strella = await h.bootstrap();
             const refScripts = await strella.findScriptReferences();
-            expect(refScripts.length).toBe(2);
+            expect(refScripts.length).toBe(3);
         });
 
         it("txnAttachScriptOrRefScript(): uses scriptRefs in txns on request", async (context: localTC) => {

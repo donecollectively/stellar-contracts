@@ -1,5 +1,11 @@
 module StellarHeliosHelpers
 
+// keep this as-is.  Make RealnumSettingsValueV2 or something else if it needs to change
+struct RealnumSettingsValueV1 {
+    name: String
+    microInt: Int // "Real" semantics, times 1_000_000
+}
+
 func didSign(ctx : ScriptContext, a: Address) -> Bool {
     tx : Tx = ctx.tx;
 

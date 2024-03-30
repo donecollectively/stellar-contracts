@@ -41,73 +41,73 @@ const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTes
 const describe = descrWithContext<localTC>;
 
 // Will test all of these things:
-// "has a 'ConfigData' datum variant & utxo in the contract",
-// "charter creation requires presence of an empty ConfigData and a CharterDatum reference to that minted UUT",
-// "updatingCharter activity MUST NOT change the cfg-UUT reference",
-// "can update the config data with a separate UpdatingConfig Activity on the Config",
-// "requires the capoGov- authority uut to update the config data",
-// "the spending delegate must validate the UpdatingConfig details",
-// "the minting delegate must validate the UpdatingConfig details",
+// "has a 'SettingsData' datum variant & utxo in the contract",
+// "charter creation requires presence of an empty SettingsData and a CharterDatum reference to that minted UUT",
+// "updatingCharter activity MUST NOT change the set-UUT reference",
+// "can update the settings data with a separate UpdatingSettings Activity on the Settings",
+// "requires the capoGov- authority uut to update the settings data",
+// "the spending delegate must validate the UpdatingSettings details",
+// "the minting delegate must validate the UpdatingSettings details",
 
-describe("Config data in Capo", async () => {
+describe("Settings data in Capo", async () => {
     beforeEach<localTC>(async (context) => {
         // await new Promise(res => setTimeout(res, 10));
         await addTestContext(context, DefaultCapoTestHelper);
     });
 
-    it("has a 'ConfigData' datum variant & utxo in the contract", async (context: localTC) => {
+    it("has a 'SettingsData' datum variant & utxo in the contract", async (context: localTC) => {
         // prettier-ignore
         const {h, h:{network, actors, delay, state} } = context;
 
         const capo = await h.bootstrap();
         const charterDatum = await capo.findCharterDatum()
-        const config = charterDatum.configUut;
-        expect(config).toBeDefined();
+        const settings = charterDatum.settingsUut;
+        expect(settings).toBeDefined();
     });
 
-    it("charter creation requires presence of a ConfigData and a CharterDatum reference to that minted UUT", async (context: localTC) => {
+    it("charter creation requires presence of a SettingsData and a CharterDatum reference to that minted UUT", async (context: localTC) => {
         // prettier-ignore
         const {h, h:{network, actors, delay, state} } = context;
 
         const capo = await h.initialize();
-        vi.spyOn(capo, "txnAddConfigOutput").mockImplementation(tcx => {
-            // allow the config UUT to be implicitly returned to the user's wallet
+        vi.spyOn(capo, "txnAddSettingsOutput").mockImplementation(tcx => {
+            // allow the settings UUT to be implicitly returned to the user's wallet
             // for txn-balancing purposes
             return tcx;
         });
-        await expect(h.bootstrap()).rejects.toThrow(/missing cfg output/)
+        await expect(h.bootstrap()).rejects.toThrow(/missing settings output/)
     });
 
-    it("updatingCharter activity MUST NOT change the cfg-UUT reference", async (context: localTC) => {
+    it("updatingCharter activity MUST NOT change the set-UUT reference", async (context: localTC) => {
         // prettier-ignore
         const {h, h:{network, actors, delay, state} } = context;
 
         const capo = await h.bootstrap();
         const charterDatum = await capo.findCharterDatum()
-        const config = charterDatum.configUut;
+        const settings = charterDatum.settingsUut;
         const updating = h.updateCharter({
             ... charterDatum,
-            configUut: textToBytes("charter"), // a token-name that does exist in the contract
+            settingsUut: textToBytes("charter"), // a token-name that does exist in the contract
         })
-        await expect(updating).rejects.toThrow(/cannot change cfg-uut/);
+        await expect(updating).rejects.toThrow(/cannot change settings uut/);
     });
 
-    describe("mkTxnUpdateConfig()", () => {
-        it("can update the config data with a separate UpdatingConfig Activity on the Config", async (context: localTC) => {
+    describe("mkTxnUpdateSettings()", () => {
+        it("can update the settings data with a separate UpdatingSettings Activity on the Settings", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
             const capo = await h.bootstrap();
-            const updating = h.updateConfig({
+            const updating = h.updateSettings({
                 meaning: 19
             });
             await updating
             await expect(updating).resolves.toBeTruthy();
-            const newConfig = await capo.findConfigDatum();
-            expect(newConfig.meaning).toEqual(19);
+            const newSettings = await capo.findSettingsDatum();
+            expect(newSettings.meaning).toEqual(19);
         });
 
-        it("requires the capoGov- authority uut to update the config data", async (context: localTC) => {
+        it("requires the capoGov- authority uut to update the settings data", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
@@ -116,21 +116,21 @@ describe("Config data in Capo", async () => {
             const didUseAuthority = vi.spyOn(capo, "txnAddGovAuthority").mockImplementation(
                 async tcx => tcx
             );
-            const updating = h.updateConfig({
+            const updating = h.updateSettings({
                 meaning: 19
             });
             await expect(updating).rejects.toThrow(/missing dgTkn capoGov-/)
             expect(didUseAuthority).toHaveBeenCalled();
         });
 
-        it.todo("the spending delegate must validate the UpdatingConfig details", async (context: localTC) => {
+        it.todo("the spending delegate must validate the UpdatingSettings details", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
             const capo = await h.bootstrap();
         });
 
-        it.todo("the minting delegate must validate the UpdatingConfig details", async (context: localTC) => {
+        it.todo("the minting delegate must validate the UpdatingSettings details", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
