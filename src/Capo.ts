@@ -32,7 +32,6 @@ import type {
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import {
     StellarTxnContext,
-    type hasAddlTxn,
     type hasSeedUtxo,
     type uutMap,
 } from "./StellarTxnContext.js";

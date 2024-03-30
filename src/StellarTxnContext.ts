@@ -38,27 +38,46 @@ export type AddlTxnCallback =
 /**
  * A transaction context that includes additional transactions in its state for later execution
  * @remarks
+ *
  * 
  * During the course of creating a transaction, the transaction-building functions for a contract
  * suite may suggest or require further transactions, which may not be executable until after the
  * current transaction is executed.  This type allows the transaction context to include such
  * future transactions in its state, so that they can be executed later.
- * 
+ *
  * The future transactions can be executed using the {@link StellarContract.submitAddlTxns}
  * helper method.
  * @public
  **/
-export type hasAddlTxn<
-    TCX extends StellarTxnContext,
+export type hasAddlTxns<
     txnName extends string,
-    FUTURE_TX_TYPE extends StellarTxnContext,
-> = TCX & StellarTxnContext<
-    emptyState & {
-        addlTxns:  { 
-            [key in txnName]: AddlTxInfo<FUTURE_TX_TYPE>
-        }
-    } 
->
+    TCX extends StellarTxnContext<any>,
+    existingStateType extends anyState = TCX["state"],
+    unwrapped = TCX extends hasAddlTxns<any, infer uw, any, any> ? uw : TCX,
+> = StellarTxnContext<
+    existingStateType & { 
+        addlTxns: Record<txnName, AddlTxInfo<any>>
+    }
+> & unwrapped
+
+export type otherAddlTxnNames<TCX extends StellarTxnContext<any>> = string & 
+    TCX extends {state:{addlTxns: infer aTNs}} ? 
+        keyof aTNs : never;
+
+// type combinedAddlTxns<
+//     extraTxnName extends string,
+//     stateType extends anyState,
+//     existingTxns = stateType extends {addlTxns: any} ? stateType["addlTxns"] : never,
+//     existingTxnNames extends string = string & keyof existingTxns
+// > = {
+//     addlTxns: {
+//         //prettier-ignore
+//         [txnName in ( 
+//             | extraTxnName
+//             | existingTxnNames
+//         )]: AddlTxInfo<any>
+//     } 
+// } & stateType;
 
 /**
  * unique seed for creating UUTs and other uniqueness
@@ -84,14 +103,15 @@ export type SeedAttrs = {
  * A base state for a transaction context
  * @public
  **/
-export type emptyState = {
+export interface anyState {
     uuts: Record<string, UutName>;
 };
+
 /**
  * A base state for a transaction context
  * @public
  **/
-export type anyState = emptyState;
+// export type anyState = emptyState;
 export type uutMap = Record<string, UutName>;
 export const emptyUuts: uutMap = Object.freeze({});
 
@@ -146,20 +166,20 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     includeAddlTxn<
-        TCX extends StellarTxnContext<anyState>, 
-        txnName extends string, 
-        FUTURE_TX_TYPE extends StellarTxnContext
+        TCX extends StellarTxnContext<anyState>,
+        txnName extends string
     >(
         this: TCX,
-        txnName: txnName, 
-        txInfo: AddlTxInfo<FUTURE_TX_TYPE>
-    ): hasAddlTxn<TCX, txnName, FUTURE_TX_TYPE> {
-        const thisWithMoreType : hasAddlTxn<TCX, txnName, FUTURE_TX_TYPE> = this as any;
+        txnName: txnName,
+        txInfo: AddlTxInfo<any>
+    ): hasAddlTxns<txnName, TCX> {
+        const thisWithMoreType: hasAddlTxns<txnName, TCX> =
+            this as any;
         thisWithMoreType.state.addlTxns = {
-        ... (thisWithMoreType.state.addlTxns || {}),
-            [txnName]: txInfo
-        }
-        return thisWithMoreType 
+            ...(thisWithMoreType.state.addlTxns || {}),
+            [txnName]: txInfo,
+        };
+        return thisWithMoreType;
     }
 
     mintTokens(...args: Parameters<Tx["mintTokens"]>): StellarTxnContext<S> {

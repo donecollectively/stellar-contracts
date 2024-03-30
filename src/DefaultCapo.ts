@@ -42,8 +42,9 @@ import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import {
     StellarTxnContext,
     type anyState,
-    type hasAddlTxn,
+    type hasAddlTxns,
     type hasSeedUtxo,
+    type otherAddlTxnNames,
 } from "./StellarTxnContext.js";
 
 //@ts-expect-error
@@ -911,17 +912,16 @@ export class DefaultCapo<
      **/
     async txnMkAddlRefScriptTxn<
         TCX extends StellarTxnContext<anyState>,
-        scriptName extends string
+        scriptName extends string,
     >(
         tcx: TCX,
         scriptName: scriptName,
         script: UplcProgram
     ): Promise<
-        hasAddlTxn<
-            TCX,
-            `refScript${Capitalize<scriptName>}`,
-            StellarTxnContext<anyState>
-        >
+        hasAddlTxns<
+            `refScript${Capitalize<scriptName>}` | otherAddlTxnNames<TCX>,
+            TCX
+        >  // & unwrapped
     > {
         const refScriptUtxo = new TxOutput(
             this.address,

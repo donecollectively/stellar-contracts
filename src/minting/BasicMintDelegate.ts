@@ -18,8 +18,9 @@ import type { configBase, isActivity } from "../StellarContract.js";
 import {
     StellarTxnContext,
     type anyState,
-    type hasAddlTxn,
+    type hasAddlTxns,
     type hasSeedUtxo,
+    type otherAddlTxnNames,
 } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
 
@@ -251,13 +252,14 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
      **/
     async txnCreateRefScript<
         TCX extends StellarTxnContext<anyState>,
-        scriptName extends string
+        scriptName extends string,
     >(
-        tcx: TCX,
+        tcx: TCX,    
         scriptName: scriptName
-    ): Promise<
-        hasAddlTxn<TCX, `refScript${scriptName}`, StellarTxnContext<anyState>>
-    > {
+    ): Promise<hasAddlTxns<
+        `refScript${Capitalize<scriptName>}` | otherAddlTxnNames<TCX>,
+        TCX
+    >> {
         const refScriptUtxo = new TxOutput(
             this.address,
             new Value(this.ADA(0n)),

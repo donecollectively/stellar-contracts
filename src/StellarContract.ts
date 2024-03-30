@@ -29,7 +29,7 @@ import {
     StellarTxnContext,
     type AddlTxInfo,
     type AddlTxnCallback,
-    type hasAddlTxn,
+    type hasAddlTxns,
 } from "./StellarTxnContext.js";
 import { utxosAsString, valueAsString } from "./diagnostics.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
@@ -1565,8 +1565,7 @@ export class StellarContract<
      * @public
      **/
     async submitAddlTxns(
-        tcx: StellarTxnContext<any> &
-            hasAddlTxn<StellarTxnContext<any>, any, any>,
+        tcx:  hasAddlTxns<any, any>,
         callback?: AddlTxnCallback
     ) {
         const { addlTxns } = tcx.state;

@@ -73,11 +73,10 @@ export type { ReqtsMap, RequirementEntry } from "./src/Requirements.js";
 
 export { 
     StellarTxnContext,
-    type emptyState,    
     type anyState,
     type SeedAttrs,
     type hasSeedUtxo,
-    type hasAddlTxn,    
+    type hasAddlTxns,    
  } from "./src/StellarTxnContext.js";
 
 export type {
