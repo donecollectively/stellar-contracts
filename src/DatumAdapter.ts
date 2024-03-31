@@ -1,7 +1,5 @@
 import type { Datum } from "@hyperionbt/helios";
-import type { StellarContract, anyDatumProps } from "./StellarContract.js";
-import type { DefaultCharterDatumArgs } from "./DefaultCapo.js";
-import { Capo } from "./Capo.js";
+import type { StellarContract } from "./StellarContract.js";
 
 export type RawDatumType<T extends DatumAdapter<any, any,any>> =
     T extends DatumAdapter<infer R, any,any> ? R : never;
@@ -10,7 +8,7 @@ export type RawDatumType<T extends DatumAdapter<any, any,any>> =
      * Provides transformations of data between preferred application types and on-chain data types
      * @remarks
      * 
-     * This class is intended to be subclassed for each specific data type used in a Capo contract.
+     * This class is intended to be subclassed for each specific data type used StellarContracts class
      * 
      * The fromOnchainDatum method should be implemented to convert deserialized on-chain data to the application type,
      * 
@@ -35,7 +33,8 @@ export abstract class DatumAdapter<
         return this.strella.onChainTypes;
     }
     get capo() {
-        if (this.strella instanceof Capo) return this.strella;
+        if ("initSettingsAdapter" in this.strella) return this.strella;
+
         throw new Error(`not a capo instance: ${this.strella.constructor.name}`);
     }
 
@@ -61,3 +60,4 @@ export abstract class DatumAdapter<
          **/
     abstract toOnchainDatum(d: appType): Datum;
 }
+

@@ -25,9 +25,9 @@ export class CustomTreasury extends DefaultCapo<CustomMinter> {
     }
     declare minter: CustomMinter;
 
-    static get defaultParams() {
-        return {};
-    }
+    // static get defaultParams() {
+    //     return {};
+    // }
 
     @Activity.redeemer
     activityMintingToken(tokenName: string): isActivity {
@@ -39,18 +39,18 @@ export class CustomTreasury extends DefaultCapo<CustomMinter> {
         return { redeemer: t._toUplcData() };
     }
 
-    @txn
-    async mkTxnMintNamedToken(
-        tokenName: string,
-        count: bigint,
-        tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
-    ): Promise<StellarTxnContext> {
-        console.log("minting named token ");
-        return this.txnMustUseCharterUtxo(
-            tcx,
-            this.mintingToken(tokenName)
-        ).then(async (_sameTcx) => {
-            return this.minter!.txnMintingNamedToken(tcx, tokenName, count);
-        });
-    }
+    // @txn
+    // async mkTxnMintNamedToken(
+    //     tokenName: string,
+    //     count: bigint,
+    //     tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
+    // ): Promise<StellarTxnContext> {
+    //     console.log("minting named token ");
+    //     return this.txnMustUseCharterUtxo(
+    //         tcx,
+    //         this.mintingToken(tokenName)
+    //     ).then(async (_sameTcx) => {
+    //         return this.minter!.txnMintingNamedToken(tcx, tokenName, count);
+    //     });
+    // }
 }

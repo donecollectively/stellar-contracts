@@ -1,5 +1,4 @@
 import type {
-    ContractSettingsData,
     DefaultCharterDatumArgs,
     MinimalDefaultCharterDatumArgs,
 } from "../DefaultCapo.js";
@@ -24,6 +23,7 @@ import type {
 import { DefaultMinter } from "../minting/DefaultMinter.js";
 
 import type { expect as expectType } from "vitest";
+import type { OffchainSettingsType } from "../CapoSettingsTypes.js";
 
 declare namespace NodeJS {
     interface Global {
@@ -209,7 +209,7 @@ export class DefaultCapoTestHelper<
         });
     }
 
-    async updateSettings(args: ContractSettingsData<DC>) {
+    async updateSettings(args: OffchainSettingsType<DC>) {
         await this.mintCharterToken();
         const capo = await this.strella!;
         const tcx = await capo.mkTxnUpdateOnchainSettings(args);

@@ -70,6 +70,8 @@ import type { DelegationDetail } from "./delegation/RolesAndDelegates.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
 import type { AuthorityPolicy, anyState } from "../index.js";
 import type { DatumAdapter } from "./DatumAdapter.js";
+import { DefaultCapo } from "./DefaultCapo.js";
+import { type SettingsAdapterFor } from "./CapoSettingsTypes.js";
 
 export type {
     RoleMap,
@@ -387,10 +389,8 @@ export abstract class Capo<
     // ): Promise<TxInput | never>;
 
     
-    abstract initSettingsAdapter():DatumAdapter<any, settingsType, this>;
-    settingsAdapter! : ReturnType<
-        this["initSettingsAdapter"]
-    > extends DatumAdapter<any, infer Onchain, any> ? Onchain : never
+    abstract initSettingsAdapter(): DatumAdapter<any, settingsType, this>;
+    settingsAdapter! : DatumAdapter<any, any, this> & SettingsAdapterFor<this>
     abstract mkInitialSettings() : settingsType
     abstract mkDatumSettingsData(settings: settingsType): Datum;
     abstract readSettingsDatum(settings: 

@@ -40,14 +40,14 @@ class CustomTreasuryTestHelper extends DefaultCapoTestHelper<CustomTreasury> {
         return CustomTreasury;
     }
 
-    mkDefaultCharterArgs() {
-        return {
-            govAuthorityLink: {
-                addrHint: [this.currentActor.address],
-                strategyName: "address",
-            },
-        };
-    }
+    // mkDefaultCharterArgs() {
+    //     return {
+    //         govAuthorityLink: {
+    //             addrHint: [this.currentActor.address],
+    //             strategyName: "address",
+    //         },
+    //     };
+    // }
 
     async setupActors() {
         this.addActor("tina", 1100n * ADA);
@@ -85,30 +85,30 @@ class CustomTreasuryTestHelper extends DefaultCapoTestHelper<CustomTreasury> {
         });
     }
 
-    async mkCharterSpendTx(): Promise<StellarTxnContext> {
-        await this.mintCharterToken();
+    // async mkCharterSpendTx(): Promise<StellarTxnContext> {
+    //     await this.mintCharterToken();
 
-        const treasury = this.strella!;
-        const tcx: StellarTxnContext = new StellarTxnContext(this.currentActor);
+    //     const treasury = this.strella!;
+    //     const tcx: StellarTxnContext = new StellarTxnContext(this.currentActor);
 
-        return treasury.txnAddCharterWithAuthority(tcx);
-    }
+    //     return treasury.txnAddCharterWithAuthority(tcx);
+    // }
 
-    async updateCharter(
-        trustees: Address[],
-        minSigs: bigint
-    ): Promise<StellarTxnContext> {
-        await this.mintCharterToken();
-        const treasury = this.strella!;
+    // async updateCharter(
+    //     trustees: Address[],
+    //     minSigs: bigint
+    // ): Promise<StellarTxnContext> {
+    //     await this.mintCharterToken();
+    //     const treasury = this.strella!;
 
-        const { signers } = this.state;
+    //     const { signers } = this.state;
 
-        const tcx = await treasury.mkTxnUpdateCharter(trustees, minSigs);
-        return treasury.submit(tcx, { signers }).then(() => {
-            this.network.tick(1n);
-            return tcx;
-        });
-    }
+    //     const tcx = await treasury.mkTxnUpdateCharter(trustees, minSigs);
+    //     return treasury.submit(tcx, { signers }).then(() => {
+    //         this.network.tick(1n);
+    //         return tcx;
+    //     });
+    // }
 }
 
 describe.skip("StellarContract", async () => {

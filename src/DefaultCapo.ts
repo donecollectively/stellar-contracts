@@ -62,6 +62,11 @@ import type {
     UutCreationAttrsWithSeed,
     uutPurposeMap,
 } from "./Capo.js";
+
+import type { DatumAdapter } from "./DatumAdapter.js";
+import type { OffchainSettingsType, OnchainSettingsType, SettingsAdapterFor } from "./CapoSettingsTypes.js";
+import { DefaultSettingsAdapter, type RealNumberSettingsMap } from "./DefaultSettingsAdapter.js";
+
 import type { DefaultMinter } from "./minting/DefaultMinter.js";
 import {
     delegateRoles,
@@ -86,7 +91,6 @@ import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
 import { UutName } from "./delegation/UutName.js";
 import type { Expand, ExpandRecursively } from "./testing/types.js";
-import { DefaultSettingsAdapter, type RealNumberSettingsMap } from "./DefaultSettingsAdapter.js";
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
@@ -117,10 +121,6 @@ export type OnchainSettingsDataTransport<
     } ? transportType : never;
 }
 
-
-export type ContractSettingsData<
-    CAPO_TYPE extends DefaultCapo<any, any, any>
-> = Awaited<ReturnType<CAPO_TYPE["mkInitialSettings"]>>
 
 /**
  * Includes key details needed to create a delegate link
@@ -255,7 +255,7 @@ interface RawGenericSettings {
  */
 
 export class DefaultCapo<
-        settingsType = RealNumberSettingsMap,
+        settingsType extends  OffchainSettingsType<any> = RealNumberSettingsMap,
         MinterType extends DefaultMinter = DefaultMinter,
         CDT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs,
         configType extends CapoBaseConfig = CapoBaseConfig,
@@ -547,24 +547,27 @@ export class DefaultCapo<
     initSettingsAdapter() {
         return new DefaultSettingsAdapter(this)
     }
+
     @datum
+    //@ts-expect-error we got too fancy for typescript, it seems.
     mkDatumSettingsData(
-        settings: ContractSettingsData<this>
-    ) {
-        //@ts-expect-error we got too fancy for typescript, it seems.
-        return this.settingsAdapter.toOnchainDatum(settings);
+        settings: OffchainSettingsType<this>
+    ) : Datum{
+        const adapter = this.settingsAdapter
+        return adapter.toOnchainDatum(settings) as Datum
     }
 
     async readSettingsDatum(
-        parsedDatum
-    ) : Promise<ContractSettingsData<this>> {
-        //@ts-expect-error - it actually uses the settingsAdapter from a subclass,
+        parsedDatum: OnchainSettingsType<this>
+    ) : Promise<OffchainSettingsType<this>> {
+        //@Xts-expect-error - it actually uses the settingsAdapter from a subclass,
         //   but it seems Typescript can't tell how that works, given the way it's declared.
         //   ??? fixes welcome
         return this.settingsAdapter.fromOnchainDatum(parsedDatum)
     }
 
-    mkInitialSettings() : settingsType extends Record<string, number> ? settingsType : never {
+    //@ts-expect-error - method should be overridden
+    mkInitialSettings() : OffchainSettingsType<this> {
         //@ts-expect-error - method should be overridden
         return { meaning: 42 }
     }
@@ -828,7 +831,7 @@ export class DefaultCapo<
             //     T extends (...args: infer A) => infer R ? (...args: Normalize<A>) => Normalize<R>  
             //     : T extends any ? {[K in keyof T]: Normalize<T[K]>} : never
 
-            const config = this.mkInitialSettings() as ContractSettingsData<this>;
+            const config = this.mkInitialSettings()
             const tcx5 = this.txnAddSettingsOutput(tcx4, config)
             
             // debugger
@@ -847,30 +850,23 @@ export class DefaultCapo<
         return promise;
     }
     
-    async findSettingsDatum() {
-        const charterDatum = await this.findCharterDatum();
-        // it's always read as a number[], never a UutName : /
-        const uutName : number[] = charterDatum.settingsUut as number[];
-
-        const s = bytesToText(uutName)
-
-        const t = new UutName("set", s)
-        const t2 = this.uutsValue(    t        )
-        const settingsUtxo = await this.mustFindMyUtxo("set-uut", 
-            this.mkTokenPredicate(t2)
-        );
-
-        const settingsDatum = await this.readDatum<OnchainContractSettingsData<this>>(
-            "SettingsData",
-            settingsUtxo.origOutput.datum as InlineDatum
-        );
-        if (!settingsDatum) throw Error(`invalid config UTxO datum`);
-        return this.readSettingsDatum(settingsDatum);
+    async findSettingsDatum({
+        settingsUtxo, charterUtxo
+    }: {
+        settingsUtxo? : TxInput, charterUtxo? : TxInput
+    } = {}): Promise<settingsType> {
+        const foundSettingsUtxo = settingsUtxo || await this.findSettingsUtxo(charterUtxo);
+        const data = await this.readDatum(
+            this.settingsAdapter,
+            foundSettingsUtxo.origOutput.datum as InlineDatum
+        );        
+        if (!data) throw Error(`missing or invalid settings UTxO datum`);
+        return data
     }
 
     txnAddSettingsOutput<TCX extends StellarTxnContext>(
         tcx: TCX,
-        config: ContractSettingsData<this>
+        config: OffchainSettingsType<this>
     ): TCX {
         const settingsOut = new TxOutput(
             this.address,
@@ -1065,23 +1061,9 @@ export class DefaultCapo<
         );
     }
 
-    async getSettingsDatum({
-        settingsUtxo, charterUtxo
-    }: {
-        settingsUtxo? : TxInput, charterUtxo? : TxInput
-    } = {}) {
-        const foundSettingsUtxo = settingsUtxo || await this.findSettingsUtxo(charterUtxo);
-        const raw = await this.readDatum<OnchainContractSettingsData<this>>(
-            "SettingsData",
-            foundSettingsUtxo.origOutput.datum as InlineDatum
-        );        
-        if (!raw) throw Error(`missing or invalid config UTxO datum`);
-        return this.readSettingsDatum(raw);
-    }
-
     @txn
     async mkTxnUpdateOnchainSettings<TCX extends StellarTxnContext>(
-        data: ContractSettingsData<this>, 
+        data: OffchainSettingsType<this>, 
         settingsUtxo? : TxInput,
         tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
     ): Promise<TCX> {

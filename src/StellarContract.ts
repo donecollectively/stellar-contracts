@@ -37,6 +37,7 @@ import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { mkTv, stringToNumberArray } from "./utils.js";
 import { UutName } from "./delegation/UutName.js";
 import type { Capo } from "./Capo.js";
+import { DatumAdapter } from "./DatumAdapter.js";
 
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer
@@ -800,9 +801,9 @@ export class StellarContract<
      * returns the on-chain enum used for spending contract utxos or for different use-cases of minting (in a minting script).
      * the returned type (and its enum variants) are suitable for off-chain txn-creation
      * override `get onChainActivitiesName()` if needed to match your contract script.
-     * @internal
+     * @public
      **/
-    private get onChainActivitiesType() {
+    get onChainActivitiesType() {
         const { scriptActivitiesName: onChainActivitiesName } = this;
         if (!this.scriptProgram) throw new Error(`no scriptProgram`);
 
@@ -848,12 +849,18 @@ export class StellarContract<
         return activityType;
     }
 
-    async readDatum<DPROPS extends anyDatumProps>(
-        datumName: string,
-        datum: Datum | InlineDatum
-    ): Promise<DPROPS | undefined> {
+    async readDatum<
+        DPROPS extends anyDatumProps,
+        adapterType extends DatumAdapter<any, DPROPS, any> | undefined = undefined
+    >(
+        datumNameOrAdapter: string | adapterType,
+        datum: Datum | InlineDatum,
+    ): Promise<
+        (adapterType extends DatumAdapter<any,any,any> ? adapterType : DPROPS) | undefined> {
+        const hasAdapter = datumNameOrAdapter instanceof DatumAdapter;
+        const datumName = hasAdapter ?
+            datumNameOrAdapter.datumName : datumNameOrAdapter;
         const thisDatumType = this.onChainDatumType[datumName];
-
         // console.log(` ----- read datum ${datumName}`)
 
         if (!thisDatumType) throw new Error(`invalid datumName ${datumName}`);
@@ -862,10 +869,15 @@ export class StellarContract<
                 `datum must be an InlineDatum to be readable using readDatum()`
             );
 
-        return this.readUplcDatum(thisDatumType, datum.data!).catch((e) => {
+        const rawParsedData = (await this.readUplcDatum(thisDatumType, datum.data!).catch((e) => {
             if (e.message?.match(/expected constrData/)) return undefined;
             throw e;
-        }) as Promise<DPROPS | undefined>;
+        }) ) as DPROPS | undefined;
+        if (!rawParsedData) return undefined;
+        if (hasAdapter) {
+            return datumNameOrAdapter.fromOnchainDatum(rawParsedData);
+        }
+        return rawParsedData as any
     }
 
     private async readUplcStructList(uplcType: any, uplcData: ListData) {
