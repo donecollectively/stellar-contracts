@@ -89,7 +89,7 @@ export type {
     ConfigFor
 } from "./src/StellarContract.js";
 
-
+export { DatumAdapter } from "./src/DatumAdapter.js";
 export { DefaultMinter } from "./src/minting/DefaultMinter.js";
 export { 
     DefaultCapo, 

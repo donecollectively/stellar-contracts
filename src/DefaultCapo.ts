@@ -85,8 +85,8 @@ import { CapoHelpers } from "./CapoHelpers.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
 import { UutName } from "./delegation/UutName.js";
-import type { Expand } from "./testing/types.js";
-import { DefaultSettingsAdapter, type RealNumberSettingsMap } from "./SettingsAdapter.js";
+import type { Expand, ExpandRecursively } from "./testing/types.js";
+import { DefaultSettingsAdapter, type RealNumberSettingsMap } from "./DefaultSettingsAdapter.js";
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
