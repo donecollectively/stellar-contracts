@@ -5,7 +5,13 @@ import {
     TxInput,
     UplcProgram,
 } from "@hyperionbt/helios";
-import type { Address, Hash, NetworkParams, TxId, Wallet } from "@hyperionbt/helios";
+import type {
+    Address,
+    Hash,
+    NetworkParams,
+    TxId,
+    Wallet,
+} from "@hyperionbt/helios";
 
 import { txAsString } from "./diagnostics.js";
 import type { hasUutContext } from "./Capo.js";
@@ -23,23 +29,22 @@ export type hasSeedUtxo = StellarTxnContext<
 
 export type AddlTxInfo<T extends StellarTxnContext> = {
     tcx: T;
-    description: string,
-    moreInfo: string,
-    optional: boolean,
-    txName?: string,
-}
+    description: string;
+    moreInfo: string;
+    optional: boolean;
+    txName?: string;
+};
 
-export type AddlTxnCallback = 
-| ( (futTx:  AddlTxInfo<any>) => void )
-| ( (futTx:  AddlTxInfo<any>) => Promise<void> ) 
-| ( (futTx:  AddlTxInfo<any>) => StellarTxnContext<any> ) 
-| ( (futTx:  AddlTxInfo<any>) => Promise<StellarTxnContext<any>> ) 
+export type AddlTxnCallback =
+    | ((futTx: AddlTxInfo<any>) => void)
+    | ((futTx: AddlTxInfo<any>) => Promise<void>)
+    | ((futTx: AddlTxInfo<any>) => StellarTxnContext<any>)
+    | ((futTx: AddlTxInfo<any>) => Promise<StellarTxnContext<any>>);
 
 /**
  * A transaction context that includes additional transactions in its state for later execution
  * @remarks
  *
- * 
  * During the course of creating a transaction, the transaction-building functions for a contract
  * suite may suggest or require further transactions, which may not be executable until after the
  * current transaction is executed.  This type allows the transaction context to include such
@@ -82,7 +87,7 @@ export type otherAddlTxnNames<TCX extends StellarTxnContext<any>> = string &
 /**
  * unique seed for creating UUTs and other uniqueness
  * @remarks
- * 
+ *
  * The attributes of a seed utxo.  When the Utxo is used in a transaction,
  * the seedTxn and seedIndex constitute a unique identifier that won't be
  * repeated in the future, and that uniqueness can be used as a seed for
@@ -267,26 +272,30 @@ export class StellarTxnContext<S extends anyState = anyState> {
      **/
     addRefInput<TCX extends StellarTxnContext<S>>(
         this: TCX,
-        ... inputArgs: addRefInputArgs
+        ...inputArgs: addRefInputArgs
     ) {
-        const [input, ... moreArgs ] = inputArgs;
+        const [input, ...moreArgs] = inputArgs;
         if (this.txRefInputs.find((v) => v.outputId.eq(input.outputId))) {
             console.warn("suppressing second add of refInput");
             return this;
         }
         this.txRefInputs.push(input);
-        
+
         // if (moreArgs.length) {
         //     //@ts-expect-error
         //     this.tx.attachScript(...moreArgs);
         //     return this
         // }
 
-        const t =  this.tx.witnesses.scripts.length
+        const t = this.tx.witnesses.scripts.length;
         this.tx.addRefInput(input, ...moreArgs);
-        const t2 =  this.tx.witnesses.scripts.length;
+        const t2 = this.tx.witnesses.scripts.length;
         if (t2 > t) {
-            console.log("      --- addRefInput added ", this.tx.witnesses.scripts.length - t, " to tx.scripts")
+            console.log(
+                "      --- addRefInput added ",
+                this.tx.witnesses.scripts.length - t,
+                " to tx.scripts"
+            );
         }
 
         return this;
@@ -353,33 +362,46 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     attachScript(...args: Parameters<Tx["attachScript"]>) {
-        throw new Error(`use addScriptProgram(), increasing the txn size, if you don't have a referenceScript.\n`+
-          `Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.`
-          );
+        throw new Error(
+            `use addScriptProgram(), increasing the txn size, if you don't have a referenceScript.\n` +
+                `Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.`
+        );
     }
 
     addScriptProgram(...args: Parameters<Tx["attachScript"]>) {
         const script = args[0];
         // console.log("in attachScript, scripts is ", this.tx.witnesses.scripts.map(x => x.hash().slice(0,8)))
         if (script instanceof UplcProgram) {
-            const thisPurpose = script.properties.purpose
-            const whichHash = 
-                thisPurpose == "minting" ? "mintingPolicyHash" 
-                : thisPurpose == "staking" ? "stakingValidatorHash" 
-                : thisPurpose == "spending" ?  "validatorHash" : ""
-            const expected : Hash = script[whichHash];
-            if (!whichHash || !expected) throw new Error(`unexpected script purpose ${script.properties.purpose} in attachScript()`);
+            const thisPurpose = script.properties.purpose;
+            const whichHash =
+                thisPurpose == "minting"
+                    ? "mintingPolicyHash"
+                    : thisPurpose == "staking"
+                    ? "stakingValidatorHash"
+                    : thisPurpose == "spending"
+                    ? "validatorHash"
+                    : "";
+            const expected: Hash = script[whichHash];
+            if (!whichHash || !expected)
+                throw new Error(
+                    `unexpected script purpose ${script.properties.purpose} in attachScript()`
+                );
 
-            if (this.txRefInputs?.find((ri) => {
+            if (
+                this.txRefInputs?.find((ri) => {
                     const rs = ri.origOutput.refScript;
                     if (!rs) return false;
-                    const {purpose} = rs.properties;
-                    if (purpose && (purpose != thisPurpose)) return false;
+                    const { purpose } = rs.properties;
+                    if (purpose && purpose != thisPurpose) return false;
 
-                    const foundHash : Hash =  ri.origOutput.refScript?.[whichHash];
+                    const foundHash: Hash =
+                        ri.origOutput.refScript?.[whichHash];
                     return foundHash.eq(expected);
-            })) {
-                console.log("     --- txn already has this script as a refScript; not re-adding");
+                })
+            ) {
+                console.log(
+                    "     --- txn already has this script as a refScript; not re-adding"
+                );
                 return this;
             }
         }
