@@ -387,14 +387,14 @@ export abstract class Capo<
     // ): Promise<TxInput | never>;
 
     
-    abstract initSettingsAdapter():DatumAdapter<any, settingsType>;
+    abstract initSettingsAdapter():DatumAdapter<any, settingsType, this>;
     settingsAdapter! : ReturnType<
         this["initSettingsAdapter"]
-    > extends DatumAdapter<any, infer Onchain> ? Onchain : never
+    > extends DatumAdapter<any, infer Onchain, any> ? Onchain : never
     abstract mkInitialSettings() : settingsType
     abstract mkDatumSettingsData(settings: settingsType): Datum;
     abstract readSettingsDatum(settings: 
-        ReturnType<this["initSettingsAdapter"]> extends DatumAdapter<any, infer Onchain> ? 
+        ReturnType<this["initSettingsAdapter"]> extends DatumAdapter<any, infer Onchain, any> ? 
         Onchain : never
     );
 

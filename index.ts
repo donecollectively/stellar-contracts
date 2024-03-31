@@ -5,7 +5,6 @@ export {
     stringToNumberArray,
 } from "./src/utils.js";
 
-
 export {
     assetsAsString,
     txAsString,
@@ -95,12 +94,15 @@ export {
     DefaultCapo, 
     // contract as DefaultCapoContract 
 } from "./src/DefaultCapo.js";
-export type { DefaultCharterDatumArgs } from "./src/DefaultCapo.js";
+export type { 
+    DefaultCharterDatumArgs,
+    MinimalDelegateLink
+} from "./src/DefaultCapo.js";
 
 export type {
     tokenNamesOrValuesEntry,
     InlineDatum,
-    valuesEntry,    
+    valuesEntry,
     Datum,
     Tx,
     TxInput,

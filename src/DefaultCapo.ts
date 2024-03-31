@@ -542,10 +542,10 @@ export class DefaultCapo<
         return Datum.inline(t._toUplcData());
     }
 
-    //@ts-expect-error on the default return type - override this method with
+    // XX@ts-expect-error on the default return type - override this method with
     //    more specific adapter
     initSettingsAdapter() {
-        return new DefaultSettingsAdapter(this.onChainDatumType, this.onChainTypes)
+        return new DefaultSettingsAdapter(this)
     }
     @datum
     mkDatumSettingsData(
