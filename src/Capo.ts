@@ -365,7 +365,11 @@ export abstract class Capo<
         } else {
             // this.connectMintingScript(this.getMinterParams());
         }
+
+        //@ts-expect-error - trust the subclass's initSettingsAdapter() to be type-matchy
+        //   ... based on other abstract methods defined below
         this.settingsAdapter = this.initSettingsAdapter()
+
         return this;
     }
 
