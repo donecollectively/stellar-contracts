@@ -1,7 +1,7 @@
 import type { Datum } from "@hyperionbt/helios";
 import type { StellarContract, anyDatumProps } from "./StellarContract.js";
 import type { DefaultCharterDatumArgs } from "./DefaultCapo.js";
-import type { Capo } from "./Capo.js";
+import { Capo } from "./Capo.js";
 
 export type RawDatumType<T extends DatumAdapter<any, any,any>> =
     T extends DatumAdapter<infer R, any,any> ? R : never;
@@ -33,6 +33,10 @@ export abstract class DatumAdapter<
     }
     get onChainTypes() {
         return this.strella.onChainTypes;
+    }
+    get capo() {
+        if (this.strella instanceof Capo) return this.strella;
+        throw new Error(`not a capo instance: ${this.strella.constructor.name}`);
     }
 
     abstract datumName: string;
