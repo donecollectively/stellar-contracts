@@ -805,9 +805,8 @@ export class DefaultCapo<
             // creates an addl txn that stores a refScript in the delegate;
             //   that refScript could be stored somewhere else instead (e.g. the Capo)
             //   but for now it's in the delegate addr.
-            const tcx2 = await mintDelegate.delegate.txnCreateRefScript(
-                tcx,
-                "MintDelegate"
+            const tcx2 = await this.txnMkAddlRefScriptTxn(
+                tcx, "mintDelegate", mintDelegate.delegate.compiledScript
             );
 
             const tcx3 = await this.txnMkAddlRefScriptTxn(

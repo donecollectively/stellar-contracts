@@ -156,7 +156,9 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
                 `mint delegate requires an explicit redeemer for txnGrantAuthority()`
             );
 
-        await this.txnMustAddMyRefScript(tcx);
+        const {capo} = this.configIn!;
+        await capo.txnAttachScriptOrRefScript(tcx, this.compiledScript);
+
         return super.txnGrantAuthority(tcx, redeemer, returnExistingDelegate);
     }
 
@@ -239,80 +241,6 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
         // const v : Value = ffu?.value || this.mkMinAssetValue(this.configIn!.uut);
         const datum = this.mkDelegationDatum(fromFoundUtxo);
         return tcx.addOutput(new TxOutput(this.address, tokenValue, datum));
-    }
-
-    /**
-     * Creates a reference-script utxo for the minting delegate
-     * @remarks
-     *
-     * Creates an addl txn for the minting delegate to create a reference-script utxo
-     * @param tcx - the transaction context
-     * @param scriptName - the name of the script, used in the addlTxn name
-     * @public
-     **/
-    async txnCreateRefScript<
-        TCX extends StellarTxnContext<anyState>,
-        scriptName extends string,
-    >(
-        tcx: TCX,    
-        scriptName: scriptName
-    ): Promise<hasAddlTxns<
-        `refScript${Capitalize<scriptName>}` | otherAddlTxnNames<TCX>,
-        TCX
-    >> {
-        const refScriptUtxo = new TxOutput(
-            this.address,
-            new Value(this.ADA(0n)),
-            this.mkDatumScriptReference(),
-            this.compiledScript
-        );
-        refScriptUtxo.correctLovelace(this.networkParams);
-        const payment = refScriptUtxo.value.lovelace;
-        const fuTcx = new StellarTxnContext(this.myActor).addOutput(
-            refScriptUtxo
-        );
-        // fuTcx.neededSigners.push(this.myActor!);
-
-        this.myActor!;
-
-        // input will be added by txn-balancing code
-        // .addInput(
-        //     await this.mustFindActorUtxo(
-        //         "payment for refScript",
-        //         this.mkValuePredicate(payment),
-        //         tcx
-        //     )
-        // );
-
-        return tcx.includeAddlTxn(`refScript${scriptName}`, {
-            description:
-                "creates on-chain reference script for minting delegate",
-            moreInfo: "saves txn fees and txn space in future txns",
-            optional: false,
-            tcx: fuTcx,
-        });
-    }
-
-    async txnMustAddMyRefScript<TCX extends StellarTxnContext>(
-        tcx: TCX
-    ): Promise<TCX> {
-        const expectedVh = this.compiledScript.hash().toString();
-        const { purpose: expectedPurpose } = this.compiledScript.properties;
-        const isMyRefScript = (txin: TxInput) => {
-            const { purpose } = txin.origOutput.refScript?.properties || {};
-            if (purpose && purpose != expectedPurpose) return false;
-
-            return txin.origOutput.refScript?.hash().toString() == expectedVh;
-        };
-
-        if (tcx.txRefInputs.find(isMyRefScript)) {
-            console.warn("suppressing second add of refScript");
-            return tcx;
-        }
-
-        const foundUtxo = await this.mustFindMyUtxo("refScript", isMyRefScript);
-
-        return tcx.addRefInput(foundUtxo, this.compiledScript);
     }
 
     /**
