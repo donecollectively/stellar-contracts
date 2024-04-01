@@ -62,16 +62,37 @@ import {
     mkValuesEntry,
     stringToNumberArray,
 } from "./utils.js";
-import type {
-    DefaultCharterDatumArgs,
-    MinimalDelegateLink,
-} from "./DefaultCapo.js";
+
 import type { DelegationDetail } from "./delegation/RolesAndDelegates.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
 import type { AuthorityPolicy, anyState } from "../index.js";
 import type { DatumAdapter } from "./DatumAdapter.js";
-import { DefaultCapo } from "./DefaultCapo.js";
 import { type OffchainSettingsType, type OnchainSettingsType, type SettingsAdapterFor } from "./CapoSettingsTypes.js";
+
+/**
+ * Includes key details needed to create a delegate link
+ * @remarks
+ *
+ * Requires a `strategyName` and may include a partial `config` for the targeted SC contract type
+ *
+ * Because delegates can be of different subtypes, the SC and `config` are typically
+ * generic at the type level.  When using the `config` entry for a specific delegate subtype,
+ * additional details might be needed (not expected to be the norm).
+ *
+ * uutName can't be specified in this structure because creating a delegate link
+ * should use txnMustGetSeedUtxo() instead, minting a new UUT for the purpose.
+ * If you seek to reuse an existing uutName, probably you're modifying an existing
+ * full RelativeDelegateLink structure instead - e.g. with a different `strategy` and
+ * `config`; this type wouldn't be involved in that case.
+ *
+ * @typeParam SC - the type of StellarContract targeted for delegation
+ * @public
+ **/
+
+export type MinimalDelegateLink<SC extends StellarDelegate<any>> = Required<
+    Pick<RelativeDelegateLink<SC>, "strategyName">
+> &
+    Partial<Omit<RelativeDelegateLink<SC>, "uutName">>;
 
 export type {
     RoleMap,

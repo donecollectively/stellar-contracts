@@ -766,12 +766,13 @@ export class StellarContract<
     }
 
     /**
-     * returns the on-chain type for datum
+     * The on-chain type for datum
      * @remarks
      *
-     * returns the on-chain enum used for attaching data (or data hashes) to contract utxos
-     * the returned type (and its enum variants) are suitable for off-chain txn-creation
-     * override `get scriptDatumName()` if needed to match your contract script.
+     * This getter provides a class, representing the on-chain enum used for attaching 
+     * data (or data hashes) to contract utxos the returned type (and its enum variants) 
+     * are suitable for off-chain txn-creation override `get scriptDatumName()` if 
+     * needed to match your contract script.
      * @public
      **/
     get onChainDatumType() {
