@@ -39,6 +39,12 @@ export type {
     hasBootstrappedConfig,
 } from "./src/Capo.js";
 
+export { 
+    type OffchainSettingsType, 
+    type OnchainSettingsType, 
+    type SettingsAdapterFor
+} from "./src/CapoSettingsTypes.js";
+
 export {
     delegateRoles, defineRole, 
 } from "./src/delegation/RolesAndDelegates.js"

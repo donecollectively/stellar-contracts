@@ -71,7 +71,7 @@ import { StellarDelegate } from "./delegation/StellarDelegate.js";
 import type { AuthorityPolicy, anyState } from "../index.js";
 import type { DatumAdapter } from "./DatumAdapter.js";
 import { DefaultCapo } from "./DefaultCapo.js";
-import { type SettingsAdapterFor } from "./CapoSettingsTypes.js";
+import { type OffchainSettingsType, type OnchainSettingsType, type SettingsAdapterFor } from "./CapoSettingsTypes.js";
 
 export type {
     RoleMap,
@@ -390,13 +390,18 @@ export abstract class Capo<
 
     
     abstract initSettingsAdapter(): DatumAdapter<any, settingsType, this>;
-    settingsAdapter! : DatumAdapter<any, any, this> & SettingsAdapterFor<this>
+    settingsAdapter! : DatumAdapter<any, settingsType, this> & SettingsAdapterFor<this>
     abstract mkInitialSettings() : settingsType
     abstract mkDatumSettingsData(settings: settingsType): Datum;
-    abstract readSettingsDatum(settings: 
-        ReturnType<this["initSettingsAdapter"]> extends DatumAdapter<any, infer Onchain, any> ? 
-        Onchain : never
-    );
+    // abstract readSettingsDatum(settings: 
+    //     ReturnType<this["initSettingsAdapter"]> extends DatumAdapter<any, infer Onchain, any> ? 
+    //     Onchain : never
+    // );
+    async readSettingsDatum(
+        parsedDatum: OnchainSettingsType<this>
+    ) : Promise<settingsType> {
+        return this.settingsAdapter.fromOnchainDatum(parsedDatum)
+    }
 
     get minterClass(): stellarSubclass<DefaultMinter, BasicMinterParams> {
         return DefaultMinter;

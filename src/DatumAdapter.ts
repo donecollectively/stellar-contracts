@@ -1,9 +1,6 @@
 import type { Datum } from "@hyperionbt/helios";
 import type { StellarContract } from "./StellarContract.js";
 
-export type RawDatumType<T extends DatumAdapter<any, any,any>> =
-    T extends DatumAdapter<infer R, any,any> ? R : never;
-
     /**
      * Provides transformations of data between preferred application types and on-chain data types
      * @remarks

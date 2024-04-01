@@ -106,22 +106,6 @@ export interface DefaultCharterDatumArgs {
     govAuthorityLink: RelativeDelegateLink<AuthorityPolicy>;
 };
 
-// defines a data-transport format that can be serialized to UPLC
-// by the helios "off-chain type" for the corresponding on-chain data type
-export type OnchainContractSettingsData<
-    CAPO_TYPE extends DefaultCapo<any, any, any>
-> = {
-    data: Array<{ name: string; microInt: bigint }>;
-}
-export type OnchainSettingsDataTransport<
-    CAPO_TYPE extends DefaultCapo<any, any, any>
-> = {
-    data: CAPO_TYPE extends {
-        readSettingsDatum: ( (...args: [infer transportType, ...any]) => any)
-    } ? transportType : never;
-}
-
-
 /**
  * Includes key details needed to create a delegate link
  * @remarks
@@ -549,25 +533,16 @@ export class DefaultCapo<
     }
 
     @datum
-    //@ts-expect-error we got too fancy for typescript, it seems.
     mkDatumSettingsData(
-        settings: OffchainSettingsType<this>
+        settings: settingsType
     ) : Datum{
         const adapter = this.settingsAdapter
         return adapter.toOnchainDatum(settings) as Datum
     }
 
-    async readSettingsDatum(
-        parsedDatum: OnchainSettingsType<this>
-    ) : Promise<OffchainSettingsType<this>> {
-        //@Xts-expect-error - it actually uses the settingsAdapter from a subclass,
-        //   but it seems Typescript can't tell how that works, given the way it's declared.
-        //   ??? fixes welcome
-        return this.settingsAdapter.fromOnchainDatum(parsedDatum)
-    }
 
-    //@ts-expect-error - method should be overridden
-    mkInitialSettings() : OffchainSettingsType<this> {
+    //@Xts-expect-error - method should be overridden
+    mkInitialSettings() : settingsType {
         //@ts-expect-error - method should be overridden
         return { meaning: 42 }
     }
@@ -831,8 +806,8 @@ export class DefaultCapo<
             //     T extends (...args: infer A) => infer R ? (...args: Normalize<A>) => Normalize<R>  
             //     : T extends any ? {[K in keyof T]: Normalize<T[K]>} : never
 
-            const config = this.mkInitialSettings()
-            const tcx5 = this.txnAddSettingsOutput(tcx4, config)
+            const settings = this.mkInitialSettings()
+            const tcx5 = this.txnAddSettingsOutput(tcx4, settings)
             
             // debugger
 
@@ -866,12 +841,12 @@ export class DefaultCapo<
 
     txnAddSettingsOutput<TCX extends StellarTxnContext>(
         tcx: TCX,
-        config: OffchainSettingsType<this>
+        settings: settingsType
     ): TCX {
         const settingsOut = new TxOutput(
             this.address,
             this.uutsValue(tcx.state.uuts.set),
-            this.mkDatumSettingsData(config)
+            this.mkDatumSettingsData(settings)
         );
         settingsOut.correctLovelace(this.networkParams);
         return tcx.addOutput(settingsOut);
@@ -1063,7 +1038,7 @@ export class DefaultCapo<
 
     @txn
     async mkTxnUpdateOnchainSettings<TCX extends StellarTxnContext>(
-        data: OffchainSettingsType<this>, 
+        data: settingsType, 
         settingsUtxo? : TxInput,
         tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
     ): Promise<TCX> {
