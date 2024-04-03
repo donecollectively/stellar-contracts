@@ -1,13 +1,10 @@
-import { Datum } from "@hyperionbt/helios";
+import { ConstrData, Datum } from "@hyperionbt/helios";
 import { DatumAdapter } from "./DatumAdapter.js";
 import type { Capo } from "./Capo.js";
 
 export type RealNumberSettingsMap = { [key: string]: number };
 export type onchainRealNumberSettingsMap = {
-    data: Array<{
-        name: string;
-        microInt: bigint;
-    }>;
+    data: Record<string, bigint>
 };
 
 export class DefaultSettingsAdapter extends DatumAdapter<
@@ -21,7 +18,7 @@ export class DefaultSettingsAdapter extends DatumAdapter<
     ): RealNumberSettingsMap {
         console.log("-------------------------------------> ", parsedDatum);
         const settingsMap: Record<string, number> = {};
-        for (const { name, microInt } of parsedDatum.data) {
+        for (const [ name, microInt ] of Object.entries(parsedDatum.data)) {
             // get the number found in the microInt
             if (microInt > Number.MAX_SAFE_INTEGER) {
                 throw new Error(
@@ -46,18 +43,9 @@ export class DefaultSettingsAdapter extends DatumAdapter<
         // temporarily use the helios on-chain type.  Later this can just return a JSON structure
         // that Helios will easily convert to its on-chain type.
         return Datum.inline(
-            new hlSettingsData(
-                Object.entries(settings).map(([k, v]) => {
-                    const microInt = BigInt(v) * 1_000_000n;
-                    if (microInt > Number.MAX_SAFE_INTEGER) {
-                        throw new Error(
-                            `microInt value too large for Number: ${microInt}`
-                        );
-                    }
-
-                    return new RealnumSettingsValueV1(k, microInt);
-                })
-            )._toUplcData()
+            new ConstrData(2, [
+                this.toMapData(settings, this.toRealNum)
+            ])
         );
         // const t2 = new ConstrData(settingsConstrIndex, [t])
         // const a = hlSettingsData.fromCbor(

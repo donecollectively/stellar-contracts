@@ -34,14 +34,19 @@ enum Datum {
     CharterToken {
         spendDelegateLink: RelativeDelegateLink
         spendInvariants: []RelativeDelegateLink
-        settingsUut: ByteArray // a UUT-name link to a SettingsData
+        minValidSettingsVersion: Int // always forced to validate against all active delegates
+        settingsUuts: []ByteArray // UUT-name links to SettingsData's
         mintDelegateLink: RelativeDelegateLink
         mintInvariants: []RelativeDelegateLink
+        delegates: Map[String]RelativeDelegateLink
         govAuthorityLink: RelativeDelegateLink
     }
     ScriptReference
     SettingsData {
-        data:  []RealnumSettingsValueV1
+        settingsVersion: Int
+        
+        data:  Map[String]Data
+        // []RealnumSettingsValueV1
     }
 
     //! datum-validation only supports checks of absolute spendability, 

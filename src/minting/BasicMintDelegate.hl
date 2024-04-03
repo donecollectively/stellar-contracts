@@ -145,6 +145,19 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
 
                     mdd.validateCDConfig(ddNew) && ok
                 },
+                ValidatingSettings => {
+                    settings : Datum::CharterToken {
+                        /*spendDgt*/ _,  
+                        /* spendInvariants */ _,
+                        settings,
+                        /* mintDgt */, 
+                        /* mintInvariants */ _, 
+                        /* govAuthority */ _
+                    } = getTxCharterDatum(ctx, mph);            
+                    isValid = 
+                        ((isTest && throwIfBadSettings(ctx, mdd, settings)) || true) &&
+                        mdd.validateSettings(settings, ctx);
+                }
                 _ => true
             } && activity.additionalDelegateValidation(isD, ctx)
         },

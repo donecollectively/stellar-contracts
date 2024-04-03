@@ -136,10 +136,6 @@ export type HeldAssetsArgs = {
     purpose?: string;
 };
 
-interface RawGenericSettings {
-    data:{meaning:number}
-}
-
 // class GenericSettingsDetails extends DatumAdapter<RawGenericSettings, GenericSettingsDetails> {
 //     meaning: number;
 //     datumName = "SettingsData";
@@ -521,7 +517,10 @@ export class DefaultCapo<
     //@Xts-expect-error - method should be overridden
     mkInitialSettings() : settingsType {
         //@ts-expect-error - method should be overridden
-        return { meaning: 42 }
+        return { 
+            meaning: 42,
+            happy: 1,
+         }
     }
 
     // settingsDataToUplc(config: ContractSettingsData<this>) {
@@ -1005,8 +1004,8 @@ export class DefaultCapo<
         const chUtxo = charterUtxo || await this.mustFindCharterUtxo();
         const charterDatum = await this.findCharterDatum(chUtxo);
         const uutName = charterDatum.settingsUut;
-        const uutValue = this.uutsValue(
-            uutName);
+        console.log("findSettingsUut", {uutName, charterDatum}  );
+        const uutValue = this.uutsValue(uutName);
 
         return await this.mustFindMyUtxo("set-uut", 
             this.mkTokenPredicate(uutValue)

@@ -1,0 +1,7 @@
+module CustomCapoSettings
+
+struct settingsStruct {
+    meaning: Int   "meaning"
+}
+
+

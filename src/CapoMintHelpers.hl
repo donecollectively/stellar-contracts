@@ -213,7 +213,7 @@ func validateUutMinting(
 
     actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);
     // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);
-    if (false) {
+    if (true) {
         actualMint.for_each( (b : ByteArray, i: Int) -> {
             print( "actual: " + b.decode_utf8() + " " + i.show() )
         });

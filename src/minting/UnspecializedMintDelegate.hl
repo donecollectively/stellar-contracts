@@ -42,6 +42,10 @@ import {
     mkUutTnFactory
 } from CapoMintHelpers
 
+import {
+    settingsStruct
+} from CustomCapoSettings
+
 enum MintDelegateDatum {
     IsDelegation {
         dd: DelegationDetail
@@ -50,7 +54,10 @@ enum MintDelegateDatum {
         CustomConfig: String
     }
     ScriptReference
-    
+    func validateSettings(self, ctx: TransactionContext, settings, ctx) {
+        
+    }
+
     func validateCDConfig(self, updated: MintDelegateDatum::IsDelegation) -> Bool {
         self.switch {
             ddd: IsDelegation => {
@@ -71,6 +78,8 @@ enum MintDelegateActivity {
     }
     Retiring
     Modifying
+    ValidatingSettings
+
     // reserved activities for possible maintenance of utxos within the mint-delegate script.
     //  - these could be application-specific, but not used for mint delegation use-cases.
     _reserved3
@@ -122,7 +131,6 @@ enum MintDelegateActivity {
         assert(self.usesGenericUutMinting(), "no genericUutMinting");
         o : []TxOutput = ctx.get_cont_outputs();
         if (o.length != 1) { error("single utxo only") };
-
 
         print ("in unsp_MD");
         isOk : Bool = returnsAuthzToken && 

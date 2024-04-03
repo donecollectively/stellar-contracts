@@ -575,6 +575,8 @@ export class StellarContract<
         return (this._cache.vh = nvh);
     }
 
+    //  todo: stakingAddress?: Address or credential or whatever;
+
     get address(): Address {
         const { addr } = this._cache;
         console.log(
@@ -583,6 +585,9 @@ export class StellarContract<
             addr?.toBech32() || "none"
         );
         if (addr) return addr;
+        console.log("TODO TODO TODO TODO TODO - ensure each contract can indicate the right stake part of its address");
+        console.log("and that the onchain part also supports it")
+        
         const nAddr = Address.fromHashes(this.validatorHash);
         // console.log("nAddr", nAddr.toBech32());
         // if (this._address) {
@@ -1020,21 +1025,31 @@ export class StellarContract<
     ) {
         let value;
         const { offChainType } = fieldType;
-        const internalType = fieldType.typeDetails.internalType.type;
-        if ("Struct" == internalType) {
-            value = await this.readUplcStructList(fieldType, uplcDataField);
-            // console.log(`  <-- field value`, value)
-            return value;
-        }
         try {
+            let internalType;
+            try {
+                 internalType = fieldType.typeDetails.internalType.type;
+                if ("Struct" == internalType) {
+                    value = await this.readUplcStructList(fieldType, uplcDataField);
+                    // console.log(`  <-- field value`, value) 
+                    return value;
+                }
+            } catch(e) {}
             value = fieldType.uplcToJs(uplcDataField);
             if (value.then) value = await value;
 
-            if ("Enum" === internalType && 0 === uplcDataField.fields.length) {
-                value = Object.keys(value)[0];
+            if (internalType) {
+                if ("Enum" === internalType && 0 === uplcDataField.fields.length) {
+                    return value = Object.keys(value)[0];
+                }
+            } else {
+                return value;
+                // console.log("no internal type for special post-uplc-to-JS handling at", fn);
+                // debugger
             }
         } catch (e: any) {
             if (e.message?.match(/doesn't support converting from Uplc/)) {
+                if (!offChainType) { return this.readOtherUplcType(fn, uplcDataField, fieldType); }
                 try {
                     value = await offChainType.fromUplcData(uplcDataField);
                     if (value && "some" in value) value = value.some;
@@ -1051,6 +1066,34 @@ export class StellarContract<
         }
         // console.log(`  <-- field value`, value)
         return value;
+    }
+    async readOtherUplcType(fn: string, uplcDataField: any, fieldType: any) {
+        if (uplcDataField instanceof helios.IntData) {
+            return uplcDataField.value
+        }
+        if (uplcDataField instanceof helios.MapData) {
+            const entries: Record<string, any> = {};
+            for (const [k, v] of uplcDataField["map"]) {
+                debugger
+                const bytesToString = {
+                    uplcToJs(uplcField) {
+                        return helios.bytesToText(uplcField.bytes)
+                    }
+                };
+                const parsedKey = await this.readUplcField(`${fn}.‹mapKey›`, bytesToString, k)
+                                // check type of parsed key?
+                debugger
+                // type of value??
+                entries[  parsedKey ] = await this.readOtherUplcType(
+                    `${fn}.‹map›@${parsedKey}`, v, undefined
+                )
+            }
+            debugger
+            return entries
+        }
+        console.log(`datum: field ${fn}: no offChainType, no internalType`, {fieldType, uplcDataField});
+        debugger
+        return uplcDataField;
     }
 
     findSmallestUnusedUtxo(

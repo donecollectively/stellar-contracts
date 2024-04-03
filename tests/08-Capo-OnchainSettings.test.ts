@@ -65,6 +65,15 @@ describe("Settings data in Capo", async () => {
         expect(settings).toBeDefined();
     });
 
+    it("can read the settings data from the contract", async (context: localTC) => {
+        // prettier-ignore
+        const {h, h:{network, actors, delay, state} } = context;
+
+        const capo = await h.bootstrap();
+        const settings = await capo.findSettingsDatum();
+        expect(settings.meaning).toEqual(42);
+    });
+
     it("charter creation requires presence of a SettingsData and a CharterDatum reference to that minted UUT", async (context: localTC) => {
         // prettier-ignore
         const {h, h:{network, actors, delay, state} } = context;

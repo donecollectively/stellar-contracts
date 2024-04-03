@@ -39,6 +39,19 @@ func hasContractSeedUtxo(tx: Tx) -> Bool {
     )
 }
 
+struct Foo {
+    // the "meaning" field can be an Int, and this makes it "just work" as a Real.
+    m: Real "meaning"
+    // the struct can have the "happy" field, and we don't have to interpret it!
+    // h: Int "happy"
+    func info(self) ->() {
+        print(
+            // "happy? "+self.h.show()+
+            "; the answer is " + self.m.show()
+        )
+    }
+}
+
 
 func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
@@ -92,9 +105,14 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                     output.value.contains(settingsVal)
             }).switch {
                 Some{output} => {
-                    assert(settingsVal.contains(output.value.get_assets()), "excess value in settings output: "+
-                        (output.value - settingsVal).show()
+                    assert(settingsVal.contains(output.value.get_assets()), 
+                    "excess value in settings output: "+(output.value - settingsVal).show()
                     );
+                    t : Foo = Foo::from_data(
+                        output.datum.get_inline_data()
+                    );
+                    t.info();
+
                     output
                 },
                 None => error("missing settings output to contract")
@@ -102,7 +120,10 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
 
             // ^^ fails if there's no settings output to the right address
             // the settings output should be empty.
-            print("settingsOutput: "+ settingsOutput.serialize().show());
+            assert(settingsOutput.serialize() == settingsOutput.serialize(), "no way");
+            print("settingsOutput: ");
+            // print(settingsOutput.serialize().show());
+            // print(settingsOutput.serialize().show());
 
             print("defaultMinter @C");
             charterData : Data = charterOutput.datum.get_inline_data();
