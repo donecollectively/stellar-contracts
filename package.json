@@ -36,7 +36,7 @@
     },
     "devDependencies": {
         "@hyperionbt/helios": "^0.16.4",
-        "@microsoft/api-extractor": "^7.38.2",
+        "@microsoft/api-extractor": "^7.43.0",
         "@rollup/plugin-json": "^6.0.1",
         "@rollup/plugin-node-resolve": "^15.1.0",
         "@rollup/pluginutils": "^5.0.2",
@@ -54,7 +54,7 @@
         "rollup-pluginutils": "^2.8.2",
         "semver": ">=7.5.2",
         "tslib": "^2.5.3",
-        "typescript": "5.2.2",
+        "typescript": "5.4.2",
         "vite": "^4.4.11",
         "vitest": "^0.34.6",
         "webdriverio": "^8.10.7"
