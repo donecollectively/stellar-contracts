@@ -1,14 +1,14 @@
-import esbuild from "rollup-plugin-esbuild";
-import externals from "rollup-plugin-node-externals";
-import resolve from "@rollup/plugin-node-resolve";
-import json from "@rollup/plugin-json";
 // seems to have a bug that deletes one of the pnpm modules :/
 // import { apiExtractor } from "rollup-plugin-api-extractor";
-import execute from "rollup-plugin-shell";
-
-
+import externals from "rollup-plugin-node-externals";
 import { platformModulePaths } from "./rollup.lib.js";
+
+import esbuild from "rollup-plugin-esbuild";
+import resolve from "@rollup/plugin-node-resolve";
+import json from "@rollup/plugin-json";
+import execute from "rollup-plugin-shell";
 import sourcemaps from "rollup-plugin-sourcemaps";
+
 
 // const packageJson = await import("./package.json", { assert: { type: "json" } });
 
