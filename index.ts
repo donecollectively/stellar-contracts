@@ -27,7 +27,10 @@ export {
 } from "./src/diagnostics.js";
 
 export { UutName } from "./src/delegation/UutName.js";
-export { Capo, type CapoBaseConfig } from "./src/Capo.js";
+export { Capo, 
+    type CapoBaseConfig,     
+    type MinimalDelegateLink
+} from "./src/Capo.js";
 export type {
     MintUutActivityArgs,
     FoundUut,
@@ -102,7 +105,6 @@ export {
 } from "./src/DefaultCapo.js";
 export type { 
     DefaultCharterDatumArgs,
-    MinimalDelegateLink
 } from "./src/DefaultCapo.js";
 
 export type {
