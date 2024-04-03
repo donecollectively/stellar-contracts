@@ -128,6 +128,12 @@ describe("Settings data in Capo", async () => {
             const {h, h:{network, actors, delay, state} } = context;
 
             const capo = await h.bootstrap();
+
+            const updating = h.updateSettings({
+                badSettingToSpendDelegate: 1
+            });
+
+            await expect(updating).rejects.toThrow(/must not have badSettingToSpendDelegate/);
         });
 
         it.todo("the minting delegate must validate the UpdatingSettings details", async (context: localTC) => {
@@ -135,7 +141,11 @@ describe("Settings data in Capo", async () => {
             const {h, h:{network, actors, delay, state} } = context;
 
             const capo = await h.bootstrap();
+            const updating = h.updateSettings({
+                badSettingToMintDelegate: 1
+            });
 
+            await expect(updating).rejects.toThrow(/must not have badSettingToMintDelegate/);
         });
     });
 });
