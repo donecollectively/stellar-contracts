@@ -112,7 +112,12 @@ export type actorMap = Record<string, WalletEmulator>;
 export const ADA = 1_000_000n; // lovelace
 
 // type debugging - typeinfo
-export type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
+export type Expand<T> = T extends (...args: infer A) => infer R
+  ? (...args: Expand<A>) => Expand<R>
+  : T extends infer O
+  ? { [K in keyof O]: O[K] }
+  : never;
+
 
 export type ExpandRecursively<T> = T extends object
   ? T extends infer O ? { [K in keyof O]: ExpandRecursively<O[K]> } : never
