@@ -14,6 +14,16 @@ import {
 } from CapoDelegateHelpers
 
 import {
+    Datum as CapoDatum 
+} from specializedCapo
+
+import {
+    getTxCharterDatum
+    // getRefCharterDatum,
+    // mustFindInputRedeemer
+} from CapoHelpers
+
+import {
     mkUutTnFactory,
     validateUutMinting,
     mintsUutForCharterUsingRedeemerIndex
@@ -146,18 +156,24 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                     mdd.validateCDConfig(ddNew) && ok
                 },
                 ValidatingSettings => {
-                    settings : Datum::CharterToken {
-                        /*spendDgt*/ _,  
-                        /* spendInvariants */ _,
-                        settings,
-                        /* mintDgt */, 
-                        /* mintInvariants */ _, 
-                        /* govAuthority */ _
-                    } = getTxCharterDatum(ctx, mph);            
-                    isValid = 
-                        ((isTest && throwIfBadSettings(ctx, mdd, settings)) || true) &&
-                        mdd.validateSettings(settings, ctx);
-                }
+                    //!!! todo: verify if any cost diff between this vs direct-field-access.
+                    // CapoDatum::CharterToken {
+                    //     /*spendDgt*/ _,  
+                    //     /* spendInvariants */ _,
+                    //     settingsUut,
+                    //     /* namedDelegates */ _,
+                    //     /* mintDgt */ _, 
+                    //     /* mintInvariants */ _, 
+                    //     /* govAuthority */ _
+                    // } = getTxCharterDatum(ctx, dd.mph);
+
+                    print("MINT DELEGATE NOT VALIDATING SETTINGS");
+                    // isValid : Bool = 
+                    //     ((isTest && throwIfBadSettings(ctx, mdd, settings)) || true) &&
+                    //     mdd.validateSettings(settings, ctx);
+                    // isValid
+                    true
+                },
                 _ => true
             } && activity.additionalDelegateValidation(isD, ctx)
         },

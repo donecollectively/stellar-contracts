@@ -16,8 +16,7 @@ import {
 } from CapoDelegateHelpers
 
 import {
-    tvCharter,
-    RealnumSettingsValueV1
+    tvCharter
 } from StellarHeliosHelpers
 
 // field-names style of struct, arbitrary & extensible
@@ -28,25 +27,24 @@ struct AnyData {
     // can have other fields; receiver will interpret their target types.
 }
 
-
 //! provides a basic version of Datum in default specializedCapo module
 enum Datum {
     CharterToken {
         spendDelegateLink: RelativeDelegateLink
         spendInvariants: []RelativeDelegateLink
-        minValidSettingsVersion: Int // always forced to validate against all active delegates
-        settingsUuts: []ByteArray // UUT-name links to SettingsData's
+        settingsUut: ByteArray // UUT-name links to SettingsData
+        namedDelegates: Map[String]RelativeDelegateLink
         mintDelegateLink: RelativeDelegateLink
         mintInvariants: []RelativeDelegateLink
-        delegates: Map[String]RelativeDelegateLink
         govAuthorityLink: RelativeDelegateLink
     }
     ScriptReference
     SettingsData {
-        settingsVersion: Int
-        
         data:  Map[String]Data
-        // []RealnumSettingsValueV1
+    }
+    DelegatedData {
+        data: AnyData
+        delegateLink: RelativeDelegateLink
     }
 
     //! datum-validation only supports checks of absolute spendability, 
@@ -62,7 +60,7 @@ enum Datum {
             ctx.tx.serialize() /* never */ == self.serialize() ||
             mph.serialize() /* never */ == self.serialize()
         )
-    }   
+    }
 
     // this needs to be a method on the Datum enum,
     // ... because it's called by other methods here, AND

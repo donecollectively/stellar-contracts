@@ -43,7 +43,7 @@ import {
 } from CapoMintHelpers
 
 import {
-    settingsStruct
+    capoSettings
 } from CustomCapoSettings
 
 enum MintDelegateDatum {
@@ -54,8 +54,12 @@ enum MintDelegateDatum {
         CustomConfig: String
     }
     ScriptReference
-    func validateSettings(self, ctx: TransactionContext, settings, ctx) {
-        
+
+    func validateSettings(self, ctx: ScriptContext, settings: capoSettings) -> Bool{
+        assert(false, "not valid (stubbed)");
+        settings.serialize() != self.serialize() &&
+        ctx.tx.serialize() != self.serialize() &&        
+        true
     }
 
     func validateCDConfig(self, updated: MintDelegateDatum::IsDelegation) -> Bool {

@@ -65,8 +65,15 @@ import type {
 } from "./Capo.js";
 
 import type { DatumAdapter } from "./DatumAdapter.js";
-import type { OffchainSettingsType, OnchainSettingsType, SettingsAdapterFor } from "./CapoSettingsTypes.js";
-import { DefaultSettingsAdapter, type RealNumberSettingsMap } from "./DefaultSettingsAdapter.js";
+import type {
+    OffchainSettingsType,
+    OnchainSettingsType,
+    SettingsAdapterFor,
+} from "./CapoSettingsTypes.js";
+import {
+    DefaultSettingsAdapter,
+    type RealNumberSettingsMap,
+} from "./DefaultSettingsAdapter.js";
 
 import type { DefaultMinter } from "./minting/DefaultMinter.js";
 import {
@@ -92,6 +99,7 @@ import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
 import { UutName } from "./delegation/UutName.js";
 import type { Expand, ExpandRecursively } from "./testing/types.js";
+import { UncustomCapoSettings } from "./UncustomCapoSettings.js";
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
@@ -101,11 +109,12 @@ import type { Expand, ExpandRecursively } from "./testing/types.js";
 export interface DefaultCharterDatumArgs {
     spendDelegateLink: RelativeDelegateLink<StellarDelegate<any>>;
     spendInvariants: RelativeDelegateLink<StellarDelegate<any>>[];
+    namedDelegates: Record<string, RelativeDelegateLink<StellarDelegate<any>>>;
     settingsUut: UutName | number[];
     mintDelegateLink: RelativeDelegateLink<BasicMintDelegate>;
     mintInvariants: RelativeDelegateLink<StellarDelegate<any>>[];
     govAuthorityLink: RelativeDelegateLink<AuthorityPolicy>;
-};
+}
 
 /**
  * Establishes minimum requirements for creating a charter-datum
@@ -212,10 +221,10 @@ export type HeldAssetsArgs = {
  */
 
 export class DefaultCapo<
-        settingsType extends  OffchainSettingsType<any> = RealNumberSettingsMap,
+        settingsType extends OffchainSettingsType<any> = RealNumberSettingsMap,
         MinterType extends DefaultMinter = DefaultMinter,
         CDT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs,
-        configType extends CapoBaseConfig = CapoBaseConfig,
+        configType extends CapoBaseConfig = CapoBaseConfig
     >
     extends Capo<settingsType, MinterType, CDT, configType>
     implements hasUutCreator
@@ -260,6 +269,10 @@ export class DefaultCapo<
         return UnspecializedCapo;
     }
 
+    get customCapoSettings(): HeliosModuleSrc {
+        return UncustomCapoSettings;
+    }
+
     /**
      * indicates any specialization of the baseline Capo types
      * @remarks
@@ -282,7 +295,7 @@ export class DefaultCapo<
 
     importModules(): HeliosModuleSrc[] {
         const parentModules = super.importModules();
-        const specializedCapo = this.specializedCapo;
+        const { specializedCapo, customCapoSettings } = this;
         if (specializedCapo.moduleName !== "specializedCapo") {
             throw new Error(
                 `${this.constructor.name}: specializedCapo() module name must be ` +
@@ -290,7 +303,12 @@ export class DefaultCapo<
             );
         }
 
-        return [specializedCapo, this.capoHelpers, ...parentModules];
+        return [
+            specializedCapo,
+            customCapoSettings,
+            this.capoHelpers,
+            ...parentModules,
+        ];
     }
 
     @Activity.redeemer
@@ -474,13 +492,20 @@ export class DefaultCapo<
         const spendInvariants = args.spendInvariants.map((dl) => {
             return this.mkOnchainDelegateLink(dl);
         });
-        const settingsUutNameBytes = args.settingsUut instanceof UutName ?
-            textToBytes(args.settingsUut.name)
-            : args.settingsUut;
+        const namedDelegates = new Map<string, any>(
+            Object.entries(args.namedDelegates).map(([k, v]) => {
+                return [k, this.mkOnchainDelegateLink(v)];
+            })
+        );
+        const settingsUutNameBytes =
+            args.settingsUut instanceof UutName
+                ? textToBytes(args.settingsUut.name)
+                : args.settingsUut;
         const t = new hlCharterToken(
             spendDelegate,
             spendInvariants,
             settingsUutNameBytes,
+            namedDelegates,
             mintDelegate,
             mintInvariants,
             govAuthority
@@ -502,25 +527,22 @@ export class DefaultCapo<
     // XX@ts-expect-error on the default return type - override this method with
     //    more specific adapter
     initSettingsAdapter() {
-        return new DefaultSettingsAdapter(this)
+        return new DefaultSettingsAdapter(this);
     }
 
     @datum
-    mkDatumSettingsData(
-        settings: settingsType
-    ) : Datum{
-        const adapter = this.settingsAdapter
-        return adapter.toOnchainDatum(settings) as Datum
+    mkDatumSettingsData(settings: settingsType): Datum {
+        const adapter = this.settingsAdapter;
+        return adapter.toOnchainDatum(settings) as Datum;
     }
 
-
     //@Xts-expect-error - method should be overridden
-    mkInitialSettings() : settingsType {
+    mkInitialSettings(): settingsType {
         //@ts-expect-error - method should be overridden
-        return { 
+        return {
             meaning: 42,
             happy: 1,
-         }
+        };
     }
 
     // settingsDataToUplc(config: ContractSettingsData<this>) {
@@ -741,6 +763,7 @@ export class DefaultCapo<
                 settingsUut: uuts.set,
                 govAuthorityLink: govAuthority,
                 mintDelegateLink: mintDelegate,
+                namedDelegates: {}, // can only be empty at charter, for now.
                 spendDelegateLink: spendDelegate,
             };
             const datum = await this.mkDatumCharterToken(fullCharterArgs);
@@ -760,7 +783,9 @@ export class DefaultCapo<
             //   that refScript could be stored somewhere else instead (e.g. the Capo)
             //   but for now it's in the delegate addr.
             const tcx2 = await this.txnMkAddlRefScriptTxn(
-                tcx, "mintDelegate", mintDelegate.delegate.compiledScript
+                tcx,
+                "mintDelegate",
+                mintDelegate.delegate.compiledScript
             );
 
             const tcx3 = await this.txnMkAddlRefScriptTxn(
@@ -779,12 +804,12 @@ export class DefaultCapo<
             );
 
             // type Normalize<T> =
-            //     T extends (...args: infer A) => infer R ? (...args: Normalize<A>) => Normalize<R>  
+            //     T extends (...args: infer A) => infer R ? (...args: Normalize<A>) => Normalize<R>
             //     : T extends any ? {[K in keyof T]: Normalize<T[K]>} : never
 
-            const settings = this.mkInitialSettings()
-            const tcx5 = this.txnAddSettingsOutput(tcx4, settings)
-            
+            const settings = this.mkInitialSettings();
+            const tcx5 = this.txnAddSettingsOutput(tcx4, settings);
+
             // debugger
 
             // mints the charter, along with the capoGov and mintDgt UUTs.
@@ -800,19 +825,22 @@ export class DefaultCapo<
         });
         return promise;
     }
-    
+
     async findSettingsDatum({
-        settingsUtxo, charterUtxo
+        settingsUtxo,
+        charterUtxo,
     }: {
-        settingsUtxo? : TxInput, charterUtxo? : TxInput
+        settingsUtxo?: TxInput;
+        charterUtxo?: TxInput;
     } = {}): Promise<settingsType> {
-        const foundSettingsUtxo = settingsUtxo || await this.findSettingsUtxo(charterUtxo);
+        const foundSettingsUtxo =
+            settingsUtxo || (await this.findSettingsUtxo(charterUtxo));
         const data = await this.readDatum(
             this.settingsAdapter,
             foundSettingsUtxo.origOutput.datum as InlineDatum
-        );        
+        );
         if (!data) throw Error(`missing or invalid settings UTxO datum`);
-        return data
+        return data;
     }
 
     txnAddSettingsOutput<TCX extends StellarTxnContext>(
@@ -845,7 +873,7 @@ export class DefaultCapo<
      **/
     async txnMkAddlRefScriptTxn<
         TCX extends StellarTxnContext<anyState>,
-        scriptName extends string,
+        scriptName extends string
     >(
         tcx: TCX,
         scriptName: scriptName,
@@ -854,7 +882,7 @@ export class DefaultCapo<
         hasAddlTxns<
             `refScript${Capitalize<scriptName>}` | otherAddlTxnNames<TCX>,
             TCX
-        >  // & unwrapped
+        > // & unwrapped
     > {
         const refScriptUtxo = new TxOutput(
             this.address,
@@ -1000,42 +1028,42 @@ export class DefaultCapo<
         );
     }
 
-    async findSettingsUtxo(charterUtxo? : TxInput) {
-        const chUtxo = charterUtxo || await this.mustFindCharterUtxo();
+    async findSettingsUtxo(charterUtxo?: TxInput) {
+        const chUtxo = charterUtxo || (await this.mustFindCharterUtxo());
         const charterDatum = await this.findCharterDatum(chUtxo);
         const uutName = charterDatum.settingsUut;
-        console.log("findSettingsUut", {uutName, charterDatum}  );
+        console.log("findSettingsUut", { uutName, charterDatum });
         const uutValue = this.uutsValue(uutName);
 
-        return await this.mustFindMyUtxo("set-uut", 
+        return await this.mustFindMyUtxo(
+            "set-uut",
             this.mkTokenPredicate(uutValue)
         );
     }
 
     @txn
     async mkTxnUpdateOnchainSettings<TCX extends StellarTxnContext>(
-        data: settingsType, 
-        settingsUtxo? : TxInput,
+        data: settingsType,
+        settingsUtxo?: TxInput,
         tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
     ): Promise<TCX> {
         // uses the charter ref input
-        settingsUtxo = settingsUtxo || await this.findSettingsUtxo();
+        settingsUtxo = settingsUtxo || (await this.findSettingsUtxo());
 
-        console.log("HI")
+        console.log("HI");
         const tcx2 = await this.txnAddGovAuthority(tcx);
         const tcx2a = await this.txnMustUseCharterUtxo(tcx2, "refInput");
         const tcx2b = await this.txnAttachScriptOrRefScript(tcx2a);
-        const tcx3 = tcx2b.addInput(
-            settingsUtxo, 
-            this.activityUpdatingSettings()
-        ).addOutput(
-            new TxOutput(
-                this.address, 
-                settingsUtxo.origOutput.value, 
-                this.mkDatumSettingsData(data)
-            )
-        );
-        return tcx3 as TCX & typeof tcx3
+        const tcx3 = tcx2b
+            .addInput(settingsUtxo, this.activityUpdatingSettings())
+            .addOutput(
+                new TxOutput(
+                    this.address,
+                    settingsUtxo.origOutput.value,
+                    this.mkDatumSettingsData(data)
+                )
+            );
+        return tcx3 as TCX & typeof tcx3;
     }
 
     /**
@@ -1219,13 +1247,14 @@ export class DefaultCapo<
             newSpendDelegate.delegate.tvAuthorityToken()
         );
 
-        debugger
+        debugger;
 
         //@ts-expect-error "could be instantiated with different subtype"
         const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
             ...currentDatum,
             spendDelegateLink: newSpendDelegate,
         };
+
         return this.mkTxnUpdateCharter(
             fullCharterArgs,
             undefined,
@@ -1284,6 +1313,14 @@ export class DefaultCapo<
         return tcx2.addOutput(charterOut);
     }
 
+    // How can someone be holding interest in a project?
+    //      ignorant  // never seen, or not investigated
+    //      Watching for updates
+    //      Bought in / privy to more info
+    //      Contributing:
+    //          - note, no-conflict-of-interest assertion wanted, even though
+    //          - it may not be very much enforceable
+
     @txn
     async mkTxnAddingSpendInvariant<
         DT extends StellarDelegate,
@@ -1322,6 +1359,54 @@ export class DefaultCapo<
         const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
             ...currentDatum,
             spendInvariants: [...currentDatum.spendInvariants, spendDelegate],
+        };
+        const datum = await this.mkDatumCharterToken(fullCharterArgs);
+
+        const charterOut = new TxOutput(
+            this.address,
+            this.tvCharter(),
+            datum
+            // this.compiledScript
+        );
+
+        return tcx2.addOutput(charterOut);
+    }
+
+    async mkTxnAddingNamedDelegate<
+        DT extends StellarDelegate,
+        thisType extends DefaultCapo<settingsType, MinterType, CDT, configType>
+    >(
+        this: thisType,
+        tcx: StellarTxnContext = new StellarTxnContext(this.myActor),
+        delegateName: string,
+        delegateInfo: MinimalDelegateLink<DT> & {
+            strategyName: string &
+                keyof thisType["delegateRoles"]["spendDelegate"];
+        }
+    ) {
+        const currentDatum = await this.findCharterDatum();
+
+        // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
+        const tcx2 = await this.txnMintingUuts(
+            await this.addSeedUtxo(tcx),
+            ["spendDgt"],
+            {},
+            {
+                spendDelegate: "spendDgt",
+            }
+        );
+        const spendDelegate = await this.txnCreateDelegateLink<
+            DT,
+            "spendDelegate"
+        >(tcx2, "spendDelegate", delegateInfo);
+
+        //@ts-expect-error "could be instantiated with different subtype"
+        const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
+            ...currentDatum,
+            namedDelegates: {
+                ...currentDatum.namedDelegates,
+                [delegateName]: spendDelegate,
+            },
         };
         const datum = await this.mkDatumCharterToken(fullCharterArgs);
 
@@ -1741,56 +1826,78 @@ export class DefaultCapo<
                 ],
             },
 
-            "supports an abstract Configuration structure stored in the contact":
-                {
-                    purpose:
-                        "allows configuration details that can evolve to support Capo-related scripts as needed",
-                    details: [
-                        "The Configuration structure can be stored in the contract, separately from the CharterDatum. ",
-                        "It can be updated by the govAuthority, and can be used to store any ",
-                        "  ... data needed by the Capo's scripts, such as minting and spending delegates.",
-                        "The charter datum references the config uut, and shouldn't ",
-                        "  ... ever need to change that reference, since the config data can be updated in place.",
-                        "The config can store additional delegates or other key/value data, ",
-                        "  ... with keys and data-types being defined by conventions in the Capo's scripts.",
-                        "The minting delegate is expected to validate all updates to the configuration data.",
-                        "The spending delegate is expected to validate all updates to the configuration data.",
-                        "#### Design notes",
-                        "When updating delegates, the (unchanged) configuration data can slip out of sync with new expectations, ",
-                        "  ... requiring a separate update to the configuration data, bringing it up to the new expectations, ",
-                        "  ... it would be nicer to have a way to transactionally update both the delegate and the config, ",
-                        "  ... but meanwhile, new delegates should be tested to ensure they can handle the transitional state, ",
-                        "  ... and that they'll be able to accept the intended config update. ",
-                        "  ... If they can't accept the intended config update, the Capo can temporarily be nonoperational, ",
-                        "  ... until new delegates are deployed that can handle the updated config. ",
-                        "Delegate updaters can mitigate the window of configuration-mismatch ",
-                        "  ... by queuing a config-update txn that immediately follows the delegate update txn, ",
-                        "  ... and with off-chain code that checks for the presence of the expected config details; ",
-                        "  ... When the expected config details are not present, the off-chain code can show people ",
-                        "  ... a 'please wait ...' message indicating that a contract update is in progress ",
-                        "  ... during the expected short interval in which the update sequence is executed.",
-                    ],
-                    impl: "mkTxnUpdateConfig()",
-                    mech: [
-                        "has a 'SettingsData' datum variant & utxo in the contract",
-                        "charter creation requires presence of an empty SettingsData and a CharterDatum reference to that minted UUT",
-                        "updatingCharter activity MUST NOT change the set-UUT reference",
-                        "can update the settings data with a separate updatingSettings Activity on the Settings",
-                        "requires the capoGov- authority uut to update the settings data",
-                        "the spending delegate must validate the UpdatingSettings details",
-                        "the minting delegate must validate the UpdatingSettings details",
-                        "the spending invariant delegates must validate the UpdatingSettings details",
-                        "the minting invariant delegates must validate the UpdatingSettings details",
-                    ],
-                },
-
+            "supports an abstract Settings structure stored in the contact": {
+                purpose:
+                    "allows settings that can evolve to support Capo-related scripts as needed",
                 details: [
+                    "The Settings structure can be stored in the contract, separately from the CharterDatum. ",
+                    "It can be updated by the govAuthority, and can be used to store any ",
+                    "  ... data needed by the Capo's scripts, such as minting and spending delegates.",
+                    "The charter datum references the settings uut, and shouldn't ",
+                    "  ... ever need to change that reference, since the settings data can be updated in place.",
+                    "The settings can store various data using string keys and conventions defined within the Capo.",
                 ],
                 mech: [
-                    "adds an entry to the Charter's spendingDelegates list",
-                    "won't create a duplicate spendingDelegates entry with the same tag",
-                    "mints a spndDgt UUT and sends it to the policy-delegate address",
+                    "has a 'SettingsData' datum variant & utxo in the contract",
+                    "offchain code can read the settings data from the contract",
+                    "onchain code can read the settings data from the contract",
+                    "charter creation requires presence of an empty SettingsData and a CharterDatum reference to that minted UUT",
+                    "updatingCharter activity MUST NOT change the set-UUT reference",
                 ],
+                requires: [
+                    "mkTxnUpdateSettings(): can update the settings",
+                    "added and updated delegates always validate the present configuration data",
+                ],
+            },
+            "mkTxnUpdateSettings(): can update the settings": {
+                purpose: "to support parameter changes",
+                impl: "mkTxnUpdateSettings()",
+                details: [
+                    "The minting delegate is expected to validate all updates to the configuration data.",
+                    "The spending delegate is expected to validate all updates to the configuration data.",
+                    "Settings changes are validated by all registered delegates before being accepted.",
+                ],
+                mech: [
+                    "can update the settings data with a separate updatingSettings Activity on the Settings",
+                    "requires the capoGov- authority uut to update the settings data",
+                    "the spending delegate must validate the UpdatingSettings details",
+                    "the minting delegate must validate the UpdatingSettings details",
+                    "the spending invariant delegates must validate the UpdatingSettings details",
+                    "the minting invariant delegates must validate the UpdatingSettings details",
+                    "all named delegates must validate the UpdatingSettings details",
+                ],
+            },
+            "added and updated delegates always validate the present configuration data":
+                {
+                    purpose: "to ensure that the entirety of policies in a contract suite have integrity",
+                    details: [
+                        "New delegates cannot be adopted unless they also validate the present configuration data, ",
+                        "  ... so that configuration and current delegates can always be expected to be in sync.",
+                        "However, a new delegate can't verify the config during their creation, ",
+                        "  ... because its policy can be triggered only after it has a utxo in it)",
+                        "With an an initial step of staging a prospective delegate, the new delegate can ",
+                        "  ... provide positive assurance of  compatibility with the current settings.",
+                    ],
+                    impl: "mkTxnStagingNewDelegate",
+                    mech: [
+                        "TODO: staging a Named delegate updates the namedDelegates structure with staged item",
+                        "TODO: staging a Mint delegate updates the mintDelegateLink structure with staged item",
+                        "TODO: staging a Spend delegate updates the spendDelegateLink structure with staged item",
+                        "TODO: staging an invariant delegate updates the invariantDelegates structure with staged item",
+                    ],
+                    requires: ["can commit new delegates"],
+                },
+            "can commit new delegates": {
+                purpose:
+                    "to finalize the adoption of a new or updated delegate",
+                details: [
+                    "A staged delegate can be committed, if it the current settings validate okay with it. ",
+                    "This gives that delegate space to exist, so that its settings-validation logic can ",
+                    "  ... possibly be triggered.",
+                ],
+                mech: [
+                    "TODO: a staged delegate is only adopted if it validates ok with the then-current settings",
+                ]
             },
 
             "the charter token is always kept in the contract": {
@@ -1852,49 +1959,5 @@ export class DefaultCapo<
                     "txnAttachScriptOrRefScript(): uses scriptRefs in txns on request",
                 ],
             },
-
-            "XXX - move to multi-sig Delegate - the trustee group can be changed":
-                {
-                    purpose:
-                        "to ensure administrative continuity for the group",
-                    details: [
-                        "When the needed threshold for administrative modifications is achieved, the Charter Datum can be updated",
-                        "This type of administrative action should be explicit and separate from any other administrative activity",
-                        "If the CharterToken's Datum is being changed, no other redeemer activities are allowed.",
-                        "This requires a separate multi-sig delegate policy (TODO: move out of core reqts",
-                    ],
-                    mech: [
-                        "requires the existing threshold of existing trustees to be met",
-                        "requires all of the new trustees to sign the transaction",
-                        "does not allow minSigs to exceed the number of trustees",
-                    ],
-                    requires: [
-                        // "the trustee threshold is enforced on all administrative actions",
-                    ],
-                },
-
-            "XXX - move to multi-sig Delegate - the trustee threshold is enforced on all administrative actions":
-                {
-                    purpose:
-                        "allows progress in case a small fraction of trustees may not be available",
-                    details: [
-                        "A group can indicate how many of the trustees are required to provide their explicit approval",
-                        "If a small number of trustees lose their keys, this allows the remaining trustees to directly regroup",
-                        "For example, they can replace the trustee list with a new set of trustees and a new approval threshold",
-                        "Normal day-to-day administrative activities can also be conducted while a small number of trustees are on vacation or otherwise temporarily unavailable",
-                    ],
-                    mech: [
-                        "doesn't allow the charterToken to be sent without enough minSigs from the trustee list",
-                    ],
-                    requires: [],
-                },
-
-            foo: {
-                purpose: "",
-                details: [],
-                mech: [],
-                requires: [],
-            },
-        });
     }
 }

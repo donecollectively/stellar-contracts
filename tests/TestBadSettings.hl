@@ -1,9 +1,10 @@
 module CustomCapoSettings
 
-struct settingsStruct {
+struct capoSettings {
     meaning: Int   
-    func throwIfBadSettings(self, context, mdd) {
-        
+    func throwIfBadSettings(self, _, _) -> Bool {// context, mdd) {
+        error("no way");
+        true
     }
 }
 

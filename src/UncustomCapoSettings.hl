@@ -1,7 +1,8 @@
 module CustomCapoSettings
 
-struct settingsStruct {
-    meaning: Int   "meaning"
+struct capoSettings {
+    meaning: Int  "meaning"
+    happy: Int  "happy"
 }
 
 

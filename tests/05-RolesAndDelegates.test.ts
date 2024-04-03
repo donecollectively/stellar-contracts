@@ -110,6 +110,7 @@ describe("Capo", async () => {
                 ).toBeTruthy();
             });
         });
+        
         describe("supports just-in-time strategy-selection using txnCreateDelegateLink()", () => {
             it("txnCreateDelegateLink(tcx, role, delegationSettings) configures a new delegate", async (context: localTC) => {
                 // prettier-ignore

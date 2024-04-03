@@ -130,7 +130,8 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
             Datum::CharterToken{
                 spendDgt, 
                 spendInvariants,
-                _, // settings, 
+                /* settings */ _, 
+                namedDelegates,
                 mintDgt, 
                 mintInvariants, 
                 authDgt
@@ -139,7 +140,7 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                     // c:CharterToken => c, _ => error("unexpected datum type") },
                 (index: Int, fields: []Data) => {
                     assert(index==0, "charter token must be at index 0");
-                    assert(fields.length == 6, "charter token must have 6 fields");
+                    assert(fields.length == 7, "charter token must have 7 fields");
                     // {authDgt, mintDgt, spendDgt, mintInvariants, spendInvariants}
                     print("defaultMinter @D");
                     settingsIndex : Int = 2;
@@ -163,7 +164,8 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
             // once we have burned down the test backlog a bit, we can add these in:
             assert(mintInvariants.length == 0, "no mint invariants allowed at charter creation");
             assert(spendInvariants.length == 0, "no spend invariants allowed at charter creation");
-
+            assert(namedDelegates.length ==0, "no named delegates allowed at charter creation");
+            
             hasGoodDelegates : Bool = requiresValidDelegateOutput(authDgt, mph, ctx) &&
                 requiresValidDelegateOutput(mintDgt, mph, ctx) &&
                 requiresValidDelegateOutput(spendDgt, mph, ctx);

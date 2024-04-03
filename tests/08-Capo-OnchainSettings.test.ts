@@ -49,7 +49,7 @@ const describe = descrWithContext<localTC>;
 // "the spending delegate must validate the UpdatingSettings details",
 // "the minting delegate must validate the UpdatingSettings details",
 
-describe("Settings data in Capo", async () => {
+describe("supports an abstract Settings structure stored in the contact", async () => {
     beforeEach<localTC>(async (context) => {
         // await new Promise(res => setTimeout(res, 10));
         await addTestContext(context, DefaultCapoTestHelper);
@@ -65,7 +65,7 @@ describe("Settings data in Capo", async () => {
         expect(settings).toBeDefined();
     });
 
-    it("can read the settings data from the contract", async (context: localTC) => {
+    it("offchain code can read the settings data from the contract", async (context: localTC) => {
         // prettier-ignore
         const {h, h:{network, actors, delay, state} } = context;
 
@@ -73,6 +73,7 @@ describe("Settings data in Capo", async () => {
         const settings = await capo.findSettingsDatum();
         expect(settings.meaning).toEqual(42);
     });
+    it.todo("onchain code can read the settings data from the contract");
 
     it("charter creation requires presence of a SettingsData and a CharterDatum reference to that minted UUT", async (context: localTC) => {
         // prettier-ignore
@@ -101,7 +102,7 @@ describe("Settings data in Capo", async () => {
         await expect(updating).rejects.toThrow(/cannot change settings uut/);
     });
 
-    describe("mkTxnUpdateSettings()", () => {
+    describe("mkTxnUpdateSettings(): can update the settings", () => {
         it("can update the settings data with a separate UpdatingSettings Activity on the Settings", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
@@ -156,5 +157,16 @@ describe("Settings data in Capo", async () => {
 
             await expect(updating).rejects.toThrow(/must not have badSettingToMintDelegate/);
         });
+
+        it.todo("the spending invariant delegates must validate the UpdatingSettings details", async (context: localTC) => {
+
+        }) 
+
+        it.todo("the minting invariant delegates must validate the UpdatingSettings details", async (context: localTC) => {
+        })
+
+        it.todo("all named delegates must validate the UpdatingSettings details", async (context: localTC) => {
+            
+        })
     });
 });

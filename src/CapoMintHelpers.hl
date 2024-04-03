@@ -1,3 +1,5 @@
+
+
 module CapoMintHelpers
 import {
     mkTv,
@@ -44,6 +46,7 @@ func requiresMintDelegateApproval(
         /*spendDgt*/ _,  
         /* spendInvariants */ _,
         /* settings */ _,
+        /* namedDelegates */ _,
         mintDgt, 
         /* mintInvariants */ _, 
         /* govAuthority */ _
@@ -106,6 +109,7 @@ func validateUutBurning(
         /*spendDgt*/ _,  
         /* spendInvariants */ _,
         /* settings */ _,
+        /* namedDelegates */ _,
         mintDgt, 
         /* mintInvariants */ _, 
         /* govAuthority */ _
@@ -166,6 +170,7 @@ func validateUutMinting(
             /*spendDgt*/ _,  
             /* spendInvariants */ _,
             /* settings */ _,
+            /* namedDelegates */ _,
             mintDgt, 
             /* mintInvariants */ _, 
             /* govAuthority */ _
@@ -369,3 +374,4 @@ enum MinterActivity {
         } 
     }
 }
+

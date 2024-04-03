@@ -146,6 +146,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                 spendDelegate, 
                 spendInvariants,
                 settingsUut,
+                namedDelegates,
                 mintDelegate, 
                 mintInvariants,
                 govDelegate
@@ -155,6 +156,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                 oldSpendDelegate, 
                 oldSpendInvariants, 
                 oldSettingsUut,
+                oldNamedDelegates,
                 oldMintDelegate, 
                 oldMintInvariants,
                 /* _oldGovDelegate */ _ 
@@ -165,6 +167,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
 
             unchangedSpendDgt : Bool = ( spendDelegate.serialize() == oldSpendDelegate.serialize() );
             unchangedMintDgt : Bool = ( mintDelegate.serialize() == oldMintDelegate.serialize() );
+            changedAnyNamedDelegate : Bool = ( namedDelegates.serialize() != oldNamedDelegates.serialize() );
             mustNotModifySettings : Bool = ( settingsUut == oldSettingsUut );
 
             if (isDev) {
@@ -211,6 +214,20 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                 requiresValidDelegateOutput(spendDelegate, mph, ctx)
             } &&
             checkpoint("5") &&
+            if (!changedAnyNamedDelegate) { true } else {
+                // namedDelegates are not allowed to change
+                checkpoint("5b") && 
+                namedDelegates.fold( (ok: Bool, name : String, dgt : RelativeDelegateLink) -> Bool {
+                    oldDgt : RelativeDelegateLink = oldNamedDelegates.get(name);
+                    ok && if (oldDgt.serialize() == dgt.serialize()) {
+                        // unchanged named delegate must not be included in the tx
+                        requiresNoDelegateInput(dgt, mph, ctx)
+                    } else {
+                        //  the new one has to go to the right place
+                        requiresValidDelegateOutput(dgt, mph, ctx)
+                    }
+                }, true)
+            } &&
             mustNotModifyMintInvariants &&
             mustNotModifySpendInvariants &&
             requiresAuthorization(ctx, oldCtDatum) &&
@@ -243,7 +260,6 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
         },
 
         updatingSettings => {
-
             datum.switch {
                 SettingsData => {
                     // it requires the govAuthority to be present
