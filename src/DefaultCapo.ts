@@ -474,7 +474,7 @@ export class DefaultCapo<
     async mkDatumCharterToken(args: CDT): Promise<Datum> {
         //!!! todo: make it possible to type these datum helpers more strongly
         //  ... at the interface to Helios
-        console.log("--> mkDatumCharter", args);
+        console.log("--> mkDatumCharterToken", args);
         const { CharterToken: hlCharterToken } = this.onChainDatumType;
 
         // ugh, we've been here before - weaving back and forth between
@@ -497,10 +497,8 @@ export class DefaultCapo<
                 return [k, this.mkOnchainDelegateLink(v)];
             })
         );
-        const settingsUutNameBytes =
-            args.settingsUut instanceof UutName
-                ? textToBytes(args.settingsUut.name)
-                : args.settingsUut;
+
+        const settingsUutNameBytes = this.mkSettingsUutName(args.settingsUut);
         const t = new hlCharterToken(
             spendDelegate,
             spendInvariants,
@@ -511,6 +509,11 @@ export class DefaultCapo<
             govAuthority
         );
         return Datum.inline(t._toUplcData());
+    }
+    mkSettingsUutName(settingsUut: UutName | number[]) {
+        return settingsUut instanceof UutName
+        ? textToBytes(settingsUut.name)
+        : settingsUut;
     }
 
     @datum
@@ -948,7 +951,7 @@ export class DefaultCapo<
         // for (const [txin, refScript] of scriptReferences) {
         //     console.log("refScript", dumpAny(txin));
         // }
-        
+
         const matchingScriptRefs = scriptReferences.find(([txin, refScript]) =>
             isCorrectRefScript(txin)
         );
@@ -1715,13 +1718,13 @@ export class DefaultCapo<
                     ],
                     mech: ["can update details of the datum"],
                     requires: [
-                        "can update the minting delegate in the charter settings",
-                        "can update the spending delegate in the charter settings",
-                        "can add invariant minting delegates to the charter settings",
-                        "can add invariant spending delegates to the charter settings",
+                        "can update the minting delegate in the charter data",
+                        "can update the spending delegate in the charter data",
+                        "can add invariant minting delegates to the charter data",
+                        "can add invariant spending delegates to the charter data",
                     ],
                 },
-            "can update the minting delegate in the charter settings": {
+            "can update the minting delegate in the charter datum": {
                 purpose: "to evolve the minting policy for the contract",
                 details: [
                     "when updating the minting policy delegate, the gov authority is used to authorize the change",
@@ -1739,7 +1742,7 @@ export class DefaultCapo<
                     "can't use the old minting delegate after it is replaced",
                 ],
             },
-            "can update the spending delegate in the charter settings": {
+            "can update the spending delegate in the charter data": {
                 purpose:
                     "to evolve the spending policy for the contract's delegated-datum types",
                 details: [
@@ -1758,7 +1761,7 @@ export class DefaultCapo<
                 ],
             },
 
-            "can add invariant spending delegates to the charter settings": {
+            "can add invariant spending delegates to the charter data": {
                 purpose:
                     "to arrange permanent spending policies for custom data types",
                 details: [
@@ -1775,7 +1778,7 @@ export class DefaultCapo<
                 ],
             },
 
-            "can add invariant minting delegates to the charter settings": {
+            "can add invariant minting delegates to the charter data": {
                 purpose:
                     "to arrange permanent minting policies constraining what can be minted",
                 details: [
@@ -1836,12 +1839,15 @@ export class DefaultCapo<
                     "The charter datum references the settings uut, and shouldn't ",
                     "  ... ever need to change that reference, since the settings data can be updated in place.",
                     "The settings can store various data using string keys and conventions defined within the Capo.",
+                    "The Capo contract MUST NOT make any calls to methods in the Settings structure, ",
+                    "  ... so that that the Capo's code won't be changed if any methods are modified.",
                 ],
                 mech: [
                     "has a 'SettingsData' datum variant & utxo in the contract",
                     "offchain code can read the settings data from the contract",
-                    "onchain code can read the settings data from the contract",
-                    "charter creation requires presence of an empty SettingsData and a CharterDatum reference to that minted UUT",
+                    "TODO: TEST onchain code can read the settings data from the contract",
+                    "charter creation requires a CharterDatum reference to the settings UUT",
+                    "charter creation requires presence of a SettingsData map",
                     "updatingCharter activity MUST NOT change the set-UUT reference",
                 ],
                 requires: [
@@ -1858,13 +1864,13 @@ export class DefaultCapo<
                     "Settings changes are validated by all registered delegates before being accepted.",
                 ],
                 mech: [
-                    "can update the settings data with a separate updatingSettings Activity on the Settings",
+                    "can update the settings data with a separate UpdatingSettings Activity on the Settings",
                     "requires the capoGov- authority uut to update the settings data",
                     "the spending delegate must validate the UpdatingSettings details",
                     "the minting delegate must validate the UpdatingSettings details",
-                    "the spending invariant delegates must validate the UpdatingSettings details",
-                    "the minting invariant delegates must validate the UpdatingSettings details",
                     "all named delegates must validate the UpdatingSettings details",
+                    "TODO: the spending invariant delegates must validate the UpdatingSettings details",
+                    "TODO: the minting invariant delegates must validate the UpdatingSettings details",
                 ],
             },
             "added and updated delegates always validate the present configuration data":
@@ -1900,6 +1906,76 @@ export class DefaultCapo<
                 ]
             },
 
+            "supports storing new types of datum not pre-defined in the Capo's on-chain script":
+                {
+                    purpose:
+                        "to allow data extensibility and evolution in a backwards-compatible way",
+                    details: [
+                        "The Capo's DelegatedDatum type encapsulates all custom data types, ",
+                        "  ... and can be thought of as a Union of types that can be extended over time",
+                        "This allows the policies governing each type of data to evolve independently",
+                        "  ... without those data needing to be moved between contract addresses when changing the policies.",
+                        "The spending delegate script is expected to enforce spending rules for each type of custom data",
+                        "The minting delegate is expected to enforce creation rules for each type of custom data",
+                        "The mint- and spend-delegates can evolve to handle new types of data",
+                        "A namedDelegates structure in the Capo provides a manifest of additional delegates, ",
+                        "  ... whose involvement may be required as needed by the mint- and spend-delegates."
+                    ],
+                    mech: [
+                        "has named delegates, as a string map to named delegate links",
+                        "the spending policy "
+                    ],
+                    requires: [
+                        "the charter has a namedDelegates structure for semantic delegate links",
+                        "CreatingDelegatedDatum: creates a UTxO with any custom datum",
+                        "UpdatingDelegatedDatum: checks that a custom data element can be updated",
+                    ],
+                },
+
+            "the charter has a namedDelegates structure for semantic delegate links": {
+                purpose: "to provide a manifest of additional delegates that may be required to enforce application semantics",
+                details: [
+                    "The namedDelegates structure is a string map to named delegate links",
+                    "The minting and spending delegates can use these named delegates as needed",
+                    "The minting and spending delegates can evolve to handle new types of data",
+                    "The namedDelegates structure can be updated by the gov delegate",
+                ],
+                mech: [
+                    "has a namedDelegates structure in the charter datum",
+                    "the namedDelegates structure can be updated by the gov delegate",
+                ],
+                requires: [],
+            },
+            "CreatingDelegatedDatum: creates a UTxO with any custom datum": {
+                purpose: "allows the application to enforce policies for custom record creation",
+                details: [
+                    "The Capo must involve the minting delegate in creating a custom datum",
+                    "  ... which can apply its own logic to deciding whether the creation is allowed.",
+                    "The Capo trusts the minting delegate's enforcement of policy.",
+                ],
+                impl: "mkTxnCreatingDelegatedDatum",
+                mech: [
+                    "builds transactions including the minting delegate",
+                    "fails if the minting delegate is not included in the transaction",
+                ]
+            },
+
+            "UpdatingDelegatedDatum: checks that a custom data element can be updated":
+                {
+                    purpose: "guards appropriate updates to custom data elements",
+                    details: [
+                        "When updating a custom datum, the Capo must involve the spending delegate ",
+                        "  ... which can apply its own logic to deciding whether the update is allowed.",
+                        "The Capo trusts the spending delegate's enforcement of policy.",
+                    ],
+                    mech: [
+                        "builds transactions including the spending-delegate",
+                        "fails if the spending delegate is not included in the transaction",
+                        "TODO: builds transactions including the invariant spending-delegates",
+                        "TODO: fails if the expected invariant delegate is not included in the transaction",
+                    ],
+                },
+
             "the charter token is always kept in the contract": {
                 purpose:
                     "so that the treasury contract is always in control of administrative changes",
@@ -1915,7 +1991,7 @@ export class DefaultCapo<
                 mech: [
                     "builds transactions with the charter token returned to the contract",
                     "fails to spend the charter token if it's not returned to the contract",
-                    "TODO: keeps the charter token separate from other assets in the contract",
+                    "TODO: ensures that the charter token is kept separate from other assets in the contract",
                 ],
                 requires: [],
             },
@@ -1959,5 +2035,6 @@ export class DefaultCapo<
                     "txnAttachScriptOrRefScript(): uses scriptRefs in txns on request",
                 ],
             },
+        });
     }
 }

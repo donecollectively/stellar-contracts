@@ -73,9 +73,9 @@ describe("supports an abstract Settings structure stored in the contact", async 
         const settings = await capo.findSettingsDatum();
         expect(settings.meaning).toEqual(42);
     });
-    it.todo("onchain code can read the settings data from the contract");
+    it.todo("TEST: onchain code can read the settings data from the contract");
 
-    it("charter creation requires presence of a SettingsData and a CharterDatum reference to that minted UUT", async (context: localTC) => {
+    it("charter creation requires presence of a SettingsData map", async (context: localTC) => {
         // prettier-ignore
         const {h, h:{network, actors, delay, state} } = context;
 
@@ -85,8 +85,19 @@ describe("supports an abstract Settings structure stored in the contact", async 
             // for txn-balancing purposes
             return tcx;
         });
-        await expect(h.bootstrap()).rejects.toThrow(/missing settings output/)
+        await expect(h.bootstrap()).rejects.toThrow(/no settings output/)
     });
+
+    it("charter creation requires a CharterDatum reference to the settings UUT", async (context: localTC) => {
+        // prettier-ignore
+        const {h, h:{network, actors, delay, state} } = context;
+
+        const capo = await h.initialize();
+        vi.spyOn(capo, "mkSettingsUutName").mockImplementation((uutName) => {
+            return textToBytes("thisTokenNameDoesNotExist")
+        })
+        await expect(h.bootstrap()).rejects.toThrow(/must contain settings UUT/)
+    })
 
     it("updatingCharter activity MUST NOT change the set-UUT reference", async (context: localTC) => {
         // prettier-ignore
@@ -133,9 +144,10 @@ describe("supports an abstract Settings structure stored in the contact", async 
             expect(didUseAuthority).toHaveBeenCalled();
         });
 
-        it.todo("the spending delegate must validate the UpdatingSettings details", async (context: localTC) => {
+        it("the spending delegate must validate the UpdatingSettings details", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
+            throw new Error(`implement me!`)
 
             const capo = await h.bootstrap();
 
@@ -146,9 +158,10 @@ describe("supports an abstract Settings structure stored in the contact", async 
             await expect(updating).rejects.toThrow(/must not have badSettingToSpendDelegate/);
         });
 
-        it.todo("the minting delegate must validate the UpdatingSettings details", async (context: localTC) => {
+        it("the minting delegate must validate the UpdatingSettings details", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
+            throw new Error(`implement me!`)
 
             const capo = await h.bootstrap();
             const updating = h.updateSettings({
@@ -158,15 +171,16 @@ describe("supports an abstract Settings structure stored in the contact", async 
             await expect(updating).rejects.toThrow(/must not have badSettingToMintDelegate/);
         });
 
-        it.todo("the spending invariant delegates must validate the UpdatingSettings details", async (context: localTC) => {
+        it("all named delegates must validate the UpdatingSettings details", async (context: localTC) => {
+            throw new Error(`implement me!`)
+        })
+
+        it.todo("TODO: the spending invariant delegates must validate the UpdatingSettings details", async (context: localTC) => {
 
         }) 
 
-        it.todo("the minting invariant delegates must validate the UpdatingSettings details", async (context: localTC) => {
+        it.todo("TODO: the minting invariant delegates must validate the UpdatingSettings details", async (context: localTC) => {
         })
 
-        it.todo("all named delegates must validate the UpdatingSettings details", async (context: localTC) => {
-            
-        })
     });
 });

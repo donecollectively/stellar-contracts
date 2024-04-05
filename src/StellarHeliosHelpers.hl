@@ -25,9 +25,15 @@ func didSignInCtx(ctx: ScriptContext) -> (a: Address) -> Bool {
 }
 
 //! represents the indicated token name as a Value
-func mkTv(mph: MintingPolicyHash, tn: String, count : Int = 1) -> Value {
+func mkTv(
+    mph: MintingPolicyHash, 
+    tn: String="", 
+    tnBytes: ByteArray=tn.encode_utf8(),
+    count : Int = 1
+) -> Value {
+    assert(tnBytes.length > 0, "missing reqd tn or tnBytes");
     Value::new(
-        AssetClass::new(mph, tn.encode_utf8()), 
+        AssetClass::new(mph, tnBytes), 
         count
     )
 }

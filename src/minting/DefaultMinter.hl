@@ -10,7 +10,7 @@ import {
     MinterActivity
 } from CapoMintHelpers
 
-import { Datum } from specializedCapo
+import { Datum as CapoDatum } from specializedCapo
 
 import {
     getRefCharterUtxo,
@@ -39,19 +39,25 @@ func hasContractSeedUtxo(tx: Tx) -> Bool {
     )
 }
 
-struct Foo {
-    // the "meaning" field can be an Int, and this makes it "just work" as a Real.
-    m: Real "meaning"
-    // the struct can have the "happy" field, and we don't have to interpret it!
-    // h: Int "happy"
-    func info(self) ->() {
-        print(
-            // "happy? "+self.h.show()+
-            "; the answer is " + self.m.show()
-        )
-    }
-}
+// this is a simple example showing how a tagged struct
+//   ... can be cast from a generic Map[String]Data
+// struct Foo {
+//     // the "meaning" field can be an Int, and this makes it "just work" as a Real.
+//     m: Real "meaning"
+//     // the struct can have the "happy" field, and we don't have to interpret it!
+//     // h: Int "happy"
+//     func info(self) ->() {
+//         print(
+//             // "happy? "+self.h.show()+
+//             "; the answer is " + self.m.show()
+//         )
+//     }
+// }
 
+struct outputAndDatum[T] {
+    output: TxOutput
+    datum: T
+}
 
 func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
@@ -100,37 +106,67 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
 
             settingsVal : Value = mkTv(mph, mkUutName(settingsTnBase));
             print( "finding settings output" );
-            settingsOutput: TxOutput = tx.outputs.find_safe( (output: TxOutput) -> Bool {
-                output.address == charter.owner &&
-                    output.value.contains(settingsVal)
-            }).switch {
-                Some{output} => {
-                    assert(settingsVal.contains(output.value.get_assets()), 
-                    "excess value in settings output: "+(output.value - settingsVal).show()
-                    );
-                    t : Foo = Foo::from_data(
-                        output.datum.get_inline_data()
-                    );
-                    t.info();
+            notFound = Option[outputAndDatum[CapoDatum::SettingsData]]::None;
+            foundSettings: []outputAndDatum[CapoDatum::SettingsData] = 
+                tx.outputs.map_option[
+                    outputAndDatum[CapoDatum::SettingsData]
+                ](
+                     (output: TxOutput) -> Option[outputAndDatum[CapoDatum::SettingsData]] {
+                        print("defaultMinter finding settings output");
+                        if ( output.address != charter.owner ) {
+                            // print("not the right address");
+                            notFound
+                        } else {
+                            CapoDatum::from_data(
+                                output.datum.get_inline_data()
+                            ).switch {
+                                settings: SettingsData => {
+                                    print("found CapoDatum::SettingsData");
+                                    Option[
+                                        outputAndDatum[CapoDatum::SettingsData]
+                                    ]::Some{
+                                        outputAndDatum[CapoDatum::SettingsData] {
+                                            output, settings
+                                        }
+                                    }
+                                    // outputAndDatum[CapoDatum::SettingsData
+                                },
+                                _ => {
+                                    // print("found non-SettingsData");
+                                    notFound
+                                }
+                            }
+                        }
+                    }
+                );
 
-                    output
-                },
-                None => error("missing settings output to contract")
-            };
+            if (isDev) { assert(foundSettings.length < 2, "too many settings outputs") };
+            assert(foundSettings.length == 1, "no settings output");
 
+            settingsOutput : TxOutput = foundSettings.head.output;
+            assert(
+                settingsOutput.address == charter.owner &&
+                settingsOutput.value.contains(settingsVal),
+                    "settings output not found in contract with expected UUT"
+            );
+            assert(settingsVal.contains(settingsOutput.value.get_assets()), 
+                "excess value in settings output: "+(settingsOutput.value - settingsVal).show()
+            );
             // ^^ fails if there's no settings output to the right address
-            // the settings output should be empty.
-            assert(settingsOutput.serialize() == settingsOutput.serialize(), "no way");
-            print("settingsOutput: ");
-            // print(settingsOutput.serialize().show());
-            // print(settingsOutput.serialize().show());
+
+            // the settings output should be empty?
+            // assert(foundSettings.head.datum.data.length == 0,
+            //     "temp: settings must be empty during charter"
+            // );
+
+            // assert(settingsOutput.serialize() == settingsOutput.serialize(), "no way");
 
             print("defaultMinter @C");
             charterData : Data = charterOutput.datum.get_inline_data();
-            Datum::CharterToken{
+            CapoDatum::CharterToken{
                 spendDgt, 
                 spendInvariants,
-                /* settings */ _, 
+                settingsUut, 
                 namedDelegates,
                 mintDgt, 
                 mintInvariants, 
@@ -148,10 +184,16 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                     t : Data = fields.get(settingsIndex);
                     print("ok: "+ t.serialize().show());
 
-                    Datum::CharterToken::from_data(charterData)
+                    CapoDatum::CharterToken::from_data(charterData)
                 },
                 _ => error("unexpected datum type")  
             };
+            settingsValue : Value = mkTv(
+                mph: mph, 
+                tnBytes: settingsUut
+            );
+            assert(settingsOutput.value.contains(settingsValue), "settings output must contain settings UUT");
+
             print("defaultMinter @E");
             // print("" + settingsMap.tag.show());
             // settingsMap.switch {

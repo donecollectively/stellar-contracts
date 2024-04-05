@@ -119,7 +119,7 @@ func validateUutBurning(
 
     expectedBurn : Value = Value::sum(tns.map(
         (tn: String) -> Value {
-            mkTv(mph, tn, -1)
+            mkTv(mph: mph, tn: tn, count: -1)
         }
     ));
     actualBurn : Map[ByteArray]Int = valueBurned.get_policy(mph);
