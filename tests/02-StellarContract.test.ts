@@ -48,7 +48,7 @@ const smokeTest = (smoke ? fit : it) as smokeTestType;
 
 describe("StellarContract", async () => {
     beforeEach<localTC>(async (context) => {
-        // await new Promise(res => setTimeout(res, 10));
+        await new Promise(res => setTimeout(res, 10));
         await addTestContext(context, DefaultCapoTestHelper);
     });
 

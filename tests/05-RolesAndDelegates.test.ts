@@ -82,7 +82,7 @@ const describe = descrWithContext<localTC>;
 
 describe("Capo", async () => {
     beforeEach<localTC>(async (context) => {
-        // await new Promise(res => setTimeout(res, 10));
+        await new Promise(res => setTimeout(res, 10));
         await addTestContext(
             context,
             DefaultCapoTestHelper.forCapoClass(DelegationTestCapo)
@@ -110,7 +110,7 @@ describe("Capo", async () => {
                 ).toBeTruthy();
             });
         });
-        
+
         describe("supports just-in-time strategy-selection using txnCreateDelegateLink()", () => {
             it("txnCreateDelegateLink(tcx, role, delegationSettings) configures a new delegate", async (context: localTC) => {
                 // prettier-ignore

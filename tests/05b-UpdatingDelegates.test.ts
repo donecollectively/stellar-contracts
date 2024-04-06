@@ -41,7 +41,7 @@ const describe = descrWithContext<localTC>;
 
 describe("Capo", async () => {
     beforeEach<localTC>(async (context) => {
-        // await new Promise(res => setTimeout(res, 10));
+        await new Promise(res => setTimeout(res, 10));
         await addTestContext(context, DefaultCapoTestHelper);
     });
     
