@@ -28,6 +28,7 @@ import { ConfigFor } from "../src/StellarContract";
 import { dumpAny } from "../src/diagnostics";
 import { DelegationDetail } from "../src/delegation/RolesAndDelegates";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
+import { TestBadSettings } from "./TestBadSettings";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
@@ -49,10 +50,31 @@ const describe = descrWithContext<localTC>;
 // "the spending delegate must validate the UpdatingSettings details",
 // "the minting delegate must validate the UpdatingSettings details",
 
+
+type BadSettings = {
+    meaning: number;
+    badSettingToMintDelegate: number;
+    badSettingToSpendDelegate: number;
+}
+
+class CapoCanHaveBadSettings extends DefaultCapo<BadSettings> {
+    get customCapoSettings()  {
+        return TestBadSettings;
+    }
+    mkInitialSettings(): BadSettings {
+        return {
+            meaning: 42,
+            badSettingToMintDelegate: 0,
+            badSettingToSpendDelegate: 0,
+        };
+    }
+
+}
+
 describe("supports an abstract Settings structure stored in the contact", async () => {
     beforeEach<localTC>(async (context) => {
-        // await new Promise(res => setTimeout(res, 10));
-        await addTestContext(context, DefaultCapoTestHelper);
+        await new Promise(res => setTimeout(res, 10));
+        await addTestContext(context, DefaultCapoTestHelper.forCapoClass(CapoCanHaveBadSettings))
     });
 
     it("has a 'SettingsData' datum variant & utxo in the contract", async (context: localTC) => {
@@ -96,7 +118,7 @@ describe("supports an abstract Settings structure stored in the contact", async 
         vi.spyOn(capo, "mkSettingsUutName").mockImplementation((uutName) => {
             return textToBytes("thisTokenNameDoesNotExist")
         })
-        await expect(h.bootstrap()).rejects.toThrow(/must contain settings UUT/)
+        await expect(h.bootstrap()).rejects.toThrow(/settings output not found in contract with expected UUT/)
     })
 
     it("updatingCharter activity MUST NOT change the set-UUT reference", async (context: localTC) => {
@@ -120,7 +142,9 @@ describe("supports an abstract Settings structure stored in the contact", async 
 
             const capo = await h.bootstrap();
             const updating = h.updateSettings({
-                meaning: 19
+                meaning: 19,
+                badSettingToMintDelegate: 0,
+                badSettingToSpendDelegate: 0,
             });
             await updating
             await expect(updating).resolves.toBeTruthy();
@@ -138,7 +162,9 @@ describe("supports an abstract Settings structure stored in the contact", async 
                 async tcx => tcx
             );
             const updating = h.updateSettings({
-                meaning: 19
+                meaning: 19,
+                badSettingToMintDelegate: 0,
+                badSettingToSpendDelegate: 0,
             });
             await expect(updating).rejects.toThrow(/missing dgTkn capoGov-/)
             expect(didUseAuthority).toHaveBeenCalled();
@@ -147,12 +173,13 @@ describe("supports an abstract Settings structure stored in the contact", async 
         it("the spending delegate must validate the UpdatingSettings details", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
-            throw new Error(`implement me!`)
 
             const capo = await h.bootstrap();
 
             const updating = h.updateSettings({
-                badSettingToSpendDelegate: 1
+                badSettingToSpendDelegate: 1,
+                badSettingToMintDelegate: 0,
+                meaning: 42
             });
 
             await expect(updating).rejects.toThrow(/must not have badSettingToSpendDelegate/);
@@ -161,11 +188,12 @@ describe("supports an abstract Settings structure stored in the contact", async 
         it("the minting delegate must validate the UpdatingSettings details", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
-            throw new Error(`implement me!`)
 
             const capo = await h.bootstrap();
             const updating = h.updateSettings({
-                badSettingToMintDelegate: 1
+                badSettingToMintDelegate: 1,
+                badSettingToSpendDelegate: 0,
+                meaning: 42
             });
 
             await expect(updating).rejects.toThrow(/must not have badSettingToMintDelegate/);

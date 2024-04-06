@@ -209,9 +209,9 @@ export class DefaultCapoTestHelper<
         });
     }
 
-    async updateSettings(args: OffchainSettingsType<DC>) {
+    async updateSettings(args:  OffchainSettingsType<DC>) {
         await this.mintCharterToken();
-        const capo = await this.strella!;
+        const capo = this.strella!;
         const tcx = await capo.mkTxnUpdateOnchainSettings(args);
         return capo.submit(tcx).then(() => {
             this.network.tick(1n);

@@ -65,6 +65,12 @@ func getOutputWithValue(ctx: ScriptContext, v : Value) -> TxOutput {
     ctx.tx.outputs.find((txo: TxOutput) -> { txo.value >= v })
 }
 
+struct outputAndDatum[T] {
+    output: TxOutput
+    datum: T
+    rawData: Data
+}
+
 func getSingleAssetValue(input: TxInput) -> Value{
     inputMap : Map[MintingPolicyHash]Map[ByteArray]Int = input.value.get_assets().to_map();
     assert( inputMap.length == 1, 

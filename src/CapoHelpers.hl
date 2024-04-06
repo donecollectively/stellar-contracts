@@ -35,11 +35,15 @@ func getRefCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::C
 
 //! retrieves a required Charter Datum for the indicated policy - 
 // ... either from the txn's reference inputs  or inputs.
-func getTxCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::CharterToken {
+func getTxCharterDatum(
+    ctx: ScriptContext, 
+    mph : MintingPolicyHash,
+    refInputs : []TxInput = ctx.tx.ref_inputs
+) -> Datum::CharterToken {
     chVal : Value = tvCharter(mph);
     hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
 
-    charterUtxo : TxInput = ctx.tx.ref_inputs.find_safe(hasCharter).switch{
+    charterUtxo : TxInput = refInputs.find_safe(hasCharter).switch{
         Some{ch} => ch,
         None => ctx.tx.inputs.find_safe(hasCharter).switch{
             Some{ch} => ch,
@@ -53,15 +57,18 @@ func getTxCharterDatum(ctx: ScriptContext, mph : MintingPolicyHash) -> Datum::Ch
     ctd    
 }
 
-func mustHaveGovAuthority(ctx: ScriptContext, mph : MintingPolicyHash) -> Bool {
-    charterDatum : Datum::CharterToken = getTxCharterDatum(ctx, mph);
+func mustHaveGovAuthority(
+    ctx: ScriptContext, 
+    mph : MintingPolicyHash,
+    charterDatum : Datum::CharterToken = getTxCharterDatum(ctx, mph)
+) -> Bool {
     requiresValidDelegateOutput(charterDatum.govAuthorityLink, mph, ctx)
 }
 
 //! retrieves the redeemer for a specific input
 func mustFindInputRedeemer(
     ctx : ScriptContext,
-    txInput: TxInput
+    txInput: TxInput    
 ) -> Data {
     targetId : TxOutputId = txInput.output_id;
     redeemers : Map[ScriptPurpose]Data = ctx.tx.redeemers;

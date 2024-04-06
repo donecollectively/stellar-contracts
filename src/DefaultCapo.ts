@@ -1052,12 +1052,22 @@ export class DefaultCapo<
     ): Promise<TCX> {
         // uses the charter ref input
         settingsUtxo = settingsUtxo || (await this.findSettingsUtxo());
-
+        const spendingDelegate = await this.getSpendDelegate();
+        const mintDelegate = await this.getMintDelegate();
         console.log("HI");
         const tcx2 = await this.txnAddGovAuthority(tcx);
         const tcx2a = await this.txnMustUseCharterUtxo(tcx2, "refInput");
         const tcx2b = await this.txnAttachScriptOrRefScript(tcx2a);
-        const tcx3 = tcx2b
+        const tcx2c = await spendingDelegate.txnGrantAuthority(
+            tcx2b, 
+            spendingDelegate.activityValidatingSettings()
+        );
+        const tcx2d = await mintDelegate.txnGrantAuthority(
+            tcx2c, 
+            mintDelegate.activityValidatingSettings()
+        );
+        
+        const tcx3 = tcx2d
             .addInput(settingsUtxo, this.activityUpdatingSettings())
             .addOutput(
                 new TxOutput(

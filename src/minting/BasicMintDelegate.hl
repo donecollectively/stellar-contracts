@@ -14,8 +14,12 @@ import {
 } from CapoDelegateHelpers
 
 import {
-    Datum as CapoDatum 
+    Datum as CapoDatum
 } from specializedCapo
+
+import {
+    capoSettings
+} from CustomCapoSettings
 
 import {
     getTxCharterDatum
@@ -32,6 +36,7 @@ import {
 import {
     returnsValueToScript,
     mkTv,
+    outputAndDatum,
     tvCharter
 } from StellarHeliosHelpers
 
@@ -67,112 +72,96 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                 //   guards that the authority token is returned to this script.
                 // specialized minting delegates should likely perform additional checks.
 
-                // obsoleted by application-specific minting activities
-                //  //  Authorizing => {
-                //  //     assert(activity.usesGenericAuthorization(), "no generic authz");
-                //  //     ok : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);
+                DelegateActivity{innerActvity} => innerActvity.switch {
+                    // reassigning the authority token to a new minting delegate
+                    ReplacingMe{seedTxId, seedIdx, purpose} => {
+                        // should burn the old UUT, mint the new UUT, and update the Charter
+                        // with the new mint authority
 
-                //  //     o : []TxOutput = ctx.get_cont_outputs();
-                //  //     if (o.length != 1) { error("single utxo only") };
+                        //xxx -   ctx.tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&
+                        //xxx -   !returnsValueToScript( tvAuthorityToken(dd), ctx)
 
-                //  //     // Note: unspecialized delegate requires unchanged datum
-                //  //     // ... in additionalDelegateValidation.  ...like this:
-                //  //     //      unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize(), ctx) &&
+                        updatingCharter: Int = 1;
+                        BURNED: Int = -1;
+                        otherMintedValue: Value = Value::new(
+                            AssetClass::new(dd.mph, dd.tn), 
+                            BURNED
+                        );
 
-                //  //     ok
-                //  //  },
+                        print("checking ReplacingMe on "+purpose+": "+dd.tn.decode_utf8());
+                        mintsUutForCharterUsingRedeemerIndex(
+                            ctx: ctx, 
+                            mph: dd.mph,
+                            purpose: purpose,
+                            seedTxId: seedTxId,
+                            seedIdx: seedIdx,
+                            charterRedeemerIndex: updatingCharter,
+                            otherMintedValue: otherMintedValue,
+                            needsMintDelegateApproval: false,
+                            extraMintDelegateRedeemerCheck: false
+                        )
+                    },
 
-                // mintingUuts => {
-                //     error("obsolete activity index 9 (was mintingUuts).  Use application-specific minting activities instead")
+                    // the token is being burned, retiring the authority token for this minting delegate
+                    // as a result, this minting delegate will no longer be consulted.  This could be combined
+                    // with the creation of a new minting delegate with a new authority token, registered
+                    // with the Capo in place of this one (or Reassigning could be used for such a case).
+                    // If there is no replacement minting delegate, then the Capo will not be able to perform 
+                    // any further minting activities.
+                    //
+                    // Retiring is not suitable for authorizing token-burning.
+                    Retiring => {
+                        ctx.tx.minted.get(acAuthorityToken(dd)) == -1
+                    },
 
-                //     // if (!activity.usesGenericUutMinting()) { // this may throw an error when this entire actviity is disabled by the specialization
-                //     //     // if we arrive here, then the minting delegate should handle validation
-                //     //     // of this activity in additionalDelegateValidation().
-                //     //     true                                    
-                //     // } else {
-                //     //      activity.genericUutMinting(mdd, ctx)
-                //     // }
-                // },
+                    // adjusting any configuration details for this mint delegate:
+                    // guards that the authority token is returned to this script, 
+                    // ... and calls additional validateCDConfig() defined in a specialized minting delegate.
+                    // specialized minting delegates can perform additional checks, but
+                    // ... if they only need to validate custom mint-delegate configuration, 
+                    // ... they can simply implement a validateCDConfig() method.
+                    Modifying => {
+                        authorityValue : Value = tvAuthorityToken(dd);
+                        ok : Bool = mustReturnValueToScript(authorityValue, ctx);
+                        dlgt : TxOutput = ctx.get_cont_outputs().find(
+                            (o :TxOutput) -> Bool {
+                                o.value.contains(authorityValue)
+                            }
+                        );
+                                
+                        ddNew : MintDelegateDatum::IsDelegation = 
+                        MintDelegateDatum::from_data( 
+                            dlgt.datum.get_inline_data() 
+                        );
 
-                // reassigning the authority token to a new minting delegate
-                ReplacingMe{seedTxId, seedIdx, purpose} => {
-                    // should burn the old UUT, mint the new UUT, and update the Charter
-                    // with the new mint authority
-
-                    //xxx -   ctx.tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&
-                    //xxx -   !returnsValueToScript( tvAuthorityToken(dd), ctx)
-
-                    updatingCharter: Int = 1;
-                    BURNED: Int = -1;
-                    otherMintedValue: Value = Value::new(
-                        AssetClass::new(dd.mph, dd.tn), 
-                        BURNED
-                    );
-
-                    print("checking ReplacingMe on "+purpose+": "+dd.tn.decode_utf8());
-                    mintsUutForCharterUsingRedeemerIndex(
-                        ctx: ctx, 
-                        mph: dd.mph,
-                        purpose: purpose,
-                        seedTxId: seedTxId,
-                        seedIdx: seedIdx,
-                        charterRedeemerIndex: updatingCharter,
-                        otherMintedValue: otherMintedValue,
-                        needsMintDelegateApproval: false,
-                        extraMintDelegateRedeemerCheck: false
-                    )
-                },
-                // the token is being burned, retiring the authority token for this minting delegate
-                // as a result, this minting delegate will no longer be consulted.  This could be combined
-                // with the creation of a new minting delegate with a new authority token, registered
-                // with the Capo in place of this one (or Reassigning could be used for such a case).
-                // If there is no replacement minting delegate, then the Capo will not be able to perform 
-                // any further minting activities.
-                //
-                // Retiring is not suitable for authorizing token-burning.
-                Retiring => {
-                    ctx.tx.minted.get(acAuthorityToken(dd)) == -1
-                },
-                // adjusting any configuration details for this mint delegate:
-                // guards that the authority token is returned to this script, 
-                // ... and calls additional validateCDConfig() defined in a specialized minting delegate.
-                // specialized minting delegates can perform additional checks, but
-                // ... if they only need to validate custom mint-delegate configuration, 
-                // ... they can simply implement a validateCDConfig() method.
-                Modifying => {
-                    authorityValue : Value = tvAuthorityToken(dd);
-                    ok : Bool = mustReturnValueToScript(authorityValue, ctx);
-                    dlgt : TxOutput = ctx.get_cont_outputs().find(
-                        (o :TxOutput) -> Bool {
-                            o.value.contains(authorityValue)
-                        }
-                    );
-                            
-                    ddNew : MintDelegateDatum::IsDelegation = 
-                    MintDelegateDatum::from_data( 
-                        dlgt.datum.get_inline_data() 
-                    );
-
-                    mdd.validateCDConfig(ddNew) && ok
-                },
-                ValidatingSettings => {
-                    //!!! todo: verify if any cost diff between this vs direct-field-access.
-                    // CapoDatum::CharterToken {
-                    //     /*spendDgt*/ _,  
-                    //     /* spendInvariants */ _,
-                    //     settingsUut,
-                    //     /* namedDelegates */ _,
-                    //     /* mintDgt */ _, 
-                    //     /* mintInvariants */ _, 
-                    //     /* govAuthority */ _
+                        mdd.validateCDConfig(ddNew) && ok
+                    },
+                    ValidatingSettings => {
+                        //!!! todo: verify if any cost diff between this vs direct-field-access.
+                        // CapoDatum::CharterToken {
+                        //     /*spendDgt*/ _,  
+                        //     /* spendInvariants */ _,
+                        //     settingsUut,
+                        //     /* namedDelegates */ _,
+                        //     /* mintDgt */ _, 
+                        //     /* mintInvariants */ _, 
+                        //     /* govAuthority */ _
                     // } = getTxCharterDatum(ctx, dd.mph);
+                    charter : CapoDatum::CharterToken = getTxCharterDatum(ctx, dd.mph);
+                    foundSettings : outputAndDatum[CapoDatum::SettingsData] = 
+                        charter.mustFindSettingsOutput(ctx, dd.mph, dd.capoAddr);
+                    customSettings = capoSettings::from_data(foundSettings.rawData);
 
-                    print("MINT DELEGATE NOT VALIDATING SETTINGS");
-                    // isValid : Bool = 
-                    //     ((isTest && throwIfBadSettings(ctx, mdd, settings)) || true) &&
-                    //     mdd.validateSettings(settings, ctx);
-                    // isValid
-                    true
+                    print("MINT DELEGATE TRYING TO VALIDATE SETTINGS");
+                    validated : Bool = customSettings.validate();
+                     print("HURRAY");
+                    validated && 
+                        // isValid : Bool = 
+                        //     ((isTest && throwIfBadSettings(ctx, mdd, settings)) || true) &&
+                        //     mdd.validateSettings(settings, ctx);
+                        // isValid
+                        true
+                    }
                 },
                 _ => true
             } && activity.additionalDelegateValidation(isD, ctx)
@@ -180,10 +169,7 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
         _ => {
             invalidRedeemer = () -> {  error("wrong Actvy/dtm") }; ///Activity custom datum must not use Activities reserved for IsDelegation datum.") };
             activity.switch{
-                // Authorizing => invalidRedeemer(),
-                ReplacingMe => invalidRedeemer(),
-                Retiring => invalidRedeemer(),
-                Modifying => invalidRedeemer(),
+                DelegateActivity => invalidRedeemer(), 
                 _ => activity.otherDatumValidation(mdd, ctx)
             }
         }

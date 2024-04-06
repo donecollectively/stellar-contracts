@@ -1,10 +1,23 @@
 module CustomCapoSettings
 
 struct capoSettings {
-    meaning: Int   
-    func throwIfBadSettings(self, _, _) -> Bool {// context, mdd) {
-        error("no way");
+    meaning: Int
+    badSpenderSetting: Int "badSettingToSpendDelegate" 
+    badMinterSetting : Int "badSettingToMintDelegate"
+
+    func validate(self) -> Bool { // , _, _) -> Bool {// context, mdd) {
+        print ("hi from custom capo settings");
+
+        if (self.badSpenderSetting > 0) {
+            error(" must not have badSettingToSpendDelegate")
+        };
+        print ("hi2 from custom capo settings");
+        if (self.badMinterSetting > 0) {
+            error(" must not have badSettingToMintDelegate")
+        };
+        print ("hi from custom capo settings");
         true
     }
 }
+
 

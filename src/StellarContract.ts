@@ -746,9 +746,10 @@ export class StellarContract<
         for (const [statement, _someBoolThingy] of statements) {
             const name = statement.name.value;
             if (types[name]) continue;
+            const protoName = Object.getPrototypeOf(statement).constructor.name
             if (
-                "StructStatement" ==
-                Object.getPrototypeOf(statement).constructor.name
+                "StructStatement" == protoName ||
+                "EnumStatement" == protoName
             ) {
                 const type = statement.genOffChainType(); // an off-chain type **representing** an on-chain type
                 const name = type.name.value;
@@ -829,30 +830,36 @@ export class StellarContract<
      **/
     mustGetActivity(activityName: string) {
         const ocat = this.onChainActivitiesType;
-        const { [activityName]: activityType } = ocat;
-        if (!activityType) {
-            const { scriptActivitiesName: onChainActivitiesName } = this;
-            const activityNames: string[] = [];
+        return this.mustGetEnumVariant(ocat, activityName);
+    }
+    
+    mustGetEnumVariant(enumType: typeof HeliosData, variantName: string) {
+        //@ts-expect-error
+        const { [variantName]: variantType } = enumType;
+
+        if (!variantType) {
+            // const { scriptActivitiesName: onChainActivitiesName } = this;
+            const variantNames: string[] = [];
             //inspect the properties in `this`, using property descriptors.
             for (const [name, _] of Object.entries(
-                Object.getOwnPropertyDescriptors(ocat)
+                Object.getOwnPropertyDescriptors(enumType)
             )) {
                 //Some of them will point to Class definitions.
                 // check if any of those classes inherit from HeliosData.
-                if (ocat[name].prototype instanceof HeliosData) {
+                if (enumType[name].prototype instanceof HeliosData) {
                     // if so, add the name to activityNames.
-                    activityNames.push(name);
+                    variantNames.push(name);
                 }
             }
-
+            debugger
             throw new Error(
-                `$${this.constructor.name}: activity name mismatch ${onChainActivitiesName}::${activityName}''\n` +
-                    `   known activities in this script: ${activityNames.join(
+                `$${this.constructor.name}: activity/enum-variant name mismatch ${enumType}::${variantName}''\n` +
+                    `   variants in this enum: ${variantNames.join(
                         ", "
                     )}`
             );
         }
-        return activityType;
+        return variantType;
     }
 
     async readDatum<

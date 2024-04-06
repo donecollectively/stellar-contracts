@@ -137,6 +137,7 @@ export abstract class StellarDelegate<
      **/
     @Activity.redeemer
     activityAuthorizing() {
+        throw new Error("unused");
         const thisActivity = this.mustGetActivity("Authorizing");
         const t = new thisActivity();
 
@@ -153,15 +154,37 @@ export abstract class StellarDelegate<
      * @param seedTxnDetails - seed details for the new UUT
      * @public
      **/
+    @Activity.redeemer
     activityReplacingMe({ // todo: add type for seedTxnDetails
         seedTxn,
         seedIndex,
         purpose        
     } :  Omit<MintUutActivityArgs, "purposes"> & {purpose?: string}) {
-        const thisActivity = this.mustGetActivity("ReplacingMe");
-        const t = new thisActivity(seedTxn, seedIndex, purpose);
+        debugger
+        const { 
+            DelegateActivity: thisActivity, 
+            activity: ReplacingMe 
+        } = this.mustGetDelegateActivity("ReplacingMe");
+
+        const t = new thisActivity(
+            new ReplacingMe(
+                seedTxn, 
+                seedIndex, 
+                purpose
+            )
+        );
 
         return { redeemer: t._toUplcData() };
+    }
+
+    mustGetDelegateActivity(delegateActivityName: string) {
+        const DAType = this.mustGetActivity("DelegateActivity");
+        const { DelegateActivity } = this.onChainTypes;
+        const activity = this.mustGetEnumVariant(
+            DelegateActivity, delegateActivityName
+        );
+
+        return { DelegateActivity : DAType,  activity };
     }
 
     /**
@@ -175,8 +198,33 @@ export abstract class StellarDelegate<
      **/
     @Activity.redeemer
     activityRetiring() {
-        const thisActivity = this.mustGetActivity("Retiring");
-        const t = new thisActivity();
+        const { DelegateActivity, activity: Retiring } = this.mustGetDelegateActivity("Retiring");
+
+        const t = new DelegateActivity(
+            new Retiring()
+        );
+
+        return { redeemer: t._toUplcData() };
+    }
+
+    @Activity.redeemer
+    activityModifying() {
+        const { DelegateActivity, activity: Modifying } = this.mustGetDelegateActivity("Modifying");
+
+        const t = new DelegateActivity(
+            new Modifying()
+        );
+
+        return { redeemer: t._toUplcData() };
+    }
+
+    @Activity.redeemer
+    activityValidatingSettings() {
+        const { DelegateActivity, activity: ValidatingSettings } = this.mustGetDelegateActivity("ValidatingSettings");
+
+        const t = new DelegateActivity(
+            new ValidatingSettings()
+        );
 
         return { redeemer: t._toUplcData() };
     }

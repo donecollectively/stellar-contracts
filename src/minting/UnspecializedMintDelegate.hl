@@ -31,10 +31,11 @@ module specializedMintDelegate
 // ... additional functions, imports or methods
 
 import {
-     DelegationDetail,
-     mustReturnValueToScript,
-     tvAuthorityToken,
-     unmodifiedDelegation
+    DelegationDetail,
+    mustReturnValueToScript,
+    tvAuthorityToken,
+    DelegateActivity,
+    unmodifiedDelegation
 } from CapoDelegateHelpers
 
 import {
@@ -75,17 +76,14 @@ enum MintDelegateDatum {
 
 enum MintDelegateActivity {
     // Authorizing  - obsolete
-    ReplacingMe { // replaces this mint delegate with a different one
-        seedTxn: TxId
-        seedIndex: Int
-        purpose: String
+    DelegateActivity {
+        activity: DelegateActivity
     }
-    Retiring
-    Modifying
-    ValidatingSettings
 
     // reserved activities for possible maintenance of utxos within the mint-delegate script.
     //  - these could be application-specific, but not used for mint delegation use-cases.
+    _reserved1
+    _reserved2
     _reserved3
     _reserved4
     _reserved5
@@ -175,16 +173,12 @@ enum MintDelegateActivity {
     ) -> Bool {
         // print("  ----- checking additional delegate validation");
         self.switch {
-            // Authorizing => {
-            //     unmodifiedDelegation(priorMddd.serialize(), ctx) && 
-            //     true
-            // },
             // todo: delete this obsolete activity.
             mintingUuts => self.genericUutMinting(priorMddd, ctx),
+            // generic DelegateActivity is already validated, but 
+            //  ... you can add more constraints here if needed
+            DelegateActivity => true,
 
-            // Modifying => false,
-            // Reassigning => false,
-            // Retiring => false,
             _ => false
         } || ctx.tx.serialize() != priorMddd.serialize()
     }
@@ -203,9 +197,7 @@ enum MintDelegateActivity {
             // Note: these activities are reserved for the IsDelegation datum.
             //   ... using these activities on any other Datum type will always fail
             //   ... BEFORE execution reaches this point.
-            ReplacingMe => neverTriggered(), 
-            Retiring => neverTriggered(),
-            Modifying => neverTriggered(),
+            DelegateActivity => neverTriggered(),
             
             // ------------------- application-specific activities can be added here
 

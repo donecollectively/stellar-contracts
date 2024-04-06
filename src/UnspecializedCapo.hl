@@ -1,21 +1,19 @@
 module specializedCapo
 
-//! provides a basic version, not actually specialized,
-// of the "specializedCapo" interface, which simply
-// exports Datum and Activity ('redemeer") enum types.  
-//! the Datum and Activity of specializations
-//  MUST include the same enum variants as in this
-//  unspecialized version.  if you're specializing 
-//  ... and you get a Helios compiler error,
-// ... these are the first things you should check!
-//! Your specialization MAY include any 
-// ... additional functions, imports or methods
+// SPECIALIZING Capo is now DEPRECATED.
+// 
 
 import { 
     RelativeDelegateLink
 } from CapoDelegateHelpers
 
 import {
+    capoSettings
+} from CustomCapoSettings
+
+import {
+    outputAndDatum,
+    mkTv,
     tvCharter
 } from StellarHeliosHelpers
 
@@ -65,8 +63,6 @@ enum Datum {
     // this needs to be a method on the Datum enum,
     // ... because it's called by other methods here, AND
     // ... it depends on the Datum's own enum variants.
-    // If you're specializing, you'll need to copy this.  
-    // But you probably don't need to specialize.  Use delegates instead.
     func hasCharterRefInput(
         self,
         ctx: ScriptContext, 
@@ -91,6 +87,81 @@ enum Datum {
             },
             None => Option[Datum::CharterToken]::None
         }
+    }
+
+    func mustFindSettingsOutput(self, ctx: ScriptContext, mph: MintingPolicyHash, inAddr: Address) -> outputAndDatum[Datum::SettingsData] {
+        settingsVal : Value = mkTv(mph: mph, tnBytes: self.switch {
+            ct: CharterToken => ct.settingsUut,
+            _ => error("mustFindSettings - only valid on CharterToken datum")
+        });
+        print( "finding settings output" );
+        tx : Tx = ctx.tx;
+        notFound = Option[outputAndDatum[Datum::SettingsData]]::None;
+        foundSettings: []outputAndDatum[Datum::SettingsData] = 
+            tx.outputs.map_option[
+                outputAndDatum[Datum::SettingsData]
+            ](
+                 (output: TxOutput) -> Option[outputAndDatum[Datum::SettingsData]] {
+                    print("defaultMinter finding settings output");
+                    if ( output.address != inAddr ) {
+                        // print("not the right address");
+                        notFound
+                    } else {
+                        rawDatum : Data = output.datum.get_inline_data();
+                        Datum::from_data(
+                            rawDatum
+                        ).switch {
+                            settings: SettingsData => {
+                                print("found Datum::SettingsData");
+                                Option[
+                                    outputAndDatum[Datum::SettingsData]
+                                ]::Some{
+                                    outputAndDatum[Datum::SettingsData] {
+                                        output, settings, rawDatum
+                                        // .switch { 
+                                        //     (index:Int, fields: []Data) => {
+                                        //         // work around issue where index can't be made unused with _
+                                        //         assert(index == index, "no way");
+                                        //         fields.head
+                                        //     },
+                                        //     _ => error("no way")
+                                        // }
+                                    }
+                                }
+                            },
+                            _ => {
+                                // print("found non-SettingsData");
+                                notFound
+                            }
+                        }
+                    }
+                }
+            );
+
+        // if (isDev) { 
+        assert(foundSettings.length < 2, "too many settings outputs") ;
+        assert(foundSettings.length == 1, "no settings output");
+
+        settingsOutput : TxOutput = foundSettings.head.output;
+        assert(
+            // already checked above.
+            // settingsOutput.address == charter.owner &&
+            settingsOutput.value.contains(settingsVal),
+                "settings output not found in contract with expected UUT"
+        );
+        assert(settingsVal.contains(settingsOutput.value.get_assets()), 
+            "excess value in settings output: "+(settingsOutput.value - settingsVal).show()
+        );
+        foundSettings.head
+        // ^^ fails if there's no settings output to the right address
+
+        // the settings output should be empty?
+        // assert(foundSettings.head.datum.data.length == 0,
+        //     "temp: settings must be empty during charter"
+        // );
+
+        // assert(settingsOutput.serialize() == settingsOutput.serialize(), "no way");
+
     }
 
 }

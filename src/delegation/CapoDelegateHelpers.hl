@@ -14,13 +14,104 @@ enum BASE_DELEGATE_Activity {
     Modifying
 }
 
+// todo: add this to RelativeDelegateLink
+enum stakingKeyRequirement {
+    NoStakingKeyAllowed
+    StakingKeyRequired
+    SpecificStakeKeyRequired {
+        stakeCredential: StakingCredential
+    }
+}
+
+// use this activity at Redeemer zero, as enum Redeemer {
+//   DelegateActivity { a: DelegateActivity }}
+//   ...app-specific redeemer variants
+// }
+enum DelegateActivity {
+    ReplacingMe { // replaces this mint delegate with a different one
+        seedTxn: TxId
+        seedIndex: Int
+        purpose: String
+    }
+    Retiring
+    Modifying
+    ValidatingSettings
+}
+
+// use this enum to match any redeemer if you don't care about what other
+// variants may be in that delegate, but you know it has to be a delegate with the 
+// universal delegate actviities.
+enum MustUseDelegateActivity {
+    DelegateActivity {
+        a: DelegateActivity
+    }
+    // _r1  // shouldn't need placeholder variants, hopefully.
+    // _r2
+    // _r3
+    // _r4
+}
+
 // data stored in the Capo, representing basic delegate info
 //   about the connection to a delegate.  
 struct RelativeDelegateLink {
     uutName: String
     strategyName: String
+    // delegate links without a validator hash are "arms-length" delegates,
+    // which means they won't be checked for possible auto-upgrades 
+    //  ... to new versions of their code.
+    // it also means that they won't be able to participate 
+    //   ... in validation of configuration changes in the Capo.
     delegateValidatorHash: Option[ValidatorHash]
+    // !!! todo ???  - for namedDelegates particularly
+    // stakingCred: stakingKeyRequirement
 
+    func hasDelegateInput(self, 
+        inputs: []TxInput, 
+        validatorHashRequired: Bool,
+        mph: MintingPolicyHash,
+        inputRequired: Bool
+    ) -> Option[TxInput] {
+        addrCredNeeded : Option[Credential] = self.delegateValidatorHash.switch{
+            Some{vh} => Option[Credential]::Some{Credential::new_validator(vh)},
+            None => if (validatorHashRequired) { 
+                // this is a major conflict - this delegate type is EXPECTED to have a validator hash.
+                error("missing required validator hash in delegate link " + self.uutName)
+            } else { 
+                Option[Credential]::None 
+            }
+        };
+
+        addrCredNeeded.switch {
+            None => {
+                // when no special input is needed by the delegate, 
+                // validatorHashRequired=true throws error above.
+                assert(!validatorHashRequired, "no way");
+
+                // when the delegate has no validator hash, then we shouldn't bother 
+                // looking for a specific input.
+                //  so we should quickly return None.  Caller should bail out if the input is needed
+                if (inputRequired) {
+                    error("missing required input for delegate link " + self.uutName)
+                };
+                Option[TxInput]::None
+            },
+            Some{needsAddrWithCred} => {
+                // if we arrived here, then we have a delegate that's supposed to be at a specific address.
+                // if we can't find an input with that address, it's an error condition.
+                // we need an input with this address, having the expected UUT.
+                expectedUut : Value = mkTv(mph, self.uutName);
+                inputs.find_safe((i: TxInput) -> Bool {
+                    i.address.credential == needsAddrWithCred &&
+                    i.value.contains(expectedUut)
+                }).switch {
+                    foundGood: Some => foundGood,
+                    /* notFound: */ None => {
+                        error("missing required input for delegate link " + self.uutName)
+                    }
+                }
+            }        
+        }
+    }
     // config: Data
 }
 
@@ -122,18 +213,26 @@ func requiresValidDelegateOutput(
             print(" - seek dgTkn in vh " + vh.show());
             ctx.tx.value_locked_by(vh).contains(v)
         },
-        None => ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {
-            o.value.contains(v)
-        }).switch{
-            Some => true, 
-            None => false
+        None => {
+            print( " - seek dgTkn in any outputs; no special vhash requirement");
+            ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {
+                o.value.contains(v)
+            }).switch{
+                Some => true, 
+                None => false
+            }
         }
     };
 
     if (!hasDelegate && required) {
         error("missing dgTkn "+ uut )
+    } else {
+        if (hasDelegate) {
+            print("has delegate: yes")
+        } else {
+            print("has delegate: returning false")
+        }
     };
-    print ("has delegate output: ok");
     hasDelegate
 }
 

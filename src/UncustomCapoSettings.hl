@@ -3,6 +3,11 @@ module CustomCapoSettings
 struct capoSettings {
     meaning: Int  "meaning"
     happy: Int  "happy"
+    func validate(self) -> Bool {
+        assert(self == self, "no way");
+        // assert(self.meaning == 42, "meaning must be 42");
+        true
+    }
 }
 
 
