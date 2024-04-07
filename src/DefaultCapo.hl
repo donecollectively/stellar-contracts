@@ -12,12 +12,13 @@ const isDev: Bool = false
 
 import { 
     MustUseDelegateActivity,
-    RelativeDelegateLink,
+    requiresNoDelegateInput,
     requiresValidDelegateOutput,
-    requiresNoDelegateInput
+    RelativeDelegateLink
 } from CapoDelegateHelpers
 
 import {
+    mustFindInputRedeemer,
     tvCharter,
     mkTv,
     didSign,
@@ -26,7 +27,6 @@ import {
 
 import {
     getTxCharterDatum,
-    mustFindInputRedeemer,
     mustHaveGovAuthority
 } from CapoHelpers
 
@@ -41,7 +41,7 @@ import {
 func requiresAuthorization(ctx: ScriptContext, ctd: Datum::CharterToken) -> Bool {
     govDelegate : RelativeDelegateLink = ctd.govAuthorityLink;
 
-    requiresValidDelegateOutput(govDelegate, mph, ctx)
+    govDelegate.hasValidOutput(mph, ctx)
 }
 
 func getCharterOutput(tx: Tx) -> TxOutput {
@@ -195,7 +195,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
 
             // govDelegate is always spent, so we always check its destination is kosher.
             mustNotModifySettings &&
-            requiresValidDelegateOutput(govDelegate, mph, ctx) &&
+            govDelegate.hasValidOutput(mph, ctx) &&
             checkpoint("1") &&
             if (unchangedMintDgt) {
                 // unchanged mintDgt must not be included in the tx
@@ -204,7 +204,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
             } else {
                 //  the new one has to go to the right place
                 checkpoint("2a") &&
-                 requiresValidDelegateOutput(mintDelegate, mph, ctx)
+                 mintDelegate.hasValidOutput(mph, ctx)
             } && 
             checkpoint("3") &&
             if ( unchangedSpendDgt) {
@@ -214,7 +214,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
             } else {
                 //  the new one has to go to the right place
                 checkpoint("4a") &&
-                requiresValidDelegateOutput(spendDelegate, mph, ctx)
+                spendDelegate.hasValidOutput(mph, ctx)
             } &&
             checkpoint("5") &&
             if (!changedAnyNamedDelegate) { true } else {
@@ -227,7 +227,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                         requiresNoDelegateInput(dgt, mph, ctx)
                     } else {
                         //  the new one has to go to the right place
-                        requiresValidDelegateOutput(dgt, mph, ctx)
+                        dgt.hasValidOutput(mph, ctx)
                     }
                 }, true)
             } &&
@@ -277,12 +277,12 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                    );
                    Datum::CharterToken{
                         spendDelegate,
-                        /* spendInvariants */ _,
+                        spendInvariants,
                         /* settingsUut */ _,
-                        /* namedDelegates */ _,
-                        /* mintDelegate */ _,
-                        /* mintInvariants */ _,
-                        /* govDelegate */ _
+                        namedDelegates,
+                        mintDelegate ,
+                        mintInvariants,
+                        govDelegate
                     } = charterDatum;
                     
                    // ?? can we iterate inputs along with delegates, to reduce the overhead
@@ -299,52 +299,77 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
 
                     inputs: []TxInput = ctx.tx.inputs;
 
-                    // spending delegates are checking the settings
-                    Option[TxInput]::Some{spendDelegateInput} = spendDelegate.hasDelegateInput(
-                        inputs: inputs,
-                        mph: mph,
-                        validatorHashRequired: true,
-                        inputRequired: true
-                    );
-                    spendDelegateIsValidating : Bool = MustUseDelegateActivity::from_data( 
-                        mustFindInputRedeemer(ctx, spendDelegateInput)
-                    ).switch {
-                        DelegateActivity{a} => {
-                            a.switch {
-                                ValidatingSettings => requiresValidDelegateOutput(
-                                    spendDelegate, mph, ctx
-                                ),
-                                _ => error("delegate not ValidatingSettings: "+ spendDelegate.uutName)
-                            }
-                        },
-                        _ => error("no way") // throws if the redeemer isn't #0.
+                    spendDelegateIsValidating : Bool = 
+                        spendDelegate.validatesUpdatedSettings(
+                            inputs: inputs,
+                            mph: mph,
+                            validatorHashRequired: true,
+                            inputRequired: true,
+                            ctx: ctx
+                        ).unwrap();
+                    // tt : Bool = requiresValidDelegateOutput(
+                    //         spendDelegate, mph, ctx);
+                            
+
+                    // minting delegates are checking the settings
+                    mintDelegateIsValidating : Bool = 
+                        mintDelegate.validatesUpdatedSettings(
+                            inputs: inputs,
+                            mph: mph,
+                            validatorHashRequired: true,
+                            inputRequired: true,
+                            ctx: ctx
+                        ).unwrap();
+
+                    // govAuthority is checking the settings
+                    govDelegateMaybeValidating : Bool = 
+                        govDelegate.validatesUpdatedSettings(
+                            inputs: inputs,
+                            mph: mph,
+                            validatorHashRequired: false,
+                            inputRequired: false,
+                            ctx: ctx
+                        ).switch{
+                            Some => true,
+                            None => true
+                        };
+                    checkOneInvariant : (Bool, RelativeDelegateLink) -> Bool = 
+                    (ok: Bool, oneDgt: RelativeDelegateLink) -> Bool {
+                        ok && oneDgt.validatesUpdatedSettings(
+                            inputs: inputs,
+                            mph: mph,
+                            validatorHashRequired: true,
+                            inputRequired: true,
+                            ctx: ctx
+                        ).unwrap()
                     };
-
-                    // todo: minting delegates are checking the settings
-                    // mintDelegateInput : Bool = mintDelegate.hasDelegateInput(
-                    //     inputs: inputs,
-                    //     validatorHashRequired: true
-                    // );
-
-                    //     address: spendDelegate.delegateValidatorHash,
-                    //     mustFindInputRedeemer
-                    // );
-                    // requiresValidDelegateOutput(
-                        //     charterDatum.spendDelegate, mph, ctx,
-                        //     spentWithRedeemer: (
-                            // );
-                            
-                            
-                    // todo: govAuthority is checking the settings
-                    // todo: spendInvariants are checking the settings
-                    // todo: mintInvariants are checking the settings
+                    // spendInvariants are checking the settings
+                    spendInvariantsAreValidating : Bool = spendInvariants.fold( 
+                        checkOneInvariant, true
+                    );
+                    // mintInvariants are checking the settings
+                    mintInvariantsAreValidating : Bool = mintInvariants.fold( 
+                        checkOneInvariant, true
+                    );
+                    // namedDelegates are checking the settings
+                    namedDelegatesAreValidating : Bool = namedDelegates.fold( 
+                        (ok: Bool, _, dgt: RelativeDelegateLink) -> Bool {
+                            ok && dgt.validatesUpdatedSettings(
+                                inputs: inputs,
+                                mph: mph,
+                                validatorHashRequired: true,
+                                inputRequired: true,
+                                ctx: ctx
+                            ).unwrap()
+                        }, true
+                    );
 
                     spendDelegateIsValidating &&
-                    // mintDelegateIsValidating &&
-                    // govDelegateIsValidating &&
-                    // spendInvariantsAreValidating &&
-                    // mintInvariantsAreValidating &&
-                    // namedDelegatesAreValidating &&
+                    mintDelegateIsValidating &&
+                    govDelegateMaybeValidating &&
+                    spendInvariantsAreValidating &&
+                    mintInvariantsAreValidating &&
+                    namedDelegatesAreValidating &&
                     hasGovAuthority
                 },
                 _ => error("wrong use of updatingSettings action for non-SettingsData datum")

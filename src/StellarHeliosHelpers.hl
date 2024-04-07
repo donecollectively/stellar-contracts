@@ -96,3 +96,24 @@ func getOutputForInput(ctx: ScriptContext, input: TxInput) -> TxOutput {
 
     getOutputWithValue(ctx, inputValue)
 }
+
+//! retrieves the redeemer for a specific input
+func mustFindInputRedeemer(
+    ctx : ScriptContext,
+    txInput: TxInput    
+) -> Data {
+    targetId : TxOutputId = txInput.output_id;
+    redeemers : Map[ScriptPurpose]Data = ctx.tx.redeemers;
+    spendsExpectedInput : ScriptPurpose = redeemers.find_key( 
+        (purpose : ScriptPurpose) -> { purpose.switch{ 
+            sp: Spending => {
+                // print ("oid: " + sp.output_id.show());
+                sp.output_id == targetId
+            }, 
+            _ => false 
+        } }
+    );
+    redeemers.get(spendsExpectedInput)
+}
+
+

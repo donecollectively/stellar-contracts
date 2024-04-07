@@ -7,10 +7,6 @@ import {
 
 import { Datum, Activity } from specializedCapo
 
-import {
-    requiresValidDelegateOutput
-} from CapoDelegateHelpers
-
 
 func getRefCharterUtxo(ctx: ScriptContext, mph : MintingPolicyHash) -> TxInput {
     chVal : Value = tvCharter(mph);
@@ -62,26 +58,6 @@ func mustHaveGovAuthority(
     mph : MintingPolicyHash,
     charterDatum : Datum::CharterToken = getTxCharterDatum(ctx, mph)
 ) -> Bool {
-    requiresValidDelegateOutput(charterDatum.govAuthorityLink, mph, ctx)
+    charterDatum.govAuthorityLink.hasValidOutput(mph, ctx)
 }
-
-//! retrieves the redeemer for a specific input
-func mustFindInputRedeemer(
-    ctx : ScriptContext,
-    txInput: TxInput    
-) -> Data {
-    targetId : TxOutputId = txInput.output_id;
-    redeemers : Map[ScriptPurpose]Data = ctx.tx.redeemers;
-    spendsExpectedInput : ScriptPurpose = redeemers.find_key( 
-        (purpose : ScriptPurpose) -> { purpose.switch{ 
-            sp: Spending => {
-                // print ("oid: " + sp.output_id.show());
-                sp.output_id == targetId
-            }, 
-            _ => false 
-        } }
-    );
-    redeemers.get(spendsExpectedInput)
-}
-
 

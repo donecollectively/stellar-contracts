@@ -31,7 +31,6 @@ import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { TestBadSettings } from "./TestBadSettings";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
-type localTC = StellarTestContext<DefaultCapoTestHelper>;
 
 const it = itWithContext<localTC>;
 const fit = it.only;
@@ -51,30 +50,39 @@ const describe = descrWithContext<localTC>;
 // "the minting delegate must validate the UpdatingSettings details",
 
 
-type BadSettings = {
+type CanBeBadSettings = {
     meaning: number;
     badSettingToMintDelegate: number;
     badSettingToSpendDelegate: number;
 }
+const goodSettings : CanBeBadSettings = {
+    badSettingToMintDelegate: 0,
+    badSettingToSpendDelegate: 0,
+    meaning: 42
+}
 
-class CapoCanHaveBadSettings extends DefaultCapo<BadSettings> {
+class CapoCanHaveBadSettings extends DefaultCapo<CanBeBadSettings> {
     get customCapoSettings()  {
         return TestBadSettings;
     }
-    mkInitialSettings(): BadSettings {
+    mkInitialSettings(): CanBeBadSettings {
         return {
             meaning: 42,
             badSettingToMintDelegate: 0,
             badSettingToSpendDelegate: 0,
         };
-    }
+    }    
+}
+class BadSettingsTestHelper extends DefaultCapoTestHelper.forCapoClass(CapoCanHaveBadSettings) {
 
 }
+
+type localTC = StellarTestContext<BadSettingsTestHelper>;
 
 describe("supports an abstract Settings structure stored in the contact", async () => {
     beforeEach<localTC>(async (context) => {
         await new Promise(res => setTimeout(res, 10));
-        await addTestContext(context, DefaultCapoTestHelper.forCapoClass(CapoCanHaveBadSettings))
+        await addTestContext(context, BadSettingsTestHelper);
     });
 
     it("has a 'SettingsData' datum variant & utxo in the contract", async (context: localTC) => {
@@ -183,6 +191,9 @@ describe("supports an abstract Settings structure stored in the contact", async 
             });
 
             await expect(updating).rejects.toThrow(/must not have badSettingToSpendDelegate/);
+            const spendDelegate = await capo.getSpendDelegate();
+            vi.spyOn(spendDelegate, "txnGrantAuthority").mockImplementation(async tcx => tcx);
+            await expect(h.updateSettings(goodSettings)).rejects.toThrow(/missing required input for delegate link spendDgt-/);
         });
 
         it("the minting delegate must validate the UpdatingSettings details", async (context: localTC) => {
@@ -197,17 +208,21 @@ describe("supports an abstract Settings structure stored in the contact", async 
             });
 
             await expect(updating).rejects.toThrow(/must not have badSettingToMintDelegate/);
+
+            const mintDelegate = await capo.getMintDelegate();
+            vi.spyOn(mintDelegate, "txnGrantAuthority").mockImplementation(async tcx => tcx);
+            await expect(h.updateSettings(goodSettings)).rejects.toThrow(/missing required input for delegate link mintDgt-/)
         });
 
-        it("all named delegates must validate the UpdatingSettings details", async (context: localTC) => {
+        it.todo("TODO: TEST: all named delegates must validate the UpdatingSettings details", async (context: localTC) => {
             throw new Error(`implement me!`)
         })
 
-        it.todo("TODO: the spending invariant delegates must validate the UpdatingSettings details", async (context: localTC) => {
+        it.todo("TODO: TEST: the spending invariant delegates must validate the UpdatingSettings details", async (context: localTC) => {
 
         }) 
 
-        it.todo("TODO: the minting invariant delegates must validate the UpdatingSettings details", async (context: localTC) => {
+        it.todo("TODO: TEST: the minting invariant delegates must validate the UpdatingSettings details", async (context: localTC) => {
         })
 
     });

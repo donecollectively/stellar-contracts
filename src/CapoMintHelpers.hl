@@ -2,14 +2,14 @@
 
 module CapoMintHelpers
 import {
+    mustFindInputRedeemer,
     mkTv,
     tvCharter
 } from StellarHeliosHelpers
 
 import {
     getTxCharterDatum,
-    getRefCharterDatum,
-    mustFindInputRedeemer
+    getRefCharterDatum
 } from CapoHelpers
 
 import {

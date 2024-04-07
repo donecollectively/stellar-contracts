@@ -1,7 +1,6 @@
 spending CustomTreasury
 import { 
     RelativeDelegateLink,
-    requiresValidDelegateOutput
 } from CapoDelegateHelpers
 
 // needed in helios 0.13: defaults

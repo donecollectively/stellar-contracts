@@ -1,6 +1,7 @@
 module CapoDelegateHelpers
 
 import {
+    mustFindInputRedeemer,
     mkTv,
     returnsValueToScript
 } from StellarHeliosHelpers
@@ -40,7 +41,7 @@ enum DelegateActivity {
 
 // use this enum to match any redeemer if you don't care about what other
 // variants may be in that delegate, but you know it has to be a delegate with the 
-// universal delegate actviities.
+// universal delegate activities at const#0
 enum MustUseDelegateActivity {
     DelegateActivity {
         a: DelegateActivity
@@ -50,6 +51,7 @@ enum MustUseDelegateActivity {
     // _r3
     // _r4
 }
+
 
 // data stored in the Capo, representing basic delegate info
 //   about the connection to a delegate.  
@@ -64,6 +66,42 @@ struct RelativeDelegateLink {
     delegateValidatorHash: Option[ValidatorHash]
     // !!! todo ???  - for namedDelegates particularly
     // stakingCred: stakingKeyRequirement
+
+    func validatesUpdatedSettings(self,
+        inputs: []TxInput,
+        validatorHashRequired: Bool,
+        mph: MintingPolicyHash,
+        inputRequired: Bool,
+        ctx: ScriptContext
+    ) -> Option[Bool] {
+        self.hasDelegateInput(
+            inputs: inputs,
+            mph: mph,
+            validatorHashRequired: validatorHashRequired,
+            inputRequired: inputRequired
+        ).switch {
+            // hasDelegateInput already failed if the input was required.
+            None => Option[Bool]::None, // clean "not found but that's permitted"
+            Some{spendDelegateInput} => {
+                spendDelegateIsValid : Bool = MustUseDelegateActivity::from_data( 
+                    mustFindInputRedeemer(ctx, spendDelegateInput)
+                ).switch {
+                    DelegateActivity{a} => {
+                        a.switch {
+                            ValidatingSettings => self.hasValidOutput(
+                                 mph, ctx
+                            ),
+                            _ => error("delegate not ValidatingSettings: "+ self.uutName)
+                        }
+                    },
+                    _ => error("no way") // throws if the redeemer isn't #0.
+                };
+
+                assert(spendDelegateIsValid, "no way"); // it threw any error already
+                Option[Bool]::Some{spendDelegateIsValid}        
+            }
+        }
+    }
 
     func hasDelegateInput(self, 
         inputs: []TxInput, 
@@ -112,6 +150,54 @@ struct RelativeDelegateLink {
             }        
         }
     }
+
+    // was requiresValidDelegateOutput 
+    func hasValidOutput(
+        self, // delegateLink: RelativeDelegateLink, 
+        mph: MintingPolicyHash, 
+        ctx : ScriptContext,
+        required: Bool = true
+    ) -> Bool {
+        RelativeDelegateLink{
+            uut, strategy,
+            validatorHash
+        } = self;
+        if (strategy.encode_utf8().length < 4) {
+            error("strategy too short")
+            // error("strategy must be at least 4 bytes, got: '"+strategy +
+            //     "' = "+ strategy.encode_utf8().length.show()
+            // )
+        };
+    
+        v : Value = mkTv(mph, uut);
+        hasDelegate : Bool = validatorHash.switch{
+            Some{vh} => {
+                print(" - seek dgTkn in vh " + vh.show());
+                ctx.tx.value_locked_by(vh).contains(v)
+            },
+            None => {
+                print( " - seek dgTkn in any outputs; no special vhash requirement");
+                ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {
+                    o.value.contains(v)
+                }).switch{
+                    Some => true, 
+                    None => false
+                }
+            }
+        };
+    
+        if (!hasDelegate && required) {
+            error("missing dgTkn "+ uut )
+        } else {
+            if (hasDelegate) {
+                print("has delegate: yes")
+            } else {
+                print("has delegate: returning false")
+            }
+        };
+        hasDelegate
+    }
+    
     // config: Data
 }
 
@@ -190,50 +276,23 @@ func requiresNoDelegateInput(
     true
 }
 
+// just some convenience stuff to lead people to the right place
+struct delegateLink_hasValidOutput_asMethod {
+    placeHolder: String 
+}
+
 func requiresValidDelegateOutput(
-    delegateLink: RelativeDelegateLink, 
+    delegateLink: delegateLink_hasValidOutput_asMethod,
     mph: MintingPolicyHash, 
     ctx : ScriptContext,
     required: Bool = true
 ) -> Bool {
-    RelativeDelegateLink{
-        uut, strategy,
-        validatorHash
-    } = delegateLink;
-    if (strategy.encode_utf8().length < 4) {
-        error("strategy too short")
-        // error("strategy must be at least 4 bytes, got: '"+strategy +
-        //     "' = "+ strategy.encode_utf8().length.show()
-        // )
-    };
-
-    v : Value = mkTv(mph, uut);
-    hasDelegate : Bool = validatorHash.switch{
-        Some{vh} => {
-            print(" - seek dgTkn in vh " + vh.show());
-            ctx.tx.value_locked_by(vh).contains(v)
-        },
-        None => {
-            print( " - seek dgTkn in any outputs; no special vhash requirement");
-            ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {
-                o.value.contains(v)
-            }).switch{
-                Some => true, 
-                None => false
-            }
-        }
-    };
-
-    if (!hasDelegate && required) {
-        error("missing dgTkn "+ uut )
-    } else {
-        if (hasDelegate) {
-            print("has delegate: yes")
-        } else {
-            print("has delegate: returning false")
-        }
-    };
-    hasDelegate
+    assert(false, "replaced by delegateLink.hasValidOutput(...)");
+    assert(delegateLink==delegateLink, "no way");
+    assert(mph==mph, "no way");
+    assert(ctx==ctx, "no way");
+    assert(required==required, "no way");
+    true
 }
 
 // todo: move to Mint helpers, as that's it's only purpose.
@@ -302,13 +361,13 @@ func requiresDelegateAuthorizingMint(
     // NOTE: DOESN'T CHECK that the AUTHORIZING DELEGATE is returned anywhere specific.
     //    - it's not generally a minting responsibility (however, as an exception the bootstrap charter event DOES 
     //      actually check for valid delegate outputs).  All other cases should have the correct
-    // print("no no no");
     //      delegate outputs checked (e.g. in the Capo's CharterDatum spend checker).
+    // print("no no no");
     // maybeCheckDelegateOutput : Bool = if (!checkDelegateOutput) {
     //     print("  -- skipping check for expected delegate output ");
     //     true
     // } else {
-    //     requiresValidDelegateOutput(delegateLink, mph, ctx)        
+    //     delegateLink.hasValidOutput(mph, ctx)        
     // };
     delegateDidAuthorize && maybeCheckedMintDelegateAuthority
 }

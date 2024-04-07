@@ -13,19 +13,15 @@ import {
 import { Datum as CapoDatum } from specializedCapo
 
 import {
-    getRefCharterUtxo,
-    mustFindInputRedeemer
+    getRefCharterUtxo
 } from CapoHelpers
 
 import {
+    mustFindInputRedeemer,
     mkTv,
     outputAndDatum,
     tvCharter
 } from StellarHeliosHelpers
-
-import {
-    requiresValidDelegateOutput
-} from CapoDelegateHelpers
 
 //!!!! todo: change to TxOutputId, rolling up these two things:
 const seedTxn : TxId = TxId::new(#1234)
@@ -154,9 +150,9 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
             assert(spendInvariants.length == 0, "no spend invariants allowed at charter creation");
             assert(namedDelegates.length ==0, "no named delegates allowed at charter creation");
             
-            hasGoodDelegates : Bool = requiresValidDelegateOutput(authDgt, mph, ctx) &&
-                requiresValidDelegateOutput(mintDgt, mph, ctx) &&
-                requiresValidDelegateOutput(spendDgt, mph, ctx);
+            hasGoodDelegates : Bool = authDgt.hasValidOutput(mph, ctx) &&
+                mintDgt.hasValidOutput(mph, ctx) &&
+                spendDgt.hasValidOutput(mph, ctx);
 
             print("     -- hasSeed: " + hasSeed.show());
             print("     -- mintsUuts: " + mintsUuts.show());
