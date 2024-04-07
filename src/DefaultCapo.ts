@@ -1281,11 +1281,11 @@ export class DefaultCapo<
         thisType extends DefaultCapo<settingsType, MinterType, CDT, configType>
     >(
         this: thisType,
-        tcx: StellarTxnContext = new StellarTxnContext(this.myActor),
         delegateInfo: MinimalDelegateLink<DT> & {
             strategyName: string &
-                keyof thisType["delegateRoles"]["mintDelegate"];
-        }
+            keyof thisType["delegateRoles"]["mintDelegate"];
+        },
+        tcx: StellarTxnContext = new StellarTxnContext(this.myActor),
     ): Promise<StellarTxnContext> {
         const currentDatum = await this.findCharterDatum();
 
@@ -1340,11 +1340,11 @@ export class DefaultCapo<
         thisType extends DefaultCapo<settingsType, MinterType, CDT, configType>
     >(
         this: thisType,
-        tcx: StellarTxnContext = new StellarTxnContext(this.myActor),
         delegateInfo: MinimalDelegateLink<DT> & {
             strategyName: string &
-                keyof thisType["delegateRoles"]["spendDelegate"];
-        }
+            keyof thisType["delegateRoles"]["spendDelegate"];
+        },
+        tcx: StellarTxnContext = new StellarTxnContext(this.myActor),
     ) {
         const currentDatum = await this.findCharterDatum();
 
@@ -1390,12 +1390,12 @@ export class DefaultCapo<
         thisType extends DefaultCapo<settingsType, MinterType, CDT, configType>
     >(
         this: thisType,
-        tcx: StellarTxnContext = new StellarTxnContext(this.myActor),
         delegateName: string,
         delegateInfo: MinimalDelegateLink<DT> & {
             strategyName: string &
-                keyof thisType["delegateRoles"]["spendDelegate"];
-        }
+            keyof thisType["delegateRoles"]["spendDelegate"];
+        },
+        tcx: StellarTxnContext = new StellarTxnContext(this.myActor),
     ) {
         const currentDatum = await this.findCharterDatum();
 
@@ -1734,7 +1734,7 @@ export class DefaultCapo<
                         "can add invariant spending delegates to the charter data",
                     ],
                 },
-            "can update the minting delegate in the charter datum": {
+            "can update the minting delegate in the charter data": {
                 purpose: "to evolve the minting policy for the contract",
                 details: [
                     "when updating the minting policy delegate, the gov authority is used to authorize the change",
