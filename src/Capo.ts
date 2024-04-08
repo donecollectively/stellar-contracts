@@ -819,7 +819,7 @@ export abstract class Capo<
      * For allocating a charter token (/its minter), one or more UUTs, or other token name(s)
      * to be minted, this function calculates the size of minUtxo needed for all the needed tokens,
      * assuming they'll each be stored in separate utxos.  It then finds and returns a UTxO from the
-     * current actor's wallet.  The utxo is NOT added to the transaction.
+     * current actor's wallet.  The utxo is NOT implicitly added to the transaction (use tcx.addInput() to add it).
      *
      * When the transaction context already has some utxo's being consumed, they're not
      * eligible for selection.
@@ -884,6 +884,10 @@ export abstract class Capo<
      * @remarks
      *
      * Combines partal and implied configuration settings, validating the resulting configuration.
+     * 
+     * It expects the transaction-context to have a UUT whose name (or a UUT roleName) matching 
+     * the indicated `roleName`.  Use {@link txnWillMintUuts`} or {@link txnMintingUuts} to construct
+     * a transaction having that and a compliant txn-type.
      *
      * The resulting "relative" delegate link can be used directly in a Datum field of type RelativeDelegateLink
      * or can be stored off-chain in any way suitable for your dApp.

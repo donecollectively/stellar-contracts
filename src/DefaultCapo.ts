@@ -1213,12 +1213,13 @@ export class DefaultCapo<
                 seedIndex: tcxWithSeed.state.seedUtxo.outputId.utxoIdx,
                 ...(options.forcedUpdate
                     ? {}
+                    : {  // minter will enforce this Burn
                     : {
                           replacingUut: spendDelegate.authorityTokenName,
                       }),
             }),
             ...(options.forcedUpdate
-                ? {
+                ? { // the minter won't require the old delegate to be burned
                       returnExistingDelegateToScript: false, // so it can be burned without a txn imbalance
                   }
                 : {
@@ -1885,7 +1886,8 @@ export class DefaultCapo<
             },
             "added and updated delegates always validate the present configuration data":
                 {
-                    purpose: "to ensure that the entirety of policies in a contract suite have integrity",
+                    purpose:
+                        "to ensure that the entirety of policies in a contract suite have integrity",
                     details: [
                         "New delegates cannot be adopted unless they also validate the present configuration data, ",
                         "  ... so that configuration and current delegates can always be expected to be in sync.",
@@ -1929,11 +1931,11 @@ export class DefaultCapo<
                         "The minting delegate is expected to enforce creation rules for each type of custom data",
                         "The mint- and spend-delegates can evolve to handle new types of data",
                         "A namedDelegates structure in the Capo provides a manifest of additional delegates, ",
-                        "  ... whose involvement may be required as needed by the mint- and spend-delegates."
+                        "  ... whose involvement may be required as needed by the mint- and spend-delegates.",
                     ],
                     mech: [
                         "has named delegates, as a string map to named delegate links",
-                        "the spending policy "
+                        "the spending policy ",
                     ],
                     requires: [
                         "the charter has a namedDelegates structure for semantic delegate links",
@@ -1942,22 +1944,25 @@ export class DefaultCapo<
                     ],
                 },
 
-            "the charter has a namedDelegates structure for semantic delegate links": {
-                purpose: "to provide a manifest of additional delegates that may be required to enforce application semantics",
-                details: [
-                    "The namedDelegates structure is a string map to named delegate links",
-                    "The minting and spending delegates can use these named delegates as needed",
-                    "The minting and spending delegates can evolve to handle new types of data",
-                    "The namedDelegates structure can be updated by the gov delegate",
-                ],
-                mech: [
-                    "has a namedDelegates structure in the charter datum",
-                    "the namedDelegates structure can be updated by the gov delegate",
-                ],
-                requires: [],
-            },
+            "the charter has a namedDelegates structure for semantic delegate links":
+                {
+                    purpose:
+                        "to provide a manifest of additional delegates that may be required to enforce application semantics",
+                    details: [
+                        "The namedDelegates structure is a string map to named delegate links",
+                        "The minting and spending delegates can use these named delegates as needed",
+                        "The minting and spending delegates can evolve to handle new types of data",
+                        "The namedDelegates structure can be updated by the gov delegate",
+                    ],
+                    mech: [
+                        "has a namedDelegates structure in the charter datum",
+                        "the namedDelegates structure can be updated by the gov delegate",
+                    ],
+                    requires: [],
+                },
             "CreatingDelegatedDatum: creates a UTxO with any custom datum": {
-                purpose: "allows the application to enforce policies for custom record creation",
+                purpose:
+                    "allows the application to enforce policies for custom record creation",
                 details: [
                     "The Capo must involve the minting delegate in creating a custom datum",
                     "  ... which can apply its own logic to deciding whether the creation is allowed.",
@@ -1972,7 +1977,8 @@ export class DefaultCapo<
 
             "UpdatingDelegatedDatum: checks that a custom data element can be updated":
                 {
-                    purpose: "guards appropriate updates to custom data elements",
+                    purpose:
+                        "guards appropriate updates to custom data elements",
                     details: [
                         "When updating a custom datum, the Capo must involve the spending delegate ",
                         "  ... which can apply its own logic to deciding whether the update is allowed.",

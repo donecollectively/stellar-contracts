@@ -142,7 +142,7 @@ enum MintDelegateActivity {
 
         // This call can serve as a template for enforcing expected mints 
         // of uuts (and additional token values) in validation of application-
-        // specific activities.
+        // specific activities, given (mph, sTxId, sIdx, purposes)
         validateUutMinting(
             ctx: ctx, 
             mph: dd.mph,
@@ -185,18 +185,17 @@ enum MintDelegateActivity {
 
     //! used only for validating non-IsDelegation datum types and activities.
     //   if you have any admininstrative data structures that inform 
-    //   your minting policy, this might be useful.  Activities that
-    //   you might validate here would be specific to your application.
+    //   your minting policy, this might be useful.  Otherise, look to Activity validations
+    //   above, in which the isDelegation token is being spent with an application-specific
+    //   activity/redeemer
     func otherDatumValidation( self,
         priorMdd: MintDelegateDatum, 
         ctx: ScriptContext
     ) -> Bool {
         neverTriggered = () -> {  error("never called") };
         self.switch{
-            // Authorizing => neverTriggered(),
-            // Note: these activities are reserved for the IsDelegation datum.
-            //   ... using these activities on any other Datum type will always fail
-            //   ... BEFORE execution reaches this point.
+            // Note: this set of DelegateActivities is reserved for the IsDelegation datum.
+            //  Using it on any other Datum type will always fail and execution will never arrive here.
             DelegateActivity => neverTriggered(),
             
             // ------------------- application-specific activities can be added here
