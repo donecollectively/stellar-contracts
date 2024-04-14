@@ -17,7 +17,7 @@ import { heliosRollupLoader } from "./src/heliosRollupLoader.js";
 const name = packageJson.main.replace(/\.m?js$/, "");
 
 const serverBundledModules : string[] = [
-    "@hyperionbt/helios"
+    // "@hyperionbt/helios"
 ];
 const forcedServerExternals : string[] = [];
 
