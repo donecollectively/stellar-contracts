@@ -89,7 +89,7 @@ import type {
 import { BasicMintDelegate } from "./minting/BasicMintDelegate.js";
 import { AnyAddressAuthorityPolicy } from "./authority/AnyAddressAuthorityPolicy.js";
 import { dumpAny, txAsString } from "./diagnostics.js";
-import { MultisigAuthorityPolicy } from "./authority/MultisigAuthorityPolicy.js";
+// import { MultisigAuthorityPolicy } from "./authority/MultisigAuthorityPolicy.js";
 import { hasReqts } from "./Requirements.js";
 import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { UnspecializedCapo } from "./UnspecializedCapo.js";
@@ -371,18 +371,18 @@ export class DefaultCapo<
                         return undefined;
                     },
                 },
-                multisig: {
-                    delegateClass: MultisigAuthorityPolicy,
-                    validateConfig(args): strategyValidation {
-                        const { rev, uut } = args;
-                        const errors: ErrorMap = {};
-                        if (!rev) errors.rev = ["required"];
-                        if (!uut) errors.uut = ["required"];
-                        if (Object.keys(errors).length > 0) return errors;
+                // multisig: {
+                //     delegateClass: MultisigAuthorityPolicy,
+                //     validateConfig(args): strategyValidation {
+                //         const { rev, uut } = args;
+                //         const errors: ErrorMap = {};
+                //         if (!rev) errors.rev = ["required"];
+                //         if (!uut) errors.uut = ["required"];
+                //         if (Object.keys(errors).length > 0) return errors;
 
-                        return undefined;
-                    },
-                },
+                //         return undefined;
+                //     },
+                // },
             }),
             mintDelegate: defineRole("mintDgt", BasicMintDelegate, {
                 default: {
@@ -1214,7 +1214,6 @@ export class DefaultCapo<
                 ...(options.forcedUpdate
                     ? {}
                     : {  // minter will enforce this Burn
-                    : {
                           replacingUut: spendDelegate.authorityTokenName,
                       }),
             }),
