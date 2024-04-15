@@ -20,7 +20,7 @@ import type {
     hasBootstrappedConfig,
     hasUutContext,
 } from "../Capo.js";
-import { DefaultMinter } from "../minting/DefaultMinter.js";
+import { DefaultMinter } from "../minting/CapoMinter.js";
 
 import type { expect as expectType } from "vitest";
 import type { OffchainSettingsType } from "../CapoSettingsTypes.js";

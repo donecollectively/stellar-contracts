@@ -1,4 +1,4 @@
-minting DefaultMinter 
+minting CapoMinter
 
 import { 
     hasSeedUtxo, 

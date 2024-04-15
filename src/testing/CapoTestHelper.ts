@@ -12,7 +12,7 @@ import type {
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
 import type { MinimalDefaultCharterDatumArgs } from "../DefaultCapo.js";
-import { DefaultMinter } from "../minting/DefaultMinter.js";
+import { CapoMinter } from "../minting/CapoMinter.js";
 
 /**
  * Base class for test helpers for Capo contracts
@@ -23,7 +23,7 @@ import { DefaultMinter } from "../minting/DefaultMinter.js";
  * @public
  **/
 export abstract class CapoTestHelper<
-    SC extends Capo<any, MinterBaseMethods & DefaultMinter, CDT, CT>,
+    SC extends Capo<any, MinterBaseMethods & CapoMinter, CDT, CT>,
     CDT extends anyDatumArgs = //prettier-ignore
         SC extends Capo<any, infer iCDT> ? iCDT : anyDatumArgs, //prettier-ignore
     CT extends CapoBaseConfig  =  //prettier-ignore

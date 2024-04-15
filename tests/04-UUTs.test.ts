@@ -14,7 +14,7 @@ import { DefaultCapo } from "../src/DefaultCapo";
 import { Tx, TxOutput, Value } from "@hyperionbt/helios";
 
 import { StellarTxnContext } from "../src/StellarTxnContext";
-import { DefaultMinter } from "../src/minting/DefaultMinter";
+import { CapoMinter } from "../src/minting/CapoMinter";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { Capo, hasAllUuts } from "../src/Capo";
@@ -292,7 +292,7 @@ describe("Capo", async () => {
             const { tina, tom, tracy } = actors;
 
             const t: DefaultCapo = await h.initialize();
-            const m: DefaultMinter = t.minter!;
+            const m: CapoMinter = t.minter!;
 
             await h.mintCharterToken();
             // await delay(1000);
@@ -393,7 +393,7 @@ describe("Capo", async () => {
             type hasSomethingUut = { ["testSomeThing"]: UutName };
 
             // await t.txnAddCharterAuthorityTokenRef(tcx);
-            const m: DefaultMinter = t.minter!;
+            const m: CapoMinter = t.minter!;
 
             const spy = vi.spyOn(utils, "mkUutValuesEntries");
             spy.mockImplementation(

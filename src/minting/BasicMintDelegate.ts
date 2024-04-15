@@ -200,13 +200,17 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
             );
         }
 
+        //@ts-expect-error
+        const {capo} = this.configIn || this.partialConfig
+
+        if (!capo) throw new Error(`missing capo in config or partial-config for ${this.constructor.name}`)
         return [
             // StellarHeliosHelpers,
             // CapoDelegateHelpers,
             // CapoHelpers,
             // CapoMintHelpers,
             specializedMintDelegate,
-            ...this.configIn!.capo.importModules(),
+            ...capo.importModules(),
             // this.specializedCapo,
         ];
     }

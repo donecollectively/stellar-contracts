@@ -75,7 +75,7 @@ import {
     type RealNumberSettingsMap,
 } from "./DefaultSettingsAdapter.js";
 
-import type { DefaultMinter } from "./minting/DefaultMinter.js";
+import type { CapoMinter } from "./minting/CapoMinter.js";
 import {
     delegateRoles,
     defineRole,
@@ -222,7 +222,7 @@ export type HeldAssetsArgs = {
 
 export class DefaultCapo<
         settingsType extends OffchainSettingsType<any> = RealNumberSettingsMap,
-        MinterType extends DefaultMinter = DefaultMinter,
+        MinterType extends CapoMinter = CapoMinter,
         CDT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs,
         configType extends CapoBaseConfig = CapoBaseConfig
     >
@@ -1462,7 +1462,7 @@ export class DefaultCapo<
      *
      * It's recommended to create custom activities in the minting delegate, to go with your
      * application's use-cases for minting UUTs.  To include the seedUtxo details in the transaction,
-     * you can follow the SeedAttrs pattern  seen in {@link DefaultMinter.activityMintingUuts | activityMintingUuts()},
+     * you can follow the SeedAttrs pattern  seen in {@link CapoMinter.activityMintingUuts | activityMintingUuts()},
      * using the StellarTxnContext's {@link StellarTxnContext.getSeedAttrs | getSeedAttrs()}
      * method to access the seedUtxo details.
      *

@@ -69,7 +69,6 @@ describe("StellarContract", async () => {
             } = context;
 
             const treasury = await h.initialize();
-            //@ts-expect-error private getter
             const ocat = treasury.onChainActivitiesType;
             expect(ocat).toBeTruthy();
         });

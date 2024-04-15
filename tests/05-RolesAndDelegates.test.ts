@@ -10,7 +10,7 @@ import {
 
 import { DefaultCapo } from "../src/DefaultCapo";
 
-import { DefaultMinter } from "../src/minting/DefaultMinter";
+import { CapoMinter } from "../src/minting/CapoMinter";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { ADA, addTestContext } from "../src/testing/types";
 import { StellarTestContext } from "../src/testing/StellarTestContext";
@@ -64,7 +64,7 @@ class DelegationTestCapo extends DefaultCapo {
 
         return delegateRoles({
             ...othersInherited,
-            noDefault: defineRole("noDef", DefaultMinter, {}),
+            noDefault: defineRole("noDef", CapoMinter, {}),
             mintDelegate,
         });
     }

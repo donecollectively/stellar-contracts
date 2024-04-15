@@ -98,7 +98,7 @@ export type {
 } from "./src/StellarContract.js";
 
 export { DatumAdapter } from "./src/DatumAdapter.js";
-export { DefaultMinter } from "./src/minting/DefaultMinter.js";
+export { CapoMinter } from "./src/minting/CapoMinter.js";
 export { 
     DefaultCapo, 
     // contract as DefaultCapoContract 

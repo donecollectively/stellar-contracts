@@ -12,8 +12,8 @@ import {
     UplcProgram,
     bytesToText,
 } from "@hyperionbt/helios";
-import { DefaultMinter } from "./minting/DefaultMinter.js";
-import type { BasicMinterParams } from "./minting/DefaultMinter.js";
+import { CapoMinter } from "./minting/CapoMinter.js";
+import type { BasicMinterParams } from "./minting/CapoMinter.js";
 import {
     Activity,
     StellarContract,
@@ -280,7 +280,7 @@ type PreconfiguredDelegate<T extends StellarDelegate<any>> = Omit<
  */
 export abstract class Capo<
     settingsType,
-    minterType extends MinterBaseMethods & DefaultMinter = DefaultMinter,
+    minterType extends MinterBaseMethods & CapoMinter = CapoMinter,
     charterDatumType extends anyDatumArgs = anyDatumArgs,
     configType extends CapoBaseConfig = CapoBaseConfig
 > extends StellarContract<configType> {
@@ -424,8 +424,8 @@ export abstract class Capo<
         return this.settingsAdapter.fromOnchainDatum(parsedDatum)
     }
 
-    get minterClass(): stellarSubclass<DefaultMinter, BasicMinterParams> {
-        return DefaultMinter;
+    get minterClass(): stellarSubclass<CapoMinter, BasicMinterParams> {
+        return CapoMinter;
     }
 
     minter!: minterType;

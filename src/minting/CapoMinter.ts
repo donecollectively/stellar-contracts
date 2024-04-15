@@ -22,16 +22,19 @@ import type {
     isActivity,
 } from "../StellarContract.js";
 
-//@ts-expect-error
-import contract from "./DefaultMinter.hl";
-export const MinterContract = contract
-
+//@ts-expect-error - typescript doesn't grok Helios
+import contract from "./CapoMinter.hl";
+export const MinterContract = contract;
 //@ts-expect-error
 import StellarHeliosHelpers from "../StellarHeliosHelpers.hl";
 
 import { CapoMintHelpers } from "../CapoMintHelpers.js";
 
-import { StellarTxnContext, emptyUuts, type anyState } from "../StellarTxnContext.js";
+import {
+    StellarTxnContext,
+    emptyUuts,
+    type anyState,
+} from "../StellarTxnContext.js";
 import type {
     MintUutActivityArgs,
     MinterBaseMethods,
@@ -46,6 +49,7 @@ import { UutName } from "../delegation/UutName.js";
 import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { mkUutValuesEntries, mkValuesEntry, stringToNumberArray } from "../utils.js";
 import { dumpAny } from "../diagnostics.js";
+
 import type { DefaultCapo } from "../DefaultCapo.js";
 import type { BasicMintDelegate } from "./BasicMintDelegate.js";
 
@@ -60,55 +64,64 @@ export type BasicMinterParams = configBase & SeedTxnParams & {
 /**
  * A basic minting validator serving a Capo's family of contract scripts
  * @remarks
- * 
- * Mints charter tokens based on seed UTxOs.  Can also mint UUTs and 
+ *
+ * Mints charter tokens based on seed UTxOs.  Can also mint UUTs and
  * other tokens as approved by the Capo's minting delegate.
-* @public
+ * @public
  **/
-export class DefaultMinter
-    extends StellarContract<BasicMinterParams>
-    implements MinterBaseMethods
+export class CapoMinter
+extends StellarContract<BasicMinterParams>
+implements MinterBaseMethods
 {
     currentRev: bigint = 1n;
     contractSource() {
         return contract;
     }
-    getContractScriptParams(config: BasicMinterParams): configBase & SeedTxnParams {
+    getContractScriptParams(
+        config: BasicMinterParams
+    ): configBase & SeedTxnParams {
         const {
-            seedIndex, 
+            seedIndex,
             seedTxn,
             rev = this.currentRev,
             isDev,
             devGen,
-        } = config
+        } = config;
 
-        return {       
-            rev,      
-            seedIndex, 
-            seedTxn
-         }
+        return {
+            rev,
+            seedIndex,
+            seedTxn,
+        };
     }
 
     get scriptActivitiesName() {
         return "MinterActivity";
     }
 
-
     importModules(): HeliosModuleSrc[] {
-        return this.configIn!.capo.importModules()
+        //@ts-expect-error
+        const { capo } = this.configIn || this.partialConfig;
+
+        if (!capo)
+            throw new Error(
+                `missing capo in config or partial-config for ${this.constructor.name}`
+            );
+
+        return capo.importModules();
     }
 
     /**
      * Mints initial charter token for a Capo contract
      * @remarks
-     * 
+     *
      * This is the fundamental bootstrapping event for a Capo.
      * @param ownerInfo - contains the {owner} address of the Capo contract
      * @public
      **/
     @Activity.redeemer
     activityMintingCharter(ownerInfo: MintCharterActivityArgs): isActivity {
-        const {owner} = ownerInfo
+        const { owner } = ownerInfo;
         const mintingCharter = this.mustGetActivity("mintingCharter");
         const { DelegateDetails: hlDelegateDetails } = this.onChainTypes;
         const t = new mintingCharter(owner);
@@ -119,15 +132,17 @@ export class DefaultMinter
     /**
      * Mints any tokens on sole authority of the Capo contract's minting delegage
      * @remarks
-     * 
+     *
      * The Capo's minting delegate takes on the responsibility of validating a mint.
-     * It can validate mintingUuts, burningUuts and any application-specific use-cases 
+     * It can validate mintingUuts, burningUuts and any application-specific use-cases
      * for minting and/or burning tokens from the policy.
      * @public
      **/
     @Activity.redeemer
     activityMintWithDelegateAuthorizing(): isActivity {
-        const mintWithDelegateAuthorizing = this.mustGetActivity("mintWithDelegateAuthorizing");
+        const mintWithDelegateAuthorizing = this.mustGetActivity(
+            "mintWithDelegateAuthorizing"
+        );
         const t = new mintWithDelegateAuthorizing();
 
         return { redeemer: t._toUplcData() };
@@ -136,12 +151,12 @@ export class DefaultMinter
     /**
      * Mints a new UUT specifically for a minting invariant
      * @remarks
-     * 
+     *
      * When adding a minting invariant, the Capo's existing mint delegate
      * doesn't get to be involved, as it could otherwise block a critical administrative
      * change needed.  The Capo's authority token is all the minter requires
-     * to create the needed UUT. 
-     * 
+     * to create the needed UUT.
+     *
      * @public
      **/
     @Activity.redeemer
@@ -150,21 +165,18 @@ export class DefaultMinter
         seedIndex: sIdx,
     }: Omit<MintUutActivityArgs, "purposes">): isActivity {
         const addingMintInvariant = this.mustGetActivity("addingMintInvariant");
-        const t = new addingMintInvariant(
-            seedTxn,
-            BigInt(sIdx)
-        );
+        const t = new addingMintInvariant(seedTxn, BigInt(sIdx));
 
         return { redeemer: t._toUplcData() };
     }
 
     /** Mints a new UUT specifically for a spending invariant
      * @remarks
-     * 
+     *
      * When adding a spending invariant, the Capo's existing mint delegate
      * is not consulted, as this administrative function works on a higher
-     * level than the usual minting delegate's authority. 
-     * 
+     * level than the usual minting delegate's authority.
+     *
      * @public
      * **/
     @Activity.redeemer
@@ -172,11 +184,10 @@ export class DefaultMinter
         seedTxn,
         seedIndex: sIdx,
     }: Omit<MintUutActivityArgs, "purposes">): isActivity {
-        const addingSpendInvariant = this.mustGetActivity("addingSpendInvariant");
-        const t = new addingSpendInvariant(
-            seedTxn,
-            BigInt(sIdx)
+        const addingSpendInvariant = this.mustGetActivity(
+            "addingSpendInvariant"
         );
+        const t = new addingSpendInvariant(seedTxn, BigInt(sIdx));
 
         return { redeemer: t._toUplcData() };
     }
@@ -184,7 +195,7 @@ export class DefaultMinter
     /**
      * Forces replacement of the Capo's mint delegate
      * @remarks
-     * 
+     *
      * Forces the minting of a new UUT to replace the Capo's mint delegate.
      *
      * @param ‹pName› - descr
@@ -195,22 +206,22 @@ export class DefaultMinter
     activityForcingNewMintDelegate({
         seedTxn,
         seedIndex,
-    } : Omit<MintUutActivityArgs, "purposes">) {
-        console.warn("NOTE: REPLACING THE MINT DELEGATE USING A DIRECT MINTER ACTIVITY\n"+
-            "THIS IS NOT THE RECOMMENDED PATH - prefer using the existing mint delegate's ReplacingMe activity'"
+    }: Omit<MintUutActivityArgs, "purposes">) {
+        console.warn(
+            "NOTE: REPLACING THE MINT DELEGATE USING A DIRECT MINTER ACTIVITY\n" +
+                "THIS IS NOT THE RECOMMENDED PATH - prefer using the existing mint delegate's ReplacingMe activity'"
         );
-        const ReplacingMintDelegate = this.mustGetActivity("ForcingNewMintDelegate");
-        const t = new ReplacingMintDelegate(
-            seedTxn,
-            BigInt(seedIndex)
+        const ReplacingMintDelegate = this.mustGetActivity(
+            "ForcingNewMintDelegate"
         );
+        const t = new ReplacingMintDelegate(seedTxn, BigInt(seedIndex));
         return { redeemer: t._toUplcData() };
     }
 
     /**
      * Forces replacement of the Capo's spend delegate
      * @remarks
-     * 
+     *
      * Forces the minting of a new UUT to replace the Capo's spend delegate.
      *
      * @param ‹pName› - descr
@@ -222,12 +233,12 @@ export class DefaultMinter
         seedTxn,
         seedIndex: seedIndex,
         replacingUut,
-    } : Omit<MintUutActivityArgs, "purposes"> & {replacingUut?: number[]}) {
-        const ReplacingSpendDelegate = this.mustGetActivity("CreatingNewSpendDelegate");
-        const OptByteArray = Option(ByteArray);
-        const uutName = new OptByteArray(
-            replacingUut
+    }: Omit<MintUutActivityArgs, "purposes"> & { replacingUut?: number[] }) {
+        const ReplacingSpendDelegate = this.mustGetActivity(
+            "CreatingNewSpendDelegate"
         );
+        const OptByteArray = Option(ByteArray);
+        const uutName = new OptByteArray(replacingUut);
         const t = new ReplacingSpendDelegate(
             seedTxn,
             BigInt(seedIndex),
@@ -244,7 +255,9 @@ export class DefaultMinter
         seedIndex: sIdx,
         purposes,
     }: MintUutActivityArgs): isActivity {
-        throw new Error(`minter:mintingUuts obsolete; use minter:MintWithDelegateAuthorizing with delegate:mintingUuts or another application-specific activity`);
+        throw new Error(
+            `minter:mintingUuts obsolete; use minter:MintWithDelegateAuthorizing with delegate:mintingUuts or another application-specific activity`
+        );
         // const seedIndex = BigInt(sIdx);
         // console.log("UUT redeemer seedTxn", seedTxn.hex);
         // const {mintingUuts} = this.onChainActivitiesType;
@@ -258,12 +271,14 @@ export class DefaultMinter
     }
 
     /**
-     * @deprecated - use minter:MintWithDelegateAuthorizing with delegate:burningUuts 
+     * @deprecated - use minter:MintWithDelegateAuthorizing with delegate:burningUuts
      * or another application-specific activity
      **/
     @Activity.redeemer
-    activityBurningUuts(...uutNames: string[]) : isActivity {
-        throw new Error(`minter:burningUuts obsolete; use minter:MintWithDelegateAuthorizing with delegate:burningUuts or another application-specific activity`)
+    activityBurningUuts(...uutNames: string[]): isActivity {
+        throw new Error(
+            `minter:burningUuts obsolete; use minter:MintWithDelegateAuthorizing with delegate:burningUuts or another application-specific activity`
+        );
         // const {burningUuts} =this.onChainActivitiesType;
         // const { DelegateDetails: hlDelegateDetails } = this.onChainTypes;
         // const t = new burningUuts(uutNames);
@@ -272,19 +287,19 @@ export class DefaultMinter
     }
 
     @partialTxn
-    async txnBurnUuts<
-        existingTcx extends StellarTxnContext<any>
-    >(
+    async txnBurnUuts<existingTcx extends StellarTxnContext<any>>(
         initialTcx: existingTcx,
-        uutNames: UutName[],
+        uutNames: UutName[]
     ) {
-        const tokenNames = uutNames.map(un => un.name)
+        const tokenNames = uutNames.map((un) => un.name);
         const tcx2 = this.attachRefScript(
             initialTcx.mintTokens(
-                this.mintingPolicyHash!, 
-                tokenNames.map((tokenName) => mkValuesEntry(tokenName, BigInt(-1))),
+                this.mintingPolicyHash!,
+                tokenNames.map((tokenName) =>
+                    mkValuesEntry(tokenName, BigInt(-1))
+                ),
                 this.activityBurningUuts(...tokenNames).redeemer
-            ),
+            )
         );
 
         return tcx2 as existingTcx & typeof tcx2;
@@ -330,7 +345,7 @@ export class DefaultMinter
             capoGov: UutName;
             mintDelegate: UutName;
             spendDelegate: UutName;
-            settingsUut: UutName,
+            settingsUut: UutName;
         }
     ): Promise<TCX> {
         //!!! todo: can we expect capoGov & mintDgt in tcx.state.uuts? and update the type constraint here?
@@ -346,15 +361,15 @@ export class DefaultMinter
         //  a) shortest-first,
         //  b) then same-length items are sorted according to byte values.
         const values = [
-            charterVE, 
-            settingsUutVE, 
-            capoGovVE, 
+            charterVE,
+            settingsUutVE,
+            capoGovVE,
             mintDgtVE,
             spendDgtVE,
         ];
 
         return this.attachRefScript(
-             tcx.mintTokens(
+            tcx.mintTokens(
                 this.mintingPolicyHash!,
                 values,
                 this.activityMintingCharter({
@@ -362,15 +377,14 @@ export class DefaultMinter
                 }).redeemer
             )
         );
-            // as TCX;
+        // as TCX;
     }
     attachRefScript(tcx) {
         return this.configIn!.capo.txnAttachScriptOrRefScript(
-            tcx, 
-            this.compiledScript, 
+            tcx,
+            this.compiledScript
         );
     }
-
 
     @Activity.partialTxn
     async txnMIntingWithoutDelegate<TCX extends StellarTxnContext>(
@@ -387,27 +401,30 @@ export class DefaultMinter
         );
     }
 
-
     @Activity.partialTxn
     async txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(
         tcx: TCX,
         vEntries: valuesEntry[],
-        mintDelegate : BasicMintDelegate,
+        mintDelegate: BasicMintDelegate,
         mintDgtRedeemer: isActivity,
         returnExistingDelegate: boolean = true
     ): Promise<TCX> {
-        const {capo} = this.configIn!
-        const md = mintDelegate || await capo.getMintDelegate(); 
+        const { capo } = this.configIn!;
+        const md = mintDelegate || (await capo.getMintDelegate());
         const tcx1 = await capo.txnMustUseCharterUtxo(tcx, "refInput");
-        const tcx2 = await md.txnGrantAuthority(tcx1, mintDgtRedeemer, returnExistingDelegate);
+        const tcx2 = await md.txnGrantAuthority(
+            tcx1,
+            mintDgtRedeemer,
+            returnExistingDelegate
+        );
 
-        return this.attachRefScript(tcx2.mintTokens(
-            this.mintingPolicyHash!,
-            vEntries,
-            this.activityMintWithDelegateAuthorizing().redeemer
-        ))
+        return this.attachRefScript(
+            tcx2.mintTokens(
+                this.mintingPolicyHash!,
+                vEntries,
+                this.activityMintWithDelegateAuthorizing().redeemer
+            )
+        );
         //  as TCX;
     }
-
-
 }
