@@ -538,7 +538,7 @@ export class DefaultCapo<
     }
 
     @datum
-    mkDatumSettingsData(settings: settingsType): Datum {
+    async mkDatumSettingsData(settings: settingsType): Promise<Datum> {
         const adapter = this.settingsAdapter;
         return adapter.toOnchainDatum(settings) as Datum;
     }
@@ -815,7 +815,7 @@ export class DefaultCapo<
             //     : T extends any ? {[K in keyof T]: Normalize<T[K]>} : never
 
             const settings = this.mkInitialSettings();
-            const tcx5 = this.txnAddSettingsOutput(tcx4, settings);
+            const tcx5 = await this.txnAddSettingsOutput(tcx4, settings);
 
             // debugger
 
@@ -846,18 +846,21 @@ export class DefaultCapo<
             this.settingsAdapter,
             foundSettingsUtxo.origOutput.datum as InlineDatum
         );
+        debugger
         if (!data) throw Error(`missing or invalid settings UTxO datum`);
         return data;
     }
 
-    txnAddSettingsOutput<TCX extends StellarTxnContext>(
+    async txnAddSettingsOutput<TCX extends StellarTxnContext>(
         tcx: TCX,
         settings: settingsType
-    ): TCX {
+    ): Promise<TCX> {
+        const settingsDatum = await this.mkDatumSettingsData(settings)
+
         const settingsOut = new TxOutput(
             this.address,
             this.uutsValue(tcx.state.uuts.set),
-            this.mkDatumSettingsData(settings)
+            settingsDatum
         );
         settingsOut.correctLovelace(this.networkParams);
         return tcx.addOutput(settingsOut);
@@ -1071,13 +1074,14 @@ export class DefaultCapo<
             mintDelegate.activityValidatingSettings()
         );
         
+        const settingsDatum = await this.mkDatumSettingsData(data);
         const tcx3 = tcx2d
             .addInput(settingsUtxo, this.activityUpdatingSettings())
             .addOutput(
                 new TxOutput(
                     this.address,
                     settingsUtxo.origOutput.value,
-                    this.mkDatumSettingsData(data)
+                    settingsDatum
                 )
             );
         return tcx3 as TCX & typeof tcx3;

@@ -1078,10 +1078,32 @@ export class StellarContract<
         if (uplcDataField instanceof helios.IntData) {
             return uplcDataField.value
         }
+        if (uplcDataField instanceof helios.ListData) {            
+            const entries = [];
+            //@ts-expect-error
+            const promises = uplcDataField.list.map((item, i) => {
+                const readOne = this.readOtherUplcType(`${fn}.[${i}]`, item, undefined);
+                return readOne;
+            });
+            const gotList = await Promise.all(
+                 promises
+            ).catch(e => {
+                console.error(`datum: field ${fn}: error reading list`, e);
+                debugger
+                throw e;
+            });
+            return gotList
+        }
+        if (uplcDataField instanceof helios.IntData) {
+            return uplcDataField.value
+        }
+        if (uplcDataField instanceof helios.ByteArrayData) {
+            //@ts-expect-error
+            return uplcDataField.bytes
+        }
         if (uplcDataField instanceof helios.MapData) {
             const entries: Record<string, any> = {};
             for (const [k, v] of uplcDataField["map"]) {
-                debugger
                 const bytesToString = {
                     uplcToJs(uplcField) {
                         return helios.bytesToText(uplcField.bytes)
@@ -1089,13 +1111,12 @@ export class StellarContract<
                 };
                 const parsedKey = await this.readUplcField(`${fn}.‹mapKey›`, bytesToString, k)
                                 // check type of parsed key?
-                debugger
                 // type of value??
                 entries[  parsedKey ] = await this.readOtherUplcType(
                     `${fn}.‹map›@${parsedKey}`, v, undefined
                 )
             }
-            debugger
+            
             return entries
         }
         console.log(`datum: field ${fn}: no offChainType, no internalType`, {fieldType, uplcDataField});

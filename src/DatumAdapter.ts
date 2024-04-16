@@ -1,6 +1,5 @@
-import { ByteArrayData, IntData, MapData, textToBytes, type Datum } from "@hyperionbt/helios";
+import { ByteArrayData, IntData, MapData, UplcData, textToBytes, type Datum } from "@hyperionbt/helios";
 import type { StellarContract } from "./StellarContract.js";
-import type { helios } from "../index.js";
 
     /**
      * Provides transformations of data between preferred application types and on-chain data types
@@ -56,9 +55,9 @@ export abstract class DatumAdapter<
          * Soon, this can simply be an adapted form of JSON suitable for Helios' JSON-structured data bridge.
          * @public
          **/
-    abstract toOnchainDatum(d: appType): Datum;
+    abstract toOnchainDatum(d: appType): Datum | Promise<Datum>;
 
-    toRealNum(n: number): helios.IntData {
+    toRealNum(n: number): IntData {
         // supports fractional inputs (they can always be represented as a BigInt, with sufficient precision)
         // note: don't expect very very small numbers to be accurately represented
         const microInt1 = Number(n) * 1_000_000;
@@ -80,13 +79,13 @@ export abstract class DatumAdapter<
 
     toMapData<T = any>(
         k: Record<string, T>,
-        transformer?: (n: T) => helios.UplcData
-    ): helios.MapData {
+        transformer?: (n: T) => UplcData
+    ): MapData {
         const t = new MapData(
             Object.entries(k).map(([key, value]) => {
                 const keyBytes = new ByteArrayData(textToBytes(key));
                 const uplcValue = transformer ? transformer(value) : value;
-                return [keyBytes, uplcValue] as [helios.UplcData, helios.UplcData];
+                return [keyBytes, uplcValue] as [UplcData, UplcData];
             })
         );
         return t;
