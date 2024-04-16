@@ -55,7 +55,6 @@ export default [
     codeBundle({
         input: "./index.ts",
         plugins: [
-            sourcemaps(),
             // externals(),
             heliosRollupLoader(),
             json(),
@@ -63,13 +62,15 @@ export default [
                 ...platformModulePaths("server"),
                 extensions: [".json", ".ts"],
             }),
+            // sourcemaps(),
             esbuild({
                 tsconfig: "./tsconfig.json",
                 target: ["node18" ],
+                sourceMap: false,
             }),
             execute([
                 "tsc  && api-extractor run --local --verbose"
-                // tsc -p ./tsconfig.testing.json
+                // "tsc -p ./tsconfig.dts.json &&  api-extractor run --local --verbose"
             ])
             // apiExtractor({
             //     configFile: "./api-extractor.json",
@@ -79,7 +80,7 @@ export default [
             {
                 file: `${name}.mjs`,
                 format: "es",
-                sourcemap: true,
+                sourcemap: false,
                 // tells Chrome devtools to automatically omit these files from the stack presentation 
                 // sourcemapIgnoreList: (relativeSourcePath, sourcemapPath) => {
                 //     // console.warn("ignore list? ", relativeSourcePath);
