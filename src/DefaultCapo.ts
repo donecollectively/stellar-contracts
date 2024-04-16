@@ -630,6 +630,11 @@ export class DefaultCapo<
     // }
 
     async getMintDelegate() {
+        if (!this.configIn) {
+            throw new Error(`what now?`)
+        }
+
+        //!!! needs to work also during bootstrapping.
         const charterDatum = await this.findCharterDatum();
 
         return this.connectDelegateWithLink(
@@ -763,6 +768,11 @@ export class DefaultCapo<
                 "spendDelegate"
             >(tcx, "spendDelegate", charterDatumArgs.spendDelegateLink);
 
+            this.bootstrapping = {
+                govAuthority,
+                mintDelegate,
+                spendDelegate
+            }
             //@ts-expect-error - typescript can't seem to understand that
             //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
             const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
@@ -832,7 +842,11 @@ export class DefaultCapo<
         });
         return promise;
     }
-
+    bootstrapping? : {
+        [ key in "govAuthority" | "mintDelegate" | "spendDelegate" ] :
+        ConfiguredDelegate<any>
+    } 
+    
     async findSettingsDatum({
         settingsUtxo,
         charterUtxo,
