@@ -20,6 +20,10 @@
         }
     },
     "type": "module",
+
+    "peerDependencies": {
+        "@hyperionbt/helios": "^0.16.7"
+    },
     "scripts": {
         "build": "scripts/build",
         "build:watch": "scripts/build --watch",
@@ -38,10 +42,10 @@
         "semver": ">=7.5.2"
     },
     "devDependencies": {
-        "@hyperionbt/helios": "^0.16.4",
         "@microsoft/api-extractor": "^7.43.0",
         "@rollup/plugin-json": "^6.0.1",
         "@rollup/plugin-node-resolve": "^15.1.0",
+        "@hyperionbt/helios": "^0.16.7",
         "@rollup/pluginutils": "^5.0.2",
         "@types/node": "^20.2.5",
         "@vitest/ui": "^0.34.6",

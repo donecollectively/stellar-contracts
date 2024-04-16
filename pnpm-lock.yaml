@@ -11,8 +11,8 @@ dependencies:
 
 devDependencies:
   '@hyperionbt/helios':
-    specifier: ^0.16.4
-    version: 0.16.4
+    specifier: ^0.16.7
+    version: 0.16.7
   '@microsoft/api-extractor':
     specifier: ^7.43.0
     version: 7.43.0(@types/node@20.2.5)
@@ -496,8 +496,8 @@ packages:
     dev: true
     optional: true
 
-  /@hyperionbt/helios@0.16.4:
-    resolution: {integrity: sha512-dkpTh3L4MPCws2sN1e7pkI1Cc2qIqTPBOH+kXvAdizFZteYHmKe4/ikth/Owg2EiKsrshHsfokysA/cL3RgefQ==}
+  /@hyperionbt/helios@0.16.7:
+    resolution: {integrity: sha512-ysPaF0OCY0NJa1mc+LXERjH71VDNGUbYrrovKUHJv1v+eS1WJhKmxSHWh9sVa6b+sYoXdKwoCR20UQhzCF5jzA==}
     dev: true
 
   /@isaacs/cliui@8.0.2:
