@@ -56,9 +56,8 @@ describe("Capo", async () => {
 
             const tcx = await capo.mkTxnUpdatingMintDelegate(
                 {
-                    strategyName: "default",
+                    strategyName: "defaultV1",
                 },
-                {}
             );
             await capo.submit(tcx);
             network.tick(1n);
@@ -85,9 +84,8 @@ describe("Capo", async () => {
             );
             const tcx1 = await capo.mkTxnUpdatingMintDelegate(
                 {
-                    strategyName: "default",
+                    strategyName: "defaultV1",
                 },
-                {}
             );
             expect(addedGovToken).toHaveBeenCalledTimes(1);
             await expect(capo.submit(tcx1)).rejects.toThrow(
@@ -97,11 +95,9 @@ describe("Capo", async () => {
             console.log(" ------- case 2: forced replacement of mint delegate");
             const tcx2 = await capo.mkTxnUpdatingMintDelegate(
                 {
-                    strategyName: "default",
-                },
-                {
+                    strategyName: "defaultV1",
                     forcedUpdate: true,
-                }
+                },
             );
             expect(addedGovToken).toHaveBeenCalledTimes(2);
             await expect(capo.submit(tcx2)).rejects.toThrow(
@@ -120,11 +116,9 @@ describe("Capo", async () => {
 
             const tcx = await capo.mkTxnUpdatingMintDelegate(
                 {
-                    strategyName: "default",
-                },
-                {
+                    strategyName: "defaultV1",
                     forcedUpdate: true,
-                }
+                },
             );
             await capo.submit(tcx);
             network.tick(1n);
@@ -165,8 +159,8 @@ describe("Capo", async () => {
                 .spyOn(capo, "mkValuesBurningDelegateUut")
                 .mockImplementation(() => []);
             const tcx2 = await capo.mkTxnUpdatingMintDelegate({
-                strategyName: "default",
-            });
+                strategyName: "defaultV1",
+        });
             expect(didGrantMockedAuthority).toHaveBeenCalledTimes(1);
             expect(didntBurnBecauseMocked).toHaveBeenCalledTimes(1);
 
@@ -187,8 +181,8 @@ describe("Capo", async () => {
                 " ------- case 1: with mint delegate involved in the replacement"
             );
             const tcx = await capo.mkTxnUpdatingMintDelegate({
-                strategyName: "default",
-            });
+                strategyName: "defaultV1",
+        });
             await capo.submit(tcx);
             network.tick(1n);
             console.log("    ---- minting with the new delegate");
@@ -212,11 +206,9 @@ describe("Capo", async () => {
             console.log(" ------- case 2: forced replacement of mint delegate");
             const tcx2 = await capo.mkTxnUpdatingMintDelegate(
                 {
-                    strategyName: "default",
-                },
-                {
+                    strategyName: "defaultV1",
                     forcedUpdate: true,
-                }
+                },
             );
             await capo.submit(tcx2);
             network.tick(1n);
@@ -246,11 +238,9 @@ describe("Capo", async () => {
             console.log(" ------- case 2: forced replacement of mint delegate");
             const tcx = await capo.mkTxnUpdatingMintDelegate(
                 {
-                    strategyName: "default",
-                },
-                {
+                    strategyName: "defaultV1",
                     forcedUpdate: true,
-                }
+                },
             );
             await capo.submit(tcx);
             network.tick(1n);
@@ -280,9 +270,8 @@ describe("Capo", async () => {
 
             const tcx = await capo.mkTxnUpdatingSpendDelegate(
                 {
-                    strategyName: "default",
+                    strategyName: "defaultV1",
                 },
-                {}
             );
             await capo.submit(tcx);
             network.tick(1n);
@@ -309,9 +298,8 @@ describe("Capo", async () => {
             );
             const tcx1 = await capo.mkTxnUpdatingSpendDelegate(
                 {
-                    strategyName: "default",
+                    strategyName: "defaultV1",
                 },
-                {}
             );
             expect(addedGovToken).toHaveBeenCalledTimes(1);
             await expect(capo.submit(tcx1)).rejects.toThrow(
@@ -323,11 +311,9 @@ describe("Capo", async () => {
             );
             const tcx2 = await capo.mkTxnUpdatingSpendDelegate(
                 {
-                    strategyName: "default",
-                },
-                {
+                    strategyName: "defaultV1",
                     forcedUpdate: true,
-                }
+                },
             );
             expect(addedGovToken).toHaveBeenCalledTimes(2);
             await expect(capo.submit(tcx2)).rejects.toThrow(
@@ -346,11 +332,9 @@ describe("Capo", async () => {
 
             const tcx = await capo.mkTxnUpdatingSpendDelegate(
                 {
-                    strategyName: "default",
-                },
-                {
+                    strategyName: "defaultV1",
                     forcedUpdate: true,
-                }
+                },
             );
             await capo.submit(tcx);
             network.tick(1n);
@@ -391,7 +375,7 @@ describe("Capo", async () => {
                 .spyOn(capo, "mkValuesBurningDelegateUut")
                 .mockImplementation(() => []);
             const tcx2 = await capo.mkTxnUpdatingSpendDelegate({
-                strategyName: "default",
+                strategyName: "defaultV1",
             });
             expect(didGrantMockedAuthority).toHaveBeenCalledTimes(1);
             expect(didntBurnBecauseMocked).toHaveBeenCalledTimes(1);
@@ -418,7 +402,7 @@ describe("Capo", async () => {
                     " ------- case 1: with spend delegate involved in the replacement"
                 );
                 const tcx = await capo.mkTxnUpdatingSpendDelegate({
-                    strategyName: "default",
+                    strategyName: "defaultV1",
                 });
                 await capo.submit(tcx);
                 network.tick(1n);

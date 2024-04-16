@@ -1,10 +1,8 @@
-import * as helios from "@hyperionbt/helios";
 export {
     mkValuesEntry,
     mkUutValuesEntries,
     stringToNumberArray,
 } from "./src/utils.js";
-
 export {
     assetsAsString,
     txAsString,
@@ -72,7 +70,8 @@ export {
     datum,
 } from "./src/StellarContract.js";
 
-export { StellarDelegate } from "./src/delegation/StellarDelegate.js";
+export { StellarDelegate, type NamedDelegateCreationOptions } from "./src/delegation/StellarDelegate.js";
+
 export { AuthorityPolicy } from "./src/authority/AuthorityPolicy.js";
 export { AnyAddressAuthorityPolicy } from "./src/authority/AnyAddressAuthorityPolicy.js";
 
@@ -137,6 +136,7 @@ export type {
 //     StakingValidatorHash,
 //     StakeAddress,
 // } from "./src/HeliosPromotedTypes.js";
+import * as helios from "@hyperionbt/helios";
 
 export { helios }
 export { mkHeliosModule } from "./src/HeliosModuleSrc.js";

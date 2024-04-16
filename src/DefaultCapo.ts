@@ -82,6 +82,7 @@ import {
     delegateLinkSerializer,
 } from "./delegation/RolesAndDelegates.js";
 import type {
+    ConfiguredDelegate,
     ErrorMap,
     RelativeDelegateLink,
     strategyValidation,
@@ -96,7 +97,7 @@ import { UnspecializedCapo } from "./UnspecializedCapo.js";
 import { NoMintDelegation } from "./minting/NoMintDelegation.js";
 import { CapoHelpers } from "./CapoHelpers.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
-import { StellarDelegate } from "./delegation/StellarDelegate.js";
+import { StellarDelegate, type NamedDelegateCreationOptions } from "./delegation/StellarDelegate.js";
 import { UutName } from "./delegation/UutName.js";
 import type { Expand, ExpandRecursively } from "./testing/types.js";
 import { UncustomCapoSettings } from "./UncustomCapoSettings.js";
@@ -385,7 +386,7 @@ export class DefaultCapo<
                 // },
             }),
             mintDelegate: defineRole("mintDgt", BasicMintDelegate, {
-                default: {
+                defaultV1: {
                     delegateClass: BasicMintDelegate,
                     partialConfig: {},
                     validateConfig(args): strategyValidation {
@@ -396,7 +397,7 @@ export class DefaultCapo<
             }),
 
             spendDelegate: defineRole("spendDgt", StellarDelegate<any>, {
-                default: {
+                defaultV1: {
                     delegateClass: BasicMintDelegate,
                     partialConfig: {},
                     validateConfig(args): strategyValidation {
@@ -404,6 +405,9 @@ export class DefaultCapo<
                     },
                 },
             }),
+            namedDelegates: defineRole("namedDgt", StellarDelegate<any>, {
+                // no named delegates by default
+            })
         });
     }
 
@@ -1109,10 +1113,8 @@ export class DefaultCapo<
         delegateInfo: MinimalDelegateLink<DT> & {
             strategyName: string &
                 keyof thisType["delegateRoles"]["mintDelegate"]["variants"];
+                forcedUpdate?: true;            
         },
-        options: {
-            forcedUpdate?: true;
-        } = {},
         tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
     ): Promise<StellarTxnContext> {
         const currentCharter = await this.mustFindCharterUtxo();
@@ -1120,7 +1122,7 @@ export class DefaultCapo<
         const mintDelegate = await this.getMintDelegate();
         const { minter } = this;
         const tcxWithSeed = await this.addSeedUtxo(tcx);
-        const uutOptions: UutCreationAttrs = options.forcedUpdate
+        const uutOptions: UutCreationAttrs = delegateInfo.forcedUpdate
             ? {
                   omitMintDelegate: true,
                   minterActivity: minter.activityForcingNewMintDelegate({
@@ -1196,10 +1198,8 @@ export class DefaultCapo<
         delegateInfo: MinimalDelegateLink<DT> & {
             strategyName: string &
                 keyof thisType["delegateRoles"]["spendDelegate"]["variants"];
-        },
-        options: {
             forcedUpdate?: true;
-        } = {},
+        },
         tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
     ): Promise<StellarTxnContext> {
         const currentCharter = await this.mustFindCharterUtxo();
@@ -1211,13 +1211,13 @@ export class DefaultCapo<
             minterActivity: this.minter.activityCreatingNewSpendDelegate({
                 seedTxn: tcxWithSeed.state.seedUtxo.outputId.txId,
                 seedIndex: tcxWithSeed.state.seedUtxo.outputId.utxoIdx,
-                ...(options.forcedUpdate
+                ...(delegateInfo.forcedUpdate
                     ? {}
                     : {  // minter will enforce this Burn
                           replacingUut: spendDelegate.authorityTokenName,
                       }),
             }),
-            ...(options.forcedUpdate
+            ...(delegateInfo.forcedUpdate
                 ? { // the minter won't require the old delegate to be burned
                       returnExistingDelegateToScript: false, // so it can be burned without a txn imbalance
                   }
@@ -1244,7 +1244,7 @@ export class DefaultCapo<
         >(tcx2, "spendDelegate", delegateInfo);
         // currentDatum.mintDelegateLink);
 
-        const tcx2a = options.forcedUpdate
+        const tcx2a = delegateInfo.forcedUpdate
             ? tcx2
             : await spendDelegate.txnGrantAuthority(
                   tcx2,
@@ -1384,21 +1384,18 @@ export class DefaultCapo<
 
         return tcx2.addOutput(charterOut);
     }
-
     async mkTxnAddingNamedDelegate<
         DT extends StellarDelegate,
         thisType extends DefaultCapo<settingsType, MinterType, CDT, configType>
     >(
         this: thisType,
         delegateName: string,
-        delegateInfo: MinimalDelegateLink<DT> & {
-            strategyName: string &
-            keyof thisType["delegateRoles"]["spendDelegate"];
-        },
+        delegateInfo: NamedDelegateCreationOptions<thisType, DT>,
         tcx: StellarTxnContext = new StellarTxnContext(this.myActor),
     ) {
         const currentDatum = await this.findCharterDatum();
 
+        console.log("------------------ TODO SUPPORT OPTIONS.forcedUpdate ----------------" )
         // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
         const tcx2 = await this.txnMintingUuts(
             await this.addSeedUtxo(tcx),

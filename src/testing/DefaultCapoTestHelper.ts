@@ -138,10 +138,10 @@ export class DefaultCapoTestHelper<
                 },
             },
             mintDelegateLink: {
-                strategyName: "default",
+                strategyName: "defaultV1",
             },
             spendDelegateLink: {
-                strategyName: "default",
+                strategyName: "defaultV1",
             },
             mintInvariants: [],
             spendInvariants: []

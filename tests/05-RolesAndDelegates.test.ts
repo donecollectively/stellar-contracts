@@ -106,7 +106,7 @@ describe("Capo", async () => {
                 expect(t.delegateRoles).toBeTruthy();
                 expect(t.delegateRoles.mintDelegate.variants).toBeTruthy();
                 expect(
-                    t.delegateRoles.mintDelegate.variants.default
+                    t.delegateRoles.mintDelegate.variants.defaultV1
                 ).toBeTruthy();
             });
         });
@@ -127,7 +127,7 @@ describe("Capo", async () => {
                     tcx,
                     "mintDelegate",
                     {
-                        strategyName: "default",
+                        strategyName: "defaultV1",
                     }
                 );
 
@@ -136,7 +136,7 @@ describe("Capo", async () => {
                 expect((await mintDelegateLink).config).toBeTruthy();
             });
 
-            it("txnCreateDelegateLink(tcx, role) will use a 'default' delegate strategy", async (context: localTC) => {
+            it.skip("XXXX not wanted anymore: txnCreateDelegateLink(tcx, role) will use a default delegate strategy", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap();
@@ -159,7 +159,7 @@ describe("Capo", async () => {
                     tcx,
                     "mintDelegate",
                     {
-                        strategyName: "default",
+                        strategyName: "defaultV1",
                     }
                 );
 
@@ -174,7 +174,7 @@ describe("Capo", async () => {
 
                 expect(
                     createdDelegate.address.eq(createdDelegate2.address!),
-                    "the default and explicitly-selected 'default' delegates should have the same address"
+                    "the default and explicitly-selected 'defaultV1' delegates should have the same address"
                 ).toBeTruthy();
             });
 
@@ -226,7 +226,7 @@ describe("Capo", async () => {
                         "error.availableStrategies should be an array"
                     ).toBeTruthy();
                     debugger;
-                    expect(e.availableStrategies).toContain("default");
+                    expect(e.availableStrategies).toContain("defaultV1");
                     expect(e.availableStrategies).toContain("failsWhenBad");
                 }
             });
@@ -277,7 +277,9 @@ describe("Capo", async () => {
                     { mintDelegate: "mintDgt" }
                 );
                 const { delegate, delegateValidatorHash } =
-                    await t.txnCreateConfiguredDelegate(tcx, "mintDelegate");
+                    await t.txnCreateConfiguredDelegate(tcx, "mintDelegate", {
+                        strategyName: "defaultV1"
+                    });
                 expect(delegate).toBeTruthy();
                 expect(delegateValidatorHash).toBeTruthy();
                 expect(
@@ -303,7 +305,7 @@ describe("Capo", async () => {
                 );
                 const mintDelegateLink = await t.txnCreateDelegateLink(
                     tcx,
-                    "mintDelegate"
+                    "mintDelegate", {strategyName: "defaultV1"}
                 );
 
                 console.log(

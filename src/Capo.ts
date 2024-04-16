@@ -286,7 +286,14 @@ export abstract class Capo<
 > extends StellarContract<configType> {
     static currentRev: bigint = 1n;
     devGen: bigint = 0n;
-    abstract get delegateRoles(): RoleMap<any>;
+    abstract get delegateRoles(): RoleMap<{
+        govAuthority: RoleInfo<any,any, any, any>;
+        mintDelegate: RoleInfo<any,any, any, any>;
+        spendDelegate: RoleInfo<any,any, any, any>;
+        namedDelegates: RoleInfo<any,any, any, any>;
+
+        [anyOtherRoleNames: string]: RoleInfo<any,any, any, any>;
+    }>;
     abstract verifyCoreDelegates(): Promise<any>;
     verifyConfigs(): Promise<any> {
         return this.verifyCoreDelegates();
@@ -413,7 +420,7 @@ export abstract class Capo<
     abstract initSettingsAdapter(): DatumAdapter<any, settingsType, this>;
     settingsAdapter! : DatumAdapter<any, settingsType, this> & SettingsAdapterFor<this>
     abstract mkInitialSettings() : settingsType
-    abstract mkDatumSettingsData(settings: settingsType): Datum;
+    abstract mkDatumSettingsData(settings: settingsType): Datum | Promise<Datum>;
     // abstract readSettingsDatum(settings: 
     //     ReturnType<this["initSettingsAdapter"]> extends DatumAdapter<any, infer Onchain, any> ? 
     //     Onchain : never
@@ -912,7 +919,7 @@ export abstract class Capo<
      **/
     async txnCreateDelegateLink<
         DT extends StellarDelegate,
-        const RN extends string
+        const RN extends string & keyof this["delegateRoles"]
     >(
         tcx: hasUutContext<RN>,
         roleName: RN,
@@ -973,10 +980,10 @@ export abstract class Capo<
      **/
     async txnCreateConfiguredDelegate<
         DT extends StellarDelegate<any>,
-        const RN extends string
+        const RN extends string & keyof this["delegateRoles"]
     >(
         tcx: hasUutContext<RN>,
-        roleName: RN & keyof this["delegateRoles"],
+        roleName: RN,
         delegateInfo: MinimalDelegateLink<DT> = { strategyName: "default" }
     ): Promise<ConfiguredDelegate<DT>> {
         const { strategyName, config: selectedConfig = {} } = delegateInfo;

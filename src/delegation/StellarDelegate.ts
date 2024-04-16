@@ -16,7 +16,17 @@ import type {
 } from "./RolesAndDelegates.js";
 import { hasReqts } from "../Requirements.js";
 import { dumpAny } from "../diagnostics.js";
-import type { MintUutActivityArgs } from "../Capo.js";
+import type { MinimalDelegateLink, MintUutActivityArgs } from "../Capo.js";
+import type { DefaultCapo } from "../DefaultCapo.js";
+
+export type NamedDelegateCreationOptions<
+    thisType extends DefaultCapo<any, any, any, any>,
+    DT extends StellarDelegate
+> = MinimalDelegateLink<DT> & {
+    strategyName: string &
+    keyof thisType["delegateRoles"]["spendDelegate"]["variants"]
+    forcedUpdate? : true
+}
 
 /**
  * Base class for modules that can serve as Capo delegates
@@ -26,7 +36,6 @@ import type { MintUutActivityArgs } from "../Capo.js";
  * establishes a base protocol for delegates.
  * @typeParam CT - type of any specialized configuration; use capoDelegateConfig by default.
  **/
-
 export abstract class StellarDelegate<
     CT extends configBase & capoDelegateConfig = capoDelegateConfig,
     DCCT extends Record<string, any> | string = string
