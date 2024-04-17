@@ -35,11 +35,13 @@ export type TxDescription<T extends StellarTxnContext> = {
     txName?: string;
 };
 
-export type AddlTxnCallback =
+export type MultiTxnCallback =
     | ((futTx: TxDescription<any>) => void)
     | ((futTx: TxDescription<any>) => Promise<void>)
-    | ((futTx: TxDescription<any>) => StellarTxnContext<any>)
-    | ((futTx: TxDescription<any>) => Promise<StellarTxnContext<any>>);
+    // | ((futTx: TxDescription<any>) => StellarTxnContext<any>)
+    // | ((futTx: TxDescription<any>) => Promise<StellarTxnContext<any>>)
+    | ((futTx: TxDescription<any>) => StellarTxnContext<any> | false)
+    | ((futTx: TxDescription<any>) => Promise<StellarTxnContext<any> | false>)
 
 /**
  * A transaction context that includes additional transactions in its state for later execution

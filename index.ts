@@ -50,6 +50,7 @@ export {
     delegateRoles, defineRole, 
 } from "./src/delegation/RolesAndDelegates.js"
 
+
 export type {
     capoDelegateConfig,
 
@@ -85,6 +86,8 @@ export {
     type SeedAttrs,
     type hasSeedUtxo,
     type hasAddlTxns,    
+    type TxDescription,
+    type MultiTxnCallback,
  } from "./src/StellarTxnContext.js";
 
 export type {

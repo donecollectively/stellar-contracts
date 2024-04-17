@@ -405,7 +405,6 @@ export class DefaultCapo<
                         return undefined;
                     },
                 },
-
             }),
             namedDelegate: defineRole("namedDgt", ContractBasedDelegate<any>, {
                 // no named delegates by default
@@ -633,7 +632,7 @@ export class DefaultCapo<
 
     async getMintDelegate() {
         if (!this.configIn) {
-            throw new Error(`what now?`)
+            throw new Error(`what now?`);
         }
 
         //!!! needs to work also during bootstrapping.

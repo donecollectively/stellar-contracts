@@ -28,7 +28,7 @@ import type { Network, Wallet } from "@hyperionbt/helios";
 import {
     StellarTxnContext,
     type TxDescription,
-    type AddlTxnCallback,
+    type MultiTxnCallback,
     type hasAddlTxns,
 } from "./StellarTxnContext.js";
 import { utxosAsString, valueAsString } from "./diagnostics.js";
@@ -1650,19 +1650,26 @@ export class StellarContract<
      **/
     async submitAddlTxns(
         tcx:  hasAddlTxns<any, any>,
-        callback?: AddlTxnCallback
+        callback?: MultiTxnCallback
     ) {
         const { addlTxns } = tcx.state;
+        return this.submitTxns(Object.values(addlTxns), callback);
+    }
+
+    async submitTxns(
+        txns: TxDescription<any>[],
+        callback?: MultiTxnCallback
+    ) {
         for (const [txName, addlTxInfo] of 
-            Object.entries(addlTxns) as [ string, TxDescription<any> ][]
+            Object.entries(txns) as [ string, TxDescription<any> ][]
         ) {
-            const { description, moreInfo, optional, tcx } = addlTxInfo;
-            // todo: allow the txn to be skipped, perhaps by letting
-            // the callback throw a new SkipAddlTxn error.
-            const replacementTcx = callback && ( 
-                await callback({txName, ...addlTxInfo})
+            const replacementTcx = callback && (
+                await callback(addlTxInfo)
             );
-            await this.submit(replacementTcx || tcx);
+            if ( false === replacementTcx ) {
+                continue;
+            }    
+            await this.submit(addlTxInfo.tcx);
         }
     }
 
