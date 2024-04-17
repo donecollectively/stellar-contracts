@@ -27,7 +27,7 @@ import type { Network, Wallet } from "@hyperionbt/helios";
 
 import {
     StellarTxnContext,
-    type AddlTxInfo,
+    type TxDescription,
     type AddlTxnCallback,
     type hasAddlTxns,
 } from "./StellarTxnContext.js";
@@ -1654,7 +1654,7 @@ export class StellarContract<
     ) {
         const { addlTxns } = tcx.state;
         for (const [txName, addlTxInfo] of 
-            Object.entries(addlTxns) as [ string, AddlTxInfo<any> ][]
+            Object.entries(addlTxns) as [ string, TxDescription<any> ][]
         ) {
             const { description, moreInfo, optional, tcx } = addlTxInfo;
             // todo: allow the txn to be skipped, perhaps by letting

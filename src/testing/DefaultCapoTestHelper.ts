@@ -115,9 +115,9 @@ export class DefaultCapoTestHelper<
         const treasury = await this.strella!;
         const tcx: StellarTxnContext = new StellarTxnContext(this.currentActor);
         const tcx2 = await treasury.txnAttachScriptOrRefScript(
-             await treasury.txnAddGovAuthority(tcx),
+            await treasury.txnAddGovAuthority(tcx),
             treasury.compiledScript
-        )
+        );
 
         return treasury.txnMustUseCharterUtxo(
             tcx2,
@@ -144,7 +144,7 @@ export class DefaultCapoTestHelper<
                 strategyName: "defaultV1",
             },
             mintInvariants: [],
-            spendInvariants: []
+            spendInvariants: [],
         };
     }
 
@@ -162,12 +162,12 @@ export class DefaultCapoTestHelper<
         }
 
         if (!this.strella) await this.initialize();
-        const script = await this.strella!;
+        const capo = await this.strella!;
         const goodArgs = (args ||
             this.mkDefaultCharterArgs()) as MinimalDefaultCharterDatumArgs<CDT>;
         // debugger
 
-        const tcx = await script.mkTxnMintCharterToken(goodArgs);
+        const tcx = await capo.mkTxnMintCharterToken(goodArgs);
         const rawConfig =
             (this.state.rawConfig =
             this.state.config =
@@ -175,24 +175,23 @@ export class DefaultCapoTestHelper<
 
         this.state.parsedConfig = this.stellarClass.parseConfig(rawConfig);
 
-        expect(script.network).toBe(this.network);
+        expect(capo.network).toBe(this.network);
 
-        await script.submit(tcx);
+        await capo.submit(tcx);
         console.log(
             `----- charter token minted at slot ${this.network.currentSlot}`
         );
         this.network.tick(1n);
-        await script.submitAddlTxns(tcx, ({
-            txName, description
-        }) => {
+        await capo.submitAddlTxns(tcx, ({ txName, description }) => {
             this.network.tick(1n);
             console.log(
                 `           ------- submitting addl txn ${txName} at slot ${this.network.currentSlot}:`
             );
-        })
+        });
 
         this.network.tick(1n);
         this.state.mintedCharterToken = tcx;
+        console.log("mintCharterToken returning tcx", tcx);
         return tcx;
     }
 
@@ -209,7 +208,7 @@ export class DefaultCapoTestHelper<
         });
     }
 
-    async updateSettings(args:  OffchainSettingsType<DC>) {
+    async updateSettings(args: OffchainSettingsType<DC>) {
         await this.mintCharterToken();
         const capo = this.strella!;
         const tcx = await capo.mkTxnUpdateOnchainSettings(args);

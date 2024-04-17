@@ -409,7 +409,7 @@ export class DefaultCapo<
             }),
             namedDelegate: defineRole("namedDgt", ContractBasedDelegate<any>, {
                 // no named delegates by default
-            })
+            }),
         });
     }
 
@@ -518,8 +518,8 @@ export class DefaultCapo<
     }
     mkSettingsUutName(settingsUut: UutName | number[]) {
         return settingsUut instanceof UutName
-        ? textToBytes(settingsUut.name)
-        : settingsUut;
+            ? textToBytes(settingsUut.name)
+            : settingsUut;
     }
 
     @datum
@@ -679,9 +679,21 @@ export class DefaultCapo<
     // @txn
     async mkTxnMintCharterToken<
         TCX extends undefined | StellarTxnContext<anyState>,
-        TCX2 = TCX extends StellarTxnContext<infer TCXT>
-            ? StellarTxnContext<TCXT>
-            : {}
+        TCX2 extends StellarTxnContext<anyState> = hasBootstrappedConfig<
+            CapoBaseConfig & configType
+        > &
+            (TCX extends StellarTxnContext<infer TCXT>
+                ? StellarTxnContext<TCXT>
+                : never),
+        TCX3 = TCX2 &
+            hasAddlTxns<TCX2> &
+            hasUutContext<
+                | "govAuthority"
+                | "capoGov"
+                | "mintDelegate"
+                | "mintDgt"
+                | "setting"
+            >
     >(
         charterDatumArgs: MinimalDefaultCharterDatumArgs<CDT>,
         existingTcx?: TCX
@@ -773,8 +785,8 @@ export class DefaultCapo<
             this.bootstrapping = {
                 govAuthority,
                 mintDelegate,
-                spendDelegate
-            }
+                spendDelegate,
+            };
             //@ts-expect-error - typescript can't seem to understand that
             //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
             const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
@@ -817,6 +829,12 @@ export class DefaultCapo<
                 "minter",
                 minter.compiledScript
             );
+            const tcx4a = await this.mkAdditionalTxnsForCharter(tcx4);
+            if (!tcx4a)
+                throw new Error(
+                    `${this.constructor.name}: mkAdditionalTxnsForCharter() must return a txn context`
+                );
+
             console.log(
                 " ---------------- CHARTER MINT ---------------------\n",
                 txAsString(tcx4.tx, this.networkParams)
@@ -827,7 +845,7 @@ export class DefaultCapo<
             //     : T extends any ? {[K in keyof T]: Normalize<T[K]>} : never
 
             const settings = this.mkInitialSettings();
-            const tcx5 = await this.txnAddSettingsOutput(tcx4, settings);
+            const tcx5 = await this.txnAddSettingsOutput(tcx4a, settings);
 
             // debugger
 
@@ -842,13 +860,22 @@ export class DefaultCapo<
             });
             return minting;
         });
-        return promise;
+        return promise as Promise<TCX3 & Awaited<typeof promise>>;
     }
-    bootstrapping? : {
-        [ key in "govAuthority" | "mintDelegate" | "spendDelegate" ] :
-        ConfiguredDelegate<any>
-    } 
-    
+
+    /**
+     * Reveals any bootstrapping details that may be present during initial creation
+     * of the Capo contract, for use during and immediately after charter-creation.
+     *
+     * @public
+     **/
+    bootstrapping?: {
+        [key in
+            | "govAuthority"
+            | "mintDelegate"
+            | "spendDelegate"]: ConfiguredDelegate<any>;
+    };
+
     async findSettingsDatum({
         settingsUtxo,
         charterUtxo,
@@ -862,7 +889,6 @@ export class DefaultCapo<
             this.settingsAdapter,
             foundSettingsUtxo.origOutput.datum as InlineDatum
         );
-        debugger
         if (!data) throw Error(`missing or invalid settings UTxO datum`);
         return data;
     }
@@ -871,7 +897,7 @@ export class DefaultCapo<
         tcx: TCX,
         settings: settingsType
     ): Promise<TCX> {
-        const settingsDatum = await this.mkDatumSettingsData(settings)
+        const settingsDatum = await this.mkDatumSettingsData(settings);
 
         const settingsOut = new TxOutput(
             this.address,
@@ -899,17 +925,10 @@ export class DefaultCapo<
      **/
     async txnMkAddlRefScriptTxn<
         TCX extends StellarTxnContext<anyState>,
-        scriptName extends string
-    >(
-        tcx: TCX,
-        scriptName: scriptName,
-        script: UplcProgram
-    ): Promise<
-        hasAddlTxns<
-            `refScript${Capitalize<scriptName>}` | otherAddlTxnNames<TCX>,
-            TCX
-        > // & unwrapped
-    > {
+        RETURNS extends hasAddlTxns<TCX> = TCX extends hasAddlTxns<any>
+            ? TCX
+            : hasAddlTxns<TCX>
+    >(tcx: TCX, scriptName: string, script: UplcProgram): Promise<RETURNS> {
         const refScriptUtxo = new TxOutput(
             this.address,
             new Value(this.ADA(0n)),
@@ -928,7 +947,7 @@ export class DefaultCapo<
             moreInfo: "saves txn fees and txn space in future txns",
             optional: false,
             tcx: nextTcx,
-        });
+        }) as RETURNS;
     }
 
     /**
@@ -1082,14 +1101,14 @@ export class DefaultCapo<
         const tcx2a = await this.txnMustUseCharterUtxo(tcx2, "refInput");
         const tcx2b = await this.txnAttachScriptOrRefScript(tcx2a);
         const tcx2c = await spendingDelegate.txnGrantAuthority(
-            tcx2b, 
+            tcx2b,
             spendingDelegate.activityValidatingSettings()
         );
         const tcx2d = await mintDelegate.txnGrantAuthority(
-            tcx2c, 
+            tcx2c,
             mintDelegate.activityValidatingSettings()
         );
-        
+
         const settingsDatum = await this.mkDatumSettingsData(data);
         const tcx3 = tcx2d
             .addInput(settingsUtxo, this.activityUpdatingSettings())
@@ -1133,7 +1152,7 @@ export class DefaultCapo<
         delegateInfo: MinimalDelegateLink<DT> & {
             strategyName: string &
                 keyof thisType["delegateRoles"]["mintDelegate"]["variants"];
-                forcedUpdate?: true;            
+            forcedUpdate?: true;
         },
         tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
     ): Promise<StellarTxnContext> {
@@ -1233,12 +1252,14 @@ export class DefaultCapo<
                 seedIndex: tcxWithSeed.state.seedUtxo.outputId.utxoIdx,
                 ...(delegateInfo.forcedUpdate
                     ? {}
-                    : {  // minter will enforce this Burn
+                    : {
+                          // minter will enforce this Burn
                           replacingUut: spendDelegate.authorityTokenName,
                       }),
             }),
             ...(delegateInfo.forcedUpdate
-                ? { // the minter won't require the old delegate to be burned
+                ? {
+                      // the minter won't require the old delegate to be burned
                       returnExistingDelegateToScript: false, // so it can be burned without a txn imbalance
                   }
                 : {
@@ -1303,9 +1324,9 @@ export class DefaultCapo<
         this: thisType,
         delegateInfo: MinimalDelegateLink<DT> & {
             strategyName: string &
-            keyof thisType["delegateRoles"]["mintDelegate"];
+                keyof thisType["delegateRoles"]["mintDelegate"];
         },
-        tcx: StellarTxnContext = new StellarTxnContext(this.myActor),
+        tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
     ): Promise<StellarTxnContext> {
         const currentDatum = await this.findCharterDatum();
 
@@ -1362,9 +1383,9 @@ export class DefaultCapo<
         this: thisType,
         delegateInfo: MinimalDelegateLink<DT> & {
             strategyName: string &
-            keyof thisType["delegateRoles"]["spendDelegate"];
+                keyof thisType["delegateRoles"]["spendDelegate"];
         },
-        tcx: StellarTxnContext = new StellarTxnContext(this.myActor),
+        tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
     ) {
         const currentDatum = await this.findCharterDatum();
 
@@ -1411,11 +1432,13 @@ export class DefaultCapo<
         this: thisType,
         delegateName: string,
         delegateInfo: NamedDelegateCreationOptions<thisType, DT>,
-        tcx: StellarTxnContext = new StellarTxnContext(this.myActor),
+        tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
     ) {
         const currentDatum = await this.findCharterDatum();
 
-        console.log("------------------ TODO SUPPORT OPTIONS.forcedUpdate ----------------" )
+        console.log(
+            "------------------ TODO SUPPORT OPTIONS.forcedUpdate ----------------"
+        );
         // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
         const tcx2 = await this.txnMintingUuts(
             await this.addSeedUtxo(tcx),
@@ -1931,7 +1954,7 @@ export class DefaultCapo<
                 ],
                 mech: [
                     "TODO: a staged delegate is only adopted if it validates ok with the then-current settings",
-                ]
+                ],
             },
 
             "supports storing new types of datum not pre-defined in the Capo's on-chain script":
@@ -1988,7 +2011,7 @@ export class DefaultCapo<
                 mech: [
                     "builds transactions including the minting delegate",
                     "fails if the minting delegate is not included in the transaction",
-                ]
+                ],
             },
 
             "UpdatingDelegatedDatum: checks that a custom data element can be updated":

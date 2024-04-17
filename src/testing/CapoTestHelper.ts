@@ -9,7 +9,7 @@ import type {
     hasUutContext,
 } from "../Capo.js";
 
-import { StellarTxnContext } from "../StellarTxnContext.js";
+import { StellarTxnContext, type hasAddlTxns } from "../StellarTxnContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
 import type { MinimalDefaultCharterDatumArgs } from "../DefaultCapo.js";
 import { CapoMinter } from "../minting/CapoMinter.js";
@@ -119,7 +119,8 @@ export abstract class CapoTestHelper<
     abstract mintCharterToken(
         args?: MinimalDefaultCharterDatumArgs<any>
     ): Promise<
-        & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt">
+        & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt" | "settings">
         & hasBootstrappedConfig<CapoBaseConfig>
+        & hasAddlTxns<any>
     >
 }

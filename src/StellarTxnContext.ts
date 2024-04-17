@@ -27,7 +27,7 @@ export type hasSeedUtxo = StellarTxnContext<
     }
 >;
 
-export type AddlTxInfo<T extends StellarTxnContext> = {
+export type TxDescription<T extends StellarTxnContext> = {
     tcx: T;
     description: string;
     moreInfo: string;
@@ -36,10 +36,10 @@ export type AddlTxInfo<T extends StellarTxnContext> = {
 };
 
 export type AddlTxnCallback =
-    | ((futTx: AddlTxInfo<any>) => void)
-    | ((futTx: AddlTxInfo<any>) => Promise<void>)
-    | ((futTx: AddlTxInfo<any>) => StellarTxnContext<any>)
-    | ((futTx: AddlTxInfo<any>) => Promise<StellarTxnContext<any>>);
+    | ((futTx: TxDescription<any>) => void)
+    | ((futTx: TxDescription<any>) => Promise<void>)
+    | ((futTx: TxDescription<any>) => StellarTxnContext<any>)
+    | ((futTx: TxDescription<any>) => Promise<StellarTxnContext<any>>);
 
 /**
  * A transaction context that includes additional transactions in its state for later execution
@@ -55,15 +55,11 @@ export type AddlTxnCallback =
  * @public
  **/
 export type hasAddlTxns<
-    txnName extends string,
-    TCX extends StellarTxnContext<any>,
-    existingStateType extends anyState = TCX["state"],
-    unwrapped = TCX extends hasAddlTxns<any, infer uw, any, any> ? uw : TCX,
-> = StellarTxnContext<
-    existingStateType & { 
-        addlTxns: Record<txnName, AddlTxInfo<any>>
-    }
-> & unwrapped
+    TCX extends StellarTxnContext<anyState>,
+    existingStateType extends anyState = TCX["state"]
+> = StellarTxnContext<existingStateType & {
+    addlTxns: Record<string, TxDescription<any>>;
+}>
 
 export type otherAddlTxnNames<TCX extends StellarTxnContext<any>> = string & 
     TCX extends {state:{addlTxns: infer aTNs}} ? 
@@ -172,13 +168,14 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
     includeAddlTxn<
         TCX extends StellarTxnContext<anyState>,
-        txnName extends string
+        RETURNS extends hasAddlTxns<TCX> = 
+            TCX extends hasAddlTxns<any> ? TCX : hasAddlTxns<TCX>
     >(
         this: TCX,
-        txnName: txnName,
-        txInfo: AddlTxInfo<any>
-    ): hasAddlTxns<txnName, TCX> {
-        const thisWithMoreType: hasAddlTxns<txnName, TCX> =
+        txnName: string,
+        txInfo: TxDescription<any>
+    ): RETURNS {
+        const thisWithMoreType: RETURNS =
             this as any;
         thisWithMoreType.state.addlTxns = {
             ...(thisWithMoreType.state.addlTxns || {}),

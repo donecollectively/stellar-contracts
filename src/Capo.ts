@@ -421,6 +421,28 @@ export abstract class Capo<
     abstract initSettingsAdapter(): DatumAdapter<any, settingsType, this>;
     settingsAdapter! : DatumAdapter<any, settingsType, this> & SettingsAdapterFor<this>
     abstract mkInitialSettings() : settingsType
+
+    /**
+     * Creates any additional transactions needed during charter creation
+     * @remarks
+     * 
+     * This method is a hook for subclasses to add extra transactions during the
+     * charter creation process.  It is called during the creation of the charter transaction.
+     * 
+     * The Capo has a {@Link bootstrapping} property that can be referenced as needed
+     * during extra transaction creation.
+     * 
+     * This method should use {@Link StellarTxnContext.includeAddlTxn} to add transactions
+     * to the context.
+     * 
+     * @public
+     **/
+    async mkAdditionalTxnsForCharter<TCX extends StellarTxnContext>(
+        tcx: TCX
+    ): Promise<TCX> {
+        return tcx;
+    }
+
     abstract mkDatumSettingsData(settings: settingsType): Datum | Promise<Datum>;
     // abstract readSettingsDatum(settings: 
     //     ReturnType<this["initSettingsAdapter"]> extends DatumAdapter<any, infer Onchain, any> ? 
