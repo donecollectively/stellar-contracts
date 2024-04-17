@@ -20,12 +20,7 @@ module specializedMintDelegate
 // ... be called after Stellar Contracts v1.0
 
 // The MintDelegateDatum enum reserves the first variant for the
-// ... "IsDelegation" datum, which can contain any delegate-specific 
-// ... configuration.  Its CustomConfig field is specified as a String 
-// ... in the unspecialized version, but may be redefined to use different
-// ... type in your specialization.  The Modifying activity may be used for
-// ... applying updates to that datum, with validation of that activity
-// ... provided by your specialization.
+// ... "IsDelegation" datum.
 
 //! Your specialization MAY include any 
 // ... additional functions, imports or methods
@@ -50,9 +45,6 @@ import {
 enum MintDelegateDatum {
     IsDelegation {
         dd: DelegationDetail
-        // provides structural space for (non-string) configuration data.
-        // the string case is degenerate (expect empty string always)
-        CustomConfig: String
     }
     ScriptReference
 
@@ -65,8 +57,7 @@ enum MintDelegateDatum {
 
     func validateCDConfig(self, updated: MintDelegateDatum::IsDelegation) -> Bool {
         self.switch {
-            ddd: IsDelegation => {
-                (ddd.CustomConfig == "") &&
+            IsDelegation => {
                 (updated == self)
             },
             _ => error("unreachable")
@@ -127,7 +118,7 @@ enum MintDelegateActivity {
         ctx: ScriptContext
     ) -> Bool {
         MintDelegateActivity::mintingUuts{sTxId, sIdx, purposes} = self;
-        MintDelegateDatum::IsDelegation{dd, _} = mdd;
+        MintDelegateDatum::IsDelegation{dd} = mdd;
         returnsAuthzToken : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);
 
         assert(self.usesGenericUutMinting(), "no genericUutMinting");
@@ -136,8 +127,7 @@ enum MintDelegateActivity {
 
         print ("in unsp_MD");
         isOk : Bool = returnsAuthzToken && 
-        // A project that wants to evolve the Datum's isDelegation.CustomConfig 
-        // should enforce that requirement instead of this "not modified" check.
+
         unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize(), ctx) &&
 
         // This call can serve as a template for enforcing expected mints 
@@ -160,10 +150,6 @@ enum MintDelegateActivity {
     //   ... to approve minting requests or any customize spending modes 
     //   ... of that datum.  In the unspecialized version, 
     //   ... the "Modifying" activity is a stand-in for that use-case, that always rejects.
-    //! To customize further, additional custom IsDelegation config can be
-    //   ... enforced in the "Modifying" event - see the second field of IsDelegation (see the "CustomConfig" stand-in)
-    //   ... the BasicMintDelegate allows for that field's presence, without any assumptions
-    //   ... about its type.
     //  Note that the basic mint delegate already enforces some basic
     //    administrative expectations for Reassigning, Retiring, Modifying activites, 
     //    so a specialization doesn't need to re-implement those checks.

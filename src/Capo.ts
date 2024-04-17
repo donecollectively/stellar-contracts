@@ -68,6 +68,7 @@ import { StellarDelegate } from "./delegation/StellarDelegate.js";
 import type { AuthorityPolicy, anyState } from "../index.js";
 import type { DatumAdapter } from "./DatumAdapter.js";
 import { type OffchainSettingsType, type OnchainSettingsType, type SettingsAdapterFor } from "./CapoSettingsTypes.js";
+import type { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 
 /**
  * Includes key details needed to create a delegate link
@@ -290,7 +291,7 @@ export abstract class Capo<
         govAuthority: RoleInfo<any,any, any, any>;
         mintDelegate: RoleInfo<any,any, any, any>;
         spendDelegate: RoleInfo<any,any, any, any>;
-        namedDelegates: RoleInfo<any,any, any, any>;
+        namedDelegate: RoleInfo<any,any, any, any>;
 
         [anyOtherRoleNames: string]: RoleInfo<any,any, any, any>;
     }>;
@@ -627,73 +628,6 @@ export abstract class Capo<
     }
 
     /**
-     * Tries to locate the Capo charter's gov-authority token through its configured delegate
-     * @remarks
-     *
-     * Uses the Capo's govAuthority delegate to locate the gov-authority token,
-     * if available.  If that token is located in a smart contract, it should always be
-     * found (note, however, that the current user may not have the direct permission
-     * to spend the token in a transaction).
-     *
-     * If the token is located in a user wallet, and that user is not the contract's current
-     * actor, then the token utxo will not be returned from this method.
-     *
-     * @public
-     **/
-    async findGovAuthority(): Promise<TxInput | undefined> {
-        const delegate = await this.findGovDelegate();
-        return delegate.findAuthorityToken();
-    }
-
-    /**
-     * Tries to locate the Capo charter's gov-authority token in the user's wallet, using its configured delegate
-     * @remarks
-     *
-     * Uses the Capo's govAuthority delegate to locate the gov-authority token,
-     * if available the current user's wallet.
-     *
-     * A delegate whose authority token is located in a smart contract will always return `undefined`.
-     *
-     * If the authority token is in a user wallet (not the same wallet as currently connected to the Capo contract class),
-     * it will return `undefined`.
-     *
-     * @public
-     **/
-    async findActorGovAuthority() {
-        const delegate = await this.findGovDelegate();
-        return delegate.findActorAuthorityToken();
-    }
-
-    /**
-     * REDIRECT: Use txnAddGovAuthorityTokenRef to add the charter-governance authority token to a transaction,
-     * or findGovAuthority() or findActorGovAuthority() for locating that txo.
-     * @remarks
-     *
-     * this is a convenience method for redirecting developers to
-     * find the right method name for finding or including a gov-authority token
-     * in a transaction
-     * @deprecated - see other method names, depending on what result you want
-     * @public
-     **/
-    findCharterAuthority() {
-        throw new Error(
-            `use findGovAuthority() to locate charter's gov-authority token`
-        );
-    }
-
-    /**
-     * REDIRECT: use txnAddGovAuthorityTokenRef() instead
-     * @remarks
-     *
-     * this method was renamed.
-     * @deprecated - look for txnAddGovAuthorityTokenRef() instead
-     * @public
-     **/
-    async txnAddCharterAuthorityTokenRef<TCX extends StellarTxnContext>() {
-        throw new Error(`use txnAddGovAuthorityTokenRef() instead`);
-    }
-
-    /**
      * adds the charter-token, along with its gov-authority UUT, to a transaction context
      * @remarks
      *
@@ -979,7 +913,7 @@ export abstract class Capo<
      * @public
      **/
     async txnCreateConfiguredDelegate<
-        DT extends StellarDelegate<any>,
+        DT extends StellarDelegate<any> | ( StellarDelegate<any> & ContractBasedDelegate<any>),
         const RN extends string & keyof this["delegateRoles"]
     >(
         tcx: hasUutContext<RN>,
@@ -1043,7 +977,7 @@ export abstract class Capo<
             uutName: uut.name,
             config: mergedConfig,
         };
-        let delegate: DT = await this.mustGetDelegate(delegateSettings);
+        let delegate: DT = await this.mustGetDelegate<DT>(delegateSettings);
 
         // const reqdAddress = delegate.delegateReqdAddress();
         // if (reqdAddress) {

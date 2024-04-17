@@ -214,7 +214,6 @@ struct DelegationDetail {
 enum BASE_DELEGATE_Datum {
     IsDelegation {
         dd: DelegationDetail
-        CustomConfig: Data
     }
 }
 

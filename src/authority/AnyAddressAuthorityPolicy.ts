@@ -46,36 +46,6 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         throw new Error(`usingAuthority is only used in capo contracts.  use activityAuthorizing() for delegates`);
     }
 
-    /**
-     * Finds the delegate authority token, normally in the delegate's contract address
-     * @public
-     * @remarks
-     *
-     * The default implementation finds the UTxO having the authority token
-     * in the delegate's contract address.
-     *
-     * It's possible to have a delegate that doesn't have an on-chain contract script.
-     * ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a
-     * delegate-specific heuristic to locate the needed token.  It might consult the
-     * addrHint in its `configIn` or another technique for resolution.
-     *
-     * @param tcx - the transaction context
-     * @reqt It MUST resolve and return the UTxO (a TxInput type ready for spending)
-     *  ... or throw an informative error
-     **/
-    async findAuthorityToken(): Promise<TxInput | undefined> {
-        const { wallet } = this;
-        return this.hasUtxo(
-            `authority token: ${bytesToText(this.configIn!.tn)}`,
-            this.mkTokenPredicate(this.tvAuthorityToken()),
-            { wallet }
-        );
-    }
-
-    async findActorAuthorityToken(): Promise<TxInput | undefined> {
-        return this.findAuthorityToken();
-    }
-
     //! impls MUST resolve the indicated token to a specific UTxO
     //  ... or throw an informative error
     async DelegateMustFindAuthorityToken(
@@ -141,11 +111,11 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     //! Adds the indicated utxo to the transaction with appropriate activity/redeemer
     //  ... allowing the token to be burned by the minting policy.
     //! EXPECTS to receive a Utxo having the result of txnMustFindAuthorityToken()
-    async DelegateRetiresAuthorityToken(
-        tcx: StellarTxnContext,
+    async DelegateRetiresAuthorityToken<TCX extends StellarTxnContext>(
+        tcx: TCX,
         fromFoundUtxo: TxInput
-    ): Promise<StellarTxnContext> {
+    ): Promise<TCX> {
         //! no need to specify a redeemer
-        return tcx.addInput(fromFoundUtxo);
+        return tcx.addInput(fromFoundUtxo) as TCX;
     }
 }

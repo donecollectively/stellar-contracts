@@ -1,12 +1,15 @@
 import {
     Datum,
 } from "@hyperionbt/helios";
+
+export {
+    Datum,
+} from "@hyperionbt/helios";
 //! because we are separately exporting all of helios,
 //! it's not necessary to import or export any of its members.
 //! ... but it's helpful to re-export some of its types.
 
 export type {
-    Datum,
     Tx,
     TxInput,
     Address,

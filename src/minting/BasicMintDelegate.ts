@@ -33,6 +33,7 @@ import { UnspecializedMintDelegate } from "./UnspecializedMintDelegate.js";
 import { UnspecializedCapo } from "../UnspecializedCapo.js";
 import { CapoHelpers } from "../CapoHelpers.js";
 import type { MintUutActivityArgs, UutCreationAttrsWithSeed, hasUutContext } from "../Capo.js";
+import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
 
 export type MintDelegateArgs = capoDelegateConfig & {
     rev: bigint;
@@ -51,7 +52,7 @@ type MintDelegateDatumProps = {
  * shifts detailed minting policy out of the minter and into the delegate.
  * @public
  **/
-export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
+export class BasicMintDelegate extends ContractBasedDelegate<MintDelegateArgs> {
     static currentRev = 1n;
 
     static get defaultParams() {
@@ -102,9 +103,7 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
      * @remarks
      *
      * The basic mint delegate contains an "unspecialized" implementation of this customization,
-     * which doesn't have any special restrictions.  It reserves a CustomConfig field
-     * at position 2 in the IsDelegation datum, allowing customizations to use any
-     * struct in that position to express any custom configurations.
+     * which doesn't have any special restrictions.  
      **/
     get specializedMintDelegate(): HeliosModuleSrc {
         return UnspecializedMintDelegate;
@@ -223,31 +222,6 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
     }
 
     /**
-     * Adds a mint-delegate-specific authority token to the txn output
-     * @remarks
-     *
-     * Implements {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }.
-     *
-     * Uses {@link BasicMintDelegate.mkDelegationDatum | mkDelegationDatum()} to make the inline Datum for the output.
-     * @see {@link StellarDelegate.txnReceiveAuthorityToken | baseline txnReceiveAuthorityToken()'s doc }
-     * @public
-     **/
-    async txnReceiveAuthorityToken<TCX extends StellarTxnContext>(
-        tcx: TCX,
-        tokenValue: Value,
-        fromFoundUtxo?: TxInput
-    ): Promise<TCX> {
-        console.log(
-            `     ----- minting delegate validator receiving mintDgt token at ` +
-                this.validatorHash!.hex
-        );
-        // const ffu = fromFoundUtxo;
-        // const v : Value = ffu?.value || this.mkMinAssetValue(this.configIn!.uut);
-        const datum = this.mkDelegationDatum(fromFoundUtxo);
-        return tcx.addOutput(new TxOutput(this.address, tokenValue, datum));
-    }
-
-    /**
      * Depreciated: Add a generic minting-UUTs actvity to the transaction
      * @remarks
      *
@@ -283,16 +257,6 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
         return this.txnGrantAuthority(tcx, useActivity);
     }
 
-    mkDelegationDatum(txin?: TxInput) {
-        if (txin) return txin.origOutput.datum!;
-        const { capoAddr, mph, tn, ..._otherCfgSettings } = this.configIn!;
-
-        return this.mkDatumIsDelegation({
-            capoAddr,
-            mph,
-            tn,
-        });
-    }
 
     @Activity.partialTxn
     async txnCreatingTokenPolicy(tcx: StellarTxnContext, tokenName: string) {

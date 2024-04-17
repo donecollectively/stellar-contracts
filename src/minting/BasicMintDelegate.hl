@@ -65,7 +65,7 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
     mdd.switch{
         //! performs essential checks of policy for spending the minting delegate's authority token "mintDgt-*"
         //! It also calls any additionalDelegateValidation() defined in a specialized minting delegate.
-        isD : IsDelegation{dd, _} => {
+        isD : IsDelegation{dd} => {
             // MintDelegateDatum::IsDelegation{dd, cfg} = isD;
             activity.switch {
                 // authorizing minting of a new token or burning an existing token:

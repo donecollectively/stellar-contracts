@@ -16,17 +16,7 @@ import type {
 } from "./RolesAndDelegates.js";
 import { hasReqts } from "../Requirements.js";
 import { dumpAny } from "../diagnostics.js";
-import type { MinimalDelegateLink, MintUutActivityArgs } from "../Capo.js";
-import type { DefaultCapo } from "../DefaultCapo.js";
-
-export type NamedDelegateCreationOptions<
-    thisType extends DefaultCapo<any, any, any, any>,
-    DT extends StellarDelegate
-> = MinimalDelegateLink<DT> & {
-    strategyName: string &
-    keyof thisType["delegateRoles"]["spendDelegate"]["variants"]
-    forcedUpdate? : true
-}
+import type { MintUutActivityArgs } from "../Capo.js";
 
 /**
  * Base class for modules that can serve as Capo delegates
@@ -37,8 +27,7 @@ export type NamedDelegateCreationOptions<
  * @typeParam CT - type of any specialized configuration; use capoDelegateConfig by default.
  **/
 export abstract class StellarDelegate<
-    CT extends configBase & capoDelegateConfig = capoDelegateConfig,
-    DCCT extends Record<string, any> | string = string
+    CT extends configBase & capoDelegateConfig = capoDelegateConfig
 > extends StellarContract<CT> {
     static currentRev = 1n;
     static get defaultParams() {
@@ -56,12 +45,10 @@ export abstract class StellarDelegate<
      * @param tcx - transaction context
      * @public
      **/
-    async txnGrantAuthority<
-        TCX extends StellarTxnContext
-    >(
-        tcx: TCX, 
-        redeemer? : isActivity, 
-        returnExistingDelegate : boolean = true
+    async txnGrantAuthority<TCX extends StellarTxnContext>(
+        tcx: TCX,
+        redeemer?: isActivity,
+        returnExistingDelegate: boolean = true
     ) {
         const label = `${this.constructor.name} authority`;
         const uutxo = await this.DelegateMustFindAuthorityToken(tcx, label);
@@ -75,7 +62,11 @@ export abstract class StellarDelegate<
         );
 
         try {
-            const tcx2 = await this.DelegateAddsAuthorityToken(tcx, uutxo, redeemer || this.activityAuthorizing());
+            const tcx2 = await this.DelegateAddsAuthorityToken(
+                tcx,
+                uutxo,
+                redeemer
+            );
             if (!returnExistingDelegate) return tcx2;
             return this.txnReceiveAuthorityToken(tcx2, authorityVal, uutxo);
         } catch (error: any) {
@@ -135,152 +126,11 @@ export abstract class StellarDelegate<
         fromFoundUtxo?: TxInput
     ): Promise<TCX>;
 
-    /**
-     * redeemer for exercising the authority of this delegate via its authority UUT
-     * @public
-     * @remarks
-     *
-     * The Authorizing redeemer indicates that the delegate is authorizing (certain parts of)
-     * a transaction.
-     *
-     **/
-    @Activity.redeemer
-    activityAuthorizing() {
-        throw new Error("unused");
-        const thisActivity = this.mustGetActivity("Authorizing");
-        const t = new thisActivity();
-
-        return { redeemer: t._toUplcData() };
-    }
-
-    /**
-     * redeemer for replacing the authority UUT with a new one
-     * @remarks
-     * 
-     * When replacing the delegate, the current UUT will be burned,
-     * and a new one will be minted.  It can be deposited to any next delegate address.
-     * 
-     * @param seedTxnDetails - seed details for the new UUT
-     * @public
-     **/
-    @Activity.redeemer
-    activityReplacingMe({ // todo: add type for seedTxnDetails
-        seedTxn,
-        seedIndex,
-        purpose        
-    } :  Omit<MintUutActivityArgs, "purposes"> & {purpose?: string}) {
-        debugger
-        const { 
-            DelegateActivity: thisActivity, 
-            activity: ReplacingMe 
-        } = this.mustGetDelegateActivity("ReplacingMe");
-
-        const t = new thisActivity(
-            new ReplacingMe(
-                seedTxn, 
-                seedIndex, 
-                purpose
-            )
-        );
-
-        return { redeemer: t._toUplcData() };
-    }
-
-    mustGetDelegateActivity(delegateActivityName: string) {
-        const DAType = this.mustGetActivity("DelegateActivity");
-        const { DelegateActivity } = this.onChainTypes;
-        const activity = this.mustGetEnumVariant(
-            DelegateActivity, delegateActivityName
-        );
-
-        return { DelegateActivity : DAType,  activity };
-    }
-
-    /**
-     * redeemer for spending the authority UUT for burning it.
-     * @public
-     * @remarks
-     *
-     * The Retiring redeemer indicates that the delegate is being
-     * removed.
-     *
-     **/
-    @Activity.redeemer
-    activityRetiring() {
-        const { DelegateActivity, activity: Retiring } = this.mustGetDelegateActivity("Retiring");
-
-        const t = new DelegateActivity(
-            new Retiring()
-        );
-
-        return { redeemer: t._toUplcData() };
-    }
-
-    @Activity.redeemer
-    activityModifying() {
-        const { DelegateActivity, activity: Modifying } = this.mustGetDelegateActivity("Modifying");
-
-        const t = new DelegateActivity(
-            new Modifying()
-        );
-
-        return { redeemer: t._toUplcData() };
-    }
-
-    @Activity.redeemer
-    activityValidatingSettings() {
-        const { DelegateActivity, activity: ValidatingSettings } = this.mustGetDelegateActivity("ValidatingSettings");
-
-        const t = new DelegateActivity(
-            new ValidatingSettings()
-        );
-
-        return { redeemer: t._toUplcData() };
-    }
-
-    /**
-     * creates the essential datum for a delegate UTxO
-     * @remarks
-     *
-     * Every delegate is expected to have a two-field 'IsDelegation' variant
-     * in the first position of its on-chain Datum type.  This helper method
-     * constructs a suitable UplcData structure, given appropriate inputs.
-     * @param dd - Delegation details
-     * @public
-     **/
-    @datum
-    mkDatumIsDelegation(
-        dd: DelegationDetail,
-        ...args: DCCT extends string ? [string] | [] : [DCCT]
-    ): InlineDatum {
-        const [customConfig = ""] = args;
-        const { IsDelegation } = this.onChainDatumType;
-        const { DelegationDetail } = this.onChainTypes;
-        const t = new IsDelegation(new DelegationDetail(dd), customConfig);
-        return Datum.inline(t._toUplcData());
-    }
-    /**
-     * returns the ValidatorHash of the delegate script, if relevant
-     * @public
-     * @remarks
-     *
-     * A delegate that doesn't use an on-chain validator should override this method and return undefined.
-     **/
-    get delegateValidatorHash(): ValidatorHash | undefined {
-        if (!this.validatorHash) {
-            throw new Error(
-                `${this.constructor.name}: address doesn't use a validator hash!\n` +
-                    `  ... if that's by design, you may wish to override 'get delegateValidatorHash()'`
-            );
-        }
-        return this.validatorHash;
-    }
-
     mkAuthorityTokenPredicate() {
         return this.mkTokenPredicate(this.tvAuthorityToken());
     }
     get authorityTokenName() {
-        return this.configIn!.tn
+        return this.configIn!.tn;
     }
 
     tvAuthorityToken(useMinTv: boolean = false) {
@@ -296,50 +146,11 @@ export abstract class StellarDelegate<
         return mkTv(mph, tn);
     }
 
-    /**
-     * Finds the delegate authority token, normally in the delegate's contract address
-     * @public
-     * @remarks
-     *
-     * The default implementation finds the UTxO having the authority token
-     * in the delegate's contract address.
-     *
-     * It's possible to have a delegate that doesn't have an on-chain contract script.
-     * ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a
-     * delegate-specific heuristic to locate the needed token.  It might consult the
-     * addrHint in its `configIn` or another technique for resolution.
-     *
-     * @param tcx - the transaction context
-     * @reqt It MUST resolve and return the UTxO (a TxInput type ready for spending)
-     *  ... or throw an informative error
-     **/
-    async findAuthorityToken(): Promise<TxInput | undefined> {
-        const { address } = this;
-        return this.hasUtxo(
-            `authority token: ${bytesToText(this.configIn!.tn)}`,
-            this.mkTokenPredicate(this.tvAuthorityToken()),
-            { address }
-        );
-    }
-
-    /**
-     * Tries to locate the Delegates authority token in the user's wallet (ONLY for non-smart-contract delegates)
-     * @remarks
-     *
-     * Locates the authority token,if available the current user's wallet.
-     *
-     * If the token is located in a smart contract, this method will always return `undefined`.  
-     * Use {@link StellarDelegate.findAuthorityToken | findAuthorityToken()} in that case.
-     *
-     * If the authority token is in a user wallet (not the same wallet as currently connected to the Capo contract class),
-     * it will return `undefined`.
-     *
-     * @public
-     **/
-    async findActorAuthorityToken(): Promise<TxInput | undefined> {
+    get delegateValidatorHash(): ValidatorHash | undefined {
         return undefined;
     }
 
+
     /**
      * Finds the delegate authority token, normally in the delegate's contract address
      * @public
@@ -348,25 +159,14 @@ export abstract class StellarDelegate<
      * The default implementation finds the UTxO having the authority token
      * in the delegate's contract address.
      *
-     * It's possible to have a delegate that doesn't have an on-chain contract script.
-     * ... in this case, the delegate should use this.{@link StellarDelegate.tvAuthorityToken | tvAuthorityToken()} and a
-     * delegate-specific heuristic to locate the needed token.  It might consult the
-     * addrHint in its `configIn` or another technique for resolution.
-     *
      * @param tcx - the transaction context
      * @reqt It MUST resolve and return the UTxO (a TxInput type ready for spending)
      *  ... or throw an informative error
      **/
-    async DelegateMustFindAuthorityToken(
+    abstract DelegateMustFindAuthorityToken(
         tcx: StellarTxnContext,
         label: string
-    ): Promise<TxInput> {
-        return this.mustFindMyUtxo(
-            `${label}: ${bytesToText(this.configIn!.tn)}`,
-            this.mkTokenPredicate(this.tvAuthorityToken()),
-            "this delegate strategy might need to override txnMustFindAuthorityToken()"
-        );
-    }
+    ): Promise<TxInput>;
 
     /**
      * Adds the delegate's authority token to a transaction
@@ -375,69 +175,13 @@ export abstract class StellarDelegate<
      * Given a delegate already configured by a Capo, this method implements
      * transaction-building logic needed to include the UUT into the `tcx`.
      * the `utxo` is discovered by {@link StellarDelegate.DelegateMustFindAuthorityToken | DelegateMustFindAuthorityToken() }
-     * 
-     * The default implementation adds the `uutxo` to the transaction 
-     * using {@link StellarDelegate.activityAuthorizing | activityAuthorizing() }.
-     * 
-     * The off-chain code shouldn't need to check the details; it can simply
-     * arrange the details properly and spend the delegate's authority token, 
-     * using this method.
-     * 
-     * ### Reliance on this delegate
-     * 
-    * Other contract scripts can rely on the delegate script to have validated its 
-     * on-chain policy and enforced its own "return to the delegate script" logic.
-     * 
-     * ### Enforcing on-chain policy
-     * 
-     * When spending the authority token in this way, the delegate's authority is typically 
-     * narrowly scoped, and it's expected that the delegate's on-chain script validates that 
-     * those parts of the transaction detail should be authorized, in accordance with the 
-     * delegate's core purpose/responsbility - i.e. that the txn does all of what the delegate 
-     * expects, and none of what it shouldn't do in that department.
-     * 
-     * The on-chain code SHOULD typically enforce:
-     *  * that the token is spent with Authorizing activity (redeemer).  NOTE:
-     *     the **CapoDelegateHelpers** helios module provides the `requiresDelegateAuthorizing()` 
-     *     function for just this purpose
-    
-     *  * that the authority token is returned to the contract with its datum unchanged 
-     *  * that any other tokens it may also hold in the same UTxO do not become 
-     *     inaccessible as a result of the transactions - perhaps by requiring them to be 
-     *     returned together with the authority token.
-     * 
-     * It MAY enforce additional requirements as well.
-     *
-     * @example
-     * A minting delegate should check that all the expected tokens are 
-     * minted, AND that no other tokens are minted.  
-     * 
-     * @example
-     * A role-based authentication/signature-checking delegate can 
-     * require an appropriate signature on the txn.
-     * 
-    * @param tcx - the transaction context
-    * @param utxo - the utxo having the authority UUT for this delegate
-    * @reqt Adds the uutxo to the transaction inputs with appropriate redeemer.
-    * @reqt Does not output the value; can EXPECT txnReceiveAuthorityToken to be called for that purpose.
-     **/
-    protected async DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(
+    **/
+    abstract DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
         uutxo: TxInput,
-        redeemer: isActivity
-    ): Promise<TCX> {
-        const {capo} = this.configIn!;
-        return capo.txnAttachScriptOrRefScript(
-            tcx.addInput(uutxo, redeemer),
-            this.compiledScript
-        )
+        redeemer?: isActivity
+    ): Promise<TCX>;
 
-        // return this.txnKeepValue(
-        //     tcx,
-        //     uutxo.value,
-        //     uutxo.origOutput.datum as InlineDatum
-        // );
-    }
 
     /**
      * Adds any important transaction elemements supporting the authority token being retired, closing the delegate contracts' utxo.
@@ -467,16 +211,10 @@ export abstract class StellarDelegate<
      * @param fromFoundUtxo - the utxo having the authority otken
      * @public
      **/
-    protected async DelegateRetiresAuthorityToken(
-        tcx: StellarTxnContext,
+    abstract DelegateRetiresAuthorityToken<TCX extends StellarTxnContext>(
+        tcx: TCX,
         fromFoundUtxo: TxInput
-    ): Promise<StellarTxnContext> {
-        const utxo = fromFoundUtxo;
-        return tcx.addInput(
-            new TxInput(utxo.outputId, utxo.origOutput),
-            this.activityRetiring()
-        );
-    }
+    ): Promise<TCX>;
 
     /**
      * Captures requirements as data

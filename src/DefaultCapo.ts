@@ -94,13 +94,14 @@ import { dumpAny, txAsString } from "./diagnostics.js";
 import { hasReqts } from "./Requirements.js";
 import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { UnspecializedCapo } from "./UnspecializedCapo.js";
-import { NoMintDelegation } from "./minting/NoMintDelegation.js";
 import { CapoHelpers } from "./CapoHelpers.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
-import { StellarDelegate, type NamedDelegateCreationOptions } from "./delegation/StellarDelegate.js";
+import { StellarDelegate } from "./delegation/StellarDelegate.js";
+import { type NamedDelegateCreationOptions } from "./delegation/ContractBasedDelegate.js";
 import { UutName } from "./delegation/UutName.js";
 import type { Expand, ExpandRecursively } from "./testing/types.js";
 import { UncustomCapoSettings } from "./UncustomCapoSettings.js";
+import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
@@ -396,7 +397,7 @@ export class DefaultCapo<
                 // undelegated: { ... todo ... }
             }),
 
-            spendDelegate: defineRole("spendDgt", StellarDelegate<any>, {
+            spendDelegate: defineRole("spendDgt", ContractBasedDelegate<any>, {
                 defaultV1: {
                     delegateClass: BasicMintDelegate,
                     partialConfig: {},
@@ -404,8 +405,9 @@ export class DefaultCapo<
                         return undefined;
                     },
                 },
+
             }),
-            namedDelegates: defineRole("namedDgt", StellarDelegate<any>, {
+            namedDelegate: defineRole("namedDgt", ContractBasedDelegate<any>, {
                 // no named delegates by default
             })
         });
@@ -646,7 +648,7 @@ export class DefaultCapo<
     async getSpendDelegate() {
         const charterDatum = await this.findCharterDatum();
 
-        return this.connectDelegateWithLink(
+        return this.connectDelegateWithLink<ContractBasedDelegate<any>>(
             "spendDelegate",
             charterDatum.spendDelegateLink
         );

@@ -271,9 +271,10 @@ describe("Capo", async () => {
                 .mockImplementation((...args) => {
                     const [dd, s] = args;
                     const { capoAddr, mph, tn } = mintDelegate.configIn!;
+                    const badValue = tn[4] + 1;
+                    tn[4] = badValue;
                     return mintDelegate.mkDatumIsDelegation(
                         { capoAddr, mph, tn },
-                        "bad change"
                     );
                 });
             const tcx = await t.txnMintingUuts(
