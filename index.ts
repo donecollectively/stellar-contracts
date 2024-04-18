@@ -24,10 +24,11 @@ export {
     dumpAny,
 } from "./src/diagnostics.js";
 
-export { UutName } from "./src/delegation/UutName.js";
-export { Capo, 
-    type CapoBaseConfig,     
-    type MinimalDelegateLink
+export { UutName, type SeedAttrs } from "./src/delegation/UutName.js";
+export {
+    Capo,
+    type CapoBaseConfig,
+    type MinimalDelegateLink,
 } from "./src/Capo.js";
 export type {
     MintUutActivityArgs,
@@ -40,27 +41,26 @@ export type {
     hasBootstrappedConfig,
 } from "./src/Capo.js";
 
-export { 
-    type OffchainSettingsType, 
-    type OnchainSettingsType, 
-    type SettingsAdapterFor
+export {
+    type OffchainSettingsType,
+    type OnchainSettingsType,
+    type SettingsAdapterFor,
 } from "./src/CapoSettingsTypes.js";
 
 export {
-    delegateRoles, defineRole, 
-} from "./src/delegation/RolesAndDelegates.js"
-
+    delegateRoles,
+    defineRole,
+} from "./src/delegation/RolesAndDelegates.js";
 
 export type {
     capoDelegateConfig,
-
     ErrorMap,
     ConfiguredDelegate,
     RelativeDelegateLink,
-    VariantStrategy
-} from "./src/delegation/RolesAndDelegates.js"
+    VariantStrategy,
+} from "./src/delegation/RolesAndDelegates.js";
 
-export type { SeedTxnParams } from "./src/SeedTxn.js";
+export type { SeedTxnScriptParams } from "./src/SeedTxnScriptParams.js";
 export { BasicMintDelegate } from "./src/minting/BasicMintDelegate.js";
 
 export {
@@ -72,7 +72,10 @@ export {
 } from "./src/StellarContract.js";
 
 export { StellarDelegate } from "./src/delegation/StellarDelegate.js";
-export { ContractBasedDelegate, type NamedDelegateCreationOptions  } from "./src/delegation/ContractBasedDelegate.js";
+export {
+    ContractBasedDelegate,
+    type NamedDelegateCreationOptions,
+} from "./src/delegation/ContractBasedDelegate.js";
 
 export { AuthorityPolicy } from "./src/authority/AuthorityPolicy.js";
 export { AnyAddressAuthorityPolicy } from "./src/authority/AnyAddressAuthorityPolicy.js";
@@ -80,15 +83,14 @@ export { AnyAddressAuthorityPolicy } from "./src/authority/AnyAddressAuthorityPo
 export { hasReqts, mergesInheritedReqts } from "./src/Requirements.js";
 export type { ReqtsMap, RequirementEntry } from "./src/Requirements.js";
 
-export { 
+export {
     StellarTxnContext,
     type anyState,
-    type SeedAttrs,
     type hasSeedUtxo,
-    type hasAddlTxns,    
+    type hasAddlTxns,
     type TxDescription,
     type MultiTxnCallback,
- } from "./src/StellarTxnContext.js";
+} from "./src/StellarTxnContext.js";
 
 export type {
     stellarSubclass,
@@ -97,18 +99,17 @@ export type {
     anyDatumProps,
     configBase as paramsBase,
     StellarFactoryArgs,
-    ConfigFor
+    hasSeed,
+    ConfigFor,
 } from "./src/StellarContract.js";
 
 export { DatumAdapter } from "./src/DatumAdapter.js";
 export { CapoMinter } from "./src/minting/CapoMinter.js";
-export { 
-    DefaultCapo, 
-    // contract as DefaultCapoContract 
+export {
+    DefaultCapo,
+    // contract as DefaultCapoContract
 } from "./src/DefaultCapo.js";
-export type { 
-    DefaultCharterDatumArgs,
-} from "./src/DefaultCapo.js";
+export type { DefaultCharterDatumArgs } from "./src/DefaultCapo.js";
 
 export type {
     tokenNamesOrValuesEntry,
@@ -128,7 +129,6 @@ export type {
     Network,
 } from "./src/HeliosPromotedTypes.js";
 
-
 // export {
 //     Datum,
 //     Tx,
@@ -142,7 +142,7 @@ export type {
 // } from "./src/HeliosPromotedTypes.js";
 import * as helios from "@hyperionbt/helios";
 
-export { helios }
+export { helios };
 export { mkHeliosModule } from "./src/HeliosModuleSrc.js";
 export type { HeliosModuleSrc } from "./src/HeliosModuleSrc.js";
 export { heliosRollupLoader } from "./src/heliosRollupLoader.js";

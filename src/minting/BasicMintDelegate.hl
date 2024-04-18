@@ -89,6 +89,7 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                         );
 
                         print("checking ReplacingMe on "+purpose+": "+dd.tn.decode_utf8());
+                        // the charter update itself will check that there's a valid delegate output for the new delegate
                         mintsUutForCharterUsingRedeemerIndex(
                             ctx: ctx, 
                             mph: dd.mph,

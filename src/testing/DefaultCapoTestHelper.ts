@@ -149,7 +149,7 @@ export class DefaultCapoTestHelper<
     }
 
     async mintCharterToken(
-        args?: MinimalDefaultCharterDatumArgs<CDT>
+        args?: Partial<MinimalDefaultCharterDatumArgs<CDT>>
     ) {
         const { delay } = this;
         const { tina, tom, tracy } = this.actors;
@@ -163,8 +163,10 @@ export class DefaultCapoTestHelper<
 
         if (!this.strella) await this.initialize();
         const capo = await this.strella!;
-        const goodArgs = (args ||
-            this.mkDefaultCharterArgs()) as MinimalDefaultCharterDatumArgs<CDT>;
+        const goodArgs = {
+            ... this.mkDefaultCharterArgs(),
+            ... (args || {})
+        } as MinimalDefaultCharterDatumArgs<CDT>
         // debugger
 
         const tcx = await capo.mkTxnMintCharterToken(goodArgs);

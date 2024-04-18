@@ -52,6 +52,8 @@ func requiresMintDelegateApproval(
         /* govAuthority */ _
     } = getRefCharterDatum(ctx, mph);
 
+    print("Minter requiring mint delegate, spent with a minting-type activity/redeemer");
+
     requiresDelegateAuthorizingMint(
         delegateLink: mintDgt, 
         mph: mph,
@@ -288,6 +290,7 @@ func mintsUutForCharterUsingRedeemerIndex(
 
             if (index == charterRedeemerIndex) { 
                 // ok, good charter-redeemer as expected; print("ok here");
+                // the charter update itself will check that there's a valid delegate output for the new delegate
                 true 
             } else {  
                 error("wrong charter Activity for adding spend invariant; expected redeemer #"+ 

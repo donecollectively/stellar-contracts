@@ -19,6 +19,7 @@ import {
 } from "../StellarContract.js";
 import type {
     configBase,
+    hasSeed,
     isActivity,
 } from "../StellarContract.js";
 
@@ -34,6 +35,7 @@ import {
     StellarTxnContext,
     emptyUuts,
     type anyState,
+    type hasSeedUtxo,
 } from "../StellarTxnContext.js";
 import type {
     MintUutActivityArgs,
@@ -41,7 +43,7 @@ import type {
     hasUutContext,
     uutPurposeMap,
 } from "../Capo.js";
-import type { SeedTxnParams } from "../SeedTxn.js";
+import type { SeedTxnScriptParams } from "../SeedTxnScriptParams.js";
 import type { valuesEntry } from "../HeliosPromotedTypes.js";
 import { CapoDelegateHelpers } from "../delegation/CapoDelegateHelpers.js";
 import { UutName } from "../delegation/UutName.js";
@@ -57,9 +59,10 @@ type MintCharterActivityArgs<T = {}> = T & {
     owner: Address;
 };
 
-export type BasicMinterParams = configBase & SeedTxnParams & {
+export type BasicMinterParams = configBase & SeedTxnScriptParams & {
     capo: DefaultCapo<any, any,any>
 }
+
 
 /**
  * A basic minting validator serving a Capo's family of contract scripts
@@ -79,7 +82,7 @@ implements MinterBaseMethods
     }
     getContractScriptParams(
         config: BasicMinterParams
-    ): configBase & SeedTxnParams {
+    ): configBase & SeedTxnScriptParams {
         const {
             seedIndex,
             seedTxn,
@@ -157,15 +160,15 @@ implements MinterBaseMethods
      * change needed.  The Capo's authority token is all the minter requires
      * to create the needed UUT.
      *
+     * @param arg - either a transaction-context with seedUtxo, or {seedTxn, seedIndex}
      * @public
      **/
     @Activity.redeemer
-    activityAddingMintInvariant({
-        seedTxn,
-        seedIndex: sIdx,
-    }: Omit<MintUutActivityArgs, "purposes">): isActivity {
+    activityAddingMintInvariant(arg: hasSeed) : isActivity {
+        const { txId, idx } = this.getSeed(arg);
+
         const addingMintInvariant = this.mustGetActivity("addingMintInvariant");
-        const t = new addingMintInvariant(seedTxn, BigInt(sIdx));
+        const t = new addingMintInvariant(txId, idx);
 
         return { redeemer: t._toUplcData() };
     }
@@ -180,14 +183,12 @@ implements MinterBaseMethods
      * @public
      * **/
     @Activity.redeemer
-    activityAddingSpendInvariant({
-        seedTxn,
-        seedIndex: sIdx,
-    }: Omit<MintUutActivityArgs, "purposes">): isActivity {
+    activityAddingSpendInvariant(arg: hasSeed) : isActivity {
+        const { txId, idx } = this.getSeed(arg);
         const addingSpendInvariant = this.mustGetActivity(
             "addingSpendInvariant"
         );
-        const t = new addingSpendInvariant(seedTxn, BigInt(sIdx));
+        const t = new addingSpendInvariant(txId, idx);
 
         return { redeemer: t._toUplcData() };
     }
@@ -203,10 +204,7 @@ implements MinterBaseMethods
      * @public
      **/
     @Activity.redeemer
-    activityForcingNewMintDelegate({
-        seedTxn,
-        seedIndex,
-    }: Omit<MintUutActivityArgs, "purposes">) {
+    activityForcingNewMintDelegate(arg: hasSeed) {
         console.warn(
             "NOTE: REPLACING THE MINT DELEGATE USING A DIRECT MINTER ACTIVITY\n" +
                 "THIS IS NOT THE RECOMMENDED PATH - prefer using the existing mint delegate's ReplacingMe activity'"
@@ -214,7 +212,8 @@ implements MinterBaseMethods
         const ReplacingMintDelegate = this.mustGetActivity(
             "ForcingNewMintDelegate"
         );
-        const t = new ReplacingMintDelegate(seedTxn, BigInt(seedIndex));
+        const { txId, idx } = this.getSeed(arg);
+        const t = new ReplacingMintDelegate(txId, idx);
         return { redeemer: t._toUplcData() };
     }
 
@@ -222,26 +221,28 @@ implements MinterBaseMethods
      * Forces replacement of the Capo's spend delegate
      * @remarks
      *
-     * Forces the minting of a new UUT to replace the Capo's spend delegate.
+     * Creates a new UUT to replace the Capo's spend delegate.  The mint delegate
+     * is bypassed in this operation.  There is always some existing spend delegate
+     * when this is called, and it's normally burned in the process, when replacingUut is 
+     * provided.  If replacingUut is not provided, the existing spend delegate is left in plac,e
+     * although it won't be useful because the new spend delegate will have been installed.
      *
-     * @param ‹pName› - descr
-     * @typeParam ‹pName› - descr (for generic types)
+     * @param seed - either a transaction-context with seedUtxo, or {seedTxn, seedIndex}
+     * @param replacingUut - the name of an exiting delegate being replaced
      * @public
      **/
     @Activity.redeemer
-    activityCreatingNewSpendDelegate({
-        seedTxn,
-        seedIndex: seedIndex,
-        replacingUut,
-    }: Omit<MintUutActivityArgs, "purposes"> & { replacingUut?: number[] }) {
+    activityCreatingNewSpendDelegate(seed: hasSeed, 
+        replacingUut?: number[]
+    ) : isActivity {
         const ReplacingSpendDelegate = this.mustGetActivity(
             "CreatingNewSpendDelegate"
         );
         const OptByteArray = Option(ByteArray);
+        const { txId, idx } = this.getSeed(seed);
         const uutName = new OptByteArray(replacingUut);
         const t = new ReplacingSpendDelegate(
-            seedTxn,
-            BigInt(seedIndex),
+            txId, idx,
             uutName
         );
         return { redeemer: t._toUplcData() };

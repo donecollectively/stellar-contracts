@@ -6,15 +6,6 @@ import {
     returnsValueToScript
 } from StellarHeliosHelpers
 
-// Delegates can define addtional activities in their enum variants,
-// but these 4 basic activities are essential.
-enum BASE_DELEGATE_Activity {
-    Authorizing
-    Reassigning
-    Retiring
-    Modifying
-}
-
 // todo: add this to RelativeDelegateLink
 enum stakingKeyRequirement {
     NoStakingKeyAllowed
@@ -333,21 +324,26 @@ func requiresDelegateAuthorizingMint(
             error(err)
         },
         Some{x} => x.switch {
-            (index: Int, _fields: []Data) => {
+            (index: Int, fields: []Data) => {
 
-                /* avoids unused-variable warning: */ _fields == _fields && 
+                /* avoids unused-variable warning: */ fields == fields && 
                 if (!extraMintDelegateRedeemerCheck) {
                     print("  -- okay, the delegate token was spent");
                     print("  -- skipping extra check for mint delegate's particular redeemer");
                     true
                 } else { 
-                    if (0 == index || index >= 9) {
-                        print (" -- delegate is authorizing: ok redeemer #"+index.show());
-                        true
-                        } else {
-                        print("expected mint-delegation activity with index = 0 or >= 9, not: "+index.show());
-                        error(err)
-                    }
+                    if (0 == index) {
+                        dgtActivity : DelegateActivity = DelegateActivity::from_data(fields.head);
+                        dgtActivity.switch {
+                            ReplacingMe => {
+                                print("  -- okay, the delegate token was spent");
+                                true
+                            },
+                            Retiring => error("DelegateActivity::Retiring can't mint!"),
+                            Modifying => error("DelegateActivity::Modifying can't mint!"),
+                            ValidatingSettings => error("DelegateActivity::ValidatingSettings can't mint!")
+                        }
+                    } else { true }
                 }
             },
             _ => {

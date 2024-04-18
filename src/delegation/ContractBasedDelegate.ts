@@ -1,5 +1,5 @@
 import { TxInput, TxOutput, Value, bytesToText } from "@hyperionbt/helios";
-import type { MinimalDelegateLink, MintUutActivityArgs } from "../Capo.js";
+import type { DelegateSetupWithoutMintDelegate, MinimalDelegateLink, MintUutActivityArgs, NormalDelegateSetup } from "../Capo.js";
 import {
     Datum,
     type InlineDatum,
@@ -274,12 +274,40 @@ export abstract class ContractBasedDelegate<
         ) as TCX;
     }
 }
+
+
 export type NamedDelegateCreationOptions<
     thisType extends DefaultCapo<any, any, any, any>,
     DT extends StellarDelegate
+> = DelegateCreationOptions<
+    string & keyof thisType["delegateRoles"]["namedDelegate"]["variants"],
+    DT
+> & {
+    /**
+     * Optional name for the UUT; uses the delegate name if not provided.  
+     **/
+    uutName?: string
+}
+// MinimalDelegateLink<DT> & {
+//     uutOptions: UutCreationAttrs | ForcedUutReplacement
+//     strategyName: string &
+//     keyof thisType["delegateRoles"]["spendDelegate"]["variants"];
+//     forcedUpdate?: true;
+// };
+
+export type DelegateCreationOptions<
+    STRATEGIES extends string,
+    DT extends StellarDelegate
 > = MinimalDelegateLink<DT> & {
-    strategyName: string &
-    keyof thisType["delegateRoles"]["spendDelegate"]["variants"];
+    /**
+     * details for creating the delegate
+     */
+    mintSetup: NormalDelegateSetup | DelegateSetupWithoutMintDelegate
+    strategyName: string & STRATEGIES;
+    /**
+     * Installs the named delegate without burning the existing UUT for this delegate. 
+     * That UUT may become lost and inaccessible, along with any of its minUtxo.
+     **/
     forcedUpdate?: true;
 };
 

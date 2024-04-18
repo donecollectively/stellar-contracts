@@ -1,7 +1,12 @@
-import { bytesToText } from "@hyperionbt/helios";
+import { TxId, bytesToText } from "@hyperionbt/helios";
 
 export const _uutName = Symbol("uutName");
 export const maxUutName = 32;
+
+export type SeedAttrs = {
+    txId: TxId,
+    idx: bigint,
+}
 
 /**
  * a unique utility token having a unique name

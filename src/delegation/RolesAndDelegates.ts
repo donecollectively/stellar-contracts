@@ -163,7 +163,16 @@ export type RoleInfo<
 > = {
     uutPurpose: UUTP;
     baseClass: stellarSubclass<SC>;
-    variants: { [variant in variants]: VM[variant] };
+    variants:{ 
+        // doesn't work together with next line: [otherVariant: string]: VariantStrategy<SC>,
+        [variant in variants]: VM[variant]  
+    }
+    // sadly, this doesn't work either
+    // &  Record<string, VariantStrategy<SC>> 
+    // nope, this doesn't work either
+    //  & {
+    //     [key: string]: VariantStrategy<SC>
+    // }
 };
 
 /**

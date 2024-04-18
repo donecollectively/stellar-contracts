@@ -7,7 +7,9 @@ import {
     Value,
     bytesToText,
 } from "@hyperionbt/helios";
-import type { SeedTxnParams } from "../SeedTxn.js";
+import type { 
+    SeedTxnScriptParams
+ } from "../SeedTxnScriptParams.js";
 import { Activity, StellarContract, partialTxn } from "../StellarContract.js";
 
 import type { isActivity } from "../StellarContract.js";
@@ -41,11 +43,6 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         return { redeemer: undefined};
     }
 
-    @Activity.redeemer
-    protected activityUsingAuthority(): isActivity {
-        throw new Error(`usingAuthority is only used in capo contracts.  use activityAuthorizing() for delegates`);
-    }
-
     //! impls MUST resolve the indicated token to a specific UTxO
     //  ... or throw an informative error
     async DelegateMustFindAuthorityToken(
@@ -53,8 +50,8 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         label: string
     ): Promise<TxInput> {
         const v = this.tvAuthorityToken();
+        
         const { addrHint } = this.configIn!;
-
         return this.mustFindActorUtxo(
             `${label}: ${bytesToText(this.configIn!.tn)}`,
             this.mkTokenPredicate(v),

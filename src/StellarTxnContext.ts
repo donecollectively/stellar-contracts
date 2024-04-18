@@ -15,7 +15,9 @@ import type {
 
 import { txAsString } from "./diagnostics.js";
 import type { hasUutContext } from "./Capo.js";
-import { UutName } from "./delegation/UutName.js";
+import { 
+    UutName, type SeedAttrs 
+} from "./delegation/UutName.js";
 
 /**
  * A txn context having a seedUtxo in its state
@@ -41,7 +43,7 @@ export type MultiTxnCallback =
     // | ((futTx: TxDescription<any>) => StellarTxnContext<any>)
     // | ((futTx: TxDescription<any>) => Promise<StellarTxnContext<any>>)
     | ((futTx: TxDescription<any>) => StellarTxnContext<any> | false)
-    | ((futTx: TxDescription<any>) => Promise<StellarTxnContext<any> | false>)
+    | ((futTx: TxDescription<any>) => Promise<StellarTxnContext<any> | false>);
 
 /**
  * A transaction context that includes additional transactions in its state for later execution
@@ -59,13 +61,16 @@ export type MultiTxnCallback =
 export type hasAddlTxns<
     TCX extends StellarTxnContext<anyState>,
     existingStateType extends anyState = TCX["state"]
-> = StellarTxnContext<existingStateType & {
-    addlTxns: Record<string, TxDescription<any>>;
-}>
+> = StellarTxnContext<
+    existingStateType & {
+        addlTxns: Record<string, TxDescription<any>>;
+    }
+>;
 
-export type otherAddlTxnNames<TCX extends StellarTxnContext<any>> = string & 
-    TCX extends {state:{addlTxns: infer aTNs}} ? 
-        keyof aTNs : never;
+export type otherAddlTxnNames<TCX extends StellarTxnContext<any>> = string &
+    TCX extends { state: { addlTxns: infer aTNs } }
+    ? keyof aTNs
+    : never;
 
 // type combinedAddlTxns<
 //     extraTxnName extends string,
@@ -75,27 +80,12 @@ export type otherAddlTxnNames<TCX extends StellarTxnContext<any>> = string &
 // > = {
 //     addlTxns: {
 //         //prettier-ignore
-//         [txnName in ( 
+//         [txnName in (
 //             | extraTxnName
 //             | existingTxnNames
 //         )]: AddlTxInfo<any>
-//     } 
+//     }
 // } & stateType;
-
-/**
- * unique seed for creating UUTs and other uniqueness
- * @remarks
- *
- * The attributes of a seed utxo.  When the Utxo is used in a transaction,
- * the seedTxn and seedIndex constitute a unique identifier that won't be
- * repeated in the future, and that uniqueness can be used as a seed for
- * a minting policy, a UUT, or for other uniqueness purposes.
- * @public
- **/
-export type SeedAttrs = {
-    seedTxn: TxId;
-    seedIndex: bigint;
-};
 
 //!!! if we could access the inputs and outputs in a building Tx,
 //  this might  not be necessary (unless it becomes a
@@ -108,7 +98,7 @@ export type SeedAttrs = {
  **/
 export interface anyState {
     uuts: Record<string, UutName>;
-};
+}
 
 /**
  * A base state for a transaction context
@@ -170,15 +160,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
     includeAddlTxn<
         TCX extends StellarTxnContext<anyState>,
-        RETURNS extends hasAddlTxns<TCX> = 
-            TCX extends hasAddlTxns<any> ? TCX : hasAddlTxns<TCX>
-    >(
-        this: TCX,
-        txnName: string,
-        txInfo: TxDescription<any>
-    ): RETURNS {
-        const thisWithMoreType: RETURNS =
-            this as any;
+        RETURNS extends hasAddlTxns<TCX> = TCX extends hasAddlTxns<any>
+            ? TCX
+            : hasAddlTxns<TCX>
+    >(this: TCX, txnName: string, txInfo: TxDescription<any>): RETURNS {
+        const thisWithMoreType: RETURNS = this as any;
         thisWithMoreType.state.addlTxns = {
             ...(thisWithMoreType.state.addlTxns || {}),
             [txnName]: txInfo,
@@ -194,8 +180,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
     getSeedAttrs<TCX extends hasSeedUtxo>(this: TCX): SeedAttrs {
         const { seedUtxo } = this.state;
-        const { txId: seedTxn, utxoIdx: seedIndex } = seedUtxo.outputId;
-        return { seedTxn, seedIndex: BigInt(seedIndex) };
+        const { txId, utxoIdx: seedIndex } = seedUtxo.outputId;
+        return { txId, idx: BigInt(seedIndex) };
     }
 
     reservedUtxos(): TxInput[] {
@@ -246,6 +232,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
         this.tx.addCollateral(collateral);
         return this;
+    }
+    getSeedUtxoDetails(this: hasSeedUtxo): SeedAttrs {
+        const seedUtxo = this.state.seedUtxo;
+        return {
+            txId: seedUtxo.outputId.txId,
+            idx: BigInt(seedUtxo.outputId.utxoIdx),
+        };
     }
 
     validFor<TCX extends StellarTxnContext<S>>(

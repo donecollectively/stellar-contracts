@@ -103,7 +103,7 @@ describe("StellarContract", async () => {
             expect(treasury.address).toBeInstanceOf(Address);
         });
         describe("getter: mintingPolicyHash", () => {
-            it("is defined, by delegation to Capo's for minting-purposed helper", async (context: localTC) => {
+            it("is defined, by delegation to Capo's minting-purposed helper", async (context: localTC) => {
                 const {
                     h,
                     h: { network, actors, delay, state },

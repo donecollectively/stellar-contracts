@@ -45,7 +45,7 @@ describe("Capo", async () => {
         await addTestContext(context, DefaultCapoTestHelper);
     });
     
-    describe("can update the minting delegate in the charter settings", () => {
+    describe("can update the MINTING delegate in the charter settings", () => {
         // kc983ndk
         it("can install an updated minting delegate", async (context: localTC) => {
             // prettier-ignore
@@ -175,53 +175,61 @@ describe("Capo", async () => {
 
             const capo = await h.bootstrap();
 
-            const md = await capo.getMintDelegate();
-            const oldPredicate = md.mkAuthorityTokenPredicate();
+            const mintDelegate = await capo.getMintDelegate();
+            const oldPredicate = mintDelegate.mkAuthorityTokenPredicate();
             console.log(
                 " ------- case 1: with mint delegate involved in the replacement"
             );
             const tcx = await capo.mkTxnUpdatingMintDelegate({
                 strategyName: "defaultV1",
-        });
+            });
             await capo.submit(tcx);
             network.tick(1n);
-            console.log("    ---- minting with the new delegate");
-            const tcx1 = await capo.txnMintingUuts(
-                await capo.addSeedUtxo(new StellarTxnContext<any>()),
-                ["anything"]
+            
+            console.log(" ------- case 1a: replacing second delegate to see that it's involved in the upgrade ");
+            const tcx2 = await capo.mkTxnUpdatingMintDelegate(
+                {
+                    strategyName: "defaultV1",
+                },
             );
 
-            console.log(
-                " ------------------------------------------------------------------\n",
-                dumpAny(tcx1)
-            );
-            expect(tcx1.outputs.find(oldPredicate)).toBeFalsy();
+            console.log("  --- followup to make sure the second mint delegate was used in the replacement txn ----")
+            console.log("  -- ...^  in txn: ", dumpAny(tcx2));
+            expect(tcx2.outputs.find(oldPredicate)).toBeFalsy();
             const newerPredicate = (
                 await capo.getMintDelegate()
             ).mkAuthorityTokenPredicate();
-            expect(tcx1.outputs.find(newerPredicate)).toBeTruthy();
-            await expect(capo.submit(tcx1)).resolves.toBeTruthy();
-            network.tick(1n);
+            expect(tcx2.inputs.find(newerPredicate)).toBeTruthy();
 
             console.log(" ------- case 2: forced replacement of mint delegate");
-            const tcx2 = await capo.mkTxnUpdatingMintDelegate(
+
+            const tcx3 = await capo.mkTxnUpdatingMintDelegate(
                 {
                     strategyName: "defaultV1",
                     forcedUpdate: true,
                 },
             );
-            await capo.submit(tcx2);
+
+            await expect(capo.submit(tcx3)).resolves.toBeTruthy();
             network.tick(1n);
-            const tcx2a = await capo.txnMintingUuts(
-                await capo.addSeedUtxo(new StellarTxnContext<any>()),
-                ["anything2"]
+
+            const tcx3a = await capo.addSeedUtxo(new StellarTxnContext<any>());
+            const purpose2 = ["anything2"];
+            const tcx3b = await capo.txnMintingUuts(
+                tcx3a,
+                purpose2,
+                { // this isn't of any significance; we're just checking that the new
+                    // delegate is used in this txn, not expecting the txn to succeed.
+                    mintDelegateActivity: mintDelegate.activityModifying()
+                }
             );
-            expect(tcx2a.outputs.find(oldPredicate)).toBeFalsy();
-            expect(tcx2a.outputs.find(newerPredicate)).toBeFalsy();
+
+            expect(tcx3b.outputs.find(oldPredicate)).toBeFalsy();
+            expect(tcx3b.outputs.find(newerPredicate)).toBeFalsy();
             const newestPredicate = (
                 await capo.getMintDelegate()
             ).mkAuthorityTokenPredicate();
-            expect(tcx2a.outputs.find(newestPredicate)).toBeTruthy();
+            expect(tcx3b.outputs.find(newestPredicate)).toBeTruthy();
         });
 
         it("can't use the old minting delegate after it is replaced", async (context: localTC) => {
@@ -250,7 +258,13 @@ describe("Capo", async () => {
             });
             const tcx2 = await capo.txnMintingUuts(
                 await capo.addSeedUtxo(new StellarTxnContext<any>()),
-                ["anything"]
+                ["anything"], 
+                {
+                    // wrong activity, but it doesn't matter.
+                    // regardless of the bogus activity, it first requires the right mint delegate's
+                    // presence.
+                    mintDelegateActivity: oldMintDelegate.activityModifying()
+                }
             );
             expect(tcx2.outputs.find(oldPredicate)).toBeTruthy();
 
@@ -260,13 +274,14 @@ describe("Capo", async () => {
         });
     });
 
-    describe("can update the spending delegate in the charter settings", () => {
+    describe("can update the SPENDING delegate in the charter settings", () => {
         it("can install an updated spending delegate", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
             const capo = await h.bootstrap();
             const originalDatum = await capo.findCharterDatum();
+            const mintDelegate = await capo.getMintDelegate();
 
             const tcx = await capo.mkTxnUpdatingSpendDelegate(
                 {

@@ -107,7 +107,7 @@ export abstract class CapoTestHelper<
         return new StellarTxnContext(this.currentActor);
     }
     
-    async bootstrap(args?: MinimalDefaultCharterDatumArgs) {
+    async bootstrap(args?: Partial<MinimalDefaultCharterDatumArgs>) {
         let strella = this.strella || (await this.initialize());
         if (this.ready) return strella;
 
@@ -117,7 +117,7 @@ export abstract class CapoTestHelper<
     
     abstract mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<any>>
     abstract mintCharterToken(
-        args?: MinimalDefaultCharterDatumArgs<any>
+        args?: Partial<MinimalDefaultCharterDatumArgs<any>>
     ): Promise<
         & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt" | "settings">
         & hasBootstrappedConfig<CapoBaseConfig>

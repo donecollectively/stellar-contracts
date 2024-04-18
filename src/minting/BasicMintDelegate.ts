@@ -161,24 +161,24 @@ export class BasicMintDelegate extends ContractBasedDelegate<MintDelegateArgs> {
         return super.txnGrantAuthority(tcx, redeemer, returnExistingDelegate);
     }
 
-    // NOTE: prefer application-specific activities that validate
-    // particular mints, instead of this generic one
-    @Activity.redeemer
-    activityMintingUuts({
-        seedTxn,
-        seedIndex: sIdx,
-        purposes,
-    }: MintUutActivityArgs): isActivity {
-        const seedIndex = BigInt(sIdx);
-        console.log("----------- USING DEPRECATED mintingUuts ACTIVITY -----------"+
-          "\n       (prefer application-specific mint-delegate activities instead)"
-        );
-        console.log("UUT redeemer seedTxn", seedTxn.hex);
-        const mintingUuts = this.mustGetActivity("mintingUuts");
-        const t = new mintingUuts(seedTxn, seedIndex, purposes);
+    // // NOTE: prefer application-specific activities that validate
+    // // particular mints, instead of this generic one
+    // @Activity.redeemer
+    // activityMintingUuts({
+    //     seedTxn,
+    //     seedIndex: sIdx,
+    //     purposes,
+    // }: MintUutActivityArgs): isActivity {
+    //     const seedIndex = BigInt(sIdx);
+    //     console.log("----------- USING DEPRECATED mintingUuts ACTIVITY -----------"+
+    //       "\n       (prefer application-specific mint-delegate activities instead)"
+    //     );
+    //     console.log("UUT redeemer seedTxn", seedTxn.hex);
+    //     const mintingUuts = this.mustGetActivity("mintingUuts");
+    //     const t = new mintingUuts(seedTxn, seedIndex, purposes);
 
-        return { redeemer: t._toUplcData() };
-    }
+    //     return { redeemer: t._toUplcData() };
+    // }
 
     // NOTE: prefer application-specific activities
     // @Activity.redeemer
@@ -220,43 +220,6 @@ export class BasicMintDelegate extends ContractBasedDelegate<MintDelegateArgs> {
     get scriptActivitiesName() {
         return "MintDelegateActivity";
     }
-
-    /**
-     * Depreciated: Add a generic minting-UUTs actvity to the transaction
-     * @remarks
-     *
-     * This is a generic helper function that can be used to mint any UUTs,
-     * but **only if the specialized minting delegate has not disabled generic UUT minting**.
-     *
-     * Generally, it's recommended to use an application-specific activity
-     * that validates a particular minting use-case, instead of this generic one.
-     *
-     * See {@link Capo.txnMintingUuts | Capo.txnMintingUuts() } for further guidance.
-     *
-     * @param tcx - the transaction context
-     * @param uutPurposes - a list of string prefixes for the UUTs
-     * @typeParam TCX - for the `tcx`, which must already include the indicated `uutPurposes`
-     * @public
-     **/
-    txnGenericMintingUuts<
-        TCX extends hasSeedUtxo & hasUutContext<purposes>,
-        purposes extends string
-    >(
-        tcx: TCX,
-        uutPurposes: purposes[],
-        activity?: isActivity
-        // seedUtxo: TxInput,
-    ) {
-        let useActivity =
-            activity ||
-            this.activityMintingUuts({
-                purposes: uutPurposes,
-                ...tcx.getSeedAttrs(),
-            });
-
-        return this.txnGrantAuthority(tcx, useActivity);
-    }
-
 
     @Activity.partialTxn
     async txnCreatingTokenPolicy(tcx: StellarTxnContext, tokenName: string) {

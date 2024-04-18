@@ -30,12 +30,13 @@ import {
     type TxDescription,
     type MultiTxnCallback,
     type hasAddlTxns,
+    type hasSeedUtxo,
 } from "./StellarTxnContext.js";
 import { utxosAsString, valueAsString } from "./diagnostics.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { mkTv, stringToNumberArray } from "./utils.js";
-import { UutName } from "./delegation/UutName.js";
+import { UutName, type SeedAttrs } from "./delegation/UutName.js";
 import type { Capo } from "./Capo.js";
 import { DatumAdapter } from "./DatumAdapter.js";
 
@@ -375,6 +376,8 @@ type ComputedScriptProperties = Partial<{
     mph: MintingPolicyHash;
     identity: string;
 }>;
+
+export type hasSeed = SeedAttrs | hasSeedUtxo;
 
 const isInternalConstructor = Symbol("internalConstructor");
 
@@ -799,6 +802,11 @@ export class StellarContract<
         return "Activity";
     }
 
+    getSeed(arg: hasSeed): SeedAttrs {
+        return arg instanceof StellarTxnContext ?
+            arg.getSeedUtxoDetails() : arg;
+    }
+
     /**
      * returns the on-chain type for activities ("redeemers")
      * @remarks
@@ -853,8 +861,11 @@ export class StellarContract<
             }
             debugger
             throw new Error(
-                `$${this.constructor.name}: activity/enum-variant name mismatch ${enumType}::${variantName}''\n` +
-                    `   variants in this enum: ${variantNames.join(
+                `$${this.constructor.name}: activity/enum-variant name mismatch in ${
+                    //@ts-expect-error
+                    enumType.name.value
+                }::${variantName}'\n` +
+                    ` ... variants in this enum: ${variantNames.join(
                         ", "
                     )}`
             );
@@ -2004,7 +2015,7 @@ export class StellarContract<
         console.log(
             `finding '${semanticName}' utxo${
                 exceptInTcx ? " (not already being spent in txn)" : ""
-            } from set:\n  ${utxosAsString(filtered, "\n  ")}`
+            } from set:\n  🔎${utxosAsString(filtered, "\n  🔎")}`
             // ...(exceptInTcx && filterUtxos?.length
             //     ? [
             //           "\n  ... after filtering out:\n ",

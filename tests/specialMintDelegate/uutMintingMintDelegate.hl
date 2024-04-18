@@ -66,46 +66,50 @@ enum MintDelegateDatum {
 }
 
 enum MintDelegateActivity {
+    // Authorizing  - obsolete
     DelegateActivity {
         activity: DelegateActivity
     }
-
+    mintingUuts {  
+        seedTxn: TxId
+        seedIndex: Int
+        purposes: []String
+    }
 
     // this function gives a general-purpose implementation of checking for 
     // valid uut mints. A specialization might modify it use different policies
     // or enforce additional requirements
-    // func genericUutMinting(self, 
-    //     mdd: MintDelegateDatum,
-    //     ctx: ScriptContext
-    // ) -> Bool {
-    //     //!!! replace with an activity using the same seed-txn pattern:
-    //     // MintDelegateActivity::mintingUuts{sTxId, sIdx, purposes} = self;
-    //     MintDelegateDatum::IsDelegation{dd} = mdd;
-    //     returnsAuthzToken : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);
+    func genericUutMinting(self, 
+        mdd: MintDelegateDatum,
+        ctx: ScriptContext
+    ) -> Bool {
+        MintDelegateActivity::mintingUuts{sTxId, sIdx, purposes} = self;
+        MintDelegateDatum::IsDelegation{dd} = mdd;
+        returnsAuthzToken : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);
 
-    //     o : []TxOutput = ctx.get_cont_outputs();
-    //     if (o.length != 1) { error("single utxo only") };
+        o : []TxOutput = ctx.get_cont_outputs();
+        if (o.length != 1) { error("single utxo only") };
 
-    //     print ("in unsp_MD");
-    //     isOk : Bool = returnsAuthzToken && 
+        print ("in uutMintingDelegate");
+        isOk : Bool = returnsAuthzToken && 
 
-    //     unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize(), ctx) &&
+        unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize(), ctx) &&
 
-    //     // This call can serve as a template for enforcing expected mints 
-    //     // of uuts (and additional token values) in validation of application-
-    //     // specific activities, given (mph, sTxId, sIdx, purposes)
-    //     validateUutMinting(
-    //         ctx: ctx, 
-    //         mph: dd.mph,
-    //         seedTxId: sTxId, 
-    //         seedIdx: sIdx, 
-    //         purposes: purposes,
-    //         // additionalValues: ()
-    //         mkTokenName: mkUutTnFactory(sTxId, sIdx)
-    //     );
+        // This call can serve as a template for enforcing expected mints 
+        // of uuts (and additional token values) in validation of application-
+        // specific activities, given (mph, sTxId, sIdx, purposes)
+        validateUutMinting(
+            ctx: ctx, 
+            mph: dd.mph,
+            seedTxId: sTxId, 
+            seedIdx: sIdx, 
+            purposes: purposes,
+            // additionalValues: ()
+            mkTokenName: mkUutTnFactory(sTxId, sIdx)
+        );
 
-    //     isOk
-    // }
+        isOk
+    }
 
     //! used only for validating IsDelegation datum, that is,
     //   ... to approve minting requests or any customize spending modes 
@@ -120,6 +124,8 @@ enum MintDelegateActivity {
     ) -> Bool {
         // print("  ----- checking additional delegate validation");
         self.switch {
+            // todo: delete this obsolete activity.
+            mintingUuts => self.genericUutMinting(priorMddd, ctx),
             // generic DelegateActivity is already validated, but 
             //  ... you can add more constraints here if needed
             DelegateActivity => true,
