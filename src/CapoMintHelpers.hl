@@ -9,12 +9,11 @@ import {
 
 import {
     getTxCharterDatum,
-    getRefCharterDatum
+    getRefCharterDatum,
+    CapoDatum, 
+    CapoActivity
 } from CapoHelpers
 
-import {
-    Datum, Activity as CapoActivity
-} from specializedCapo
 
 import {
     RelativeDelegateLink,
@@ -92,7 +91,6 @@ func requiresDelegateAuthorizingMint(
                                 true
                             },
                             Retiring => error("DelegateLifecycleActivity::Retiring can't mint!"),
-                            Modifying => error("DelegateLifecycleActivity::Modifying can't mint!"),
                             ValidatingSettings => error("DelegateLifecycleActivity::ValidatingSettings can't mint!")
                         }
                     } else { true }
@@ -123,7 +121,7 @@ func requiresMintDelegateApproval(
     ctx: ScriptContext, 
     mph: MintingPolicyHash
 ) -> Bool {
-    Datum::CharterToken {
+    CapoDatum::CharterToken {
         /*spendDgt*/ _,  
         /* spendInvariants */ _,
         /* settings */ _,
@@ -188,7 +186,7 @@ func validateUutBurning(
 ) -> Bool {
     tx: Tx = ctx.tx;
     mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
-    Datum::CharterToken {
+    CapoDatum::CharterToken {
         /*spendDgt*/ _,  
         /* spendInvariants */ _,
         /* settings */ _,
@@ -249,7 +247,7 @@ func validateUutMinting(
         true 
     } else {
         // not bootstrapping; must honor the mintDelegate's authority
-        Datum::CharterToken {
+        CapoDatum::CharterToken {
             /*spendDgt*/ _,  
             /* spendInvariants */ _,
             /* settings */ _,

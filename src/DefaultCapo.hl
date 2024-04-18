@@ -19,6 +19,7 @@ import {
 
 import {
     mustFindInputRedeemer,
+    outputAndDatum,
     tvCharter,
     mkTv,
     didSign,
@@ -27,18 +28,16 @@ import {
 
 import {
     getTxCharterDatum,
-    mustHaveGovAuthority
+    mustHaveGovAuthority,
+    CapoDatum,
+    CapoActivity
 } from CapoHelpers
 
-import { 
-    Datum, 
-    Activity
- } from specializedCapo
+import {
+    capoSettings
+} from CustomCapoSettings
 
-/**
- * 
- */
-func requiresAuthorization(ctx: ScriptContext, ctd: Datum::CharterToken) -> Bool {
+func requiresAuthorization(ctx: ScriptContext, ctd: CapoDatum::CharterToken) -> Bool {
     govDelegate : RelativeDelegateLink = ctd.govAuthorityLink;
 
     govDelegate.hasValidOutput(mph, ctx)
@@ -59,12 +58,12 @@ func getCharterOutput(tx: Tx) -> TxOutput {
     }
 }
 
-func notUpdatingCharter(activity: Activity) -> Bool { activity.switch {
+func notUpdatingCharter(activity: CapoActivity) -> Bool { activity.switch {
     updatingCharter => false,  
     _ => true
 }}
 
-func preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Bool {
+func preventCharterChange(ctx: ScriptContext, datum: CapoDatum::CharterToken) -> Bool {
     tx: Tx = ctx.tx;
 
     charterOutput : TxOutput = getCharterOutput(tx);
@@ -83,7 +82,7 @@ func preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Boo
         // )
     };
 
-    newDatum : Datum = Datum::from_data( 
+    newDatum : CapoDatum = CapoDatum::from_data( 
         charterOutput.datum.get_inline_data() 
     );
     if (datum.serialize() != newDatum.serialize()) {
@@ -98,7 +97,7 @@ func checkpoint(s: String) -> Bool {
     true
 }
 
-func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
+func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
     // now: Time = tx.time_range.start;
     print("hi from capo");
@@ -125,27 +124,53 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
             assert(true || (scriptRef == scriptRef), "never");
             true
         },
-
-        _ => { // delegates to specialization's Datum::validateSpend() method.
-            datum.validateSpend(ctx, mph)
-        }
+        _ => true
     };
 
-    // the normal case for validation is to use Datum-specific checks.  
+    // the normal case for validation is to use CapoDatum-specific checks.  
     // however, this section allows activity-specific checks to be included, so extensions aren't painted into a corner.
     allActivitySpecificChecks : Bool = activity.switch {
+        spendingDelegatedDatum => {
+            // check that the datum is a DelegatedData variant
+            isRightDatum : Bool = datum.switch{
+                DelegatedData => true,
+                _ => {
+                    error(
+                        "activity spendingDelegatedDatum used on mismatched datum type"
+                    )
+                }
+            };
+            charterDatum : CapoDatum::CharterToken = getTxCharterDatum(
+                ctx: ctx,
+                mph: mph
+            );
+            spendDelegate: RelativeDelegateLink = charterDatum.spendDelegateLink;
+            delegateReturned: Bool = spendDelegate.hasValidOutput(mph, ctx);
+            spendDelegateInput: TxInput = spendDelegate.hasDelegateInput(
+                inputs: ctx.tx.inputs,
+                mph: mph
+            ).unwrap();
+            usingSpendingActivity : Bool = AbstractDelegateActivitiesEnum::from_data(
+                mustFindInputRedeemer(ctx, spendDelegateInput)
+            ).switch {
+                SpendingActivities => true,
+                _ => error("spend delegate not triggered with a Spending activity")
+            };
+            usingSpendingActivity && 
+                delegateReturned && isRightDatum            
+        },
         updatingCharter => {
             // print("hi from updatingCharter");
 
             charterOutput : TxOutput = getCharterOutput(tx);
-            newCtDatum = Datum::CharterToken::from_data( 
+            newCtDatum = CapoDatum::CharterToken::from_data( 
                 charterOutput.datum.get_inline_data() 
             );
-            oldCtDatum : Datum::CharterToken = datum.switch {
+            oldCtDatum : CapoDatum::CharterToken = datum.switch {
                 octd: CharterToken => octd,
                 _ => error("wrong use of updatingCharter action for non-CharterToken datum")
             };
-            Datum::CharterToken{                
+            CapoDatum::CharterToken{                
                 spendDelegate, 
                 spendInvariants,
                 settingsUut,
@@ -155,7 +180,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                 govDelegate
             } = newCtDatum;
 
-            Datum::CharterToken{
+            CapoDatum::CharterToken{
                 oldSpendDelegate, 
                 oldSpendInvariants, 
                 oldSettingsUut,
@@ -265,7 +290,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
         updatingSettings => {
             datum.switch {
                 SettingsData => {
-                    charterDatum : Datum::CharterToken = getTxCharterDatum(
+                    charterDatum : CapoDatum::CharterToken = getTxCharterDatum(
                         ctx: ctx,
                         mph: mph
                     );
@@ -275,7 +300,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                         mph: mph,
                         charterDatum: charterDatum // already resolved
                    );
-                   Datum::CharterToken{
+                   CapoDatum::CharterToken{
                         spendDelegate,
                         spendInvariants,
                         /* settingsUut */ _,
@@ -307,9 +332,6 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
                             inputRequired: true,
                             ctx: ctx
                         ).unwrap();
-                    // tt : Bool = requiresValidDelegateOutput(
-                    //         spendDelegate, mph, ctx);
-                            
 
                     // minting delegates are checking the settings
                     mintDelegateIsValidating : Bool = 
@@ -378,7 +400,6 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
         retiringSettings => {
             error("implement me")
         },
-        // defers to the specialization's Activity::allowActivity() method for checking other activities
         _ => error("unhandled activity")
     };
 

@@ -324,6 +324,14 @@ export abstract class Capo<
         );
     }
 
+    get scriptDatumName() {
+        return "CapoDatum";
+    }
+    get scriptActivitiesName() {
+        return "CapoActivity";
+    }
+
+
     static get defaultParams() {
         const params = {
             rev: this.currentRev,
@@ -1081,14 +1089,17 @@ export abstract class Capo<
             delegateLinkSerializer,
             4 // indent 4 spaces
         );
-        console.log(`   ----- delegate '${roleName}' cache key `, cacheKey);
+
         if (!cache[roleName]) cache[roleName] = {};
         const roleCache = cache[roleName];
         const cachedRole = roleCache[cacheKey];
         if (cachedRole) {
-            console.log("   <---- cached delegate");
+            console.log(`  ✅ 💁 ${roleName} - from cache `);
             return cachedRole as DelegateType;
         }
+        console.log(`   🔎delegate 💁 ${roleName}`)
+        // console.log(`   ----- delegate '${roleName}' cache key `, cacheKey);
+
         const role = this.delegateRoles[roleName];
         //!!! work on type-safety with roleName + available roles
         const {
@@ -1164,7 +1175,7 @@ export abstract class Capo<
             );
         }
         console.log(
-            `    <--- caching first instance of delegate ${roleName} @ key = ${cacheKey}`
+            `   ✅ 💁 ${roleName} (now cached) `  // +Debug info: +` @ key = ${cacheKey}`
         );
         roleCache[cacheKey] = delegate;
         return delegate;

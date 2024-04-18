@@ -582,12 +582,11 @@ export class StellarContract<
 
     get address(): Address {
         const { addr } = this._cache;
+        if (addr) return addr;
         console.log(
             this.constructor.name,
-            "cached addr",
-            addr?.toBech32() || "none"
+            "caching addr",
         );
-        if (addr) return addr;
         console.log("TODO TODO TODO TODO TODO - ensure each contract can indicate the right stake part of its address");
         console.log("and that the onchain part also supports it")
         
@@ -1736,7 +1735,7 @@ export class StellarContract<
     loadProgramScript(params?: Partial<ConfigType>): Program | undefined {
         const src = this.contractSource();
         const modules = this.importModules();
-        console.log(`${this.constructor.name}: loading program script from`, 
+        console.log(`${this.constructor.name} <- `, 
             //@ts-expect-error
             src.srcFile || "‹unknown path›"
         );
@@ -1771,11 +1770,14 @@ export class StellarContract<
             }
 
             console.log(
-                `${this.constructor.name}: setting compiledScript with simplify=${simplify} + params:`,
-                params
+                `${this.constructor.name}: ${simplify ? "" : "un"}optimized + params:`,
+                params, 
             );
             //!!! todo: consider pushing this to JIT or async
             this.compiledScript = script.compile(simplify);
+            console.log(
+                  `       ✅ ${this.constructor.name}`
+            );            
             this._cache = {};
             // const t2 = new Date().getTime();
 
@@ -2013,7 +2015,7 @@ export class StellarContract<
             : notCollateral;
 
         console.log(
-            `finding '${semanticName}' utxo${
+            `  🔎 finding '${semanticName}' utxo${
                 exceptInTcx ? " (not already being spent in txn)" : ""
             } from set:\n  🔎${utxosAsString(filtered, "\n  🔎")}`
             // ...(exceptInTcx && filterUtxos?.length

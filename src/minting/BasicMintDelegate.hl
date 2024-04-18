@@ -14,17 +14,13 @@ import {
 } from CapoDelegateHelpers
 
 import {
-    Datum as CapoDatum
-} from specializedCapo
-
-import {
     capoSettings
 } from CustomCapoSettings
 
 import {
-    getTxCharterDatum
-    // getRefCharterDatum,
-    // mustFindInputRedeemer
+    getTxCharterDatum,
+    CapoDatum,
+    CapoActivity
 } from CapoHelpers
 
 import {
@@ -81,7 +77,6 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                         //xxx -   ctx.tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&
                         //xxx -   !returnsValueToScript( tvAuthorityToken(dd), ctx)
 
-                        updatingCharter: Int = 1;
                         BURNED: Int = -1;
                         otherMintedValue: Value = Value::new(
                             AssetClass::new(dd.mph, dd.tn), 
@@ -90,13 +85,14 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                     
                         print("checking ReplacingMe on "+purpose+": "+dd.tn.decode_utf8());
                         // the charter update itself will check that there's a valid delegate output for the new delegate
+                        updatingCharter: Int = 1;
                         mintsUutForCharterUsingRedeemerIndex(
+                            charterRedeemerIndex: updatingCharter,
                             ctx: ctx, 
                             mph: dd.mph,
                             purpose: purpose,
                             seedTxId: seedTxId,
                             seedIdx: seedIdx,
-                            charterRedeemerIndex: updatingCharter,
                             otherMintedValue: otherMintedValue,
                             needsMintDelegateApproval: false,
                             extraMintDelegateRedeemerCheck: false
@@ -115,28 +111,6 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                         ctx.tx.minted.get(acAuthorityToken(dd)) == -1
                     },
 
-                    // adjusting any configuration details for this mint delegate:
-                    // guards that the authority token is returned to this script, 
-                    // ... and calls additional validateCDConfig() defined in a specialized minting delegate.
-                    // specialized minting delegates can perform additional checks, but
-                    // ... if they only need to validate custom mint-delegate configuration, 
-                    // ... they can simply implement a validateCDConfig() method.
-                    Modifying => {
-                        authorityValue : Value = tvAuthorityToken(dd);
-                        ok : Bool = mustReturnValueToScript(authorityValue, ctx);
-                        dlgt : TxOutput = ctx.get_cont_outputs().find(
-                            (o :TxOutput) -> Bool {
-                                o.value.contains(authorityValue)
-                            }
-                        );
-                                
-                        ddNew : MintDelegateDatum::IsDelegation = 
-                        MintDelegateDatum::from_data( 
-                            dlgt.datum.get_inline_data() 
-                        );
-
-                        mdd.validateCDConfig(ddNew) && ok
-                    },
                     ValidatingSettings => {
                         //!!! todo: verify if any cost diff between this vs direct-field-access.
                         // CapoDatum::CharterToken {

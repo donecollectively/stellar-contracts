@@ -120,16 +120,6 @@ export abstract class ContractBasedDelegate<
     }
 
     @Activity.redeemer
-    activityModifying() {
-        const { LifecycleActivity, activity: Modifying } =
-            this.mustGetLifecycleActivity("Modifying");
-
-        const t = new LifecycleActivity(new Modifying());
-
-        return { redeemer: t._toUplcData() };
-    }
-
-    @Activity.redeemer
     activityValidatingSettings() {
         const { LifecycleActivity, activity: ValidatingSettings } =
             this.mustGetLifecycleActivity("ValidatingSettings");

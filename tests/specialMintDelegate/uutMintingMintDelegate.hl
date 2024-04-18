@@ -54,15 +54,6 @@ enum MintDelegateDatum {
         ctx.tx.serialize() != self.serialize() &&        
         true
     }
-
-    func validateCDConfig(self, updated: MintDelegateDatum::IsDelegation) -> Bool {
-        self.switch {
-            IsDelegation => {
-                (updated == self)
-            },
-            _ => error("unreachable")
-        }
-    }
 }
 
 enum MintDelegateActivity {

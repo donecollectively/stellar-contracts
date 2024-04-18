@@ -220,7 +220,7 @@ describe("Capo", async () => {
                 purpose2,
                 { // this isn't of any significance; we're just checking that the new
                     // delegate is used in this txn, not expecting the txn to succeed.
-                    mintDelegateActivity: mintDelegate.activityModifying()
+                    mintDelegateActivity: mintDelegate.activityValidatingSettings()
                 }
             );
 
@@ -237,13 +237,14 @@ describe("Capo", async () => {
             const {h, h:{network, actors, delay, state} } = context;
 
             const capo = await h.bootstrap();
+            const oldCharterDatum = await capo.findCharterDatum();
             const oldMintDelegate = await capo.getMintDelegate();
             const oldPredicate = oldMintDelegate.mkAuthorityTokenPredicate();
 
             // NO CASE 1 - there's no delegate UUT remaining to spend
             //  if the old delegate is replaced.
-            //   console.log( " ------- case 1: with mint delegate involved in the replacement");
-            console.log(" ------- case 2: forced replacement of mint delegate");
+            //   console.log( " ------- ⚗️ case 1: with mint delegate involved in the replacement");
+            console.log(" -------⚗️🐞⚗️🐞 case 2: forced replacement of mint delegate");
             const tcx = await capo.mkTxnUpdatingMintDelegate(
                 {
                     strategyName: "defaultV1",
@@ -253,20 +254,21 @@ describe("Capo", async () => {
             await capo.submit(tcx);
             network.tick(1n);
 
-            vi.spyOn(capo, "getMintDelegate").mockImplementation(async () => {
+            const fakeDelegate = vi.spyOn(capo, "getMintDelegate").mockImplementation(async () => {
                 return oldMintDelegate;
             });
-            const tcx2 = await capo.txnMintingUuts(
-                await capo.addSeedUtxo(new StellarTxnContext<any>()),
-                ["anything"], 
+            const fakeCharter = vi.spyOn(capo, "findCharterDatum").mockImplementation(async () => {
+                return oldCharterDatum;
+            })
+            console.log( " ------ 🐞⚗️🐞⚗️ - use the old mint delegate in a new txn")
+            const tcx2 = await capo.mkTxnUpdatingMintDelegate(
                 {
-                    // wrong activity, but it doesn't matter.
-                    // regardless of the bogus activity, it first requires the right mint delegate's
-                    // presence.
-                    mintDelegateActivity: oldMintDelegate.activityModifying()
-                }
+                    strategyName: "defaultV1",
+                },
             );
-            expect(tcx2.outputs.find(oldPredicate)).toBeTruthy();
+            expect(fakeDelegate).toHaveBeenCalled();
+            expect(fakeCharter).toHaveBeenCalled();
+            expect(tcx2.inputs.find(oldPredicate)).toBeTruthy();
 
             await expect(capo.submit(tcx2)).rejects.toThrow(
                 /missing .*mintDgt/

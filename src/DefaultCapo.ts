@@ -94,7 +94,6 @@ import { dumpAny, txAsString } from "./diagnostics.js";
 // import { MultisigAuthorityPolicy } from "./authority/MultisigAuthorityPolicy.js";
 import { hasReqts } from "./Requirements.js";
 import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
-import { UnspecializedCapo } from "./UnspecializedCapo.js";
 import { CapoHelpers } from "./CapoHelpers.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
@@ -202,27 +201,8 @@ export type HeldAssetsArgs = {
  * in key operational activities (like updating the charter details); so that the delegate holding the UUT is entrusted to
  * approved the UUT's inclusion in a transaction, with all the policy-enforcement implicated on the other end of the 
  * delegation.
- * 
- * Customizing Datum and Activity
- * 
- * The baseline contract script can have specialized Datum and Activity ("redeemer")
- * definitions by subclassing DefaultCapo with a `get specializedCapo()`.  This
- * should be an imported helios script having `module specializedCapo` at the top.
- * It MUST export Datum and Activity enums, with variants matching those in the provided 
- * baseline/unspecializedCapo module.  
- * 
- * A customized Datum::validateSpend(self, ctx) -\> Bool method
- * should be defined, even if it doesn't put constraints on spending Datum.  
- * If it does choose to add hard constraints, note that this method doesn't
- * have access to the Activity ("redeemer") type.  It's a simple place that can
- * only express simple constraints on spending ANY utxo from the contract.  
- * 
- * A customized Activity: allowActivity(self, datum, ctx) -\> Bool method
- * has access to both the redeemer (in self), as well as Datum and the transaction 
- * context.  In this method, use self.switch\{...\} to implement activity-specific
- * validations.
 * 
- * See the {@link Capo | Capo base class} and {@link StellarContract} for addition context.
+ * See the {@link Capo | Capo base class} and {@link StellarContract} for additional context.
  * @public
  */
 
@@ -255,26 +235,6 @@ export class DefaultCapo<
         return outputConfig;
     }
 
-    /**
-     * indicates any specialization of the baseline Capo types
-     * @remarks
-     *
-     * The default implementation is an UnspecialiedCapo, which
-     * you can use as a template for your specialized Capo.
-     *
-     * Every specialization MUST include Datum and Activity ("redeemer") enums,
-     * and MAY include additional functions, and methods on Datum / Activity.
-     *
-     * The datum SHOULD have a validateSpend(self, datum, ctx) method.
-     *
-     * The redeemer SHOULD have an allowActivity(self, datum, ctx) method.
-     *
-     * @public
-     **/
-    get specializedCapo(): HeliosModuleSrc {
-        return UnspecializedCapo;
-    }
-
     get customCapoSettings(): HeliosModuleSrc {
         return UncustomCapoSettings;
     }
@@ -301,16 +261,9 @@ export class DefaultCapo<
 
     importModules(): HeliosModuleSrc[] {
         const parentModules = super.importModules();
-        const { specializedCapo, customCapoSettings } = this;
-        if (specializedCapo.moduleName !== "specializedCapo") {
-            throw new Error(
-                `${this.constructor.name}: specializedCapo() module name must be ` +
-                    `'specializedCapo', not '${specializedCapo.moduleName}'\n  ... in ${specializedCapo.srcFile}`
-            );
-        }
+        const {customCapoSettings } = this;
 
         return [
-            specializedCapo,
             customCapoSettings,
             this.capoHelpers,
             ...parentModules,
@@ -1335,6 +1288,7 @@ export class DefaultCapo<
     ): Promise<StellarTxnContext> {
         const currentDatum = await this.findCharterDatum();
 
+        throw new Error(`test me!`)
         const tcx2a = await this.addSeedUtxo(tcx);
         // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
         const tcx2b = await this.txnMintingUuts(
@@ -1401,6 +1355,7 @@ export class DefaultCapo<
         tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
     ) {
         const currentDatum = await this.findCharterDatum();
+        throw new Error(`test me!`)
 
         const tcx2a = await this.addSeedUtxo(tcx);
         // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
@@ -1935,7 +1890,7 @@ export class DefaultCapo<
                 purpose:
                     "allows settings that can evolve to support Capo-related scripts as needed",
                 details: [
-                    "The Settings structure can be stored in the contract, separately from the CharterDatum. ",
+                    "The Settings structure can be stored in the contract, separately from the CharterToken. ",
                     "It can be updated by the govAuthority, and can be used to store any ",
                     "  ... data needed by the Capo's scripts, such as minting and spending delegates.",
                     "The charter datum references the settings uut, and shouldn't ",
@@ -1948,7 +1903,7 @@ export class DefaultCapo<
                     "has a 'SettingsData' datum variant & utxo in the contract",
                     "offchain code can read the settings data from the contract",
                     "TODO: TEST onchain code can read the settings data from the contract",
-                    "charter creation requires a CharterDatum reference to the settings UUT",
+                    "charter creation requires a CharterToken reference to the settings UUT",
                     "charter creation requires presence of a SettingsData map",
                     "updatingCharter activity MUST NOT change the set-UUT reference",
                 ],
@@ -2001,8 +1956,8 @@ export class DefaultCapo<
                     "to finalize the adoption of a new or updated delegate",
                 details: [
                     "A staged delegate can be committed, if it the current settings validate okay with it. ",
-                    "This gives that delegate space to exist, so that its settings-validation logic can ",
-                    "  ... possibly be triggered.",
+                    "Given it already exists, then its settings-validation logic can be triggered ",
+                    " ... and its status can advance from 'staged' to 'active' "
                 ],
                 mech: [
                     "TODO: a staged delegate is only adopted if it validates ok with the then-current settings",

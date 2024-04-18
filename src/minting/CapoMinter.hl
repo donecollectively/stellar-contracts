@@ -10,9 +10,9 @@ import {
     MinterActivity
 } from CapoMintHelpers
 
-import { Datum as CapoDatum } from specializedCapo
-
 import {
+    CapoDatum,
+    CapoActivity,
     getRefCharterUtxo
 } from CapoHelpers
 
@@ -170,47 +170,48 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
 
         addingMintInvariant{sTxId, sIdx} => {
             addMintInvariant : Int = 3;
-            print("checking for addingMintInvariant");
 
+            // XXXXXXXXXXXXXXXXXXX should be failing
+            print("checking for addingMintInvariant");
             mintsUutForCharterUsingRedeemerIndex(
+                charterRedeemerIndex: addMintInvariant,
                 ctx : ctx, 
                 mph: mph, 
                 purpose: "mintInvar", 
                 seedTxId: sTxId, 
-                seedIdx: sIdx, 
-                charterRedeemerIndex: addMintInvariant                
+                seedIdx: sIdx
             )
         },
 
         addingSpendInvariant{sTxId, sIdx} => {
             addSpendInvariant : Int = 4;
+            // XXXXXXXXXXXXXXXXXXX should be failing
             print("checking for addingSpendInvariant");
             mintsUutForCharterUsingRedeemerIndex(
+                charterRedeemerIndex: addSpendInvariant,
                 ctx : ctx, 
                 mph: mph, 
                 purpose: "spendInvar", 
                 seedTxId: sTxId, 
-                seedIdx: sIdx, 
-                charterRedeemerIndex: addSpendInvariant
+                seedIdx: sIdx 
             )
         },
 
         ForcingNewMintDelegate{sTxId, sIdx} => {
-            updateCharter : Int = 1; // general update to charter
+            updatingCharter : Int = 1; // general update to charter
             print("checking for ForcingNewMintDelegate");
             mintsUutForCharterUsingRedeemerIndex(
+                charterRedeemerIndex: updatingCharter,
                 ctx : ctx, 
                 mph: mph, 
                 purpose: "mintDgt", 
                 seedTxId: sTxId, 
                 seedIdx: sIdx, 
-                charterRedeemerIndex: updateCharter,
                 needsMintDelegateApproval: false
             )
         },
 
         CreatingNewSpendDelegate{seedTxId, seedIdx, replaceExisting} => {
-            updateCharter : Int = 1; // general update to charter
             print("checking for CreatingNewSpendDelegate");
 
             otherMintedValue : Value = replaceExisting.switch {
@@ -224,13 +225,14 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                 None => Value::ZERO
             };
 
+            updatingCharter : Int = 1; // general update to charter
             mintsUutForCharterUsingRedeemerIndex(
+                charterRedeemerIndex: updatingCharter,
                 ctx : ctx,
                 mph: mph,
                 purpose: "spendDgt",
                 seedTxId: seedTxId,
                 seedIdx: seedIdx,
-                charterRedeemerIndex: updateCharter,
                 needsMintDelegateApproval: false,
                 otherMintedValue: otherMintedValue
             )
@@ -247,7 +249,7 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
             // )
         },
         burningUuts => { // {tns} => {
-            error("minter:burningUuts obslete; use minter:followingDelegate with delegate:burningUuts or a more application-specific activity")
+            error("minter:burningUuts obsolete; use minter:followingDelegate with delegate:burningUuts or a more application-specific activity")
             // validateUutBurning(
             //     ctx: ctx,
             //     tns: tns

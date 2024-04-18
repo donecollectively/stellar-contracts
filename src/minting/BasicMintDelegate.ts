@@ -24,15 +24,8 @@ import {
 } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
 
-import { StellarDelegate } from "../delegation/StellarDelegate.js";
-import type { InlineDatum } from "../HeliosPromotedTypes.js";
-import { CapoDelegateHelpers } from "../delegation/CapoDelegateHelpers.js";
-import { CapoMintHelpers } from "../CapoMintHelpers.js";
 import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { UnspecializedMintDelegate } from "./UnspecializedMintDelegate.js";
-import { UnspecializedCapo } from "../UnspecializedCapo.js";
-import { CapoHelpers } from "../CapoHelpers.js";
-import type { MintUutActivityArgs, UutCreationAttrsWithSeed, hasUutContext } from "../Capo.js";
 import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
 
 export type MintDelegateArgs = capoDelegateConfig & {
@@ -107,10 +100,6 @@ export class BasicMintDelegate extends ContractBasedDelegate<MintDelegateArgs> {
      **/
     get specializedMintDelegate(): HeliosModuleSrc {
         return UnspecializedMintDelegate;
-    }
-
-    get specializedCapo(): HeliosModuleSrc {
-        return UnspecializedCapo;
     }
 
     /**
@@ -204,13 +193,8 @@ export class BasicMintDelegate extends ContractBasedDelegate<MintDelegateArgs> {
 
         if (!capo) throw new Error(`missing capo in config or partial-config for ${this.constructor.name}`)
         return [
-            // StellarHeliosHelpers,
-            // CapoDelegateHelpers,
-            // CapoHelpers,
-            // CapoMintHelpers,
             specializedMintDelegate,
             ...capo.importModules(),
-            // this.specializedCapo,
         ];
     }
 

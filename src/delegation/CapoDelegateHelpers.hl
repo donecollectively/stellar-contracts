@@ -26,7 +26,6 @@ enum DelegateLifecycleActivity {
         purpose: String
     }
     Retiring
-    Modifying
     ValidatingSettings
 }
 

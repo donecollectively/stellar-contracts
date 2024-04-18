@@ -4,26 +4,30 @@ module specializedMintDelegate
 // of the "specializedMintDelegate" interface, which simply
 // exports a DelegateDatum enum and DelegateActivities (redeemer enum).  
 
-//! these specializations MAY include additional enum variants, and 
-//  ... they MUST include the same enum variants found in this
-//  ... unspecialized version.   If you're specializing and you get a Helios 
-//  ... compiler error, these are the first things you should check!
+//! Your specialization MUST include the enum variants found in this
+//  ... unspecialized version.  It MAY include additional Datum variants.
+// Any additional Redeemer/Activity variants should be added underneath 
+// the SpendingActivity / MintingActivity top-level enum variants, instead 
+// of adding new top-level enum variants to MintDelegateActivity.
 
-// The MintDelegateActivity (redeemer) enum reserves the first 10
-// ... variants for use-cases inside the script, with the remaining
-// ... available for authorizing application-specific use-cases.
+// The MintDelegateActivity (redeemer) enum conforms to the 
+// Delegate Redeemer protocol, in which enum 0 is reserved for
+// lifecycle activities, enum 1 is used for spend-related activities 
+// (if the delegate is used as a spend delegate), and enum 2 is called
+// for authorizing minting.  Enum 3 and beyond are reserved for
+// extensions to the Delegate Redeemer protocol.
 
-// The mintingUuts activity is deprecated, and should be replaced with
-// ... application-specific activities that validate minting of UUTs.
-// It's recommended to retain the error-throwing behavior of the
-// ... genericUutMinting function, and expect that it will no longer 
-// ... be called after Stellar Contracts v1.0
+// Within the minting and spending activities, the specialization can 
+// indicate a nested activity enum to support various dApp-specific
+// activities.  
 
-// The MintDelegateDatum enum reserves the first variant for the
-// ... "IsDelegation" datum.
+// Activities that validate minting of UUTs should contain enum fields 
+// to identify the seed-transaction details needed for properly validating 
+// UUT mints fitting the use-case.
 
-//! Your specialization MAY include any 
-// ... additional functions, imports or methods
+//! Your specialization MAY include any additional functions, imports or 
+//  methods defined on any of the types in this file.
+
 
 import {
     DelegationDetail,
@@ -55,14 +59,6 @@ enum MintDelegateDatum {
         true
     }
 
-    func validateCDConfig(self, updated: MintDelegateDatum::IsDelegation) -> Bool {
-        self.switch {
-            IsDelegation => {
-                (updated == self)
-            },
-            _ => error("unreachable")
-        }
-    }
 }
 
 enum MintingActivity {
@@ -138,10 +134,10 @@ enum MintDelegateActivity {
 
     //! used only for validating IsDelegation datum, that is,
     //   ... to approve minting requests or any customize spending modes 
-    //   ... of that datum.  In the unspecialized version, 
-    //   ... the "Modifying" activity is a stand-in for that use-case, that always rejects.
+    //   ... of that datum.  
+    
     //  Note that the basic mint delegate already enforces some basic
-    //    administrative expectations for Reassigning, Retiring, Modifying activites, 
+    //    administrative expectations for Reassigning, Retiring activites, 
     //    so a specialization doesn't need to re-implement those checks.
     func additionalDelegateValidation( self,
         priorMddd: MintDelegateDatum::IsDelegation, 
