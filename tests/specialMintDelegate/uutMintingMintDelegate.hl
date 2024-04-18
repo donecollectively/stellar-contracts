@@ -29,7 +29,7 @@ import {
     DelegationDetail,
     mustReturnValueToScript,
     tvAuthorityToken,
-    DelegateActivity,
+    DelegateLifecycleActivity,
     unmodifiedDelegation
 } from CapoDelegateHelpers
 
@@ -66,9 +66,8 @@ enum MintDelegateDatum {
 }
 
 enum MintDelegateActivity {
-    // Authorizing  - obsolete
-    DelegateActivity {
-        activity: DelegateActivity
+    DelegateLifecycleActivities {
+        activity: DelegateLifecycleActivity
     }
     mintingUuts {  
         seedTxn: TxId
@@ -124,11 +123,11 @@ enum MintDelegateActivity {
     ) -> Bool {
         // print("  ----- checking additional delegate validation");
         self.switch {
-            // todo: delete this obsolete activity.
             mintingUuts => self.genericUutMinting(priorMddd, ctx),
-            // generic DelegateActivity is already validated, but 
+            // generic DelegateLifecycleActivities is already validated, but 
             //  ... you can add more constraints here if needed
-            DelegateActivity => true,
+            DelegateLifecycleActivities => true,
+            // special for test environment
 
             _ => false
         } || ctx.tx.serialize() != priorMddd.serialize()
@@ -147,16 +146,11 @@ enum MintDelegateActivity {
         self.switch{
             // Note: this set of DelegateActivities is reserved for the IsDelegation datum.
             //  Using it on any other Datum type will always fail and execution will never arrive here.
-            DelegateActivity => neverTriggered(),
+            DelegateLifecycleActivities => neverTriggered(),
             
             // ------------------- application-specific activities can be added here
 
             _ => false  // prevents non-exhaustive match errors, even if you remove the above neverTriggered() calls
         } && (priorMdd.serialize() != ctx.serialize())
     }
-}
-
-struct types {
-    redeemers: MintDelegateActivity
-    datum : MintDelegateDatum
 }

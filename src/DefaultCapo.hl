@@ -11,7 +11,7 @@ const isDev: Bool = false
 // } from CapoHelpers
 
 import { 
-    MustUseDelegateActivity,
+    AbstractDelegateActivitiesEnum,
     requiresNoDelegateInput,
     requiresValidDelegateOutput,
     RelativeDelegateLink
@@ -379,7 +379,7 @@ func main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {
             error("implement me")
         },
         // defers to the specialization's Activity::allowActivity() method for checking other activities
-        _ => activity.allowActivity(datum, ctx, mph)
+        _ => error("unhandled activity")
     };
 
     assert(allDatumSpecificChecks, "some datum-check failed");

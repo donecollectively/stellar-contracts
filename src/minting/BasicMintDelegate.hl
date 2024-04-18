@@ -72,7 +72,7 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                 //   guards that the authority token is returned to this script.
                 // specialized minting delegates should likely perform additional checks.
 
-                DelegateActivity{innerActvity} => innerActvity.switch {
+                DelegateLifecycleActivities{innerActvity} => innerActvity.switch {
                     // reassigning the authority token to a new minting delegate
                     ReplacingMe{seedTxId, seedIdx, purpose} => {
                         // should burn the old UUT, mint the new UUT, and update the Charter
@@ -87,7 +87,7 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                             AssetClass::new(dd.mph, dd.tn), 
                             BURNED
                         );
-
+                    
                         print("checking ReplacingMe on "+purpose+": "+dd.tn.decode_utf8());
                         // the charter update itself will check that there's a valid delegate output for the new delegate
                         mintsUutForCharterUsingRedeemerIndex(
@@ -170,7 +170,7 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
         _ => {
             invalidRedeemer = () -> {  error("wrong Actvy/dtm") }; ///Activity custom datum must not use Activities reserved for IsDelegation datum.") };
             activity.switch{
-                DelegateActivity => invalidRedeemer(), 
+                DelegateLifecycleActivities => invalidRedeemer(), 
                 _ => activity.otherDatumValidation(mdd, ctx)
             }
         }

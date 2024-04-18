@@ -176,19 +176,6 @@ enum Activity {
     updatingSettings // variant 5
     retiringSettings // variant 6
 
-    func allowActivity(self, datum: Datum, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {
-        self.switch{
-            //! Note: an overridden Reedeemer def doesn't have to replicate the checks
-            // ... for the baseline enum variants; it's not called in those cases.
-            updatingCharter => true,
-            usingAuthority => true,
-            _ => error("unreachable code")
-            // not executed, but prevents the args from showing up as unused:
-        } || (
-            ctx.tx.serialize() /* never */ == datum.serialize() ||
-            mph.serialize() /* never */ == datum.serialize()
-        )
-    }    
 }
 
 struct types {

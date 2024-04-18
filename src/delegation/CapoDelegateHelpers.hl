@@ -16,10 +16,10 @@ enum stakingKeyRequirement {
 }
 
 // use this activity at Redeemer zero, as enum Redeemer {
-//   DelegateActivity { a: DelegateActivity }}
-//   ...app-specific redeemer variants
+//   DelegateLifecycleActivity { a: DelegateLifecycleActivity }}
+//   ... followed by app-specific redeemer variants
 // }
-enum DelegateActivity {
+enum DelegateLifecycleActivity {
     ReplacingMe { // replaces this mint delegate with a different one
         seedTxn: TxId
         seedIndex: Int
@@ -33,14 +33,16 @@ enum DelegateActivity {
 // use this enum to match any redeemer if you don't care about what other
 // variants may be in that delegate, but you know it has to be a delegate with the 
 // universal delegate activities at const#0
-enum MustUseDelegateActivity {
-    DelegateActivity {
-        a: DelegateActivity
+enum AbstractDelegateActivitiesEnum {
+    DelegateLifecycleActivities {
+        a: DelegateLifecycleActivity
     }
-    // _r1  // shouldn't need placeholder variants, hopefully.
-    // _r2
-    // _r3
-    // _r4
+    SpendingActivities {
+        activity: Data
+    }
+    MintingActivities {
+        activity: Data
+    }
 }
 
 
@@ -69,15 +71,15 @@ struct RelativeDelegateLink {
             inputs: inputs,
             mph: mph,
             validatorHashRequired: validatorHashRequired,
-            inputRequired: inputRequired
+            required: inputRequired
         ).switch {
             // hasDelegateInput already failed if the input was required.
-            None => Option[Bool]::None, // clean "not found but that's permitted"
+            None => Option[Bool]::None, // clean "not found but the caller indicated that's ok"
             Some{spendDelegateInput} => {
-                spendDelegateIsValid : Bool = MustUseDelegateActivity::from_data( 
+                spendDelegateIsValid : Bool = AbstractDelegateActivitiesEnum::from_data( 
                     mustFindInputRedeemer(ctx, spendDelegateInput)
                 ).switch {
-                    DelegateActivity{a} => {
+                    DelegateLifecycleActivities{a} => {
                         a.switch {
                             ValidatingSettings => self.hasValidOutput(
                                  mph, ctx
@@ -96,9 +98,9 @@ struct RelativeDelegateLink {
 
     func hasDelegateInput(self, 
         inputs: []TxInput, 
-        validatorHashRequired: Bool,
         mph: MintingPolicyHash,
-        inputRequired: Bool
+        required: Bool = true,
+        validatorHashRequired: Bool = true
     ) -> Option[TxInput] {
         addrCredNeeded : Option[Credential] = self.delegateValidatorHash.switch{
             Some{vh} => Option[Credential]::Some{Credential::new_validator(vh)},
@@ -119,7 +121,7 @@ struct RelativeDelegateLink {
                 // when the delegate has no validator hash, then we shouldn't bother 
                 // looking for a specific input.
                 //  so we should quickly return None.  Caller should bail out if the input is needed
-                if (inputRequired) {
+                if (required) {
                     error("missing required input for delegate link " + self.uutName)
                 };
                 Option[TxInput]::None
@@ -285,84 +287,3 @@ func requiresValidDelegateOutput(
     true
 }
 
-// todo: move to Mint helpers, as that's it's only purpose.
-func requiresDelegateAuthorizingMint(
-    delegateLink: RelativeDelegateLink, 
-    mph: MintingPolicyHash, 
-    ctx : ScriptContext,
-    extraMintDelegateRedeemerCheck: Bool = true
-) -> Bool {
-    authzVal : Value = Value::new(AssetClass::new(mph, delegateLink.uutName.encode_utf8()), 1);
-    print("finding my inp "+ delegateLink.uutName);
-    targetId: TxOutputId = ctx.tx.inputs.find_safe((i: TxInput) -> {
-        // print("   ?  in "+i.value.show());
-        i.value.contains(authzVal) // find my authority token
-    }).switch{
-        Some{x} => x.output_id,
-        None => error("missing dgTkn "+delegateLink.uutName)
-    };
-    print ("     found ^");
-    spendsAuthorityUut : ScriptPurpose = ctx.tx.redeemers.find_key( 
-        (purpose : ScriptPurpose) -> { purpose.switch{ 
-            sp: Spending => {
-                // print ("oid: " + sp.output_id.show());
-                sp.output_id == targetId
-            }, 
-            _ => false 
-        } }
-    );
-
-    // r : Data = ctx.tx.redeemers.get(  // index redeemers by...
-    //     ScriptPurpose::new_spending(  // [spending, plus ...
-    //     );
-        
-    err : String = "dgTkn "+delegateLink.uutName+" not being spent as expected"; // "not spent with an authorizing activity!")
-    maybeCheckedMintDelegateAuthority : Bool = ctx.tx.redeemers.get_safe(
-        spendsAuthorityUut
-    ).switch {
-        None => {
-            error(err)
-        },
-        Some{x} => x.switch {
-            (index: Int, fields: []Data) => {
-
-                /* avoids unused-variable warning: */ fields == fields && 
-                if (!extraMintDelegateRedeemerCheck) {
-                    print("  -- okay, the delegate token was spent");
-                    print("  -- skipping extra check for mint delegate's particular redeemer");
-                    true
-                } else { 
-                    if (0 == index) {
-                        dgtActivity : DelegateActivity = DelegateActivity::from_data(fields.head);
-                        dgtActivity.switch {
-                            ReplacingMe => {
-                                print("  -- okay, the delegate token was spent");
-                                true
-                            },
-                            Retiring => error("DelegateActivity::Retiring can't mint!"),
-                            Modifying => error("DelegateActivity::Modifying can't mint!"),
-                            ValidatingSettings => error("DelegateActivity::ValidatingSettings can't mint!")
-                        }
-                    } else { true }
-                }
-            },
-            _ => {
-                error(err)
-            }
-        }
-    };
-    delegateDidAuthorize = true; // otherwise, we'd have failed above.
-
-    // NOTE: DOESN'T CHECK that the AUTHORIZING DELEGATE is returned anywhere specific.
-    //    - it's not generally a minting responsibility (however, as an exception the bootstrap charter event DOES 
-    //      actually check for valid delegate outputs).  All other cases should have the correct
-    //      delegate outputs checked (e.g. in the Capo's CharterDatum spend checker).
-    // print("no no no");
-    // maybeCheckDelegateOutput : Bool = if (!checkDelegateOutput) {
-    //     print("  -- skipping check for expected delegate output ");
-    //     true
-    // } else {
-    //     delegateLink.hasValidOutput(mph, ctx)        
-    // };
-    delegateDidAuthorize && maybeCheckedMintDelegateAuthority
-}

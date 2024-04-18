@@ -29,7 +29,7 @@ import {
     DelegationDetail,
     mustReturnValueToScript,
     tvAuthorityToken,
-    DelegateActivity,
+    DelegateLifecycleActivity,
     unmodifiedDelegation
 } from CapoDelegateHelpers
 
@@ -65,11 +65,40 @@ enum MintDelegateDatum {
     }
 }
 
+enum MintingActivity {
+    // application can replace the placeholder, which is only here to 
+    // avoid a syntax error in the unspecialized version
+    _placeholder  
+}
+
+//! The minting delegate can also be used as a general spending 
+// delegate (this is the default arrangement during the Capo 
+// charter mint).  These activities are required by the Capo when
+// spending 
+enum SpendingActivity {
+    // application can replace the placeholder, which is only here to 
+    // avoid a syntax error in the unspecialized version
+    _placeholder  
+}
+
 enum MintDelegateActivity {
-    DelegateActivity {
-        activity: DelegateActivity
+    // must ALWAYS be at Enum position 0
+    DelegateLifecycleActivities {
+        // administrative activities for the delegate lifecycle, enforced
+        //  by the basic mint delegate code.  Specializations can add more 
+        //  restrictions, but in many/most cases they will not need to.
+        activity: DelegateLifecycleActivity
     }
 
+    // application-specific spending activities, ALWAYS at Enum position 1
+    SpendingActivities {
+        activity: SpendingActivity
+    }
+
+    // application-specific minting activities, ALWAYS at Enum position 2
+    MintingActivities {
+        activity: MintingActivity
+    }
 
     // this function gives a general-purpose implementation of checking for 
     // valid uut mints. A specialization might modify it use different policies
@@ -120,19 +149,20 @@ enum MintDelegateActivity {
     ) -> Bool {
         // print("  ----- checking additional delegate validation");
         self.switch {
-            // generic DelegateActivity is already validated, but 
+            // generic DelegateLifecycleActivities is already validated, but 
             //  ... you can add more constraints here if needed
-            DelegateActivity => true,
+            DelegateLifecycleActivities => true,
 
             _ => false
         } || ctx.tx.serialize() != priorMddd.serialize()
     }
 
-    //! used only for validating non-IsDelegation datum types and activities.
-    //   if you have any admininstrative data structures that inform 
-    //   your minting policy, this might be useful.  Otherise, look to Activity validations
-    //   above, in which the isDelegation token is being spent with an application-specific
-    //   activity/redeemer
+    //! Used only for validating non-IsDelegation datum types and activities.
+    // if you have any special admininstrative data structures that inform 
+    // ...  your minting policy, this might be useful.  Otherwise, and typically,
+    // ... you should look to Activity validations above in additionalDelegateValidation,
+    // ...  in which the isDelegation token is being spent with an application-specific
+    // ...  activity/redeemer
     func otherDatumValidation( self,
         priorMdd: MintDelegateDatum, 
         ctx: ScriptContext
@@ -141,7 +171,7 @@ enum MintDelegateActivity {
         self.switch{
             // Note: this set of DelegateActivities is reserved for the IsDelegation datum.
             //  Using it on any other Datum type will always fail and execution will never arrive here.
-            DelegateActivity => neverTriggered(),
+            DelegateLifecycleActivities => neverTriggered(),
             
             // ------------------- application-specific activities can be added here
 
@@ -150,7 +180,3 @@ enum MintDelegateActivity {
     }
 }
 
-struct types {
-    redeemers: MintDelegateActivity
-    datum : MintDelegateDatum
-}

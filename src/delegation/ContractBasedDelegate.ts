@@ -79,8 +79,8 @@ export abstract class ContractBasedDelegate<
         purpose,
     }: Omit<MintUutActivityArgs, "purposes"> & { purpose?: string }) {
         debugger;
-        const { DelegateActivity: thisActivity, activity: ReplacingMe } =
-            this.mustGetDelegateActivity("ReplacingMe");
+        const { LifecycleActivity: thisActivity, activity: ReplacingMe } =
+            this.mustGetLifecycleActivity("ReplacingMe");
 
         const t = new thisActivity(
             new ReplacingMe(seedTxn, seedIndex, purpose)
@@ -89,15 +89,15 @@ export abstract class ContractBasedDelegate<
         return { redeemer: t._toUplcData() };
     }
 
-    mustGetDelegateActivity(delegateActivityName: string) {
-        const DAType = this.mustGetActivity("DelegateActivity");
-        const { DelegateActivity } = this.onChainTypes;
+    mustGetLifecycleActivity(delegateActivityName: string) {
+        const DLAType = this.mustGetActivity("DelegateLifecycleActivities");
+        const { DelegateLifecycleActivity } = this.onChainTypes;
         const activity = this.mustGetEnumVariant(
-            DelegateActivity,
+            DelegateLifecycleActivity,
             delegateActivityName
         );
 
-        return { DelegateActivity: DAType, activity };
+        return { LifecycleActivity: DLAType, activity };
     }
 
     /**
@@ -111,30 +111,30 @@ export abstract class ContractBasedDelegate<
      **/
     @Activity.redeemer
     activityRetiring() {
-        const { DelegateActivity, activity: Retiring } =
-            this.mustGetDelegateActivity("Retiring");
+        const { LifecycleActivity, activity: Retiring } =
+            this.mustGetLifecycleActivity("Retiring");
 
-        const t = new DelegateActivity(new Retiring());
+        const t = new LifecycleActivity(new Retiring());
 
         return { redeemer: t._toUplcData() };
     }
 
     @Activity.redeemer
     activityModifying() {
-        const { DelegateActivity, activity: Modifying } =
-            this.mustGetDelegateActivity("Modifying");
+        const { LifecycleActivity, activity: Modifying } =
+            this.mustGetLifecycleActivity("Modifying");
 
-        const t = new DelegateActivity(new Modifying());
+        const t = new LifecycleActivity(new Modifying());
 
         return { redeemer: t._toUplcData() };
     }
 
     @Activity.redeemer
     activityValidatingSettings() {
-        const { DelegateActivity, activity: ValidatingSettings } =
-            this.mustGetDelegateActivity("ValidatingSettings");
+        const { LifecycleActivity, activity: ValidatingSettings } =
+            this.mustGetLifecycleActivity("ValidatingSettings");
 
-        const t = new DelegateActivity(new ValidatingSettings());
+        const t = new LifecycleActivity(new ValidatingSettings());
 
         return { redeemer: t._toUplcData() };
     }
