@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -e # exit on error
 #//! EXPECTS to be run in context of `pnpm exec`
 
 tsc & 
@@ -8,7 +9,12 @@ rollup \
   --configPlugin 'esbuild={loaders:{".json": "json"}, target: "esnext", tsconfig:"./tsconfig.rollupconfig.json"}' \
   $*
 
-wait
+wait -n
+if [ $? -ne 0 ]; then
+  echo "build failed"
+  exit 1
+fi
+
 echo -n "build finished at "
 date
 # api-extractor run --local --verbose

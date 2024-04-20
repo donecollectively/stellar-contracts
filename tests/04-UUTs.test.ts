@@ -1,3 +1,5 @@
+const smoke = process.env.SMOKE || 0;
+
 import {
     describe as descrWithContext,
     expect,
@@ -65,6 +67,8 @@ const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTes
 // ... or something we make up that's nicer
 
 const describe = descrWithContext<localTC>;
+type smokeTestType = typeof it;
+const smokeTest = (smoke ? fit : it) as smokeTestType;
 
 describe("Capo", async () => {
     beforeEach<localTC>(async (context) => {
@@ -76,7 +80,9 @@ describe("Capo", async () => {
     });
 
     describe("UUTs for contract utility", () => {
-        it("won't create a UUT without the minting delegate's involvement", async (context: localTC) => {
+        it.todo("🟥 TEST: doesn't mint a uut without spending the seed utxo");
+
+        smokeTest("won't create a UUT without the minting delegate's involvement", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
             const { tina, tom, tracy } = actors;
@@ -194,7 +200,7 @@ describe("Capo", async () => {
             ).rejects.toThrow(/Missing charter in required ref_inputs/);
         });
 
-        it("fails when the mint-delegate authZor isn't returned", async (context: localTC) => {
+        smokeTest("fails when the mint-delegate authZor isn't returned", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
             const { tina, tom, tracy } = actors;
@@ -526,7 +532,7 @@ describe("Capo", async () => {
             return tcx2;
         }
 
-        it("can't burn a UUT without the minting delegate", async (context: localTC) => {
+        it("🟥 can't burn a UUT without the minting delegate", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
             const { tina, tom, tracy } = actors;
@@ -563,7 +569,7 @@ describe("Capo", async () => {
             );
         });
 
-        it("can burn a UUT, if approved by the minting delegate", async (context: localTC) => {
+        it("🟥 can burn a UUT, if approved by the minting delegate", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
             const { tina, tom, tracy } = actors;
@@ -593,7 +599,7 @@ describe("Capo", async () => {
             await expect(submitting).resolves.toBeTruthy();
         });
 
-        it("burns only the UUTs identified in the Activity/redeemer", async (context: localTC) => {
+        it("🟥 burns only the UUTs identified in the Activity/redeemer", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
             const { tina, tom, tracy } = actors;

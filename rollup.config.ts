@@ -68,10 +68,13 @@ export default [
                 target: ["node18" ],
                 sourceMap: false,
             }),
-            execute([
-                "tsc  && api-extractor run --local --verbose"
-                // "tsc -p ./tsconfig.dts.json &&  api-extractor run --local --verbose"
-            ])
+            execute({
+                sync: true,
+                commands: [
+                    " tsc  && api-extractor run --local --verbose"
+                    // "tsc -p ./tsconfig.dts.json &&  api-extractor run --local --verbose"
+                ]
+            })
             // apiExtractor({
             //     configFile: "./api-extractor.json",
             //   }),        
