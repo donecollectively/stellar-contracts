@@ -1000,7 +1000,7 @@ export class DefaultCapo<
                     if (!datum) return null;
                     return this.readDatum("ScriptReference", datum)
                         .catch(() => {
-                            // console.log("failed to parse")
+                            // console.log("we don't care about utxos that aren't of the ScriptReference type")
                             return null;
                         })
                         .then((scriptRef) => {
@@ -1467,14 +1467,11 @@ export class DefaultCapo<
         };
         const datum = await this.mkDatumCharterToken(fullCharterArgs);
 
-        const charterOut = new TxOutput(
-            this.address,
-            this.tvCharter(),
-            datum
-            // this.compiledScript
+        return this.mkTxnUpdateCharter(
+            fullCharterArgs,
+            undefined,
+            await this.txnAddGovAuthority(tcx2)
         );
-
-        return tcx2.addOutput(charterOut);
     }
 
     async findUutSeedUtxo(uutPurposes: string[], tcx: StellarTxnContext<any>) {
@@ -2002,7 +1999,12 @@ export class DefaultCapo<
                     ],
                     mech: [
                         "has a namedDelegates structure in the charter datum",
-                        "the namedDelegates structure can be updated by the gov delegate",
+                        "TODO: TEST a named delegate can be added if the minter approves its creation",
+                        "the charter.namedDelegates structure can only be updated by the gov delegate",
+                        "can reject creation of named delegate with name not fitting the application's rules",
+                        "TODO: won't mint the new delegate without the seed-utxo being included in the transaction",
+                        "TODO: is created as a PendingDelegate datum during initial creation",
+                        "TODO: can only be adopted into Charter datum when it successfully validates the current SettingsData",
                     ],
                     requires: [],
                 },

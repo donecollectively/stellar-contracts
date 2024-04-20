@@ -101,7 +101,7 @@ export type anyDatumProps = Record<string, any>;
  * Configuration details for StellarContract classes
  * @public
  **/
-export type configBase = { rev: bigint } & Record<string, any>;
+export interface configBase { rev: bigint }
 
 export type devConfigProps = {
     isDev: boolean;
@@ -859,6 +859,9 @@ export class StellarContract<
                 }
             }
             debugger
+            //!!! TODO
+            // enumType.name.site.syntaxError("yuck")
+            ///or similar (search: getFilePos())
             throw new Error(
                 `$${this.constructor.name}: activity/enum-variant name mismatch in ${
                     //@ts-expect-error
@@ -1035,6 +1038,21 @@ export class StellarContract<
         );
     }
 
+    async readTypedUplcMapData(fn: string, uplcMap, valueType) {
+        const t = Object.fromEntries(
+            await Promise.all(
+                uplcMap.map.map(async ([keyThingy, vThingy]) => {
+                    // const key = keyThingy.string;
+                    const key = helios.bytesToText(keyThingy.bytes);
+                    return [ key, await this.readUplcField(
+                        `${fn}.[${key}]`, valueType, vThingy
+                    ) ]
+                })
+            )
+        )
+        if (uplcMap.map.length > 0) debugger
+        return t;
+    }
     private async readUplcField(
         fn: string,
         fieldType: any,
@@ -1059,10 +1077,12 @@ export class StellarContract<
                 if ("Enum" === internalType && 0 === uplcDataField.fields.length) {
                     return value = Object.keys(value)[0];
                 }
+            } else if (typeof value === 'string') {
+                return value;                
             } else {
+                console.log("no internal type for special post-uplc-to-JS handling at", fn);
+                debugger
                 return value;
-                // console.log("no internal type for special post-uplc-to-JS handling at", fn);
-                // debugger
             }
         } catch (e: any) {
             if (e.message?.match(/doesn't support converting from Uplc/)) {
@@ -1071,6 +1091,11 @@ export class StellarContract<
                     value = await offChainType.fromUplcData(uplcDataField);
                     if (value && "some" in value) value = value.some;
                     if (value && "string" in value) value = value.string;
+
+                    if (uplcDataField instanceof helios.MapData) {
+                        const {valueType} = fieldType.typeDetails.internalType;
+                        return this.readTypedUplcMapData(fn, uplcDataField, fieldType.instanceMembers.head_value);
+                    }
                 } catch (e: any) {
                     console.error(`datum: field ${fn}: ${e.message}`);
                     // console.log({outputTypes, fieldNames, offChainTypes, inputTypes, heliosTypes, thisDatumType});
@@ -1692,7 +1717,7 @@ export class StellarContract<
     }
 
     //! it requires each subclass to define a contractSource
-    contractSource(): string | never {
+    contractSource(): HeliosModuleSrc | string | never {
         throw new Error(`${this.constructor.name}: missing required implementation of contractSource()`);
     }
 
@@ -1799,6 +1824,13 @@ export class StellarContract<
                         "\n   ... can be missing a getContractScriptParams() method " +
                         "\n   ... to map from the configured settings to contract parameters"
                 );
+            }
+            const [ unsetConst, constName ] = 
+                e.message.match(/used unset const '(.*?)'/) || []
+            if (unsetConst) {
+                throw new Error(
+                    `${this.constructor.name}: missing required script param '${constName}' in static getDefaultParams() or getContractScriptParams()`
+                )
             }
             if (!e.src) {
                 console.error(

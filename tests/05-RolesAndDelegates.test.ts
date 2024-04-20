@@ -269,20 +269,24 @@ describe("Capo", async () => {
                     },
                     { mintDelegate: "mintDgt" }
                 );
-                let config: configBase = { rev: 1n, badSomeUnplannedWay: true };
+                let config: configBase & Record<string,any> = { rev: 1n };
                 const getDelegate = () => {
                     return t.txnCreateDelegateLink(tcx1b, "mintDelegate", {
                         strategyName: "failsWhenBad",
                         config,
                     });
                 };
+                await expect(getDelegate()).resolves.toBeTruthy();
 
-                expect(getDelegate()).resolves.toBeTruthy();
+                config = { rev: 1n, badSomeUnplannedWay: true };
+                const p1 = getDelegate();
+                await expect(p1).rejects.toThrow(/invalid param/);
+                // await expect(p1).rejects.toThrow(DelegateConfigNeeded);
 
                 config = { rev: 1n, bad: true };
-                const p = getDelegate();
-                expect(p).rejects.toThrow(/validation errors/);
-                expect(p).rejects.toThrow(DelegateConfigNeeded);
+                const p2 = getDelegate();
+                await expect(p2).rejects.toThrow(/validation errors/);
+                await expect(p2).rejects.toThrow(DelegateConfigNeeded);
 
                 try {
                     await getDelegate();

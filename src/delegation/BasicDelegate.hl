@@ -4,13 +4,15 @@ const rev : Int = 1
 const instance : ByteArray = #67656e6572616c
 const devGen : Int = 0
 const isDev: Bool = false
+const delegateName : String // = "💩  noName Delegate : ( "
+const isMintDelegate : Bool = false
 
 import {
-    DelegationDetail,
+    // DelegationDetail,
     acAuthorityToken,
-    tvAuthorityToken,
-    unmodifiedDelegation,
-    mustReturnValueToScript
+    tvAuthorityToken
+    // unmodifiedDelegation,
+    // mustReturnValueToScript
 } from CapoDelegateHelpers
 
 import {
@@ -19,8 +21,8 @@ import {
 
 import {
     getTxCharterDatum,
-    CapoDatum,
-    CapoActivity
+    CapoDatum
+    // CapoActivity
 } from CapoHelpers
 
 import {
@@ -31,34 +33,27 @@ import {
 
 import {
     returnsValueToScript,
-    mkTv,
-    outputAndDatum,
-    tvCharter
+    // mkTv,
+    outputAndDatum
+    // tvCharter
 } from StellarHeliosHelpers
 
 import {
-    MintDelegateActivity,
-    MintDelegateDatum
-} from specializedMintDelegate
-
-
-// import { 
-//     preventCharterChange
-// } from MultiSigAuthority
-// func main(datum: Datum,_,ctx: ScriptContext) -> Bool {
-//     preventCharterChange(ctx, datum) 
-// }
+    DelegateActivity,
+    DelegateDatum
+} from specializedDelegate
 
 
 
-func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptContext) -> Bool {
-    print("hi from mint delegate");
-    if (isDev) {
-        print("is dev @gen " + devGen.show() )
-    };
+func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) -> Bool {
+    print("hi from delegate " + delegateName +
+        if (isDev) {
+            " - is dev @gen " + devGen.show()
+        } else { "" }
+    );
 
     // input = ctx.get_current_input();
-    mdd.switch{
+    result :Bool = mdd.switch{
         //! performs essential checks of policy for spending the minting delegate's authority token "mintDgt-*"
         //! It also calls any additionalDelegateValidation() defined in a specialized minting delegate.
         isD : IsDelegation{dd} => {
@@ -68,7 +63,7 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                 //   guards that the authority token is returned to this script.
                 // specialized minting delegates should likely perform additional checks.
 
-                DelegateLifecycleActivities{innerActvity} => innerActvity.switch {
+                DelegateLifecycleActivities{innerActivity} => innerActivity.switch {
                     // reassigning the authority token to a new minting delegate
                     ReplacingMe{seedTxId, seedIdx, purpose} => {
                         // should burn the old UUT, mint the new UUT, and update the Charter
@@ -127,9 +122,9 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                         charter.mustFindSettingsOutput(ctx, dd.mph, dd.capoAddr);
                     customSettings = capoSettings::from_data(foundSettings.rawData);
 
-                    print("MINT DELEGATE TRYING TO VALIDATE SETTINGS");
+                    print(delegateName + ": delegate TRYING TO VALIDATE SETTINGS");
                     validated : Bool = customSettings.validate();
-                     print("HURRAY");
+                    print("HURRAY");
                     validated && 
                         // isValid : Bool = 
                         //     ((isTest && throwIfBadSettings(ctx, mdd, settings)) || true) &&
@@ -138,6 +133,31 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
                         true
                     }
                 },
+                CapoLifecycleActivities{CLA} => {
+                    assert(isMintDelegate, 
+                        "CapoLifecycleActivities can't be triggered on non-minting delegate "+ delegateName
+                    );
+                    CLA.switch {
+                        // minting a new token
+                        CreatingDelegate{seedTxn,seedIndex,purpose} => {
+                            //🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞 !!!!!!!!!!!!!!!!!!! todo: fix this
+                                true || validateUutMinting(
+                                    ctx: ctx, 
+                                    mph: dd.mph,
+                                    seedTxId: seedTxn, 
+                                    seedIdx: seedIndex, 
+                                    purposes: []String{purpose},
+                                    // additionalValues: ()
+                                    mkTokenName: mkUutTnFactory(seedTxn, seedIndex),
+                                    // WE ARE the mint delegate.
+                                    needsMintDelegateApproval: false 
+                                )
+                            }
+                        } && if (true) { 
+                            print("BasicDelegate harness deferring to specialization for CapoLifecycleActivities");
+                            true
+                        } else { false }
+                },
                 _ => true
             } && activity.additionalDelegateValidation(isD, ctx)
         },
@@ -145,8 +165,13 @@ func main(mdd: MintDelegateDatum, activity: MintDelegateActivity, ctx: ScriptCon
             invalidRedeemer = () -> {  error("wrong Actvy/dtm") }; ///Activity custom datum must not use Activities reserved for IsDelegation datum.") };
             activity.switch{
                 DelegateLifecycleActivities => invalidRedeemer(), 
+                CapoLifecycleActivities => invalidRedeemer(),
                 _ => activity.otherDatumValidation(mdd, ctx)
             }
         }
-    }
+    };
+
+    print ("delegate: "+ delegateName + ": ok!");
+
+    result
 }

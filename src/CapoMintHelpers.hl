@@ -66,7 +66,7 @@ func requiresDelegateAuthorizingMint(
     // r : Data = ctx.tx.redeemers.get(  // index redeemers by...
     //     ScriptPurpose::new_spending(  // [spending, plus ...
     //     );
-        
+        //!!! Todo replace this with a return of Option[delegate-redeemer}?
     err : String = "dgTkn "+delegateLink.uutName+" not being spent as expected"; // "not spent with an authorizing activity!")
     maybeCheckedMintDelegateAuthority : Bool = ctx.tx.redeemers.get_safe(
         spendsAuthorityUut
@@ -318,7 +318,7 @@ func validateUutMinting(
             )
         }
     }, []ByteArray{});
-    assert(temp == temp, "prevent unused var");
+    assert(true || (temp == temp), "prevent unused var");
 
 
     expectationsMet : Bool = valueMinted  == expectedValue;
@@ -328,7 +328,8 @@ func validateUutMinting(
         // "   ... actual "+ valueMinted.show()+
         // "   ... diff = \n" + (expectedValue - valueMinted).show()
     );
-
+    print(" ✅ validateUutMinting:  ok!");
+    
     delegateApproval && expectationsMet &&
     hasSeedUtxo(tx, seedTxId, seedIdx
         //, "UUT "+purposes.join("+")
@@ -398,63 +399,34 @@ func mintsUutForCharterUsingRedeemerIndex(
 }
 
 enum MinterActivity { 
-    mintingCharter
+    mintingCharter //0
      {
         owner: Address
         // we don't have a responsiblity to enforce delivery to the right location
         // govAuthority: RelativeDelegateLink   // not needed 
     }
-    mintWithDelegateAuthorizing // delegate is handling all mints
+    mintWithDelegateAuthorizing // 1 - delegate is handling all mints
 
-    addingMintInvariant {
+    addingMintInvariant { //2 
         seedTxn: TxId
         seedIndex: Int
     }
 
-    addingSpendInvariant {
+    addingSpendInvariant { //3
         seedTxn: TxId
         seedIndex: Int
     }
 
-    ForcingNewMintDelegate {
+    ForcingNewMintDelegate { //4
         seedTxn: TxId
         seedIndex: Int
     }
 
-    CreatingNewSpendDelegate {
+    CreatingNewSpendDelegate { //5
         seedTxn: TxId
         seedIndex: Int
         replacingUut: Option[ByteArray]
     }
 
-    mintingUuts {
-        seedTxn: TxId
-        seedIndex: Int
-        purposes: []String
-    }
-
-    //??? have the charter know about the UUT purposes, 
-    // ... so we can limit the mint/burns to match the known list??
-    burningUuts {
-        tns: []String
-    }
-
-    func tvForPurpose(self, ctx: ScriptContext, purpose: String) -> Value {
-        mph : MintingPolicyHash = ctx.get_current_minting_policy_hash();
-        
-        mkTv(mph, self.uutTnFactory()(purpose))
-    }
-
-    func uutTnFactory(self) -> (String) -> String {
-        self.switch{
-            mintingUuts{MUseedTxn, MUseedIndex, _} => {
-                mkUutTnFactory(MUseedTxn, MUseedIndex)
-            },
-            // mintingCharter => {
-            //     mkUutTnFactory(seedTxn, seedIndex)
-            // },
-            _ => error("uutTnFactory: not mintingUuts!")
-        } 
-    }
 }
 

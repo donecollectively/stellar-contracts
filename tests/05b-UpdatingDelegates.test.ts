@@ -244,7 +244,9 @@ describe("Capo", async () => {
             // NO CASE 1 - there's no delegate UUT remaining to spend
             //  if the old delegate is replaced.
             //   console.log( " ------- ⚗️ case 1: with mint delegate involved in the replacement");
-            console.log(" -------⚗️🐞⚗️🐞 case 2: forced replacement of mint delegate");
+            console.log(" -------⚗️🐞⚗️🐞 case 2: forced replacement of mint delegate\n"+
+                "    - leaves the existing delegate dangling"
+            );
             const tcx = await capo.mkTxnUpdatingMintDelegate(
                 {
                     strategyName: "defaultV1",

@@ -225,7 +225,36 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
             if (unchangedMintDgt) {
                 // unchanged mintDgt must not be included in the tx
                 checkpoint("2b") &&
-                requiresNoDelegateInput(mintDelegate, mph, ctx)
+                checkpoint("2b") && 
+                mintDelegate.hasDelegateInput(
+                    inputs: ctx.tx.inputs, 
+                    mph: mph,
+                    required: false
+                ).switch {
+                    None => {
+                        // was requiresNoDelegateInput(mintDelegate, mph, ctx)
+                        //  - it's ok to have it not included.
+                        true
+                    },
+                    Some{input} => {
+                        delegateActivity: AbstractDelegateActivitiesEnum = 
+                            mintDelegate.getRedeemer(input, ctx);
+                        print("mint delegate input found");
+                        delegateActivity.switch {
+                            CapoLifecycleActivities{CLA} => CLA.switch {
+                                CreatingDelegate => {
+                                    print("TEMPORARY: allowing delegate creation while **updatingCharter**");
+                                    print("TODO: move delegate-creation to be separate from updatingCharter");
+                                    print("TODO: ?? use capo ActivatingXxxxDelegate activity when adopting delegate");
+
+                                    mintDelegate.hasValidOutput(mph, ctx)
+                                },
+                                _ => error("invalid use of mint delegate during charter update")
+                            },
+                            _ => error("invalid use of mint delegate during charter update")
+                        }
+                    }
+                }
             } else {
                 //  the new one has to go to the right place
                 checkpoint("2a") &&
@@ -243,16 +272,25 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
             } &&
             checkpoint("5") &&
             if (!changedAnyNamedDelegate) { true } else {
-                // namedDelegates are not allowed to change
                 checkpoint("5b") && 
                 namedDelegates.fold( (ok: Bool, name : String, dgt : RelativeDelegateLink) -> Bool {
-                    oldDgt : RelativeDelegateLink = oldNamedDelegates.get(name);
-                    ok && if (oldDgt.serialize() == dgt.serialize()) {
-                        // unchanged named delegate must not be included in the tx
-                        requiresNoDelegateInput(dgt, mph, ctx)
-                    } else {
-                        //  the new one has to go to the right place
-                        dgt.hasValidOutput(mph, ctx)
+                    ok && 
+                    oldNamedDelegates.get_safe(name).switch {
+                        None => {
+                            print (" - adopting named delegate: " + name);
+
+                            true
+                        },
+                        Some{oldDgt} => { 
+                            if (oldDgt.serialize() == dgt.serialize()) {
+                               // unchanged named delegate must not be included in the tx
+                                requiresNoDelegateInput(dgt, mph, ctx)
+                            } else {
+                                print("🟥 TODO: the old named delegate must be retired, or be force-replaced (in a different activity?)");
+                                //  the new one has to go to the right place
+                                dgt.hasValidOutput(mph, ctx)
+                            }
+                        }
                     }
                 }, true)
             } &&
@@ -415,6 +453,6 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
     ); 
 
     allDatumSpecificChecks && 
-    allActivitySpecificChecks &&
-    tx.serialize() != datum.serialize()
+    allActivitySpecificChecks
+    // tx.serialize() != datum.serialize()
 }

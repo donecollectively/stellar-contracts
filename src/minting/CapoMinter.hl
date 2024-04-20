@@ -237,24 +237,6 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                 otherMintedValue: otherMintedValue
             )
         },
-
-        mintingUuts => { // {sTxId, sIdx, purposes} => {
-            error("minter:mintingUuts obsolete; use minter:followingDelegate with delegate:mintingUuts or a more application-specific activity")
-            // validateUutMinting(
-            //     ctx: ctx, 
-            //     seedTxId: sTxId, 
-            //     seedIdx: sIdx, 
-            //     purposes: purposes,
-            //     mkTokenName: r.uutTnFactory()
-            // )
-        },
-        burningUuts => { // {tns} => {
-            error("minter:burningUuts obsolete; use minter:followingDelegate with delegate:burningUuts or a more application-specific activity")
-            // validateUutBurning(
-            //     ctx: ctx,
-            //     tns: tns
-            // ) 
-        },
         _ => true
     };
 

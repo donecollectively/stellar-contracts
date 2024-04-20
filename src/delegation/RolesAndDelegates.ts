@@ -87,8 +87,11 @@ export type capoDelegateConfig = configBase & devConfigProps & {
     capoAddr: Address;
     capo: Capo<any, any, any>;
     mph: MintingPolicyHash;
+    delegateName: string;
     tn: number[];
     rev: bigint;
+    isDev: boolean;
+    devGen: bigint;
     addrHint: Address[];
 };
 

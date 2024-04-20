@@ -8,10 +8,7 @@ import {
     Value,
 } from "@hyperionbt/helios";
 
-//@ts-expect-error because TS can't import non-ts content : /
-import contract from "./BasicMintDelegate.hl";
-//@ts-expect-error because TS can't import non-ts content : /
-import StellarHeliosHelpers from "../StellarHeliosHelpers.hl";
+import { BasicDelegate } from "../delegation/BasicDelegate.js";
 
 import { Activity, datum } from "../StellarContract.js";
 import type { configBase, isActivity } from "../StellarContract.js";
@@ -24,19 +21,7 @@ import {
 } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
 
-import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
-import { UnspecializedMintDelegate } from "./UnspecializedMintDelegate.js";
 import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
-
-export type MintDelegateArgs = capoDelegateConfig & {
-    rev: bigint;
-};
-
-//!!! TODO: include adapter(s) for Datum, which has the same essential shape
-type MintDelegateDatumProps = {
-    tokenName: string;
-    maxMintSize: bigint;
-};
 
 /**
  * Serves a delegated minting-policy role for Capo contracts
@@ -44,43 +29,22 @@ type MintDelegateDatumProps = {
  *
  * shifts detailed minting policy out of the minter and into the delegate.
  * @public
- **/
-export class BasicMintDelegate extends ContractBasedDelegate<MintDelegateArgs> {
+ **/export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig> {
     static currentRev = 1n;
 
+    delegateName = "mintDelegate"
+
     static get defaultParams() {
-        const params = {
-            rev: this.currentRev,
-            devGen: 0n,
-        };
-        return params;
-    }
-
-    getContractScriptParams(config) {
-        const params = {
-            rev: config.rev,
-            isDev: false,
-            devGen: 0n,
-        };
-
-        if ("development" === process.env.NODE_ENV) {
-            params.isDev = true;
-            if (!config.devGen) {
-                throw new Error(
-                    `Missing expected devGen in config for BasicMintDelegate`
-                );
-            }
-            params.devGen = config.devGen;
+        return {
+            ...super.defaultParams,
+            delegateName: "mintDelegate",
+            isMintDelegate: true
         }
-        return params;
-    }
-
-    contractSource() {
-        return contract;
     }
 
     @datum
     mkDatumScriptReference() {
+        throw new Error(`obsolete, right?`);
         const { ScriptReference: hlScriptReference } = this.onChainDatumType;
 
         // this is a simple enum tag, indicating the role of this utxo: holding the script
@@ -88,50 +52,6 @@ export class BasicMintDelegate extends ContractBasedDelegate<MintDelegateArgs> {
         // every time.
         const t = new hlScriptReference();
         return Datum.inline(t._toUplcData());
-    }
-
-    /**
-     * specializedMintDelegate module for customizing policies atop the basic mint delegate
-     * @public
-     * @remarks
-     *
-     * The basic mint delegate contains an "unspecialized" implementation of this customization,
-     * which doesn't have any special restrictions.  
-     **/
-    get specializedMintDelegate(): HeliosModuleSrc {
-        return UnspecializedMintDelegate;
-    }
-
-    /**
-     * Deprecated
-     * @deprecated  - mint delegate should have specific activities for specific use-cases, starting at redeemer index 10
-     * @internal
-     **/
-    @Activity.redeemer
-    activityAuthorizing(): isActivity {
-        throw new Error(
-            `obsolete generic Authorizing activity invalid for mint delegates`
-        );
-    }
-
-    // inherited from StellarDelegate.
-    // @Activity.redeemer
-    // activityReplacingMe({
-    //     seedTxn,
-    //     seedIndex: sIdx,
-    //     purpose,
-    // } :  Omit<MintUutActivityArgs, "purposes"> & {purpose?: string}) {
-    //     const hlReplacingMe = this.mustGetActivity("ReplacingMe");
-    //     const t = new hlReplacingMe(
-    //         seedTxn, sIdx, purpose
-    //     );
-    //     return { redeemer: t._toUplcData() };
-    // }
-
-    @Activity.redeemer
-    activityRetiringDelegate(): isActivity {
-        const Retiring = this.mustGetActivity("Retiring");
-        return { redeemer: new Retiring()._toUplcData() };
     }
 
     async txnGrantAuthority<TCX extends StellarTxnContext>(
@@ -150,65 +70,6 @@ export class BasicMintDelegate extends ContractBasedDelegate<MintDelegateArgs> {
         return super.txnGrantAuthority(tcx, redeemer, returnExistingDelegate);
     }
 
-    // // NOTE: prefer application-specific activities that validate
-    // // particular mints, instead of this generic one
-    // @Activity.redeemer
-    // activityMintingUuts({
-    //     seedTxn,
-    //     seedIndex: sIdx,
-    //     purposes,
-    // }: MintUutActivityArgs): isActivity {
-    //     const seedIndex = BigInt(sIdx);
-    //     console.log("----------- USING DEPRECATED mintingUuts ACTIVITY -----------"+
-    //       "\n       (prefer application-specific mint-delegate activities instead)"
-    //     );
-    //     console.log("UUT redeemer seedTxn", seedTxn.hex);
-    //     const mintingUuts = this.mustGetActivity("mintingUuts");
-    //     const t = new mintingUuts(seedTxn, seedIndex, purposes);
-
-    //     return { redeemer: t._toUplcData() };
-    // }
-
-    // NOTE: prefer application-specific activities
-    // @Activity.redeemer
-    // activityBurningUuts(...uutNames: string[]) : isActivity {
-    //     const {burningUuts} =this.onChainActivitiesType;
-    //     const { DelegateDetails: hlDelegateDetails } = this.onChainTypes;
-    //     const t = new burningUuts(uutNames);
-
-    //     return { redeemer: t._toUplcData() };
-    // }
-
-    importModules(): HeliosModuleSrc[] {
-        const specializedMintDelegate = this.specializedMintDelegate;
-        if (specializedMintDelegate.moduleName !== "specializedMintDelegate") {
-            throw new Error(
-                `${this.constructor.name}: specializedMintDelegate() module name must be ` +
-                    `'specializedMintDelegate', not '${specializedMintDelegate.moduleName}'\n  ... in ${specializedMintDelegate.srcFile}`
-            );
-        }
-
-        //@ts-expect-error
-        const {capo} = this.configIn || this.partialConfig
-
-        if (!capo) throw new Error(`missing capo in config or partial-config for ${this.constructor.name}`)
-        return [
-            specializedMintDelegate,
-            ...capo.importModules(),
-        ];
-    }
-
-    get scriptDatumName() {
-        return "MintDelegateDatum";
-    }
-    get scriptActivitiesName() {
-        return "MintDelegateActivity";
-    }
-
-    @Activity.partialTxn
-    async txnCreatingTokenPolicy(tcx: StellarTxnContext, tokenName: string) {
-        return tcx;
-    }
-
-    static mkDelegateWithArgs(a: MintDelegateArgs) {}
+    // moved to to super
+    // static mkDelegateWithArgs(a: capoDelegateConfig) {}
 }

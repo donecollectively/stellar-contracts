@@ -1,35 +1,44 @@
-module specializedMintDelegate
+module specializedDelegate
 
-//! provides a basic version, not yet specialized,
-// of the "specializedMintDelegate" interface, which simply
-// exports a DelegateDatum enum and DelegateActivities (redeemer enum).  
+// specialized to allow Tests to trigger generic UUT minting
+// ... as a placeholder for application-specific UUT-minting use-cases
+// original notes about (un)specialization follow:
 
-//! these specializations MAY include additional enum variants, and 
-//  ... they MUST include the same enum variants found in this
-//  ... unspecialized version.   If you're specializing and you get a Helios 
-//  ... compiler error, these are the first things you should check!
 
-// The MintDelegateActivity (redeemer) enum reserves the first 10
-// ... variants for use-cases inside the script, with the remaining
-// ... available for authorizing application-specific use-cases.
+//  //! provides a basic version, not yet specialized,
+//  // of the "specializedDelegate" interface, which simply
+//  // exports a DelegateDatum enum and DelegateActivities (redeemer enum).  
 
-// The mintingUuts activity is deprecated, and should be replaced with
-// ... application-specific activities that validate minting of UUTs.
-// It's recommended to retain the error-throwing behavior of the
-// ... genericUutMinting function, and expect that it will no longer 
-// ... be called after Stellar Contracts v1.0
+//  //! Your specialization MUST include the enum variants found in this
+//  //  ... unspecialized version.  It MAY include additional Datum variants.
+//  // Any additional Redeemer/Activity variants should be added underneath 
+//  // the SpendingActivity / MintingActivity top-level enum variants, instead 
+//  // of adding new top-level enum variants to DelegateActivity.
 
-// The MintDelegateDatum enum reserves the first variant for the
-// ... "IsDelegation" datum.
+//  // The DelegateActivity (redeemer) enum conforms to the 
+//  // Delegate Redeemer protocol, in which enum 0 is reserved for
+//  // lifecycle activities, enum 1 is used for spend-related activities 
+//  // (if the delegate is used as a spend delegate), and enum 2 is called
+//  // for authorizing minting.  Enum 3 and beyond are reserved for
+//  // extensions to the Delegate Redeemer protocol.
 
-//! Your specialization MAY include any 
-// ... additional functions, imports or methods
+//  // Within the minting and spending activities, the specialization can 
+//  // indicate a nested activity enum to support various dApp-specific
+//  // activities.  
+
+//  // Activities that validate minting of UUTs should contain enum fields 
+//  // to identify the seed-transaction details needed for properly validating 
+//  // UUT mints fitting the use-case.
+
+//  //! Your specialization MAY include any additional functions, imports or 
+//  //  methods defined on any of the types in this file.
 
 import {
     DelegationDetail,
     mustReturnValueToScript,
     tvAuthorityToken,
     DelegateLifecycleActivity,
+    CapoLifecycleActivity,
     unmodifiedDelegation
 } from CapoDelegateHelpers
 
@@ -42,7 +51,7 @@ import {
     capoSettings
 } from CustomCapoSettings
 
-enum MintDelegateDatum {
+enum DelegateDatum {
     IsDelegation {
         dd: DelegationDetail
     }
@@ -56,7 +65,10 @@ enum MintDelegateDatum {
     }
 }
 
-enum MintDelegateActivity {
+enum DelegateActivity {
+    CapoLifecycleActivities {
+        activity: CapoLifecycleActivity
+    }
     DelegateLifecycleActivities {
         activity: DelegateLifecycleActivity
     }
@@ -70,11 +82,11 @@ enum MintDelegateActivity {
     // valid uut mints. A specialization might modify it use different policies
     // or enforce additional requirements
     func genericUutMinting(self, 
-        mdd: MintDelegateDatum,
+        mdd: DelegateDatum,
         ctx: ScriptContext
     ) -> Bool {
-        MintDelegateActivity::mintingUuts{sTxId, sIdx, purposes} = self;
-        MintDelegateDatum::IsDelegation{dd} = mdd;
+        DelegateActivity::mintingUuts{sTxId, sIdx, purposes} = self;
+        DelegateDatum::IsDelegation{dd} = mdd;
         returnsAuthzToken : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);
 
         o : []TxOutput = ctx.get_cont_outputs();
@@ -101,24 +113,34 @@ enum MintDelegateActivity {
         isOk
     }
 
-    //! used only for validating IsDelegation datum, that is,
-    //   ... to approve minting requests or any customize spending modes 
-    //   ... of that datum.  In the unspecialized version, 
-    //   ... the "Modifying" activity is a stand-in for that use-case, that always rejects.
-    //  Note that the basic mint delegate already enforces some basic
-    //    administrative expectations for Reassigning, Retiring, Modifying activites, 
-    //    so a specialization doesn't need to re-implement those checks.
+    //! Used only for validating non-IsDelegation datum types and activities.
+    // if you have any special admininstrative data structures that inform 
+    // ...  your minting policy, this might be useful.  Otherwise, and typically,
+    // ... you should look to Activity validations above in additionalDelegateValidation,
+    // ...  in which the isDelegation token is being spent with an application-specific
+    // ...  activity/redeemer    func additionalDelegateValidation( self,
     func additionalDelegateValidation( self,
-        priorMddd: MintDelegateDatum::IsDelegation, 
+        priorMddd: DelegateDatum::IsDelegation, 
         ctx: ScriptContext
     ) -> Bool {
         // print("  ----- checking additional delegate validation");
         self.switch {
-            mintingUuts => self.genericUutMinting(priorMddd, ctx),
-            // generic DelegateLifecycleActivities is already validated, but 
+            // normal  lifecycle activities are already validated, but 
             //  ... you can add more constraints here if needed
             DelegateLifecycleActivities => true,
+            CapoLifecycleActivities{CLA} => {
+                CLA.switch{
+                    CreatingDelegate{ /*seedTxn*/ _,  /* seedIndex */ _, purpose} => {
+                        assert(purpose == "myNamedDgt", "unsupported delegate-creation purpose: " + purpose);
+
+                        true
+                    },
+                    _ => error("test other delegate lifecycle activities?")
+                }
+            },
+
             // special for test environment
+            mintingUuts => self.genericUutMinting(priorMddd, ctx),
 
             _ => false
         } || ctx.tx.serialize() != priorMddd.serialize()
@@ -130,7 +152,7 @@ enum MintDelegateActivity {
     //   above, in which the isDelegation token is being spent with an application-specific
     //   activity/redeemer
     func otherDatumValidation( self,
-        priorMdd: MintDelegateDatum, 
+        priorMdd: DelegateDatum, 
         ctx: ScriptContext
     ) -> Bool {
         neverTriggered = () -> {  error("never called") };
@@ -138,7 +160,7 @@ enum MintDelegateActivity {
             // Note: this set of DelegateActivities is reserved for the IsDelegation datum.
             //  Using it on any other Datum type will always fail and execution will never arrive here.
             DelegateLifecycleActivities => neverTriggered(),
-            
+            CapoLifecycleActivities => neverTriggered(),            
             // ------------------- application-specific activities can be added here
 
             _ => false  // prevents non-exhaustive match errors, even if you remove the above neverTriggered() calls

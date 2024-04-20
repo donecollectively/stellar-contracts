@@ -7,8 +7,6 @@ import {
 const mph : MintingPolicyHash = MintingPolicyHash::new(#1234)
 const rev : Int = 1
 
-import { Datum, Activity } from specializedCapo
-
 func didSign(ctx : ScriptContext, a: Address) -> Bool {
     tx : Tx = ctx.tx;
 

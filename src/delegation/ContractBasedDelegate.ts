@@ -1,5 +1,10 @@
 import { TxInput, TxOutput, Value, bytesToText } from "@hyperionbt/helios";
-import type { DelegateSetupWithoutMintDelegate, MinimalDelegateLink, MintUutActivityArgs, NormalDelegateSetup } from "../Capo.js";
+import type {
+    DelegateSetupWithoutMintDelegate,
+    MinimalDelegateLink,
+    MintUutActivityArgs,
+    NormalDelegateSetup,
+} from "../Capo.js";
 import {
     Datum,
     type InlineDatum,
@@ -19,10 +24,100 @@ import type {
 import type { StellarTxnContext } from "../StellarTxnContext.js";
 import { dumpAny } from "../diagnostics.js";
 import type { DefaultCapo } from "../DefaultCapo.js";
+import { BasicDelegate } from "./BasicDelegate.js";
+import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
+import { UnspecializedDelegate } from "./UnspecializedDelegate.js";
 
 export abstract class ContractBasedDelegate<
-    CT extends configBase & capoDelegateConfig = capoDelegateConfig
+    CT extends configBase & capoDelegateConfig = configBase & capoDelegateConfig
 > extends StellarDelegate<CT> {
+    static currentRev = 1n;
+
+    //@ts-expect-error - we provide a default impl for javascript users
+    abstract get delegateName() : string {
+        throw new Error(`${this.constructor.name}: missing required get delegateName() : string`)
+    }
+
+    contractSource() {
+        return BasicDelegate;
+    }
+
+    get scriptDatumName() {
+        return "DelegateDatum";
+    }
+    get scriptActivitiesName() {
+        return "DelegateActivity";
+    }
+
+    importModules(): HeliosModuleSrc[] {
+        const specializedDelegate = this.specializedDelegate;
+        if (specializedDelegate.moduleName !== "specializedDelegate") {
+            throw new Error(
+                `${this.constructor.name}: specializedMintDelegate() module name must be ` +
+                    `'specializedDelegate', not '${specializedDelegate.moduleName}'\n  ... in ${specializedDelegate.srcFile}`
+            );
+        }
+
+        //@ts-expect-error
+        const { capo } = this.configIn || this.partialConfig;
+
+        if (!capo)
+            throw new Error(
+                `missing capo in config or partial-config for ${this.constructor.name}`
+            );
+        return [specializedDelegate, ...capo.importModules()];
+    }
+
+
+    static get defaultParams() {
+        const params = {
+            rev: this.currentRev,
+            devGen: 0n,
+        };
+        return params;
+    }
+    static mkDelegateWithArgs(a: capoDelegateConfig) {}
+
+    getContractScriptParams(config: CT) {
+        //@ts-expect-error - spurious "could be instantiated with an unrelated type"
+        const params : CT= {
+            rev: config.rev,
+            isDev: false,
+            devGen: 0n,            
+            delegateName: this.delegateName,
+        };    
+
+        const {
+            capoAddr,
+            mph,
+            tn,
+            capo,
+            ... otherConfig
+        } = config;
+        otherConfig.delegateName = this.delegateName;
+
+        if ("development" === process.env.NODE_ENV) {
+            otherConfig.isDev = true;
+            if (!otherConfig.devGen) {
+                throw new Error(
+                    `Missing expected devGen in config for ${this.constructor.name}`
+                );
+            }
+        }
+        return otherConfig as CT
+    }
+
+    /**
+     * specializedDelegate module for customizing policies atop the basic delegate
+     * @public
+     * @remarks
+     *
+     * The basic mint delegate contains an "unspecialized" implementation of this
+     * customization, which doesn't have any special restrictions (or capabilities)
+     **/
+    get specializedDelegate(): HeliosModuleSrc {
+        return UnspecializedDelegate;
+    }
 
     /**
      * Adds a mint-delegate-specific authority token to the txn output
@@ -60,7 +155,6 @@ export abstract class ContractBasedDelegate<
         });
     }
 
-
     /**
      * redeemer for replacing the authority UUT with a new one
      * @remarks
@@ -78,26 +172,66 @@ export abstract class ContractBasedDelegate<
         seedIndex,
         purpose,
     }: Omit<MintUutActivityArgs, "purposes"> & { purpose?: string }) {
-        debugger;
-        const { LifecycleActivity: thisActivity, activity: ReplacingMe } =
-            this.mustGetLifecycleActivity("ReplacingMe");
-
-        const t = new thisActivity(
-            new ReplacingMe(seedTxn, seedIndex, purpose)
+        return this.mkDelegateLifecycleActivity(
+            "ReplacingMe",
+            seedTxn,
+            seedIndex,
+            purpose
         );
-
-        return { redeemer: t._toUplcData() };
     }
 
-    mustGetLifecycleActivity(delegateActivityName: string) {
-        const DLAType = this.mustGetActivity("DelegateLifecycleActivities");
+    mkDelegateLifecycleActivity(
+        delegateActivityName: "ReplacingMe" | "Retiring" | "ValidatingSettings", 
+        ...args: any[]
+    ) {
+        const TopEnum = this.mustGetActivity("DelegateLifecycleActivities");
         const { DelegateLifecycleActivity } = this.onChainTypes;
-        const activity = this.mustGetEnumVariant(
+        const NestedVariant = this.mustGetEnumVariant(
             DelegateLifecycleActivity,
             delegateActivityName
         );
+        return {
+            redeemer: new TopEnum(new NestedVariant(...args))._toUplcData(),
+        };
+    }
 
-        return { LifecycleActivity: DLAType, activity };
+    mkCapoLifecycleActivity(
+        capoLifecycleActivityName: "CreatingDelegate" | "ActivatingDelegate",
+        ...args: any[]
+    ) {
+        const TopEnum = this.mustGetActivity("CapoLifecycleActivities");
+        const { CapoLifecycleActivity } = this.onChainTypes;
+        const NestedVariant = this.mustGetEnumVariant(
+            CapoLifecycleActivity,
+            capoLifecycleActivityName
+        );
+        return {
+            redeemer: new TopEnum(new NestedVariant(...args))._toUplcData(),
+        };
+    }
+
+    mkSpendingActivity(spendingActivityName: string, ...args: any[]) {
+        const TopEnum = this.mustGetActivity("SpendingActivities");
+        const { SpendingActivity } = this.onChainTypes;
+        const NestedVariant = this.mustGetEnumVariant(
+            SpendingActivity,
+            spendingActivityName
+        );
+        return {
+            redeemer: new TopEnum(new NestedVariant(...args))._toUplcData(),
+        };
+    }
+
+    mkMintingActivity(mintingActivityName: string, ...args: any[]) {
+        const TopEnum = this.mustGetActivity("MintingActivities");
+        const { MintingActivity } = this.onChainTypes;
+        const NestedVariant = this.mustGetEnumVariant(
+            MintingActivity,
+            mintingActivityName
+        );
+        return {
+            redeemer: new TopEnum(new NestedVariant(...args))._toUplcData(),
+        };
     }
 
     /**
@@ -111,22 +245,12 @@ export abstract class ContractBasedDelegate<
      **/
     @Activity.redeemer
     activityRetiring() {
-        const { LifecycleActivity, activity: Retiring } =
-            this.mustGetLifecycleActivity("Retiring");
-
-        const t = new LifecycleActivity(new Retiring());
-
-        return { redeemer: t._toUplcData() };
+        return this.mkDelegateLifecycleActivity("Retiring");
     }
 
     @Activity.redeemer
     activityValidatingSettings() {
-        const { LifecycleActivity, activity: ValidatingSettings } =
-            this.mustGetLifecycleActivity("ValidatingSettings");
-
-        const t = new LifecycleActivity(new ValidatingSettings());
-
-        return { redeemer: t._toUplcData() };
+        return this.mkDelegateLifecycleActivity("ValidatingSettings");
     }
 
     /**
@@ -185,51 +309,50 @@ export abstract class ContractBasedDelegate<
      * Given a delegate already configured by a Capo, this method implements
      * transaction-building logic needed to include the UUT into the `tcx`.
      * the `utxo` is discovered by {@link DelegateMustFindAuthorityToken | DelegateMustFindAuthorityToken() }
-     * 
-     * The default implementation adds the `uutxo` to the transaction 
+     *
+     * The default implementation adds the `uutxo` to the transaction
      * using {@link activityAuthorizing | activityAuthorizing() }.
-     * 
+     *
      * The off-chain code shouldn't need to check the details; it can simply
-     * arrange the details properly and spend the delegate's authority token, 
+     * arrange the details properly and spend the delegate's authority token,
      * using this method.
-     * 
+     *
      * ### Reliance on this delegate
-     * 
-    * Other contract scripts can rely on the delegate script to have validated its 
+     *
+     * Other contract scripts can rely on the delegate script to have validated its
      * on-chain policy and enforced its own "return to the delegate script" logic.
-     * 
+     *
      * ### Enforcing on-chain policy
-     * 
-     * When spending the authority token in this way, the delegate's authority is typically 
-     * narrowly scoped, and it's expected that the delegate's on-chain script validates that 
-     * those parts of the transaction detail should be authorized, in accordance with the 
-     * delegate's core purpose/responsbility - i.e. that the txn does all of what the delegate 
+     *
+     * When spending the authority token in this way, the delegate's authority is typically
+     * narrowly scoped, and it's expected that the delegate's on-chain script validates that
+     * those parts of the transaction detail should be authorized, in accordance with the
+     * delegate's core purpose/responsbility - i.e. that the txn does all of what the delegate
      * expects, and none of what it shouldn't do in that department.
-     * 
+     *
      * The on-chain code SHOULD typically enforce:
-     *  * that the token is spent with Authorizing activity (redeemer).  NOTE:
-     *     the **CapoDelegateHelpers** helios module provides the `requiresDelegateAuthorizing()` 
-     *     function for just this purpose
-    
-     *  * that the authority token is returned to the contract with its datum unchanged 
-     *  * that any other tokens it may also hold in the same UTxO do not become 
-     *     inaccessible as a result of the transactions - perhaps by requiring them to be 
+     *  * that the token is spent with an application-specific redeemer variant of its
+     *     MintingActivity or SpendingActivitie.
+     *
+     *  * that the authority token is returned to the contract with its datum unchanged
+     *  * that any other tokens it may also hold in the same UTxO do not become
+     *     inaccessible as a result of the transactions - perhaps by requiring them to be
      *     returned together with the authority token.
-     * 
+     *
      * It MAY enforce additional requirements as well.
      *
      * @example
-     * A minting delegate should check that all the expected tokens are 
-     * minted, AND that no other tokens are minted.  
-     * 
+     * A minting delegate should check that all the expected tokens are
+     * minted, AND that no other tokens are minted.
+     *
      * @example
-     * A role-based authentication/signature-checking delegate can 
+     * A role-based authentication/signature-checking delegate can
      * require an appropriate signature on the txn.
-     * 
-    * @param tcx - the transaction context
-    * @param utxo - the utxo having the authority UUT for this delegate
-    * @reqt Adds the uutxo to the transaction inputs with appropriate redeemer.
-    * @reqt Does not output the value; can EXPECT txnReceiveAuthorityToken to be called for that purpose.
+     *
+     * @param tcx - the transaction context
+     * @param utxo - the utxo having the authority UUT for this delegate
+     * @reqt Adds the uutxo to the transaction inputs with appropriate redeemer.
+     * @reqt Does not output the value; can EXPECT txnReceiveAuthorityToken to be called for that purpose.
      **/
     async DelegateAddsAuthorityToken<TCX extends StellarTxnContext>(
         tcx: TCX,
@@ -265,7 +388,6 @@ export abstract class ContractBasedDelegate<
     }
 }
 
-
 export type NamedDelegateCreationOptions<
     thisType extends DefaultCapo<any, any, any, any>,
     DT extends StellarDelegate
@@ -274,10 +396,10 @@ export type NamedDelegateCreationOptions<
     DT
 > & {
     /**
-     * Optional name for the UUT; uses the delegate name if not provided.  
+     * Optional name for the UUT; uses the delegate name if not provided.
      **/
-    uutName?: string
-}
+    uutName?: string;
+};
 // MinimalDelegateLink<DT> & {
 //     uutOptions: UutCreationAttrs | ForcedUutReplacement
 //     strategyName: string &
@@ -292,12 +414,11 @@ export type DelegateCreationOptions<
     /**
      * details for creating the delegate
      */
-    mintSetup: NormalDelegateSetup | DelegateSetupWithoutMintDelegate
+    mintSetup: NormalDelegateSetup | DelegateSetupWithoutMintDelegate;
     strategyName: string & STRATEGIES;
     /**
-     * Installs the named delegate without burning the existing UUT for this delegate. 
+     * Installs the named delegate without burning the existing UUT for this delegate.
      * That UUT may become lost and inaccessible, along with any of its minUtxo.
      **/
     forcedUpdate?: true;
 };
-

@@ -191,9 +191,10 @@ describe("supports an abstract Settings structure stored in the contact", async 
             });
 
             await expect(updating).rejects.toThrow(/must not have badSettingToSpendDelegate/);
+            console.log("  -- ⚗️🐞⚗️🐞 case 2 : throws an error if the spend delegate isn't included"); 
             const spendDelegate = await capo.getSpendDelegate();
             vi.spyOn(spendDelegate, "txnGrantAuthority").mockImplementation(async tcx => tcx);
-            await expect(h.updateSettings(goodSettings)).rejects.toThrow(/missing required input for delegate link spendDgt-/);
+            await expect(h.updateSettings(goodSettings)).rejects.toThrow(/missing required input .* spendDgt-/);
         });
 
         it("the minting delegate must validate the UpdatingSettings details", async (context: localTC) => {
@@ -210,8 +211,9 @@ describe("supports an abstract Settings structure stored in the contact", async 
             await expect(updating).rejects.toThrow(/must not have badSettingToMintDelegate/);
 
             const mintDelegate = await capo.getMintDelegate();
+            console.log("  -- ⚗️🐞⚗️🐞 case 2 : throws an error if the mint delegate isn't included"); 
             vi.spyOn(mintDelegate, "txnGrantAuthority").mockImplementation(async tcx => tcx);
-            await expect(h.updateSettings(goodSettings)).rejects.toThrow(/missing required input for delegate link mintDgt-/)
+            await expect(h.updateSettings(goodSettings)).rejects.toThrow(/missing required input .* mintDgt-/)
         });
 
         it.todo("TODO: TEST: all named delegates must validate the UpdatingSettings details", async (context: localTC) => {
