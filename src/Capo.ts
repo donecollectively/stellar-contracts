@@ -268,6 +268,15 @@ type PreconfiguredDelegate<T extends StellarDelegate<any>> = Omit<
     "delegate" | "delegateValidatorHash"
 >;
 
+interface basicRoleMap {
+    govAuthority: RoleInfo<any, any, any, any>;
+    mintDelegate: RoleInfo<any, any, any, any>;
+    spendDelegate: RoleInfo<any, any, any, any>;
+    namedDelegate: RoleInfo<any, any, any, any>;
+
+    [anyOtherRoleNames: string]: RoleInfo<any, any, any, any>;
+}
+
 /**
  * Base class for the leader of a set of contracts
  * @remarks
@@ -301,14 +310,7 @@ export abstract class Capo<
 > extends StellarContract<configType> {
     static currentRev: bigint = 1n;
     devGen: bigint = 0n;
-    abstract get delegateRoles(): RoleMap<{
-        govAuthority: RoleInfo<any, any, any, any>;
-        mintDelegate: RoleInfo<any, any, any, any>;
-        spendDelegate: RoleInfo<any, any, any, any>;
-        namedDelegate: RoleInfo<any, any, any, any>;
-
-        [anyOtherRoleNames: string]: RoleInfo<any, any, any, any>;
-    }>;
+    abstract get delegateRoles(): RoleMap<basicRoleMap>;
     abstract verifyCoreDelegates(): Promise<any>;
     verifyConfigs(): Promise<any> {
         return this.verifyCoreDelegates();
@@ -1022,7 +1024,7 @@ export abstract class Capo<
 
         //! it validates the net configuration so it can return a working config.
         const errors: ErrorMap | undefined =
-            validateConfig && validateConfig(mergedConfig);
+            validateConfig && validateConfig(mergedConfig) || undefined;
         if (errors) {
             throw new DelegateConfigNeeded(
                 `validation errors in delegateInfo.config for ${roleName} '${strategyName}':\n` +

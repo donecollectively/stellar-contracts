@@ -46,10 +46,12 @@ class DelegationTestCapo extends DefaultCapo {
             variants: pVariants,
         } = parentMintDelegate;
         const mintDelegate = defineRole("mintDgt", BasicMintDelegate, {
-            defaultV1: {
-                delegateClass: BasicMintDelegate,
-                validateConfig(args) {},
-            },
+            ... parentMintDelegate.variants,
+            // defaultV1: parentMintDelegate.variants.defaultV1,
+            // {
+            //     delegateClass: BasicMintDelegate,
+            //     validateConfig(args) {},
+            // },
             canMintGenericUuts: {
                 delegateClass: MintDelegateWithGenericUuts,
                 validateConfig(args) {
@@ -226,6 +228,7 @@ describe("Capo", async () => {
 
                 const problem = t.txnCreateDelegateLink(tcx1b, "mintDelegate", {
                     strategyName: "badStratName",
+                    //@ts-expect-error
                     config: { bad: true },
                 });
                 expect(problem).rejects.toThrow(DelegateConfigNeeded);

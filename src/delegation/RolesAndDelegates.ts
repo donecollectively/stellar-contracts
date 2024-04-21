@@ -56,7 +56,7 @@ export type ErrorMap = Record<string, string[]>;
  * return type for strategy's validateScriptParams()
  * @internal
  **/
-export type strategyValidation = ErrorMap | undefined;
+export type strategyValidation = ErrorMap | undefined | void;
 
 /**
  * Captures normal details of every delegate relationship
@@ -194,11 +194,11 @@ export type RoleInfo<
 export function defineRole<
     const UUTP extends string,
     SC extends StellarContract<any>,
-    const VMv extends RoleInfo<SC, any, UUTP>["variants"]
+    const VMv extends Record<string, VariantStrategy<SC>> //& RoleInfo<SC, any, UUTP>["variants"]
 >(
     uutBaseName: UUTP,
     baseClass: stellarSubclass<SC> & any,
-    variants: VMv
+    variants:  VMv
 ): RoleInfo<SC, VMv, UUTP> {
     return {
         uutPurpose: uutBaseName,
@@ -266,9 +266,9 @@ export type PartialParamConfig<CT extends configBase> = Partial<CT>;
  * NOTE: the Type param is always inferred by defineRole()
  * @public
  **/
-export type VariantStrategy<
+export interface VariantStrategy<
     DT extends StellarContract<capoDelegateConfig & any>
-> = {
+> {
     delegateClass: stellarSubclass<DT>;
     //! it MAY provide a partial configuration to be used for parameterizing
     //  the underlying contract script, to be further customized by a delegate-selection
