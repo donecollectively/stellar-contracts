@@ -71,7 +71,7 @@ export default [
             execute({
                 sync: true,
                 commands: [
-                    " tsc  && api-extractor run --local --verbose"
+                    "set -e ; tsc && (  if [ \"$SMOKE\" != \"\" ] ; \nthen \n pnpm smoke:test ; fi ; api-extractor run --local --verbose  )"
                     // "tsc -p ./tsconfig.dts.json &&  api-extractor run --local --verbose"
                 ]
             })
