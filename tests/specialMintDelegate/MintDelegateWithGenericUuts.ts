@@ -3,6 +3,8 @@ import { BasicMintDelegate } from "../../src/minting/BasicMintDelegate";
 import { uutMintingMintDelegate } from "./uutMintingMintDelegate";
 import { Activity } from "../../dist/stellar-contracts";
 import { hasSeed } from "../../src/StellarContract";
+
+
 export class MintDelegateWithGenericUuts extends BasicMintDelegate {
     @Activity.redeemer
     activityMintingUutsAppSpecific(tcx: hasSeedUtxo, purposes: string[]) {

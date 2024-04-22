@@ -100,11 +100,11 @@ func checkpoint(s: String) -> Bool {
 func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
     // now: Time = tx.time_range.start;
-    print("hi from capo");
-
-    if (isDev) {
-        print("is dev @gen " + devGen.show() )
-    };
+    print("hi from capo" + if (isDev) {
+            " - isDev @gen " + devGen.show()
+        } else { "" }
+    );
+    print("  -- checking spend of "+ showMyTokens(ctx.get_current_input().value ));
     
     allDatumSpecificChecks: Bool = datum.switch {
         ctd : CharterToken => {
@@ -131,6 +131,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
     // however, this section allows activity-specific checks to be included, so extensions aren't painted into a corner.
     allActivitySpecificChecks : Bool = activity.switch {
         spendingDelegatedDatum => {
+            print( "  ...with activity spendingDelegatedDatum\n");
             // check that the datum is a DelegatedData variant
             isRightDatum : Bool = datum.switch{
                 DelegatedData => true,
@@ -160,6 +161,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                 delegateReturned && isRightDatum            
         },
         updatingCharter => {
+            print( "  ...with activity updatingCharter\n");
             // print("hi from updatingCharter");
 
             charterOutput : TxOutput = getCharterOutput(tx);
@@ -301,6 +303,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
         },
 
         retiringRefScript => {
+            print( "  ...with activity retiringRefScript\n");
             // the ref script is being spent:
             isSpendingRefScript : Bool = datum.switch{
                 ScriptReference => true,
@@ -317,6 +320,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
         },
 
         usingAuthority => {
+            print( "  ...with activity usingAuthority\n");
             // by definition, we're truly notUpdatingCharter(activity) 
             datum.switch {
                  // throws if bad
@@ -326,13 +330,15 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
         },
 
         updatingSettings => {
+            print( "  ...with activity updatingSettings\n");
             datum.switch {
                 SettingsData => {
                     charterDatum : CapoDatum::CharterToken = getTxCharterDatum(
                         ctx: ctx,
                         mph: mph
                     );
-                    // it requires the govAuthority to be present
+                    // it requires the govAuthority to be present 
+                    print( "❗ gov authority must be present");
                     hasGovAuthority : Bool = mustHaveGovAuthority(
                         ctx : ctx,
                         mph: mph,
@@ -362,6 +368,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
 
                     inputs: []TxInput = ctx.tx.inputs;
 
+                    print( "❗ spend delegate must validate settings");
                     spendDelegateIsValidating : Bool = 
                         spendDelegate.validatesUpdatedSettings(
                             inputs: inputs,
@@ -371,7 +378,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                             ctx: ctx
                         ).unwrap();
 
-                    // minting delegates are checking the settings
+                    print( "❗ mint delegate must validate settings");
                     mintDelegateIsValidating : Bool = 
                         mintDelegate.validatesUpdatedSettings(
                             inputs: inputs,
@@ -382,6 +389,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                         ).unwrap();
 
                     // govAuthority is checking the settings
+                    print( "❗ govDelegate might need to validate settings");
                     govDelegateMaybeValidating : Bool = 
                         govDelegate.validatesUpdatedSettings(
                             inputs: inputs,
@@ -395,6 +403,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                         };
                     checkOneInvariant : (Bool, RelativeDelegateLink) -> Bool = 
                     (ok: Bool, oneDgt: RelativeDelegateLink) -> Bool {
+                        print( "  ❗ invariant must validate settings");
                         ok && oneDgt.validatesUpdatedSettings(
                             inputs: inputs,
                             mph: mph,
@@ -404,16 +413,20 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                         ).unwrap()
                     };
                     // spendInvariants are checking the settings
+                    print( "❗ spend invariants must validate settings");
                     spendInvariantsAreValidating : Bool = spendInvariants.fold( 
                         checkOneInvariant, true
                     );
                     // mintInvariants are checking the settings
+                    print( "❗ mint invariants must validate settings");
                     mintInvariantsAreValidating : Bool = mintInvariants.fold( 
                         checkOneInvariant, true
                     );
                     // namedDelegates are checking the settings
+                    print( "❗ named delegates must validate settings");
                     namedDelegatesAreValidating : Bool = namedDelegates.fold( 
                         (ok: Bool, _, dgt: RelativeDelegateLink) -> Bool {
+                            print( "    ❗ named delegate must validate settings");
                             ok && dgt.validatesUpdatedSettings(
                                 inputs: inputs,
                                 mph: mph,
@@ -436,6 +449,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
             }
         },
         retiringSettings => {
+            print( "  ...with activity retiringSettings\n");
             error("implement me")
         },
         _ => error("unhandled activity")

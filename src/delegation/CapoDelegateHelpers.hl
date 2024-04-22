@@ -196,11 +196,11 @@ struct RelativeDelegateLink {
         v : Value = mkTv(mph, uut);
         hasDelegate : Bool = validatorHash.switch{
             Some{vh} => {
-                print(" - seek dgTkn in vh " + vh.show());
+                print("⬅️ 🔎 💁 "+uut + " expect dgTkn sent to vh " + vh.show());
                 ctx.tx.value_locked_by(vh).contains(v)
             },
             None => {
-                print( " - seek dgTkn in any outputs; no special vhash requirement");
+                print( "⬅️ 🔎 💁 "+uut + " expect dgTkn sent anywhere: "+ uut);
                 ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {
                     o.value.contains(v)
                 }).switch{
@@ -211,12 +211,12 @@ struct RelativeDelegateLink {
         };
     
         if (!hasDelegate && required) {
-            error("missing dgTkn "+ uut )
+            error("⬅️ ❌ 💁 missing dgTkn "+ uut )
         } else {
             if (hasDelegate) {
-                print("has delegate: yes")
+                print("⬅️ ✅ 💁 "+ uut)
             } else {
-                print("has delegate: returning false")
+                print("⬅️ ❌ 💁 no delegate "+ uut + "; not required; returning false")
             }
         };
         hasDelegate
