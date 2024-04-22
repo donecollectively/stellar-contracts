@@ -41,14 +41,14 @@ export abstract class StellarDelegate<
      * calls the delegate-specific DelegateAddsAuthorityToken() method,
      * with the uut found by DelegateMustFindAuthorityToken().
      *
-     * returns the token back to the contract using {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
+     * returns the token back to the contract using {@link txnReceiveAuthorityToken | txnReceiveAuthorityToken() }
      * @param tcx - transaction context
      * @public
      **/
     async txnGrantAuthority<TCX extends StellarTxnContext>(
         tcx: TCX,
         redeemer?: isActivity,
-        returnExistingDelegate: boolean = true
+        skipReturningDelegate?: "skipDelegateReturn"
     ) {
         const label = `${this.constructor.name} authority`;
         const uutxo = await this.DelegateMustFindAuthorityToken(tcx, label);
@@ -67,7 +67,7 @@ export abstract class StellarDelegate<
                 uutxo,
                 redeemer
             );
-            if (!returnExistingDelegate) return tcx2;
+            if (skipReturningDelegate) return tcx2;
             return this.txnReceiveAuthorityToken(tcx2, authorityVal, uutxo);
         } catch (error: any) {
             if (error.message.match(/input already added/)) {

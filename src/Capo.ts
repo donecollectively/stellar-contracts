@@ -141,7 +141,7 @@ export type DelegateSetupWithoutMintDelegate = {
 export type NormalDelegateSetup = {
     usingSeedUtxo?: TxInput | undefined;
     additionalMintValues?: valuesEntry[];
-    returnExistingDelegateToScript?: false;
+    skipDelegateReturn?: true;
     mintDelegateActivity: isActivity;
     // withoutMintDelegate: never
 }

@@ -1136,7 +1136,7 @@ export class DefaultCapo<
                   additionalMintValues: this.mkValuesBurningDelegateUut(
                       currentDatum.mintDelegateLink
                   ),
-                  returnExistingDelegateToScript: false, // so it can be burned without a txn imbalance
+                  skipDelegateReturn: true, // so it can be burned without a txn imbalance
               } as NormalDelegateSetup);
 
         debugger;
@@ -1220,11 +1220,9 @@ export class DefaultCapo<
                     : this.mkValuesBurningDelegateUut(
                           currentDatum.spendDelegateLink
                       ),
-                returnExistingDelegateToScript: delegateInfo.forcedUpdate
-                    ? // the minter won't require the old delegate to be burned
-                      // so it can be burned without a txn imbalance
-                      false
-                    : undefined,
+                // the minter won't require the old delegate to be burned,
+                //  ... so it can be burned without a txn imbalance:
+                skipDelegateReturn: delegateInfo.forcedUpdate
             },
         };
         const tcx2 = await this.txnMintingUuts(
@@ -1252,7 +1250,7 @@ export class DefaultCapo<
                       seedIndex: tcxWithSeed.state.seedUtxo.outputId.utxoIdx,
                       purpose: "spendDgt",
                   }),
-                  false
+                  "skipDelegateReturn"
               );
         const tcx2b = await newSpendDelegate.delegate.txnReceiveAuthorityToken(
             tcx2a,
@@ -1545,7 +1543,7 @@ export class DefaultCapo<
             omitMintDelegate = false,
             mintDelegateActivity,
             specialMinterActivity,
-            returnExistingDelegateToScript = true,
+            skipDelegateReturn,
         } =
             //@ts-expect-error accessing the intersection type
             options.withoutMintDelegate || options;
@@ -1607,7 +1605,7 @@ export class DefaultCapo<
             [...mkUutValuesEntries(tcx.state.uuts), ...additionalMintValues],
             mintDelegate,
             mintDelegateActivity,
-            returnExistingDelegateToScript
+            skipDelegateReturn
         );
         console.log(
             "    🐞🐞 @end of txnMintingUuts",

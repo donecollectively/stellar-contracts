@@ -57,7 +57,7 @@ import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
     async txnGrantAuthority<TCX extends StellarTxnContext>(
         tcx: TCX,
         redeemer: isActivity,
-        returnExistingDelegate : boolean = true
+        skipReturningDelegate? :  "skipDelegateReturn"
     ) {
         if (!redeemer)
             throw new Error(
@@ -67,7 +67,7 @@ import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
         const {capo} = this.configIn!;
         await capo.txnAttachScriptOrRefScript(tcx, this.compiledScript);
 
-        return super.txnGrantAuthority(tcx, redeemer, returnExistingDelegate);
+        return super.txnGrantAuthority(tcx, redeemer, skipReturningDelegate);
     }
 
     // moved to to super

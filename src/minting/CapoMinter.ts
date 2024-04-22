@@ -410,7 +410,7 @@ implements MinterBaseMethods
         vEntries: valuesEntry[],
         mintDelegate: BasicMintDelegate,
         mintDgtRedeemer: isActivity,
-        returnExistingDelegate: boolean = true
+        skipReturningDelegate? : "skipDelegateReturn"
     ): Promise<TCX> {
         const { capo } = this.configIn!;
         const md = mintDelegate || (await capo.getMintDelegate());
@@ -418,7 +418,7 @@ implements MinterBaseMethods
         const tcx2 = await md.txnGrantAuthority(
             tcx1,
             mintDgtRedeemer,
-            returnExistingDelegate
+            skipReturningDelegate
         );
 
         return this.attachRefScript(
