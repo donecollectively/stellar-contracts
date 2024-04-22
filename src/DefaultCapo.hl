@@ -97,6 +97,27 @@ func checkpoint(s: String) -> Bool {
     true
 }
 
+func showMyTokens(v: Value) -> String{
+    others : String = Value::from_map(
+            v.get_assets().to_map().filter( (someMph: MintingPolicyHash, _) -> Bool {
+            mph != someMph
+        })
+    ).show();
+    ada : String = (
+        (
+            (0.0 + v.get_lovelace()) / 1_000.0
+        ).round() / 1_000.0
+    ).show() + " ADA";
+    mine : String = v.get_policy(mph).fold[[]String]( (previous: []String, tokenName: ByteArray, c: Int) -> []String {
+         []String{
+            c.show() + "×💴 " + tokenName.decode_utf8()
+        } + previous
+    }, []String{}).join(" + ");
+    // v.assets()
+
+    mine + " + " + ada  + others
+}
+
 func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
     // now: Time = tx.time_range.start;
