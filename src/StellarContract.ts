@@ -1,3 +1,4 @@
+import { statSync } from "fs";
 import {
     Address,
     Assets,
@@ -1861,8 +1862,24 @@ export class StellarContract<
             );
             const { srcFile = "‹unknown path to module›" } =
                 (errorModule as any) || {};
+            let moreInfo: string = "";
+            try {
+                statSync(srcFile).isFile();
+            } catch (e) {
+                const indent = " ".repeat(6);
+                moreInfo =
+                    `\n${indent}WARNING: the error was found in a Helios file that couldn't be resolved in your project\n` +
+                    `${indent}  ... this can be caused by not providing correct types in a module specialization,\n` +
+                    `${indent}  ... or if your module definition doesn't include a correct path to your helios file\n` +
+                    `${indent}  ... (possibly in mkHeliosModule(heliosCode, \n${indent}    "${srcFile}"\n${indent})\n`
+
+
+                // todo: detect when the error is cause because a module in our lib has a cross-dependency
+                // ... on a  module override provided by the client code.
+            }
+
             const [sl, sc, el, ec] = e.getFilePos();
-            const t = new Error("");
+            const t = new Error(moreInfo);
             const modifiedStack = t.stack!.split("\n").slice(1).join("\n");
             const additionalErrors = e.src.errors
                 .slice(1)
@@ -1870,7 +1887,7 @@ export class StellarContract<
             const addlErrorText = additionalErrors.length
                 ? ["", ...additionalErrors, "       v"].join("\n")
                 : "";
-            t.message = this.constructor.name + ":" + e.message + addlErrorText;
+            t.message = this.constructor.name + ":" + e.message + addlErrorText + moreInfo;
 
             t.stack =
                 `${this.constructor.name}: ${
