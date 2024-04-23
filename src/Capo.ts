@@ -1070,7 +1070,10 @@ export abstract class Capo<
 
     #_delegateCache: {
         [roleName: string]: {
-            [delegateLink: string]: StellarDelegate<any>;
+            [delegateLink: string]: {
+                strategyName: string;
+                delegate: StellarDelegate<any>;
+            }
         };
     } = {};
 
@@ -1096,8 +1099,9 @@ export abstract class Capo<
         const roleCache = cache[roleName];
         const cachedRole = roleCache[cacheKey];
         if (cachedRole) {
-            console.log(`  ✅ 💁 ${roleName} - from cache `);
-            return cachedRole as DelegateType;
+            const {strategyName, delegate} = cachedRole
+            console.log(`  ✅ 💁 ${roleName}:${strategyName} - from cache `);
+            return delegate as DelegateType;
         }
         console.log(`   🔎delegate 💁 ${roleName}`)
         // console.log(`   ----- delegate '${roleName}' cache key `, cacheKey);
@@ -1177,9 +1181,11 @@ export abstract class Capo<
             );
         }
         console.log(
-            `   ✅ 💁 ${roleName} (now cached) `  // +Debug info: +` @ key = ${cacheKey}`
+            `   ✅ 💁 ${roleName}:${strategyName} (now cached) `  // +Debug info: +` @ key = ${cacheKey}`
         );
-        roleCache[cacheKey] = delegate;
+        roleCache[cacheKey] = { 
+            delegate, strategyName
+        };
         return delegate;
     }
 

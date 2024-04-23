@@ -29,7 +29,8 @@ import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
  *
  * shifts detailed minting policy out of the minter and into the delegate.
  * @public
- **/export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig> {
+ **/
+export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig> {
     static currentRev = 1n;
 
     delegateName = "mintDelegate"

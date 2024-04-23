@@ -610,6 +610,27 @@ export class DefaultCapo<
         );
     }
 
+        /**
+     * Finds a contract's named delegate, given the expected delegateName.
+     * @remarks
+     * @public
+     **/
+    async getNamedDelegate(delegateName: string) : Promise<
+        ContractBasedDelegate<any>
+    > {
+        const charterDatum = await this.findCharterDatum();
+
+        const foundDelegateLink = charterDatum.namedDelegates[delegateName];
+        if (!foundDelegateLink) {
+            throw new Error(`${this.constructor.name}: no namedDelegate found: ${delegateName}`);
+        }
+        return this.connectDelegateWithLink(
+            "namedDelegate",
+            foundDelegateLink
+        ) as any
+    }
+
+
     async getGovDelegate() {
         const charterDatum = await this.findCharterDatum();
 

@@ -76,7 +76,7 @@ enum MintingActivity {
 //! The minting delegate can also be used as a general spending 
 // delegate (this is the default arrangement during the Capo 
 // charter mint).  These activities are required by the Capo when
-// spending 
+// spending utxos having DelegatedDatum type.
 enum SpendingActivity {
     // application can replace the placeholder, which is only here to 
     // avoid a syntax error in the unspecialized version
