@@ -234,7 +234,7 @@ func validateUutMinting(
     mph: MintingPolicyHash,
     seedTxId : TxId, seedIdx : Int, 
     purposes: []String,     
-    mkTokenName: (String) -> String,
+    mkTokenName: (String) -> String = mkUutTnFactory(seedTxId, seedIdx),
     bootstrapCharter:Value = Value::new(AssetClass::ADA, 0),
     otherMintedValue: Value = Value::new(AssetClass::ADA, 0),
     needsMintDelegateApproval: Bool = true,
@@ -329,7 +329,7 @@ func validateUutMinting(
         // "   ... diff = \n" + (expectedValue - valueMinted).show()
     );
     print(" ✅ validateUutMinting:  ok!");
-    
+
     delegateApproval && expectationsMet &&
     hasSeedUtxo(tx, seedTxId, seedIdx
         //, "UUT "+purposes.join("+")
