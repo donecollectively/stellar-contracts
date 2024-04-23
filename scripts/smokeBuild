@@ -3,15 +3,25 @@ set -e
 tsc &
 typecheck=$!
 
+# make a temp file
+tmpfile=$(mktemp /tmp/XXXXXX.ts)
+
 if [ "$SMOKE" != "" ]; then {
     pnpm smoke:test &
     smokeTest=$!
-    api-extractor run --local --verbose &
+    api-extractor run --local --verbose > $tmpfile 2>&1  &
     docs=$!
-    wait $smokeTest
+    if wait $smokeTest ; then {
+        echo "Smoke test passed"
+        cat $tmpfile
+    } else {
+        echo "Smoke test failed"
+        # cat $tmpfile
+        exit 1
+    } fi
 
 } else {
-    api-extractor run --local --verbose &
+    api-extractor run --local --verbose  &
     docs=$!
 } fi
 
