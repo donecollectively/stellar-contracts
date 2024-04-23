@@ -4,12 +4,16 @@ module CapoMintHelpers
 import {
     mustFindInputRedeemer,
     mkTv,
+    TODO,
     tvCharter
 } from StellarHeliosHelpers
 
 import {
     getTxCharterDatum,
     getRefCharterDatum,
+    CapoTx,
+    mkCapoTx,
+    DelegateInput,
     CapoDatum, 
     CapoActivity
 } from CapoHelpers
@@ -17,6 +21,7 @@ import {
 
 import {
     RelativeDelegateLink,
+    AbstractDelegateActivitiesEnum,
     DelegateLifecycleActivity
 } from CapoDelegateHelpers
 
@@ -121,23 +126,66 @@ func requiresMintDelegateApproval(
     ctx: ScriptContext, 
     mph: MintingPolicyHash
 ) -> Bool {
-    CapoDatum::CharterToken {
-        /*spendDgt*/ _,  
-        /* spendInvariants */ _,
-        /* settings */ _,
-        /* namedDelegates */ _,
-        mintDgt, 
-        /* mintInvariants */ _, 
-        /* govAuthority */ _
-    } = getRefCharterDatum(ctx, mph);
-
+    capoTx : CapoTx = mkCapoTx(ctx, mph).withCharterRef();
     print("Minter requiring mint delegate, spent with a minting-type activity/redeemer");
 
-    requiresDelegateAuthorizingMint(
-        delegateLink: mintDgt, 
-        mph: mph,
-        ctx: ctx
-    )
+    if (true) {
+        // todo: enforces minting invariants.
+        TODO("must enforce minting invariants")
+    }; 
+
+    mintDgtInput : DelegateInput = capoTx.requiresMintDelegateInput();
+    activity : AbstractDelegateActivitiesEnum = mintDgtInput.genericDelegateActivity();
+
+
+    // TODO restore this: mintDgtInput.requiresValidOutput() && 
+    activity.switch {
+        SpendingActivities => error("DelegateInput::SpendingActivity can't mint!"),
+        CapoLifecycleActivities{CLA} => CLA.switch {
+            CreatingDelegate => {
+                print("  -- minter consulting mint-delegate for CapoLifecycle (delegate-creation)");
+
+                mintDgtInput.requiresValidOutput() && 
+                true
+            }
+            // _ => // ---- left as a compile-time error if any further variants are added 
+        },
+        DelegateLifecycleActivities{DLA} => {
+            DLA.switch {
+                ReplacingMe => {
+                    TODO("the new delegate should be minted under CapoLifecycleActivities::CreatingDelegate, then installed \n  ...without the minter's involvement, using its DelegateLifecycle::Installing activity");
+                    // assert(false, "TODO: replacing the mint delegate shouldn't ever happen while minting a replacement");
+                    print("  -- TEMPORARY: the mint delegate is being replaced");
+                    true
+                },
+                Retiring => error("DelegateLifecycleActivity::Retiring can't mint!"),
+                ValidatingSettings => error("DelegateLifecycleActivity::ValidatingSettings can't mint!")
+            }
+        },
+        MintingActivities => {
+            print("  -- application-specific minting activity, by authority of the mint delegate");
+            mintDgtInput.requiresValidOutput() && 
+                        true
+        }
+    }
+
+    // CapoDatum::CharterToken {
+    //     /*spendDgt*/ _,  
+    //     /* spendInvariants */ _,
+    //     /* settings */ _,
+    //     /* namedDelegates */ _,
+    //     mintDgt, 
+    //     /* mintInvariants */ _, 
+    //     /* govAuthority */ _
+    // } = getRefCharterDatum(ctx, mph);
+
+
+
+    // requiresDelegateAuthorizingMint(
+    //     delegateLink: mintDgt, 
+    //     mph: mph,
+    //     ctx: ctx
+    // )
 }
 
 //! pre-computes the hash-based suffix for a token name, returning
@@ -301,12 +349,12 @@ func validateUutMinting(
     // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);
     if (true) {
         actualMint.for_each( (b : ByteArray, i: Int) -> {
-            print( "actual: " + b.decode_utf8() + " " + i.show() )
+            print( "    ℹ️ 🐞 actual: " + b.decode_utf8() + " " + i.show() )
         });
 
         print("uut-minting seed: " + seedTxId.show() + "🔹#" + seedIdx.show());
         expectedValue.get_policy(mph).for_each( (b : ByteArray, i: Int) -> {
-            print( "expected: " + b.decode_utf8() + " " + i.show() )
+            print( "    ℹ️ 🐞 expected: " + b.decode_utf8() + " " + i.show() )
         })
     };
 

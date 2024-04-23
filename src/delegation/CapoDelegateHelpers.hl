@@ -84,6 +84,11 @@ struct RelativeDelegateLink {
             mustFindInputRedeemer(ctx, input)
         )
     }
+
+    func getTv(self, mph: MintingPolicyHash) -> Value {
+        mkTv(mph, self.uutName)
+    }
+    
     func validatesUpdatedSettings(self,
         inputs: []TxInput,
         validatorHashRequired: Bool,
@@ -160,12 +165,12 @@ struct RelativeDelegateLink {
                     i.value.contains(expectedUut)
                 }).switch {
                     foundGood: Some => {
-                        print ("  ✅ ➡️  💁 "+ self.uutName + " found input for delegate link" );
+                        print ("  ✅ ➡️  💁 "+ self.uutName + " found input dgTkn" );
                         foundGood
                     },
                     /* notFound: */ None => {
                         if (required) {
-                            error("_❌ ➡️  💁 missing required input for delegate link (at script addr) " + self.uutName)
+                            error("_❌ ➡️  💁 missing required input with dgTkn (at script addr) " + self.uutName)
                         };
                         print (" <- ❌  ➡️ 💁 no input for delegate link" + self.uutName + "\n  - not required; returning false");
                         Option[TxInput]::None
@@ -196,11 +201,11 @@ struct RelativeDelegateLink {
         v : Value = mkTv(mph, uut);
         hasDelegate : Bool = validatorHash.switch{
             Some{vh} => {
-                print("⬅️ 🔎 💁 "+uut + " expect dgTkn sent to vh " + vh.show());
+                print(" ⬅️ 🔎 💁 "+uut + " expect dgTkn sent to vh " + vh.show());
                 ctx.tx.value_locked_by(vh).contains(v)
             },
             None => {
-                print( "⬅️ 🔎 💁 "+uut + " expect dgTkn sent anywhere: "+ uut);
+                print( " ⬅️ 🔎 💁 "+uut + " expect dgTkn sent anywhere: "+ uut);
                 ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {
                     o.value.contains(v)
                 }).switch{
@@ -214,9 +219,9 @@ struct RelativeDelegateLink {
             error("⬅️ ❌ 💁 missing dgTkn "+ uut )
         } else {
             if (hasDelegate) {
-                print("⬅️ ✅ 💁 "+ uut)
+                print(" ⬅️ ✅ 💁 "+ uut)
             } else {
-                print("⬅️ ❌ 💁 no delegate "+ uut + "; not required; returning false")
+                print(" ⬅️ ❌ 💁 no delegate "+ uut + "; not required; returning false")
             }
         };
         hasDelegate
@@ -241,9 +246,13 @@ enum BASE_DELEGATE_Datum {
     }
 }
 
-func mustReturnValueToScript(value : Value, ctx : ScriptContext) -> Bool {
+func mustReturnValueToScript(
+    value : Value, 
+    ctx : ScriptContext,
+    tokenName: ByteArray = #
+) -> Bool {
     if (!returnsValueToScript( value, ctx)) {
-        error("authZor not returned")
+        error(" ❌ dgTkn not returned: " + tokenName.decode_utf8())
         // error("the authZor token MUST be returned")
     };
     true

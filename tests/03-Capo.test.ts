@@ -130,7 +130,7 @@ describe("Capo", async () => {
                     "already configured"
                 );
             });
-            it("creates an authZor UUT for the govAuthority delegate, sent to user wallet", async (context: localTC) => {
+            it("creates a dgTkn UUT for the govAuthority delegate, sent to user wallet", async (context: localTC) => {
                 const {
                     h,
                     h: { network, actors, delay, state },

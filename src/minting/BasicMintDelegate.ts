@@ -34,6 +34,8 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
     static currentRev = 1n;
 
     delegateName = "mintDelegate"
+    
+    // uses the basic delegate script, plus the isMintDelegate param
 
     static get defaultParams() {
         return {

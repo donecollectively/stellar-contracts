@@ -46,7 +46,7 @@ import {
 
 
 func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) -> Bool {
-    print("hi from delegate " + delegateName +
+    print(" 🚥❓delegate: " + delegateName +
         if (isDev) {
             " - is dev @gen " + devGen.show()
         } else { "" }
@@ -79,7 +79,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                         );
                     
                         print("checking ReplacingMe on "+purpose+": "+dd.tn.decode_utf8());
-                        // the charter update itself will check that there's a valid delegate output for the new delegate
+                        // THE CHARTER UPDATE ITSELF WILL CHECK THAT THERE'S A VALID DELEGATE OUTPUT FOR THE NEW DELEGATE
                         updatingCharter: Int = 1;
                         mintsUutForCharterUsingRedeemerIndex(
                             charterRedeemerIndex: updatingCharter,
@@ -138,9 +138,13 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                         "CapoLifecycleActivities can't be triggered on non-minting delegate "+ delegateName
                     );
                     CLA.switch {
-                        // minting a new token
+                        // the mint delegate is validating a mint that CREATES A NEW DELEGATE
+                        // FOR APPLICATION-SPECIFIC PURPOSES. This can affect the structure of the Capo
+                        // it defers to the specialized minting delegate, if any; the unspecialized mint delegate
+                        // rejects all delegate-creation.
                         CreatingDelegate{seedTxn,seedIndex,purpose} => {
-                            //🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞 !!!!!!!!!!!!!!!!!!! todo: fix this
+                            print("🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞 !!!!!!!!!!!!!!!!!!! todo: fix this");
+                            print("🐞 🐞🐞 it should ouput the new delegate token to the Capo as a PendingDelegate datum");
                                 true || validateUutMinting(
                                     ctx: ctx, 
                                     mph: dd.mph,
@@ -159,7 +163,12 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                         } else { false }
                 },
                 _ => true
-            } && activity.additionalDelegateValidation(isD, ctx)
+            } && if (activity.additionalDelegateValidation(isD, ctx)) {
+                print ("delegate: "+ delegateName + ": additionalDelegateValidation ok!");
+                true
+            } else {
+                error("delegate: "+ delegateName + ": additionalDelegateValidation returned false (without any thrown error)")
+            }
         },
         _ => {
             invalidRedeemer = () -> {  error("wrong Actvy/dtm") }; ///Activity custom datum must not use Activities reserved for IsDelegation datum.") };
@@ -171,7 +180,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
         }
     };
 
-    print ("delegate: "+ delegateName + ": ok!");
+    print ("🚥🟢 delegate: "+ delegateName + ": ok!");
 
     result
 }

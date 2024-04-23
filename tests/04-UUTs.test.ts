@@ -200,7 +200,7 @@ describe("Capo", async () => {
             ).rejects.toThrow(/Missing charter in required ref_inputs/);
         });
 
-        smokeTest("fails when the mint-delegate authZor isn't returned", async (context: localTC) => {
+        smokeTest("fails when the mint-delegate dgTkn isn't returned", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
             const { tina, tom, tracy } = actors;
@@ -232,7 +232,7 @@ describe("Capo", async () => {
                 capo.submit(tcx1b, {
                     signers: [tom.address, tina.address, tracy.address],
                 })
-            ).rejects.toThrow(/authZor not returned/);
+            ).rejects.toThrow(/dgTkn not returned/);
         });
 
         it("can create a UUT and send it anywhere", async (context: localTC) => {

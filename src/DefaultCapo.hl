@@ -18,6 +18,7 @@ import {
 } from CapoDelegateHelpers
 
 import {
+    TODO,
     mustFindInputRedeemer,
     outputAndDatum,
     tvCharter,
@@ -52,7 +53,7 @@ func getCharterOutput(tx: Tx) -> TxOutput {
         (txo : TxOutput) -> Bool {
             txo.value >= charterTokenValue
         }
-    ).switch{
+    ).switch {
         None => error("this could only happen if the charter token is burned."),
         Some{o} => o
     }
@@ -151,6 +152,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
     // the normal case for validation is to use CapoDatum-specific checks.  
     // however, this section allows activity-specific checks to be included, so extensions aren't painted into a corner.
     allActivitySpecificChecks : Bool = activity.switch {
+        // checks for higher-frequency cases first
         spendingDelegatedDatum => {
             print( "  ...with activity spendingDelegatedDatum\n");
             // check that the datum is a DelegatedData variant
@@ -183,7 +185,6 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
         },
         updatingCharter => {
             print( "  ...with activity updatingCharter\n");
-            // print("hi from updatingCharter");
 
             charterOutput : TxOutput = getCharterOutput(tx);
             newCtDatum = CapoDatum::CharterToken::from_data( 
@@ -267,8 +268,8 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                             CapoLifecycleActivities{CLA} => CLA.switch {
                                 CreatingDelegate => {
                                     print("TEMPORARY: allowing delegate creation while **updatingCharter**");
-                                    print("TODO: move delegate-creation to be separate from updatingCharter");
-                                    print("TODO: ?? use capo ActivatingXxxxDelegate activity when adopting delegate");
+                                    TODO("move delegate-creation to be separate from updatingCharter");
+                                    TODO(" ?? use capo ActivatingXxxxDelegate activity when adopting delegate");
 
                                     mintDelegate.hasValidOutput(mph, ctx)
                                 },
@@ -309,7 +310,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                                // unchanged named delegate must not be included in the tx
                                 requiresNoDelegateInput(dgt, mph, ctx)
                             } else {
-                                print("🟥 TODO: the old named delegate must be retired, or be force-replaced (in a different activity?)");
+                                TODO("the old named delegate must be retired, or be force-replaced (in a different activity?)");
                                 //  the new one has to go to the right place
                                 dgt.hasValidOutput(mph, ctx)
                             }
@@ -486,6 +487,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
              mph.serialize() /* never */ == datum.serialize(), 
         "unreachable"
     ); 
+    print("🚥🟢 Capo validator: ok!");
 
     allDatumSpecificChecks && 
     allActivitySpecificChecks

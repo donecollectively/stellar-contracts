@@ -57,10 +57,10 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
     mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
     value_minted: Value = tx.minted;
     assert(rev.serialize() == rev.serialize(), "impossible!");
-    print("hi from minter");
+    print(" 🚥❓ Capo minter: " + ctx.get_current_minting_policy_hash().show());
 
     ok : Bool = r.switch {
-        charter: mintingCharter => {       
+        charter: mintingCharter => {
             charterVal : Value = mkTv(mph, "charter");
 
             // these must be sorted by length first, then lexicographically
@@ -161,10 +161,6 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
         },
 
         mintWithDelegateAuthorizing => {
-            if (true) {
-                // todo: enforces minting invariants.
-                print("------- TODO: must enforce minting invariants")
-            }; 
             requiresMintDelegateApproval(ctx, mph)
         },
 
@@ -241,7 +237,7 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
     };
 
     // print("defaultMinter: minting value: " + value_minted.show());
-
+    print("🚥🟢 Capo minter: ok!");
     ok
 }
 

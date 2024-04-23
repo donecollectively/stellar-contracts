@@ -3,11 +3,13 @@ module CapoHelpers
 import {
     mkTv,
     tvCharter,
+    mustFindInputRedeemer,
     outputAndDatum
 } from StellarHeliosHelpers
 
 import { 
-    RelativeDelegateLink
+    RelativeDelegateLink,
+    AbstractDelegateActivitiesEnum
 } from CapoDelegateHelpers
 
 // field-names style of struct, arbitrary & extensible
@@ -17,6 +19,7 @@ struct AnyData {
     id: String "@id"  // same as the UUT name for this data
     // can have other fields; receiver will interpret their target types.
 }
+
 
 enum CapoDatum {
     CharterToken {
@@ -49,6 +52,7 @@ enum CapoDatum {
             self.serialize() != ctx.serialize() &&
             self.serialize() != mph.serialize(), "never thrown"
         );
+        assert(false, "unused?"); // see standalone getRefCharterDatum()
         
         chVal : Value = tvCharter(mph);
         hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
@@ -143,6 +147,7 @@ func getRefCharterUtxo(ctx: ScriptContext, mph : MintingPolicyHash) -> TxInput {
     print("getting ref_input for charter");
     charterUtxo : TxInput = ctx.tx.ref_inputs.find_safe(hasCharter).switch{
         Some{ch} => ch,
+        //!!! todo adjust this message: Missing required charter in ref_inputs
         None => error("Missing charter in required ref_inputs")
     };
 
@@ -179,7 +184,7 @@ func getTxCharterDatum(
         charterUtxo.datum.get_inline_data() 
     );
 
-    ctd    
+    ctd
 }
 
 func mustHaveGovAuthority(
@@ -189,4 +194,177 @@ func mustHaveGovAuthority(
 ) -> Bool {
     charterDatum.govAuthorityLink.hasValidOutput(mph, ctx)
 }
+
+struct DelegateInput {
+    link: RelativeDelegateLink
+    input: TxInput
+    ctx: ScriptContext
+    mph: MintingPolicyHash
+
+    func genericDelegateActivity(self) -> AbstractDelegateActivitiesEnum {
+        AbstractDelegateActivitiesEnum::from_data(
+            mustFindInputRedeemer(self.ctx, self.input)
+        )
+    }
+    func requiresValidOutput(self) -> Bool {
+        self.link.hasValidOutput(
+            mph: self.mph, 
+            ctx: self.ctx,
+            required: true
+          )
+    }
+
+    func getActivity[ACTIVITY](self) -> ACTIVITY {
+        ACTIVITY::from_data(
+            mustFindInputRedeemer(self.ctx, self.input)
+        )
+    }
+
+    func getDatum[DATUM](self) -> DATUM {
+        DATUM::from_data(
+            self.input.datum.get_inline_data()
+        )
+    }
+}
+
+// func genericDelegateActivity(
+//     link: RelativeDelegateLink,
+//     input: TxInput
+// ) -> DelegateActivity[AbstractDelegateActivitiesEnum] {
+//     DelegateActivity[AbstractDelegateActivitiesEnum]::new{
+//         link,
+//         input,
+//         // datum: Option[DATUM]::None,
+//         activity: Option[AbstractDelegateActivitiesEnum]::None
+//     }
+// }
+
+enum CapoCharter {
+    Unk
+    Ref { datum: CapoDatum::CharterToken }
+    Input { 
+        utxo: TxInput 
+        datum: CapoDatum::CharterToken 
+    }
+}    
+
+struct CapoTx {
+    ctx: ScriptContext
+    mph: MintingPolicyHash
+    charter: CapoCharter
+
+    func resolveCharterDatum(self) -> CapoDatum::CharterToken {
+        self.charter.switch {
+            Ref{datum} => datum,
+            Input{_, datum} => datum,
+            _ => error("CapoTx.resolveCharterDatum(): unknown charter strategy; use result of withCharterInput(), withCharterRef(), or needsCharter() to resolve charter datum first")
+        }
+    }
+
+    func requiresNamedDelegateInput(self, dgtName: String) -> DelegateInput {
+        self.resolveCharterDatum().namedDelegates.get_safe(dgtName).switch{
+            None => error("missing required delegate with name: " + dgtName),
+
+            Some{dgtLink} => {
+                self.requiresDelegateInput(dgtLink)
+            }
+        }
+    }        
+
+    func requiresDelegateInput(self, dgtLink: RelativeDelegateLink) -> DelegateInput {
+        dgtLink.hasDelegateInput(
+            inputs: self.ctx.tx.inputs, 
+            mph: self.mph,
+            required: true
+        ).switch {
+            None => error("unreachable"),
+            Some{input} => {
+                DelegateInput{
+                    dgtLink,
+                    input,
+                    self.ctx,
+                    self.mph
+                }
+            }
+        }
+    }
+    
+    func requiresMintDelegateInput(self) -> DelegateInput {
+        dgtLink : RelativeDelegateLink = self.resolveCharterDatum().mintDelegateLink;
+        self.requiresDelegateInput(dgtLink)
+    }
+    func requiresSpendDelegateInput(self) -> DelegateInput {
+        dgtLink : RelativeDelegateLink = self.resolveCharterDatum().spendDelegateLink;
+        self.requiresDelegateInput(dgtLink)
+    }
+
+    func needsCharter(self) -> CapoTx {
+        self.charter.switch {
+            Ref => self,
+            Input => self,
+            Unk => {
+                chVal : Value = tvCharter(self.mph);
+                hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
+
+                self.ctx.tx.ref_inputs.find_safe(hasCharter).switch{
+                    None => {
+                        print("CapoTx needsCharter(): no charter ref; must be in inputs...");
+
+                        self.withCharterInput()
+                    },
+                    Some{charterUtxo} => {
+                        print("CapoTx needsCharter(): found charter ref");
+
+                        datum : CapoDatum::CharterToken = CapoDatum::CharterToken::from_data( 
+                            charterUtxo.datum.get_inline_data() 
+                        );
+                        self.copy(charter: CapoCharter::Ref{datum})
+                    }
+                }
+            },
+            _ => self
+        }
+    }
+
+    func withCharterInput(self) -> CapoTx {
+        self.charter.switch {
+            Input => self,
+            Ref => error("CapoTx.withCharterInput(): charter is from ref!"),
+            Unk => {
+                chVal : Value = tvCharter(self.mph);
+                hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
+        
+                print("CapoTx finding charter in inputs");
+                charterUtxo: TxInput = self.ctx.tx.inputs.find_safe(hasCharter).switch{
+                    Some{ch} => ch,
+                    None => error("Missing required charter input")
+                };
+                datum : CapoDatum::CharterToken = CapoDatum::CharterToken::from_data( 
+                    charterUtxo.datum.get_inline_data() 
+                );
+                // datum : CapoDatum::CharterToken = getTxCharterDatum(self.ctx, self.mph);
+                self.copy(charter: CapoCharter::Input{charterUtxo, datum})
+            }
+        }
+    }
+
+    func withCharterRef(self) -> CapoTx {
+        self.charter.switch {
+            Ref => self,
+            Input => error("CapoTx.withCharterRef(): charter is from inputs!"),
+            Unk => {
+                charter : CapoDatum::CharterToken = getRefCharterDatum(self.ctx, self.mph);
+
+                self.copy(charter: CapoCharter::Ref{charter})
+            }
+        }
+    }
+}
+
+func mkCapoTx(ctx: ScriptContext, mph: MintingPolicyHash) -> CapoTx {
+    CapoTx{
+        ctx, mph, CapoCharter::Unk
+    }
+}
+
 

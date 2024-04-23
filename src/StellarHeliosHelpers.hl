@@ -24,6 +24,10 @@ func didSignInCtx(ctx: ScriptContext) -> (a: Address) -> Bool {
     }
 }
 
+func TODO(task: String) -> () {
+    print("  🟥    😳💦💦💦💦💦  TODO: "+ task)
+}
+
 //! represents the indicated token name as a Value
 func mkTv(
     mph: MintingPolicyHash, 

@@ -165,7 +165,7 @@ describe("Capo", async () => {
             expect(didntBurnBecauseMocked).toHaveBeenCalledTimes(1);
 
             await expect(capo.submit(tcx2)).rejects.toThrow(
-                /missing dgTkn mintDgt-/
+                /missing required input .*script addr.* mintDgt-/
             );
         });
 

@@ -64,6 +64,21 @@ enum DelegateDatum {
         true
     }
 }
+enum MintingActivity {
+    // application can replace the placeholder, which is only here to 
+    // avoid a syntax error in the unspecialized version
+    mintingUuts {  
+        seedTxn: TxId
+        seedIndex: Int
+        purposes: []String
+    }
+}
+
+enum SpendingActivity {
+    // application can replace the placeholder, which is only here to 
+    // avoid a syntax error in the unspecialized version
+    _placeholder  
+}
 
 enum DelegateActivity {
     CapoLifecycleActivities {
@@ -72,10 +87,11 @@ enum DelegateActivity {
     DelegateLifecycleActivities {
         activity: DelegateLifecycleActivity
     }
-    mintingUuts {  
-        seedTxn: TxId
-        seedIndex: Int
-        purposes: []String
+    SpendingActivities {
+        activity: SpendingActivity
+    }
+    MintingActivities {
+        activity: MintingActivity
     }
 
     // this function gives a general-purpose implementation of checking for 
@@ -85,14 +101,22 @@ enum DelegateActivity {
         mdd: DelegateDatum,
         ctx: ScriptContext
     ) -> Bool {
-        DelegateActivity::mintingUuts{sTxId, sIdx, purposes} = self;
+        DelegateActivity::MintingActivities{
+            MintingActivity::mintingUuts{
+                sTxId, sIdx, purposes
+        }   } = self;
+
         DelegateDatum::IsDelegation{dd} = mdd;
-        returnsAuthzToken : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);
+        returnsAuthzToken : Bool = mustReturnValueToScript(
+            tvAuthorityToken(dd), 
+            ctx,
+            dd.tn
+        );
 
         o : []TxOutput = ctx.get_cont_outputs();
         if (o.length != 1) { error("single utxo only") };
 
-        print ("in uutMintingDelegate");
+        print (" - in uutMintingDelegate");
         isOk : Bool = returnsAuthzToken && 
 
         unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize(), ctx) &&
@@ -138,9 +162,11 @@ enum DelegateActivity {
                     _ => error("test other delegate lifecycle activities?")
                 }
             },
-
-            // special for test environment
-            mintingUuts => self.genericUutMinting(priorMddd, ctx),
+            SpendingActivities => false,
+            MintingActivities{activity} => activity.switch{
+                mintingUuts => self.genericUutMinting(priorMddd, ctx)
+                // _ => // leave as compile-time problem
+            },
 
             _ => false
         } || ctx.tx.serialize() != priorMddd.serialize()

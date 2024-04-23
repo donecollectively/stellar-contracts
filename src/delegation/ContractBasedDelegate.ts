@@ -199,6 +199,7 @@ export abstract class ContractBasedDelegate<
         capoLifecycleActivityName: "CreatingDelegate" | "ActivatingDelegate",
         ...args: any[]
     ) {
+        //!!! TODO use a seed: hasSeed arg here?
         const TopEnum = this.mustGetActivity("CapoLifecycleActivities");
         const { CapoLifecycleActivity } = this.onChainTypes;
         const NestedVariant = this.mustGetEnumVariant(

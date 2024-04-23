@@ -8,16 +8,9 @@ import { hasSeed } from "../../src/StellarContract";
 export class MintDelegateWithGenericUuts extends BasicMintDelegate {
     @Activity.redeemer
     activityMintingUutsAppSpecific(tcx: hasSeedUtxo, purposes: string[]) {
-        const mintingUuts = this.mustGetActivity("mintingUuts");
-
         const seed = tcx.getSeedUtxoDetails();
-        const t = new mintingUuts(
-            seed.txId,
-            seed.idx,
-            purposes
-        );
 
-        return { redeemer: t._toUplcData() };
+        return  this.mkMintingActivity("mintingUuts", seed.txId, seed.idx, purposes);
     }
 
     @Activity.redeemer
