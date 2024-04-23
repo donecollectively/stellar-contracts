@@ -1,0 +1,26 @@
+#!/bin/bash
+set -e
+tsc &
+typecheck=$!
+
+if [ "$SMOKE" != "" ]; then {
+    pnpm smoke:test &
+    smokeTest=$!
+    api-extractor run --local --verbose &
+    docs=$!
+    wait $smokeTest
+
+} else {
+    api-extractor run --local --verbose &
+    docs=$!
+} fi
+
+wait $docs
+
+if ! wait $typecheck; then {
+    echo '---------- TYPESCRIPT ERRORS --------- '
+    tsc
+    exit 1
+} fi
+
+
