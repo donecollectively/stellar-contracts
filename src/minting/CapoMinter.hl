@@ -5,7 +5,6 @@ import {
     mkUutTnFactory,
     requiresMintDelegateApproval,
     validateUutMinting, 
-    validateUutBurning,
     mintsUutForCharterUsingRedeemerIndex,
     MinterActivity
 } from CapoMintHelpers

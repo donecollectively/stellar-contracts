@@ -228,51 +228,6 @@ func mkUutTnFactory(
     }
 }
 
-func validateUutBurning(
-    ctx: ScriptContext, 
-    tns: []String
-) -> Bool {
-    tx: Tx = ctx.tx;
-    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
-    CapoDatum::CharterToken {
-        /*spendDgt*/ _,  
-        /* spendInvariants */ _,
-        /* settings */ _,
-        /* namedDelegates */ _,
-        mintDgt, 
-        /* mintInvariants */ _, 
-        /* govAuthority */ _
-    } = getRefCharterDatum(ctx, mph);
-
-    valueBurned: Value = tx.minted;
-
-    expectedBurn : Value = Value::sum(tns.map(
-        (tn: String) -> Value {
-            mkTv(mph: mph, tn: tn, count: -1)
-        }
-    ));
-    actualBurn : Map[ByteArray]Int = valueBurned.get_policy(mph);
-    hasExpectedBurn : Bool = actualBurn == expectedBurn.get_policy(mph);
-    if (!hasExpectedBurn)  {
-        // actualBurn.for_each( (b : ByteArray, i: Int) -> {
-        //     print( "actual: " + b.show() + " " + i.show() )
-        // });
-        // expectedBurn.get_policy(mph).for_each( (b : ByteArray, i: Int) -> {
-        //     print( "expected: " + b.show() + " " + i.show() )
-        // });
-        assert(false, "mismatch in UUT burn, diff:\n"
-            + (expectedBurn - valueBurned).show()
-        )
-    };
-
-    hasExpectedBurn && requiresDelegateAuthorizingMint(
-        mintDgt, 
-        mph, 
-        ctx
-    )
-
-}
-
 // checks all of the following:
 //  - there's an approving delegate (or we're bootstrapping)
 //  - the mint includes the seed UTXO
