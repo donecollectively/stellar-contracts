@@ -201,7 +201,7 @@ struct RelativeDelegateLink {
         v : Value = mkTv(mph, uut);
         hasDelegate : Bool = validatorHash.switch{
             Some{vh} => {
-                print(" ⬅️ 🔎 💁 "+uut + " expect dgTkn sent to vh " + vh.show());
+                print(" ⬅️ 🔎 💁 expect dgTkn "+uut + " sent to vh " + vh.show());
                 ctx.tx.value_locked_by(vh).contains(v)
             },
             None => {
