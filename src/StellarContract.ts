@@ -1140,6 +1140,21 @@ export class StellarContract<
             //@ts-expect-error
             return uplcDataField.bytes
         }
+        
+        // it unwraps an existential type tag (#242) providing CIP-68 struct compatibility, 
+        // to return the inner details' key/value pairs as a JS object.
+        if (
+            uplcDataField instanceof helios.ConstrData && 
+            //@ts-expect-error
+            uplcDataField.index == 242
+        ) {
+            //@ts-expect-error
+             if (uplcDataField.fields.length != 1 || !(uplcDataField.fields[0] instanceof helios.MapData)) {
+                throw new Error(`datum error: existential ConstrData(#242) must wrap a single field of MapData`)
+             }
+             //@ts-expect-error
+             uplcDataField = uplcDataField.fields[0];
+        }
         if (uplcDataField instanceof helios.MapData) {
             const entries: Record<string, any> = {};
             for (const [k, v] of uplcDataField["map"]) {
