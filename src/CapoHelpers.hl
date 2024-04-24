@@ -253,14 +253,6 @@ struct CapoCtx {
     mph: MintingPolicyHash
     charter: CapoCharter
 
-    func resolveCharterDatum(self) -> CapoDatum::CharterToken {
-        self.charter.switch {
-            Ref{datum} => datum,
-            Input{_, datum} => datum,
-            _ => error("CapoCtx.resolveCharterDatum(): unknown charter strategy; use result of withCharterInput(), withCharterRef(), or needsCharter() to resolve charter datum first")
-        }
-    }
-
     func requiresNamedDelegateInput(self, dgtName: String) -> DelegateInput {
         self.resolveCharterDatum().namedDelegates.get_safe(dgtName).switch{
             None => error("missing required delegate with name: " + dgtName),
@@ -269,8 +261,27 @@ struct CapoCtx {
                 self.requiresDelegateInput(dgtLink)
             }
         }
-    }        
+    }
 
+    func requiresMintDelegateInput(self) -> DelegateInput {
+        dgtLink : RelativeDelegateLink = self.resolveCharterDatum().mintDelegateLink;
+        self.requiresDelegateInput(dgtLink)
+    }
+    func requiresSpendDelegateInput(self) -> DelegateInput {
+        dgtLink : RelativeDelegateLink = self.resolveCharterDatum().spendDelegateLink;
+        self.requiresDelegateInput(dgtLink)
+    }
+
+    // internal / low-level function
+    func resolveCharterDatum(self) -> CapoDatum::CharterToken {
+        self.charter.switch {
+            Ref{datum} => datum,
+            Input{_, datum} => datum,
+            _ => error("CapoCtx.resolveCharterDatum(): unknown charter strategy; use result of withCharterInput(), withCharterRef(), or needsCharter() to resolve charter datum first")
+        }
+    }
+
+    // internal / low-level function
     func requiresDelegateInput(self, dgtLink: RelativeDelegateLink) -> DelegateInput {
         dgtLink.hasDelegateInput(
             inputs: self.ctx.tx.inputs, 
@@ -288,16 +299,7 @@ struct CapoCtx {
             }
         }
     }
-
-    func requiresMintDelegateInput(self) -> DelegateInput {
-        dgtLink : RelativeDelegateLink = self.resolveCharterDatum().mintDelegateLink;
-        self.requiresDelegateInput(dgtLink)
-    }
-    func requiresSpendDelegateInput(self) -> DelegateInput {
-        dgtLink : RelativeDelegateLink = self.resolveCharterDatum().spendDelegateLink;
-        self.requiresDelegateInput(dgtLink)
-    }
-
+    
     func needsCharter(self) -> CapoCtx {
         self.charter.switch {
             Ref => self,
