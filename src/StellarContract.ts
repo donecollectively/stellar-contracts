@@ -882,6 +882,7 @@ export class StellarContract<
     >(
         datumNameOrAdapter: string | adapterType,
         datum: Datum | InlineDatum,
+        ignoreOtherTypes?: "ignoreOtherTypes"
     ): Promise<
         (adapterType extends DatumAdapter<any,any,any> ? adapterType : DPROPS) | undefined> {
         const hasAdapter = datumNameOrAdapter instanceof DatumAdapter;
@@ -896,7 +897,7 @@ export class StellarContract<
                 `datum must be an InlineDatum to be readable using readDatum()`
             );
 
-        const rawParsedData = (await this.readUplcDatum(thisDatumType, datum.data!).catch((e) => {
+        const rawParsedData = (await this.readUplcDatum(thisDatumType, datum.data!, ignoreOtherTypes).catch((e) => {
             if (e.message?.match(/expected constrData/)) return undefined;
             throw e;
         }) ) as DPROPS | undefined;
@@ -971,7 +972,7 @@ export class StellarContract<
         );
     }
 
-    private async readUplcDatum(uplcType: any, uplcData: UplcData) {
+    private async readUplcDatum(uplcType: any, uplcData: UplcData, ignoreOther? : "ignoreOtherTypes") {
         const { fieldNames, instanceMembers } = uplcType as any;
         if (!fieldNames) {
             const enumVariant = uplcType.prototype._enumVariantStatement;
@@ -980,15 +981,17 @@ export class StellarContract<
                 const foundIndex = uplcData.index;
                 const { dataDefinition: enumDataDef, constrIndex } =
                     enumVariant;
-                if (!(uplcData instanceof ConstrData))
+                if (!(uplcData instanceof ConstrData)) {
                     throw new Error(
                         `uplcData mismatch - no constrData, expected constData#${constrIndex}`
                     );
-                if (!(foundIndex == constrIndex))
+                }
+                if (!(foundIndex == constrIndex)) {
+                    if (ignoreOther) return undefined;
                     throw new Error(
                         `uplcData expected constrData#${constrIndex}, got #${foundIndex}`
                     );
-
+                }
                 const t = this.readUplcEnumVariant(
                     uplcType,
                     enumDataDef,

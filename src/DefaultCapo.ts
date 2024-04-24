@@ -864,7 +864,8 @@ export class DefaultCapo<
             settingsUtxo || (await this.findSettingsUtxo(charterUtxo));
         const data = await this.readDatum(
             this.settingsAdapter,
-            foundSettingsUtxo.origOutput.datum as InlineDatum
+            foundSettingsUtxo.origOutput.datum as InlineDatum,
+            "ignoreOtherTypes"
         );
         if (!data) throw Error(`missing or invalid settings UTxO datum`);
         return data;
