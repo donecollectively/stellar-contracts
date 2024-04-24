@@ -11,8 +11,8 @@ import {
 import {
     getTxCharterDatum,
     getRefCharterDatum,
-    CapoTx,
-    mkCapoTx,
+    CapoCtx,
+    mkCapoCtx,
     DelegateInput,
     CapoDatum, 
     CapoActivity
@@ -126,7 +126,7 @@ func requiresMintDelegateApproval(
     ctx: ScriptContext, 
     mph: MintingPolicyHash
 ) -> Bool {
-    capoTx : CapoTx = mkCapoTx(ctx, mph).withCharterRef();
+    cctx : CapoCtx = mkCapoCtx(ctx, mph).withCharterRef();
     print("Minter requiring mint delegate, spent with a minting-type activity/redeemer");
 
     if (true) {
@@ -134,7 +134,7 @@ func requiresMintDelegateApproval(
         TODO("must enforce minting invariants")
     }; 
 
-    mintDgtInput : DelegateInput = capoTx.requiresMintDelegateInput();
+    mintDgtInput : DelegateInput = cctx.requiresMintDelegateInput();
     activity : AbstractDelegateActivitiesEnum = mintDgtInput.genericDelegateActivity();
 
 
@@ -262,6 +262,7 @@ func validateUutMinting(
 
         if (needsMintDelegateApproval) {
             //!!! todo: add explicit activity details in authorization
+                                    //!todo change this one
             requiresDelegateAuthorizingMint(
                 delegateLink: mintDgt, 
                 mph: mph, 
