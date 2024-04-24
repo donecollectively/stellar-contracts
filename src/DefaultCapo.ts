@@ -1616,7 +1616,7 @@ export class DefaultCapo<
 
         if (!mintDelegateActivity) {
             throw new Error(
-                `txnMintingUuts: usingMintDelegateActivity is required; ` +
+                `txnMintingUuts: options.mintDelegateActivity is required; ` +
                     `  ... it should indicate an application-specific use-case for which ` +
                     `the mint delegate validates the exact needed UUTs to be minted`
             );
