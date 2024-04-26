@@ -17,6 +17,7 @@ import {
 // field-names style of struct with its own fields & data types.
 struct AnyData {
     id: String "@id"  // same as the UUT name for this data
+    type: String "tpe"
     // can have other fields; receiver will interpret their target types.
 }
 
@@ -35,9 +36,9 @@ enum CapoDatum {
     SettingsData {
         data:  Map[String]Data
     }
-    DelegatedData {
-        data: AnyData
-        delegateLink: RelativeDelegateLink
+    DelegatedData {  // the Capo redirects control of these to the spend delegate
+        data: AnyData // the spend delegate may redirect control further, depending on what it sees in there
+        //xxx delegateLink: RelativeDelegateLink  // such link info would be unnormalized
     }
 
     // this needs to be a method on the CapoDatum enum,
