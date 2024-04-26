@@ -1059,7 +1059,7 @@ export class DefaultCapo<
         const uutValue = this.uutsValue(uutName);
 
         return await this.mustFindMyUtxo(
-            "set-uut",
+            "settings uut",
             this.mkTokenPredicate(uutValue)
         );
     }
