@@ -58064,6 +58064,14 @@ class StellarTxnContext {
     const { tx } = this;
     return txAsString(tx, networkParams);
   }
+  includeAddlTxn(txnName, txInfo) {
+    const thisWithMoreType = this;
+    thisWithMoreType.state.addlTxns = {
+      ...thisWithMoreType.state.addlTxns || {},
+      [txnName]: txInfo
+    };
+    return thisWithMoreType;
+  }
   mintTokens(...args) {
     this.tx.mintTokens(...args);
     return this;
@@ -58127,7 +58135,6 @@ class StellarTxnContext {
       return this;
     }
     this.txRefInputs.push(input);
-    debugger;
     const t = this.tx.witnesses.scripts.length;
     this.tx.addRefInput(input, ...moreArgs);
     const t2 = this.tx.witnesses.scripts.length;
@@ -58172,6 +58179,12 @@ class StellarTxnContext {
     return this;
   }
   attachScript(...args) {
+    throw new Error(
+      `use addScriptProgram(), increasing the txn size, if you don't have a referenceScript.
+Use <capo>.txnAttachScriptOrRefScript() to use a referenceScript when available.`
+    );
+  }
+  addScriptProgram(...args) {
     const script = args[0];
     if (script instanceof UplcProgram) {
       const thisPurpose = script.properties.purpose;
@@ -58224,7 +58237,7 @@ function hexToPrintableString(hexStr) {
 }
 function assetsAsString(a) {
   const assets = a.assets;
-  return assets.map(([policyId, tokenEntries]) => {
+  return (assets?.map(([policyId, tokenEntries]) => {
     const tokenString = tokenEntries.map(([nameBytes, count]) => {
       const nameString = hexToPrintableString(nameBytes.hex);
       const burn = count < 1 ? "\u{1F525}" : "";
@@ -58232,7 +58245,7 @@ function assetsAsString(a) {
       return `${burn} ${count}\xD7\u{1F4B4} ${nameString} ${burned}`;
     }).join(" + ");
     return `\u2991${policyIdAsString(policyId)} ${tokenString}\u2992`;
-  }).join("\n  ");
+  }) || []).join("\n  ");
 }
 function policyIdAsString(p) {
   const pIdHex = p.hex;
@@ -58305,6 +58318,9 @@ function txAsString(tx, networkParams) {
       item = item.map((x2) => txInputAsString(x2, "\u{1F52A}")).join("\n    ");
     }
     if ("minted" == x) {
+      if (!item.length) {
+        continue;
+      }
       item = ` \u2747\uFE0F  ${assetsAsString(item)}`;
     }
     if ("outputs" == x) {
@@ -58340,8 +58356,6 @@ function txAsString(tx, networkParams) {
   let hasWinfo = false;
   const winfo = {};
   for (const x of witnessAttrs) {
-    if ("scripts" == x)
-      debugger;
     let item = tx.witnesses[x] || d.witnesses[x];
     if (Array.isArray(item) && !item.length)
       continue;
@@ -58381,9 +58395,10 @@ function txAsString(tx, networkParams) {
           const mph = s.mintingPolicyHash.hex;
           return `\u{1F3E6} ${mph.slice(0, 8)}\u2026${mph.slice(-4)} (minting): ${s.serializeBytes().length} bytes`;
         } catch (e) {
-          const vh = s.validatorHash.hex;
-          const addr = Address.fromHash(s.validatorHash);
-          return `\u{1F4DC} ${vh.slice(0, 8)}\u2026${vh.slice(
+          const vh = s.validatorHash;
+          const vhh = vh.hex;
+          const addr = Address.fromHash(vh);
+          return `\u{1F4DC} ${vhh.slice(0, 8)}\u2026${vhh.slice(
             -4
           )} (validator at ${addrAsString(addr)}): ${s.serializeBytes().length} bytes`;
         }
@@ -58451,11 +58466,7 @@ function showRefScript(rs) {
   if (!rs)
     return "";
   const thisPurpose = rs.properties?.purpose;
-  if (!thisPurpose) {
-    debugger;
-    return "um?";
-  }
-  const whichHash = thisPurpose == "minting" ? "mintingPolicyHash" : thisPurpose == "staking" ? "stakingValidatorHash" : thisPurpose == "spending" ? "validatorHash" : "";
+  const whichHash = thisPurpose == "minting" ? "mintingPolicyHash" : thisPurpose == "staking" ? "stakingValidatorHash" : "validatorHash";
   const expected = rs[whichHash];
   const rsh = expected.hex;
   const rshInfo = `${rsh.slice(0, 8)}\u2026${rsh.slice(-4)}`;
@@ -58801,21 +58812,44 @@ class StellarContract {
       return "non-script";
     return this._purpose = purpose;
   }
+  get validatorHash() {
+    const { vh } = this._cache;
+    if (vh)
+      return vh;
+    const nvh = this.compiledScript.validatorHash;
+    return this._cache.vh = nvh;
+  }
   get address() {
-    return Address.fromHashes(this.compiledScript.validatorHash);
+    const { addr } = this._cache;
+    console.log(this.constructor.name, "cached addr", addr?.toBech32() || "none");
+    if (addr)
+      return addr;
+    const nAddr = Address.fromHashes(this.validatorHash);
+    return this._cache.addr = nAddr;
   }
   get mintingPolicyHash() {
     if ("minting" != this.purpose)
       return void 0;
-    return this.compiledScript.mintingPolicyHash;
+    const { mph } = this._cache;
+    if (mph)
+      return mph;
+    const nMph = this.compiledScript.mintingPolicyHash;
+    return this._cache.mph = nMph;
   }
   get identity() {
+    const { identity } = this._cache;
+    if (identity)
+      return identity;
+    console.log(this.constructor.name, "identity", identity || "none");
+    let result;
     if ("minting" == this.purpose) {
-      const b32 = this.compiledScript.mintingPolicyHash.toBech32();
+      const b32 = this.mintingPolicyHash.toBech32();
       //!!! todo: verify bech32 checksum isn't messed up by this:
-      return b32.replace(/^asset/, "mph");
+      result = b32.replace(/^asset/, "mph");
+    } else {
+      result = this.address.toBech32();
     }
-    return this.address.toBech32();
+    return this._cache.identity = result;
   }
   //! searches the network for utxos stored in the contract,
   //  returning those whose datum hash is the same as the input datum
@@ -59342,24 +59376,13 @@ class StellarContract {
   } = {}) {
     let { tx, feeLimit = 2000000n } = tcx;
     const { myActor: wallet } = this;
+    let walletMustSign = false;
+    let sigs = [];
     if (wallet || signers.length) {
       const changeAddress = await this.findChangeAddr();
       const spares = await this.findAnySpareUtxos(tcx);
       const willSign = [...signers, ...tcx.neededSigners];
       const wHelper = wallet && new WalletHelper(wallet);
-      if (wallet && wHelper) {
-        if (tx.isSmart() && !tcx.collateral) {
-          let [c] = await wallet.collateral;
-          if (!c) {
-            c = await wHelper.pickCollateral(this.ADA(5n));
-            if (c.value.lovelace > this.ADA(20n))
-              throw new Error(
-                `The only collateral-eligible utxos in this wallet have more than 20 ADA.  It's recommended to create and maintain collateral values between 2 and 20 ADA (or 5 and 20, for more complex txns)`
-              );
-          }
-          tcx.addCollateral(c);
-        }
-      }
       for (const { pubKeyHash: pkh } of willSign) {
         if (!pkh)
           continue;
@@ -59375,20 +59398,39 @@ class StellarContract {
         throw e;
       }
       if (wallet && wHelper) {
-        let actorMustSign = false;
         for (const a of willSign) {
           if (!await wHelper.isOwnAddress(a))
             continue;
-          actorMustSign = true;
+          walletMustSign = true;
+          break;
         }
-        if (actorMustSign) {
-          const sigs = await wallet.signTx(tx);
+        if (!walletMustSign)
+          for (const input of tx.body.inputs) {
+            if (!await wHelper.isOwnAddress(input.address))
+              continue;
+            walletMustSign = true;
+            tcx.neededSigners.push(input.address);
+            break;
+          }
+        if (walletMustSign) {
+          const walletSign = wallet.signTx(tx);
+          sigs = await walletSign.catch((e) => {
+            console.warn(
+              "signing via wallet failed: " + e.message,
+              tcx.dump(this.networkParams)
+            );
+            return null;
+          });
           //! doesn't need to re-verify a sig it just collected
-          tx.addSignatures(sigs, false);
+          if (sigs)
+            tx.addSignatures(sigs, false);
         }
       }
     } else {
       console.warn("no 'myActor'; not finalizing");
+    }
+    if (walletMustSign && !sigs) {
+      throw new Error(`wallet signing failed`);
     }
     console.log("Submitting tx: ", tcx.dump(this.networkParams));
     const promises = [
@@ -59415,6 +59457,24 @@ class StellarContract {
         );
     }
     return Promise.any(promises);
+  }
+  /**
+   * Executes additional transactions indicated by an existing transaction
+   * @remarks
+   *
+   * During the off-chain txn-creation process, additional transactions may be
+   * queued for execution.  This method is used to execute those transactions.
+   * @param tcx: the prior txn context having the additional txns to execute
+   * @param callback: an optional async callback that you can use to notify a user, or to log the results of the additional txns
+   * @public
+   **/
+  async submitAddlTxns(tcx, callback) {
+    const { addlTxns } = tcx.state;
+    for (const [txName, addlTxInfo] of Object.entries(addlTxns)) {
+      const { description, moreInfo, optional, tcx: tcx2 } = addlTxInfo;
+      const replacementTcx = callback && await callback({ txName, ...addlTxInfo });
+      await this.submit(replacementTcx || tcx2);
+    }
   }
   ADA(n) {
     const bn = "number" == typeof n ? BigInt(Math.round(1e6 * n)) : BigInt(1e6) * n;
@@ -59455,6 +59515,7 @@ class StellarContract {
   importModules() {
     return [];
   }
+  _cache = {};
   loadProgramScript(params) {
     const src = this.contractSource();
     const modules = this.importModules();
@@ -59478,8 +59539,10 @@ ${module.split("\n").slice(0, 3).join("\n")}
           `Loading optimized contract code for ` + script.name
         );
       }
+      console.log(`${this.constructor.name}: setting compiledScript with simplify=${simplify} + params:`, params);
       //!!! todo: consider pushing this to JIT or async
       this.compiledScript = script.compile(simplify);
+      this._cache = {};
       return script;
     } catch (e) {
       if (e.message.match(/invalid parameter name/)) {
@@ -59709,10 +59772,12 @@ class DefaultMinter extends StellarContract {
   }
   async txnBurnUuts(initialTcx, uutNames) {
     const tokenNames = uutNames.map((un) => un.name);
-    const tcx2 = initialTcx.attachScript(this.compiledScript).mintTokens(
-      this.mintingPolicyHash,
-      tokenNames.map((tokenName) => mkValuesEntry(tokenName, BigInt(-1))),
-      this.activityBurningUuts(...tokenNames).redeemer
+    const tcx2 = this.attachRefScript(
+      initialTcx.mintTokens(
+        this.mintingPolicyHash,
+        tokenNames.map((tokenName) => mkValuesEntry(tokenName, BigInt(-1))),
+        this.activityBurningUuts(...tokenNames).redeemer
+      )
     );
     return tcx2;
   }
@@ -59746,28 +59811,36 @@ class DefaultMinter extends StellarContract {
     const charterVE = this.charterTokenAsValuesEntry;
     const capoGovVE = mkValuesEntry(capoGov.name, BigInt(1));
     const mintDgtVE = mkValuesEntry(mintDgt.name, BigInt(1));
-    return tcx.mintTokens(
-      this.mintingPolicyHash,
-      [
-        charterVE,
-        capoGovVE,
-        mintDgtVE
-      ],
-      this.activityMintingCharter({
-        owner
-      }).redeemer
-    ).attachScript(this.compiledScript);
+    return this.attachRefScript(
+      tcx.mintTokens(
+        this.mintingPolicyHash,
+        [
+          charterVE,
+          capoGovVE,
+          mintDgtVE
+        ],
+        this.activityMintingCharter({
+          owner
+        }).redeemer
+      )
+    );
+  }
+  attachRefScript(tcx) {
+    return this.configIn.capo.txnAttachScriptOrRefScript(
+      tcx,
+      this.compiledScript
+    );
   }
   async txnMintWithDelegateAuthorizing(tcx, vEntries, mintDelegate, mintDgtRedeemer) {
     const { capo } = this.configIn;
     const md = mintDelegate || await capo.getMintDelegate();
-    const tcx1 = await this.configIn.capo.txnMustUseCharterUtxo(tcx, "refInput");
+    const tcx1 = await capo.txnMustUseCharterUtxo(tcx, "refInput");
     const tcx2 = await md.txnGrantAuthority(tcx1, mintDgtRedeemer);
-    return tcx2.attachScript(this.compiledScript).mintTokens(
+    return this.attachRefScript(tcx2.mintTokens(
       this.mintingPolicyHash,
       vEntries,
       this.activityMintWithDelegateAuthorizing().redeemer
-    );
+    ));
   }
 }
 __decorateClass$6([
@@ -59889,13 +59962,13 @@ class StellarDelegate extends StellarContract {
    * A delegate that doesn't use an on-chain validator should override this method and return undefined.
    **/
   get delegateValidatorHash() {
-    if (!this.compiledScript.validatorHash) {
+    if (!this.validatorHash) {
       throw new Error(
         `${this.constructor.name}: address doesn't use a validator hash!
   ... if that's by design, you may wish to override 'get delegateValidatorHash()'`
       );
     }
-    return this.compiledScript.validatorHash;
+    return this.validatorHash;
   }
   mkAuthorityTokenPredicate() {
     return this.mkTokenPredicate(this.tvAuthorityToken());
@@ -60032,7 +60105,11 @@ class StellarDelegate extends StellarContract {
   * @reqt Does not output the value; can EXPECT txnReceiveAuthorityToken to be called for that purpose.
    **/
   async DelegateAddsAuthorityToken(tcx, uutxo, redeemer) {
-    return tcx.addInput(uutxo, redeemer).attachScript(this.compiledScript);
+    const { capo } = this.configIn;
+    return capo.txnAttachScriptOrRefScript(
+      tcx.addInput(uutxo, redeemer),
+      this.compiledScript
+    );
   }
   /**
    * Adds any important transaction elemements supporting the authority token being retired, closing the delegate contracts' utxo.
@@ -60383,7 +60460,8 @@ class Capo extends StellarContract {
         tcx.addRefInput(ctUtxo);
       } else {
         const redeemer = redeemerOrRefInput;
-        tcx.addInput(ctUtxo, redeemer).attachScript(
+        this.txnAttachScriptOrRefScript(
+          tcx.addInput(ctUtxo, redeemer),
           this.compiledScript
         );
         const datum = newDatum || ctUtxo.origOutput.datum;
@@ -60581,7 +60659,6 @@ expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
     );
     return seedUtxo;
   }
-  mockMinter;
   /**
    * Creates a new delegate link, given a delegation role and and strategy-selection details
    * @remarks
@@ -60734,7 +60811,7 @@ expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
     const {
       strategyName,
       uutName,
-      delegateValidatorHash: edvh,
+      delegateValidatorHash: expectedDvh,
       // addrHint,  //moved to config
       // reqdAddress,  // removed
       config: linkedConfig
@@ -60778,9 +60855,9 @@ expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
       // addrHint,
     });
     const dvh = delegate.delegateValidatorHash;
-    if (edvh && dvh && !edvh.eq(dvh)) {
+    if (expectedDvh && dvh && !expectedDvh.eq(dvh)) {
       throw new Error(
-        `${this.constructor.name}: ${roleName}: mismatched or modified delegate: expected validator ${edvh?.hex}, got ${dvh.hex}`
+        `${this.constructor.name}: ${roleName}: mismatched or modified delegate: expected validator ${expectedDvh?.hex}, got ${dvh.hex}`
       );
     }
     console.log(
@@ -61020,7 +61097,7 @@ code$4.moduleName = "specializedMintDelegate";
 
 const UnspecializedMintDelegate = code$4;
 
-const code$3 = new String("module specializedCapo\n\n//! provides a basic version, not actually specialized,\n// of the \"specializedCapo\" interface, which simply\n// exports Datum and Activity ('redemeer\") enum types.  \n//! the Datum and Activity of specializations\n//  MUST include the same enum variants as in this\n//  unspecialized version.  if you're specializing \n//  ... and you get a Helios compiler error,\n// ... these are the first things you should check!\n//! Your specialization MAY include any \n// ... additional functions, imports or methods\n\nimport { \n    RelativeDelegateLink\n} from CapoDelegateHelpers\n\n//! provides a basic version of Datum in default specializedCapo module\nenum Datum {\n    CharterToken {\n        govAuthorityLink: RelativeDelegateLink\n        mintDelegateLink: RelativeDelegateLink\n    }\n    //! datum-validation only supports checks of absolute spendability, \n    //  ... and can't check details of the Activity (\"redeemer\") being used.\n    func validateSpend(self, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {\n        //! Note: an overridden Datum's impl of validateSpend() \n        // ... is never called with the CharterToken variant\n        assert(false, \"can't happen\");\n        self.switch{\n            CharterToken => true,\n            _ => error(\"can't happen\")\n        } || (\n            ctx.tx.serialize() /* never */ == self.serialize() ||\n            mph.serialize() /* never */ == self.serialize()\n        )\n    }   \n}\n\n//! provides a basic version of Activity (\"redeemer\" type) in default specializedCapo module\nenum Activity {\n    usingAuthority\n    updatingCharter    \n\n    func allowActivity(self, datum: Datum, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {\n        self.switch{\n            //! Note: an overridden Reedeemer def doesn't have to replicate the checks\n            // ... for the baseline enum variants; it's not called in those cases.\n            updatingCharter => true,\n            usingAuthority => true,\n            _ => error(\"unreachable code\")\n            // not executed, but prevents the args from showing up as unused:\n        } || (\n            ctx.tx.serialize() /* never */ == datum.serialize() ||\n            mph.serialize() /* never */ == datum.serialize()\n        )\n    }    \n}\n\nstruct types {\n    redeemers: Activity\n    datum : Datum\n}\n");
+const code$3 = new String("module specializedCapo\n\n//! provides a basic version, not actually specialized,\n// of the \"specializedCapo\" interface, which simply\n// exports Datum and Activity ('redemeer\") enum types.  \n//! the Datum and Activity of specializations\n//  MUST include the same enum variants as in this\n//  unspecialized version.  if you're specializing \n//  ... and you get a Helios compiler error,\n// ... these are the first things you should check!\n//! Your specialization MAY include any \n// ... additional functions, imports or methods\n\nimport { \n    RelativeDelegateLink\n} from CapoDelegateHelpers\nimport {\n    tvCharter\n} from StellarHeliosHelpers\n\n//! provides a basic version of Datum in default specializedCapo module\nenum Datum {\n    CharterToken {\n        govAuthorityLink: RelativeDelegateLink\n        mintDelegateLink: RelativeDelegateLink\n    }\n    ScriptReference\n\n    //! datum-validation only supports checks of absolute spendability, \n    //  ... and can't check details of the Activity (\"redeemer\") being used.\n    func validateSpend(self, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {\n        //! Note: an overridden Datum's impl of validateSpend() \n        // ... is never called with the CharterToken variant\n        assert(false, \"can't happen\");\n        self.switch{\n            CharterToken => true,\n            _ => error(\"can't happen\")\n        } || (\n            ctx.tx.serialize() /* never */ == self.serialize() ||\n            mph.serialize() /* never */ == self.serialize()\n        )\n    }   \n\n    // this needs to be a method on the Datum enum,\n    // ... because it's called by other methods here, AND\n    // ... it depends on the Datum's own enum variants.\n    // If you're specializing, you'll need to copy this.  \n    // But you probably don't need to specialize.  Use delegates instead.\n    func hasCharterRefInput(\n        self,\n        ctx: ScriptContext, \n        mph : MintingPolicyHash\n    ) -> Option[Datum::CharterToken] {\n        assert( // avoid \"unused variable self\" error\n            self.serialize() != ctx.serialize() &&\n            self.serialize() != mph.serialize(), \"never thrown\"\n        );\n        \n        chVal : Value = tvCharter(mph);\n        hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };\n\n        ctx.tx.ref_inputs.find_safe(hasCharter).switch{\n            Some{txin} => Option[Datum::CharterToken]::Some{\n                Datum::from_data( \n                    txin.datum.get_inline_data() \n                ).switch{\n                    c : CharterToken => c,\n                    _ => error(\"wrong enum\")\n                }\n            },\n            None => Option[Datum::CharterToken]::None\n        }\n    }\n\n}\n\n//! provides a basic version of Activity (\"redeemer\" type) in default specializedCapo module\nenum Activity {\n    usingAuthority\n    updatingCharter    \n\n    retiringRefScript \n\n    func allowActivity(self, datum: Datum, ctx: ScriptContext, mph: MintingPolicyHash) -> Bool {\n        self.switch{\n            //! Note: an overridden Reedeemer def doesn't have to replicate the checks\n            // ... for the baseline enum variants; it's not called in those cases.\n            updatingCharter => true,\n            usingAuthority => true,\n            _ => error(\"unreachable code\")\n            // not executed, but prevents the args from showing up as unused:\n        } || (\n            ctx.tx.serialize() /* never */ == datum.serialize() ||\n            mph.serialize() /* never */ == datum.serialize()\n        )\n    }    \n}\n\nstruct types {\n    redeemers: Activity\n    datum : Datum\n}\n");
 
 code$3.srcFile = "src/UnspecializedCapo.hl";
 code$3.purpose = "module";
@@ -61166,7 +61243,7 @@ class BasicMintDelegate extends StellarDelegate {
    **/
   async txnReceiveAuthorityToken(tcx, tokenValue, fromFoundUtxo) {
     console.log(
-      `     ----- minting delegate validator receiving mintDgt token at ` + this.address.validatorHash.hex
+      `     ----- minting delegate validator receiving mintDgt token at ` + this.validatorHash.hex
     );
     const datum2 = this.mkDelegationDatum(fromFoundUtxo);
     return tcx.addOutput(new TxOutput(this.address, tokenValue, datum2));
@@ -61175,12 +61252,12 @@ class BasicMintDelegate extends StellarDelegate {
    * Creates a reference-script utxo for the minting delegate
    * @remarks
    *
-   * detailed remarks
-   * @param ‹pName› - descr
-   * @typeParam ‹pName› - descr (for generic types)
+   * Creates an addl txn for the minting delegate to create a reference-script utxo
+   * @param tcx - the transaction context
+   * @param scriptName - the name of the script, used in the addlTxn name
    * @public
    **/
-  txnCreateRefScript(tcx) {
+  async txnCreateRefScript(tcx, scriptName) {
     const refScriptUtxo = new TxOutput(
       this.address,
       new Value(this.ADA(0n)),
@@ -61188,23 +61265,33 @@ class BasicMintDelegate extends StellarDelegate {
       this.compiledScript
     );
     refScriptUtxo.correctLovelace(this.networkParams);
-    return tcx.addOutput(refScriptUtxo);
+    refScriptUtxo.value.lovelace;
+    const fuTcx = new StellarTxnContext(this.myActor).addOutput(
+      refScriptUtxo
+    );
+    this.myActor;
+    return tcx.includeAddlTxn(`refScript${scriptName}`, {
+      description: "creates on-chain reference script for minting delegate",
+      moreInfo: "saves txn fees and txn space in future txns",
+      optional: false,
+      tcx: fuTcx
+    });
   }
   async txnMustAddMyRefScript(tcx) {
-    const expectedRefScript = this.compiledScript;
-    const { purpose: expectedPurpose } = expectedRefScript.properties;
+    const expectedVh = this.compiledScript.hash().toString();
+    const { purpose: expectedPurpose } = this.compiledScript.properties;
     const isMyRefScript = (txin) => {
       const { purpose } = txin.origOutput.refScript?.properties || {};
       if (purpose && purpose != expectedPurpose)
         return false;
-      return txin.origOutput.refScript?.hash().toString() == expectedRefScript.hash().toString();
+      return txin.origOutput.refScript?.hash().toString() == expectedVh;
     };
     if (tcx.txRefInputs.find(isMyRefScript)) {
       console.warn("suppressing second add of refScript");
       return tcx;
     }
     const foundUtxo = await this.mustFindMyUtxo("refScript", isMyRefScript);
-    return tcx.addRefInput(foundUtxo, expectedRefScript);
+    return tcx.addRefInput(foundUtxo, this.compiledScript);
   }
   /**
    * Depreciated: Add a generic minting-UUTs actvity to the transaction
@@ -61238,7 +61325,6 @@ class BasicMintDelegate extends StellarDelegate {
       capoAddr,
       mph,
       tn
-      // devGen: this.configIn?.devGen || 0n
     });
   }
   async txnCreatingTokenPolicy(tcx, tokenName) {
@@ -61369,7 +61455,7 @@ __decorateClass$2([
   Activity.redeemer
 ], AnyAddressAuthorityPolicy.prototype, "activityUsingAuthority", 1);
 
-const code$1 = new String("spending Capo\n\n// needed in helios 0.13: defaults\nconst mph : MintingPolicyHash = MintingPolicyHash::new(#1234)\nconst rev : Int = 1\nconst devGen : Int = 0\nconst isDev: Bool = false\n\nimport {\n    tvCharter\n} from CapoHelpers\n\nimport { \n    RelativeDelegateLink,\n    requiresValidDelegateOutput\n} from CapoDelegateHelpers\n\nimport {\n    mkTv,\n    didSign,\n    didSignInCtx\n} from StellarHeliosHelpers\n\nimport { \n    Datum, \n    Activity\n } from specializedCapo\n\n/**\n * \n */\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{\n        govDelegateLink, _\n    } = datum;\n\n    requiresValidDelegateOutput(govDelegateLink, mph, ctx)\n}\n\nfunc getCharterOutput(tx: Tx) -> TxOutput {\n    charterTokenValue : Value = Value::new(\n        AssetClass::new(mph, \"charter\".encode_utf8()), \n        1\n    );\n    tx.outputs.find_safe(\n        (txo : TxOutput) -> Bool {\n            txo.value >= charterTokenValue\n        }\n    ).switch{\n        None => error(\"this could only happen if the charter token is burned.\"),\n        Some{o} => o\n    }\n}\n\nfunc notUpdatingCharter(activity: Activity) -> Bool { activity.switch {\n    updatingCharter => false,  \n    _ => true\n}}\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        error(\"charter token must be returned to the contract \")\n        // actual : String = charterOutput.address.credential.switch{\n        //     PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n        //     Validator{vh} => \"val:📜#:\" + vh.show()\n        // };\n        // error(\n        //     \"charter token must be returned to the contract \" + cvh.show() +\n        //     \"... but was sent to \" +actual\n        // )\n    };\n\n    Datum::CharterToken{\n        govDelegate,\n        mintDelegate\n    } = datum;\n    Datum::CharterToken{\n        newGovDelegate,\n        newMintDelegate\n    } = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newGovDelegate == govDelegate &&\n        newMintDelegate == mintDelegate\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    // now: Time = tx.time_range.start;\n\n    if (isDev) {\n        print(\"is dev @gen \" + devGen.show() )\n    };\n    \n    allDatumSpecificChecks: Bool = datum.switch {\n        ctd : CharterToken => {\n            // throws if bad\n            if(notUpdatingCharter(activity)) { \n                preventCharterChange(ctx, ctd)\n            } else {\n                true // \"maybe\", really\n            }\n        },\n        _ => {\n            datum.validateSpend(ctx, mph)\n        }            \n    };\n    allActivitySpecificChecks : Bool = activity.switch {\n        updatingCharter => {\n            charterOutput : TxOutput = getCharterOutput(tx);\n            newDatum = Datum::from_data( \n                charterOutput.datum.get_inline_data() \n            );\n            Datum::CharterToken{govDelegate, mintDelegate} = newDatum;\n\n            requiresValidDelegateOutput(govDelegate, mph, ctx) &&\n            requiresValidDelegateOutput(mintDelegate, mph, ctx) &&\n            requiresAuthorization(ctx, datum)\n        },\n\n        usingAuthority => {\n            // by definition, we're truly notUpdatingCharter(activity) \n            datum.switch {\n                 // throws if bad\n                ctd : CharterToken => requiresAuthorization(ctx, ctd),\n                _ => error(\"wrong use of usingAuthority action for non-CharterToken datum\")\n            }\n        },\n        _ => activity.allowActivity(datum, ctx, mph)\n    };\n\n    assert(allDatumSpecificChecks, \"datum-check fail\");\n    assert(allActivitySpecificChecks, \"redeeemer-check fail\");\n\n    //! retains mph in parameterization\n    assert(\n        ( allDatumSpecificChecks && allActivitySpecificChecks ) ||\n            // this should never execute (much less fail), yet it also shouldn't be optimized out.\n             mph.serialize() /* never */ == datum.serialize(), \n        \"unreachable\"\n    ); \n\n    allDatumSpecificChecks && \n    allActivitySpecificChecks &&\n    tx.serialize() != datum.serialize()\n}\n");
+const code$1 = new String("spending Capo\n\n// needed in helios 0.13: defaults\nconst mph : MintingPolicyHash = MintingPolicyHash::new(#1234)\nconst rev : Int = 1\nconst devGen : Int = 0\nconst isDev: Bool = false\n\n// import {\n//     tvCharter\n// } from CapoHelpers\n\nimport { \n    RelativeDelegateLink,\n    requiresValidDelegateOutput\n} from CapoDelegateHelpers\n\nimport {\n    tvCharter,\n    mkTv,\n    didSign,\n    didSignInCtx\n} from StellarHeliosHelpers\n\nimport { \n    Datum, \n    Activity\n } from specializedCapo\n\n/**\n * \n */\nfunc requiresAuthorization(ctx: ScriptContext, datum: Datum) -> Bool {\n    Datum::CharterToken{\n        govDelegateLink, _\n    } = datum;\n\n    requiresValidDelegateOutput(govDelegateLink, mph, ctx)\n}\n\nfunc getCharterOutput(tx: Tx) -> TxOutput {\n    charterTokenValue : Value = Value::new(\n        AssetClass::new(mph, \"charter\".encode_utf8()), \n        1\n    );\n    tx.outputs.find_safe(\n        (txo : TxOutput) -> Bool {\n            txo.value >= charterTokenValue\n        }\n    ).switch{\n        None => error(\"this could only happen if the charter token is burned.\"),\n        Some{o} => o\n    }\n}\n\nfunc notUpdatingCharter(activity: Activity) -> Bool { activity.switch {\n    updatingCharter => false,  \n    _ => true\n}}\n\nfunc preventCharterChange(ctx: ScriptContext, datum: Datum::CharterToken) -> Bool {\n    tx: Tx = ctx.tx;\n\n    charterOutput : TxOutput = getCharterOutput(tx);\n\n    cvh : ValidatorHash = ctx.get_current_validator_hash();\n    myself : Credential = Credential::new_validator(cvh);\n    if (charterOutput.address.credential != myself) {\n        error(\"charter token must be returned to the contract \")\n        // actual : String = charterOutput.address.credential.switch{\n        //     PubKey{pkh} => \"pkh:🔑#\" + pkh.show(),\n        //     Validator{vh} => \"val:📜#:\" + vh.show()\n        // };\n        // error(\n        //     \"charter token must be returned to the contract \" + cvh.show() +\n        //     \"... but was sent to \" +actual\n        // )\n    };\n\n    Datum::CharterToken{\n        govDelegate,\n        mintDelegate\n    } = datum;\n    Datum::CharterToken{\n        newGovDelegate,\n        newMintDelegate\n    } = Datum::from_data( \n        charterOutput.datum.get_inline_data() \n    );\n    if ( !(\n        newGovDelegate == govDelegate &&\n        newMintDelegate == mintDelegate\n    )) { \n        error(\"invalid update to charter settings\") \n    };\n\n    true\n}\n\nfunc main(datum: Datum, activity: Activity, ctx: ScriptContext) -> Bool {\n    tx: Tx = ctx.tx;\n    // now: Time = tx.time_range.start;\n\n    if (isDev) {\n        print(\"is dev @gen \" + devGen.show() )\n    };\n    \n    allDatumSpecificChecks: Bool = datum.switch {\n        ctd : CharterToken => {\n            // throws if bad\n            if(notUpdatingCharter(activity)) { \n                preventCharterChange(ctx, ctd)\n            } else {\n                true // \"maybe\", really\n            }\n        },\n        scriptRef : ScriptReference => {\n            // only here to ensure specializations are properly arranged\n            assert(true || (scriptRef == scriptRef), \"never\");\n            true\n        },\n        _ => {\n            datum.validateSpend(ctx, mph)\n        }            \n    };\n    allActivitySpecificChecks : Bool = activity.switch {\n        updatingCharter => {\n            charterOutput : TxOutput = getCharterOutput(tx);\n            newDatum = Datum::from_data( \n                charterOutput.datum.get_inline_data() \n            );\n            Datum::CharterToken{govDelegate, mintDelegate} = newDatum;\n\n            requiresValidDelegateOutput(govDelegate, mph, ctx) &&\n            requiresValidDelegateOutput(mintDelegate, mph, ctx) &&\n            requiresAuthorization(ctx, datum)\n        },\n        retiringRefScript => {\n            // the ref script is being spent:\n            isSpendingRefScript : Bool = datum.switch{\n                ScriptReference => true,\n                _ => error(\"wrong use of retiringRefScript action for non-ScriptRef datum\")\n            };\n\n            hasGovAuthority : Bool = datum.hasCharterRefInput(\n                ctx, mph\n            ).switch{\n                None => error(\"no reqd charter ref\"),\n                Some {Datum::CharterToken{\n                    govAuthority, _\n                }} => requiresValidDelegateOutput(govAuthority, mph, ctx)\n             };\n\n             isSpendingRefScript && \n             hasGovAuthority &&\n             true\n             // no other constraints; the ref script could be re-created or\n             // replaced with a new one, or simply destroyed.\n        },\n\n        usingAuthority => {\n            // by definition, we're truly notUpdatingCharter(activity) \n            datum.switch {\n                 // throws if bad\n                ctd : CharterToken => requiresAuthorization(ctx, ctd),\n                _ => error(\"wrong use of usingAuthority action for non-CharterToken datum\")\n            }\n        },\n        _ => activity.allowActivity(datum, ctx, mph)\n    };\n\n    assert(allDatumSpecificChecks, \"datum-check fail\");\n    assert(allActivitySpecificChecks, \"redeeemer-check fail\");\n\n    //! retains mph in parameterization\n    assert(\n        ( allDatumSpecificChecks && allActivitySpecificChecks ) ||\n            // this should never execute (much less fail), yet it also shouldn't be optimized out.\n             mph.serialize() /* never */ == datum.serialize(), \n        \"unreachable\"\n    ); \n\n    allDatumSpecificChecks && \n    allActivitySpecificChecks &&\n    tx.serialize() != datum.serialize()\n}\n");
 
 code$1.srcFile = "src/DefaultCapo.hl";
 code$1.purpose = "spending";
@@ -61679,10 +61765,10 @@ class DefaultCapo extends Capo {
    **/
   async verifyCoreDelegates() {
     const rcsh = this.configIn?.rootCapoScriptHash;
-    if (rcsh && !rcsh.eq(this.address.validatorHash)) {
+    if (rcsh && !rcsh.eq(this.validatorHash)) {
       console.error(
         `expected: ` + rcsh.hex + `
-  actual: ` + this.address.validatorHash.hex
+  actual: ` + this.validatorHash.hex
       );
       throw new Error(
         `${this.constructor.name}: the leader contract script '${this.scriptProgram?.name}', or one of its dependencies, has been modified`
@@ -61722,6 +61808,11 @@ class DefaultCapo extends Capo {
     const govAuthority = this.mkOnchainDelegateLink(args.govAuthorityLink);
     const mintDelegate = this.mkOnchainDelegateLink(args.mintDelegateLink);
     const t = new hlCharterToken(govAuthority, mintDelegate);
+    return Datum.inline(t._toUplcData());
+  }
+  mkDatumScriptReference() {
+    const { ScriptReference: hlScriptReference } = this.onChainDatumType;
+    const t = new hlScriptReference();
     return Datum.inline(t._toUplcData());
   }
   async findCharterDatum() {
@@ -61785,31 +61876,36 @@ class DefaultCapo extends Capo {
     );
   }
   /**
-   * USE getMintDelegate() AND ITS txnGrantAuthority() METHOD INSTEAD
+   * Initiates a seeding transaction, creating a new Capo contract of this type
    * @remarks
    *
-   * detailed remarks
-   * @param ‹pName› - descr
-   * @typeParam ‹pName› - descr (for generic types)
-   * @deprecated
+   * The returned transaction context has `state.bootstrappedConfig` for
+   * capturing the details for reproducing the contract's settings and on-chain
+   * address.
+   *
+   * @param charterDatumArgs - initial details for the charter datum
+   * @param existinTcx - any existing transaction context
+   * @typeParam TCX - inferred type of a provided transaction context
+   * @public
    **/
-  async txnAddMintDelegate(tcx) {
-    throw new Error(`deprecated`);
-  }
-  //@ts-expect-error - typescript can't seem to understand that
-  //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
+  // @txn
   async mkTxnMintCharterToken(charterDatumArgs, existingTcx) {
     if (this.configIn)
       throw new Error(
         `this contract suite is already configured and can't be re-chartered`
       );
     const initialTcx = existingTcx || new StellarTxnContext(this.myActor);
-    return this.txnMustGetSeedUtxo(initialTcx, "charter bootstrapping", [
-      "charter"
-    ]).then(async (seedUtxo) => {
+    const promise = this.txnMustGetSeedUtxo(
+      initialTcx,
+      "charter bootstrapping",
+      ["charter"]
+    ).then(async (seedUtxo) => {
       const { txId: seedTxn, utxoIdx } = seedUtxo.outputId;
       const seedIndex = BigInt(utxoIdx);
-      const minter = await this.connectMintingScript({ seedIndex, seedTxn });
+      const minter = await this.connectMintingScript({
+        seedIndex,
+        seedTxn
+      });
       const { mintingPolicyHash: mph } = minter;
       const csp = this.getContractScriptParams(
         this.configIn || this.partialConfig
@@ -61843,14 +61939,13 @@ class DefaultCapo extends Capo {
         govAuthority,
         // same
         mintDgt
-        // same as mintDelegate 
+        // same as mintDelegate
       } = tcx.state.uuts;
       if (govAuthority !== capoGov) {
         throw new Error(`assertion can't fail`);
       }
       const govAuthorityLink = await this.txnCreateDelegateLink(tcx, "govAuthority", charterDatumArgs.govAuthorityLink);
       const mintDelegate = await this.txnCreateDelegateLink(tcx, "mintDelegate", charterDatumArgs.mintDelegateLink);
-      mintDelegate.delegate.txnCreateRefScript(tcx);
       const fullCharterArgs = {
         ...charterDatumArgs,
         govAuthorityLink,
@@ -61866,17 +61961,140 @@ class DefaultCapo extends Capo {
       charterOut.correctLovelace(this.networkParams);
       tcx.addInput(seedUtxo);
       tcx.addOutputs([charterOut]);
+      const tcx2 = await mintDelegate.delegate.txnCreateRefScript(
+        tcx,
+        "MintDelegate"
+      );
+      const tcx3 = await this.txnMkAddlRefScriptTxn(
+        tcx2,
+        "capo",
+        this.compiledScript
+      );
+      const tcx4 = await this.txnMkAddlRefScriptTxn(
+        tcx3,
+        "minter",
+        minter.compiledScript
+      );
       console.log(
         " ---------------- CHARTER MINT ---------------------\n",
-        txAsString(tcx.tx, this.networkParams)
+        txAsString(tcx4.tx, this.networkParams)
       );
-      return this.minter.txnMintingCharter(tcx, {
+      const minting = this.minter.txnMintingCharter(tcx4, {
         owner: this.address,
         capoGov,
         // same as govAuthority,
         mintDgt
       });
+      return minting;
     });
+    return promise;
+  }
+  /**
+   * Creates an additional reference-script-creation txn
+   * @remarks
+   *
+   * Creates a txn for reference-script creation, and
+   * adds it to the current transaction context to also be submitted.
+   *
+   * The reference script is stored in the Capo contract with a special
+   * Datum, and it can be used in future transactions to save space and fees.
+   *
+   * @param tcx - the transaction context
+   * @param scriptName - the name of the script, used in the addlTxn's  name
+   * @param script - the script to be stored onchain for future reference
+   * @public
+   **/
+  async txnMkAddlRefScriptTxn(tcx, scriptName, script) {
+    const refScriptUtxo = new TxOutput(
+      this.address,
+      new Value(this.ADA(0n)),
+      this.mkDatumScriptReference(),
+      script
+    );
+    refScriptUtxo.correctLovelace(this.networkParams);
+    const nextTcx = new StellarTxnContext(this.myActor).addOutput(
+      refScriptUtxo
+    );
+    const sn = scriptName[0].toUpperCase() + scriptName.slice(1);
+    return tcx.includeAddlTxn(`refScript${sn}`, {
+      description: `creates on-chain reference script for ${scriptName}`,
+      moreInfo: "saves txn fees and txn space in future txns",
+      optional: false,
+      tcx: nextTcx
+    });
+  }
+  async txnAttachScriptOrRefScript(tcx, program = this.compiledScript) {
+    let expectedVh = this.getProgramHash(program);
+    const { purpose: expectedPurpose } = program.properties;
+    const isCorrectRefScript = (txin) => {
+      const refScript = txin.origOutput.refScript;
+      if (!refScript)
+        return false;
+      const { purpose } = refScript.properties || {};
+      if (purpose && purpose != expectedPurpose)
+        return false;
+      const foundHash = this.getProgramHash(refScript);
+      return foundHash == expectedVh;
+    };
+    if (tcx.txRefInputs.find(isCorrectRefScript)) {
+      console.warn("suppressing second add of refScript");
+      return tcx;
+    }
+    const scriptReferences = await this.findScriptReferences();
+    const matchingScriptRefs = scriptReferences.find(
+      ([txin, refScript]) => isCorrectRefScript(txin)
+    );
+    if (!matchingScriptRefs) {
+      console.warn(
+        `missing refScript in Capo ${this.address.toBech32()} for expected script hash ${expectedVh}; adding script directly to txn`
+      );
+      return tcx.addScriptProgram(program);
+    }
+    return tcx.addRefInput(matchingScriptRefs[0], program);
+  }
+  getProgramHash(program) {
+    let hash;
+    try {
+      hash = program.validatorHash.toString();
+    } catch (e1) {
+      try {
+        hash = program.mintingPolicyHash.toString();
+      } catch (e2) {
+        try {
+          hash = program.stakingValidatorHash.toString();
+        } catch (e3) {
+          debugger;
+          throw new Error(
+            `can't get script hash from program:
+  - tried validatorHash: ${e1.message}
+  - tried mintingPolicyHash: ${e2.message}
+  - tried stakingValidatorHash: ${e3.message}`
+          );
+        }
+      }
+    }
+    return hash;
+  }
+  async findScriptReferences() {
+    const utxos = await this.network.getUtxos(this.address);
+    const utxosWithDatum = (await Promise.all(
+      utxos.map((utxo) => {
+        const { datum: datum2 } = utxo.origOutput;
+        if (!datum2)
+          return null;
+        return this.readDatum(
+          "ScriptReference",
+          datum2
+        ).catch(() => {
+          return null;
+        }).then((scriptRef) => {
+          if (!scriptRef)
+            return null;
+          return [utxo, scriptRef];
+        });
+      })
+    )).filter((x) => !!x);
+    return utxosWithDatum;
   }
   async mkTxnUpdateCharter(args, tcx = new StellarTxnContext(this.myActor)) {
     return this.txnUpdateCharterUtxo(
@@ -61895,7 +62113,11 @@ class DefaultCapo extends Capo {
     );
   }
   async txnMintingUuts(initialTcx, uutPurposes, options = {}, roles = {}) {
-    const { usingSeedUtxo, additionalMintValues = [], mintDelegateActivity } = options;
+    const {
+      usingSeedUtxo,
+      additionalMintValues = [],
+      mintDelegateActivity
+    } = options;
     if (additionalMintValues.length && !mintDelegateActivity) {
       throw new Error(
         `additionalMintValues requires a custom activity provided by your mint delegate specialization`
@@ -61906,7 +62128,11 @@ class DefaultCapo extends Capo {
     const tcx = await this.txnWillMintUuts(
       initialTcx,
       uutPurposes,
-      { usingSeedUtxo: seedUtxo, additionalMintValues, mintDelegateActivity },
+      {
+        usingSeedUtxo: seedUtxo,
+        additionalMintValues,
+        mintDelegateActivity
+      },
       roles
     );
     const dgtActivity = mintDelegateActivity || mintDelegate.activityMintingUuts({
@@ -61915,10 +62141,7 @@ class DefaultCapo extends Capo {
     });
     const tcx2 = await this.minter.txnMintWithDelegateAuthorizing(
       tcx,
-      [
-        ...mkUutValuesEntries(tcx.state.uuts),
-        ...additionalMintValues
-      ],
+      [...mkUutValuesEntries(tcx.state.uuts), ...additionalMintValues],
       mintDelegate,
       dgtActivity
     );
@@ -61945,9 +62168,7 @@ class DefaultCapo extends Capo {
     tcx2.state.seedUtxo = seedUtxo;
     return tcx2;
   }
-  async txnWillMintUuts(tcx, uutPurposes, {
-    usingSeedUtxo
-  }, roles = {}) {
+  async txnWillMintUuts(tcx, uutPurposes, { usingSeedUtxo }, roles = {}) {
     const { txId, utxoIdx } = usingSeedUtxo.outputId;
     const { blake2b } = Crypto;
     const uutMap = Object.fromEntries(
@@ -61997,7 +62218,8 @@ class DefaultCapo extends Capo {
           "the trustee group can be changed",
           "the charter token is always kept in the contract",
           "the charter details can be updated",
-          "can mint other tokens, on the authority of the Charter token"
+          "can mint other tokens, on the authority of the Charter token",
+          "can handle large transactions with reference scripts"
         ]
       },
       "has a singleton minting policy": {
@@ -62088,6 +62310,25 @@ class DefaultCapo extends Capo {
           "fails if the charter-token parameters are modified"
         ]
       },
+      "can handle large transactions with reference scripts": {
+        purpose: "to support large transactions and reduce per-transaction costs",
+        details: [
+          "Each Capo involves the leader contract, a short minting script, ",
+          "  ... and a minting delegate.  Particularly in pre-production, these ",
+          "  ... can easily add up to more than the basic 16kB transaction size limit.",
+          "By creating reference scripts, the size budget overhead for later ",
+          "  ... transactions is reduced, at cost of an initial deposit for each refScript. ",
+          "Very small validators may get away without refScripts, but more complicated ",
+          "  ... transactions will need them.  So creating them is recommended in all cases."
+        ],
+        mech: [
+          "creates refScript for minter during charter creation",
+          "creates refScript for capo during charter creation",
+          "creates refScript for mintDgt during charter creation",
+          "finds refScripts in the Capo's utxos",
+          "txnAttachScriptOrRefScript(): uses scriptRefs in txns on request"
+        ]
+      },
       "the trustee group can be changed": {
         purpose: "to ensure administrative continuity for the group",
         details: [
@@ -62134,8 +62375,11 @@ __decorateClass([
   datum
 ], DefaultCapo.prototype, "mkDatumCharterToken", 1);
 __decorateClass([
-  txn
-], DefaultCapo.prototype, "mkTxnMintCharterToken", 1);
+  datum
+], DefaultCapo.prototype, "mkDatumScriptReference", 1);
+__decorateClass([
+  partialTxn
+], DefaultCapo.prototype, "txnAttachScriptOrRefScript", 1);
 __decorateClass([
   txn
 ], DefaultCapo.prototype, "mkTxnUpdateCharter", 1);
@@ -62840,7 +63084,7 @@ var latestParams = {
 		memory: 14000000,
 		steps: 10000000000
 	},
-	maxTxSize: 30384,
+	maxTxSize: 16384,
 	maxValueSize: 5000,
 	minPoolCost: 340000000,
 	monetaryExpansion: 0.003,
@@ -63273,7 +63517,7 @@ class CapoTestHelper extends StellarTestHelper {
     console.log(
       name,
       address.toBech32().substring(0, 18) + "\u2026",
-      "vHash \u{1F4DC} " + strella.compiledScript.validatorHash.hex.substring(0, 12) + "\u2026",
+      "vHash \u{1F4DC} " + strella.validatorHash.hex.substring(0, 12) + "\u2026",
       "mph \u{1F3E6} " + mph?.hex.substring(0, 12) + "\u2026"
     );
     return strella;
@@ -63337,8 +63581,14 @@ class DefaultCapoTestHelper extends CapoTestHelper {
     await this.mintCharterToken();
     const treasury = await this.strella;
     const tcx = new StellarTxnContext(this.currentActor);
-    const tcx2 = await treasury.txnAddGovAuthority(tcx);
-    return treasury.txnMustUseCharterUtxo(tcx2, treasury.activityUsingAuthority());
+    const tcx2 = await treasury.txnAttachScriptOrRefScript(
+      await treasury.txnAddGovAuthority(tcx),
+      treasury.compiledScript
+    );
+    return treasury.txnMustUseCharterUtxo(
+      tcx2,
+      treasury.activityUsingAuthority()
+    );
   }
   mkDefaultCharterArgs() {
     const addr = this.currentActor.address;
@@ -63375,6 +63625,16 @@ class DefaultCapoTestHelper extends CapoTestHelper {
     console.log(
       `----- charter token minted at slot ${this.network.currentSlot}`
     );
+    this.network.tick(1n);
+    await script.submitAddlTxns(tcx, ({
+      txName,
+      description
+    }) => {
+      this.network.tick(1n);
+      console.log(
+        `           ------- submitting addl txn ${txName} at slot ${this.network.currentSlot}:`
+      );
+    });
     this.network.tick(1n);
     this.state.mintedCharterToken = tcx;
     return tcx;

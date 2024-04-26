@@ -1775,7 +1775,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!BasicMintDelegate#txnCreateRefScript:member(1)",
-              "docComment": "/**\n * Creates a reference-script utxo for the minting delegate\n *\n * @remarks\n *\n * detailed remarks\n *\n * @param  - ‹pName› - descr\n *\n * @typeParam  - ‹pName› - descr (for generic types)\n *\n * @public\n */\n",
+              "docComment": "/**\n * Creates a reference-script utxo for the minting delegate\n *\n * @remarks\n *\n * Creates an addl txn for the minting delegate to create a reference-script utxo\n *\n * @param tcx - the transaction context\n *\n * @param scriptName - the name of the script, used in the addlTxn name\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -1788,6 +1788,27 @@
                 },
                 {
                   "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "anyState",
+                  "canonicalReference": "@donecollectively/stellar-contracts!anyState:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", scriptName extends "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string"
+                },
+                {
+                  "kind": "Content",
                   "text": ">(tcx: "
                 },
                 {
@@ -1796,11 +1817,51 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "): "
+                  "text": ", scriptName: "
                 },
                 {
                   "kind": "Content",
-                  "text": "TCX"
+                  "text": "scriptName"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasAddlTxn",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasAddlTxn:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<TCX, `refScript${scriptName}`, "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "anyState",
+                  "canonicalReference": "@donecollectively/stellar-contracts!anyState:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">>>"
                 },
                 {
                   "kind": "Content",
@@ -1812,7 +1873,18 @@
                   "typeParameterName": "TCX",
                   "constraintTokenRange": {
                     "startIndex": 1,
-                    "endIndex": 2
+                    "endIndex": 5
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                },
+                {
+                  "typeParameterName": "scriptName",
+                  "constraintTokenRange": {
+                    "startIndex": 6,
+                    "endIndex": 7
                   },
                   "defaultTypeTokenRange": {
                     "startIndex": 0,
@@ -1822,8 +1894,8 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 5,
-                "endIndex": 6
+                "startIndex": 12,
+                "endIndex": 20
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -1832,8 +1904,16 @@
                 {
                   "parameterName": "tcx",
                   "parameterTypeTokenRange": {
-                    "startIndex": 3,
-                    "endIndex": 4
+                    "startIndex": 8,
+                    "endIndex": 9
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "scriptName",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 10,
+                    "endIndex": 11
                   },
                   "isOptional": false
                 }
@@ -3915,150 +3995,6 @@
               "name": "mkImpliedDelegationDetails"
             },
             {
-              "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!Capo#mkTxnMintCharterToken:member(1)",
-              "docComment": "/**\n * Initiates a seeding transaction, creating a new Capo contract of this type\n *\n * @remarks\n *\n * The returned transaction context has `state.bootstrappedConfig` for capturing the details for reproducing the contract's settings and on-chain address.\n *\n * @param charterDatumArgs - initial details for the charter datum\n *\n * @param tcx - any existing transaction context\n *\n * @typeParam TCX - inferred type of a provided transaction context\n *\n * @public\n */\n",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "abstract mkTxnMintCharterToken<TCX extends "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "StellarTxnContext",
-                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
-                },
-                {
-                  "kind": "Content",
-                  "text": ">(charterDatumArgs: "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "Partial",
-                  "canonicalReference": "!Partial:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": "<charterDatumType>"
-                },
-                {
-                  "kind": "Content",
-                  "text": ", existingTcx?: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "TCX"
-                },
-                {
-                  "kind": "Content",
-                  "text": "): "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "Promise",
-                  "canonicalReference": "!Promise:interface"
-                },
-                {
-                  "kind": "Content",
-                  "text": "<never | (TCX & "
-                },
-                {
-                  "kind": "Reference",
-                  "text": "hasBootstrappedConfig",
-                  "canonicalReference": "@donecollectively/stellar-contracts!hasBootstrappedConfig:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": "<"
-                },
-                {
-                  "kind": "Reference",
-                  "text": "CapoBaseConfig",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoBaseConfig:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": " & configType>)>"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "typeParameters": [
-                {
-                  "typeParameterName": "TCX",
-                  "constraintTokenRange": {
-                    "startIndex": 1,
-                    "endIndex": 2
-                  },
-                  "defaultTypeTokenRange": {
-                    "startIndex": 0,
-                    "endIndex": 0
-                  }
-                }
-              ],
-              "isStatic": false,
-              "returnTypeTokenRange": {
-                "startIndex": 8,
-                "endIndex": 14
-              },
-              "releaseTag": "Public",
-              "isProtected": false,
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "charterDatumArgs",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 3,
-                    "endIndex": 5
-                  },
-                  "isOptional": false
-                },
-                {
-                  "parameterName": "existingTcx",
-                  "parameterTypeTokenRange": {
-                    "startIndex": 6,
-                    "endIndex": 7
-                  },
-                  "isOptional": true
-                }
-              ],
-              "isOptional": false,
-              "isAbstract": true,
-              "name": "mkTxnMintCharterToken"
-            },
-            {
-              "kind": "Property",
-              "canonicalReference": "@donecollectively/stellar-contracts!Capo#mockMinter:member",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "mockMinter?: "
-                },
-                {
-                  "kind": "Content",
-                  "text": "minterType"
-                },
-                {
-                  "kind": "Content",
-                  "text": ";"
-                }
-              ],
-              "isReadonly": false,
-              "isOptional": true,
-              "releaseTag": "Public",
-              "name": "mockMinter",
-              "propertyTypeTokenRange": {
-                "startIndex": 1,
-                "endIndex": 2
-              },
-              "isStatic": false,
-              "isProtected": false,
-              "isAbstract": false
-            },
-            {
               "kind": "Property",
               "canonicalReference": "@donecollectively/stellar-contracts!Capo#mph:member",
               "docComment": "",
@@ -4713,6 +4649,98 @@
               "isOptional": false,
               "isAbstract": false,
               "name": "txnAddGovAuthorityTokenRef"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo#txnAttachScriptOrRefScript:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "abstract txnAttachScriptOrRefScript<TCX extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">(tcx: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "TCX"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", program?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "UplcProgram",
+                  "canonicalReference": "@hyperionbt/helios!UplcProgram:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<TCX>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "typeParameters": [
+                {
+                  "typeParameterName": "TCX",
+                  "constraintTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 7,
+                "endIndex": 9
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "tcx",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 3,
+                    "endIndex": 4
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "program",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 5,
+                    "endIndex": 6
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": true,
+              "name": "txnAttachScriptOrRefScript"
             },
             {
               "kind": "Method",
@@ -5767,7 +5795,16 @@
             },
             {
               "kind": "Content",
-              "text": ";\n    mph: "
+              "text": ";\n    capo: "
+            },
+            {
+              "kind": "Reference",
+              "text": "Capo",
+              "canonicalReference": "@donecollectively/stellar-contracts!Capo:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<any, any, any>;\n    mph: "
             },
             {
               "kind": "Reference",
@@ -5797,7 +5834,7 @@
           "name": "capoDelegateConfig",
           "typeTokenRange": {
             "startIndex": 1,
-            "endIndex": 11
+            "endIndex": 13
           }
         },
         {
@@ -7101,6 +7138,51 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#findScriptReferences:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "findScriptReferences(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<["
+                },
+                {
+                  "kind": "Reference",
+                  "text": "TxInput",
+                  "canonicalReference": "@hyperionbt/helios!TxInput:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", any][]>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "findScriptReferences"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#findUutSeedUtxo:member(1)",
               "docComment": "",
               "excerptTokens": [
@@ -7399,6 +7481,38 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#mkDatumScriptReference:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "mkDatumScriptReference(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Datum",
+                  "canonicalReference": "@hyperionbt/helios!Datum:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "mkDatumScriptReference"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#mkOnchainDelegateLink:member(1)",
               "docComment": "",
               "excerptTokens": [
@@ -7453,16 +7567,59 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#mkTxnMintCharterToken:member(1)",
-              "docComment": "/**\n * Initiates a seeding transaction, creating a new Capo contract of this type\n *\n * @remarks\n *\n * The returned transaction context has `state.bootstrappedConfig` for capturing the details for reproducing the contract's settings and on-chain address.\n *\n * @param charterDatumArgs - initial details for the charter datum\n *\n * @param tcx - any existing transaction context\n *\n * @typeParam TCX - inferred type of a provided transaction context\n *\n * @public\n */\n",
+              "docComment": "/**\n * Initiates a seeding transaction, creating a new Capo contract of this type\n *\n * @remarks\n *\n * The returned transaction context has `state.bootstrappedConfig` for capturing the details for reproducing the contract's settings and on-chain address.\n *\n * @param charterDatumArgs - initial details for the charter datum\n *\n * @param existinTcx - any existing transaction context\n *\n * @typeParam TCX - inferred type of a provided transaction context\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
                   "text": "mkTxnMintCharterToken<TCX extends "
                 },
                 {
+                  "kind": "Content",
+                  "text": "undefined | "
+                },
+                {
                   "kind": "Reference",
                   "text": "StellarTxnContext",
                   "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "anyState",
+                  "canonicalReference": "@donecollectively/stellar-contracts!anyState:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", TCX2 = "
+                },
+                {
+                  "kind": "Content",
+                  "text": "TCX extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<infer TCXT> ? "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<TCXT> : {}"
                 },
                 {
                   "kind": "Content",
@@ -7496,7 +7653,34 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<never | ("
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasAddlTxn",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasAddlTxn:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasAddlTxn",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasAddlTxn:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasAddlTxn",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasAddlTxn:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
                 },
                 {
                   "kind": "Reference",
@@ -7505,7 +7689,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<\"govAuthority\" | \"capoGov\" | \"mintDelegate\" | \"mintDgt\"> & TCX & "
+                  "text": "<\"govAuthority\" | \"capoGov\" | \"mintDelegate\" | \"mintDgt\"> & TCX2 & "
                 },
                 {
                   "kind": "Reference",
@@ -7514,16 +7698,106 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<"
+                  "text": "<{\n        rev: bigint;\n    } & "
                 },
                 {
                   "kind": "Reference",
-                  "text": "CapoBaseConfig",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoBaseConfig:type"
+                  "text": "Record",
+                  "canonicalReference": "!Record:type"
                 },
                 {
                   "kind": "Content",
-                  "text": " & configType>)>"
+                  "text": "<string, any> & import(\"./StellarContract.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "devConfigProps",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~devConfigProps:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": " & {\n        rootCapoScriptHash?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "ValidatorHash",
+                  "canonicalReference": "@hyperionbt/helios!ValidatorHash:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": " | undefined;\n    } & import(\"./SeedTxn.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "SeedTxnParams",
+                  "canonicalReference": "@donecollectively/stellar-contracts!SeedTxnParams:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": " & {\n        mph: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "MintingPolicyHash",
+                  "canonicalReference": "@hyperionbt/helios!MintingPolicyHash:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";\n        rev: bigint;\n        bootstrapping?: true | undefined;\n    } & configType>, \"refScriptMintDelegate\", "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<import(\"./StellarTxnContext.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "emptyState",
+                  "canonicalReference": "@donecollectively/stellar-contracts!emptyState:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">>, \"refScriptCapo\", "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<import(\"./StellarTxnContext.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "emptyState",
+                  "canonicalReference": "@donecollectively/stellar-contracts!emptyState:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">>, \"refScriptMinter\", "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<import(\"./StellarTxnContext.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "emptyState",
+                  "canonicalReference": "@donecollectively/stellar-contracts!emptyState:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">>>"
                 },
                 {
                   "kind": "Content",
@@ -7535,18 +7809,29 @@
                   "typeParameterName": "TCX",
                   "constraintTokenRange": {
                     "startIndex": 1,
-                    "endIndex": 2
+                    "endIndex": 6
                   },
                   "defaultTypeTokenRange": {
                     "startIndex": 0,
                     "endIndex": 0
                   }
+                },
+                {
+                  "typeParameterName": "TCX2",
+                  "constraintTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 7,
+                    "endIndex": 12
+                  }
                 }
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 8,
-                "endIndex": 16
+                "startIndex": 18,
+                "endIndex": 52
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -7555,16 +7840,16 @@
                 {
                   "parameterName": "charterDatumArgs",
                   "parameterTypeTokenRange": {
-                    "startIndex": 3,
-                    "endIndex": 5
+                    "startIndex": 13,
+                    "endIndex": 15
                   },
                   "isOptional": false
                 },
                 {
                   "parameterName": "existingTcx",
                   "parameterTypeTokenRange": {
-                    "startIndex": 6,
-                    "endIndex": 7
+                    "startIndex": 16,
+                    "endIndex": 17
                   },
                   "isOptional": true
                 }
@@ -7720,7 +8005,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<\"the trustee group can be changed\" | \"positively governs all administrative actions\" | \"has a unique, permanent charter token\" | \"has a unique, permanent treasury address\" | \"the trustee threshold is enforced on all administrative actions\" | \"the charter token is always kept in the contract\" | \"the charter details can be updated\" | \"can mint other tokens, on the authority of the Charter token\" | \"has a singleton minting policy\" | \"foo\">"
+                  "text": "<\"the trustee group can be changed\" | \"positively governs all administrative actions\" | \"has a unique, permanent charter token\" | \"has a unique, permanent treasury address\" | \"the trustee threshold is enforced on all administrative actions\" | \"the charter token is always kept in the contract\" | \"the charter details can be updated\" | \"can mint other tokens, on the authority of the Charter token\" | \"can handle large transactions with reference scripts\" | \"has a singleton minting policy\" | \"foo\">"
                 },
                 {
                   "kind": "Content",
@@ -7848,12 +8133,12 @@
             },
             {
               "kind": "Method",
-              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#txnAddMintDelegate:member(1)",
-              "docComment": "/**\n * USE getMintDelegate() AND ITS txnGrantAuthority() METHOD INSTEAD\n *\n * @remarks\n *\n * detailed remarks\n *\n * @deprecated\n *\n * @param  - ‹pName› - descr\n *\n * @typeParam  - ‹pName› - descr (for generic types)\n */\n",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#txnAttachScriptOrRefScript:member(1)",
+              "docComment": "/**\n * Attach the given script by reference to a transaction\n *\n * @remarks\n *\n * If the given script is found in the Capo's known list of reference scripts, it is used to attach the refScript to the transaction context. Otherwise, the script's bytes are added directly to the transaction.\n *\n * The script name is expected to be found in the Capo's refScript datum. If a different name is found, a mismatch warning is emitted.\n *\n * If the given program is not found in the Capo's refScript datum, a missing-refScript warning is emitted, and the program is added directly to the transaction. If this makes the transaction too big, the console warning will be followed by a thrown error during the transaction's wallet-submission sequence.\n *\n * @param program - the UPLC program to attach to the script\n *\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
-                  "text": "txnAddMintDelegate<TCX extends "
+                  "text": "txnAttachScriptOrRefScript<TCX extends "
                 },
                 {
                   "kind": "Reference",
@@ -7862,15 +8147,20 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<any>"
-                },
-                {
-                  "kind": "Content",
                   "text": ">(tcx: "
                 },
                 {
                   "kind": "Content",
                   "text": "TCX"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", program?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "UplcProgram",
+                  "canonicalReference": "@hyperionbt/helios!UplcProgram:class"
                 },
                 {
                   "kind": "Content",
@@ -7895,7 +8185,7 @@
                   "typeParameterName": "TCX",
                   "constraintTokenRange": {
                     "startIndex": 1,
-                    "endIndex": 3
+                    "endIndex": 2
                   },
                   "defaultTypeTokenRange": {
                     "startIndex": 0,
@@ -7905,8 +8195,8 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 6,
-                "endIndex": 8
+                "startIndex": 7,
+                "endIndex": 9
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -7915,15 +8205,23 @@
                 {
                   "parameterName": "tcx",
                   "parameterTypeTokenRange": {
-                    "startIndex": 4,
-                    "endIndex": 5
+                    "startIndex": 3,
+                    "endIndex": 4
                   },
                   "isOptional": false
+                },
+                {
+                  "parameterName": "program",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 5,
+                    "endIndex": 6
+                  },
+                  "isOptional": true
                 }
               ],
               "isOptional": false,
               "isAbstract": false,
-              "name": "txnAddMintDelegate"
+              "name": "txnAttachScriptOrRefScript"
             },
             {
               "kind": "Method",
@@ -8139,6 +8437,182 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#txnMkAddlRefScriptTxn:member(1)",
+              "docComment": "/**\n * Creates an additional reference-script-creation txn\n *\n * @remarks\n *\n * Creates a txn for reference-script creation, and adds it to the current transaction context to also be submitted.\n *\n * The reference script is stored in the Capo contract with a special Datum, and it can be used in future transactions to save space and fees.\n *\n * @param tcx - the transaction context\n *\n * @param scriptName - the name of the script, used in the addlTxn's name\n *\n * @param script - the script to be stored onchain for future reference\n *\n * @public\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "txnMkAddlRefScriptTxn<TCX extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "anyState",
+                  "canonicalReference": "@donecollectively/stellar-contracts!anyState:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", scriptName extends "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">(tcx: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "TCX"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", scriptName: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "scriptName"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", script: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "UplcProgram",
+                  "canonicalReference": "@hyperionbt/helios!UplcProgram:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasAddlTxn",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasAddlTxn:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<TCX, `refScript${"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Capitalize",
+                  "canonicalReference": "!Capitalize:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<scriptName>}`, "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "anyState",
+                  "canonicalReference": "@donecollectively/stellar-contracts!anyState:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">>>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "typeParameters": [
+                {
+                  "typeParameterName": "TCX",
+                  "constraintTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 5
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                },
+                {
+                  "typeParameterName": "scriptName",
+                  "constraintTokenRange": {
+                    "startIndex": 6,
+                    "endIndex": 7
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 14,
+                "endIndex": 24
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "tcx",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 8,
+                    "endIndex": 9
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "scriptName",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 10,
+                    "endIndex": 11
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "script",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 12,
+                    "endIndex": 13
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "txnMkAddlRefScriptTxn"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!DefaultCapo#txnWillMintUuts:member(1)",
               "docComment": "",
               "excerptTokens": [
@@ -8206,7 +8680,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": ", { usingSeedUtxo, }: "
+                  "text": ", { usingSeedUtxo }: "
                 },
                 {
                   "kind": "Reference",
@@ -8320,7 +8794,7 @@
                   "isOptional": false
                 },
                 {
-                  "parameterName": "{ usingSeedUtxo, }",
+                  "parameterName": "{ usingSeedUtxo }",
                   "parameterTypeTokenRange": {
                     "startIndex": 16,
                     "endIndex": 17
@@ -8689,6 +9163,33 @@
                 },
                 {
                   "kind": "Content",
+                  "text": "<import(\"../StellarTxnContext.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasAddlTxn",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasAddlTxn:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<import(\"../StellarTxnContext.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasAddlTxn",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasAddlTxn:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<import(\"../StellarTxnContext.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasAddlTxn",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasAddlTxn:type"
+                },
+                {
+                  "kind": "Content",
                   "text": "<"
                 },
                 {
@@ -8698,7 +9199,25 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<\"govAuthority\" | \"capoGov\" | \"mintDelegate\" | \"mintDgt\"> & "
+                  "text": "<\"govAuthority\" | \"capoGov\" | \"mintDelegate\" | \"mintDgt\"> & ({} | "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<import(\"../StellarTxnContext.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "emptyState",
+                  "canonicalReference": "@donecollectively/stellar-contracts!emptyState:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">) & "
                 },
                 {
                   "kind": "Reference",
@@ -8707,16 +9226,106 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<"
+                  "text": "<{\n        rev: bigint;\n    } & "
                 },
                 {
                   "kind": "Reference",
-                  "text": "CapoBaseConfig",
-                  "canonicalReference": "@donecollectively/stellar-contracts!~CapoBaseConfig:type"
+                  "text": "Record",
+                  "canonicalReference": "!Record:type"
                 },
                 {
                   "kind": "Content",
-                  "text": ">>"
+                  "text": "<string, any> & import(\"../StellarContract.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "devConfigProps",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~devConfigProps:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": " & {\n        rootCapoScriptHash?: import(\"@hyperionbt/helios\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "ValidatorHash",
+                  "canonicalReference": "@hyperionbt/helios!ValidatorHash:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": " | undefined;\n    } & import(\"../SeedTxn.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "SeedTxnParams",
+                  "canonicalReference": "@donecollectively/stellar-contracts!SeedTxnParams:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": " & {\n        mph: import(\"@hyperionbt/helios\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "MintingPolicyHash",
+                  "canonicalReference": "@hyperionbt/helios!MintingPolicyHash:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";\n        rev: bigint;\n        bootstrapping?: true | undefined;\n    } & CT>, \"refScriptMintDelegate\", "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<import(\"../StellarTxnContext.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "emptyState",
+                  "canonicalReference": "@donecollectively/stellar-contracts!emptyState:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">>, \"refScriptCapo\", "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<import(\"../StellarTxnContext.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "emptyState",
+                  "canonicalReference": "@donecollectively/stellar-contracts!emptyState:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">>, \"refScriptMinter\", "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<import(\"../StellarTxnContext.js\")."
+                },
+                {
+                  "kind": "Reference",
+                  "text": "emptyState",
+                  "canonicalReference": "@donecollectively/stellar-contracts!emptyState:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">>>"
                 },
                 {
                   "kind": "Content",
@@ -8726,7 +9335,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 4,
-                "endIndex": 12
+                "endIndex": 42
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -8801,21 +9410,12 @@
                 },
                 {
                   "kind": "Reference",
-                  "text": "Partial",
-                  "canonicalReference": "!Partial:type"
-                },
-                {
-                  "kind": "Content",
-                  "text": "<"
-                },
-                {
-                  "kind": "Reference",
                   "text": "MinimalDefaultCharterDatumArgs",
                   "canonicalReference": "@donecollectively/stellar-contracts!~MinimalDefaultCharterDatumArgs:type"
                 },
                 {
                   "kind": "Content",
-                  "text": "<CDT>>"
+                  "text": "<CDT>"
                 },
                 {
                   "kind": "Content",
@@ -8825,7 +9425,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 1,
-                "endIndex": 5
+                "endIndex": 3
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -9184,7 +9784,7 @@
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter#activityBurningUuts:member(1)",
-              "docComment": "/**\n * @deprecated\n */\n",
+              "docComment": "/**\n * @deprecated\n *\n * - use minter:MintWithDelegateAuthorizing with delegate:burningUuts or another application-specific activity\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -9361,6 +9961,59 @@
               "isOptional": false,
               "isAbstract": false,
               "name": "activityMintWithDelegateAuthorizing"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!DefaultMinter#attachRefScript:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "attachRefScript(tcx: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "any"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 5
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "tcx",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "attachRefScript"
             },
             {
               "kind": "Property",
@@ -9693,7 +10346,16 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "<existingTcx>"
+                  "text": "<existingTcx & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>>"
                 },
                 {
                   "kind": "Content",
@@ -9716,7 +10378,7 @@
               "isStatic": false,
               "returnTypeTokenRange": {
                 "startIndex": 9,
-                "endIndex": 11
+                "endIndex": 13
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -9756,6 +10418,19 @@
                   "kind": "Reference",
                   "text": "StellarTxnContext",
                   "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "anyState",
+                  "canonicalReference": "@donecollectively/stellar-contracts!anyState:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
@@ -9823,7 +10498,7 @@
                   "typeParameterName": "TCX",
                   "constraintTokenRange": {
                     "startIndex": 1,
-                    "endIndex": 2
+                    "endIndex": 5
                   },
                   "defaultTypeTokenRange": {
                     "startIndex": 0,
@@ -9833,8 +10508,8 @@
               ],
               "isStatic": false,
               "returnTypeTokenRange": {
-                "startIndex": 13,
-                "endIndex": 15
+                "startIndex": 16,
+                "endIndex": 18
               },
               "releaseTag": "Public",
               "isProtected": false,
@@ -9843,16 +10518,16 @@
                 {
                   "parameterName": "tcx",
                   "parameterTypeTokenRange": {
-                    "startIndex": 3,
-                    "endIndex": 4
+                    "startIndex": 6,
+                    "endIndex": 7
                   },
                   "isOptional": false
                 },
                 {
                   "parameterName": "{ owner, capoGov, mintDgt, }",
                   "parameterTypeTokenRange": {
-                    "startIndex": 5,
-                    "endIndex": 12
+                    "startIndex": 8,
+                    "endIndex": 15
                   },
                   "isOptional": false
                 }
@@ -10540,6 +11215,120 @@
         },
         {
           "kind": "TypeAlias",
+          "canonicalReference": "@donecollectively/stellar-contracts!hasAddlTxn:type",
+          "docComment": "",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export type hasAddlTxn<TCX extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "StellarTxnContext",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+            },
+            {
+              "kind": "Content",
+              "text": ", txnName extends "
+            },
+            {
+              "kind": "Content",
+              "text": "string"
+            },
+            {
+              "kind": "Content",
+              "text": ", FUTURE_TX_TYPE extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "StellarTxnContext",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+            },
+            {
+              "kind": "Content",
+              "text": "> = "
+            },
+            {
+              "kind": "Content",
+              "text": "TCX & "
+            },
+            {
+              "kind": "Reference",
+              "text": "StellarTxnContext",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+            },
+            {
+              "kind": "Content",
+              "text": "<"
+            },
+            {
+              "kind": "Reference",
+              "text": "emptyState",
+              "canonicalReference": "@donecollectively/stellar-contracts!emptyState:type"
+            },
+            {
+              "kind": "Content",
+              "text": " & {\n    addlTxns: {\n        [key in txnName]: "
+            },
+            {
+              "kind": "Reference",
+              "text": "AddlTxInfo",
+              "canonicalReference": "@donecollectively/stellar-contracts!~AddlTxInfo:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<FUTURE_TX_TYPE>;\n    };\n}>"
+            },
+            {
+              "kind": "Content",
+              "text": ";"
+            }
+          ],
+          "fileUrlPath": "src/StellarTxnContext.ts",
+          "releaseTag": "Public",
+          "name": "hasAddlTxn",
+          "typeParameters": [
+            {
+              "typeParameterName": "TCX",
+              "constraintTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 0,
+                "endIndex": 0
+              }
+            },
+            {
+              "typeParameterName": "txnName",
+              "constraintTokenRange": {
+                "startIndex": 3,
+                "endIndex": 4
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 0,
+                "endIndex": 0
+              }
+            },
+            {
+              "typeParameterName": "FUTURE_TX_TYPE",
+              "constraintTokenRange": {
+                "startIndex": 5,
+                "endIndex": 6
+              },
+              "defaultTypeTokenRange": {
+                "startIndex": 0,
+                "endIndex": 0
+              }
+            }
+          ],
+          "typeTokenRange": {
+            "startIndex": 7,
+            "endIndex": 14
+          }
+        },
+        {
+          "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!hasAllUuts:type",
           "docComment": "/**\n * used for transaction-context state having specific uut-purposes\n *\n * @public\n */\n",
           "excerptTokens": [
@@ -10597,7 +11386,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@donecollectively/stellar-contracts!hasBootstrappedConfig:type",
-          "docComment": "/**\n * StellarTransactionContext exposing a bootstrapped Capo configuration\n *\n * @remarks\n *\n * During first-time setup of a Capo contract, its manifest configuration details should be captured for reproducibility, and this type allows the bootstrap transaction to expose that configuration.\n *\n * Capo's {@link Capo.mkTxnMintCharterToken | mkTxnMintCharterToken()} returns a transaction context of this type, with `state.bootstrappedConfig`;\n *\n * @public\n */\n",
+          "docComment": "/**\n * StellarTransactionContext exposing a bootstrapped Capo configuration\n *\n * @remarks\n *\n * During first-time setup of a Capo contract, its manifest configuration details should be captured for reproducibility, and this type allows the bootstrap transaction to expose that configuration.\n *\n * DefaultCapo's {@link DefautlCapo.mkTxnMintCharterToken | mkTxnMintCharterToken()} returns a transaction context of this type, with `state.bootstrappedConfig`;\n *\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -11985,6 +12774,37 @@
           "name": "StellarContract",
           "preserveMemberOrder": false,
           "members": [
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#_cache:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "_cache: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "ComputedScriptProperties",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~ComputedScriptProperties:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "_cache",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
+            },
             {
               "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#_infoBackToUtxo:member(1)",
@@ -14164,7 +14984,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": " | never>"
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
@@ -14284,7 +15104,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": " | never>"
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
@@ -14595,7 +15415,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": " | never>"
+                  "text": ">"
                 },
                 {
                   "kind": "Content",
@@ -15343,6 +16163,99 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#submitAddlTxns:member(1)",
+              "docComment": "/**\n * Executes additional transactions indicated by an existing transaction\n *\n * @remarks\n *\n * During the off-chain txn-creation process, additional transactions may be queued for execution. This method is used to execute those transactions.\n *\n * @param tcx - : the prior txn context having the additional txns to execute\n *\n * @param callback - : an optional async callback that you can use to notify a user, or to log the results of the additional txns\n *\n * @public\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "submitAddlTxns(tcx: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any> & "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasAddlTxn",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasAddlTxn:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<any>, any, any>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", callback?: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "AddlTxnCallback",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~AddlTxnCallback:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Promise",
+                  "canonicalReference": "!Promise:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<void>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 10,
+                "endIndex": 12
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "tcx",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 7
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "callback",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 8,
+                    "endIndex": 9
+                  },
+                  "isOptional": true
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "submitAddlTxns"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#tokenAsValue:member(1)",
               "docComment": "",
               "excerptTokens": [
@@ -15703,6 +16616,37 @@
               "isOptional": false,
               "isAbstract": false,
               "name": "utxoSearchError"
+            },
+            {
+              "kind": "Property",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarContract#validatorHash:member",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "get validatorHash(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "helios.ValidatorHash",
+                  "canonicalReference": "@hyperionbt/helios!ValidatorHash:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isReadonly": true,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "validatorHash",
+              "propertyTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false
             },
             {
               "kind": "Property",
@@ -19615,6 +20559,68 @@
             },
             {
               "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext#addScriptProgram:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "addScriptProgram(...args: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Parameters",
+                  "canonicalReference": "!Parameters:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "Tx",
+                  "canonicalReference": "@hyperionbt/helios!Tx:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "[\"attachScript\"]>"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "this"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 6,
+                "endIndex": 7
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "args",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 5
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "addScriptProgram"
+            },
+            {
+              "kind": "Method",
               "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext#addSignature:member(1)",
               "docComment": "",
               "excerptTokens": [
@@ -19973,7 +20979,7 @@
                 },
                 {
                   "kind": "Content",
-                  "text": "this"
+                  "text": "void"
                 },
                 {
                   "kind": "Content",
@@ -20182,6 +21188,170 @@
               "isOptional": false,
               "isAbstract": false,
               "name": "getSeedAttrs"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext#includeAddlTxn:member(1)",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "includeAddlTxn<TCX extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<"
+                },
+                {
+                  "kind": "Reference",
+                  "text": "anyState",
+                  "canonicalReference": "@donecollectively/stellar-contracts!anyState:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", txnName extends "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", FUTURE_TX_TYPE extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "StellarTxnContext",
+                  "canonicalReference": "@donecollectively/stellar-contracts!StellarTxnContext:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ">(this: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "TCX"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", txnName: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "txnName"
+                },
+                {
+                  "kind": "Content",
+                  "text": ", txInfo: "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "AddlTxInfo",
+                  "canonicalReference": "@donecollectively/stellar-contracts!~AddlTxInfo:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<FUTURE_TX_TYPE>"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "hasAddlTxn",
+                  "canonicalReference": "@donecollectively/stellar-contracts!hasAddlTxn:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": "<TCX, txnName, FUTURE_TX_TYPE>"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "typeParameters": [
+                {
+                  "typeParameterName": "TCX",
+                  "constraintTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 5
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                },
+                {
+                  "typeParameterName": "txnName",
+                  "constraintTokenRange": {
+                    "startIndex": 6,
+                    "endIndex": 7
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                },
+                {
+                  "typeParameterName": "FUTURE_TX_TYPE",
+                  "constraintTokenRange": {
+                    "startIndex": 8,
+                    "endIndex": 9
+                  },
+                  "defaultTypeTokenRange": {
+                    "startIndex": 0,
+                    "endIndex": 0
+                  }
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 17,
+                "endIndex": 19
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "this",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 10,
+                    "endIndex": 11
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "txnName",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 12,
+                    "endIndex": 13
+                  },
+                  "isOptional": false
+                },
+                {
+                  "parameterName": "txInfo",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 14,
+                    "endIndex": 16
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "includeAddlTxn"
             },
             {
               "kind": "Property",

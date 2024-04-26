@@ -558,6 +558,7 @@ export class StellarContract<
         // console.log(this.constructor.name, "cached vh", vh?.hex || "none");
         const nvh = this.compiledScript.validatorHash;
         return (this._cache.vh = nvh)
+    }
     get address(): Address {
         const {addr} = this._cache
         console.log(this.constructor.name, "cached addr", addr?.toBech32() || "none");
@@ -1391,9 +1392,9 @@ export class StellarContract<
             if (false && wallet && wHelper) {
                 //@ts-expect-error on internal isSmart()
                 if (tx.isSmart() && !tcx.collateral) {
-                    let [c] = await wallet.collateral;
+                    let [c] = await wallet!.collateral;
                     if (!c) {
-                        c = await wHelper.pickCollateral(this.ADA(5n));
+                        c = await wHelper!.pickCollateral(this.ADA(5n));
                         if (c.value.lovelace > this.ADA(20n))
                             throw new Error(
                                 `The only collateral-eligible utxos in this wallet have more than 20 ADA.  It's recommended to create and maintain collateral values between 2 and 20 ADA (or 5 and 20, for more complex txns)`
