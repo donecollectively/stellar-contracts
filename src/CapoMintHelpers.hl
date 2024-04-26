@@ -300,7 +300,13 @@ func validateUutMinting(
             }
         )
     );
-    assert(valueMinted.contains_policy(mph), "validateUutMinting(): no mint from our policy "+ mph.show() + "\n"+ valueMinted.show());
+    if (! valueMinted.contains_policy(mph) ) {
+        print( "  -- no mint from our policy at (mph, valueMinted): ( ");
+        print( mph.show() );
+        print(valueMinted.show() );
+        error(") - validateUutMinting(): no mint")
+    };
+
     actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);
     // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);
     if (true) {
