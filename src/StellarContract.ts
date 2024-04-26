@@ -1802,7 +1802,7 @@ export class StellarContract<
             const script = Program.new(src, modules);
             if (params) script.parameters = params;
 
-            const simplify =
+            const simplify = // true ; const t = 
                 "optimize" in this.setup
                     ? this.setup.optimize
                     : !this.setup.isTest && !this.setup.isDev;
