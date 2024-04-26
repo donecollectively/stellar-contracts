@@ -59,11 +59,6 @@ func getCharterOutput(tx: Tx) -> TxOutput {
     }
 }
 
-func notUpdatingCharter(activity: CapoActivity) -> Bool { activity.switch {
-    updatingCharter => false,  
-    _ => true
-}}
-
 func preventCharterChange(ctx: ScriptContext, datum: CapoDatum::CharterToken) -> Bool {
     tx: Tx = ctx.tx;
 
@@ -129,22 +124,34 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
     print("  -- checking spend of "+ showMyTokens(ctx.get_current_input().value ));
     
     allDatumSpecificChecks: Bool = datum.switch {
+        // checks that unsupported activities for a datum are rejected promptly 
+        // +special things we want to always guard against for specific Datum types:
         ctd : CharterToken => {
-            // throws if bad
-            if (notUpdatingCharter(activity)) { 
-                preventCharterChange(ctx, ctd)
-            } else {
-                true // "maybe", really -> depends on the activity
+            invalid : String = "invalid activity on CharterToken";
+            activity.switch {
+                updatingCharter => true,  // more activity-checks happen below.
+                addingSpendInvariant => error("todo"),
+                updatingSettings => error(invalid),
+                retiringSettings => error(invalid),
+                spendingDelegatedDatum => error(invalid),
+                _ => {
+                    preventCharterChange(ctx, ctd)  // throws if bad                
+                    // ... plus activity-specific checks below.
+                }
             }
         },
-        SettingsData => {
-            true // maybe -> activity updatingSettings will check
+        SettingsData => activity.switch {
+            updatingSettings => true,  // more checks below.
+            retiringSettings => error("there is no use case for this activity, unless it's part of a complete teardown"),
+            _ => error("invalid activity on SettingsData")
         },
-
-        scriptRef : ScriptReference => {
-            // only here to ensure specializations are properly arranged
-            assert(true || (scriptRef == scriptRef), "never");
-            true
+        ScriptReference => activity.switch {
+            retiringRefScript => true,
+            _ => error("invalid activity on ScriptReference")            
+        },
+        DelegatedData => activity.switch {
+            spendingDelegatedDatum => true,
+            _ => error("invalid activity on DelegateData")
         },
         _ => true
     };
@@ -249,7 +256,6 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
             if (unchangedMintDgt) {
                 // unchanged mintDgt must not be included in the tx
                 checkpoint("2b") &&
-                checkpoint("2b") && 
                 mintDelegate.hasDelegateInput(
                     inputs: ctx.tx.inputs, 
                     mph: mph,
@@ -343,7 +349,6 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
 
         usingAuthority => {
             print( "  ...with activity usingAuthority\n");
-            // by definition, we're truly notUpdatingCharter(activity) 
             datum.switch {
                  // throws if bad
                 ctd : CharterToken => requiresAuthorization(ctx, ctd),
