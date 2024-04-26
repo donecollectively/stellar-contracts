@@ -17,6 +17,8 @@ import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
 import type { Capo } from "../Capo.js";
 import type { DefaultCapo } from "../DefaultCapo.js";
 
+//   ppParams.latestParams.maxTxExecutionUnits.memory = 28_000_000
+
 export const preProdParams = ppParams;
 
 export type enhancedNetworkParams = NetworkParams & {
