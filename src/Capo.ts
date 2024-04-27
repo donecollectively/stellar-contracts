@@ -313,9 +313,10 @@ export abstract class Capo<
                     `${this.constructor.name}: missing required instance property devGen : bigint > 0n`
                 );
             }
-            params.isDev = true;
-            params.devGen = this.devGen;
         }
+        // temporarily using dev-like settings for preproduction
+        params.isDev = true;
+        params.devGen = this.devGen;
 
         return params;
     }

@@ -60359,9 +60359,9 @@ class Capo extends StellarContract {
           `${this.constructor.name}: missing required instance property devGen : bigint > 0n`
         );
       }
-      params.isDev = true;
-      params.devGen = this.devGen;
     }
+    params.isDev = true;
+    params.devGen = this.devGen;
     return params;
   }
   async init(args) {
