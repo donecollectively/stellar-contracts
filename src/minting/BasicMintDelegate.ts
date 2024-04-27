@@ -77,6 +77,8 @@ export class BasicMintDelegate extends StellarDelegate<MintDelegateArgs> {
             }
             params.devGen = config.devGen;
         }
+        params.isDev = true;
+        params.devGen = config.devGen;
         return params;
     }
 

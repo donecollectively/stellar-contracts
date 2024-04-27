@@ -60834,6 +60834,7 @@ expected: ` + expectedMph.hex + "\nactual: " + minter.mintingPolicyHash.hex
     const impliedDelegationDetails = this.mkImpliedDelegationDetails(
       new UutName(roleName, uutName)
     );
+    debugger;
     const config = {
       ...defaultParamsFromDelegateClass,
       ...stratSettings,
@@ -61149,6 +61150,8 @@ class BasicMintDelegate extends StellarDelegate {
       }
       params.devGen = config.devGen;
     }
+    params.isDev = true;
+    params.devGen = config.devGen;
     return params;
   }
   contractSource() {
