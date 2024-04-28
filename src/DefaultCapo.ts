@@ -540,7 +540,7 @@ export class DefaultCapo<
             currentCharterUtxo = await this.mustFindCharterUtxo();
         }
         // console.log(" -- charter utxo ❌❌❌❌❌❌❌❌❌❌", dumpAny(currentCharterUtxo));
-        const charterDatum = await this.readDatum<DefaultCharterDatumArgs>(
+        const charterDatum = await this.readDatum<CDT>(
             "CharterToken",
             currentCharterUtxo.origOutput.datum as InlineDatum
         );
@@ -1191,7 +1191,7 @@ export class DefaultCapo<
         //     "spendDelegate"
         // >(tcx, "spendDelegate", charterDatumArgs.spendDelegateLink);
 
-        //@ts-expect-error "could be instantiated with different subtype"
+        //@xxxts-expect-error "could be instantiated with different subtype"
         const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
             ...currentDatum,
             mintDelegateLink: newMintDelegate,
@@ -1289,7 +1289,7 @@ export class DefaultCapo<
 
         debugger;
 
-        //@ts-expect-error "could be instantiated with different subtype"
+        //@xts-expect-error "could be instantiated with different subtype"
         const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
             ...currentDatum,
             spendDelegateLink: newSpendDelegate,
@@ -1345,7 +1345,7 @@ export class DefaultCapo<
         //     "spendDelegate"
         // >(tcx, "spendDelegate", charterDatumArgs.spendDelegateLink);
 
-        //@ts-expect-error "could be instantiated with different subtype"
+        //x@ts-expect-error "could be instantiated with different subtype"
         const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
             ...currentDatum,
             mintInvariants: [...currentDatum.mintInvariants, mintDelegate],
@@ -1413,7 +1413,7 @@ export class DefaultCapo<
         //     "spendDelegate"
         // >(tcx, "spendDelegate", charterDatumArgs.spendDelegateLink);
 
-        //@ts-expect-error "could be instantiated with different subtype"
+        //x@ts-expect-error "could be instantiated with different subtype"
         const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
             ...currentDatum,
             spendInvariants: [...currentDatum.spendInvariants, spendDelegate],
@@ -1485,7 +1485,7 @@ export class DefaultCapo<
             tcx2, "namedDelegate", options
         );
 
-        //@ts-expect-error "could be instantiated with different subtype"
+        //x@ts-expect-error "could be instantiated with different subtype"
         const fullCharterArgs: DefaultCharterDatumArgs & CDT = {
             ...currentDatum,
             namedDelegates: {
