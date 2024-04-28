@@ -1,0 +1,35 @@
+module TypeMapMetadata
+
+// a type definition for a schema
+
+struct TypeInfo {
+    schemaVariety: String  // e.g. "json-schema"
+    schemaContent: String    
+}
+
+enum TypeRefImportDetails {
+    ImportType {  // imports external types and keeps their names
+        typeName: String // use "*" to import all types
+    }
+    ImportAs {  // imports a single external type with a local name
+        mapToRemoteNames: Map[String]String  // maps local names to remote names
+        // keys are LOCAL names.  Values are REMOTE names.
+    }
+}
+
+struct TypeMapRef {
+    importDetails: TypeRefImportDetails  "imp"
+    utxoRef: Option[TxOutputId] "utxo"  // the referenced utxo is EXPECTED to have {typeMapFlag, TypeMapInfo}
+    variety: String "trv"// indicates RESOLUTION semantics for the referenced type-information.
+        // the variety MAY also indicate interpretation semantics for the referenced type-information.
+        // if variety  is "CIP-123", use the utxoRef here, and interpret the result as a {{}}-flagged CIP-123 TypeMapInfo
+        // other varieties MAY use the utxoRef, depending on their semantics
+        // other varieties MAY use the ref string to generically point to the external type
+    ref: String "ref"
+}
+
+struct TypeMap {
+    localTypes: Map[String]TypeInfo
+    inheritFlag: String // = "||" ; may be the empty string if there are no inherited types
+    inherit: []TypeMapRef
+}

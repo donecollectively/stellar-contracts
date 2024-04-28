@@ -105,6 +105,7 @@ import { UutName } from "./delegation/UutName.js";
 import type { Expand, ExpandRecursively } from "./testing/types.js";
 import { UncustomCapoSettings } from "./UncustomCapoSettings.js";
 import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
+import { TypeMapMetadata } from "./TypeMapMetadata.js";
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
@@ -119,6 +120,7 @@ export interface DefaultCharterDatumArgs {
     mintDelegateLink: RelativeDelegateLink<BasicMintDelegate>;
     mintInvariants: RelativeDelegateLink<StellarDelegate<any>>[];
     govAuthorityLink: RelativeDelegateLink<AuthorityPolicy>;
+    typeMapUut: UutName | number[];
 }
 
 /**
@@ -266,6 +268,7 @@ export class DefaultCapo<
         return [
             customCapoSettings,
             this.capoHelpers,
+            TypeMapMetadata,
             ...parentModules,
         ];
     }
@@ -459,8 +462,9 @@ export class DefaultCapo<
                 return [k, this.mkOnchainDelegateLink(v)];
             })
         );
-
+        const OptByteArray = Option(ByteArray);
         const settingsUutNameBytes = this.mkSettingsUutName(args.settingsUut);
+        const typeMapUutNameBytes = this.mkSettingsUutName(args.typeMapUut);
         const t = new hlCharterToken(
             spendDelegate,
             spendInvariants,
@@ -468,7 +472,8 @@ export class DefaultCapo<
             namedDelegates,
             mintDelegate,
             mintInvariants,
-            govAuthority
+            govAuthority,
+            new OptByteArray(typeMapUutNameBytes)
         );
         return Datum.inline(t._toUplcData());
     }
@@ -534,6 +539,7 @@ export class DefaultCapo<
         if (!currentCharterUtxo) {
             currentCharterUtxo = await this.mustFindCharterUtxo();
         }
+        // console.log(" -- charter utxo ❌❌❌❌❌❌❌❌❌❌", dumpAny(currentCharterUtxo));
         const charterDatum = await this.readDatum<DefaultCharterDatumArgs>(
             "CharterToken",
             currentCharterUtxo.origOutput.datum as InlineDatum
@@ -1082,6 +1088,8 @@ export class DefaultCapo<
             tcx2b,
             spendingDelegate.activityValidatingSettings()
         );
+
+        // console.log("   🐞🐞🐞🐞🐞🐞🐞🐞")
         const tcx2d = await mintDelegate.txnGrantAuthority(
             tcx2c,
             mintDelegate.activityValidatingSettings()
@@ -1698,6 +1706,7 @@ export class DefaultCapo<
         //@ts-expect-error
         roles: RM = {} as Record<string, purposes>
     ): Promise<hasUutContext<ROLES | purposes> & existingTcx> {
+        if (!usingSeedUtxo) debugger
         const { txId, utxoIdx } = usingSeedUtxo.outputId;
         const { blake2b } = Crypto;
 

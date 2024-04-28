@@ -117,11 +117,12 @@ func showMyTokens(v: Value) -> String{
 func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
     // now: Time = tx.time_range.start;
-    print("hi from capo" + if (isDev) {
+    print("🚥❓Capo" + if (isDev) {
             " - isDev @gen " + devGen.show()
         } else { "" }
     );
     print("  -- checking spend of "+ showMyTokens(ctx.get_current_input().value ));
+    TODO("implement activity updatingTypeMap");
     
     allDatumSpecificChecks: Bool = datum.switch {
         // checks that unsupported activities for a datum are rejected promptly 
@@ -153,6 +154,10 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
             spendingDelegatedDatum => true,
             _ => error("invalid activity on DelegateData")
         },
+        TypeMapInfo => activity.switch {
+            updatingTypeMap => true,
+            _ => error("invalid activity on TypeMapInfo")
+        },
         _ => true
     };
 
@@ -177,6 +182,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
             );
             spendDelegate: RelativeDelegateLink = charterDatum.spendDelegateLink;
             delegateReturned: Bool = spendDelegate.hasValidOutput(mph, ctx);
+            // consider allowing this as a refInput, with other stuff to enable more parallelism for populations
             spendDelegateInput: TxInput = spendDelegate.hasDelegateInput(
                 inputs: ctx.tx.inputs,
                 mph: mph
@@ -208,7 +214,8 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                 namedDelegates,
                 mintDelegate, 
                 mintInvariants,
-                govDelegate
+                govDelegate,
+                oldTypeMapUut
             } = newCtDatum;
 
             CapoDatum::CharterToken{
@@ -219,6 +226,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                 oldMintDelegate, 
                 oldMintInvariants,
                 /* _oldGovDelegate */ _ 
+                typeMapUut
             } = oldCtDatum;
 
             mustNotModifyMintInvariants : Bool =  ( mintInvariants == oldMintInvariants );
@@ -228,6 +236,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
             unchangedMintDgt : Bool = ( mintDelegate.serialize() == oldMintDelegate.serialize() );
             changedAnyNamedDelegate : Bool = ( namedDelegates.serialize() != oldNamedDelegates.serialize() );
             mustNotModifySettings : Bool = ( settingsUut == oldSettingsUut );
+            mustNotModifyTypeInfo : Bool = ( typeMapUut == oldTypeMapUut );
 
             if (isDev) {
                 print("is spendDgt unchanged? " + unchangedSpendDgt.show() +
@@ -248,9 +257,11 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                 )
             };
             assert(mustNotModifySettings, "cannot change settings uut");
+            assert(mustNotModifyTypeInfo, "cannot change typeInfo uut");
 
             // govDelegate is always spent, so we always check its destination is kosher.
             mustNotModifySettings &&
+            mustNotModifyTypeInfo &&
             govDelegate.hasValidOutput(mph, ctx) &&
             checkpoint("1") &&
             if (unchangedMintDgt) {
@@ -274,6 +285,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                             CapoLifecycleActivities{CLA} => CLA.switch {
                                 CreatingDelegate => {
                                     print("TEMPORARY: allowing delegate creation while **updatingCharter**");
+
                                     TODO("move delegate-creation to be separate from updatingCharter");
                                     TODO(" ?? use capo ActivatingXxxxDelegate activity when adopting delegate");
 
@@ -358,8 +370,13 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
 
         updatingSettings => {
             print( "  ...with activity updatingSettings\n");
-            datum.switch {
-                SettingsData => {
+            isRelevantDatum : Bool = datum.switch {
+                SettingsData => true,
+                TypeMapInfo => true,
+                _ => error("wrong use of updatingSettings action; must use only on Settings and TypeInfo")
+            };
+            if (isRelevantDatum) { // temporary to minimize commit diff
+                if (isRelevantDatum) { // temporary to minimize commit diff
                     charterDatum : CapoDatum::CharterToken = getTxCharterDatum(
                         ctx: ctx,
                         mph: mph
@@ -378,7 +395,8 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                         namedDelegates,
                         mintDelegate ,
                         mintInvariants,
-                        govDelegate
+                        govDelegate,
+                        /* oldTypeMapUut */ _
                     } = charterDatum;
                     
                    // ?? can we iterate inputs along with delegates, to reduce the overhead
@@ -464,6 +482,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                         }, true
                     );
 
+                    isRelevantDatum &&
                     spendDelegateIsValidating &&
                     mintDelegateIsValidating &&
                     govDelegateMaybeValidating &&
@@ -471,13 +490,16 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                     mintInvariantsAreValidating &&
                     namedDelegatesAreValidating &&
                     hasGovAuthority
-                },
-                _ => error("wrong use of updatingSettings action for non-SettingsData datum")
-            }
+                } else { error("unreachable") }
+            } else { error("unreachable") }
         },
         retiringSettings => {
             print( "  ...with activity retiringSettings\n");
             error("implement me")
+        },
+        updatingTypeMap => {
+            print( "  ...with activity updatingTypeMap\n");
+            error("implement me")            
         },
         _ => error("unhandled activity")
     };

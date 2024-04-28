@@ -1,4 +1,5 @@
 import { statSync } from "fs";
+
 import {
     Address,
     Assets,
@@ -1057,6 +1058,7 @@ export class StellarContract<
         if (uplcMap.map.length > 0) debugger
         return t;
     }
+
     private async readUplcField(
         fn: string,
         fieldType: any,
@@ -1890,7 +1892,6 @@ export class StellarContract<
                     `${indent}  ... this can be caused by not providing correct types in a module specialization,\n` +
                     `${indent}  ... or if your module definition doesn't include a correct path to your helios file\n` +
                     `${indent}  ... (possibly in mkHeliosModule(heliosCode, \n${indent}    "${srcFile}"\n${indent})\n`
-
 
                 // todo: detect when the error is cause because a module in our lib has a cross-dependency
                 // ... on a  module override provided by the client code.

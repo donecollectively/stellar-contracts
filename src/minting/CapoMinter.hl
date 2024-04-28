@@ -106,7 +106,8 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                 namedDelegates,
                 mintDgt, 
                 mintInvariants, 
-                authDgt
+                authDgt,
+                /* typeMapUut */ _
             } = charterDatum;
             foundSettings : outputAndDatum[CapoDatum::SettingsData] = 
                 charterDatum.mustFindSettingsOutput(ctx: ctx, mph: mph, inAddr: charter.owner);

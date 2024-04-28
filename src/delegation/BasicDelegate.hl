@@ -125,6 +125,10 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                     print(delegateName + ": delegate TRYING TO VALIDATE SETTINGS");
                     validated : Bool = customSettings.validate();
                     print("HURRAY");
+
+                    // TODO: also validate any typeMap (can do this later and adopt the new delegate 
+                    // into the Capo when this code is written)
+
                     validated && 
                         // isValid : Bool = 
                         //     ((isTest && throwIfBadSettings(ctx, mdd, settings)) || true) &&
@@ -132,6 +136,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                         // isValid
                         true
                     }
+
                 },
                 CapoLifecycleActivities{CLA} => {
                     assert(isMintDelegate, 

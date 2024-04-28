@@ -7,6 +7,10 @@ import {
     outputAndDatum
 } from StellarHeliosHelpers
 
+import {
+    TypeMap
+} from TypeMapMetadata
+
 import { 
     RelativeDelegateLink,
     AbstractDelegateActivitiesEnum
@@ -18,19 +22,20 @@ import {
 struct AnyData {
     id: String "@id"  // same as the UUT name for this data
     type: String "tpe"
+
     // can have other fields; receiver will interpret their target types.
 }
-
 
 enum CapoDatum {
     CharterToken {
         spendDelegateLink: RelativeDelegateLink
         spendInvariants: []RelativeDelegateLink
-        settingsUut: ByteArray // UUT-name links to SettingsData
+        settingsUut: ByteArray          // UUT-name links to SettingsData
         namedDelegates: Map[String]RelativeDelegateLink
         mintDelegateLink: RelativeDelegateLink
         mintInvariants: []RelativeDelegateLink
         govAuthorityLink: RelativeDelegateLink
+        typeMapUut: Option[ByteArray]   // optional reference to a UUT having TypeMapInfo datum
     }
     ScriptReference
     SettingsData {
@@ -39,6 +44,10 @@ enum CapoDatum {
     DelegatedData {  // the Capo redirects control of these to the spend delegate
         data: AnyData // the spend delegate may redirect control further, depending on what it sees in there
         //xxx delegateLink: RelativeDelegateLink  // such link info would be unnormalized
+    }
+    TypeMapInfo {
+        typeMapInfoFlag: String // = "{{}}" 
+        data: TypeMap
     }
 
     // this needs to be a method on the CapoDatum enum,
@@ -140,6 +149,7 @@ enum CapoActivity {
     spendingDelegatedDatum // variant 4
     updatingSettings // variant 5
     retiringSettings // variant 6
+    updatingTypeMap // variant 7
 }
 
 func getRefCharterUtxo(ctx: ScriptContext, mph : MintingPolicyHash) -> TxInput {

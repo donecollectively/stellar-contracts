@@ -257,7 +257,8 @@ func validateUutMinting(
             /* namedDelegates */ _,
             mintDgt, 
             /* mintInvariants */ _, 
-            /* govAuthority */ _
+            /* govAuthority */ _,
+            /* typeInfo */ _
         } = getTxCharterDatum(ctx, mph);
 
         if (needsMintDelegateApproval) {
