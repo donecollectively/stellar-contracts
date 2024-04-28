@@ -418,7 +418,6 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                         spendDelegate.validatesUpdatedSettings(
                             inputs: inputs,
                             mph: mph,
-                            validatorHashRequired: true,
                             inputRequired: true,
                             ctx: ctx
                         ).unwrap();
@@ -428,7 +427,6 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                         mintDelegate.validatesUpdatedSettings(
                             inputs: inputs,
                             mph: mph,
-                            validatorHashRequired: true,
                             inputRequired: true,
                             ctx: ctx
                         ).unwrap();
@@ -439,7 +437,6 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                         govDelegate.validatesUpdatedSettings(
                             inputs: inputs,
                             mph: mph,
-                            validatorHashRequired: false,
                             inputRequired: false,
                             ctx: ctx
                         ).switch{
@@ -452,7 +449,6 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                         ok && oneDgt.validatesUpdatedSettings(
                             inputs: inputs,
                             mph: mph,
-                            validatorHashRequired: true,
                             inputRequired: true,
                             ctx: ctx
                         ).unwrap()
@@ -475,7 +471,6 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                             ok && dgt.validatesUpdatedSettings(
                                 inputs: inputs,
                                 mph: mph,
-                                validatorHashRequired: true,
                                 inputRequired: true,
                                 ctx: ctx
                             ).unwrap()

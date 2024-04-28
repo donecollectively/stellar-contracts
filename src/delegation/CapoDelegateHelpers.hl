@@ -91,7 +91,6 @@ struct RelativeDelegateLink {
     
     func validatesUpdatedSettings(self,
         inputs: []TxInput,
-        validatorHashRequired: Bool,
         mph: MintingPolicyHash,
         inputRequired: Bool,
         ctx: ScriptContext
@@ -99,7 +98,6 @@ struct RelativeDelegateLink {
         self.hasDelegateInput(
             inputs: inputs,
             mph: mph,
-            validatorHashRequired: validatorHashRequired,
             required: inputRequired
         ).switch {
             // hasDelegateInput already failed if the input was required.
@@ -128,34 +126,18 @@ struct RelativeDelegateLink {
     func hasDelegateInput(self, 
         inputs: []TxInput, 
         mph: MintingPolicyHash,
-        required: Bool = true,
-        validatorHashRequired: Bool = true
+        required: Bool = true
     ) -> Option[TxInput] {
-        addrCredNeeded : Option[Credential] = self.delegateValidatorHash.switch{
-            Some{vh} => Option[Credential]::Some{Credential::new_validator(vh)},
-            None => if (validatorHashRequired) { 
-                // this is a major conflict - this delegate type is EXPECTED to have a validator hash.
-                error("❌ 💁missing required validator hash in delegate link " + self.uutName)
-            } else { 
-                Option[Credential]::None 
-            }
-        };
-
-        addrCredNeeded.switch {
+        self.delegateValidatorHash.switch{
+            // when no special input is needed by the delegate, 
             None => {
-                // when no special input is needed by the delegate, 
-                // validatorHashRequired=true throws error above.
-                assert(!validatorHashRequired, "no way");
-
-                // when the delegate has no validator hash, then we shouldn't bother 
-                // looking for a specific input.
-                //  so we should quickly return None.  Caller should bail out if the input is needed
                 if (required) {
                     error("❌ ➡️ 💁missing required input for delegate link " + self.uutName)
                 };
                 Option[TxInput]::None
             },
-            Some{needsAddrWithCred} => {
+            Some{vh} => {
+                needsAddrWithCred : Credential = Credential::new_validator(vh);
                 // if we arrived here, then we have a delegate that's supposed to be at a specific address.
                 // if we can't find an input with that address, it's an error condition.
                 // we need an input with this address, having the expected UUT.
