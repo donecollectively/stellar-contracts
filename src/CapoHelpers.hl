@@ -278,6 +278,7 @@ struct CapoCtx {
         dgtLink : RelativeDelegateLink = self.resolveCharterDatum().mintDelegateLink;
         self.requiresDelegateInput(dgtLink)
     }
+
     func requiresSpendDelegateInput(self) -> DelegateInput {
         dgtLink : RelativeDelegateLink = self.resolveCharterDatum().spendDelegateLink;
         self.requiresDelegateInput(dgtLink)
@@ -311,15 +312,18 @@ struct CapoCtx {
         }
     }
     
+    // doesn't care where the charter info comes from - refinput or input, both OK
     func needsCharter(self) -> CapoCtx {
-        self.charter.switch {
+        charter : CapoCharter = self.charter;
+        charter.switch {
             Ref => self,
             Input => self,
             Unk => {
-                chVal : Value = tvCharter(self.mph);
+                CapoCtx{ctx, mph, _} = self;
+                chVal : Value = tvCharter(mph);
                 hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
 
-                self.ctx.tx.ref_inputs.find_safe(hasCharter).switch{
+                ctx.tx.ref_inputs.find_safe(hasCharter).switch{
                     None => {
                         print("CapoCtx needsCharter(): no charter ref; must be in inputs...");
 
@@ -331,24 +335,28 @@ struct CapoCtx {
                         datum : CapoDatum::CharterToken = CapoDatum::CharterToken::from_data( 
                             charterUtxo.datum.get_inline_data() 
                         );
-                        self.copy(charter: CapoCharter::Ref{datum})
+                        CapoCtx{ctx, mph, CapoCharter::Ref{datum}}
                     }
                 }
-            },
-            _ => self
+                // _ => self
+            }
         }
     }
 
     func withCharterInput(self) -> CapoCtx {
-        self.charter.switch {
+        charter : CapoCharter = self.charter;
+
+        charter.switch {
             Input => self,
             Ref => error("CapoCtx.withCharterInput(): charter is from ref!"),
             Unk => {
-                chVal : Value = tvCharter(self.mph);
+                CapoCtx{ctx, mph, _} = self;
+
+                chVal : Value = tvCharter(mph);
                 hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
         
                 print("CapoCtx finding charter in inputs");
-                charterUtxo: TxInput = self.ctx.tx.inputs.find_safe(hasCharter).switch{
+                charterUtxo: TxInput = ctx.tx.inputs.find_safe(hasCharter).switch{
                     Some{ch} => ch,
                     None => error("Missing required charter input")
                 };
@@ -356,19 +364,24 @@ struct CapoCtx {
                     charterUtxo.datum.get_inline_data() 
                 );
                 // datum : CapoDatum::CharterToken = getTxCharterDatum(self.ctx, self.mph);
-                self.copy(charter: CapoCharter::Input{charterUtxo, datum})
+                CapoCtx{ctx, mph, CapoCharter::Input{charterUtxo, datum}}
+                // self.copy(charter: CapoCharter::Input{charterUtxo, datum})
             }
         }
     }
 
     func withCharterRef(self) -> CapoCtx {
-        self.charter.switch {
+        charter : CapoCharter = self.charter;
+        charter.switch {
             Ref => self,
             Input => error("CapoCtx.withCharterRef(): charter is from inputs!"),
             Unk => {
-                charter : CapoDatum::CharterToken = getRefCharterDatum(self.ctx, self.mph);
+                CapoCtx{ctx, mph, _} = self;
+                datum : CapoDatum::CharterToken = getRefCharterDatum(self.ctx, self.mph);
 
-                self.copy(charter: CapoCharter::Ref{charter})
+                CapoCtx{ctx, mph, CapoCharter::Ref{datum}}
+
+                // self.copy(charter: CapoCharter::Ref{datum})
             }
         }
     }
