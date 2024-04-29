@@ -1026,7 +1026,7 @@ export class DefaultCapo<
                     const { datum } = utxo.origOutput;
                     // console.log("datum", datum);
                     if (!datum) return null;
-                    return this.readDatum("ScriptReference", datum)
+                    return this.readDatum("ScriptReference", datum, "ignoreOtherTypes")
                         .catch(() => {
                             // console.log("we don't care about utxos that aren't of the ScriptReference type")
                             return null;
