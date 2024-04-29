@@ -264,6 +264,38 @@ struct CapoCtx {
     mph: MintingPolicyHash
     charter: CapoCharter
 
+    func getCharterRedeemer(self) -> CapoActivity {
+        e : String = "requires charter as input";
+        self.charter.switch {
+            Unk => error(e),
+            Ref => error(e),
+            Input{utxo, _} => {
+                activity : CapoActivity = CapoActivity::from_data(
+                    mustFindInputRedeemer(self.ctx, utxo)
+                );
+                wrongActivity = () -> CapoActivity { 
+                    if (true) { error("non-CharterToken activity") } else { 
+                        // unreachable
+                        CapoActivity::usingAuthority
+                    } 
+                };
+                activity.switch {
+                    retiringRefScript => wrongActivity(),
+                    updatingSettings => wrongActivity(),
+                    retiringSettings => wrongActivity(),
+                    updatingTypeMap => wrongActivity(),
+                    spendingDelegatedDatum => wrongActivity(),
+
+                    usingAuthority => activity,
+                    updatingCharter => activity,
+                    addingSpendInvariant => activity
+
+                    // _ => // leaving other potential variants out to generate compile errors if they're added
+                }
+            }
+        }
+    }
+
     func requiresNamedDelegateInput(self, dgtName: String) -> DelegateInput {
         self.resolveCharterDatum().namedDelegates.get_safe(dgtName).switch{
             None => error("missing required delegate with name: " + dgtName),

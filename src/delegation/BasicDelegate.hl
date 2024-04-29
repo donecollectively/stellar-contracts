@@ -1,4 +1,4 @@
-spending BasicMintDelegate
+spending BasicDelegate
 
 const rev : Int = 1
 const instance : ByteArray = #67656e6572616c
@@ -21,6 +21,8 @@ import {
 
 import {
     getTxCharterDatum,
+    mkCapoCtx,
+    CapoCtx,
     CapoDatum
     // CapoActivity
 } from CapoHelpers
@@ -59,7 +61,6 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
         isD : IsDelegation{dd} => {
             // MintDelegateDatum::IsDelegation{dd, cfg} = isD;
             activity.switch {
-                // authorizing minting of a new token or burning an existing token:
                 //   guards that the authority token is returned to this script.
                 // specialized minting delegates should likely perform additional checks.
 
@@ -79,19 +80,27 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                         );
                     
                         print("checking ReplacingMe on "+purpose+": "+dd.tn.decode_utf8());
-                        // THE CHARTER UPDATE ITSELF WILL CHECK THAT THERE'S A VALID DELEGATE OUTPUT FOR THE NEW DELEGATE
-                        updatingCharter: Int = 1;
-                        mintsUutForCharterUsingRedeemerIndex(
-                            charterRedeemerIndex: updatingCharter,
+                        
+                        cctx : CapoCtx = mkCapoCtx(ctx, dd.mph).withCharterInput();
+                        isUpdatingCharter : Bool = cctx.getCharterRedeemer().switch {
+                            // THE CHARTER UPDATE ITSELF WILL CHECK THAT THERE'S A VALID DELEGATE OUTPUT FOR THE NEW DELEGATE
+                            updatingCharter => true,
+                            _ => false
+                        };
+
+                        isMintingOk : Bool = validateUutMinting(
                             ctx: ctx, 
                             mph: dd.mph,
-                            purpose: purpose,
-                            seedTxId: seedTxId,
-                            seedIdx: seedIdx,
+                            seedTxId: seedTxId, 
+                            seedIdx: seedIdx, 
+                            purposes: []String{purpose}, 
                             otherMintedValue: otherMintedValue,
                             needsMintDelegateApproval: false,
                             extraMintDelegateRedeemerCheck: false
-                        )
+                        );
+
+                        isMintingOk && isUpdatingCharter
+
                     },
 
                     // the token is being burned, retiring the authority token for this minting delegate
