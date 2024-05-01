@@ -214,7 +214,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                 namedDelegates,
                 mintDelegate, 
                 mintInvariants,
-                govDelegate,
+                nextGovDelegate,
                 oldTypeMapUut
             } = newCtDatum;
 
@@ -225,16 +225,31 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                 oldNamedDelegates,
                 oldMintDelegate, 
                 oldMintInvariants,
-                /* _oldGovDelegate */ _ 
+                oldGovDelegate,
                 typeMapUut
             } = oldCtDatum;
 
             mustNotModifyMintInvariants : Bool =  ( mintInvariants == oldMintInvariants );
             mustNotModifySpendInvariants : Bool = ( spendInvariants == oldSpendInvariants );
+            unchangedGovDelegate : Bool = ( nextGovDelegate.serialize() == oldGovDelegate.serialize() );
+
+            hasNeededGovDelegate : Bool =  true ||
+            checkpoint("must be validated by existing govDelegate") && 
+            nextGovDelegate.hasValidOutput(mph, ctx) && (
+                unchangedGovDelegate || oldGovDelegate.hasDelegateInput( 
+                    inputs: tx.inputs, 
+                    mph: mph,
+                    required: true
+                ).switch {
+                    None => error("unreachable"),
+                    Some => true
+                }
+            );
 
             unchangedSpendDgt : Bool = ( spendDelegate.serialize() == oldSpendDelegate.serialize() );
             unchangedMintDgt : Bool = ( mintDelegate.serialize() == oldMintDelegate.serialize() );
             changedAnyNamedDelegate : Bool = ( namedDelegates.serialize() != oldNamedDelegates.serialize() );
+
             mustNotModifySettings : Bool = ( settingsUut == oldSettingsUut );
             mustNotModifyTypeInfo : Bool = ( typeMapUut == oldTypeMapUut );
 
@@ -259,10 +274,19 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
             assert(mustNotModifySettings, "cannot change settings uut");
             assert(mustNotModifyTypeInfo, "cannot change typeInfo uut");
 
-            // govDelegate is always spent, so we always check its destination is kosher.
+
+            // the high-level use-cases that can update charter are all mutually exclusive.  Count them
+            // and ensure that only one is present.
+            countUpdatedThings : Int = 
+                if (unchangedGovDelegate) { 0 } else { 1 } +
+                if (unchangedSpendDgt) { 0 } else { 1 } +
+                if (unchangedMintDgt) { 0 } else { 1 } +
+                if (changedAnyNamedDelegate) { 1 } else { 0 };
+            assert(countUpdatedThings == 1, "only one type of charterUpdate can be performed at once");            
+
             mustNotModifySettings &&
             mustNotModifyTypeInfo &&
-            govDelegate.hasValidOutput(mph, ctx) &&
+            hasNeededGovDelegate &&
             checkpoint("1") &&
             if (unchangedMintDgt) {
                 // unchanged mintDgt must not be included in the tx
