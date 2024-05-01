@@ -252,10 +252,13 @@ struct DelegateInput {
 
 enum CapoCharter {
     Unk
-    Ref { datum: CapoDatum::CharterToken }
+    Ref { 
+        datum: CapoDatum::CharterToken
+        utxo: TxInput
+    }
     Input { 
-        utxo: TxInput 
         datum: CapoDatum::CharterToken 
+        utxo: TxInput 
     }
 }    
 
@@ -269,7 +272,7 @@ struct CapoCtx {
         self.charter.switch {
             Unk => error(e),
             Ref => error(e),
-            Input{utxo, _} => {
+            Input{_, utxo} => {
                 activity : CapoActivity = CapoActivity::from_data(
                     mustFindInputRedeemer(self.ctx, utxo)
                 );
@@ -296,6 +299,28 @@ struct CapoCtx {
         }
     }
 
+    func getRefSettingsUtxo(self) -> TxInput {
+        charterDatum : CapoDatum::CharterToken = self.resolveCharterDatum();
+        settingsValue : Value = mkTv(mph: self.mph, tnBytes: charterDatum.settingsUut);
+        hasSettings = (txin : TxInput) -> Bool { txin.value.contains(settingsValue) };
+
+        print("getting ref_input for settings");
+        settingsUtxo : TxInput =  self.ctx.tx.ref_inputs.find_safe(hasSettings).switch{
+            Some{s} => s,
+            //!!! todo adjust this message: Missing required charter in ref_inputs
+            None => error("Missing settings in required ref_inputs (use capo.addSettingsRef(tcx, 'refInput') in txn builder)")
+        };
+    
+        settingsUtxo
+    }
+    
+
+    func getSettings[SettingsTYPE](self) -> SettingsTYPE {
+        settings : TxInput = self.getRefSettingsUtxo();
+
+        SettingsTYPE::from_data(settings.datum.get_inline_data())
+    }
+
     func requiresNamedDelegateInput(self, dgtName: String) -> DelegateInput {
         self.resolveCharterDatum().namedDelegates.get_safe(dgtName).switch{
             None => error("missing required delegate with name: " + dgtName),
@@ -319,9 +344,17 @@ struct CapoCtx {
     // internal / low-level function
     func resolveCharterDatum(self) -> CapoDatum::CharterToken {
         self.charter.switch {
-            Ref{datum} => datum,
-            Input{_, datum} => datum,
+            Ref{datum, _} => datum,
+            Input{datum, _} => datum,
             _ => error("CapoCtx.resolveCharterDatum(): unknown charter strategy; use result of withCharterInput(), withCharterRef(), or needsCharter() to resolve charter datum first")
+        }
+    }
+
+    func resolveCharterUtxo(self) -> TxInput {
+        self.charter.switch {
+            Ref{_, utxo} => utxo,
+            Input{_, utxo} => utxo,
+            _ => error("CapoCtx.resolveCharterUtxo(): unknown charter strategy; use result of withCharterInput(), withCharterRef(), or needsCharter() to resolve charter utxo first")
         }
     }
 
@@ -341,6 +374,19 @@ struct CapoCtx {
                     self.mph
                 }
             }
+        }
+    }
+
+    func hasDelegatedDataOutput(self, v : Value) -> TxOutput {
+        capoAddr : Address = self.resolveCharterUtxo().address;
+
+        self.ctx.tx.outputs.find_safe(
+            (txout : TxOutput) -> Bool {
+                txout.address == capoAddr && txout.value.contains(v)
+            }
+        ).switch{
+            None => error("missing required delegated-data output"),
+            Some{txout} => txout
         }
     }
     
@@ -367,7 +413,7 @@ struct CapoCtx {
                         datum : CapoDatum::CharterToken = CapoDatum::CharterToken::from_data( 
                             charterUtxo.datum.get_inline_data() 
                         );
-                        CapoCtx{ctx, mph, CapoCharter::Ref{datum}}
+                        CapoCtx{ctx, mph, CapoCharter::Ref{datum, charterUtxo}}
                     }
                 }
                 // _ => self
@@ -396,7 +442,7 @@ struct CapoCtx {
                     charterUtxo.datum.get_inline_data() 
                 );
                 // datum : CapoDatum::CharterToken = getTxCharterDatum(self.ctx, self.mph);
-                CapoCtx{ctx, mph, CapoCharter::Input{charterUtxo, datum}}
+                CapoCtx{ctx, mph, CapoCharter::Input{datum, charterUtxo}}
                 // self.copy(charter: CapoCharter::Input{charterUtxo, datum})
             }
         }
@@ -409,9 +455,12 @@ struct CapoCtx {
             Input => error("CapoCtx.withCharterRef(): charter is from inputs!"),
             Unk => {
                 CapoCtx{ctx, mph, _} = self;
-                datum : CapoDatum::CharterToken = getRefCharterDatum(self.ctx, self.mph);
-
-                CapoCtx{ctx, mph, CapoCharter::Ref{datum}}
+                utxo : TxInput = getRefCharterUtxo(ctx, mph);
+                datum : CapoDatum::CharterToken = CapoDatum::from_data( 
+                    utxo.datum.get_inline_data() 
+                );
+            
+                CapoCtx{ctx, mph, CapoCharter::Ref{datum, utxo}}
 
                 // self.copy(charter: CapoCharter::Ref{datum})
             }
