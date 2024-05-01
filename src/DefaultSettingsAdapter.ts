@@ -1,10 +1,10 @@
 import { ConstrData, Datum } from "@hyperionbt/helios";
-import { DatumAdapter } from "./DatumAdapter.js";
+import { DatumAdapter, type AnyDataTemplate } from "./DatumAdapter.js";
 import type { Capo } from "./Capo.js";
 
-export type RealNumberSettingsMap = { [key: string]: number };
+export type RealNumberSettingsMap =  { [key: string]: number };
 export type onchainRealNumberSettingsMap = {
-    data: Record<string, bigint>
+    data: AnyDataTemplate<"set-"> & Record<string, bigint>
 };
 
 export class DefaultSettingsAdapter extends DatumAdapter<
@@ -33,6 +33,8 @@ export class DefaultSettingsAdapter extends DatumAdapter<
         const { SettingsData: hlSettingsData } = this.onChainDatumType;
         const { RealnumSettingsValueV1 } = this.onChainTypes;
 
+        const {constrIndex} = hlSettingsData.prototype._enumVariantStatement;
+
         // const variant = hlSettingsData.prototype._enumVariantStatement;
         // const settingsConstrIndex = new hlSettingsData(
         //     "placeholder")._enumVariantStatement.constrIndex;
@@ -43,7 +45,7 @@ export class DefaultSettingsAdapter extends DatumAdapter<
         // temporarily use the helios on-chain type.  Later this can just return a JSON structure
         // that Helios will easily convert to its on-chain type.
         return Datum.inline(
-            new ConstrData(2, [
+            new ConstrData(constrIndex, [
                 this.toMapData(settings, this.toRealNum)
             ])
         );

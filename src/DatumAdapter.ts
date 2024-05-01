@@ -1,19 +1,33 @@
-import { ByteArrayData, IntData, MapData, UplcData, textToBytes, type Datum } from "@hyperionbt/helios";
+import {
+    ByteArrayData,
+    IntData,
+    MapData,
+    UplcData,
+    textToBytes,
+    type Datum,
+    ConstrData,
+} from "@hyperionbt/helios";
 import type { StellarContract } from "./StellarContract.js";
+import * as helios from "@hyperionbt/helios";
 
-    /**
-     * Provides transformations of data between preferred application types and on-chain data types
-     * @remarks
-     * 
-     * This class is intended to be subclassed for each specific data type used StellarContracts class
-     * 
-     * The fromOnchainDatum method should be implemented to convert deserialized on-chain data to the application type,
-     * 
-     * @typeParam appType - high-level preferred application type for the data; may be a class having various methods
-     * @typeParam OnchainBridgeType - the on-chain data type, as deserialized from the contract
-     * @typeParam contractType - the specific contract class that uses this data type
-     * @public
-     **/
+export interface AnyDataTemplate<TYPENAME extends string> {
+    "@id": string;  // same as the UUT-name on the data
+    "tpe": TYPENAME;  // for a type-indicatro on the data
+}
+
+/**
+ * Provides transformations of data between preferred application types and on-chain data types
+ * @remarks
+ *
+ * This class is intended to be subclassed for each specific data type used StellarContracts class
+ *
+ * The fromOnchainDatum method should be implemented to convert deserialized on-chain data to the application type,
+ *
+ * @typeParam appType - high-level preferred application type for the data; may be a class having various methods
+ * @typeParam OnchainBridgeType - the on-chain data type, as deserialized from the contract
+ * @typeParam contractType - the specific contract class that uses this data type
+ * @public
+ **/
 export abstract class DatumAdapter<
     appType,
     OnchainBridgeType,
@@ -23,38 +37,52 @@ export abstract class DatumAdapter<
     constructor(strella: contractType) {
         this.strella = strella;
     }
+
+    /**
+     * The type of data expected from the on-chain datum parser
+     * 
+     * Note that the on-chain type for delegates will differ from the Capo's on-chain type.
+     * Note: When you're working with a Capo delegate, you may reference 
+     * this.capo.onChainDatumType as well (but if your delegate is handling 
+     * DelegatedData entries in the Capo, just use  {@link DelegatedDatumAdapter} instead
+     */
     get onChainDatumType() {
         return this.strella.onChainDatumType;
     }
+
     get onChainTypes() {
         return this.strella.onChainTypes;
     }
+
     get capo() {
         if ("initSettingsAdapter" in this.strella) return this.strella;
+        if (this.strella.configIn?.capo) return this.strella.configIn?.capo;
 
-        throw new Error(`not a capo instance: ${this.strella.constructor.name}`);
+        throw new Error(
+            `not a capo instance: ${this.strella.constructor.name}`
+        );
     }
 
     abstract datumName: string;
     /**
      * Transforms deserialized on-chain data into the preferred application type
      * @remarks
-     * 
+     *
      * The type of data received from the on-chain datum parser is specific to the contract
      * and on-chain datum type.  This method should convert that data into the preferred form.
      * @public
-     **/    
+     **/
     abstract fromOnchainDatum(
         raw: OnchainBridgeType
     ): appType | Promise<appType>;
-        /**
-         * Should construct the right form of on-chain data, using classes provided by the Helios contract
-         * @remarks
-         * 
-         * The type constructed by this method will (short-term) be on-chain types.
-         * Soon, this can simply be an adapted form of JSON suitable for Helios' JSON-structured data bridge.
-         * @public
-         **/
+    /**
+     * Should construct the right form of on-chain data, using classes provided by the Helios contract
+     * @remarks
+     *
+     * The type constructed by this method will (short-term) be on-chain types.
+     * Soon, this can simply be an adapted form of JSON suitable for Helios' JSON-structured data bridge.
+     * @public
+     **/
     abstract toOnchainDatum(d: appType): Datum | Promise<Datum>;
 
     toRealNum(n: number): IntData {
@@ -67,14 +95,32 @@ export abstract class DatumAdapter<
         let microInt2;
         try {
             microInt2 = BigInt(n.toFixed(0)) * 1_000_000n;
-        } catch(e) {}
-            if (microInt2 && microInt2 > Number.MAX_SAFE_INTEGER) {
-                throw new Error(
-                    `microInt value too large for Number: ${microInt2}`
-                );
-            }
+        } catch (e) {}
+        if (microInt2 && microInt2 > Number.MAX_SAFE_INTEGER) {
+            throw new Error(
+                `microInt value too large for Number: ${microInt2}`
+            );
+        }
 
         return new IntData(BigInt(microInt1));
+    }
+
+    /**
+     * Formats a string for use on-chain
+     */
+    uplcString(s: string) {
+        return new ByteArrayData(textToBytes(s)); //UplcString(helios.Site.dummy(), s);
+    }
+
+    /**
+     * Formats a number for use on-chain
+     */
+    uplcInt(x: number | bigint) {
+        return new helios.IntData(BigInt(x));
+    }
+
+    wrapCIP68(d: MapData) {
+        return new ConstrData(242, [d]);
     }
 
     toMapData<T = any>(
@@ -85,11 +131,14 @@ export abstract class DatumAdapter<
             Object.entries(k).map(([key, value]) => {
                 const keyBytes = new ByteArrayData(textToBytes(key));
                 const uplcValue = transformer ? transformer(value) : value;
+                //@ts-expect-error
+                if (!uplcValue.memSize) debugger;
+                //@ts-expect-error
+                if (Number.isNaN(uplcValue.memSize)) debugger;
+
                 return [keyBytes, uplcValue] as [UplcData, UplcData];
             })
         );
         return t;
     }
-
 }
-
