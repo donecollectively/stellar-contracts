@@ -62,7 +62,7 @@ const goodSettings : CanBeBadSettings = {
 }
 
 class CapoCanHaveBadSettings extends DefaultCapo<CanBeBadSettings> {
-    get customCapoSettings()  {
+    get customCapoSettingsModule()  {
         return TestBadSettings;
     }
     mkInitialSettings(): CanBeBadSettings {
@@ -142,6 +142,7 @@ describe("supports an abstract Settings structure stored in the contact", async 
         })
         await expect(updating).rejects.toThrow(/cannot change settings uut/);
     });
+
 
     describe("mkTxnUpdateSettings(): can update the settings", () => {
         it("can update the settings data with a separate UpdatingSettings Activity on the Settings", async (context: localTC) => {

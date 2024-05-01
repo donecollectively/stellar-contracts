@@ -277,6 +277,8 @@ interface basicRoleMap {
     [anyOtherRoleNames: string]: RoleInfo<any, any, any, any>;
 }
 
+export type hasCharterRef = StellarTxnContext & { state: { charterRef: TxInput } };
+
 /**
  * Base class for the leader of a set of contracts
  * @remarks
@@ -612,12 +614,30 @@ export abstract class Capo<
         tcx: TCX
     ): Promise<TCX>;
 
+    async txnAddCharterRef<TCX extends StellarTxnContext>(tcx: TCX) : Promise<TCX & hasCharterRef> {
+        if (
+            //@ts-expect-error on type-probe:
+            tcx.state.charterRef
+        ) return tcx as TCX & hasCharterRef;
+        const ctUtxo = await this.mustFindCharterUtxo();        
+        tcx.addRefInput(ctUtxo);
+
+        return this.mustFindCharterUtxo().then(async (ctUtxo: TxInput) => {
+            const tcx2 = tcx as TCX & hasCharterRef;
+            tcx2.state.charterRef = ctUtxo;
+            return tcx2.addRefInput(ctUtxo);
+        })
+    }
+
     async txnMustUseCharterUtxo<TCX extends StellarTxnContext>(
         tcx: TCX,
         redeemer: isActivity,
         newDatum?: InlineDatum
     ): Promise<TCX>;
 
+    /**
+     * @deprecated - use txnAddCharterRef(tcx) instead
+     */
     async txnMustUseCharterUtxo<TCX extends StellarTxnContext>(
         tcx: TCX,
         useReferenceInput: "refInput" | true
@@ -639,6 +659,8 @@ export abstract class Capo<
                 true === redeemerOrRefInput ||
                 "refInput" === redeemerOrRefInput
             ) {
+                throw new Error(`use txnAddCharterRef(tcx) instead`);
+
                 // using reference-input has been requested
                 if (newDatum)
                     throw new Error(
@@ -703,7 +725,7 @@ export abstract class Capo<
     async txnAddGovAuthorityTokenRef<TCX extends StellarTxnContext>(
         tcx: TCX
     ): Promise<TCX> {
-        const tcx2 = await this.txnMustUseCharterUtxo(tcx, "refInput");
+        const tcx2 = await this.txnAddCharterRef(tcx);
 
         const tcx3 = await this.txnAddGovAuthority(tcx2);
         return tcx3;

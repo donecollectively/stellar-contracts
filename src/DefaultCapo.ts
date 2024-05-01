@@ -152,6 +152,8 @@ export type HeldAssetsArgs = {
     purpose?: string;
 };
 
+export type hasSettingsRef = StellarTxnContext & { state: { settingsRef: TxInput } };
+
 // class GenericSettingsDetails extends DatumAdapter<RawGenericSettings, GenericSettingsDetails> {
 //     meaning: number;
 //     datumName = "SettingsData";
@@ -207,7 +209,6 @@ export type HeldAssetsArgs = {
  * See the {@link Capo | Capo base class} and {@link StellarContract} for additional context.
  * @public
  */
-
 export class DefaultCapo<
         settingsType extends OffchainSettingsType<any> = RealNumberSettingsMap,
         MinterType extends CapoMinter = CapoMinter,
@@ -237,7 +238,7 @@ export class DefaultCapo<
         return outputConfig;
     }
 
-    get customCapoSettings(): HeliosModuleSrc {
+    get customCapoSettingsModule(): HeliosModuleSrc {
         return UncustomCapoSettings;
     }
 
@@ -263,10 +264,10 @@ export class DefaultCapo<
 
     importModules(): HeliosModuleSrc[] {
         const parentModules = super.importModules();
-        const {customCapoSettings } = this;
+        const {customCapoSettingsModule } = this;
 
         return [
-            customCapoSettings,
+            customCapoSettingsModule,
             this.capoHelpers,
             TypeMapMetadata,
             ...parentModules,
@@ -892,6 +893,22 @@ export class DefaultCapo<
         return tcx.addOutput(settingsOut);
     }
 
+    async addSettingsRef<TCX extends StellarTxnContext>(tcx: TCX) : Promise<TCX & hasSettingsRef> {
+        if (
+            //@ts-expect-error on type-probe:
+            tcx.state.settingsRef 
+        ) return tcx as TCX & hasSettingsRef
+
+        const settingsUtxo = await this.findSettingsUtxo(
+            //@ts-expect-error it's ok if it's not there
+            tcx.state.charterRef
+        )
+        const tcx2 = tcx.addRefInput(settingsUtxo) as TCX & hasSettingsRef;
+        tcx2.state.settingsRef = settingsUtxo;
+
+        return tcx2
+    }
+
     /**
      * Creates an additional reference-script-creation txn
      * @remarks
@@ -1082,7 +1099,7 @@ export class DefaultCapo<
         const mintDelegate = await this.getMintDelegate();
         console.log("HI");
         const tcx2 = await this.txnAddGovAuthority(tcx);
-        const tcx2a = await this.txnMustUseCharterUtxo(tcx2, "refInput");
+        const tcx2a = await this.txnAddCharterRef(tcx2);
         const tcx2b = await this.txnAttachScriptOrRefScript(tcx2a);
         const tcx2c = await spendingDelegate.txnGrantAuthority(
             tcx2b,
@@ -1469,7 +1486,7 @@ export class DefaultCapo<
 
         // TODO improve type of txn with uut purpose more specific than just generic string
         console.log(options)
-        debugger
+
         const tcx1 = await this.addSeedUtxo(tcx);
         // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
         const tcx2 = await this.txnMintingUuts(

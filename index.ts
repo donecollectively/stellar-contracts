@@ -41,6 +41,7 @@ export type {
     hasBootstrappedConfig,
 } from "./src/Capo.js";
 
+
 export {
     type OffchainSettingsType,
     type OnchainSettingsType,
@@ -109,7 +110,11 @@ export {
     DefaultCapo,
     // contract as DefaultCapoContract
 } from "./src/DefaultCapo.js";
-export type { DefaultCharterDatumArgs } from "./src/DefaultCapo.js";
+export type { 
+    DefaultCharterDatumArgs,
+    hasSettingsRef,
+    hasCharterRef
+ } from "./src/DefaultCapo.js";
 
 export type {
     tokenNamesOrValuesEntry,
