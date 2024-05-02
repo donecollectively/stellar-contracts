@@ -152,8 +152,9 @@ func requiresMintDelegateApproval(
         DelegateLifecycleActivities{DLA} => {
             DLA.switch {
                 ReplacingMe => {
-                    TODO("the new delegate should be minted under CapoLifecycleActivities::CreatingDelegate, then installed \n  ...without the minter's involvement, using its DelegateLifecycle::Installing activity");
-                    // assert(false, "TODO: replacing the mint delegate shouldn't ever happen while minting a replacement");
+                    TODO( "relay delegate installation sequence" 
+                        // "the new delegate should be minted under CapoLifecycleActivities::CreatingDelegate, then installed \n  ...without the minter's involvement, using its DelegateLifecycle::Installing activity"
+                    );
                     print("  -- TEMPORARY: the mint delegate is being replaced");
                     true
                 },
