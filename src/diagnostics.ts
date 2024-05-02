@@ -5,7 +5,6 @@ import {
     TxOutput,
     TxInput,
     Value,
-    bytesToText,
     Assets,
     MintingPolicyHash,
     ByteArray,

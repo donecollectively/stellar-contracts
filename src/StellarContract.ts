@@ -3,8 +3,6 @@ import { statSync } from "fs";
 import {
     Address,
     Assets,
-    DatumHash,
-    HInt,
     HeliosData,
     MintingPolicyHash,
     NetworkParams,
@@ -15,11 +13,8 @@ import {
     UplcDataValue,
     UplcProgram,
     Value,
-    extractScriptPurposeAndName,
     Datum,
     AssetClass,
-    //@ts-expect-error
-    DataDefinition,
     ListData,
     ConstrData,
     WalletHelper,

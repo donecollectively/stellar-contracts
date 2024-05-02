@@ -8,7 +8,6 @@ import {
     TxId,
     TxOutput,
     Value,
-    SimpleWallet,
     SimpleWallet as WalletEmulator,
 } from "@hyperionbt/helios";
 import type { Wallet } from "@hyperionbt/helios";

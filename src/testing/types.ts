@@ -1,7 +1,6 @@
 import {
     NetworkParams,
     SimpleWallet as WalletEmulator,
-    SimpleWallet,
 } from "@hyperionbt/helios";
 
 import type {

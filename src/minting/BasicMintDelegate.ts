@@ -1,23 +1,12 @@
 import {
-    Address,
-    AssetClass,
     Datum,
-    TxId,
-    TxInput,
-    TxOutput,
-    Value,
 } from "@hyperionbt/helios";
 
-import { BasicDelegate } from "../delegation/BasicDelegate.js";
 
-import { Activity, datum } from "../StellarContract.js";
-import type { configBase, isActivity } from "../StellarContract.js";
+import {  datum } from "../StellarContract.js";
+import type { isActivity } from "../StellarContract.js";
 import {
     StellarTxnContext,
-    type anyState,
-    type hasAddlTxns,
-    type hasSeedUtxo,
-    type otherAddlTxnNames,
 } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
 

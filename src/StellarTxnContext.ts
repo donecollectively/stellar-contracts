@@ -1,5 +1,4 @@
 import {
-    HeliosData,
     Tx,
     TxOutput,
     TxInput,
@@ -9,7 +8,6 @@ import type {
     Address,
     Hash,
     NetworkParams,
-    TxId,
     Wallet,
 } from "@hyperionbt/helios";
 

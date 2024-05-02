@@ -17,7 +17,6 @@ import {
     Activity,
     StellarContract,
     partialTxn,
-    txn,
 } from "./StellarContract.js";
 import type {
     StellarFactoryArgs,

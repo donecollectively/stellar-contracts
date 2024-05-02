@@ -1,11 +1,8 @@
 import {
-    Address,
     Assets,
     MintingPolicyHash,
-    TxOutput,
     Value,
-    textToBytes,
-    
+    textToBytes,    
 } from "@hyperionbt/helios";
 import type { uutPurposeMap } from "./Capo.js";
 import type { valuesEntry } from "./HeliosPromotedTypes.js";

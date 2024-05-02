@@ -1,4 +1,3 @@
-import type { MapData, UplcData } from "@hyperionbt/helios";
 import * as helios from "@hyperionbt/helios";
 import { DatumAdapter, type AnyDataTemplate } from "./DatumAdapter.js";
 import type { StellarContract } from "./StellarContract.js";

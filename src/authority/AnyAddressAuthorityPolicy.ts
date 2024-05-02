@@ -1,21 +1,15 @@
 import {
     Address,
-    AssetClass,
-    Assets,
     TxInput,
     TxOutput,
     Value,
     bytesToText,
 } from "@hyperionbt/helios";
-import type { 
-    SeedTxnScriptParams
- } from "../SeedTxnScriptParams.js";
-import { Activity, StellarContract, partialTxn } from "../StellarContract.js";
+import { Activity } from "../StellarContract.js";
 
 import type { isActivity } from "../StellarContract.js";
 
 import { StellarTxnContext } from "../StellarTxnContext.js";
-import { StellarDelegate } from "../delegation/StellarDelegate.js";
 import { AuthorityPolicy } from "./AuthorityPolicy.js";
 import { dumpAny } from "../diagnostics.js";
 

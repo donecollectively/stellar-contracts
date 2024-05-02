@@ -1,22 +1,17 @@
 import {
-    Datum,
     TxInput,
     ValidatorHash,
     Value,
-    bytesToText,
 } from "@hyperionbt/helios";
-import { Activity, StellarContract, datum } from "../StellarContract.js";
+import { StellarContract } from "../StellarContract.js";
 import type { configBase, isActivity } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { mkTv } from "../utils.js";
-import type { InlineDatum } from "../HeliosPromotedTypes.js";
 import type {
-    DelegationDetail,
     capoDelegateConfig,
 } from "./RolesAndDelegates.js";
 import { hasReqts } from "../Requirements.js";
 import { dumpAny } from "../diagnostics.js";
-import type { MintUutActivityArgs } from "../Capo.js";
 
 /**
  * Base class for modules that can serve as Capo delegates

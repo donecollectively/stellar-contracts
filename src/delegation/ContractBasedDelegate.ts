@@ -22,8 +22,7 @@ import type {
     capoDelegateConfig,
 } from "./RolesAndDelegates.js";
 import type { StellarTxnContext } from "../StellarTxnContext.js";
-import { dumpAny } from "../diagnostics.js";
-import type { DefaultCapo } from "../DefaultCapo.js";
+  import type { DefaultCapo } from "../DefaultCapo.js";
 import { BasicDelegate } from "./BasicDelegate.js";
 import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { UnspecializedDelegate } from "./UnspecializedDelegate.js";

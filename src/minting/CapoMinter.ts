@@ -3,10 +3,6 @@ import {
     Value,
     MintingPolicyHash,
     Assets,
-    Crypto,
-    TxInput,
-    bytesToHex,
-    HInt,
     ByteArray,
     //@ts-expect-error
     Option,
@@ -15,7 +11,6 @@ import {
     Activity,
     StellarContract,
     partialTxn,
-    txn,
 } from "../StellarContract.js";
 import type {
     configBase,
@@ -26,31 +21,21 @@ import type {
 //@ts-expect-error - typescript doesn't grok Helios
 import contract from "./CapoMinter.hl";
 export const MinterContract = contract;
-//@ts-expect-error
-import StellarHeliosHelpers from "../StellarHeliosHelpers.hl";
-
-import { CapoMintHelpers } from "../CapoMintHelpers.js";
 
 import {
     StellarTxnContext,
-    emptyUuts,
     type anyState,
-    type hasSeedUtxo,
 } from "../StellarTxnContext.js";
 import type {
     MintUutActivityArgs,
     MinterBaseMethods,
-    hasUutContext,
-    uutPurposeMap,
 } from "../Capo.js";
 import type { SeedTxnScriptParams } from "../SeedTxnScriptParams.js";
 import type { valuesEntry } from "../HeliosPromotedTypes.js";
-import { CapoDelegateHelpers } from "../delegation/CapoDelegateHelpers.js";
 import { UutName } from "../delegation/UutName.js";
 
 import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
-import { mkUutValuesEntries, mkValuesEntry, stringToNumberArray } from "../utils.js";
-import { dumpAny } from "../diagnostics.js";
+import { mkValuesEntry } from "../utils.js";
 
 import type { DefaultCapo } from "../DefaultCapo.js";
 import type { BasicMintDelegate } from "./BasicMintDelegate.js";
