@@ -1050,7 +1050,7 @@ export class StellarContract<
                 })
             )
         )
-        if (uplcMap.map.length > 0) debugger
+        // if (uplcMap.map.length > 0) debugger
         return t;
     }
 
@@ -2082,7 +2082,7 @@ export class StellarContract<
         console.log(
             `  🔎 finding '${semanticName}' utxo${
                 exceptInTcx ? " (not already being spent in txn)" : ""
-            } from set:\n  🔎${utxosAsString(filtered, "\n  🔎")}`
+            } from set:\n    🔎  ${utxosAsString(filtered, "\n    🔎  ")}`
             // ...(exceptInTcx && filterUtxos?.length
             //     ? [
             //           "\n  ... after filtering out:\n ",
