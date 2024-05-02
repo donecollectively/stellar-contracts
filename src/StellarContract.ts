@@ -1709,7 +1709,8 @@ export class StellarContract<
 
     async submitTxns(
         txns: TxDescription<any>[],
-        callback?: MultiTxnCallback
+        callback?: MultiTxnCallback,
+        onSubmitted? : MultiTxnCallback
     ) {
         for (const [txName, addlTxInfo] of 
             Object.entries(txns) as [ string, TxDescription<any> ][]
@@ -1721,6 +1722,7 @@ export class StellarContract<
                 continue;
             }    
             await this.submit(addlTxInfo.tcx);
+            if (onSubmitted) await onSubmitted(addlTxInfo);
         }
     }
 
