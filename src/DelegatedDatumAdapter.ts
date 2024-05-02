@@ -1,5 +1,5 @@
 import type { MapData, UplcData } from "@hyperionbt/helios";
-import { helios } from "../index.js";
+import * as helios from "@hyperionbt/helios";
 import { DatumAdapter, type AnyDataTemplate } from "./DatumAdapter.js";
 import type { StellarContract } from "./StellarContract.js";
 
@@ -27,7 +27,6 @@ export abstract class DelegatedDatumAdapter<
      * to convert your data to UplcData objects.
      * 
      * @param d - an object map of the UplcData (suitable for use in this.toMapData({...})) 
-     * @returns inline-datum
      */
     DelegatedData(d: DelegatedDataAttrs<OBD, OnchainBridgeType>): helios.Datum {
         const DD = this.capo.onChainDatumType.DelegatedData;

@@ -119,23 +119,41 @@ export abstract class DatumAdapter<
         return new helios.IntData(BigInt(x));
     }
 
-    wrapCIP68(d: MapData) {
-        return new ConstrData(242, [d]);
+    wrapCIP68(enumVariant: any, d: MapData | ConstrData) : ConstrData
+    wrapCIP68(d: MapData) : ConstrData
+    wrapCIP68(dOrV: MapData | any, d?: MapData | ConstrData) : ConstrData {
+        let index = 242; // abstract CIP-68 wrapper
+        let mapData : MapData | ConstrData;
+        if (!d) {
+            mapData = dOrV;
+        } else {   
+            mapData = d         
+            index = dOrV.prototype._enumVariantStatement.constrIndex
+        }
+        return new ConstrData(index, [mapData]);
     }
 
-    toMapData<T = any>(
-        k: Record<string, T>,
-        transformer?: (n: T) => UplcData
+    toMapData(k: Record<string, any>,
+        transformer?: (n: any) => UplcData
+    ): MapData
+    toMapData(
+        k: Record<string, UplcData> | Record<string,any>
+    ): MapData
+    toMapData(
+        k: Record<string, UplcData> | Record<string,any>, 
+        transformer?: (n: any) => UplcData
     ): MapData {
         const t = new MapData(
             Object.entries(k).map(([key, value]) => {
                 const keyBytes = new ByteArrayData(textToBytes(key));
                 const uplcValue = transformer ? transformer(value) : value;
-                //@ts-expect-error
-                if (!uplcValue.memSize) debugger;
-                //@ts-expect-error
-                if (Number.isNaN(uplcValue.memSize)) debugger;
-
+                if (!uplcValue.memSize || Number.isNaN(uplcValue.memSize)) {
+                    console.log("  ⚠️ ⚠️ ⚠️  toMapData: bad UplcData value - must have numeric memSize", key, value);
+                    if (uplcValue._toUplcData) {
+                        debugger;
+                        throw new Error(`toMapData(): key ${key} not converted to uplc - try _toUplcData()`);
+                    }
+                }
                 return [keyBytes, uplcValue] as [UplcData, UplcData];
             })
         );
