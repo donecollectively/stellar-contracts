@@ -109,6 +109,9 @@ export abstract class CapoTestHelper<
     
     async bootstrap(args?: Partial<MinimalDefaultCharterDatumArgs>) {
         let strella = this.strella || (await this.initialize());
+        if (this.bootstrap != CapoTestHelper.prototype.bootstrap) {
+            throw new Error(`Don't override the test-helper bootstrap().  Instead, provide an implementation of extraBootstrapping()`)
+        }
         if (this.ready) {
             console.log("       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap")
 
@@ -117,8 +120,12 @@ export abstract class CapoTestHelper<
 
         await this.mintCharterToken(args);
         console.log("       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap")
-
+        await this.extraBootstrapping(args)
         return strella;
+    }
+
+    async extraBootstrapping(args?: Partial<MinimalDefaultCharterDatumArgs>) {
+        return this.strella;
     }
     
     abstract mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<any>>
