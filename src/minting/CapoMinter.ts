@@ -414,7 +414,7 @@ implements MinterBaseMethods
     ): Promise<TCX> {
         const { capo } = this.configIn!;
         const md = mintDelegate || (await capo.getMintDelegate());
-        const tcx1 = await capo.txnMustUseCharterUtxo(tcx, "refInput");
+        const tcx1 = await capo.txnAddCharterRef(tcx);
         const tcx2 = await md.txnGrantAuthority(
             tcx1,
             mintDgtRedeemer,

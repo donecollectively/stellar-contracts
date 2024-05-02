@@ -39,6 +39,7 @@ export type {
     RoleMap,
     strategyValidation,
     hasBootstrappedConfig,
+    hasCharterRef,
 } from "./src/Capo.js";
 
 
@@ -105,6 +106,8 @@ export type {
 } from "./src/StellarContract.js";
 
 export { DatumAdapter } from "./src/DatumAdapter.js";
+export { DelegatedDatumAdapter } from "./src/DelegatedDatumAdapter.js";
+
 export { CapoMinter } from "./src/minting/CapoMinter.js";
 export {
     DefaultCapo,
@@ -113,7 +116,6 @@ export {
 export type { 
     DefaultCharterDatumArgs,
     hasSettingsRef,
-    hasCharterRef
  } from "./src/DefaultCapo.js";
 
 export type {

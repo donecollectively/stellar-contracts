@@ -173,9 +173,8 @@ describe("Capo", async () => {
             {
                 await capo.txnMustUseCharterUtxo(tcx1, capo.activityUsingAuthority());
                 const spy = vi
-                    .spyOn(capo, "txnMustUseCharterUtxo")
-                    .mockImplementation(async (tcx: any, isRef: any) => {
-                        expect(isRef).toBe("refInput");
+                    .spyOn(capo, "txnAddCharterRef")
+                    .mockImplementation(async (tcx: any) => {
                         return tcx;
                     });
 
