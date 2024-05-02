@@ -1940,21 +1940,20 @@ export class StellarContract<
             const errorModule = [src, ...modules].find(
                 (m) => (m as any).moduleName == moduleName
             );
-            const { srcFile = "‹unknown path to module›" } =
+            const { project, srcFile = "‹unknown path to module›" } =
                 (errorModule as any) || {};
             let moreInfo: string = "";
             try {
                 statSync(srcFile).isFile();
             } catch (e) {
                 const indent = " ".repeat(6);
-                moreInfo =
-                    `\n${indent}WARNING: the error was found in a Helios file that couldn't be resolved in your project\n` +
-                    `${indent}  ... this can be caused by not providing correct types in a module specialization,\n` +
-                    `${indent}  ... or if your module definition doesn't include a correct path to your helios file\n` +
-                    `${indent}  ... (possibly in mkHeliosModule(heliosCode, \n${indent}    "${srcFile}"\n${indent})\n`
-
-                // todo: detect when the error is cause because a module in our lib has a cross-dependency
-                // ... on a  module override provided by the client code.
+                moreInfo = project
+                    ? `\n${indent}Error found in project ${project}: ${srcFile}` +
+                      `${indent}  ... this can be caused by not providing correct types in a module specialization,\n` +
+                      `${indent}  ... or if your module definition doesn't include a correct path to your helios file\n`
+                    : `\n${indent}WARNING: the error was found in a Helios file that couldn't be resolved in your project\n` +
+                      `${indent}  ... this can be caused if your module definition doesn't include a correct path to your helios file\n` +
+                      `${indent}  ... (possibly in mkHeliosModule(heliosCode, \n${indent}    "${srcFile}"\n${indent})\n`;
             }
 
             const [sl, sc, el, ec] = e.getFilePos();

@@ -56,7 +56,9 @@ export default [
         input: "./index.ts",
         plugins: [
             // externals(),
-            heliosRollupLoader(),
+            heliosRollupLoader({
+                project: "stellar-contracts"
+            }),
             json(),
             resolve({
                 ...platformModulePaths("server"),

@@ -6,6 +6,7 @@ export type HeliosModuleSrc = string & {
     srcFile: string;
     purpose: string;
     moduleName: string;
+    project?: string
 };
 
 /**
@@ -15,7 +16,7 @@ export type HeliosModuleSrc = string & {
  * `srcFile`, `purpose`, and `moduleName` are parsed from the Helios source string using a simple regular expression.
  * @public
  **/
-export function mkHeliosModule(src: string, filename: string): HeliosModuleSrc {
+export function mkHeliosModule(src: string, filename: string, project : string = ""): HeliosModuleSrc {
     //@ts-expect-error - the later lines add the props that typescript wants to see.
     const module: HeliosModuleSrc = new String(src);
     const [_, purpose, moduleName] =
@@ -23,6 +24,7 @@ export function mkHeliosModule(src: string, filename: string): HeliosModuleSrc {
 
     module.srcFile = filename;
     module.purpose = purpose;
+    module.project = project
     module.moduleName = moduleName;
 
     return module;

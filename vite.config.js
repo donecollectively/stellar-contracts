@@ -8,7 +8,7 @@ import { heliosRollupLoader } from './src/heliosRollupLoader';
 
 export default defineConfig({
     plugins: [
-        heliosRollupLoader(),
+        heliosRollupLoader({project: 'stellar-contracts'}),
     ],
   test: {
     // include: ['tests/new*.test.ts', ],
