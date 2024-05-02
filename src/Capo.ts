@@ -7,7 +7,6 @@ import {
     TxOutput,
     TxInput,
     Value,
-    AssetClass,
     ValidatorHash,
     UplcProgram,
     bytesToText,
@@ -27,7 +26,6 @@ import type {
     stellarSubclass,
     ConfigFor,
     devConfigProps,
-    SetupDetails,
 } from "./StellarContract.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import {
@@ -59,7 +57,6 @@ import { errorMapAsString } from "./diagnostics.js";
 import { hasReqts } from "./Requirements.js";
 import {
     mkUutValuesEntries,
-    mkValuesEntry,
     stringToNumberArray,
 } from "./utils.js";
 
@@ -68,7 +65,6 @@ import { StellarDelegate } from "./delegation/StellarDelegate.js";
 import type { AuthorityPolicy, anyState } from "../index.js";
 import type { DatumAdapter } from "./DatumAdapter.js";
 import {
-    type OffchainSettingsType,
     type OnchainSettingsType,
     type SettingsAdapterFor,
 } from "./CapoSettingsTypes.js";
