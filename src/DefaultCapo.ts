@@ -90,7 +90,7 @@ import type {
 } from "./delegation/RolesAndDelegates.js";
 import { BasicMintDelegate } from "./minting/BasicMintDelegate.js";
 import { AnyAddressAuthorityPolicy } from "./authority/AnyAddressAuthorityPolicy.js";
-import { dumpAny, txAsString } from "./diagnostics.js";
+import { dumpAny, txAsString, utxosAsString } from "./diagnostics.js";
 // import { MultisigAuthorityPolicy } from "./authority/MultisigAuthorityPolicy.js";
 import { hasReqts } from "./Requirements.js";
 import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
@@ -152,7 +152,19 @@ export type HeldAssetsArgs = {
     purpose?: string;
 };
 
+/**
+ * A transaction context flagged as containing a settings-utxo reference
+ */
 export type hasSettingsRef = StellarTxnContext & { state: { settingsRef: TxInput } };
+
+export type hasNamedDelegate<
+    DT extends StellarDelegate, 
+    N extends string
+> = StellarTxnContext & { 
+    state: { 
+        [k in `namedDelegate${Capitalize<N>}`]: ConfiguredDelegate<DT> & RelativeDelegateLink<DT> 
+    }
+}
 
 // class GenericSettingsDetails extends DatumAdapter<RawGenericSettings, GenericSettingsDetails> {
 //     meaning: number;
@@ -440,7 +452,7 @@ export class DefaultCapo<
     async mkDatumCharterToken(args: CDT): Promise<Datum> {
         //!!! todo: make it possible to type these datum helpers more strongly
         //  ... at the interface to Helios
-        console.log("--> mkDatumCharterToken", args);
+        // console.log("--> mkDatumCharterToken", args);
         const { CharterToken: hlCharterToken } = this.onChainDatumType;
 
         // ugh, we've been here before - weaving back and forth between
@@ -821,7 +833,7 @@ export class DefaultCapo<
 
             console.log(
                 " ---------------- CHARTER MINT ---------------------\n",
-                txAsString(tcx4.tx, this.networkParams)
+                // txAsString(tcx4.tx, this.networkParams)
             );
 
             // type Normalize<T> =
@@ -1078,7 +1090,7 @@ export class DefaultCapo<
         const chUtxo = charterUtxo || (await this.mustFindCharterUtxo());
         const charterDatum = await this.findCharterDatum(chUtxo);
         const uutName = charterDatum.settingsUut;
-        console.log("findSettingsUut", { uutName, charterDatum });
+        // console.log("findSettingsUut", { uutName, charterDatum });
         const uutValue = this.uutsValue(uutName);
 
         return await this.mustFindMyUtxo(
@@ -1464,13 +1476,15 @@ export class DefaultCapo<
      **/
     async mkTxnAddingNamedDelegate<
         DT extends StellarDelegate,
-        thisType extends DefaultCapo<settingsType, MinterType, CDT, configType>
+        thisType extends DefaultCapo<settingsType, MinterType, CDT, configType>,
+        const delegateName extends string,
+        TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>
     >(
         this: thisType,
-        delegateName: string,
+        delegateName: delegateName,
         options: NamedDelegateCreationOptions<thisType, DT>,
-        tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
-    ) {
+        tcx: TCX = new StellarTxnContext(this.myActor) as TCX
+    ) : Promise<hasAddlTxns<TCX & hasSeedUtxo & hasNamedDelegate<DT, delegateName>>>  {
         const currentDatum = await this.findCharterDatum();
         console.log(
             "------------------ TODO SUPPORT OPTIONS.forcedUpdate ----------------"
@@ -1512,12 +1526,25 @@ export class DefaultCapo<
         };
         const datum = await this.mkDatumCharterToken(fullCharterArgs);
 
-        return this.mkTxnUpdateCharter(
+        const tcx4 = await this.mkTxnUpdateCharter(
             fullCharterArgs,
             undefined,
             await this.txnAddGovAuthority(tcx2)
+        ) as hasAddlTxns<TCX & hasSeedUtxo & hasNamedDelegate<DT, delegateName>>;
+
+        const DelegateName = delegateName[0].toUpperCase() + delegateName.slice(1);
+        const bigDelegateName = `namedDelegate${DelegateName}`
+        tcx4.state[bigDelegateName] = spendDelegate;
+
+        const tcx5 = await this.txnMkAddlRefScriptTxn(
+            tcx4,
+            bigDelegateName,
+            spendDelegate.delegate.compiledScript
         );
+
+        return tcx5 as hasAddlTxns<TCX & hasSeedUtxo & hasNamedDelegate<DT, delegateName>>
     }
+
 
     async findUutSeedUtxo(uutPurposes: string[], tcx: StellarTxnContext<any>) {
         //!!! make it big enough to serve minUtxo for the new UUT(s)

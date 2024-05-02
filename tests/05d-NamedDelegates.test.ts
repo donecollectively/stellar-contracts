@@ -39,7 +39,7 @@ class NamedDelegateTestCapo extends DefaultCapo {
     }
 
     @txn
-    async mkTxnCreatingTestNamedDelegate(purpose: string) {
+    async mkTxnCreatingTestNamedDelegate<const P extends string>(purpose: P) {
         const mintDelegate = await this.getMintDelegate();
         const tcx1 = await this.addSeedUtxo(new StellarTxnContext())
         return this.mkTxnAddingNamedDelegate(
@@ -130,7 +130,7 @@ describe("Capo", async () => {
 
     describe("Named delegates", () => {
         describe("the charter has a namedDelegates data structure for semantic delegate links", () => {
-            let capo
+            let capo : NamedDelegateTestCapo
             beforeEach<localTC>(async (context) => {
                 const {h, h:{network, actors, delay, state} } = context;
                  capo = await h.bootstrap({
@@ -149,6 +149,7 @@ describe("Capo", async () => {
                 expect(Object.keys(charter.namedDelegates).length).toBe(0);
 
                 const tcx = await capo.mkTxnCreatingTestNamedDelegate("myNamedDgt");
+                expect(tcx.state.namedDelegateMyNamedDgt).toBeTruthy()
                 await capo.submit(tcx);
                 network.tick(1n);
 
@@ -165,11 +166,12 @@ describe("Capo", async () => {
                 const addedGovToken = vi
                     .spyOn(capo, "txnAddGovAuthority")
                     .mockImplementation(
-                        //xxx@ts-expect-error
+                        //@ts-expect-error
                         (tcx) => tcx!
                     );
     
                 const tcx = await capo.mkTxnCreatingTestNamedDelegate("myNamedDgt");
+
                 expect(addedGovToken).toHaveBeenCalledTimes(1);
                 await expect(capo.submit(tcx)).rejects.toThrow(
                     /missing dgTkn capoGov-/
@@ -196,6 +198,7 @@ describe("Capo", async () => {
                 })
 
                 vi.spyOn(capo, "addSeedUtxo").mockImplementation(
+                    //@ts-expect-error
                     async tcx => tcx
                 );
 
