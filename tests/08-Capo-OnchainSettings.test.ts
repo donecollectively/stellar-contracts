@@ -29,6 +29,7 @@ import { dumpAny } from "../src/diagnostics";
 import { DelegationDetail } from "../src/delegation/RolesAndDelegates";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { TestBadSettings } from "./TestBadSettings";
+import { OffchainSettingsType } from "../src/CapoSettingsTypes";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 
@@ -65,7 +66,8 @@ class CapoCanHaveBadSettings extends DefaultCapo<CanBeBadSettings> {
     get customCapoSettingsModule()  {
         return TestBadSettings;
     }
-    mkInitialSettings(): CanBeBadSettings {
+    mkInitialSettings(): CanBeBadSettings & OffchainSettingsType<this> {
+        //@ts-expect-error
         return {
             meaning: 42,
             badSettingToMintDelegate: 0,

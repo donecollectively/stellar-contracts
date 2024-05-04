@@ -65,6 +65,7 @@ import type { AuthorityPolicy, anyState } from "../index.js";
 import type { DatumAdapter } from "./DatumAdapter.js";
 import {
     type OnchainSettingsType,
+    type OffchainSettingsType,
     type SettingsAdapterFor,
 } from "./CapoSettingsTypes.js";
 import type { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
@@ -300,7 +301,7 @@ export type hasCharterRef = StellarTxnContext & { state: { charterRef: TxInput }
  * @public
  */
 export abstract class Capo<
-    settingsType,
+    settingsAdapterType extends DatumAdapter<any, any, any>,
     minterType extends MinterBaseMethods & CapoMinter = CapoMinter,
     charterDatumType extends anyDatumArgs = anyDatumArgs,
     configType extends CapoBaseConfig = CapoBaseConfig
@@ -424,7 +425,7 @@ export abstract class Capo<
             // this.connectMintingScript(this.getMinterParams());
         }
 
-        //@ts-expect-error - trust the subclass's initSettingsAdapter() to be type-matchy
+        //@xxxts-expect-error - trust the subclass's initSettingsAdapter() to be type-matchy
         //   ... based on other abstract methods defined below
         this.settingsAdapter = this.initSettingsAdapter();
 
@@ -446,10 +447,9 @@ export abstract class Capo<
     //     newDatum?: InlineDatum
     // ): Promise<TxInput | never>;
 
-    abstract initSettingsAdapter(): DatumAdapter<any, settingsType, this>;
-    settingsAdapter!: DatumAdapter<any, settingsType, this> &
-        SettingsAdapterFor<this>;
-    abstract mkInitialSettings(): settingsType;
+    abstract initSettingsAdapter(): settingsAdapterType;
+    settingsAdapter!: settingsAdapterType
+    abstract mkInitialSettings(): OffchainSettingsType<this>;
 
     /**
      * Creates any additional transactions needed during charter creation
@@ -473,7 +473,7 @@ export abstract class Capo<
     }
 
     abstract mkDatumSettingsData(
-        settings: settingsType
+        settings: OffchainSettingsType<this>
     ): Datum | Promise<Datum>;
     // abstract readSettingsDatum(settings:
     //     ReturnType<this["initSettingsAdapter"]> extends DatumAdapter<any, infer Onchain, any> ?
@@ -481,7 +481,7 @@ export abstract class Capo<
     // );
     async readSettingsDatum(
         parsedDatum: OnchainSettingsType<this>
-    ): Promise<settingsType> {
+    ): Promise<OffchainSettingsType<this>> {
         return this.settingsAdapter.fromOnchainDatum(parsedDatum);
     }
 

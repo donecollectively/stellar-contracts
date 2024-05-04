@@ -213,12 +213,12 @@ export type hasNamedDelegate<
  * @public
  */
 export class DefaultCapo<
-        settingsType extends OffchainSettingsType<any> = RealNumberSettingsMap,
+        settingsAdapterType extends DatumAdapter<any,any,any> = DefaultSettingsAdapter,
         MinterType extends CapoMinter = CapoMinter,
         CDT extends DefaultCharterDatumArgs = DefaultCharterDatumArgs,
         configType extends CapoBaseConfig = CapoBaseConfig
     >
-    extends Capo<settingsType, MinterType, CDT, configType>
+    extends Capo<settingsAdapterType, MinterType, CDT, configType>
     implements hasUutCreator
 {
     contractSource() {
@@ -498,21 +498,20 @@ export class DefaultCapo<
         return Datum.inline(t._toUplcData());
     }
 
-    // XX@ts-expect-error on the default return type - override this method with
-    //    more specific adapter
+    //@ts-expect-error on the default return type - override this method with more specific adapter
     initSettingsAdapter() {
         return new DefaultSettingsAdapter(this);
     }
 
     @datum
-    async mkDatumSettingsData(settings: settingsType): Promise<Datum> {
+    async mkDatumSettingsData(settings: OffchainSettingsType<this>): Promise<Datum> {
         const adapter = this.settingsAdapter;
         return adapter.toOnchainDatum(settings) as Datum;
     }
 
-    //@Xts-expect-error - method should be overridden
-    mkInitialSettings(): settingsType {
-        //@ts-expect-error - method should be overridden
+    //@ts-expect-error - method should be overridden
+    mkInitialSettings(): OffchainSettingsType<this> {
+        //@xxxts-expect-error - method should be overridden
         return {
             meaning: 42,
             happy: 1,
@@ -863,13 +862,17 @@ export class DefaultCapo<
             | "spendDelegate"]: ConfiguredDelegate<any>;
     };
 
-    async findSettingsDatum({
+    async findSettingsDatum<
+        thisType extends DefaultCapo<any, any, any, any>,        
+    >(
+        this: thisType,
+        {
         settingsUtxo,
         charterUtxo,
     }: {
         settingsUtxo?: TxInput;
         charterUtxo?: TxInput;
-    } = {}): Promise<settingsType> {
+    } = {}): Promise<OffchainSettingsType<this>> {
         const foundSettingsUtxo =
             settingsUtxo || (await this.findSettingsUtxo(charterUtxo));
         const data = await this.readDatum(
@@ -883,7 +886,7 @@ export class DefaultCapo<
 
     async txnAddSettingsOutput<TCX extends StellarTxnContext>(
         tcx: TCX,
-        settings: settingsType
+        settings: OffchainSettingsType<this>
     ): Promise<TCX> {
         const settingsDatum = await this.mkDatumSettingsData(settings);
 
@@ -1092,7 +1095,7 @@ export class DefaultCapo<
 
     @txn
     async mkTxnUpdateOnchainSettings<TCX extends StellarTxnContext>(
-        data: settingsType,
+        data: OffchainSettingsType<this>,
         settingsUtxo?: TxInput,
         tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
     ): Promise<TCX> {
@@ -1152,7 +1155,7 @@ export class DefaultCapo<
     @txn
     async mkTxnUpdatingMintDelegate<
         DT extends StellarDelegate,
-        thisType extends DefaultCapo<settingsType, MinterType, CDT, configType>
+        thisType extends DefaultCapo<any, MinterType, CDT, configType>
     >(
         this: thisType,
         delegateInfo: MinimalDelegateLink<DT> & {
@@ -1240,7 +1243,7 @@ export class DefaultCapo<
     @txn
     async mkTxnUpdatingSpendDelegate<
         DT extends StellarDelegate,
-        thisType extends DefaultCapo<settingsType, MinterType, CDT, configType>
+        thisType extends DefaultCapo<any, MinterType, CDT, configType>
     >(
         this: thisType,
         delegateInfo: MinimalDelegateLink<DT> & {
@@ -1325,7 +1328,7 @@ export class DefaultCapo<
     @txn
     async mkTxnAddingMintInvariant<
         DT extends StellarDelegate,
-        thisType extends DefaultCapo<settingsType, MinterType, CDT, configType>
+        thisType extends DefaultCapo<any, MinterType, CDT, configType>
     >(
         this: thisType,
         delegateInfo: MinimalDelegateLink<DT> & {
@@ -1393,7 +1396,7 @@ export class DefaultCapo<
     @txn
     async mkTxnAddingSpendInvariant<
         DT extends StellarDelegate,
-        thisType extends DefaultCapo<settingsType, MinterType, CDT, configType>
+        thisType extends DefaultCapo<any, MinterType, CDT, configType>
     >(
         this: thisType,
         delegateInfo: MinimalDelegateLink<DT> & {
@@ -1467,7 +1470,7 @@ export class DefaultCapo<
      **/
     async mkTxnAddingNamedDelegate<
         DT extends StellarDelegate,
-        thisType extends DefaultCapo<settingsType, MinterType, CDT, configType>,
+        thisType extends DefaultCapo<any, MinterType, CDT, configType>,
         const delegateName extends string,
         TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>
     >(
