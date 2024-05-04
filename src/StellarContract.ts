@@ -1625,8 +1625,12 @@ export class StellarContract<
         tcx: StellarTxnContext,
         {
             signers = [],
+            addlTxInfo = {
+                description: "(unnamed)"
+            },
         }: {
             signers?: Address[];
+            addlTxInfo? : Pick<TxDescription<any>, "description">
         } = {}
     ) {
         let { tx, feeLimit = 2_000_000n } = tcx;
@@ -1683,7 +1687,7 @@ export class StellarContract<
                 // todo: find a way to run the same scripts again, with tracing retained
                 // for client-facing transparency of failures that can be escalated in a meaningful
                 // way to users.
-                console.log("FAILED submitting:", tcx.dump(this.networkParams));
+                console.log(`FAILED submitting tx: ${addlTxInfo.description}:`, tcx.dump(this.networkParams));
                 debugger;
                 throw e;
             }
@@ -1723,7 +1727,7 @@ export class StellarContract<
         if (walletMustSign && !sigs) {
             throw new Error(`wallet signing failed`);
         }
-        console.log("Submitting tx: ", tcx.dump(this.networkParams));
+        console.log(`Submitting tx: ${addlTxInfo.description}: `, tcx.dump(this.networkParams));
         const promises = [
             this.network.submitTx(tx).catch((e) => {
                 console.warn(
@@ -1781,7 +1785,7 @@ export class StellarContract<
             if (false === replacementTcx) {
                 continue;
             }
-            await this.submit(addlTxInfo.tcx);
+            await this.submit(addlTxInfo.tcx, {addlTxInfo});
             if (onSubmitted) await onSubmitted(addlTxInfo);
         }
     }
