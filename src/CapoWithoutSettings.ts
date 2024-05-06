@@ -41,8 +41,8 @@ export class CapoWithoutSettings extends Capo<CapoWithoutSettings> {
 
     mkInitialSettings() {
         return {
-            none: ""
-        }
+            none: "" as const,
+        } //as NoSettings
     }
 }
 

@@ -31,9 +31,7 @@ export {
     type MinimalDelegateLink,
 } from "./src/Capo.js";
 
-export {
-    CapoWithoutSettings
-} from "./src/CapoWithoutSettings.js";
+export { CapoWithoutSettings } from "./src/CapoWithoutSettings.js";
 
 export type {
     MintUutActivityArgs,
@@ -45,10 +43,11 @@ export type {
     hasCharterRef,
 } from "./src/Capo.js";
 
-export {
-    type OffchainSettingsType,
-    type OnchainSettingsType,
-    type SettingsAdapterFor,
+export type {
+    OffchainSettingsType,
+    OnchainSettingsType,
+    SettingsAdapterFor,
+    OffchainType,
 } from "./src/CapoSettingsTypes.js";
 
 export {
@@ -109,26 +108,18 @@ export type {
     ConfigFor,
 } from "./src/StellarContract.js";
 
-export { 
-    DatumAdapter, 
-    type BigIntRecord 
-} from "./src/DatumAdapter.js";
+export { DatumAdapter, type BigIntRecord } from "./src/DatumAdapter.js";
 export { DelegatedDatumAdapter } from "./src/DelegatedDatumAdapter.js";
 
 export { CapoMinter } from "./src/minting/CapoMinter.js";
-export type { 
-    CharterDatumProps,
-    hasSettingsRef,
- } from "./src/Capo.js";
+export type { CharterDatumProps, hasSettingsRef } from "./src/Capo.js";
 
-import type { 
-    CharterDatumProps,
- } from "./src/Capo.js";
+import type { CharterDatumProps } from "./src/Capo.js";
 
 /**
  * @deprecated - use CharterDatumProps instead
  */
-export type DefaultCharterDatumArgs = CharterDatumProps
+export type DefaultCharterDatumArgs = CharterDatumProps;
 
 export type {
     tokenNamesOrValuesEntry,

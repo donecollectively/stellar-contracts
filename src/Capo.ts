@@ -79,6 +79,8 @@ import {
     type OffchainSettingsType,
     type SettingsAdapterFor,
     type hasAnyDataTemplate,
+    type OffchainType,
+    type hasSettingsType,
 } from "./CapoSettingsTypes.js";
 
 
@@ -385,16 +387,12 @@ export type hasNamedDelegate<
     }
 }
 
-export interface hasSettingsType<C extends Capo<any>> {
-    mkInitialSettings() : OffchainSettingsType<C>;
-    initSettingsAdapter() : DatumAdapter<any, any>;
-}
-
 export interface hasRoleMap<C extends Capo<any>> {
     initDelegateRoles() : basicRoleMap;
     _delegateRoles: ReturnType<C["initDelegateRoles"]>;
     get delegateRoles(): ReturnType<C["initDelegateRoles"]>
 }
+
 
 /**
  * Base class for leader contracts, with predefined roles for delegating governance authority and minting policies
@@ -402,7 +400,7 @@ export interface hasRoleMap<C extends Capo<any>> {
  * 
  * Usage: you can use CapoWithoutSettings if you don't need any custom settings.  For custom settings,
  * declare YourCapoClass extends CapoBase<YourCapoClass>, and implement initSettingsAdapter() and 
- * mkInitialSettings().  
+ * mkInitialSettings(). 
  * 
  * A Capo contract provides a central contract address that can act as a treasury or data registry;
  * it can mint tokens using its connected minting-policy, and it can delegate policies to other contract
@@ -461,7 +459,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
     }
 
     abstract mkInitialSettings() : OffchainSettingsType<SELF>;
-    abstract initSettingsAdapter(): SettingsAdapterFor<SELF>;
+    abstract initSettingsAdapter(): DatumAdapter<any, any>;
 
     static parseConfig(rawJsonConfig: any) {
         const { mph, rev, seedTxn, seedIndex, rootCapoScriptHash } =
