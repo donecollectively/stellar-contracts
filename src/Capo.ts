@@ -575,21 +575,24 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
                 seedIndex, 
              });
 
+            //@ts-expect-error - trust the subclass's initDelegateRoles() to be type-matchy
+            this._delegateRoles = this.initDelegateRoles();
+
             await this.verifyConfigs();
             // this._verifyingConfigs = this.verifyConfigs().then((r) => {
             //     this._verifyingConfigs = undefined;
             //     return r;
             // });
         } else {
+            //@ts-expect-error - trust the subclass's initDelegateRoles() to be type-matchy
+            this._delegateRoles = this.initDelegateRoles();
+
             // this.connectMintingScript(this.getMinterParams());
         }
 
-        debugger
         //@ts-expect-error - trust the subclass's initSettingsAdapter() to be type-matchy
         //   ... based on other abstract methods defined below
         this.settingsAdapter = this.initSettingsAdapter();
-        //@ts-expect-error - trust the subclass's initDelegateRoles() to be type-matchy
-        this._delegateRoles = this.initDelegateRoles();
 
         return this;
     }
