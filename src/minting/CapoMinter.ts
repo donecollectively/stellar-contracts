@@ -45,7 +45,7 @@ type MintCharterActivityArgs<T = {}> = T & {
 };
 
 export type BasicMinterParams = configBase & SeedTxnScriptParams & {
-    capo: Capo<any, any>
+    capo: Capo<any>
     isDev: boolean
     devGen: bigint
 }

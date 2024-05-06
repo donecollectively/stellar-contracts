@@ -23,7 +23,7 @@ import { CapoMinter } from "../minting/CapoMinter.js";
  * @public
  **/
 export abstract class CapoTestHelper<
-    SC extends Capo<any, any>,
+    SC extends Capo<any>,
 > extends StellarTestHelper<SC> {
     async initialize({
         randomSeed = 42,

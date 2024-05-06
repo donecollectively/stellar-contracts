@@ -389,7 +389,7 @@ export abstract class ContractBasedDelegate<
 }
 
 export type NamedDelegateCreationOptions<
-    thisType extends Capo<any, any>,
+    thisType extends Capo<any>,
     DT extends StellarDelegate
 > = DelegateCreationOptions<
     string & keyof thisType["delegateRoles"]["namedDelegate"]["variants"],

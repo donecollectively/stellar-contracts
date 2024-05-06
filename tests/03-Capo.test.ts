@@ -75,8 +75,8 @@ describe("Capo", async () => {
                 h: { network, actors, delay, state },
             } = context;
 
-            const t1: Capo<any, any> = await h.bootstrap();
-            const t2: Capo<any, any> = await h.initialize({
+            const t1: Capo<any> = await h.bootstrap();
+            const t2: Capo<any> = await h.initialize({
                 randomSeed: 43,
             });
             await h.bootstrap();
@@ -93,13 +93,13 @@ describe("Capo", async () => {
             } = context;
 
             try {
-                const t1: Capo<any, any> = await h.bootstrap();
+                const t1: Capo<any> = await h.bootstrap();
                 console.log(
                     "t1 addr                                      ",
                     t1.address
                 );
                 debugger;
-                const t2: Capo<any, any> = await h.initialize({
+                const t2: Capo<any> = await h.initialize({
                     randomSeed: 43,
                 });
                 await h.bootstrap();
