@@ -11,11 +11,11 @@ import {
 import { ADA, addTestContext } from "../src/testing/types";
 import { StellarTestContext } from "../src/testing/StellarTestContext";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
-import { Capo } from "../src/Capo";
+import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 
 
 //xxx@ts-expect-error
-type localTC = StellarTestContext<DefaultCapoTestHelper<Capo>>;
+type localTC = StellarTestContext<DefaultCapoTestHelper<CapoWithoutSettings>>;
 
 const it = itWithContext<localTC>;
 const fit = it.only;
@@ -30,13 +30,13 @@ describe("Capo", async () => {
         await new Promise((res) => setTimeout(res, 10));
         await addTestContext(
             context,
-            DefaultCapoTestHelper.forCapoClass(Capo)
+            DefaultCapoTestHelper.forCapoClass(CapoWithoutSettings)
         );
     });
 
     describe.skip("Gov delegate", () => {
         describe("can update the govDelegate when needed", () => {
-            let capo : Capo;
+            let capo : CapoWithoutSettings;
             beforeEach<localTC>(async (context) => {
                 const {h, h:{network, actors, delay, state} } = context;
                  capo = await h.bootstrap({

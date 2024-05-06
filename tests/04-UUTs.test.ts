@@ -16,7 +16,7 @@ import { Tx, TxOutput, Value } from "@hyperionbt/helios";
 import { StellarTxnContext } from "../src/StellarTxnContext";
 import { CapoMinter } from "../src/minting/CapoMinter";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
-import { Capo, hasAllUuts } from "../src/Capo";
+import { hasAllUuts } from "../src/Capo";
 import type { UutName } from "../src/delegation/UutName";
 import {
     DelegateConfigNeeded,
@@ -29,16 +29,17 @@ import {
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import * as utils from "../src/utils";
 import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateWithGenericUuts";
+import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 
 
-class CapoCanMintGenericUuts extends Capo {
+class CapoCanMintGenericUuts extends CapoWithoutSettings {
 
     async getMintDelegate() : Promise<MintDelegateWithGenericUuts>{
         return await super.getMintDelegate() as MintDelegateWithGenericUuts;
     }
 
-    mkDelegateRoles() {
-        const inherited = super.delegateRoles;
+    initDelegateRoles() {
+        const inherited = super.initDelegateRoles();
         return {
             ... inherited,
             mintDelegate:   defineRole("mintDgt", MintDelegateWithGenericUuts, {

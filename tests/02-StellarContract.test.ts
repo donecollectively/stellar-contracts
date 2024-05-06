@@ -26,13 +26,14 @@ import { MintingPolicyHash } from "@hyperionbt/helios";
 // import { BasicMintDelegate } from "../src/delegation/BasicMintDelegate";
 import { ADA, addTestContext } from "../src/testing/";
 import { StellarTestContext } from "../src/testing/";
+import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 
-import { Capo, hasAllUuts } from "../src/Capo";
+import { hasAllUuts } from "../src/Capo";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import { stringToNumberArray } from "../src/utils";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
-type localTC = StellarTestContext<DefaultCapoTestHelper>;
+type localTC = StellarTestContext<DefaultCapoTestHelper<CapoWithoutSettings>>;
 
 const it = itWithContext<localTC>;
 const fit = it.only;
@@ -48,7 +49,7 @@ const smokeTest = (smoke ? fit : it) as smokeTestType;
 describe("StellarContract", async () => {
     beforeEach<localTC>(async (context) => {
         await new Promise(res => setTimeout(res, 10));
-        await addTestContext(context, DefaultCapoTestHelper);
+        await addTestContext(context, DefaultCapoTestHelper<CapoWithoutSettings>);
     });
 
     describe("things provided by the base class", () => {
@@ -205,7 +206,7 @@ describe("StellarContract", async () => {
                         h: { network, actors, delay, state },
                     } = context;
 
-                    const t: Capo = await h.bootstrap();
+                    const t: CapoWithoutSettings = await h.bootstrap();
 
                     const tokenCount = 19n;
                     const tokenName = "foo";
@@ -351,7 +352,7 @@ describe("StellarContract", async () => {
                             await h.submitTx(tx, "force");
                             h.network.tick(1n);
 
-                            const t: Capo = await h.initialize();
+                            const t: CapoWithoutSettings = await h.initialize();
                             const tcx = new StellarTxnContext(h.currentActor);
                             const isEnoughT = t.mkTokenPredicate(
                                 new Value({
@@ -419,7 +420,7 @@ describe("StellarContract", async () => {
                             h: { network, actors, delay, state },
                         } = context;
                         // await delay(1000)
-                        const t: Capo = await h.initialize();
+                        const t: CapoWithoutSettings = await h.initialize();
                         const tcx = new StellarTxnContext(h.currentActor);
 
                         const tina = h.currentActor;

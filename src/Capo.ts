@@ -290,8 +290,8 @@ export type CapoBaseConfig = configBase &
         rev: bigint;
         bootstrapping?: true;
     };
-type t = ConfigFor<Capo>
-/**
+
+    /**
  * StellarTransactionContext exposing a bootstrapped Capo configuration
  * @remarks
  *
@@ -385,23 +385,32 @@ export type hasNamedDelegate<
     }
 }
 
+export interface hasSettingsType<C extends Capo<any>> {
+    mkInitialSettings() : OffchainSettingsType<C>;
+    initSettingsAdapter() : DatumAdapter<any, any>;
+}
+
 /**
  * Base class for leader contracts, with predefined roles for delegating governance authority and minting policies
  * @remarks
- *
- * Subclass and override initSettingsAdapter() and/or initDelegateRoles() if you need to customize further.
+ * 
+ * Usage: you can use CapoWithoutSettings if you don't need any custom settings.  For custom settings,
+ * declare YourCapoClass extends CapoBase<YourCapoClass>, and implement initSettingsAdapter() and 
+ * mkInitialSettings().  
  * 
  * A Capo contract provides a central contract address that can act as a treasury or data registry;
  * it can mint tokens using its connected minting-policy, and it can delegate policies to other contract
- * scripts.  Subclasses of Capo can use these capabilities in custom ways for strong flexibility.
+ * scripts.  Capo contract can use these capabilities in custom ways for strong flexibility.
  *
- * Any Capo contract can (and must) define delegateRoles() to establish collaborating scripts; these are used for
+ * Any Capo contract can define delegateRoles() to establish customc ollaborating scripts; these are used for
  * separating granular responsbilities for different functional purposes within your (on-chain and off-chain)
  * application; this approach enables delegates to use any one of multiple strategies with different
  * functional logic to serve in any given role, thus providing flexibility and extensibility.
  *
  * Capo provides roles for govAuthority and mintDelegate, and methods to facilitate 
- * the lifecycle of charter creation & update. 
+ * the lifecycle of charter creation & update.   To add custom roles, override initDelegateRoles(), extending the returned 
+ * roles from super.initDelegateRoles().  Advanced versions of the govAuthority, mintDelegate and spendDelegate roles 
+ * can created by extending specific role types found in the base initDelegateRoles() method.
  * 
  * The delegation pattern uses UUTs, which are non-fungible / unique utility tokens.  
  *
@@ -421,19 +430,13 @@ export type hasNamedDelegate<
  * responsibilities makes each part simpler, easing the process of ensuring each part is doing its job 
  * perfectly :pray:
  * 
- * A Capo subclass can decorate an existing entry from `super.roles()` with additional strategy entries, or can add 
- * extra roles useful in the operation of its application.
- * 
  * Inherits from: {@link StellarContract}\<`CharterDatumProps`\> (is this a redundant doc entry?) .
  *
- * @typeParam settingsAdapterType - indicates a DatumAdapter subclass that can convert between on-chain and off-chain settings data
  * @public
  */
-export class Capo
-//<
+export abstract class Capo<SELF extends Capo<any> = Capo<any>>
     // settingsAdapterType extends DatumAdapter<any, any> = DefaultSettingsAdapter
-//> 
-extends StellarContract<CapoBaseConfig> {
+extends StellarContract<CapoBaseConfig> implements hasSettingsType<SELF>{
     static currentRev: bigint = 1n;
     devGen: bigint = 0n;
     verifyConfigs(): Promise<any> {
@@ -444,9 +447,14 @@ extends StellarContract<CapoBaseConfig> {
         // if (this._verifyingConfigs) return this._verifyingConfigs;
         return Promise.resolve(true);
     }
+
     contractSource() {
         return contract;
     }
+
+    abstract mkInitialSettings() : OffchainSettingsType<SELF>;
+    abstract initSettingsAdapter(): SettingsAdapterFor<SELF>;
+
     static parseConfig(rawJsonConfig: any) {
         const { mph, rev, seedTxn, seedIndex, rootCapoScriptHash } =
             rawJsonConfig;
@@ -474,7 +482,6 @@ extends StellarContract<CapoBaseConfig> {
     get scriptActivitiesName() {
         return "CapoActivity";
     }
-
 
     static get defaultParams() {
         const params = {
@@ -569,6 +576,7 @@ extends StellarContract<CapoBaseConfig> {
             // this.connectMintingScript(this.getMinterParams());
         }
 
+        debugger
         //@ts-expect-error - trust the subclass's initSettingsAdapter() to be type-matchy
         //   ... based on other abstract methods defined below
         this.settingsAdapter = this.initSettingsAdapter();
@@ -1022,7 +1030,7 @@ extends StellarContract<CapoBaseConfig> {
         );
         //! accumulates min-utxos for each stringy token-name in a reduce()
         function addTokenValue(
-            this: Capo,
+            this: Capo<any>,
             accumulator: Value,
             tn: string
         ): Value {
@@ -1459,7 +1467,7 @@ extends StellarContract<CapoBaseConfig> {
 
         _delegateRoles!: ReturnType<this["initDelegateRoles"]> 
         initDelegateRoles<
-            THISTYPE extends Capo,
+            THISTYPE extends Capo<SELF>,
             ROLEMAP extends basicRoleMap
         >(
             this: THISTYPE
@@ -1645,35 +1653,27 @@ extends StellarContract<CapoBaseConfig> {
     
         settingsAdapter!: ReturnType<this["initSettingsAdapter"]> // settingsAdapterType;
 
-        //@xxxts-expect-error on the default return type - override this method with more specific adapter
-        initSettingsAdapter<
-            THISTYPE extends Capo, //<any>
-        >(
-            this: THISTYPE
-        ) : DatumAdapter<any, hasAnyDataTemplate> {
-            return new DefaultSettingsAdapter(this);
-        }
     
         @datum
         async mkDatumSettingsData<
-            THISTYPE extends Capo
+            THISTYPE extends Capo<SELF>
         >(
             this: THISTYPE,
             settings: OffchainSettingsType<THISTYPE>
         ): Promise<Datum> {
             const adapter = this.settingsAdapter;
+
             return adapter.toOnchainDatum(settings) as Datum;
         }
     
-        //xx@ts-expect-error - method should be overridden
-        mkInitialSettings() : OffchainSettingsType<this> {
-            //@ts-expect-error - method should be overridden
-            return {
-                meaning: 42,
-                happy: 1,
-            } as RealNumberSettingsMap;
-        }
-    
+        //x@ts-expect-error - method should be overridden
+        // mkInitialSettings() {
+        //     return {
+        //         meaning: 42,
+        //         happy: 1,
+        //     } as RealNumberSettingsMap;
+        // }
+
         // settingsDataToUplc(config: ContractSettingsData<this>) {
         //     const {RealnumSettingsValueV1} = this.onChainTypes;
         //     return
@@ -1973,7 +1973,7 @@ extends StellarContract<CapoBaseConfig> {
                 //     T extends (...args: infer A) => infer R ? (...args: Normalize<A>) => Normalize<R>
                 //     : T extends any ? {[K in keyof T]: Normalize<T[K]>} : never
     
-                const settings = this.mkInitialSettings();
+                const settings = this.mkInitialSettings() as unknown as OffchainSettingsType<this>;
                 const tcx5 = await this.txnAddSettingsOutput(tcx4a, settings);
     
                 // debugger
@@ -2006,7 +2006,7 @@ extends StellarContract<CapoBaseConfig> {
         };
     
         async findSettingsDatum<
-            thisType extends Capo        
+            thisType extends Capo<SELF>
         >(
             this: thisType,
             {
@@ -2287,7 +2287,7 @@ extends StellarContract<CapoBaseConfig> {
         @txn
         async mkTxnUpdatingMintDelegate<
             DT extends StellarDelegate,
-            thisType extends Capo
+            thisType extends Capo<SELF>
         >(
             this: thisType,
             delegateInfo: MinimalDelegateLink<DT> & {
@@ -2375,7 +2375,7 @@ extends StellarContract<CapoBaseConfig> {
         @txn
         async mkTxnUpdatingSpendDelegate<
             DT extends StellarDelegate,
-            thisType extends Capo
+            thisType extends Capo<SELF>
         >(
             this: thisType,
             delegateInfo: MinimalDelegateLink<DT> & {
@@ -2460,7 +2460,7 @@ extends StellarContract<CapoBaseConfig> {
         @txn
         async mkTxnAddingMintInvariant<
             DT extends StellarDelegate,
-            thisType extends Capo
+            thisType extends Capo<SELF>
         >(
             this: thisType,
             delegateInfo: MinimalDelegateLink<DT> & {
@@ -2528,7 +2528,7 @@ extends StellarContract<CapoBaseConfig> {
         @txn
         async mkTxnAddingSpendInvariant<
             DT extends StellarDelegate,
-            thisType extends Capo
+            thisType extends Capo<SELF>
         >(
             this: thisType,
             delegateInfo: MinimalDelegateLink<DT> & {
@@ -2602,7 +2602,7 @@ extends StellarContract<CapoBaseConfig> {
          **/
         async mkTxnAddingNamedDelegate<
             DT extends StellarDelegate,
-            thisType extends Capo,
+            thisType extends Capo<SELF>,
             const delegateName extends string,
             TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>
         >(
@@ -3494,3 +3494,5 @@ extends StellarContract<CapoBaseConfig> {
             });
         }
 }
+// export interface Capo<SELF extends Capo<any>> extends hasSettingsType<SELF>{}
+

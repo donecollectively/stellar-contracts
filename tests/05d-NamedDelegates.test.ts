@@ -30,8 +30,9 @@ import { Address } from "@hyperionbt/helios";
 import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateWithGenericUuts";
 import { StellarDelegate } from "../dist/stellar-contracts";
 import { ContractBasedDelegate } from "../src/delegation/ContractBasedDelegate";
+import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 
-class NamedDelegateTestCapo extends Capo {
+class NamedDelegateTestCapo extends CapoWithoutSettings {
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {
         return (await super.getMintDelegate()) as MintDelegateWithGenericUuts;
     }

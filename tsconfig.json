@@ -31,7 +31,7 @@
     "include": [
         "src/**/*.hl",
         "src/**/*.ts", 
-        "src/**/*.js", 
+        "src/**/*.js" 
     ],
     "exclude": ["**/node_modules/"]
 }

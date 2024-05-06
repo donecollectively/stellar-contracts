@@ -27,6 +27,7 @@ import { dumpAny } from "../src/diagnostics";
 import { DelegationDetail } from "../src/delegation/RolesAndDelegates";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { Capo } from "../src/Capo";
+import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
@@ -54,7 +55,7 @@ describe("Capo", async () => {
             } = context;
             await h.bootstrap();
 
-            const config: ConfigFor<Capo> = h.state.config;
+            const config: ConfigFor<CapoWithoutSettings> = h.state.config;
             expect(config).toBeTruthy();
             const { mph, seedIndex, seedTxn } = config;
 
@@ -74,8 +75,8 @@ describe("Capo", async () => {
                 h: { network, actors, delay, state },
             } = context;
 
-            const t1: Capo = await h.bootstrap();
-            const t2: Capo = await h.initialize({
+            const t1: Capo<any> = await h.bootstrap();
+            const t2: Capo<any> = await h.initialize({
                 randomSeed: 43,
             });
             await h.bootstrap();
@@ -92,13 +93,13 @@ describe("Capo", async () => {
             } = context;
 
             try {
-                const t1: Capo = await h.bootstrap();
+                const t1: Capo<any> = await h.bootstrap();
                 console.log(
                     "t1 addr                                      ",
                     t1.address
                 );
                 debugger;
-                const t2: Capo = await h.initialize({
+                const t2: Capo<any> = await h.initialize({
                     randomSeed: 43,
                 });
                 await h.bootstrap();

@@ -29,14 +29,15 @@ import { txAsString } from "../src/diagnostics";
 import { Address } from "@hyperionbt/helios";
 import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateWithGenericUuts";
 import { Capo } from "../src/Capo";
+import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 
-class DelegationTestCapo extends Capo {
+class DelegationTestCapo extends CapoWithoutSettings {
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {
         return (await super.getMintDelegate()) as MintDelegateWithGenericUuts;
     }
 
-    get delegateRoles() {
-        const inherited = super.delegateRoles;
+    initDelegateRoles() {
+        const inherited = super.initDelegateRoles();
         const { mintDelegate: parentMintDelegate, ...othersInherited } =
             inherited;
         const {

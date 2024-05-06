@@ -30,7 +30,7 @@ import { DelegationDetail } from "../src/delegation/RolesAndDelegates";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { TestBadSettings } from "./TestBadSettings";
 import { OffchainSettingsType } from "../src/CapoSettingsTypes";
-import { Capo } from "../src/Capo";
+import { CapoBase } from "../src/Capo";
 import { AnyDataTemplate, DatumAdapter } from "../src/DatumAdapter";
 import { Expand } from "../src/testing/types";
 // import { RoleDefs } from "../src/RolesAndDelegates";
@@ -86,20 +86,20 @@ class BadSettingsAdapter extends DatumAdapter<CanBeBadSettings, onChainBadSettin
     }
 }
 
-class CapoCanHaveBadSettings extends Capo {
+class CapoCanHaveBadSettings extends CapoBase<CapoCanHaveBadSettings> {
     get customCapoSettingsModule()  {
         return TestBadSettings;
     }
 
-    mkInitialSettings() : OffchainSettingsType<CapoCanHaveBadSettings> {
-        type T = Expand<OffchainSettingsType<CapoCanHaveBadSettings>>;
+    mkInitialSettings() {
         return {
             meaning: 42,
+            x: 19,
             badSettingToMintDelegate: 0,
             badSettingToSpendDelegate: 0,
-        } ;
+        };
     }    
-
+    
     initSettingsAdapter() {
         return new BadSettingsAdapter(this);
     }

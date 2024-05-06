@@ -30,6 +30,11 @@ export {
     type CapoBaseConfig,
     type MinimalDelegateLink,
 } from "./src/Capo.js";
+
+export {
+    CapoWithoutSettings
+} from "./src/CapoWithoutSettings.js";
+
 export type {
     MintUutActivityArgs,
     FoundUut,
@@ -39,7 +44,6 @@ export type {
     hasBootstrappedConfig,
     hasCharterRef,
 } from "./src/Capo.js";
-
 
 export {
     type OffchainSettingsType,
