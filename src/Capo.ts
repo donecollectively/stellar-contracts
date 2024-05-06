@@ -385,17 +385,23 @@ export type hasNamedDelegate<
     }
 }
 
-export interface hasSettingsType<C extends Capo<any>> {
+export interface hasSettingsType<
+    SAT extends DatumAdapter<any, any>,
+    C extends myNoInfer<Capo<any, any>> 
+    // DAT extends DatumAdapter<any,any> = ReturnType<C["initSettingsAdapter"]>
+> {
     mkInitialSettings() : OffchainSettingsType<C>;
-    initSettingsAdapter() : DatumAdapter<any, any>;
+    initSettingsAdapter() : SAT;
 }
 
-export interface hasRoleMap<C extends Capo<any>> {
+export interface hasRoleMap<C extends myNoInfer<Capo<any, any>>> {
     initDelegateRoles() : basicRoleMap;
     _delegateRoles: ReturnType<C["initDelegateRoles"]>;
     get delegateRoles(): ReturnType<C["initDelegateRoles"]>
 }
 
+// export type NoInfer<t> = [t][t extends any ? 0 : never]
+export type myNoInfer<A> = [A][A extends any ? 0 : never]
 /**
  * Base class for leader contracts, with predefined roles for delegating governance authority and minting policies
  * @remarks
@@ -440,10 +446,13 @@ export interface hasRoleMap<C extends Capo<any>> {
  *
  * @public
  */
-export abstract class Capo<SELF extends Capo<any> = Capo<any>>
+export abstract class Capo<
+    SAT extends DatumAdapter<any, any>,
+    SELF extends myNoInfer<Capo<myNoInfer<SAT>, myNoInfer<any>>> //= Capo<any, any>,
+>
     // settingsAdapterType extends DatumAdapter<any, any> = DefaultSettingsAdapter
 extends StellarContract<CapoBaseConfig> 
-implements hasSettingsType<SELF>, hasRoleMap<SELF>
+implements hasSettingsType<SAT, SELF>, hasRoleMap<SELF>
 {
     static currentRev: bigint = 1n;
     devGen: bigint = 0n;
@@ -461,7 +470,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
     }
 
     abstract mkInitialSettings() : OffchainSettingsType<SELF>;
-    abstract initSettingsAdapter(): SettingsAdapterFor<SELF>;
+    abstract initSettingsAdapter(): SAT;
 
     static parseConfig(rawJsonConfig: any) {
         const { mph, rev, seedTxn, seedIndex, rootCapoScriptHash } =
@@ -1042,7 +1051,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
         );
         //! accumulates min-utxos for each stringy token-name in a reduce()
         function addTokenValue(
-            this: Capo<any>,
+            this: Capo<any, any>,
             accumulator: Value,
             tn: string
         ): Value {
@@ -1479,7 +1488,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
 
         _delegateRoles!: ReturnType<this["initDelegateRoles"]> 
         initDelegateRoles<
-            THISTYPE extends Capo<any>,
+            THISTYPE extends Capo<any, any>,
         >(
             this: THISTYPE
         ) {
@@ -1667,7 +1676,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
     
         @datum
         async mkDatumSettingsData<
-            THISTYPE extends Capo<SELF>
+            THISTYPE extends Capo<any, SELF>
         >(
             this: THISTYPE,
             settings: OffchainSettingsType<THISTYPE>
@@ -2017,7 +2026,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
         };
     
         async findSettingsDatum<
-            thisType extends Capo<SELF>
+            thisType extends Capo<SAT, SELF>
         >(
             this: thisType,
             {
@@ -2237,10 +2246,14 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
         }
     
         @txn
-        async mkTxnUpdateOnchainSettings<TCX extends StellarTxnContext>(
-            data: OffchainSettingsType<this>,
+        async mkTxnUpdateOnchainSettings<
+            THISTYPE extends Capo<SAT, SELF>,
+            TCX extends StellarTxnContext
+        >(
+            this: THISTYPE,
+            data: OffchainSettingsType<THISTYPE>,
             settingsUtxo?: TxInput,
-            tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
+            tcx: TCX = new StellarTxnContext(this.myActor) as TCX
         ): Promise<TCX> {
             // uses the charter ref input
             settingsUtxo = settingsUtxo || (await this.findSettingsUtxo());
@@ -2298,7 +2311,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
         @txn
         async mkTxnUpdatingMintDelegate<
             DT extends StellarDelegate,
-            thisType extends Capo<SELF>
+            thisType extends Capo<any, SELF>
         >(
             this: thisType,
             delegateInfo: MinimalDelegateLink<DT> & {
@@ -2386,7 +2399,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
         @txn
         async mkTxnUpdatingSpendDelegate<
             DT extends StellarDelegate,
-            thisType extends Capo<SELF>
+            thisType extends Capo<any, SELF>
         >(
             this: thisType,
             delegateInfo: MinimalDelegateLink<DT> & {
@@ -2471,7 +2484,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
         @txn
         async mkTxnAddingMintInvariant<
             DT extends StellarDelegate,
-            thisType extends Capo<SELF>
+            thisType extends Capo<any, SELF>
         >(
             this: thisType,
             delegateInfo: MinimalDelegateLink<DT> & {
@@ -2539,7 +2552,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
         @txn
         async mkTxnAddingSpendInvariant<
             DT extends StellarDelegate,
-            thisType extends Capo<SELF>
+            thisType extends Capo<any, SELF>
         >(
             this: thisType,
             delegateInfo: MinimalDelegateLink<DT> & {
@@ -2613,7 +2626,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
          **/
         async mkTxnAddingNamedDelegate<
             DT extends StellarDelegate,
-            thisType extends Capo<SELF>,
+            thisType extends Capo<any, SELF>,
             const delegateName extends string,
             TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>
         >(

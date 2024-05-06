@@ -96,7 +96,7 @@ class BadSettingsAdapter extends DatumAdapter<CanBeBadSettings, onChainBadSettin
     }
 }
 
-class CapoCanHaveBadSettings extends Capo<CapoCanHaveBadSettings> {
+class CapoCanHaveBadSettings extends Capo<BadSettingsAdapter, CapoCanHaveBadSettings> {
     get customCapoSettingsModule()  {
         return TestBadSettings;
     }

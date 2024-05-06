@@ -85,7 +85,7 @@ export type DelegationDetail = {
  **/
 export type capoDelegateConfig = configBase & devConfigProps & {
     capoAddr: Address;
-    capo: Capo<any>;
+    capo: Capo<any, any>;
     mph: MintingPolicyHash;
     delegateName: string;
     tn: number[];

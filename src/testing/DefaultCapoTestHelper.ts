@@ -54,7 +54,7 @@ declare const expect: typeof expectType;
 export class DefaultCapoTestHelper<
     //@xxxts-expect-error spurious fail  type; it tries to strongly match the generic abstract type
     //    from (abstract) Capo, instead of paying attention to the clearly-matching concrete version in DefaultCapo
-    CAPO extends Capo<any> = CapoWithoutSettings, //prettier-ignore
+    CAPO extends Capo<any, any> = CapoWithoutSettings, //prettier-ignore
     //@xxxts-ignore because of a mismatch between the Capo's abstract mkTxnMintCharterToken's defined constraints
     //    ... vs the only concrete impl in DefaultCapo, with types that are actually nicely matchy.
     //    vscode is okay with it, but api-extractor is not :/
@@ -75,7 +75,7 @@ export class DefaultCapoTestHelper<
      * @typeParam CAPO - no need to specify it; it's inferred from your parameter
      * @public
      **/
-    static forCapoClass<CAPO extends Capo<any>>(
+    static forCapoClass<CAPO extends Capo<any, any>>(
         s: stellarSubclass<CAPO>
     ): DefaultCapoTestHelperClass<CAPO> {
         class specificCapoHelper extends DefaultCapoTestHelper<CAPO> {

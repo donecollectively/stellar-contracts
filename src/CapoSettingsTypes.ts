@@ -7,11 +7,11 @@ export interface hasAnyDataTemplate {
 }
 
 export type SettingsAdapterFor<
-    CAPO_TYPE extends Capo<any>,
-    CBT extends Capo<any> = CAPO_TYPE extends Capo<infer CBT> ? CBT : never
-> = ReturnType<hasSettingsType<CBT>["initSettingsAdapter"]>  
+    CAPO_TYPE extends Capo<any, any>,
+    SAT extends DatumAdapter<any,any> = CAPO_TYPE extends infer R ? R extends Capo<infer SAT, any> ? SAT : never : never
+> = SAT
 
-export type OnchainSettingsType<CAPO_TYPE extends Capo<any>> =
+export type OnchainSettingsType<CAPO_TYPE extends Capo<any, any>> =
     anyDatumProps & SettingsAdapterFor<CAPO_TYPE> extends DatumAdapter<
         any,
         infer Onchain
@@ -22,7 +22,7 @@ export type OnchainSettingsType<CAPO_TYPE extends Capo<any>> =
         : never;
 
 export type OffchainSettingsType<
-    CAPO_TYPE extends Capo<any>
+    CAPO_TYPE extends Capo<any, any>
 > =
     SettingsAdapterFor<CAPO_TYPE> extends DatumAdapter<infer appSettingsType, any> ? appSettingsType : never;
 

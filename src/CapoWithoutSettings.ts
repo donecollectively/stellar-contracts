@@ -1,5 +1,5 @@
 import { ConstrData, Datum } from "@hyperionbt/helios";
-import { Capo } from "./Capo.js";
+import { Capo, type myNoInfer } from "./Capo.js";
 import { DatumAdapter } from "./DatumAdapter.js";
 
 export type onChainNoSettings = {
@@ -34,8 +34,8 @@ class NoSettingsAdapter extends DatumAdapter<NoSettings, onChainNoSettings> {
     }
 }
 
-export class CapoWithoutSettings extends Capo<CapoWithoutSettings> {
-    initSettingsAdapter() {
+export class CapoWithoutSettings extends Capo<NoSettingsAdapter, CapoWithoutSettings> {
+    initSettingsAdapter() : NoSettingsAdapter {
         return new NoSettingsAdapter(this);
     }
 
