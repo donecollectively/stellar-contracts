@@ -15,6 +15,10 @@ export interface AnyDataTemplate<TYPENAME extends string> {
     "tpe": TYPENAME;  // for a type-indicatro on the data
 }
 
+export type BigIntRecord<T extends Record<string, number>> = {
+    [K in keyof T]: bigint;
+};
+
 /**
  * Provides transformations of data between preferred application types and on-chain data types
  * @remarks
@@ -158,4 +162,21 @@ export abstract class DatumAdapter<
         );
         return t;
     }
+
+    fromOnchainMap<KEYS extends string>(
+        data: Record<KEYS, BigInt>,
+        transformer: (x: bigint) => number
+    ) {
+        return Object.fromEntries(
+            (Object.entries(data) as [string, bigint][]).map(([k, v]: [string, bigint]) => [
+                k,
+                transformer(v),
+            ])
+        ) as Record<KEYS, number>;
+    }
+
+    fromOnchainReal(x: bigint) {
+        return Number(x) / 1_000_000
+    }
+
 }

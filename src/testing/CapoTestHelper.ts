@@ -55,6 +55,8 @@ export abstract class CapoTestHelper<
                         .join("\n")
             );
             this.setupPending = undefined;
+            //@ts-expect-error
+            this.strella = undefined
             this.actors = {};
         }
         if (this.setupPending) {

@@ -109,7 +109,10 @@ export type {
     ConfigFor,
 } from "./src/StellarContract.js";
 
-export { DatumAdapter } from "./src/DatumAdapter.js";
+export { 
+    DatumAdapter, 
+    type BigIntRecord 
+} from "./src/DatumAdapter.js";
 export { DelegatedDatumAdapter } from "./src/DelegatedDatumAdapter.js";
 
 export { CapoMinter } from "./src/minting/CapoMinter.js";

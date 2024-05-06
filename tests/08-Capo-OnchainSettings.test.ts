@@ -30,8 +30,8 @@ import { DelegationDetail } from "../src/delegation/RolesAndDelegates";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { TestBadSettings } from "./TestBadSettings";
 import { OffchainSettingsType } from "../src/CapoSettingsTypes";
-import { CapoBase } from "../src/Capo";
-import { AnyDataTemplate, DatumAdapter } from "../src/DatumAdapter";
+import { Capo } from "../src/Capo";
+import { AnyDataTemplate, BigIntRecord, DatumAdapter } from "../src/DatumAdapter";
 import { Expand } from "../src/testing/types";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
@@ -66,13 +66,23 @@ const goodSettings : CanBeBadSettings = {
 }
 
 type onChainBadSettings = {
-    data: CanBeBadSettings & AnyDataTemplate<"set-">
+    data: BigIntRecord<CanBeBadSettings> & AnyDataTemplate<"set-">
 }
 
 class BadSettingsAdapter extends DatumAdapter<CanBeBadSettings, onChainBadSettings> {
     datumName: string = "SettingsData";
     fromOnchainDatum(parsedDatum: onChainBadSettings): CanBeBadSettings {
-        return parsedDatum.data;
+        const {
+            "@id": id,
+            "tpe": tpe,
+            ...reals
+        } = parsedDatum.data
+        const otherParams = this.fromOnchainMap(
+            reals,
+            this.fromOnchainReal
+        );
+
+        return otherParams
     }
     toOnchainDatum(settings: CanBeBadSettings) {
         const { SettingsData: hlSettingsData } = this.onChainDatumType;
@@ -86,7 +96,7 @@ class BadSettingsAdapter extends DatumAdapter<CanBeBadSettings, onChainBadSettin
     }
 }
 
-class CapoCanHaveBadSettings extends CapoBase<CapoCanHaveBadSettings> {
+class CapoCanHaveBadSettings extends Capo<CapoCanHaveBadSettings> {
     get customCapoSettingsModule()  {
         return TestBadSettings;
     }
