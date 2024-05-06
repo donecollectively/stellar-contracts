@@ -390,6 +390,12 @@ export interface hasSettingsType<C extends Capo<any>> {
     initSettingsAdapter() : DatumAdapter<any, any>;
 }
 
+export interface hasRoleMap<C extends Capo<any>> {
+    initDelegateRoles() : basicRoleMap;
+    _delegateRoles: ReturnType<C["initDelegateRoles"]>;
+    get delegateRoles(): ReturnType<C["initDelegateRoles"]>
+}
+
 /**
  * Base class for leader contracts, with predefined roles for delegating governance authority and minting policies
  * @remarks
@@ -436,7 +442,9 @@ export interface hasSettingsType<C extends Capo<any>> {
  */
 export abstract class Capo<SELF extends Capo<any> = Capo<any>>
     // settingsAdapterType extends DatumAdapter<any, any> = DefaultSettingsAdapter
-extends StellarContract<CapoBaseConfig> implements hasSettingsType<SELF>{
+extends StellarContract<CapoBaseConfig> 
+implements hasSettingsType<SELF>, hasRoleMap<SELF>
+{
     static currentRev: bigint = 1n;
     devGen: bigint = 0n;
     verifyConfigs(): Promise<any> {
@@ -580,6 +588,7 @@ extends StellarContract<CapoBaseConfig> implements hasSettingsType<SELF>{
         //@ts-expect-error - trust the subclass's initSettingsAdapter() to be type-matchy
         //   ... based on other abstract methods defined below
         this.settingsAdapter = this.initSettingsAdapter();
+        //@ts-expect-error - trust the subclass's initDelegateRoles() to be type-matchy
         this._delegateRoles = this.initDelegateRoles();
 
         return this;
@@ -1467,11 +1476,10 @@ extends StellarContract<CapoBaseConfig> implements hasSettingsType<SELF>{
 
         _delegateRoles!: ReturnType<this["initDelegateRoles"]> 
         initDelegateRoles<
-            THISTYPE extends Capo<SELF>,
-            ROLEMAP extends basicRoleMap
+            THISTYPE extends Capo<any>,
         >(
             this: THISTYPE
-        ) : ROLEMAP{
+        ) {
             return delegateRoles({
                 govAuthority: defineRole("capoGov", AuthorityPolicy, {
                     address: {
@@ -1526,7 +1534,7 @@ extends StellarContract<CapoBaseConfig> implements hasSettingsType<SELF>{
                 namedDelegate: defineRole("namedDgt", ContractBasedDelegate<any>, {
                     // no named delegates by default
                 }),
-            }) as ROLEMAP
+            }) //as ROLEMAP
         }
     
         /**
