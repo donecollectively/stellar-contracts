@@ -2,26 +2,30 @@ import type { anyDatumProps } from "./StellarContract.js";
 import { Capo } from "./Capo.js";
 import { DatumAdapter, type AnyDataTemplate } from "./DatumAdapter.js";
 
-export type SettingsAdapterFor<
-    CAPO_TYPE extends Capo<any, any, any, any>> = ( DatumAdapter<
-        any, { data: AnyDataTemplate<"set-"> }, CAPO_TYPE
-    > &
-        CAPO_TYPE 
-    ) extends Capo<infer STA, any, any, any> ? STA : never;
+export interface hasAnyDataTemplate {
+    data: AnyDataTemplate<"set-"> 
+}
 
-export type OnchainSettingsType<CAPO_TYPE extends Capo<any, any, any, any>> =
+export type SettingsAdapterFor<
+    CAPO_TYPE extends Capo
+> = Awaited<ReturnType<CAPO_TYPE["initSettingsAdapter"]>> extends ( DatumAdapter<
+        any, hasAnyDataTemplate
+    > ) ?        
+     Awaited<ReturnType<CAPO_TYPE["initSettingsAdapter"]>> : 
+     "TYPE_MISMATCH: settings DatumAdaper must have an on-chain 'data' field of type AnyDataTemplate<'set-'>";
+
+export type OnchainSettingsType<CAPO_TYPE extends Capo> =
     anyDatumProps & SettingsAdapterFor<CAPO_TYPE> extends DatumAdapter<
         any,
-        infer Onchain,
-        any
+        infer Onchain
     >
-        ? Onchain extends { data: AnyDataTemplate<"set-"> }
-            ? Onchain
-            : "TYPE_MISMATCH: DatumAdpater must have a data field of type AnyDataTemplate<'set-'>"
+        ? Onchain extends hasAnyDataTemplate
+            ? Onchain["data"]
+            : "TYPE_MISMATCH: settings DatumAdaper must have an on-chain 'data' field of type AnyDataTemplate<'set-'>"
         : never;
 
 export type OffchainSettingsType<
-    CAPO_TYPE extends Capo<any, any, any, any>
+    CAPO_TYPE extends Capo
 > =
-    SettingsAdapterFor<CAPO_TYPE> extends DatumAdapter<infer OCST, any, any> ? OCST : never;
+    SettingsAdapterFor<CAPO_TYPE> extends DatumAdapter<infer appSettingsType, any> ? appSettingsType : never;
 

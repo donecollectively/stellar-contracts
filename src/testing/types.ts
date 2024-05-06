@@ -13,8 +13,7 @@ import type { StellarTestContext } from "./StellarTestContext.js";
 import type { StellarTestHelper } from "./StellarTestHelper.js";
 import ppParams from "../../preprod.json" assert { type: "json" };
 import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
-import type { Capo } from "../Capo.js";
-import type { DefaultCapo } from "../DefaultCapo.js";
+import type { Capo, CapoBaseConfig } from "../Capo.js";
 
 //   ppParams.latestParams.maxTxExecutionUnits.memory = 28_000_000
 
@@ -27,7 +26,7 @@ export type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (
     config: ConfigFor<SC> & canHaveRandomSeed
 ) => StellarTestHelper<SC>;
 
-export type DefaultCapoTestHelperClass<SC extends DefaultCapo<any,any,any,any>> = new (
+export type DefaultCapoTestHelperClass<SC extends Capo> = new (
     config: ConfigFor<SC> & canHaveRandomSeed
 ) => StellarTestHelper<SC> & DefaultCapoTestHelper<SC> 
 // & { get stellarClass(): stellarSubclass<SC> };
@@ -54,13 +53,13 @@ export type canSkipSetup = {
  **/
 export async function addTestContext<
     SC extends StellarContract<any>,
-    P extends configBase = SC extends StellarContract<infer PT> ? PT : never
+    P extends configBase = ConfigFor<SC>
 >(
     context: StellarTestContext<any, SC>,
     TestHelperClass: stellarTestHelperSubclass<SC>,
     params?: P
 ) {
-    console.log(" ======== ========= ======== +test context");
+    console.log(" ======== ======== ======== +test context");
     Object.defineProperty(context, "strella", {
         get: function () {
             return this.h.strella;

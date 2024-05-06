@@ -7,7 +7,6 @@ import {
     assertType,
     expectTypeOf,
 } from "vitest";
-import { DefaultCapo } from "../src/DefaultCapo";
 
 import {
     Address,

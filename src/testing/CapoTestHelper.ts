@@ -3,6 +3,8 @@ import {
 } from "../Capo.js";
 import type {
     CapoBaseConfig,
+    CharterDatumProps,
+    MinimalCharterDatumArgs,
     MinterBaseMethods,
     anyDatumArgs,
     hasBootstrappedConfig,
@@ -11,28 +13,22 @@ import type {
 
 import { StellarTxnContext, type hasAddlTxns } from "../StellarTxnContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
-import type { MinimalDefaultCharterDatumArgs } from "../DefaultCapo.js";
 import { CapoMinter } from "../minting/CapoMinter.js";
 
 /**
  * Base class for test helpers for Capo contracts
  * @remarks
  * 
- * Unless you have a custom Capo not based on DefaultCapo, you 
- * should probably use DefaultCapoTestHelper instead of this class.
+ * You should probably use DefaultCapoTestHelper instead of this class.
  * @public
  **/
 export abstract class CapoTestHelper<
-    SC extends Capo<any, MinterBaseMethods & CapoMinter, CDT, CT>,
-    CDT extends anyDatumArgs = //prettier-ignore
-        SC extends Capo<any, infer iCDT> ? iCDT : anyDatumArgs, //prettier-ignore
-    CT extends CapoBaseConfig  =  //prettier-ignore
-        SC extends Capo<any, any, any, infer iCT> ? iCT : never //prettier-ignore
+    SC extends Capo,
 > extends StellarTestHelper<SC> {
     async initialize({
         randomSeed = 42,
         config,
-    }: { config?: CT; randomSeed?: number } = {}): Promise<SC> {
+    }: { config?: CapoBaseConfig; randomSeed?: number } = {}): Promise<SC> {
         // Note: This method diverges from the base class impl, due to type difficulties.
         // Patches welcome.
 
@@ -107,7 +103,7 @@ export abstract class CapoTestHelper<
         return new StellarTxnContext(this.currentActor);
     }
     
-    async bootstrap(args?: Partial<MinimalDefaultCharterDatumArgs>) {
+    async bootstrap(args?: Partial<MinimalCharterDatumArgs>) {
         let strella = this.strella || (await this.initialize());
         if (this.bootstrap != CapoTestHelper.prototype.bootstrap) {
             throw new Error(`Don't override the test-helper bootstrap().  Instead, provide an implementation of extraBootstrapping()`)
@@ -124,13 +120,13 @@ export abstract class CapoTestHelper<
         return strella;
     }
 
-    async extraBootstrapping(args?: Partial<MinimalDefaultCharterDatumArgs>) {
+    async extraBootstrapping(args?: Partial<MinimalCharterDatumArgs>) {
         return this.strella;
     }
     
-    abstract mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs<any>>
+    abstract mkDefaultCharterArgs(): Partial<MinimalCharterDatumArgs>
     abstract mintCharterToken(
-        args?: Partial<MinimalDefaultCharterDatumArgs<any>>
+        args?: Partial<MinimalCharterDatumArgs>
     ): Promise<
         & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt" | "settings">
         & hasBootstrappedConfig<CapoBaseConfig>

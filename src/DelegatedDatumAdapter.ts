@@ -5,10 +5,9 @@ import type { StellarContract } from "./StellarContract.js";
 export abstract class DelegatedDatumAdapter<
     appType,
     OnchainBridgeType extends {data: OBD & AnyDataTemplate<any>},
-    contractType extends StellarContract<any>,
     OBD extends AnyDataTemplate<any> = OnchainBridgeType["data"]
-> extends DatumAdapter<appType, OnchainBridgeType, contractType>{
-    constructor(strella: contractType) {
+> extends DatumAdapter<appType, OnchainBridgeType>{
+    constructor(strella: StellarContract<any>) {
         super(strella)
     }
 

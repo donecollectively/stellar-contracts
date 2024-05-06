@@ -17,10 +17,6 @@ import {
     CapoTestHelper,
     DefaultCapoTestHelper,
 } from "../src/testing";
-import {
-    DefaultCharterDatumArgs,
-    MinimalDefaultCharterDatumArgs,
-} from "../src/DefaultCapo";
 
 type localTC = StellarTestContext<CustomTreasuryTestHelper>;
 

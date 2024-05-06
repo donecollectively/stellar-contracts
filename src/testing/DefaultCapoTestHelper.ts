@@ -1,9 +1,3 @@
-import type {
-    DefaultCharterDatumArgs,
-    MinimalDefaultCharterDatumArgs,
-} from "../DefaultCapo.js";
-
-import { DefaultCapo } from "../DefaultCapo.js";
 
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { ADA } from "./types.js";
@@ -13,10 +7,12 @@ import type {
     stellarTestHelperSubclass,
 } from "./types.js";
 import { CapoTestHelper } from "./CapoTestHelper.js";
-import type { stellarSubclass } from "../StellarContract.js";
+import type { ConfigFor, stellarSubclass } from "../StellarContract.js";
 import { Capo } from "../Capo.js";
 import type {
     CapoBaseConfig,
+    CharterDatumProps,
+    MinimalCharterDatumArgs,
     hasBootstrappedConfig,
     hasUutContext,
 } from "../Capo.js";
@@ -33,12 +29,12 @@ declare namespace NodeJS {
 declare const expect: typeof expectType;
 
 /**
- * Test helper for classes extending DefaultCapo
+ * Test helper for classes extending Capo
  * @remarks
  *
  * Arranges an test environment with predefined actor-names having various amounts of ADA in their (emulated) wallets,
  * and default helpers for setting up test scenarios.  Provides a simplified framework for testing Stellar contracts extending
- * the DefaultCapo class.
+ * the Capo class.
  *
  * To use it, you MUST extend DefaultCapoTestHelper<YourStellarCapoClass>.
  *
@@ -51,21 +47,17 @@ declare const expect: typeof expectType;
  * unprivileged Public users might have actor names like pablo and peter.  setupActors() also
  * should pre-assign some ADA funds to each actor: e.g. `this.addActor(‹actorName›, 142n * ADA)`
  *
- * @typeParam DC - the specific DefaultCapo subclass under test
+ * @typeParam DC - the specific Capo subclass under test
  * @public
  **/
 export class DefaultCapoTestHelper<
-    //@ts-expect-error spurious fail  type; it tries to strongly match the generic abstract type
+    //@xxxts-expect-error spurious fail  type; it tries to strongly match the generic abstract type
     //    from (abstract) Capo, instead of paying attention to the clearly-matching concrete version in DefaultCapo
-    DC extends DefaultCapo<any, CapoMinter, CDT, CT> = DefaultCapo, //prettier-ignore
-    CDT extends DefaultCharterDatumArgs =        
-        DC extends Capo<any, any, infer iCDT> ? iCDT : DefaultCharterDatumArgs, //prettier-ignore
-    CT extends CapoBaseConfig  = 
-        DC extends Capo<any, any, any, infer iCT> ? iCT : never //prettier-ignore
-    //@ts-ignore because of a mismatch between the Capo's abstract mkTxnMintCharterToken's defined constraints
+    CAPO extends Capo = Capo, //prettier-ignore
+    //@xxxts-ignore because of a mismatch between the Capo's abstract mkTxnMintCharterToken's defined constraints
     //    ... vs the only concrete impl in DefaultCapo, with types that are actually nicely matchy.
     //    vscode is okay with it, but api-extractor is not :/
-> extends CapoTestHelper<DC, CDT, CT> {
+> extends CapoTestHelper<CAPO> {
     /**
      * Creates a prepared test helper for a given Capo class, with boilerplate built-in
      *
@@ -78,14 +70,14 @@ export class DefaultCapoTestHelper<
      * use-cases in simple predefined ways, so that your automated tests can re-use
      * the logic and syntax instead of repeating them in multiple test-cases.
      *
-     * @param s - your Capo class that extends DefaultCapo
-     * @typeParam DC - no need to specify it; it's inferred from your parameter
+     * @param s - your Capo subclass
+     * @typeParam CAPO - no need to specify it; it's inferred from your parameter
      * @public
      **/
-    static forCapoClass<DC extends DefaultCapo<any, CapoMinter, any, any>>(
-        s: stellarSubclass<DC>
-    ): DefaultCapoTestHelperClass<DC> {
-        class specificCapoHelper extends DefaultCapoTestHelper<DC> {
+    static forCapoClass<CAPO extends Capo>(
+        s: stellarSubclass<CAPO>
+    ): DefaultCapoTestHelperClass<CAPO> {
+        class specificCapoHelper extends DefaultCapoTestHelper<CAPO> {
             get stellarClass() {
                 return s;
             }
@@ -93,10 +85,10 @@ export class DefaultCapoTestHelper<
         return specificCapoHelper;
     }
 
-    //@ts-expect-error
-    get stellarClass(): stellarSubclass<DC> {
+    //xx@ts-expect-error
+    get stellarClass(): stellarSubclass<CAPO> {
         //@ts-expect-error
-        return DefaultCapo;
+        return Capo;
     }
 
     //!!! todo: create type-safe ActorMap helper hasActors(), on same pattern as hasRequirements
@@ -127,7 +119,7 @@ export class DefaultCapoTestHelper<
         // return treasury.txnAddCharterWithAuthority(tcx);
     }
 
-    mkDefaultCharterArgs(): MinimalDefaultCharterDatumArgs<CDT> {
+    mkDefaultCharterArgs(): MinimalCharterDatumArgs {
         const addr = this.currentActor.address;
         console.log("test helper charter -> actor addr", addr.toBech32());
         return {
@@ -149,7 +141,7 @@ export class DefaultCapoTestHelper<
     }
 
     async mintCharterToken(
-        args?: Partial<MinimalDefaultCharterDatumArgs<CDT>>
+        args?: Partial<MinimalCharterDatumArgs>
     ) {
         const { delay } = this;
         const { tina, tom, tracy } = this.actors;
@@ -166,7 +158,7 @@ export class DefaultCapoTestHelper<
         const goodArgs = {
             ... this.mkDefaultCharterArgs(),
             ... (args || {})
-        } as MinimalDefaultCharterDatumArgs<CDT>
+        } as MinimalCharterDatumArgs
         // debugger
 
         const tcx = await capo.mkTxnMintCharterToken(goodArgs);
@@ -197,7 +189,7 @@ export class DefaultCapoTestHelper<
         return tcx;
     }
 
-    async updateCharter(args: CDT): Promise<StellarTxnContext> {
+    async updateCharter(args: CharterDatumProps): Promise<StellarTxnContext> {
         await this.mintCharterToken();
         const treasury = await this.strella!;
 
@@ -210,7 +202,7 @@ export class DefaultCapoTestHelper<
         });
     }
 
-    async updateSettings(args: OffchainSettingsType<DC>) {
+    async updateSettings(args: OffchainSettingsType<CAPO>) {
         await this.mintCharterToken();
         const capo = this.strella!;
         const tcx = await capo.mkTxnUpdateOnchainSettings(args);

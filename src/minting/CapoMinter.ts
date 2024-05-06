@@ -27,6 +27,7 @@ import {
     type anyState,
 } from "../StellarTxnContext.js";
 import type {
+    Capo,
     MintUutActivityArgs,
     MinterBaseMethods,
 } from "../Capo.js";
@@ -37,7 +38,6 @@ import { UutName } from "../delegation/UutName.js";
 import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { mkValuesEntry } from "../utils.js";
 
-import type { DefaultCapo } from "../DefaultCapo.js";
 import type { BasicMintDelegate } from "./BasicMintDelegate.js";
 
 type MintCharterActivityArgs<T = {}> = T & {
@@ -45,7 +45,7 @@ type MintCharterActivityArgs<T = {}> = T & {
 };
 
 export type BasicMinterParams = configBase & SeedTxnScriptParams & {
-    capo: DefaultCapo<any, any,any>
+    capo: Capo<any>
     isDev: boolean
     devGen: bigint
 }

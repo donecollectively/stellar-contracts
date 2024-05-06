@@ -31,10 +31,9 @@ export interface AnyDataTemplate<TYPENAME extends string> {
 export abstract class DatumAdapter<
     appType,
     OnchainBridgeType,
-    contractType extends StellarContract<any>
 > {
-    strella: contractType;
-    constructor(strella: contractType) {
+    strella: StellarContract<any>;
+    constructor(strella: StellarContract<any>) {
         this.strella = strella;
     }
 

@@ -9,8 +9,7 @@ export type onchainRealNumberSettingsMap = {
 
 export class DefaultSettingsAdapter extends DatumAdapter<
     RealNumberSettingsMap,
-    onchainRealNumberSettingsMap,
-    Capo<any, any, any, any>
+    onchainRealNumberSettingsMap
 > {
     datumName: string = "SettingsData";
     fromOnchainDatum(

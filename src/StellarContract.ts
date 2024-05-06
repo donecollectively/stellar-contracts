@@ -78,14 +78,11 @@ export type utxoInfo = {
  * @public
  **/
 export type stellarSubclass<
-    S extends StellarContract<CT>,
-    CT extends configBase = S extends StellarContract<infer iCT>
-        ? iCT
-        : configBase
+    S extends StellarContract<any>,
 > = (new (setup: SetupDetails, internal: typeof isInternalConstructor) => S) & {
     // & StellarContract<CT>
-    defaultParams: Partial<CT>;
-    createWith(args: StellarFactoryArgs<CT>): Promise<S>;
+    defaultParams: Partial<ConfigFor<S>>;
+    createWith(args: StellarFactoryArgs<ConfigFor<S>>): Promise<S>;
     parseConfig(rawJsonConfig: any): any;
 };
 
@@ -322,11 +319,10 @@ export type SetupDetails = {
  * Extracts the config type for a Stellar Contract class
  **/
 export type ConfigFor<
-    SC extends StellarContract<C>,
-    C extends configBase = SC extends StellarContract<infer inferredConfig>
-        ? inferredConfig
-        : never
-> = C;
+    SC extends StellarContract<any>,
+> = configBase & SC extends StellarContract<infer inferredConfig>
+    ? inferredConfig
+    : never
 
 /**
  * Initializes a stellar contract class
@@ -877,14 +873,14 @@ export class StellarContract<
     async readDatum<
         DPROPS extends anyDatumProps,
         adapterType extends
-            | DatumAdapter<any, DPROPS, any>
+            | DatumAdapter<any, DPROPS>
             | undefined = undefined
     >(
         datumNameOrAdapter: string | adapterType,
         datum: Datum | InlineDatum,
         ignoreOtherTypes?: "ignoreOtherTypes"
     ): Promise<
-        | (adapterType extends DatumAdapter<any, any, any>
+        | (adapterType extends DatumAdapter<any, any>
               ? adapterType
               : DPROPS)
         | undefined

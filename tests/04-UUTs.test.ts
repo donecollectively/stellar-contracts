@@ -11,8 +11,6 @@ import {
     SpyInstance,
 } from "vitest";
 
-import { DefaultCapo } from "../src/DefaultCapo";
-
 import { Tx, TxOutput, Value } from "@hyperionbt/helios";
 
 import { StellarTxnContext } from "../src/StellarTxnContext";
@@ -33,13 +31,13 @@ import * as utils from "../src/utils";
 import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateWithGenericUuts";
 
 
-class CapoCanMintGenericUuts extends DefaultCapo {
+class CapoCanMintGenericUuts extends Capo {
 
     async getMintDelegate() : Promise<MintDelegateWithGenericUuts>{
         return await super.getMintDelegate() as MintDelegateWithGenericUuts;
     }
 
-    get delegateRoles() {
+    mkDelegateRoles() {
         const inherited = super.delegateRoles;
         return {
             ... inherited,

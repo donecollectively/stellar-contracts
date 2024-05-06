@@ -43,7 +43,7 @@ import type {
  **/
 export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     state: Record<string, any>;
-    abstract get stellarClass(): stellarSubclass<SC, any>;
+    abstract get stellarClass(): stellarSubclass<SC>;
     config?: ConfigFor<SC>;
     defaultActor?: string;
     strella!: SC;
@@ -114,7 +114,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         return this.setActor("hiro");
     }
 
-    constructor(config?: ConfigFor<SC> & canHaveRandomSeed & canSkipSetup) {
+    constructor(config?: ConfigFor<SC>& canHaveRandomSeed & canSkipSetup) {
         this.state = {};
         if (config) {
             console.log(
@@ -198,7 +198,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     // }
 
     async initStrella(
-        TargetClass: stellarSubclass<SC, ConfigFor<SC>>,
+        TargetClass: stellarSubclass<SC>,
         config?: ConfigFor<SC>
     ) {
         const setup = {

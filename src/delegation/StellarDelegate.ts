@@ -12,6 +12,7 @@ import type {
 } from "./RolesAndDelegates.js";
 import { hasReqts } from "../Requirements.js";
 import { dumpAny } from "../diagnostics.js";
+import type { CapoBaseConfig } from "../Capo.js";
 
 /**
  * Base class for modules that can serve as Capo delegates
@@ -22,7 +23,7 @@ import { dumpAny } from "../diagnostics.js";
  * @typeParam CT - type of any specialized configuration; use capoDelegateConfig by default.
  **/
 export abstract class StellarDelegate<
-    CT extends configBase & capoDelegateConfig = capoDelegateConfig
+    CT extends Partial<CapoBaseConfig> & capoDelegateConfig = capoDelegateConfig
 > extends StellarContract<CT> {
     static currentRev = 1n;
     static get defaultParams() {

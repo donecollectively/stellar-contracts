@@ -36,8 +36,6 @@ export type {
     uutPurposeMap,
     hasAllUuts,
     hasUutContext,
-    RoleMap,
-    strategyValidation,
     hasBootstrappedConfig,
     hasCharterRef,
 } from "./src/Capo.js";
@@ -55,6 +53,8 @@ export {
 } from "./src/delegation/RolesAndDelegates.js";
 
 export type {
+    RoleMap,
+    strategyValidation,
     capoDelegateConfig,
     ErrorMap,
     ConfiguredDelegate,
@@ -109,14 +109,19 @@ export { DatumAdapter } from "./src/DatumAdapter.js";
 export { DelegatedDatumAdapter } from "./src/DelegatedDatumAdapter.js";
 
 export { CapoMinter } from "./src/minting/CapoMinter.js";
-export {
-    DefaultCapo,
-    // contract as DefaultCapoContract
-} from "./src/DefaultCapo.js";
 export type { 
-    DefaultCharterDatumArgs,
+    CharterDatumProps,
     hasSettingsRef,
- } from "./src/DefaultCapo.js";
+ } from "./src/Capo.js";
+
+import type { 
+    CharterDatumProps,
+ } from "./src/Capo.js";
+
+/**
+ * @deprecated - use CharterDatumProps instead
+ */
+export type DefaultCharterDatumArgs = CharterDatumProps
 
 export type {
     tokenNamesOrValuesEntry,

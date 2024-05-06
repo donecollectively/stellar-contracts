@@ -8,8 +8,6 @@ import {
     expectTypeOf,
 } from "vitest";
 
-import { DefaultCapo } from "../src/DefaultCapo";
-
 import { CapoMinter } from "../src/minting/CapoMinter";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { ADA, addTestContext } from "../src/testing/types";
@@ -30,8 +28,9 @@ import { configBase } from "../src/StellarContract";
 import { txAsString } from "../src/diagnostics";
 import { Address } from "@hyperionbt/helios";
 import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateWithGenericUuts";
+import { Capo } from "../src/Capo";
 
-class DelegationTestCapo extends DefaultCapo {
+class DelegationTestCapo extends Capo {
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {
         return (await super.getMintDelegate()) as MintDelegateWithGenericUuts;
     }
@@ -406,7 +405,7 @@ describe("Capo", async () => {
                 >;
                 const bad = {
                     // delegateClass: SampleMintDelegate,
-                    delegateClass: DefaultCapo,
+                    delegateClass: Capo,
                     validateScriptParams(): strategyValidation {
                         return undefined;
                     },

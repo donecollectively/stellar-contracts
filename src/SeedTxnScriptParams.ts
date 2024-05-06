@@ -7,7 +7,7 @@ import { TxId } from "@hyperionbt/helios";
  * based on the "seed-txn" pattern for guaranteed uniqueness.
  * 
  * Note that when minting UUTs based on the same pattern,
- * these attribute names are not used.  See `UutName` and DefaultCapo 
+ * these attribute names are not used.  See {@link UutName} and {@link Capo} 
  * for more.
  * 
  * @public

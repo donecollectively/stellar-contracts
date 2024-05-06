@@ -7,7 +7,6 @@ import {
     assertType,
     expectTypeOf,
 } from "vitest";
-import { DefaultCapo } from "../src/DefaultCapo";
 
 import {
     Address,
@@ -19,6 +18,7 @@ import {
     Value,
     bytesToText,
     textToBytes,
+    ConstrData,
 } from "@hyperionbt/helios";
 
 import { StellarTxnContext } from "../src/StellarTxnContext";
@@ -30,6 +30,9 @@ import { DelegationDetail } from "../src/delegation/RolesAndDelegates";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { TestBadSettings } from "./TestBadSettings";
 import { OffchainSettingsType } from "../src/CapoSettingsTypes";
+import { Capo } from "../src/Capo";
+import { AnyDataTemplate, DatumAdapter } from "../src/DatumAdapter";
+import { Expand } from "../src/testing/types";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 
@@ -62,19 +65,46 @@ const goodSettings : CanBeBadSettings = {
     meaning: 42
 }
 
-class CapoCanHaveBadSettings extends DefaultCapo<CanBeBadSettings> {
+type onChainBadSettings = {
+    data: CanBeBadSettings & AnyDataTemplate<"set-">
+}
+
+class BadSettingsAdapter extends DatumAdapter<CanBeBadSettings, onChainBadSettings> {
+    datumName: string = "SettingsData";
+    fromOnchainDatum(parsedDatum: onChainBadSettings): CanBeBadSettings {
+        return parsedDatum.data;
+    }
+    toOnchainDatum(settings: CanBeBadSettings) {
+        const { SettingsData: hlSettingsData } = this.onChainDatumType;
+
+        const {constrIndex} = hlSettingsData.prototype._enumVariantStatement;
+        return Datum.inline(
+            new ConstrData(constrIndex, [
+                this.toMapData(settings, this.toRealNum)
+            ])
+        );
+    }
+}
+
+class CapoCanHaveBadSettings extends Capo {
     get customCapoSettingsModule()  {
         return TestBadSettings;
     }
-    mkInitialSettings(): CanBeBadSettings & OffchainSettingsType<this> {
-        //@ts-expect-error
+
+    mkInitialSettings() : OffchainSettingsType<CapoCanHaveBadSettings> {
+        type T = Expand<OffchainSettingsType<CapoCanHaveBadSettings>>;
         return {
             meaning: 42,
             badSettingToMintDelegate: 0,
             badSettingToSpendDelegate: 0,
-        };
+        } ;
     }    
+
+    initSettingsAdapter() {
+        return new BadSettingsAdapter(this);
+    }
 }
+
 class BadSettingsTestHelper extends DefaultCapoTestHelper.forCapoClass(CapoCanHaveBadSettings) {
 
 }

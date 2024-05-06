@@ -1,5 +1,6 @@
 import { TxInput, TxOutput, Value, bytesToText } from "@hyperionbt/helios";
 import type {
+    Capo,
     DelegateSetupWithoutMintDelegate,
     MinimalDelegateLink,
     MintUutActivityArgs,
@@ -22,7 +23,6 @@ import type {
     capoDelegateConfig,
 } from "./RolesAndDelegates.js";
 import type { StellarTxnContext } from "../StellarTxnContext.js";
-  import type { DefaultCapo } from "../DefaultCapo.js";
 import { BasicDelegate } from "./BasicDelegate.js";
 import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { UnspecializedDelegate } from "./UnspecializedDelegate.js";
@@ -389,7 +389,7 @@ export abstract class ContractBasedDelegate<
 }
 
 export type NamedDelegateCreationOptions<
-    thisType extends DefaultCapo<any, any, any, any>,
+    thisType extends Capo,
     DT extends StellarDelegate
 > = DelegateCreationOptions<
     string & keyof thisType["delegateRoles"]["namedDelegate"]["variants"],

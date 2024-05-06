@@ -1,13 +1,9 @@
-import {
-    DefaultCharterDatumArgs,
-    DefaultCapo,
-    MinimalDefaultCharterDatumArgs,
-} from "../../src/DefaultCapo.js";
 import { Address } from "@hyperionbt/helios";
 import { StellarTxnContext } from "../../src/StellarTxnContext.js";
 import { CapoTestHelper, ADA } from "../../src/testing/index.js";
 import { CustomTreasury } from "./CustomTreasury.js";
 import { DefaultCapoTestHelper } from "../../src/testing/DefaultCapoTestHelper.js";
+import { CharterDatumProps, MinimalCharterDatumArgs } from "../../src/Capo.js";
 
 export class CustomCapoTestHelper extends DefaultCapoTestHelper<CustomTreasury> {
     get stellarClass() {
@@ -20,7 +16,7 @@ export class CustomCapoTestHelper extends DefaultCapoTestHelper<CustomTreasury> 
         return this.setActor("tina");
     }
 
-    mkDefaultCharterArgs(): Partial<MinimalDefaultCharterDatumArgs> {
+    mkDefaultCharterArgs(): MinimalCharterDatumArgs {
         const { tina, tom, tracy } = this.actors;
         return {
             ...super.mkDefaultCharterArgs(),
@@ -49,7 +45,7 @@ export class CustomCapoTestHelper extends DefaultCapoTestHelper<CustomTreasury> 
     }
 
     async updateCharter(
-        args: DefaultCharterDatumArgs
+        args: CharterDatumProps
     ): Promise<StellarTxnContext> {
         await this.mintCharterToken();
         const treasury = this.strella!;

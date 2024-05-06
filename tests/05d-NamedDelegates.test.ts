@@ -8,8 +8,6 @@ import {
     expectTypeOf,
 } from "vitest";
 
-import { DefaultCapo } from "../src/DefaultCapo";
-
 import { CapoMinter } from "../src/minting/CapoMinter";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { ADA, addTestContext } from "../src/testing/types";
@@ -33,7 +31,7 @@ import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateW
 import { StellarDelegate } from "../dist/stellar-contracts";
 import { ContractBasedDelegate } from "../src/delegation/ContractBasedDelegate";
 
-class NamedDelegateTestCapo extends DefaultCapo {
+class NamedDelegateTestCapo extends Capo {
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {
         return (await super.getMintDelegate()) as MintDelegateWithGenericUuts;
     }

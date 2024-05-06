@@ -169,6 +169,7 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
 
             // XXXXXXXXXXXXXXXXXXX should be failing
             print("checking for addingMintInvariant");
+                                    //!todo change this one
             mintsUutForCharterUsingRedeemerIndex(
                 charterRedeemerIndex: addMintInvariant,
                 ctx : ctx, 
@@ -182,7 +183,8 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
         addingSpendInvariant{sTxId, sIdx} => {
             addSpendInvariant : Int = 4;
             // XXXXXXXXXXXXXXXXXXX should be failing
-            print("checking for addingSpendInvariant");
+                        //!todo change this one
+                        print("checking for addingSpendInvariant");
             mintsUutForCharterUsingRedeemerIndex(
                 charterRedeemerIndex: addSpendInvariant,
                 ctx : ctx, 
@@ -196,6 +198,7 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
         ForcingNewMintDelegate{sTxId, sIdx} => {
             updatingCharter : Int = 1; // general update to charter
             print("checking for ForcingNewMintDelegate");
+                                    //!todo change this one
             mintsUutForCharterUsingRedeemerIndex(
                 charterRedeemerIndex: updatingCharter,
                 ctx : ctx, 
@@ -222,6 +225,8 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
             };
 
             updatingCharter : Int = 1; // general update to charter
+
+                        //!todo change this one
             mintsUutForCharterUsingRedeemerIndex(
                 charterRedeemerIndex: updatingCharter,
                 ctx : ctx,

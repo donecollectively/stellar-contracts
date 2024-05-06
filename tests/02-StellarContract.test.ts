@@ -9,7 +9,6 @@ import {
     assertType,
     expectTypeOf,
 } from "vitest";
-import { DefaultCapo } from "../src/DefaultCapo";
 
 import {
     Address,
@@ -206,7 +205,7 @@ describe("StellarContract", async () => {
                         h: { network, actors, delay, state },
                     } = context;
 
-                    const t: DefaultCapo = await h.bootstrap();
+                    const t: Capo = await h.bootstrap();
 
                     const tokenCount = 19n;
                     const tokenName = "foo";
@@ -352,7 +351,7 @@ describe("StellarContract", async () => {
                             await h.submitTx(tx, "force");
                             h.network.tick(1n);
 
-                            const t: DefaultCapo = await h.initialize();
+                            const t: Capo = await h.initialize();
                             const tcx = new StellarTxnContext(h.currentActor);
                             const isEnoughT = t.mkTokenPredicate(
                                 new Value({
@@ -420,7 +419,7 @@ describe("StellarContract", async () => {
                             h: { network, actors, delay, state },
                         } = context;
                         // await delay(1000)
-                        const t: DefaultCapo = await h.initialize();
+                        const t: Capo = await h.initialize();
                         const tcx = new StellarTxnContext(h.currentActor);
 
                         const tina = h.currentActor;
