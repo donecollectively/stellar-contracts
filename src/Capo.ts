@@ -962,8 +962,8 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
             rev,
         } = this.configIn || {
             isDev: false,
-            rev: 0n,
-            devGen: 0n,
+            mph: undefined,
+            ... (this.constructor as typeof Capo).defaultParams,
         };
 
         const minter = await this.addStrellaWithConfig(minterClass, {
