@@ -260,7 +260,6 @@ describe("supports an abstract Settings structure stored in the contact", async 
         });
 
         it.todo("TODO: TEST: all named delegates must validate the UpdatingSettings details", async (context: localTC) => {
-            throw new Error(`implement me!`)
         })
 
         it.todo("TODO: TEST: the spending invariant delegates must validate the UpdatingSettings details", async (context: localTC) => {

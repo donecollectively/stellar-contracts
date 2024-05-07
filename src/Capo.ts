@@ -326,7 +326,10 @@ interface basicRoleMap {
     [anyOtherRoleNames: string]: RoleInfo<any, any, any, any>;
 }
 
-export type hasCharterRef = StellarTxnContext & { state: { charterRef: TxInput } };
+export type hasCharterRef = StellarTxnContext & { state: { 
+    charterRef: TxInput,
+    charterDatum: CharterDatumProps
+} };
 
 import { UncustomCapoSettings } from "./UncustomCapoSettings.js";
 import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
@@ -759,9 +762,12 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
         const ctUtxo = await this.mustFindCharterUtxo();        
         tcx.addRefInput(ctUtxo);
 
+        const charterDatum = await this.findCharterDatum(ctUtxo)
+
         return this.mustFindCharterUtxo().then(async (ctUtxo: TxInput) => {
             const tcx2 = tcx as TCX & hasCharterRef;
             tcx2.state.charterRef = ctUtxo;
+            tcx2.state.charterDatum = charterDatum;
             return tcx2.addRefInput(ctUtxo);
         })
     }
@@ -1790,7 +1796,20 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
                 foundDelegateLink
             ) as any
         }
+
+        async getNamedDelegates() {
+            const charterDatum = await this.findCharterDatum();
+            const namedDelegates = charterDatum.namedDelegates;
     
+            const allNamedDelegates = Object.entries(namedDelegates).map(
+                async ([k, v]) => {
+                    return [k, await this.connectDelegateWithLink("namedDelegate", v)] as [ string, ContractBasedDelegate<any> ];
+                }
+            );
+    
+            const done = await Promise.all(allNamedDelegates);
+            return Object.fromEntries(done);
+        }
     
         async getGovDelegate() {
             const charterDatum = await this.findCharterDatum();
@@ -2244,7 +2263,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
             settingsUtxo = settingsUtxo || (await this.findSettingsUtxo());
             const spendingDelegate = await this.getSpendDelegate();
             const mintDelegate = await this.getMintDelegate();
-            console.log("HI");
+
             const tcx2 = await this.txnAddGovAuthority(tcx);
             const tcx2a = await this.txnAddCharterRef(tcx2);
             const tcx2b = await this.txnAttachScriptOrRefScript(tcx2a);
@@ -2258,9 +2277,20 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
                 tcx2c,
                 mintDelegate.activityValidatingSettings()
             );
-    
+
+            const {charterDatum} = tcx2d.state
+            const namedDelegates = charterDatum.namedDelegates;
+
+            let tcx3 : typeof tcx2d = tcx2d;
+            for (const [delegateName, delegate] of Object.entries(await this.getNamedDelegates())) {
+                tcx3 = await this.txnAddNamedDelegateAuthority(
+                    tcx3, 
+                    delegateName, delegate, delegate.activityValidatingSettings()
+                )
+            }
+
             const settingsDatum = await this.mkDatumSettingsData(data);
-            const tcx3 = tcx2d
+            const tcx4 = tcx3
                 .addInput(settingsUtxo, this.activityUpdatingSettings())
                 .addOutput(
                     new TxOutput(
@@ -2269,9 +2299,19 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
                         settingsDatum
                     )
                 );
-            return tcx3 as TCX & typeof tcx3;
+            return tcx4 as TCX & typeof tcx3;
         }
     
+        @partialTxn
+        async txnAddNamedDelegateAuthority<TCX extends StellarTxnContext>(
+            tcx: TCX,
+            delegateName: string,
+            delegate: ContractBasedDelegate,
+            activity: isActivity
+        ): Promise<TCX> {
+            return delegate.txnGrantAuthority(tcx, activity);
+        }
+
         /**
          * Installs a new Minting delegate to the Capo contract
          * @remarks
