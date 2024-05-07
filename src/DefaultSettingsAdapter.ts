@@ -1,6 +1,8 @@
 import { ConstrData, Datum } from "@hyperionbt/helios";
-import { DatumAdapter, type AnyDataTemplate } from "./DatumAdapter.js";
+import { DatumAdapter  } from "./DatumAdapter.js";
 import type { Capo } from "./Capo.js";
+import type { AnyDataTemplate } from "./DelegatedDatumAdapter.js";
+
 
 export type RealNumberSettingsMap =  { [key: string]: number };
 export type onchainRealNumberSettingsMap = {

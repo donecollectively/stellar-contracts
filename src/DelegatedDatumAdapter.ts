@@ -1,6 +1,15 @@
 import * as helios from "@hyperionbt/helios";
-import { DatumAdapter, type AnyDataTemplate } from "./DatumAdapter.js";
-import type { StellarContract } from "./StellarContract.js";
+import { DatumAdapter  } from "./DatumAdapter.js";
+import type { StellarContract, anyDatumProps } from "./StellarContract.js";
+
+export interface AnyDataTemplate<TYPENAME extends string> extends anyDatumProps {
+    "@id": string;  // same as the UUT-name on the data
+    "tpe": TYPENAME;  // for a type-indicatro on the data
+}
+
+export interface hasAnyDataTemplate {
+    data: AnyDataTemplate<"set-"> 
+}
 
 export abstract class DelegatedDatumAdapter<
     appType,
@@ -10,6 +19,7 @@ export abstract class DelegatedDatumAdapter<
     constructor(strella: StellarContract<any>) {
         super(strella)
     }
+    datumName = "DelegatedData";
 
     /**
      * creates and returns a delegated-data object suitable for storing

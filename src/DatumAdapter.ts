@@ -10,11 +10,6 @@ import {
 import type { StellarContract } from "./StellarContract.js";
 import * as helios from "@hyperionbt/helios";
 
-export interface AnyDataTemplate<TYPENAME extends string> {
-    "@id": string;  // same as the UUT-name on the data
-    "tpe": TYPENAME;  // for a type-indicatro on the data
-}
-
 export type BigIntRecord<T extends Record<string, number>> = {
     [K in keyof T]: bigint;
 };

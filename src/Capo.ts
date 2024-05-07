@@ -78,16 +78,9 @@ import {
     type OnchainSettingsType,
     type OffchainSettingsType,
     type SettingsAdapterFor,
-    type hasAnyDataTemplate,
     type OffchainType,
     type hasSettingsType,
 } from "./CapoSettingsTypes.js";
-
-
-
-
-
-
 
 import {
     ByteArray,
@@ -335,6 +328,7 @@ import { UncustomCapoSettings } from "./UncustomCapoSettings.js";
 import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 import { TypeMapMetadata } from "./TypeMapMetadata.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
+import type { hasAnyDataTemplate } from "./DelegatedDatumAdapter.js";
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract

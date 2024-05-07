@@ -1,10 +1,7 @@
 import type { anyDatumProps } from "./StellarContract.js";
 import { Capo  } from "./Capo.js";
-import { DatumAdapter, type AnyDataTemplate } from "./DatumAdapter.js";
-
-export interface hasAnyDataTemplate {
-    data: AnyDataTemplate<"set-"> 
-}
+import { DatumAdapter } from "./DatumAdapter.js";
+import type { hasAnyDataTemplate } from "./DelegatedDatumAdapter.js";
 
 // arranges an abstract interface for indicating the general
 // type of settings adapters for Capo classes.

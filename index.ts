@@ -109,7 +109,10 @@ export type {
 } from "./src/StellarContract.js";
 
 export { DatumAdapter, type BigIntRecord } from "./src/DatumAdapter.js";
-export { DelegatedDatumAdapter } from "./src/DelegatedDatumAdapter.js";
+export { 
+    DelegatedDatumAdapter,
+    type AnyDataTemplate,
+} from "./src/DelegatedDatumAdapter.js";
 
 export { CapoMinter } from "./src/minting/CapoMinter.js";
 export type { CharterDatumProps, hasSettingsRef } from "./src/Capo.js";
