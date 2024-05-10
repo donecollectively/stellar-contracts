@@ -2,19 +2,21 @@ import * as helios from "@hyperionbt/helios";
 import { DatumAdapter  } from "./DatumAdapter.js";
 import type { StellarContract, anyDatumProps } from "./StellarContract.js";
 
-export interface AnyDataTemplate<TYPENAME extends string> extends anyDatumProps {
-    "@id": string;  // same as the UUT-name on the data
-    "tpe": TYPENAME;  // for a type-indicatro on the data
-}
+export type AnyDataTemplate<TYPENAME extends string, others extends anyDatumProps> = {
+    [ key in string & ( "@id" | "tpe" | keyof others ) ]: 
+        key extends "@id" ? string :  // same as the UUT-name on the data
+        key extends "tpe" ? TYPENAME : // for a type-indicator on the data 
+            others[key]
+} // & anyDatumProps 
 
-export interface hasAnyDataTemplate {
-    data: AnyDataTemplate<"set-"> 
+export interface hasAnyDataTemplate<T extends anyDatumProps> {
+    data: AnyDataTemplate<"set-", T> 
 }
 
 export abstract class DelegatedDatumAdapter<
     appType,
-    OnchainBridgeType extends {data: OBD & AnyDataTemplate<any>},
-    OBD extends AnyDataTemplate<any> = OnchainBridgeType["data"]
+    OnchainBridgeType extends {data: OBD},
+    OBD extends AnyDataTemplate<any, any> = OnchainBridgeType["data"]
 > extends DatumAdapter<appType, OnchainBridgeType>{
     constructor(strella: StellarContract<any>) {
         super(strella)
@@ -36,7 +38,7 @@ export abstract class DelegatedDatumAdapter<
      * 
      * @param d - an object map of the UplcData (suitable for use in this.toMapData({...})) 
      */
-    DelegatedData(d: DelegatedDataAttrs<OBD, OnchainBridgeType>): helios.Datum {
+    DelegatedData(d: DelegatedDataAttrs<OBD>): helios.Datum {
         const DD = this.capo.onChainDatumType.DelegatedData;
         const {constrIndex} = DD.prototype._enumVariantStatement;
 
@@ -51,9 +53,6 @@ export abstract class DelegatedDatumAdapter<
     }
 }
 
-type DelegatedDataAttrs<D extends AnyDataTemplate<any>, T extends {data: D}> = {
-    "@id": helios.ByteArrayData,
-    "tpe": helios.ByteArrayData,
-} & {
-    [key in keyof D]: helios.UplcData
+type DelegatedDataAttrs<D extends AnyDataTemplate<any,any>> = {
+    [key in "@id" | "tpe" | keyof D]: helios.UplcData
 }
