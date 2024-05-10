@@ -620,8 +620,8 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
         return tcx;
     }
 
-    async readSettingsDatum(
-        parsedDatum: hasAnyDataTemplate & OnchainSettingsType<this>
+    async readSettingsDatum( 
+        parsedDatum: UplcFor<OnchainSettingsType<this>, "CapoSettings">
     ): Promise<OffchainSettingsType<this>> {
         return this.settingsAdapter.fromOnchainDatum(parsedDatum);
     }
