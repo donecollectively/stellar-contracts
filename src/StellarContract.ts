@@ -1235,6 +1235,7 @@ export class StellarContract<
                 //@ts-expect-error - it can be a ConstrData and also have fields, but the Helios type doesn't seem to know that
                 uplcDataField.fields[0],
                 undefined
+            )
         }
         if (uplcDataField instanceof helios.MapData) {
             const entries: Record<string, any> = {};
