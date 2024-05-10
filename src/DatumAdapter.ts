@@ -83,7 +83,7 @@ export abstract class DatumAdapter<
      **/
     abstract toOnchainDatum(d: appType): Datum | Promise<Datum>;
 
-    toRealNum(n: number): IntData {
+    uplcReal(n: number): IntData {
         // supports fractional inputs (they can always be represented as a BigInt, with sufficient precision)
         // note: don't expect very very small numbers to be accurately represented
         const microInt1 = Number(n) * 1_000_000;
@@ -170,8 +170,11 @@ export abstract class DatumAdapter<
         ) as Record<KEYS, number>;
     }
 
-    fromOnchainReal(x: bigint) {
+    fromUplcReal(x: bigint | number) {
         return Number(x) / 1_000_000
     }
 
+    fromUplcString(x: number[]) {
+        return helios.bytesToText(x)
+    }
 }

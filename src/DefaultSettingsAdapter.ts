@@ -47,7 +47,7 @@ export class DefaultSettingsAdapter extends DatumAdapter<
         // that Helios will easily convert to its on-chain type.
         return Datum.inline(
             new ConstrData(constrIndex, [
-                this.toMapData(settings, this.toRealNum)
+                this.toMapData(settings, this.uplcReal)
             ])
         );
         // const t2 = new ConstrData(settingsConstrIndex, [t])

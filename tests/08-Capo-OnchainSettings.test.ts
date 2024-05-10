@@ -79,8 +79,7 @@ class BadSettingsAdapter extends DatumAdapter<CanBeBadSettings, onChainBadSettin
         } = parsedDatum.data
         const otherParams = this.fromOnchainMap(
             reals,
-            this.fromOnchainReal
-        );
+            this.fromUplcReal
 
         return otherParams
     }
@@ -90,7 +89,7 @@ class BadSettingsAdapter extends DatumAdapter<CanBeBadSettings, onChainBadSettin
         const {constrIndex} = hlSettingsData.prototype._enumVariantStatement;
         return Datum.inline(
             new ConstrData(constrIndex, [
-                this.toMapData(settings, this.toRealNum)
+                this.toMapData(settings, this.uplcReal)
             ])
         );
     }
