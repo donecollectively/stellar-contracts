@@ -1083,17 +1083,27 @@ export class StellarContract<
     ) {
         let value;
         const { offChainType } = fieldType;
+        const isMapData = uplcDataField instanceof helios.MapData;
         try {
             let internalType;
             try {
-                internalType = fieldType.typeDetails.internalType.type;
+                internalType = fieldType.typeDetails?.internalType.type;
                 if ("Struct" == internalType) {
-                    value = await this.readUplcStructList(
-                        fieldType,
-                        uplcDataField
-                    );
-                    // console.log(`  <-- field value`, value)
-                    return value;
+                    if (isMapData) {
+                        value = await this.readOtherUplcType(
+                            fn,
+                            uplcDataField,
+                            fieldType
+                        );
+                        return value;
+                    } else {
+                        value = await this.readUplcStructList(
+                            fieldType,
+                            uplcDataField
+                        );
+                        // console.log(`  <-- field value`, value)
+                        return value;
+                    }
                 }
             } catch (e) {}
             value = fieldType.uplcToJs(uplcDataField);
@@ -1126,9 +1136,10 @@ export class StellarContract<
                     if (value && "some" in value) value = value.some;
                     if (value && "string" in value) value = value.string;
 
-                    if (uplcDataField instanceof helios.MapData) {
+                    if (isMapData) {
                         const { valueType } =
                             fieldType.typeDetails.internalType;
+                        // Map[String]SomethingSpecific?
                         return this.readTypedUplcMapData(
                             fn,
                             uplcDataField,
@@ -1163,8 +1174,13 @@ export class StellarContract<
                 );
                 return readOne;
             });
-            const gotList = await Promise.all(promises).catch((e) => {
-                console.error(`datum: field ${fn}: error reading list`, e);
+            const gotList = Promise.all(promises).catch((e) => {
+                console.error(
+                    `datum: field ${fn}: error reading list`,
+                    e,
+                    "\n   ",
+                    { uplcDataField, fieldType }
+                );
                 debugger;
                 throw e;
             });
@@ -1180,22 +1196,45 @@ export class StellarContract<
 
         // it unwraps an existential type tag (#242) providing CIP-68 struct compatibility,
         // to return the inner details' key/value pairs as a JS object.
-        if (
-            uplcDataField instanceof helios.ConstrData &&
+        if (uplcDataField instanceof helios.ConstrData) {
             //@ts-expect-error
-            uplcDataField.index == 242
-        ) {
-            if (
-                // prettier-ignore
-                //@ts-expect-error
-                uplcDataField.fields.length != 1 || !(uplcDataField.fields[0] instanceof helios.MapData)
-            ) {
-                throw new Error(
-                    `datum error: existential ConstrData(#242) must wrap a single field of MapData`
-                );
+            const { index } = uplcDataField;
+            let fieldName = `‹constr#${index}›`;
+            if (index == 242) {
+                fieldName = "‹cip68›";
+                if (
+                    // prettier-ignore
+                    //@ts-expect-error
+                    uplcDataField.fields.length != 1 ||
+                    //@ts-expect-error
+                    !(uplcDataField.fields[0] instanceof helios.MapData
+                )
+                ) {
+                    console.log(
+                        "CIP68 wrapper: expected MapData, got ",
+                        uplcDataField
+                    );
+                    debugger;
+                    throw new Error(
+                        `datum error at ${fn} existential ConstrData(#242) must wrap a single field of MapData`
+                    );
+                }
             }
             //@ts-expect-error
-            uplcDataField = uplcDataField.fields[0];
+            if (!uplcDataField.fields.length) {
+                // console.log(`datum: field ${fn}: empty ConstrData`, {
+                //     fieldType,
+                //     uplcDataField,
+                // });
+                // enum variant without any nested data.  That's ok!!!
+                debugger;
+                return `variant #${index}`;
+            }
+            return this.readOtherUplcType(
+                `${fn}.${fieldName}`,
+                //@ts-expect-error - it can be a ConstrData and also have fields, but the Helios type doesn't seem to know that
+                uplcDataField.fields[0],
+                undefined
         }
         if (uplcDataField instanceof helios.MapData) {
             const entries: Record<string, any> = {};
@@ -1205,12 +1244,7 @@ export class StellarContract<
                         return helios.bytesToText(uplcField.bytes);
                     },
                 };
-                const parsedKey = await this.readUplcField(
-                    `${fn}.‹mapKey›`,
-                    bytesToString,
-                    k
-                );
-                // check type of parsed key?
+                const parsedKey = helios.bytesToText(k.bytes);
                 // type of value??
                 entries[parsedKey] = await this.readOtherUplcType(
                     `${fn}.‹map›@${parsedKey}`,
@@ -1622,11 +1656,11 @@ export class StellarContract<
         {
             signers = [],
             addlTxInfo = {
-                description: "(unnamed)"
+                description: "(unnamed)",
             },
         }: {
             signers?: Address[];
-            addlTxInfo? : Pick<TxDescription<any>, "description">
+            addlTxInfo?: Pick<TxDescription<any>, "description">;
         } = {}
     ) {
         let { tx, feeLimit = 2_000_000n } = tcx;
@@ -1683,7 +1717,10 @@ export class StellarContract<
                 // todo: find a way to run the same scripts again, with tracing retained
                 // for client-facing transparency of failures that can be escalated in a meaningful
                 // way to users.
-                console.log(`FAILED submitting tx: ${addlTxInfo.description}:`, tcx.dump(this.networkParams));
+                console.log(
+                    `FAILED submitting tx: ${addlTxInfo.description}:`,
+                    tcx.dump(this.networkParams)
+                );
                 debugger;
                 throw e;
             }
@@ -1723,7 +1760,10 @@ export class StellarContract<
         if (walletMustSign && !sigs) {
             throw new Error(`wallet signing failed`);
         }
-        console.log(`Submitting tx: ${addlTxInfo.description}: `, tcx.dump(this.networkParams));
+        console.log(
+            `Submitting tx: ${addlTxInfo.description}: `,
+            tcx.dump(this.networkParams)
+        );
         const promises = [
             this.network.submitTx(tx).catch((e) => {
                 console.warn(
@@ -1781,7 +1821,7 @@ export class StellarContract<
             if (false === replacementTcx) {
                 continue;
             }
-            await this.submit(addlTxInfo.tcx, {addlTxInfo});
+            await this.submit(addlTxInfo.tcx, { addlTxInfo });
             if (onSubmitted) await onSubmitted(addlTxInfo);
         }
     }
