@@ -73,7 +73,7 @@ import {
     stringToNumberArray,
 } from "./utils.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
-import type { DatumAdapter } from "./DatumAdapter.js";
+import type { DatumAdapter, UplcFor } from "./DatumAdapter.js";
 import {
     type OnchainSettingsType,
     type OffchainSettingsType,

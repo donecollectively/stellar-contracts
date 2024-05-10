@@ -1,5 +1,5 @@
 import { ConstrData, Datum } from "@hyperionbt/helios";
-import { DatumAdapter  } from "./DatumAdapter.js";
+import { DatumAdapter, type UplcFor  } from "./DatumAdapter.js";
 import type { Capo } from "./Capo.js";
 import type { AnyDataTemplate } from "./DelegatedDatumAdapter.js";
 

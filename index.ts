@@ -108,7 +108,15 @@ export type {
     ConfigFor,
 } from "./src/StellarContract.js";
 
-export { DatumAdapter, type BigIntRecord } from "./src/DatumAdapter.js";
+export { 
+    DatumAdapter, 
+    type BigIntRecord,
+    type Numeric,
+    type inferOffchainType,
+    type inferOffchainNumericType,
+    type UplcFor,
+} from "./src/DatumAdapter.js";
+
 export { 
     DelegatedDatumAdapter,
     type AnyDataTemplate,

@@ -11,8 +11,45 @@ import type { StellarContract } from "./StellarContract.js";
 import * as helios from "@hyperionbt/helios";
 
 export type BigIntRecord<T extends Record<string, number>> = {
-    [K in keyof T]: bigint;
+    [K in keyof T]: Numeric<"bigint">;
 };
+export type UplcFor<t , k extends string> = 
+        t extends helios.MintingPolicyHash ? number[] :
+        t extends bigint ? bigint :
+        t extends Numeric<any> ? bigint :
+        t extends string ? number[] :
+        t extends number ? `TYPE ERROR - use Numeric<> to define '${k}'` :
+        // t extends { [k: string]: any } ? UplcFor<> :
+        t extends Array<infer U> ? UplcFor<U, `${k}[]`>[] :
+        t extends Record<string, any> ? {
+            [ key in string & keyof t ] : UplcFor<t[key], `${k}.${key}`>
+        } :
+        never 
+
+export type inferOffchainType<t, k extends string> =
+        t extends helios.MintingPolicyHash ? helios.MintingPolicyHash :
+        t extends bigint ? bigint :
+        t extends Numeric<any> ? inferOffchainNumericType<t> :
+        t extends string ? string :
+        t extends number ? `TYPE ERROR - use Numeric<> to define '${k}'` :
+        t extends Array<infer U> ? inferOffchainType<U, `${k}[]`>[] :
+        t extends Record<string, any> ? {
+            [ key in string & keyof t ] : inferOffchainType<t[key], `${k}.${key}`>
+        } :
+        never;
+
+export type Numeric<
+    T extends "real" | "int" | "bigint" | "Date", 
+    inferred = 
+        T extends "real" ? number : 
+        T extends "int" ? number : 
+        T extends "bigint" ? bigint : 
+        T extends "Date" ? Date : 
+        never 
+> = {
+    number: inferred
+} 
+export type inferOffchainNumericType<T extends Numeric<any>> = T extends Numeric<any, infer N> ? N : never;
 
 /**
  * Provides transformations of data between preferred application types and on-chain data types

@@ -35,7 +35,7 @@ import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { mkTv, stringToNumberArray } from "./utils.js";
 import { UutName, type SeedAttrs } from "./delegation/UutName.js";
 import type { Capo } from "./Capo.js";
-import { DatumAdapter } from "./DatumAdapter.js";
+import { DatumAdapter, type UplcFor } from "./DatumAdapter.js";
 
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer

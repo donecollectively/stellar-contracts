@@ -1,6 +1,6 @@
 import { ConstrData, Datum } from "@hyperionbt/helios";
 import { Capo } from "./Capo.js";
-import { DatumAdapter } from "./DatumAdapter.js";
+import { DatumAdapter, type UplcFor } from "./DatumAdapter.js";
 
 export type onChainNoSettings = {
     data: {none: "" };
