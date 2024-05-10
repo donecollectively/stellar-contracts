@@ -9,7 +9,8 @@ tmpfile=$(mktemp /tmp/XXXXXX.ts)
 if [ "$SMOKE" != "" ]; then {
     pnpm smoke:test &
     smokeTest=$!
-    api-extractor run --local --verbose > $tmpfile 2>&1  &
+    rm dist/stellar-contracts.d.ts
+    api-extractor run --local --verbose > $tmpfile 2>&1 &
     docs=$!
     if wait $smokeTest ; then {
         echo "Smoke test passed"
@@ -21,6 +22,7 @@ if [ "$SMOKE" != "" ]; then {
     } fi
 
 } else {
+    rm dist/stellar-contracts.d.ts
     api-extractor run --local --verbose  &
     docs=$!
 } fi
