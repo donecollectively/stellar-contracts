@@ -6,7 +6,7 @@ import type { AnyDataTemplate } from "./DelegatedDatumAdapter.js";
 
 export type RealNumberSettingsMap =  { [key: string]: number };
 export type onchainRealNumberSettingsMap = {
-    data: AnyDataTemplate<"set-"> & Record<string, bigint>
+    data: AnyDataTemplate<"set-", Record<string, bigint>> 
 };
 
 export class DefaultSettingsAdapter extends DatumAdapter<
@@ -15,13 +15,13 @@ export class DefaultSettingsAdapter extends DatumAdapter<
 > {
     datumName: string = "SettingsData";
     fromOnchainDatum(
-        parsedDatum: onchainRealNumberSettingsMap
+        parsedDatum: UplcFor<onchainRealNumberSettingsMap, "settings'">
     ): RealNumberSettingsMap {
         console.log("-------------------------------------> ", parsedDatum);
         const settingsMap: Record<string, number> = {};
         for (const [ name, microInt ] of Object.entries(parsedDatum.data)) {
             // get the number found in the microInt
-            if (microInt > Number.MAX_SAFE_INTEGER) {
+            if (microInt as bigint > Number.MAX_SAFE_INTEGER) {
                 throw new Error(
                     `microInt value too large for Number: ${microInt}`
                 );

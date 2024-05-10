@@ -12,7 +12,7 @@ export type NoSettings = {
 
 class NoSettingsAdapter extends DatumAdapter<NoSettings, onChainNoSettings> {
     datumName: string = "SettingsData";
-    fromOnchainDatum(parsedDatum: onChainNoSettings): NoSettings {
+    fromOnchainDatum(parsedDatum: UplcFor<onChainNoSettings, "NoSettings">): NoSettings {
         return {
             none: ""
         };

@@ -108,7 +108,7 @@ export abstract class DatumAdapter<
      * @public
      **/
     abstract fromOnchainDatum(
-        raw: OnchainBridgeType
+        raw: UplcFor<OnchainBridgeType, any>
     ): appType | Promise<appType>;
     /**
      * Should construct the right form of on-chain data, using classes provided by the Helios contract
