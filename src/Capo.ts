@@ -2028,7 +2028,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
         };
     
         async findSettingsDatum<
-            thisType extends Capo<SELF>
+            thisType extends Capo<any>
         >(
             this: thisType,
             {
