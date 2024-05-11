@@ -1,4 +1,7 @@
 #!/bin/bash
+
+rm dist/stellar-contracts.d.ts
+
 set -e
 tsc &
 typecheck=$!
@@ -9,7 +12,6 @@ tmpfile=$(mktemp /tmp/XXXXXX.ts)
 if [ "$SMOKE" != "" ]; then {
     pnpm smoke:test &
     smokeTest=$!
-    rm dist/stellar-contracts.d.ts
     api-extractor run --local --verbose > $tmpfile 2>&1 &
     docs=$!
     if wait $smokeTest ; then {
@@ -22,7 +24,6 @@ if [ "$SMOKE" != "" ]; then {
     } fi
 
 } else {
-    rm dist/stellar-contracts.d.ts
     api-extractor run --local --verbose  &
     docs=$!
 } fi
