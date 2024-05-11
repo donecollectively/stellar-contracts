@@ -1,18 +1,28 @@
 import { ConstrData, Datum } from "@hyperionbt/helios";
 import { Capo } from "./Capo.js";
 import { DatumAdapter, type offchainDatumType, type adapterParsedOnchainData } from "./DatumAdapter.js";
+import { SettingsAdapter, type ParsedSettings } from "./CapoSettingsTypes.js";
 
-export type onChainNoSettings = {
-    data: {none: "" };
+export type BridgeNoSettings = {
+    none: string;
 };
+// export type onChainNoSettings = {
+//     data: {none: "" };
+// };
 
 export type NoSettings = {
     none: string;
 };
 
-class NoSettingsAdapter extends DatumAdapter<NoSettings, onChainNoSettings> {
+class NoSettingsAdapter extends SettingsAdapter<NoSettings, BridgeNoSettings> {
     datumName: string = "SettingsData";
-    fromOnchainDatum(parsedDatum: adapterParsedOnchainData<onChainNoSettings, "SettingsData">): offchainDatumType<NoSettings, "SettingsData"> {
+    fromOnchainDatum(
+        // TODO: this type should fail: ParsedSettings<{yuck: string}>
+        //   ... because it doesn't match the underlying adapter bridge (Wrapped...<BridgeNoSettings>)
+        parsedDatum: ParsedSettings< 
+            BridgeNoSettings
+        >
+    ): NoSettings {
         return {
             none: ""
         };

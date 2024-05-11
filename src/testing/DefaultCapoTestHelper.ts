@@ -19,7 +19,7 @@ import type {
 import { CapoMinter } from "../minting/CapoMinter.js";
 
 import type { expect as expectType } from "vitest";
-import type { OffchainSettingsType } from "../CapoSettingsTypes.js";
+import type { CapoOffchainSettingsType } from "../CapoSettingsTypes.js";
 import { CapoWithoutSettings } from "../CapoWithoutSettings.js";
 
 declare namespace NodeJS {
@@ -204,7 +204,7 @@ export class DefaultCapoTestHelper<
         });
     }
 
-    async updateSettings(args: OffchainSettingsType<CAPO>) {
+    async updateSettings(args: CapoOffchainSettingsType<CAPO>) {
         await this.mintCharterToken();
         const capo = this.strella!;
         const tcx = await capo.mkTxnUpdateOnchainSettings(args);

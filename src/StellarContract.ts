@@ -36,7 +36,7 @@ import { mkTv, stringToNumberArray } from "./utils.js";
 import { UutName, type SeedAttrs } from "./delegation/UutName.js";
 import type { Capo } from "./Capo.js";
 import { DatumAdapter, type adapterParsedOnchainData } from "./DatumAdapter.js";
-import type { OffchainType } from "./CapoSettingsTypes.js";
+import type { DatumAdapterOffchainType } from "./CapoSettingsTypes.js";
 
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer

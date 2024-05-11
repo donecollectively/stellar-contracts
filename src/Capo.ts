@@ -75,10 +75,10 @@ import {
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
 import type { DatumAdapter, adapterParsedOnchainData } from "./DatumAdapter.js";
 import {
-    type OnchainSettingsType,
-    type OffchainSettingsType,
-    type SettingsAdapterFor,
-    type OffchainType,
+    type CapoOnchainSettingsType,
+    type CapoOffchainSettingsType,
+    type CapoSettingsAdapterFor,
+    type DatumAdapterOffchainType,
     type hasSettingsType,
 } from "./CapoSettingsTypes.js";
 
@@ -98,11 +98,6 @@ import type { ScriptHash, Wallet } from "@hyperionbt/helios";
 import contract from "./DefaultCapo.hl";
 export { contract };
 // import contract from "./BaselineCapo.hl";
-
-import {
-    DefaultSettingsAdapter,
-    type RealNumberSettingsMap,
-} from "./DefaultSettingsAdapter.js";
 
 import { BasicMintDelegate } from "./minting/BasicMintDelegate.js";
 import { AnyAddressAuthorityPolicy } from "./authority/AnyAddressAuthorityPolicy.js";
@@ -384,10 +379,13 @@ export type hasNamedDelegate<
     }
 }
 
-export interface hasRoleMap<C extends Capo<any>> {
+export type hasRoleMap<
+    C extends Capo<any>,
+    SpecificCapo = C extends Capo<infer S> ? S extends unknown ? never : S : never
+> = {
     initDelegateRoles() : basicRoleMap;
-    _delegateRoles: ReturnType<C["initDelegateRoles"]>;
-    get delegateRoles(): ReturnType<C["initDelegateRoles"]>
+    _delegateRoles: SpecificCapo extends never ? null : ReturnType<C["initDelegateRoles"]>;
+    get delegateRoles(): SpecificCapo extends never ? null : ReturnType<C["initDelegateRoles"]>
 }
 
 
@@ -435,10 +433,29 @@ export interface hasRoleMap<C extends Capo<any>> {
  *
  * @public
  */
-export abstract class Capo<SELF extends Capo<any> = Capo<any>>
-    // settingsAdapterType extends DatumAdapter<any, any> = DefaultSettingsAdapter
+
+type AnyAnyOfcourse  = any extends any ? "yes" : "no";
+// this type looks useless.  Its result is interesting, though.  
+//  ... it's matchiness for "yes" | "no" means ANYTHING could happen
+type AnyThingUselessEither = any extends "something" ? "yes" : "no";
+type ThingAnyYes = "something" extends any ? "yes" : "no"; 
+type AnyUnkYes = any extends unknown ? "yes" : "no";
+type UnkAnyYes = unknown extends any ? "yes" : "no";
+
+type UnkStrNo = unknown extends string ? "yes" : "no";
+type UnkUnkYes = unknown extends unknown ? "yes" : "no";
+
+type StrUnkYes = string extends unknown ? "yes" : "no";
+type StrAnyYes = string extends any ? "yes" : "no";
+type UnkConstStringNo = unknown extends "MyCONST STRING" ? "yes" : "no";
+type UnkFooNo = unknown extends { "foo": string } ? "yes" : "no";
+type ConstStringUnkYES = "MyCONST STRING" extends unknown ? "yes" : "no";
+type FooUnkYES = { "foo": string } extends unknown ? "yes" : "no";
+
+
+export abstract class Capo<SELF extends Capo<any> = Capo<never>>
 extends StellarContract<CapoBaseConfig> 
-implements hasSettingsType<SELF>, hasRoleMap<SELF>
+implements hasSettingsType<SELF> //, hasRoleMap<SELF>
 {
     static currentRev: bigint = 1n;
     devGen: bigint = 0n;
@@ -455,7 +472,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
         return contract;
     }
 
-    abstract mkInitialSettings() : OffchainSettingsType<SELF>;
+    abstract mkInitialSettings() : CapoOffchainSettingsType<SELF>;
     abstract initSettingsAdapter(): DatumAdapter<any, any>;
 
     static parseConfig(rawJsonConfig: any) {
@@ -621,8 +638,8 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
     }
 
     async readSettingsDatum( 
-        parsedDatum: adapterParsedOnchainData<OnchainSettingsType<this>, "SettingsData">
-    ): Promise<OffchainSettingsType<this>> {
+        parsedDatum: adapterParsedOnchainData<CapoOnchainSettingsType<this>, "SettingsData">
+    ): Promise<CapoOffchainSettingsType<this>> {
         return this.settingsAdapter.fromOnchainDatum(parsedDatum);
     }
 
@@ -1040,7 +1057,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
         );
         //! accumulates min-utxos for each stringy token-name in a reduce()
         function addTokenValue(
-            this: Capo<any>,
+            this: Capo<never>,
             accumulator: Value,
             tn: string
         ): Value {
@@ -1477,7 +1494,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
 
         _delegateRoles!: ReturnType<this["initDelegateRoles"]> 
         initDelegateRoles<
-            THISTYPE extends Capo<any>,
+            THISTYPE extends Capo<never>,
         >(
             this: THISTYPE
         ) {
@@ -1665,10 +1682,10 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
     
         @datum
         async mkDatumSettingsData<
-            THISTYPE extends Capo<SELF>
+            THISTYPE extends Capo<never>
         >(
             this: THISTYPE,
-            settings: OffchainSettingsType<THISTYPE>
+            settings: CapoOffchainSettingsType<THISTYPE>
         ): Promise<Datum> {
             const adapter = this.settingsAdapter;
 
@@ -1995,7 +2012,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
                 //     T extends (...args: infer A) => infer R ? (...args: Normalize<A>) => Normalize<R>
                 //     : T extends any ? {[K in keyof T]: Normalize<T[K]>} : never
     
-                const settings = this.mkInitialSettings() as unknown as OffchainSettingsType<this>;
+                const settings = this.mkInitialSettings() as unknown as CapoOffchainSettingsType<this>;
                 const tcx5 = await this.txnAddSettingsOutput(tcx4a, settings);
     
                 // debugger
@@ -2037,7 +2054,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
         }: {
             settingsUtxo?: TxInput;
             charterUtxo?: TxInput;
-        } = {}): Promise<OffchainSettingsType<thisType>> {
+        } = {}): Promise<CapoOffchainSettingsType<thisType>> {
             const foundSettingsUtxo =
                 settingsUtxo || (await this.findSettingsUtxo(charterUtxo));
                 
@@ -2045,7 +2062,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
                 this.settingsAdapter,
                 foundSettingsUtxo.origOutput.datum as InlineDatum,
                 "ignoreOtherTypes"
-            ) as OffchainSettingsType<thisType>;
+            ) as CapoOffchainSettingsType<thisType>;
 
             if (!data) throw Error(`missing or invalid settings UTxO datum`);
             return data;
@@ -2053,7 +2070,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
     
         async txnAddSettingsOutput<TCX extends StellarTxnContext>(
             tcx: TCX,
-            settings: OffchainSettingsType<this>
+            settings: CapoOffchainSettingsType<this>
         ): Promise<TCX> {
             const settingsDatum = await this.mkDatumSettingsData(settings);
     
@@ -2249,7 +2266,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
     
         @txn
         async mkTxnUpdateOnchainSettings<TCX extends StellarTxnContext>(
-            data: OffchainSettingsType<this>,
+            data: CapoOffchainSettingsType<this>,
             settingsUtxo?: TxInput,
             tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
         ): Promise<TCX> {
@@ -2330,7 +2347,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
         @txn
         async mkTxnUpdatingMintDelegate<
             DT extends StellarDelegate,
-            thisType extends Capo<SELF>
+            thisType extends Capo<never>
         >(
             this: thisType,
             delegateInfo: MinimalDelegateLink<DT> & {
@@ -2418,7 +2435,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
         @txn
         async mkTxnUpdatingSpendDelegate<
             DT extends StellarDelegate,
-            thisType extends Capo<SELF>
+            thisType extends Capo<never>
         >(
             this: thisType,
             delegateInfo: MinimalDelegateLink<DT> & {
@@ -2503,7 +2520,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
         @txn
         async mkTxnAddingMintInvariant<
             DT extends StellarDelegate,
-            thisType extends Capo<SELF>
+            thisType extends Capo<never>
         >(
             this: thisType,
             delegateInfo: MinimalDelegateLink<DT> & {
@@ -2571,7 +2588,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
         @txn
         async mkTxnAddingSpendInvariant<
             DT extends StellarDelegate,
-            thisType extends Capo<SELF>
+            thisType extends Capo<never>
         >(
             this: thisType,
             delegateInfo: MinimalDelegateLink<DT> & {
@@ -2645,7 +2662,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
          **/
         async mkTxnAddingNamedDelegate<
             DT extends StellarDelegate,
-            thisType extends Capo<SELF>,
+            thisType extends Capo<never>,
             const delegateName extends string,
             TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>
         >(

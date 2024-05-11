@@ -43,11 +43,16 @@ export type {
     hasCharterRef,
 } from "./src/Capo.js";
 
+export {
+    SettingsAdapter,
+} from "./src/CapoSettingsTypes.js";
 export type {
-    OffchainSettingsType,
-    OnchainSettingsType,
-    SettingsAdapterFor,
-    OffchainType,
+    ParsedSettings,
+    WrappedSettingsAdapterBridge,
+    CapoOffchainSettingsType,
+    CapoOnchainSettingsType,
+    CapoSettingsAdapterFor,
+    DatumAdapterOffchainType,
 } from "./src/CapoSettingsTypes.js";
 
 export {

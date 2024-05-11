@@ -27,7 +27,7 @@ import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import { dumpAny } from "../src/diagnostics";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { TestBadSettings } from "./TestBadSettings";
-import { OffchainSettingsType } from "../src/CapoSettingsTypes";
+import { CapoOffchainSettingsType, SettingsAdapter, ParsedSettings } from "../src/CapoSettingsTypes";
 import { Capo } from "../src/Capo";
 import {  DatumAdapter, Numeric, adapterParsedOnchainData, offchainDatumType } from "../src/DatumAdapter";
 import { AnyDataTemplate, hasAnyDataTemplate } from "../src/DelegatedDatumAdapter";
@@ -57,6 +57,7 @@ type BridgeCanBeBadSettings = {
     badSettingToMintDelegate: Numeric<"int">;
     badSettingToSpendDelegate: Numeric<"int">;
 }
+
 // ONLY DO THIS WHEN YOU DON'T NEED a special off-chain application class
 type CanBeBadSettings = offchainDatumType<BridgeCanBeBadSettings, "SettingsData">
 // WHEN YOU don't need a special off-chain application class, ALWAYS DO THIS ^^^^
@@ -67,22 +68,16 @@ const goodSettings : CanBeBadSettings = {
     meaning: 42
 }
 
-type onChainBadSettings = hasAnyDataTemplate<"set-", CanBeBadSettings>;
-type parsedBadSettings = adapterParsedOnchainData<
-    AnyDataTemplate<"set-", BridgeCanBeBadSettings>
-    , "CanBeBadSettings"
->;
-
 // note that Settings adapters aren't currently the same as DelegatedDatumAdapters
-class BadSettingsAdapter extends DatumAdapter<CanBeBadSettings, BridgeCanBeBadSettings> {
+class BadSettingsAdapter extends SettingsAdapter<CanBeBadSettings, BridgeCanBeBadSettings> {
     datumName: string = "SettingsData";
-    fromOnchainDatum(parsedDatum: parsedBadSettings): CanBeBadSettings {
+    fromOnchainDatum(parsedDatum: ParsedSettings<BridgeCanBeBadSettings>): CanBeBadSettings {
         console.log(" =====================                  ========================== ", parsedDatum);
         const {
             "@id": id,
             "tpe": tpe,
             ...settings
-        } = parsedDatum // .data
+        } = parsedDatum.data
         const otherParams = this.fromOnchainMap(
             settings,
             this.fromUplcReal
