@@ -35,7 +35,8 @@ import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { mkTv, stringToNumberArray } from "./utils.js";
 import { UutName, type SeedAttrs } from "./delegation/UutName.js";
 import type { Capo } from "./Capo.js";
-import { DatumAdapter, type UplcFor } from "./DatumAdapter.js";
+import { DatumAdapter, type adapterParsedOnchainData } from "./DatumAdapter.js";
+import type { OffchainType } from "./CapoSettingsTypes.js";
 
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer
@@ -77,9 +78,10 @@ export type utxoInfo = {
  * @typeParam CT - inferred type of the constructor args for the class
  * @public
  **/
-export type stellarSubclass<
-    S extends StellarContract<any>,
-> = (new (setup: SetupDetails, internal: typeof isInternalConstructor) => S) & {
+export type stellarSubclass<S extends StellarContract<any>> = (new (
+    setup: SetupDetails,
+    internal: typeof isInternalConstructor
+) => S) & {
     // & StellarContract<CT>
     defaultParams: Partial<ConfigFor<S>>;
     createWith(args: StellarFactoryArgs<ConfigFor<S>>): Promise<S>;
@@ -318,11 +320,10 @@ export type SetupDetails = {
  * @public
  * Extracts the config type for a Stellar Contract class
  **/
-export type ConfigFor<
-    SC extends StellarContract<any>,
-> = configBase & SC extends StellarContract<infer inferredConfig>
+export type ConfigFor<SC extends StellarContract<any>> = configBase &
+    SC extends StellarContract<infer inferredConfig>
     ? inferredConfig
-    : never
+    : never;
 
 /**
  * Initializes a stellar contract class
@@ -908,7 +909,9 @@ export class StellarContract<
         })) as DPROPS | undefined;
         if (!rawParsedData) return undefined;
         if (hasAdapter) {
-            return datumNameOrAdapter.fromOnchainDatum(rawParsedData);
+            return datumNameOrAdapter.fromOnchainDatum(
+                rawParsedData as unknown as adapterParsedOnchainData<DPROPS, "adapterHasConcreteTypeInfo">
+            );
         }
         return rawParsedData as any;
     }

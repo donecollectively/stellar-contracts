@@ -13,28 +13,90 @@ import * as helios from "@hyperionbt/helios";
 export type BigIntRecord<T extends Record<string, number>> = {
     [K in keyof T]: Numeric<"bigint">;
 };
-export type UplcFor<t , k extends string> = 
-        t extends helios.MintingPolicyHash ? number[] :
+
+// for application-side data types that don't need classes to represent them,
+// you must define a chain-bridge type, and you can derive a type representing 
+// its off-chains forms.
+
+// for application-side types that benefit from having a class to represent them,
+// with javascript methods fitting logical needs (some kinds of "business logic") 
+// for the on-chain objects, those methods become available because you first
+// define the on-chain bridge type, and also define the class as the appType.  
+
+// in both cases, you may need to define fromOnchainDatum() and 
+// toOnchainDatum() to convert data from it's "parsed, but may not be ready to use" form
+// into its UI-application-adapted form.  The DatumAdapter then collaborates with your
+// Capo and other contracts when you readDatum() and when creating 
+//   mkTxn...() and txn...() methods to serve your applications use cases.  
+//
+//Specifically, calls to readDatum(datumAdapter) will trigger the transformation of 
+//  on-chain data to the application's preferred form, and the 
+// result of readDatum() is ready to use, with class methods if you've defined 
+// your appType in that way..
+//
+// ...and when spending datum-holding utxos from a contract, the 
+
+
+// export type UplcFor<t , k extends string> = 
+//         t extends helios.MintingPolicyHash ? number[] :
+//         t extends bigint ? bigint :
+//         t extends Numeric<any> ? bigint :
+//         t extends string ? number[] :
+//         t extends number ? `TYPE ERROR - use Numeric<> to define '${k}'` :
+//         // t extends { [k: string]: any } ? UplcFor<> :
+//         t extends Array<infer U> ? UplcFor<U, `${k}[]`>[] :
+//         t extends Record<string, any> ? {
+//             [ key in string & keyof t ] : UplcFor<t[key], `${k}.${key}`>
+//         } :
+//         never 
+
+
+// in intemediate steps of bridging with on-chain data, where there is an 
+// on-chain "Bridge" type with abstract Numeric<>s, we can benefit from
+// conversion to some equivalate structural types.
+
+// This one represents data that has been parsed FROM on-chain UPLC data.
+export type adapterParsedOnchainData<t, k extends string> =
+        t extends helios.MintingPolicyHash ? number[] : // !!! verify it's not a MPH
         t extends bigint ? bigint :
         t extends Numeric<any> ? bigint :
-        t extends string ? number[] :
+        t extends string ? number[] :  // !!! verify it's not a String
         t extends number ? `TYPE ERROR - use Numeric<> to define '${k}'` :
-        // t extends { [k: string]: any } ? UplcFor<> :
-        t extends Array<infer U> ? UplcFor<U, `${k}[]`>[] :
+        t extends Array<infer U> ? adapterParsedOnchainData<U, `${k}[]`>[] :
         t extends Record<string, any> ? {
-            [ key in string & keyof t ] : UplcFor<t[key], `${k}.${key}`>
+            [ key in string & keyof t ] : adapterParsedOnchainData<t[key], `${k}.${key}`>
         } :
-        never 
+        never;
 
-export type inferOffchainType<t, k extends string> =
+/**
+ * flags data types supporting abstract Numeric<"something"> types.  
+ * {@link adapterParsedOnchainData} and {@link offchainDatumType} can 
+ * be used to represent the same essential type in other forms for different 
+ * purposes, mastered from the single "Chain Bridge" type.
+ * 
+ * Use Numeric<> to express all numerically-encoded data types, which 
+ * will be represented as a BigInt (Plutus "Integer" on-chain), and some other
+ * numeric-like form off-chain
+ */
+interface isChainTypeBridge { chainTypeBridge: true };
+
+/**
+ * Represents on-chain data types that have been converted (or, perhaps your code is 
+* converting) from the {@link adapterParsedOnchainData} to be appropriate for 
+* off-chain application use, but  that hasn't yet been adapted to an application-specific 
+* class.  For an application not needing a special off-chain class, this form can be used 
+* directly.  We'll probably have a converter that transforms the numerics from parsed
+* to off-chain form, elimintating boilerplat for the simple cases.
+*/
+export type offchainDatumType<t, k extends string> =
         t extends helios.MintingPolicyHash ? helios.MintingPolicyHash :
         t extends bigint ? bigint :
         t extends Numeric<any> ? inferOffchainNumericType<t> :
         t extends string ? string :
         t extends number ? `TYPE ERROR - use Numeric<> to define '${k}'` :
-        t extends Array<infer U> ? inferOffchainType<U, `${k}[]`>[] :
+        t extends Array<infer U> ? offchainDatumType<U & isChainTypeBridge, `${k}[]`>[] :
         t extends Record<string, any> ? {
-            [ key in string & keyof t ] : inferOffchainType<t[key], `${k}.${key}`>
+            [ key in string & keyof t ] : offchainDatumType<t[key], `${k}.${key}`>
         } :
         never;
 
@@ -108,7 +170,7 @@ export abstract class DatumAdapter<
      * @public
      **/
     abstract fromOnchainDatum(
-        raw: UplcFor<OnchainBridgeType, any>
+        raw: adapterParsedOnchainData<OnchainBridgeType, any>
     ): appType | Promise<appType>;
     /**
      * Should construct the right form of on-chain data, using classes provided by the Helios contract

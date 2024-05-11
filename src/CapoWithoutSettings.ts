@@ -1,18 +1,18 @@
 import { ConstrData, Datum } from "@hyperionbt/helios";
 import { Capo } from "./Capo.js";
-import { DatumAdapter, type UplcFor } from "./DatumAdapter.js";
+import { DatumAdapter, type offchainDatumType, type adapterParsedOnchainData } from "./DatumAdapter.js";
 
 export type onChainNoSettings = {
     data: {none: "" };
 };
 
 export type NoSettings = {
-    none: "";
+    none: string;
 };
 
 class NoSettingsAdapter extends DatumAdapter<NoSettings, onChainNoSettings> {
     datumName: string = "SettingsData";
-    fromOnchainDatum(parsedDatum: UplcFor<onChainNoSettings, "NoSettings">): NoSettings {
+    fromOnchainDatum(parsedDatum: adapterParsedOnchainData<onChainNoSettings, "SettingsData">): offchainDatumType<NoSettings, "SettingsData"> {
         return {
             none: ""
         };

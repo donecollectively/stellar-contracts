@@ -24,15 +24,13 @@ import {
 import { StellarTxnContext } from "../src/StellarTxnContext";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
-import { ConfigFor } from "../src/StellarContract";
 import { dumpAny } from "../src/diagnostics";
-import { DelegationDetail } from "../src/delegation/RolesAndDelegates";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { TestBadSettings } from "./TestBadSettings";
 import { OffchainSettingsType } from "../src/CapoSettingsTypes";
 import { Capo } from "../src/Capo";
-import { AnyDataTemplate, BigIntRecord, DatumAdapter } from "../src/DatumAdapter";
-import { Expand } from "../src/testing/types";
+import {  DatumAdapter, Numeric, adapterParsedOnchainData, offchainDatumType } from "../src/DatumAdapter";
+import { AnyDataTemplate, hasAnyDataTemplate } from "../src/DelegatedDatumAdapter";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 
@@ -54,32 +52,41 @@ const describe = descrWithContext<localTC>;
 // "the minting delegate must validate the UpdatingSettings details",
 
 
-type CanBeBadSettings = {
-    meaning: number;
-    badSettingToMintDelegate: number;
-    badSettingToSpendDelegate: number;
+type BridgeCanBeBadSettings = {
+    meaning: Numeric<"int">;
+    badSettingToMintDelegate: Numeric<"int">;
+    badSettingToSpendDelegate: Numeric<"int">;
 }
+// ONLY DO THIS WHEN YOU DON'T NEED a special off-chain application class
+type CanBeBadSettings = offchainDatumType<BridgeCanBeBadSettings, "SettingsData">
+// WHEN YOU don't need a special off-chain application class, ALWAYS DO THIS ^^^^
+
 const goodSettings : CanBeBadSettings = {
     badSettingToMintDelegate: 0,
     badSettingToSpendDelegate: 0,
     meaning: 42
 }
 
-type onChainBadSettings = {
-    data: BigIntRecord<CanBeBadSettings> & AnyDataTemplate<"set-">
-}
+type onChainBadSettings = hasAnyDataTemplate<"set-", CanBeBadSettings>;
+type parsedBadSettings = adapterParsedOnchainData<
+    AnyDataTemplate<"set-", BridgeCanBeBadSettings>
+    , "CanBeBadSettings"
+>;
 
-class BadSettingsAdapter extends DatumAdapter<CanBeBadSettings, onChainBadSettings> {
+// note that Settings adapters aren't currently the same as DelegatedDatumAdapters
+class BadSettingsAdapter extends DatumAdapter<CanBeBadSettings, BridgeCanBeBadSettings> {
     datumName: string = "SettingsData";
-    fromOnchainDatum(parsedDatum: onChainBadSettings): CanBeBadSettings {
+    fromOnchainDatum(parsedDatum: parsedBadSettings): CanBeBadSettings {
+        console.log(" =====================                  ========================== ", parsedDatum);
         const {
             "@id": id,
             "tpe": tpe,
-            ...reals
-        } = parsedDatum.data
+            ...settings
+        } = parsedDatum // .data
         const otherParams = this.fromOnchainMap(
-            reals,
+            settings,
             this.fromUplcReal
+        ) as CanBeBadSettings;
 
         return otherParams
     }
@@ -109,7 +116,7 @@ class CapoCanHaveBadSettings extends Capo<CapoCanHaveBadSettings> {
         };
     }    
     
-    initSettingsAdapter() {
+    initSettingsAdapter() : BadSettingsAdapter {
         return new BadSettingsAdapter(this);
     }
 }

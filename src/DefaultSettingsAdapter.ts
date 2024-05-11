@@ -1,21 +1,28 @@
 import { ConstrData, Datum } from "@hyperionbt/helios";
-import { DatumAdapter, type UplcFor  } from "./DatumAdapter.js";
-import type { Capo } from "./Capo.js";
+import { DatumAdapter,  type Numeric,  type adapterParsedOnchainData  } from "./DatumAdapter.js";
 import type { AnyDataTemplate } from "./DelegatedDatumAdapter.js";
 
 
 export type RealNumberSettingsMap =  { [key: string]: number };
-export type onchainRealNumberSettingsMap = {
-    data: AnyDataTemplate<"set-", Record<string, bigint>> 
-};
+// export type onchainRealNumberSettingsMap = {
+//     data: AnyDataTemplate<"set-", Record<string, bigint>> 
+// };
+
+type BridgeRealNumberSettings = 
+    AnyDataTemplate<"set-", Record<string, Numeric<"int">>>;
+
+type onChainSettings = adapterParsedOnchainData<
+    BridgeRealNumberSettings, 
+    "CanBeBadSettings"
+>;
 
 export class DefaultSettingsAdapter extends DatumAdapter<
     RealNumberSettingsMap,
-    onchainRealNumberSettingsMap
+    BridgeRealNumberSettings
 > {
     datumName: string = "SettingsData";
     fromOnchainDatum(
-        parsedDatum: UplcFor<onchainRealNumberSettingsMap, "settings'">
+        parsedDatum: adapterParsedOnchainData<BridgeRealNumberSettings, "SettingsData">,
     ): RealNumberSettingsMap {
         console.log("-------------------------------------> ", parsedDatum);
         const settingsMap: Record<string, number> = {};

@@ -9,8 +9,8 @@ export type AnyDataTemplate<TYPENAME extends string, others extends anyDatumProp
             others[key]
 } // & anyDatumProps 
 
-export interface hasAnyDataTemplate<T extends anyDatumProps> {
-    data: AnyDataTemplate<"set-", T> 
+export interface hasAnyDataTemplate<DATA_TYPE extends string, T extends anyDatumProps> {
+    data: AnyDataTemplate<DATA_TYPE, T> 
 }
 
 export abstract class DelegatedDatumAdapter<

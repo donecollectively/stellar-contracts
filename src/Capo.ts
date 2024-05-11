@@ -73,7 +73,7 @@ import {
     stringToNumberArray,
 } from "./utils.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
-import type { DatumAdapter, UplcFor } from "./DatumAdapter.js";
+import type { DatumAdapter, adapterParsedOnchainData } from "./DatumAdapter.js";
 import {
     type OnchainSettingsType,
     type OffchainSettingsType,
@@ -621,7 +621,7 @@ implements hasSettingsType<SELF>, hasRoleMap<SELF>
     }
 
     async readSettingsDatum( 
-        parsedDatum: UplcFor<OnchainSettingsType<this>, "CapoSettings">
+        parsedDatum: adapterParsedOnchainData<OnchainSettingsType<this>, "SettingsData">
     ): Promise<OffchainSettingsType<this>> {
         return this.settingsAdapter.fromOnchainDatum(parsedDatum);
     }

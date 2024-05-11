@@ -26,11 +26,11 @@ export type SettingsAdapterFor<
 > = DatumAdapter<any, any> & SAT
 
 export type OnchainSettingsType<CAPO_TYPE extends Capo<any>> =
-hasAnyDataTemplate<any> & SettingsAdapterFor<CAPO_TYPE> extends DatumAdapter<
+hasAnyDataTemplate<"set-", any> & SettingsAdapterFor<CAPO_TYPE> extends DatumAdapter<
         any,
         infer Onchain
     >
-        ? Onchain extends hasAnyDataTemplate<any>
+        ? Onchain extends hasAnyDataTemplate<"set-", any>
             ? Onchain["data"]
             : "TYPE_MISMATCH: settings DatumAdaper must have an on-chain 'data' field of type AnyDataTemplate<'set-'>"
         : never;
