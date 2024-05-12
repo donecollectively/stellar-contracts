@@ -117,6 +117,7 @@ export { DatumAdapter } from "./src/DatumAdapter.js";
 export type { 
     BigIntRecord,
     Numeric,
+    OnchainEnum,
     adapterParsedOnchainData,
     offchainDatumType,
     inferOffchainNumericType,
@@ -125,6 +126,7 @@ export type {
 export { 
     DelegatedDatumAdapter,
     type AnyDataTemplate,
+    type hasAnyDataTemplate,
 } from "./src/DelegatedDatumAdapter.js";
 
 export { CapoMinter } from "./src/minting/CapoMinter.js";

@@ -51,6 +51,10 @@ export type BigIntRecord<T extends Record<string, number>> = {
 //         never 
 
 
+export type OnchainEnum<EnumName extends string> = {
+    constrData: EnumName;
+}
+
 // in intemediate steps of bridging with on-chain data, where there is an 
 // on-chain "Bridge" type with abstract Numeric<>s, we can benefit from
 // conversion to some equivalate structural types.
@@ -58,14 +62,18 @@ export type BigIntRecord<T extends Record<string, number>> = {
 // This one represents data that has been parsed FROM on-chain UPLC data.
 export type adapterParsedOnchainData<t, k extends string> =
         t extends helios.MintingPolicyHash ? number[] : // !!! verify it's not a MPH
+        t extends OnchainEnum<any> ? helios.ConstrData :
         t extends bigint ? bigint :
         t extends Numeric<any> ? bigint :
         t extends string ? number[] :  // !!! verify it's not a String
         t extends number ? `TYPE ERROR - use Numeric<> to define '${k}'` :
         t extends Array<infer U> ? adapterParsedOnchainData<U, `${k}[]`>[] :
         t extends Record<string, any> ? {
-            [ key in string & keyof t ] : adapterParsedOnchainData<t[key], `${k}.${key}`>
+            [ 
+                key in string & keyof t 
+            ] : adapterParsedOnchainData<t[key], `${k}.${key}`>
         } :
+        t extends unknown ? unknown :
         never;
 
 /**
@@ -90,6 +98,7 @@ interface isChainTypeBridge { chainTypeBridge: true };
 */
 export type offchainDatumType<t, k extends string> =
         t extends helios.MintingPolicyHash ? helios.MintingPolicyHash :
+        t extends OnchainEnum<any> ? string :
         t extends bigint ? bigint :
         t extends Numeric<any> ? inferOffchainNumericType<t> :
         t extends string ? string :
