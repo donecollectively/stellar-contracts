@@ -637,9 +637,11 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         return tcx;
     }
 
-    async readSettingsDatum( 
-        parsedDatum: adapterParsedOnchainData<CapoOnchainSettingsType<this>, "SettingsData">
-    ): Promise<CapoOffchainSettingsType<this>> {
+    async readSettingsDatum<THIS extends Capo<any>>( 
+        this: THIS,
+        parsedDatum: adapterParsedOnchainData<CapoOnchainSettingsType<THIS>, "SettingsData">
+    ): Promise<CapoOffchainSettingsType<THIS>> {
+        type t = CapoOnchainSettingsType<THIS>
         return this.settingsAdapter.fromOnchainDatum(parsedDatum);
     }
 

@@ -74,7 +74,7 @@ export type CapoOnchainSettingsType<CAPO_TYPE extends Capo<any>> =
     >
         ? Onchain extends hasAnyDataTemplate<"set-", any>
             ? Onchain["data"]
-            : "TYPE_MISMATCH: settings DatumAdaper must have an on-chain 'data' field of type AnyDataTemplate<'set-'>"
+            : never //"TYPE_MISMATCH: settings DatumAdapter must have an on-chain 'data' field of type AnyDataTemplate<'set-'>"
         : never;
 
 export type CapoOffchainSettingsType<CAPO_TYPE extends Capo<any>> =
