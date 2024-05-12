@@ -1230,8 +1230,7 @@ export class StellarContract<
                 //     uplcDataField,
                 // });
                 // enum variant without any nested data.  That's ok!!!
-                debugger;
-                return `variant #${index}`;
+                return uplcDataField // return `variant #${index}`;
             }
             return this.readOtherUplcType(
                 `${fn}.${fieldName}`,
