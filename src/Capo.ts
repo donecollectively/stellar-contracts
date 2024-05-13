@@ -1487,6 +1487,16 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         }
     
         @Activity.redeemer
+        activitySpendingDelegatedDatum() {
+            const spendingDelegatedDatum = this.mustGetActivity(
+                "spendingDelegatedDatum"
+            );
+            const t = new spendingDelegatedDatum();
+    
+            return { redeemer: t._toUplcData() };
+        }
+
+        @Activity.redeemer
         activityUpdatingSettings(): 
         isActivity {
             const updatingSettings = this.mustGetActivity("updatingSettings");
