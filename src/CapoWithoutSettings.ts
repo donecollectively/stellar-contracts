@@ -49,6 +49,10 @@ export class CapoWithoutSettings extends Capo<CapoWithoutSettings> {
         return new NoSettingsAdapter(this);
     }
 
+    initDelegateRoles() {
+        return this.basicDelegateRoles();
+    }
+
     mkInitialSettings() {
         return {
             none: "" as const,

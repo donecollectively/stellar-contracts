@@ -56,6 +56,7 @@ import type {
     RoleInfo,
     DelegationDetail,
     strategyValidation,
+    capoDelegateConfig,
 } from "./delegation/RolesAndDelegates.js";
 
 import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
@@ -305,13 +306,13 @@ type PreconfiguredDelegate<T extends StellarDelegate<any>> = Omit<
     "delegate" | "delegateValidatorHash"
 >;
 
-interface basicRoleMap {
-    govAuthority: RoleInfo<any, any, any, any>;
-    mintDelegate: RoleInfo<any, any, any, any>;
-    spendDelegate: RoleInfo<any, any, any, any>;
-    namedDelegate: RoleInfo<any, any, any, any>;
+export interface basicRoleMap {
+    govAuthority: RoleInfo<StellarDelegate<capoDelegateConfig>, any, any, any>;
+    mintDelegate: RoleInfo<StellarDelegate<capoDelegateConfig>, any, any, any>;
+    spendDelegate: RoleInfo<StellarDelegate<capoDelegateConfig>, any, any, any>;
+    namedDelegate: RoleInfo<StellarDelegate<capoDelegateConfig>, any, any, any>;
 
-    [anyOtherRoleNames: string]: RoleInfo<any, any, any, any>;
+    [anyOtherRoleNames: string]: RoleInfo<StellarDelegate<any>, any, any, any>;
 }
 
 export type hasCharterRef = StellarTxnContext & { state: { 
@@ -1121,12 +1122,16 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
      * @public
      **/
     async txnCreateDelegateLink<
-        DT extends StellarDelegate,
-        const RN extends string & keyof this["delegateRoles"]
+        THIS extends Capo<any>,
+        DGI extends MinimalDelegateLink<DT>,
+        DT extends
+            THIS["delegateRoles"][RN] extends RoleInfo<infer specificDT, any, any, any> ? specificDT : never,
+        const RN extends string & keyof this["delegateRoles"],
     >(
+        this: THIS,
         tcx: hasUutContext<RN>,
         roleName: RN,
-        delegateInfo: MinimalDelegateLink<DT> = { strategyName: "default" }
+        delegateInfo: DGI,
     ): Promise<ConfiguredDelegate<DT> & RelativeDelegateLink<DT>> {
         const configured = await this.txnCreateConfiguredDelegate(
             tcx,
@@ -1178,14 +1183,16 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
      * @public
      **/
     async txnCreateConfiguredDelegate<
+        THIS extends Capo<any>,
+        const RN extends string & keyof THIS["delegateRoles"],
+        DGI extends MinimalDelegateLink<DT>,
         DT extends
-            | StellarDelegate<any>
-            | (StellarDelegate<any> & ContractBasedDelegate<any>),
-        const RN extends string & keyof this["delegateRoles"]
+        THIS["delegateRoles"][RN] extends RoleInfo<infer specificDT, any, any, any> ? specificDT : never,
     >(
+        this: THIS,
         tcx: hasUutContext<RN>,
         roleName: RN,
-        delegateInfo: MinimalDelegateLink<DT> = { strategyName: "default" }
+        delegateInfo: DGI
     ): Promise<ConfiguredDelegate<DT>> {
         const { strategyName, config: selectedConfig = {} } = delegateInfo;
 
@@ -1193,8 +1200,8 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         const uut = tcx.state.uuts[roleName];
         const impliedDelegationDetails = this.mkImpliedDelegationDetails(uut);
 
-        const foundStrategies = 
-            delegateRoles[roleName] as RoleInfo<DT, any, any, RN>; //prettier-ignore
+        const foundStrategies = // ... as RoleInfo<DT, any, any, RN>;
+            delegateRoles[roleName] as THIS["delegateRoles"][RN]  //prettier-ignore
         if (!foundStrategies) {
             throw new Error(`no delegateRoles entry for role '${roleName}'`);
         }
@@ -1495,12 +1502,15 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         }
 
         _delegateRoles!: ReturnType<this["initDelegateRoles"]> 
-        initDelegateRoles<
-            THISTYPE extends Capo<any>,
-        >(
-            this: THISTYPE
-        ) {
-            return delegateRoles({
+        abstract initDelegateRoles(//<
+            // THISTYPE extends Capo<any>,
+            // myDelegateRoles extends basicRoleMap
+//        >(
+            // this: THISTYPE
+        ) : basicRoleMap// & myDelegateRoles;
+
+        basicDelegateRoles() : basicRoleMap {
+            const myRoles = delegateRoles({
                 govAuthority: defineRole("capoGov", AuthorityPolicy, {
                     address: {
                         delegateClass: AnyAddressAuthorityPolicy,
@@ -1554,7 +1564,9 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                 namedDelegate: defineRole("namedDgt", ContractBasedDelegate<any>, {
                     // no named delegates by default
                 }),
-            }) //as ROLEMAP
+            });
+            return myRoles 
+            //as ROLEMAP
         }
     
         /**
@@ -1937,20 +1949,17 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                     throw new Error(`assertion can't fail`);
                 }
     
-                const govAuthority = await this.txnCreateDelegateLink<
-                    AuthorityPolicy,
-                    "govAuthority"
-                >(tcx, "govAuthority", charterDatumArgs.govAuthorityLink);
+                const govAuthority = await this.txnCreateDelegateLink(
+                    tcx, "govAuthority", charterDatumArgs.govAuthorityLink as any
+                );
     
-                const mintDelegate = await this.txnCreateDelegateLink<
-                    BasicMintDelegate,
-                    "mintDelegate"
-                >(tcx, "mintDelegate", charterDatumArgs.mintDelegateLink);
+                const mintDelegate = await this.txnCreateDelegateLink(
+                    tcx, "mintDelegate", charterDatumArgs.mintDelegateLink as any
+                );
     
-                const spendDelegate = await this.txnCreateDelegateLink<
-                    StellarDelegate<any>,
-                    "spendDelegate"
-                >(tcx, "spendDelegate", charterDatumArgs.spendDelegateLink);
+                const spendDelegate = await this.txnCreateDelegateLink(
+                    tcx, "spendDelegate", charterDatumArgs.spendDelegateLink
+                );
     
                 this.bootstrapping = {
                     govAuthority,
@@ -2348,13 +2357,14 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
          **/
         @txn
         async mkTxnUpdatingMintDelegate<
-            DT extends StellarDelegate,
-            thisType extends Capo<any>
+            THIS extends Capo<any>,
+            const SN extends string & keyof THIS["delegateRoles"]["mintDelegate"]["variants"],
+            DGI extends MinimalDelegateLink<DT>,
+            DT extends THIS["delegateRoles"]["mintDelegate"] extends RoleInfo<infer specificDT, any, any, any> ? specificDT : never,    
         >(
-            this: thisType,
-            delegateInfo: MinimalDelegateLink<DT> & {
-                strategyName: string &
-                    keyof thisType["delegateRoles"]["mintDelegate"]["variants"];
+            this: THIS,
+            delegateInfo: DGI & {
+                strategyName: SN;
                 forcedUpdate?: true;
             },
             tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
@@ -2397,10 +2407,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                     mintDelegate: "mintDgt",
                 }
             );
-            const newMintDelegate = await this.txnCreateDelegateLink<
-                DT,
-                "mintDelegate"
-            >(tcx2, "mintDelegate", delegateInfo);
+            const newMintDelegate = await this.txnCreateDelegateLink(tcx2, "mintDelegate", delegateInfo);
             // currentDatum.mintDelegateLink);
     
             // const spendDelegate = await this.txnCreateDelegateLink<
@@ -2436,15 +2443,18 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
     
         @txn
         async mkTxnUpdatingSpendDelegate<
-            DT extends StellarDelegate,
-            thisType extends Capo<any>
-        >(
-            this: thisType,
-            delegateInfo: MinimalDelegateLink<DT> & {
-                strategyName: string &
-                    keyof thisType["delegateRoles"]["spendDelegate"]["variants"];
+            THIS extends Capo<any>,
+            const SN extends string & keyof THIS["delegateRoles"]["spendDelegate"]["variants"],
+            //!!! TODO - force DGI to match the named variant's delegate-type.
+        DT extends
+            THIS["delegateRoles"]["spendDelegate"] extends RoleInfo<infer specificDT, any, any, any> ? specificDT : never,
+        DGI extends MinimalDelegateLink<DT> & {
+                strategyName: SN
                 forcedUpdate?: true;
             },
+        >(
+            this: THIS,
+            delegateInfo: DGI,
             tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
         ): Promise<StellarTxnContext> {
             const currentCharter = await this.mustFindCharterUtxo();
@@ -2482,10 +2492,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                     spendDelegate: "spendDgt",
                 }
             );
-            const newSpendDelegate = await this.txnCreateConfiguredDelegate<
-                DT,
-                "spendDelegate"
-            >(tcx2, "spendDelegate", delegateInfo);
+            const newSpendDelegate = await this.txnCreateConfiguredDelegate(tcx2, "spendDelegate", delegateInfo);
             // currentDatum.mintDelegateLink);
     
             const tcx2a = delegateInfo.forcedUpdate
@@ -2521,14 +2528,16 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
     
         @txn
         async mkTxnAddingMintInvariant<
-            DT extends StellarDelegate,
-            thisType extends Capo<any>
-        >(
-            this: thisType,
-            delegateInfo: MinimalDelegateLink<DT> & {
-                strategyName: string &
-                    keyof thisType["delegateRoles"]["mintDelegate"];
+            THIS extends Capo<any>,
+            const SN extends string & keyof THIS["delegateRoles"]["mintDelegate"]["variants"],
+            DGI extends MinimalDelegateLink<DT> & {
+                strategyName: SN;
             },
+            DT extends
+                THIS["delegateRoles"]["mintDelegate"] extends RoleInfo<infer specificDT, any, any, any> ? specificDT : never,
+        >(
+            this: THIS,
+            delegateInfo: DGI,
             tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
         ): Promise<StellarTxnContext> {
             const currentDatum = await this.findCharterDatum();
@@ -2551,10 +2560,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                     mintDelegate: "mintDgt",
                 }
             );
-            const mintDelegate = await this.txnCreateDelegateLink<
-                DT,
-                "mintDelegate"
-            >(tcx2b, "mintDelegate", delegateInfo);
+            const mintDelegate = await this.txnCreateDelegateLink(tcx2b, "mintDelegate", delegateInfo);
             // currentDatum.mintDelegateLink);
     
             // const spendDelegate = await this.txnCreateDelegateLink<
@@ -2589,14 +2595,16 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
     
         @txn
         async mkTxnAddingSpendInvariant<
-            DT extends StellarDelegate,
-            thisType extends Capo<any>
-        >(
-            this: thisType,
-            delegateInfo: MinimalDelegateLink<DT> & {
-                strategyName: string &
-                    keyof thisType["delegateRoles"]["spendDelegate"];
+            THIS extends Capo<any>,
+            const SN extends string & keyof THIS["delegateRoles"]["spendDelegate"]["variants"],
+            DGI extends MinimalDelegateLink<DT> & {
+                strategyName: SN;
             },
+            DT extends
+                THIS["delegateRoles"]["spendDelegate"] extends RoleInfo<infer specificDT, any, any, any> ? specificDT : never,
+        >(
+            this: THIS,
+            delegateInfo: DGI,
             tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
         ) {
             const currentDatum = await this.findCharterDatum();
@@ -2619,10 +2627,9 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                     spendDelegate: "spendDgt",
                 }
             );
-            const spendDelegate = await this.txnCreateDelegateLink<
-                DT,
-                "spendDelegate"
-            >(tcx2b, "spendDelegate", delegateInfo);
+            const spendDelegate = await this.txnCreateDelegateLink(
+                tcx2b, "spendDelegate", delegateInfo
+            );
             // currentDatum.mintDelegateLink);
     
             // const spendDelegate = await this.txnCreateDelegateLink<
@@ -2662,7 +2669,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
          *  @param options - configuration for the delegate
          * @public
          **/
-        async mkTxnAddingNamedDelegate<
+        async mkTxnAddingNamedDelegate<        
             DT extends StellarDelegate,
             thisType extends Capo<any>,
             const delegateName extends string,
@@ -2701,7 +2708,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             );
     
             const spendDelegate = await this.txnCreateDelegateLink(
-                tcx2, "namedDelegate", options
+                tcx2, "namedDelegate", options as any
             );
     
             //x@ts-expect-error "could be instantiated with different subtype"

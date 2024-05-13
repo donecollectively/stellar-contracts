@@ -159,7 +159,7 @@ export function delegateLinkSerializer(key: string, value: any) {
  * @public
  **/
 export type RoleInfo<
-    SC extends StellarContract<any>,
+    SC extends StellarDelegate<any>,
     VM extends Record<variants, VariantStrategy<SC>>,
     UUTP extends string,
     variants extends string = string & keyof VM
@@ -193,7 +193,7 @@ export type RoleInfo<
  **/
 export function defineRole<
     const UUTP extends string,
-    SC extends StellarContract<any>,
+    SC extends StellarDelegate<any>,
     const VMv extends Record<string, VariantStrategy<SC>> //& RoleInfo<SC, any, UUTP>["variants"]
 >(
     uutBaseName: UUTP,

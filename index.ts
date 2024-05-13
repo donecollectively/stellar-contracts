@@ -62,6 +62,7 @@ export {
 
 export type {
     RoleMap,
+    RoleInfo,
     strategyValidation,
     capoDelegateConfig,
     ErrorMap,
