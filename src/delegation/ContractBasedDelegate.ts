@@ -27,13 +27,12 @@ import { BasicDelegate } from "./BasicDelegate.js";
 import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { UnspecializedDelegate } from "./UnspecializedDelegate.js";
 
-export abstract class ContractBasedDelegate<
-    CT extends configBase & capoDelegateConfig = configBase & capoDelegateConfig
+export class ContractBasedDelegate<
+    CT extends capoDelegateConfig = capoDelegateConfig
 > extends StellarDelegate<CT> {
     static currentRev = 1n;
 
-    //@ts-expect-error - we provide a default impl for javascript users
-    abstract get delegateName() : string {
+    get delegateName() : string {
         throw new Error(`${this.constructor.name}: missing required get delegateName() : string`)
     }
 

@@ -23,7 +23,7 @@ import type { CapoBaseConfig } from "../Capo.js";
  * @typeParam CT - type of any specialized configuration; use capoDelegateConfig by default.
  **/
 export abstract class StellarDelegate<
-    CT extends Partial<CapoBaseConfig> & capoDelegateConfig = capoDelegateConfig
+    CT extends capoDelegateConfig = capoDelegateConfig
 > extends StellarContract<CT> {
     static currentRev = 1n;
     static get defaultParams() {

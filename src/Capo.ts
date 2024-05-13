@@ -131,7 +131,7 @@ import {
  * @public
  **/
 
-export type MinimalDelegateLink<SC extends StellarDelegate<any>> = Required<
+export type MinimalDelegateLink<SC extends StellarDelegate<capoDelegateConfig>> = Required<
     Pick<RelativeDelegateLink<SC>, "strategyName">
 > &
     Partial<Omit<RelativeDelegateLink<SC>, "uutName">>;
@@ -261,7 +261,7 @@ export interface MinterBaseMethods {
     txnMintWithDelegateAuthorizing<TCX extends StellarTxnContext>(
         tcx: TCX,
         vEntries: valuesEntry[],
-        delegate: StellarDelegate<any>,
+        delegate: BasicMintDelegate,
         redeemer: isActivity
     ): Promise<TCX>;
 }
@@ -301,18 +301,18 @@ export type hasBootstrappedConfig<CT extends CapoBaseConfig> =
         bootstrappedConfig: any;
     }>;
 
-type PreconfiguredDelegate<T extends StellarDelegate<any>> = Omit<
+type PreconfiguredDelegate<T extends StellarDelegate<capoDelegateConfig>> = Omit<
     ConfiguredDelegate<T>,
     "delegate" | "delegateValidatorHash"
 >;
 
 export interface basicRoleMap {
-    govAuthority: RoleInfo<StellarDelegate<capoDelegateConfig>, any, any, any>;
-    mintDelegate: RoleInfo<StellarDelegate<capoDelegateConfig>, any, any, any>;
-    spendDelegate: RoleInfo<StellarDelegate<capoDelegateConfig>, any, any, any>;
-    namedDelegate: RoleInfo<StellarDelegate<capoDelegateConfig>, any, any, any>;
+    govAuthority: RoleInfo<any, any, StellarDelegate<capoDelegateConfig>, any>;
+    mintDelegate: RoleInfo<any, any, ContractBasedDelegate<capoDelegateConfig>, any>;
+    spendDelegate: RoleInfo<any, any, ContractBasedDelegate<capoDelegateConfig>, any>;
+    namedDelegate: RoleInfo<any, any, StellarDelegate<capoDelegateConfig>, any>;
 
-    [anyOtherRoleNames: string]: RoleInfo<StellarDelegate<any>, any, any, any>;
+    [anyOtherRoleNames: string]: RoleInfo<any, any, StellarDelegate<capoDelegateConfig>, any>;
 }
 
 export type hasCharterRef = StellarTxnContext & { state: { 
@@ -332,12 +332,12 @@ import type { hasAnyDataTemplate } from "./DelegatedDatumAdapter.js";
  * @public
  **/
 export interface CharterDatumProps extends configBase {
-    spendDelegateLink: RelativeDelegateLink<StellarDelegate<any>>;
-    spendInvariants: RelativeDelegateLink<StellarDelegate<any>>[];
-    namedDelegates: Record<string, RelativeDelegateLink<StellarDelegate<any>>>;
+    spendDelegateLink: RelativeDelegateLink<ContractBasedDelegate<capoDelegateConfig>>;
+    spendInvariants: RelativeDelegateLink<ContractBasedDelegate<capoDelegateConfig>>[];
+    namedDelegates: Record<string, RelativeDelegateLink<StellarDelegate<capoDelegateConfig>>>;
     settingsUut: UutName | number[];
     mintDelegateLink: RelativeDelegateLink<BasicMintDelegate>;
-    mintInvariants: RelativeDelegateLink<StellarDelegate<any>>[];
+    mintInvariants: RelativeDelegateLink<ContractBasedDelegate<capoDelegateConfig>>[];
     govAuthorityLink: RelativeDelegateLink<AuthorityPolicy>;
     typeMapUut: UutName | number[];
 }
@@ -354,9 +354,9 @@ export type MinimalCharterDatumArgs = {
     // RemainingMinimalCharterDatumArgs<DAT> & {
     govAuthorityLink: MinimalDelegateLink<AuthorityPolicy>;
     mintDelegateLink: MinimalDelegateLink<BasicMintDelegate>;
-    spendDelegateLink: MinimalDelegateLink<StellarDelegate<any>>;
-    mintInvariants: MinimalDelegateLink<StellarDelegate<any>>[];
-    spendInvariants: MinimalDelegateLink<StellarDelegate<any>>[];
+    spendDelegateLink: MinimalDelegateLink<ContractBasedDelegate<any>>;
+    mintInvariants: MinimalDelegateLink<ContractBasedDelegate<any>>[];
+    spendInvariants: MinimalDelegateLink<ContractBasedDelegate<any>>[];
 };
 
 export type RemainingMinimalCharterDatumArgs = Omit<CharterDatumProps, "govAuthorityLink" | "mintDelegateLink" | "spendDelegateLink">;
@@ -454,7 +454,7 @@ type ConstStringUnkYES = "MyCONST STRING" extends unknown ? "yes" : "no";
 type FooUnkYES = { "foo": string } extends unknown ? "yes" : "no";
 
 
-export abstract class Capo<SELF extends Capo<any> = Capo<never>>
+export abstract class Capo<SELF extends Capo<any>>
 extends StellarContract<CapoBaseConfig> 
 implements hasSettingsType<SELF> //, hasRoleMap<SELF>
 {
@@ -1124,8 +1124,9 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
     async txnCreateDelegateLink<
         THIS extends Capo<any>,
         DGI extends MinimalDelegateLink<DT>,
-        DT extends
-            THIS["delegateRoles"][RN] extends RoleInfo<infer specificDT, any, any, any> ? specificDT : never,
+        DT extends StellarDelegate<capoDelegateConfig> & (
+            THIS["delegateRoles"][RN] extends RoleInfo<any, any, infer specificDT, any> ? specificDT : never
+        ),
         const RN extends string & keyof this["delegateRoles"],
     >(
         this: THIS,
@@ -1147,7 +1148,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
     }
 
     // this is just type sugar - a configured delegate already has all the relative-delegate link properties.
-    relativeLink<DT extends StellarDelegate<any>>(
+    relativeLink<DT extends StellarDelegate<capoDelegateConfig>>(
         configured: ConfiguredDelegate<DT>
     ): RelativeDelegateLink<DT> {
         const {
@@ -1185,15 +1186,21 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
     async txnCreateConfiguredDelegate<
         THIS extends Capo<any>,
         const RN extends string & keyof THIS["delegateRoles"],
-        DGI extends MinimalDelegateLink<DT>,
-        DT extends
-        THIS["delegateRoles"][RN] extends RoleInfo<infer specificDT, any, any, any> ? specificDT : never,
+        DGI extends MinimalDelegateLink<aDT_1>,
+        aDT_1 extends StellarDelegate<capoDelegateConfig> & (
+            THIS["delegateRoles"][RN] extends RoleInfo<any, any, infer abstractDT_1, any> ? 
+            abstractDT_1 : unknown // allows the capoDelegateConfig to be inferred in ConfigFor<>
+        ),
+        sDT_1 extends (
+            DGI extends MinimalDelegateLink<infer x> 
+            ? x : never
+        ) = DGI extends MinimalDelegateLink<infer x> ? x : never,
     >(
         this: THIS,
         tcx: hasUutContext<RN>,
         roleName: RN,
         delegateInfo: DGI
-    ): Promise<ConfiguredDelegate<DT>> {
+    ): Promise<ConfiguredDelegate<sDT_1>> {
         const { strategyName, config: selectedConfig = {} } = delegateInfo;
 
         const { delegateRoles } = this;
@@ -1207,7 +1214,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         }
         const selectedStrategy = foundStrategies.variants[
             strategyName
-        ] as VariantStrategy<DT>;
+        ] as VariantStrategy<sDT_1>;
         if (!selectedStrategy) {
             let msg = `invalid strategyName '${strategyName}' for role '${roleName}'`;
             if (strategyName == "default") {
@@ -1224,14 +1231,14 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
 
         const scriptParamsFromStrategyVariant =
             selectedStrategy.partialConfig || {};
-        const mergedConfig: ConfigFor<DT> = {
+        const mergedConfig: ConfigFor<sDT_1> = {
             ...defaultParamsFromDelegateClass,
             ...(scriptParamsFromStrategyVariant || {}),
             ...selectedConfig,
             ...impliedDelegationDetails,
             devGen: this.devGen,
             capo: this,
-        } as unknown as ConfigFor<DT>;
+        } as unknown as ConfigFor<sDT_1>;
 
         //! it validates the net configuration so it can return a working config.
         const errors: ErrorMap | undefined =
@@ -1244,14 +1251,14 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             );
         }
 
-        const delegateSettings: PreconfiguredDelegate<DT> = {
+        const delegateSettings: PreconfiguredDelegate<sDT_1> = {
             ...delegateInfo,
             roleName,
             delegateClass,
             uutName: uut.name,
             config: mergedConfig,
         };
-        let delegate: DT = await this.mustGetDelegate<DT>(delegateSettings);
+        let delegate: sDT_1 = await this.mustGetDelegate<sDT_1>(delegateSettings);
 
         // const reqdAddress = delegate.delegateReqdAddress();
         // if (reqdAddress) {
@@ -1263,7 +1270,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         //     }
         // }
         const { delegateValidatorHash } = delegate;
-        const pcd: ConfiguredDelegate<DT> = {
+        const pcd: ConfiguredDelegate<sDT_1> = {
             ...delegateSettings,
             delegateValidatorHash,
             delegate,
@@ -1290,14 +1297,20 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
 
     // get connectDelegate()
     async connectDelegateWithLink<
-        DelegateType extends StellarDelegate<any>,
+        THIS extends Capo<any>,
+        const RN extends string & keyof THIS["delegateRoles"],
+        aDT_2 extends StellarDelegate<any> & ( 
+            THIS["delegateRoles"][RN] extends RoleInfo<any, any, infer abstractDT_2, any> ? abstractDT_2 : never
+        ),
+        DGI extends RelativeDelegateLink<aDT_2>,
+        sDT_2 extends (DGI extends RelativeDelegateLink<infer x> ? x : never) = DGI extends RelativeDelegateLink<infer x> ? x : never,
         // configType extends (
         //     DelegateType extends StellarContract<infer c> ? c : CharterDatumProps //prettier-ignore
         //  ) = DelegateType extends StellarContract<infer c> ? c : CharterDatumProps //prettier-ignore
     >(
-        roleName: string,
-        delegateLink: RelativeDelegateLink<DelegateType>
-    ): Promise<DelegateType> {
+        roleName: RN,
+        delegateLink: DGI
+    ): Promise<sDT_2> {
         const cache = this.#_delegateCache;
 
         const cacheKey = JSON.stringify(
@@ -1312,7 +1325,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         if (cachedRole) {
             const {strategyName, delegate} = cachedRole
             console.log(`  ✅ 💁 ${roleName}:${strategyName} - from cache `);
-            return delegate as DelegateType;
+            return delegate as sDT_2;
         }
         console.log(`   🔎delegate 💁 ${roleName}`)
         // console.log(`   ----- delegate '${roleName}' cache key `, cacheKey);
@@ -1329,7 +1342,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         } = delegateLink;
         const selectedStrat = role.variants[
             strategyName
-        ] /*as unknown */ as ConfiguredDelegate<DelegateType>;
+        ] /*as unknown */ as ConfiguredDelegate<sDT_2>;
         if (!selectedStrat) {
             throw new Error(
                 `mismatched strategyName '${strategyName}' in delegate link for role '${roleName}'\n` +
@@ -1352,7 +1365,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         // See also the create-delegate code path in txnCreateConfiguredDelegate(), which
         // ... which also includes baseline config details.  IF YOU'RE ADDING STUFF HERE,
         // ... consider that it might also be needed there.
-        const config: ConfigFor<DelegateType> = {
+        const config: ConfigFor<sDT_2> = {
             ...defaultParamsFromDelegateClass,
             ...stratSettings,
             // addrHint,  //moved to config
@@ -1511,7 +1524,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
 
         basicDelegateRoles() : basicRoleMap {
             const myRoles = delegateRoles({
-                govAuthority: defineRole("capoGov", AuthorityPolicy, {
+                govAuthority: defineRole("capoGov", undefined, {
                     address: {
                         delegateClass: AnyAddressAuthorityPolicy,
                         validateConfig(args): strategyValidation {
@@ -1549,7 +1562,6 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                             return undefined;
                         },
                     },
-                    // undelegated: { ... todo ... }
                 }),
     
                 spendDelegate: defineRole("spendDgt", ContractBasedDelegate<any>, {
@@ -1737,7 +1749,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         async findGovDelegate() {
             const charterDatum = await this.findCharterDatum();
             const capoGovDelegate =
-                await this.connectDelegateWithLink<AuthorityPolicy>(
+                await this.connectDelegateWithLink(
                     "govAuthority",
                     charterDatum.govAuthorityLink
                 );
@@ -1779,7 +1791,11 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         //     return this.txnAddMintDelegate(tcx2);
         // }
     
-        async getMintDelegate() {
+        // async getMintDelegate<
+        //     THIS extends Capo<any>,
+        //     MDT extends BasicMintDelegate & THIS["delegateRoles"]["mintDgt"] extends RoleInfo<any, any, infer DT> ? DT : never
+        // >() : Promise<MDT>{
+        async getMintDelegate() : Promise<BasicMintDelegate>{
             if (!this.configIn) {
                 throw new Error(`what now?`);
             }
@@ -1789,14 +1805,14 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
     
             return this.connectDelegateWithLink(
                 "mintDelegate",
-                charterDatum.mintDelegateLink
+                charterDatum.mintDelegateLink 
             );
         }
     
         async getSpendDelegate() {
             const charterDatum = await this.findCharterDatum();
     
-            return this.connectDelegateWithLink<ContractBasedDelegate<any>>(
+            return this.connectDelegateWithLink(
                 "spendDelegate",
                 charterDatum.spendDelegateLink
             );
@@ -2360,7 +2376,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             THIS extends Capo<any>,
             const SN extends string & keyof THIS["delegateRoles"]["mintDelegate"]["variants"],
             DGI extends MinimalDelegateLink<DT>,
-            DT extends THIS["delegateRoles"]["mintDelegate"] extends RoleInfo<infer specificDT, any, any, any> ? specificDT : never,    
+            DT extends THIS["delegateRoles"]["mintDelegate"] extends RoleInfo<any, any, infer specificDT, any> ? specificDT : never,    
         >(
             this: THIS,
             delegateInfo: DGI & {
@@ -2446,12 +2462,14 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             THIS extends Capo<any>,
             const SN extends string & keyof THIS["delegateRoles"]["spendDelegate"]["variants"],
             //!!! TODO - force DGI to match the named variant's delegate-type.
-        DT extends
-            THIS["delegateRoles"]["spendDelegate"] extends RoleInfo<infer specificDT, any, any, any> ? specificDT : never,
-        DGI extends MinimalDelegateLink<DT> & {
+            aDT_3 extends ContractBasedDelegate & (
+                THIS["delegateRoles"]["spendDelegate"] extends RoleInfo<any, any, infer abstractDT_3, any> ? abstractDT_3 : never
+            ),
+            DGI extends MinimalDelegateLink<aDT_3> & {
                 strategyName: SN
                 forcedUpdate?: true;
             },
+            sDT_3 extends (DGI extends MinimalDelegateLink<infer x> ? x : never)
         >(
             this: THIS,
             delegateInfo: DGI,
@@ -2492,7 +2510,9 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                     spendDelegate: "spendDgt",
                 }
             );
-            const newSpendDelegate = await this.txnCreateConfiguredDelegate(tcx2, "spendDelegate", delegateInfo);
+            const newSpendDelegate = await this.txnCreateConfiguredDelegate(
+                tcx2, "spendDelegate", delegateInfo
+            );
             // currentDatum.mintDelegateLink);
     
             const tcx2a = delegateInfo.forcedUpdate
@@ -2533,8 +2553,9 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             DGI extends MinimalDelegateLink<DT> & {
                 strategyName: SN;
             },
-            DT extends
-                THIS["delegateRoles"]["mintDelegate"] extends RoleInfo<infer specificDT, any, any, any> ? specificDT : never,
+            DT extends StellarDelegate<any> & (
+                THIS["delegateRoles"]["mintDelegate"] extends RoleInfo<any, any, infer specificDT, any> ? specificDT : never 
+            ),
         >(
             this: THIS,
             delegateInfo: DGI,
@@ -2600,8 +2621,9 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             DGI extends MinimalDelegateLink<DT> & {
                 strategyName: SN;
             },
-            DT extends
-                THIS["delegateRoles"]["spendDelegate"] extends RoleInfo<infer specificDT, any, any, any> ? specificDT : never,
+            DT extends ContractBasedDelegate<any> & (
+                THIS["delegateRoles"]["spendDelegate"] extends RoleInfo<any, any, infer specificDT, any> ? specificDT : never
+            ),
         >(
             this: THIS,
             delegateInfo: DGI,

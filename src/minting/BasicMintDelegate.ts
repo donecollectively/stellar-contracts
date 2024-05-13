@@ -21,8 +21,7 @@ import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
  **/
 export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig> {
     static currentRev = 1n;
-
-    delegateName = "mintDelegate"
+    get delegateName() { return "mintDelegate" }
     
     // uses the basic delegate script, plus the isMintDelegate param
 

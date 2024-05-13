@@ -55,8 +55,8 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
         );
     }
 
-    get delegateRoles() {
-        const inherited = super.delegateRoles;
+    initDelegateRoles() {
+        const inherited = super.basicDelegateRoles();
         const { mintDelegate: parentMintDelegate, ...othersInherited } =
             inherited;
         const {
@@ -64,12 +64,11 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
             uutPurpose,
             variants: pVariants,
         } = parentMintDelegate;
-        const mintDelegate = defineRole("mintDgt", BasicMintDelegate, {
-            defaultV1: {
-                delegateClass: BasicMintDelegate,
-                validateConfig(args) {},
-
-            },
+        const mintDelegate = defineRole("mintDgt", MintDelegateWithGenericUuts, {
+            // defaultV1: {
+            //     delegateClass: BasicMintDelegate,
+            //     validateConfig(args) {},
+            // },
 
             canMintGenericUuts: {
                 delegateClass: MintDelegateWithGenericUuts,
@@ -79,6 +78,7 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
             failsWhenBad: {
                 delegateClass: MintDelegateWithGenericUuts,
                 validateConfig(args) {
+                    //@ts-expect-error
                     if (args.bad) {
                         //note, this isn't the normal way of validating.
                         //  ... usually it's a good field name whose value is missing or wrong.
@@ -93,17 +93,17 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
             ...inherited,
             noDefault: defineRole("noDef", CapoMinter, {}),
             mintDelegate,
-            namedDelegate: defineRole("dgt", StellarDelegate, {
+            namedDelegate: defineRole("dgt", TestNamedDelegate, {
                 myDgtV1: {
                     delegateClass: TestNamedDelegate,
                 },
             }),
             
-        }) as any; // TODO - update types so this structure fits the expected type
+        })// as any; // TODO - update types so this structure fits the expected type
     }
 }
 export class TestNamedDelegate extends ContractBasedDelegate {
-    delegateName = "myNamedDgt"
+    get delegateName() { return "myNamedDgt" }
 }
 
 

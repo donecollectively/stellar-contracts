@@ -55,6 +55,17 @@ export type BasicMinterParams = configBase & SeedTxnScriptParams & {
  * A basic minting validator serving a Capo's family of contract scripts
  * @remarks
  *
+ * NOTE that this class provides the actual MINTING script, which is
+ * DIFFERENT from the minting delegate.  The minting delegate is a separate
+ * contract that can be updated within the scope of a Capo, with this minting
+ * script remaining unchanged.  
+ * 
+ * Because this minter always defers to the minting delegate, that delegate
+ * always expresses the true policy for minting application-layer tokens.  
+ * This minter contains only the most basic minting constraints - mostly, those
+ * needed for supporting Capo lifeycle activities in which the minting delegate
+ * isn't yet available, or is being replaced.
+ * 
  * Mints charter tokens based on seed UTxOs.  Can also mint UUTs and
  * other tokens as approved by the Capo's minting delegate.
  * @public

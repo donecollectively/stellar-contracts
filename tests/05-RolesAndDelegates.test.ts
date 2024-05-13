@@ -60,6 +60,7 @@ class DelegationTestCapo extends CapoWithoutSettings {
             failsWhenBad: {
                 delegateClass: MintDelegateWithGenericUuts,
                 validateConfig(args) {
+                    //@ts-expect-error
                     if (args.bad) {
                         //note, this isn't the normal way of validating.
                         //  ... usually it's a good field name whose value is missing or wrong.
@@ -114,7 +115,7 @@ describe("Capo", async () => {
                 expect(t.delegateRoles).toBeTruthy();
                 expect(t.delegateRoles.mintDelegate.variants).toBeTruthy();
                 expect(
-                    t.delegateRoles.mintDelegate.variants.defaultV1
+                    t.delegateRoles.mintDelegate.variants.failsWhenBad
                 ).toBeTruthy();
             });
         });
@@ -188,9 +189,12 @@ describe("Capo", async () => {
                     { noDefault: "x" }
                 );
 
-                const problem = t.txnCreateDelegateLink(tcx1b, "noDefault");
-                expect(problem).rejects.toThrow(/no .* delegate for role/);
+                // todo: Ideally, this strategy name would be a type error.
+                const problem = t.txnCreateDelegateLink(tcx1b, "noDefault", {
+                    strategyName: "defaultV1",
+                });
                 expect(problem).rejects.toThrow(DelegateConfigNeeded);
+                expect(problem).rejects.toThrow(/invalid strategyName/);
             });
 
             it("If the strategy-configuration doesn't match available variants, the DelegateConfigNeeded error offers suggested strategy-names", async (context: localTC) => {
@@ -412,7 +416,7 @@ describe("Capo", async () => {
                     },
                 };
                 assertType<
-                    RoleInfo<BasicMintDelegate, any, any, any>["variants"]
+                    RoleInfo<any, any, BasicMintDelegate, any>["variants"]
                 >({
                     ok,
                     wrong: bad,

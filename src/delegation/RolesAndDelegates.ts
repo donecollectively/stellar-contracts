@@ -11,6 +11,7 @@ import {
 
 import { StellarDelegate } from "./StellarDelegate.js";
 import type { Capo, CapoBaseConfig } from "../Capo.js";
+import type { ContractBasedDelegate } from "./ContractBasedDelegate.js";
 
 /**
  * An error type for reflecting configuration problems at time of delegate setup
@@ -159,23 +160,16 @@ export function delegateLinkSerializer(key: string, value: any) {
  * @public
  **/
 export type RoleInfo<
-    SC extends StellarDelegate<any>,
-    VM extends Record<variants, VariantStrategy<SC>>,
+    Vmap extends Record<variantNames, VariantStrategy<SC>>,
     UUTP extends string,
-    variants extends string = string & keyof VM
+    SC extends StellarDelegate<capoDelegateConfig>= StellarDelegate<capoDelegateConfig>,
+    variantNames extends string = string & keyof Vmap,
 > = {
     uutPurpose: UUTP;
-    baseClass: stellarSubclass<SC>;
+    baseClass: undefined | stellarSubclass<SC>;
     variants:{ 
-        // doesn't work together with next line: [otherVariant: string]: VariantStrategy<SC>,
-        [variant in variants]: VM[variant]  
+        [variant in variantNames]: Vmap[variant]  
     }
-    // sadly, this doesn't work either
-    // &  Record<string, VariantStrategy<SC>> 
-    // nope, this doesn't work either
-    //  & {
-    //     [key: string]: VariantStrategy<SC>
-    // }
 };
 
 /**
@@ -193,13 +187,22 @@ export type RoleInfo<
  **/
 export function defineRole<
     const UUTP extends string,
-    SC extends StellarDelegate<any>,
-    const VMv extends Record<string, VariantStrategy<SC>> //& RoleInfo<SC, any, UUTP>["variants"]
+    const Vmap extends Record<string, VariantStrategy<SC>>, //& RoleInfo<SC, any, UUTP>["variants"]
+    const base extends undefined | stellarSubclass<SC>,
+    SC extends StellarDelegate<capoDelegateConfig> 
+    // & ( 
+    //     // base extends undefined ? StellarDelegate<capoDelegateConfig> :
+    //      base extends stellarSubclass<infer sc> ? sc : unknown      
+    // ) 
+    = StellarDelegate<capoDelegateConfig> & ( 
+        base extends stellarSubclass<infer sc> ? 
+        sc : unknown  // NOTE: type (XX & unknown) is same as XX
+    )
 >(
     uutBaseName: UUTP,
-    baseClass: stellarSubclass<SC> & any,
-    variants:  VMv
-): RoleInfo<SC, VMv, UUTP> {
+    baseClass: base,
+    variants:  Vmap
+): RoleInfo<Vmap, UUTP, SC> {
     return {
         uutPurpose: uutBaseName,
         baseClass,
