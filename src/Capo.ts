@@ -1819,12 +1819,12 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             );
         }
     
-        async getSpendDelegate() {
-            const charterDatum = await this.findCharterDatum();
+        async getSpendDelegate(charterDatum?: CharterDatumProps) {
+            const charter = charterDatum || await this.findCharterDatum();
     
             return this.connectDelegateWithLink(
                 "spendDelegate",
-                charterDatum.spendDelegateLink
+                charter.spendDelegateLink
             );
         }
     
