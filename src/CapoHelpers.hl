@@ -20,7 +20,7 @@ import {
 // field list, can be interpreted by any script that defines a 
 // field-names style of struct with its own fields & data types.
 struct AnyData {
-    id: String "@id"  // same as the UUT name for this data
+    id: ByteArray "@id"  // same as the UUT name for this data
     type: String "tpe"
 
     // can have other fields; receiver will interpret their target types.
@@ -217,6 +217,15 @@ struct DelegateInput {
             mustFindInputRedeemer(self.ctx, self.input)
         )
     }
+
+    func withSpendingActivity(self) -> DelegateInput {
+        self.genericDelegateActivity().switch {
+            SpendingActivities => self,
+            _ => error("dgtTkn: no spend activity!")
+        }
+    }
+
+
     func requiresValidOutput(self) -> Bool {
         self.link.hasValidOutput(
             mph: self.mph, 
@@ -235,6 +244,40 @@ struct DelegateInput {
         DATUM::from_data(
             self.input.datum.get_inline_data()
         )
+    }
+
+    func delegateUnchanged(self) -> DelegateInput {
+        DelegateInput{link, input, ctx, mph} = self;
+        RelativeDelegateLink{
+            uut,
+             _ /* strategy */,
+            validatorHash
+        } = link;
+        targetValue : Value = mkTv(mph, uut);
+        returnedUnchanged : Bool = validatorHash.switch {
+            Some{vh} => {
+                // print(" ⬅️ 🔎 💁 expect dgTkn "+uut + " sent to vh " + vh.show());
+                assert(
+                    ctx.tx.value_locked_by(vh)   .
+                    contains(
+                        targetValue
+                    ), 
+                    "dgTkn not returned: "+ uut
+                );
+                ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {
+                    o.datum.serialize() == input.datum.serialize()
+                }).switch {
+                    Some => true, 
+                    None => error("dgt modified")
+                }
+            },
+            None => {
+                error("unchOut - no vh") // this method not valid on non-contract delegate tokens
+                // todo maybe make it valid by enforcing return to the input address?
+            }
+        };
+        assert(returnedUnchanged, "no way"); // already thrown
+        self
     }
 }
 
@@ -360,25 +403,106 @@ struct CapoCtx {
 
     // internal / low-level function
     func requiresDelegateInput(self, dgtLink: RelativeDelegateLink) -> DelegateInput {
-        dgtLink.hasDelegateInput(
-            inputs: self.ctx.tx.inputs, 
-            mph: self.mph,
-            required: true
-        ).switch {
-            None => error("unreachable"),
-            Some{input} => {
-                DelegateInput{
-                    dgtLink,
-                    input,
-                    self.ctx,
-                    self.mph
-                }
-            }
+        DelegateInput{
+            dgtLink,
+            dgtLink.hasDelegateInput(
+                inputs: self.ctx.tx.inputs, 
+                mph: self.mph,
+                required: true
+            ).unwrap(),
+            self.ctx,
+            self.mph
         }
     }
 
-    func hasDelegatedDataOutput(self, v : Value) -> TxOutput {
+    func address(self) -> Address {
+        self.resolveCharterUtxo().address
+    }
+
+    func toDelegatedData(self, typeName: String, id : ByteArray = #) -> (TxInput) -> Option[Data] {
         capoAddr : Address = self.resolveCharterUtxo().address;
+        none : Option[Data]::None = Option[Data]::None;
+        noId : Bool = (id.length == 0);
+
+        (txin : TxInput) -> Option[Data] {
+            if(txin.address == capoAddr) {
+                data : Data = txin.datum.get_inline_data();
+                CapoDatum::from_data(data).switch {
+                    DelegatedData => {
+                        x : AnyData = AnyData::from_data(data);
+                        if (x.type == typeName && (  
+                            noId || x.id == id
+                        )) {
+                            Option[Data]::Some{data}
+                        } else {
+                            none
+                        }
+                    },
+                    _ => none
+                }
+            } else { none }
+        }
+    }
+
+    func foldDelegatedData_lazy[RT]( self, 
+        typeName: String, 
+        reducer: (
+            Data, () -> RT
+        ) -> RT, 
+        final: RT
+    ) -> RT {
+        // filter : (TxInput) -> Bool = self.delegatedDataFilter(typeName);
+        hasDD : (TxInput) -> Option[Data] = self.toDelegatedData(typeName);
+        // capoAddr : Address = self.resolveCharterUtxo().address;
+        self.ctx.tx.inputs.fold_lazy[RT](
+            (txin : TxInput, myNext: () -> RT) -> RT {
+                hasDD(txin).switch {
+                    Some{data} => reducer(data, myNext),
+                    None => myNext()
+                }
+            }, final
+        )
+    }
+
+    // func filterDelegatedData(self, type: String, filter: (Data) -> Bool) -> []TxInput {
+    //     //NOT: hasDD : (TxInput) -> Bool = self.delegatedDataFilter(type);
+    //     // use toDelegatedData:
+    //     hasDD : (TxInput) -> Option[Data] = self.toDelegatedData(type);
+    //     self.ctx.tx.inputs.filter( (txin : TxInput) -> Bool {
+    //         hasDD(txin).switch { 
+    //             Some{data} => filter(data),
+    //             None => false
+    //         }
+    //     })
+    // }
+    
+    func filterDelegatedData[T](self, 
+        type: String, 
+        transform: (Data) -> Option[T],
+        id: ByteArray = #,
+        optional: Bool = false
+    ) -> []T {
+        //not hasDD : (TxInput) -> Bool = self.delegatedDataFilter(type);
+        // use toDelegatedData:
+        hasDD : (TxInput) -> Option[Data] = self.toDelegatedData(type, id);
+        none : Option[T]::None = Option[T]::None;
+        result : []T = self.ctx.tx.inputs.map_option[T]( (txin : TxInput) -> Option[T] {
+            hasDD(txin).switch { 
+                Some{data} => {
+                    transform(data)
+                },
+                None => none
+            }
+        });
+        if (!optional && (result.length == 0)) {
+            error(type + ": no match")
+        };
+
+        result
+    }
+
+    func hasDelegatedDataOutput(self, v : Value) -> TxOutput {
+        capoAddr : Address = self.address();
 
         self.ctx.tx.outputs.find_safe(
             (txout : TxOutput) -> Bool {
