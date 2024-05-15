@@ -435,6 +435,23 @@ struct CapoCtx {
         }
     }
 
+    func mkDelegatedDataOutputPredicate(self, typeName: String, id: ByteArray=#) -> (TxOutput) -> Bool {
+        capoAddr : Address = self.resolveCharterUtxo().address;
+        (txo : TxOutput) -> Bool {
+            if(txo.address == capoAddr) {
+                data : Data = txo.datum.get_inline_data();
+                CapoDatum::from_data(data).switch {
+                    DelegatedData => {
+                        x : AnyData = AnyData::from_data(data);
+                        x.type == typeName && (id == # || x.id == id)
+                    },
+                    _ => false
+                }
+            } else { false }
+        }
+    }
+
+
     // func toDelegatedData(self, typeName: String) -> (TxInput) -> Option[Data] {
     //     capoAddr : Address = self.resolveCharterUtxo().address;
     //     none : Option[Data]::None = Option[Data]::None;
