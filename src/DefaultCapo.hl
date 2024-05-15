@@ -13,7 +13,6 @@ const isDev: Bool = false
 import { 
     AbstractDelegateActivitiesEnum,
     requiresNoDelegateInput,
-    requiresValidDelegateOutput,
     RelativeDelegateLink
 } from CapoDelegateHelpers
 
@@ -533,7 +532,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
              mph.serialize() /* never */ == datum.serialize(), 
         "unreachable"
     ); 
-    print("🚥🟢 Capo validator: ok!");
+    print("🚥🟢 Capo validator: ok!\n");
 
     allDatumSpecificChecks && 
     allActivitySpecificChecks

@@ -161,6 +161,42 @@ struct RelativeDelegateLink {
             }        
         }
     }
+    
+    // func delegateUnchanged(self,
+    //     mph: MintingPolicyHash, 
+    //     ctx : ScriptContext,
+    //     input: TxInput,
+    // ) -> Bool {
+    //     RelativeDelegateLink{
+    //         uut, strategy,
+    //         validatorHash
+    //     } = self;
+    //     v : Value = mkTv(mph, uut);
+
+    //     validatorHash.switch {
+    //         Some{vh} => {
+    //             // print(" ⬅️ 🔎 💁 expect dgTkn "+uut + " sent to vh " + vh.show());
+    //             assert(
+    //                 ctx.tx.value_locked_by(vh)   .
+    //                 contains(
+    //                     mkTv(mph, uut)
+    //                 ), 
+    //                 "dgTkn not returned: "+ uut
+    //             );
+    //             ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {
+    //                 o.datum.serialize() == input.datum.serialize()
+    //             }).switch{
+    //                 Some => true, 
+    //                 None => error("dgt modified")
+    //             }
+
+    //             true
+    //         },
+    //         None => {
+    //             error("unchOut - no vh")
+    //         }    
+    //     }
+    // }
 
     // was requiresValidDelegateOutput 
     func hasValidOutput(
@@ -295,17 +331,18 @@ struct delegateLink_hasValidOutput_asMethod {
     placeHolder: String 
 }
 
-func requiresValidDelegateOutput(
-    delegateLink: delegateLink_hasValidOutput_asMethod,
-    mph: MintingPolicyHash, 
-    ctx : ScriptContext,
-    required: Bool = true
-) -> Bool {
-    assert(false, "replaced by delegateLink.hasValidOutput(...)");
-    assert(delegateLink==delegateLink, "no way");
-    assert(mph==mph, "no way");
-    assert(ctx==ctx, "no way");
-    assert(required==required, "no way");
-    true
-}
+// func requiresValidDelegateOutput(
+//     delegateLink: delegateLink_hasValidOutput_asMethod,
+//     mph: MintingPolicyHash, 
+//     ctx : ScriptContext,
+//     required: Bool = true
+// ) -> Bool {
+         ///                  vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+//     assert(false, "replaced by delegateLink.hasValidOutput(...)");
+//     assert(delegateLink==delegateLink, "no way");
+//     assert(mph==mph, "no");
+//     assert(ctx==ctx, "no");
+//     assert(required==required, "no way");
+//     true
+// }
 
