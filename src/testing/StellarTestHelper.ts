@@ -128,7 +128,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         const [theNetwork, emuParams] = this.mkNetwork();
         this.liveSlotParams = emuParams;
         this.network = theNetwork;
-        this.networkParams = new NetworkParams(preProdParams);
+        this.networkParams = new NetworkParams(this.fixupParams(preProdParams));
 
         this.actors = {};
         const now = new Date();
@@ -140,6 +140,10 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
 
         //@ts-expect-error - can serve no-params case or params case
         this.setupPending = this.initialize(config);
+    }
+    fixupParams(preProdParams) {
+        preProdParams.latestParams.maxTxSize *= 1.5
+        return preProdParams;
     }
 
     async initialize(config: ConfigFor<SC> & canHaveRandomSeed): Promise<SC> {
@@ -206,6 +210,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             myActor: this.currentActor,
             networkParams: this.networkParams,
             isTest: true,
+            optimize: this.optimize,
         };
 
         let cfg: StellarFactoryArgs<ConfigFor<SC>> = {
