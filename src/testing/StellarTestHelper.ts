@@ -32,6 +32,7 @@ import type {
     canSkipSetup,
     enhancedNetworkParams,
 } from "./types.js";
+import { StellarNetworkEmulator, type NetworkSnapshot } from "./StellarNetworkEmulator.js";
 
 /**
  * Base class for test-helpers on generic Stellar contracts
@@ -51,7 +52,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     optimize = false;
     liveSlotParams: NetworkParams;
     networkParams: NetworkParams;
-    network: NetworkEmulator;
+    network: StellarNetworkEmulator;
     private _actorName!: string;
 
     get actorName() {
@@ -112,6 +113,14 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         );
         this.addActor("hiro", 1863n * ADA);
         return this.setActor("hiro");
+    }
+
+    snapshot() {
+        return this.network.snapshot();
+    }
+    
+    loadSnapshot(snap: NetworkSnapshot) {
+        this.network.loadSnapshot(snap);
     }
 
     constructor(config?: ConfigFor<SC>& canHaveRandomSeed & canSkipSetup) {
@@ -400,10 +409,10 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         return a;
     }
 
-    mkNetwork(): [NetworkEmulator, enhancedNetworkParams] {
-        const theNetwork = new NetworkEmulator();
+    mkNetwork(): [StellarNetworkEmulator, enhancedNetworkParams] {
+        const theNetwork = new StellarNetworkEmulator();
 
-        //@ts-expect-error with missing methods
+        //@xxx ts-expect-error with missing methods
         const emuParams = theNetwork.initNetworkParams({
             ...preProdParams,
             raw: { ...preProdParams },

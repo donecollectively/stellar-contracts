@@ -24,6 +24,7 @@ export {
     dumpAny,
 } from "./src/diagnostics.js";
 
+
 export { UutName, type SeedAttrs } from "./src/delegation/UutName.js";
 export {
     Capo,
@@ -170,6 +171,10 @@ export type {
 //     StakeAddress,
 // } from "./src/HeliosPromotedTypes.js";
 import * as helios from "@hyperionbt/helios";
+export { 
+    StellarNetworkEmulator,
+    type NetworkSnapshot
+} from "./src/testing/StellarNetworkEmulator.js";
 
 export { helios };
 export { mkHeliosModule } from "./src/HeliosModuleSrc.js";
