@@ -419,82 +419,129 @@ struct CapoCtx {
         self.resolveCharterUtxo().address
     }
 
-    func toDelegatedData(self, typeName: String) -> (TxInput) -> Option[Data] {
+    func mkDelegatedDataPredicate(self, typeName: String, id: ByteArray=#) -> (TxInput) -> Bool {
         capoAddr : Address = self.resolveCharterUtxo().address;
-        none : Option[Data]::None = Option[Data]::None;
-        (txin : TxInput) -> Option[Data] {
+        (txin : TxInput) -> Bool {
             if(txin.address == capoAddr) {
                 data : Data = txin.datum.get_inline_data();
                 CapoDatum::from_data(data).switch {
                     DelegatedData => {
                         x : AnyData = AnyData::from_data(data);
-                        if (x.type == typeName) {
-                            Option[Data]::Some{data}
-                        } else {
-                            none
-                        }
+                        x.type == typeName && (id == # || x.id == id)
                     },
-                    _ => none
+                    _ => false
                 }
-            } else { none }
+            } else { false }
         }
     }
 
-    func foldDelegatedData_lazy[RT]( self, 
-        typeName: String, 
-        reducer: (
-            Data, () -> RT
-        ) -> RT, 
-        final: RT
-    ) -> RT {
-        // filter : (TxInput) -> Bool = self.delegatedDataFilter(typeName);
-        hasDD : (TxInput) -> Option[Data] = self.toDelegatedData(typeName);
-        // capoAddr : Address = self.resolveCharterUtxo().address;
-        self.ctx.tx.inputs.fold_lazy[RT](
-            (txin : TxInput, myNext: () -> RT) -> RT {
-                hasDD(txin).switch {
-                    Some{data} => reducer(data, myNext),
-                    None => myNext()
-                }
-            }, final
-        )
-    }
+    // func toDelegatedData(self, typeName: String) -> (TxInput) -> Option[Data] {
+    //     capoAddr : Address = self.resolveCharterUtxo().address;
+    //     none : Option[Data]::None = Option[Data]::None;
+    //     (txin : TxInput) -> Option[Data] {
+    //         if(txin.address == capoAddr) {
+    //             data : Data = txin.datum.get_inline_data();
+    //             CapoDatum::from_data(data).switch {
+    //                 DelegatedData => {
+    //                     x : AnyData = AnyData::from_data(data);
+    //                     if (x.type == typeName) {
+    //                         Option[Data]::Some{data}
+    //                     } else {
+    //                         none
+    //                     }
+    //                 },
+    //                 _ => none
+    //             }
+    //         } else { none }
+    //     }
+    // }
 
-    func filterDelegatedData(self, type: String, filter: (Data) -> Bool) -> []TxInput {
-        //NOT: hasDD : (TxInput) -> Bool = self.delegatedDataFilter(type);
-        // use toDelegatedData:
-        hasDD : (TxInput) -> Option[Data] = self.toDelegatedData(type);
-        self.ctx.tx.inputs.filter( (txin : TxInput) -> Bool {
-            hasDD(txin).switch { 
-                Some{data} => filter(data),
-                None => false
-            }
-        })
-    }
+    // func foldDelegatedData_lazy[RT]( self, 
+    //     typeName: String, 
+    //     reducer: (
+    //         Data, () -> RT
+    //     ) -> RT, 
+    //     final: RT
+    // ) -> RT {
+    //     // filter : (TxInput) -> Bool = self.delegatedDataFilter(typeName);
+    //     hasDD : (TxInput) -> Option[Data] = self.toDelegatedData(typeName);
+    //     // capoAddr : Address = self.resolveCharterUtxo().address;
+    //     self.ctx.tx.inputs.fold_lazy[RT](
+    //         (txin : TxInput, myNext: () -> RT) -> RT {
+    //             hasDD(txin).switch {
+    //                 Some{data} => reducer(data, myNext),
+    //                 None => myNext()
+    //             }
+    //         }, final
+    //     )
+    // }
 
-    func findDelegatedData[T](self, 
-        type: String, 
-        transform: (Data) -> Option[T],
-        optional: Bool = false
-    ) -> []T {
-        //not hasDD : (TxInput) -> Bool = self.delegatedDataFilter(type);
-        // use toDelegatedData:
-        hasDD : (TxInput) -> Option[Data] = self.toDelegatedData(type);
-        none : Option[T]::None = Option[T]::None;
-        result : []T = self.ctx.tx.inputs.map_option[T]( (txin : TxInput) -> Option[T] {
-            hasDD(txin).switch { 
-                Some{data} => {
-                    transform(data)
-                },
-                none: None => none
-            }
-        });
-        if (!optional && (result.length == 0)) {
-            error(type + ": no match")
-        };
+    // func filterDelegatedData(self, type: String, filter: (Data) -> Bool) -> []TxInput {
+    //     //NOT: hasDD : (TxInput) -> Bool = self.delegatedDataFilter(type);
+    //     // use toDelegatedData:
+        
+    //     hasDD : (TxInput) -> Option[Data] = self.mkDelegatedDataPredicate(type);
+    //     self.ctx.tx.inputs.filter( (txin : TxInput) -> Bool {
+    //         hasDD(txin).switch { 
+    //             Some{data} => filter(data),
+    //             None => false
+    //         }
+    //     })
+    // }
 
-        result
-    }
+    // func findDelegatedData[T](self, 
+    //     type: String, 
+    //     transform: (Data) -> Option[T],
+    //     optional: Bool = false
+    // ) -> []T {
+    //     //not hasDD : (TxInput) -> Bool = self.delegatedDataFilter(type);
+    //     // use toDelegatedData:
+    //     hasDD : (TxInput) -> Option[Data] = self.toDelegatedData(type);
+    //     none : Option[T]::None = Option[T]::None;
+    //     result : []T = self.ctx.tx.inputs.map_option[T]( (txin : TxInput) -> Option[T] {
+    //         hasDD(txin).switch { 
+    //             Some{data} => {
+    //                 transform(data)
+    //             },
+    //             None => none
+    //         }
+    //     });
+    //     if (!optional && (result.length == 0)) {
+    //         error(type + ": no match")
+    //     };
+
+    //     result
+    // }
+
+    // func findDelegatedDataUtxos(self, 
+    //     type: String, 
+    //     filter: (Data, TxInput) -> Bool,
+    //     id: ByteArray=#,
+    //     optional: Bool = false
+    // ) -> []TxInput {
+    //     //not hasDD : (TxInput) -> Bool = self.delegatedDataFilter(type);
+    //     // use toDelegatedData:
+    //     hasDD : (TxInput) -> Bool = self.mkDelegatedDataPredicate(type, id);
+    //     none : Option[TxInput]::None = Option[TxInput]::None;
+    //     result : []TxInput = self.ctx.tx.inputs.map_option[TxInput]( (txin : TxInput) -> Option[TxInput]{
+    //         if (hasDD(txin)
+    //             Some{data} => {
+    //                 if (filter(data, txin)) {
+    //                     Option[TxInput]::Some{txin}
+    //                 } else {
+    //                     none
+    //                 }
+    //             },
+    //             None => none
+    //         }
+    //     });
+    //     if (!optional && (result.length == 0)) {
+    //         error(type + ": no match")
+    //     };
+
+    //     result
+    // }
+
 
     func hasDelegatedDataOutput(self, v : Value) -> TxOutput {
         capoAddr : Address = self.address();
