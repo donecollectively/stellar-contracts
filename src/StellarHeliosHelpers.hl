@@ -25,7 +25,11 @@ func didSignInCtx(ctx: ScriptContext) -> (a: Address) -> Bool {
 }
 
 func TODO(task: String) -> () {
-    print("  🟥    😳💦💦💦💦💦  TODO: "+ task)
+    print("  🟥    😳💦💦💦  TODO: "+ task)
+}
+
+func REQT(reqt: String) -> () {
+    print("❗ "+ reqt)
 }
 
 //! represents the indicated token name as a Value
