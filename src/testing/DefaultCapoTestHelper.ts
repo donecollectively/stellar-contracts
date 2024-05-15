@@ -97,9 +97,9 @@ export class DefaultCapoTestHelper<
     async setupActors() {
         // console.log("DCTH: setupActors")
 
-        this.addActor("tina", 1100n * ADA);
+        this.addActor("tina", 11000n * ADA);
         this.addActor("tracy", 13n * ADA);
-        this.addActor("tom", 120n * ADA);
+        this.addActor("tom", 1200n * ADA);
         return this.setActor("tina");
     }
 

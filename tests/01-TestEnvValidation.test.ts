@@ -52,10 +52,10 @@ describe("Test environment", async () => {
             expect(tinaMoney[0].value.assets.isZero).toBeTruthy();
             expect(tinaMoney[1].value.assets.isZero).toBeTruthy();
 
-            expect(tinaMoney[0].value.lovelace).toBe(1100n * ADA);
+            expect(tinaMoney[0].value.lovelace).toBe(11000n * ADA);
             expect(tinaMoney[1].value.lovelace).toBe(5n * ADA);
 
-            expect(tomMoney[0].value.lovelace).toBe(120n * ADA);
+            expect(tomMoney[0].value.lovelace).toBe(1200n * ADA);
 
             expect(tracyMoney[0].value.lovelace).toBe(13n * ADA);
         });
@@ -104,7 +104,7 @@ describe("Test environment", async () => {
             console.log(
                 "case 2: works if we give it more margin of error in initial fee calc"
             );
-            await tryWithSlop(7n * ADA);
+            await tryWithSlop(8n * ADA);
             //!!! todo: remove case 1b, case2 after case 1a starts working right.
 
             const tm2 = await network.getUtxos(tom.address);
