@@ -1709,6 +1709,7 @@ export class StellarContract<
             // }
             try {
                 // const t1 = new Date().getTime();
+                console.log("---")
                 await tx.finalize(this.networkParams, changeAddress, spares);
                 // const t2 = new Date().getTime();
                 // const elapsed = t2 - t1;
@@ -1991,7 +1992,7 @@ export class StellarContract<
             } catch (e) {
                 const indent = " ".repeat(6);
                 moreInfo = project
-                    ? `\n${indent}Error found in project ${project}: ${srcFile}` +
+                    ? `\n${indent}Error found in project ${project}: ${srcFile}\n` +
                       `${indent}  ... this can be caused by not providing correct types in a module specialization,\n` +
                       `${indent}  ... or if your module definition doesn't include a correct path to your helios file\n`
                     : `\n${indent}WARNING: the error was found in a Helios file that couldn't be resolved in your project\n` +
