@@ -123,7 +123,7 @@ describe("Capo", async () => {
 
             const strella = await h.bootstrap();
             const tx = new Tx();
-            const utxos = await h.currentActor.utxos;
+            const utxos = await h.wallet.utxos;
             let totalHeld: Value = new Value(0n * ADA);
             for (const u of utxos) {
                 tcx.addInput(u);
@@ -135,12 +135,12 @@ describe("Capo", async () => {
                 tcx.addOutput(new TxOutput(actors.tracy.address, tinyValue));
             }
             //! when the current actor has only outputs with high txo-index:
-            tcx.addOutput(new TxOutput(h.currentActor.address, tinyValue));
+            tcx.addOutput(new TxOutput(h.wallet.address, tinyValue));
             tcx.addOutput(
-                new TxOutput(h.currentActor.address, collateralValue)
+                new TxOutput(h.wallet.address, collateralValue)
             );
             tcx.addOutput(
-                new TxOutput(h.currentActor.address, collateralValue)
+                new TxOutput(h.wallet.address, collateralValue)
             );
             await strella.submit(tcx);
             network.tick(1n);
@@ -276,7 +276,7 @@ describe("Capo", async () => {
 
             type fooAndBar = "foo" | "bar";
             const tcx1 = new StellarTxnContext<hasAllUuts<fooAndBar>>(
-                h.currentActor
+                h.actorContext
             );
 
             const mintDelegate = await capo.getMintDelegate();
@@ -382,7 +382,7 @@ describe("Capo", async () => {
                 "------ case 2: directly creating the transaction with >1 tokens"
             );
             const tcx2 = new StellarTxnContext<hasAllUuts<uniqUutMap>>(
-                h.currentActor
+                h.actorContext
             );
             // await t.txnAddCharterAuthorityTokenRef(tcx2);
 
@@ -548,7 +548,7 @@ describe("Capo", async () => {
             console.log("---- test will fail to burn a UUT with no delegate");
 
             const burnTcx = new StellarTxnContext<hasAllUuts<testSomeThing>>(
-                h.currentActor
+                h.actorContext
             );
             await burnTcx.addInput(uutUtxo!);
 
@@ -586,7 +586,7 @@ describe("Capo", async () => {
             console.log("---- test will burn a UUT  with delegate approval");
 
             const burnTcx = new StellarTxnContext<hasAllUuts<testSomeThing>>(
-                h.currentActor
+                h.actorContext
             );
             burnTcx.addInput(uutUtxo!);
 
@@ -621,7 +621,7 @@ describe("Capo", async () => {
             );
             expect(uutUtxo).toBeTruthy();
             const burnTcx = new StellarTxnContext<hasAllUuts<testSomeThing>>(
-                h.currentActor
+                h.actorContext
             );
             burnTcx.addInput(uutUtxo!);
             burnTcx.addInput(uutUtxo2!);

@@ -42,7 +42,7 @@ export class CustomTreasury extends Capo {
     // async mkTxnMintNamedToken(
     //     tokenName: string,
     //     count: bigint,
-    //     tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
+    //     tcx: StellarTxnContext = new StellarTxnContext(this.actorContext.wallet)
     // ): Promise<StellarTxnContext> {
     //     console.log("minting named token ");
     //     return this.txnMustUseCharterUtxo(

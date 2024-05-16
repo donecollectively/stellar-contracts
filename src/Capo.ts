@@ -320,6 +320,10 @@ export type hasCharterRef = StellarTxnContext & { state: {
     charterDatum: CharterDatumProps
 } };
 
+export type hasSpendDelegate = StellarTxnContext & { state: {
+    spendDelegate: ContractBasedDelegate<any>
+} };
+
 import { UncustomCapoSettings } from "./UncustomCapoSettings.js";
 import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 import { TypeMapMetadata } from "./TypeMapMetadata.js";
@@ -886,6 +890,20 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
 
         const tcx3 = await this.txnAddGovAuthority(tcx2);
         return tcx3;
+    }
+
+    async txnMustUseSpendDelegate<
+        TCX extends hasCharterRef
+    >(
+        tcx: TCX, 
+        spendDelegate: ContractBasedDelegate<any>,
+        activity: isActivity
+    ) : Promise<TCX & hasSpendDelegate>{
+        const charterDatum = tcx.state.charterDatum;       
+        
+        const tcx2 = tcx as TCX & hasSpendDelegate;
+        tcx2.state.spendDelegate = spendDelegate;
+        return spendDelegate.txnGrantAuthority(tcx2, activity);
     }
 
     /**
@@ -1914,7 +1932,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             type hasBsc = hasBootstrappedConfig<CapoBaseConfig>;
             //@ts-expect-error yet another case of seemingly spurious "could be instantiated with a different subtype" (actual fixes welcome :pray:)
             const initialTcx: TCX2 & hasBsc =
-                existingTcx || (new StellarTxnContext(this.myActor) as hasBsc);
+                existingTcx || (new StellarTxnContext(this.actorContext) as hasBsc);
     
             const promise = this.txnMustGetSeedUtxo(
                 initialTcx,
@@ -2164,7 +2182,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                 script
             );
             refScriptUtxo.correctLovelace(this.networkParams);
-            const nextTcx = new StellarTxnContext(this.myActor).addOutput(
+            const nextTcx = new StellarTxnContext(this.actorContext).addOutput(
                 refScriptUtxo
             );
     
@@ -2291,7 +2309,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         async mkTxnUpdateCharter(
             args: CharterDatumProps,
             activity: isActivity = this.activityUpdatingCharter(),
-            tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
+            tcx: StellarTxnContext = new StellarTxnContext(this.actorContext)
         ): Promise<StellarTxnContext> {
             console.log("update charter", { activity });
             return this.txnUpdateCharterUtxo(
@@ -2305,7 +2323,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         async mkTxnUpdateOnchainSettings<TCX extends StellarTxnContext>(
             data: CapoOffchainSettingsType<this>,
             settingsUtxo?: TxInput,
-            tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
+            tcx: StellarTxnContext = new StellarTxnContext(this.actorContext)
         ): Promise<TCX> {
             // uses the charter ref input
             settingsUtxo = settingsUtxo || (await this.findSettingsUtxo());
@@ -2393,7 +2411,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                 strategyName: SN;
                 forcedUpdate?: true;
             },
-            tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
+            tcx: StellarTxnContext = new StellarTxnContext(this.actorContext)
         ): Promise<StellarTxnContext> {
             const currentCharter = await this.mustFindCharterUtxo();
             const currentDatum = await this.findCharterDatum(currentCharter);
@@ -2483,7 +2501,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         >(
             this: THIS,
             delegateInfo: DGI,
-            tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
+            tcx: StellarTxnContext = new StellarTxnContext(this.actorContext)
         ): Promise<StellarTxnContext> {
             const currentCharter = await this.mustFindCharterUtxo();
             const currentDatum = await this.findCharterDatum(currentCharter);
@@ -2569,7 +2587,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         >(
             this: THIS,
             delegateInfo: DGI,
-            tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
+            tcx: StellarTxnContext = new StellarTxnContext(this.actorContext)
         ): Promise<StellarTxnContext> {
             const currentDatum = await this.findCharterDatum();
     
@@ -2637,7 +2655,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         >(
             this: THIS,
             delegateInfo: DGI,
-            tcx: StellarTxnContext = new StellarTxnContext(this.myActor)
+            tcx: StellarTxnContext = new StellarTxnContext(this.actorContext)
         ) {
             const currentDatum = await this.findCharterDatum();
             throw new Error(`test me!`)
@@ -2710,7 +2728,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             this: thisType,
             delegateName: delegateName,
             options: NamedDelegateCreationOptions<thisType, DT>,
-            tcx: TCX = new StellarTxnContext(this.myActor) as TCX
+            tcx: TCX = new StellarTxnContext(this.actorContext) as TCX
         ) : Promise<hasAddlTxns<TCX & hasSeedUtxo & hasNamedDelegate<DT, delegateName>>>  {
             const currentDatum = await this.findCharterDatum();
             console.log(

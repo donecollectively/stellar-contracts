@@ -12,7 +12,8 @@ import {
     TxOutputId,
     Value,
     //@ts-expect-error on internal functions
-    bigIntToBytes, eq, rawNetworkEmulatorParams, type EmulatorTx
+    bigIntToBytes, eq, rawNetworkEmulatorParams, type EmulatorTx,
+    type NumberGenerator
 } from "@hyperionbt/helios";
 
 const isInternal = Symbol("isInternal");
@@ -195,7 +196,7 @@ class RegularTx {
 }
 
 export type NetworkSnapshot = {
-    seed: bigint,
+    seed: number,
     slot: bigint,
     genesis: GenesisTx[],
     blocks: EmulatorTx[][]
@@ -208,35 +209,12 @@ export type NetworkSnapshot = {
  * @implements {Network}
  */
 export class StellarNetworkEmulator {
-    /**
-     * @type {bigint}
-     */
-    #slot;
-
-        /**
-     * @type {bigint}
-     */
-        #seed;
-
-    /**
-     * @type {NumberGenerator}
-     */
-    #random;
-
-    /**
-     * @type {GenesisTx[]}
-     */
-    #genesis;
-
-    /**
-     * @type {EmulatorTx[]}
-     */
-    #mempool;
-
-    /**
-     * @type {EmulatorTx[][]}
-     */
-    #blocks;
+    #slot : bigint
+    #seed: number
+    #random: NumberGenerator
+    #genesis : GenesisTx[]
+    #mempool: EmulatorTx[]
+    #blocks: EmulatorTx[][]
 
     /**
      * Instantiates a NetworkEmulator at slot 0.
@@ -245,17 +223,13 @@ export class StellarNetworkEmulator {
      */
     constructor(
         seed = 0,
-        protectedInit?: typeof isInternal,
-        slot = 0n,
-        blocks : EmulatorTx[][]= []
     ) {
-        const isProtected = protectedInit == isInternal;
         this.#seed = seed
-        this.#slot = isProtected ? slot : 0n;
+        this.#slot = 0n;
         this.#random = this.mulberry32.bind(this);
         this.#genesis = [];
         this.#mempool = [];
-        this.#blocks = isProtected ? blocks : [];
+        this.#blocks = [];
     }
 
     // retains continuity for the seed and the RNG through one or more snapshots.
@@ -411,10 +385,7 @@ export class StellarNetworkEmulator {
     async getUtxos(address) {
         this.warnMempool();
 
-        /**
-         * @type {TxInput[]}
-         */
-        let utxos = [];
+        let utxos : TxInput[] = [];
 
         for (let block of this.#blocks) {
             for (let tx of block) {

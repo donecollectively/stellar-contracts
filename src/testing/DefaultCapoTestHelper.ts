@@ -107,7 +107,7 @@ export class DefaultCapoTestHelper<
         await this.mintCharterToken();
 
         const treasury = await this.strella!;
-        const tcx: StellarTxnContext = new StellarTxnContext(this.currentActor);
+        const tcx: StellarTxnContext = new StellarTxnContext(this.actorContext);
         const tcx2 = await treasury.txnAttachScriptOrRefScript(
             await treasury.txnAddGovAuthority(tcx),
             treasury.compiledScript
@@ -122,7 +122,7 @@ export class DefaultCapoTestHelper<
     }
 
     mkDefaultCharterArgs(): MinimalCharterDatumArgs {
-        const addr = this.currentActor.address;
+        const addr = this.wallet.address;
         console.log("test helper charter -> actor addr", addr.toBech32());
         return {
             govAuthorityLink: {

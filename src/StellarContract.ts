@@ -310,7 +310,7 @@ export type SetupDetails = {
     network: Network;
     networkParams: NetworkParams;
     isMainnet?: boolean;
-    myActor?: Wallet;
+    actorContext: ActorContext;
     isTest?: boolean;
     isDev?: boolean;
     optimize?: boolean;
@@ -377,6 +377,10 @@ export type hasSeed = SeedAttrs | hasSeedUtxo;
 
 const isInternalConstructor = Symbol("internalConstructor");
 
+export type ActorContext<WTP extends Wallet = Wallet> = {
+    wallet?: WTP;
+};
+
 //!!! todo: type configuredStellarClass = class -> networkStuff -> withParams = stellar instance.
 
 /**
@@ -410,7 +414,7 @@ export class StellarContract<
     setup: SetupDetails;
     network: Network;
     networkParams: NetworkParams;
-    myActor?: Wallet;
+    actorContext: ActorContext<any>;
     // isTest?: boolean
     static get defaultParams() {
         return {};
@@ -422,21 +426,22 @@ export class StellarContract<
     }
 
     get isConnected() {
-        return !!this.myActor;
+        return !!this.wallet;
     }
     /**
      * returns the wallet connection used by the current actor
      * @remarks
      *
-     * Throws an error if the strella contract facade has not been initialized with a wallet in settings.myActor
+     * Throws an error if the strella contract facade has not been initialized with a wallet in settings.actorContext
      * @public
      **/
     get wallet() {
-        if (!this.myActor)
-            throw new Error(
-                `wallet is not connected to strella '${this.constructor.name}'`
-            );
-        return this.myActor;
+        if (!this.actorContext.wallet) throw new Error(this.missingActorError);
+        return this.actorContext.wallet;
+    }
+
+    private get missingActorError(): string {
+        return `Wallet not connected to Stellar Contract '${this.constructor.name}'`;
     }
 
     //! can transform input configuration to contract script params
@@ -496,8 +501,8 @@ export class StellarContract<
                 `StellarContract: use createWith() factory function`
             );
         }
-        const { network, networkParams, isTest, myActor, isMainnet } = setup;
-
+        const { network, networkParams, isTest, isMainnet, actorContext } = setup;
+        this.actorContext = actorContext;
         helios.config.set({ IS_TESTNET: !isMainnet });
         this.network = network;
         this.networkParams = networkParams;
@@ -505,7 +510,7 @@ export class StellarContract<
     }
 
     async init(args: StellarFactoryArgs<ConfigType>) {
-        const { isMainnet, myActor } = this.setup;
+        const { isMainnet, actorContext } = this.setup;
         const chosenNetwork = isMainnet ? "mainnet" : "testnet";
         if ("undefined" !== typeof configuredNetwork) {
             if (configuredNetwork != chosenNetwork) {
@@ -516,15 +521,15 @@ export class StellarContract<
             }
         }
         configuredNetwork = chosenNetwork;
-        if (myActor) {
-            const isMain = await myActor.isMainnet();
+        if (actorContext.wallet) {
+            const isMain = await actorContext.wallet.isMainnet();
             const foundNetwork = isMain ? "mainnet" : "testnet";
             if (foundNetwork !== chosenNetwork) {
                 throw new Error(
                     `wallet on ${foundNetwork} doesn't match network from setup`
                 );
             }
-            this.myActor = myActor;
+            this.actorContext = actorContext;
         }
 
         const { config, partialConfig } = args;
@@ -873,17 +878,13 @@ export class StellarContract<
 
     async readDatum<
         DPROPS extends anyDatumProps,
-        adapterType extends
-            | DatumAdapter<any, DPROPS>
-            | undefined = undefined
+        adapterType extends DatumAdapter<any, DPROPS> | undefined = undefined
     >(
         datumNameOrAdapter: string | adapterType,
         datum: Datum | InlineDatum,
         ignoreOtherTypes?: "ignoreOtherTypes"
     ): Promise<
-        | (adapterType extends DatumAdapter<any, any>
-              ? adapterType
-              : DPROPS)
+        | (adapterType extends DatumAdapter<any, any> ? adapterType : DPROPS)
         | undefined
     > {
         const hasAdapter = datumNameOrAdapter instanceof DatumAdapter;
@@ -910,7 +911,10 @@ export class StellarContract<
         if (!rawParsedData) return undefined;
         if (hasAdapter) {
             return datumNameOrAdapter.fromOnchainDatum(
-                rawParsedData as unknown as adapterParsedOnchainData<DPROPS, "adapterHasConcreteTypeInfo">
+                rawParsedData as unknown as adapterParsedOnchainData<
+                    DPROPS,
+                    "adapterHasConcreteTypeInfo"
+                >
             );
         }
         return rawParsedData as any;
@@ -1230,14 +1234,14 @@ export class StellarContract<
                 //     uplcDataField,
                 // });
                 // enum variant without any nested data.  That's ok!!!
-                return uplcDataField // return `variant #${index}`;
+                return uplcDataField; // return `variant #${index}`;
             }
             return this.readOtherUplcType(
                 `${fn}.${fieldName}`,
                 //@ts-expect-error - it can be a ConstrData and also have fields, but the Helios type doesn't seem to know that
                 uplcDataField.fields[0],
                 undefined
-            )
+            );
         }
         if (uplcDataField instanceof helios.MapData) {
             const entries: Record<string, any> = {};
@@ -1613,8 +1617,6 @@ export class StellarContract<
     async findAnySpareUtxos(
         tcx: StellarTxnContext
     ): Promise<TxInput[] | never> {
-        if (!this.myActor) throw this.missingActorError;
-
         const mightNeedFees = this.ADA(3.5);
 
         const toSortInfo = this._mkUtxoSortInfo(mightNeedFees);
@@ -1622,7 +1624,7 @@ export class StellarContract<
             ? tcx.utxoNotReserved.bind(tcx)
             : (u: TxInput) => u;
 
-        return this.myActor.utxos.then((utxos) => {
+        return this.wallet.utxos.then((utxos) => {
             const allSpares = utxos
                 .filter(notReserved)
                 .map(toSortInfo)
@@ -1639,14 +1641,16 @@ export class StellarContract<
     }
 
     async findChangeAddr(): Promise<Address> {
-        const { myActor } = this;
-        if (!myActor) {
+        const {
+            actorContext: { wallet },
+        } = this;
+        if (!wallet) {
             throw new Error(
-                `⚠️ ${this.constructor.name}: no this.myActor; can't get required change address!`
+                `⚠️ ${this.constructor.name}: no this.actorContext.wallet; can't get required change address!`
             );
         }
-        let unused = (await myActor.unusedAddresses).at(0);
-        if (!unused) unused = (await myActor.usedAddresses).at(-1);
+        let unused = (await wallet.unusedAddresses).at(0);
+        if (!unused) unused = (await wallet.usedAddresses).at(-1);
         if (!unused)
             throw new Error(
                 `⚠️ ${this.constructor.name}: can't find a good change address!`
@@ -1667,7 +1671,9 @@ export class StellarContract<
         } = {}
     ) {
         let { tx, feeLimit = 2_000_000n } = tcx;
-        const { myActor: wallet } = this;
+        const {
+            actorContext: { wallet },
+        } = this;
 
         let walletMustSign = false;
         let sigs: helios.Signature[] | null = [];
@@ -1693,8 +1699,8 @@ export class StellarContract<
             //         tcx.addCollateral(c); // adds it also to the tx.
             //     }
             // } }
-            // if (sign && this.myActor) {
-            //     willSign.push(this.myActor);
+            // if (sign && this.wallet) {
+            //     willSign.push(this.wallet);
             // }
             for (const { pubKeyHash: pkh } of willSign) {
                 if (!pkh) continue;
@@ -1709,7 +1715,7 @@ export class StellarContract<
             // }
             try {
                 // const t1 = new Date().getTime();
-                console.log("---")
+                console.log("---");
                 await tx.finalize(this.networkParams, changeAddress, spares);
                 // const t2 = new Date().getTime();
                 // const elapsed = t2 - t1;
@@ -1759,7 +1765,7 @@ export class StellarContract<
                 }
             }
         } else {
-            console.warn("no 'myActor'; not finalizing");
+            console.warn("no 'actorContext.wallet'; not finalizing");
         }
         if (walletMustSign && !sigs) {
             throw new Error(`wallet signing failed`);
@@ -2026,17 +2032,11 @@ export class StellarContract<
         }
     }
 
-    private get missingActorError(): string | undefined {
-        return `Wallet not connected to Stellar Contract '${this.constructor.name}'`;
-    }
-
     async findActorUtxo(
         name: string,
         predicate: (u: TxInput) => TxInput | undefined
     ) {
-        const wallet = this.myActor;
-
-        if (!wallet) throw new Error(this.missingActorError);
+        const { wallet } = this;
 
         return this.hasUtxo(name, predicate, { wallet });
     }
@@ -2059,9 +2059,8 @@ export class StellarContract<
         hintOrExcept?: string | StellarTxnContext,
         hint?: string
     ): Promise<TxInput> {
-        const wallet = this.myActor;
+        const { wallet } = this;
 
-        if (!wallet) throw new Error(this.missingActorError);
         const isTcx = hintOrExcept instanceof StellarTxnContext;
         const exceptInTcx = isTcx ? hintOrExcept : undefined;
         const extraErrorHint = isTcx

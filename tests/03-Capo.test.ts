@@ -146,7 +146,7 @@ describe("Capo", async () => {
                     tcx.outputs.find((o: TxOutput) => {
                         return (
                             o.value.ge(treasury.tokenAsValue(capoGov)) &&
-                            o.address.eq(h.currentActor.address)
+                            o.address.eq(h.wallet.address)
                         );
                     })
                 ).toBeTruthy();
@@ -390,7 +390,7 @@ describe("Capo", async () => {
             const {h, h:{network, actors, delay, state} } = context;
 
             const strella = await h.bootstrap();
-            const tcx = new StellarTxnContext<any>();
+            const tcx = new StellarTxnContext<any>(h.actorContext);
             const tcx2 = await strella.txnAttachScriptOrRefScript(tcx);
             expect(
                 tcx2.txRefInputs[0].origOutput.refScript?.validatorHash.eq(

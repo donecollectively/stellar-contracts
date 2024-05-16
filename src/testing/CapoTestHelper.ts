@@ -102,7 +102,7 @@ export abstract class CapoTestHelper<
      * @public
      **/
     mkTcx() {
-        return new StellarTxnContext(this.currentActor);
+        return new StellarTxnContext(this.actorContext);
     }
     
     async bootstrap(args?: Partial<MinimalCharterDatumArgs>) {

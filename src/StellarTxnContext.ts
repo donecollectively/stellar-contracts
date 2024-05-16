@@ -16,6 +16,7 @@ import type { hasUutContext } from "./Capo.js";
 import { 
     UutName, type SeedAttrs 
 } from "./delegation/UutName.js";
+import type { ActorContext } from "./StellarContract.js";
 
 /**
  * A txn context having a seedUtxo in its state
@@ -139,16 +140,19 @@ export class StellarTxnContext<S extends anyState = anyState> {
     outputs: TxOutput[] = [];
     feeLimit?: bigint;
     state: S;
-    actor?: Wallet;
+    actorContext: ActorContext<any>;
     neededSigners: Address[] = [];
-    constructor(actor?: Wallet, state: Partial<S> = {}) {
-        this.actor = actor;
+    constructor(actorContext:  ActorContext<any>, state: Partial<S> = {}) {
+        this.actorContext = actorContext;
         const { uuts = { ...emptyUuts }, ...moreState } = state;
         //@ts-expect-error
         this.state = {
             uuts,
             ...moreState,
         };
+    }
+    get actorWallet() {
+        return this.actorContext.wallet
     }
 
     dump(networkParams?: NetworkParams) {

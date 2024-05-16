@@ -17,6 +17,7 @@ import type {
     stellarSubclass,
     ConfigFor,
     StellarFactoryArgs,
+    ActorContext,
 } from "../StellarContract.js";
 
 import {
@@ -63,17 +64,16 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
      *
      * @public
      **/
-    get currentActor(): WalletEmulator {
-        return this.actors[this._actorName];
+    get wallet(): WalletEmulator {
+        const {wallet} = this.actorContext;
+        if (!wallet) {
+            throw new Error(`no current actor; use setActor(actorName) firsgt`);
+        }
+        return wallet
     }
-    /**
-     * @deprecated
-     * NOTE: setting currentActor = <string> is obsolete; use setActor() instead
-     *
-     * @internal
-     **/
-    set currentActor(actorName: string) {
-        throw new Error(`deprecated; use async setActor()`);
+
+    actorContext: ActorContext<WalletEmulator> = {
+        wallet: undefined
     }
 
     async setActor(actorName: string) {
@@ -96,12 +96,13 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             );
         }
         this._actorName = actorName;
+        this.actorContext.wallet = thisActor;
 
-        if (this.strella) {
-            this.strella = await this.initStellarClass(
-                this.state.parsedConfig || this.config
-            );
-        }
+        // if (this.strella) {
+        //     this.strella = await this.initStellarClass(
+        //         this.state.parsedConfig || this.config
+        //     );
+        // }
     }
 
     address?: Address;
@@ -118,7 +119,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     snapshot() {
         return this.network.snapshot();
     }
-    
+
     loadSnapshot(snap: NetworkSnapshot) {
         this.network.loadSnapshot(snap);
     }
@@ -216,7 +217,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     ) {
         const setup = {
             network: this.network,
-            myActor: this.currentActor,
+            actorContext: this.actorContext,
             networkParams: this.networkParams,
             isTest: true,
             optimize: this.optimize,
@@ -232,10 +233,10 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
                 setup,
                 partialConfig: {},
             };
-        if (setup.myActor) {
+        if (setup.actorContext.wallet) {
             console.log(
                 "+strella init with actor addr",
-                setup.myActor.address.toBech32()
+                setup.actorContext.wallet.address.toBech32()
             );
         } else {
             console.log("+strella init without actor");
@@ -253,11 +254,11 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     }
 
     async mkSeedUtxo(seedIndex: bigint = 0n) {
-        const { currentActor } = this;
+        const {wallet} = this;
         const { network } = this;
 
         const tx = new Tx();
-        const actorMoney = await currentActor.utxos;
+        const actorMoney = await wallet.utxos;
         console.log(
             `${this._actorName} has money: \n` + utxosAsString(actorMoney)
         );
@@ -265,17 +266,17 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         tx.addInput(
             await findInputsInWallets(
                 new helios.Value(30n * ADA),
-                { wallets: [currentActor] },
+                { wallets: [wallet] },
                 network
             )
         );
 
-        tx.addOutput(new TxOutput(currentActor.address, new Value(10n * ADA)));
-        tx.addOutput(new TxOutput(currentActor.address, new Value(10n * ADA)));
+        tx.addOutput(new TxOutput(wallet.address, new Value(10n * ADA)));
+        tx.addOutput(new TxOutput(wallet.address, new Value(10n * ADA)));
         let si = 2;
         for (; si < seedIndex; si++) {
             tx.addOutput(
-                new TxOutput(currentActor.address, new Value(10n * ADA))
+                new TxOutput(wallet.address, new Value(10n * ADA))
             );
         }
         const txId = await this.submitTx(tx, "force");
@@ -284,7 +285,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     }
 
     async submitTx(tx: Tx, force?: "force"): Promise<TxId> {
-        const sendChangeToCurrentActor = this.currentActor.address;
+        const sendChangeToCurrentActor = this.wallet?.address;
         const isAlreadyInitialized = !!this.strella;
         try {
             await tx.finalize(this.networkParams, sendChangeToCurrentActor);

@@ -161,9 +161,9 @@ describe("StellarContract", async () => {
         });
 
         describe("transaction context: state", () => {
-            it("allows keys to be added to the tcx state", async () => {
+            it("allows keys to be added to the tcx state", async (context: localTC) => {
                 type FOO = { foo: "bar"; uuts: {} };
-                const tcx = new StellarTxnContext<FOO>();
+                const tcx = new StellarTxnContext<FOO>(context.h.actorContext);
                 //! basic type-checks only
                 tcx.state.foo = "bar";
                 //@ts-expect-error
@@ -267,7 +267,7 @@ describe("StellarContract", async () => {
 
                         const t = await h.initialize();
 
-                        const tcx = new StellarTxnContext(h.currentActor);
+                        const tcx = new StellarTxnContext(h.actorContext);
                         const found = await t.mustFindActorUtxo(
                             "biggest",
                             (u) => {
@@ -292,7 +292,7 @@ describe("StellarContract", async () => {
 
                         const t = await h.initialize();
 
-                        const tcx = new StellarTxnContext(h.currentActor);
+                        const tcx = new StellarTxnContext(h.actorContext);
                         let findingInWallet;
                         const hasUtxo = vi
                             .spyOn(t, "hasUtxo")
@@ -314,7 +314,7 @@ describe("StellarContract", async () => {
                         } = context;
 
                         const t = await h.initialize();
-                        const tcx = new StellarTxnContext(h.currentActor);
+                        const tcx = new StellarTxnContext(h.actorContext);
                         await expect(
                             t.mustFindActorUtxo(
                                 "testSomeThing",
@@ -332,7 +332,7 @@ describe("StellarContract", async () => {
                             } = context;
                             // await delay(1000)
 
-                            const tina = h.currentActor;
+                            const tina = h.wallet;
                             const tinaMoney = await tina.utxos;
                             const firstUtxo = tinaMoney[0];
 
@@ -353,7 +353,7 @@ describe("StellarContract", async () => {
                             h.network.tick(1n);
 
                             const t: CapoWithoutSettings = await h.initialize();
-                            const tcx = new StellarTxnContext(h.currentActor);
+                            const tcx = new StellarTxnContext(h.actorContext);
                             const isEnoughT = t.mkTokenPredicate(
                                 new Value({
                                     lovelace: 42000,
@@ -421,9 +421,9 @@ describe("StellarContract", async () => {
                         } = context;
                         // await delay(1000)
                         const t: CapoWithoutSettings = await h.initialize();
-                        const tcx = new StellarTxnContext(h.currentActor);
+                        const tcx = new StellarTxnContext(h.actorContext);
 
-                        const tina = h.currentActor;
+                        const tina = h.wallet;
                         const tinaMoney = await tina.utxos;
                         const firstUtxo = tinaMoney[0];
 
@@ -505,7 +505,7 @@ describe("StellarContract", async () => {
 
                     const t = await h.initialize();
 
-                    const tcx = new StellarTxnContext(h.currentActor);
+                    const tcx = new StellarTxnContext(h.actorContext);
                     let foundAddress;
                     const hasUtxo = vi
                         .spyOn(t, "hasUtxo")
@@ -532,7 +532,7 @@ describe("StellarContract", async () => {
 
                     const t = await h.initialize();
 
-                    const tcx = new StellarTxnContext(h.currentActor);
+                    const tcx = new StellarTxnContext(h.actorContext);
                     let foundAddress;
                     const hasUtxo = vi
                         .spyOn(t, "hasUtxo")

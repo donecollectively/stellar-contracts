@@ -40,7 +40,7 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
     @txn
     async mkTxnCreatingTestNamedDelegate<const P extends string>(purpose: P) {
         const mintDelegate = await this.getMintDelegate();
-        const tcx1 = await this.addSeedUtxo(new StellarTxnContext())
+        const tcx1 = await this.addSeedUtxo(new StellarTxnContext(this.actorContext));
         return this.mkTxnAddingNamedDelegate(
             purpose,
             {
