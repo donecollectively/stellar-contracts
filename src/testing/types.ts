@@ -1,6 +1,7 @@
 import {
     NetworkParams,
     SimpleWallet as WalletEmulator,
+    type Network,
 } from "@hyperionbt/helios";
 
 import type {
@@ -14,6 +15,7 @@ import type { StellarTestHelper } from "./StellarTestHelper.js";
 import ppParams from "../../preprod.json" assert { type: "json" };
 import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
 import type { Capo, CapoBaseConfig } from "../Capo.js";
+import type { NetworkSnapshot } from "./StellarNetworkEmulator.js";
 
 //   ppParams.latestParams.maxTxExecutionUnits.memory = 28_000_000
 
@@ -42,6 +44,13 @@ export type canSkipSetup = {
     skipSetup?: true;
 };
 
+export type TestHelperState<SC extends StellarContract<any>> = {
+    bootstrapped: Boolean;
+    bootstrappedStrella?: SC;
+    snapshots: Record<string, NetworkSnapshot>;
+    previousHelper: StellarTestHelper<any>;
+}
+
 /**
  * Adds a test helper class to a `vitest` testing context.
  * @remarks
@@ -57,7 +66,8 @@ export async function addTestContext<
 >(
     context: StellarTestContext<any, SC>,
     TestHelperClass: stellarTestHelperSubclass<SC>,
-    params?: P
+    params?: P,
+    helperState?: TestHelperState<SC>
 ) {
     console.log(" ======== ======== ======== +test context");
     Object.defineProperty(context, "strella", {
@@ -66,11 +76,12 @@ export async function addTestContext<
         },
     });
 
-    context.initHelper = async (params) => {
+    context.initHelper = async (params, helperState) => {
         //@ts-expect-error
-        const helper = new TestHelperClass(params);
-        await helper.setupPending;
+        const helper = new TestHelperClass(params, helperState);
+        // await helper.setupPending;
         if (context.h) {
+            //xx@ts-expect-error temporarily
             if (!params.skipSetup)
                 throw new Error(
                     `re-initializing shouldn't be necessary without skipSetup`
@@ -85,7 +96,7 @@ export async function addTestContext<
     };
     try {
         //@ts-expect-error
-        await context.initHelper(params);
+        await context.initHelper(params, helperState);
     } catch (e) {
         if (!params) {
             // console.error(e.stack || e.message || JSON.stringify(e));

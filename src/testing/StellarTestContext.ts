@@ -1,6 +1,6 @@
 import type { TestContext } from "vitest";
 import type { ConfigFor, StellarContract, configBase } from "../StellarContract.js";
-import type { canHaveRandomSeed, canSkipSetup } from "./types.js";
+import type { TestHelperState, canHaveRandomSeed, canSkipSetup } from "./types.js";
 import type { StellarTestHelper } from "./StellarTestHelper.js";
 
 /**
@@ -17,6 +17,7 @@ export interface StellarTestContext<
     h: HTH;
     get strella(): SC;
     initHelper(
-        config: Partial<ConfigFor<SC>> & canHaveRandomSeed & canSkipSetup
+        config: Partial<ConfigFor<SC>> & canHaveRandomSeed & canSkipSetup,
+        helperState?: TestHelperState<SC>
     ): Promise<StellarTestHelper<SC>>;
 }

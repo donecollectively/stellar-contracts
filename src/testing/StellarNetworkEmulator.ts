@@ -11,10 +11,11 @@ import {
     TxOutput,
     TxOutputId,
     Value,
-    //@ts-expect-error on internal functions
+    type NumberGenerator,
+    //@ts-expect-error on internals
     bigIntToBytes, eq, rawNetworkEmulatorParams, type EmulatorTx,
-    type NumberGenerator
 } from "@hyperionbt/helios";
+import { dumpAny } from "../diagnostics.js";
 
 const isInternal = Symbol("isInternal");
 
@@ -202,6 +203,7 @@ export type NetworkSnapshot = {
     blocks: EmulatorTx[][]
 }
 
+let i = 0
 /**
  * A simple emulated Network.
  * This can be used to do integration tests of whole dApps.
@@ -215,7 +217,7 @@ export class StellarNetworkEmulator {
     #genesis : GenesisTx[]
     #mempool: EmulatorTx[]
     #blocks: EmulatorTx[][]
-
+    i : number
     /**
      * Instantiates a NetworkEmulator at slot 0.
      * An optional seed number can be specified, from which all emulated randomness is derived.
@@ -224,6 +226,7 @@ export class StellarNetworkEmulator {
     constructor(
         seed = 0,
     ) {
+        this.i = i++
         this.#seed = seed
         this.#slot = 0n;
         this.#random = this.mulberry32.bind(this);
@@ -257,6 +260,8 @@ export class StellarNetworkEmulator {
         this.#slot = snapshot.slot;
         this.#genesis = snapshot.genesis;
         this.#blocks = snapshot.blocks;
+
+        console.log("🌺🌺🌺🌺🌺🌺🌺🌺🌺 ████████  #"+this.i, "  - restored snapshot at slot ", this.#slot.toString(), "height ", this.#blocks.length)
     }
 
     /**
@@ -323,22 +328,6 @@ export class StellarNetworkEmulator {
             this.#genesis.push(tx);
             this.#mempool.push(tx);
         }
-    }
-
-    /**
-     * Mint a block with the current mempool, and advance the slot by a number of slots.
-     * @param {bigint} nSlots
-     */
-    tick(nSlots) {
-        assert(nSlots > 0, `nSlots must be > 0, got ${nSlots.toString()}`);
-
-        if (this.#mempool.length > 0) {
-            this.#blocks.push(this.#mempool);
-
-            this.#mempool = [];
-        }
-
-        this.#slot += nSlots;
     }
 
     /**
@@ -436,13 +425,40 @@ export class StellarNetworkEmulator {
         );
 
         // make sure that none of the inputs have been consumed before
-        assert(
-            tx.body.inputs.every((input) => !this.isConsumed(input)),
-            "input already consumed before"
-        );
+        for (const input of tx.body.inputs) {
+            if (this.isConsumed(input)) {
+                throw new Error(`## ${this.i}: input previously consumed:`+ dumpAny(input))
+            }
+        }
 
         this.#mempool.push(new RegularTx(tx));
+        console.log("##"+this.i+": +mempool txn = ", this.#mempool.length)
 
         return tx.id();
     }
+
+    /**
+     * Mint a block with the current mempool, and advance the slot by a number of slots.
+     * @param - nSlots
+     */
+    tick(nSlots: bigint | number) {
+        const n = BigInt(nSlots);
+        assert(n> 0, `nSlots must be > 0, got ${n.toString()}`);
+
+        const count = this.#mempool.length;
+        const height = this.#blocks.length;
+        if (this.#mempool.length > 0) {
+            this.#blocks.push(this.#mempool);
+
+            this.#mempool = [];
+        }
+
+        this.#slot += n;
+        console.log("█  #"+this.i)
+        console.log("██")
+        console.log("███")
+        console.log(`████  @h=${height} + ${count}  txns`)
+        console.log(`█████ -> slot ${this.#slot.toString()}`)
+    }
+
 }

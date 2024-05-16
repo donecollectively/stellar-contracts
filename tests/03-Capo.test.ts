@@ -48,7 +48,7 @@ describe("Capo", async () => {
 
     describe("has a singleton minting policy", () => {
         it("has an initial UTxO chosen arbitrarily, and that UTxO is consumed during initial Charter", async (context: localTC) => {
-            context.initHelper({ skipSetup: true });
+            // context.initHelper({ skipSetup: true });
             const {
                 h,
                 h: { network, actors, delay, state },

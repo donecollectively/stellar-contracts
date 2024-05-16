@@ -28,6 +28,7 @@ import {
 } from "../diagnostics.js";
 import { ADA, preProdParams } from "./types.js";
 import type {
+    TestHelperState,
     actorMap,
     canHaveRandomSeed,
     canSkipSetup,
@@ -46,7 +47,7 @@ import { StellarNetworkEmulator, type NetworkSnapshot } from "./StellarNetworkEm
 export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     state: Record<string, any>;
     abstract get stellarClass(): stellarSubclass<SC>;
-    config?: ConfigFor<SC>;
+    config?: ConfigFor<SC> & canHaveRandomSeed;
     defaultActor?: string;
     strella!: SC;
     actors: actorMap;
@@ -123,10 +124,18 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     loadSnapshot(snap: NetworkSnapshot) {
         this.network.loadSnapshot(snap);
     }
-
-    constructor(config?: ConfigFor<SC>& canHaveRandomSeed & canSkipSetup) {
+    helperState?: TestHelperState<SC>;
+    constructor(
+        config?: ConfigFor<SC>& canHaveRandomSeed & canSkipSetup,
+        helperState?: TestHelperState<SC>
+    ) {
+        
         this.state = {};
-        if (config) {
+        if (!helperState) debugger
+        this.helperState = helperState;
+        //@ts-expect-error temporarily 
+        const {skipSetup, ...cfg} = config || {};
+        if (Object.keys(cfg).length) {
             console.log(
                 "XXXXXXXXXXXXXXXXXXXXXXXXXX test helper with config",
                 config
@@ -140,28 +149,30 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         this.network = theNetwork;
         this.networkParams = new NetworkParams(this.fixupParams(preProdParams));
 
+        this.randomSeed = config?.randomSeed || 42;
         this.actors = {};
         const now = new Date();
         this.waitUntil(now);
-        if (config?.skipSetup) {
-            console.log("test helper skipping setup");
+        if (skipSetup) {
+            throw new Error(`obsolete skipSetup: just don't call initialze()`);
             return;
         }
 
-        //@ts-expect-error - can serve no-params case or params case
-        this.setupPending = this.initialize(config);
+        //xx@ts-expect-error - can serve no-params case or params case
+        // this.setupPending = this.initialize();
     }
     fixupParams(preProdParams) {
         preProdParams.latestParams.maxTxSize *= 1.5
         return preProdParams;
     }
 
-    async initialize(config: ConfigFor<SC> & canHaveRandomSeed): Promise<SC> {
-        const { randomSeed, ...p } = config;
+    async initialize({
+        randomSeed = 42,
+    }: {randomSeed?: number } = {}): Promise<SC> {
 
         if (this.strella && this.randomSeed == randomSeed) {
             console.log(
-                "       ----- skipped duplicate setup() in test helper"
+                "       ----- skipped duplicate initialize() in test helper"
             );
             return this.strella;
         }
@@ -172,24 +183,44 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             this.rand = undefined;
             this.randomSeed = randomSeed;
             this.actors = {};
-            this.setupPending = undefined;
         } else {
             console.log(
                 "???????????????????????? Test helper initializing without this.strella"
             );
         }
-        if (this.setupPending) return this.setupPending;
+        await this.delay(1);
         this._actorName = ""; //only to make typescript happy
-        const actorSetup = this.setupActors();
-        await actorSetup;
-
-        if (!this._actorName)
-            throw new Error(
-                `${this.constructor.name} doesn't setActor()  in setupActors()`
-            );
-
-        return this.initStellarClass();
+        if (!Object.keys(this.actors).length) {
+            const actorSetup = this.setupActors();
+            await actorSetup
+        }
+        
+        return this.initStellarClass()
     }
+
+    restoreFrom(snapshotName: string) : SC {
+        const {helperState, helperState:{snapshots, previousHelper, bootstrappedStrella}={}} = this;
+        if (!helperState) throw new Error(`can't restore from a previous helper without a helperState`);
+        if (!bootstrappedStrella) throw new Error(`can't restore from a previous helper without a bootstrappedStrella`);
+
+        if (!snapshots || !snapshots[snapshotName]) {
+            throw new Error(`no snapshot named ${snapshotName} in helperState`);
+        }
+        if (!previousHelper) {
+            throw new Error(`no previousHelper in helperState`);
+        }
+        const {parsedConfig} = previousHelper.state;
+        this.initStellarClass(parsedConfig);
+        // this.strella = bootstrappedStrella;
+
+        this.state.mintedCharterToken = previousHelper.state.mintedCharterToken;
+        this.state.parsedConfig = parsedConfig;
+        this.actors = previousHelper.actors;
+
+        this.network.loadSnapshot(snapshots[snapshotName]);
+
+        return this.strella
+    }    
 
     async initStellarClass(config = this.config) {
         const TargetClass = this.stellarClass;

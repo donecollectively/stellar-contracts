@@ -330,6 +330,7 @@ describe("StellarContract", async () => {
                                 h,
                                 h: { network, actors, delay, state },
                             } = context;
+                            await h.initialize();
                             // await delay(1000)
 
                             const tina = h.wallet;

@@ -42,6 +42,7 @@ describe("Test environment", async () => {
                 h,
                 h: { network, actors, delay, state },
             } = context;
+            await h.initialize();
             const { tina, tom, tracy } = actors;
 
             const tinaMoney = await tina.utxos;
@@ -65,6 +66,7 @@ describe("Test environment", async () => {
                 h,
                 h: { network, actors, delay, state },
             } = context;
+            await h.initialize();
             await h.setActor("tom");
 
             const { tom } = actors;
@@ -117,6 +119,7 @@ describe("Test environment", async () => {
                 h,
                 h: { network, actors, delay, state },
             } = context;
+            await h.initialize();
 
             const now = new Date().getTime();
             h.waitUntil(new Date(now + 10 * seconds));

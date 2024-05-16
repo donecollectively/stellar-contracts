@@ -27,14 +27,13 @@ export abstract class CapoTestHelper<
 > extends StellarTestHelper<SC> {
     async initialize({
         randomSeed = 42,
-        config,
-    }: { config?: CapoBaseConfig; randomSeed?: number } = {}): Promise<SC> {
+    }: {randomSeed?: number } = {}): Promise<SC> {
         // Note: This method diverges from the base class impl, due to type difficulties.
         // Patches welcome.
 
         if (this.strella && this.randomSeed == randomSeed) {
             console.log(
-                "       ----- skipped duplicate setup() in test helper"
+                "       ----- skipped duplicate initialize() in test helper"
             );
 
             return this.strella;
@@ -54,43 +53,45 @@ export abstract class CapoTestHelper<
                         )
                         .join("\n")
             );
-            this.setupPending = undefined;
             //@ts-expect-error
             this.strella = undefined
-            this.actors = {};
-        }
-        if (this.setupPending) {
-            return this.setupPending;
+            this.actors = {}
         }
         await this.delay(1);
-        const actorSetup = this.setupActors();
-        await actorSetup
-    
-        this.randomSeed = randomSeed;
-        this.state.mintedCharterToken = undefined;
-        this.state.parsedConfig = undefined;
+            this.randomSeed = randomSeed;
 
-        //! when there's not a preset config, it leaves the detailed setup to be done just-in-time
-        //   based on seedUtxo in mkTxnMintCharterToken
-        if (!config)
-            return (this.strella = await this.initStrella(this.stellarClass));
+            if (!Object.keys(this.actors).length) {
+                const actorSetup = this.setupActors();
+                await actorSetup
+            }
+        
+            debugger
+            this.state.mintedCharterToken = undefined;
+            this.state.parsedConfig = undefined;
 
-        //@ts-expect-error either we got too fancy for Typescript, or the other way round
-        const strella = await this.initStrella(this.stellarClass, config);
+            //! when there's not a preset config, it leaves the detailed setup to be done just-in-time
+            //   based on seedUtxo in mkTxnMintCharterToken
+            if (!this.config) {
+                return (this.strella = await this.initStrella(this.stellarClass))
+            }
+            const strella = await this.initStrella(this.stellarClass, this.config);
 
-        this.strella = strella;
-        const { address, mintingPolicyHash: mph } = strella;
+            this.strella = strella;
+            const { address, mintingPolicyHash: mph } = strella;
 
-        const { name } = strella.scriptProgram!;
-        console.log(
-            name,
-            address.toBech32().substring(0, 18) + "…",
-            "vHash 📜 " +
-                strella.validatorHash.hex.substring(0, 12) +
-                "…",
-            "mph 🏦 " + mph?.hex.substring(0, 12) + "…"
-        );
-        return strella;
+            const { name } = strella.scriptProgram!;
+            console.log(
+                name,
+                address.toBech32().substring(0, 18) + "…",
+                "vHash 📜 " +
+                    strella.validatorHash.hex.substring(0, 12) +
+                    "…",
+                "mph 🏦 " + mph?.hex.substring(0, 12) + "…"
+            );
+            console.log("CAPO TH INIT7")
+            debugger
+
+            return strella
     }
     
     get ready() {

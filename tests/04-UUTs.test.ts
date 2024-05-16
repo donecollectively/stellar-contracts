@@ -81,12 +81,13 @@ describe("Capo", async () => {
     describe("UUTs for contract utility", () => {
         it.todo("🟥 TEST: doesn't mint a uut without spending the seed utxo");
 
-        smokeTest("won't create a UUT without the minting delegate's involvement", async (context: localTC) => {
+        // smokeTest
+        it("won't create a UUT without the minting delegate's involvement", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
+            const capo = await h.initialize();
             const { tina, tom, tracy } = actors;
 
-            const capo = await h.initialize();
             await h.mintCharterToken();
             // await delay(1000);
             type testSomeThing = "testSomeThing";
@@ -163,9 +164,9 @@ describe("Capo", async () => {
         it("requires the charter to be used as reference input", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
+            const capo = await h.bootstrap();
             const { tina, tom, tracy } = actors;
 
-            const capo = await h.bootstrap();
 
             type testSomeThing = "testSomeThing";
             const tcx1 = h.mkTcx();
@@ -201,9 +202,9 @@ describe("Capo", async () => {
         smokeTest("fails when the mint-delegate dgTkn isn't returned", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
+            const capo = await h.initialize();
             const { tina, tom, tracy } = actors;
 
-            const capo = await h.initialize();
             await h.mintCharterToken();
             // await delay(1000);
             type testSomeThing = "testSomeThing";
@@ -236,9 +237,9 @@ describe("Capo", async () => {
         it("can create a UUT and send it anywhere", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
+            const capo = await h.initialize();
             const { tina, tom, tracy } = actors;
 
-            const capo = await h.initialize();
             await h.mintCharterToken();
             // await delay(1000);
 
@@ -268,9 +269,9 @@ describe("Capo", async () => {
         it("can create multiple UUTs", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
+            const capo = await h.initialize();
             const { tina, tom, tracy } = actors;
 
-            const capo = await h.initialize();
 
             await h.mintCharterToken();
 
@@ -307,9 +308,9 @@ describe("Capo", async () => {
         it("fills tcx.state.uuts with purpose-keyed unique token-names", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
+            const capo = await h.initialize();
             const { tina, tom, tracy } = actors;
 
-            const capo = await h.initialize();
             await h.mintCharterToken();
             // await delay(1000);
 
@@ -344,9 +345,9 @@ describe("Capo", async () => {
         it("won't mint multiple UUTs of the same name", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
+            const capo = await h.initialize();
             const { tina, tom, tracy } = actors;
 
-            const capo = await h.initialize();
             const m: CapoMinter = capo.minter!;
 
             await h.mintCharterToken();
@@ -451,9 +452,9 @@ describe("Capo", async () => {
         it("won't mint extra UUTs", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
+            const capo = await h.initialize();
             const { tina, tom, tracy } = actors;
 
-            const capo = await h.initialize();
             await h.mintCharterToken();
             // await delay(1000);
 
@@ -503,9 +504,9 @@ describe("Capo", async () => {
         async function setup(context: localTC) {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
+            const capo = await h.initialize();
             const { tina, tom, tracy } = actors;
 
-            const capo = await h.initialize();
 
             await h.mintCharterToken();
             const mintDelegate = await capo.getMintDelegate();
@@ -533,10 +534,10 @@ describe("Capo", async () => {
         it("🟥 can't burn a UUT without the minting delegate", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
+            const capo = await h.initialize();
             const { tina, tom, tracy } = actors;
 
             const tcx = await setup(context);
-            const capo = await h.initialize();
 
             const { testSomeThing } = tcx.state.uuts;
 
@@ -570,9 +571,9 @@ describe("Capo", async () => {
         it("🟥 can burn a UUT, if approved by the minting delegate", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
+            const capo = await h.initialize();
             const { tina, tom, tracy } = actors;
 
-            const capo = await h.initialize();
             debugger
             const tcx = await setup(context);
 
@@ -600,9 +601,9 @@ describe("Capo", async () => {
         it("🟥 burns only the UUTs identified in the Activity/redeemer", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
+            const capo = await h.initialize();
             const { tina, tom, tracy } = actors;
 
-            const capo = await h.initialize();
             const tcx = await setup(context);
             const tcx2 = await setup(context);
             const { testSomeThing: tst } = tcx.state.uuts;
