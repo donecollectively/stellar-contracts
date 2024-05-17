@@ -13,6 +13,7 @@ import {
     type NumberGenerator,
     //@ts-expect-error on internals
     bigIntToBytes, eq, rawNetworkEmulatorParams, type EmulatorTx, type Wallet,
+    type Network,
     Address,
     StakeAddress,
     Signature,
@@ -25,22 +26,18 @@ import type { NetworkContext } from "../StellarContract.js";
 
 const isInternal = Symbol("isInternal");
 
-/**
- * @implements {EmulatorTx}
- */
-class GenesisTx {
-    #id;
-    #address;
-    #lovelace;
-    #assets;
+class GenesisTx implements EmulatorTx{
+    #id : number
+    #address : Address
+    #lovelace: bigint
+    #assets: Assets
 
-    /**
-     * @param {number} id
-     * @param {Address} address
-     * @param {bigint} lovelace
-     * @param {Assets} assets
-     */
-    constructor(id, address, lovelace, assets) {
+    constructor(
+        id: number,
+        address: Address,
+        lovelace: bigint,
+         assets: Assets
+    ) {
         this.#id = id;
         this.#address = address;
         this.#lovelace = lovelace;
@@ -50,7 +47,6 @@ class GenesisTx {
     /**
      * Simple incremental txId for genesis transactions.
      * It's very unlikely that regular transactions have the same hash.
-     * @return {TxId}
      */
     id() {
         let bytes = bigIntToBytes(BigInt(this.#id));
@@ -62,19 +58,10 @@ class GenesisTx {
         return new TxId(bytes);
     }
 
-    /**
-     * @param {TxInput} utxo
-     * @returns {boolean}
-     */
     consumes(utxo) {
         return false;
     }
 
-    /**
-     * @param {Address} address
-     * @param {TxInput[]} utxos
-     * @returns {TxInput[]}
-     */
     collectUtxos(address, utxos) {
         if (eq(this.#address.bytes, address.bytes)) {
             utxos = utxos.slice();
@@ -95,10 +82,6 @@ class GenesisTx {
         }
     }
 
-    /**
-     * @param {TxOutputId} id
-     * @returns {null | TxInput}
-     */
     getUtxo(id) {
         if (!(this.id().eq(id.txId) && id.utxoIdx == 0)) {
             return null;
@@ -122,41 +105,23 @@ class GenesisTx {
     }
 }
 
-/**
- * @implements {EmulatorTx}
- */
-class RegularTx {
-    #tx;
+class RegularTx implements EmulatorTx {
+    #tx: Tx;
 
-    /**
-     * @param {Tx} tx
-     */
-    constructor(tx) {
+    constructor(tx: Tx) {
         this.#tx = tx;
     }
 
-    /**
-     * @returns {TxId}
-     */
     id() {
         return this.#tx.id();
     }
 
-    /**
-     * @param {TxInput} utxo
-     * @returns {boolean}
-     */
     consumes(utxo) {
         const txInputs = this.#tx.body.inputs;
 
         return txInputs.some((txInput) => txInput.eq(utxo));
     }
 
-    /**
-     * @param {Address} address
-     * @param {TxInput[]} utxos
-     * @returns {TxInput[]}
-     */
     collectUtxos(address, utxos) {
         utxos = utxos.filter((utxo) => !this.consumes(utxo));
 
@@ -173,10 +138,6 @@ class RegularTx {
         return utxos;
     }
 
-    /**
-     * @param {TxOutputId} id
-     * @returns {null | TxInput}
-     */
     getUtxo(id) {
         if (!id.txId.eq(this.id())) {
             return null;
@@ -204,9 +165,8 @@ class RegularTx {
 
 /**
  * This wallet only has a single private/public key, which isn't rotated. Staking is not yet supported.
- * @implements {Wallet}
  */
-export class SimpleWallet_stellar {
+export class SimpleWallet_stellar implements Wallet{
     #networkCtx: NetworkContext;
     #privateKey: Bip32PrivateKey
     #pubKey: PubKey;
@@ -222,6 +182,7 @@ export class SimpleWallet_stellar {
 
         // TODO: staking credentials
     }
+
 
     get privateKey() : Bip32PrivateKey{
         return this.#privateKey;
@@ -277,8 +238,6 @@ export class SimpleWallet_stellar {
 
     /**
      * Not yet implemented.
-     * @param {Address} addr 
-     * @param {string} message 
      */
     async signData(addr: Address, message: string) : Promise<{signature: string, key: string}> {
         throw new Error("not yet implemented")
@@ -301,7 +260,8 @@ export class SimpleWallet_stellar {
 
 export type NetworkSnapshot = {
     seed: number,
-    slot: bigint,
+    netNumber: number,
+    slot: bigint
     genesis: GenesisTx[],
     blocks: EmulatorTx[][]
 }
@@ -310,10 +270,9 @@ let i = 0
 /**
  * A simple emulated Network.
  * This can be used to do integration tests of whole dApps.
- * Staking is not yet supported.
- * @implements {Network}
+ * Staking is not yet supported. 
  */
-export class StellarNetworkEmulator {
+export class StellarNetworkEmulator implements Network{
     #slot : bigint
     #seed: number
     #random: NumberGenerator
@@ -324,7 +283,6 @@ export class StellarNetworkEmulator {
     /**
      * Instantiates a NetworkEmulator at slot 0.
      * An optional seed number can be specified, from which all emulated randomness is derived.
-     * @param {number} seed
      */
     constructor(
         seed = 0,
@@ -378,10 +336,8 @@ export class StellarNetworkEmulator {
     /**
      * Creates a new `NetworkParams` instance that has access to current slot
      * (so that the `Tx` validity range can be set automatically during `Tx.finalize()`).
-     * @param {NetworkParams} networkParams
-     * @returns {NetworkParams}
      */
-    initNetworkParams(networkParams) {
+    initNetworkParams(networkParams) : NetworkParams{
         const raw = Object.assign({}, networkParams.raw);
 
         raw.latestTip = {
@@ -401,19 +357,16 @@ export class StellarNetworkEmulator {
      * Special genesis transactions are added to the emulated chain in order to create these assets.
      * @deprecated - use TestHelper.createWallet instead, enabling wallets to be transported to
      *     different networks (e.g. ones that have loaded snapshots from the original network).
-     * @param {bigint} lovelace
-     * @param {Assets} assets
-     * @returns {SimpleWallet}
      */
     createWallet(lovelace = 0n, assets = new Assets([])) {
         throw new Error("use TestHelper.createWallet instead")
     }
 
     /**
-     * Creates a UTxO using a GenesisTx.
-     * @param {SimpleWallet} wallet
-     * @param {bigint} lovelace
-     * @param {Assets} assets
+     * Creates a UTxO using a GenesisTx.  The txn doesn't need to balance or be signed.  It's magic.
+     * @param wallet - the utxo is created at this wallet's address
+     * @param lovelace - the lovelace amount to create
+     * @param assets - other assets to include in the utxo
      */
     createUtxo(wallet, lovelace, assets = new Assets([])) {
         if (lovelace != 0n || !assets.isZero()) {
@@ -429,9 +382,6 @@ export class StellarNetworkEmulator {
         }
     }
 
-    /**
-     * @returns {Promise<NetworkParams>}
-     */
     async getParameters() {
         return this.initNetworkParams(
             new NetworkParams(rawNetworkEmulatorParams)
@@ -448,8 +398,6 @@ export class StellarNetworkEmulator {
 
     /**
      * Throws an error if the UTxO isn't found
-     * @param {TxOutputId} id
-     * @returns {Promise<TxInput>}
      */
     async getUtxo(id) {
         this.warnMempool();
@@ -466,10 +414,6 @@ export class StellarNetworkEmulator {
         throw new Error(`utxo with id ${id.toString()} doesn't exist`);
     }
 
-    /**
-     * @param {Address} address
-     * @returns {Promise<TxInput[]>}
-     */
     async getUtxos(address) {
         this.warnMempool();
 
@@ -494,10 +438,6 @@ export class StellarNetworkEmulator {
         });
     }
 
-    /**
-     * @param {TxInput} utxo
-     * @returns {boolean}
-     */
     isConsumed(utxo) {
         return (
             this.#blocks.some((b) => {
@@ -511,10 +451,6 @@ export class StellarNetworkEmulator {
         );
     }
 
-    /**
-     * @param {Tx} tx
-     * @returns {Promise<TxId>}
-     */
     async submitTx(tx) {
         this.warnMempool();
 
@@ -538,7 +474,6 @@ export class StellarNetworkEmulator {
 
     /**
      * Mint a block with the current mempool, and advance the slot by a number of slots.
-     * @param - nSlots
      */
     tick(nSlots: bigint | number) {
         const n = BigInt(nSlots);
