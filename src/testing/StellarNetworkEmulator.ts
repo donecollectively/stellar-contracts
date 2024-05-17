@@ -311,6 +311,7 @@ export class StellarNetworkEmulator implements Network{
         console.log("            📸 📸 📸   ████  📸 📸 📸  #"+this.id, "  - snapshot at slot ", this.#slot.toString(), "height ", this.#blocks.length)
         return { 
             seed: this.#seed, 
+            netNumber: this.id,
             slot: this.#slot, 
             genesis: [ ... this.#genesis ],
             blocks: [ ... this.#blocks ]
@@ -320,16 +321,13 @@ export class StellarNetworkEmulator implements Network{
     loadSnapshot(snapshot : NetworkSnapshot) {
         this.#seed = snapshot.seed;
         this.#slot = snapshot.slot;
-        this.#genesis = snapshot.genesis;
-        this.#blocks = snapshot.blocks;
+        this.#genesis = [ ... snapshot.genesis ]
+        this.#blocks = [ ... snapshot.blocks ]
 
-        console.log("            🌺🌺🌺 ████████  #"+this.id, "  - restored snapshot at slot ", this.#slot.toString(), "height ", this.#blocks.length)
+        console.log("            🌺🌺🌺 ████████  #"+this.id,  ` - restored snapshot from #${snapshot.netNumber} at slot `, this.#slot.toString(), "height ", this.#blocks.length)
     }
 
-    /**
-     * @type {bigint}
-     */
-    get currentSlot() {
+    get currentSlot() : bigint{
         return this.#slot;
     }
 
