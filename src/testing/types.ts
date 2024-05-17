@@ -1,6 +1,5 @@
 import {
     NetworkParams,
-    SimpleWallet as WalletEmulator,
     type Network,
 } from "@hyperionbt/helios";
 
@@ -15,7 +14,7 @@ import type { StellarTestHelper } from "./StellarTestHelper.js";
 import ppParams from "../../preprod.json" assert { type: "json" };
 import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
 import type { Capo, CapoBaseConfig } from "../Capo.js";
-import type { NetworkSnapshot } from "./StellarNetworkEmulator.js";
+import type { NetworkSnapshot, SimpleWallet_stellar as emulatedWallet } from "./StellarNetworkEmulator.js";
 
 //   ppParams.latestParams.maxTxExecutionUnits.memory = 28_000_000
 
@@ -111,7 +110,7 @@ export async function addTestContext<
     }
 }
 
-export type actorMap = Record<string, WalletEmulator>;
+export type actorMap = Record<string, emulatedWallet>;
 
 /**
  * 1 million as bigint.  Multiply by this a `Bigint` ADA value to get lovelace

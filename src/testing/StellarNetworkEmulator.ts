@@ -5,7 +5,6 @@ import {
     Bip32PrivateKey,
     Crypto,
     NetworkParams,
-    SimpleWallet,
     TxId,
     TxInput,
     TxOutput,
@@ -13,9 +12,16 @@ import {
     Value,
     type NumberGenerator,
     //@ts-expect-error on internals
-    bigIntToBytes, eq, rawNetworkEmulatorParams, type EmulatorTx,
+    bigIntToBytes, eq, rawNetworkEmulatorParams, type EmulatorTx, type Wallet,
+    Address,
+    StakeAddress,
+    Signature,
+    PubKey,
+    PubKeyHash,
+    Tx
 } from "@hyperionbt/helios";
 import { dumpAny } from "../diagnostics.js";
+import type { NetworkContext } from "../StellarContract.js";
 
 const isInternal = Symbol("isInternal");
 
@@ -196,6 +202,103 @@ class RegularTx {
     }
 }
 
+/**
+ * This wallet only has a single private/public key, which isn't rotated. Staking is not yet supported.
+ * @implements {Wallet}
+ */
+export class SimpleWallet_stellar {
+    #networkCtx: NetworkContext;
+    #privateKey: Bip32PrivateKey
+    #pubKey: PubKey;
+
+    get network() {
+        return this.#networkCtx.network
+    }
+
+    constructor(networkCtx : NetworkContext, privateKey : Bip32PrivateKey) {
+        this.#networkCtx = networkCtx;
+        this.#privateKey = privateKey;
+        this.#pubKey = this.#privateKey.derivePubKey();
+
+        // TODO: staking credentials
+    }
+
+    get privateKey() : Bip32PrivateKey{
+        return this.#privateKey;
+    }
+
+    get pubKey() : PubKey {
+        return this.#pubKey;
+    }
+
+    get pubKeyHash() : PubKeyHash {
+         return this.#pubKey.pubKeyHash;
+    }
+
+    get address() : Address{
+        return Address.fromHash(this.pubKeyHash);
+    }
+
+    async isMainnet() : Promise<boolean>{
+        return false;
+    }
+
+    /**
+     * Not yet implemented.
+     */
+    get rewardAddresses() : Promise<StakeAddress[]> {
+        throw new Error("not yet implemented")
+    }
+
+    /**
+     * Assumed wallet was initiated with at least 1 UTxO at the pubkeyhash address.
+     */
+    get usedAddresses() : Promise<Address[]> {
+        return new Promise((resolve, _) => {
+            resolve([this.address])
+        });
+    }
+    get unusedAddresses() : Promise<Address[]>{
+        return new Promise((resolve, _) => {
+            resolve([])
+        });
+    }
+    get utxos() : Promise<TxInput[]>{
+        return new Promise((resolve, _) => {
+            resolve(this.network.getUtxos(this.address));
+        });
+    }
+
+     get collateral() : Promise<TxInput[]>{
+        return new Promise((resolve, _) => {
+            resolve([])
+        });
+    }
+
+    /**
+     * Not yet implemented.
+     * @param {Address} addr 
+     * @param {string} message 
+     */
+    async signData(addr: Address, message: string) : Promise<{signature: string, key: string}> {
+        throw new Error("not yet implemented")
+    }
+
+    /**
+     * Simply assumed the tx needs to by signed by this wallet without checking.
+     */
+    async signTx(tx: Tx): Promise<Signature[]> {
+        return [
+            this.#privateKey.sign(tx.bodyHash)
+        ];
+    }
+
+    async submitTx(tx: Tx) : Promise<TxId> {
+        return await this.network.submitTx(tx);
+    }
+}
+
+
 export type NetworkSnapshot = {
     seed: number,
     slot: bigint,
@@ -217,7 +320,7 @@ export class StellarNetworkEmulator {
     #genesis : GenesisTx[]
     #mempool: EmulatorTx[]
     #blocks: EmulatorTx[][]
-    i : number
+    id : number
     /**
      * Instantiates a NetworkEmulator at slot 0.
      * An optional seed number can be specified, from which all emulated randomness is derived.
@@ -226,7 +329,7 @@ export class StellarNetworkEmulator {
     constructor(
         seed = 0,
     ) {
-        this.i = i++
+        this.id = i++
         this.#seed = seed
         this.#slot = 0n;
         this.#random = this.mulberry32.bind(this);
@@ -236,7 +339,7 @@ export class StellarNetworkEmulator {
     }
 
     // retains continuity for the seed and the RNG through one or more snapshots.
-    mulberry32() {
+    mulberry32 = () => {
         let t = this.#seed += 0x6D2B79F5;
         t = Math.imul(t ^ t >>> 15, t | 1);
         t ^= t + Math.imul(t ^ t >>> 7, t | 61);
@@ -247,6 +350,7 @@ export class StellarNetworkEmulator {
         if (this.#mempool.length > 0) {
             throw new Error(`can't snapshot with pending txns`);
         }
+        console.log("            📸 📸 📸   ████  📸 📸 📸  #"+this.id, "  - snapshot at slot ", this.#slot.toString(), "height ", this.#blocks.length)
         return { 
             seed: this.#seed, 
             slot: this.#slot, 
@@ -261,7 +365,7 @@ export class StellarNetworkEmulator {
         this.#genesis = snapshot.genesis;
         this.#blocks = snapshot.blocks;
 
-        console.log("🌺🌺🌺🌺🌺🌺🌺🌺🌺 ████████  #"+this.i, "  - restored snapshot at slot ", this.#slot.toString(), "height ", this.#blocks.length)
+        console.log("            🌺🌺🌺 ████████  #"+this.id, "  - restored snapshot at slot ", this.#slot.toString(), "height ", this.#blocks.length)
     }
 
     /**
@@ -295,19 +399,14 @@ export class StellarNetworkEmulator {
     /**
      * Creates a new SimpleWallet and populates it with a given lovelace quantity and assets.
      * Special genesis transactions are added to the emulated chain in order to create these assets.
+     * @deprecated - use TestHelper.createWallet instead, enabling wallets to be transported to
+     *     different networks (e.g. ones that have loaded snapshots from the original network).
      * @param {bigint} lovelace
      * @param {Assets} assets
      * @returns {SimpleWallet}
      */
     createWallet(lovelace = 0n, assets = new Assets([])) {
-        const wallet = new SimpleWallet(
-            this,
-            Bip32PrivateKey.random(this.#random)
-        );
-
-        this.createUtxo(wallet, lovelace, assets);
-
-        return wallet;
+        throw new Error("use TestHelper.createWallet instead")
     }
 
     /**
@@ -427,12 +526,12 @@ export class StellarNetworkEmulator {
         // make sure that none of the inputs have been consumed before
         for (const input of tx.body.inputs) {
             if (this.isConsumed(input)) {
-                throw new Error(`## ${this.i}: input previously consumed:`+ dumpAny(input))
+                throw new Error(`## ${this.id}: input previously consumed:`+ dumpAny(input))
             }
         }
 
         this.#mempool.push(new RegularTx(tx));
-        console.log("##"+this.i+": +mempool txn = ", this.#mempool.length)
+        console.log("##"+this.id+": +mempool txn = ", this.#mempool.length)
 
         return tx.id();
     }
@@ -454,7 +553,7 @@ export class StellarNetworkEmulator {
         }
 
         this.#slot += n;
-        console.log("█  #"+this.i)
+        console.log("█  #"+this.id)
         console.log("██")
         console.log("███")
         console.log(`████  @h=${height} + ${count}  txns`)

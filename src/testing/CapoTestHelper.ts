@@ -42,7 +42,7 @@ export abstract class CapoTestHelper<
 
         if (this.strella) {
             console.log(
-                `  ---  new test helper setup with new seed (was ${this.randomSeed}, now ${randomSeed})...\n` +
+                `    -- 🌱🌱🌱 new test helper setup with new seed (was ${this.randomSeed}, now ${randomSeed})...\n` +
                     new Error("stack")
                         .stack!.split("\n")
                         .slice(1)
@@ -60,9 +60,13 @@ export abstract class CapoTestHelper<
         await this.delay(1);
             this.randomSeed = randomSeed;
 
-            if (!Object.keys(this.actors).length) {
+            if (Object.keys(this.actors).length) {
+                console.log("Skipping actor setup - already done")
+            } else {
+                console.log("  -- 🎭🎭🎭 actor setup...")
                 const actorSetup = this.setupActors();
                 await actorSetup
+                this.setDefaultActor();
             }
         
             debugger
@@ -72,8 +76,10 @@ export abstract class CapoTestHelper<
             //! when there's not a preset config, it leaves the detailed setup to be done just-in-time
             //   based on seedUtxo in mkTxnMintCharterToken
             if (!this.config) {
+                console.log(  "  -- Capo not yet bootstrapped")
                 return (this.strella = await this.initStrella(this.stellarClass))
             }
+            console.log("  -- Capo already bootstrapped")
             const strella = await this.initStrella(this.stellarClass, this.config);
 
             this.strella = strella;
@@ -88,8 +94,7 @@ export abstract class CapoTestHelper<
                     "…",
                 "mph 🏦 " + mph?.hex.substring(0, 12) + "…"
             );
-            console.log("CAPO TH INIT7")
-            debugger
+            console.log("<- CAPO initialized()")
 
             return strella
     }
@@ -112,13 +117,13 @@ export abstract class CapoTestHelper<
             throw new Error(`Don't override the test-helper bootstrap().  Instead, provide an implementation of extraBootstrapping()`)
         }
         if (this.ready) {
-            console.log("       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap")
+            console.log("       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap already OK")
 
             return strella;
         }
 
         await this.mintCharterToken(args);
-        console.log("       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap")
+        console.log("       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap with charter")
         await this.extraBootstrapping(args)
         return strella;
     }

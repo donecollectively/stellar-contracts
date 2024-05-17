@@ -380,6 +380,10 @@ const isInternalConstructor = Symbol("internalConstructor");
 export type ActorContext<WTP extends Wallet = Wallet> = {
     wallet?: WTP;
 };
+export type NetworkContext<NWT extends Network=Network> = {
+    network: NWT;
+};
+
 
 //!!! todo: type configuredStellarClass = class -> networkStuff -> withParams = stellar instance.
 

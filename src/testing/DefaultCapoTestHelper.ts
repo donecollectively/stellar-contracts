@@ -100,7 +100,10 @@ export class DefaultCapoTestHelper<
         this.addActor("tina", 11000n * ADA);
         this.addActor("tracy", 13n * ADA);
         this.addActor("tom", 1200n * ADA);
-        return this.setActor("tina");
+    }
+
+    setDefaultActor() {
+        return this.setActor("tina")
     }
 
     async mkCharterSpendTx(): Promise<StellarTxnContext> {

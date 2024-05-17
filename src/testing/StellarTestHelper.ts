@@ -8,9 +8,10 @@ import {
     TxId,
     TxOutput,
     Value,
-    SimpleWallet as WalletEmulator,
 } from "@hyperionbt/helios";
 import type { Wallet } from "@hyperionbt/helios";
+
+import { SimpleWallet_stellar as emulatedWallet } from "./StellarNetworkEmulator.js";
 
 import { StellarContract, findInputsInWallets } from "../StellarContract.js";
 import type {
@@ -18,6 +19,7 @@ import type {
     ConfigFor,
     StellarFactoryArgs,
     ActorContext,
+    NetworkContext,
 } from "../StellarContract.js";
 
 import {
@@ -34,7 +36,7 @@ import type {
     canSkipSetup,
     enhancedNetworkParams,
 } from "./types.js";
-import { StellarNetworkEmulator, type NetworkSnapshot } from "./StellarNetworkEmulator.js";
+import { SimpleWallet_stellar, StellarNetworkEmulator, type NetworkSnapshot } from "./StellarNetworkEmulator.js";
 
 /**
  * Base class for test-helpers on generic Stellar contracts
@@ -54,26 +56,31 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     optimize = false;
     liveSlotParams: NetworkParams;
     networkParams: NetworkParams;
-    network: StellarNetworkEmulator;
+    networkCtx : NetworkContext<StellarNetworkEmulator>;
     private _actorName!: string;
 
     get actorName() {
         return this._actorName;
     }
+
+    get network() {
+        return this.networkCtx.network;
+    }
+
     /**
      * Gets the current actor wallet
      *
      * @public
      **/
-    get wallet(): WalletEmulator {
+    get wallet(): emulatedWallet {
         const {wallet} = this.actorContext;
         if (!wallet) {
-            throw new Error(`no current actor; use setActor(actorName) firsgt`);
+            throw new Error(`no current actor; use setActor(actorName) first`);
         }
         return wallet
     }
 
-    actorContext: ActorContext<WalletEmulator> = {
+    actorContext: ActorContext<emulatedWallet> = {
         wallet: undefined
     }
 
@@ -81,7 +88,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         const thisActor = this.actors[actorName];
         if (!thisActor)
             throw new Error(
-                `setCurrentActor: invalid actor name '${actorName}'`
+                `setCurrentActor: network #${this.network.id}: invalid actor name '${actorName}'\n   ... try one of: \n  - `+ 
+                    Object.keys(this.actors).join(",\n  - ")
             );
         if (this._actorName) {
             console.log(
@@ -114,6 +122,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             `using 'hiro' as default actor because ${this.constructor.name} doesn't define setupActors()`
         );
         this.addActor("hiro", 1863n * ADA);
+    }
+    setDefaultActor() {
         return this.setActor("hiro");
     }
 
@@ -133,7 +143,6 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         this.state = {};
         if (!helperState) debugger
         this.helperState = helperState;
-        //@ts-expect-error temporarily 
         const {skipSetup, ...cfg} = config || {};
         if (Object.keys(cfg).length) {
             console.log(
@@ -146,7 +155,9 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
 
         const [theNetwork, emuParams] = this.mkNetwork();
         this.liveSlotParams = emuParams;
-        this.network = theNetwork;
+        this.networkCtx = { 
+            network: theNetwork
+        }
         this.networkParams = new NetworkParams(this.fixupParams(preProdParams));
 
         this.randomSeed = config?.randomSeed || 42;
@@ -157,7 +168,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             throw new Error(`obsolete skipSetup: just don't call initialze()`);
             return;
         }
-
+        console.log(" + StellTestHelper")
         //xx@ts-expect-error - can serve no-params case or params case
         // this.setupPending = this.initialize();
     }
@@ -169,6 +180,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     async initialize({
         randomSeed = 42,
     }: {randomSeed?: number } = {}): Promise<SC> {
+        console.log("STINIT")
+        debugger
 
         if (this.strella && this.randomSeed == randomSeed) {
             console.log(
@@ -188,17 +201,20 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
                 "???????????????????????? Test helper initializing without this.strella"
             );
         }
+        console.log("STINIT2")
         await this.delay(1);
         this._actorName = ""; //only to make typescript happy
         if (!Object.keys(this.actors).length) {
             const actorSetup = this.setupActors();
             await actorSetup
+            this.setDefaultActor()
         }
+        console.log("STINIT3")
         
         return this.initStellarClass()
     }
 
-    restoreFrom(snapshotName: string) : SC {
+    async restoreFrom(snapshotName: string) : Promise<SC> {
         const {helperState, helperState:{snapshots, previousHelper, bootstrappedStrella}={}} = this;
         if (!helperState) throw new Error(`can't restore from a previous helper without a helperState`);
         if (!bootstrappedStrella) throw new Error(`can't restore from a previous helper without a bootstrappedStrella`);
@@ -210,14 +226,31 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             throw new Error(`no previousHelper in helperState`);
         }
         const {parsedConfig} = previousHelper.state;
-        this.initStellarClass(parsedConfig);
-        // this.strella = bootstrappedStrella;
+        
+        const {networkCtx: oldNetworkEnvelope} = previousHelper;
+        const {network: previousNetwork} = oldNetworkEnvelope
+        
+        // swaps out the previous helper's envelope
+        previousHelper.networkCtx = { network: previousNetwork };
+
+        // uses the old envelope (that the actors used on the old network)
+        const {network: newNet} = this.networkCtx;
+        this.networkCtx = oldNetworkEnvelope
+        // ... to reflect the new snapshotted network
+        this.networkCtx.network = newNet;
+        newNet.loadSnapshot(snapshots[snapshotName]);
 
         this.state.mintedCharterToken = previousHelper.state.mintedCharterToken;
         this.state.parsedConfig = parsedConfig;
-        this.actors = previousHelper.actors;
-
-        this.network.loadSnapshot(snapshots[snapshotName]);
+        Object.assign(this.actors, previousHelper.actors)
+        //@ts-expect-error
+        previousHelper.actors = { "NONE! all actors were moved from a different network via snapshot": null }  
+        this.setDefaultActor();
+        console.log(`moved${
+            Object.keys(this.actors).length
+        } actors from network ${previousNetwork.id} to ${newNet.id}`);
+        // this.strella = bootstrappedStrella;
+        await this.initStellarClass(parsedConfig);
 
         return this.strella
     }    
@@ -270,6 +303,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
                 setup.actorContext.wallet.address.toBech32()
             );
         } else {
+            debugger
             console.log("+strella init without actor");
         }
         return TargetClass.createWith(cfg);
@@ -283,6 +317,18 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     delay(ms) {
         return new Promise((res) => setTimeout(res, ms));
     }
+
+    createWallet(lovelace = 0n, assets = new helios.Assets([])) {
+        const wallet = new SimpleWallet_stellar(
+            this.networkCtx, // the test helper is a network context, because it has a 'network'.  Ducky-typed as networkCtx
+            helios.Bip32PrivateKey.random(this.network.mulberry32)
+        );
+
+        this.network.createUtxo(wallet, lovelace, assets);
+
+        return wallet;
+    }
+
 
     async mkSeedUtxo(seedIndex: bigint = 0n) {
         const {wallet} = this;
@@ -414,7 +460,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             throw new Error(`duplicate role name '${roleName}'`);
         //! it instantiates a wallet with the indicated balance pre-set
         // console.log(new Error(`add actor ${roleName}`).stack);
-        const a = this.network.createWallet(walletBalance);
+        const a = this.createWallet(walletBalance);
         const addr = a.address.toBech32();
         console.log(
             `+🎭 Actor: ${roleName}: ${addr.slice(0, 12)}…${addr.slice(
@@ -440,6 +486,11 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         this.actors[roleName] = a;
         return a;
     }
+
+    //todo use this for enabling prettier diagnostics with clear labels for 
+    //  -- actor addresses -> names
+    //  -- script addresses -> names
+    addrRegistry : Record<string, string> = {};
 
     mkNetwork(): [StellarNetworkEmulator, enhancedNetworkParams] {
         const theNetwork = new StellarNetworkEmulator();
