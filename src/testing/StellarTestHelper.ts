@@ -38,6 +38,8 @@ import type {
 } from "./types.js";
 import { SimpleWallet_stellar, StellarNetworkEmulator, type NetworkSnapshot } from "./StellarNetworkEmulator.js";
 
+const ACTORS_ALREADY_MOVED = "NONE! all actors were moved from a different network via snapshot"
+
 /**
  * Base class for test-helpers on generic Stellar contracts
  * @remarks
@@ -92,6 +94,13 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
                     Object.keys(this.actors).join(",\n  - ")
             );
         if (this._actorName) {
+            if (actorName == this._actorName) {
+                if (this.actorContext.wallet !== thisActor) {
+                    throw new Error(`actor / wallet mismatch: ${this._actorName} ${dumpAny(this.actorContext.wallet?.address)} vs ${actorName} ${dumpAny(thisActor.address)}`)
+                }
+                // quiet idempotent call.
+                return
+            }
             console.log(
                 `\n🎭 -> 🎭 changing actor from 🎭 ${
                     this._actorName
@@ -229,29 +238,47 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         
         const {networkCtx: oldNetworkEnvelope} = previousHelper;
         const {network: previousNetwork} = oldNetworkEnvelope
-        
-        // swaps out the previous helper's envelope
-        previousHelper.networkCtx = { network: previousNetwork };
-
-        // uses the old envelope (that the actors used on the old network)
         const {network: newNet} = this.networkCtx;
-        this.networkCtx = oldNetworkEnvelope
-        // ... to reflect the new snapshotted network
-        this.networkCtx.network = newNet;
-        newNet.loadSnapshot(snapshots[snapshotName]);
 
-        this.state.mintedCharterToken = previousHelper.state.mintedCharterToken;
-        this.state.parsedConfig = parsedConfig;
-        Object.assign(this.actors, previousHelper.actors)
-        //@ts-expect-error
-        previousHelper.actors = { "NONE! all actors were moved from a different network via snapshot": null }  
-        this.setDefaultActor();
-        console.log(`moved${
-            Object.keys(this.actors).length
-        } actors from network ${previousNetwork.id} to ${newNet.id}`);
+        // hacky load of the indicator of already having restored details from the prievous helper
+        const otherNet : number = previousHelper.actors[ACTORS_ALREADY_MOVED] as unknown as number; 
+        if (otherNet) {
+            if (otherNet !== newNet.id) {
+                throw new Error(`actors already moved to network #${otherNet}; can't move to #${newNet.id} now.`);
+            }
+            console.log("  -- actors are already here")
+        } else {
+            if (this === previousHelper) {
+                console.log("  -- helper already transferred; loading incremental snapshot")
+            } else {
+                Object.assign(this.actors, previousHelper.actors)
+                
+                // swaps out the previous helper's envelope
+                previousHelper.networkCtx = { network: previousNetwork };
+                
+                // uses the old envelope (that the actors used on the old network)
+                this.networkCtx = oldNetworkEnvelope
+                // ... to reflect the new snapshotted network
+                this.networkCtx.network = newNet;
+
+                this.state.mintedCharterToken = previousHelper.state.mintedCharterToken;
+                this.state.parsedConfig = parsedConfig;
+
+                //@ts-expect-error
+                previousHelper.actors = { [ACTORS_ALREADY_MOVED]: newNet.id }  
+                console.log(`   -- moving ${
+                    Object.keys(this.actors).length
+                } actors from network ${previousNetwork.id} to ${newNet.id}`);
+            }
+            newNet.loadSnapshot(snapshots[snapshotName]);
+        }
+        if (!this.actorName) {
+            await this.setDefaultActor();
+        }
         // this.strella = bootstrappedStrella;
-        await this.initStellarClass(parsedConfig);
-
+        if (!this.strella) {
+            await this.initStellarClass(parsedConfig);
+        }
         return this.strella
     }    
 

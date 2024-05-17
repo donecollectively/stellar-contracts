@@ -258,6 +258,10 @@ export class SimpleWallet_stellar implements Wallet{
 }
 
 
+/**
+ * Captures details from emulated network, to be used for quickly restoring a network state.
+* @alpha
+*/
 export type NetworkSnapshot = {
     seed: number,
     netNumber: number,
@@ -266,11 +270,12 @@ export type NetworkSnapshot = {
     blocks: EmulatorTx[][]
 }
 
-let i = 0
+let i = 1
 /**
  * A simple emulated Network.
  * This can be used to do integration tests of whole dApps.
  * Staking is not yet supported. 
+ * @alpha
  */
 export class StellarNetworkEmulator implements Network{
     #slot : bigint

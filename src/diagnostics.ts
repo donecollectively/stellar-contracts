@@ -470,6 +470,7 @@ export function byteArrayAsString(ba: ByteArray | ByteArrayData): string {
  **/
 export function dumpAny(
     x:
+        | undefined
         | Tx
         | StellarTxnContext
         | Address
@@ -484,6 +485,7 @@ export function dumpAny(
         | ByteArrayData[],
     networkParams?: NetworkParams
 ) {
+    if ("undefined" == typeof x) return "‹undefined›";
     if (Array.isArray(x)) {
         if (x[0] instanceof TxInput) {
             //@ts-expect-error sorry, typescript : /
