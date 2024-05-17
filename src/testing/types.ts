@@ -24,7 +24,7 @@ export type enhancedNetworkParams = NetworkParams & {
     slotToTimestamp(n: bigint): Date;
 };
 export type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (
-    config: ConfigFor<SC> & canHaveRandomSeed
+    config: ConfigFor<SC> & canHaveRandomSeed, helperState: any
 ) => StellarTestHelper<SC>;
 
 export type DefaultCapoTestHelperClass<SC extends Capo<any>> = new (
