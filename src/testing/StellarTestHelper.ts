@@ -136,13 +136,6 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         return this.setActor("hiro");
     }
 
-    snapshot() {
-        return this.network.snapshot();
-    }
-
-    loadSnapshot(snap: NetworkSnapshot) {
-        this.network.loadSnapshot(snap);
-    }
     helperState?: TestHelperState<SC>;
     constructor(
         config?: ConfigFor<SC>& canHaveRandomSeed & canSkipSetup,

@@ -15,6 +15,10 @@ import { StellarTxnContext, type hasAddlTxns } from "../StellarTxnContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
 import { CapoMinter } from "../minting/CapoMinter.js";
 
+
+export const SNAP_INIT = "initialized";
+export const SNAP_BOOTSTRAP = "bootstrapped";
+
 /**
  * Base class for test helpers for Capo contracts
  * @remarks
@@ -111,6 +115,52 @@ export abstract class CapoTestHelper<
         return new StellarTxnContext(this.actorContext);
     }
     
+
+    // todo bring Network snaps with their methods into one place
+    async snapshot( snapName: string) {
+        const snap = this.network.snapshot();
+        this.helperState!.snapshots[snapName] = snap;
+    }
+
+    loadSnapshot( snapName: string) {
+        const snap = this.helperState!.snapshots[snapName];
+        if (!snap) throw new Error(`no snapshot named ${snapName}`);
+
+        this.network.loadSnapshot(snap);
+    }
+
+    async reusableBootstrap(
+        snap = SNAP_BOOTSTRAP
+        // override = false
+    ) {
+        let capo;
+        const helperState = this.helperState!
+        if (helperState.bootstrapped) {
+            console.log("  ---  ⚗️🐞🐞 already bootstrapped");
+            if (!helperState.previousHelper) {
+                debugger;
+                throw new Error(`already bootstrapped, but no previousHelper : ( `);
+            }
+            debugger;
+            capo = await this.restoreFrom(snap);
+        } else {
+            capo = await this.bootstrap();
+            helperState.bootstrappedStrella = capo;
+        }
+        const { previousHelper } = helperState;
+        if (!previousHelper) {
+            this.snapshot(SNAP_BOOTSTRAP);
+        } else {
+            console.log(
+                `changing helper from network ${previousHelper.network.id} to ${this.network.id}`
+            );
+        }
+        helperState.bootstrapped = true;
+        helperState.previousHelper = this;
+
+        return capo;
+    }
+
     async bootstrap(args?: Partial<MinimalCharterDatumArgs>) {
         let strella = this.strella || (await this.initialize());
         if (this.bootstrap != CapoTestHelper.prototype.bootstrap) {
