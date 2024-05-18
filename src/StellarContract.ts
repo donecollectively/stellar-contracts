@@ -1718,12 +1718,12 @@ export class StellarContract<
             //     throw new Error(`outrageous fee-computation found - check txn setup for correctness`)
             // }
             try {
-                // const t1 = new Date().getTime();
+                const t1 = new Date().getTime();
                 console.log("---");
                 await tx.finalize(this.networkParams, changeAddress, spares);
-                // const t2 = new Date().getTime();
-                // const elapsed = t2 - t1;
-                // console.log(`::::::::::::::::::::::::::::::::: tx validation time: ${elapsed}ms`);
+                const t2 = new Date().getTime();
+                const elapsed = t2 - t1;
+                console.log(`::::::::::::::::::::::::::::::::: tx validation time: ${elapsed}ms`);
                 // result: validations for non-trivial txns can take ~800+ ms
                 //  - validations with simplify:true, ~250ms - but ...
                 //    ... with elided error messages that don't support negative-testing very well
