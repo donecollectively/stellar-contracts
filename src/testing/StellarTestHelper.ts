@@ -38,7 +38,6 @@ import type {
 } from "./types.js";
 import { SimpleWallet_stellar, StellarNetworkEmulator, type NetworkSnapshot } from "./StellarNetworkEmulator.js";
 
-const ACTORS_ALREADY_MOVED = "NONE! all actors were moved from a different network via snapshot"
 
 /**
  * Base class for test-helpers on generic Stellar contracts
@@ -59,7 +58,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     liveSlotParams: NetworkParams;
     networkParams: NetworkParams;
     networkCtx : NetworkContext<StellarNetworkEmulator>;
-    private _actorName!: string;
+    protected _actorName!: string;
 
     get actorName() {
         return this._actorName;
@@ -170,7 +169,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             throw new Error(`obsolete skipSetup: just don't call initialze()`);
             return;
         }
-        console.log(" + StellTestHelper")
+        console.log(" + StellarTestHelper")
         //xx@ts-expect-error - can serve no-params case or params case
         // this.setupPending = this.initialize();
     }
@@ -215,65 +214,6 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         
         return this.initStellarClass()
     }
-
-    async restoreFrom(snapshotName: string) : Promise<SC> {
-        const {helperState, helperState:{snapshots, previousHelper, bootstrappedStrella}={}} = this;
-        if (!helperState) throw new Error(`can't restore from a previous helper without a helperState`);
-        if (!bootstrappedStrella) throw new Error(`can't restore from a previous helper without a bootstrappedStrella`);
-
-        if (!snapshots || !snapshots[snapshotName]) {
-            throw new Error(`no snapshot named ${snapshotName} in helperState`);
-        }
-        if (!previousHelper) {
-            throw new Error(`no previousHelper in helperState`);
-        }
-        const {parsedConfig} = previousHelper.state;
-        
-        const {networkCtx: oldNetworkEnvelope} = previousHelper;
-        const {network: previousNetwork} = oldNetworkEnvelope
-        const {network: newNet} = this.networkCtx;
-
-        // hacky load of the indicator of already having restored details from the prievous helper
-        const otherNet : number = previousHelper.actors[ACTORS_ALREADY_MOVED] as unknown as number; 
-        if (otherNet) {
-            if (otherNet !== newNet.id) {
-                throw new Error(`actors already moved to network #${otherNet}; can't move to #${newNet.id} now.`);
-            }
-            console.log("  -- actors are already here")
-        } else {
-            if (this === previousHelper) {
-                console.log("  -- helper already transferred; loading incremental snapshot")
-            } else {
-                Object.assign(this.actors, previousHelper.actors)
-                
-                // swaps out the previous helper's envelope
-                previousHelper.networkCtx = { network: previousNetwork };
-                
-                // uses the old envelope (that the actors used on the old network)
-                this.networkCtx = oldNetworkEnvelope
-                // ... to reflect the new snapshotted network
-                this.networkCtx.network = newNet;
-
-                this.state.mintedCharterToken = previousHelper.state.mintedCharterToken;
-                this.state.parsedConfig = parsedConfig;
-
-                //@ts-expect-error
-                previousHelper.actors = { [ACTORS_ALREADY_MOVED]: newNet.id }  
-                console.log(`   -- moving ${
-                    Object.keys(this.actors).length
-                } actors from network ${previousNetwork.id} to ${newNet.id}`);
-            }
-            newNet.loadSnapshot(snapshots[snapshotName]);
-        }
-        if (!this.actorName) {
-            await this.setDefaultActor();
-        }
-        // this.strella = bootstrappedStrella;
-        if (!this.strella) {
-            await this.initStellarClass(parsedConfig);
-        }
-        return this.strella
-    }    
 
     async initStellarClass(config = this.config) {
         const TargetClass = this.stellarClass;

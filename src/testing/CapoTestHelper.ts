@@ -1,6 +1,4 @@
-import {
-    Capo,
-} from "../Capo.js";
+import { Capo } from "../Capo.js";
 import type {
     CapoBaseConfig,
     CharterDatumProps,
@@ -15,6 +13,8 @@ import { StellarTxnContext, type hasAddlTxns } from "../StellarTxnContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
 import { CapoMinter } from "../minting/CapoMinter.js";
 
+const ACTORS_ALREADY_MOVED =
+    "NONE! all actors were moved from a different network via snapshot";
 
 export const SNAP_INIT = "initialized";
 export const SNAP_BOOTSTRAP = "bootstrapped";
@@ -22,16 +22,16 @@ export const SNAP_BOOTSTRAP = "bootstrapped";
 /**
  * Base class for test helpers for Capo contracts
  * @remarks
- * 
+ *
  * You should probably use DefaultCapoTestHelper instead of this class.
  * @public
  **/
 export abstract class CapoTestHelper<
-    SC extends Capo<any>,
+    SC extends Capo<any>
 > extends StellarTestHelper<SC> {
     async initialize({
         randomSeed = 42,
-    }: {randomSeed?: number } = {}): Promise<SC> {
+    }: { randomSeed?: number } = {}): Promise<SC> {
         // Note: This method diverges from the base class impl, due to type difficulties.
         // Patches welcome.
 
@@ -57,54 +57,54 @@ export abstract class CapoTestHelper<
                         )
                         .join("\n")
             );
+
             //@ts-expect-error
-            this.strella = undefined
-            this.actors = {}
+            this.strella = undefined;
+            this.actors = {};
+            this._actorName = "";
         }
         await this.delay(1);
-            this.randomSeed = randomSeed;
 
-            if (Object.keys(this.actors).length) {
-                console.log("Skipping actor setup - already done")
-            } else {
-                console.log("  -- 🎭🎭🎭 actor setup...")
-                const actorSetup = this.setupActors();
-                await actorSetup
-                this.setDefaultActor();
-            }
-        
-            debugger
-            this.state.mintedCharterToken = undefined;
-            this.state.parsedConfig = undefined;
+        this.randomSeed = randomSeed;
 
-            //! when there's not a preset config, it leaves the detailed setup to be done just-in-time
-            //   based on seedUtxo in mkTxnMintCharterToken
-            if (!this.config) {
-                console.log(  "  -- Capo not yet bootstrapped")
-                return (this.strella = await this.initStrella(this.stellarClass))
-            }
-            console.log("  -- Capo already bootstrapped")
-            const strella = await this.initStrella(this.stellarClass, this.config);
+        if (Object.keys(this.actors).length) {
+            console.log("Skipping actor setup - already done");
+        } else {
+            console.log("  -- 🎭🎭🎭 actor setup...");
+            const actorSetup = this.setupActors();
+            await actorSetup;
+            await this.setDefaultActor();
+        }
 
-            this.strella = strella;
-            const { address, mintingPolicyHash: mph } = strella;
+        this.state.mintedCharterToken = undefined;
+        this.state.parsedConfig = undefined;
 
-            const { name } = strella.scriptProgram!;
-            console.log(
-                name,
-                address.toBech32().substring(0, 18) + "…",
-                "vHash 📜 " +
-                    strella.validatorHash.hex.substring(0, 12) +
-                    "…",
-                "mph 🏦 " + mph?.hex.substring(0, 12) + "…"
-            );
-            console.log("<- CAPO initialized()")
+        //! when there's not a preset config, it leaves the detailed setup to be done just-in-time
+        //   based on seedUtxo in mkTxnMintCharterToken
+        if (!this.config) {
+            console.log("  -- Capo not yet bootstrapped");
+            return (this.strella = await this.initStrella(this.stellarClass));
+        }
+        console.log("  -- Capo already bootstrapped");
+        const strella = await this.initStrella(this.stellarClass, this.config);
 
-            return strella
+        this.strella = strella;
+        const { address, mintingPolicyHash: mph } = strella;
+
+        const { name } = strella.scriptProgram!;
+        console.log(
+            name,
+            address.toBech32().substring(0, 18) + "…",
+            "vHash 📜 " + strella.validatorHash.hex.substring(0, 12) + "…",
+            "mph 🏦 " + mph?.hex.substring(0, 12) + "…"
+        );
+        console.log("<- CAPO initialized()");
+
+        return strella;
     }
-    
+
     get ready() {
-        return !!(this.strella.configIn || this.state.parsedConfig)
+        return !!(this.strella.configIn || this.state.parsedConfig);
     }
 
     /**
@@ -114,15 +114,8 @@ export abstract class CapoTestHelper<
     mkTcx() {
         return new StellarTxnContext(this.actorContext);
     }
-    
 
-    // todo bring Network snaps with their methods into one place
-    async snapshot( snapName: string) {
-        const snap = this.network.snapshot();
-        this.helperState!.snapshots[snapName] = snap;
-    }
-
-    loadSnapshot( snapName: string) {
+    loadSnapshot(snapName: string) {
         const snap = this.helperState!.snapshots[snapName];
         if (!snap) throw new Error(`no snapshot named ${snapName}`);
 
@@ -134,12 +127,14 @@ export abstract class CapoTestHelper<
         // override = false
     ) {
         let capo;
-        const helperState = this.helperState!
+        const helperState = this.helperState!;
         if (helperState.bootstrapped) {
             console.log("  ---  ⚗️🐞🐞 already bootstrapped");
             if (!helperState.previousHelper) {
                 debugger;
-                throw new Error(`already bootstrapped, but no previousHelper : ( `);
+                throw new Error(
+                    `already bootstrapped, but no previousHelper : ( `
+                );
             }
             debugger;
             capo = await this.restoreFrom(snap);
@@ -161,33 +156,195 @@ export abstract class CapoTestHelper<
         return capo;
     }
 
+    // a decorator for test-helper functions that generate named snapshots
+    static hasNamedSnapshot(snapshotName: string, actorName: string) {
+        return function (
+            target: any,
+            propertyKey: string,
+            descriptor: PropertyDescriptor
+        ) {
+            const originalMethod = descriptor.value;
+            descriptor.value = async function (
+                this: CapoTestHelper<any>,
+                ...args: any[]
+            ) {
+                return this.findOrCreateSnapshot(
+                    snapshotName,
+                    actorName,
+                    () => {
+                        return originalMethod
+                            .apply(this, ...args)
+                            .then((result) => {
+                                if (this.actorName !== actorName) {
+                                    throw new Error(
+                                        `actorName mismatch during snapshot generation; was '${this.actorName}', expected '${actorName}'`
+                                    );
+                                }
+                                this.network.tick(1n);
+                                return result;
+                            });
+                    }
+                );
+            };
+            return descriptor;
+        };
+    }
+
+    hasSnapshot(snapshotName: string) {
+        return !!this.helperState?.snapshots[snapshotName];
+    }
+
+    snapshot(snapshotName: string) {
+        if (!this.helperState) {
+            throw new Error(`can't snapshot without a helperState`);
+        }
+        if (this.hasSnapshot(snapshotName)) {
+            throw new Error(`snapshot ${snapshotName} already exists`);
+        }
+        this.helperState.snapshots[snapshotName] = this.network.snapshot();
+    }
+
+    async findOrCreateSnapshot(
+        snapshotName: string,
+        actorName: string,
+        contentBuilder: () => Promise<any>
+    ) {
+        if (this.helperState!.snapshots[snapshotName]) {
+            const capo = await this.restoreFrom(snapshotName);
+            await this.setActor(actorName);
+            return capo;
+        }
+        let result;
+        try {
+            result = await contentBuilder();
+            // the correct actor name is expected from the underlying activity
+            // await this.setActor(actorName);
+            return result;
+        } catch (e) {
+            throw e;
+        } finally {
+            if (result) {
+                this.snapshot(snapshotName);
+            }
+        }
+    }
+
+    async restoreFrom(snapshotName: string): Promise<SC> {
+        const {
+            helperState,
+            helperState: {
+                snapshots,
+                previousHelper,
+                bootstrappedStrella,
+            } = {},
+        } = this;
+        if (!helperState)
+            throw new Error(
+                `can't restore from a previous helper without a helperState`
+            );
+        if (!bootstrappedStrella)
+            throw new Error(
+                `can't restore from a previous helper without a bootstrappedStrella`
+            );
+
+        if (!snapshots || !snapshots[snapshotName]) {
+            throw new Error(`no snapshot named ${snapshotName} in helperState`);
+        }
+        if (!previousHelper) {
+            throw new Error(`no previousHelper in helperState`);
+        }
+        const { parsedConfig } = previousHelper.state;
+
+        const { networkCtx: oldNetworkEnvelope } = previousHelper;
+        const { network: previousNetwork } = oldNetworkEnvelope;
+        const { network: newNet } = this.networkCtx;
+
+        // hacky load of the indicator of already having restored details from the prievous helper
+        const otherNet: number = previousHelper.actors[
+            ACTORS_ALREADY_MOVED
+        ] as unknown as number;
+        if (otherNet) {
+            if (otherNet !== newNet.id) {
+                throw new Error(
+                    `actors already moved to network #${otherNet}; can't move to #${newNet.id} now.`
+                );
+            }
+            console.log("  -- actors are already here");
+        } else {
+            if (this === previousHelper) {
+                console.log(
+                    "  -- helper already transferred; loading incremental snapshot"
+                );
+            } else {
+                Object.assign(this.actors, previousHelper.actors);
+
+                // swaps out the previous helper's envelope
+                previousHelper.networkCtx = { network: previousNetwork };
+
+                // uses the old envelope (that the actors used on the old network)
+                this.networkCtx = oldNetworkEnvelope;
+                // ... to reflect the new snapshotted network
+                this.networkCtx.network = newNet;
+
+                this.state.mintedCharterToken =
+                    previousHelper.state.mintedCharterToken;
+                this.state.parsedConfig = parsedConfig;
+
+                //@ts-expect-error
+                previousHelper.actors = { [ACTORS_ALREADY_MOVED]: newNet.id };
+                console.log(
+                    `   -- moving ${
+                        Object.keys(this.actors).length
+                    } actors from network ${previousNetwork.id} to ${newNet.id}`
+                );
+            }
+            newNet.loadSnapshot(snapshots[snapshotName]);
+        }
+        if (!this.actorName) {
+            await this.setDefaultActor();
+        }
+        // this.strella = bootstrappedStrella;
+        if (!this.strella) {
+            await this.initStellarClass(parsedConfig);
+        }
+        return this.strella;
+    }
+
     async bootstrap(args?: Partial<MinimalCharterDatumArgs>) {
         let strella = this.strella || (await this.initialize());
         if (this.bootstrap != CapoTestHelper.prototype.bootstrap) {
-            throw new Error(`Don't override the test-helper bootstrap().  Instead, provide an implementation of extraBootstrapping()`)
+            throw new Error(
+                `Don't override the test-helper bootstrap().  Instead, provide an implementation of extraBootstrapping()`
+            );
         }
         if (this.ready) {
-            console.log("       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap already OK")
+            console.log(
+                "       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap already OK"
+            );
 
             return strella;
         }
 
         await this.mintCharterToken(args);
-        console.log("       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap with charter")
-        await this.extraBootstrapping(args)
+        console.log(
+            "       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap with charter"
+        );
+        await this.extraBootstrapping(args);
         return strella;
     }
 
     async extraBootstrapping(args?: Partial<MinimalCharterDatumArgs>) {
         return this.strella;
     }
-    
-    abstract mkDefaultCharterArgs(): Partial<MinimalCharterDatumArgs>
+
+    abstract mkDefaultCharterArgs(): Partial<MinimalCharterDatumArgs>;
     abstract mintCharterToken(
         args?: Partial<MinimalCharterDatumArgs>
     ): Promise<
-        & hasUutContext<"govAuthority" | "capoGov" | "mintDelegate" | "mintDgt" | "settings">
-        & hasBootstrappedConfig<CapoBaseConfig>
-        & hasAddlTxns<any>
-    >
+        hasUutContext<
+            "govAuthority" | "capoGov" | "mintDelegate" | "mintDgt" | "settings"
+        > &
+            hasBootstrappedConfig<CapoBaseConfig> &
+            hasAddlTxns<any>
+    >;
 }
