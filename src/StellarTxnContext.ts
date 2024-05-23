@@ -29,7 +29,10 @@ export type hasSeedUtxo = StellarTxnContext<
 >;
 
 export type TxDescription<T extends StellarTxnContext> = {
-    tcx: T;
+    tcx: T 
+    | ( () => T )
+    | ( () => Promise<T> );
+
     description: string;
     moreInfo: string;
     optional: boolean;
@@ -142,8 +145,16 @@ export class StellarTxnContext<S extends anyState = anyState> {
     state: S;
     actorContext: ActorContext<any>;
     neededSigners: Address[] = [];
-    constructor(actorContext:  ActorContext<any>, state: Partial<S> = {}) {
+    parentTcx?: StellarTxnContext<any>;
+    childReservedUtxos: TxInput[] = [];
+
+    constructor(
+        actorContext:  ActorContext<any>, 
+        state: Partial<S> = {},
+        parentTcx?: StellarTxnContext<any>
+    ) {
         this.actorContext = actorContext;
+        this.parentTcx = parentTcx;
         const { uuts = { ...emptyUuts }, ...moreState } = state;
         //@ts-expect-error
         this.state = {
@@ -187,7 +198,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     reservedUtxos(): TxInput[] {
-        return [...this.inputs, this.collateral].filter(
+        return this.parentTcx ? this.parentTcx.reservedUtxos() : [
+            ...this.inputs, 
+            this.collateral,
+            ...this.childReservedUtxos
+        ].filter(
             (x) => !!x
         ) as TxInput[];
     }
@@ -314,6 +329,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
     ): TCX {
         if (input.address.pubKeyHash) this.neededSigners.push(input.address);
         this.inputs.push(input);
+        if (this.parentTcx) {
+            this.parentTcx.childReservedUtxos.push(input);
+        }
         this.tx.addInput(input, r?.redeemer);
 
         return this;
@@ -329,6 +347,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 this.neededSigners.push(input.address);
         }
         this.inputs.push(...inputs);
+        if (this.parentTcx) {
+            this.parentTcx.childReservedUtxos.push(...inputs);
+        }
         this.tx.addInputs(inputs, r.redeemer);
 
         return this;

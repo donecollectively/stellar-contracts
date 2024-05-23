@@ -1624,9 +1624,7 @@ export class StellarContract<
         const mightNeedFees = this.ADA(3.5);
 
         const toSortInfo = this._mkUtxoSortInfo(mightNeedFees);
-        const notReserved = tcx
-            ? tcx.utxoNotReserved.bind(tcx)
-            : (u: TxInput) => u;
+        const notReserved = tcx?.utxoNotReserved.bind(tcx) || ( (u: TxInput) => u )
 
         return this.wallet.utxos.then((utxos) => {
             const allSpares = utxos
@@ -1831,11 +1829,26 @@ export class StellarContract<
             string,
             TxDescription<any>
         ][]) {
-            const replacementTcx = callback && (await callback(addlTxInfo));
+            const tcx = ("function" == typeof addlTxInfo.tcx ? await addlTxInfo.tcx() : addlTxInfo.tcx) as StellarTxnContext;
+            const {
+                txName, description
+            } = addlTxInfo;
+            if (callback) {
+                console.log("   -- submitTxns: callback", { txName, description, callback });
+            }
+            const replacementTcx = ( callback && (await callback({
+                ...addlTxInfo,
+                tcx
+            })) as typeof replacementTcx | boolean ) || tcx; 
             if (false === replacementTcx) {
                 continue;
             }
-            await this.submit(addlTxInfo.tcx, { addlTxInfo });
+            // if the callback returns true or void, we execute the txn as already resolved.
+            // if it returns an alternative txn, we use that instead.
+            const effectiveTcx = (true === replacementTcx ? tcx : (replacementTcx || tcx));
+            await this.submit(effectiveTcx, { 
+                addlTxInfo // just for its description.
+            });
             if (onSubmitted) await onSubmitted(addlTxInfo);
         }
     }
