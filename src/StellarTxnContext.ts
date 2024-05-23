@@ -96,7 +96,7 @@ export type otherAddlTxnNames<TCX extends StellarTxnContext<any>> = string &
  * @public
  **/
 export interface anyState {
-    uuts: Record<string, UutName>;
+    uuts: uutMap;
 }
 
 /**
@@ -104,7 +104,7 @@ export interface anyState {
  * @public
  **/
 // export type anyState = emptyState;
-export type uutMap = Record<string, UutName>;
+export type uutMap = Record<string, unknown>;
 export const emptyUuts: uutMap = Object.freeze({});
 
 type addInputArgs = Parameters<Tx["addInput"]>;

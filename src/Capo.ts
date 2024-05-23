@@ -329,6 +329,7 @@ import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 import { TypeMapMetadata } from "./TypeMapMetadata.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
 import type { hasAnyDataTemplate } from "./DelegatedDatumAdapter.js";
+import { PriceValidator } from "./PriceValidator.js";
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
@@ -748,6 +749,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             customCapoSettingsModule,
             this.capoHelpers,
             TypeMapMetadata,
+            PriceValidator,
             StellarHeliosHelpers, CapoDelegateHelpers, CapoMintHelpers
         ];
     }
@@ -1972,7 +1974,12 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
     
                 this.scriptProgram = this.loadProgramScript(fullScriptParams);
     
-                const uutPurposes = ["capoGov", "mintDgt", "spendDgt", "set"];
+                const uutPurposes = [
+                    "capoGov"as const, 
+                    "mintDgt"as const, 
+                    "spendDgt" as const, 
+                    "set" as const
+                ];
                 const tcx = await this.txnWillMintUuts(
                     initialTcx,
                     uutPurposes,
@@ -1981,9 +1988,11 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                         govAuthority: "capoGov",
                         mintDelegate: "mintDgt",
                         spendDelegate: "spendDgt",
+                        settings: "set",
                     }
                 );
                 const { uuts } = tcx.state;
+
                 //     capoGov,
                 //     govAuthority, // same
                 //     mintDgt, // same as mintDelegate
@@ -2033,6 +2042,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                 tcx.addInput(seedUtxo);
                 tcx.addOutputs([charterOut]);
     
+
                 // creates an addl txn that stores a refScript in the delegate;
                 //   that refScript could be stored somewhere else instead (e.g. the Capo)
                 //   but for now it's in the delegate addr.
@@ -2041,7 +2051,6 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                     "mintDelegate",
                     mintDelegate.delegate.compiledScript
                 );
-    
                 const tcx3 = await this.txnMkAddlRefScriptTxn(
                     tcx2,
                     "capo",
@@ -2057,7 +2066,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                     throw new Error(
                         `${this.constructor.name}: mkAdditionalTxnsForCharter() must return a txn context`
                     );
-    
+
                 console.log(
                     " ---------------- CHARTER MINT ---------------------\n",
                     // txAsString(tcx4.tx, this.networkParams)
@@ -2123,7 +2132,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             return data;
         }
     
-        async txnAddSettingsOutput<TCX extends StellarTxnContext>(
+        async txnAddSettingsOutput<TCX extends StellarTxnContext<hasAllUuts<"set">>>(
             tcx: TCX,
             settings: CapoOffchainSettingsType<this>
         ): Promise<TCX> {
@@ -2405,19 +2414,20 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             const SN extends string & keyof THIS["delegateRoles"]["mintDelegate"]["variants"],
             DGI extends MinimalDelegateLink<DT>,
             DT extends THIS["delegateRoles"]["mintDelegate"] extends RoleInfo<any, any, infer specificDT, any> ? specificDT : never,    
+            TCX extends hasSeedUtxo = hasSeedUtxo
         >(
             this: THIS,
             delegateInfo: DGI & {
                 strategyName: SN;
                 forcedUpdate?: true;
             },
-            tcx: StellarTxnContext = new StellarTxnContext(this.actorContext)
+            tcx: TCX = new StellarTxnContext(this.actorContext) as TCX
         ): Promise<StellarTxnContext> {
             const currentCharter = await this.mustFindCharterUtxo();
             const currentDatum = await this.findCharterDatum(currentCharter);
             const mintDelegate = await this.getMintDelegate();
             const { minter } = this;
-            const tcxWithSeed = await this.addSeedUtxo(tcx);
+            const tcxWithSeed = tcx.state.seedUtxo === undefined ? await this.addSeedUtxo() : tcx;
             const uutOptions:
                 | NormalDelegateSetup
                 | DelegateSetupWithoutMintDelegate = delegateInfo.forcedUpdate
@@ -2497,16 +2507,18 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                 strategyName: SN
                 forcedUpdate?: true;
             },
-            sDT_3 extends (DGI extends MinimalDelegateLink<infer x> ? x : never)
+            sDT_3 extends (DGI extends MinimalDelegateLink<infer x> ? x : never),
+            TCX extends hasSeedUtxo = hasSeedUtxo
         >(
             this: THIS,
             delegateInfo: DGI,
-            tcx: StellarTxnContext = new StellarTxnContext(this.actorContext)
-        ): Promise<StellarTxnContext> {
+            tcx: TCX = new StellarTxnContext(this.actorContext) as TCX
+        ): Promise<TCX> {
             const currentCharter = await this.mustFindCharterUtxo();
             const currentDatum = await this.findCharterDatum(currentCharter);
             const spendDelegate = await this.getSpendDelegate();
-            const tcxWithSeed = await this.addSeedUtxo(tcx);
+            const tcxWithSeed = tcx.state.seedUtxo === undefined ? await this.addSeedUtxo() : tcx;
+            
             const uutOptions: DelegateSetupWithoutMintDelegate = {
                 withoutMintDelegate: {
                     omitMintDelegate: true,
@@ -2571,7 +2583,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                 fullCharterArgs,
                 undefined,
                 await this.txnAddGovAuthority(tcx2b)
-            );
+            ) as Promise<TCX>
         }
     
         @txn
@@ -2584,24 +2596,26 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             DT extends StellarDelegate<any> & (
                 THIS["delegateRoles"]["mintDelegate"] extends RoleInfo<any, any, infer specificDT, any> ? specificDT : never 
             ),
+            TCX extends hasSeedUtxo = hasSeedUtxo
         >(
             this: THIS,
             delegateInfo: DGI,
-            tcx: StellarTxnContext = new StellarTxnContext(this.actorContext)
+            tcx: TCX = new StellarTxnContext(this.actorContext) as TCX
         ): Promise<StellarTxnContext> {
             const currentDatum = await this.findCharterDatum();
     
             throw new Error(`test me!`)
-            const tcx2a = await this.addSeedUtxo(tcx);
+            const tcxWithSeed = (tcx.state.seedUtxo === undefined) ? await this.addSeedUtxo() : tcx;
+
             // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
-            const tcx2b = await this.txnMintingUuts(
-                tcx2a,
+            const tcx2 = await this.txnMintingUuts(
+                tcxWithSeed,
                 ["mintDgt"],
                 {
                     withoutMintDelegate: {
                         omitMintDelegate: true,
                         specialMinterActivity:
-                            this.minter.activityAddingMintInvariant(tcx2a),
+                            this.minter.activityAddingMintInvariant(tcxWithSeed),
                     },
                 },
                 {
@@ -2609,7 +2623,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                     mintDelegate: "mintDgt",
                 }
             );
-            const mintDelegate = await this.txnCreateDelegateLink(tcx2b, "mintDelegate", delegateInfo);
+            const mintDelegate = await this.txnCreateDelegateLink(tcx2, "mintDelegate", delegateInfo);
             // currentDatum.mintDelegateLink);
     
             // const spendDelegate = await this.txnCreateDelegateLink<
@@ -2631,7 +2645,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                 // this.compiledScript
             );
     
-            return tcx2b.addOutput(charterOut);
+            return tcx2.addOutput(charterOut);
         }
     
         // How can someone be holding interest in a project?
@@ -2652,24 +2666,25 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             DT extends ContractBasedDelegate<any> & (
                 THIS["delegateRoles"]["spendDelegate"] extends RoleInfo<any, any, infer specificDT, any> ? specificDT : never
             ),
+            TCX extends hasSeedUtxo = hasSeedUtxo
         >(
             this: THIS,
             delegateInfo: DGI,
-            tcx: StellarTxnContext = new StellarTxnContext(this.actorContext)
+            tcx: TCX = new StellarTxnContext(this.actorContext) as TCX
         ) {
             const currentDatum = await this.findCharterDatum();
             throw new Error(`test me!`)
-    
-            const tcx2a = await this.addSeedUtxo(tcx);
+            
+            const tcxWithSeed = (tcx.state.seedUtxo === undefined) ? await this.addSeedUtxo() : tcx;
             // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
-            const tcx2b = await this.txnMintingUuts(
-                tcx2a,
+            const tcx2 = await this.txnMintingUuts(
+                tcxWithSeed,
                 ["spendDgt"],
                 {
                     withoutMintDelegate: {
                         omitMintDelegate: true,
                         specialMinterActivity:
-                            this.minter.activityAddingSpendInvariant(tcx2a),
+                            this.minter.activityAddingSpendInvariant(tcxWithSeed),
                     },
                 },
                 {
@@ -2678,7 +2693,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                 }
             );
             const spendDelegate = await this.txnCreateDelegateLink(
-                tcx2b, "spendDelegate", delegateInfo
+                tcx2, "spendDelegate", delegateInfo
             );
             // currentDatum.mintDelegateLink);
     
@@ -2701,7 +2716,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                 // this.compiledScript
             );
     
-            return tcx2b.addOutput(charterOut);
+            return tcx2.addOutput(charterOut);
         }
     
         /**
@@ -2723,7 +2738,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             DT extends StellarDelegate,
             thisType extends Capo<any>,
             const delegateName extends string,
-            TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>
+            TCX extends hasSeedUtxo = hasSeedUtxo,
         >(
             this: thisType,
             delegateName: delegateName,
@@ -2745,9 +2760,9 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
     
             // TODO improve type of txn with uut purpose more specific than just generic string
             console.log(options)
-    
-            const tcx1 = await this.addSeedUtxo(tcx);
-            // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
+
+            const tcx1 = (tcx.state.seedUtxo === undefined) ? await this.addSeedUtxo() : tcx;
+
             const tcx2 = await this.txnMintingUuts(
                 tcx1,
                 [uutPurpose],
@@ -2952,8 +2967,14 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
          * @public
          **/
         async addSeedUtxo<TCX extends StellarTxnContext>(
-            tcx: TCX
+            tcx: TCX = new StellarTxnContext(this.actorContext) as TCX
         ): Promise<TCX & hasSeedUtxo> {
+            if (
+                //@ts-expect-error on this type probe
+                tcx.state && tcx.state.seedUtxo
+            ) {
+                return tcx as TCX & hasSeedUtxo;
+            }
             const seedUtxo = await this.findUutSeedUtxo([], tcx);
     
             const tcx2 = tcx.addInput(seedUtxo) as TCX & hasSeedUtxo;
@@ -3023,7 +3044,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
     
             if (!tcx.state) tcx.state = { uuts: {} };
             tcx.state.uuts = {
-                ...tcx.state.uuts,
+                ...tcx.state.uuts as {},
                 ...uutMap,
             };
     
