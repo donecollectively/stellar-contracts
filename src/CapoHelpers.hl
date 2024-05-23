@@ -4,7 +4,8 @@ import {
     mkTv,
     tvCharter,
     mustFindInputRedeemer,
-    outputAndDatum
+    outputAndDatum,
+    AnyData
 } from StellarHeliosHelpers
 
 import {
@@ -15,16 +16,6 @@ import {
     RelativeDelegateLink,
     AbstractDelegateActivitiesEnum
 } from CapoDelegateHelpers
-
-// field-names style of struct, arbitrary & extensible
-// field list, can be interpreted by any script that defines a 
-// field-names style of struct with its own fields & data types.
-struct AnyData {
-    id: ByteArray "@id"  // same as the UUT name for this data
-    type: String "tpe"
-
-    // can have other fields; receiver will interpret their target types.
-}
 
 enum CapoDatum {
     CharterToken {

@@ -36,7 +36,9 @@ import {
 import {
     returnsValueToScript,
     // mkTv,
-    outputAndDatum
+    outputAndDatum,
+    TODO,
+    REQT
     // tvCharter
 } from StellarHeliosHelpers
 
@@ -158,7 +160,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                         // rejects all delegate-creation.
                         CreatingDelegate{seedTxn,seedIndex,purpose} => {
                             print("🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞 !!!!!!!!!!!!!!!!!!! todo: fix this");
-                            print("🐞 🐞🐞 it should ouput the new delegate token to the Capo as a PendingDelegate datum");
+                            TODO("it should output the new delegate token to the Capo as a PendingDelegate datum");
                                 true || validateUutMinting(
                                     ctx: ctx, 
                                     mph: dd.mph,

@@ -81,8 +81,7 @@ describe("Capo", async () => {
     describe("UUTs for contract utility", () => {
         it.todo("🟥 TEST: doesn't mint a uut without spending the seed utxo");
 
-        // smokeTest
-        it("won't create a UUT without the minting delegate's involvement", async (context: localTC) => {
+        smokeTest("won't create a UUT without the minting delegate's involvement", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
             const capo = await h.initialize();

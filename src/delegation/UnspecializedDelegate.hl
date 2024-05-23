@@ -33,6 +33,9 @@ module specializedDelegate
 //  //! Your specialization MAY include any additional functions, imports or 
 //  //  methods defined on any of the types in this file.
 
+import {
+    AnyData
+} from StellarHeliosHelpers
 
 import {
     DelegationDetail,
@@ -103,6 +106,7 @@ enum DelegateActivity {
     }
 
     // application-specific minting activities, ALWAYS at Enum position 3
+    // remember:M and 3 have a similar shape.
     MintingActivities {
         activity: MintingActivity
     }
@@ -179,8 +183,6 @@ enum DelegateActivity {
                         ).switch {
                             None => error("can't mint delegate with unsupported purpose"),
                             Some => {
-                                // assert(false, "not yet implemented")
-                                print("is this validateUutMinting check redundant?");
 
                                 validateUutMinting(
                                     ctx: ctx, 
