@@ -164,7 +164,21 @@ export abstract class CapoTestHelper<
             descriptor: PropertyDescriptor
         ) {
             const originalMethod = descriptor.value;
-            descriptor.value = async function (
+            descriptor.value = SnapWrap
+
+            const [_, WithCapMethodName] = propertyKey.match( /^snapTo(.*)/ ) || [] 
+            if (! WithCapMethodName) {
+                throw new Error(`hasNamedSnapshot(): ${propertyKey}(): expected method name to start with 'snapTo'`)
+            }
+            const methodName = WithCapMethodName[0].toLowerCase() + WithCapMethodName.slice(1)
+            const generateSnapshotFunc = target[methodName]
+            if (!generateSnapshotFunc) {
+                throw new Error(`hasNamedSnapshot(): ${propertyKey}: expected method ${methodName} to exist`)
+            }
+
+            console.log("hasNamedSnapshot(): ", propertyKey, " -> ", methodName)
+
+            async function SnapWrap(
                 this: CapoTestHelper<any>,
                 ...args: any[]
             ) {
@@ -172,7 +186,7 @@ export abstract class CapoTestHelper<
                     snapshotName,
                     actorName,
                     () => {
-                        return originalMethod
+                        return generateSnapshotFunc
                             .apply(this, ...args)
                             .then((result) => {
                                 if (this.actorName !== actorName) {
