@@ -1,0 +1,361 @@
+module PriceValidator
+
+// Module requirements:
+//   REQT: can express a set of minimum prices.
+//   REQT: if a person pays any of these prices, the price is satisfied.
+//   REQT: allows expressing a "controls asset" requirement, in which
+//     ... the value is spent (demonstrating liquid control of the asset),
+//     ... but doesn't have to be paid to the contract.
+//   REQT: has a way to verify that the transaction 
+//    ... meets a set of price requirements.  The result of that evaluation
+//    ... can be used to show more detail or promoted to a boolean for
+//    ... rejecting the transaction.
+
+
+
+// ValidationResult is used to indicate status at any node within
+//  a price validation tree.
+enum ValidationResult {
+    pending
+    ok
+    insufficient {  // indicates that the required value was not paid
+        reason: String
+    }
+    valueNotReturned
+    aggregateCheckFailed
+}
+
+// PriceNeeded expresses different forms of required prices.
+// Any variant of this can be used as a top-level pricing need, and
+// the composite forms can include nested pricing requirements
+// to express more complex pricing semantics.
+enum PriceNeeded {
+
+    // onePrice: a single price that must be paid to satisfy the requirement.
+    onePrice {
+        // 
+        price: Value
+        label: String
+    }
+    // showControlOf: a value that must be spendable, but which must not
+    //    be paid into the contract.
+    showControlOf {        
+        required: Value
+        label: String
+    }
+    // allOf: a set of values that must be paid to satisfy the requirement.
+    allOf {
+        payTheseAll: [] PriceNeeded
+        label: String
+    }
+    // anyOf: allows the price to be satisfied by any single variation of the indicated prices
+    //   indicated, or with any numeric combination of them
+    anyOf {
+        anyOf: [] PriceNeeded
+        // quantity: Real  // = 1 by default.  Allows combination payments to satisfy the requirement.
+        label: String
+    }
+}
+
+enum PriceType {
+    onePrice
+    showControlOf
+    allOf
+    anyOf
+}
+
+// ValidationTraceEntry is used to capture records of a complete
+//   validation sequence.  A list of them is included in the result of a 
+//   ValueValidator's hasRequiredPayment function.
+struct ValidationTraceEntry[RESULT_TYPE, NODE_TYPE] {
+    path: [] String
+    status: RESULT_TYPE
+    type: NODE_TYPE
+}
+
+// ValueValidationContext is a container for caching expensive aggregate
+//   details within a transaction.  Its methods provide an object-oriented
+//   facade on an immutable context object.  An evolving context is 
+//   used by the ValueValidator to provide low-cost checks on input values
+//   and outputs to the indicated contract address.
+struct ValueValidationContext {
+    ctx: ScriptContext
+    scriptAddr: Address
+    inputValueTotal: Option[Value]
+    fundsLockedAtScript: Option[Value]
+
+    func atScriptAddr(self, addr: Address = self.scriptAddr) -> ValueValidationContext {
+        if (self.scriptAddr != addr) {
+            self.copy(
+                scriptAddr: addr,
+                fundsLockedAtScript: Option[Value]::Some{
+                    self.addOutputValues(addr)
+                }
+            )
+        } else {
+            self.fundsLockedAtScript.switch {
+                None => self.copy(
+                    fundsLockedAtScript: Option[Value]::Some{
+                        self.addOutputValues(addr)
+                    }
+                ),
+                Some => self
+            }
+        }
+    }
+
+    func addOutputValues(self, addr: Address) -> Value{
+        self.ctx.tx.outputs.fold(
+            (v : Value, out: TxOutput) -> Value {
+                if (out.address == addr) {
+                    v + out.value
+                } else {
+                    v
+                }
+            },
+            Value::ZERO
+        )
+    }
+
+    func withInputCheck(self) -> ValueValidationContext {
+        self.inputValueTotal.switch {
+            None => {
+                computedTotal : Value= self.computeInputTotal();
+                self.copy( 
+                    inputValueTotal: Option[Value]::Some{computedTotal}
+                )
+            }, 
+            Some => {
+                self
+            }
+        }
+    }
+
+    func computeInputTotal(self) -> Value {
+        self.ctx.tx.inputs.fold(
+            (v : Value, inp: TxInput) -> Value {
+                v + inp.value
+            },
+            Value::ZERO
+        )
+    }
+
+    func hasPaymentToScript(self, v : Value) -> ValidationResult {
+        self.fundsLockedAtScript.switch {
+            None => error("hasPaymentToScript: call atScriptAddr() first!"),
+            Some{receivedPayment} => if (receivedPayment.contains(v)) {
+                ValidationResult::ok
+            } else {
+                ValidationResult::insufficient{"no payment to script"}
+            }
+        }
+    }
+
+    func showsControlOf( self, 
+        v : Value
+    ) -> ValidationResult {
+        // checks that the paid- and received- values have both been
+        // arranged in the context first.
+        self.fundsLockedAtScript.switch {
+            None => error("call atScriptAddr() first!"),
+            Some{receivedPayment} => {
+                self.inputValueTotal.switch {
+                    None => error("call withInputCheck() first!"),
+
+                    // given the context is set up right, check that the required
+                    //   value was spent to demonstrate control
+                    Some{total} => if (total.contains(v)) {
+                        // ensures the "controlled value" is not part of the payment to the script
+                        if (receivedPayment.contains(v)) {
+                            ValidationResult::valueNotReturned
+                        } else {
+                            ValidationResult::ok
+                        }
+                    } else {
+                        ValidationResult::insufficient{"no control of value"}
+                    }
+                }
+            }
+        }
+    }
+}
+
+func initialValidationContext(
+    ctx: ScriptContext, 
+    scriptAddress: Address,
+    inputValueTotal: Option[Value] = Option[Value]::None,
+    fundsLockedAtScript: Option[Value] = Option[Value]::None
+) -> ValueValidationContext {
+    ValueValidationContext{
+        ctx: ctx,
+        scriptAddr: scriptAddress,
+        inputValueTotal: inputValueTotal,
+        fundsLockedAtScript: fundsLockedAtScript
+    }
+}
+
+// ValueValidator is a container for executing a price validation tree.
+struct ValueValidator {
+    vvCtx: ValueValidationContext
+    result: ValidationResult
+    trace: [] ValidationTraceEntry[ValidationResult, PriceType]
+
+    func isPending(self, 
+        path : []String, 
+        pt: PriceType
+    ) -> ValueValidator {
+        print("pending: "+ path.join("."));
+        ValueValidator{
+            self.vvCtx, 
+            ValidationResult::pending,
+            self.trace.prepend(ValidationTraceEntry[ValidationResult, PriceType] {
+                path,
+                ValidationResult::pending,
+                pt
+            })
+        }
+    }
+
+    func didFail(self, 
+        path: []String, 
+        pt: PriceType
+    ) -> ValueValidator {
+        print("failed: "+ path.join("."));
+        ValueValidator{
+            self.vvCtx, 
+            ValidationResult::aggregateCheckFailed,
+            self.trace.prepend(
+                ValidationTraceEntry[ValidationResult, PriceType] {
+                    path,
+                    ValidationResult::aggregateCheckFailed,
+                    pt
+                }                
+            )
+        }
+    }
+
+    func didSucceed(self, 
+        path: []String, 
+        pt: PriceType
+    ) -> ValueValidator {
+        print("ok: " + path.join("."));
+        ValueValidator{
+            self.vvCtx, 
+            ValidationResult::ok,
+            self.trace.prepend(
+                ValidationTraceEntry[ValidationResult, PriceType] {
+                    path,
+                    ValidationResult::ok,
+                    pt
+                }                
+            )
+        }
+    }
+
+    func aggregateResult(self, 
+        path: []String,
+        pt: PriceType
+    ) -> ValueValidator {
+        self.result.switch {
+            ok => self.didSucceed( path, pt ),
+            _ => self.didFail( path, pt )
+        }
+    }
+
+    func validate(self, 
+        needed: PriceNeeded, 
+        path: [] String = []String{ /* default=empty list */}
+    ) -> ValueValidator {
+        needed.switch {
+            onePrice{price, label} => {
+                vvCtx : ValueValidationContext = self.vvCtx.atScriptAddr();
+                result : ValidationResult = vvCtx.atScriptAddr().hasPaymentToScript(price);
+                ValueValidator{
+                    vvCtx, 
+                    result, 
+                    self.trace.prepend(ValidationTraceEntry[ValidationResult, PriceType]{
+                        path.prepend(label),
+                        result,
+                        PriceType::onePrice
+                    })
+                }
+            },
+            showControlOf{requiredValue, label} => {
+                vvCtx : ValueValidationContext = self.vvCtx.
+                    atScriptAddr().
+                    withInputCheck();
+                result : ValidationResult = vvCtx.showsControlOf(requiredValue);
+                ValueValidator{
+                    vvCtx, 
+                    result, 
+                    self.trace.prepend(ValidationTraceEntry[ValidationResult, PriceType]{
+                        path.prepend(label),
+                        result,
+                        PriceType::showControlOf
+                    })
+                }
+            },
+            
+            allOf{payTheseAll, label} => {
+                pathAtThisLevel : [] String = path.prepend(label);
+                payTheseAll.fold(
+                    (vv: ValueValidator, needed: PriceNeeded) -> ValueValidator {
+                        innerResult : ValueValidator = vv.validate(needed, pathAtThisLevel);
+                        innerResult.result.switch {
+                            ok => innerResult.didSucceed(
+                                pathAtThisLevel, PriceType::allOf
+                            ),
+                            _ => innerResult.didFail(
+                                pathAtThisLevel, 
+                                PriceType::allOf
+                            )
+                        }
+                    },
+                    self.isPending(pathAtThisLevel, PriceType::allOf)
+                ).aggregateResult(pathAtThisLevel, PriceType::allOf)
+            },
+
+            anyOf{anyOf, /* quantity, */  label} => {
+                pathAtThisLevel : [] String = path.prepend(label);
+                
+                anyOf.fold(
+                    (partialValidator : ValueValidator, needed: PriceNeeded) -> ValueValidator {
+                        // partialValidator.trace.head.status.switch {
+                        partialValidator.result.switch {
+                            ok => {
+                                // it's acheived success;
+                                // doesn't need to check more of the needed items.
+                                partialValidator
+                            },
+                            _ => {  
+                                // might be 'pending', from the "pendingAnyOf", 
+                                // ... or a failed attempt at one of the payment options - we can just check 
+                                // ... this next item to see if it provides a better match.
+
+                                // checks another needed value, keeps accumulating trace details...
+                                partialValidator.validate(needed, pathAtThisLevel)    
+                            }
+                        }
+                    }, self.isPending(
+                        pathAtThisLevel,
+                        PriceType::anyOf
+                    )
+                ).aggregateResult(pathAtThisLevel, PriceType::anyOf)
+            }
+        }
+    }
+}
+
+func validateRequiredValue(
+    ctx: ScriptContext, 
+    scriptAddress: Address,
+    needed: PriceNeeded
+) -> ValueValidator {
+    print("validateRequiredValue: ");
+    ValueValidator{
+        vvCtx: initialValidationContext(ctx, scriptAddress),
+        trace: []ValidationTraceEntry[ValidationResult, PriceType]{ /* empty list */ },
+        result: ValidationResult::pending
+    }.validate(needed)
+}
+
