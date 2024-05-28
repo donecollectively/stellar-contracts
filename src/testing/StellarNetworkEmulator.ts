@@ -492,9 +492,7 @@ export class StellarNetworkEmulator implements Network{
 
         this.#slot += n;
         console.log("█  #"+this.id)
-        console.log("██")
-        console.log("███")
-        console.log(`████  @h=${height} + ${count}  txns`)
+        console.log(`███  @h=${height} + ${count}  txns`)
         console.log(`█████ -> slot ${this.#slot.toString()}`)
     }
 
