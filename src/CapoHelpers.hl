@@ -269,7 +269,9 @@ struct DelegateInput {
                 // todo maybe make it valid by enforcing return to the input address?
             }
         };
-        assert(returnedUnchanged, "no way"); // already thrown
+        assert(returnedUnchanged, "no"); // already thrown
+        assert(link.hasValidOutput(mph, ctx), "no"); // thrown inside the method
+
         self
     }
 }
