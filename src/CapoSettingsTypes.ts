@@ -49,8 +49,8 @@ export type WrappedSettingsAdapterBridge<
 // arranges an abstract interface for indicating the general
 // type of settings adapters for Capo classes.
 export interface hasSettingsType<C extends Capo<any>> {
-    mkInitialSettings(): any; //OffchainSettingsType<C>;
-    initSettingsAdapter(): DatumAdapter<any, any>;
+    mkInitialSettings(): Promise<any>; //OffchainSettingsType<C>;
+    initSettingsAdapter(): DatumAdapter<any, any> | Promise<DatumAdapter<any, any>>;
 }
 
 // independently knows how to inspect the concrete

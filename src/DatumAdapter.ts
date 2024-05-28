@@ -260,7 +260,9 @@ export abstract class DatumAdapter<
                         throw new Error(`toMapData(): key ${key} not converted to uplc - try _toUplcData()`);
                     }
                 }
-                return [keyBytes, uplcValue] as [UplcData, UplcData];
+                return [
+                    keyBytes, uplcValue
+                ] as [UplcData, UplcData];
             })
         );
         return t;

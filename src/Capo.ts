@@ -328,7 +328,7 @@ import { UncustomCapoSettings } from "./UncustomCapoSettings.js";
 import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 import { TypeMapMetadata } from "./TypeMapMetadata.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
-import type { hasAnyDataTemplate } from "./DelegatedDatumAdapter.js";
+import type { DelegatedDatumAdapter, hasAnyDataTemplate } from "./DelegatedDatumAdapter.js";
 import { PriceValidator } from "./PriceValidator.js";
 
 /**
@@ -478,8 +478,9 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         return contract;
     }
 
-    abstract mkInitialSettings() : CapoOffchainSettingsType<SELF>;
-    abstract initSettingsAdapter(): DatumAdapter<any, any>;
+    abstract mkInitialSettings() : Promise<CapoOffchainSettingsType<SELF>>;
+    abstract initSettingsAdapter(): DatumAdapter<any, any> | Promise<DatumAdapter<any,any>>;
+    abstract initDelegatedDatumAdapters(): Promise<Record<string, DelegatedDatumAdapter<any, any>>>;
 
     static parseConfig(rawJsonConfig: any) {
         const { mph, rev, seedTxn, seedIndex, rootCapoScriptHash } =
@@ -497,6 +498,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
 
         return outputConfig;
     }
+
 
     get customCapoSettingsModule(): HeliosModuleSrc {
         return UncustomCapoSettings;
@@ -610,7 +612,10 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
 
         //@ts-expect-error - trust the subclass's initSettingsAdapter() to be type-matchy
         //   ... based on other abstract methods defined below
-        this.settingsAdapter = this.initSettingsAdapter();
+        this.settingsAdapter = await this.initSettingsAdapter();
+        //@ts-expect-error - trust the subclass's initSettingsAdapter() to be type-matchy
+        //   ... based on other abstract methods defined below
+        this.datumAdapters = await this.initDelegatedDatumAdapters()
 
         return this;
     }
@@ -1733,7 +1738,9 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             return Datum.inline(t._toUplcData());
         }
     
-        settingsAdapter!: ReturnType<this["initSettingsAdapter"]> // settingsAdapterType;
+        settingsAdapter!: Awaited<ReturnType<this["initSettingsAdapter"]>> // settingsAdapterType;
+        datumAdapters!: Record<string, DelegatedDatumAdapter<any, any>> &
+            Awaited<ReturnType<this["initDelegatedDatumAdapters"]>>;
 
     
         @datum
@@ -2076,7 +2083,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                 //     T extends (...args: infer A) => infer R ? (...args: Normalize<A>) => Normalize<R>
                 //     : T extends any ? {[K in keyof T]: Normalize<T[K]>} : never
     
-                const settings = this.mkInitialSettings() as unknown as CapoOffchainSettingsType<this>;
+                const settings = (await this.mkInitialSettings() ) as unknown as CapoOffchainSettingsType<this>;
                 const tcx5 = await this.txnAddSettingsOutput(tcx4a, settings);
     
                 // debugger

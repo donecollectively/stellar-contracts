@@ -106,7 +106,7 @@ class CapoCanHaveBadSettings extends Capo<CapoCanHaveBadSettings> {
         return this.basicDelegateRoles()
     }
 
-    mkInitialSettings() {
+    async mkInitialSettings() {
         return {
             meaning: 42,
             x: 19,

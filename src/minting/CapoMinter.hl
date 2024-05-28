@@ -55,7 +55,7 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
     mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
     value_minted: Value = tx.minted;
-    assert(rev.serialize() == rev.serialize(), "impossible!");
+    assert(true || (/* never evaluated */ rev.serialize() == rev.serialize()), "no");
     print(" 🚥❓ Capo minter: " + ctx.get_current_minting_policy_hash().show());
 
     ok : Bool = r.switch {
@@ -137,6 +137,7 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
             // assert(settingsOutput.value.contains(settingsValue), "settings output must contain settings UUT");
 
             print("defaultMinter @E");
+            print( "head of this list is..." + ( []String{"aa", "bb", "cc"}.prepend("dd") ).head );
             // print("" + settingsMap.tag.show());
             // settingsMap.switch {
 

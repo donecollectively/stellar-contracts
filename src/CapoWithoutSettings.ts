@@ -2,6 +2,7 @@ import { ConstrData, Datum } from "@hyperionbt/helios";
 import { Capo } from "./Capo.js";
 import { DatumAdapter, type offchainDatumType, type adapterParsedOnchainData } from "./DatumAdapter.js";
 import { SettingsAdapter, type ParsedSettings } from "./CapoSettingsTypes.js";
+import type { DelegatedDatumAdapter } from "./DelegatedDatumAdapter.js";
 
 export type BridgeNoSettings = {
     none: string;
@@ -48,12 +49,16 @@ export class CapoWithoutSettings extends Capo<CapoWithoutSettings> {
     initSettingsAdapter() {
         return new NoSettingsAdapter(this);
     }
+    
+    initDelegatedDatumAdapters(): Promise<Record<string, DelegatedDatumAdapter<any, any>>> {
+        return {} as any
+    }
 
     initDelegateRoles() {
         return this.basicDelegateRoles();
     }
 
-    mkInitialSettings() {
+    async mkInitialSettings() {
         return {
             none: "" as const,
         } //as NoSettings
