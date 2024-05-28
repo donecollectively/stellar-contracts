@@ -48,7 +48,6 @@ import {
 } from specializedDelegate
 
 
-
 func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) -> Bool {
     print(" 🚥❓delegate: " + delegateName +
         if (isDev) {

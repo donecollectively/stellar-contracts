@@ -109,11 +109,12 @@ export type {
     isActivity,
     utxoPredicate,
     anyDatumProps,
-    configBase as paramsBase,
+    configBase, // as paramsBase,
     StellarFactoryArgs,
     hasSeed,
     ConfigFor,
 } from "./src/StellarContract.js";
+
 
 export { DatumAdapter } from "./src/DatumAdapter.js";
 export type { 
@@ -131,7 +132,7 @@ export {
     type hasAnyDataTemplate,
 } from "./src/DelegatedDatumAdapter.js";
 
-export { CapoMinter } from "./src/minting/CapoMinter.js";
+export { CapoMinter, type BasicMinterParams } from "./src/minting/CapoMinter.js";
 export type { CharterDatumProps, hasSettingsRef } from "./src/Capo.js";
 
 import type { CharterDatumProps } from "./src/Capo.js";
