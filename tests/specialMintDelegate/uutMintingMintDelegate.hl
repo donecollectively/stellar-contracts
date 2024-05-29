@@ -130,7 +130,7 @@ enum DelegateActivity {
             seedTxId: sTxId, 
             seedIdx: sIdx, 
             purposes: purposes,
-            // additionalValues: ()
+            // otherMintedValue: ()
             mkTokenName: mkUutTnFactory(sTxId, sIdx)
         );
 

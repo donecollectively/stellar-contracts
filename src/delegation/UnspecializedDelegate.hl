@@ -143,7 +143,7 @@ enum DelegateActivity {
     //         seedTxId: sTxId, 
     //         seedIdx: sIdx, 
     //         purposes: purposes,
-    //         // additionalValues: ()
+    //         // otherMintedValue: ()
     //         mkTokenName: mkUutTnFactory(sTxId, sIdx)
     //     );
 
@@ -183,14 +183,13 @@ enum DelegateActivity {
                         ).switch {
                             None => error("can't mint delegate with unsupported purpose"),
                             Some => {
-
                                 validateUutMinting(
                                     ctx: ctx, 
                                     mph: priorMddd.dd.mph,
                                     seedTxId: seedTxn, 
                                     seedIdx: seedIndex, 
                                     purposes: []String{purpose},
-                                    // additionalValues: ()
+                                    // otherMintedValue: ()
                                     mkTokenName: mkUutTnFactory(seedTxn, seedIndex),
                                     // WE ARE the mint delegate.
                                     needsMintDelegateApproval: false 

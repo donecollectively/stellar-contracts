@@ -166,7 +166,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                                     seedTxId: seedTxn, 
                                     seedIdx: seedIndex, 
                                     purposes: []String{purpose},
-                                    // additionalValues: ()
+                                    // otherMintedValue: ()
                                     mkTokenName: mkUutTnFactory(seedTxn, seedIndex),
                                     // WE ARE the mint delegate.
                                     needsMintDelegateApproval: false 
