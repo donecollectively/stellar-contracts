@@ -173,8 +173,11 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         //xx@ts-expect-error - can serve no-params case or params case
         // this.setupPending = this.initialize();
     }
+
     fixupParams(preProdParams) {
         preProdParams.latestParams.maxTxSize *= 1.5
+        preProdParams.latestParams.maxTxExecutionUnits.memory *= 1.2
+
         return preProdParams;
     }
 
