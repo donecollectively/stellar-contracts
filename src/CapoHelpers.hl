@@ -152,7 +152,10 @@ func getRefCharterUtxo(ctx: ScriptContext, mph : MintingPolicyHash) -> TxInput {
     charterUtxo : TxInput = ctx.tx.ref_inputs.find_safe(hasCharter).switch{
         Some{ch} => ch,
         //!!! todo adjust this message: Missing required charter in ref_inputs
-        None => error("Missing charter in required ref_inputs (use txnMustUseCharterUtxo(tcx, 'refInput') in txn builder)")
+        None => {
+            print("expected charter value" + chVal.show());
+            error("Missing charter in required ref_inputs (use txnAddCharterRef(tcx) in txn builder)")
+        }
     };
 
     charterUtxo

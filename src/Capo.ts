@@ -1824,7 +1824,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         //         uutNames,
         //     );
     
-        //     const tcx2 = await this.txnMustUseCharterUtxo(tcx, "refInput");
+        //     const tcx2 = await this.txnAddCharterRef(tcx);
         //     return this.txnAddMintDelegate(tcx2);
         // }
     
