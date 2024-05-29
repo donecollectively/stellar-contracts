@@ -65,7 +65,7 @@ export function hexToPrintableString(hexStr) {
  * representation of token names even if they're not UTF-8 encoded.
  * @public
  **/
-export function assetsAsString(a: Assets) {
+export function assetsAsString(a: Assets, joiner = "\n    ") {
     //@ts-expect-error it's marked as private, but thankfully it's still accessible
     const assets = a.assets;
     return (assets?.map(([policyId, tokenEntries]) => {
@@ -79,7 +79,7 @@ export function assetsAsString(a: Assets) {
                 .join(" + ");
             return `⦑${policyIdAsString(policyId)} ${tokenString}⦒`;
         }) || [])
-        .join("\n  ");
+        .join(joiner);
 }
 
 export function policyIdAsString(p: MintingPolicyHash) {
@@ -117,8 +117,8 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
         "inputs",
         "minted",
         "collateral",
-        "refInputs",
         "outputs",
+        "refInputs",
         "fee",
         "lastValidSlot",
         "firstValidSlot",
@@ -175,7 +175,7 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
             if (!item.assets.length) {
                 continue;
             }
-            item = ` ❇️  ${assetsAsString(item)}`;
+            item = `\n   ❇️  ${assetsAsString(item, "\n   ❇️  ")}`;
         }
         if ("outputs" == x) {
             item = `\n  ${item
