@@ -566,7 +566,11 @@ struct CapoCtx {
                 txout.address == capoAddr && txout.value.contains(v)
             }
         ).switch{
-            None => error("missing required delegated-data output"),
+            None => {
+                // print( "   ... expected value: ");
+                print( v.show() );
+                error("^ no req'd delegated-data out")
+            },
             Some{txout} => txout
         }
     }

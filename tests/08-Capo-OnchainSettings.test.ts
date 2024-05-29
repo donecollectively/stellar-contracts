@@ -30,7 +30,7 @@ import { TestBadSettings } from "./TestBadSettings";
 import { CapoOffchainSettingsType, SettingsAdapter, ParsedSettings } from "../src/CapoSettingsTypes";
 import { Capo } from "../src/Capo";
 import {  DatumAdapter, Numeric, adapterParsedOnchainData, offchainDatumType } from "../src/DatumAdapter";
-import { AnyDataTemplate, hasAnyDataTemplate } from "../src/DelegatedDatumAdapter";
+import { AnyDataTemplate, DelegatedDatumAdapter, hasAnyDataTemplate } from "../src/DelegatedDatumAdapter";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 
@@ -104,6 +104,10 @@ class CapoCanHaveBadSettings extends Capo<CapoCanHaveBadSettings> {
 
     initDelegateRoles() {
         return this.basicDelegateRoles()
+    }
+
+    async initDelegatedDatumAdapters(): Promise<Record<string, DelegatedDatumAdapter<any, any>>> {
+        return {} 
     }
 
     async mkInitialSettings() {
@@ -242,7 +246,7 @@ describe("supports an abstract Settings structure stored in the contact", async 
             console.log("  -- ⚗️🐞⚗️🐞 case 2 : throws an error if the spend delegate isn't included"); 
             const spendDelegate = await capo.getSpendDelegate();
             vi.spyOn(spendDelegate, "txnGrantAuthority").mockImplementation(async tcx => tcx);
-            await expect(h.updateSettings(goodSettings)).rejects.toThrow(/missing required input .* spendDgt-/);
+            await expect(h.updateSettings(goodSettings)).rejects.toThrow(/missing .* spendDgt-/);
         });
 
         it("the minting delegate must validate the UpdatingSettings details", async (context: localTC) => {
@@ -261,7 +265,7 @@ describe("supports an abstract Settings structure stored in the contact", async 
             const mintDelegate = await capo.getMintDelegate();
             console.log("  -- ⚗️🐞⚗️🐞 case 2 : throws an error if the mint delegate isn't included"); 
             vi.spyOn(mintDelegate, "txnGrantAuthority").mockImplementation(async tcx => tcx);
-            await expect(h.updateSettings(goodSettings)).rejects.toThrow(/missing required input .* mintDgt-/)
+            await expect(h.updateSettings(goodSettings)).rejects.toThrow(/missing .* mintDgt/)
         });
 
         it.todo("TODO: TEST: all named delegates must validate the UpdatingSettings details", async (context: localTC) => {

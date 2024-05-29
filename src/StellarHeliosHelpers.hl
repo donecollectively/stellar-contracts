@@ -25,7 +25,8 @@ func didSignInCtx(ctx: ScriptContext) -> (a: Address) -> Bool {
 }
 
 func TODO(task: String) -> () {
-    print("  🟥    😳💦💦💦  TODO: "+ task)
+    print("  🟥    😳💦💦💦  TODO v ");
+    print( task )
 }
 
 func REQT(reqt: String) -> () {

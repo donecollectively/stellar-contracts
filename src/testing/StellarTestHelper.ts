@@ -176,7 +176,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
 
     fixupParams(preProdParams) {
         preProdParams.latestParams.maxTxSize *= 1.5
-        preProdParams.latestParams.maxTxExecutionUnits.memory *= 1.2
+        preProdParams.latestParams.maxTxExecutionUnits.memory =
+          Math.floor(preProdParams.latestParams.maxTxExecutionUnits.memory * 1.2)
 
         return preProdParams;
     }

@@ -142,19 +142,20 @@ struct RelativeDelegateLink {
                 // if we can't find an input with that address, it's an error condition.
                 // we need an input with this address, having the expected UUT.
                 expectedUut : Value = mkTv(mph, self.uutName);
+                print ( self.uutName );
                 inputs.find_safe((i: TxInput) -> Bool {
                     i.address.credential == needsAddrWithCred &&
                     i.value.contains(expectedUut)
                 }).switch {
                     foundGood: Some => {
-                        print ("  ✅ ➡️  💁 "+ self.uutName + " found input dgTkn" );
+                        print ("  ✅ ➡️  💁 found ^ input dgTkn" );
                         foundGood
                     },
                     /* notFound: */ None => {
                         if (required) {
-                            error("_❌ ➡️  💁 missing required input with dgTkn (at script addr) " + self.uutName)
+                            error("_❌ ➡️  💁 missing req'd ^ input dgTkn (at script addr) " + self.uutName)
                         };
-                        print (" <- ❌  ➡️ 💁 no input for delegate link" + self.uutName + "\n  - not required; returning false");
+                        print (" <- ❌  ➡️ 💁 no input for ^ dgTkn; not req'd; ret false");
                         Option[TxInput]::None
                     }
                 }
@@ -219,11 +220,14 @@ struct RelativeDelegateLink {
         v : Value = mkTv(mph, uut);
         hasDelegate : Bool = validatorHash.switch{
             Some{vh} => {
-                print(" ⬅️ 🔎 💁 expect dgTkn "+uut + " sent to vh " + vh.show());
+                print(uut);
+                print(" ⬅️ 🔎 💁 expect ^ dgTkn sent to vh  vv");
+                print(vh.show());
                 ctx.tx.value_locked_by(vh).contains(v)
             },
             None => {
-                print( " ⬅️ 🔎 💁 "+uut + " expect dgTkn sent anywhere: "+ uut);
+                print( uut );
+                print( " ⬅️ 🔎 💁  expect ^ dgTkn sent anywhere");
                 ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {
                     o.value.contains(v)
                 }).switch{
@@ -236,10 +240,11 @@ struct RelativeDelegateLink {
         if (!hasDelegate && required) {
             error("⬅️ ❌ 💁 missing dgTkn "+ uut )
         } else {
+            print(uut);
             if (hasDelegate) {
-                print(" ⬅️ ✅ 💁 "+ uut)
+                print(" ⬅️ ✅ 💁 uut ^")
             } else {
-                print(" ⬅️ ❌ 💁 no delegate "+ uut + "; not required; returning false")
+                print(" ⬅️ ❌ 💁 no delegate but not req'd; false")
             }
         };
         hasDelegate

@@ -48,7 +48,8 @@ func requiresDelegateAuthorizingMint(
     extraMintDelegateRedeemerCheck: Bool = true
 ) -> Bool {
     authzVal : Value = Value::new(AssetClass::new(mph, delegateLink.uutName.encode_utf8()), 1);
-    print("finding my inp "+ delegateLink.uutName);
+    print( delegateLink.uutName);
+    print("finding ^ my inp");
     targetId: TxOutputId = ctx.tx.inputs.find_safe((i: TxInput) -> {
         // print("   ?  in "+i.value.show());
         i.value.contains(authzVal) // find my authority token
@@ -83,19 +84,19 @@ func requiresDelegateAuthorizingMint(
 
                 /* avoids unused-variable warning: */ fields == fields && 
                 if (!extraMintDelegateRedeemerCheck) {
-                    print("  -- okay, the delegate token was spent");
-                    print("  -- skipping extra check for mint delegate's particular redeemer");
+                    print("  -- ok, dgTkn spent");
+                    print("  -- skip redeemer check");
                     true
                 } else { 
                     if (0 == index) {
                         dgtActivity : DelegateLifecycleActivity = DelegateLifecycleActivity::from_data(fields.head);
                         dgtActivity.switch {
                             ReplacingMe => {
-                                print("  -- okay, the delegate token was spent");
+                                print("  -- ok, dgTkn spent");
                                 true
                             },
-                            Retiring => error("DelegateLifecycleActivity::Retiring can't mint!"),
-                            ValidatingSettings => error("DelegateLifecycleActivity::ValidatingSettings can't mint!")
+                            Retiring => error("DLA::Retiring can't mint!"),
+                            ValidatingSettings => error("DLA::ValidatingSettings can't mint!")
                         }
                     } else { true }
                 }
@@ -126,7 +127,7 @@ func requiresMintDelegateApproval(
     mph: MintingPolicyHash
 ) -> Bool {
     cctx : CapoCtx = mkCapoCtx(ctx, mph).withCharterRef();
-    print("Minter requiring mint delegate, spent with a minting-type activity/redeemer");
+    print("Minter needs mintDgt + mint activity");
 
     if (true) {
         // todo: enforces minting invariants.
@@ -142,7 +143,7 @@ func requiresMintDelegateApproval(
         SpendingActivities => error("DelegateInput::SpendingActivity can't mint!"),
         CapoLifecycleActivities{CLA} => CLA.switch {
             CreatingDelegate => {
-                print("  -- minter consulting mint-delegate for CapoLifecycle (delegate-creation)");
+                print("  -- minter wants mintDgt + CapoLifecycle (delegate-creation)");
 
                 mintDgtInput.requiresValidOutput() && 
                 true
@@ -158,12 +159,12 @@ func requiresMintDelegateApproval(
                     print("  -- TEMPORARY: the mint delegate is being replaced");
                     true
                 },
-                Retiring => error("DelegateLifecycleActivity::Retiring can't mint!"),
-                ValidatingSettings => error("DelegateLifecycleActivity::ValidatingSettings can't mint!")
+                Retiring => error("DLA::Retiring can't mint!"),
+                ValidatingSettings => error("DLA::ValidatingSettings can't mint!")
             }
         },
         MintingActivities => {
-            print("  -- application-specific minting activity, by authority of the mint delegate");
+            print("  -- app-specific minting; trust mintDgt");
             mintDgtInput.requiresValidOutput() && 
                         true
         }
@@ -228,6 +229,14 @@ func mkUutTnFactory(
     }
 }
 
+func tnCip68nft222(tn : String) -> ByteArray{
+    #000de140 + tn.encode_utf8()
+}
+
+func tnCip68ref100(tn : String) -> ByteArray {
+    #000643b0 + tn.encode_utf8()
+}
+
 // checks all of the following:
 //  - there's an approving delegate (or we're bootstrapping)
 //  - the mint includes the seed UTXO
@@ -238,8 +247,8 @@ func validateUutMinting(
     seedTxId : TxId, seedIdx : Int, 
     purposes: []String,     
     mkTokenName: (String) -> String = mkUutTnFactory(seedTxId, seedIdx),
-    bootstrapCharter:Value = Value::new(AssetClass::ADA, 0),
-    otherMintedValue: Value = Value::new(AssetClass::ADA, 0),
+    bootstrapCharter:Value = Value::ZERO,
+    otherMintedValue: Value = Value::ZERO,
     needsMintDelegateApproval: Bool = true,
     extraMintDelegateRedeemerCheck: Bool = true
 ) -> Bool {
@@ -310,14 +319,21 @@ func validateUutMinting(
 
     actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);
     // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);
-    if (true) {
+    if (false) { // true) {
         actualMint.for_each( (b : ByteArray, i: Int) -> {
-            print( "    ℹ️ 🐞 actual: " + b.decode_utf8() + " " + i.show() )
+            print( "    ℹ️ 🐞 actual: " );
+            print( i.show() + "x " + b.decode_utf8())
         });
-
-        print("uut-minting seed: " + seedTxId.show() + "🔹#" + seedIdx.show());
+        print(Value::from_map(valueMinted.to_map().filter( (b:MintingPolicyHash, _ /* Map[ByteArray]Int */ ) -> Bool {
+            b != mph
+        })).show());
+        
+        print("uut-minting seed: ");
+        print( seedTxId.show());
+        print("🔹#" + seedIdx.show());
         expectedValue.get_policy(mph).for_each( (b : ByteArray, i: Int) -> {
-            print( "    ℹ️ 🐞 expected: " + b.decode_utf8() + " " + i.show() )
+            print( "    ℹ️ 🐞 expected: ");
+            print( i.show() + "x " + b.decode_utf8())
         })
     };
 
