@@ -164,7 +164,7 @@ describe("Capo", async () => {
             expect(didntBurnBecauseMocked).toHaveBeenCalledTimes(1);
 
             await expect(capo.submit(tcx2)).rejects.toThrow(
-                /missing required input .*script addr.* mintDgt-/
+                /missing req.* input .*script addr.* mintDgt-/
             );
         });
 
@@ -401,8 +401,9 @@ describe("Capo", async () => {
             const submission = capo.submit(tcx2);
             await expect(submission).rejects.toThrow(
                 /* \X matches any char including line breaks */
-                new RegExp(`expected: ${bytesToText(sd.authorityTokenName)} -1`)
+                new RegExp(`-1x ${bytesToText(sd.authorityTokenName)}`)
             );
+
             await expect(submission).rejects.toThrow(/\X*mismatch in UUT mint/);
         });
 

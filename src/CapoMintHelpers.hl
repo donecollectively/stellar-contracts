@@ -319,7 +319,7 @@ func validateUutMinting(
 
     actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);
     // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);
-    if (false) { // true) {
+    if (true) {
         actualMint.for_each( (b : ByteArray, i: Int) -> {
             print( "    ℹ️ 🐞 actual: " );
             print( i.show() + "x " + b.decode_utf8())
@@ -329,7 +329,7 @@ func validateUutMinting(
         })).show());
         
         print("uut-minting seed: ");
-        print( seedTxId.show());
+        print( seedTxId.show() );
         print("🔹#" + seedIdx.show());
         expectedValue.get_policy(mph).for_each( (b : ByteArray, i: Int) -> {
             print( "    ℹ️ 🐞 expected: ");
