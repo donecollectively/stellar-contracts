@@ -175,9 +175,14 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     }
 
     fixupParams(preProdParams) {
+        const txSize = preProdParams.latestParams.maxTxSize;
+        const maxTxSize = Math.floor(txSize * 1.5);
+        console.log("test env: 🔧🔧🔧🔧 fixup max tx size", txSize, " -> 🔧", maxTxSize)
         preProdParams.latestParams.maxTxSize *= 1.5
-        preProdParams.latestParams.maxTxExecutionUnits.memory =
-          Math.floor(preProdParams.latestParams.maxTxExecutionUnits.memory * 1.2)
+        const mem = preProdParams.latestParams.maxTxExecutionUnits.memory;
+        const maxMem = Math.floor(mem * 1.5);
+        console.log("test env: 🔧🔧🔧🔧 fixup max memory", mem, " -> 🔧", maxMem)
+        preProdParams.latestParams.maxTxExecutionUnits.memory = maxMem;
 
         return preProdParams;
     }
