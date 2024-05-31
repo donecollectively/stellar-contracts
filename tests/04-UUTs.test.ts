@@ -251,7 +251,7 @@ describe("Capo", async () => {
                 { mintDelegateActivity: mintDelegate.activityMintingUutsAppSpecific(tcx1a, purposes) }
             );
 
-            const uutVal = capo.uutsValue(tcx1a.state.uuts!);
+            const uutVal = capo.uutsValue(tcx1b.state.uuts!);
             tcx1a.addOutput(new TxOutput(tina.address, uutVal));
             await capo.submit(tcx1a, {
                 signers: [tom.address, tina.address, tracy.address],
