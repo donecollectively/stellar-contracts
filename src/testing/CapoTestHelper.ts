@@ -215,7 +215,7 @@ export abstract class CapoTestHelper<
         if (this.hasSnapshot(snapshotName)) {
             throw new Error(`snapshot ${snapshotName} already exists`);
         }
-        this.helperState.snapshots[snapshotName] = this.network.snapshot();
+        this.helperState.snapshots[snapshotName] = this.network.snapshot(snapshotName);
     }
 
     async findOrCreateSnapshot(

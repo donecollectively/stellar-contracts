@@ -309,11 +309,11 @@ export class StellarNetworkEmulator implements Network{
         return ((t ^ t >>> 14) >>> 0) / 4294967296;
     }
 
-    snapshot() : NetworkSnapshot {
+    snapshot(snapName: string) : NetworkSnapshot {
         if (this.#mempool.length > 0) {
             throw new Error(`can't snapshot with pending txns`);
         }
-        console.log("            📸 📸 📸   ████  📸 📸 📸  #"+this.id, "  - snapshot at slot ", this.#slot.toString(), "height ", this.#blocks.length)
+        console.log("            📸 📸 📸   ████  📸 📸 📸  #"+this.id, ` - snapshot ${snapName} at slot `, this.#slot.toString(), "height ", this.#blocks.length)
         return { 
             seed: this.#seed, 
             netNumber: this.id,
