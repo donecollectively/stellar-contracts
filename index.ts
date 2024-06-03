@@ -36,12 +36,15 @@ export { CapoWithoutSettings } from "./src/CapoWithoutSettings.js";
 
 export type {
     MintUutActivityArgs,
+    CharterDatumProps, 
+    FoundDatumUtxo,
     FoundUut,
     uutPurposeMap,
     hasAllUuts,
-    hasUutContext,
     hasBootstrappedConfig,
     hasCharterRef,
+    hasSettingsRef,
+    hasUutContext,
 } from "./src/Capo.js";
 
 export {
@@ -133,7 +136,6 @@ export {
 } from "./src/DelegatedDatumAdapter.js";
 
 export { CapoMinter, type BasicMinterParams } from "./src/minting/CapoMinter.js";
-export type { CharterDatumProps, hasSettingsRef } from "./src/Capo.js";
 
 import type { CharterDatumProps } from "./src/Capo.js";
 

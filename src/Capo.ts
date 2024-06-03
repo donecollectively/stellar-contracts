@@ -315,14 +315,14 @@ export interface basicRoleMap {
     [anyOtherRoleNames: string]: RoleInfo<any, any, StellarDelegate<capoDelegateConfig>, any>;
 }
 
-export type hasCharterRef = StellarTxnContext & { state: { 
+export type hasCharterRef = StellarTxnContext<anyState & {
     charterRef: TxInput,
     charterDatum: CharterDatumProps
-} };
+}>;
 
-export type hasSpendDelegate = StellarTxnContext & { state: {
+export type hasSpendDelegate = StellarTxnContext<anyState & {
     spendDelegate: ContractBasedDelegate<any>
-} };
+}>;
 
 import { UncustomCapoSettings } from "./UncustomCapoSettings.js";
 import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
@@ -374,16 +374,14 @@ export type HeldAssetsArgs = {
 /**
  * A transaction context flagged as containing a settings-utxo reference
  */
-export type hasSettingsRef = StellarTxnContext & { state: { settingsRef: TxInput } };
+export type hasSettingsRef = StellarTxnContext<anyState & { settingsRef: TxInput }>;
 
 export type hasNamedDelegate<
     DT extends StellarDelegate, 
     N extends string
-> = StellarTxnContext & { 
-    state: { 
-        [k in `namedDelegate${Capitalize<N>}`]: ConfiguredDelegate<DT> & RelativeDelegateLink<DT> 
-    }
-}
+> = StellarTxnContext<anyState & { 
+    [k in `namedDelegate${Capitalize<N>}`]: ConfiguredDelegate<DT> & RelativeDelegateLink<DT> 
+}>
 
 export type hasRoleMap<
     C extends Capo<any>,
@@ -2429,7 +2427,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                 forcedUpdate?: true;
             },
             tcx: TCX = new StellarTxnContext(this.actorContext) as TCX
-        ): Promise<StellarTxnContext> {
+        ) {
             const currentCharter = await this.mustFindCharterUtxo();
             const currentDatum = await this.findCharterDatum(currentCharter);
             const mintDelegate = await this.getMintDelegate();
@@ -2481,11 +2479,12 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                 ...currentDatum,
                 mintDelegateLink: newMintDelegate,
             };
-            return this.mkTxnUpdateCharter(
+            const tcx3 = await this.mkTxnUpdateCharter(
                 fullCharterArgs,
                 undefined,
                 await this.txnAddGovAuthority(tcx2)
-            );
+            ) as TCX & typeof tcx2
+            return tcx3
             // const datum = await this.mkDatumCharterToken(fullCharterArgs);
     
             // const charterOut = new TxOutput(
@@ -2868,7 +2867,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         @partialTxn
         async txnMintingUuts<
             const purposes extends string,
-            existingTcx extends StellarTxnContext & hasSeedUtxo,
+            existingTcx extends hasSeedUtxo,
             const RM extends Record<ROLES, purposes>,
             const ROLES extends keyof RM & string = string & keyof RM
         >(
