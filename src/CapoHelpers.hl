@@ -435,17 +435,32 @@ struct CapoCtx {
 
     func mkDelegatedDataOutputPredicate(self, typeName: String, id: ByteArray=#) -> (TxOutput) -> Bool {
         capoAddr : Address = self.resolveCharterUtxo().address;
+        // print("capoAddr: "+ capoAddr.show());
+        // print("seeking type "+ typeName);
+        // print("seeking id "+ id.decode_utf8());
         (txo : TxOutput) -> Bool {
+            // print("txo.address: "+ txo.address.show());
             if(txo.address == capoAddr) {
                 data : Data = txo.datum.get_inline_data();
                 CapoDatum::from_data(data).switch {
                     DelegatedData => {
                         x : AnyData = AnyData::from_data(data);
+                        // print( "found type " + x.type );
+                        // print( "found id " + x.id.decode_utf8() );
+                        // isMatch : Bool = 
                         x.type == typeName && (id == # || x.id == id)
+                        // print( "isMatch: " + isMatch.show() );
+                        // isMatch
                     },
-                    _ => false
+                    _ => {
+                        // print ("not DelegatedData");
+                        false
+                    }
                 }
-            } else { false }
+            } else { 
+                // print ("not in capoAddr");
+                false
+             }
         }
     }
 
