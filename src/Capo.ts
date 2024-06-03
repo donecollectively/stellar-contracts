@@ -2970,10 +2970,19 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
          *
          * The seedUtxo is needed for UUT minting, and the transaction is typed with
          * the presence of that seed (found in tcx.state.seedUtxo).
+         * 
+         * If a seedUtxo is already present in the transaction context, no additional seedUtxo
+         * will be added.
+         * 
+         * If a seedUtxo is provided as an argument, that utxo must already be present
+         * in the transaction inputs; the state will be updated to reference it.
+         * 
          * @public
+         * 
          **/
         async addSeedUtxo<TCX extends StellarTxnContext>(
-            tcx: TCX = new StellarTxnContext(this.actorContext) as TCX
+            tcx: TCX = new StellarTxnContext(this.actorContext) as TCX,
+            seedUtxo? : TxInput
         ): Promise<TCX & hasSeedUtxo> {
             if (
                 //@ts-expect-error on this type probe
@@ -2981,11 +2990,19 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             ) {
                 return tcx as TCX & hasSeedUtxo;
             }
-            const seedUtxo = await this.findUutSeedUtxo([], tcx);
-    
-            const tcx2 = tcx.addInput(seedUtxo) as TCX & hasSeedUtxo;
-            tcx2.state.seedUtxo = seedUtxo;
-            return tcx2;
+            if (seedUtxo) {
+                if (!tcx.inputs.find((utxo) => utxo.eq(seedUtxo))) {
+                    throw new Error(`seedUtxo not found in transaction inputs`);
+                }
+                const tcx2 = tcx as TCX & hasSeedUtxo;
+                tcx2.state.seedUtxo = seedUtxo;
+                return tcx2;
+            } else {
+                const newSeedUtxo = await this.findUutSeedUtxo([], tcx);
+                const tcx2 = tcx.addInput(newSeedUtxo) as TCX & hasSeedUtxo;
+                tcx2.state.seedUtxo = newSeedUtxo;
+                return tcx2;
+            }
         }
     
         /**
