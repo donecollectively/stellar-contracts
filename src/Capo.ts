@@ -183,6 +183,13 @@ export type NormalDelegateSetup = {
     // withoutMintDelegate: never
 }
 
+export type FoundDatumUtxo<
+    DelegatedDatumType extends AnyDataTemplate<any, any>
+> = {
+    utxo: TxInput;
+    datum: DelegatedDatumType;
+};
+
 export type UutCreationAttrsWithSeed = {
     usingSeedUtxo: TxInput;
 };
@@ -328,7 +335,7 @@ import { UncustomCapoSettings } from "./UncustomCapoSettings.js";
 import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 import { TypeMapMetadata } from "./TypeMapMetadata.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
-import type { DelegatedDatumAdapter, hasAnyDataTemplate } from "./DelegatedDatumAdapter.js";
+import type { AnyDataTemplate, DelegatedDatumAdapter, hasAnyDataTemplate } from "./DelegatedDatumAdapter.js";
 import { PriceValidator } from "./PriceValidator.js";
 
 /**
