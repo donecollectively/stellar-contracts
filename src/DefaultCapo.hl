@@ -151,7 +151,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
         },
         DelegatedData => activity.switch {
             spendingDelegatedDatum => true,
-            _ => error("invalid activity on DelegateData")
+            _ => error("invalid activity on DelegatedData")
         },
         TypeMapInfo => activity.switch {
             updatingTypeMap => true,

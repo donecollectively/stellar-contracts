@@ -161,8 +161,10 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
             hasGoodDelegates && mintsUuts && hasSeed
         },
 
+        // ------------------------- MOST MINTING ACTIVITIES USE THIS CODE PATH --------------------
         mintWithDelegateAuthorizing => {
             requiresMintDelegateApproval(ctx, mph)
+            // -------------------------  ^^^ deferring to the Capo's current minting delegate --------------------
         },
 
         addingMintInvariant{sTxId, sIdx} => {

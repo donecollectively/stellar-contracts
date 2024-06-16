@@ -83,7 +83,7 @@ export type adapterParsedOnchainData<t, k extends string> =
  * purposes, mastered from the single "Chain Bridge" type.
  * 
  * Use Numeric<> to express all numerically-encoded data types, which 
- * will be represented as a BigInt (Plutus "Integer" on-chain), and some other
+ * will be represented as a BigInt (Plutus "Integer" on-chain), and an indicated other
  * numeric-like form off-chain
  */
 interface isChainTypeBridge { chainTypeBridge: true };

@@ -20,7 +20,7 @@ enum stakingKeyRequirement {
 //   ... followed by app-specific redeemer variants
 // }
 enum DelegateLifecycleActivity {
-    ReplacingMe { // replaces this mint delegate with a different one
+    ReplacingMe { // replaces this delegate with a different one
         seedTxn: TxId
         seedIndex: Int
         purpose: String
@@ -45,7 +45,7 @@ enum CapoLifecycleActivity {
 
 // use this enum to match any redeemer if you don't care about what other
 // variants may be in that delegate, but you know it has to be a delegate with the 
-// universal delegate activities at const#0
+// universal delegate activities at constr#0
 enum AbstractDelegateActivitiesEnum {
     CapoLifecycleActivities {
         a: CapoLifecycleActivity
@@ -65,7 +65,7 @@ enum AbstractDelegateActivitiesEnum {
 // data stored in the Capo, representing basic delegate info
 //   about the connection to a delegate.  
 struct RelativeDelegateLink {
-    uutName: String
+    uutName: String // TODO: use ByteArray instead.
     strategyName: String
     // delegate links without a validator hash are "arms-length" delegates,
     // which means they won't be checked for possible auto-upgrades 
