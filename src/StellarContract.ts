@@ -1920,6 +1920,10 @@ export class StellarContract<
                     `${
                         this.constructor.name
                     }: invalid module returned from importModules():\n${
+                        srcFile ? `${srcFile}\n`: ""
+                    }\n${
+                        purpose ? "" : "!!! missing script purpose on line 1!\n"
+                    }\n${
                         module.split("\n").slice(0, 3).join("\n") // prettier-ignore
                     }\n... you may need to create it with mkHeliosModule() if heliosRollupLoader() isn't suitable for your project`
                 );
