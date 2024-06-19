@@ -20,7 +20,7 @@ export class MintDelegateWithGenericUuts extends BasicMintDelegate {
  //       return this.mkMintingActivity("CreatingVault", txId, idx, uutPurpose);
     }
 
-    get specializedDelegate() {
+    get specializedDelegateModule() {
         return uutMintingMintDelegate;
     }
 }

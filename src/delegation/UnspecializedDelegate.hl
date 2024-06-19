@@ -1,4 +1,4 @@
-module specializedDelegate
+module unspecializedDelegate
 
 // specialized to ...
 //   -   NOT YET SPECIALIZED (replace with your specialization notes here) - 
@@ -167,11 +167,11 @@ enum DelegateActivity {
             //  ... you can add more constraints here if needed
             DelegateLifecycleActivities => true,
             CapoLifecycleActivities{CLA} => {
-                // CapoLifecycleActivites are always rejected except for MINTING delegates.
+                // CapoLifecycleActivites are only relevant for MINTING delegates.
                 //  assert(isMintingDelegate, "unreachable"); // TODO access this const defined in the main script
 
                 // They're normally rejected in this unspecialized (minting) delegate:
-                assert(false, "unspecialized mint delegate rejecting CapoLifecycleActivities") ;
+                assert(false, "unspecialized mint delegate rejecting CapoLifecycleActivities");
                 //   ... but if you have cases for creating new delegates, such as 
                 //   ... named delegates for advanced constellations of contracts 
                 //   ... in your Capo, you can implement checks for that here.

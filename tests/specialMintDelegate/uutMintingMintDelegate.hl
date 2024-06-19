@@ -1,4 +1,4 @@
-module specializedDelegate
+module uutMintingDelegate
 
 // specialized to allow Tests to trigger generic UUT minting
 // ... as a placeholder for application-specific UUT-minting use-cases
