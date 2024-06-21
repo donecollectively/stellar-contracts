@@ -354,7 +354,13 @@ struct CapoCtx {
     
         settingsUtxo
     }
-    
+
+    func requiresGovAuthority(self) -> Bool {
+        self.resolveCharterDatum().govAuthorityLink.hasValidOutput(
+            mph: self.mph, 
+            ctx: self.ctx
+        )
+    }
 
     func getSettings[SettingsTYPE](self) -> SettingsTYPE {
         settings : TxInput = self.getRefSettingsUtxo();
