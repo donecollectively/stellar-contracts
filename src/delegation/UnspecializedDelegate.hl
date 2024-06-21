@@ -56,6 +56,37 @@ import {
 } from CustomCapoSettings
 
 enum DelegateDatum {
+    // we only have to use this if we decide Constr#0 is essential for practical CIP-68 compat
+    Cip68RefToken {  
+        // NOTE: this datum contains reference details for a user-facing token minted according to the cip-68 standard 
+        //  - the asset name (in the Value of this UTXO) MUST be:  #000643b0 + tokenName
+        //     - this asset name can serve user-side tokens using the CIP-68 "222", "333" or other token types.
+        //     - the user-side asset name with its (222/333/etc) CIP-67 prefix and 
+        //       ... its remaining tokenName will be matched to this asset name (#000643b0 +tokenName)
+        //       ... to locate this reference datum; this datum content will be interpreted
+        //       ... according to the semantics implied by the user-side asset-name prefix.
+        //
+        //  - The attached 'meta' field in this Datum variant contains the relevant data, depending on the token type
+        //    - for "222" tokens, the meta field should contain the following fields:
+        //        - "name" : String
+        //        - "description" : String 
+        //        - "files" :   // {mediaType, src (url), name?, ... otherFields)
+        //        - "image": String  // image url: https://, ar://, ipfs:// or data:// (RFC2397 data)
+        //    - for "333" tokens, the meta field should contain the following fields:
+        //        - "name" : String
+        //        - "description" : String 
+        //        - "ticker" : String
+        //        - "url": String  // project URL
+        //        - "logo": String  // image url: https://, ar://, ipfs:// or data:// (RFC2397 data)
+        //                    - it must have a mime type `image/png`, `image/jpeg` or `image/svg+xml`
+        //        - "decimals" : Int
+
+        cip68meta: AnyData
+        cip68version: Int
+        dd: Option[DelegationDetail]
+        // otherDetails: Data // can be Unit () or anything else
+    }
+
     IsDelegation {
         dd: DelegationDetail
     }
@@ -67,7 +98,6 @@ enum DelegateDatum {
         ctx.tx.serialize() != self.serialize() &&        
         true
     }
-
 }
 
 enum MintingActivity {
@@ -109,6 +139,13 @@ enum DelegateActivity {
     // remember:M and 3 have a similar shape.
     MintingActivities {
         activity: MintingActivity
+    }
+
+    DelegatedDataMinting {
+        dataType: String
+    }
+    DelegatedDataSpending {
+        dataType: String
     }
 
     // this function gives a general-purpose implementation of checking for 

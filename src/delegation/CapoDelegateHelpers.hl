@@ -59,8 +59,20 @@ enum AbstractDelegateActivitiesEnum {
     MintingActivities {
         activity: Data
     }
-}
 
+    // allows for delegated-data minting activities to be checked generically,
+    // instead of having to create explicit minting/spending activities for each one.
+    // The mint/spend delegate can thus generically support any registered data-type,
+    // enforcing that right delegate is used but not needing to deal with specifics of 
+    // their activities.  Requires a typeMap for to resolve dataType to the concrete delegate.
+
+    // DelegatedDataMinting {
+    //     dataType: String
+    // }
+    // DelegatedDataSpending {
+    //     dataType: String
+    // }
+}
 
 // data stored in the Capo, representing basic delegate info
 //   about the connection to a delegate.  

@@ -3,8 +3,8 @@ import {
 } from "@hyperionbt/helios";
 
 
-import {  datum } from "../StellarContract.js";
-import type { isActivity } from "../StellarContract.js";
+import {  Activity, datum } from "../StellarContract.js";
+import type { hasSeed, isActivity } from "../StellarContract.js";
 import {
     StellarTxnContext,
 } from "../StellarTxnContext.js";
@@ -33,9 +33,16 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
         }
     }
 
+    @Activity.redeemer
+    activityCreatingDataDelegate(seed: hasSeed, uutPurpose: string) {
+        const { txId, idx } = this.getSeed(seed);
+        return this.mkCapoLifecycleActivity("CreatingDelegate", txId, idx, uutPurpose);
+    }
+
+
     @datum
     mkDatumScriptReference() {
-        throw new Error(`obsolete, right?`);
+        throw new Error(`obsolete mkDatumScriptReference!!!`);
         const { ScriptReference: hlScriptReference } = this.onChainDatumType;
 
         // this is a simple enum tag, indicating the role of this utxo: holding the script
