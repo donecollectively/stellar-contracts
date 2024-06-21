@@ -479,6 +479,7 @@ export function dumpAny(
         | TxInput
         | TxInput[]
         | TxId
+        | number[]
         | ByteArray
         | ByteArray[]
         | ByteArrayData
@@ -495,6 +496,9 @@ export function dumpAny(
             //@ts-expect-error sorry, typescript : /
             return "byte array:\n" + byteArrayListAsString(x);
         }
+        if ("number" == typeof x[0]) {
+            return "num array: " + byteArrayListAsString([new ByteArrayData(x as number[])])
+        }            
     }
 
     if (x instanceof Tx) {
