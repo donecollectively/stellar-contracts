@@ -127,7 +127,9 @@ export type {
     adapterParsedOnchainData,
     offchainDatumType,
     inferOffchainNumericType,
+    RawBytes
 } from "./src/DatumAdapter.js";
+
 
 export { 
     DelegatedDatumAdapter,

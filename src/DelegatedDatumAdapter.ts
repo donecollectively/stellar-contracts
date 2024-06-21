@@ -1,9 +1,10 @@
 import * as helios from "@hyperionbt/helios";
 import { DatumAdapter  } from "./DatumAdapter.js";
 import type { StellarContract, anyDatumProps } from "./StellarContract.js";
+import type { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 
 export type AnyDataTemplate<TYPENAME extends string, others extends anyDatumProps> = {
-    [ key in string & ( "@id" | "tpe" | keyof others ) ]: 
+    [ key in string & ( "@id" | "tpe" | keyof Omit<others, "id"> ) ]: 
         key extends "@id" ? string :  // same as the UUT-name on the data
         key extends "tpe" ? TYPENAME : // for a type-indicator on the data 
             others[key]
@@ -61,11 +62,14 @@ export interface hasAnyDataTemplate<DATA_TYPE extends string, T extends anyDatum
 // 9odG1sPg==
 
 
+// TODO: update this to collaborate with a DelegatedDataController class 
+// (a new subclass of ContractBasedDelegate) for easier type-safety and developer experience.
+
 export abstract class DelegatedDatumAdapter<
     appType,
     OnchainBridgeType extends hasAnyDataTemplate<any, anyDatumProps>
 > extends DatumAdapter<appType, OnchainBridgeType>{
-    constructor(strella: StellarContract<any>) {
+    constructor(strella: ContractBasedDelegate<any>) {
         super(strella)
     }
     datumName = "DelegatedData";
@@ -104,5 +108,5 @@ export abstract class DelegatedDatumAdapter<
 }
 
 type DelegatedDataAttrs<D extends AnyDataTemplate<any,any>> = {
-    [key in "@id" | "tpe" | keyof D]: helios.UplcData
+    [key in "@id" | "tpe" | keyof D /*Omit<D, "id" >*/ ]: helios.UplcData
 }
