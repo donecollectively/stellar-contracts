@@ -186,10 +186,12 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
             }
         },
         _ => {
-            invalidRedeemer = () -> {  error("wrong Actvy/dtm") }; ///Activity custom datum must not use Activities reserved for IsDelegation datum.") };
+            // to trigger an invalid redeemer, call this function
+            kaboomInvalidRedeemer = () -> {  error("wrong Actvy/dtm") }; // Activity custom datum must not use Activities reserved for IsDelegation datum.") };
+
             activity.switch{
-                DelegateLifecycleActivities => invalidRedeemer(), 
-                CapoLifecycleActivities => invalidRedeemer(),
+                DelegateLifecycleActivities => kaboomInvalidRedeemer(), 
+                CapoLifecycleActivities => kaboomInvalidRedeemer(),
                 _ => activity.otherDatumValidation(mdd, ctx)
             }
         }
