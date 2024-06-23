@@ -160,7 +160,8 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                         CreatingDelegate{seedTxn,seedIndex,purpose} => {
                             print("🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞 !!!!!!!!!!!!!!!!!!! todo: fix this");
                             TODO("it should output the new delegate token to the Capo as a PendingDelegate datum");
-                                true || validateUutMinting(
+                                // true || 
+                                validateUutMinting(
                                     ctx: ctx, 
                                     mph: dd.mph,
                                     seedTxId: seedTxn, 
@@ -176,6 +177,40 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                             print("BasicDelegate harness deferring to specialization for CapoLifecycleActivities");
                             true
                         } else { false }
+                },
+
+                CreatingDelegatedData{dataTypePurpose, seedTxn, seedIdx} => {
+                    cctx : CapoCtx = mkCapoCtx(ctx, dd.mph).withCharterRef();
+                    tnFactory : (String) -> String = mkUutTnFactory(seedTxn, seedIdx);
+                    newDataId : String = tnFactory(dataTypePurpose);
+                    // as a mint delegate, we should see to it that any minting does play by the rules
+                    //   ... however, this module is generic, so we can only perform generic checks here.
+                    //   ... we additionally call application-provided validation (provided by a specialization)
+                    //       (we haven't fully implemented generic data-controller registration, so that's a key limitation for now)
+                    // xxx WE are the mint delegate : ) -  cctx.requiresMintDelegateInput().requiresValidOutput() 
+                    // this needs to be done by the speciization for now
+                    // && cctx.requiresDelegatedDataController(dataTypePurpose).requiresDataMinting()                    
+                    TODO("make a generic data-controller re-delegation convention");
+                    TODO("mint-delegate specialization MUST re-delegate authority to the right data-controller");
+                    true
+                    && validateUutMinting(
+                        ctx: ctx, 
+                        mph: dd.mph,
+                        seedTxId: seedTxn, 
+                        seedIdx: seedIdx, 
+                        purposes: []String{dataTypePurpose},
+                        // otherMintedValue: ()
+                        mkTokenName: tnFactory,
+                        // WE ARE the mint delegate.
+                        needsMintDelegateApproval: false 
+                    )
+                    && cctx.mustOutputDelegatedData(newDataId, dataTypePurpose)
+                },
+                UpdatingDelegatedData => { // {dataType, recId} => {
+                    error("todo")
+                },
+                DeletingDelegatedData => { // {dataType, recId} => {
+                    error("todo")
                 },
                 _ => true
             } && if (activity.additionalDelegateValidation(isD, ctx)) {

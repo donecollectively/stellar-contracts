@@ -166,8 +166,24 @@ func requiresMintDelegateApproval(
         MintingActivities => {
             print("  -- app-specific minting; trust mintDgt");
             mintDgtInput.requiresValidOutput() && 
-                        true
-        }
+                true
+        },
+        BurningActivities => {
+            print("  -- app-specific burning; trust mintDgt");
+            mintDgtInput.requiresValidOutput() && 
+                true
+        },
+        CreatingDelegatedData => {
+            print("  -- mint for dgData; trust mintDgt");
+            mintDgtInput.requiresValidOutput() && 
+                true
+        },
+        DeletingDelegatedData => {
+            print("  -- burn for dgData; trust mintDgt");
+            mintDgtInput.requiresValidOutput() && 
+                true
+        },
+        UpdatingDelegatedData => error("invalid mint-delegate activity for minting")
     }
 
     // CapoDatum::CharterToken {

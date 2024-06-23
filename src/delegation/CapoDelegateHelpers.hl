@@ -59,6 +59,9 @@ enum AbstractDelegateActivitiesEnum {
     MintingActivities {
         activity: Data
     }
+    BurningActivities {
+        activity: Data
+    }
 
     // allows for delegated-data minting activities to be checked generically,
     // instead of having to create explicit minting/spending activities for each one.
@@ -66,12 +69,19 @@ enum AbstractDelegateActivitiesEnum {
     // enforcing that right delegate is used but not needing to deal with specifics of 
     // their activities.  Requires a typeMap for to resolve dataType to the concrete delegate.
 
-    // DelegatedDataMinting {
-    //     dataType: String
-    // }
-    // DelegatedDataSpending {
-    //     dataType: String
-    // }
+    CreatingDelegatedData {
+        dataType: String
+        seedTxn: TxId
+        seedIndex: Int
+    }
+    UpdatingDelegatedData {
+        dataType: String
+        recId: String
+    }
+    DeletingDelegatedData {
+        dataType: String
+        recId: String
+    }
 }
 
 // data stored in the Capo, representing basic delegate info
@@ -254,7 +264,7 @@ struct RelativeDelegateLink {
         } else {
             print(uut);
             if (hasDelegate) {
-                print(" ⬅️ ✅ 💁 uut ^")
+                print(" ⬅️ ✅ 💁 ok: ^ dgTkn")
             } else {
                 print(" ⬅️ ❌ 💁 no delegate but not req'd; false")
             }

@@ -327,6 +327,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
         input: addInputArgs[0],
         r?: RedeemerArg
     ): TCX {
+        if (r && !r.redeemer) {
+            console.log("activity without redeemer tag: ", r);
+            throw new Error(
+                `addInput() redeemer must match the isActivity type {redeemer: ‹›activity›}\n`+ JSON.stringify(r)
+            );
+        }
+
         if (input.address.pubKeyHash) this.neededSigners.push(input.address);
         this.inputs.push(input);
         if (this.parentTcx) {
@@ -342,6 +349,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
         inputs: Parameters<Tx["addInputs"]>[0],
         r: RedeemerArg
     ): TCX {
+        if (r && !r.redeemer) {
+            console.log("activity without redeemer tag: ", r);
+            throw new Error(
+                `addInputs() redeemer must match the isActivity type {redeemer: ‹›activity›}\n`+ JSON.stringify(r)
+            );
+        }
         for (const input of inputs) {
             if (input.address.pubKeyHash)
                 this.neededSigners.push(input.address);

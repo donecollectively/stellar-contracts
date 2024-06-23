@@ -139,11 +139,14 @@ export const Activity = {
      * provide guard-rails for naming consistency.
      * @public
      **/
-    redeemer(proto, thingName, descriptor) {
+    redeemer(proto, thingName, descriptor 
+        // todo: improve this type, so the decorated function is type-checked for returning an isActivity object
+        // : {value: (...args: any[])  => isActivity<any>}
+    ) {
         const isActivity = thingName.match(/^activity[A-Z]/);
         const isBurn = thingName.match(/^burn[A-Z]/);
         const isMint = thingName.match(/^mint[A-Z]/);
-
+        
         if (!isActivity && !isBurn) {
             throw new Error(
                 `@Activity.redeemer: ${thingName}: name should start with '(activity|burn|mint)[A-Z]...'`

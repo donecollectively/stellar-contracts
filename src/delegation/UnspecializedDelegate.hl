@@ -141,11 +141,20 @@ enum DelegateActivity {
         activity: MintingActivity
     }
 
-    DelegatedDataMinting {
+    CreatingDelegatedData {
         dataType: String
+        seedTxn: TxId
+        seedIndex: Int
     }
-    DelegatedDataSpending {
+
+    UpdatingDelegatedData {
         dataType: String
+        recId: String
+    }
+
+    DeletingDelegatedData {
+        dataType: String
+        recId: String
     }
 
     // this function gives a general-purpose implementation of checking for 
@@ -238,7 +247,7 @@ enum DelegateActivity {
                  }
             },
             _ => false
-        } || ctx.tx.serialize() != priorMddd.serialize()        
+        } || ctx.tx.serialize() == priorMddd.serialize()        
     }
     func supportedCapoDelegatePurposes(self) -> []String {
         assert(true || /* prevent unused variable */ self == self, "no way" );

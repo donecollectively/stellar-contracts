@@ -217,7 +217,45 @@ struct DelegateInput {
     func withSpendingActivity(self) -> DelegateInput {
         self.genericDelegateActivity().switch {
             SpendingActivities => self,
-            _ => error("dgtTkn: no spend activity!")
+            _ => error("dgtTkn: non-spend activity!")
+        }
+    }
+
+    func withMintingActivity(self) -> DelegateInput {
+        self.genericDelegateActivity().switch {
+            MintingActivities => self,
+            _ => error("dgtTkn: non-mint activity!")
+        }
+    }
+    func withSeededMintingActivity(self, seedTxn : TxId, seedIdx : Int) -> DelegateInput {
+        self.genericDelegateActivity().switch {
+            MintingActivities{ma} => {
+                ma.switch {
+                    (index: Int, fields: []Data) => {
+                        assert(index==index, "no way"); // unused field can't be _
+                        assert(seedTxn == TxId::from_data(fields.get(0)), "seedTxn mismatch");
+                        assert(seedIdx == Int::from_data(fields.get(1)), "seedIdx mismatch")
+                    },
+                    _ => error("no way")
+                };
+                self
+            },
+            _ => error("dgtTkn: non-mint activity!")
+        }
+    }
+    func withDDSpendingActivity(self, recId: String) -> DelegateInput {
+        self.genericDelegateActivity().switch {
+            SpendingActivities{sa} => {
+                sa.switch {
+                    (index: Int, fields: []Data) => {
+                        assert(index==index, "no way"); // unused field can't be _
+                        assert(recId == String::from_data(fields.get(0)), "recId mismatch")
+                    },
+                    _ => error("no way")
+                };
+                self
+            },
+            _ => error("dgtTkn: non-spend activity!")
         }
     }
 
@@ -276,6 +314,11 @@ struct DelegateInput {
         assert(link.hasValidOutput(mph, ctx), "no"); // thrown inside the method
 
         self
+    }
+    // syntax sugar.  Implied is that that any other function calls will trip errors,
+    func orFail(self) -> Bool {
+        assert(true || /* never executed */ self.serialize() == self.serialize(), "no way");
+        true
     }
 }
 
@@ -578,6 +621,37 @@ struct CapoCtx {
     //     result
     // }
 
+    func delegatedDataOutput(self, recId: String) -> Data {
+        self.hasDelegatedDataOutput(
+            mkTv(self.mph, recId)
+        ).datum.get_inline_data()
+    }
+    func mustOutputDelegatedData(self, newDataId : String, dataTypePurpose : String) -> Bool{
+        dgData : Data = self.hasDelegatedDataOutput(
+            mkTv(self.mph, newDataId)
+        ).datum.get_inline_data();
+        dgDatum : CapoDatum = CapoDatum::from_data(dgData);
+        ndid: ByteArray = newDataId.encode_utf8();
+        dgDatum.switch {
+            DelegatedData => {
+                data : AnyData = AnyData::from_data(dgData);
+                if (data.id != ndid) {
+                    print("need id: "+newDataId);
+                    error("❌ 📎 outDD: wrong id: "+data.id.decode_utf8())
+                };
+                if (data.type != dataTypePurpose) {
+                    print("need type: "+ dataTypePurpose);
+                    error("❌ 📎 outDD: bad type: "+data.type)
+                }
+            },
+            _ => {
+                error("output not delegated data")
+            }
+        };
+        print(newDataId);
+        print(" ⬅️ ✅ 📎 ^ has output DD: ok ");
+        true
+    }
 
     func hasDelegatedDataOutput(self, v : Value) -> TxOutput {
         capoAddr : Address = self.address();
