@@ -221,8 +221,8 @@ export abstract class CapoTestHelper<
     async findOrCreateSnapshot(
         snapshotName: string,
         actorName: string,
-        contentBuilder: () => Promise<any>
-    ) {
+        contentBuilder: () => Promise<StellarTxnContext<any>>
+    ) : Promise<SC> {
         if (this.helperState!.snapshots[snapshotName]) {
             const capo = await this.restoreFrom(snapshotName);
             await this.setActor(actorName);
@@ -231,6 +231,7 @@ export abstract class CapoTestHelper<
         let result;
         try {
             result = await contentBuilder();
+            return this.strella
             // the correct actor name is expected from the underlying activity
             // await this.setActor(actorName);
             return result;
