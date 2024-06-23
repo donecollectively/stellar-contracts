@@ -77,7 +77,7 @@ enum MintingActivity {
 enum SpendingActivity {
     // application can replace the placeholder, which is only here to 
     // avoid a syntax error in the unspecialized version
-    _placeholder  
+    _placeholder
 }
 
 enum DelegateActivity {
@@ -92,6 +92,20 @@ enum DelegateActivity {
     }
     MintingActivities {
         activity: MintingActivity
+    }
+
+    CreatingDelegatedData {
+        dataType: String
+        seedTxn: TxId
+        seedIndex: Int
+    }
+    UpdatingDelegatedData {
+        dataType: String
+        recId: String
+    }
+    DeletingDelegatedData {
+        dataType: String
+        recId: String
     }
 
     // this function gives a general-purpose implementation of checking for 
@@ -169,7 +183,7 @@ enum DelegateActivity {
             },
 
             _ => false
-        } || ctx.tx.serialize() != priorMddd.serialize()
+        } || ctx.tx.serialize() == priorMddd.serialize()
     }
 
     //! used only for validating non-IsDelegation datum types and activities.
