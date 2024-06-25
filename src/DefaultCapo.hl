@@ -29,6 +29,7 @@ import {
 import {
     getTxCharterDatum,
     mustHaveGovAuthority,
+    mkTokenShow,
     CapoDatum,
     CapoActivity
 } from CapoHelpers
@@ -92,27 +93,6 @@ func checkpoint(s: String) -> Bool {
     true
 }
 
-func showMyTokens(v: Value) -> String{
-    others : String = Value::from_map(
-            v.get_assets().to_map().filter( (someMph: MintingPolicyHash, _) -> Bool {
-            mph != someMph
-        })
-    ).show();
-    ada : String = (
-        (
-            (0.0 + v.get_lovelace()) / 1_000.0
-        ).round() / 1_000.0
-    ).show() + " ADA";
-    mine : String = v.get_policy(mph).fold[[]String]( (previous: []String, tokenName: ByteArray, c: Int) -> []String {
-         []String{
-            c.show() + "×💴 " + tokenName.decode_utf8()
-        } + previous
-    }, []String{}).join(" + ");
-    // v.assets()
-
-    mine + " + " + ada  + others
-}
-
 func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
     // now: Time = tx.time_range.start;
@@ -120,8 +100,10 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
             " - isDev @gen " + devGen.show()
         } else { "" }
     );
-    print("  -- checking spend of "+ showMyTokens(ctx.get_current_input().value ));
     TODO("implement activity updatingTypeMap");
+
+    showMyTokens : (Value) -> String = mkTokenShow(mph);
+    print("  -- Capo: checks spend of "+ showMyTokens(ctx.get_current_input().value ));
     
     allDatumSpecificChecks: Bool = datum.switch {
         // checks that unsupported activities for a datum are rejected promptly 
@@ -180,19 +162,32 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                 mph: mph
             );
             spendDelegate: RelativeDelegateLink = charterDatum.spendDelegateLink;
-            delegateReturned: Bool = spendDelegate.hasValidOutput(mph, ctx);
-
+            
             // consider allowing this as a refInput, with other stuff to enable more parallelism for populations
             spendDelegateInput: TxInput = spendDelegate.hasDelegateInput(
                 inputs: ctx.tx.inputs,
                 mph: mph
             ).unwrap();
 
+            delegateReturned: Bool = spendDelegate.hasValidOutput(mph, ctx).trace(" -- okay, delegate returned");
+
+            inputRedeemer: Data = mustFindInputRedeemer(ctx, spendDelegateInput);
+            print("  -- check appropriate delegate activity");
             usingSpendingActivity : Bool = AbstractDelegateActivitiesEnum::from_data(
-                mustFindInputRedeemer(ctx, spendDelegateInput)
+                inputRedeemer
             ).switch {
                 SpendingActivities => true,
-                _ => error("spend delegate not triggered with a Spending activity")
+                UpdatingDelegatedData => true,
+                _ => {
+                    inputRedeemer.switch {
+                        (index: Int, fields: []Data) => {
+                            print("unexpected redeemer: " + index.show() );
+                            assert(true || /* never executed */ fields.length > 0, "no way");
+                            error("spend delegate not triggered with a Spending activity")
+                        },
+                        _ => error("no way")
+                    }
+                }
             };
             usingSpendingActivity && 
                 delegateReturned && isRightDatum            

@@ -257,7 +257,7 @@ export abstract class StellarDelegate<
                         "enabling a strategy-agnostic interface for making transactions using any supported strategy-variant",
                     details: [
                         "Subclasses MUST implement the interface methods",
-                        "  ... in whatever way is considered appropriate for its use-case.",
+                        "  ... in whatever way is good for its use-case.",
                         "An interface method whose requirement is marked with 'MAY/SHOULD' behavior, ",
                         "  ... MUST still implement the method satisfying the interface, ",
                         "  ... but MAY throw an UnsupportedAction error, to indicate that",
@@ -266,6 +266,8 @@ export abstract class StellarDelegate<
                     ],
                     mech: [],
                     requires: [
+                        //!!! todo: cross-check these requirements for completeness
+                        //  ... and for accuracy
                         "requires a txnReceiveAuthorityToken(tcx, delegateAddr, fromFoundUtxo?)",
                         "requires a mustFindAuthorityToken(tcx)",
                         "requires a txnGrantAuthority(tcx, delegateAddr, fromFoundUtxo)",

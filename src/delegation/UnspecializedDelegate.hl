@@ -116,6 +116,11 @@ enum SpendingActivity {
     _placeholder  
 }
 
+enum BurningActivity {
+    // application can replace the placeholder, which is only here to 
+    // avoid a syntax error in the unspecialized version
+    _placeholder
+}
 enum DelegateActivity {
     // must ALWAYS be at Enum position 0
     CapoLifecycleActivities {
@@ -139,6 +144,11 @@ enum DelegateActivity {
     // remember:M and 3 have a similar shape.
     MintingActivities {
         activity: MintingActivity
+    }
+
+    BurningActivities {
+        // application-specific burning activities, ALWAYS at Enum position 4
+        activity: BurningActivity
     }
 
     CreatingDelegatedData {

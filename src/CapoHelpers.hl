@@ -243,13 +243,22 @@ struct DelegateInput {
             _ => error("dgtTkn: non-mint activity!")
         }
     }
+
     func withDDSpendingActivity(self, recId: String) -> DelegateInput {
+        print( "  -- checks delegated-data controller's spending activity");
+
         self.genericDelegateActivity().switch {
             SpendingActivities{sa} => {
                 sa.switch {
                     (index: Int, fields: []Data) => {
                         assert(index==index, "no way"); // unused field can't be _
-                        assert(recId == String::from_data(fields.get(0)), "recId mismatch")
+                        foundRecId: String = String::from_data(fields.get(0));
+                        print("expected: Spending:"+recId);
+                        if(recId != foundRecId) {
+                            print("actual: Spending:"+foundRecId);
+                            error("recId mismatch")
+                        };
+                        print ("  -- ok: DD controller using spending activity")
                     },
                     _ => error("no way")
                 };
@@ -334,7 +343,7 @@ struct DelegateInput {
 //     }
 // }
 
-enum CapoCharter {
+enum CapoCharterInputType {
     Unk
     Ref { 
         datum: CapoDatum::CharterToken
@@ -349,7 +358,7 @@ enum CapoCharter {
 struct CapoCtx {
     ctx: ScriptContext
     mph: MintingPolicyHash
-    charter: CapoCharter
+    charter: CapoCharterInputType
 
     func getCharterRedeemer(self) -> CapoActivity {
         e : String = "requires charter as input";
@@ -466,15 +475,44 @@ struct CapoCtx {
         self.resolveCharterUtxo().address
     }
 
-    func mkDelegatedDataPredicate(self, typeName: String, id: ByteArray=#) -> (TxInput) -> Bool {
+    func delegatedDataInput(self, 
+        recId: String="",
+        recIdBytes: ByteArray=recId.encode_utf8()
+    ) -> Data {
+        hasDD : (TxInput) -> Bool = self.mkDelegatedDataPredicate(
+            id: recIdBytes
+        );
+
+        self.ctx.tx.inputs.find_safe(hasDD).switch {
+            None => {
+                print(recIdBytes.decode_utf8());
+                error("❌ 📎 ^ inDD: not found")
+            },
+            Some{txin} => {
+                print(recIdBytes.decode_utf8());
+                print("✅ 📎 ^ inDD: ok");
+
+                txin.datum.get_inline_data()
+            }
+        }
+    }
+
+    func mkDelegatedDataPredicate(self, typeName: String="", id: ByteArray=#) -> (TxInput) -> Bool {
         capoAddr : Address = self.resolveCharterUtxo().address;
+        assert( 
+            id.length > 0 
+            || typeName.serialize().length > 0, 
+            "data predicate must have id or typeName"
+        );
         (txin : TxInput) -> Bool {
             if(txin.address == capoAddr) {
                 data : Data = txin.datum.get_inline_data();
                 CapoDatum::from_data(data).switch {
                     DelegatedData => {
                         x : AnyData = AnyData::from_data(data);
-                        x.type == typeName && (id == # || x.id == id)
+                        true 
+                        && (typeName == "" || x.type == typeName) 
+                        && (id == # || x.id == id)
                     },
                     _ => false
                 }
@@ -621,7 +659,9 @@ struct CapoCtx {
     //     result
     // }
 
-    func delegatedDataOutput(self, recId: String) -> Data {
+    func delegatedDataOutput(self, 
+        recId: String
+    ) -> Data {
         self.hasDelegatedDataOutput(
             mkTv(self.mph, recId)
         ).datum.get_inline_data()
@@ -649,7 +689,7 @@ struct CapoCtx {
             }
         };
         print(newDataId);
-        print(" ⬅️ ✅ 📎 ^ has output DD: ok ");
+        print(" ⬅️ ✅ 📎 ok: ^ outDD to Capo");
         true
     }
 
@@ -672,7 +712,7 @@ struct CapoCtx {
     
     // doesn't care where the charter info comes from - refinput or input, both OK
     func needsCharter(self) -> CapoCtx {
-        charter : CapoCharter = self.charter;
+        charter : CapoCharterInputType = self.charter;
         charter.switch {
             Ref => self,
             Input => self,
@@ -693,7 +733,7 @@ struct CapoCtx {
                         datum : CapoDatum::CharterToken = CapoDatum::CharterToken::from_data( 
                             charterUtxo.datum.get_inline_data() 
                         );
-                        CapoCtx{ctx, mph, CapoCharter::Ref{datum, charterUtxo}}
+                        CapoCtx{ctx, mph, CapoCharterInputType::Ref{datum, charterUtxo}}
                     }
                 }
                 // _ => self
@@ -702,7 +742,7 @@ struct CapoCtx {
     }
 
     func withCharterInput(self) -> CapoCtx {
-        charter : CapoCharter = self.charter;
+        charter : CapoCharterInputType = self.charter;
 
         charter.switch {
             Input => self,
@@ -722,14 +762,14 @@ struct CapoCtx {
                     charterUtxo.datum.get_inline_data() 
                 );
                 // datum : CapoDatum::CharterToken = getTxCharterDatum(self.ctx, self.mph);
-                CapoCtx{ctx, mph, CapoCharter::Input{datum, charterUtxo}}
-                // self.copy(charter: CapoCharter::Input{charterUtxo, datum})
+                CapoCtx{ctx, mph, CapoCharterInputType::Input{datum, charterUtxo}}
+                // self.copy(charter: CapoCharterInputType::Input{charterUtxo, datum})
             }
         }
     }
 
     func withCharterRef(self) -> CapoCtx {
-        charter : CapoCharter = self.charter;
+        charter : CapoCharterInputType = self.charter;
         charter.switch {
             Ref => self,
             Input => error("CapoCtx.withCharterRef(): charter is from inputs!"),
@@ -740,9 +780,9 @@ struct CapoCtx {
                     utxo.datum.get_inline_data() 
                 );
             
-                CapoCtx{ctx, mph, CapoCharter::Ref{datum, utxo}}
+                CapoCtx{ctx, mph, CapoCharterInputType::Ref{datum, utxo}}
 
-                // self.copy(charter: CapoCharter::Ref{datum})
+                // self.copy(charter: CapoCharterInputType::Ref{datum})
             }
         }
     }
@@ -750,8 +790,30 @@ struct CapoCtx {
 
 func mkCapoCtx(ctx: ScriptContext, mph: MintingPolicyHash) -> CapoCtx {
     CapoCtx{
-        ctx, mph, CapoCharter::Unk
+        ctx, mph, CapoCharterInputType::Unk
     }
 }
 
+func mkTokenShow(mph: MintingPolicyHash) -> (Value) -> String {
+    (v: Value) -> String {
+        others : String = Value::from_map(
+                v.get_assets().to_map().filter( (someMph: MintingPolicyHash, _) -> Bool {
+                mph != someMph
+            })
+        ).show();
+        ada : String = (
+            (
+                (0.0 + v.get_lovelace()) / 1_000.0
+            ).round() / 1_000.0
+        ).show() + " ADA";
+        mine : String = v.get_policy(mph).fold[[]String]( (previous: []String, tokenName: ByteArray, c: Int) -> []String {
+            []String{
+                c.show() + "×💴 " + tokenName.decode_utf8()
+            } + previous
+        }, []String{}).join(" + ");
+        // v.assets()
+
+        mine + " + " + ada  + others
+    }
+}
 

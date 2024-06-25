@@ -1808,7 +1808,8 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         ): Promise<TCX> {
             const capoGovDelegate = await this.findGovDelegate();
             console.log("adding charter's govAuthority");
-    
+            // !!! TODO: add a type to the TCX, indicating presence of the govAuthority UUT
+            
             return capoGovDelegate.txnGrantAuthority(tcx);
         }
     

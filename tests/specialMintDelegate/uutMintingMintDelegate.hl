@@ -74,6 +74,10 @@ enum MintingActivity {
     }
 }
 
+enum BurningActivity {
+    _placeholder
+}
+
 enum SpendingActivity {
     // application can replace the placeholder, which is only here to 
     // avoid a syntax error in the unspecialized version
@@ -92,6 +96,9 @@ enum DelegateActivity {
     }
     MintingActivities {
         activity: MintingActivity
+    }
+    BurningActivities {
+        activity: BurningActivity
     }
 
     CreatingDelegatedData {

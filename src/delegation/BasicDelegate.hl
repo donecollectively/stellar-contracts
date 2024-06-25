@@ -23,6 +23,7 @@ import {
     getTxCharterDatum,
     mkCapoCtx,
     CapoCtx,
+    mkTokenShow,
     CapoDatum
     // CapoActivity
 } from CapoHelpers
@@ -61,9 +62,12 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
         //! It also calls any additionalDelegateValidation() defined in a specialized minting delegate.
         isD : IsDelegation{dd} => {
             // MintDelegateDatum::IsDelegation{dd, cfg} = isD;
+            showMyTokens : (Value) -> String = mkTokenShow(dd.mph);
+            print("  -- checking spend of dgTkn "+ showMyTokens(ctx.get_current_input().value ));
             activity.switch {
                 //   guards that the authority token is returned to this script.
                 // specialized minting delegates should likely perform additional checks.
+
 
                 DelegateLifecycleActivities{innerActivity} => innerActivity.switch {
                     // reassigning the authority token to a new minting delegate
@@ -203,15 +207,38 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                         mkTokenName: tnFactory,
                         // WE ARE the mint delegate.
                         needsMintDelegateApproval: false 
+                    // ).trace(
+                    //     " ✅ checked basic UUT minting "
                     )
-                    && cctx.mustOutputDelegatedData(newDataId, dataTypePurpose)
+                    && cctx.mustOutputDelegatedData(
+                        newDataId, dataTypePurpose
+                    )
                 },
-                UpdatingDelegatedData => { // {dataType, recId} => {
-                    error("todo")
+                UpdatingDelegatedData{dDataType, recId} => {
+                    cctx : CapoCtx = mkCapoCtx(ctx, dd.mph).withCharterRef();
+                    TODO("Basic Delegate: implement typeMap-based redelegation");
+                    TODO("for now, the application-level Spend Delegate MUST enforce correct data-controller delegation");
+                    // check data controller's SpendingActivities
+
+                    hasDDofType : (TxInput) -> Bool = cctx.mkDelegatedDataPredicate(dDataType);
+                    ddInputs : []TxInput = ctx.tx.inputs.filter(hasDDofType);
+                    assert(ddInputs.length == 1, "extra DD input(s)");
+                    // the Capo enforces that delegatedData utxo is ALWAYS spent with its generic `spendingDelegatedDatum` activity
+
+                    cctx.mustOutputDelegatedData(recId, dDataType)
+                    && true
                 },
                 DeletingDelegatedData => { // {dataType, recId} => {
-                    error("todo")
+                    TODO("Basic Delegate: implement typeMap-based redelegation");
+                    TODO("for now, the application-level Mint Delegate MUST enforce correct data-controller delegation");
+                    // check data controller's BurningActivities
+
+                    true
                 },
+                // made these explicit so they're functionally required of every specialized delegate
+                SpendingActivities => true,
+                MintingActivities => true,
+                BurningActivities => true,
                 _ => true
             } && if (activity.additionalDelegateValidation(isD, ctx)) {
                 print ("delegate: "+ delegateName + ": additionalDelegateValidation ok!");
