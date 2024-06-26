@@ -1909,7 +1909,7 @@ export class StellarContract<
 
     loadProgramScript(params?: Partial<ConfigType>): Program | undefined {
         const src = this.contractSource();
-        const modules = this.importModules();
+        const modules = [ ... new Set(this.importModules()) ]
         console.log(
             `${this.constructor.name} <- `,
             //@ts-expect-error

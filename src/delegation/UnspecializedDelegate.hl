@@ -103,7 +103,7 @@ enum DelegateDatum {
 enum MintingActivity {
     // application can replace the placeholder, which is only here to 
     // avoid a syntax error in the unspecialized version
-    _placeholder  
+    _placeholder1MA 
 }
 
 //! The minting delegate can also be used as a general spending 
@@ -113,13 +113,13 @@ enum MintingActivity {
 enum SpendingActivity {
     // application can replace the placeholder, which is only here to 
     // avoid a syntax error in the unspecialized version
-    _placeholder  
+    _placeholder1SA  
 }
 
 enum BurningActivity {
     // application can replace the placeholder, which is only here to 
     // avoid a syntax error in the unspecialized version
-    _placeholder
+    _placeholder1BA
 }
 enum DelegateActivity {
     // must ALWAYS be at Enum position 0
