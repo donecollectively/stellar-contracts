@@ -355,10 +355,233 @@ enum CapoCharterInputType {
     }
 }    
 
+enum ddDataSrc {
+    Unk
+    Input { utxo: TxInput }
+    Output { txo: TxOutput }
+    Both {
+        utxo: TxInput
+        txo: TxOutput
+    }
+}
+
+struct DgDataDetails {
+    dataSrc: ddDataSrc
+    // filteredInputs: []TxInput
+    id: ByteArray
+    type: String
+    // inputs: []TxInput
+
+    // see CapoCtx::getDDOutput(id)
+    func updating(id : ByteArray, input: TxInput, output : TxOutput) -> DgDataDetails {
+        DgDataDetails{
+            dataSrc: ddDataSrc::Both{input, output},
+            id: id,
+            type: ""
+        }
+    }
+
+    func creating(id : ByteArray, output : TxOutput) -> DgDataDetails {
+        DgDataDetails{
+            dataSrc: ddDataSrc::Output{output},
+            id: id,
+            type: ""
+        }
+    }
+
+    // func withOutput(id : ByteArray, input: []TxInput, output : TxOutput) -> DgDataDetails {
+    //     DgDataDetails{
+    //         dataSrc: ddDataSrc::Output{output},
+    //         // filteredInputs: []TxInput{},
+    //         id: id,
+    //         type: ""
+    //         // inputs: inputs
+    //     }
+    // }
+
+    // func withInput(self) -> DgDataDetails {
+    //     assert(self.id.length > 0, "no id; try cctx.getDDOutput(id).withInput()");
+    //     self.dataSrc.switch {
+    //         Input => self,
+    //         Both => self,
+    //         _ => {
+    //             oneInput: []TxInput = self.filterInputs();
+    //             assert(1 == oneInput.length, "yikes! too many inputs");
+    //             dataSrc : ddDataSrc = self.dataSrc.switch {
+    //                 Unk => ddDataSrc::Input{oneInput.head},
+    //                 Output{txo} => ddDataSrc::Both{oneInput.head, txo},
+    //                 _ => error("no way") // already returned self
+    //             };
+
+    //             DgDataDetails{
+    //                 dataSrc: dataSrc,
+    //                    // filteredInputs: oneInput,
+    //                 id: self.id,
+    //                 type: self.type,
+    //                 inputs: self.inputs
+    //             }
+    //         }
+    //     }
+    // }
+
+    func input(self) -> TxInput {
+        // assert(1 == self.filteredInputs.length, "use withId(id)");
+        // assert(self.id.length > 0, "use withId(id) or cctx.getDDOutput(id).withInput()");
+
+        // self.inputs.head
+        self.dataSrc.switch {
+            Input{utxo} => utxo,
+            Both{utxo, _} => utxo,
+            _ => error("no input data; use findInput() first")
+        }
+    }
+
+    func output(self) -> TxOutput {
+        self.dataSrc.switch {
+            Output{txo} => txo,
+            Both{_, txo} => txo,
+            _ => error("no output data")
+        }
+    }
+
+    // doesn't work - something about the way the IR is generated?
+    //   - seems like it might be the list operations, 
+    //   - or scoping of the fields of type []TxInput?
+    //
+    // func findInput(self) -> DgDataDetails {
+    //     self.dataSrc.switch {
+    //         Input => self,
+    //         Both => self,
+    //         _ => {
+    //             targetId : ByteArray = self.id;
+    //             isEmpty : Bool = targetId.length == 0;
+    //             print("finding input dgData id: "+self.id.decode_utf8());
+    //             utxo: TxInput = self.inputs.find_safe( (txin : TxInput) -> Bool {
+    //                 rec : AnyData = AnyData::from_data(
+    //                     txin.datum.get_inline_data()
+    //                 );
+    //                 rec.type.starts_with(self.type)
+    //                 && (isEmpty || rec.id == targetId)
+    //             }).switch {
+    //                 Some{x} => x,
+    //                 None => error("❌ no input dgData")
+    //             };
+    //             newSrc: ddDataSrc = self.dataSrc.switch {
+    //                 Output{txo} => ddDataSrc::Both{utxo, txo},
+    //                 Unk => ddDataSrc::Input{utxo},
+    //                 _ => error("no way") // unreachable
+    //             };
+
+    //             DgDataDetails{
+    //                 dataSrc: newSrc,
+    //                 // filteredInputs: [utxo],
+    //                 id: self.id,
+    //                 type: self.type,
+    //                 inputs: self.inputs
+    //             }
+    //         }
+    //     }
+    // }
+
+
+    // func filterInputs(self) -> []TxInput {
+    //     self.inputs
+    //     // targetId : ByteArray = self.id;
+    //     // isEmpty : Bool = targetId.length == 0;
+    //     // self.inputs.filter( (txin : TxInput) -> Bool {
+    //     //     rec : AnyData = AnyData::from_data(
+    //     //         txin.datum.get_inline_data()
+    //     //     );
+
+    //     //     rec.type.starts_with(self.type)
+    //     //     && (isEmpty || rec.id == targetId)
+    //     // })
+    // }
+
+    // func withFilteredInputs(self) -> DgDataDetails {
+    //     //!!! causes IR assertion error
+    //     // if (self.filteredInputs.is_empty()) {
+    //     // if (self.filteredInputs.length == 0) {
+    //     if(true) {
+    //             self
+    //         // DgDataDetails {
+    //         //     dataSrc: self.dataSrc,
+    //         //     filteredInputs: self.filterInputs(),
+    //         //     id: self.id,
+    //         //     type: self.type,
+    //         //     inputs: self.inputs
+    //         // }
+
+    //     // dataSrc: ddDataSrc
+    //     // filteredInputs: []TxInput
+    //     // id: ByteArray
+    //     // type: String
+    //     // inputs: []TxInput
+    
+    //     } else {
+    //         self
+    //     }
+    // }
+
+    func inputData(self) -> Data {
+        self.input().datum.get_inline_data()
+        // self.dataSrc.switch {
+        //     Input{utxo} => utxo.datum.get_inline_data(),
+        //     Both{utxo, _} => utxo.datum.get_inline_data(),
+        //     _ => error("no input data")
+        // }
+    }
+
+    func outputData(self) -> Data {
+        self.output().datum.get_inline_data()
+        // self.dataSrc.switch {
+        //     Output{txo} => txo.datum.get_inline_data(),
+        //     Both{_, txo} => txo.datum.get_inline_data(),
+        //     _ => error("no output data")
+        // }
+    }
+    
+    // func mustHaveUut(self, uut: String) -> Bool {
+    //     // todo
+    //     false
+    // }
+}
+
 struct CapoCtx {
     ctx: ScriptContext
     mph: MintingPolicyHash
     charter: CapoCharterInputType
+
+    func mkTv(self,
+        tn: ByteArray,
+        count : Int = 1
+    ) -> Value {
+        assert(tn.length > 0, "missing reqd tn");
+        Value::new(
+            AssetClass::new(self.mph, tn), 
+            count
+        )
+    }
+    
+
+    func creatingDgData(
+        self,
+        recId : String="", 
+        recIdBytes : ByteArray = recId.encode_utf8()
+    ) -> DgDataDetails {
+        output : TxOutput = self.delegatedTxOutput(recIdBytes);
+        DgDataDetails::creating(recIdBytes, output)
+    }
+
+    func updatingDgData(
+        self,
+        recId : String="", 
+        recIdBytes : ByteArray = recId.encode_utf8()
+    ) -> DgDataDetails {
+        output : TxOutput = self.delegatedTxOutput(recIdBytes);
+        input : TxInput = self.delegatedDataTxInput(recIdBytes: recIdBytes);
+        DgDataDetails::updating(recIdBytes, input, output)
+    }
 
     func getCharterRedeemer(self) -> CapoActivity {
         e : String = "requires charter as input";
@@ -472,33 +695,34 @@ struct CapoCtx {
     }
 
     func address(self) -> Address {
-        self.resolveCharterUtxo().address
+        addr : Address = self.resolveCharterUtxo().address;
+        // print("Capo addr: " + addr.show());
+        addr
     }
 
-    func delegatedDataInput(self, 
+    func delegatedDataTxInput(self, 
         recId: String="",
         recIdBytes: ByteArray=recId.encode_utf8()
-    ) -> Data {
+    ) -> TxInput {
         hasDD : (TxInput) -> Bool = self.mkDelegatedDataPredicate(
             id: recIdBytes
         );
 
+        print(recIdBytes.decode_utf8());
         self.ctx.tx.inputs.find_safe(hasDD).switch {
             None => {
-                print(recIdBytes.decode_utf8());
                 error("❌ 📎 ^ inDD: not found")
             },
             Some{txin} => {
-                print(recIdBytes.decode_utf8());
                 print("✅ 📎 ^ inDD: ok");
 
-                txin.datum.get_inline_data()
+                txin
             }
         }
     }
-
+                
     func mkDelegatedDataPredicate(self, typeName: String="", id: ByteArray=#) -> (TxInput) -> Bool {
-        capoAddr : Address = self.resolveCharterUtxo().address;
+        capoAddr : Address = self.address();
         assert( 
             id.length > 0 
             || typeName.serialize().length > 0, 
@@ -507,6 +731,7 @@ struct CapoCtx {
         (txin : TxInput) -> Bool {
             if(txin.address == capoAddr) {
                 data : Data = txin.datum.get_inline_data();
+
                 CapoDatum::from_data(data).switch {
                     DelegatedData => {
                         x : AnyData = AnyData::from_data(data);
@@ -521,7 +746,7 @@ struct CapoCtx {
     }
 
     func mkDelegatedDataOutputPredicate(self, typeName: String, id: ByteArray=#) -> (TxOutput) -> Bool {
-        capoAddr : Address = self.resolveCharterUtxo().address;
+        capoAddr : Address = self.address();
         // print("capoAddr: "+ capoAddr.show());
         // print("seeking type "+ typeName);
         // print("seeking id "+ id.decode_utf8());
@@ -659,15 +884,16 @@ struct CapoCtx {
     //     result
     // }
 
-    func delegatedDataOutput(self, 
-        recId: String
+
+    func delegatedOutputData(self, 
+        recId: ByteArray
     ) -> Data {
-        self.hasDelegatedDataOutput(
-            mkTv(self.mph, recId)
+        self.internalHasDelegatedDataOutput(
+            mkTv(mph: self.mph, tnBytes: recId)
         ).datum.get_inline_data()
     }
     func mustOutputDelegatedData(self, newDataId : String, dataTypePurpose : String) -> Bool{
-        dgData : Data = self.hasDelegatedDataOutput(
+        dgData : Data = self.internalHasDelegatedDataOutput(
             mkTv(self.mph, newDataId)
         ).datum.get_inline_data();
         dgDatum : CapoDatum = CapoDatum::from_data(dgData);
@@ -693,12 +919,30 @@ struct CapoCtx {
         true
     }
 
-    func hasDelegatedDataOutput(self, v : Value) -> TxOutput {
+    func delegatedTxOutput(self, 
+        recId: ByteArray
+    ) -> TxOutput {
+        print("seeking delegated-data output for "+recId.decode_utf8());
+        result : TxOutput = self.internalHasDelegatedDataOutput(
+            mkTv(mph: self.mph, tnBytes: recId)
+        );
+        print("✅ 📎 ^ outDD: found");
+        result
+    }
+
+    func internalHasDelegatedDataOutput(self, v : Value) -> TxOutput {
         capoAddr : Address = self.address();
+
+        // print("seek txOutput" + v.show());
+        // print("@addr" + capoAddr.show());
 
         self.ctx.tx.outputs.find_safe(
             (txout : TxOutput) -> Bool {
-                txout.address == capoAddr && txout.value.contains(v)
+                // print("?? txOut" + txout.value.show());
+                // print("@addr" + txout.address.show());
+                true
+                && txout.address == capoAddr
+                && txout.value.contains(v)
             }
         ).switch{
             None => {
@@ -706,7 +950,9 @@ struct CapoCtx {
                 print( v.show() );
                 error("^ no req'd delegated-data out")
             },
-            Some{txout} => txout
+            Some{txout} => {
+                txout
+            }
         }
     }
     
