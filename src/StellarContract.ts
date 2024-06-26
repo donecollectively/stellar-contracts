@@ -1728,7 +1728,7 @@ export class StellarContract<
                 // result: validations for non-trivial txns can take ~800+ ms
                 //  - validations with simplify:true, ~250ms - but ...
                 //    ... with elided error messages that don't support negative-testing very well
-            } catch (e) {
+            } catch (e: any) {
                 // todo: find a way to run the same scripts again, with tracing retained
                 // for client-facing transparency of failures that can be escalated in a meaningful
                 // way to users.
@@ -1781,8 +1781,34 @@ export class StellarContract<
         );
         const promises = [
             this.network.submitTx(tx).catch((e) => {
+        
+                if ("currentSlot" in this.network && e.message.match(/or slot out of range/)) {
+                    const b = tx.body
+                    const db = tx.dump().body
+                    function getAttr(x:string) { return (tx.body[x] || db[x]) }
+
+                    const validFrom = getAttr("firstValidSlot")
+                    const validTo = getAttr("lastValidSlot")
+
+                    // vf = 100,  current = 102, vt = 110  =>   FROM now -2, TO now +8; VALID
+                    // vf = 100,  current = 98,   vt = 110  =>   FROM now +2, TO now +12; FUTURE
+                    // vf = 100,  current = 100,  vt = 110  =>  FROM now, TO now +10; VALID
+                    // vf = 100, current = 120, vt = 110  =>  FROM now -20, TO now -10; PAST
+
+                    const currentSlot = this.network.currentSlot as bigint
+                    const diff1 = validFrom - currentSlot;
+                    const diff2 = validTo - currentSlot;
+                    const disp1 = diff1 > 0 ? `NOT VALID for +${diff1}s` : `${diff2 > 0 ? "starting" : "was valid"} ${diff1}s ago`
+                    const disp2 = diff2 > 0 ? `${diff1 > 0 ? "would be " : ""}VALID until now +${diff2}s` : `EXPIRED ${0n-diff2}s ago`
+
+                    console.log(`  ⚠️ slot validity issue?\n`+
+                        `    - validFrom: ${validFrom} - ${disp1}\n`+
+                        `    - validTo: ${validTo} - ${disp2}\n`+
+                        `    - current: ${currentSlot}\n`
+                    );
+                }
                 console.warn(
-                    "submitting via helios Network failed: ",
+                    "⚠️⚠️⚠️ submitting via helios Network failed: ",
                     e.message
                 );
                 debugger;
@@ -1793,8 +1819,8 @@ export class StellarContract<
             if (!this.setup.isTest)
                 promises.push(
                     wallet.submitTx(tx).catch((e) => {
-                        console.warn(
-                            "submitting via wallet failed: ",
+                        console.log(
+                            "⚠️⚠️⚠️ submitting via wallet failed: ",
                             e.message
                         );
                         debugger;
