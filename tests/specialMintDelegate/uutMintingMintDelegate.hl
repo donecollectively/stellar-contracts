@@ -75,13 +75,13 @@ enum MintingActivity {
 }
 
 enum BurningActivity {
-    _placeholder
+    _placeholder2BA
 }
 
 enum SpendingActivity {
     // application can replace the placeholder, which is only here to 
     // avoid a syntax error in the unspecialized version
-    _placeholder
+    _placeholder2SA
 }
 
 enum DelegateActivity {
