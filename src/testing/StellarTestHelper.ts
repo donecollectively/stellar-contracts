@@ -37,6 +37,7 @@ import type {
     enhancedNetworkParams,
 } from "./types.js";
 import { SimpleWallet_stellar, StellarNetworkEmulator, type NetworkSnapshot } from "./StellarNetworkEmulator.js";
+import type { StellarTxnContext } from "../StellarTxnContext.js";
 
 
 /**
@@ -188,6 +189,81 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         preProdParams.isFixedUp = true;
         return preProdParams;
     }
+
+    submitTxnWithBlock(tcx: StellarTxnContext, futureDate?: Date) {
+        this.advanceNetworkTime(tcx, futureDate);
+
+        return this.capo.submit(tcx).then(() => {
+            this.network.tick(1n);
+            return tcx;
+        });
+    }
+
+    advanceNetworkTime(tcx: StellarTxnContext, futureDate?: Date) {
+        const { tx } = tcx;
+        const b = tx.body;
+        const db = tx.dump().body;
+        function getAttr(x: string) {
+            return b[x] || db[x];
+        }
+
+        const validFrom = getAttr("firstValidSlot");
+        const validTo = getAttr("lastValidSlot");
+
+        let targetTime: number = futureDate?.getDate() || Date.now();
+        let targetSlot = this.networkParams.timeToSlot(BigInt(targetTime));
+        const { currentSlot } = this.network;
+
+        const nowSlot = this.networkParams.timeToSlot(BigInt(Date.now()));
+        const slotDiff = targetSlot - currentSlot;
+
+        console.log(
+            `  -- ⚗️🐞  advanceNetworkTime: tx valid ${
+                validFrom || "anytime"
+            } -> ${validTo || "anytime"}`
+        );
+        if (
+            ((validTo && nowSlot > validTo) ||
+                (validFrom && nowSlot < validFrom))
+        ) {
+            if (futureDate) {
+                // ":info: ℹ️"
+                // ":test: ⚗️"
+                // ":debug: 🐞 "
+                // info emoji with i in a blue square: "ℹ️"
+                console.log("-- ⚗️ ℹ️  txnTime already in past, advancing to explicit futureDate @now + ${targetSlot - nowSlot}s");
+            } else {
+                // test an old txn by constructing it with a date less than Date.now()
+                console.log(
+                    `    -- ⚗️🐞 txnTime in past ${slotDiff}s; not interfering with network time`
+                );
+                return;
+            }
+        }
+
+        console.log(
+            `  -- ⚗️🐞  advanceNetworkTime: current slot ${currentSlot}; now = ${targetSlot} (diff = ${slotDiff})`
+        );
+        if (slotDiff < 0) {
+            if (futureDate) {
+                console.log(
+                    `  ---- ⚗️🐞🐞🐞🐞🐞🐞🐞🐞can't go back in time ${slotDiff}s (current slot ${this.network.currentSlot}, target ${targetSlot})`
+                );
+                throw new Error(`explicit futureDate ${futureDate} is in the past; can't go back ${slotDiff}s`);
+            }
+            console.log(
+                `   -- ⚗️🐞🐞🐞🐞⚗️  NOT ADVANCING: the network is already ahead of the current time by ${
+                    0n - slotDiff
+                }s ⚗️🐞🐞🐞🐞⚗️`
+            );
+            return;
+        }
+        if (this.network.currentSlot < targetSlot) {
+            console.log(`  -- ⚗️🐞  advancing network time by ${slotDiff} slots`);
+            this.network.tick(slotDiff);
+        }
+    }
+
 
     async initialize({
         randomSeed = 42,
