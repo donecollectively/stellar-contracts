@@ -65,16 +65,24 @@ export function hexToPrintableString(hexStr) {
  * representation of token names even if they're not UTF-8 encoded.
  * @public
  **/
-export function assetsAsString(a: Assets, joiner = "\n    ") {
+export function assetsAsString(a: Assets, joiner = "\n    ", showNegativeAsBurn? : "withBURN") {
     //@ts-expect-error it's marked as private, but thankfully it's still accessible
     const assets = a.assets;
     return (assets?.map(([policyId, tokenEntries]) => {
             const tokenString = tokenEntries
                 .map(([nameBytes, count]) => {
                     const nameString = hexToPrintableString(nameBytes.hex);
-                    const burn = count < 1 ? "🔥" : "";
-                    const burned = count < 1 ? "- BURN 🔥 " : "";
-                    return `${burn} ${count}×💴 ${nameString} ${burned}`;
+                    const negWarning = count < 1 ? (
+                        showNegativeAsBurn ? "🔥" : "⚠️ NEGATIVE⚠️"
+                    ): "";
+                    const burned =
+                        count < 1
+                            ? (showNegativeAsBurn
+                                ? "- BURN 🔥 "
+                                : ""
+                            )
+                            : "";
+                    return `${negWarning} ${count}×💴 ${nameString} ${burned}`;
                 })
                 .join(" + ");
             return `⦑${policyIdAsString(policyId)} ${tokenString}⦒`;
@@ -175,7 +183,7 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
             if (!item.assets.length) {
                 continue;
             }
-            item = `\n   ❇️  ${assetsAsString(item, "\n   ❇️  ")}`;
+            item = `\n   ❇️  ${assetsAsString(item, "\n   ❇️  ", "withBURN")}`;
         }
         if ("outputs" == x) {
             item = `\n  ${item
