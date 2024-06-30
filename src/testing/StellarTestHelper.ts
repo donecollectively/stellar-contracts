@@ -193,7 +193,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     submitTxnWithBlock(tcx: StellarTxnContext, futureDate?: Date) {
         this.advanceNetworkTime(tcx, futureDate);
 
-        return this.capo.submit(tcx).then(() => {
+        return this.strella.submit(tcx).then(() => {
             this.network.tick(1n);
             return tcx;
         });

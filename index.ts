@@ -130,12 +130,18 @@ export type {
     RawBytes
 } from "./src/DatumAdapter.js";
 
-
 export { 
     DelegatedDatumAdapter,
     type AnyDataTemplate,
     type hasAnyDataTemplate,
 } from "./src/DelegatedDatumAdapter.js";
+
+export {
+    type DgDataCreationAttrs,
+    type DelegatedDatumType,
+    type DelegatedDatumTypeName,
+    DelegatedDataContract
+} from "./src/delegation/DelegatedDataContract.js";
 
 export { CapoMinter, type BasicMinterParams } from "./src/minting/CapoMinter.js";
 
@@ -188,5 +194,6 @@ export { heliosRollupLoader } from "./src/heliosRollupLoader.js";
 export * from "./src/testing/index.js";
 
 export type { TestHelperState } from "./src/testing/types.js";
+
 
 

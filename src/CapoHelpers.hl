@@ -370,23 +370,34 @@ struct DgDataDetails {
     // filteredInputs: []TxInput
     id: ByteArray
     type: String
+    mph: MintingPolicyHash
     // inputs: []TxInput
 
     // see CapoCtx::getDDOutput(id)
-    func updating(id : ByteArray, input: TxInput, output : TxOutput) -> DgDataDetails {
+    func updating(id : ByteArray, input: TxInput, output : TxOutput, mph : MintingPolicyHash) -> DgDataDetails {
         DgDataDetails{
             dataSrc: ddDataSrc::Both{input, output},
             id: id,
-            type: ""
+            type: "",
+            mph: mph
         }
     }
 
-    func creating(id : ByteArray, output : TxOutput) -> DgDataDetails {
+    func creating(id : ByteArray, output : TxOutput, mph : MintingPolicyHash
+    ) -> DgDataDetails {
         DgDataDetails{
             dataSrc: ddDataSrc::Output{output},
             id: id,
-            type: ""
+            type: "",
+            mph: mph
         }
+    }
+
+    func uutValue(self) -> Value {
+        Value::new(
+            AssetClass::new(self.mph, self.id), 
+            1
+        )
     }
 
     // func withOutput(id : ByteArray, input: []TxInput, output : TxOutput) -> DgDataDetails {
@@ -562,7 +573,6 @@ struct CapoCtx {
             count
         )
     }
-    
 
     func creatingDgData(
         self,
@@ -570,7 +580,7 @@ struct CapoCtx {
         recIdBytes : ByteArray = recId.encode_utf8()
     ) -> DgDataDetails {
         output : TxOutput = self.delegatedTxOutput(recIdBytes);
-        DgDataDetails::creating(recIdBytes, output)
+        DgDataDetails::creating(recIdBytes, output, self.mph)
     }
 
     func updatingDgData(
@@ -580,7 +590,7 @@ struct CapoCtx {
     ) -> DgDataDetails {
         output : TxOutput = self.delegatedTxOutput(recIdBytes);
         input : TxInput = self.delegatedDataTxInput(recIdBytes: recIdBytes);
-        DgDataDetails::updating(recIdBytes, input, output)
+        DgDataDetails::updating(recIdBytes, input, output, self.mph)
     }
 
     func getCharterRedeemer(self) -> CapoActivity {

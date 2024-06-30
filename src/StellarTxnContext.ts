@@ -17,6 +17,7 @@ import {
     UutName, type SeedAttrs 
 } from "./delegation/UutName.js";
 import type { ActorContext } from "./StellarContract.js";
+import { delegateLinkSerializer } from "./delegation/RolesAndDelegates.js";
 
 /**
  * A txn context having a seedUtxo in its state
@@ -330,7 +331,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         if (r && !r.redeemer) {
             console.log("activity without redeemer tag: ", r);
             throw new Error(
-                `addInput() redeemer must match the isActivity type {redeemer: ‹›activity›}\n`+ JSON.stringify(r)
+                `addInput() redeemer must match the isActivity type {redeemer: ‹activity›}\n`+ JSON.stringify(r,delegateLinkSerializer)
             );
         }
 
@@ -352,7 +353,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         if (r && !r.redeemer) {
             console.log("activity without redeemer tag: ", r);
             throw new Error(
-                `addInputs() redeemer must match the isActivity type {redeemer: ‹›activity›}\n`+ JSON.stringify(r)
+                `addInputs() redeemer must match the isActivity type {redeemer: ‹activity›}\n`+ JSON.stringify(r, delegateLinkSerializer)
             );
         }
         for (const input of inputs) {

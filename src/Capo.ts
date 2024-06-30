@@ -28,6 +28,7 @@ import type {
     stellarSubclass,
     ConfigFor,
     devConfigProps,
+    anyDatumProps,
 } from "./StellarContract.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import {
@@ -784,7 +785,53 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         return this.mustFindMyUtxo("charter", predicate, "has it been minted?");
     }
 
+    //     /**
+    //  * Finds a free seed-utxo from the user wallet, and adds it to the transaction
+    //  * @remarks
+    //  *
+    //  * Accepts a transaction context that may already have a seed.  Returns a typed
+    //  * tcx with hasSeedUtxo type.
+    //  *
+    //  * The seedUtxo will be consumed in the transaction, so it can never be used
+    //  * again; its value will be returned to the user wallet.
+    //  *
+    //  * The seedUtxo is needed for UUT minting, and the transaction is typed with
+    //  * the presence of that seed (found in tcx.state.seedUtxo).
+    //  *
+    //  * If a seedUtxo is already present in the transaction context, no additional seedUtxo
+    //  * will be added.
+    //  *
+    //  * If a seedUtxo is provided as an argument, that utxo must already be present
+    //  * in the transaction inputs; the state will be updated to reference it.
+    //  *
+    //  * @public
+    //  *
+    //  **/
+    //     async tcxWithSeedUtxo<TCX extends StellarTxnContext>(
+    //         tcx: TCX = new StellarTxnContext(this.actorContext) as TCX,
+    //         seedUtxo?: TxInput
+    //     ): Promise<TCX & hasSeedUtxo> {
+    
+    /**
+     * @deprecated - use tcxWithCharterRef() instead
+     * @param tcx 
+     */
     async txnAddCharterRef<TCX extends StellarTxnContext>(tcx: TCX) : Promise<TCX & hasCharterRef> {
+        return this.tcxWithCharterRef(tcx);
+    }
+
+    /**
+     * Ensures the transaction context has a reference to the charter token
+     * @remarks
+     * 
+     * Accepts a transaction context that may already have a charter reference.  Returns a typed
+     * tcx with hasCharterRef type.
+     * 
+     * The transaction is typed with the presence of the charter reference (found in tcx.state.charterRef).
+     * 
+     * If the charter reference is already present in the transaction context, the transaction will not be modified.
+     */
+    async tcxWithCharterRef<TCX extends StellarTxnContext>(tcx: TCX) : Promise<TCX & hasCharterRef> {
         if (
             //@ts-expect-error on type-probe:
             tcx.state.charterRef
@@ -2160,7 +2207,23 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             return tcx.addOutput(settingsOut);
         }
     
+        /**
+         * @deprecated - use tcxWithSettingsRef() instead
+         */
         async addSettingsRef<TCX extends StellarTxnContext>(tcx: TCX) : Promise<TCX & hasSettingsRef> {
+            return this.tcxWithSettingsRef(tcx);
+        }
+        /**
+         * ensures that the transaction context has a reference to the settings UTXO
+         * @public
+         * @remarks
+         * 
+         * Accepts a transaction context, and ensures that it has a reference to the
+         * settings UTXO.  If the transaction context already has a settings reference,
+         * it is returned as-is.  Otherwise, the settings UTXO is found and added to
+         * the transaction context.
+         */
+        async tcxWithSettingsRef<TCX extends StellarTxnContext>(tcx: TCX) : Promise<TCX & hasSettingsRef> {
             if (
                 //@ts-expect-error on type-probe:
                 tcx.state.settingsRef 
@@ -2399,6 +2462,153 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         ): Promise<TCX> {
             return delegate.txnGrantAuthority(tcx, activity);
         }
+
+        /**
+         * Returns a single item from a list, throwing an error if it has multiple items
+         * 
+         */
+        singleItem<T>(xs: Array<T>): T {
+            const [first, ...excess] = xs;
+            if (excess.length) {
+                throw new Error("expected single item, got " + excess.length);
+            }    
+            return first;
+        }    
+
+        /**
+         * Queries a chain-index to find utxos having a specific type of delegated datum
+         * @remarks
+         * Optionally filters records by `id`, `type` and/or `predicate`
+         * 
+         * The `predicate` function, if provided, can implement any logic suitable for a specific case of data-finding.
+         */
+        async findDelegatedDataUtxos<
+            const T extends undefined | (string & keyof this["datumAdapters"]),
+            // prettier-ignore
+            ADAPTER_TYPE extends DelegatedDatumAdapter<any, any> 
+                = T extends keyof this["datumAdapters"]
+                ? this["datumAdapters"][T]
+                : DelegatedDatumAdapter<any, any>,
+            DATUM_TYPE extends anyDatumProps &
+                AnyDataTemplate<
+                    T extends undefined ? any : T,
+                    DatumAdapterOffchainType<ADAPTER_TYPE>
+                > &
+                DatumAdapterOffchainType<ADAPTER_TYPE> = DatumAdapterOffchainType<ADAPTER_TYPE>
+        >({
+            type,
+            id,
+            predicate,
+            query,
+        }: {
+            type?: T;
+            id?: string | UutName;
+            predicate?: (utxo: TxInput, data: DATUM_TYPE) => boolean;
+            query?: never; // todo
+        }): Promise<FoundDatumUtxo<DATUM_TYPE>[]> {
+            if (!type && !predicate && !id) {
+                throw new Error("Must provide either type, predicate or id");
+            }
+            if (id && predicate) {
+                throw new Error("Cannot provide both id and predicate");
+            }
+            if (id) {
+                predicate = (utxo, data) => data.id == id.toString();
+            }
+            // console.log("\n\n\n\n\n\n\n\n\n======= findDelegatedDataUtxos =======\n\n\n\n\n\n\n\n\n");
+            // console.log({ type, types: Object.keys(this.datumAdapters)})
+            const hasType = !!type;
+            if ("undefined" !== typeof type) {
+                const hasAdapterForIt = this.datumAdapters?.[type];
+                console.log({ hasType, hasAdapterForIt });
+                if (!this.datumAdapters || (!!type && !hasAdapterForIt)) {
+                    const updated = await this.initDelegatedDatumAdapters();
+                    console.log(Object.keys(this.datumAdapters));
+                    if (!(type in updated) && !this.datumAdapters) {
+                       throw new Error(
+                            `${this.constructor.name}: no datumAdapter for expected type '${type}' even after re-init.  Check your initDelegatedDatumAdapters()`
+                        );
+                    }
+                    this.datumAdapters = updated as any;
+                }
+            }
+            // console.log("findDelegatedDataUtxos", type, predicate);
+            const utxos = await this.network.getUtxos(this.address);
+    
+            console.log("utxos", dumpAny(utxos));
+            const utxosWithDatum = (
+                await Promise.all(
+                    utxos.map((utxo) => {
+                        const { datum } = utxo.origOutput;
+                        console.log("datum", datum);
+                        if (!datum) return null;
+    
+                        if ("undefined" !== typeof type && !this.datumAdapters[type]) {
+                            console.log(
+                                ` ⚠️  WARNING: no adapter for type ${type}; skipping readDatum()`
+                            );
+                            return null;
+                        }
+                        return (
+                            "undefined" !== typeof type
+                                ? this.readDatum(
+                                      this.datumAdapters[type] as unknown as ADAPTER_TYPE,
+                                      datum,
+                                      "ignoreOtherTypes"
+                                  )
+                                : this.readDatum(
+                                      "DelegatedData",
+                                      datum,
+                                      "ignoreOtherTypes"
+                                  )
+                        ).then(
+                            mkFoundDatum.bind(this, utxo) as any, /* allows the error callback to fit the signature */
+                             (e) => {
+                                debugger;
+                                console.log("wtf1", e, utxo.origOutput.datum);
+                                return null; // we don't care about Datums other than DelegatedData:
+                            })
+                    })
+                )
+                // filter corrects any possible nulls 
+            ).filter((x) => !!x) as FoundDatumUtxo<DATUM_TYPE>[];
+            console.log(type, `findDelegatedData: `, utxosWithDatum.length);
+            return utxosWithDatum;
+    
+            function mkFoundDatum(utxo: TxInput, datum: DATUM_TYPE) {
+                console.log("hi mkFoundDatum", datum);
+                if (!datum) {
+                    console.log("  -- skipped 1 mismatch (non-DelegatedDatum)");
+                    return null;
+                }
+    
+                if (!datum.id || !datum.type) {
+                    console.log(
+                        `⚠️  WARNING: missing required 'id' or 'type' field in this delegated datum.  Is the adapter retaining them?\n`,
+                        dumpAny(utxo),
+                        datum
+                    );
+                    debugger;
+                    return null;
+                }
+                if (type && datum.type != type) {
+                    console.log(`  -- skipped ${datum.type}; need ${type})`);
+                    return null;
+                }
+                if (predicate && !predicate(utxo, datum)) {
+                    console.log("  -- skipped due to predicate");
+                    return null;
+                }
+                console.log("-- matched: ", datum);
+                return {
+                    utxo,
+                    datum,
+                } as FoundDatumUtxo<DATUM_TYPE>;
+            }
+        }
+    
+
+
 
         /**
          * Installs a new Minting delegate to the Capo contract
@@ -2820,16 +3030,6 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         }
     
     
-        async findUutSeedUtxo(uutPurposes: string[], tcx: StellarTxnContext<any>) {
-            //!!! make it big enough to serve minUtxo for the new UUT(s)
-            const uutSeed = this.mkValuePredicate(BigInt(42_000), tcx);
-            return this.mustFindActorUtxo(
-                `seed-for-uut ${uutPurposes.join("+")}`,
-                uutSeed,
-                tcx
-            );
-        }
-    
         /**
          * Adds UUT minting to a transaction
          * @remarks
@@ -2968,49 +3168,16 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
     
             // return this.txnAddMintDelegate(tcx4);
         }
-    
+
         /**
-         * Finds a free seed-utxo from the user wallet, and adds it to the transaction
-         * @remarks
-         *
-         * The seedUtxo will be consumed in the transaction, so it can never be used
-         * again; its value will be returned to the user wallet.
-         *
-         * The seedUtxo is needed for UUT minting, and the transaction is typed with
-         * the presence of that seed (found in tcx.state.seedUtxo).
-         * 
-         * If a seedUtxo is already present in the transaction context, no additional seedUtxo
-         * will be added.
-         * 
-         * If a seedUtxo is provided as an argument, that utxo must already be present
-         * in the transaction inputs; the state will be updated to reference it.
-         * 
-         * @public
-         * 
-         **/
+         * adds a seed utxo to a transaction-context, 
+         * @deprecated - use tcxWithSeedUtxo() instead
+         */
         async addSeedUtxo<TCX extends StellarTxnContext>(
             tcx: TCX = new StellarTxnContext(this.actorContext) as TCX,
             seedUtxo? : TxInput
         ): Promise<TCX & hasSeedUtxo> {
-            if (
-                //@ts-expect-error on this type probe
-                tcx.state && tcx.state.seedUtxo
-            ) {
-                return tcx as TCX & hasSeedUtxo;
-            }
-            if (seedUtxo) {
-                if (!tcx.inputs.find((utxo) => utxo.eq(seedUtxo))) {
-                    throw new Error(`seedUtxo not found in transaction inputs`);
-                }
-                const tcx2 = tcx as TCX & hasSeedUtxo;
-                tcx2.state.seedUtxo = seedUtxo;
-                return tcx2;
-            } else {
-                const newSeedUtxo = await this.findUutSeedUtxo([], tcx);
-                const tcx2 = tcx.addInput(newSeedUtxo) as TCX & hasSeedUtxo;
-                tcx2.state.seedUtxo = newSeedUtxo;
-                return tcx2;
-            }
+            return this.tcxWithSeedUtxo(tcx, seedUtxo)
         }
     
         /**

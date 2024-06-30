@@ -5,6 +5,8 @@ import type {
     MinimalDelegateLink,
     MintUutActivityArgs,
     NormalDelegateSetup,
+    hasCharterRef,
+    hasSettingsRef,
 } from "../Capo.js";
 import {
     Datum,
@@ -22,7 +24,7 @@ import type {
     DelegationDetail,
     capoDelegateConfig,
 } from "./RolesAndDelegates.js";
-import type { StellarTxnContext } from "../StellarTxnContext.js";
+import { StellarTxnContext } from "../StellarTxnContext.js";
 import { BasicDelegate } from "./BasicDelegate.js";
 import { mkHeliosModule, type HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { UnspecializedDelegate } from "./UnspecializedDelegate.js";
@@ -35,6 +37,10 @@ export class ContractBasedDelegate<
     get delegateName() : string {
         throw new Error(`${this.constructor.name}: missing required get delegateName() : string`)
     }
+
+    get capo(): Capo<any> {
+        return this.configIn?.capo as unknown as Capo<any>;
+    }    
 
     contractSource() {
         return BasicDelegate;
@@ -141,6 +147,13 @@ import {
         return UnspecializedDelegate;
     }
 
+    tcxWithCharterRef<TCX extends StellarTxnContext | hasCharterRef>(tcx: TCX) {
+        return this.capo.tcxWithCharterRef(tcx);
+    }
+    tcxWithSettingsRef<TCX extends StellarTxnContext | hasSettingsRef>(tcx: TCX) {
+        return this.capo.tcxWithSettingsRef(tcx);
+    }
+
     /**
      * Adds a mint-delegate-specific authority token to the txn output
      * @remarks
@@ -205,7 +218,7 @@ import {
     mkDelegateLifecycleActivity(
         delegateActivityName: "ReplacingMe" | "Retiring" | "ValidatingSettings", 
         ...args: any[]
-    ) {
+    ) : isActivity{
         const TopEnum = this.mustGetActivity("DelegateLifecycleActivities");
         const { DelegateLifecycleActivity } = this.onChainTypes;
         const NestedVariant = this.mustGetEnumVariant(
@@ -220,7 +233,7 @@ import {
     mkCapoLifecycleActivity(
         capoLifecycleActivityName: "CreatingDelegate" | "ActivatingDelegate",
         ...args: any[]
-    ) {
+    ) : isActivity {
         //!!! TODO use a seed: hasSeed arg here?
         const TopEnum = this.mustGetActivity("CapoLifecycleActivities");
         const { CapoLifecycleActivity } = this.onChainTypes;
@@ -233,7 +246,7 @@ import {
         };
     }
 
-    mkSpendingActivity(spendingActivityName: string, ...args: any[]) {
+    mkSpendingActivity(spendingActivityName: string, ...args: any[]) : isActivity {
         const TopEnum = this.mustGetActivity("SpendingActivities");
         const { SpendingActivity } = this.onChainTypes;
         const NestedVariant = this.mustGetEnumVariant(
@@ -245,13 +258,14 @@ import {
         };
     }
 
-    mkMintingActivity(mintingActivityName: string, ...args: any[]) {
+    mkMintingActivity(mintingActivityName: string, ...args: any[]) : isActivity {
         const TopEnum = this.mustGetActivity("MintingActivities");
         const { MintingActivity } = this.onChainTypes;
         const NestedVariant = this.mustGetEnumVariant(
             MintingActivity,
             mintingActivityName
         );
+        
         return {
             redeemer: new TopEnum(new NestedVariant(...args))._toUplcData(),
         };
