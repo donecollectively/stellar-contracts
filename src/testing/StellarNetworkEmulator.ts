@@ -343,14 +343,14 @@ export class StellarNetworkEmulator implements Network{
     initNetworkParams(networkParams) : NetworkParams{
         const raw = Object.assign({}, networkParams.raw);
 
-        raw.latestTip = {
-            epoch: 0,
-            hash: "",
-            slot: 0,
-            time: 0,
-        };
+        // raw.latestTip = {
+        //     epoch: 0,
+        //     hash: "",
+        //     slot: 0,
+        //     time: 0,
+        // };
 
-        return new NetworkParams(raw, () => {
+        return this.#netParams = new NetworkParams(raw, () => {
             return this.#slot;
         });
     }
@@ -385,7 +385,10 @@ export class StellarNetworkEmulator implements Network{
         }
     }
 
+    #netParams! : NetworkParams
     async getParameters() {
+        if (this.#netParams) return this.#netParams;
+
         return this.initNetworkParams(
             new NetworkParams(rawNetworkEmulatorParams)
         );
@@ -493,7 +496,8 @@ export class StellarNetworkEmulator implements Network{
         this.#slot += n;
         console.log("█  #"+this.id)
         console.log(`███  @h=${height} + ${count}  txns`)
-        console.log(`█████ -> slot ${this.#slot.toString()}`)
+        const time = this.#netParams ? new Date(Number(this.#netParams.slotToTime(this.#slot))) : "(no params yet)"
+        console.log(`█████ -> slot ${this.#slot.toString()} = ${time}`)
     }
 
 }

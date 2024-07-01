@@ -211,6 +211,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         const validTo = getAttr("lastValidSlot");
 
         let targetTime: number = futureDate?.getDate() || Date.now();
+        debugger
         let targetSlot = this.networkParams.timeToSlot(BigInt(targetTime));
         const { currentSlot } = this.network;
 
@@ -539,14 +540,14 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     //  -- script addresses -> names
     addrRegistry : Record<string, string> = {};
 
-    mkNetwork(): [StellarNetworkEmulator, enhancedNetworkParams] {
+    mkNetwork(): [StellarNetworkEmulator, NetworkParams] {
         const theNetwork = new StellarNetworkEmulator();
 
         //@xxx ts-expect-error with missing methods
         const emuParams = theNetwork.initNetworkParams({
             ...preProdParams,
             raw: { ...preProdParams },
-        }) as enhancedNetworkParams;
+        });
 
         // debugger
         //@xxxts-expect-error
