@@ -1,4 +1,4 @@
-import { Address, MintingPolicyHash, ValidatorHash, bytesToHex, bytesToText } from "@hyperionbt/helios";
+import { Address, MintingPolicyHash, ValidatorHash } from "@hyperionbt/helios";
 import type {
     ConfigFor,
     configBase,
@@ -127,24 +127,6 @@ export function delegateRoles<const RM extends RoleMap<any>>(
     roleMap: RM
 ): RoleMap<RM> {
     return roleMap;
-}
-
-/**
- * toJSON adapter for delegate links
- * @internal
- **/
-export function delegateLinkSerializer(key: string, value: any) {
-    if (typeof value === "bigint") {
-        return value.toString();
-    } else if ("bytes" == key && Array.isArray(value)) {
-        return bytesToHex(value)
-    } else if (value instanceof Address) {
-        return value.toBech32()
-    } else if ("tn" == key && Array.isArray(value)) {
-        return bytesToText(value)
-    }
-    if (key === "capo") return undefined;
-    return value; // return everything else unchanged
 }
 
 /**

@@ -42,10 +42,10 @@ import {
 
 import { 
     DelegateConfigNeeded,
-    delegateLinkSerializer,
     delegateRoles,
     defineRole,
 } from "./delegation/RolesAndDelegates.js";
+import { delegateLinkSerializer } from "./delegation/delegateLinkSerializer.js";
 
 import { UutName } from "./delegation/UutName.js";
 import type {

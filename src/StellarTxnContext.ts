@@ -17,7 +17,7 @@ import {
     UutName, type SeedAttrs 
 } from "./delegation/UutName.js";
 import type { ActorContext } from "./StellarContract.js";
-import { delegateLinkSerializer } from "./delegation/RolesAndDelegates.js";
+import { delegateLinkSerializer } from "./delegation/delegateLinkSerializer.js";
 
 /**
  * A txn context having a seedUtxo in its state
