@@ -1,7 +1,7 @@
 import { Address, MintingPolicyHash, ValidatorHash } from "@hyperionbt/helios";
 import type {
     ConfigFor,
-    configBase,
+    configBaseWithRev,
     devConfigProps,
     stellarSubclass,
 } from "../StellarContract.js";
@@ -84,7 +84,7 @@ export type DelegationDetail = {
  *
  * @public
  **/
-export type capoDelegateConfig = configBase & devConfigProps & {
+export type capoDelegateConfig = configBaseWithRev & devConfigProps & {
     capoAddr: Address;
     capo: Capo<any>;
     mph: MintingPolicyHash;
@@ -237,10 +237,10 @@ export function defineRole<
 //         };
 //     }
 
-export type strategyParams = configBase;
-export type delegateScriptParams = configBase;
+export type strategyParams = configBaseWithRev;
+export type delegateScriptParams = configBaseWithRev;
 
-export type PartialParamConfig<CT extends configBase> = Partial<CT>;
+export type PartialParamConfig<CT extends configBaseWithRev> = Partial<CT>;
 
 /**
  * declaration for one strategy-variant of a delegate role
@@ -302,7 +302,7 @@ export type ConfiguredDelegate<DT extends StellarDelegate<any>> = {
     delegateClass: stellarSubclass<DT>;
     delegate: DT;
     roleName: string;
-    config: Partial<CapoBaseConfig> & ConfigFor<DT>;
+    fullCapoDgtConfig: Partial<CapoBaseConfig> & ConfigFor<DT>;
 } & RelativeDelegateLink<DT>;
 
 /**

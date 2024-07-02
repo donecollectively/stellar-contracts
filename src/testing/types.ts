@@ -6,7 +6,7 @@ import {
 import type {
     ConfigFor,
     StellarContract,
-    configBase,
+    configBaseWithRev,
     stellarSubclass,
 } from "../StellarContract.js";
 import type { StellarTestContext } from "./StellarTestContext.js";
@@ -61,7 +61,7 @@ export type TestHelperState<SC extends StellarContract<any>> = {
  **/
 export async function addTestContext<
     SC extends StellarContract<any>,
-    P extends configBase = ConfigFor<SC>
+    P extends configBaseWithRev = ConfigFor<SC>
 >(
     context: StellarTestContext<any, SC>,
     TestHelperClass: stellarTestHelperSubclass<SC>,

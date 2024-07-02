@@ -294,7 +294,8 @@ struct DelegateInput {
         RelativeDelegateLink{
             uut,
              _ /* strategy */,
-            validatorHash
+            validatorHash,
+            _ /* configJson */
         } = link;
         targetValue : Value = mkTv(mph, uut);
         returnedUnchanged : Bool = validatorHash.switch {

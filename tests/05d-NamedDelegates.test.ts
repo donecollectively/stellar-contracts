@@ -24,7 +24,7 @@ import {
     defineRole,
 } from "../src/delegation/RolesAndDelegates";
 import { StellarTxnContext } from "../src/StellarTxnContext";
-import { configBase, txn } from "../src/StellarContract";
+import { configBaseWithRev, txn } from "../src/StellarContract";
 import { dumpAny, txAsString } from "../src/diagnostics";
 import { Address } from "@hyperionbt/helios";
 import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateWithGenericUuts";

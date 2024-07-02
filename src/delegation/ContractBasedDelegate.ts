@@ -16,7 +16,7 @@ import {
 import {
     Activity,
     datum,
-    type configBase,
+    type configBaseWithRev,
     type isActivity,
 } from "../StellarContract.js";
 import { StellarDelegate } from "./StellarDelegate.js";

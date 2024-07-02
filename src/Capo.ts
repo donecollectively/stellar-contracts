@@ -24,7 +24,7 @@ import {
 import type {
     StellarFactoryArgs,
     isActivity,
-    configBase,
+    configBaseWithRev,
     stellarSubclass,
     ConfigFor,
     devConfigProps,
@@ -281,7 +281,7 @@ export type rootCapoConfig = devConfigProps & {
 };
 
 //!!! todo: let this be parameterized for more specificity
-export type CapoBaseConfig = configBase &
+export type CapoBaseConfig = configBaseWithRev &
     rootCapoConfig &
     devConfigProps &
     SeedTxnScriptParams & {
@@ -344,7 +344,7 @@ import { PriceValidator } from "./PriceValidator.js";
  * together with it's primary or "charter" utxo.
  * @public
  **/
-export interface CharterDatumProps extends configBase {
+export interface CharterDatumProps extends configBaseWithRev {
     spendDelegateLink: RelativeDelegateLink<ContractBasedDelegate<capoDelegateConfig>>;
     spendInvariants: RelativeDelegateLink<ContractBasedDelegate<capoDelegateConfig>>[];
     namedDelegates: Record<string, RelativeDelegateLink<StellarDelegate<capoDelegateConfig>>>;
@@ -534,7 +534,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
      **/
     getContractScriptParams(
         config: CapoBaseConfig
-    ): configBase & devConfigProps & Partial<CapoBaseConfig> {
+    ): configBaseWithRev & devConfigProps & Partial<CapoBaseConfig> {
         if (
             this.configIn &&
             config.mph &&
@@ -841,12 +841,10 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
 
         const charterDatum = await this.findCharterDatum(ctUtxo)
 
-        return this.mustFindCharterUtxo().then(async (ctUtxo: TxInput) => {
-            const tcx2 = tcx as TCX & hasCharterRef;
-            tcx2.state.charterRef = ctUtxo;
-            tcx2.state.charterDatum = charterDatum;
-            return tcx2.addRefInput(ctUtxo);
-        })
+        const tcx2 = tcx as TCX & hasCharterRef;
+        tcx2.state.charterRef = ctUtxo;
+        tcx2.state.charterDatum = charterDatum;
+        return tcx2.addRefInput(ctUtxo);
     }
 
     async txnMustUseCharterUtxo<TCX extends StellarTxnContext>(
@@ -1021,6 +1019,43 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         }
     }
 
+        offchainLink<T extends RelativeDelegateLink<any>>(link: T): T {
+        if ("string" == typeof link.config) {
+            throw new Error(`wrong type`)
+        }
+        if (Array.isArray(link.config)) {
+            link = {
+                ... link,
+                config: JSON.parse(bytesToText(link.config))
+            }
+        }
+        const { config } = link
+        console.log(" config = ", config );
+        debugger
+        return link
+    }
+
+    parseDelegateLinksInCharter(charterDatum: CharterDatumProps) {
+        // spendDelegateLink: RelativeDelegateLink<ContractBasedDelegate<capoDelegateConfig>>;
+        // spendInvariants: RelativeDelegateLink<ContractBasedDelegate<capoDelegateConfig>>[];
+        // namedDelegates: Record<string, RelativeDelegateLink<StellarDelegate<capoDelegateConfig>>>;
+        // mintDelegateLink: RelativeDelegateLink<BasicMintDelegate>;
+        // mintInvariants: RelativeDelegateLink<ContractBasedDelegate<capoDelegateConfig>>[];
+        // govAuthorityLink: RelativeDelegateLink<AuthorityPolicy>;
+
+        const withParsedOffchainLinks : CharterDatumProps = {
+            ... charterDatum,
+            spendDelegateLink: this.offchainLink(charterDatum.spendDelegateLink),
+            spendInvariants: charterDatum.spendInvariants.map(this.offchainLink),
+            mintDelegateLink: this.offchainLink(charterDatum.mintDelegateLink),
+            mintInvariants: charterDatum.mintInvariants.map(this.offchainLink),
+            govAuthorityLink: this.offchainLink(charterDatum.govAuthorityLink),
+            namedDelegates: Object.fromEntries(
+                Object.entries(charterDatum.namedDelegates).map(([k, v]) => [k, this.offchainLink(v)])
+            )
+        }
+        return withParsedOffchainLinks;
+    }
 
     async findCharterDatum(currentCharterUtxo?: TxInput) {
         if (!currentCharterUtxo) {
@@ -1032,12 +1067,21 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             currentCharterUtxo.origOutput.datum as InlineDatum
         );
         if (!charterDatum) throw Error(`invalid charter UTxO datum`);
-        return charterDatum;
+        return this.parseDelegateLinksInCharter(charterDatum);
     }
 
-    async findSettingsUtxo(charterUtxo?: TxInput) {
-        const chUtxo = charterUtxo || (await this.mustFindCharterUtxo());
-        const charterDatum = await this.findCharterDatum(chUtxo);
+    async findSettingsUtxo(
+        charterRefOrInputOrProps?: hasCharterRef | TxInput | CharterDatumProps
+    ) {
+        const chUtxo =
+            charterRefOrInputOrProps || (await this.mustFindCharterUtxo());
+        const charterDatum =
+            charterRefOrInputOrProps instanceof StellarTxnContext
+                ? charterRefOrInputOrProps.state.charterDatum
+                : !charterRefOrInputOrProps ||
+                  charterRefOrInputOrProps instanceof TxInput
+                ? await this.findCharterDatum(chUtxo as TxInput)
+                : charterRefOrInputOrProps;
         const uutName = charterDatum.settingsUut;
         // console.log("findSettingsUut", { uutName, charterDatum });
         const uutValue = this.uutsValue(uutName);
@@ -1220,7 +1264,15 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             tcx,
             this.mkMinTv(this.mph, tcx.state.uuts[roleName])
         );
-
+        
+        const delegateLink = this.relativeLink(configured);
+        const cacheKey = JSON.stringify(
+            delegateLink,
+            delegateLinkSerializer,
+            4 // indent 4 spaces
+        );
+        this.#_delegateCache[roleName] = this.#_delegateCache[roleName] || {}
+        this.#_delegateCache[roleName][cacheKey] = configured;
         return configured as ConfiguredDelegate<DT> & RelativeDelegateLink<DT>
     }
 
@@ -1229,17 +1281,17 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         configured: ConfiguredDelegate<DT>
     ): RelativeDelegateLink<DT> {
         const {
+            uutName,
             strategyName,
             delegateValidatorHash,
-            uutName,
-            config,
+            config = {},
         }: // addrHint,  //moved to config
         // reqdAddress,  // removed
         RelativeDelegateLink<DT> = configured;
 
         return {
-            strategyName,
             uutName,
+            strategyName,
             delegateValidatorHash,
             config,
             // addrHint,  //moved to config
@@ -1278,7 +1330,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         roleName: RN,
         delegateInfo: DGI
     ): Promise<ConfiguredDelegate<sDT_1>> {
-        const { strategyName, config: selectedConfig = {} } = delegateInfo;
+        const { strategyName, config: explicitConfig = {} } = delegateInfo;
 
         const { delegateRoles } = this;
         const uut = tcx.state.uuts[roleName];
@@ -1308,10 +1360,14 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
 
         const scriptParamsFromStrategyVariant =
             selectedStrategy.partialConfig || {};
-        const mergedConfig: ConfigFor<sDT_1> = {
+
+        const configForLink = {
             ...defaultParamsFromDelegateClass,
-            ...(scriptParamsFromStrategyVariant || {}),
-            ...selectedConfig,
+            ... (scriptParamsFromStrategyVariant || {}),
+            ...explicitConfig
+        }
+        const fullCapoDgtConfig: ConfigFor<sDT_1> = {
+            ...configForLink,
             ...impliedDelegationDetails,
             devGen: this.devGen,
             capo: this,
@@ -1319,7 +1375,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
 
         //! it validates the net configuration so it can return a working config.
         const errors: ErrorMap | undefined =
-            validateConfig && validateConfig(mergedConfig) || undefined;
+            validateConfig && validateConfig(fullCapoDgtConfig) || undefined;
         if (errors) {
             throw new DelegateConfigNeeded(
                 `validation errors in delegateInfo.config for ${roleName} '${strategyName}':\n` +
@@ -1333,7 +1389,8 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             roleName,
             delegateClass,
             uutName: uut.name,
-            config: mergedConfig,
+            fullCapoDgtConfig,
+            config: configForLink,
         };
         let delegate: sDT_1 = await this.mustGetDelegate<sDT_1>(delegateSettings);
 
@@ -1415,7 +1472,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             delegateValidatorHash: expectedDvh,
             // addrHint,  //moved to config
             // reqdAddress,  // removed
-            config: linkedConfig,
+            config: configForLink,
         } = delegateLink;
         const selectedStrat = role.variants[
             strategyName
@@ -1430,11 +1487,26 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                     )}`
             );
         }
-        const { delegateClass, config: stratSettings } = selectedStrat;
+        const { delegateClass, fullCapoDgtConfig: stratSettings } = selectedStrat;
         const { defaultParams: defaultParamsFromDelegateClass } = delegateClass;
         const impliedDelegationDetails = this.mkImpliedDelegationDetails(
             new UutName(roleName, uutName)
         );
+
+        const effectiveConfig = {
+            ...defaultParamsFromDelegateClass,
+            ...stratSettings,
+        }
+
+        const serializedCfg1 = JSON.stringify(effectiveConfig, delegateLinkSerializer, 4);
+        const serializedCfg2 = JSON.stringify(configForLink, delegateLinkSerializer, 4);
+        if (serializedCfg1 !== serializedCfg2) {
+            console.warn(
+                `mismatched or modified delegate configuration for role '${roleName}'\n` +
+                    `  ...expected: ${serializedCfg1}\n` +
+                    `  ...got: ${serializedCfg2}`
+            );
+        }
 
         //@xxxts-expect-error because this stack of generically partial
         //  ... config elements isn't recognized as adding up to a full config type.
@@ -1442,12 +1514,9 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         // See also the create-delegate code path in txnCreateConfiguredDelegate(), which
         // ... which also includes baseline config details.  IF YOU'RE ADDING STUFF HERE,
         // ... consider that it might also be needed there.
-        const config: ConfigFor<sDT_2> = {
-            ...defaultParamsFromDelegateClass,
-            ...stratSettings,
-            // addrHint,  //moved to config
-            // reqdAddress,  // removed
-            ...linkedConfig,
+        const fullCapoDgtConfig: ConfigFor<sDT_2> = {
+            ...effectiveConfig,
+            ...configForLink,
             ...impliedDelegationDetails,
             devGen: this.devGen,
             capo: this,
@@ -1466,10 +1535,11 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
 
         const delegate = await this.mustGetDelegate({
             delegateClass,
-            config,
+            fullCapoDgtConfig,
             roleName,
             uutName,
             strategyName,
+            config: configForLink
             // reqdAddress,
             // addrHint,
         });
@@ -1487,7 +1557,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         roleCache[cacheKey] = { 
             delegate, strategyName
         };
-        return delegate;
+        return delegate as unknown as sDT_2;
     }
 
     private showDelegateLink(delegateLink: RelativeDelegateLink<any>) {
@@ -1497,7 +1567,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
     async mustGetDelegate<T extends StellarDelegate<any>>(
         configuredDelegate: PreconfiguredDelegate<T>
     ): Promise<T> {
-        const { delegateClass, config } = configuredDelegate;
+        const { delegateClass, fullCapoDgtConfig: config } = configuredDelegate;
         try {
             // delegate
             const configured = await this.addStrellaWithConfig(
@@ -1724,8 +1794,10 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             return new hlRelativeDelegateLink(
                 uutName,
                 strategyName,
-                new OptValidator(delegateValidatorHash)
-                // config //!!! todo - support inline config if/when needed
+                new OptValidator(delegateValidatorHash),
+                textToBytes(
+                    JSON.stringify(config, delegateLinkSerializer, 4)
+                )
                 // needsAddr,
                 // addrHint
             );
@@ -1835,8 +1907,10 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         //     // ])
         // }
     
-        async findGovDelegate() {
-            const charterDatum = await this.findCharterDatum();
+        async findGovDelegate(charterDatum?: CharterDatumProps) {
+            if (!charterDatum) {
+                charterDatum = await this.findCharterDatum();
+            }
             const capoGovDelegate =
                 await this.connectDelegateWithLink(
                     "govAuthority",
@@ -1853,7 +1927,12 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         async txnAddGovAuthority<TCX extends StellarTxnContext>(
             tcx: TCX
         ): Promise<TCX> {
-            const capoGovDelegate = await this.findGovDelegate();
+            const charterDatumMaybe = (
+                "charterDatum" in tcx.state 
+                    ? tcx.state.charterDatum as CharterDatumProps 
+                    : undefined
+            );
+            const capoGovDelegate = await this.findGovDelegate(charterDatumMaybe);
             console.log("adding charter's govAuthority");
             // !!! TODO: add a type to the TCX, indicating presence of the govAuthority UUT
             
@@ -1885,13 +1964,17 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         //     THIS extends Capo<any>,
         //     MDT extends BasicMintDelegate & THIS["delegateRoles"]["mintDgt"] extends RoleInfo<any, any, infer DT> ? DT : never
         // >() : Promise<MDT>{
-        async getMintDelegate() : Promise<BasicMintDelegate>{
+        async getMintDelegate(
+            charterDatum?: CharterDatumProps
+        ) : Promise<BasicMintDelegate>{
             if (!this.configIn) {
                 throw new Error(`what now?`);
             }
-    
+
             //!!! needs to work also during bootstrapping.
-            const charterDatum = await this.findCharterDatum();
+            if (!charterDatum) {
+                charterDatum = await this.findCharterDatum();
+            }
     
             return this.connectDelegateWithLink(
                 "mintDelegate",
@@ -1900,11 +1983,13 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         }
     
         async getSpendDelegate(charterDatum?: CharterDatumProps) {
-            const charter = charterDatum || await this.findCharterDatum();
+            if (!charterDatum) {
+                charterDatum = await this.findCharterDatum();
+            }
     
             return this.connectDelegateWithLink(
                 "spendDelegate",
-                charter.spendDelegateLink
+                charterDatum.spendDelegateLink
             );
         }
     
@@ -1913,10 +1998,14 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
          * @remarks
          * @public
          **/
-        async getNamedDelegate(delegateName: string) : Promise<
+        async getNamedDelegate(delegateName: string, 
+            charterDatum?: CharterDatumProps
+        ) : Promise<
             ContractBasedDelegate<any>
         > {
-            const charterDatum = await this.findCharterDatum();
+            if (!charterDatum) {
+                charterDatum = await this.findCharterDatum();
+            }
     
             const foundDelegateLink = charterDatum.namedDelegates[delegateName];
             if (!foundDelegateLink) {
@@ -1928,8 +2017,12 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             ) as any
         }
 
-        async getNamedDelegates() {
-            const charterDatum = await this.findCharterDatum();
+        async getNamedDelegates(
+            charterDatum?: CharterDatumProps
+        ) {
+            if (!charterDatum) {
+                charterDatum = await this.findCharterDatum();
+            }
             const namedDelegates = charterDatum.namedDelegates;
     
             const allNamedDelegates = Object.entries(namedDelegates).map(
@@ -1942,9 +2035,12 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             return Object.fromEntries(done);
         }
     
-        async getGovDelegate() {
-            const charterDatum = await this.findCharterDatum();
-    
+        async getGovDelegate(
+            charterDatum?: CharterDatumProps
+        ) {
+            if (!charterDatum) {
+                charterDatum = await this.findCharterDatum();
+            }
             return this.connectDelegateWithLink(
                 "govDelegate",
                 charterDatum.govAuthorityLink
@@ -2173,14 +2269,16 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         >(
             this: thisType,
             {
-            settingsUtxo,
-            charterUtxo,
-        }: {
-            settingsUtxo?: TxInput;
-            charterUtxo?: TxInput;
-        } = {}): Promise<CapoOffchainSettingsType<thisType>> {
+                settingsUtxo,
+                tcx,
+                charterUtxo,
+            }: {
+                settingsUtxo?: TxInput;
+                tcx?: hasCharterRef;
+                charterUtxo?: TxInput;
+            } = {}): Promise<CapoOffchainSettingsType<thisType>> {
             const foundSettingsUtxo =
-                settingsUtxo || (await this.findSettingsUtxo(charterUtxo));
+                settingsUtxo || (await this.findSettingsUtxo(tcx || charterUtxo));
                 
             const data = await this.readDatum(
                 this.settingsAdapter,
@@ -2231,7 +2329,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
     
             const settingsUtxo = await this.findSettingsUtxo(
                 //@ts-expect-error it's ok if it's not there
-                tcx.state.charterRef
+                tcx.state.charterDatum
             )
             const tcx2 = tcx.addRefInput(settingsUtxo) as TCX & hasSettingsRef;
             tcx2.state.settingsRef = settingsUtxo;

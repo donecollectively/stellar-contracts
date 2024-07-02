@@ -97,7 +97,7 @@ export type anyDatumProps = Record<string, any>;
  * Configuration details for StellarContract classes
  * @public
  **/
-export interface configBase {
+export interface configBaseWithRev {
     rev: bigint;
 }
 
@@ -326,7 +326,7 @@ export type SetupDetails = {
  * @public
  * Extracts the config type for a Stellar Contract class
  **/
-export type ConfigFor<SC extends StellarContract<any>> = configBase &
+export type ConfigFor<SC extends StellarContract<any>> = configBaseWithRev &
     SC extends StellarContract<infer inferredConfig>
     ? inferredConfig
     : never;
@@ -339,7 +339,7 @@ export type ConfigFor<SC extends StellarContract<any>> = configBase &
  * for the specific class.
  * @public
  **/
-export type StellarFactoryArgs<CT extends configBase> = {
+export type StellarFactoryArgs<CT extends configBaseWithRev> = {
     setup: SetupDetails;
     config?: CT;
     partialConfig?: Partial<CT>;
@@ -412,14 +412,14 @@ export type NetworkContext<NWT extends Network = Network> = {
  **/
 export class StellarContract<
     // SUB extends StellarContract<any, ParamsType>,
-    ConfigType extends configBase
+    ConfigType extends configBaseWithRev
 > {
     //! it has scriptProgram: a parameterized instance of the contract
     //  ... with specific `parameters` assigned.
     scriptProgram?: Program;
     configIn?: ConfigType;
     partialConfig?: Partial<ConfigType>;
-    contractParams?: configBase;
+    contractParams?: configBaseWithRev;
     setup: SetupDetails;
     network: Network;
     networkParams: NetworkParams;
@@ -457,7 +457,7 @@ export class StellarContract<
     //! by default, all the config keys are used as script params
     getContractScriptParams(
         config: ConfigType
-    ): configBase & Partial<ConfigType> {
+    ): configBaseWithRev & Partial<ConfigType> {
         return config;
     }
 
@@ -480,7 +480,7 @@ export class StellarContract<
      **/
     static async createWith<
         thisType extends StellarContract<configType>,
-        configType extends configBase = thisType extends StellarContract<
+        configType extends configBaseWithRev = thisType extends StellarContract<
             infer iCT
         >
             ? iCT
@@ -510,6 +510,8 @@ export class StellarContract<
                 `StellarContract: use createWith() factory function`
             );
         }
+        // console.log(new Error(`\n  in ${this.constructor.name}`).stack!.split("\n").slice(1).join("\n"));
+
         const { network, networkParams, isTest, isMainnet, actorContext } =
             setup;
         this.actorContext = actorContext;

@@ -1,5 +1,5 @@
 import type { TestContext } from "vitest";
-import type { ConfigFor, StellarContract, configBase } from "../StellarContract.js";
+import type { ConfigFor, StellarContract, configBaseWithRev } from "../StellarContract.js";
 import type { TestHelperState, canHaveRandomSeed, canSkipSetup } from "./types.js";
 import type { StellarTestHelper } from "./StellarTestHelper.js";
 

@@ -250,18 +250,27 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
             mustNotModifyTypeInfo : Bool = ( typeMapUut == oldTypeMapUut );
 
             if (isDev) {
-                print("is spendDgt unchanged? " + unchangedSpendDgt.show() +
-                    "\n  - old: "+ oldSpendDelegate.uutName + " = " + oldSpendDelegate.strategyName +
-                    " => "+  oldSpendDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"} +
-                "\n  - new: "+ spendDelegate.uutName + " = " + spendDelegate.strategyName +
-                    " => "+ spendDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"} 
-                );
-                print("is mintDgt unchanged?  " + unchangedMintDgt.show() + 
-                    "\n  - old: "+ oldMintDelegate.uutName + " = " + oldMintDelegate.strategyName +
-                    " => "+  oldMintDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"} +
-                    "\n  - new: "+ mintDelegate.uutName + " = " + mintDelegate.strategyName +
-                    " => "+ mintDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"}
-                );
+                print("is spendDgt unchanged? " + unchangedSpendDgt.show());
+                print("  - old: "+ oldSpendDelegate.uutName + " = " + oldSpendDelegate.strategyName);
+                print("       => "+  oldSpendDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"});
+                print("       + cfg " + oldSpendDelegate.config.decode_utf8());
+                print("  - new: "+ spendDelegate.uutName + " = " + spendDelegate.strategyName);
+                print("       => "+ spendDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"});
+                print("       + cfg " + spendDelegate.config.decode_utf8());
+                // print(" - old: " + oldSpendDelegate.serialize().show());
+                // print(" - new: " + spendDelegate.serialize().show());
+
+                print("is mintDgt unchanged?  " + unchangedMintDgt.show());
+                print("  - old: "+ oldMintDelegate.uutName + " = " + oldMintDelegate.strategyName);
+                print("       => "+ oldMintDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"});
+                print("       + cfg " + oldMintDelegate.config.decode_utf8());
+                print("  - new: "+ mintDelegate.uutName + " = " + mintDelegate.strategyName);
+                print("       => "+ mintDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"});
+                print("       + cfg " + mintDelegate.config.decode_utf8());
+                // print(" - old: " + oldMintDelegate.serialize().show());
+                // print(" - new: " + mintDelegate.serialize().show());
+                
+
                 print("is config unchanged? " + mustNotModifySettings.show() +
                     "\n  - old: "+ oldSettingsUut.decode_utf8() +
                     "\n  - new: "+ settingsUut.decode_utf8()
@@ -274,10 +283,10 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
             // the high-level use-cases that can update charter are all mutually exclusive.  Count them
             // and ensure that only one is present.
             countUpdatedThings : Int = 
-                if (unchangedGovDelegate) { 0 } else { 1 } +
-                if (unchangedSpendDgt) { 0 } else { 1 } +
-                if (unchangedMintDgt) { 0 } else { 1 } +
-                if (changedAnyNamedDelegate) { 1 } else { 0 };
+                if (unchangedGovDelegate.trace("govDgt unchanged? ")) { 0 } else { 1 } +
+                if (unchangedSpendDgt.trace("spendDgt unchanged? ") ) { 0 } else { 1 } +
+                if (unchangedMintDgt.trace("mintDgt unchanged? ") ) { 0 } else { 1 } +
+                if (changedAnyNamedDelegate.trace("namedDgt changed? ") ) { 1 } else { 0 };
             assert(countUpdatedThings == 1, "only one type of charterUpdate can be performed at once");            
 
             mustNotModifySettings &&

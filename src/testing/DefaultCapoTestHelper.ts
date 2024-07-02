@@ -80,7 +80,6 @@ export class DefaultCapoTestHelper<
     ): DefaultCapoTestHelperClass<CAPO> {
         class specificCapoHelper extends DefaultCapoTestHelper<CAPO> {
             get stellarClass() {
-                debugger
                 return s;
             }
         }

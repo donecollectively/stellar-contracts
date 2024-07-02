@@ -95,6 +95,7 @@ struct RelativeDelegateLink {
     // it also means that they won't be able to participate 
     //   ... in validation of configuration changes in the Capo.
     delegateValidatorHash: Option[ValidatorHash]
+    config: ByteArray
     // !!! todo ???  - for namedDelegates particularly
     // stakingCred: stakingKeyRequirement
 
@@ -230,7 +231,8 @@ struct RelativeDelegateLink {
     ) -> Bool {
         RelativeDelegateLink{
             uut, strategy,
-            validatorHash
+            validatorHash, 
+            _ /* configJson */
         } = self;
         if (strategy.encode_utf8().length < 4) {
             error("strategy too short")
@@ -297,6 +299,7 @@ func mustReturnValueToScript(
     tokenName: ByteArray = #
 ) -> Bool {
     if (!returnsValueToScript( value, ctx)) {
+        print("failed matching value: "+ value.show());
         error(" ❌ dgTkn not returned: " + tokenName.decode_utf8())
         // error("the authZor token MUST be returned")
     };

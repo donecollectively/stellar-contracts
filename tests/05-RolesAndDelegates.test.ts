@@ -24,7 +24,7 @@ import {
     defineRole,
 } from "../src/delegation/RolesAndDelegates";
 import { StellarTxnContext } from "../src/StellarTxnContext";
-import { configBase } from "../src/StellarContract";
+import { configBaseWithRev } from "../src/StellarContract";
 import { txAsString } from "../src/diagnostics";
 import { Address } from "@hyperionbt/helios";
 import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateWithGenericUuts";
@@ -276,7 +276,7 @@ describe("Capo", async () => {
                     },
                     { mintDelegate: "mintDgt" }
                 );
-                let config: configBase & Record<string,any> = { rev: 1n };
+                let config: configBaseWithRev & Record<string,any> = { rev: 1n };
                 const getDelegate = () => {
                     return t.txnCreateDelegateLink(tcx1b, "mintDelegate", {
                         strategyName: "failsWhenBad",

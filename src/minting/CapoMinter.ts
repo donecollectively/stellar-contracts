@@ -13,7 +13,7 @@ import {
     partialTxn,
 } from "../StellarContract.js";
 import type {
-    configBase,
+    configBaseWithRev,
     hasSeed,
     isActivity,
 } from "../StellarContract.js";
@@ -44,7 +44,7 @@ type MintCharterActivityArgs<T = {}> = T & {
     owner: Address;
 };
 
-export type BasicMinterParams = configBase & SeedTxnScriptParams & {
+export type BasicMinterParams = configBaseWithRev & SeedTxnScriptParams & {
     capo: Capo<any>
     isDev: boolean
     devGen: bigint
@@ -80,7 +80,7 @@ implements MinterBaseMethods
     }
     getContractScriptParams(
         config: BasicMinterParams
-    ): configBase & SeedTxnScriptParams {
+    ): configBaseWithRev & SeedTxnScriptParams {
         const {
             seedIndex,
             seedTxn,

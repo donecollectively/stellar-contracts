@@ -3,7 +3,7 @@ import {
     ValidatorHash,
     Value,
 } from "@hyperionbt/helios";
-import { StellarContract, type configBase, type isActivity } from "../StellarContract.js";
+import { StellarContract, type configBaseWithRev, type isActivity } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { mkTv } from "../utils.js";
 import type {

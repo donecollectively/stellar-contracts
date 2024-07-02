@@ -211,7 +211,6 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         const validTo = getAttr("lastValidSlot");
 
         let targetTime: number = futureDate?.getDate() || Date.now();
-        debugger
         let targetSlot = this.networkParams.timeToSlot(BigInt(targetTime));
         const { currentSlot } = this.network;
 
