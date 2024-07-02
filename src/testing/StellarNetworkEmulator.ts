@@ -112,8 +112,10 @@ class RegularTx implements EmulatorTx {
         this.#tx = tx;
     }
 
+    #txId : TxId | null = null
     id() {
-        return this.#tx.id();
+        if (this.#txId) return this.#txId;
+        return this.#txId = this.#tx.id();
     }
 
     consumes(utxo) {
@@ -126,11 +128,11 @@ class RegularTx implements EmulatorTx {
         utxos = utxos.filter((utxo) => !this.consumes(utxo));
 
         const txOutputs = this.#tx.body.outputs;
-
+        const txId = this.id();
         txOutputs.forEach((txOutput, utxoId) => {
             if (eq(txOutput.address.bytes, address.bytes)) {
                 utxos.push(
-                    new TxInput(new TxOutputId(this.id(), utxoId), txOutput)
+                    new TxInput(new TxOutputId(txId, utxoId), txOutput)
                 );
             }
         });

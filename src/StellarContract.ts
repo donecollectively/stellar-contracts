@@ -22,6 +22,40 @@ import {
 import * as helios from "@hyperionbt/helios";
 import type { Network, Wallet } from "@hyperionbt/helios";
 
+
+const innerHash = UplcProgram.prototype.hash;
+Object.defineProperty(UplcProgram.prototype, "hash", {
+    value() {
+        if (this.__cachedHash) {
+            // console.log(`    8888888888888    cached hash saved ${this.__CHsaved}ms`);
+            return this.__cachedHash;
+        }
+        const ts1 = Date.now();
+        const result = innerHash.call(this);
+        const ts2 = Date.now();
+        const diff = ts2 - ts1;
+        this.__CHsaved = diff;
+        return (this.__cachedHash = result);
+    }
+})
+const innerSerializeBytes = UplcProgram.prototype.serializeBytes;
+Object.defineProperty(UplcProgram.prototype, "serializeBytes", {
+    value() {
+        if (this.__cachedSerializeBytes) {
+            // console.log(`    8888888888888    cached serializeBytes saved ${this.__SBsaved}ms`);
+            return this.__cachedSerializeBytes;
+        }
+        const ts1 = Date.now();
+        const result = innerSerializeBytes.call(this);
+        const ts2 = Date.now();
+        const diff = ts2 - ts1;
+
+        this.__SBsaved = ts2 - ts1;
+        return (this.__cachedSerializeBytes = result);
+    }
+})
+
+
 import {
     StellarTxnContext,
     type TxDescription,
@@ -899,6 +933,7 @@ export class StellarContract<
         | (adapterType extends DatumAdapter<any, any> ? adapterType : DPROPS)
         | undefined
     > {
+        const ts1 = Date.now();
         const hasAdapter = datumNameOrAdapter instanceof DatumAdapter;
         const datumName = hasAdapter
             ? datumNameOrAdapter.datumName
@@ -912,6 +947,7 @@ export class StellarContract<
                 `datum must be an InlineDatum to be readable using readDatum()`
             );
 
+        let ts2;
         const rawParsedData = (await this.readUplcDatum(
             thisDatumType,
             datum.data!,
@@ -919,15 +955,28 @@ export class StellarContract<
         ).catch((e) => {
             if (e.message?.match(/expected constrData/)) return undefined;
             throw e;
-        })) as DPROPS | undefined;
+        }).finally(() => {
+            ts2 = Date.now();
+            const elapsed = ts2 - ts1;
+            if (elapsed > 10) {
+                console.log(`    -- readUplcDatum ${datumName} took ${ts2 - ts1}ms`);
+            }
+        }) as DPROPS | undefined)
         if (!rawParsedData) return undefined;
         if (hasAdapter) {
-            return datumNameOrAdapter.fromOnchainDatum(
+            const adapted = datumNameOrAdapter.fromOnchainDatum(
                 rawParsedData as unknown as adapterParsedOnchainData<
                     DPROPS,
                     "adapterHasConcreteTypeInfo"
                 >
-            );
+            )
+            const ts3 = Date.now();
+            const elapsed = ts3 - ts1;
+            if (elapsed > 10) {
+                console.log(`    -- adapter ${datumName} took ${ts3 - ts2}ms`);
+                console.log(`  ⏱ readDatum ${datumName} took ${ts3 - ts1}ms total`);
+            }
+            return adapted;
         }
         return rawParsedData as any;
     }
@@ -1393,17 +1442,19 @@ export class StellarContract<
         const isUut =
             specifier instanceof Array || specifier instanceof UutName;
         if (isValue) {
-            v = predicate.value = specifier;
-            return predicate;
+            // v = predicate.value = specifier;
+            return _tokenPredicate.bind(this, specifier) as tokenPredicate<any>;
+            // return predicate;
         } else if (isUut) {
             const uutNameOrBytes =
                 specifier instanceof Array ? specifier : specifier.name;
             const quant = quantOrTokenName ? BigInt(quantOrTokenName) : 1n;
-            v = predicate.value = this.tokenAsValue(
+            const tv = this.tokenAsValue(
                 uutNameOrBytes,
                 quant // quantity if any
             );
-            return predicate;
+            return _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
+                        // return predicate;
         } else if (specifier instanceof MintingPolicyHash) {
             mph = specifier;
             if ("string" !== typeof quantOrTokenName)
@@ -1413,8 +1464,10 @@ export class StellarContract<
             tokenName = quantOrTokenName;
             quantity = quantity || 1n;
 
-            v = predicate.value = this.mkTokenValue(tokenName, quantity, mph);
-            return predicate;
+            // v = predicate.value = this.mkTokenValue(tokenName, quantity, mph);
+            // return predicate;
+            const tv = this.mkTokenValue(tokenName, quantity, mph);
+            return _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
         } else if (specifier instanceof AssetClass) {
             mph = specifier.mintingPolicyHash;
             if (!quantOrTokenName) quantOrTokenName = 1n;
@@ -1424,8 +1477,10 @@ export class StellarContract<
                 );
             quantity = quantOrTokenName;
 
-            v = predicate.value = new Value(0n, [[specifier, quantity]]);
-            return predicate;
+            // v = predicate.value = new Value(0n, [[specifier, quantity]]);
+            // return predicate;
+            const tv = new Value(0n, [[specifier, quantity]]);
+            return _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
         } else {
             throw new Error(
                 `wrong token specifier (need Value, MPH+tokenName, or AssetClass`
@@ -1434,6 +1489,7 @@ export class StellarContract<
 
         function _tokenPredicate<tokenBearer extends canHaveToken>(
             this: StellarContract<ConfigType>,
+            v: Value,
             something: tokenBearer
         ): tokenBearer | undefined {
             return this.hasToken(something, v);
@@ -1514,19 +1570,16 @@ export class StellarContract<
         tokenName?: string,
         quantity?: bigint
     ) {
-        if (vOrMph instanceof MintingPolicyHash && !tokenName)
-            throw new Error(
-                `missing required tokenName (or use a Value in arg2`
-            );
-        if (vOrMph instanceof MintingPolicyHash && !quantity)
-            throw new Error(
-                `missing required quantity (or use a Value in arg2`
-            );
+        const isValue = vOrMph instanceof Value;
+        if (!isValue) {
+             if (!tokenName || !quantity) {
+                throw new Error(
+                    `missing required tokenName/quantity (or use a Value in arg2`
+                );
+            }
+        }
 
-        const v =
-            vOrMph instanceof MintingPolicyHash
-                ? this.mkTokenValue(tokenName!, quantity!, vOrMph)
-                : vOrMph;
+        const v = isValue ? vOrMph : this.mkTokenValue(tokenName!, quantity!, vOrMph);
 
         return o.value.ge(v);
     }
@@ -2290,10 +2343,15 @@ export class StellarContract<
               )
             : notCollateral;
 
+            const detail = 
+                (
+                    // true ||  
+                    globalThis.utxoDump
+                ) ? utxosAsString(filtered, "\n    🔎  ") : `(${filtered.length} utxos; set globalThis.utxoDump to see details)`
         console.log(
             `  🔎 finding '${semanticName}' utxo${
                 exceptInTcx ? " (not already being spent in txn)" : ""
-            } from set:\n    🔎  ${utxosAsString(filtered, "\n    🔎  ")}`
+            } from set:\n    🔎 ${detail}`
             // ...(exceptInTcx && filterUtxos?.length
             //     ? [
             //           "\n  ... after filtering out:\n ",
