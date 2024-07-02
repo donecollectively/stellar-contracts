@@ -523,29 +523,37 @@ describe("Capo", async () => {
             it("requires that the mintDgt datum is unmodified", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
-                const t = await h.bootstrap({
+                const capo = await h.bootstrap({
                     mintDelegateLink: {
                         strategyName: "canMintGenericUuts",
                     }
                 });
 
-                const mintDelegate = await t.getMintDelegate();
+                const mintDelegate = await capo.getMintDelegate();
                 const spy = vi
                     .spyOn(mintDelegate, "mkDelegationDatum")
                     .mockImplementation((...args) => {
                         const [dd, s] = args;
                         const { capoAddr, mph, tn } = mintDelegate.configIn!;
-                        const badValue = tn[4] + 1;
-                        tn[4] = badValue;
+                        const tn2 = [ ...  tn ]
+                        // replace the start of the token name
+                        // with bytes spelling "BOGUS!".
+                        tn2[0] = 66; // "B"
+                        tn2[1] = 79; // "O"
+                        tn2[2] = 71; // "G"
+                        tn2[3] = 85; // "U"
+                        tn2[4] = 83; // "S"
+                        tn2[5] = 33; // "!"
+
                         return mintDelegate.mkDatumIsDelegation({
                             capoAddr,
                             mph,
-                            tn,
+                            tn: tn2,
                         });
                     });
-                const tcx1a = await t.addSeedUtxo(h.mkTcx());
+                const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
                 const purpose = ["anything"];
-                const tcx1b = await t.txnMintingUuts(
+                const tcx1b = await capo.txnMintingUuts(
                     tcx1a,
                     purpose, 
                     {
@@ -560,7 +568,9 @@ describe("Capo", async () => {
                 console.log(
                     "------ submitting bogus txn with modified delegate datum"
                 );
-                await expect(t.submit(tcx1b)).rejects.toThrow(
+                const submitting = capo.submit(tcx1b);
+                // await submitting
+                await expect(submitting).rejects.toThrow(
                     // /delegation datum must not be modified/
                     /modified dgtDtm/
                 );

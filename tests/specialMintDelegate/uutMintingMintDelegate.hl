@@ -168,7 +168,7 @@ enum DelegateActivity {
         priorMddd: DelegateDatum::IsDelegation, 
         ctx: ScriptContext
     ) -> Bool {
-        // print("  ----- checking additional delegate validation");
+        print("  ----- uutMinting delegate - checking additional delegate validation");
         self.switch {
             // normal  lifecycle activities are already validated, but 
             //  ... you can add more constraints here if needed
@@ -184,11 +184,13 @@ enum DelegateActivity {
                 }
             },
             SpendingActivities => false,
-            MintingActivities{activity} => activity.switch{
-                mintingUuts => self.genericUutMinting(priorMddd, ctx)
-                // _ => // leave as compile-time problem
+            MintingActivities{activity} => {
+                print("uutMinting delegate - checking mintingActivities");
+                activity.switch{
+                    mintingUuts => self.genericUutMinting(priorMddd, ctx)
+                    // _ => // leave as compile-time problem
+                }
             },
-
             _ => false
         } || ctx.tx.serialize() == priorMddd.serialize()
     }
