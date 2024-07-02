@@ -112,7 +112,7 @@ export type {
     isActivity,
     utxoPredicate,
     anyDatumProps,
-    configBase, // as paramsBase,
+    configBaseWithRev as configBase, // as paramsBase,
     StellarFactoryArgs,
     hasSeed,
     ConfigFor,
