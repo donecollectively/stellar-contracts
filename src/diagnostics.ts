@@ -318,9 +318,15 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
  * @public
  **/
 export function txInputAsString(x: TxInput, prefix = "-> "): string {
-    return `${prefix}${addrAsString(x.address)}${showRefScript(x.origOutput.refScript)} ${valueAsString(
+    const {origOutput: oo} = x;
+    let datumDump = oo.datum?.toCborHex() || ""
+    let datumHash = `${oo.datum?.hash.hex.slice(0, 8)}…${ oo.datum?.hash.hex.slice(-4) }`;
+    let datumInfo = oo.datum ? (
+        oo.datum.isHashed() ? `\n   - datum‹${datumHash}› ` : `\n  - datum‹inline› ${datumDump}`
+    ) : "";
+    return `${prefix}${addrAsString(x.address)}${showRefScript(oo.refScript)} ${valueAsString(
         x.value
-    )} = 📖 ${txOutputIdAsString(x.outputId)}`;
+    )} = 📖 ${txOutputIdAsString(x.outputId)}${datumInfo}`;
 }
 
 /**
@@ -373,8 +379,9 @@ export function datumAsString(d: Datum | null | undefined): string {
 
     // debugger
     const dh = d.hash.hex;
+    const data = d.data?.toCborHex()
     const dhss = `${dh.slice(0, 8)}…${dh.slice(-4)}`;
-    if (d.isInline()) return `d‹inline:${dhss} - ${d.toCbor().length} bytes›`;
+    if (d.isInline()) return `d‹inline:${dhss} - ${d.toCbor().length} bytes›\n   = ${data}`;
     return `d‹hash:${dhss}…›`;
 }
 
