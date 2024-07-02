@@ -210,7 +210,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
             activity,
             {
                 ...item.datum,
-                updatedRecord,
+                ... updatedRecord,
             },
             options
         );
