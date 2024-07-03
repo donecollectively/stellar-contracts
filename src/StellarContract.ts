@@ -63,7 +63,7 @@ import {
     type hasAddlTxns,
     type hasSeedUtxo,
 } from "./StellarTxnContext.js";
-import { utxosAsString, valueAsString } from "./diagnostics.js";
+import { dumpAny, utxosAsString, valueAsString } from "./diagnostics.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { mkTv, mkValuesEntry, stringToNumberArray } from "./utils.js";
@@ -1797,12 +1797,12 @@ export class StellarContract<
             // }
             try {
                 const t1 = new Date().getTime();
-                console.log("---");
                 await tx.finalize(this.networkParams, changeAddress, spares);
                 const t2 = new Date().getTime();
                 const elapsed = t2 - t1;
                 console.log(
-                    `::::::::::::::::::::::::::::::::: tx validation time: ${elapsed}ms`
+                    // stopwatch emoji: ⏱
+                    `          :::::::::: ⏱ tx validation time: ${elapsed}ms ⏱`
                 );
                 // result: validations for non-trivial txns can take ~800+ ms
                 //  - validations with simplify:true, ~250ms - but ...
@@ -1958,13 +1958,13 @@ export class StellarContract<
                     : addlTxInfo.tcx
             ) as StellarTxnContext;
             const { txName, description } = addlTxInfo;
-            if (callback) {
-                console.log("   -- submitTxns: callback", {
-                    txName,
-                    description,
-                    callback,
-                });
-            }
+            // if (callback) {
+            //     console.log("   -- submitTxns: callback", {
+            //         txName,
+            //         description,
+            //         callback,
+            //     });
+            // }
             const replacementTcx =
                 (callback &&
                     ((await callback({
@@ -1973,7 +1973,13 @@ export class StellarContract<
                     })) as typeof replacementTcx | boolean)) ||
                 tcx;
             if (false === replacementTcx) {
+                console.log("callback cancelled txn: ", txName);
                 continue;
+            }
+            if (replacementTcx !== true && replacementTcx !== tcx) {
+                console.log(
+                    `callback replaced txn ${txName} with a different txn: `, dumpAny(replacementTcx)
+                );
             }
             // if the callback returns true or void, we execute the txn as already resolved.
             // if it returns an alternative txn, we use that instead.
@@ -1982,7 +1988,11 @@ export class StellarContract<
             await this.submit(effectiveTcx, {
                 addlTxInfo, // just for its description.
             });
-            if (onSubmitted) await onSubmitted(addlTxInfo);
+            if (onSubmitted) {
+                console.log("   -- submitTxns: triggering onSubmitted callback");
+                await onSubmitted(addlTxInfo);
+                console.log("   -- submitTxns: onSubmitted callback completed");
+            }
         }
     }
 
@@ -2343,15 +2353,16 @@ export class StellarContract<
               )
             : notCollateral;
 
-            const detail = 
-                (
-                    // true ||  
-                    globalThis.utxoDump
-                ) ? utxosAsString(filtered, "\n    🔎  ") : `(${filtered.length} utxos; set globalThis.utxoDump to see details)`
-        console.log(
-            `  🔎 finding '${semanticName}' utxo${
+        const joiner = "\n   🔎  ";
+        const detail = 
+            (
+                // true ||  
+                globalThis.utxoDump
+            ) ? "\n  from set: "+ joiner + utxosAsString(filtered, joiner) : `(${filtered.length} candidates; set globalThis.utxoDump to see details)`
+        console.log(`  🔎 finding '${semanticName}' utxo${
                 exceptInTcx ? " (not already being spent in txn)" : ""
-            } from set:\n    🔎 ${detail}`
+                    // } from set:\n    🔎 ${detail}`
+            } ${detail}`
             // ...(exceptInTcx && filterUtxos?.length
             //     ? [
             //           "\n  ... after filtering out:\n ",
@@ -2362,7 +2373,7 @@ export class StellarContract<
 
         const found = filtered.find(predicate);
         if (found) {
-            console.log("  <- found:" + utxosAsString([found]));
+            console.log("   🎈found" + utxosAsString([found]));
         } else {
             console.log("  (not found)");
         }

@@ -302,7 +302,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         const t2 = this.tx.witnesses.scripts.length;
         if (t2 > t) {
             console.log(
-                "      --- addRefInput added ",
+                "       --- addRefInput added ",
                 this.tx.witnesses.scripts.length - t,
                 " to tx.scripts"
             );

@@ -2618,7 +2618,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             const hasType = !!type;
             if ("undefined" !== typeof type) {
                 const hasAdapterForIt = this.datumAdapters?.[type];
-                console.log({ hasType, hasAdapterForIt });
+                // console.log({ hasType, hasAdapterForIt });
                 if (!this.datumAdapters || (!!type && !hasAdapterForIt)) {
                     const updated = await this.initDelegatedDatumAdapters();
                     console.log(Object.keys(this.datumAdapters));
@@ -2633,12 +2633,12 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             // console.log("findDelegatedDataUtxos", type, predicate);
             const utxos = await this.network.getUtxos(this.address);
     
-            console.log("utxos", dumpAny(utxos));
+            // console.log("utxos", dumpAny(utxos));
             const utxosWithDatum = (
                 await Promise.all(
                     utxos.map((utxo) => {
                         const { datum } = utxo.origOutput;
-                        console.log("datum", datum);
+                        // console.log("datum", datum);
                         if (!datum) return null;
     
                         if ("undefined" !== typeof type && !this.datumAdapters[type]) {
@@ -2674,9 +2674,9 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             return utxosWithDatum;
     
             function mkFoundDatum(utxo: TxInput, datum: DATUM_TYPE) {
-                console.log("hi mkFoundDatum", datum);
+                // console.log("hi mkFoundDatum", datum);
                 if (!datum) {
-                    console.log("  -- skipped 1 mismatch (non-DelegatedDatum)");
+                    // console.log("  -- skipped 1 mismatch (non-DelegatedDatum)");
                     return null;
                 }
     
@@ -2690,14 +2690,14 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                     return null;
                 }
                 if (type && datum.type != type) {
-                    console.log(`  -- skipped ${datum.type}; need ${type})`);
+                    // console.log(`  -- skipped ${datum.type}; need ${type})`);
                     return null;
                 }
                 if (predicate && !predicate(utxo, datum)) {
-                    console.log("  -- skipped due to predicate");
+                    // console.log("  -- skipped due to predicate");
                     return null;
                 }
-                console.log("-- matched: ", datum);
+                // console.log("-- matched: ", datum);
                 return {
                     utxo,
                     datum,
