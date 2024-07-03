@@ -19,7 +19,8 @@ export {
     txidAsString,
     txOutputIdAsString,
     byteArrayListAsString,
-    datumAsString,
+    datumSummary,
+    datumExpanded,
     hexToPrintableString,
     dumpAny,
 } from "./src/diagnostics.js";
