@@ -241,6 +241,73 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
      **/
     abstract toOnchainDatum(d: appType): Datum | Promise<Datum>;
 
+
+    fromUplcValue(valueInfo : Record<string, Record<string, bigint>>) {
+        return new helios.Value(0n, 
+            Object.entries(valueInfo).map( 
+                ([mph, tokenMap]) => [ mph, 
+                    Object.entries(tokenMap).map( 
+                        ([tokenName, tokenCount]) => 
+                            [ helios.textToBytes(tokenName), tokenCount ] as [ number[], bigint ]
+                    )
+                ]
+             )
+        );
+    }
+
+    fromUplcTime(millis: number | bigint) {
+        return new Date(Number(millis));
+    }
+
+    uplcEnumMember(enumName: string, member: string, ... args : any[]) {
+        const stateVariant = this.getEnumMember(enumName, member);
+        return new stateVariant(...args)// xxxx .name.toString();
+    }
+
+    getEnumMember(enumName: string, enumVariant: string | number | helios.ConstrData) {
+        const enumDef =  this.onChainTypes[enumName];
+        if (!enumDef) {
+            throw new Error(`${this.constructor.name}: Enum ${enumName} not found in onChainTypes`+
+                `\n   ... try one of: (${Object.keys(this.onChainTypes).join(", ")})`+
+                `\n   (from ${this.strella.compiledScript.properties.name} in ${
+                    //@ts-expect-error
+                    this.strella.contractSource.srcFile || "‹unk srcFile›"
+                })`
+            );
+        }
+        var foundVariant
+        if ("string" == typeof enumVariant) {
+            foundVariant = enumDef[enumVariant];
+        } else {
+            const index = "number" == typeof enumVariant ? enumVariant :
+            enumVariant instanceof helios.ConstrData ? 
+                //@ts-expect-error ConstrData really does have an .index - !!!
+                enumVariant.index : -1;
+
+            foundVariant = enumDef.prototype._enumStatement.getEnumMember(index)
+        }
+        if (!foundVariant) {
+            let more = ""
+            if (enumVariant instanceof helios.ConstrData) {
+                //x@ts-expect-error
+                more = ` (from ConstrData ${foundVariant.index})`
+            }
+
+            throw new Error(`Enum ${enumName} has no variant ${enumVariant} ${more}`);
+        }
+        return foundVariant;
+    }
+
+    get fromUplc() {
+        return { 
+            Str: this.fromUplcString.bind(this), 
+            Real: this.fromUplcReal.bind(this), 
+            Time: this.fromUplcTime.bind(this),
+            Value: this.fromUplcValue.bind(this), 
+            Enum: this.getEnumMember.bind(this) 
+        };
+    }
+
     uplcReal(n: number): IntData {
         // supports fractional inputs (they can always be represented as a BigInt, with sufficient precision)
         // note: don't expect very very small numbers to be accurately represented
@@ -273,6 +340,14 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
      */
     uplcInt(x: number | bigint) {
         return new helios.IntData(BigInt(x));
+    }
+
+    uplcTime(x: Date) {
+        return this.uplcInt(x.getTime());
+    }
+
+    uplcValue(x: helios.Value) {
+        return x._toUplcData();
     }
 
     /**

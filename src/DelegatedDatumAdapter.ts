@@ -104,42 +104,7 @@ export abstract class DelegatedDatumAdapter<
         return helios.Datum.inline(
             constrData
         )
-    }
-
-    getEnumMember(enumName: string, enumVariant: string | number | helios.ConstrData) {
-        const enumDef =  this.onChainTypes[enumName];
-        if (!enumDef) {
-            throw new Error(`${this.constructor.name}: Enum ${enumName} not found in onChainTypes`+
-                `\n   ... try one of: (${Object.keys(this.onChainTypes).join(", ")})`+
-                `\n   (from ${this.strella.compiledScript.properties.name} in ${
-                    //@ts-expect-error
-                    this.strella.contractSource.srcFile || "‹unk srcFile›"
-                })`
-            );
-        }
-        var foundVariant
-        if ("string" == typeof enumVariant) {
-            foundVariant = enumDef[enumVariant];
-        } else {
-            const index = "number" == typeof enumVariant ? enumVariant :
-            enumVariant instanceof helios.ConstrData ? 
-                //@ts-expect-error ConstrData really does have an .index - !!!
-                enumVariant.index : -1;
-
-            foundVariant = enumDef.prototype._enumStatement.getEnumMember(index)
-        }
-        if (!foundVariant) {
-            let more = ""
-            if (enumVariant instanceof helios.ConstrData) {
-                //x@ts-expect-error
-                more = ` (from ConstrData ${foundVariant.index})`
-            }
-
-            throw new Error(`Enum ${enumName} has no variant ${enumVariant} ${more}`);
-        }
-        return foundVariant;
-    }
-
+    }    
 }
 
 type DelegatedDataAttrs<D extends AnyDataTemplate<any,any>> = {

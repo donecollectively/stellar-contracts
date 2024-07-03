@@ -38,6 +38,7 @@ enum CapoDatum {
         otherDetails: Data // abstract additional info
         //xxx delegateLink: RelativeDelegateLink  // such link info would be unnormalized
     }
+    
     TypeMapInfo {
         typeMapInfoFlag: String // = "{{}}" 
         data: TypeMap
