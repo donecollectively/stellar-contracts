@@ -1030,8 +1030,8 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             }
         }
         const { config } = link
-        console.log(" config = ", config );
-        debugger
+        // console.log(" config = ", config );
+        // debugger
         return link
     }
 
@@ -1269,7 +1269,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         const cacheKey = JSON.stringify(
             delegateLink,
             delegateLinkSerializer,
-            4 // indent 4 spaces
+            // 4 // indent 4 spaces
         );
         this.#_delegateCache[roleName] = this.#_delegateCache[roleName] || {}
         this.#_delegateCache[roleName][cacheKey] = configured;
@@ -1450,7 +1450,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         const cacheKey = JSON.stringify(
             delegateLink,
             delegateLinkSerializer,
-            4 // indent 4 spaces
+            // 4 // indent 4 spaces
         );
 
         if (!cache[roleName]) cache[roleName] = {};
@@ -1796,7 +1796,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                 strategyName,
                 new OptValidator(delegateValidatorHash),
                 textToBytes(
-                    JSON.stringify(config, delegateLinkSerializer, 4)
+                    JSON.stringify(config, delegateLinkSerializer) //, 4)
                 )
                 // needsAddr,
                 // addrHint
