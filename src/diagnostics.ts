@@ -319,14 +319,10 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
  **/
 export function txInputAsString(x: TxInput, prefix = "-> "): string {
     const {origOutput: oo} = x;
-    let datumDump = oo.datum?.toCborHex() || ""
-    let datumHash = `${oo.datum?.hash.hex.slice(0, 8)}…${ oo.datum?.hash.hex.slice(-4) }`;
-    let datumInfo = oo.datum ? (
-        oo.datum.isHashed() ? `\n   - datum‹${datumHash}› ` : `\n  - datum‹inline› ${datumDump}`
-    ) : "";
+
     return `${prefix}${addrAsString(x.address)}${showRefScript(oo.refScript)} ${valueAsString(
         x.value
-    )} = 📖 ${txOutputIdAsString(x.outputId)}${datumInfo}`;
+    )} ${datumSummary(oo.datum)} = 📖 ${txOutputIdAsString(x.outputId)}${datumExpanded(oo.datum)}`;
 }
 
 /**
@@ -374,15 +370,21 @@ export function utxoAsString(x: TxInput, prefix = "💵"): string {
  * using shortening techniques for the datumHash
  * @public
  **/
-export function datumAsString(d: Datum | null | undefined): string {
+export function datumSummary(d: Datum | null | undefined): string {
     if (!d) return ""; //"‹no datum›";
 
     // debugger
     const dh = d.hash.hex;
-    const data = d.data?.toCborHex()
     const dhss = `${dh.slice(0, 8)}…${dh.slice(-4)}`;
-    if (d.isInline()) return `d‹inline:${dhss} - ${d.toCbor().length} bytes›\n   = ${data}`;
+    if (d.isInline()) return `d‹inline:${dhss} - ${d.toCbor().length} bytes›`;
     return `d‹hash:${dhss}…›`;
+}
+
+export function datumExpanded(d: Datum | null | undefined): string {
+    if (!d) return "";
+    if (!d.isInline()) return "";
+    const data = d.data?.toCborHex()
+    return `\n   = ${data}`;
 }
 
 /**
@@ -420,7 +422,7 @@ export function showRefScript(rs?: UplcProgram | null) {
 export function txOutputAsString(x: TxOutput, prefix = "<-"): string {
     return `${prefix} ${addrAsString(x.address)}${showRefScript(x.refScript)} ${valueAsString(
         x.value
-    )} ${datumAsString(x.datum)}`;
+    )} ${datumSummary(x.datum)}`;
 }
 
 /**
