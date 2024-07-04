@@ -149,6 +149,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
     parentTcx?: StellarTxnContext<any>;
     childReservedUtxos: TxInput[] = [];
 
+    txnName: string = "";
+    withName(name: string) {
+        this.txnName = name;
+        return this;
+    }
+    
     constructor(
         actorContext:  ActorContext<any>, 
         state: Partial<S> = {},

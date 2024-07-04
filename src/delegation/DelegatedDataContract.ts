@@ -76,7 +76,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         // ... it does the setup for the creation activity,
         //   so that the actual "creation" part of the transaction will be ready to go
 
-        tcx = tcx || (this.mkTcx() as TCX);
+        tcx = tcx || (this.mkTcx(`create ${this.recordTypeName}`) as TCX);
         // all the reference data that can be needed by the creation policy
         const tcx1a = await this.tcxWithCharterRef(tcx);
         const tcx1b = await this.tcxWithSeedUtxo(tcx1a);
@@ -169,13 +169,14 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         TCX extends StellarTxnContext
     >(
         this: THIS,
+        txnName: string,
         item: FoundDatumUtxo<DelegatedDatumType<THIS>>,
         controllerActivity: CAI,
         updatedRecord: Partial<DelegatedDatumType<THIS>>,
         options?: ExtraUpdateOptions<DelegatedDatumType<THIS>>,
         tcx?: TCX
     ): Promise<TCX> {
-        tcx = tcx || (this.mkTcx() as TCX);
+        tcx = tcx || (this.mkTcx(txnName) as TCX);
         const { capo } = this;
         const mintDelegate = await capo.getMintDelegate();
         const tcx1a = await this.tcxWithCharterRef(tcx);
@@ -195,7 +196,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         )) as BasicMintDelegate;
         const typeName = this.recordTypeName;
         const tcx2a = await spendDelegate.txnGrantAuthority(
-            tcx2 as TCX & hasCharterRef,
+            tcx2,
             spendDelegate.activityUpdatingDelegatedData(typeName, id)
         );
 
@@ -205,12 +206,12 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
                 : controllerActivity;
 
         return this.txnUpdatingRecord(
-            tcx1,
+            tcx2a,
             id,
             activity,
             {
                 ...item.datum,
-                ... updatedRecord,
+                ...updatedRecord,
             },
             options
         );
