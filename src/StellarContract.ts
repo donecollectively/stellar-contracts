@@ -1770,7 +1770,7 @@ export class StellarContract<
         {
             signers = [],
             addlTxInfo = {
-                description: "(unnamed)",
+                description: tcx.txnName || "(unnamed)",
             },
         }: {
             signers?: Address[];
@@ -2415,8 +2415,8 @@ export class StellarContract<
     /**
      * Creates a new transaction context with the current actor context 
      */
-    mkTcx() {
-        return new StellarTxnContext(this.actorContext);
+    mkTcx(name? : string) {
+        return new StellarTxnContext(this.actorContext).withName(name || "");
     }
 
     /**
