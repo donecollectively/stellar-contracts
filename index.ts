@@ -14,7 +14,7 @@ export {
     txInputAsString,
     lovelaceToAda,
     errorMapAsString,
-    addrAsString,
+    addrAsString, 
     byteArrayAsString,
     txidAsString,
     txOutputIdAsString,
@@ -23,6 +23,7 @@ export {
     datumExpanded,
     hexToPrintableString,
     dumpAny,
+    betterJsonSerializer
 } from "./src/diagnostics.js";
 
 

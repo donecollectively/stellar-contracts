@@ -24,6 +24,7 @@
     "peerDependencies": {
         "@hyperionbt/helios": "^0.16.7"
     },
+    
     "scripts": {
         "build": "scripts/build",
         "build:watch": "scripts/build --watch",

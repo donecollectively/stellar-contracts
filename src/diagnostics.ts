@@ -501,7 +501,8 @@ export function dumpAny(
         | ByteArray[]
         | ByteArrayData
         | ByteArrayData[],
-    networkParams?: NetworkParams
+    networkParams?: NetworkParams,
+    forJson = false
 ) {
     if ("undefined" == typeof x) return "‹undefined›";
     if (Array.isArray(x)) {
@@ -553,9 +554,16 @@ export function dumpAny(
         //@ts-expect-error sorry, typescript : /
         return byteArrayAsString(x);
     }
-
+    if ("bigint" == typeof x) {
+        return (x as bigint).toString();
+    } 
+    if (forJson) return x
     debugger;
     return "dumpAny(): unsupported type or library mismatch";
+}
+
+export const betterJsonSerializer = (key, value) => {
+    return dumpAny(value, undefined, true);
 }
 
 if ("undefined" == typeof window) {
