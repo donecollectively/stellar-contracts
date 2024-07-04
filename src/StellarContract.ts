@@ -1947,7 +1947,10 @@ export class StellarContract<
                     })
                 );
         }
-        return Promise.any(promises);
+        return Promise.any(promises).then((r) => {
+            console.log(`   🎉🎉  ^^^ success: ${addlTxInfo.description} 🎉🎉`);
+            return r
+        })
     }
 
     /**
