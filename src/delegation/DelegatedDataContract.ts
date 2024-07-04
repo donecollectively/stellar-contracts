@@ -276,9 +276,9 @@ class SeedActivity<
 > {
     args: ARGS;
     constructor(
-        public host: ContractBasedDelegate<any>,
-        public factoryFunc,
-        ...args: ARGS
+        private host: ContractBasedDelegate<any>,
+        private factoryFunc,
+        args: ARGS
     ) {
         this.args = args;
     }
@@ -301,9 +301,7 @@ type UpdateActivityArgs<
 
 class UpdateActivity<
     FactoryFunc extends updateActivityFunc<any>,
-    ARGS extends [...any] = FactoryFunc extends (
-        ...args: [hasRecId, ...infer ARGS]
-    ) => isActivity
+    ARGS extends [...any] = FactoryFunc extends updateActivityFunc<infer ARGS>
         ? ARGS
         : never
 > {
@@ -311,7 +309,7 @@ class UpdateActivity<
     constructor(
         private host: DelegatedDataContract,
         private factoryFunc: updateActivityFunc<any>,
-        ...args: ARGS
+        args: ARGS
     ) {
         this.args = args;
     }
@@ -319,6 +317,7 @@ class UpdateActivity<
     mkRedeemer(recId: hasRecId) {
         return this.factoryFunc.call(this.host, recId, ...this.args);
     }
+
 }
 
 type hasRecId = string | UutName;
