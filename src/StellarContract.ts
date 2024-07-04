@@ -38,6 +38,8 @@ Object.defineProperty(UplcProgram.prototype, "hash", {
         return (this.__cachedHash = result);
     }
 })
+
+
 const innerSerializeBytes = UplcProgram.prototype.serializeBytes;
 Object.defineProperty(UplcProgram.prototype, "serializeBytes", {
     value() {
@@ -63,7 +65,7 @@ import {
     type hasAddlTxns,
     type hasSeedUtxo,
 } from "./StellarTxnContext.js";
-import { dumpAny, utxosAsString, valueAsString } from "./diagnostics.js";
+import { betterJsonSerializer, dumpAny, utxosAsString, valueAsString } from "./diagnostics.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { mkTv, mkValuesEntry, stringToNumberArray } from "./utils.js";
@@ -402,7 +404,7 @@ type scriptPurpose =
 export type canHaveToken = TxInput | TxOutput | Assets;
 type UtxoSearchScope = {
     address?: Address;
-    wallet?: Wallet;
+    wallet?: Wallet | helios.SimpleWallet | SimpleWallet_stellar;
     exceptInTcx?: StellarTxnContext;
 };
 
@@ -1413,18 +1415,42 @@ export class StellarContract<
         throw new Error(`only implemented by Capo`);
     }
 
+    /**
+     * Creates a token predicate suitable for mustFindActorUtxo or mustFindMyUtxo
+     * @remarks This variant takes just a token-name / quantity, working only on Capo instances,
+     * and seeks a token created by the Capo's minting policy.   
+     * 
+     * Choose from one of the other variants to make a more specific token predicate.
+     */
+    mkTokenPredicate(
+        this: Capo<any>,
+        tokenName: UutName | number[] | string,
+        quantity?: bigint
+    ): tokenPredicate<any>;
+    /**
+     * Creates a token predicate suitable for mustFindActorUtxo or mustFindMyUtxo
+     * @remarks This variant uses a Value for filtering - each matched item must have the ENTIRE value.
+     */
     mkTokenPredicate(val: Value): tokenPredicate<any>;
+    /**
+     * Creates a token predicate suitable for mustFindActorUtxo or mustFindMyUtxo
+     * @remarks This variant uses an explicit combination of policy/token-name/quantity
+     */
     mkTokenPredicate(
         mph: MintingPolicyHash,
         tokenName: string,
         quantity?: bigint
     ): tokenPredicate<any>;
+    /**
+     * Creates a token predicate suitable for mustFindActorUtxo or mustFindMyUtxo
+     * @remarks This variant uses an AssetClass(policy/token-name) and quantity
+     */
     mkTokenPredicate(
-        vOrMph: AssetClass,
+        mphAndTokenName: AssetClass,
         quantity?: bigint
     ): tokenPredicate<any>;
     mkTokenPredicate(
-        specifier: Value | MintingPolicyHash | AssetClass | UutName | number[],
+        specifier: Value | MintingPolicyHash | AssetClass | UutName | number[] | string,
         quantOrTokenName?: string | bigint,
         quantity?: bigint
     ): tokenPredicate<any> {
@@ -1439,18 +1465,17 @@ export class StellarContract<
         const predicate = _tokenPredicate.bind(this) as tokenPredicate<any>;
 
         const isValue = specifier instanceof Value;
-        const isUut =
-            specifier instanceof Array || specifier instanceof UutName;
+        const isTokenNameOnly = "string" === typeof specifier || (Array.isArray(specifier) && "number" === typeof specifier[0]);
+        const isUut = specifier instanceof UutName;
         if (isValue) {
             // v = predicate.value = specifier;
             return _tokenPredicate.bind(this, specifier) as tokenPredicate<any>;
             // return predicate;
-        } else if (isUut) {
-            const uutNameOrBytes =
-                specifier instanceof Array ? specifier : specifier.name;
+        } else if (isUut || isTokenNameOnly) {
+            const tn = specifier as UutName | number[] | string;
             const quant = quantOrTokenName ? BigInt(quantOrTokenName) : 1n;
             const tv = this.tokenAsValue(
-                uutNameOrBytes,
+                tn,
                 quant // quantity if any
             );
             return _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
@@ -1586,12 +1611,12 @@ export class StellarContract<
 
     /**
      * Creates a Value object representing a token with the given name and quantity
-     * @param tokenName - the name of the token
-     * @param quantity - the quantity of the token
-     * @param mph - the minting policy hash of the token
      * @remarks
      * This method doesn't include any lovelace in the Value object.
      * use mkMinTokenValue() to include the minimum lovelace for storing that token in its own utxo
+     * @param tokenName - the name of the token
+     * @param quantity - the quantity of the token
+     * @param mph - the minting policy hash of the token
      * @public
      **/
     mkTokenValue(

@@ -775,8 +775,8 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
     tokenAsValue(tokenName: string | number[] | UutName, count: bigint = 1n) {
         const { mph } = this;
 
-        const tn = tokenName.toString();
-        return this.mkMinTv(mph, tn, count);
+        // const tn = tokenName.toString();
+        return this.mkMinTv(mph, tokenName, count);
     }
 
     async mustFindCharterUtxo() {
