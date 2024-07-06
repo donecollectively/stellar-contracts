@@ -4,6 +4,8 @@ export {
     stringToNumberArray,
 } from "./src/utils.js";
 export {
+    displayTokenName,
+    stringToPrintableString,
     assetsAsString,
     txAsString,
     utxoAsString,

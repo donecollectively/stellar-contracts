@@ -14,6 +14,7 @@ import {
     NetworkParams,
     UplcProgram,
     Hash,
+    textToBytes,
 } from "@hyperionbt/helios";
 import type { ErrorMap } from "./delegation/RolesAndDelegates.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
@@ -57,6 +58,82 @@ export function hexToPrintableString(hexStr) {
     }
     return result;
 }
+
+export function displayTokenName(nameBytesOrString: string | number[]) {
+    // check if it is a cip-68 token name by inspecting the first 4 bytes.  If they don't match the cip-68 pattern, display using stringToPrintableString.
+    // if it has a cip-68 tag in the first 4 bytes, show the cip-68 tag as `‹cip68/{tag}›` and append the rest of the token name as a string.
+    // inspect the first 4 bytes by:
+    //  - converting them to hex 
+    //  - checking if the first and last nibbles are 0's (if not, then it is not a cip-68 token name)
+    //  - removing the first and last nibbles, shifting the hex string to the left by 1 nibble to get a 2-byte tag and 1 byte of checksum
+    //  - separating the cip-68 tag from the checksum
+    //  - parsing the cip-68 tag as a number (parseInt(numHex, 16))
+
+    let nameString = "";
+    let cip68Tag = "";
+    let cip68TagHex = "";
+    let checksum = "";
+    let nameHex = "";
+    let nameBytesHex = "";
+    let nameBytesString = "";
+    let isCip68 = false;
+    if (typeof nameBytesOrString === "string") {
+        // convert the bytes of the string to hex
+        nameBytesHex = Buffer.from(textToBytes(nameBytesOrString)).toString("hex");
+    } else {
+        nameBytesHex = Buffer.from(nameBytesOrString).toString("hex");
+    }
+    // check if the first 4 bytes are a cip-68 token name
+    if (nameBytesHex.length >= 8) {
+        // check if the first and last nibbles are 0's
+        if (nameBytesHex.substring(0, 1) === "0" && nameBytesHex.substring(7, 8) === "0") {
+            // remove the first and last nibbles
+            nameHex = nameBytesHex.substring(2, 6);
+            cip68TagHex = nameHex.substring(0, 4);
+            checksum = nameHex.substring(4, 6);
+            // separate the cip-68 tag from the checksum
+            cip68Tag = parseInt(cip68TagHex, 16).toString();
+            // TODO: check the crc-8 checksum of the tag
+
+            isCip68 = true;
+        }
+    }
+    if (isCip68) {
+        nameString = `‹cip68/${cip68Tag}›${nameBytesOrString.slice(4)}`;
+    } else {
+        nameString = stringToPrintableString(nameBytesOrString);
+    }
+    return nameString;
+}
+
+export function stringToPrintableString(str: string | number[]) {
+
+    if ("string" != typeof str) {
+        // use a TextEncoder to identify if it is a utf8 string
+        try {
+            return new TextDecoder(
+                "utf-8", {fatal: true}
+            ).decode(new Uint8Array(str as number[]));
+        } catch (e) {
+            // if it is not a utf8 string, fall back to printing what's printable and showing hex for other bytes
+            str = Buffer.from(str as number[]).toString("hex");
+        }
+        
+    }
+    let result = "";
+    for (let i = 0; i < str.length; i++) {
+        let charCode = str.charCodeAt(i);
+
+        // ASCII printable characters are in the range 32 (space) to 126 (~)
+        if (charCode >= 32 && charCode <= 126) {
+            result += str[i];
+        } else {
+            result += `‹${charCode.toString(16)}›`;
+        }
+    }
+    return result;
+}
+
 /**
  * Converts an array of [ policyId, ‹tokens› ] tuples for on-screen presentation
  * @remarks
@@ -70,9 +147,11 @@ export function assetsAsString(a: Assets, joiner = "\n    ", showNegativeAsBurn?
     const assets = a.assets;
     return (assets?.map(([policyId, tokenEntries]) => {
             const tokenString = tokenEntries
-                .map(([nameBytes, count]) => {
-                    const nameString = hexToPrintableString(nameBytes.hex);
-                    const negWarning = count < 1 ? (
+                .map(([nameBytes, count] : [ByteArray, bigint]) => {
+                    // const nameString =  hexToPrintableString(nameBytes.hex);
+                    const nameString = displayTokenName(nameBytes.bytes)
+
+                    const negWarning = count < 1n ? (
                         showNegativeAsBurn ? "🔥" : "⚠️ NEGATIVE⚠️"
                     ): "";
                     const burned =
@@ -475,7 +554,11 @@ export function byteArrayListAsString(
  * @public
  **/
 export function byteArrayAsString(ba: ByteArray | ByteArrayData): string {
-    return hexToPrintableString(ba.hex);
+    if (ba instanceof ByteArrayData) {
+        return hexToPrintableString(ba.toHex())
+    }
+    return displayTokenName(ba.bytes);
+    // hexToPrintableString(ba.hex);
 }
 
 /**
