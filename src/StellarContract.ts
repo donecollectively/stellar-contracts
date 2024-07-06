@@ -22,7 +22,6 @@ import {
 import * as helios from "@hyperionbt/helios";
 import type { Network, Wallet } from "@hyperionbt/helios";
 
-
 const innerHash = UplcProgram.prototype.hash;
 Object.defineProperty(UplcProgram.prototype, "hash", {
     value() {
@@ -36,9 +35,8 @@ Object.defineProperty(UplcProgram.prototype, "hash", {
         const diff = ts2 - ts1;
         this.__CHsaved = diff;
         return (this.__cachedHash = result);
-    }
-})
-
+    },
+});
 
 const innerSerializeBytes = UplcProgram.prototype.serializeBytes;
 Object.defineProperty(UplcProgram.prototype, "serializeBytes", {
@@ -54,9 +52,8 @@ Object.defineProperty(UplcProgram.prototype, "serializeBytes", {
 
         this.__SBsaved = ts2 - ts1;
         return (this.__cachedSerializeBytes = result);
-    }
-})
-
+    },
+});
 
 import {
     StellarTxnContext,
@@ -65,7 +62,12 @@ import {
     type hasAddlTxns,
     type hasSeedUtxo,
 } from "./StellarTxnContext.js";
-import { betterJsonSerializer, dumpAny, utxosAsString, valueAsString } from "./diagnostics.js";
+import {
+    betterJsonSerializer,
+    dumpAny,
+    utxosAsString,
+    valueAsString,
+} from "./diagnostics.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { mkTv, mkValuesEntry, stringToNumberArray } from "./utils.js";
@@ -964,16 +966,20 @@ export class StellarContract<
             thisDatumType,
             datum.data!,
             ignoreOtherTypes
-        ).catch((e) => {
-            if (e.message?.match(/expected constrData/)) return undefined;
-            throw e;
-        }).finally(() => {
-            ts2 = Date.now();
-            const elapsed = ts2 - ts1;
-            if (elapsed > 10) {
-                console.log(`    -- readUplcDatum ${datumName} took ${ts2 - ts1}ms`);
-            }
-        }) as DPROPS | undefined)
+        )
+            .catch((e) => {
+                if (e.message?.match(/expected constrData/)) return undefined;
+                throw e;
+            })
+            .finally(() => {
+                ts2 = Date.now();
+                const elapsed = ts2 - ts1;
+                if (elapsed > 10) {
+                    console.log(
+                        `    -- readUplcDatum ${datumName} took ${ts2 - ts1}ms`
+                    );
+                }
+            })) as DPROPS | undefined;
         if (!rawParsedData) return undefined;
         if (hasAdapter) {
             const adapted = datumNameOrAdapter.fromOnchainDatum(
@@ -981,13 +987,18 @@ export class StellarContract<
                     DPROPS,
                     "adapterHasConcreteTypeInfo"
                 >
-            )
+            );
             const ts3 = Date.now();
             const elapsed = ts3 - ts1;
             if (elapsed > 10) {
                 console.log(`    -- adapter ${datumName} took ${ts3 - ts2}ms`);
-                console.log(`  ⏱ readDatum ${datumName} took ${ts3 - ts1}ms total`);
+                console.log(
+                    `  ⏱ readDatum ${datumName} took ${ts3 - ts1}ms total`
+                );
             }
+            console.log(
+                JSON.parse(JSON.stringify(adapted, betterJsonSerializer, 2))
+            );
             return adapted;
         }
         return rawParsedData as any;
@@ -2036,7 +2047,8 @@ export class StellarContract<
             }
             if (replacementTcx !== true && replacementTcx !== tcx) {
                 console.log(
-                    `callback replaced txn ${txName} with a different txn: `, dumpAny(replacementTcx)
+                    `callback replaced txn ${txName} with a different txn: `,
+                    dumpAny(replacementTcx)
                 );
             }
             // if the callback returns true or void, we execute the txn as already resolved.
@@ -2047,7 +2059,9 @@ export class StellarContract<
                 addlTxInfo, // just for its description.
             });
             if (onSubmitted) {
-                console.log("   -- submitTxns: triggering onSubmitted callback");
+                console.log(
+                    "   -- submitTxns: triggering onSubmitted callback"
+                );
                 await onSubmitted(addlTxInfo);
                 console.log("   -- submitTxns: onSubmitted callback completed");
             }

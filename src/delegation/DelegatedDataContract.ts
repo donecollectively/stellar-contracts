@@ -12,6 +12,7 @@ import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { ContractBasedDelegate } from "./ContractBasedDelegate.js";
 import type { UutName } from "./UutName.js";
 import type { BasicMintDelegate } from "../minting/BasicMintDelegate.js";
+import { betterJsonSerializer } from "../diagnostics.js";
 
 export type DelegatedDatumType<T extends DelegatedDataContract> = ReturnType<
     T["mkDatumAdapter"]
@@ -133,7 +134,9 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
             addedUtxoValue: extraCreationValue = new helios.Value(0n),
             beforeSave = (x) => x,
         } = extraCreationOptions;
-        console.log(`🏒 creating ${newType}`);
+        console.log(`🏒 creating ${newType} ->`, 
+            JSON.parse(JSON.stringify(record, betterJsonSerializer, 2))
+        );
 
         const tcx2 = await this.txnGrantAuthority(tcx, controllerActivity);
 
@@ -205,14 +208,16 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
                 ? controllerActivity.mkRedeemer(id)
                 : controllerActivity;
 
+        const recordWithUpdates = {
+            ...item.datum,
+            ...updatedRecord,
+        };
+
         return this.txnUpdatingRecord(
             tcx2a,
             id,
             activity,
-            {
-                ...item.datum,
-                ...updatedRecord,
-            },
+            recordWithUpdates,
             options
         );
     }
@@ -232,7 +237,9 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         options: ExtraUpdateOptions<DelegatedDatumType<THIS>> = {}
     ): Promise<TCX> {
         const recType = this.recordTypeName as DelegatedDatumTypeName<THIS>;
-        console.log(`🏒 updating ${recType}`);
+        console.log(`🏒 updating ${recType} ->`, 
+            JSON.parse(JSON.stringify(record, betterJsonSerializer, 2))
+        );
 
         const tcx2 = await this.txnGrantAuthority(tcx, controllerActivity);
         const { addedUtxoValue = new helios.Value(0n), beforeSave = (x) => x } =
