@@ -1,4 +1,4 @@
-import { TxInput, TxOutput, Value, bytesToText } from "@hyperionbt/helios";
+import { Address, TxInput, TxOutput, Value, bytesToText } from "@hyperionbt/helios";
 import type {
     Capo,
     DelegateSetupWithoutMintDelegate,
@@ -28,6 +28,7 @@ import { StellarTxnContext } from "../StellarTxnContext.js";
 import { BasicDelegate } from "./BasicDelegate.js";
 import { mkHeliosModule, type HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { UnspecializedDelegate } from "./UnspecializedDelegate.js";
+import { dumpAny } from "../diagnostics.js";
 
 export class ContractBasedDelegate<
     CT extends capoDelegateConfig = capoDelegateConfig
@@ -169,14 +170,15 @@ import {
         tokenValue: Value,
         fromFoundUtxo?: TxInput
     ): Promise<TCX> {
+        const datum = this.mkDelegationDatum(fromFoundUtxo);
+        const newOutput = new TxOutput(this.address, tokenValue, datum);
+        const separator = `     -----`
         console.log(
-            `     ----- minting delegate validator receiving mintDgt token at ` +
-                this.validatorHash!.hex
+            `${separator} delegate script receiving dgTkn\n${separator} ${dumpAny(newOutput)}`// ${dumpAny(tokenValue)} at ${dumpAny(addr)} = ${addr.toBech32()}`
         );
         // const ffu = fromFoundUtxo;
         // const v : Value = ffu?.value || this.mkMinAssetValue(this.configIn!.uut);
-        const datum = this.mkDelegationDatum(fromFoundUtxo);
-        return tcx.addOutput(new TxOutput(this.address, tokenValue, datum));
+        return tcx.addOutput(newOutput);
     }
 
     mkDelegationDatum(txin?: TxInput) {
