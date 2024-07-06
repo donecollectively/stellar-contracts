@@ -78,7 +78,7 @@ class BadSettingsAdapter extends SettingsAdapter<CanBeBadSettings, BridgeCanBeBa
             "tpe": tpe,
             ...settings
         } = parsedDatum.data
-        const otherParams = this.fromOnchainMap(
+        const otherParams = this.fromOnchainIntMap(
             settings,
             this.fromUplcReal
         ) as CanBeBadSettings;
