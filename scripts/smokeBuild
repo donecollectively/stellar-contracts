@@ -6,7 +6,7 @@ playSound() {
     fi
 }
 # rm dist/stellar-contracts.d.ts > /dev/null 2>&1
-playSound swing
+playSound swing &
 
 tmpfile1=$(mktemp /tmp/XXXXXX.tsc.txt)
 set -e
@@ -17,36 +17,53 @@ typecheck=$!
 tmpfile2=$(mktemp /tmp/XXXXXX.api-extractor.txt)
 
 if [ "$SMOKE" != "" ]; then {
-    playSound hum
+    playSound hum &
 
     pnpm smoke:test &
     smokeTest=$!
     if ! wait $typecheck; then {
         echo '---------- TYPESCRIPT ERRORS ---------'
         # play gnome click sound
-        playSound click
+        playSound click &
+        sleep 0.15
+        # play gnome click sound
+        playSound click &
+        sleep 0.2
         # play gnome hum sound
-        playSound hum
+        playSound hum &
 
         cat $tmpfile1
         wait $smokeTest
         echo '---------- TYPESCRIPT ERRORS ---------'
         playSound hum &
-        sleep 0.5
+        sleep 0.4
         playSound click &
-        sleep 0.5
-        playSound click
+        sleep 0.2
+        playSound click &
 
         cat $tmpfile1
         rm $tmpfile1 $tmpfile2  > /dev/null 2>&1
+        wait
         exit 1
     } fi
     # play gnome hum sound
     playSound hum &
     sleep 0.2
-    playSound hum
+    playSound hum &
     api-extractor run --local --verbose > $tmpfile2 2>&1 &
     docs=$!
+
+    # wait 3 seconds at a time for the $smokeTest process to finish.
+    # if it's not yet finished, play two hum sounds and continue waiting.
+    while kill -0 $smokeTest > /dev/null 2>&1; do
+        sleep 1.8
+        if kill -0 $smokeTest > /dev/null 2>&1; then
+            playSound hum &
+            sleep 0.15
+            playSound hum &
+        fi
+    done
+
     if wait $smokeTest ; then {
         echo "Smoke test passed"
         cat $tmpfile2
@@ -71,6 +88,16 @@ if [ "$SMOKE" != "" ]; then {
     docs=$!
 } fi
 
+# wait 3 seconds at a time for the $docs process to finish.
+# if it's not yet finished, play two hum sounds and continue waiting.
+while kill -0 $docs > /dev/null 2>&1; do
+    sleep 1.8
+    if kill -0 $docs > /dev/null 2>&1; then
+        playSound hum &
+        sleep 0.15
+        playSound hum &
+    fi
+done
 wait $docs
 
 
@@ -80,5 +107,5 @@ echo "  -- TYPESCRIPT check OK -- "
 cat $tmpfile1
 rm $tmpfile1 $tmpfile2  > /dev/null 2>&1
 playSound hum &
-sleep 0.5
+sleep 0.35
 playSound string
