@@ -15,22 +15,22 @@ export type BigIntRecord<T extends Record<string, number>> = {
 };
 
 // for application-side data types that don't need classes to represent them,
-// you must define a chain-bridge type, and you can derive a type representing 
+// you must define a chain-bridge type, and you can derive a type representing
 // its off-chains forms.
 
 // for application-side types that benefit from having a class to represent them,
-// with javascript methods fitting logical needs (some kinds of "business logic") 
+// with javascript methods fitting logical needs (some kinds of "business logic")
 // for the on-chain objects, those methods become available because you first
-// define the on-chain bridge type, and also define the class as the appType.  
+// define the on-chain bridge type, and also define the class as the appType.
 
 // in both cases, you may need to define fromOnchainDatum() to convert data from
 // its "parsed, but may not be ready to use" form
 // into its UI-application-adapted form.  The DatumAdapter then collaborates with your
 // Capo and other contracts when you readDatum()
 //
-//Specifically, calls to readDatum(datumAdapter) will trigger the transformation of 
-//  on-chain data to the application's preferred form, and the 
-// result of readDatum() is ready to use, with class methods if you've defined 
+//Specifically, calls to readDatum(datumAdapter) will trigger the transformation of
+//  on-chain data to the application's preferred form, and the
+// result of readDatum() is ready to use, with class methods if you've defined
 // your appType in that way..
 //
 // Use the datum adapter's toOnchainDatum() method directly, to convert the
@@ -38,8 +38,7 @@ export type BigIntRecord<T extends Record<string, number>> = {
 // this will happen in a mkDatum... function defined in the typescript wrapper for
 // the contract script.
 
-
-// export type UplcFor<t , k extends string> = 
+// export type UplcFor<t , k extends string> =
 //         t extends helios.MintingPolicyHash ? number[] :
 //         t extends bigint ? bigint :
 //         t extends Numeric<any> ? bigint :
@@ -50,8 +49,7 @@ export type BigIntRecord<T extends Record<string, number>> = {
 //         t extends Record<string, any> ? {
 //             [ key in string & keyof t ] : UplcFor<t[key], `${k}.${key}`>
 //         } :
-//         never 
-
+//         never
 
 export type OnchainEnum<EnumName extends string> = {
     constrData: EnumName;
@@ -241,17 +239,19 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
      **/
     abstract toOnchainDatum(d: appType): Datum | Promise<Datum>;
 
-
-    fromUplcValue(valueInfo : Record<string, Record<string, bigint>>) {
-        return new helios.Value(0n, 
-            Object.entries(valueInfo).map( 
-                ([mph, tokenMap]) => [ mph, 
-                    Object.entries(tokenMap).map( 
-                        ([tokenName, tokenCount]) => 
-                            [ helios.textToBytes(tokenName), tokenCount ] as [ number[], bigint ]
-                    )
-                ]
-             )
+    fromUplcValue(valueInfo: Record<string, Record<string, bigint>>) {
+        return new helios.Value(
+            0n,
+            Object.entries(valueInfo).map(([mph, tokenMap]) => [
+                mph,
+                Object.entries(tokenMap).map(
+                    ([tokenName, tokenCount]) =>
+                        [helios.textToBytes(tokenName), tokenCount] as [
+                            number[],
+                            bigint
+                        ]
+                ),
+            ])
         );
     }
 
@@ -259,52 +259,102 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
         return new Date(Number(millis));
     }
 
-    uplcEnumMember(enumName: string, member: string, ... args : any[]) {
+    uplcEnumMember(enumName: string, member: string, ...args: any[]) {
         const stateVariant = this.getEnumMember(enumName, member);
-        return new stateVariant(...args)// xxxx .name.toString();
+        return new stateVariant(...args)._toUplcData();
     }
 
-    getEnumMember(enumName: string, enumVariant: string | number | helios.ConstrData) {
-        const enumDef =  this.onChainTypes[enumName];
+    fromUplcEnum(enumName: string, member: helios.ConstrData) {
+        const stateVariant = this.getEnumMember(enumName, member);
+
+        // NOTE: a stateVariant has these details:
+        // #constrIndex : 0
+        // #dataDef : DataDefinition
+        // #parent : EnumStatement
+        // constrIndex : (...)
+        // name: Word
+        // dataDefinition : DataDefinition
+        //    #fields : Array(0)
+        //    #name : Word
+        //    #site : Site
+        //    fieldNames : (...)
+        //    fields : Array(0)
+        //    nFields : (...)
+        //    name : (...)
+        //    site : (...)
+
+        const variantName = stateVariant.name.toString();
+        // handle enums having internal fields
+        if (stateVariant.dataDefinition.nFields > 0) {
+            const fieldNames = stateVariant.dataDefinition.fieldNames;
+            return {
+                [variantName]: Object.fromEntries(
+                    fieldNames.map((fieldName, i) => {
+                        const field = stateVariant[fieldName];
+                        return [fieldName, field];
+                    })
+                ),
+            };
+        } else {
+            return variantName;
+        }
+    }
+
+    getEnumMember(
+        enumName: string,
+        enumVariant: string | number | helios.ConstrData
+    ) {
+        const enumDef = this.onChainTypes[enumName];
         if (!enumDef) {
-            throw new Error(`${this.constructor.name}: Enum ${enumName} not found in onChainTypes`+
-                `\n   ... try one of: (${Object.keys(this.onChainTypes).join(", ")})`+
-                `\n   (from ${this.strella.compiledScript.properties.name} in ${
-                    //@ts-expect-error
-                    this.strella.contractSource.srcFile || "‹unk srcFile›"
-                })`
+            throw new Error(
+                `${this.constructor.name}: Enum ${enumName} not found in onChainTypes` +
+                    `\n   ... try one of: (${Object.keys(
+                        this.onChainTypes
+                    ).join(", ")})` +
+                    `\n   (from ${
+                        this.strella.compiledScript.properties.name
+                    } in ${
+                        //@ts-expect-error
+                        this.strella.contractSource.srcFile || "‹unk srcFile›"
+                    })`
             );
         }
-        var foundVariant
+        var foundVariant;
         if ("string" == typeof enumVariant) {
             foundVariant = enumDef[enumVariant];
         } else {
-            const index = "number" == typeof enumVariant ? enumVariant :
-            enumVariant instanceof helios.ConstrData ? 
-                //@ts-expect-error ConstrData really does have an .index - !!!
-                enumVariant.index : -1;
+            const index =
+                "number" == typeof enumVariant
+                    ? enumVariant
+                    : enumVariant instanceof helios.ConstrData
+                    ? //@ts-expect-error ConstrData really does have an .index - !!!
+                      enumVariant.index
+                    : -1;
 
-            foundVariant = enumDef.prototype._enumStatement.getEnumMember(index)
+            foundVariant =
+                enumDef.prototype._enumStatement.getEnumMember(index);
         }
         if (!foundVariant) {
-            let more = ""
+            let more = "";
             if (enumVariant instanceof helios.ConstrData) {
                 //x@ts-expect-error
-                more = ` (from ConstrData ${foundVariant.index})`
+                more = ` (from ConstrData ${foundVariant.index})`;
             }
 
-            throw new Error(`Enum ${enumName} has no variant ${enumVariant} ${more}`);
+            throw new Error(
+                `Enum ${enumName} has no variant ${enumVariant} ${more}`
+            );
         }
         return foundVariant;
     }
 
     get fromUplc() {
-        return { 
-            Str: this.fromUplcString.bind(this), 
-            Real: this.fromUplcReal.bind(this), 
+        return {
+            Str: this.fromUplcString.bind(this),
+            Real: this.fromUplcReal.bind(this),
             Time: this.fromUplcTime.bind(this),
-            Value: this.fromUplcValue.bind(this), 
-            Enum: this.getEnumMember.bind(this) 
+            Value: this.fromUplcValue.bind(this),
+            Enum: this.fromUplcEnum.bind(this),
         };
     }
 
@@ -357,6 +407,10 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
         return new ByteArrayData(x);
     }
 
+    uplcMph(x: helios.MintingPolicyHash) {
+        return this.uplcBytes(x.bytes);
+    }
+
     wrapCIP68(enumVariant: any, d: MapData | ConstrData): ConstrData;
     wrapCIP68(d: MapData): ConstrData;
     wrapCIP68(dOrV: MapData | any, d?: MapData | ConstrData): ConstrData {
@@ -406,7 +460,7 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
         return t;
     }
 
-    fromOnchainMap<KEYS extends string>(
+    fromOnchainIntMap<KEYS extends string>(
         data: Record<KEYS, BigInt>,
         transformer: (x: bigint) => number
     ) {
