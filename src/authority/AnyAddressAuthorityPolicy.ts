@@ -33,8 +33,8 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
     }
 
     @Activity.redeemer
-    activityAuthorizing() : isActivity<undefined> {
-        return { redeemer: undefined};
+    activityAuthorizing(): isActivity<undefined> {
+        return { redeemer: undefined };
     }
 
     //! impls MUST resolve the indicated token to a specific UTxO
@@ -44,7 +44,7 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         label: string
     ): Promise<TxInput> {
         const v = this.tvAuthorityToken();
-        
+
         const { addrHint } = this.configIn!;
         return this.mustFindActorUtxo(
             `${label}: ${bytesToText(this.configIn!.tn)}`,
@@ -52,7 +52,14 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
             tcx,
             "are you connected to the right wallet address? " +
                 (addrHint?.length
-                    ? "  maybe at:\n    " + addrHint.join("\n or ")
+                    ? "\nauthority token originally issued to " +
+                      addrHint
+                          .map((x) => {
+                              const addr =
+                                  "string" == typeof x ? new Address(x) : x;
+                              return dumpAny(addr) + " = " + addr.toBech32();
+                          })
+                          .join("\n or ")
                     : "")
         );
     }
@@ -66,7 +73,10 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         console.log("🐞🐞  receive authority token");
         if (fromFoundUtxo) {
             dest = fromFoundUtxo.address;
-            console.log("    🐞🐞  " + dumpAny(fromFoundUtxo.address, this.networkParams));
+            console.log(
+                "    🐞🐞  " +
+                    dumpAny(fromFoundUtxo.address, this.networkParams)
+            );
         } else {
             if (!this.configIn?.addrHint?.[0])
                 throw new Error(`missing addrHint`);
@@ -80,7 +90,9 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         const output = new TxOutput(dest, tokenValue);
         output.correctLovelace(this.networkParams);
         tcx.addOutput(output);
-        console.log("    🐞🐞  ...with output" + dumpAny(output, this.networkParams));
+        console.log(
+            "    🐞🐞  ...with output" + dumpAny(output, this.networkParams)
+        );
 
         return tcx;
     }
@@ -92,7 +104,7 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         fromFoundUtxo: TxInput,
         redeemer?: isActivity
     ): Promise<TCX> {
-        //! no need to specify a redeemer, but we pass it through 
+        //! no need to specify a redeemer, but we pass it through
         //  ... in case the authority token is stored in a contract,
         //  ... which would need a redeemer to spend it.  In that case,
         //  ... the caller will need to add the script to the transaction.

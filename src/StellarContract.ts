@@ -73,10 +73,11 @@ import { UutName, type SeedAttrs } from "./delegation/UutName.js";
 import type { Capo } from "./Capo.js";
 import { DatumAdapter, type adapterParsedOnchainData } from "./DatumAdapter.js";
 import type { DatumAdapterOffchainType } from "./CapoSettingsTypes.js";
+import type { SimpleWallet_stellar } from "./testing/StellarNetworkEmulator.js";
 
 type tokenPredicate<tokenBearer extends canHaveToken> = ((
     something: tokenBearer
-) => tokenBearer | undefined) & { value: Value };
+) => tokenBearer | undefined) & { predicateValue: Value };
 
 type NetworkName = "testnet" | "mainnet";
 let configuredNetwork: NetworkName | undefined = undefined;
@@ -388,10 +389,13 @@ export type StellarFactoryArgs<CT extends configBaseWithRev> = {
  * short form: "returns truthy" if the input is matchy for the context
  * @public
  **/
-export type utxoPredicate =
+export type utxoPredicate = (
     | ((u: TxInput) => TxInput | undefined)
     | ((u: TxInput) => boolean)
-    | ((u: TxInput) => boolean | undefined);
+    | ((u: TxInput) => boolean | undefined)
+) & {
+    predicateValue?: Value;
+};
 
 type scriptPurpose =
     | "testing"
@@ -406,6 +410,12 @@ type UtxoSearchScope = {
     address?: Address;
     wallet?: Wallet | helios.SimpleWallet | SimpleWallet_stellar;
     exceptInTcx?: StellarTxnContext;
+    // utxos : TxInput[]
+};
+
+type UtxoSearchScopeWithUtxos = UtxoSearchScope & {
+    utxos: TxInput[];
+    required?: true;
 };
 
 type ComputedScriptProperties = Partial<{
@@ -1367,7 +1377,7 @@ export class StellarContract<
     ): tokenPredicate<TxInput> {
         const value = new Value({ lovelace });
         const predicate = _adaPredicate.bind(this, tcx) as tokenPredicate<any>;
-        predicate.value = value;
+        predicate.predicateValue = value;
         return predicate;
 
         function _adaPredicate(
@@ -1418,8 +1428,8 @@ export class StellarContract<
     /**
      * Creates a token predicate suitable for mustFindActorUtxo or mustFindMyUtxo
      * @remarks This variant takes just a token-name / quantity, working only on Capo instances,
-     * and seeks a token created by the Capo's minting policy.   
-     * 
+     * and seeks a token created by the Capo's minting policy.
+     *
      * Choose from one of the other variants to make a more specific token predicate.
      */
     mkTokenPredicate(
@@ -1450,7 +1460,13 @@ export class StellarContract<
         quantity?: bigint
     ): tokenPredicate<any>;
     mkTokenPredicate(
-        specifier: Value | MintingPolicyHash | AssetClass | UutName | number[] | string,
+        specifier:
+            | Value
+            | MintingPolicyHash
+            | AssetClass
+            | UutName
+            | number[]
+            | string,
         quantOrTokenName?: string | bigint,
         quantity?: bigint
     ): tokenPredicate<any> {
@@ -1465,12 +1481,18 @@ export class StellarContract<
         const predicate = _tokenPredicate.bind(this) as tokenPredicate<any>;
 
         const isValue = specifier instanceof Value;
-        const isTokenNameOnly = "string" === typeof specifier || (Array.isArray(specifier) && "number" === typeof specifier[0]);
+        const isTokenNameOnly =
+            "string" === typeof specifier ||
+            (Array.isArray(specifier) && "number" === typeof specifier[0]);
         const isUut = specifier instanceof UutName;
         if (isValue) {
             // v = predicate.value = specifier;
-            return _tokenPredicate.bind(this, specifier) as tokenPredicate<any>;
-            // return predicate;
+            const t = _tokenPredicate.bind(
+                this,
+                specifier
+            ) as tokenPredicate<any>;
+            t.predicateValue = specifier;
+            return t;
         } else if (isUut || isTokenNameOnly) {
             const tn = specifier as UutName | number[] | string;
             const quant = quantOrTokenName ? BigInt(quantOrTokenName) : 1n;
@@ -1478,8 +1500,9 @@ export class StellarContract<
                 tn,
                 quant // quantity if any
             );
-            return _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
-                        // return predicate;
+            const t = _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
+            t.predicateValue = tv;
+            return t;
         } else if (specifier instanceof MintingPolicyHash) {
             mph = specifier;
             if ("string" !== typeof quantOrTokenName)
@@ -1492,7 +1515,10 @@ export class StellarContract<
             // v = predicate.value = this.mkTokenValue(tokenName, quantity, mph);
             // return predicate;
             const tv = this.mkTokenValue(tokenName, quantity, mph);
-            return _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
+
+            const t = _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
+            t.predicateValue = tv;
+            return t;
         } else if (specifier instanceof AssetClass) {
             mph = specifier.mintingPolicyHash;
             if (!quantOrTokenName) quantOrTokenName = 1n;
@@ -1505,7 +1531,9 @@ export class StellarContract<
             // v = predicate.value = new Value(0n, [[specifier, quantity]]);
             // return predicate;
             const tv = new Value(0n, [[specifier, quantity]]);
-            return _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
+            const t = _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
+            t.predicateValue = tv;
+            return t;
         } else {
             throw new Error(
                 `wrong token specifier (need Value, MPH+tokenName, or AssetClass`
@@ -1597,14 +1625,16 @@ export class StellarContract<
     ) {
         const isValue = vOrMph instanceof Value;
         if (!isValue) {
-             if (!tokenName || !quantity) {
+            if (!tokenName || !quantity) {
                 throw new Error(
                     `missing required tokenName/quantity (or use a Value in arg2`
                 );
             }
         }
 
-        const v = isValue ? vOrMph : this.mkTokenValue(tokenName!, quantity!, vOrMph);
+        const v = isValue
+            ? vOrMph
+            : this.mkTokenValue(tokenName!, quantity!, vOrMph);
 
         return o.value.ge(v);
     }
@@ -1949,8 +1979,8 @@ export class StellarContract<
         }
         return Promise.any(promises).then((r) => {
             console.log(`   🎉🎉  ^^^ success: ${addlTxInfo.description} 🎉🎉`);
-            return r
-        })
+            return r;
+        });
     }
 
     /**
@@ -2229,8 +2259,9 @@ export class StellarContract<
         predicate: (u: TxInput) => TxInput | undefined
     ) {
         const { wallet } = this;
+        const utxos = await wallet.utxos;
 
-        return this.hasUtxo(name, predicate, { wallet });
+        return this.hasUtxo(name, predicate, { wallet, utxos });
     }
 
     async mustFindActorUtxo(
@@ -2264,7 +2295,10 @@ export class StellarContract<
         return this.mustFindUtxo(
             name,
             predicate,
-            { wallet, exceptInTcx },
+            {
+                wallet,
+                exceptInTcx,
+            },
             extraErrorHint
         );
     }
@@ -2323,14 +2357,36 @@ export class StellarContract<
         extraErrorHint: string = ""
     ): Promise<TxInput> {
         const { address, wallet, exceptInTcx } = searchScope;
+        const utxos = address
+            ? await this.network.getUtxos(address)
+            : await wallet!.utxos;
 
         const found = await this.hasUtxo(semanticName, predicate, {
             address,
             wallet,
             exceptInTcx,
+            utxos,
+            required: true,
         });
         if (!found) {
-            throw new Error(this.utxoSearchError(semanticName, searchScope));
+            const walletAddr = wallet
+                ? //@ts-ignore - sorry typescript, address sometimes is present on a SimpleWallet in test environment
+                  wallet.address || (await wallet.usedAddresses)
+                : undefined;
+            if (!globalThis.utxoDump) {
+                console.log(
+                    // warning emoji: "⚠️"
+                    " ⚠️ find failed in candidate", dumpAny(utxos)
+                );
+            }
+            throw new Error(
+                this.utxoSearchError(
+                    semanticName,
+                    searchScope,
+                    extraErrorHint,
+                    walletAddr
+                )
+            );
         }
 
         return found;
@@ -2339,15 +2395,34 @@ export class StellarContract<
     utxoSearchError(
         semanticName: string,
         searchScope: UtxoSearchScope,
-        extraErrorHint?: string
+        extraErrorHint?: string,
+        walletAddresses?: Address | Address[]
     ): string {
         const where = searchScope.address
-            ? `address ${searchScope.address.toBech32()}`
-            : `connected wallet`;
-        return `${this.constructor.name}: '${semanticName}' utxo not found (${
+            ? `searched in address ${searchScope.address.toBech32()}\n`
+            : ``;
+        const wAddrs: Address[] = Array.isArray(walletAddresses)
+            ? walletAddresses
+            : walletAddresses
+            ? [walletAddresses]
+            : [];
+        let more = wAddrs.length
+            ? wAddrs.map((x) => dumpAny(x) + ` = ${x.toBech32()}`).join("\n")
+            : "";
+        if (wAddrs.length > 1) {
+            more = "\n  ... wallet addrs:\n";
+        } else {
+            more = wAddrs.length ? `\n  ... in wallet addr: ${more}` : "";
+        }
+        if (extraErrorHint) more += "\n";
+
+        return `${
+            this.constructor.name
+        }: '${semanticName}' utxo not found ${more}  ... ${
             extraErrorHint || "sorry, no extra clues available"
-        }) in ${where}`;
+        }${where}\n  ... see further logged details above`;
     }
+
     toUtxoId(u: TxInput) {
         return `${u.outputId.txId.hex}@${u.outputId.utxoIdx}`;
     }
@@ -2363,12 +2438,14 @@ export class StellarContract<
     async hasUtxo(
         semanticName: string,
         predicate: utxoPredicate,
-        { address, wallet, exceptInTcx }: UtxoSearchScope
+        {
+            address,
+            wallet,
+            exceptInTcx,
+            utxos,
+            required,
+        }: UtxoSearchScopeWithUtxos
     ): Promise<TxInput | undefined> {
-        const utxos = address
-            ? await this.network.getUtxos(address)
-            : await wallet!.utxos;
-
         const collateral = (wallet ? await wallet.collateral : [])[0];
         // const filterUtxos = [
         //     ...collateral,
@@ -2382,14 +2459,14 @@ export class StellarContract<
             : notCollateral;
 
         const joiner = "\n   🔎  ";
-        const detail = 
-            (
-                // true ||  
-                globalThis.utxoDump
-            ) ? "\n  from set: "+ joiner + utxosAsString(filtered, joiner) : `(${filtered.length} candidates; set globalThis.utxoDump to see details)`
-        console.log(`  🔎 finding '${semanticName}' utxo${
+        const detail = // true ||
+            globalThis.utxoDump
+                ? "\n  from set: " + joiner + utxosAsString(filtered, joiner)
+                : `(${filtered.length} candidates; set globalThis.utxoDump to see details)`;
+        console.log(
+            `  🔎 finding '${semanticName}' utxo${
                 exceptInTcx ? " (not already being spent in txn)" : ""
-                    // } from set:\n    🔎 ${detail}`
+                // } from set:\n    🔎 ${detail}`
             } ${detail}`
             // ...(exceptInTcx && filterUtxos?.length
             //     ? [
@@ -2403,7 +2480,25 @@ export class StellarContract<
         if (found) {
             console.log("   🎈found" + utxosAsString([found]));
         } else {
-            console.log("  (not found)");
+            if (exceptInTcx) {
+                const alreadyInTcx = exceptInTcx.inputs.find(predicate);
+                if (alreadyInTcx) {
+                    console.log(
+                        `\n  um... value ${dumpAny(
+                            predicate.predicateValue
+                        )} not found. \n` +
+                            `     ${dumpAny(alreadyInTcx)}\n` +
+                            `  FYI, it seems this ^^ current txn input already has the target value. \n` +
+                            "    NOTE: You may want to adjust your dAPI to create an explicit fail-if-already-present semantic\n" +
+                            "    ... or, alternatively, to allow this token to authenticate multiple transaction elements\n" +
+                            "    ... by using explicitly idempotent 'addOrReuse' semantics, with details stored in tcx.state\n\n  ... go with care, and ask the community for help if you're unsure\n  )" +
+                            (required
+                                ? "\nBTW, here is that txn as of this time: " + dumpAny(exceptInTcx) + "\n\n 👁️   👁️ 👁️ ^^^^^^^ More details about the utxo search failure above ^^^^^^^ 👁️ 👁️   👁️"
+                                : "")
+                    );
+                    return undefined;
+                }
+            }
         }
         return found;
     }
@@ -2412,13 +2507,18 @@ export class StellarContract<
         semanticName: string,
         predicate: utxoPredicate
     ): Promise<TxInput | undefined> {
-        return this.hasUtxo(semanticName, predicate, { address: this.address });
+        const utxos = await this.network.getUtxos(this.address);
+
+        return this.hasUtxo(semanticName, predicate, {
+            address: this.address,
+            utxos,
+        });
     }
 
     /**
-     * Creates a new transaction context with the current actor context 
+     * Creates a new transaction context with the current actor context
      */
-    mkTcx(name? : string) {
+    mkTcx(name?: string) {
         return new StellarTxnContext(this.actorContext).withName(name || "");
     }
 
