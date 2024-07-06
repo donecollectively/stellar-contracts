@@ -332,6 +332,10 @@ export type hasSpendDelegate = StellarTxnContext<anyState & {
     spendDelegate: ContractBasedDelegate<any>
 }>;
 
+export type hasGovAuthority = StellarTxnContext<anyState & {
+    govAuthority: AuthorityPolicy
+}>;
+
 import { UncustomCapoSettings } from "./UncustomCapoSettings.js";
 import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 import { TypeMapMetadata } from "./TypeMapMetadata.js";
@@ -1926,17 +1930,23 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
     
         async txnAddGovAuthority<TCX extends StellarTxnContext>(
             tcx: TCX
-        ): Promise<TCX> {
+        ): Promise<TCX & hasGovAuthority> {
             const charterDatumMaybe = (
                 "charterDatum" in tcx.state 
                     ? tcx.state.charterDatum as CharterDatumProps 
                     : undefined
             );
+            //@ts-expect-error on this type-probe
+            if (tcx.state.govAuthority) {
+                return tcx as TCX & hasGovAuthority;
+            }
             const capoGovDelegate = await this.findGovDelegate(charterDatumMaybe);
             console.log("adding charter's govAuthority");
             // !!! TODO: add a type to the TCX, indicating presence of the govAuthority UUT
             
-            return capoGovDelegate.txnGrantAuthority(tcx);
+            const tcx2 = await capoGovDelegate.txnGrantAuthority(tcx) as TCX & hasGovAuthority;
+            tcx2.state.govAuthority = capoGovDelegate;
+            return tcx2
         }
     
         // getMinterParams() {
