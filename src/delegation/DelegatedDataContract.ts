@@ -12,7 +12,7 @@ import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { ContractBasedDelegate } from "./ContractBasedDelegate.js";
 import type { UutName } from "./UutName.js";
 import type { BasicMintDelegate } from "../minting/BasicMintDelegate.js";
-import { betterJsonSerializer } from "../diagnostics.js";
+import { betterJsonSerializer, dumpAny } from "../diagnostics.js";
 
 export type DelegatedDatumType<T extends DelegatedDataContract> = ReturnType<
     T["mkDatumAdapter"]
@@ -183,8 +183,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         const { capo } = this;
         const mintDelegate = await capo.getMintDelegate();
         const tcx1a = await this.tcxWithCharterRef(tcx);
-        const tcx1b = await this.tcxWithSeedUtxo(tcx1a);
-        const tcx1 = await this.tcxWithSettingsRef(tcx1b);
+        const tcx1 = await this.tcxWithSettingsRef(tcx1a);
 
         // tell Capo to spend the DD record
         const tcx2 = await capo.txnAttachScriptOrRefScript(
@@ -216,6 +215,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         return this.txnUpdatingRecord(
             tcx2a,
             id,
+            item,
             activity,
             recordWithUpdates,
             options
@@ -226,12 +226,13 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         THIS extends DelegatedDataContract,
         TCX extends StellarTxnContext &
             hasCharterRef &
-            hasSeedUtxo &
+            // hasSeedUtxo &
             hasSettingsRef
     >(
         this: THIS,
         tcx: TCX,
         id: hasRecId,
+        item: FoundDatumUtxo<DelegatedDatumType<THIS>>,
         controllerActivity: isActivity,
         record: DelegatedDatumType<THIS>,
         options: ExtraUpdateOptions<DelegatedDatumType<THIS>> = {}
@@ -244,11 +245,15 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         const tcx2 = await this.txnGrantAuthority(tcx, controllerActivity);
         const { addedUtxoValue = new helios.Value(0n), beforeSave = (x) => x } =
             options;
-
+        console.log("    -- prev value in dgData utxo:", dumpAny(item.utxo.value));
+        console.log("    -- addedUtxoValue in dgData utxo:", dumpAny(addedUtxoValue));
         return tcx2.addOutput(
             new helios.TxOutput(
                 this.capo.address,
-                this.mkMinTv(this.capo.mph, id).add(addedUtxoValue),
+                item.utxo.value
+                    // .add(this.mkMinTv(this.capo.mph, id))
+                    .add(addedUtxoValue),
+
                 await this.mkDatumDelegatedDataRecord(beforeSave(record))
             )
         ) as TCX & typeof tcx2;
