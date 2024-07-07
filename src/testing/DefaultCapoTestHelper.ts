@@ -21,6 +21,7 @@ import { CapoMinter } from "../minting/CapoMinter.js";
 import type { expect as expectType } from "vitest";
 import type { CapoOffchainSettingsType } from "../CapoSettingsTypes.js";
 import { CapoWithoutSettings } from "../CapoWithoutSettings.js";
+import type { VariantStrategy } from "../delegation/RolesAndDelegates.js";
 
 declare namespace NodeJS {
     interface Global {
@@ -121,6 +122,48 @@ export class DefaultCapoTestHelper<
         );
 
         // return treasury.txnAddCharterWithAuthority(tcx);
+    }
+
+    // accesses the delegate roles, iterates the namedDelegate entries,
+    // and uses txnCreateConfiguredDelegate() to trigger compilation of the script for each one
+    async checkNamedDelegateScripts(args: Partial<MinimalCharterDatumArgs> = {}) {
+        const { strella : capo } = this;
+        const {delegateRoles} = capo;
+        const { namedDelegate: {
+            variants: delegates,
+            uutPurpose: roleName
+        } } = delegateRoles;
+        const goodArgs = {
+            ... this.mkDefaultCharterArgs(),
+            ... args
+        } as MinimalCharterDatumArgs
+        
+        let helperTxn = await capo.mkTxnMintCharterToken(goodArgs, undefined, "DRY_RUN");
+        // emoji ladybug: "🐞"
+        console.log("  🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞 ");
+
+        for (const [delegateName, delegate] of Object.entries(delegates) as [ string, VariantStrategy<any>][]) {
+            console.log(`  -- checking named-delegate script: ${delegateName}`);
+
+            helperTxn = await capo.txnWillMintUuts(
+                helperTxn,
+                [delegateName],
+                { usingSeedUtxo: helperTxn.state.seedUtxo },
+                {
+                    namedDelegate: delegateName,
+                }
+            );
+            debugger
+            const newLink = await capo.txnCreateDelegateLink(
+                helperTxn as any, 
+                "namedDelegate", 
+                {
+                    strategyName: delegateName
+                }
+            );
+
+            // await capo.txnCreateConfiguredDelegate(helperTxn, delegate, );
+        }
     }
 
     mkDefaultCharterArgs(): MinimalCharterDatumArgs {

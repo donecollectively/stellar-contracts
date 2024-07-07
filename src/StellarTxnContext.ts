@@ -11,7 +11,7 @@ import type {
     Wallet,
 } from "@hyperionbt/helios";
 
-import { txAsString } from "./diagnostics.js";
+import { dumpAny, txAsString } from "./diagnostics.js";
 import type { hasUutContext } from "./Capo.js";
 import { 
     UutName, type SeedAttrs 
@@ -346,7 +346,14 @@ export class StellarTxnContext<S extends anyState = anyState> {
         if (this.parentTcx) {
             this.parentTcx.childReservedUtxos.push(input);
         }
-        this.tx.addInput(input, r?.redeemer);
+        try {
+            this.tx.addInput(input, r?.redeemer);
+        } catch(e:any) {
+            if (e.message.match(/input already added before/)) {
+                console.log("failed adding input to txn: ", dumpAny(this))
+                throw new Error("addInput: already in txn: " + dumpAny(input) + "\nSee full txn above");
+            }
+        }
 
         return this;
     }

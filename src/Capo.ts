@@ -400,8 +400,8 @@ export type hasRoleMap<
     SpecificCapo = C extends Capo<infer S> ? S extends unknown ? never : S : never
 > = {
     initDelegateRoles() : basicRoleMap;
-    _delegateRoles: SpecificCapo extends never ? null : ReturnType<C["initDelegateRoles"]>;
-    get delegateRoles(): SpecificCapo extends never ? null : ReturnType<C["initDelegateRoles"]>
+    _delegateRoles: SpecificCapo extends never ? null : basicRoleMap & ReturnType<C["initDelegateRoles"]>;
+    get delegateRoles(): SpecificCapo extends never ? null : basicRoleMap & ReturnType<C["initDelegateRoles"]>
 }
 
 
@@ -1217,6 +1217,10 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
 
     /**
      * Creates a new delegate link, given a delegation role and and strategy-selection details
+     * @param tcx - A transaction-context having state.uuts[roleName] matching the roleName
+     * @param roleName - the role of the delegate, matched with the `delegateRoles()` of `this`
+     * @param delegateInfo - partial detail of the delegation, with `strategyName` and any other
+     *     details required by the particular role.  Its delegate type must be matchy with the type indicated by the `roleName`.
      * @remarks
      *
      * Combines partal and implied configuration settings, validating the resulting configuration.
@@ -1230,6 +1234,8 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
      *
      * To get a full DelegateSettings object, use txnCreateDelegateSettings() instead.
      *
+     * @public
+     *
      * @reqt throws DelegateConfigNeeded with an `errors` entry
      *   ... if there are any problems in validating the net configuration settings.
      * @reqt EXPECTS the `tcx` to be minting a UUT for the delegation,
@@ -1239,12 +1245,6 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
      *   ... along with any explicit `config` from the provided `delegateInfo`
      *   ... and automatically applies a `uut` setting.
      *   ... The later properties in this sequence take precedence.
-     *
-     * @param tcx - A transaction-context
-     * @param roleName - the role of the delegate, matched with the `delegateRoles()` of `this`
-     * @param delegateInfo - partial detail of the delegation, with `strategyName` and any other
-     *     details required by the particular role.  Its delegate type must be matchy with the type indicated by the `roleName`.
-     * @public
      **/
     async txnCreateDelegateLink<
         THIS extends Capo<any>,
@@ -2058,6 +2058,19 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         }
     
         /**
+         * helper for test environment, allowing an abortive initial charter-creation, without 
+         * most of the costs, but enabling named-delegate scripts to be compiled/validated 
+         * much earlier in the test lifecycle.  The real charter process can then continue without 
+         * duplicating any of the dry-run setup costs.
+         */
+        didDryRun: {
+            minter: CapoMinter;
+            seedUtxo: TxInput
+            configIn: CapoBaseConfig;
+            args: MinimalCharterDatumArgs;
+        } = {} as any
+
+        /**
          * Initiates a seeding transaction, creating a new Capo contract of this type
          * @remarks
          *
@@ -2078,7 +2091,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             > &
                 (TCX extends StellarTxnContext<infer TCXT>
                     ? StellarTxnContext<TCXT>
-                    : never),
+                    : unknown),
             TCX3 = TCX2 &
                 hasAddlTxns<TCX2> &
                 hasUutContext<
@@ -2090,35 +2103,53 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                 >
         >(
             charterDatumArgs: MinimalCharterDatumArgs,
-            existingTcx?: TCX
+            existingTcx?: TCX,
+            dryRun? : "DRY_RUN"
         ) {
-            if (this.configIn)
+            const dry : typeof this.didDryRun = this.didDryRun || {} as unknown as typeof this.didDryRun
+            const didHaveDryRun = !!dry.minter;
+            if (didHaveDryRun) {
+                console.log(`🔁 resuming charter setup after partial setup in dry-run`);
+
+                if (JSON.stringify(dry.args, delegateLinkSerializer) !== JSON.stringify(charterDatumArgs, delegateLinkSerializer)) {
+                    throw new Error(`dry-run args mismatch`);
+                }
+                if(JSON.stringify(dry.configIn, delegateLinkSerializer) !== JSON.stringify(this.configIn, delegateLinkSerializer)) {
+                    throw new Error(`dry-run config mismatch`);
+                }
+                // if (this.didDryRun) {
+                //     this.minter = undefined as any
+                //     this.configIn = undefined
+                // }
+            } else if (this.configIn) {
                 throw new Error(
                     `this contract suite is already configured and can't be re-chartered`
                 );
-    
+            }
+            if (dryRun) {
+                console.log(`  🏃 dry-run mode for charter setup`);
+            }            
             type hasBsc = hasBootstrappedConfig<CapoBaseConfig>;
             //@ts-expect-error yet another case of seemingly spurious "could be instantiated with a different subtype" (actual fixes welcome :pray:)
             const initialTcx: TCX2 & hasBsc =
-                existingTcx || (new StellarTxnContext(this.actorContext) as hasBsc);
+                existingTcx || (this.mkTcx("mint charter token") as hasBsc);
     
-            const promise = this.txnMustGetSeedUtxo(
-                initialTcx,
-                "charter bootstrapping",
-                ["charter"]
-            ).then(async (seedUtxo) => {
-                const { txId: seedTxn, utxoIdx } = seedUtxo.outputId;
-                const seedIndex = BigInt(utxoIdx);
-    
-                const minter = await this.connectMintingScript({
-                    seedIndex,
-                    seedTxn,
-                });
-                const { mintingPolicyHash: mph } = minter;
-    
-                // const rev = this.getCapoRev();
+            const tcxWithSeed = !!dry.seedUtxo 
+                ? await this.tcxWithSeedUtxo(initialTcx.addInput(dry.seedUtxo), dry.seedUtxo) 
+                : await this.tcxWithSeedUtxo((initialTcx))
+
+            const seedUtxo = tcxWithSeed.state.seedUtxo;
+            const { txId: seedTxn, utxoIdx } = seedUtxo.outputId;
+            const seedIndex = BigInt(utxoIdx);
+
+            const minter = dry.minter || await this.connectMintingScript({
+                seedIndex,
+                seedTxn,
+            });
+            const { mintingPolicyHash: mph } = minter;
+            if (! didHaveDryRun) {
                 const csp = this.getContractScriptParams(
-                    (this.configIn || this.partialConfig) as CapoBaseConfig
+                    (this.partialConfig) as CapoBaseConfig
                 );
     
                 const bsc = {
@@ -2127,138 +2158,145 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                     seedTxn,
                     seedIndex,
                 } // as configType;
-                this.loadProgramScript({ ...csp, mph });
-                bsc.rootCapoScriptHash = this.compiledScript.validatorHash;
-    
-                initialTcx.state.bsc = bsc;
-                initialTcx.state.bootstrappedConfig = JSON.parse(
-                    JSON.stringify(bsc, delegateLinkSerializer)
-                );
+                // this.scriptProgram = this.loadProgramScript({ ...csp, mph });
                 const fullScriptParams = (this.contractParams =
                     this.getContractScriptParams(bsc));
+                
+                this.scriptProgram = this.loadProgramScript( fullScriptParams );
+                bsc.rootCapoScriptHash = this.compiledScript.validatorHash;
+    
                 this.configIn = bsc;
-    
-                this.scriptProgram = this.loadProgramScript(fullScriptParams);
-    
-                const uutPurposes = [
-                    "capoGov"as const, 
-                    "mintDgt"as const, 
-                    "spendDgt" as const, 
-                    "set" as const
-                ];
-                const tcx = await this.txnWillMintUuts(
-                    initialTcx,
-                    uutPurposes,
-                    { usingSeedUtxo: seedUtxo },
-                    {
-                        govAuthority: "capoGov",
-                        mintDelegate: "mintDgt",
-                        spendDelegate: "spendDgt",
-                        settings: "set",
-                    }
-                );
-                const { uuts } = tcx.state;
+            }
+            tcxWithSeed.state.bsc = this.configIn!;
+            tcxWithSeed.state.bootstrappedConfig = JSON.parse(
+                JSON.stringify(this.configIn, delegateLinkSerializer)
+            );    
 
-                //     capoGov,
-                //     govAuthority, // same
-                //     mintDgt, // same as mintDelegate
-                //     spendDelegate
-                // } = tcx.state.uuts;
-                if (uuts.govAuthority !== uuts.capoGov) {
-                    throw new Error(`assertion can't fail`);
+            const uutPurposes = [
+                "capoGov"as const, 
+                "mintDgt"as const, 
+                "spendDgt" as const, 
+                "set" as const
+            ];
+            const tcx = await this.txnWillMintUuts(
+                tcxWithSeed,
+                uutPurposes,
+                { usingSeedUtxo: seedUtxo },
+                {
+                    govAuthority: "capoGov",
+                    mintDelegate: "mintDgt",
+                    spendDelegate: "spendDgt",
+                    settings: "set",
                 }
-    
-                const govAuthority = await this.txnCreateDelegateLink(
-                    tcx, "govAuthority", charterDatumArgs.govAuthorityLink as any
-                );
-    
-                const mintDelegate = await this.txnCreateDelegateLink(
-                    tcx, "mintDelegate", charterDatumArgs.mintDelegateLink as any
-                );
-    
-                const spendDelegate = await this.txnCreateDelegateLink(
-                    tcx, "spendDelegate", charterDatumArgs.spendDelegateLink
-                );
-    
-                this.bootstrapping = {
-                    govAuthority,
-                    mintDelegate,
-                    spendDelegate,
-                };
-                //@ts-expect-error - typescript can't seem to understand that
-                //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
-                const fullCharterArgs: CharterDatumProps = {
-                    ...charterDatumArgs,
-                    settingsUut: uuts.set,
-                    govAuthorityLink: govAuthority,
-                    mintDelegateLink: mintDelegate,
-                    namedDelegates: {}, // can only be empty at charter, for now.
-                    spendDelegateLink: spendDelegate,
-                };
-                const datum = await this.mkDatumCharterToken(fullCharterArgs);
-    
-                const charterOut = new TxOutput(
-                    this.address,
-                    this.tvCharter(),
-                    datum
-                    // this.compiledScript
-                );
-                charterOut.correctLovelace(this.networkParams);
-    
-                tcx.addInput(seedUtxo);
-                tcx.addOutputs([charterOut]);
-    
+            );
+            const { uuts } = tcx.state;
 
-                // creates an addl txn that stores a refScript in the delegate;
-                //   that refScript could be stored somewhere else instead (e.g. the Capo)
-                //   but for now it's in the delegate addr.
-                const tcx2 = await this.txnMkAddlRefScriptTxn(
-                    tcx,
-                    "mintDelegate",
-                    mintDelegate.delegate.compiledScript
-                );
-                const tcx3 = await this.txnMkAddlRefScriptTxn(
-                    tcx2,
-                    "capo",
-                    this.compiledScript
-                );
-                const tcx4 = await this.txnMkAddlRefScriptTxn(
-                    tcx3,
-                    "minter",
-                    minter.compiledScript
-                );
-                const tcx4a = await this.mkAdditionalTxnsForCharter(tcx4);
-                if (!tcx4a)
-                    throw new Error(
-                        `${this.constructor.name}: mkAdditionalTxnsForCharter() must return a txn context`
-                    );
+            if (uuts.govAuthority !== uuts.capoGov) {
+                throw new Error(`assertion can't fail`);
+            }
 
-                console.log(
-                    " ---------------- CHARTER MINT ---------------------\n",
-                    // txAsString(tcx4.tx, this.networkParams)
-                );
-    
-                // type Normalize<T> =
-                //     T extends (...args: infer A) => infer R ? (...args: Normalize<A>) => Normalize<R>
-                //     : T extends any ? {[K in keyof T]: Normalize<T[K]>} : never
-    
-                const settings = (await this.mkInitialSettings() ) as unknown as CapoOffchainSettingsType<this>;
-                const tcx5 = await this.txnAddSettingsOutput(tcx4a, settings);
-    
-                // debugger
-    
-                // mints the charter, along with the capoGov and mintDgt UUTs.
-                // TODO: if there are additional UUTs needed for other delegates, include them here.
-                const minting = this.minter.txnMintingCharter(tcx5, {
-                    owner: this.address,
-                    capoGov: uuts.capoGov, // same as govAuthority,
-                    mintDelegate: uuts.mintDelegate,
-                    spendDelegate: uuts.spendDelegate,
-                    settingsUut: uuts.set,
-                });
-                return minting;
+            if (dryRun) {
+                // this.configIn = undefined;
+                this.didDryRun = {
+                    minter,
+                    seedUtxo,
+                    configIn: this.configIn!,
+                    args: charterDatumArgs
+                }
+                console.log(`  🏃  dry-run charter setup done`)
+
+                return tcx as TCX3 & Awaited<typeof tcx>;
+            } else {
+                this.didDryRun = {} as any
+            }
+
+            const govAuthority = await this.txnCreateDelegateLink(
+                tcx, "govAuthority", charterDatumArgs.govAuthorityLink as any
+            );
+
+            const mintDelegate = await this.txnCreateDelegateLink(
+                tcx, "mintDelegate", charterDatumArgs.mintDelegateLink as any
+            );
+
+            const spendDelegate = await this.txnCreateDelegateLink(
+                tcx, "spendDelegate", charterDatumArgs.spendDelegateLink
+            );
+
+            this.bootstrapping = {
+                govAuthority,
+                mintDelegate,
+                spendDelegate,
+            };
+            //@ts-expect-error - typescript can't seem to understand that
+            //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
+            const fullCharterArgs: CharterDatumProps = {
+                ...charterDatumArgs,
+                settingsUut: uuts.set,
+                govAuthorityLink: govAuthority,
+                mintDelegateLink: mintDelegate,
+                namedDelegates: {}, // can only be empty at charter, for now.
+                spendDelegateLink: spendDelegate,
+            };
+            const datum = await this.mkDatumCharterToken(fullCharterArgs);
+
+            const charterOut = new TxOutput(
+                this.address,
+                this.tvCharter(),
+                datum
+                // this.compiledScript
+            );
+            charterOut.correctLovelace(this.networkParams);
+
+            // tcx.addInput(seedUtxo);
+            tcx.addOutputs([charterOut]);
+
+            // mints the charter, along with the capoGov and mintDgt UUTs.
+            // TODO: if there are additional UUTs needed for other delegates, include them here.
+            const tcxWithMint = await this.minter.txnMintingCharter(tcx, {
+                owner: this.address,
+                capoGov: uuts.capoGov, // same as govAuthority,
+                mintDelegate: uuts.mintDelegate,
+                spendDelegate: uuts.spendDelegate,
+                settingsUut: uuts.set,
             });
-            return promise as Promise<TCX3 & Awaited<typeof promise>>;
+
+            const settings = (await this.mkInitialSettings() ) as unknown as CapoOffchainSettingsType<this>;
+            const tcxWithSettings = await this.txnAddSettingsOutput(tcxWithMint, settings);
+
+            // creates an addl txn that stores a refScript in the delegate;
+            //   that refScript could be stored somewhere else instead (e.g. the Capo)
+            //   but for now it's in the delegate addr.
+            const tcx2 = await this.txnMkAddlRefScriptTxn(
+                tcxWithSettings,
+                "mintDelegate",
+                mintDelegate.delegate.compiledScript
+            );
+            const tcx3 = await this.txnMkAddlRefScriptTxn(
+                tcxWithSettings,
+                "capo",
+                this.compiledScript
+            );
+            const tcx4 = await this.txnMkAddlRefScriptTxn(
+                tcxWithSettings,
+                "minter",
+                minter.compiledScript
+            );
+            const tcx4a = await this.mkAdditionalTxnsForCharter(tcxWithSettings);
+            if (!tcx4a)
+                throw new Error(
+                    `${this.constructor.name}: mkAdditionalTxnsForCharter() must return a txn context`
+                );
+
+            console.log(
+                " --------------------- CHARTER MINT ---------------------\n",
+                // txAsString(tcx4.tx, this.networkParams)
+            );
+
+            // type Normalize<T> =
+            //     T extends (...args: infer A) => infer R ? (...args: Normalize<A>) => Normalize<R>
+            //     : T extends any ? {[K in keyof T]: Normalize<T[K]>} : never
+
+            return tcxWithSettings as TCX3 & Awaited<typeof tcxWithSettings>;
         }
     
         /**
@@ -2758,7 +2796,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             const currentDatum = await this.findCharterDatum(currentCharter);
             const mintDelegate = await this.getMintDelegate();
             const { minter } = this;
-            const tcxWithSeed = tcx.state.seedUtxo === undefined ? await this.addSeedUtxo() : tcx;
+            const tcxWithSeed = await this.tcxWithSeedUtxo(tcx);
             const uutOptions:
                 | NormalDelegateSetup
                 | DelegateSetupWithoutMintDelegate = delegateInfo.forcedUpdate
@@ -2784,7 +2822,6 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             debugger;
             const tcx2 = await this.txnMintingUuts(
                 // todo: make sure seed-utxo is selected with enough minUtxo ADA for the new UUT name.
-                // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
                 tcxWithSeed,
                 ["mintDgt"],
                 uutOptions,
@@ -2849,8 +2886,8 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             const currentCharter = await this.mustFindCharterUtxo();
             const currentDatum = await this.findCharterDatum(currentCharter);
             const spendDelegate = await this.getSpendDelegate();
-            const tcxWithSeed = tcx.state.seedUtxo === undefined ? await this.addSeedUtxo() : tcx;
-            
+            const tcxWithSeed = await this.tcxWithSeedUtxo(tcx);
+
             const uutOptions: DelegateSetupWithoutMintDelegate = {
                 withoutMintDelegate: {
                     omitMintDelegate: true,
@@ -2874,7 +2911,6 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             };
             const tcx2 = await this.txnMintingUuts(
                 // todo: make sure seed-utxo is selected with enough minUtxo ADA for the new UUT name.
-                // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
                 tcxWithSeed,
                 ["spendDgt"],
                 uutOptions,
@@ -2937,9 +2973,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             const currentDatum = await this.findCharterDatum();
     
             throw new Error(`test me!`)
-            const tcxWithSeed = (tcx.state.seedUtxo === undefined) ? await this.addSeedUtxo() : tcx;
-
-            // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
+            const tcxWithSeed = await this.tcxWithSeedUtxo(tcx);
             const tcx2 = await this.txnMintingUuts(
                 tcxWithSeed,
                 ["mintDgt"],
@@ -3007,8 +3041,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             const currentDatum = await this.findCharterDatum();
             throw new Error(`test me!`)
             
-            const tcxWithSeed = (tcx.state.seedUtxo === undefined) ? await this.addSeedUtxo() : tcx;
-            // const seedUtxo = await this.txnMustGetSeedUtxo(tcx, "mintDgt", ["mintDgt-XxxxXxxxXxxx"]);
+            const tcxWithSeed = await this.tcxWithSeedUtxo(tcx);
             const tcx2 = await this.txnMintingUuts(
                 tcxWithSeed,
                 ["spendDgt"],
@@ -3278,8 +3311,8 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         }
 
         /**
-         * adds a seed utxo to a transaction-context, 
-         * @deprecated - use tcxWithSeedUtxo() instead
+         * @deprecated use tcxWithSeedUtxo() instead
+         * @remarks adds a seed utxo to a transaction-context, 
          */
         async addSeedUtxo<TCX extends StellarTxnContext>(
             tcx: TCX = new StellarTxnContext(this.actorContext) as TCX,

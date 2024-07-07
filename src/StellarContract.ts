@@ -2167,6 +2167,13 @@ export class StellarContract<
                 }optimized + params:`,
                 params
             );
+            // debugger
+            // console.log(
+            //     new Error(
+            //         "who is triggering script compilation here?"
+            //     ).stack!.split("\n").join("\n")
+            // );
+
             //!!! todo: consider pushing this to JIT or async
             this.compiledScript = script.compile(simplify);
             console.log(`       ✅ ${this.constructor.name}`);
@@ -2585,7 +2592,7 @@ export class StellarContract<
     }
     async findUutSeedUtxo(uutPurposes: string[], tcx: StellarTxnContext<any>) {
         //!!! make it big enough to serve minUtxo for the new UUT(s)
-        const uutSeed = this.mkValuePredicate(BigInt(42_000), tcx);
+        const uutSeed = this.mkValuePredicate(BigInt(42_000_000), tcx);
         return this.mustFindActorUtxo(
             `seed-for-uut ${uutPurposes.join("+")}`,
             uutSeed,

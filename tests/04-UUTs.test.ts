@@ -98,7 +98,7 @@ describe("Capo", async () => {
                 );
             }
 
-            const tcx1a = await capo.addSeedUtxo(h.mkTcx());
+            const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
             const purposes = ["testSomeThing"];
             const tcx1b = await capo.txnMintingUuts(
                 tcx1a,

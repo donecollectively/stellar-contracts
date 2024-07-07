@@ -127,7 +127,9 @@ describe("Capo", async () => {
                     throw e;
                 }
                 state.mintedCharterToken = null;
-                return expect(h.mintCharterToken()).rejects.toThrow(
+                const minting = h.mintCharterToken()
+                // await minting
+                return expect(minting).rejects.toThrow(
                     "already configured"
                 );
             });

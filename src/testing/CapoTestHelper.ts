@@ -31,7 +31,10 @@ export abstract class CapoTestHelper<
 > extends StellarTestHelper<SC> {
     async initialize({
         randomSeed = 42,
-    }: { randomSeed?: number } = {}): Promise<SC> {
+    }: { randomSeed?: number } = {},
+    args?: Partial<MinimalCharterDatumArgs>
+)
+    : Promise<SC> {
         // Note: This method diverges from the base class impl, due to type difficulties.
         // Patches welcome.
 
@@ -83,7 +86,22 @@ export abstract class CapoTestHelper<
         //   based on seedUtxo in mkTxnMintCharterToken
         if (!this.config) {
             console.log("  -- Capo not yet bootstrapped");
-            return (this.strella = await this.initStrella(this.stellarClass));
+            const ts1 = Date.now();
+            this.strella = await this.initStrella(this.stellarClass);
+
+            const ts2 = Date.now();
+            console.log(
+                // stopwatch emoji: ⏱️
+                `  -- ⏱️ initialized Capo: ${ts2-ts1}ms`
+            );                
+            console.log("checking delegate scripts...");
+            return this.checkNamedDelegateScripts(args).then(() => {
+                const ts3 = Date.now();
+                console.log(
+                    `  -- ⏱️ checked delegate scripts: ${ts3-ts2}ms`
+                )
+                return this.strella;
+            });
         }
         console.log("  -- Capo already bootstrapped");
         const strella = await this.initStrella(this.stellarClass, this.config);
@@ -99,12 +117,18 @@ export abstract class CapoTestHelper<
             "mph 🏦 " + mph?.hex.substring(0, 12) + "…"
         );
         console.log("<- CAPO initialized()");
-
         return strella;
     }
 
+    async checkNamedDelegateScripts(args: Partial<MinimalCharterDatumArgs>={}): Promise<void> {
+        throw new Error(`doesn't fail, because it's implemented by DefaultCapoTestHelper`);
+    }
+
     get ready() {
-        return !!(this.strella.configIn || this.state.parsedConfig);
+        return !!(
+            (this.strella.configIn && !this.strella.didDryRun.configIn) 
+            || this.state.parsedConfig
+        );
     }
 
     /**
@@ -164,24 +188,32 @@ export abstract class CapoTestHelper<
             descriptor: PropertyDescriptor
         ) {
             const originalMethod = descriptor.value;
-            descriptor.value = SnapWrap
+            descriptor.value = SnapWrap;
 
-            const [_, WithCapMethodName] = propertyKey.match( /^snapTo(.*)/ ) || [] 
-            if (! WithCapMethodName) {
-                throw new Error(`hasNamedSnapshot(): ${propertyKey}(): expected method name to start with 'snapTo'`)
+            const [_, WithCapMethodName] =
+                propertyKey.match(/^snapTo(.*)/) || [];
+            if (!WithCapMethodName) {
+                throw new Error(
+                    `hasNamedSnapshot(): ${propertyKey}(): expected method name to start with 'snapTo'`
+                );
             }
-            const methodName = WithCapMethodName[0].toLowerCase() + WithCapMethodName.slice(1)
-            const generateSnapshotFunc = target[methodName]
+            const methodName =
+                WithCapMethodName[0].toLowerCase() + WithCapMethodName.slice(1);
+            const generateSnapshotFunc = target[methodName];
             if (!generateSnapshotFunc) {
-                throw new Error(`hasNamedSnapshot(): ${propertyKey}: expected method ${methodName} to exist`)
+                throw new Error(
+                    `hasNamedSnapshot(): ${propertyKey}: expected method ${methodName} to exist`
+                );
             }
 
-            console.log("hasNamedSnapshot(): ", propertyKey, " -> ", methodName)
+            console.log(
+                "hasNamedSnapshot(): ",
+                propertyKey,
+                " -> ",
+                methodName
+            );
 
-            async function SnapWrap(
-                this: CapoTestHelper<any>,
-                ...args: any[]
-            ) {
+            async function SnapWrap(this: CapoTestHelper<any>, ...args: any[]) {
                 return this.findOrCreateSnapshot(
                     snapshotName,
                     actorName,
@@ -199,7 +231,7 @@ export abstract class CapoTestHelper<
                             });
                     }
                 );
-            };
+            }
             return descriptor;
         };
     }
@@ -215,14 +247,15 @@ export abstract class CapoTestHelper<
         if (this.hasSnapshot(snapshotName)) {
             throw new Error(`snapshot ${snapshotName} already exists`);
         }
-        this.helperState.snapshots[snapshotName] = this.network.snapshot(snapshotName);
+        this.helperState.snapshots[snapshotName] =
+            this.network.snapshot(snapshotName);
     }
 
     async findOrCreateSnapshot(
         snapshotName: string,
         actorName: string,
         contentBuilder: () => Promise<StellarTxnContext<any>>
-    ) : Promise<SC> {
+    ): Promise<SC> {
         if (this.helperState!.snapshots[snapshotName]) {
             const capo = await this.restoreFrom(snapshotName);
             await this.setActor(actorName);
@@ -231,7 +264,7 @@ export abstract class CapoTestHelper<
         let result;
         try {
             result = await contentBuilder();
-            return this.strella
+            return this.strella;
             // the correct actor name is expected from the underlying activity
             // await this.setActor(actorName);
             return result;
@@ -326,7 +359,7 @@ export abstract class CapoTestHelper<
     }
 
     async bootstrap(args?: Partial<MinimalCharterDatumArgs>) {
-        let strella = this.strella || (await this.initialize());
+        let strella = this.strella || (await this.initialize(undefined, args));
         if (this.bootstrap != CapoTestHelper.prototype.bootstrap) {
             throw new Error(
                 `Don't override the test-helper bootstrap().  Instead, provide an implementation of extraBootstrapping()`
