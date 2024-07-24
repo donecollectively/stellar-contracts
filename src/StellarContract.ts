@@ -1296,7 +1296,7 @@ export class StellarContract<
                 if (
                     // prettier-ignore
                     //@ts-expect-error
-                    uplcDataField.fields.length != 1 ||
+                    (uplcDataField.fields.length != 1 || uplcDataField.fields.length != 3) &&
                     //@ts-expect-error
                     !(uplcDataField.fields[0] instanceof helios.MapData
                 )
@@ -1307,7 +1307,7 @@ export class StellarContract<
                     );
                     debugger;
                     throw new Error(
-                        `datum error at ${fn} existential ConstrData(#242) must wrap a single field of MapData`
+                        `datum error at ${fn} existential ConstrData(#242) must wrap a single field of MapData, or a triplet with Map, Version, Any`
                     );
                 }
             }

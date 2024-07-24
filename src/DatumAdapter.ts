@@ -51,8 +51,9 @@ export type BigIntRecord<T extends Record<string, number>> = {
 //         } :
 //         never
 
-export type OnchainEnum<EnumName extends string> = {
+export type OnchainEnum<EnumName extends string, innerDetailsType=undefined> = {
     constrData: EnumName;
+    innerDetails: innerDetailsType;
 };
 
 export type RawBytes<offchainType> = {
@@ -72,8 +73,10 @@ export type adapterParsedOnchainData<
     ? number[] // !!! verify it's not a MPH
     : t extends helios.Value
     ? Record<string, Record<string, bigint>>
-    : t extends OnchainEnum<any>
+    : t extends OnchainEnum<any, undefined>
     ? helios.ConstrData
+    : t extends OnchainEnum<any, infer NESTED_STRUCT>
+    ? adapterParsedOnchainData<NESTED_STRUCT, k>
     : t extends RawBytes<any>
     ? number[]
     : t extends bigint
@@ -147,14 +150,14 @@ export type offchainDatumType<
     : never;
 
 export type Numeric<
-    T extends "real" | "int" | "bigint" | "Date" | "Duration",
+    T extends "real" | "int" | "bigint" | "Time" | "Duration",
     inferred = T extends "real"
         ? number
         : T extends "int"
         ? number
         : T extends "bigint"
         ? bigint
-        : T extends "Date"
+        : T extends "Time"
         ? Date
         : T extends "Duration"
         ? number
@@ -259,11 +262,6 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
         return new Date(Number(millis));
     }
 
-    uplcEnumMember(enumName: string, member: string, ...args: any[]) {
-        const stateVariant = this.getEnumMember(enumName, member);
-        return new stateVariant(...args)._toUplcData();
-    }
-
     fromUplcEnum(enumName: string, member: helios.ConstrData) {
         const stateVariant = this.getEnumMember(enumName, member);
 
@@ -300,6 +298,21 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
         }
     }
 
+
+    uplcEnumMember(enumName: string, member: string, ...args: any[]) {
+        const stateVariant = this.getEnumMember(enumName, member);
+
+        const varSt = stateVariant.prototype._enumVariantStatement;
+        const def = varSt.dataDefinition
+
+        if (args.every(x => x instanceof helios.UplcData)) {
+            // the data is already encoded as UplcData, so we can simply
+            // wrap it in a ConstrData with the correct index
+            return new helios.ConstrData(varSt.constrIndex, args);
+        }
+
+        return new stateVariant(...args)._toUplcData();
+    }
     getEnumMember(
         enumName: string,
         enumVariant: string | number | helios.ConstrData
@@ -411,18 +424,28 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
         return this.uplcBytes(x.bytes);
     }
 
-    wrapCIP68(enumVariant: any, d: MapData | ConstrData): ConstrData;
-    wrapCIP68(d: MapData): ConstrData;
-    wrapCIP68(dOrV: MapData | any, d?: MapData | ConstrData): ConstrData {
+    wrapCIP68(enumVariant: any, d: MapData | ConstrData): UplcData & ConstrData;
+    wrapCIP68(d: MapData): UplcData & ConstrData;
+    wrapCIP68(dOrV: MapData | any, d?: MapData | ConstrData): UplcData & ConstrData {
         let index = 242; // abstract CIP-68 wrapper
         let mapData: MapData | ConstrData;
         if (!d) {
             mapData = dOrV;
         } else {
             mapData = d;
-            index = dOrV.prototype._enumVariantStatement.constrIndex;
+            index = "number" == typeof dOrV ? dOrV : dOrV.prototype._enumVariantStatement.constrIndex;
         }
-        return new ConstrData(index, [mapData]);
+        // console.log("creating CIP68 struct with index ", index, mapData);
+        // debugger
+        return new ConstrData(index, [
+            mapData,  
+            // this.uplcInt(2n),
+            // this.uplcInt(0n),
+        ]);
+    }
+
+    uplcTaggedStruct(k: Record<string, UplcData>) : UplcData & ConstrData {
+        return this.wrapCIP68(this.toMapData(k));
     }
 
     toMapData(

@@ -125,6 +125,28 @@ func mustFindInputRedeemer(
     redeemers.get(spendsExpectedInput)
 }
 
+// XXX this doesn't work because using a field of this type
+//   causes the compiler to believe there would be two enum wrappers,
+//   one for this Solo variant, and another for the T type.
+// Instead, the off-chain code needs to construct the wrapper,
+// but the field needs to pretend there is no wrapper.
+
+enum NestedTaggedStruct[T] {
+    Solo{ thing: T }
+
+    func unwrap(self) -> T {
+        print("NestedTaggedStruct: unwrap");
+
+        self.switch {
+            Solo{ thing } => {
+                print("NestedTaggedStruct: unwrapped thing");
+                thing
+            },
+            _ => error("NestedTaggedStruct: unwrap: unknown variant")
+        }
+    }
+}
+ 
 // field-names style of struct, arbitrary & extensible
 // field list, can be interpreted by any script that defines a 
 // field-names style of struct with its own fields & data types.
