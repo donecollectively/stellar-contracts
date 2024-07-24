@@ -2,6 +2,10 @@ export {
     mkValuesEntry,
     mkUutValuesEntries,
     stringToNumberArray,
+    realDiv,
+    debugMath,
+    realMul,
+    toFixedReal
 } from "./src/utils.js";
 export {
     displayTokenName,

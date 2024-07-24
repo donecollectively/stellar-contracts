@@ -182,7 +182,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         const maxTxSize = Math.floor(txSize * 1.5);
 
         console.log("test env: 🔧🔧🔧🔧 fixup max tx size", txSize, " -> 🔧", maxTxSize)
-        preProdParams.latestParams.maxTxSize *= 1.5
+        preProdParams.latestParams.maxTxSize *= 1.75
         const mem = preProdParams.latestParams.maxTxExecutionUnits.memory;
         const maxMem = Math.floor(mem * 2);
 
@@ -199,7 +199,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     }
 
     submitTxnWithBlock(tcx: StellarTxnContext, futureDate?: Date) {
-        this.advanceNetworkTime(tcx, futureDate);
+        this.advanceNetworkTimeForTx(tcx, futureDate);
 
         return this.strella.submit(tcx).then(() => {
             this.network.tick(1n);
@@ -207,71 +207,109 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         });
     }
 
-    advanceNetworkTime(tcx: StellarTxnContext, futureDate?: Date) {
+    advanceNetworkTimeForTx(tcx: StellarTxnContext, futureDate?: Date) {
         const { tx } = tcx;
-        const b = tx.body;
-        const db = tx.dump().body;
-        function getAttr(x: string) {
-            return b[x] || db[x];
+        //@ts-expect-error calling internal method?
+        tx.finalizeValidityTimeRange(this.networkParams);
+
+        const txBody = tx.body;
+        const txDumpBody = tx.dump().body;
+        function txnAttr(x: string) {
+            return txBody[x] || txDumpBody[x];
+        }
+        function withPositiveSign(x: number | bigint) {
+            return x < 0 ? `${x}` : `+${x}`;
         }
 
-        const validFrom = getAttr("firstValidSlot");
-        const validTo = getAttr("lastValidSlot");
+        const validFrom = txnAttr("firstValidSlot");
+        const validTo = txnAttr("lastValidSlot");
 
-        let targetTime: number = futureDate?.getDate() || Date.now();
+        let targetTime: number = futureDate?.getTime() || Date.now();
         let targetSlot = this.networkParams.timeToSlot(BigInt(targetTime));
+
+        console.log("    ⚗️ 🐞ℹ️  advanceNetworkTimeForTx: "+ ( tcx.txnName || ""));
+        if (futureDate) {
+            debugger
+            console.log(
+            `    ---- ⚗️ 🐞🐞 explicit futureDate ${futureDate.toISOString()} -> slot ${targetSlot}`
+            )
+        }
         const { currentSlot } = this.network;
+        const { networkParams } = this;
+        const nowSlot = networkParams.timeToSlot(BigInt(Date.now()));
+        const slotDiff = targetSlot - currentSlot
 
-        const nowSlot = this.networkParams.timeToSlot(BigInt(Date.now()));
-        const slotDiff = targetSlot - currentSlot;
-
+        const validInPast = validTo && nowSlot > validTo;
+        const validInFuture = validFrom && nowSlot < validFrom;
         console.log(
-            `  -- ⚗️🐞  advanceNetworkTime: tx valid ${
+            `    ---- ⚗️ 🐞🐞 advanceNetworkTimeForTx: tx valid ${
                 validFrom || "anytime"
             } -> ${validTo || "anytime"}`
         );
+        const currentToNowDiff = withPositiveSign(nowSlot - currentSlot);
+        const currentToTargetDiff = withPositiveSign(slotDiff);
+        let effectiveNetworkSlot = targetSlot;
+        function showEffectiveNetworkSlotTIme() {
+            console.log(
+                `    ⚗️ 🐞ℹ️  with now=network slot ${effectiveNetworkSlot}: ${networkParams.slotToTime(effectiveNetworkSlot)}\n`+
+                `           tx valid ${
+                    validFrom ? withPositiveSign(effectiveNetworkSlot - validFrom) : "anytime"
+                } -> ${
+                    validTo ? withPositiveSign(effectiveNetworkSlot - validTo) : "anytime"
+                } from now`
+            );
+    
+        }
+        console.log(
+            `    ---- ⚗️ 🐞🐞 current slot ${currentSlot} ${currentToNowDiff} = now slot ${nowSlot} \n`+
+            `                    current ${currentToTargetDiff} = targetSlot ${targetSlot}`
+        );
         if (
-            ((validTo && nowSlot > validTo) ||
-                (validFrom && nowSlot < validFrom))
+            (validInPast || validInFuture)
         ) {
             if (futureDate) {
-                // ":info: ℹ️"
+                // ":info:ℹ️"
                 // ":test: ⚗️"
                 // ":debug: 🐞 "
                 // info emoji with i in a blue square: "ℹ️"
-                console.log("-- ⚗️ ℹ️  txnTime already in past, advancing to explicit futureDate @now + ${targetSlot - nowSlot}s");
+                console.log(`    ---- ⚗️ 🐞ℹ️  txnTime ${validInPast ? "already in the past" : validInFuture ? "not yet valid" : "‹??incontheevable??›"}; advancing to explicit futureDate @now + ${targetSlot - nowSlot}s`);
             } else {
                 // test an old txn by constructing it with a date less than Date.now()
                 console.log(
-                    `    -- ⚗️🐞 txnTime in past ${slotDiff}s; not interfering with network time`
+                    `    -- ⚗️ 🐞 txnTime ${validInPast ? "already in the past" : validInFuture ? "not yet valid" : "‹??incontheevable??›"}; no futureDate specified; not interfering with network time`
                 );
+                effectiveNetworkSlot = nowSlot;
+                showEffectiveNetworkSlotTIme();
                 return;
             }
         }
 
-        console.log(
-            `  -- ⚗️🐞  advanceNetworkTime: current slot ${currentSlot}; now = ${targetSlot} (diff = ${slotDiff})`
-        );
         if (slotDiff < 0) {
+            effectiveNetworkSlot = nowSlot;
+            showEffectiveNetworkSlotTIme();
             if (futureDate) {
                 console.log(
-                    `  ---- ⚗️🐞🐞🐞🐞🐞🐞🐞🐞can't go back in time ${slotDiff}s (current slot ${this.network.currentSlot}, target ${targetSlot})`
+                    `    ------ ⚗️ 🐞🐞🐞🐞🐞🐞🐞🐞can't go back in time ${slotDiff}s (current slot ${this.network.currentSlot}, target ${targetSlot})`
                 );
                 throw new Error(`explicit futureDate ${futureDate} is in the past; can't go back ${slotDiff}s`);
             }
             console.log(
-                `   -- ⚗️🐞🐞🐞🐞⚗️  NOT ADVANCING: the network is already ahead of the current time by ${
+                `   -- ⚗️ 🐞🐞🐞🐞⚗️  NOT ADVANCING: the network is already ahead of the current time by ${
                     0n - slotDiff
-                }s ⚗️🐞🐞🐞🐞⚗️`
+                }s ⚗️ 🐞🐞🐞🐞⚗️`
             );
             return;
         }
         if (this.network.currentSlot < targetSlot) {
-            console.log(`  -- ⚗️🐞  advancing network time by ${slotDiff} slots`);
+            effectiveNetworkSlot = targetSlot;
+            console.log(`    ⚗️ 🐞ℹ️  advanceNetworkTimeForTx ${withPositiveSign(slotDiff)} slots`);
+            showEffectiveNetworkSlotTIme();
             this.network.tick(slotDiff);
+        } else {
+            effectiveNetworkSlot  = currentSlot
+            showEffectiveNetworkSlotTIme();
         }
     }
-
 
     async initialize({
         randomSeed = 42,

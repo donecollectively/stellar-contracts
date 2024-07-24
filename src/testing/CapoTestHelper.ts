@@ -136,7 +136,7 @@ export abstract class CapoTestHelper<
      * @public
      **/
     mkTcx() {
-        return new StellarTxnContext(this.actorContext);
+        return new StellarTxnContext(this.actorContext, this.networkParams);
     }
 
     loadSnapshot(snapName: string) {

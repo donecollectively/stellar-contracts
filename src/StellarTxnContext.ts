@@ -148,6 +148,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     neededSigners: Address[] = [];
     parentTcx?: StellarTxnContext<any>;
     childReservedUtxos: TxInput[] = [];
+    networkParams: NetworkParams;
 
     txnName: string = "";
     withName(name: string) {
@@ -157,10 +158,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
     
     constructor(
         actorContext:  ActorContext<any>, 
+        networkParams: NetworkParams,
         state: Partial<S> = {},
         parentTcx?: StellarTxnContext<any>
     ) {
         this.actorContext = actorContext;
+        this.networkParams = networkParams;
         this.parentTcx = parentTcx;
         const { uuts = { ...emptyUuts }, ...moreState } = state;
         //@ts-expect-error
@@ -265,14 +268,73 @@ export class StellarTxnContext<S extends anyState = anyState> {
         };
     }
 
+    _txnTime?: Date
+    /**
+     * sets a future date for the transaction to be executed.  Call this before calling validFor().
+     * 
+     * @remarks This is intended primarily for use in the test environment, though it 
+     * can be used in production if needed to schedule a transaction for future submission.
+     * 
+     * Accepts an empty argument, defaulting to the current time.
+     * 
+     * This method does not itself set the txn's validity interval.  You MUST combine it with 
+     * a later call to validFor(), to set the txn's validity period.
+     * 
+     * Note: in the test environment, the network wil normally be advanced to this date 
+     * before executing the transaction, unless a separate date is specified for 
+     * attempting to execute the transaction at a different tim.  Use the test helper's 
+     * `submitTxnWithBlock()` or `advanceNetworkTimeForTx()` methods, or args to 
+     * use-case-specific functions that those methods.
+     */
+    futureDate<TCX extends StellarTxnContext<S>>(this: TCX, date?: Date) {
+        const d = new Date(
+            Number(this.networkParams.slotToTime(
+                this.networkParams.timeToSlot( BigInt(
+                (date || new Date()).getTime()) )
+            ))
+        )
+        this._txnTime = d
+        return this
+    }
+
+    /**
+     * Identifies the time at which the current transaction is expected to be executed.
+     * Use this attribute in any transaction-building code that sets date/time values
+     * for the transaction.
+     * Honors any futureDate() setting or uses the current time if none has been set.
+     */
+    get txnTime() {
+        return this._txnTime = this._txnTime || 
+        new Date(
+            Number(this.networkParams.slotToTime(
+                this.networkParams.timeToSlot( BigInt(new Date().getTime()) )
+            ))
+        )
+    }
+
+    /**
+     * Sets an on-chain validity period for the transaction, in miilliseconds
+     * 
+     * @remarks if futureDate() has been set on the transaction, that date will be used as the starting point for the validity period
+     * 
+     * @param durationMs the total validity duration for the transaction.  On-chain checks using CapoCtx `now(granularity)` can enforce this duration
+     * @param backwardMs a look-back interval allowing the transaction to be included in a very recent slot
+     * 
+     * @returns 
+     */
     validFor<TCX extends StellarTxnContext<S>>(
         this: TCX,
-        durationMs: number,
-        backwardMs = 3 * 60 * 1000 // allow it to be up to ~12 slots / 3 minutes old by default
+        durationMs: number
+        // backwardMs = 1 * 60 * 1000 // allow it to be up to ~3 blocks / 1 minute old by default
     ): TCX {
+        const startMoment = this.txnTime.getTime() 
         this.tx
-            .validFrom(new Date(Date.now() - backwardMs))
-            .validTo(new Date(Date.now() + durationMs));
+            .validFrom(
+                new Date(startMoment)
+            )
+            .validTo(
+                new Date(startMoment + durationMs)
+            );
 
         return this;
     }
@@ -349,10 +411,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
         try {
             this.tx.addInput(input, r?.redeemer);
         } catch(e:any) {
-            if (e.message.match(/input already added before/)) {
-                console.log("failed adding input to txn: ", dumpAny(this))
-                throw new Error("addInput: already in txn: " + dumpAny(input) + "\nSee full txn above");
-            }
+            console.log("failed adding input to txn: ", dumpAny(this), )
+
+            throw new Error(
+                `addInput: ${e.message}`+
+                "\n   ...see partial txn above.  Failed TxInput:\n" + dumpAny(input)
+            );
         }
 
         return this;
@@ -388,7 +452,16 @@ export class StellarTxnContext<S extends anyState = anyState> {
     ): TCX {
         const [output, ..._otherArgs] = args;
         this.outputs.push(output);
-        this.tx.addOutput(...args);
+        try {
+            this.tx.addOutput(...args);
+        } catch(e:any) {
+            console.log("failed adding output to txn: ", dumpAny(this), )
+            throw new Error(
+                `addOutput: ${e.message}`+
+                "\n   ...see partial txn above.  Failed TxOutput:\n" + dumpAny(output) 
+            );
+        }            
+
         return this;
     }
 

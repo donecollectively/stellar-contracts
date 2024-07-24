@@ -2537,10 +2537,26 @@ export class StellarContract<
     }
 
     /**
+     * Reuses an existing transaction context, or creates a new one with the given name and the current actor context
+     */
+    mkTcx<TCX extends StellarTxnContext>(
+        tcx: StellarTxnContext | undefined,
+        name?: string
+    ): TCX;
+    /**
      * Creates a new transaction context with the current actor context
      */
-    mkTcx(name?: string) {
-        return new StellarTxnContext(this.actorContext).withName(name || "");
+    mkTcx(name?: string): StellarTxnContext;
+    mkTcx(tcxOrName?: StellarTxnContext | string, name?: string) {
+        const tcx =
+            tcxOrName instanceof StellarTxnContext
+                ? tcxOrName
+                : new StellarTxnContext(this.actorContext, this.networkParams).withName(name || "");
+        const effectiveName =
+            tcxOrName instanceof StellarTxnContext ? name : tcxOrName;
+
+        if (effectiveName && !tcx.txnName) return tcx.withName(effectiveName);
+        return tcx;
     }
 
     /**
@@ -2566,7 +2582,10 @@ export class StellarContract<
      *
      **/
     async tcxWithSeedUtxo<TCX extends StellarTxnContext>(
-        tcx: TCX = new StellarTxnContext(this.actorContext) as TCX,
+        tcx: TCX = new StellarTxnContext(
+            this.actorContext,
+            this.networkParams
+        ) as TCX,
         seedUtxo?: TxInput
     ): Promise<TCX & hasSeedUtxo> {
         if (

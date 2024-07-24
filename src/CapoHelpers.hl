@@ -595,6 +595,16 @@ struct CapoCtx {
         DgDataDetails::updating(recIdBytes, input, output, self.mph)
     }
 
+    func now(self, granularity: Duration = Duration::HOUR) -> Time {
+        validity : TimeRange = self.ctx.tx.time_range;
+        assert(
+            validity.end - validity.start 
+                <= granularity,
+            "txn duration err"
+        );
+        validity.start
+    }
+    
     func getCharterRedeemer(self) -> CapoActivity {
         e : String = "requires charter as input";
         self.charter.switch {

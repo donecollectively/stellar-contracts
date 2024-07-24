@@ -1062,6 +1062,11 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
     }
 
     async findCharterDatum(currentCharterUtxo?: TxInput) {
+        // const ts1 = Date.now();
+        // if (globalThis.__profile__) {
+        //     debugger
+        //     console.profile("findCharterDatum");
+        // }
         if (!currentCharterUtxo) {
             currentCharterUtxo = await this.mustFindCharterUtxo();
         }
@@ -1071,6 +1076,11 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             currentCharterUtxo.origOutput.datum as InlineDatum
         );
         if (!charterDatum) throw Error(`invalid charter UTxO datum`);
+        // if (globalThis.__profile__) {
+        //     console.profileEnd("findCharterDatum")
+        // }
+        // const ts2 = Date.now();
+        // console.log(`  ⏱️ findCharterDatum took ${ts2 - ts1}ms`);
         return this.parseDelegateLinksInCharter(charterDatum);
     }
 
@@ -2413,7 +2423,10 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                 script
             );
             refScriptUtxo.correctLovelace(this.networkParams);
-            const nextTcx = new StellarTxnContext(this.actorContext).addOutput(
+            const nextTcx = new StellarTxnContext(
+                this.actorContext,
+                this.networkParams
+            ).addOutput(
                 refScriptUtxo
             );
     
@@ -2540,7 +2553,10 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         async mkTxnUpdateCharter(
             args: CharterDatumProps,
             activity: isActivity = this.activityUpdatingCharter(),
-            tcx: StellarTxnContext = new StellarTxnContext(this.actorContext)
+            tcx: StellarTxnContext = new StellarTxnContext(
+                this.actorContext,
+                this.networkParams
+            )
         ): Promise<StellarTxnContext> {
             console.log("update charter", { activity });
             return this.txnUpdateCharterUtxo(
@@ -2554,7 +2570,10 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         async mkTxnUpdateOnchainSettings<TCX extends StellarTxnContext>(
             data: CapoOffchainSettingsType<this>,
             settingsUtxo?: TxInput,
-            tcx: StellarTxnContext = new StellarTxnContext(this.actorContext)
+            tcx: StellarTxnContext = new StellarTxnContext(
+                this.actorContext,
+                this.networkParams                
+            )
         ): Promise<TCX> {
             // uses the charter ref input
             settingsUtxo = settingsUtxo || (await this.findSettingsUtxo());
@@ -2790,7 +2809,10 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                 strategyName: SN;
                 forcedUpdate?: true;
             },
-            tcx: TCX = new StellarTxnContext(this.actorContext) as TCX
+            tcx: TCX = new StellarTxnContext(
+                this.actorContext,
+                this.networkParams
+            ) as TCX
         ) {
             const currentCharter = await this.mustFindCharterUtxo();
             const currentDatum = await this.findCharterDatum(currentCharter);
@@ -2881,7 +2903,10 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         >(
             this: THIS,
             delegateInfo: DGI,
-            tcx: TCX = new StellarTxnContext(this.actorContext) as TCX
+            tcx: TCX = new StellarTxnContext(
+                this.actorContext,
+                this.networkParams
+            ) as TCX
         ): Promise<TCX> {
             const currentCharter = await this.mustFindCharterUtxo();
             const currentDatum = await this.findCharterDatum(currentCharter);
@@ -2968,7 +2993,10 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         >(
             this: THIS,
             delegateInfo: DGI,
-            tcx: TCX = new StellarTxnContext(this.actorContext) as TCX
+            tcx: TCX = new StellarTxnContext(
+                this.actorContext,
+                this.networkParams
+            ) as TCX
         ): Promise<StellarTxnContext> {
             const currentDatum = await this.findCharterDatum();
     
@@ -3036,7 +3064,10 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         >(
             this: THIS,
             delegateInfo: DGI,
-            tcx: TCX = new StellarTxnContext(this.actorContext) as TCX
+            tcx: TCX = new StellarTxnContext(
+                this.actorContext,
+                this.networkParams
+            ) as TCX
         ) {
             const currentDatum = await this.findCharterDatum();
             throw new Error(`test me!`)
@@ -3108,7 +3139,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             this: thisType,
             delegateName: delegateName,
             options: NamedDelegateCreationOptions<thisType, DT>,
-            tcx: TCX = new StellarTxnContext(this.actorContext) as TCX
+            tcx: TCX = new StellarTxnContext(this.actorContext, this.networkParams) as TCX
         ) : Promise<hasAddlTxns<TCX & hasSeedUtxo & hasNamedDelegate<DT, delegateName>>>  {
             const currentDatum = await this.findCharterDatum();
             console.log(
@@ -3315,7 +3346,10 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
          * @remarks adds a seed utxo to a transaction-context, 
          */
         async addSeedUtxo<TCX extends StellarTxnContext>(
-            tcx: TCX = new StellarTxnContext(this.actorContext) as TCX,
+            tcx: TCX = new StellarTxnContext(
+                this.actorContext,
+                this.networkParams
+            ) as TCX,
             seedUtxo? : TxInput
         ): Promise<TCX & hasSeedUtxo> {
             return this.tcxWithSeedUtxo(tcx, seedUtxo)

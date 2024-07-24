@@ -110,7 +110,7 @@ export class DefaultCapoTestHelper<
         await this.mintCharterToken();
 
         const treasury = await this.strella!;
-        const tcx: StellarTxnContext = new StellarTxnContext(this.actorContext);
+        const tcx: StellarTxnContext = new StellarTxnContext(this.actorContext, this.networkParams);
         const tcx2 = await treasury.txnAttachScriptOrRefScript(
             await treasury.txnAddGovAuthority(tcx),
             treasury.compiledScript
@@ -153,7 +153,7 @@ export class DefaultCapoTestHelper<
                     namedDelegate: delegateName,
                 }
             );
-            debugger
+
             const newLink = await capo.txnCreateDelegateLink(
                 helperTxn as any, 
                 "namedDelegate", 
