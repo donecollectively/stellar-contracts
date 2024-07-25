@@ -313,6 +313,7 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
 
         return new stateVariant(...args)._toUplcData();
     }
+
     getEnumMember(
         enumName: string,
         enumVariant: string | number | helios.ConstrData
@@ -374,7 +375,7 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
     uplcReal(n: number): IntData {
         // supports fractional inputs (they can always be represented as a BigInt, with sufficient precision)
         // note: don't expect very very small numbers to be accurately represented
-        const microInt1 = Number(n) * 1_000_000;
+        const microInt1 = Math.trunc( Number(n) * 1_000_000 + 0.1 )
         // supports larger integer inputs
         BigInt((42.008).toFixed(0));
 

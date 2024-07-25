@@ -88,3 +88,65 @@ export function mkTv(
     );
     return v;
 }
+
+/**
+ * Multiplies two numbers using integer math semantics for matching with Helios on-chain Real math
+ * 
+ * @remarks
+ * The numbers can be whole or fractional, with 6 decimal places of honored precision.
+ * The result is rounded to 6 decimal places.
+ */
+export function realMul(a: number, b: number) {
+    const a2 = Math.trunc(1000000 * a);
+    const b2 = Math.trunc(1000000 * b);
+    const result1 =  a2 * b2;
+    const result2 =  result1 / 1_000_000_000_000
+    if (debugRealMath){
+        console.log("    ---- realMul", a2, b2);
+        console.log("    ---- realMul result1", result1);
+        console.log("    ---- realMul result2", result2);
+    }
+    return result2;
+}
+
+/**
+ * Divides two numbers using integer math semantics for matching with Helios on-chain Real math
+ * 
+ * @remarks
+ * The numbers can be whole or fractional, with 6 decimal places of honored precision.
+ * The result is rounded to 6 decimal places.
+ */
+export function realDiv(a: number, b: number) {
+    const a2 = Math.trunc(1_000_000 * a);
+    const b2 = Math.trunc(1_000_000 * b);
+    const result1 = a2 / b2;
+    const result2 = toFixedReal(result1);
+    if (debugRealMath){
+        console.log("    ---- realDiv", a2, b2);
+        console.log("    ---- realDiv result1", result1);
+        console.log("    ---- realDiv result2", result2);
+    }
+    return result2;
+}
+
+/**
+ * Rounds a number to 6 decimal places, with correction for low-value floating-point errors (2.999999999) -> 3.0
+ */
+export function toFixedReal(n: number) {
+    return parseFloat(
+        (Math.floor(n * 1_000_000 + 0.1) / 1_000_000).toFixed(6)
+    );
+}
+/**
+ * Temporarily enable debugRealMath for the duration of the callback
+ */
+export function debugMath<T extends number>(callback: () => T) : T {
+    const old = debugRealMath;
+    debugRealMath = true;
+    const result = callback();
+    debugRealMath = old;
+    return result
+}
+
+let debugRealMath = false
+
