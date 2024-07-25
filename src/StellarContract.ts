@@ -2114,6 +2114,15 @@ export class StellarContract<
     //     }
     // }
 
+    /**
+     * Sets a list of Helios source modules to be available for import by the smart contract
+     * indicated by `this.contractSource()`
+     * @remarks
+     * The list of modules is used when compiling the smart contract.
+     *
+     * Note that the super class may provide import modules, so you should include the result
+     * of `super.importModules()` in your return value.
+     */
     importModules(): HeliosModuleSrc[] {
         return [];
     }
@@ -2128,19 +2137,32 @@ export class StellarContract<
             src.srcFile || "‹unknown path›"
         );
         for (const module of modules) {
-            const { srcFile, purpose, moduleName } = module;
-            console.log(`  -- ${purpose}: ${moduleName} from ${srcFile}`);
+            const { srcFile, purpose, moduleName, project } = module;
+            console.log(
+                `  -- ${purpose}: ${moduleName} from ${srcFile} in proj ${
+                    project || "‹unknown›"
+                }`
+            );
             if (!(srcFile && purpose && moduleName)) {
+                console.log(
+                    `  -- ${purpose}: ${moduleName} from ${srcFile} in proj ${
+                        project || "‹unknown›"
+                    }`
+                );
+
+                debugger;
                 throw new Error(
                     `${
                         this.constructor.name
                     }: invalid module returned from importModules():\n${
                         srcFile ? `${srcFile}\n` : ""
                     }\n${
-                        purpose ? "" : "!!! missing script purpose on line 1!\n"
-                    }\n${
                         module.split("\n").slice(0, 3).join("\n") // prettier-ignore
-                    }\n... you may need to create it with mkHeliosModule() if heliosRollupLoader() isn't suitable for your project`
+                    }${
+                        purpose
+                            ? ""
+                            : "!!! missing script purpose on line 1, or not tagged as a Helios module.\n"
+                    }\n... make sure you're using the result of mkHeliosModule(), if heliosRollupLoader() isn't suitable for your project`
                 );
             }
         }

@@ -17,6 +17,13 @@ export type HeliosModuleSrc = string & {
  * @public
  **/
 export function mkHeliosModule(src: string, filename: string, project : string = ""): HeliosModuleSrc {
+    if (!src) { 
+         const e = new Error(`mkHeliosModule: undefined is invalid as Helios source code (? in ${filename})\n  ... Are you using default import?  ->  \`import someModuleName ... \`, not \`import { someModuleName } ...\`  `);
+         e.stack = e.stack?.split("\n").slice(3).join("\n");
+        //  console.log( "stack:>"+ e.stack + "<")
+         throw e
+    }
+
     //@ts-expect-error - the later lines add the props that typescript wants to see.
     const module: HeliosModuleSrc = new String(src);
     const [_, purpose, moduleName] =

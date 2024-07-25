@@ -68,6 +68,15 @@ import {
         );
     }
 
+    /**
+     * Sets a list of Helios source modules to be available for import by the smart contract
+     * indicated by `this.specializedDelegateModule()`
+     * @remarks
+     * The list of modules is used when compiling the smart contract.  
+     * 
+     * Note that the super class may provide import modules, so you should include the result 
+     * of `super.importModules()` in your return value.
+     */
     importModules(): HeliosModuleSrc[] {
         if ("specializedDelegate" in this) {
             throw new Error(`${this.constructor.name}: specializedDelegate() - rename to specializedDelegateModule()`)
