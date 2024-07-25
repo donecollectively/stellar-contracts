@@ -2536,7 +2536,9 @@ export class StellarContract<
                             "    ... or, alternatively, to allow this token to authenticate multiple transaction elements\n" +
                             "    ... by using explicitly idempotent 'addOrReuse' semantics, with details stored in tcx.state\n\n  ... go with care, and ask the community for help if you're unsure\n  )" +
                             (required
-                                ? "\nBTW, here is that txn as of this time: " + dumpAny(exceptInTcx) + "\n\n 👁️   👁️ 👁️ ^^^^^^^ More details about the utxo search failure above ^^^^^^^ 👁️ 👁️   👁️"
+                                ? "\nBTW, here is that txn as of this time: " +
+                                  dumpAny(exceptInTcx) +
+                                  "\n\n 👁️   👁️ 👁️ ^^^^^^^ More details about the utxo search failure above ^^^^^^^ 👁️ 👁️   👁️"
                                 : "")
                     );
                     return undefined;
