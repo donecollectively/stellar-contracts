@@ -1,21 +1,9 @@
-import {
-    Tx,
-    TxOutput,
-    TxInput,
-    UplcProgram,
-} from "@hyperionbt/helios";
-import type {
-    Address,
-    Hash,
-    NetworkParams,
-    Wallet,
-} from "@hyperionbt/helios";
+import { Tx, TxOutput, TxInput, UplcProgram } from "@hyperionbt/helios";
+import type { Address, Hash, NetworkParams, Wallet } from "@hyperionbt/helios";
 
 import { dumpAny, txAsString } from "./diagnostics.js";
 import type { hasUutContext } from "./Capo.js";
-import { 
-    UutName, type SeedAttrs 
-} from "./delegation/UutName.js";
+import { UutName, type SeedAttrs } from "./delegation/UutName.js";
 import type { ActorContext } from "./StellarContract.js";
 import { delegateLinkSerializer } from "./delegation/delegateLinkSerializer.js";
 
@@ -30,9 +18,7 @@ export type hasSeedUtxo = StellarTxnContext<
 >;
 
 export type TxDescription<T extends StellarTxnContext> = {
-    tcx: T 
-    | ( () => T )
-    | ( () => Promise<T> );
+    tcx: T | (() => T) | (() => Promise<T>);
 
     description: string;
     moreInfo: string;
@@ -155,9 +141,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
         this.txnName = name;
         return this;
     }
-    
+
     constructor(
-        actorContext:  ActorContext<any>, 
+        actorContext: ActorContext<any>,
         networkParams: NetworkParams,
         state: Partial<S> = {},
         parentTcx?: StellarTxnContext<any>
@@ -173,7 +159,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         };
     }
     get actorWallet() {
-        return this.actorContext.wallet
+        return this.actorContext.wallet;
     }
 
     dump(networkParams?: NetworkParams) {
@@ -208,13 +194,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     reservedUtxos(): TxInput[] {
-        return this.parentTcx ? this.parentTcx.reservedUtxos() : [
-            ...this.inputs, 
-            this.collateral,
-            ...this.childReservedUtxos
-        ].filter(
-            (x) => !!x
-        ) as TxInput[];
+        return this.parentTcx
+            ? this.parentTcx.reservedUtxos()
+            : ([
+                  ...this.inputs,
+                  this.collateral,
+                  ...this.childReservedUtxos,
+              ].filter((x) => !!x) as TxInput[]);
     }
 
     utxoNotReserved(u: TxInput): TxInput | undefined {
@@ -268,33 +254,45 @@ export class StellarTxnContext<S extends anyState = anyState> {
         };
     }
 
-    _txnTime?: Date
+    _txnTime?: Date;
     /**
-     * sets a future date for the transaction to be executed.  Call this before calling validFor().
+     * Sets a future date for the transaction to be executed, returning the transaction context.  Call this before calling validFor().
+     *
+     * @remarks Returns the txn context.
+     * Throws an error if the transaction already has a txnTime set.
      * 
-     * @remarks This is intended primarily for use in the test environment, though it 
-     * can be used in production if needed to schedule a transaction for future submission.
+     * This method does not itself set the txn's validity interval.  You MUST combine it with
+     * a call to validFor(), to set the txn's validity period.  The resulting transaction will
+     * be valid from the moment set here until the end of the validity period set by validFor().
+     *
+     * This can be used anytime to construct a transaction valid in the future.  This is particularly useful
+     * during test scenarios to verify time-sensitive behaviors.
      * 
-     * Accepts an empty argument, defaulting to the current time.
-     * 
-     * This method does not itself set the txn's validity interval.  You MUST combine it with 
-     * a later call to validFor(), to set the txn's validity period.
-     * 
-     * Note: in the test environment, the network wil normally be advanced to this date 
-     * before executing the transaction, unless a separate date is specified for 
-     * attempting to execute the transaction at a different tim.  Use the test helper's 
-     * `submitTxnWithBlock()` or `advanceNetworkTimeForTx()` methods, or args to 
+     * In the test environment, the network wil normally be advanced to this date
+     * before executing the transaction, unless a different execution time is indicated.
+     * Use the test helper's `submitTxnWithBlock(txn, otherTime)` or `advanceNetworkTimeForTx()` methods, or args to
      * use-case-specific functions that those methods.
      */
-    futureDate<TCX extends StellarTxnContext<S>>(this: TCX, date?: Date) {
+    futureDate<TCX extends StellarTxnContext<S>>(this: TCX, date: Date) {
+        if (this._txnTime) {
+            throw new Error(
+                "txnTime already set; cannot set futureDate() after txnTime"
+            );
+        }
+
         const d = new Date(
-            Number(this.networkParams.slotToTime(
-                this.networkParams.timeToSlot( BigInt(
-                (date || new Date()).getTime()) )
-            ))
-        )
-        this._txnTime = d
-        return this
+            Number(
+                this.networkParams.slotToTime(
+                    this.networkParams.timeToSlot(
+                        BigInt((date.getTime())
+                    )
+                )
+            )
+        ))
+        // time emoji: ⏰
+        console.log("  ⏰⏰ setting txnTime to ", d.toString());
+        this._txnTime = d;
+        return this;
     }
 
     /**
@@ -304,37 +302,38 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * Honors any futureDate() setting or uses the current time if none has been set.
      */
     get txnTime() {
-        return this._txnTime = this._txnTime || 
-        new Date(
-            Number(this.networkParams.slotToTime(
-                this.networkParams.timeToSlot( BigInt(new Date().getTime()) )
-            ))
-        )
+        if (this._txnTime) return this._txnTime;
+        const d = new Date(
+            Number(
+                this.networkParams.slotToTime(
+                    this.networkParams.timeToSlot(BigInt(new Date().getTime()))
+                )
+            )
+        );
+        // time emoji: ⏰
+        console.log("⏰⏰setting txnTime to ", d.toString());
+        return (this._txnTime = d);
     }
 
     /**
      * Sets an on-chain validity period for the transaction, in miilliseconds
-     * 
+     *
      * @remarks if futureDate() has been set on the transaction, that date will be used as the starting point for the validity period
-     * 
+     *
      * @param durationMs the total validity duration for the transaction.  On-chain checks using CapoCtx `now(granularity)` can enforce this duration
      * @param backwardMs a look-back interval allowing the transaction to be included in a very recent slot
-     * 
-     * @returns 
+     *
+     * @returns
      */
     validFor<TCX extends StellarTxnContext<S>>(
         this: TCX,
         durationMs: number
         // backwardMs = 1 * 60 * 1000 // allow it to be up to ~3 blocks / 1 minute old by default
     ): TCX {
-        const startMoment = this.txnTime.getTime() 
+        const startMoment = this.txnTime.getTime();
         this.tx
-            .validFrom(
-                new Date(startMoment)
-            )
-            .validTo(
-                new Date(startMoment + durationMs)
-            );
+            .validFrom(new Date(startMoment))
+            .validTo(new Date(startMoment + durationMs));
 
         return this;
     }
@@ -399,7 +398,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
         if (r && !r.redeemer) {
             console.log("activity without redeemer tag: ", r);
             throw new Error(
-                `addInput() redeemer must match the isActivity type {redeemer: ‹activity›}\n`+ JSON.stringify(r,delegateLinkSerializer)
+                `addInput() redeemer must match the isActivity type {redeemer: ‹activity›}\n` +
+                    JSON.stringify(r, delegateLinkSerializer)
             );
         }
 
@@ -410,12 +410,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }
         try {
             this.tx.addInput(input, r?.redeemer);
-        } catch(e:any) {
-            console.log("failed adding input to txn: ", dumpAny(this), )
+        } catch (e: any) {
+            console.log("failed adding input to txn: ", dumpAny(this));
 
             throw new Error(
-                `addInput: ${e.message}`+
-                "\n   ...see partial txn above.  Failed TxInput:\n" + dumpAny(input)
+                `addInput: ${e.message}` +
+                    "\n   ...see partial txn above.  Failed TxInput:\n" +
+                    dumpAny(input)
             );
         }
 
@@ -430,7 +431,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
         if (r && !r.redeemer) {
             console.log("activity without redeemer tag: ", r);
             throw new Error(
-                `addInputs() redeemer must match the isActivity type {redeemer: ‹activity›}\n`+ JSON.stringify(r, delegateLinkSerializer)
+                `addInputs() redeemer must match the isActivity type {redeemer: ‹activity›}\n` +
+                    JSON.stringify(r, delegateLinkSerializer)
             );
         }
         for (const input of inputs) {
@@ -454,13 +456,14 @@ export class StellarTxnContext<S extends anyState = anyState> {
         this.outputs.push(output);
         try {
             this.tx.addOutput(...args);
-        } catch(e:any) {
-            console.log("failed adding output to txn: ", dumpAny(this), )
+        } catch (e: any) {
+            console.log("failed adding output to txn: ", dumpAny(this));
             throw new Error(
-                `addOutput: ${e.message}`+
-                "\n   ...see partial txn above.  Failed TxOutput:\n" + dumpAny(output) 
+                `addOutput: ${e.message}` +
+                    "\n   ...see partial txn above.  Failed TxOutput:\n" +
+                    dumpAny(output)
             );
-        }            
+        }
 
         return this;
     }
