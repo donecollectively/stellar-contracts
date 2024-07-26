@@ -119,10 +119,12 @@ export function realMul(a: number, b: number) {
 export function realDiv(a: number, b: number) {
     const a2 = Math.trunc(1_000_000 * a);
     const b2 = Math.trunc(1_000_000 * b);
-    const result1 = a2 / b2;
-    const result2 = toFixedReal(result1);
+    const result1 = a2 / b;
+    // const result2 = toFixedReal(result1 / 1_000_000);
+    const result2 = Math.trunc(result1) / 1_000_000;
     if (debugRealMath){
-        console.log("    ---- realDiv", a2, b2);
+        console.log("    ---- realDiv", a, "/", b);
+        console.log("    ---- realDiv", a2);
         console.log("    ---- realDiv result1", result1);
         console.log("    ---- realDiv result2", result2);
     }
