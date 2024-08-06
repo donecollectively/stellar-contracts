@@ -1,7 +1,7 @@
 import {
     Datum,
 } from "@hyperionbt/helios";
-
+ import * as helios from "@hyperionbt/helios";
 
 import {  Activity, datum } from "../StellarContract.js";
 import type { hasSeed, isActivity } from "../StellarContract.js";
@@ -22,14 +22,16 @@ import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
 export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig> {
     static currentRev = 1n;
     get delegateName() { return "mintDelegate" }
-    
+    get isMintAndSpendDelegate() { return false }
+
     // uses the basic delegate script, plus the isMintDelegate param
 
     static get defaultParams() {
         return {
             ...super.defaultParams,
             delegateName: "mintDelegate",
-            isMintDelegate: true
+            isMintDelegate: true,
+            isSpendDelegate: this.prototype.isMintAndSpendDelegate 
         }
     }
 
@@ -43,18 +45,20 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
     }
 
     @Activity.redeemer
-    activityUpdatingDelegatedData(uutPurpose: string, recId: String) : isActivity {
+    activityUpdatingDelegatedData(uutPurpose: string, recId: string | number[]) : isActivity {
+        const recIdBytes = Array.isArray(recId) ? recId : helios.textToBytes(recId);
         const Activity = this.mustGetActivity("UpdatingDelegatedData");
         return {
-            redeemer: new Activity(uutPurpose, recId)
+            redeemer: new Activity(uutPurpose, recIdBytes)
         }
     }
 
     @Activity.redeemer
-    activityDeletingDelegatedData(uutPurpose: string, recId: String) : isActivity {
+    activityDeletingDelegatedData(uutPurpose: string, recId: string | number[]) : isActivity {
+        const recIdBytes = Array.isArray(recId) ? recId : helios.textToBytes(recId);
         const Activity = this.mustGetActivity("DeletingDelegatedData");
         return {
-            redeemer: new Activity(uutPurpose, recId)
+            redeemer: new Activity(uutPurpose, recIdBytes)
         }
     }
 

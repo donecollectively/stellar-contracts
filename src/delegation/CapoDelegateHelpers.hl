@@ -76,11 +76,14 @@ enum AbstractDelegateActivitiesEnum {
     }
     UpdatingDelegatedData {
         dataType: String
-        recId: String
+        recId: ByteArray
     }
     DeletingDelegatedData {
         dataType: String
-        recId: String
+        recId: ByteArray
+    }
+    MultipleDelegateActivities {
+        activities: []Data
     }
 }
 

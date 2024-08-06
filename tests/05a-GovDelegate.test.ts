@@ -64,7 +64,7 @@ describe("Capo", async () => {
                 );
             })
 
-            it("burns the old gov delegate when updating", async (context: localTC) => {
+            it.todo("burns the old gov delegate when updating", async (context: localTC) => {
 
             });
 

@@ -148,6 +148,8 @@ export {
     type DgDataCreationAttrs,
     type DelegatedDatumType,
     type DelegatedDatumTypeName,
+    type updateActivityFunc,
+    type seedActivityFunc,
     DelegatedDataContract
 } from "./src/delegation/DelegatedDataContract.js";
 

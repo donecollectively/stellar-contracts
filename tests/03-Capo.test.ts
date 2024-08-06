@@ -210,9 +210,9 @@ describe("Capo", async () => {
 
             const capo = await h.initialize();
             vi.spyOn(capo, "txnAddGovAuthority").mockImplementation(
-                async (tcx) => {
+                (async (tcx) => {
                     return tcx;
-                }
+                }) as any
             );
             console.log(
                 "------ mkCharterSpend (mocked out txnAddGovAuthority)"
@@ -392,7 +392,7 @@ describe("Capo", async () => {
             const {h, h:{network, actors, delay, state} } = context;
 
             const strella = await h.bootstrap();
-            const tcx = new StellarTxnContext<any>(h.actorContext);
+            const tcx = strella.mkTcx()
             const tcx2 = await strella.txnAttachScriptOrRefScript(tcx);
             expect(
                 tcx2.txRefInputs[0].origOutput.refScript?.validatorHash.eq(

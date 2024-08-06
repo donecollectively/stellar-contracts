@@ -22,38 +22,12 @@ import {
     DelegateConfigNeeded,
     RoleInfo,
     VariantStrategy,
-    strategyValidation,
-    defineRole,
 } from "../src/delegation/RolesAndDelegates";
 
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import * as utils from "../src/utils";
-import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateWithGenericUuts";
-import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
+import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts";
 
-
-class CapoCanMintGenericUuts extends CapoWithoutSettings {
-
-    async getMintDelegate() : Promise<MintDelegateWithGenericUuts>{
-        return await super.getMintDelegate() as MintDelegateWithGenericUuts;
-    }
-
-    initDelegateRoles() {
-        const inherited = super.initDelegateRoles();
-        return {
-            ... inherited,
-            mintDelegate:   defineRole("mintDgt", MintDelegateWithGenericUuts, {
-                defaultV1: {
-                    delegateClass: MintDelegateWithGenericUuts,
-                    partialConfig: {},
-                    validateConfig(args): strategyValidation {
-                        return undefined;
-                    },
-                },                
-            })                
-        }
-    }
-}
 
 type localTC = StellarTestContext<DefaultCapoTestHelper<CapoCanMintGenericUuts>>;
 const wrongMinSigs = /minSigs can't be more than the size of the trustee-list/;
@@ -276,7 +250,8 @@ describe("Capo", async () => {
 
             type fooAndBar = "foo" | "bar";
             const tcx1 = new StellarTxnContext<hasAllUuts<fooAndBar>>(
-                h.actorContext
+                h.actorContext,
+                capo.networkParams
             );
 
             const mintDelegate = await capo.getMintDelegate();
@@ -314,7 +289,8 @@ describe("Capo", async () => {
             // await delay(1000);
 
             const mintingDelegate = await capo.getMintDelegate();
-            const tcx1a = await capo.addSeedUtxo(h.mkTcx());
+            const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
+
             const purposes = ["foo", "bar"];
             const tcx1b = await capo.txnMintingUuts(
                 tcx1a,
@@ -382,7 +358,8 @@ describe("Capo", async () => {
                 "------ case 2: directly creating the transaction with >1 tokens"
             );
             const tcx2 = new StellarTxnContext<hasAllUuts<uniqUutMap>>(
-                h.actorContext
+                h.actorContext,
+                capo.networkParams
             );
             // await t.txnAddCharterAuthorityTokenRef(tcx2);
 
@@ -397,7 +374,7 @@ describe("Capo", async () => {
             );
 
             const purposes2 = [noMultiples];
-            const tcx2a = await capo.addSeedUtxo(h.mkTcx());
+            const tcx2a = await capo.tcxWithSeedUtxo(h.mkTcx());
             const tcx2b = await capo.txnMintingUuts(
                 tcx2a,
                 purposes2,
@@ -430,7 +407,7 @@ describe("Capo", async () => {
             );
 
             const purposes = [noMultiples];
-            const tcx3 = await capo.addSeedUtxo(h.mkTcx());
+            const tcx3 = await capo.tcxWithSeedUtxo(h.mkTcx());
             const tcx3a = await capo.txnMintingUuts(
                 tcx3,
                 purposes,
@@ -509,7 +486,7 @@ describe("Capo", async () => {
 
             await h.mintCharterToken();
             const mintDelegate = await capo.getMintDelegate();
-            const tcx = await capo.addSeedUtxo(h.mkTcx());
+            const tcx = await capo.tcxWithSeedUtxo(h.mkTcx());
 
             // await t.txnAddCharterAuthorityTokenRef(tcx);
             const tcx2 = await capo.txnMintingUuts(
@@ -548,7 +525,8 @@ describe("Capo", async () => {
             console.log("---- test will fail to burn a UUT with no delegate");
 
             const burnTcx = new StellarTxnContext<hasAllUuts<testSomeThing>>(
-                h.actorContext
+                h.actorContext,
+                capo.networkParams
             );
             await burnTcx.addInput(uutUtxo!);
 
@@ -586,7 +564,8 @@ describe("Capo", async () => {
             console.log("---- test will burn a UUT  with delegate approval");
 
             const burnTcx = new StellarTxnContext<hasAllUuts<testSomeThing>>(
-                h.actorContext
+                h.actorContext,
+                capo.networkParams
             );
             burnTcx.addInput(uutUtxo!);
 

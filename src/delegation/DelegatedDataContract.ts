@@ -53,6 +53,20 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
 
         return adapter.toOnchainDatum(record);
     }
+    
+    /**
+     * Creates a utxo-spending reedemer for a delegated-data record, given its record-id and other args
+     *
+     * This is semantically equivalent to the super method of the same name, but with a more explicit and flexible signature.
+     * 
+     * In particular, the id arg may be provided as a string, which is implicitly converted to a byte-array
+     **/
+    mkSpendingActivity(spendingActivityName: string, id: string | number[], ...args: any[]) : isActivity {
+        if (Array.isArray(id)) {
+            return super.mkSpendingActivity(spendingActivityName, id, ...args);
+        } 
+        return super.mkSpendingActivity(spendingActivityName, helios.textToBytes(id), ...args);
+    }
 
     usesSeedActivity<SA extends seedActivityFunc<any>>(
         a: SA,
@@ -276,7 +290,7 @@ export type DgDataCreationAttrs<
 type SeedActivityArgs<SA extends seedActivityFunc<any>> =
     SA extends seedActivityFunc<infer ARGS> ? ARGS : never;
 
-type seedActivityFunc<ARGS extends [...any]> = (
+export type seedActivityFunc<ARGS extends [...any]> = (
     seed: hasSeed,
     ...args: ARGS
 ) => isActivity;
@@ -303,7 +317,7 @@ class SeedActivity<
     }
 }
 
-type updateActivityFunc<ARGS extends [...any]> = (
+export type updateActivityFunc<ARGS extends [...any]> = (
     recId: hasRecId,
     ...args: ARGS
 ) => isActivity;

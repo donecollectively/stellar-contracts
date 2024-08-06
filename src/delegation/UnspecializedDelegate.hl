@@ -103,7 +103,10 @@ enum DelegateDatum {
 enum MintingActivity {
     // application can replace the placeholder, which is only here to 
     // avoid a syntax error in the unspecialized version
-    _placeholder1MA 
+    _placeholder1MA {
+        seedTxn: TxId
+        seedIndex: Int
+    }
 }
 
 //! The minting delegate can also be used as a general spending 
@@ -113,13 +116,17 @@ enum MintingActivity {
 enum SpendingActivity {
     // application can replace the placeholder, which is only here to 
     // avoid a syntax error in the unspecialized version
-    _placeholder1SA  
+    _placeholder1SA  {
+        recId: ByteArray
+    }
 }
 
 enum BurningActivity {
     // application can replace the placeholder, which is only here to 
     // avoid a syntax error in the unspecialized version
-    _placeholder1BA
+    _placeholder1BA {
+        recId: ByteArray
+    }
 }
 enum DelegateActivity {
     // must ALWAYS be at Enum position 0
@@ -159,12 +166,17 @@ enum DelegateActivity {
 
     UpdatingDelegatedData {
         dataType: String
-        recId: String
+        recId: ByteArray
     }
 
     DeletingDelegatedData {
         dataType: String
-        recId: String
+        recId: ByteArray
+    }
+
+    MultipleDelegateActivities {
+        // todo: change this back when the recursive enum's `__is_valid_data not found` error is resolved
+        activities: []Data // actually a DelegateActivity
     }
 
     // this function gives a general-purpose implementation of checking for 
@@ -255,6 +267,9 @@ enum DelegateActivity {
                     },
                      _ => false
                  }
+            },
+            MintingActivities => {
+                error("unspecialized mint delegate doesn't have any MintingActivities")
             },
             _ => false
         } || ctx.tx.serialize() == priorMddd.serialize()        

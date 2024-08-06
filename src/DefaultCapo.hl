@@ -12,14 +12,16 @@ const isDev: Bool = false
 
 import { 
     AbstractDelegateActivitiesEnum,
-    requiresNoDelegateInput,
+    requiresNoDelegateInput,    
     RelativeDelegateLink
 } from CapoDelegateHelpers
 
 import {
     TODO,
+    REQT,
     mustFindInputRedeemer,
     outputAndDatum,
+    AnyData,
     tvCharter,
     mkTv,
     didSign,
@@ -93,7 +95,7 @@ func checkpoint(s: String) -> Bool {
     true
 }
 
-func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool {
+func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
     tx: Tx = ctx.tx;
     // now: Time = tx.time_range.start;
     print("🚥❓Capo" + if (isDev) {
@@ -103,9 +105,11 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
     TODO("implement activity updatingTypeMap");
 
     showMyTokens : (Value) -> String = mkTokenShow(mph);
-    print("  -- Capo: checks spend of "+ showMyTokens(ctx.get_current_input().value ));
+    input : TxInput = ctx.get_current_input();
+    print("  -- Capo: checks spend of "+ showMyTokens(input.value ));
     
-    allDatumSpecificChecks: Bool = datum.switch {
+    capoDatum : CapoDatum = CapoDatum::from_data(datum);
+    allDatumSpecificChecks: Bool = capoDatum.switch {
         // checks that unsupported activities for a datum are rejected promptly 
         // +special things we want to always guard against for specific Datum types:
         ctd : CharterToken => {
@@ -132,14 +136,16 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
             _ => error("invalid activity on ScriptReference")            
         },
         DelegatedData => activity.switch {
-            spendingDelegatedDatum => true,
+            spendingDelegatedDatum => true,  // more checks below.
+            // ^ this is part one of j6bmfv
             _ => error("invalid activity on DelegatedData")
         },
         TypeMapInfo => activity.switch {
             updatingTypeMap => true,
             _ => error("invalid activity on TypeMapInfo")
-        },
-        _ => true
+        }
+        // ❗no default case, to ensure that all variants are always covered.
+        // _ => true
     };
 
     // the normal case for validation is to use CapoDatum-specific checks.  
@@ -147,16 +153,18 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
     allActivitySpecificChecks : Bool = activity.switch {
         // checks for higher-frequency cases first
         spendingDelegatedDatum => {
+            // this is part two of j6bmfv
             print( "  ...with activity spendingDelegatedDatum\n");
             // check that the datum is a DelegatedData variant
-            isRightDatum : Bool = datum.switch{
-                DelegatedData => true,
+            datumId : ByteArray = capoDatum.switch{
+                DelegatedData => AnyData::from_data(datum).id,
                 _ => {
                     error(
                         "activity spendingDelegatedDatum used on mismatched datum type"
                     )
                 }
             };
+            hasMatchingValue : Bool = input.value.contains(mkTv(mph: mph, tnBytes: datumId));
             charterDatum : CapoDatum::CharterToken = getTxCharterDatum(
                 ctx: ctx,
                 mph: mph
@@ -169,17 +177,73 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                 mph: mph
             ).unwrap();
 
-            delegateReturned: Bool = spendDelegate.hasValidOutput(mph, ctx).trace(" -- okay, delegate returned");
+            delegateReturned: Bool = spendDelegate.hasValidOutput(mph, ctx).trace(" -- delegate returned ok? ");
 
-            inputRedeemer: Data = mustFindInputRedeemer(ctx, spendDelegateInput);
+            spendDgtInputRedeemer: Data = mustFindInputRedeemer(ctx, spendDelegateInput);
             print("  -- check appropriate delegate activity");
-            usingSpendingActivity : Bool = AbstractDelegateActivitiesEnum::from_data(
-                inputRedeemer
+            getSpendingRecId : (Data) -> ByteArray = (dgSpendActivity : Data) -> ByteArray {
+                dgSpendActivity.switch {
+                    (index: Int, fields : []Data) => {
+                        assert(true || index==index, "no way"); // prevent unused variable warning
+                        fields.head.switch {
+                            recId: ByteArray => recId,
+                            _ => error("spending activity must have a record-id as first field")
+                        }
+                    },
+                    _ => error("no way")
+                }
+            };
+            uniqMatchingSpendDgtActivity : Bool = AbstractDelegateActivitiesEnum::from_data(
+                spendDgtInputRedeemer
             ).switch {
-                SpendingActivities => true,
-                UpdatingDelegatedData => true,
+                SpendingActivities{sa} => {
+                    // unwrap the abstract Data from sa, expecting an Enum 
+                    // ... with a first data-field having the token-name 
+                    // ... that matches with the delegated-data record `id`
+                    recId : ByteArray = getSpendingRecId(sa);
+                    assert(recId == datumId, "spendDgt SpendingActivity must act on the correct record-id");
+                    true
+                },
+                UpdatingDelegatedData{/*dataType*/ _ , recId} => {
+                    // todo: expect that this record-id matches the token in the current UTxO.
+                    assert(recId == datumId, "spendDgt UpdDgData must act on the correct record-id");
+                    true
+                },
+                MultipleDelegateActivities{activities} => {
+                    found: []Data = activities.filter(
+                        (act: Data) -> Bool {
+                            AbstractDelegateActivitiesEnum::from_data(act).switch {
+                                SpendingActivities{sa} => {                                    
+                                    // unwrap / check record-id
+                                    recId : ByteArray = getSpendingRecId(sa);
+                                    recId == datumId
+                                },
+                                UpdatingDelegatedData{
+                                    /* dgDataType*/ _ , recId
+                                } => {
+                                    // verify token name match
+                                    recId == datumId
+                                },
+                                _ => false
+                            }
+                        }
+                    );
+                    TODO("TEST THIS v");
+                    print("recId: " + datumId.show());
+                    REQT("spendDgt must be acting on the matching record-id");
+                    assert(  // fails a test having a spending activity, but on wrong recId
+                        ( found.length > 0 ).trace( "found activity for this recId? ")
+                    , "❗ no spend delegate activity on this dgData");
+                    TODO("TEST THIS too v");
+                    REQT("spendDgt fails with multiple activities for the same recId");
+                    assert(  // fails a test having multiple spending activities on the same rec id
+                        (found.length == 1).trace("has exactly one matching activity? ")
+                        , "❗ spend delegate tried to act in multiple ways on the same token"
+                    );
+                    true
+                },
                 _ => {
-                    inputRedeemer.switch {
+                    spendDgtInputRedeemer.switch {
                         (index: Int, fields: []Data) => {
                             print("unexpected redeemer: " + index.show() );
                             assert(true || /* never executed */ fields.length > 0, "no way");
@@ -189,8 +253,11 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                     }
                 }
             };
-            usingSpendingActivity && 
-                delegateReturned && isRightDatum            
+
+            true
+            && hasMatchingValue
+            && uniqMatchingSpendDgtActivity
+            && delegateReturned 
         },
         updatingCharter => {
             print( "  ...with activity updatingCharter\n");
@@ -199,7 +266,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
             newCtDatum = CapoDatum::CharterToken::from_data( 
                 charterOutput.datum.get_inline_data() 
             );
-            oldCtDatum : CapoDatum::CharterToken = datum.switch {
+            oldCtDatum : CapoDatum::CharterToken = capoDatum.switch {
                 octd: CharterToken => octd,
                 _ => error("wrong use of updatingCharter action for non-CharterToken datum")
             };
@@ -306,9 +373,9 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
                         //  - it's ok to have it not included.
                         true
                     },
-                    Some{input} => {
+                    Some{mintDgtInput} => {
                         delegateActivity: AbstractDelegateActivitiesEnum = 
-                            mintDelegate.getRedeemer(input, ctx);
+                            mintDelegate.getRedeemer(mintDgtInput, ctx);
                         print("mint delegate input found");
                         delegateActivity.switch {
                             CapoLifecycleActivities{CLA} => CLA.switch {
@@ -374,7 +441,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
         retiringRefScript => {
             print( "  ...with activity retiringRefScript\n");
             // the ref script is being spent:
-            isSpendingRefScript : Bool = datum.switch{
+            isSpendingRefScript : Bool = capoDatum.switch{
                 ScriptReference => true,
                 _ => error("wrong use of retiringRefScript action for non-ScriptRef datum")
             };
@@ -390,7 +457,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
 
         usingAuthority => {
             print( "  ...with activity usingAuthority\n");
-            datum.switch {
+            capoDatum.switch {
                  // throws if bad
                 ctd : CharterToken => requiresAuthorization(ctx, ctd),
                 _ => error("wrong use of usingAuthority action for non-CharterToken datum")
@@ -399,7 +466,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
 
         updatingSettings => {
             print( "  ...with activity updatingSettings\n");
-            isRelevantDatum : Bool = datum.switch {
+            isRelevantDatum : Bool = capoDatum.switch {
                 SettingsData => true,
                 TypeMapInfo => true,
                 _ => error("wrong use of updatingSettings action; must use only on Settings and TypeInfo")
@@ -535,7 +602,7 @@ func main(datum: CapoDatum, activity: CapoActivity, ctx: ScriptContext) -> Bool 
     assert(
         ( allDatumSpecificChecks && allActivitySpecificChecks ) ||
             // this should never execute (much less fail), yet it also shouldn't be optimized out.
-             mph.serialize() /* never */ == datum.serialize(), 
+             mph.serialize() /* never */ == mph.serialize(), 
         "unreachable"
     ); 
     print("🚥🟢 Capo validator: ok!\n");

@@ -75,13 +75,23 @@ enum MintingActivity {
 }
 
 enum BurningActivity {
-    _placeholder2BA
+    _placeholder2BA {
+        recId: ByteArray
+    }
 }
 
 enum SpendingActivity {
     // application can replace the placeholder, which is only here to 
     // avoid a syntax error in the unspecialized version
-    _placeholder2SA
+    _placeholder2SA {
+        recId: ByteArray
+    }
+
+    // for testing - allowed by this policy, but always rejected by the CapoMinter policy 
+    // ... even though allowed by the mintDgt
+    mockWorkingSpendActivity {
+        recId: ByteArray
+    }
 }
 
 enum DelegateActivity {
@@ -108,13 +118,17 @@ enum DelegateActivity {
     }
     UpdatingDelegatedData {
         dataType: String
-        recId: String
+        recId: ByteArray
     }
     DeletingDelegatedData {
         dataType: String
-        recId: String
+        recId: ByteArray
     }
 
+    MultipleDelegateActivities {
+        // todo: change this back when the recursive enum's `__is_valid_data not found` error is resolved
+        activities: []Data // actually a DelegateActivity
+    }
     // this function gives a general-purpose implementation of checking for 
     // valid uut mints. A specialization might modify it use different policies
     // or enforce additional requirements
@@ -183,7 +197,12 @@ enum DelegateActivity {
                     _ => error("test other delegate lifecycle activities?")
                 }
             },
-            SpendingActivities => false,
+            SpendingActivities{activity} => {
+                activity.switch{
+                    mockWorkingSpendActivity => true, // for testing
+                    _ => error("mint delegates don't ordinarily **do** SpendingActivities")
+                }
+            },
             MintingActivities{activity} => {
                 print("uutMinting delegate - checking mintingActivities");
                 activity.switch{

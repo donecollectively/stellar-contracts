@@ -1,4 +1,4 @@
-import { Address, TxInput, TxOutput, Value, bytesToText } from "@hyperionbt/helios";
+import { Address, ConstrData, ListData, TxInput, TxOutput, UplcData, Value, bytesToText } from "@hyperionbt/helios";
 import type {
     Capo,
     DelegateSetupWithoutMintDelegate,
@@ -34,6 +34,19 @@ export class ContractBasedDelegate<
     CT extends capoDelegateConfig = capoDelegateConfig
 > extends StellarDelegate<CT> {
     static currentRev = 1n;
+    /**
+     * Configures the matching parameter name in the on-chain script, indicating
+     * that this delegate serves the Capo by enforcing policy for spending the Capo's utxos.
+     * @remarks
+     * Not used for any mint delegate.  Howeever, a mint delegate class can instead provide a true isMintAndSpendDelegate,
+     *...  if a single script controls both the mintDgt-* and spendDgt-* tokens/delegation roles for your Capo.
+     *
+     * DO NOT enable this attribute for second-level delegates, such as named delegates or delegated-data controllers.
+     * The base on-chain delegate script recognizes this conditional role and enforces that its generic delegated-data activities 
+     * are used only in the context the Capo's main spend delegate, re-delegating to the data-controller which
+     * can't use those generic activities, but instead implements its user-facing txns as variants of its SpendingActivities enum.
+    */ 
+    get isSpendDelegate() { return false }
 
     get delegateName() : string {
         throw new Error(`${this.constructor.name}: missing required get delegateName() : string`)
@@ -111,6 +124,7 @@ import {
         const params = {
             rev: this.currentRev,
             devGen: 0n,
+            isSpendDelegate: this.prototype.isSpendDelegate,
         };
         return params;
     }
@@ -257,6 +271,11 @@ import {
         };
     }
 
+    /**
+     * Creates a reedemer for the indicated spending activity name
+     *
+     * For delegated-data controllers, see the more explicit equivalent in DelegatedDataContract
+     **/
     mkSpendingActivity(spendingActivityName: string, ...args: any[]) : isActivity {
         const TopEnum = this.mustGetActivity("SpendingActivities");
         const { SpendingActivity } = this.onChainTypes;
@@ -299,6 +318,22 @@ import {
     @Activity.redeemer
     activityValidatingSettings() {
         return this.mkDelegateLifecycleActivity("ValidatingSettings");
+    }
+
+    // @Activity.redeemer
+    activityMultipleDelegateActivities(... activities: isActivity[]) : isActivity {
+        const MDA = this.mustGetActivity("MultipleDelegateActivities");
+        const index = MDA.prototype._enumVariantStatement.constrIndex
+
+        return {
+            redeemer: new ConstrData(index,
+                [
+                    new ListData( activities.map(a => 
+                        a.redeemer as UplcData
+                    ) )
+                ]
+            )
+        };
     }
 
     /**

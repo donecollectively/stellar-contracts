@@ -5,7 +5,9 @@ import {
     tvCharter,
     mustFindInputRedeemer,
     outputAndDatum,
-    AnyData
+    AnyData,
+    REQT,
+    TODO
 } from StellarHeliosHelpers
 
 import {
@@ -205,13 +207,13 @@ func mustHaveGovAuthority(
 
 struct DelegateInput {
     link: RelativeDelegateLink
-    input: TxInput
+    input: Option[TxInput]
     ctx: ScriptContext
     mph: MintingPolicyHash
 
     func genericDelegateActivity(self) -> AbstractDelegateActivitiesEnum {
         AbstractDelegateActivitiesEnum::from_data(
-            mustFindInputRedeemer(self.ctx, self.input)
+            mustFindInputRedeemer(self.ctx, self.input.unwrap())
         )
     }
 
@@ -229,6 +231,8 @@ struct DelegateInput {
         }
     }
     func withSeededMintingActivity(self, seedTxn : TxId, seedIdx : Int) -> DelegateInput {
+        // tnFactory : (String) -> String = mkUutTnFactory(seedTxn, seedIdx);
+
         self.genericDelegateActivity().switch {
             MintingActivities{ma} => {
                 ma.switch {
@@ -241,28 +245,104 @@ struct DelegateInput {
                 };
                 self
             },
+            MultipleDelegateActivities{activities} => {
+                // can do one or more minting activities, but each one needs to be bound to a separate seed
+                assert(activities.length > 0, "no minting activities found");
+                foundWithThisSeed : []Data = activities.filter( (a : Data) -> Bool {
+                    AbstractDelegateActivitiesEnum::from_data(a).switch {
+                        MintingActivities{ma} => {
+                            ma.switch {
+                                (index: Int, fields: []Data) => {
+                                    assert(index==index, "no way"); // unused field can't be _ in switch
+                                    seedTxn == TxId::from_data(fields.head) &&
+                                    seedIdx == Int::from_data(fields.get(1)) &&
+                                    true
+                                },
+                                _ => error("no way")
+                            }
+                        },
+                        _ => false
+                    }
+                });
+                REQT("one of the delegate multi-activities must be minting with this seed");
+                assert(foundWithThisSeed.length > 0, "no minting activity found for seed");
+                REQT("only one of a multi-activity for a given seed is allowed");
+                assert(foundWithThisSeed.length == 1, "multiple minting activities found for seed");
+                self
+            },
             _ => error("dgtTkn: non-mint activity!")
         }
     }
 
-    func withDDSpendingActivity(self, recId: String) -> DelegateInput {
-        print( "  -- checks delegated-data controller's spending activity");
-
+    func withDDSpendingActivity(self, recId: ByteArray) -> DelegateInput {
+        REQT("withDDSpendingActivity: checks presence of delegated-data controller's spending activity for recId");
+        strId : String = recId.decode_utf8();
+        print("    -- recId: "+strId);
         self.genericDelegateActivity().switch {
             SpendingActivities{sa} => {
                 sa.switch {
                     (index: Int, fields: []Data) => {
                         assert(index==index, "no way"); // unused field can't be _
-                        foundRecId: String = String::from_data(fields.get(0));
-                        print("expected: Spending:"+recId);
+                        foundRecId: ByteArray = ByteArray::from_data(fields.head);
+                        print("expected: Spending:"+strId);
                         if(recId != foundRecId) {
-                            print("actual: Spending:"+foundRecId);
+                            print("actual: Spending:"+foundRecId.show());
                             error("recId mismatch")
                         };
                         print ("  -- ok: DD controller using spending activity")
                     },
                     _ => error("no way")
                 };
+                self
+            },
+            MultipleDelegateActivities{activities} => {
+                print( "    -- multiple activities found" );
+                assert(activities.length > 0, "no spending activities found");
+                // can do one or more spending activities, but each one needs to be bound to a separate recId
+                actsOnThisRecord : []Data = activities.filter( (a : Data) -> Bool {
+                    AbstractDelegateActivitiesEnum::from_data(a).switch {
+                        CreatingDelegatedData => error(
+                            "dgInput: withSpendingActivity: CreatingDelegatedData invalid"
+                        ),
+                        UpdatingDelegatedData => error(
+                            "dgInput: withSpendingActivity: UpdatingDgData invalid; use a Spending variant in the delegated-data policy"
+                            // " not the delegate controller's activities (use SpendingDelegatedData for that)"
+                        ),
+                        DeletingDelegatedData => error(
+                            "dgInput: withSpendingActivity: DeletingDelegatedData invalid" 
+                            // is only valid in context of a mintDgt- when destroying a data record
+                        ),
+                        SpendingActivities{sa} => {
+                            // assert(false && sa.serialize() == sa.serialize(), "no way");
+                            // false
+                            sa.switch {
+                                (index: Int, fields: []Data) => {
+                                    assert(index==index, "no way"); // unused field can't be _
+                                    foundRecId: ByteArray = ByteArray::from_data(fields.head);
+                                    print("expected: Spending: "+strId);
+                                    if(recId != foundRecId) {
+                                        print("actual: Spending:"+foundRecId.show());
+                                        error("recId mismatch")
+                                    };
+                                    true
+                                },
+                                _ => error("wrong structure for spending activity")
+                            }
+                        },
+                        
+                        _ => false
+                    }
+                });
+                REQT("one of the delegate data-controller multi-activities must treat this recId");
+                assert(
+                    (actsOnThisRecord.length > 0).trace("dgt acting on this recId? ")
+                    , "no spending activity found for recId: "+strId
+                );
+                REQT("only one of a multi-activity for a given recId is allowed");
+                assert(
+                    (actsOnThisRecord.length == 1).trace("exactly one activity? ")
+                    , "multiple spending activities found for recId: "+strId
+                );
                 self
             },
             _ => error("dgtTkn: non-spend activity!")
@@ -280,13 +360,13 @@ struct DelegateInput {
 
     func getActivity[ACTIVITY](self) -> ACTIVITY {
         ACTIVITY::from_data(
-            mustFindInputRedeemer(self.ctx, self.input)
+            mustFindInputRedeemer(self.ctx, self.input.unwrap())
         )
     }
 
     func getDatum[DATUM](self) -> DATUM {
         DATUM::from_data(
-            self.input.datum.get_inline_data()
+            self.input.unwrap().datum.get_inline_data()
         )
     }
 
@@ -310,7 +390,7 @@ struct DelegateInput {
                     "dgTkn not returned: "+ uut
                 );
                 ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {
-                    o.datum.serialize() == input.datum.serialize()
+                    o.datum.serialize() == input.unwrap().datum.serialize()
                 }).switch {
                     Some => true, 
                     None => error("dgt modified")
@@ -675,14 +755,44 @@ struct CapoCtx {
         }
     }
 
-    func requiresMintDelegateInput(self) -> DelegateInput {
-        dgtLink : RelativeDelegateLink = self.resolveCharterDatum().mintDelegateLink;
-        self.requiresDelegateInput(dgtLink)
+    func actingAsMintDgt(self, required: Bool = true) -> Bool {
+        input : TxInput = self.ctx.get_current_input();
+        isMintDgt : Bool = (
+            self.requiresMintDelegateInput(required: required).input.switch {
+                Some{i} => i == input,
+                None => false
+            }
+        ).trace("acting on mintDgt-* right now? ");
+        assert(
+            isMintDgt || !required
+            , "not acting as mint delegate"
+        );
+        isMintDgt
     }
 
-    func requiresSpendDelegateInput(self) -> DelegateInput {
+    func actingAsSpendDgt(self, required: Bool = true) -> Bool {
+        input : TxInput = self.ctx.get_current_input();
+        isSpendDgt : Bool = (
+            self.requiresSpendDelegateInput(required: required).input.switch {
+                Some{i} => i == input,
+                None => false
+            }
+        ).trace("acting on spendDgt-* right now? ");
+        assert(
+             isSpendDgt || !required
+            , "not acting as spend delegate"
+        );
+        isSpendDgt
+    }
+
+    func requiresMintDelegateInput(self, required: Bool = true) -> DelegateInput {
+        dgtLink : RelativeDelegateLink = self.resolveCharterDatum().mintDelegateLink;
+        self.requiresDelegateInput(dgtLink: dgtLink, required: required)
+    }
+
+    func requiresSpendDelegateInput(self, required: Bool = true) -> DelegateInput {
         dgtLink : RelativeDelegateLink = self.resolveCharterDatum().spendDelegateLink;
-        self.requiresDelegateInput(dgtLink)
+        self.requiresDelegateInput(dgtLink: dgtLink, required: required)
     }
 
     // internal / low-level function
@@ -703,14 +813,14 @@ struct CapoCtx {
     }
 
     // internal / low-level function
-    func requiresDelegateInput(self, dgtLink: RelativeDelegateLink) -> DelegateInput {
+    func requiresDelegateInput(self, dgtLink: RelativeDelegateLink, required: Bool = true) -> DelegateInput {
         DelegateInput{
             dgtLink,
             dgtLink.hasDelegateInput(
                 inputs: self.ctx.tx.inputs, 
                 mph: self.mph,
-                required: true
-            ).unwrap(),
+                required: required
+            ),
             self.ctx,
             self.mph
         }
@@ -914,17 +1024,17 @@ struct CapoCtx {
             mkTv(mph: self.mph, tnBytes: recId)
         ).datum.get_inline_data()
     }
-    func mustOutputDelegatedData(self, newDataId : String, dataTypePurpose : String) -> Bool{
+    func mustOutputDelegatedData(self, newDataId : ByteArray, dataTypePurpose : String) -> Bool{
         dgData : Data = self.internalHasDelegatedDataOutput(
-            mkTv(self.mph, newDataId)
+            mkTv(mph: self.mph, tnBytes: newDataId)
         ).datum.get_inline_data();
         dgDatum : CapoDatum = CapoDatum::from_data(dgData);
-        ndid: ByteArray = newDataId.encode_utf8();
+        // ndid: ByteArray = newDataId.encode_utf8();
         dgDatum.switch {
             DelegatedData => {
                 data : AnyData = AnyData::from_data(dgData);
-                if (data.id != ndid) {
-                    print("need id: "+newDataId);
+                if (data.id != newDataId) {
+                    print("need id: "+newDataId.decode_utf8());
                     error("❌ 📎 outDD: wrong id: "+data.id.decode_utf8())
                 };
                 if (data.type != dataTypePurpose) {
@@ -936,7 +1046,7 @@ struct CapoCtx {
                 error("output not delegated data")
             }
         };
-        print(newDataId);
+        print(newDataId.decode_utf8());
         print(" ⬅️ ✅ 📎 ok: ^ outDD to Capo");
         true
     }

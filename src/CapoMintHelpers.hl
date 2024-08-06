@@ -5,6 +5,7 @@ import {
     mustFindInputRedeemer,
     mkTv,
     TODO,
+    REQT,
     tvCharter
 } from StellarHeliosHelpers
 
@@ -112,7 +113,6 @@ func requiresDelegateAuthorizingMint(
     //    - it's not generally a minting responsibility (however, as an exception the bootstrap charter event DOES 
     //      actually check for valid delegate outputs).  All other cases should have the correct
     //      delegate outputs checked (e.g. in the Capo's CharterDatum spend checker).
-    // print("no no no");
     // maybeCheckDelegateOutput : Bool = if (!checkDelegateOutput) {
     //     print("  -- skipping check for expected delegate output ");
     //     true
@@ -128,6 +128,9 @@ func requiresMintDelegateApproval(
 ) -> Bool {
     cctx : CapoCtx = mkCapoCtx(ctx, mph).withCharterRef();
     print("Minter needs mintDgt + mint activity");
+    REQT("EXPECTS the application-specific mintDelegate to explicitly check and approve the full minted value");
+    print("    -- ^ e.g. assert(tx.minted.get_policy(mph) == expectedMintedValue);");
+    print("    ---- (if it's only responsible for one minting policy)");
 
     if (true) {
         // todo: enforces minting invariants.
@@ -135,11 +138,11 @@ func requiresMintDelegateApproval(
     }; 
 
     mintDgtInput : DelegateInput = cctx.requiresMintDelegateInput();
-    activity : AbstractDelegateActivitiesEnum = mintDgtInput.genericDelegateActivity();
+    mintDgtActivity : AbstractDelegateActivitiesEnum = mintDgtInput.genericDelegateActivity();
 
 
     // TODO restore this: mintDgtInput.requiresValidOutput() && 
-    activity.switch {
+    mintDgtActivity.switch {
         SpendingActivities => error("DelegateInput::SpendingActivity can't mint!"),
         CapoLifecycleActivities{CLA} => CLA.switch {
             CreatingDelegate => {
@@ -174,7 +177,7 @@ func requiresMintDelegateApproval(
                 true
         },
         CreatingDelegatedData => {
-            print("  -- mint for dgData; trust mintDgt");
+            print("  -- mint for dgData; trust mintDgt");            
             mintDgtInput.requiresValidOutput() && 
                 true
         },
@@ -183,7 +186,40 @@ func requiresMintDelegateApproval(
             mintDgtInput.requiresValidOutput() && 
                 true
         },
-        UpdatingDelegatedData => error("invalid mint-delegate activity for minting")
+        UpdatingDelegatedData => error("invalid mint-delegate activity for minting; UpdatingDelegatedDatum can't mint"),
+        MultipleDelegateActivities{ma} => {
+            // assert(false && ma.length > 0, "empty MultipleDelegateActivities");
+            mintDgtInput.requiresValidOutput()
+            && ma.map(AbstractDelegateActivitiesEnum::from_data). all(
+                (mintDgtActivity: AbstractDelegateActivitiesEnum) -> Bool {
+                    mintDgtActivity.switch {
+                        CreatingDelegatedData => true, // short version of recursing the full check
+                        DeletingDelegatedData => true, // short version of recursing the full check
+                        MintingActivities => error(
+                            "invalid use of MintingActivities in mintDgt MultipleDelegateActivities"
+                        ),
+                        BurningActivities => error(
+                            "invalid use of BurningActivities in mintDgt MultipleDelegateActivities"
+                        ),
+                        MultipleDelegateActivities => error(
+                            "invalid nested MultipleDelegateActivities in mintDgt activity/redeemer"
+                        ),
+                        UpdatingDelegatedData => error(
+                            "invalid use of UpdatingDelegatedData in mintDgt MultipleDelegateActivities"
+                        ),
+                        SpendingActivities => error(
+                            "invalid use of SpendingActivities in mintDgt MultipleDelegateActivities"
+                        ),
+                        CapoLifecycleActivities => error(
+                            "invalid use of CapoLifecycleActivities in mintDgt MultipleDelegateActivities"
+                        ),
+                        DelegateLifecycleActivities => error(
+                            "invalid use of DelegateLifecycleActivities in mintDgt MultipleDelegateActivities"
+                        )
+                    }
+                }
+            )
+        }
     }
 
     // CapoDatum::CharterToken {
@@ -401,6 +437,7 @@ func mintsUutForCharterUsingRedeemerIndex(
             //     output.address == charterUtxo.address;
 
     chVal : Value = tvCharter(mph);
+    REQT("ensures granted authority, implied by requiring the charter to be spent with the indicated minting activity");
     hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
     print("  --- finding required charter input ");
     charterInput : TxInput = ctx.tx.inputs.find(hasCharter);

@@ -25,11 +25,13 @@ func didSignInCtx(ctx: ScriptContext) -> (a: Address) -> Bool {
 }
 
 func TODO(task: String) -> () {
-    print("  🟥    😳💦💦💦  TODO v ");
+    // red checkbox, face, sweat droplets
+    print("  🟥    😳💦  TODO v ");
     print( task )
 }
 
 func REQT(reqt: String) -> () {
+    // red exclamation mark
     print("❗ "+ reqt)
 }
 

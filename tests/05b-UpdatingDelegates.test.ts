@@ -212,7 +212,7 @@ describe("Capo", async () => {
             await expect(capo.submit(tcx3)).resolves.toBeTruthy();
             network.tick(1n);
 
-            const tcx3a = await capo.addSeedUtxo(new StellarTxnContext<any>(capo.actorContext));
+            const tcx3a = await capo.tcxWithSeedUtxo(capo.mkTcx());
             const purpose2 = ["anything2"];
             const tcx3b = await capo.txnMintingUuts(
                 tcx3a,
@@ -429,9 +429,7 @@ describe("Capo", async () => {
 
                 // TODO: Make a different txn type for delegated-spend (config record?)
                 const tcx1 = await capo.txnSpendingUuts(
-                    await capo.addSeedUtxo(new StellarTxnContext<any>(
-                        capo.actorContext
-                    )),
+                    await capo.tcxWithSeedUtxo(capo.mkTcx()),
                     ["anything"]
                 );
 

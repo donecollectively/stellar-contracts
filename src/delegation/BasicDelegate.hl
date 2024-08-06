@@ -1,11 +1,12 @@
 spending BasicDelegate
 
 const rev : Int = 1
-const instance : ByteArray = #67656e6572616c
+const instance : ByteArray = #67656e6572616c // -> "general"
 const devGen : Int = 0
 const isDev: Bool = false
 const delegateName : String // = "💩  noName Delegate : ( "
 const isMintDelegate : Bool = false
+const isSpendDelegate : Bool = false
 
 import {
     // DelegationDetail,
@@ -59,16 +60,136 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
     // input = ctx.get_current_input();
     result :Bool = mdd.switch{
         //! performs essential checks of policy for spending the minting delegate's authority token "mintDgt-*"
-        //! It also calls any additionalDelegateValidation() defined in a specialized minting delegate.
+        // ... it also calls any additionalDelegateValidation() defined in a specialized minting delegate,
+        // ... governing the minting of application-specific tokens (including UUTs, fungible tokens, 
+        // ... or other sorts of tokens under our minting policy).
+        //! Ditto, for our spendDgt-* token, for governing the spend of any utxos in the Capo address.
+        //! This code path is also used for other authority-bearing tokens in other specialized delegates,
+        //  ... such as named delegates that the mintDgt- or spendDgt- policies defer to.
+        //  ... each of those cases has separate execution through this base logic, with specialization 
+        //  ... applicable for each.  
         isD : IsDelegation{dd} => {
             // MintDelegateDatum::IsDelegation{dd, cfg} = isD;
             showMyTokens : (Value) -> String = mkTokenShow(dd.mph);
             print("  -- checking spend of dgTkn "+ showMyTokens(ctx.get_current_input().value ));
+
             activity.switch {
+                MultipleDelegateActivities{activities} => {
+                    activities
+                        .map(DelegateActivity::from_data)
+                        .all( (a : DelegateActivity) -> Bool { 
+                        cctx : CapoCtx = mkCapoCtx(ctx, dd.mph).withCharterRef();
+
+                        // Context: the Capo ensures that each spent UTxO is addressed by EXACTLY ONE SpendDgt activity.
+                        //   ... when we hit this path as a SpendDelegate, we ensure that each of the activities 
+
+                        a.switch {
+                            // in the Mint and Spend delegates, these nested activities are expected re-delegate to delegated-data controllers,
+                            // which will use Mint/Spend/Burn activities on the data-controller tokens.
+                            CreatingDelegatedData/*{dataTypePurpose, seedTxn, seedIdx} */=> {
+                                assert(isMintDelegate,
+                                    "CreatingDelegatedData only supported in MintDelegates.  \n"+
+                                    " ... use MintingActivities in a delegated-data controller"
+                                );
+                                cctx.actingAsMintDgt() &&
+                                main(mdd, a, ctx)
+                            },
+                            UpdatingDelegatedData{/*typeName*/ _, recId} => {
+                                assert(isSpendDelegate,
+                                    "UpdatingDelegatedData only supported in first-level SpendDelegates.  \n"+
+                                    " ... use one of the SpendingActivities for a delegated-data controller"
+                                );
+                                inputDD : TxInput = cctx.delegatedDataTxInput(recIdBytes: recId);
+                                assert(inputDD == inputDD, "no way");
+            
+                                cctx.actingAsSpendDgt() &&
+                                main(mdd, a, ctx)
+                            },
+                            DeletingDelegatedData => {
+                                assert(isMintDelegate,
+                                    "DeletingDelegatedData only supported in MintDelegates.  \n"+
+                                    " ... use BurningActivities in a delegated-data controller"
+                                );
+                                cctx.actingAsMintDgt() &&
+                                main(mdd, a, ctx)
+                            },
+                            // in the delegated-data controllers, we have to support these multi-activities.                            
+                            SpendingActivities => {
+                                assert(!cctx.actingAsMintDgt(required: false),
+                                    "inconcthieeeevable! mint delegate can't do SpendingActivities!"
+                                );
+                                //XXX error("SpendingActivities not currently supported in MultipleDelegateActivities"),   
+                                assert(!isSpendDelegate,
+                                    "for multi-activity, only delegated-data activities supported in a SpendDelegate\n"+
+                                    " - use UpdatingDelegatedData for such cases"
+                                );
+                                assert(!cctx.actingAsSpendDgt(required: false),
+                                    "a SpendDelegate with a multi-activity only supports delegated-data activities at this time.  \n"+
+                                    "  - use a delegated data controller and trigger SpendDelegate's generic UpdatingDelegatedData activity in the multi-activities struct"
+                                );
+                                // okay, now we're probably in a delegated-data controller, or at least another (special) case of re-delegation
+
+                                // this will pass through the individual activity to be individually validated
+                                // by the specialized delegate module that governs the data-controller's UUT
+                                // ... in its additionalDelegateValidation() function.
+                                main(mdd, a, ctx)
+                            },
+                            MintingActivities => {
+                                // XXX error("MintingActivities not currently supported in MultipleDelegateActivities"),
+                                assert(!cctx.actingAsMintDgt(required: false),
+                                    "multi-activity: only dgData activities ok in mintDgt "
+                                    // "  - use a delegated data controller and trigger MintDelegate's generic CreatingDelegatedData activity in the multi-activities struct"
+                                );
+                                assert(!isSpendDelegate && !isMintDelegate,
+                                    "multi-activity: only dgDaata activities ok in spendDgt" // - use CreatingDelegatedData for such cases"
+                                );
+                                assert(!cctx.actingAsSpendDgt(required: false),
+                                    "inconcthieeeevable! spend delegate can't do MintingActivities!"
+                                );
+                                // okay, now we're probably in a delegated-data controller, or at least another (special) case of re-delegation
+
+                                // this will pass through the individual activity to be individually validated
+                                // by the specialized delegate module that governs the data-controller's UUT
+                                // ... in its additionalDelegateValidation() function.
+                                main(mdd, a, ctx)
+                            },
+                            BurningActivities => {
+                                assert(false, "BurningActivities not currently supported in MultipleDelegateActivities");
+
+                                assert( !isSpendDelegate && !isMintDelegate,                                   
+                                    "multi-activity: only dgData activies ok in mint/spend Dgt"
+                                    // " - use DeletingDelegatedData for such cases"
+                                );
+                                // assert(!cctx.actingAsMintDgt(required: false),
+                                //     "a MintDelegate with a multi-activity only supports delegated-data activities at this time.  \n"+
+                                //     "  - use a delegated data controller and trigger MintDelegate's generic DeletingDelegatedData activity in the multi-activities struct"
+                                // );
+                                // okay, now we're probably in a delegated-data controller, 
+                                // ... or at least another (special) case of re-delegation
+
+                                // this will pass through the individual activity to be individually validated
+                                // by the specialized delegate module that governs the data-controller's UUT
+                                // ... in its additionalDelegateValidation() function.
+                                result : Bool = main(mdd, a, ctx);
+                                // when we're confident in our good treatment of real use-cases for this, 
+                                // ... we can remove the errors and return results
+                                result
+                            },
+                            DelegateLifecycleActivities => error(
+                                "DelegateLifecycleActivities not allowed in MultipleDelegateActivities"
+                            ),
+                            CapoLifecycleActivities => error(
+                                "CapoLifecycleActivities not allowed in MultipleDelegateActivities"
+                            ),
+                            MultipleDelegateActivities => error(
+                                "nested MultipleDelegateActivities not supported"
+                            )
+                        }
+                    }
+                )
+                },
                 //   guards that the authority token is returned to this script.
                 // specialized minting delegates should likely perform additional checks.
-
-
                 DelegateLifecycleActivities{innerActivity} => innerActivity.switch {
                     // reassigning the authority token to a new minting delegate
                     ReplacingMe{seedTxId, seedIdx, purpose} => {
@@ -183,10 +304,21 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                         } else { false }
                 },
 
+                // NOTE: this is a mint delegate activity on the mintDgt-* token,
+                // ... used only in a Capo's MINT delegate.  Once the specialized mint delegate includes
+                // ... the delegated-data controller's UUT through the re-delegation pattern,
+                // ... the delegated-data controller  picks up the thread of enforcement, via Its specialized 
+                // ... delegate module's additionalDelegateValidation(), by handling the 
+                // ... MintingActivities variant indicated in the *Ctrl-* token's activity/redeemer.  
+                // It can be tricky to recognize that this code module serves the mint delegate, 
+                // ... and that it ALSO serves the data-controller delegate separately, in that completely different
+                // ... context and using its separate specialization module.
+                // In each of those cases, it follows the same high-level logic, hitting different paths through this file, 
+                // ... while processing different tokens for each zone of authority/responsibility.
                 CreatingDelegatedData{dataTypePurpose, seedTxn, seedIdx} => {
                     cctx : CapoCtx = mkCapoCtx(ctx, dd.mph).withCharterRef();
                     tnFactory : (String) -> String = mkUutTnFactory(seedTxn, seedIdx);
-                    newDataId : String = tnFactory(dataTypePurpose);
+                    newDataId : ByteArray = tnFactory(dataTypePurpose).encode_utf8();
                     // as a mint delegate, we should see to it that any minting does play by the rules
                     //   ... however, this module is generic, so we can only perform generic checks here.
                     //   ... we additionally call application-provided validation (provided by a specialization)
@@ -195,8 +327,13 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                     // this needs to be done by the speciization for now
                     // && cctx.requiresDelegatedDataController(dataTypePurpose).requiresDataMinting()                    
                     TODO("make a generic data-controller re-delegation convention");
-                    TODO("mint-delegate specialization MUST re-delegate authority to the right data-controller");
+                    TODO("the mint-delegate specialization MUST re-delegate authority to the right data-controller");
+                    TODO("it must check that the data-controller has exactly one minting activity for the indicated recId");
+                    print("    -- e.g. using CapoCtx: cctx\n      .requiresNamedDelegateInput(delegateName)\n      .withSeededMintingActivity(seedTxn, seedIdx)");
+
                     true
+                    && isMintDelegate 
+                    && cctx.actingAsMintDgt()
                     && validateUutMinting(
                         ctx: ctx, 
                         mph: dd.mph,
@@ -214,28 +351,54 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                         newDataId, dataTypePurpose
                     )
                 },
+                // This is a Spend delegate activity on the spendDgt-* token, 
+                // ... used within a Capo's SPEND delegate (which code may also govern 
+                // ... its mintDgt- token, under separate utxo cover).
+                // Once the specialized spend delegate includes the delegated-data controller UUT through the re-delegation pattern,
+                // ... the spend delegate's specialized module picks up the thread of enforcement via its
+                // ... additionalDelegateValidation(), by handling the SpendingActivities variant indicated in the *Ctrl-* token's activity/redeemer.
+                // That controller activity may alternatively be a MultiActivity, one of whose nested activities provides 
+                // ... the needed SpendingActivities variant.
+                // It can be tricky to recognize that this code module serves the spend delegate and the mint delegate,
+                // ... and that it ALSO serves the data-controller delegate separately, in that completely different context 
+                // ... and using its separate specialization module.
+                // In each of those cases, it follows the same high-level logic, hitting different paths through this file, 
+                // ... while processing different tokens for each zone of authority/responsibility.
                 UpdatingDelegatedData{dDataType, recId} => {
                     cctx : CapoCtx = mkCapoCtx(ctx, dd.mph).withCharterRef();
-                    TODO("Basic Delegate: implement typeMap-based redelegation");
+                    TODO("Basic delegate: implement typeMap-based redelegation");
                     TODO("for now, the application-level Spend Delegate MUST enforce correct data-controller delegation");
                     // check data controller's SpendingActivities
-
-                    hasDDofType : (TxInput) -> Bool = cctx.mkDelegatedDataPredicate(dDataType);
-                    ddInputs : []TxInput = ctx.tx.inputs.filter(hasDDofType);
-                    assert(ddInputs.length == 1, "extra DD input(s)");
                     // the Capo enforces that delegatedData utxo is ALWAYS spent with its generic `spendingDelegatedDatum` activity
+
+                    // todo validate this path in multi-activity
+                    inputDD : TxInput = cctx.delegatedDataTxInput(recIdBytes: recId);
+                    assert(inputDD == inputDD, "no way");
+                    // ^^ same as vv
+                    // hasDDofType : (TxInput) -> Bool = cctx.mkDelegatedDataPredicate(dDataType);
+                    // simply finding the input is enough to imply that the that those utxos are spend-governed by the Capo 
+                    // ... which at j6bmfv, explicitly requires the token that leads to this code path
+                    // ddInputs : []TxInput = ctx.tx.inputs.filter(hasDDofType);
+                    // assert(ddInputs.length == 1, "extra DD input(s)");
 
                     cctx.mustOutputDelegatedData(recId, dDataType)
                     && true
                 },
                 DeletingDelegatedData => { // {dataType, recId} => {
-                    TODO("Basic Delegate: implement typeMap-based redelegation");
+                    TODO("Basic delegate: implement typeMap-based redelegation");
                     TODO("for now, the application-level Mint Delegate MUST enforce correct data-controller delegation");
                     // check data controller's BurningActivities
 
-                    true
+                    assert(false, "not supported yet");
+                    false
                 },
-                // made these explicit so they're functionally required of every specialized delegate
+                // We made these explicit so they're functionally required of every specialized delegate.
+                // All of the mint/spend/burn activities must be handled by the specialized delegate.  
+                // Note that this code module is generic, so it can't know the internal semantics of those activities,
+                // ... or even what their nested variants will be.  It's up to the specialization to handle them.
+                // Each of these indicates plural "activities", but they're actually each an individual, discrete, single activity
+                // ... with an Enum allowing ONE of various possible specialization-specific activities at that spot.
+                // ... MultipleActivities would be used to express "it does multiple separate activities on different utxos")
                 SpendingActivities => true,
                 MintingActivities => true,
                 BurningActivities => true,

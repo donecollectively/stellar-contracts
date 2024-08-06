@@ -3920,11 +3920,22 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                         "The Capo must involve the minting delegate in creating a custom datum",
                         "  ... which can apply its own logic to deciding whether the creation is allowed.",
                         "The Capo trusts the minting delegate's enforcement of policy.",
+                        "The mint delegate can be signalled to validate multiple minting activities creating multiple delegated-datum UTxOs with separate seeds"
                     ],
                     impl: "mkTxnCreatingDelegatedDatum",
                     mech: [
                         "builds transactions including the minting delegate",
                         "fails if the minting delegate is not included in the transaction",
+                        "fails if a CreatingDelegatedData activity isn't matched on recId by a data-controller MintingActivity",
+                       "TODO: TEST the mint delegate's multi-activity works with the generic CreatingDelegatedData activity",
+                        "TODO: the mint delegate's multi-activity can TODO work with the generic DeletingDelegatedData activity",
+
+                        "TODO: the mint delegate's multi-activity fails if the delegated-data controller isn't triggered with a matching MintingActivity(seed, recId)",
+                        "TODO: the mint delegate's multi-activity fails if the delegated-data controller has multiple activities for the same record id",
+                        "TODO: the data-controller policy fails if any of its creation activities doesn't have a matching output record",
+                        "TODO: the data-controller policy fails if any of the creation activities corresponds to an existing record-id input",
+                        "TODO: the data-controller policy fails if a deletion activity isn't matched with a BURN of the record's UUT",
+
                     ],
                 },
     
@@ -3936,9 +3947,18 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                             "When updating a custom datum, the Capo must involve the spending delegate ",
                             "  ... which can apply its own logic to deciding whether the update is allowed.",
                             "The Capo trusts the spending delegate's enforcement of policy.",
+                            "The spend delegate can be signalled to validate multiple activities covering multiple utxos in a single transaction"
                         ],
                         mech: [
                             "builds transactions including the spending-delegate",
+                            "TODO: TEST the capo fails if the spend delegate doesn't have an activity matching the record being updated",
+                            "TODO: TEST the capo fails if the spend delegate has multiple activities for any one record id",
+                            "TODO: TEST the spend delegate's multi-activity works only with the generic UpdatingDelegatedData activity",
+                            "TODO: TEST the spend delegate fails if any of its activities isn't matched by a spent/updated record",
+                            "TODO: TEST the spend delegate fails if the delegated data controller doesn't have an activity matching that record",
+                            "TODO: TEST the spend delegate fails if the delegated data controller has multiple activities for the record id",
+                            "TODO: TEST the data-controller policy fails if any of its activities isn't matched by a spent/updated record",
+                            "TODO: TEST the data-controller policy works only with its specific SpendingActivities/MintingActivities, not the generic activities used by the SpendDgt",
                             "fails if the spending delegate is not included in the transaction",
                             "TODO: builds transactions including the invariant spending-delegates",
                             "TODO: fails if the expected invariant delegate is not included in the transaction",
