@@ -91,7 +91,6 @@ let configuredNetwork: NetworkName | undefined = undefined;
  */
 export type isActivity<T = never> = {
     redeemer: UplcDataValue | UplcData | T;
-    // | HeliosData
 };
 
 type WalletsAndAddresses = {
@@ -901,7 +900,7 @@ export class StellarContract<
         return this.mustGetEnumVariant(ocat, activityName);
     }
 
-    mustGetEnumVariant(enumType: typeof HeliosData, variantName: string) {
+    mustGetEnumVariant(enumType: typeof UplcData, variantName: string) {
         //@ts-expect-error
         const { [variantName]: variantType } = enumType;
 
@@ -913,10 +912,13 @@ export class StellarContract<
                 Object.getOwnPropertyDescriptors(enumType)
             )) {
                 //Some of them will point to Class definitions.
-                // check if any of those classes inherit from HeliosData.
-                if (enumType[name].prototype instanceof HeliosData) {
+                // check if any of those classes inherit from UplcData.
+                if (enumType[name].prototype instanceof UplcData) {
                     // if so, add the name to activityNames.
                     variantNames.push(name);
+                } else if (enumType[name].protototype instanceof HeliosData) {
+                    throw new Error("variant names only available via HeliosData : (")
+                }                
                 }
             }
             debugger;
