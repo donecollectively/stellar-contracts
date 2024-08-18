@@ -919,7 +919,6 @@ export class StellarContract<
                 } else if (enumType[name].protototype instanceof HeliosData) {
                     throw new Error("variant names only available via HeliosData : (")
                 }                
-                }
             }
             debugger;
             //!!! TODO
