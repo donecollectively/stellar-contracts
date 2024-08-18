@@ -30,6 +30,12 @@ import { mkHeliosModule, type HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import { UnspecializedDelegate } from "./UnspecializedDelegate.js";
 import { dumpAny } from "../diagnostics.js";
 
+/**
+ * Base class for delegates controlled by a smart contract, as opposed
+ * to a simple delegate backed by an issued token, whose presence 
+ * grants delegated authority.
+ * @public
+ */
 export class ContractBasedDelegate<
     CT extends capoDelegateConfig = capoDelegateConfig
 > extends StellarDelegate<CT> {
@@ -161,11 +167,12 @@ import {
 
     /**
      * specialized delegate module for customizing policies atop the basic delegate
-     * @public
+     * ## REQUIRED: define it with a `get` accessor
+     * like this: `get specializedDelegateModule() { return MySpecializedDelegate; }`
      * @remarks
-     *
      * The basic mint delegate contains an "unspecialized" implementation of this
      * customization, which doesn't have any special restrictions (or special capabilities)
+     * @public
      **/
     get specializedDelegateModule(): HeliosModuleSrc {
         return UnspecializedDelegate;
@@ -184,7 +191,7 @@ import {
      *
      * Implements {@link StellarDelegate.txnReceiveAuthorityToken | txnReceiveAuthorityToken() }.
      *
-     * Uses {@link mkDelegationDatum | mkDelegationDatum()} to make the inline Datum for the output.
+     * Uses {@link ContractBasedDelegate.mkDelegationDatum | mkDelegationDatum()} to make the inline Datum for the output.
      * @see {@link StellarDelegate.txnReceiveAuthorityToken | baseline txnReceiveAuthorityToken()'s doc }
      * @public
      **/
@@ -372,7 +379,7 @@ import {
     }
 
     /**
-     * @inheritdoc AnyDelegate.DelegateMustFindAuthorityToken
+     * {@inheritdoc AnyDelegate.DelegateMustFindAuthorityToken}
      **/
     async DelegateMustFindAuthorityToken(
         tcx: StellarTxnContext,
@@ -391,10 +398,10 @@ import {
      * @remarks
      * Given a delegate already configured by a Capo, this method implements
      * transaction-building logic needed to include the UUT into the `tcx`.
-     * the `utxo` is discovered by {@link DelegateMustFindAuthorityToken | DelegateMustFindAuthorityToken() }
+     * the `utxo` is discovered by {@link AnyDelegate.DelegateMustFindAuthorityToken | DelegateMustFindAuthorityToken() }
      *
      * The default implementation adds the `uutxo` to the transaction
-     * using {@link activityAuthorizing | activityAuthorizing() }.
+     * using {@link ContractBasedDelegate.activityAuthorizing | activityAuthorizing() }.
      *
      * The off-chain code shouldn't need to check the details; it can simply
      * arrange the details properly and spend the delegate's authority token,
@@ -456,7 +463,7 @@ import {
     }
 
     /**
-     * @inheritdoc AnyDelegate.DelegateAddsAuthorityToken
+     * {@inheritdoc AnyDelegate.DelegateAddsAuthorityToken}
      **/
     async DelegateRetiresAuthorityToken<TCX extends StellarTxnContext>(
         tcx: StellarTxnContext,
@@ -471,6 +478,9 @@ import {
     }
 }
 
+/**
+ * @public
+ */
 export type NamedDelegateCreationOptions<
     thisType extends Capo<any>,
     DT extends StellarDelegate
