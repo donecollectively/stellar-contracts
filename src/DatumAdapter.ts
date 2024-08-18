@@ -471,7 +471,7 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
                     if (uplcValue?._toUplcData) {
                         debugger;
                         throw new Error(
-                            `toMapData(): key ${key} not converted to uplc - try _toUplcData()`
+                            `toMapData(): value for key ${key} not converted to uplc - try _toUplcData()`
                         );
                     }
                     throw new Error(
@@ -486,8 +486,11 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
 
     fromOnchainIntMap<KEYS extends string>(
         data: Record<KEYS, BigInt>,
-        transformer: (x: bigint) => number
+        transformer?: (x: bigint) => number
     ) {
+        if (!transformer) {
+            transformer = (x: bigint) => Number(x);
+        }
         return Object.fromEntries(
             (Object.entries(data) as [string, bigint][]).map(
                 ([k, v]: [string, bigint]) => [k, transformer(v)]
