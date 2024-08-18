@@ -455,7 +455,7 @@ struct DgDataDetails {
     mph: MintingPolicyHash
     // inputs: []TxInput
 
-    // see CapoCtx::getDDOutput(id)
+    // see CapoCtx::updatingDgData(id)
     func updating(id : ByteArray, input: TxInput, output : TxOutput, mph : MintingPolicyHash) -> DgDataDetails {
         DgDataDetails{
             dataSrc: ddDataSrc::Both{input, output},
@@ -464,7 +464,8 @@ struct DgDataDetails {
             mph: mph
         }
     }
-
+    
+    // see CapoCtx::creatingDgData(id)
     func creating(id : ByteArray, output : TxOutput, mph : MintingPolicyHash
     ) -> DgDataDetails {
         DgDataDetails{
@@ -493,7 +494,7 @@ struct DgDataDetails {
     // }
 
     // func withInput(self) -> DgDataDetails {
-    //     assert(self.id.length > 0, "no id; try cctx.getDDOutput(id).withInput()");
+    //     assert(self.id.length > 0, "no id; try cctx.updatingDgDat (id)");
     //     self.dataSrc.switch {
     //         Input => self,
     //         Both => self,
@@ -519,7 +520,7 @@ struct DgDataDetails {
 
     func input(self) -> TxInput {
         // assert(1 == self.filteredInputs.length, "use withId(id)");
-        // assert(self.id.length > 0, "use withId(id) or cctx.getDDOutput(id).withInput()");
+        // assert(self.id.length > 0, "use withId(id) or cctx.updatingDgData(id).withInput()");
 
         // self.inputs.head
         self.dataSrc.switch {
@@ -656,6 +657,7 @@ struct CapoCtx {
         )
     }
 
+    // use this or updatingDgData() instead of getDDOutput()
     func creatingDgData(
         self,
         recId : String="", 
