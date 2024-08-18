@@ -214,6 +214,8 @@ export abstract class CapoTestHelper<
             );
 
             async function SnapWrap(this: CapoTestHelper<any>, ...args: any[]) {
+                await this.reusableBootstrap();
+
                 return this.findOrCreateSnapshot(
                     snapshotName,
                     actorName,
