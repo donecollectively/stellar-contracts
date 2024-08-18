@@ -20,20 +20,18 @@
         }
     },
     "type": "module",
-
     "peerDependencies": {
         "@hyperionbt/helios": "^0.16.7"
     },
-    
     "scripts": {
         "build": "scripts/build",
         "build:watch": "scripts/build --watch",
         "dev": "scripts/build --watch",
         "smoke:test": "SMOKE=1 vitest run 02 04",
         "smoke:testing": "SMOKE=1 vitest --inspect --threads false 02 04",
-        "test": "vitest",
-        "testing": "vitest",
-        "testing:debug": "vitest --inspect --threads false",
+        "test": "vitest run ",
+        "testing": "vitest watch",
+        "testing:debug": "vitest --inspect --threads false run ",
         "test:ui": "vitest --ui",
         "test:run": "vitest run"
     },
