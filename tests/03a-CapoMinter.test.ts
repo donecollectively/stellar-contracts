@@ -9,17 +9,6 @@ import {
 } from "vitest";
 import * as helios from "@hyperionbt/helios";
 
-import {
-    Address,
-    Datum,
-    Signature,
-    Tx,
-    TxOutput,
-    TxInput,
-    Value,
-    bytesToText,
-} from "@hyperionbt/helios";
-
 import { StellarTxnContext } from "../src/StellarTxnContext";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
@@ -134,7 +123,7 @@ describe("Capo Minter", async () => {
 
             await expect( 
                 h.submitTxnWithBlock(tcx1a)
-            ).rejects.toThrow(/MintDelegate with a multi-activity only supports delegated-data activities/);
+            ).rejects.toThrow(/multi:Minting: only dgData activities ok in mintDgt/);
         });
 
         it("fails minting if the mintDgt has a SpendingActivity in a MultipleDelegateActivities", async (context: localTC) => {
@@ -158,7 +147,7 @@ describe("Capo Minter", async () => {
 
             await expect(
                 h.submitTxnWithBlock(tcx1a)
-            ).rejects.toThrow(/mint delegate can't do SpendingActivit/);
+            ).rejects.toThrow(/mintDgt can't do SpendingActivit/);
         })
         
         it.skip("FIX TEST: fails minting if the mintDgt has a UpdatingDelegatedDatum activity", async (context: localTC) => {

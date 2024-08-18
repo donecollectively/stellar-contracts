@@ -88,16 +88,16 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                             // which will use Mint/Spend/Burn activities on the data-controller tokens.
                             CreatingDelegatedData/*{dataTypePurpose, seedTxn, seedIdx} */=> {
                                 assert(isMintDelegate,
-                                    "CreatingDelegatedData only supported in MintDelegates.  \n"+
-                                    " ... use MintingActivities in a delegated-data controller"
+                                    "CreatingDelegatedData only ok in mintDgt"
+                                    // " ... use MintingActivities in a delegated-data controller"
                                 );
                                 cctx.actingAsMintDgt() &&
                                 main(mdd, a, ctx)
                             },
                             UpdatingDelegatedData{/*typeName*/ _, recId} => {
                                 assert(isSpendDelegate,
-                                    "UpdatingDelegatedData only supported in first-level SpendDelegates.  \n"+
-                                    " ... use one of the SpendingActivities for a delegated-data controller"
+                                    "UpdatingDelegatedData only ok at level-1 spendDgt"
+                                    // " ... use one of the SpendingActivities for a delegated-data controller"
                                 );
                                 inputDD : TxInput = cctx.delegatedDataTxInput(recIdBytes: recId);
                                 assert(inputDD == inputDD, "no way");
@@ -107,8 +107,8 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                             },
                             DeletingDelegatedData => {
                                 assert(isMintDelegate,
-                                    "DeletingDelegatedData only supported in MintDelegates.  \n"+
-                                    " ... use BurningActivities in a delegated-data controller"
+                                    "DeletingDelegatedData only ok in mintDgt"
+                                    // " ... use BurningActivities in a delegated-data controller"
                                 );
                                 cctx.actingAsMintDgt() &&
                                 main(mdd, a, ctx)
@@ -116,16 +116,17 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                             // in the delegated-data controllers, we have to support these multi-activities.                            
                             SpendingActivities => {
                                 assert(!cctx.actingAsMintDgt(required: false),
-                                    "inconcthieeeevable! mint delegate can't do SpendingActivities!"
+                                    "inconcthieeeevable! mintDgt can't do SpendingActivities!"
                                 );
                                 //XXX error("SpendingActivities not currently supported in MultipleDelegateActivities"),   
                                 assert(!isSpendDelegate,
-                                    "for multi-activity, only delegated-data activities supported in a SpendDelegate\n"+
-                                    " - use UpdatingDelegatedData for such cases"
+                                    "multi:Spend: only dgData activities ok in spendDgt"
+                                    // " - use UpdatingDelegatedData for such cases"
                                 );
                                 assert(!cctx.actingAsSpendDgt(required: false),
-                                    "a SpendDelegate with a multi-activity only supports delegated-data activities at this time.  \n"+
-                                    "  - use a delegated data controller and trigger SpendDelegate's generic UpdatingDelegatedData activity in the multi-activities struct"
+                                    "inconcthieeeevable! already failed above"
+                                    // "a SpendDelegate with a multi-activity only supports delegated-data activities at this time.  \n"+
+                                    // "  - use a delegated data controller and trigger SpendDelegate's generic UpdatingDelegatedData activity in the multi-activities struct"
                                 );
                                 // okay, now we're probably in a delegated-data controller, or at least another (special) case of re-delegation
 
@@ -137,11 +138,11 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                             MintingActivities => {
                                 // XXX error("MintingActivities not currently supported in MultipleDelegateActivities"),
                                 assert(!cctx.actingAsMintDgt(required: false),
-                                    "multi-activity: only dgData activities ok in mintDgt "
+                                    "multi:Minting: only dgData activities ok in mintDgt"
                                     // "  - use a delegated data controller and trigger MintDelegate's generic CreatingDelegatedData activity in the multi-activities struct"
                                 );
                                 assert(!isSpendDelegate && !isMintDelegate,
-                                    "multi-activity: only dgDaata activities ok in spendDgt" // - use CreatingDelegatedData for such cases"
+                                    "multi:Minting: only dgData activities ok in spendDgt" // - use CreatingDelegatedData for such cases"
                                 );
                                 assert(!cctx.actingAsSpendDgt(required: false),
                                     "inconcthieeeevable! spend delegate can't do MintingActivities!"
@@ -154,10 +155,10 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                                 main(mdd, a, ctx)
                             },
                             BurningActivities => {
-                                assert(false, "BurningActivities not currently supported in MultipleDelegateActivities");
+                                assert(false, "multi:BurningActivities not yet supported");
 
                                 assert( !isSpendDelegate && !isMintDelegate,                                   
-                                    "multi-activity: only dgData activies ok in mint/spend Dgt"
+                                    "multi:BurningActivities: only dgData activities ok in mint/spend Dgt "
                                     // " - use DeletingDelegatedData for such cases"
                                 );
                                 // assert(!cctx.actingAsMintDgt(required: false),
@@ -176,13 +177,13 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                                 result
                             },
                             DelegateLifecycleActivities => error(
-                                "DelegateLifecycleActivities not allowed in MultipleDelegateActivities"
+                                "multi:DelegateLifecycleActivities not ok"
                             ),
                             CapoLifecycleActivities => error(
-                                "CapoLifecycleActivities not allowed in MultipleDelegateActivities"
+                                "multi:CapoLifecycleActivities not ok"
                             ),
                             MultipleDelegateActivities => error(
-                                "nested MultipleDelegateActivities not supported"
+                                "multi:multi: nesting not ok"
                             )
                         }
                     }
