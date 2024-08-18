@@ -1,7 +1,9 @@
 import {
     Address,
     Assets,
+    ByteArray,
     Datum,
+    IntData,
     MintingPolicyHash,
     TxId,
     TxOutput,
@@ -9,7 +11,12 @@ import {
     Value,
     ValidatorHash,
     UplcProgram,
+    Crypto,
+    //@ts-expect-error
+    Option,
     bytesToText,
+    bytesToHex,
+    textToBytes,
 } from "@hyperionbt/helios";
 import { CapoMinter } from "./minting/CapoMinter.js";
 import type { BasicMinterParams } from "./minting/CapoMinter.js";
@@ -83,16 +90,6 @@ import {
     type DatumAdapterOffchainType,
     type hasSettingsType,
 } from "./CapoSettingsTypes.js";
-
-import {
-    ByteArray,
-    Crypto,
-    //@ts-expect-error
-    Option,
-    HInt,
-    bytesToHex,
-    textToBytes,
-} from "@hyperionbt/helios";
 
 import type { ScriptHash, Wallet } from "@hyperionbt/helios";
 
@@ -3394,8 +3391,8 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
             const { blake2b } = Crypto;
     
             const uutMap: uutPurposeMap<ROLES | purposes> = Object.fromEntries(
-                uutPurposes.map((uutPurpose) => {
-                    const idx = new HInt(utxoIdx).toCbor();
+                uutPurposes.map((uutPurpose) => {                    
+                    const idx = new IntData(BigInt(utxoIdx)).toCbor();
                     const txoId = txId.bytes.concat(["@".charCodeAt(0)], idx);
                     // console.warn("&&&&&&&& txoId", bytesToHex(txoId));
                     const uutName = new UutName(
