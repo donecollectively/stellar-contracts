@@ -19,6 +19,31 @@ import {
     AbstractDelegateActivitiesEnum
 } from CapoDelegateHelpers
 
+
+
+func mkTokenShow(mph: MintingPolicyHash) -> (Value) -> String {
+    (v: Value) -> String {
+        others : String = Value::from_map(
+                v.get_assets().to_map().filter( (someMph: MintingPolicyHash, _) -> Bool {
+                mph != someMph
+            })
+        ).show();
+        ada : String = (
+            (
+                (0.0 + v.get_lovelace()) / 1_000.0
+            ).round() / 1_000.0
+        ).show() + " ADA";
+        mine : String = v.get_policy(mph).fold[[]String]( (previous: []String, tokenName: ByteArray, c: Int) -> []String {
+            []String{
+                c.show() + "×💴 " + tokenName.decode_utf8()
+            } + previous
+        }, []String{}).join(" + ");
+        // v.assets()
+
+        mine + " + " + ada  + others
+    }
+}
+
 enum CapoDatum {
     CharterToken {
         spendDelegateLink: RelativeDelegateLink
@@ -212,22 +237,68 @@ struct DelegateInput {
     mph: MintingPolicyHash
 
     func genericDelegateActivity(self) -> AbstractDelegateActivitiesEnum {
+        i : TxInput = self.input.unwrap();
+        inputData : Data = mustFindInputRedeemer(self.ctx, i);
+        inputData.switch {
+            (index: Int, fields: []Data) => {                
+                // ladybug emoji: "🐞"
+                print("    --🐞 generic delegate activity at index "+ index.show());
+                print(i.output_id.tx_id.show());
+                print(i.output_id.index.show());
+                print("    -- 🐞 txid ^^^ with input value:");
+                print(i.value.show());
+
+                assert(index==index, "no way"); // must use each destruct field
+                assert(fields.length >0, "no way") // must use each destruct field
+            } 
+        };
+
         AbstractDelegateActivitiesEnum::from_data(
-            mustFindInputRedeemer(self.ctx, self.input.unwrap())
+            inputData
         )
+    }
+
+    /**
+     * Throws an error message including the delegation token id,
+    * if the assertion is false.
+     */
+     func assert(self, assertionOk : Bool, msg: String) -> () {
+        assert(true || /* never executed */ self.serialize() == self.serialize(), msg);
+        if(assertionOk) { assert(true, "" ) } else {
+            self.error(msg)
+        }
+     }
+    /**
+     * Throws an error message including the delegation token id.
+     */     
+    func error(self, msg: String) -> () {
+        assert(true || /* never executed */ self.serialize() == self.serialize(), msg);
+        // warning emoji: "⚠️"
+        print("⚠️ ⚠️ ⚠️ v v v error executing policy for dgTkn: "+  
+            mkTokenShow(self.mph)(
+                (self.input.unwrap().value)
+            )
+        );
+        assert(false, msg)
     }
 
     func withSpendingActivity(self) -> DelegateInput {
         self.genericDelegateActivity().switch {
             SpendingActivities => self,
-            _ => error("dgtTkn: non-spend activity!")
+            _ => {
+                self.error("non-spend activity!");
+                error("")
+            }
         }
     }
 
     func withMintingActivity(self) -> DelegateInput {
         self.genericDelegateActivity().switch {
             MintingActivities => self,
-            _ => error("dgtTkn: non-mint activity!")
+            _ => {
+                self.error("non-mint activity!"); 
+                error("") 
+            }
         }
     }
     func withSeededMintingActivity(self, seed: TxOutputId) -> DelegateInput {
@@ -265,12 +336,15 @@ struct DelegateInput {
                     }
                 });
                 REQT("one of the delegate multi-activities must be minting with this seed");
-                assert(foundWithThisSeed.length > 0, "no minting activity found for seed");
+                self.assert(foundWithThisSeed.length > 0, "no minting activity found for seed!");
                 REQT("only one of a multi-activity for a given seed is allowed");
-                assert(foundWithThisSeed.length == 1, "multiple minting activities found for seed");
+                self.assert(foundWithThisSeed.length == 1, "multiple minting activities found for seed");
                 self
             },
-            _ => error("dgtTkn: non-mint activity!")
+            _ => {
+                self.error("non-mint activity!");
+                error("")
+            }
         }
     }
 
@@ -287,7 +361,7 @@ struct DelegateInput {
                         print("expected: Spending:"+strId);
                         if(recId != foundRecId) {
                             print("actual: Spending:"+foundRecId.show());
-                            error("recId mismatch")
+                            self.error("recId mismatch")
                         };
                         print ("  -- ok: DD controller using spending activity")
                     },
@@ -297,21 +371,30 @@ struct DelegateInput {
             },
             MultipleDelegateActivities{activities} => {
                 print( "    -- multiple activities found" );
-                assert(activities.length > 0, "no spending activities found");
+                self.assert(activities.length > 0, "no spending activities found");
                 // can do one or more spending activities, but each one needs to be bound to a separate recId
                 actsOnThisRecord : []Data = activities.filter( (a : Data) -> Bool {
                     AbstractDelegateActivitiesEnum::from_data(a).switch {
-                        CreatingDelegatedData => error(
-                            "dgInput: withSpendingActivity: CreatingDelegatedData invalid"
-                        ),
-                        UpdatingDelegatedData => error(
-                            "dgInput: withSpendingActivity: UpdatingDgData invalid; use a Spending variant in the delegated-data policy"
+                        CreatingDelegatedData => {
+                            self.error(
+                                "dgInput: withSpendingActivity: CreatingDelegatedData invalid"
+                            );
+                            error("")
+                        },
+                        UpdatingDelegatedData => {
+                            self.error(
+                                "dgInput: withSpendingActivity: UpdatingDgData invalid; use a Spending variant in the delegated-data policy"
+                            );
+                            error("")
                             // " not the delegate controller's activities (use SpendingDelegatedData for that)"
-                        ),
-                        DeletingDelegatedData => error(
-                            "dgInput: withSpendingActivity: DeletingDelegatedData invalid" 
-                            // is only valid in context of a mintDgt- when destroying a data record
-                        ),
+                        },
+                        DeletingDelegatedData => {
+                            self.error(
+                                "dgInput: withSpendingActivity: DeletingDelegatedData invalid" 
+                                // is only valid in context of a mintDgt- when destroying a data record
+                            );
+                            error("")
+                        },
                         SpendingActivities{sa} => {
                             // assert(false && sa.serialize() == sa.serialize(), "no way");
                             // false
@@ -321,12 +404,16 @@ struct DelegateInput {
                                     foundRecId: ByteArray = ByteArray::from_data(fields.head);
                                     print("expected: Spending: "+strId);
                                     if(recId != foundRecId) {
-                                        print("actual: Spending:"+foundRecId.show());
-                                        error("recId mismatch")
+                                        print("actual: Spending: "+foundRecId.show());
+                                        self.error("recId mismatch");
+                                        error("")
                                     };
                                     true
                                 },
-                                _ => error("wrong structure for spending activity")
+                                _ => {
+                                    self.error("wrong structure for spending activity");
+                                    error("")
+                                }
                             }
                         },
                         
@@ -334,27 +421,31 @@ struct DelegateInput {
                     }
                 });
                 REQT("one of the delegate data-controller multi-activities must treat this recId");
-                assert(
+                self.assert(
                     (actsOnThisRecord.length > 0).trace("dgt acting on this recId? ")
                     , "no spending activity found for recId: "+strId
                 );
                 REQT("only one of a multi-activity for a given recId is allowed");
-                assert(
+                self.assert(
                     (actsOnThisRecord.length == 1).trace("exactly one activity? ")
                     , "multiple spending activities found for recId: "+strId
                 );
                 self
             },
-            _ => error("dgtTkn: non-spend activity!")
+            _ => {
+                self.error("non-spend activity!");
+                error("")
+            }
         }
     }
 
 
     func requiresValidOutput(self) -> Bool {
+        // TODO - would want this to be able to call our assert/error methods
         self.link.hasValidOutput(
             mph: self.mph, 
             ctx: self.ctx,
-            required: true
+            required: true 
           )
     }
 
@@ -382,7 +473,7 @@ struct DelegateInput {
         returnedUnchanged : Bool = validatorHash.switch {
             Some{vh} => {
                 // print(" ⬅️ 🔎 💁 expect dgTkn "+uut + " sent to vh " + vh.show());
-                assert(
+                self.assert(
                     ctx.tx.value_locked_by(vh)   .
                     contains(
                         targetValue
@@ -393,11 +484,15 @@ struct DelegateInput {
                     o.datum.serialize() == input.unwrap().datum.serialize()
                 }).switch {
                     Some => true, 
-                    None => error("dgt modified")
+                    None => {
+                        self.error("dgt modified");
+                        error("")
+                    }
                 }
             },
             None => {
-                error("unchOut - no vh") // this method not valid on non-contract delegate tokens
+                self.error("unchOut - no vh"); // this method not valid on non-contract delegate tokens
+                error("")
                 // todo maybe make it valid by enforcing return to the input address?
             }
         };
@@ -1171,29 +1266,6 @@ struct CapoCtx {
 func mkCapoCtx(ctx: ScriptContext, mph: MintingPolicyHash) -> CapoCtx {
     CapoCtx{
         ctx, mph, CapoCharterInputType::Unk
-    }
-}
-
-func mkTokenShow(mph: MintingPolicyHash) -> (Value) -> String {
-    (v: Value) -> String {
-        others : String = Value::from_map(
-                v.get_assets().to_map().filter( (someMph: MintingPolicyHash, _) -> Bool {
-                mph != someMph
-            })
-        ).show();
-        ada : String = (
-            (
-                (0.0 + v.get_lovelace()) / 1_000.0
-            ).round() / 1_000.0
-        ).show() + " ADA";
-        mine : String = v.get_policy(mph).fold[[]String]( (previous: []String, tokenName: ByteArray, c: Int) -> []String {
-            []String{
-                c.show() + "×💴 " + tokenName.decode_utf8()
-            } + previous
-        }, []String{}).join(" + ");
-        // v.assets()
-
-        mine + " + " + ada  + others
     }
 }
 
