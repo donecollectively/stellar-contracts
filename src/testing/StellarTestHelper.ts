@@ -143,7 +143,54 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     ) {
         
         this.state = {};
-        if (!helperState) debugger
+        if (!helperState) {
+            console.warn(
+                // warning emoji: "⚠️"
+                // info emoji: "ℹ️"
+                `⚠️ ⚠️ ⚠️ Note: this test helper doesn't have a helperState, so it won't be able to use test-chain snapshots
+ℹ️ ℹ️ ℹ️ ... to add helper state, follow this pattern:
+
+    // in your test helper:
+
+    @CapoTestHelper.hasNamedSnapshot("yourSnapshot", "tina")
+    snapTo‹YourSnapshot›() {
+        // never called
+    }
+    async ‹yourSnapshot›() {
+        this.setActor("tina");
+
+        const tcx = this.capo.mkTxn‹...› 
+        return this.submitTxnWithBlock(tcx);
+    }
+
+    // in your test setup:
+
+    type localTC = StellarTestContext<YourCapo>;
+    let helperState: TestHelperState<YourCapo> = {
+        snapshots: {},
+    } as any;
+
+    beforeEach<localTC>(async (context) => {
+        await addTestContext(context,YourCapoTestHelper,
+        undefined,
+        helperState
+    )}                
+
+    // in your tests:
+    
+    describe("your thing", async () => {
+        it("your test", async (context: localTC) => {
+            await context.h.snapTo‹yourSnapshot›()
+        });
+        it("your other test", async (context: localTC) => { 
+            // this one will use the snapshot generated earlier
+            await context.h.snapTo‹yourSnapshot›()
+        });
+    })
+
+... happy (and snappy) testing!`);
+            
+        }
         this.helperState = helperState;
         const {skipSetup, ...cfg} = config || {};
         if (Object.keys(cfg).length) {

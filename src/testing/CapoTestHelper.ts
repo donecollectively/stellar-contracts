@@ -160,7 +160,6 @@ export abstract class CapoTestHelper<
                     `already bootstrapped, but no previousHelper : ( `
                 );
             }
-            debugger;
             capo = await this.restoreFrom(snap);
         } else {
             capo = await this.bootstrap();
