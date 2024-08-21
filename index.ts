@@ -133,6 +133,7 @@ export type {
     BigIntRecord,
     Numeric,
     OnchainEnum,
+    OnchainEnum2,
     adapterParsedOnchainData,
     offchainDatumType,
     inferOffchainNumericType,

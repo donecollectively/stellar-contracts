@@ -51,7 +51,21 @@ export type BigIntRecord<T extends Record<string, number>> = {
 //         } :
 //         never
 
-export type OnchainEnum<EnumName extends string, innerDetailsType=undefined> = {
+export type OnchainEnum2<
+    EnumName extends string,
+    EnumOptionLabels extends string,
+    // TODO support a type for nested structs in each variant
+    innerDetailsType extends { [k in keyof EnumOptionLabels] : any } | undefined = undefined
+> = {
+    constrData: EnumName;
+    variant: EnumOptionLabels;
+    innerDetails: innerDetailsType;
+};
+
+export type OnchainEnum<
+    EnumName extends string, 
+    innerDetailsType=undefined
+> = {
     constrData: EnumName;
     innerDetails: innerDetailsType;
 };
@@ -75,10 +89,18 @@ export type adapterParsedOnchainData<
     ? Record<string, Record<string, bigint>>
     : t extends OnchainEnum<any, undefined>
     ? helios.ConstrData
+    : t extends OnchainEnum2<any, infer LABELS, undefined>
+    ? helios.ConstrData
+    : t extends OnchainEnum2<any, infer LABELS, infer NESTED_STRUCT>
+    ? "TODO: Support type variants for nested structs"
     : t extends OnchainEnum<any, infer NESTED_STRUCT>
     ? adapterParsedOnchainData<NESTED_STRUCT, k>
     : t extends RawBytes<any>
     ? number[]
+    : t extends boolean
+    // use bool directly by updating parser? 
+    //    xxx - it's just a ConstrData so the parser can't distinguish it from any other ConstrData
+    ? helios.ConstrData 
     : t extends bigint
     ? bigint
     : t extends Numeric<any>
@@ -129,6 +151,10 @@ export type offchainDatumType<
     ? helios.MintingPolicyHash
     : t extends helios.Value
     ? helios.Value
+    : t extends OnchainEnum2<any, infer LABELS, undefined>
+    ? string
+    : t extends OnchainEnum2<any, infer LABELS, infer NESTED_STRUCT>
+    ? "TODO: SUPPORT NESTED STRUCT BRIDGE" 
     : t extends OnchainEnum<any>
     ? string
     : t extends RawBytes<infer reprType>
@@ -298,12 +324,12 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
         }
     }
 
-
     uplcEnumMember(enumName: string, member: string, ...args: any[]) {
         const stateVariant = this.getEnumMember(enumName, member);
 
         const varSt = stateVariant.prototype._enumVariantStatement;
         const def = varSt.dataDefinition
+        debugger
 
         if (args.every(x => x instanceof helios.UplcData)) {
             // the data is already encoded as UplcData, so we can simply
@@ -320,6 +346,7 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
     ) {
         const enumDef = this.onChainTypes[enumName];
         if (!enumDef) {
+            debugger
             throw new Error(
                 `${this.constructor.name}: Enum ${enumName} not found in onChainTypes` +
                     `\n   ... try one of: (${Object.keys(
@@ -369,6 +396,7 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
             Time: this.fromUplcTime.bind(this),
             Value: this.fromUplcValue.bind(this),
             Enum: this.fromUplcEnum.bind(this),
+            Bool: this.fromUplcBool.bind(this),
         };
     }
 
@@ -421,6 +449,28 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
         return new ByteArrayData(x);
     }
 
+    /**
+     * Formats a boolean for use on-chain.  Uses the underlying enum 0/1 representation.
+     */
+    uplcBool(x: boolean) : UplcData & ConstrData {
+        return new ConstrData(x ? 1 : 0, []);
+    }
+
+    /**
+     * Parses an on-chain boolean enum value into a javascript boolean
+     */
+    fromUplcBool(x: ConstrData) {
+        //@ts-expect-error
+        if (x.tag === 0) return false;
+        //@ts-expect-error
+        if (x.tag === 1) return true;
+        //@ts-expect-error
+        if (x.index === 0) return false;
+        //@ts-expect-error
+        if (x.index === 1) return true;
+        throw new Error(`fromUplcBool: unexpected ConstrData ${x}`);        
+    }
+
     uplcMph(x: helios.MintingPolicyHash) {
         return this.uplcBytes(x.bytes);
     }
@@ -471,11 +521,12 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
                     if (uplcValue?._toUplcData) {
                         debugger;
                         throw new Error(
-                            `toMapData(): value for key ${key} not converted to uplc - try _toUplcData()`
+                            `toMapData(): value for ${key} not converted to uplc - try _toUplcData()`
                         );
                     }
+                    debugger
                     throw new Error(
-                        `toMapData(): key ${key} not converted to uplc`
+                        `toMapData(): value for ${key} not converted to uplc`
                     );
                 }
                 return [keyBytes, uplcValue] as [UplcData, UplcData];
