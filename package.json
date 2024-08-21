@@ -28,10 +28,10 @@
         "build:watch": "scripts/build --watch",
         "dev": "scripts/build --watch",
         "smoke:test": "SMOKE=1 vitest run 02 04",
-        "smoke:testing": "SMOKE=1 vitest --inspect --threads false 02 04",
+        "smoke:testing": "SMOKE=1 vitest --inspect --threads false 02 04 watch",
         "test": "vitest run ",
         "testing": "vitest watch",
-        "testing:debug": "vitest --inspect --threads false run ",
+        "testing:debug": "vitest --inspect --threads false watch ",
         "test:ui": "vitest --ui",
         "test:run": "vitest run"
     },
