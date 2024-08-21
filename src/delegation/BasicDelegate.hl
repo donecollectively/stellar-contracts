@@ -86,7 +86,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                         a.switch {
                             // in the Mint and Spend delegates, these nested activities are expected re-delegate to delegated-data controllers,
                             // which will use Mint/Spend/Burn activities on the data-controller tokens.
-                            CreatingDelegatedData/*{dataTypePurpose, seedTxn, seedIdx} */=> {
+                            CreatingDelegatedData/*{TxOutputId{seedTxn, seedIdx}, dataTypePurpose} */=> {
                                 assert(isMintDelegate,
                                     "CreatingDelegatedData only ok in mintDgt"
                                     // " ... use MintingActivities in a delegated-data controller"
@@ -193,7 +193,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                 // specialized minting delegates should likely perform additional checks.
                 DelegateLifecycleActivities{innerActivity} => innerActivity.switch {
                     // reassigning the authority token to a new minting delegate
-                    ReplacingMe{seedTxId, seedIdx, purpose} => {
+                    ReplacingMe{seed, purpose} => {
                         // should burn the old UUT, mint the new UUT, and update the Charter
                         // with the new mint authority
 
@@ -218,8 +218,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                         isMintingOk : Bool = validateUutMinting(
                             ctx: ctx, 
                             mph: dd.mph,
-                            seedTxId: seedTxId, 
-                            seedIdx: seedIdx, 
+                            seed: seed,
                             purposes: []String{purpose}, 
                             otherMintedValue: otherMintedValue,
                             needsMintDelegateApproval: false,
@@ -283,18 +282,18 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                         // FOR APPLICATION-SPECIFIC PURPOSES. This can affect the structure of the Capo
                         // it defers to the specialized minting delegate, if any; the unspecialized mint delegate
                         // rejects all delegate-creation.
-                        CreatingDelegate{seedTxn,seedIndex,purpose} => {
+                        CreatingDelegate{seed ,purpose} => {
                             print("🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞 !!!!!!!!!!!!!!!!!!! todo: fix this");
                             TODO("it should output the new delegate token to the Capo as a PendingDelegate datum");
+                            REQT("validates creation of UUT for the new delegate, aligned to the purpose indicated");
                                 // true || 
                                 validateUutMinting(
                                     ctx: ctx, 
                                     mph: dd.mph,
-                                    seedTxId: seedTxn, 
-                                    seedIdx: seedIndex, 
+                                    seed: seed,
                                     purposes: []String{purpose},
                                     // otherMintedValue: ()
-                                    mkTokenName: mkUutTnFactory(seedTxn, seedIndex),
+                                    mkTokenName: mkUutTnFactory(seed),
                                     // WE ARE the mint delegate.
                                     needsMintDelegateApproval: false 
                                 )
@@ -316,9 +315,9 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                 // ... context and using its separate specialization module.
                 // In each of those cases, it follows the same high-level logic, hitting different paths through this file, 
                 // ... while processing different tokens for each zone of authority/responsibility.
-                CreatingDelegatedData{dataTypePurpose, seedTxn, seedIdx} => {
+                CreatingDelegatedData{seed, dataTypePurpose} => {
                     cctx : CapoCtx = mkCapoCtx(ctx, dd.mph).withCharterRef();
-                    tnFactory : (String) -> String = mkUutTnFactory(seedTxn, seedIdx);
+                    tnFactory : (String) -> String = mkUutTnFactory(seed);
                     newDataId : ByteArray = tnFactory(dataTypePurpose).encode_utf8();
                     // as a mint delegate, we should see to it that any minting does play by the rules
                     //   ... however, this module is generic, so we can only perform generic checks here.
@@ -330,7 +329,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                     TODO("make a generic data-controller re-delegation convention");
                     TODO("the mint-delegate specialization MUST re-delegate authority to the right data-controller");
                     TODO("it must check that the data-controller has exactly one minting activity for the indicated recId");
-                    print("    -- e.g. using CapoCtx: cctx\n      .requiresNamedDelegateInput(delegateName)\n      .withSeededMintingActivity(seedTxn, seedIdx)");
+                    print("    -- e.g. using CapoCtx: cctx\n      .requiresNamedDelegateInput(delegateName)\n      .withSeededMintingActivity(seed)");
 
                     true
                     && isMintDelegate 
@@ -338,8 +337,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                     && validateUutMinting(
                         ctx: ctx, 
                         mph: dd.mph,
-                        seedTxId: seedTxn, 
-                        seedIdx: seedIdx, 
+                        seed: seed,
                         purposes: []String{dataTypePurpose},
                         // otherMintedValue: ()
                         mkTokenName: tnFactory,

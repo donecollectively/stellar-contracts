@@ -91,7 +91,7 @@ import {
     type hasSettingsType,
 } from "./CapoSettingsTypes.js";
 
-import type { ScriptHash, Wallet } from "@hyperionbt/helios";
+import { TxOutputId, type ScriptHash, type Wallet } from "@hyperionbt/helios";
 
 //@ts-expect-error
 import contract from "./DefaultCapo.hl";
@@ -236,8 +236,7 @@ export interface hasUutCreator {
  * @public
  */
 export type MintUutActivityArgs = {
-    seedTxn: TxId;
-    seedIndex: bigint | number;
+    seed: TxOutputId
     purposes: string[];
 };
 /**
@@ -2828,8 +2827,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                   } as DelegateSetupWithoutMintDelegate)
                 : ({
                       mintDelegateActivity: mintDelegate.activityReplacingMe({
-                          seedTxn: tcxWithSeed.state.seedUtxo.outputId.txId,
-                          seedIndex: tcxWithSeed.state.seedUtxo.outputId.utxoIdx,
+                          seed: tcxWithSeed.state.seedUtxo.outputId,
                           purpose: "mintDgt",
                       }),
                       additionalMintValues: this.mkValuesBurningDelegateUut(
@@ -2950,8 +2948,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
                 : await spendDelegate.txnGrantAuthority(
                       tcx2,
                       spendDelegate.activityReplacingMe({
-                          seedTxn: tcxWithSeed.state.seedUtxo.outputId.txId,
-                          seedIndex: tcxWithSeed.state.seedUtxo.outputId.utxoIdx,
+                          seed: tcxWithSeed.state.seedUtxo.outputId,
                           purpose: "spendDgt",
                       }),
                       "skipDelegateReturn"

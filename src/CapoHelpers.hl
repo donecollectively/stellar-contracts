@@ -230,16 +230,17 @@ struct DelegateInput {
             _ => error("dgtTkn: non-mint activity!")
         }
     }
-    func withSeededMintingActivity(self, seedTxn : TxId, seedIdx : Int) -> DelegateInput {
-        // tnFactory : (String) -> String = mkUutTnFactory(seedTxn, seedIdx);
-
+    func withSeededMintingActivity(self, seed: TxOutputId) -> DelegateInput {
+        // tnFactory : (String) -> String = mkUutTnFactory(seed);
         self.genericDelegateActivity().switch {
             MintingActivities{ma} => {
                 ma.switch {
                     (index: Int, fields: []Data) => {
                         assert(index==index, "no way"); // unused field can't be _
-                        assert(seedTxn == TxId::from_data(fields.get(0)), "seedTxn mismatch");
-                        assert(seedIdx == Int::from_data(fields.get(1)), "seedIdx mismatch")
+                        assert(
+                            seed == TxOutputId::from_data(fields.get(0)),
+                            "seed mismatch"
+                        )
                     },
                     _ => error("no way")
                 };
@@ -254,8 +255,7 @@ struct DelegateInput {
                             ma.switch {
                                 (index: Int, fields: []Data) => {
                                     assert(index==index, "no way"); // unused field can't be _ in switch
-                                    seedTxn == TxId::from_data(fields.head) &&
-                                    seedIdx == Int::from_data(fields.get(1)) &&
+                                    seed == TxOutputId::from_data(fields.head) &&
                                     true
                                 },
                                 _ => error("no way")

@@ -34,6 +34,10 @@ func REQT(reqt: String) -> () {
     // red exclamation mark
     print("❗ "+ reqt)
 }
+func bREQT(reqt: String) -> Bool {
+    REQT(reqt);
+    true
+}
 
 //! represents the indicated token name as a Value
 func mkTv(

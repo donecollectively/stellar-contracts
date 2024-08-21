@@ -6,12 +6,10 @@ import {
     ByteArray,
     //@ts-expect-error
     Option,
+    TxOutputId,
+    ConstrData,
 } from "@hyperionbt/helios";
-import {
-    Activity,
-    StellarContract,
-    partialTxn,
-} from "../StellarContract.js";
+import { Activity, StellarContract, partialTxn } from "../StellarContract.js";
 import type {
     configBaseWithRev,
     hasSeed,
@@ -22,15 +20,8 @@ import type {
 import contract from "./CapoMinter.hl";
 export const MinterContract = contract;
 
-import {
-    StellarTxnContext,
-    type anyState,
-} from "../StellarTxnContext.js";
-import type {
-    Capo,
-    MintUutActivityArgs,
-    MinterBaseMethods,
-} from "../Capo.js";
+import { StellarTxnContext, type anyState } from "../StellarTxnContext.js";
+import type { Capo, MintUutActivityArgs, MinterBaseMethods } from "../Capo.js";
 import type { SeedTxnScriptParams } from "../SeedTxnScriptParams.js";
 import type { valuesEntry } from "../HeliosPromotedTypes.js";
 import { UutName } from "../delegation/UutName.js";
@@ -44,12 +35,12 @@ type MintCharterActivityArgs<T = {}> = T & {
     owner: Address;
 };
 
-export type BasicMinterParams = configBaseWithRev & SeedTxnScriptParams & {
-    capo: Capo<any>
-    isDev: boolean
-    devGen: bigint
-}
-
+export type BasicMinterParams = configBaseWithRev &
+    SeedTxnScriptParams & {
+        capo: Capo<any>;
+        isDev: boolean;
+        devGen: bigint;
+    };
 
 /**
  * A basic minting validator serving a Capo's family of contract scripts
@@ -58,21 +49,21 @@ export type BasicMinterParams = configBaseWithRev & SeedTxnScriptParams & {
  * NOTE that this class provides the actual MINTING script, which is
  * DIFFERENT from the minting delegate.  The minting delegate is a separate
  * contract that can be updated within the scope of a Capo, with this minting
- * script remaining unchanged.  
- * 
+ * script remaining unchanged.
+ *
  * Because this minter always defers to the minting delegate, that delegate
- * always expresses the true policy for minting application-layer tokens.  
+ * always expresses the true policy for minting application-layer tokens.
  * This minter contains only the most basic minting constraints - mostly, those
  * needed for supporting Capo lifeycle activities in which the minting delegate
  * isn't yet available, or is being replaced.
- * 
+ *
  * Mints charter tokens based on seed UTxOs.  Can also mint UUTs and
  * other tokens as approved by the Capo's minting delegate.
  * @public
  **/
 export class CapoMinter
-extends StellarContract<BasicMinterParams>
-implements MinterBaseMethods
+    extends StellarContract<BasicMinterParams>
+    implements MinterBaseMethods
 {
     currentRev: bigint = 1n;
     contractSource() {
@@ -158,35 +149,33 @@ implements MinterBaseMethods
      * change needed.  The Capo's authority token is all the minter requires
      * to create the needed UUT.
      *
-     * @param arg - either a transaction-context with seedUtxo, or {seedTxn, seedIndex}
+     * @param seedFrom - either a transaction-context with seedUtxo, or {seedTxn, seedIndex}
      * @public
      **/
     @Activity.redeemer
-    activityAddingMintInvariant(arg: hasSeed) : isActivity {
-        const { txId, idx } = this.getSeed(arg);
+    activityAddingMintInvariant(seedFrom: hasSeed): isActivity {
+        const seed = this.getSeed(seedFrom);
 
         const addingMintInvariant = this.mustGetActivity("addingMintInvariant");
-        const t = new addingMintInvariant(txId, idx);
+        const t = new addingMintInvariant(seed);
 
         return { redeemer: t._toUplcData() };
     }
 
     /** Mints a new UUT specifically for a spending invariant
-     * @remarks
-     *
-     * When adding a spending invariant, the Capo's existing mint delegate
+     * @remarks When adding a spending invariant, the Capo's existing mint delegate
      * is not consulted, as this administrative function works on a higher
      * level than the usual minting delegate's authority.
      *
      * @public
      * **/
     @Activity.redeemer
-    activityAddingSpendInvariant(arg: hasSeed) : isActivity {
-        const { txId, idx } = this.getSeed(arg);
+    activityAddingSpendInvariant(seedFrom: hasSeed): isActivity {
+        const seed = this.getSeed(seedFrom);
         const addingSpendInvariant = this.mustGetActivity(
             "addingSpendInvariant"
         );
-        const t = new addingSpendInvariant(txId, idx);
+        const t = new addingSpendInvariant(seed);
 
         return { redeemer: t._toUplcData() };
     }
@@ -197,12 +186,10 @@ implements MinterBaseMethods
      *
      * Forces the minting of a new UUT to replace the Capo's mint delegate.
      *
-     * @param ‹pName› - descr
-     * @typeParam ‹pName› - descr (for generic types)
      * @public
      **/
     @Activity.redeemer
-    activityForcingNewMintDelegate(arg: hasSeed) {
+    activityForcingNewMintDelegate(seedFrom: hasSeed) {
         console.warn(
             "NOTE: REPLACING THE MINT DELEGATE USING A DIRECT MINTER ACTIVITY\n" +
                 "THIS IS NOT THE RECOMMENDED PATH - prefer using the existing mint delegate's ReplacingMe activity'"
@@ -210,9 +197,19 @@ implements MinterBaseMethods
         const ReplacingMintDelegate = this.mustGetActivity(
             "ForcingNewMintDelegate"
         );
-        const { txId, idx } = this.getSeed(arg);
-        const t = new ReplacingMintDelegate(txId, idx);
-        return { redeemer: t._toUplcData() };
+        const variantStatement =
+            ReplacingMintDelegate.prototype._enumVariantStatement;
+        const variantIndex = variantStatement.constrIndex;
+        const seed = this.getSeed(seedFrom);
+                // was...
+                // const t = new ReplacingMintDelegate(seed);
+                // return { redeemer: t._toUplcData()  },
+        return {
+            //prettier-ignore
+            redeemer: new ConstrData(variantIndex, [
+                seed._toUplcData()
+            ]),
+        };
     }
 
     /**
@@ -221,39 +218,44 @@ implements MinterBaseMethods
      *
      * Creates a new UUT to replace the Capo's spend delegate.  The mint delegate
      * is bypassed in this operation.  There is always some existing spend delegate
-     * when this is called, and it's normally burned in the process, when replacingUut is 
+     * when this is called, and it's normally burned in the process, when replacingUut is
      * provided.  If replacingUut is not provided, the existing spend delegate is left in plac,e
      * although it won't be useful because the new spend delegate will have been installed.
      *
-     * @param seed - either a transaction-context with seedUtxo, or {seedTxn, seedIndex}
+     * @param seedFrom - either a transaction-context with seedUtxo, or {seedTxn, seedIndex}
      * @param replacingUut - the name of an exiting delegate being replaced
      * @public
      **/
     @Activity.redeemer
-    activityCreatingNewSpendDelegate(seed: hasSeed, 
+    activityCreatingNewSpendDelegate(
+        seedFrom: hasSeed,
         replacingUut?: number[]
-    ) : isActivity {
+    ): isActivity {
         const ReplacingSpendDelegate = this.mustGetActivity(
             "CreatingNewSpendDelegate"
         );
+        const enumVariantStatement = ReplacingSpendDelegate.prototype._enumVariantStatement;
+        const variantIndex = enumVariantStatement.constrIndex;
         const OptByteArray = Option(ByteArray);
-        const { txId, idx } = this.getSeed(seed);
+        const seed = this.getSeed(seedFrom);
         const uutName = new OptByteArray(replacingUut);
-        const t = new ReplacingSpendDelegate(
-            txId, idx,
-            uutName
-        );
-        return { redeemer: t._toUplcData() };
+
+        // was const t = new ReplacingSpendDelegate(seed, uutName);
+        // return { redeemer: t._toUplcData() };
+        return {
+            //prettier-ignore
+            redeemer: new ConstrData(variantIndex, [
+                seed._toUplcData(),
+                uutName._toUplcData()
+            ]),
+        };
     }
+
     /**
      * @deprecated
      **/
     @Activity.redeemer
-    activityMintingUuts({
-        seedTxn,
-        seedIndex: sIdx,
-        purposes,
-    }: MintUutActivityArgs): isActivity {
+    activityMintingUuts({ seed, purposes }: MintUutActivityArgs): isActivity {
         throw new Error(
             `minter:mintingUuts obsolete; use minter:MintWithDelegateAuthorizing with delegate:mintingUuts or another application-specific activity`
         );
@@ -406,7 +408,7 @@ implements MinterBaseMethods
         vEntries: valuesEntry[],
         mintDelegate: BasicMintDelegate,
         mintDgtRedeemer: isActivity,
-        skipReturningDelegate? : "skipDelegateReturn"
+        skipReturningDelegate?: "skipDelegateReturn"
     ): Promise<TCX> {
         const { capo } = this.configIn!;
         const md = mintDelegate || (await capo.getMintDelegate());

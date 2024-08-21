@@ -201,15 +201,16 @@ describe("Capo Minter", async () => {
             // hacks the use of the CreatingDelegatedDatum activity
             const Hacktivity = mintDelegate.mustGetActivity("CreatingDelegatedData");
             const hacktivity = {
-                redeemer: new Hacktivity("fooPurpose", helios.textToBytes("fooPurpose-xyz123"))
+                redeemer: new Hacktivity("fooPurpose", 
+                    // todo: SEED here.
+                    helios.textToBytes("fooPurpose-xyz123"
+                ))
             }
             const tcx1a = await capo.txnMintingUuts(
                 tcx1,
                 purposes,
-                { mintDelegateActivity: mintDelegate.activityMultipleDelegateActivities(tcx1, 
-                        [
-                            hacktivity
-                        ]
+                { mintDelegateActivity: mintDelegate.activityMultipleDelegateActivities(
+                    hacktivity
                 )}
             );
 

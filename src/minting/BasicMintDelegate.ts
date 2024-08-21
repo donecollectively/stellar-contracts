@@ -36,11 +36,14 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
     }
 
     @Activity.redeemer
-    activityCreatingDelegatedData(seed: hasSeed, uutPurpose: string) {
-        const { txId, idx } = this.getSeed(seed);
+    activityCreatingDelegatedData(seedFrom: hasSeed, uutPurpose: string) {
+        const seed = this.getSeed(seedFrom);
         const Activity = this.mustGetActivity("CreatingDelegatedData");
         return {
-            redeemer: new Activity(uutPurpose, txId, idx)
+            redeemer: new Activity(
+                seed,
+                uutPurpose, 
+            )
         }
     }
 
@@ -64,9 +67,9 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
 
 
     @Activity.redeemer
-    activityCreatingDataDelegate(seed: hasSeed, uutPurpose: string) {
-        const { txId, idx } = this.getSeed(seed);
-        return this.mkCapoLifecycleActivity("CreatingDelegate", txId, idx, uutPurpose);
+    activityCreatingDataDelegate(seedFrom: hasSeed, uutPurpose: string) {
+        const seed = this.getSeed(seedFrom);
+        return this.mkCapoLifecycleActivity("CreatingDelegate", seed, uutPurpose);
     }
 
 

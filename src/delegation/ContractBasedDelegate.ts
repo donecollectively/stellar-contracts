@@ -1,4 +1,18 @@
-import { Address, ConstrData, ListData, TxInput, TxOutput, UplcData, Value, bytesToText } from "@hyperionbt/helios";
+import {
+    Address,
+    ByteArrayData,
+    ConstrData,
+    IntData,
+    ListData,
+    TxId,
+    TxInput,
+    TxOutput,
+    TxOutputId,
+    UplcData,
+    Value,
+    bytesToText,
+    textToBytes,
+} from "@hyperionbt/helios";
 import type {
     Capo,
     DelegateSetupWithoutMintDelegate,
@@ -235,46 +249,87 @@ import {
     @Activity.redeemer
     activityReplacingMe({
         // todo: add type for seedTxnDetails
-        seedTxn,
-        seedIndex,
+        seed,
         purpose,
-    }: Omit<MintUutActivityArgs, "purposes"> & { purpose?: string }) {
+    }: Omit<MintUutActivityArgs, "purposes"> & { purpose: string }) {
+        debugger
         return this.mkDelegateLifecycleActivity(
-            "ReplacingMe",
-            seedTxn,
-            seedIndex,
-            purpose
+            "ReplacingMe", 
+            seed._toUplcData(), 
+            new ByteArrayData(textToBytes(purpose))
         );
     }
 
     mkDelegateLifecycleActivity(
-        delegateActivityName: "ReplacingMe" | "Retiring" | "ValidatingSettings", 
+        delegateActivityName: "ReplacingMe" | "Retiring" | "ValidatingSettings",
         ...args: any[]
-    ) : isActivity{
+    ): isActivity {
         const TopEnum = this.mustGetActivity("DelegateLifecycleActivities");
+        const topVarSt = TopEnum.prototype._enumVariantStatement;
         const { DelegateLifecycleActivity } = this.onChainTypes;
         const NestedVariant = this.mustGetEnumVariant(
             DelegateLifecycleActivity,
             delegateActivityName
         );
-        return {
-            redeemer: new TopEnum(new NestedVariant(...args))._toUplcData(),
-        };
+        const nestedVarSt = NestedVariant.prototype._enumVariantStatement;
+        if (args.every((x) => x instanceof UplcData)) {
+            // the data is already encoded as UplcData, so we can simply
+            // wrap it in a ConstrData with the correct index
+            return {
+                redeemer: new ConstrData(topVarSt.constrIndex, [
+                    new ConstrData(nestedVarSt.constrIndex, [...args]),
+                ]),
+            };
+        }
+        try {
+            return {
+                redeemer: new TopEnum(new NestedVariant(...args))._toUplcData(),
+            };
+        } catch (e: any) {
+            // warning emoji: "⚠️"
+            e.message =
+                "⚠️ ⚠️ ⚠️ error constructing delegate lifecycle activity.  You might need " +
+                "to format the args as UplcData if the enum doesn't recognize a valid off-chain type.\nDelegate lifecycle activity: " +
+                e.message;
+            throw e;
+        }
     }
 
     mkCapoLifecycleActivity(
         capoLifecycleActivityName: "CreatingDelegate" | "ActivatingDelegate",
         ...args: any[]
-    ) : isActivity {
-        //!!! TODO use a seed: hasSeed arg here?
+    ): isActivity {
+        // for CreatingDelegate, the first arg is a seed
+
         const TopEnum = this.mustGetActivity("CapoLifecycleActivities");
         const { CapoLifecycleActivity } = this.onChainTypes;
         const NestedVariant = this.mustGetEnumVariant(
             CapoLifecycleActivity,
             capoLifecycleActivityName
         );
+        const [seed, ...otherArgs] = "CreatingDelegate" == capoLifecycleActivityName ? args : [undefined, ... args];
+        if (otherArgs.every((x) => x instanceof UplcData)) {
+            console.log("using uplc data");
+            // the data is already encoded as UplcData, so we can simply
+            // wrap it in a ConstrData with the correct index
+            const topVarSt = TopEnum.prototype._enumVariantStatement;
+            const topVariantIndex = topVarSt.constrIndex;
+            const nestedVarSt = NestedVariant.prototype._enumVariantStatement;
+            const nestedVariantIndex = nestedVarSt.constrIndex;
+
+            const finalArgs = seed ? [seed._toUplcData(), ...otherArgs] : otherArgs;
+            return {
+                redeemer: new ConstrData(topVariantIndex, [
+                    new ConstrData(nestedVariantIndex, finalArgs),
+                ]),
+            };
+        }
+        debugger
+        const enumInstance = new TopEnum(new NestedVariant(...args));
+        const details = "tbd";
         return {
-            redeemer: new TopEnum(new NestedVariant(...args))._toUplcData(),
+            redeemer: enumInstance._toUplcData(),
+            details,
         };
     }
 
@@ -282,30 +337,139 @@ import {
      * Creates a reedemer for the indicated spending activity name
      *
      * For delegated-data controllers, see the more explicit equivalent in DelegatedDataContract
+     *
+     * If you have any difficulty instantiating a complex activity object, you may
+     * wish to provide all arguments with Uplc types.
+     * This allows the activity to be formed without reference to on-chain Enum types,
+     * which aren't all easily used from Javascript land.
      **/
-    mkSpendingActivity(spendingActivityName: string, ...args: any[]) : isActivity {
+    mkSpendingActivity(
+        spendingActivityName: string,
+        ...args: any[]
+    ): isActivity {
         const TopEnum = this.mustGetActivity("SpendingActivities");
+        const topVarSt = TopEnum.prototype._enumVariantStatement;
         const { SpendingActivity } = this.onChainTypes;
         const NestedVariant = this.mustGetEnumVariant(
             SpendingActivity,
             spendingActivityName
         );
-        return {
-            redeemer: new TopEnum(new NestedVariant(...args))._toUplcData(),
-        };
+        const nestedVarSt = NestedVariant.prototype._enumVariantStatement;
+
+        let [id, ...otherActivityArgs] = args;
+        if (otherActivityArgs.every((x) => x instanceof UplcData)) {
+            // the data is already encoded as UplcData, so we can simply
+            // wrap it in a ConstrData with the correct index
+            if ("string" == typeof id) {
+                id = new ByteArrayData(textToBytes(id));
+            }
+            if (Array.isArray(id)) {
+                id = new ByteArrayData(id);
+            }
+            return {
+                redeemer: new ConstrData(topVarSt.constrIndex, [
+                    new ConstrData(nestedVarSt.constrIndex, [
+                        id,
+                        ...otherActivityArgs,
+                    ]),
+                ]),
+            };
+        }
+
+        try {
+            return {
+                redeemer: new TopEnum(new NestedVariant(...args))._toUplcData(),
+            };
+        } catch (e: any) {
+            // warning emoji: "⚠️"
+            e.message =
+                "⚠️ ⚠️ ⚠️ error constructing spending activity.  You might need " +
+                "to format the args as UplcData, if the enum doesn't recognize a valid " +
+                " off-chain type.\nSpending activity: " +
+                e.message;
+            throw e;
+        }
     }
 
-    mkMintingActivity(mintingActivityName: string, ...args: any[]) : isActivity {
+    mkSeedlessMintingActivity(
+        mintingActivityName: string,
+        ...args: any[]
+    ): isActivity {
         const TopEnum = this.mustGetActivity("MintingActivities");
         const { MintingActivity } = this.onChainTypes;
         const NestedVariant = this.mustGetEnumVariant(
             MintingActivity,
             mintingActivityName
         );
-        
-        return {
-            redeemer: new TopEnum(new NestedVariant(...args))._toUplcData(),
-        };
+
+        const varSt = TopEnum.prototype._enumVariantStatement;
+        const nestedVarSt = NestedVariant.prototype._enumVariantStatement;
+        if (args.every((x) => x instanceof UplcData)) {
+            // the data is already encoded as UplcData, so we can simply
+            // wrap it in a ConstrData with the correct index
+            return {
+                redeemer: new ConstrData(varSt.constrIndex, [
+                    new ConstrData(nestedVarSt.constrIndex, [...args]),
+                ]),
+            };
+        }
+
+        try {
+            return {
+                redeemer: new TopEnum(new NestedVariant(...args))._toUplcData(),
+            };
+        } catch (e: any) {
+            // warning emoji: "⚠️"
+            e.message =
+                "⚠️ ⚠️ ⚠️ error constructing minting activity.  You might need " +
+                "to format the args as UplcData if the enum doesn't recognize a valid off-chain type.\nMinting activity: " +
+                e.message;
+            throw e;
+        }
+    }
+
+    mkSeededMintingActivity(
+        mintingActivityName: string,
+        seed: TxOutputId,
+        ...args: any[]
+    ): isActivity {
+        const TopEnum = this.mustGetActivity("MintingActivities");
+        const { MintingActivity } = this.onChainTypes;
+        const NestedVariant = this.mustGetEnumVariant(
+            MintingActivity,
+            mintingActivityName
+        );
+
+        const varSt = TopEnum.prototype._enumVariantStatement;
+        const nestedVarSt = NestedVariant.prototype._enumVariantStatement;
+        if (args.every((x) => x instanceof UplcData)) {
+            // the data is already encoded as UplcData, so we can simply
+            // wrap it in a ConstrData with the correct index
+            if (!seed._toUplcData) debugger;
+            return {
+                redeemer: new ConstrData(varSt.constrIndex, [
+                    new ConstrData(nestedVarSt.constrIndex, [
+                        seed._toUplcData(),
+                        ...args,
+                    ]),
+                ]),
+            };
+        }
+
+        try {
+            return {
+                redeemer: new TopEnum(
+                    new NestedVariant(seed, ...args)
+                )._toUplcData(),
+            };
+        } catch (e: any) {
+            // warning emoji: "⚠️"
+            e.message =
+                "⚠️ ⚠️ ⚠️ error constructing minting activity.  You might need " +
+                "to format the args as UplcData if the enum doesn't recognize a valid off-chain type.\nMinting activity: " +
+                e.message;
+            throw e;
+        }
     }
 
     /**
@@ -328,18 +492,16 @@ import {
     }
 
     // @Activity.redeemer
-    activityMultipleDelegateActivities(... activities: isActivity[]) : isActivity {
+    activityMultipleDelegateActivities(
+        ...activities: isActivity[]
+    ): isActivity {
         const MDA = this.mustGetActivity("MultipleDelegateActivities");
-        const index = MDA.prototype._enumVariantStatement.constrIndex
+        const index = MDA.prototype._enumVariantStatement.constrIndex;
 
         return {
-            redeemer: new ConstrData(index,
-                [
-                    new ListData( activities.map(a => 
-                        a.redeemer as UplcData
-                    ) )
-                ]
-            )
+            redeemer: new ConstrData(index, [
+                new ListData(activities.map((a) => a.redeemer as UplcData)),
+            ]),
         };
     }
 

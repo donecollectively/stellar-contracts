@@ -25,18 +25,14 @@ import {
     DelegateLifecycleActivity
 } from CapoDelegateHelpers
 
-func hasSeedUtxo(tx: Tx, seedTxId : TxId, seedIdx: Int
+func hasSeedUtxo(tx: Tx, seedUtxo: TxOutputId
     // , reason: String
 ) -> Bool {
-    seedUtxo: TxOutputId = TxOutputId::new(
-        seedTxId,
-        seedIdx
-    );
     assert(tx.inputs.any( (input: TxInput) -> Bool {
         input.output_id == seedUtxo
-    }),  "seed utxo required for minting "
+    }),  "missing matching seed input for minting"
         // +reason 
-        // + "\n"+seedTxId.show() + " : " + seedIdx.show()
+        // + "\n"+seedUtxo.tx_id.show() + " : " +seedUtxo.index.show()
     );
     print( "  -- has seed -> ok");
     true
@@ -245,9 +241,13 @@ func requiresMintDelegateApproval(
 //  a function that cheaply makes Uut names with any given purpose, 
 // given the initial seed-txn details
 func mkUutTnFactory(
-    seedTxId : TxId, seedIdx : Int
+    seed: TxOutputId
 ) -> (String) -> String {
-   
+
+    seedTxId : TxId = seed.tx_id;
+    seedIdx : Int = seed.index;
+
+
     idxBytes : ByteArray = seedIdx.serialize();
     // assert(idxBytes.length == 1, "surprise!");
 
@@ -296,9 +296,9 @@ func tnCip68ref100(tn : String) -> ByteArray {
 func validateUutMinting(
     ctx: ScriptContext, 
     mph: MintingPolicyHash,
-    seedTxId : TxId, seedIdx : Int, 
+    seed: TxOutputId,
     purposes: []String,     
-    mkTokenName: (String) -> String = mkUutTnFactory(seedTxId, seedIdx),
+    mkTokenName: (String) -> String = mkUutTnFactory(seed),
     bootstrapCharter:Value = Value::ZERO,
     otherMintedValue: Value = Value::ZERO,
     needsMintDelegateApproval: Bool = true,
@@ -335,6 +335,7 @@ func validateUutMinting(
             true
         }
     };
+
 
     valueMinted: Value = tx.minted;
 
@@ -381,8 +382,8 @@ func validateUutMinting(
         })).show());
         
         print("uut-minting seed: ");
-        print( seedTxId.show() );
-        print("🔹#" + seedIdx.show());
+        print( seed.tx_id.show() );
+        print("🔹#" + seed.index.show());
         expectedValue.get_policy(mph).for_each( (b : ByteArray, i: Int) -> {
             print( "    ℹ️ 🐞 expected: ");
             print( i.show() + "x " + b.decode_utf8())
@@ -410,7 +411,7 @@ func validateUutMinting(
     print(" ✅ validateUutMinting:  ok!");
 
     delegateApproval && expectationsMet &&
-    hasSeedUtxo(tx, seedTxId, seedIdx
+    hasSeedUtxo(tx, seed
         //, "UUT "+purposes.join("+")
     )
 }
@@ -419,8 +420,7 @@ func mintsUutForCharterUsingRedeemerIndex(
     ctx: ScriptContext,
     mph: MintingPolicyHash,
     purpose: String,
-    seedTxId: TxId,
-    seedIdx: Int,
+    seed: TxOutputId,
     charterRedeemerIndex: Int,
     otherMintedValue: Value = Value::new(AssetClass::ADA, 0),
     needsMintDelegateApproval: Bool = true,
@@ -465,10 +465,9 @@ func mintsUutForCharterUsingRedeemerIndex(
     validateUutMinting(
         ctx: ctx, 
         mph: mph,
-        seedTxId: seedTxId, 
-        seedIdx: seedIdx, 
+        seed: seed,
         purposes: []String{purpose}, 
-        mkTokenName: mkUutTnFactory(seedTxId, seedIdx),
+        mkTokenName: mkUutTnFactory(seed),
         otherMintedValue: otherMintedValue,
         needsMintDelegateApproval: needsMintDelegateApproval,
         extraMintDelegateRedeemerCheck: extraMintDelegateRedeemerCheck
@@ -488,23 +487,19 @@ enum MinterActivity {
     mintWithDelegateAuthorizing // 1 - delegate is handling all mints
 
     addingMintInvariant { //2 
-        seedTxn: TxId
-        seedIndex: Int
+        seed: TxOutputId
     }
 
     addingSpendInvariant { //3
-        seedTxn: TxId
-        seedIndex: Int
+        seed: TxOutputId
     }
 
     ForcingNewMintDelegate { //4
-        seedTxn: TxId
-        seedIndex: Int
+        seed: TxOutputId
     }
 
     CreatingNewSpendDelegate { //5
-        seedTxn: TxId
-        seedIndex: Int
+        seed: TxOutputId
         replacingUut: Option[ByteArray]
     }
 

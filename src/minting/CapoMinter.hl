@@ -22,7 +22,6 @@ import {
     tvCharter
 } from StellarHeliosHelpers
 
-//!!!! todo: change to TxOutputId, rolling up these two things:
 const seedTxn : TxId = TxId::new(#1234)
 const seedIndex : Int = 42
 const rev : Int = 1
@@ -30,9 +29,7 @@ const rev : Int = 1
 const isDev : Bool = false
 
 func hasContractSeedUtxo(tx: Tx) -> Bool {
-    hasSeedUtxo(tx, seedTxn, seedIndex
-        // , "charter"
-    )
+    hasSeedUtxo(tx, TxOutputId::new(seedTxn, seedIndex))
 }
 
 // this is a simple example showing how a tagged struct
@@ -79,13 +76,15 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                 "charter token not minted");
 
             hasSeed: Bool = hasContractSeedUtxo(tx);
-            mkUutName: (String) -> String = mkUutTnFactory(seedTxn, seedIndex);
+            minterSeed: TxOutputId = TxOutputId::new(seedTxn, seedIndex);
+            mkUutName: (String) -> String = mkUutTnFactory(
+                minterSeed  
+            );
             print("defaultMinter @B");
             mintsUuts: Bool = validateUutMinting(
                 ctx: ctx, 
                 mph: mph,
-                seedTxId: seedTxn, 
-                seedIdx: seedIndex, 
+                seed: minterSeed,
                 purposes: purposes, 
                 mkTokenName: mkUutName,
                 bootstrapCharter: charterVal
@@ -168,7 +167,7 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
             // -------------------------  ^^^ deferring to the Capo's current minting delegate --------------------
         },
 
-        addingMintInvariant{sTxId, sIdx} => {
+        addingMintInvariant{seed} => {
             addMintInvariant : Int = 3;
 
             // XXXXXXXXXXXXXXXXXXX should be failing
@@ -179,12 +178,11 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                 ctx : ctx, 
                 mph: mph, 
                 purpose: "mintInvar", 
-                seedTxId: sTxId, 
-                seedIdx: sIdx
+                seed: seed
             )
         },
 
-        addingSpendInvariant{sTxId, sIdx} => {
+        addingSpendInvariant{seed} => {
             addSpendInvariant : Int = 4;
             // XXXXXXXXXXXXXXXXXXX should be failing
                         //!todo change this one
@@ -194,12 +192,11 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                 ctx : ctx, 
                 mph: mph, 
                 purpose: "spendInvar", 
-                seedTxId: sTxId, 
-                seedIdx: sIdx 
+                seed: seed
             )
         },
 
-        ForcingNewMintDelegate{sTxId, sIdx} => {
+        ForcingNewMintDelegate{seed} => {
             updatingCharter : Int = 1; // general update to charter
             print("checking for ForcingNewMintDelegate");
                                     //!todo change this one
@@ -207,14 +204,13 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                 charterRedeemerIndex: updatingCharter,
                 ctx : ctx, 
                 mph: mph, 
-                purpose: "mintDgt", 
-                seedTxId: sTxId, 
-                seedIdx: sIdx, 
+                purpose: "mintDgt",
+                seed: seed, 
                 needsMintDelegateApproval: false
             )
         },
 
-        CreatingNewSpendDelegate{seedTxId, seedIdx, replaceExisting} => {
+        CreatingNewSpendDelegate{seed, replaceExisting} => {
             print("checking for CreatingNewSpendDelegate");
 
             otherMintedValue : Value = replaceExisting.switch {
@@ -236,8 +232,7 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                 ctx : ctx,
                 mph: mph,
                 purpose: "spendDgt",
-                seedTxId: seedTxId,
-                seedIdx: seedIdx,
+                seed: seed,
                 needsMintDelegateApproval: false,
                 otherMintedValue: otherMintedValue
             )

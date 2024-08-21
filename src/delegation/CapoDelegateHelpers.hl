@@ -21,8 +21,7 @@ enum stakingKeyRequirement {
 // }
 enum DelegateLifecycleActivity {
     ReplacingMe { // replaces this delegate with a different one
-        seedTxn: TxId
-        seedIndex: Int
+        seed: TxOutputId
         purpose: String
     }
     Retiring
@@ -32,8 +31,7 @@ enum DelegateLifecycleActivity {
 // use this activity at Redeemer #1 CapoLifecycleActivities
 enum CapoLifecycleActivity {
     CreatingDelegate {
-        seedTxn: TxId
-        seedIndex: Int
+        seed: TxOutputId
         purpose: String
     }
     // ActivatingDelegate {
@@ -70,9 +68,8 @@ enum AbstractDelegateActivitiesEnum {
     // their activities.  Requires a typeMap for to resolve dataType to the concrete delegate.
 
     CreatingDelegatedData {
+        seed: TxOutputId
         dataType: String
-        seedTxn: TxId
-        seedIndex: Int
     }
     UpdatingDelegatedData {
         dataType: String

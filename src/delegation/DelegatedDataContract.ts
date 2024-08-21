@@ -59,15 +59,36 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
      *
      * This is semantically equivalent to the super method of the same name, but with a more explicit and flexible signature.
      * 
-     * In particular, the id arg may be provided as a string, which is implicitly converted to a byte-array
+     * In particular, the id arg may be provided as a string, which is implicitly converted to a byte-array.
+     * 
+     * If you have any difficulty instantiating a complex activity object (e.g. with nested Enums), 
+     * you may wish to provide the id using a UplcByteArray, along with any other Uplc-typed args.
+     * This allows the activity to be formed without reference to on-chain Enum types,
+     * which aren't all easily used from Javascript land
      **/
-    mkSpendingActivity(spendingActivityName: string, id: string | number[], ...args: any[]) : isActivity {
+    mkSpendingActivity(
+        spendingActivityName: string, 
+        id: string | number[],
+        ...args: any[]
+    ) : isActivity {
         if (Array.isArray(id)) {
             return super.mkSpendingActivity(spendingActivityName, id, ...args);
-        } 
+        }
         return super.mkSpendingActivity(spendingActivityName, helios.textToBytes(id), ...args);
     }
 
+    /**
+     * Creates an indirect reference to a seed activity with arguments,
+     * using a seed placeholder.
+     * 
+     * @remarks
+     * Provide a seed activity function, a placeholder for the seed, any other args
+     * for the on-chain activity/redeemer.
+     * 
+     * The arguments are passed to the seed activity function, which is expected to return
+     * an {@link isActivity} object serializing the `{redeemer}` data as a UplcData object.
+     * Normally that's done with {@link mkSeededMintingActivity()}
+     */
     usesSeedActivity<SA extends seedActivityFunc<any>>(
         a: SA,
         seedPlaceholder: "...seed",
@@ -173,6 +194,21 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         ) as TCX & typeof tcx2;
     }
 
+    /**
+     * Creates an indirect reference to an an update activity with arguments,
+     * using a record-id placeholder.
+     * 
+     * @remarks
+     * Provide an update activity function, a placeholder for the record-id, any other args 
+     * for the on-chain activity/redeemer.
+     * 
+     * This approach is similar to the creation-time {@link usesSeedActivity()} method,
+     * with a "...recId" placeholder instead of a "...seed" placeholder.
+     * 
+     * The arguments are passed to the update activity function, which is expected to return
+     * an {@link isActivity} object serializing the `{redeemer}` data as a UplcData object.  
+     * Normally that's done with {@link mkSpendingActivity()}.
+     */
     usesUpdateActivity<
         UA extends updateActivityFunc<any>
         // (...args: [hasRecId, ...any]) => isActivity
@@ -310,10 +346,10 @@ class SeedActivity<
         this.args = args;
     }
 
-    mkRedeemer(thing: hasSeed) {
-        // const { txId, idx } = this.host.getSeed(thing);
+    mkRedeemer(seedFrom: hasSeed) {
+        // const seed = this.host.getSeed(thing);
 
-        return this.factoryFunc.call(this.host, thing, ...this.args);
+        return this.factoryFunc.call(this.host, seedFrom, ...this.args);
     }
 }
 
@@ -342,7 +378,11 @@ class UpdateActivity<
     }
 
     mkRedeemer(recId: hasRecId) {
-        return this.factoryFunc.call(this.host, recId, ...this.args);
+        return this.factoryFunc.call(
+            this.host, 
+            recId,
+            ...this.args
+        );
     }
 
 }

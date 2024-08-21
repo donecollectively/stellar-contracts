@@ -68,8 +68,7 @@ enum MintingActivity {
     // application can replace the placeholder, which is only here to 
     // avoid a syntax error in the unspecialized version
     mintingUuts {  
-        seedTxn: TxId
-        seedIndex: Int
+        seed: TxOutputId
         purposes: []String
     }
 }
@@ -112,15 +111,17 @@ enum DelegateActivity {
     }
 
     CreatingDelegatedData {
+        seed: TxOutputId
         dataType: String
-        seedTxn: TxId
-        seedIndex: Int
+        // id created from seed
     }
     UpdatingDelegatedData {
+        // seed not used
         dataType: String
         recId: ByteArray
     }
     DeletingDelegatedData {
+        // seed not used
         dataType: String
         recId: ByteArray
     }
@@ -138,7 +139,7 @@ enum DelegateActivity {
     ) -> Bool {
         DelegateActivity::MintingActivities{
             MintingActivity::mintingUuts{
-                sTxId, sIdx, purposes
+                seed, purposes
         }   } = self;
 
         DelegateDatum::IsDelegation{dd} = mdd;
@@ -158,15 +159,14 @@ enum DelegateActivity {
 
         // This call can serve as a template for enforcing expected mints 
         // of uuts (and additional token values) in validation of application-
-        // specific activities, given (mph, sTxId, sIdx, purposes)
+        // specific activities, given (mph, seed, purposes)
         validateUutMinting(
             ctx: ctx, 
             mph: dd.mph,
-            seedTxId: sTxId, 
-            seedIdx: sIdx, 
+            seed: seed,
             purposes: purposes,
             // otherMintedValue: ()
-            mkTokenName: mkUutTnFactory(sTxId, sIdx)
+            mkTokenName: mkUutTnFactory(seed)
         );
 
         isOk
@@ -189,7 +189,7 @@ enum DelegateActivity {
             DelegateLifecycleActivities => true,
             CapoLifecycleActivities{CLA} => {
                 CLA.switch{
-                    CreatingDelegate{ /*seedTxn*/ _,  /* seedIndex */ _, purpose} => {
+                    CreatingDelegate{   /* seed TxOutput */ _, purpose} => {
                         assert(purpose == "myNamedDgt", "unsupported delegate-creation purpose: " + purpose);
 
                         true

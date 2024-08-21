@@ -860,10 +860,15 @@ export class StellarContract<
         return "Activity";
     }
 
-    getSeed(arg: hasSeed): SeedAttrs {
-        return arg instanceof StellarTxnContext
+    getSeed(arg: hasSeed): helios.TxOutputId {
+        const {
+            txId,
+            idx
+        } = arg instanceof StellarTxnContext
             ? arg.getSeedUtxoDetails()
             : arg;
+
+        return new helios.TxOutputId(txId, idx);
     }
 
     /**
@@ -913,10 +918,10 @@ export class StellarContract<
             )) {
                 //Some of them will point to Class definitions.
                 // check if any of those classes inherit from UplcData.
-                if (enumType[name].prototype instanceof UplcData) {
+                if (enumType[name].prototype instanceof helios.UplcData) {
                     // if so, add the name to activityNames.
                     variantNames.push(name);
-                } else if (enumType[name].protototype instanceof HeliosData) {
+                } else if (enumType[name].protototype instanceof helios.HeliosData) {
                     throw new Error("variant names only available via HeliosData : (")
                 }                
             }
@@ -930,7 +935,7 @@ export class StellarContract<
                 }: activity/enum-variant name mismatch in ${
                     //@ts-expect-error
                     enumType.name.value
-                }::${variantName}'\n` +
+                }: variant '${variantName}' unknown\n` +
                     ` ... variants in this enum: ${variantNames.join(", ")}`
             );
         }
@@ -1875,6 +1880,12 @@ export class StellarContract<
                 //  - validations with simplify:true, ~250ms - but ...
                 //    ... with elided error messages that don't support negative-testing very well
             } catch (e: any) {
+                if (e.message.match(/multi:Minting: only dgData activities ok in mintDgt/)) {
+                    console.log(
+                        `⚠️⚠️⚠️ mint delegate for multiple activities should be given delegated-data activities, not the activities of the delegate`
+                    )
+                }
+
                 // todo: find a way to run the same scripts again, with tracing retained
                 // for client-facing transparency of failures that can be escalated in a meaningful
                 // way to users.

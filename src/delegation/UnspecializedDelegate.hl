@@ -104,8 +104,7 @@ enum MintingActivity {
     // application can replace the placeholder, which is only here to 
     // avoid a syntax error in the unspecialized version
     _placeholder1MA {
-        seedTxn: TxId
-        seedIndex: Int
+        seed: TxOutputId
     }
 }
 
@@ -159,17 +158,19 @@ enum DelegateActivity {
     }
 
     CreatingDelegatedData {
+        seed: TxOutputId
         dataType: String
-        seedTxn: TxId
-        seedIndex: Int
+        // id from seed
     }
 
     UpdatingDelegatedData {
+        // seed not used
         dataType: String
         recId: ByteArray
     }
 
     DeletingDelegatedData {
+        // seed not used
         dataType: String
         recId: ByteArray
     }
@@ -190,7 +191,7 @@ enum DelegateActivity {
     //     ctx: ScriptContext
     // ) -> Bool {
     //     //!!! replace with an activity using the same seed-txn pattern:
-    //     // MintingActivities::SomethingMintingUuts{sTxId, sIdx, purposes} = self;
+    //     // MintingActivities::SomethingMintingUuts{seed, purposes} = self;
     //     DelegateDatum::IsDelegation{dd} = mdd;
     //     returnsAuthzToken : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);
 
@@ -204,15 +205,14 @@ enum DelegateActivity {
 
     //     // This call can serve as a template for enforcing expected mints 
     //     // of uuts (and additional token values) in validation of application-
-    //     // specific activities, given (mph, sTxId, sIdx, purposes)
+    //     // specific activities, given (mph, seed, purposes)
     //     validateUutMinting(
     //         ctx: ctx, 
     //         mph: dd.mph,
-    //         seedTxId: sTxId, 
-    //         seedIdx: sIdx, 
+    //         seed: seed,
     //         purposes: purposes,
     //         // otherMintedValue: ()
-    //         mkTokenName: mkUutTnFactory(sTxId, sIdx)
+    //         mkTokenName: mkUutTnFactory(seed)
     //     );
 
     //     isOk
@@ -245,7 +245,7 @@ enum DelegateActivity {
                 //   ... in your Capo, you can implement checks for that here.
                 //  You can use this construct as-is, or modify it to suit your needs.
                 CLA.switch {
-                    CreatingDelegate{seedTxn,seedIndex,purpose} => {
+                    CreatingDelegate{seed, purpose} => {
                         self.supportedCapoDelegatePurposes().find_safe(
                             (p : String) -> Bool { p == purpose } 
                         ).switch {
@@ -254,11 +254,10 @@ enum DelegateActivity {
                                 validateUutMinting(
                                     ctx: ctx, 
                                     mph: priorMddd.dd.mph,
-                                    seedTxId: seedTxn, 
-                                    seedIdx: seedIndex, 
+                                    seed: seed,
                                     purposes: []String{purpose},
                                     // otherMintedValue: ()
-                                    mkTokenName: mkUutTnFactory(seedTxn, seedIndex),
+                                    mkTokenName: mkUutTnFactory(seed),
                                     // WE ARE the mint delegate.
                                     needsMintDelegateApproval: false 
                                 )
