@@ -464,6 +464,10 @@ type UnkFooNo = unknown extends { "foo": string } ? "yes" : "no";
 type ConstStringUnkYES = "MyCONST STRING" extends unknown ? "yes" : "no";
 type FooUnkYES = { "foo": string } extends unknown ? "yes" : "no";
 
+export type DelegatedDataPredicate<
+    DATUM_TYPE extends anyDatumProps & 
+        AnyDataTemplate<any, any> 
+    > = (utxo: TxInput, data: DATUM_TYPE) => boolean;
 
 export abstract class Capo<SELF extends Capo<any>>
 extends StellarContract<CapoBaseConfig> 
@@ -2664,7 +2668,7 @@ implements hasSettingsType<SELF> //, hasRoleMap<SELF>
         }: {
             type?: T;
             id?: string | UutName;
-            predicate?: (utxo: TxInput, data: DATUM_TYPE) => boolean;
+            predicate?: DelegatedDataPredicate<DATUM_TYPE>;
             query?: never; // todo
         }): Promise<FoundDatumUtxo<DATUM_TYPE>[]> {
             if (!type && !predicate && !id) {

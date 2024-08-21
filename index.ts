@@ -48,6 +48,7 @@ export type {
     FoundDatumUtxo,
     FoundUut,
     uutPurposeMap,
+    DelegatedDataPredicate,
     hasAllUuts,
     hasBootstrappedConfig,
     hasCharterRef,
