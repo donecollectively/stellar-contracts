@@ -219,6 +219,17 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         return new UpdateActivity(this, a, args);
     }
 
+    /**
+     * Creates a transaction for updating a record in the delegated data store
+     * 
+     * @remarks
+     * Provide a transaction name, an existing item, and a controller activity to trigger.
+     * The activity MUST either be an activity triggering one of the controller's SpendingActivity variants, 
+     * or the result of calling {@link usesUpdateActivity()}.
+     *   **or TODO support a multi-activity**
+     * 
+     * The updatedRecord only needs to contain the fields that are being updated.
+     */
     async mkTxnUpdateRecord<
         THIS extends DelegatedDataContract,
         CAI extends isActivity | UpdateActivity<any>,
