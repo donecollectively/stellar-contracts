@@ -101,10 +101,11 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         THIS extends DelegatedDataContract,
         CAI extends isActivity | SeedActivity<any>,
         TCX extends StellarTxnContext,
-        DDType extends DelegatedDatumType<THIS> = DelegatedDatumType<THIS>
+        DDType extends DelegatedDatumType<THIS> = DelegatedDatumType<THIS>,
+        minDDType extends DgDataCreationAttrs<THIS> = DgDataCreationAttrs<THIS>
     >(
         this: THIS,
-        record: DDType,
+        record: minDDType,
         controllerActivity: CAI,
         extraCreationOptions?: ExtraCreationOptions<DDType>,
         tcx?: TCX
@@ -156,11 +157,12 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
             hasSeedUtxo &
             hasSettingsRef &
             hasUutContext<DelegatedDatumTypeName<THIS>>,
-        DDType extends DelegatedDatumType<THIS> = DelegatedDatumType<THIS>
+        DDType extends DelegatedDatumType<THIS> = DelegatedDatumType<THIS>,
+        minDDType extends DgDataCreationAttrs<THIS> = DgDataCreationAttrs<THIS>
     >(
         this: THIS,
         tcx: TCX,
-        record: DDType,
+        record: minDDType,
         controllerActivity: isActivity,
         extraCreationOptions: ExtraCreationOptions<DDType> = {}
     ): Promise<TCX> {
@@ -177,8 +179,9 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
 
         const uut = tcx.state.uuts[newType];
         const newRecord: DDType = {
-            ...record,
+            ...record as unknown as DDType,
             id: uut.toString(),
+            type: newType,
             ...this.creationDefaultDetails(),
         };
         const newDatum = await this.mkDatumDelegatedDataRecord(
