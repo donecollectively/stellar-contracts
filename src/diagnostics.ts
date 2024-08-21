@@ -15,6 +15,7 @@ import {
     UplcProgram,
     Hash,
     textToBytes,
+    Redeemer,
 } from "@hyperionbt/helios";
 import type { ErrorMap } from "./delegation/RolesAndDelegates.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
@@ -142,15 +143,24 @@ export function stringToPrintableString(str: string | number[]) {
  * representation of token names even if they're not UTF-8 encoded.
  * @public
  **/
-export function assetsAsString(a: Assets, joiner = "\n    ", showNegativeAsBurn? : "withBURN") {
+export function assetsAsString(
+    a: Assets, 
+    joiner = "\n    ", 
+    showNegativeAsBurn? : "withBURN",
+    mintRedeemers? : Record<number, string>
+) {
     //@ts-expect-error it's marked as private, but thankfully it's still accessible
     const assets = a.assets;
-    return (assets?.map(([policyId, tokenEntries]) => {
+    return (assets?.map(([policyId, tokenEntries], index) => {
             const tokenString = tokenEntries
                 .map(([nameBytes, count] : [ByteArray, bigint]) => {
                     // const nameString =  hexToPrintableString(nameBytes.hex);
                     const nameString = displayTokenName(nameBytes.bytes)
 
+                    let redeemerInfo = mintRedeemers?.[index] || "";
+                    if (redeemerInfo) {
+                        redeemerInfo = `\n          r = ${redeemerInfo}\n      `;
+                    }
                     const negWarning = count < 1n ? (
                         showNegativeAsBurn ? "🔥" : "⚠️ NEGATIVE⚠️"
                     ): "";
@@ -161,7 +171,7 @@ export function assetsAsString(a: Assets, joiner = "\n    ", showNegativeAsBurn?
                                 : ""
                             )
                             : "";
-                    return `${negWarning} ${count}×💴 ${nameString} ${burned}`;
+                    return `${negWarning} ${count}×💴 ${nameString} ${burned}${redeemerInfo}`;
                 })
                 .join(" + ");
             return `⦑${policyIdAsString(policyId)} ${tokenString}⦒`;
@@ -231,6 +241,41 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
     }
 
     const d = tx.dump();
+
+    const allRedeemers = tx.witnesses.redeemers as any
+    let hasIndeterminate = false;
+    const inputRedeemers = Object.fromEntries( allRedeemers.map(
+        (x : Redeemer, index : number) => {
+            if (! ("inputIndex" in x)) return undefined;
+            const {inputIndex} = x
+            const isIndeterminate = inputIndex == -1;
+            if (isIndeterminate) hasIndeterminate = true;
+            const inpIndex = isIndeterminate ? `‹unk${index}›` : inputIndex;
+            if (!x.data) debugger;
+            return [ 
+                inpIndex,
+                x.data?.toString() || "‹no data›"
+            ];
+        }
+    ).filter(x => !!x) );
+    if (hasIndeterminate) inputRedeemers["hasIndeterminate"] = true;
+
+    const mintRedeemers = Object.fromEntries(allRedeemers.map((x) => {
+        if ("inputIndex" in x) return undefined;
+        if ("number" != typeof x.mphIndex) {            
+            debugger;
+            throw new Error(`non-mint redeemer here not yet supported`);
+        }
+        const isIndeterminate = x.inputIndex == -1;
+        if (isIndeterminate) throw new Error(`oops, this wasn's supposed to be possible`);
+        if (!x.data) debugger;
+
+        return [ 
+            x.mphIndex, 
+            x.data?.toString() || "‹no data›"
+        ];
+    }).filter(x => !!x) );
+
     //!!! todo: improve interface of tx so useful things have a non-private api
     //!!! todo: get rid of dump()
     //!!! todo: get back to type-safety in this diagnostic suite
@@ -243,7 +288,9 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
         if (!item) continue;
         if ("inputs" == x) {
             item = `\n  ${item.map((x, i) => txInputAsString(x, 
-                "➡️  " /* <- unicode blue arrow right */ + `@${1+i} `
+                "➡️  " /* <- unicode blue arrow right */ + `@${1+i} `,
+                i,
+                inputRedeemers
             )).join("\n  ")}`;
         }
         if ("refInputs" == x) {
@@ -262,7 +309,7 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
             if (!item.assets.length) {
                 continue;
             }
-            item = `\n   ❇️  ${assetsAsString(item, "\n   ❇️  ", "withBURN")}`;
+            item = `\n   ❇️  ${assetsAsString(item, "\n   ❇️  ", "withBURN", mintRedeemers)}`;
         }
         if ("outputs" == x) {
             item = `\n  ${item
@@ -323,10 +370,10 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
         if ("redeemers" == x) {
             if (!item) continue;
             //!!! todo: augment with mph when that's available from the Activity.
-            item = item.map((x) => {
+            item = item.map((x,) => {
                 // console.log("redeemer keys", ...[ ...Object.keys(x2) ], x2.dump());
                 const isIndeterminate = x.inputIndex == -1;
-                if (isIndeterminate) indeterminateRedeemerDetails = true;
+                // if (isIndeterminate) indeterminateRedeemerDetails = true;
                 const indexInfo = isIndeterminate
                     ? `spend txin #‹tbd›`
                     : "inputIndex" in x
@@ -396,19 +443,37 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
  * Shortens address and output-id for visual simplicity; doesn't include datum info
  * @public
  **/
-export function txInputAsString(x: TxInput, prefix = "-> "): string {
-    const {origOutput: oo} = x;
-
+export function txInputAsString(
+    x: TxInput, 
+    prefix = "-> ",
+    index? : number,
+    redeemers? : Record<number, string>
+): string {
+    const {
+        origOutput: oo
+    } = x;
+    const hasIndeterminate = redeemers?.["hasIndeterminate"];
+    const redeemerInfo = redeemers ? (
+            redeemers[index || -424242] ? 
+                `\n    r = ${redeemers[index || -424242]}`
+                    : hasIndeterminate ? "\n    r = ‹tbd›" : ""
+        ) : ""
     return `${prefix}${addrAsString(x.address)}${showRefScript(oo.refScript)} ${valueAsString(
         x.value
-    )} ${datumSummary(oo.datum)} = 📖 ${txOutputIdAsString(x.outputId)}${datumExpanded(oo.datum)}`;
+    )} ${
+        datumSummary(oo.datum)
+    } = 📖 ${
+        txOutputIdAsString(x.outputId)
+    }${redeemerInfo}${
+        "" /* datumExpanded(oo.datum) */
+    }`;
 }
 
 /**
  * Converts a list of UTxOs to printable form
  * @remarks
  *
- * ... using {@link txInputAsString}
+ * ... using {@link utxoAsString}
  * @public
  **/
 export function utxosAsString(utxos: TxInput[], joiner = "\n"): string {
@@ -463,7 +528,7 @@ export function datumExpanded(d: Datum | null | undefined): string {
     if (!d) return "";
     if (!d.isInline()) return "";
     const data = d.data?.toCborHex()
-    return `\n   = ${data}`;
+    return `\n    d = ${data}`;
 }
 
 /**
