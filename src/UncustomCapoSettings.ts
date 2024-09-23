@@ -6,4 +6,4 @@
 import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import heliosModuleInfo from "./UncustomCapoSettings.hl";
 
-export const UncustomCapoSettings = HeliosModuleSrc.parseFrom(heliosModuleInfo);
+export const UncustomCapoSettings = HeliosModuleSrc.parseFromOptions(heliosModuleInfo);

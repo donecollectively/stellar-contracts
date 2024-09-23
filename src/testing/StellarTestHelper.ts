@@ -165,7 +165,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     async ‹yourSnapshot›() {
         this.setActor("tina");
 
-        const tcx = this.capo.mkTxn‹...› 
+        // ... your good sequence of transaction(s) here
+        const tcx = this.capo.mkTxn‹...›(...)
         return this.submitTxnWithBlock(tcx);
     }
 

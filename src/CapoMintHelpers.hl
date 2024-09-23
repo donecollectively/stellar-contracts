@@ -30,13 +30,17 @@ import {
 func hasSeedUtxo(tx: Tx, seedUtxo: TxOutputId
     // , reason: String
 ) -> Bool {
-    assert(tx.inputs.any( (input: TxInput) -> Bool {
+    if (!tx.inputs.any( (input: TxInput) -> Bool {
         input.output_id == seedUtxo
-    }),  "missing matching seed input for minting"
-        // +reason 
+    })) {
+        print(" - expected seedUtxo: ");
+        print(seedUtxo.show());
+        print("\n");
         // + "\n"+seedUtxo.tx_id.show() + " : " +seedUtxo.index.show()
-    );
-    print( "  -- has seed -> ok");
+        assert(false, "missing expected seed input for minting")
+        // +reason 
+    };
+    print( "  -- has seed -> ok\n");
     true
 }
 
@@ -46,8 +50,10 @@ func requiresDelegateAuthorizingMint(
     extraMintDelegateRedeemerCheck: Bool = true
 ) -> Bool {
     authzVal : Value = Value::new(AssetClass::new(mph, delegateLink.uutName.encode_utf8()), 1);
+    print("finding input dgTkn: ");
     print( delegateLink.uutName);
-    print("finding ^ my inp");
+    print("\n");
+
     targetId: TxOutputId = tx.inputs.find_safe((i: TxInput) -> {
         // print("   ?  in "+i.value.show());
         i.value.contains(authzVal) // find my authority token
@@ -55,7 +61,7 @@ func requiresDelegateAuthorizingMint(
         Some{x} => x.output_id,
         None => error("missing dgTkn "+delegateLink.uutName)
     };
-    print ("     found ^");
+    print ("    -- found dgTkn^");
     spendsAuthorityUut : ScriptPurpose = tx.redeemers.find_key( 
         (purpose : ScriptPurpose) -> { purpose.switch{ 
             sp: Spending => {
@@ -81,15 +87,15 @@ func requiresDelegateAuthorizingMint(
             ConstrData{index, fields} => {
                 /* avoids unused-variable warning: */ fields == fields && 
                 if (!extraMintDelegateRedeemerCheck) {
-                    print("  -- ok, dgTkn spent");
-                    print("  -- skip redeemer check");
+                    print("  -- ok, dgTkn spent\n");
+                    print("  ---- skip redeemer check\n");
                     true
                 } else { 
                     if (0 == index) {
                         dgtActivity : DelegateLifecycleActivity = DelegateLifecycleActivity::from_data(fields.head);
                         dgtActivity.switch {
                             ReplacingMe => {
-                                print("  -- ok, dgTkn spent");
+                                print("  -- ok, dgTkn spent\n");
                                 true
                             },
                             Retiring => error("DLA::Retiring can't mint!"),
@@ -122,11 +128,19 @@ func requiresMintDelegateApproval(
     mph: MintingPolicyHash
 ) -> Bool {
     cctx : CapoCtx = mkCapoCtx(mph).withCharterRef();
-    print("Minter needs mintDgt + mint activity");
+    print("Minter needs mintDgt + mint activity\n");
     REQT("EXPECTS the application-specific mintDelegate to explicitly check and approve the full minted value");
-    print("    -- ^ e.g. assert(tx.minted.get_policy(mph) == expectedMintedValue);");
-    print("    ---- (if it's only responsible for one minting policy)");
+    
+    // print ("      ❇️  "+ 
+    //     tx.minted.get_policy(mph).to_list(
+    //         (b : ByteArray, i: Int) -> String { 
+    //             i.show() + "x " + b.decode_utf8()
+    //         }
+    //     ).join(" + ") 
+    // + "\n");
 
+    print("    -- ^ e.g. assert(tx.minted.get_policy(mph) == expectedMintedValue);\n");
+    print("    ---- (if it's only responsible for one minting policy)\n");
     // if (true) {
         // todo: enforces minting invariants.
         TODO("must enforce minting invariants");
@@ -140,12 +154,12 @@ func requiresMintDelegateApproval(
     mintDgtActivity.switch {
         CapoLifecycleActivities{CLA} => CLA.switch {
             CreatingDelegate => {
-                print("  -- minter wants mintDgt + CapoLifecycle (delegate-creation)");
+                print("  -- minter wants mintDgt + CapoLifecycle (delegate-creation)\n");
 
                 mintDgtInput.requiresValidOutput() && 
                 true
-            },
-            _ => error("no")// ---- left as a compile-time error if any further variants are added 
+            }
+            // _ => error("no")// ---- left as a compile-time error if any further variants are added 
         },
         SpendingActivities => error("DelegateInput::SpendingActivity can't mint!"),
         DelegateLifecycleActivities{DLA} => {
@@ -154,7 +168,7 @@ func requiresMintDelegateApproval(
                     TODO( "relay delegate installation sequence" 
                         // "the new delegate should be minted under CapoLifecycleActivities::CreatingDelegate, then installed \n  ...without the minter's involvement, using its DelegateLifecycle::Installing activity"
                     );
-                    print("  -- TEMPORARY: the mint delegate is being replaced");
+                    print("  -- TEMPORARY: the mint delegate is being replaced\n");
                     true
                 },
                 Retiring => error("DLA::Retiring can't mint!"),
@@ -162,7 +176,7 @@ func requiresMintDelegateApproval(
             }
         },
         MintingActivities => {
-            print("  -- app-specific minting; trust mintDgt");
+            print("  -- app-specific minting; trust mintDgt\n");
             mintDgtInput.requiresValidOutput() && 
                 true
         },
@@ -361,30 +375,30 @@ func validateUutMinting(
         print( "  -- no mint from our policy at (mph, valueMinted): ( ");
         print( mph.show() );
         print(valueMinted.show() );
-        error(") - validateUutMinting(): no mint")
+        print(")\n");
+        error("validateUutMinting(): no mint")
     } else {
         assert(true, "no")
         // print("  -- minted: " + valueMinted.get_policy(mph).show());
     };
 
+    print("  -- uut-minting seed: " + seed.tx_id.show() + "🔹#"+seed.index.show() + "\n");
+
+    expectedValue.get_policy(mph).for_each( (b : ByteArray, i: Int) -> {
+        print( "    ℹ️ 🐞 expected: "+ i.show() + "x " + b.decode_utf8() + "\n" )
+    });
+
     actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);
     // expectedMint : Map[ByteArray]Int = expectedValue.get_policy(mph);
     if (true) {
         actualMint.for_each( (b : ByteArray, i: Int) -> {
-            print( "    ℹ️ 🐞 actual: " );
-            print( i.show() + "x " + b.decode_utf8())
+            print( "    ℹ️ 🐞   actual: " + i.show() + "x " + b.decode_utf8() + "\n" )
         });
         print(Value::from_map(valueMinted.to_map().filter( (b:MintingPolicyHash, _ /* Map[ByteArray]Int */ ) -> Bool {
             b != mph
         })).show());
+        print("^ other policy values minted \n")
         
-        print("uut-minting seed: ");
-        print( seed.tx_id.show() );
-        print("🔹#" + seed.index.show());
-        expectedValue.get_policy(mph).for_each( (b : ByteArray, i: Int) -> {
-            print( "    ℹ️ 🐞 expected: ");
-            print( i.show() + "x " + b.decode_utf8())
-        })
     } else {
         assert(true, "never")
     };
@@ -399,7 +413,6 @@ func validateUutMinting(
     }, []ByteArray{});
     assert(true || (temp == temp), "prevent unused var");
 
-
     expectationsMet : Bool = valueMinted  == expectedValue;
 
     assert(expectationsMet, "mismatch in UUT mint"
@@ -407,12 +420,10 @@ func validateUutMinting(
         // "   ... actual "+ valueMinted.show()+
         // "   ... diff = \n" + (expectedValue - valueMinted).show()
     );
-    print(" ✅ validateUutMinting:  ok!");
+    assert(hasSeedUtxo(tx, seed), "no seed"); //, "UUT "+purposes.join("+")
+    print(" ✅ validateUutMinting:  ok!\n");
 
-    delegateApproval && expectationsMet &&
-    hasSeedUtxo(tx, seed
-        //, "UUT "+purposes.join("+")
-    )
+    delegateApproval && expectationsMet     
 }
 
 func mintsUutForCharterUsingRedeemerIndex(
@@ -437,9 +448,9 @@ func mintsUutForCharterUsingRedeemerIndex(
     chVal : Value = tvCharter(mph);
     REQT("ensures granted authority, implied by requiring the charter to be spent with the indicated minting activity");
     hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
-    print("  --- finding required charter input ");
+    print("  --- finding required charter input\n");
     charterInput : TxInput = tx.inputs.find(hasCharter);
-    print ("  <-- found charter input");
+    print ("  <-- found charter input\n");
     charterRedeemer : Data  = mustFindInputRedeemer(charterInput);
     // print("defaultMinter @A");
 
@@ -469,7 +480,11 @@ func mintsUutForCharterUsingRedeemerIndex(
         needsMintDelegateApproval: needsMintDelegateApproval,
         extraMintDelegateRedeemerCheck: extraMintDelegateRedeemerCheck
     ) && if (/* more debug info? */ true) {
-        print ("  -- CMH: mint UUT "+purpose+" w/ charter redeemer #"+charterRedeemerIndex.show());
+        print ("  -- CMH: mint UUT ");
+        print(purpose);
+        print(" w/ charter redeemer #");
+        print(charterRedeemerIndex.show());
+        print("\n");
         true
     } else { true } 
 }

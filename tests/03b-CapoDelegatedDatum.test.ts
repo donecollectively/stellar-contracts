@@ -60,37 +60,37 @@ describe("Capo spending DelegatedDatum", async () => {
     });
 
     describe("defers to the capo's mint delegate", () => {
-        it.todo("the capo fails if the spend delegate doesn't have an activity matching the record being updated", async ({context}) => {
+        it.todo("the capo fails if the spend delegate doesn't have an activity matching the record being updated", async (context: localTC) => {
         })
 
-        it.todo("the capo fails if the spend delegate has multiple activities for any one record id", async ({context}) => {
+        it.todo("the capo fails if the spend delegate has multiple activities for any one record id", async (context: localTC) => {
         })
 
-        it.todo("the spend delegate's multi-activity works only with the generic UpdatingDelegatedData activity", async ({context}) => {
+        it.todo("the spend delegate's multi-activity works only with the generic UpdatingDelegatedData activity", async (context: localTC) => {
         })
 
-        it.todo("the spend delegate fails if any of its activities isn't matched by a spent/updated record", async ({context}) => {
+        it.todo("the spend delegate fails if any of its activities isn't matched by a spent/updated record", async (context: localTC) => {
         })
 
-        it.todo("the spend delegate fails if the delegated data controller doesn't have an activity matching that record", async ({context}) => {
+        it.todo("the spend delegate fails if the delegated data controller doesn't have an activity matching that record", async (context: localTC) => {
         })
 
-        it.todo("the spend delegate fails if the delegated data controller has multiple activities for the record id", async ({context}) => {
+        it.todo("the spend delegate fails if the delegated data controller has multiple activities for the record id", async (context: localTC) => {
         })
 
-        it.todo("the data-controller policy fails if any of its activities isn't matched by a spent/updated record", async ({context}) => {
+        it.todo("the data-controller policy fails if any of its activities isn't matched by a spent/updated record", async (context: localTC) => {
         })
 
-        it.todo("the data-controller policy works only with its specific SpendingActivities/MintingActivities, not the generic activities used by the SpendDgt", async ({context}) => {
+        it.todo("the data-controller policy works only with its specific SpendingActivities/MintingActivities, not the generic activities used by the SpendDgt", async (context: localTC) => {
         })
 
-        it.todo("fails if the spending delegate is not included in the transaction", async ({context}) => {
+        it.todo("fails if the spending delegate is not included in the transaction", async (context: localTC) => {
         })
 
-        it.todo("builds transactions including the invariant spending-delegates", async ({context}) => {
+        it.todo("builds transactions including the invariant spending-delegates", async (context: localTC) => {
         })
 
-        it.todo("fails if the expected invariant delegate is not included in the transaction", async ({context}) => {
+        it.todo("fails if the expected invariant delegate is not included in the transaction", async (context: localTC) => {
         })
     });
 

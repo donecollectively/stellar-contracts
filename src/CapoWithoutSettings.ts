@@ -30,18 +30,13 @@ class NoSettingsAdapter extends SettingsAdapter<NoSettings, BridgeNoSettings> {
     }
 
     toOnchainDatum(settings: NoSettings) {
-        const { SettingsData: hlSettingsData } = this.onChainDatumType;
-
-        const {constrIndex} = hlSettingsData.prototype._enumVariantStatement;
-        return Datum.inline(
-            new ConstrData(constrIndex, [
-                this.toMapData({
-                    "tpe": this.uplcString("set-"),
-                    "@id": this.uplcString("set-42"),
-                    none: this.uplcString("")
-                })
-            ])
-        );
+        return this.inlineDatum("SettingsData", {
+            data: {
+                "tpe": this.uplcString("set-"),
+                "@id": this.uplcString("set-42"),
+                none: this.uplcString("")
+            }
+        });
     }
 }
 

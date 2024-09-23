@@ -14,17 +14,52 @@ import {
     bigIntToBytes,
     rawNetworkEmulatorParams,
     type Wallet,
-    type Network,
-    Address,
+    type Network,    
+    // Address,
     StakeAddress,
     Signature,
-    PubKey,
-    PubKeyHash,
+    // PubKey,
+    PubKeyHash as PKH_h,
     Tx,
 } from "@hyperionbt/helios";
+
+// import {Address} from "@helios-lang/ledger";
+// import { PubKeyHash as PKH_ledger } from "@helios-lang/ledger";
+import { Address, PubKey, PubKeyHash } from "@helios-lang/ledger-babbage";
+// import { PubKeyHash} from "@helios-lang/ledger-shelley";
+
+// import { PubKeyHash as PKH_conway } from "@helios-lang/ledger-conway";
+// import { PubKeyHash as PubKeyHash_c } from "@helios-lang/compat";
+
+// const t1 = PKH_ledger === PKH_conway;
+// const t2 = PKH_ledger === PubKeyHash;
+// const t3 = PKH_conway === PubKeyHash;
+// const t4 = PubKeyHash_c === PKH_ledger;
+// const t5 = PubKeyHash_c === PKH_conway;
+// const t6 = PubKeyHash_c === PubKeyHash;
+// const t7 = PKH_h === PKH_ledger;
+// const t8 = PKH_h === PKH_conway;
+// const t9 = PKH_h === PubKeyHash;
+// const t10 = PKH_h === PubKeyHash_c;
+// const t42 = PubKeyHash_c === PubKeyHash_c;
+
+// console.log({
+//     t1,
+//     t2,
+//     t3,
+//     t4,
+//     t5,
+//     t6, 
+//     t7,
+//     t8,
+//     t9,
+//     t10,
+//     t42
+// });
+// debugger
+
 import { equalsBytes } from "@helios-lang/codec-utils";
 import { NetworkParamsHelper } from "@helios-lang/ledger";
-
 import {
     BIP39_DICT_EN,
     NetworkHelper,
@@ -247,12 +282,14 @@ export class SimpleWallet_stellar implements Wallet {
     }
 
     get address(): Address {
+        
         return Address.fromHashes(
             this.network.isMainnet(),
             this.spendingPubKeyHash,
             this.stakingPubKey?.toHash()
         );
     }
+
     get stakingAddress() {
         if (this.stakingPubKey) {
             return StakingAddress.fromHash(
@@ -562,7 +599,8 @@ export class StellarNetworkEmulator implements Network {
         );
     }
 
-    async submitTx(tx) {
+    //@ts-expect-error
+    async submitTx(tx, logger) {
         this.warnMempool();
 
         assert(
@@ -580,8 +618,11 @@ export class StellarNetworkEmulator implements Network {
         }
 
         this.mempool.push(new RegularTx(tx));
-        console.log("##" + this.id + ": +mempool txn = ", this.mempool.length);
-
+        if (logger) {
+            logger.logPrint(`[EmuNet #${this.id}] +mempool txn = ${this.mempool.length}`);
+        } else {
+            console.log(`[EmuNet #${this.id}] +mempool txn = ${this.mempool.length}`);
+        }
         return tx.id();
     }
 

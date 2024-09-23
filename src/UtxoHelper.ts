@@ -602,7 +602,7 @@ export class UtxoHelper {
                                     "    ... by using explicitly idempotent 'addOrReuse' semantics, with details stored in tcx.state\n\n  ... go with care, and ask the community for help if you're unsure\n  )" +
                                     (required
                                         ? "\nBTW, here is that txn as of this time: " +
-                                          dumpAny(exceptInTcx) +
+                                          await alreadyInTcx.dump() +
                                           "\n\n 👁️   👁️ 👁️ ^^^^^^^ More details about the utxo search failure above ^^^^^^^ 👁️ 👁️   👁️"
                                         : "")
                             );

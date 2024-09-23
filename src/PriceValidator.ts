@@ -6,4 +6,4 @@
 import heliosModuleInfo from "./PriceValidator.hl";
 import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 
-export const PriceValidator = HeliosModuleSrc.parseFrom(heliosModuleInfo)
+export const PriceValidator = HeliosModuleSrc.parseFromOptions(heliosModuleInfo)

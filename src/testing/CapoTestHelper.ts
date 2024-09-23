@@ -9,7 +9,7 @@ import type {
     hasUutContext,
 } from "../Capo.js";
 
-import { StellarTxnContext, type hasAddlTxns } from "../StellarTxnContext.js";
+import { StellarTxnContext, type anyState, type hasAddlTxns } from "../StellarTxnContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
 import { CapoMinter } from "../minting/CapoMinter.js";
 
@@ -135,7 +135,7 @@ export abstract class CapoTestHelper<
      * Creates a new transaction-context with the helper's current or default actor
      * @public
      **/
-    mkTcx() {
+    mkTcx<T extends anyState=anyState>() : StellarTxnContext<T> {
         return new StellarTxnContext(this.strella.setup)
     }
 

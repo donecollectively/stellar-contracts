@@ -122,7 +122,7 @@ export abstract class StellarDelegate<
     ): Promise<TCX>;
 
     mkAuthorityTokenPredicate() {
-        return this.mkTokenPredicate(this.tvAuthorityToken());
+        return this.uh.mkTokenPredicate(this.tvAuthorityToken());
     }
     get authorityTokenName() {
         return this.configIn!.tn;
@@ -137,7 +137,7 @@ export abstract class StellarDelegate<
             tn,
             // reqdAddress,  // removed
         } = this.configIn;
-        if (useMinTv) return this.mkMinTv(mph, tn);
+        if (useMinTv) return this.uh.mkMinTv(mph, tn);
         return mkTv(mph, tn);
     }
 

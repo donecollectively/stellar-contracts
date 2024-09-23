@@ -6,4 +6,4 @@
 import heliosModuleInfo from "./CapoMintHelpers.hl";
 import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 
-export const CapoMintHelpers = HeliosModuleSrc.parseFrom(heliosModuleInfo);
+export const CapoMintHelpers = HeliosModuleSrc.parseFromOptions(heliosModuleInfo);

@@ -110,7 +110,7 @@ export class DefaultCapoTestHelper<
         await this.mintCharterToken();
 
         const treasury = await this.strella!;
-        const tcx: StellarTxnContext = new StellarTxnContext(this.actorContext, this.networkParams);
+        const tcx: StellarTxnContext = this.mkTcx();
         const tcx2 = await treasury.txnAttachScriptOrRefScript(
             await treasury.txnAddGovAuthority(tcx),
             treasury.compiledScript
@@ -218,21 +218,21 @@ export class DefaultCapoTestHelper<
 
         expect(capo.network).toBe(this.network);
 
-        await capo.submit(tcx);
+        await tcx.submit()
         console.log(
             `----- charter token minted at slot ${this.network.currentSlot}`
         );
-        this.network.tick(1n);
-        await capo.submitAddlTxns(tcx, ({ txName, description }) => {
-            this.network.tick(1n);
+        this.network.tick(1);
+        await tcx.submitAddlTxns(({ txName, description }) => {
+            this.network.tick(1);
             console.log(
                 `           ------- submitting addl txn ${txName} at slot ${this.network.currentSlot}:`
             );
         });
 
-        this.network.tick(1n);
+        this.network.tick(1);
         this.state.mintedCharterToken = tcx;
-        console.log("mintCharterToken returning tcx", tcx);
+        // console.log("mintCharterToken returning tcx", tcx);
         return tcx;
     }
 
@@ -243,8 +243,8 @@ export class DefaultCapoTestHelper<
         const { signers } = this.state;
 
         const tcx = await treasury.mkTxnUpdateCharter(args);
-        return treasury.submit(tcx, { signers }).then(() => {
-            this.network.tick(1n);
+        return tcx.submit({ signers }).then(() => {
+            this.network.tick(1);
             return tcx;
         });
     }
@@ -253,8 +253,8 @@ export class DefaultCapoTestHelper<
         await this.mintCharterToken();
         const capo = this.strella!;
         const tcx = await capo.mkTxnUpdateOnchainSettings(args);
-        return capo.submit(tcx).then(() => {
-            this.network.tick(1n);
+        return tcx.submit().then(() => {
+            this.network.tick(1);
             return tcx;
         });
     }

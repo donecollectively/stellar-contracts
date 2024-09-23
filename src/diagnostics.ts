@@ -1,27 +1,23 @@
 import {
-    Address,
-    Datum,
-    Tx,
-    TxOutput,
-    TxInput,
-    Value,
     Assets,
-    MintingPolicyHash,
-    ByteArray,
     ByteArrayData,
+    Datum,
+    MintingPolicyHash,
+    Tx,
     TxId,
+    TxInput,
+    TxOutput,
     TxOutputId,
-    NetworkParams,
-    UplcProgram,
-    Hash,
+    Value,
     textToBytes,
-    Redeemer,
     bytesToHex,
+    type NetworkParams,
 } from "@hyperionbt/helios";
 import type { ErrorMap } from "./delegation/RolesAndDelegates.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
-import type { anyUplcProgram } from "./StellarContract.js";
 import type { UplcProgramV2 } from "@helios-lang/uplc";
+import { Address, type TxRedeemer } from "@helios-lang/ledger-babbage";
+import { datumSerializer, delegateLinkSerializer, abbreviatedDetail } from "./delegation/jsonSerializers.js";
 
 /**
  * converts a hex string to a printable alternative, with no assumptions about the underlying data
@@ -67,7 +63,7 @@ export function displayTokenName(nameBytesOrString: string | number[]) {
     // check if it is a cip-68 token name by inspecting the first 4 bytes.  If they don't match the cip-68 pattern, display using stringToPrintableString.
     // if it has a cip-68 tag in the first 4 bytes, show the cip-68 tag as `‹cip68/{tag}›` and append the rest of the token name as a string.
     // inspect the first 4 bytes by:
-    //  - converting them to hex 
+    //  - converting them to hex
     //  - checking if the first and last nibbles are 0's (if not, then it is not a cip-68 token name)
     //  - removing the first and last nibbles, shifting the hex string to the left by 1 nibble to get a 2-byte tag and 1 byte of checksum
     //  - separating the cip-68 tag from the checksum
@@ -83,14 +79,19 @@ export function displayTokenName(nameBytesOrString: string | number[]) {
     let isCip68 = false;
     if (typeof nameBytesOrString === "string") {
         // convert the bytes of the string to hex
-        nameBytesHex = Buffer.from(textToBytes(nameBytesOrString)).toString("hex");
+        nameBytesHex = Buffer.from(textToBytes(nameBytesOrString)).toString(
+            "hex"
+        );
     } else {
         nameBytesHex = Buffer.from(nameBytesOrString).toString("hex");
     }
     // check if the first 4 bytes are a cip-68 token name
     if (nameBytesHex.length >= 8) {
         // check if the first and last nibbles are 0's
-        if (nameBytesHex.substring(0, 1) === "0" && nameBytesHex.substring(7, 8) === "0") {
+        if (
+            nameBytesHex.substring(0, 1) === "0" &&
+            nameBytesHex.substring(7, 8) === "0"
+        ) {
             // remove the first and last nibbles
             nameHex = nameBytesHex.substring(2, 6);
             cip68TagHex = nameHex.substring(0, 4);
@@ -111,18 +112,16 @@ export function displayTokenName(nameBytesOrString: string | number[]) {
 }
 
 export function stringToPrintableString(str: string | number[]) {
-
     if ("string" != typeof str) {
         // use a TextEncoder to identify if it is a utf8 string
         try {
-            return new TextDecoder(
-                "utf-8", {fatal: true}
-            ).decode(new Uint8Array(str as number[]));
+            return new TextDecoder("utf-8", { fatal: true }).decode(
+                new Uint8Array(str as number[])
+            );
         } catch (e) {
             // if it is not a utf8 string, fall back to printing what's printable and showing hex for other bytes
             str = Buffer.from(str as number[]).toString("hex");
         }
-        
     }
     let result = "";
     for (let i = 0; i < str.length; i++) {
@@ -147,43 +146,50 @@ export function stringToPrintableString(str: string | number[]) {
  * @public
  **/
 export function assetsAsString(
-    a: Assets, 
-    joiner = "\n    ", 
-    showNegativeAsBurn? : "withBURN",
-    mintRedeemers? : Record<number, string>
+    a: Assets,
+    joiner = "\n    ",
+    showNegativeAsBurn?: "withBURN",
+    mintRedeemers?: Record<number, string>
 ) {
     const assets = a.assets;
-    return (assets?.map(([policyId, tokenEntries], index) => {
+    return (
+        assets?.map(([policyId, tokenEntries], index) => {
+            let redeemerInfo = mintRedeemers?.[index] || "";
+            if (redeemerInfo) {
+                redeemerInfo = `\n        r = ${redeemerInfo} `;
+            }
             const tokenString = tokenEntries
-                .map(([nameBytes, count] : [number[], bigint]) => {
+                .map(([nameBytes, count]: [number[], bigint]) => {
                     // const nameString =  hexToPrintableString(nameBytes.hex);
-                    const nameString = displayTokenName(nameBytes)
+                    const nameString = displayTokenName(nameBytes);
 
-                    let redeemerInfo = mintRedeemers?.[index] || "";
-                    if (redeemerInfo) {
-                        redeemerInfo = `\n          r = ${redeemerInfo}\n      `;
-                    }
-                    const negWarning = count < 1n ? (
-                        showNegativeAsBurn ? "🔥" : "⚠️ NEGATIVE⚠️"
-                    ): "";
+                    const negWarning =
+                        count < 1n
+                            ? showNegativeAsBurn
+                                ? "🔥 "
+                                : " ⚠️ NEGATIVE⚠️"
+                            : "";
                     const burned =
                         count < 1
-                            ? (showNegativeAsBurn
+                            ? showNegativeAsBurn
                                 ? "- BURN 🔥 "
                                 : ""
-                            )
                             : "";
-                    return `${negWarning} ${count}×💴 ${nameString} ${burned}${redeemerInfo}`;
+                    return `${negWarning} ${count}×💴 ${nameString} ${burned}`;
                 })
-                .join(" + ");
-            return `⦑${policyIdAsString(policyId)} ${tokenString}⦒`;
-        }) || [])
-        .join(joiner);
+                .join("+");
+            return `⦑${policyIdAsString(
+                policyId
+            )} ${tokenString} ${redeemerInfo}⦒`;
+        }) || []
+    ).join(joiner);
 }
 
 export function policyIdAsString(p: MintingPolicyHash) {
     const pIdHex = p.toHex();
-    return `🏦 ${pIdHex.slice(0, 8)}…${pIdHex.slice(-4)}`;
+    const abbrev = abbreviatedDetail(pIdHex);
+    return `🏦 ${abbrev}`;
+
 }
 
 /**
@@ -212,88 +218,94 @@ export function valueAsString(v: Value) {
  * @public
  **/
 export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
-    const bodyAttrs = [
-        "inputs",
-        "minted",
-        "collateral",
-        "outputs",
-        "refInputs",
-        "fee",
-        "lastValidSlot",
-        "firstValidSlot",
-        "metadataHash",
-        "scriptDataHash",
-        "signers",
-        "collateralReturn",
-    ];
-    const witnessAttrs = [
-        "signatures",
-        "datums",
-        "refScripts",
-        "scripts",
-        "redeemers",
-        "nativeScripts",
-    ];
+    const outputOrder = [
+        [ "body", "inputs" ],
+        [ "body", "minted" ],
+        [ "body", "outputs" ],
+        [ "body", "refInputs" ],
+        [ "witnesses", "redeemers" ],
+        [ "body", "signers" ],
+        [ "witnesses", "v2refScripts" ],
+        [ "witnesses", "v2scripts" ],
+        [ "witnesses", "nativeScripts" ],
+        [ "body", "collateral" ],
+        [ "body", "collateralReturn" ],
+        [ "body", "scriptDataHash" ],
+        [ "body", "metadataHash" ],
+        [ "witnesses", "signatures" ],
+        [ "witnesses", "datums" ],
+        [ "body", "lastValidSlot" ],
+        [ "body", "firstValidSlot" ],
+        [ "body", "fee" ],
+    ]
 
     let details = "";
     if (!networkParams) {
+        debugger;
         console.warn(
             new Error(`dumpAny: no networkParams; can't show txn size info!?!`)
         );
     }
 
-    const d = tx.dump();
+    // const d = tx.dump();
 
-    const allRedeemers = tx.witnesses.redeemers as any
+    const allRedeemers = tx.witnesses.redeemers as any;
     let hasIndeterminate = false;
-    const inputRedeemers = Object.fromEntries( allRedeemers.map(
-        (x : Redeemer, index : number) => {
-            if (! ("inputIndex" in x)) return undefined;
-            const {inputIndex} = x
-            const isIndeterminate = inputIndex == -1;
-            if (isIndeterminate) hasIndeterminate = true;
-            const inpIndex = isIndeterminate ? `‹unk${index}›` : inputIndex;
-            if (!x.data) debugger;
-            return [ 
-                inpIndex,
-                x.data?.toString() || "‹no data›"
-            ];
-        }
-    ).filter(x => !!x) );
+    const inputRedeemers = Object.fromEntries(
+        allRedeemers
+            .map((x: TxRedeemer<any>, index: number) => {
+                // debugger;
+                if (!("inputIndex" in x)) return undefined;
+                const { inputIndex } = x;
+                const isIndeterminate = inputIndex == -1;
+                if (isIndeterminate) hasIndeterminate = true;
+                const inpIndex = isIndeterminate ? `‹unk${index}›` : inputIndex;
+                if (!x.data) debugger;
+                return [inpIndex, x.data?.toString() || "‹no data›"];
+            })
+            .filter((x) => !!x)
+    );
     if (hasIndeterminate) inputRedeemers["hasIndeterminate"] = true;
 
-    const mintRedeemers = Object.fromEntries(allRedeemers.map((x) => {
-        if ("inputIndex" in x) return undefined;
-        if ("number" != typeof x.mphIndex) {            
-            debugger;
-            throw new Error(`non-mint redeemer here not yet supported`);
-        }
-        const isIndeterminate = x.inputIndex == -1;
-        if (isIndeterminate) throw new Error(`oops, this wasn's supposed to be possible`);
-        if (!x.data) debugger;
+    const mintRedeemers = Object.fromEntries(
+        allRedeemers
+            .map((x) => {
+                if ("Minting" != x.kind) return undefined;
+                if ("number" != typeof x.props.policyIndex) {
+                    debugger;
+                    throw new Error(`non-mint redeemer here not yet supported`);
+                }
+                const isIndeterminate = x.index == -1;
+                if (isIndeterminate)
+                    throw new Error(
+                        `oops, this wasn's supposed to be possible`
+                    );
+                if (!x.data) debugger;
 
-        return [ 
-            x.mphIndex, 
-            x.data?.toString() || "‹no data›"
-        ];
-    }).filter(x => !!x) );
+                return [x.props.policyIndex, x.data?.toString() || "‹no data›"];
+            })
+            .filter((x) => !!x)
+    );
 
     //!!! todo: improve interface of tx so useful things have a non-private api
-    //!!! todo: get rid of dump()
     //!!! todo: get back to type-safety in this diagnostic suite
-    for (const x of bodyAttrs) {
-        let item = tx.body[x] || (d.body[x] as any);
+    for (const [where, x] of outputOrder) {
+        let item = tx[where][x];
         let skipLabel = false;
-        // console.log(`attr '${x}'`)
         if (Array.isArray(item) && !item.length) continue;
 
         if (!item) continue;
         if ("inputs" == x) {
-            item = `\n  ${item.map((x, i) => txInputAsString(x, 
-                "➡️  " /* <- unicode blue arrow right */ + `@${1+i} `,
-                i,
-                inputRedeemers
-            )).join("\n  ")}`;
+            item = `\n  ${item
+                .map((x, i) =>
+                    txInputAsString(
+                        x,
+                        "➡️  " /* <- unicode blue arrow right */ + `@${1 + i} `,
+                        i,
+                        inputRedeemers
+                    )
+                )
+                .join("\n  ")}`;
         }
         if ("refInputs" == x) {
             item = `\n  ${item
@@ -311,7 +323,12 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
             if (!item.assets.length) {
                 continue;
             }
-            item = `\n   ❇️  ${assetsAsString(item, "\n   ❇️  ", "withBURN", mintRedeemers)}`;
+            item = `\n   ❇️  ${assetsAsString(
+                item,
+                "\n   ❇️  ",
+                "withBURN",
+                mintRedeemers
+            )}`;
         }
         if ("outputs" == x) {
             item = `\n  ${item
@@ -325,17 +342,15 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
         }
         if ("signers" == x) {
             item = item.map((x) => {
-                if (!x.hex) debugger;
-                return `🔑#${x.hex.slice(0, 6)}…${x.hex.slice(-4)}`;
+                const hex = x.toHex();
+                return `🔑#${hex.slice(0, 6)}…${hex.slice(-4)}`;
             });
         }
 
         if ("fee" == x) {
             item = parseInt(item);
-            item =
-                `${(Math.round(item / 1000) / 1000).toFixed(3)} ADA ` +
-                "" // tx.profileReport.split("\n")[0];
-                // todo: find profile info and restore it here
+            item = `${(Math.round(item / 1000) / 1000).toFixed(3)} ADA ` + ""; // tx.profileReport.split("\n")[0];
+            // todo: find profile info and restore it here
 
             // console.log("fee", item)
         }
@@ -347,59 +362,55 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
                 `0  <- ❓`
             )} conditional: collateral change (returned in case of txn failure)`;
         }
+        if ("scriptDataHash" == x) {
+            item = bytesToHex(item);
+        }
 
-        details += `${skipLabel ? "" : "  " + x + ": "}${item}\n`;
-    }
-    let indeterminateRedeemerDetails = false;
-
-    let hasWinfo = false;
-    const winfo = {};
-    for (const x of witnessAttrs) {
-        // if ("scripts" == x) debugger;
-        let item = tx.witnesses[x] || (d.witnesses[x] as any);
-        if (Array.isArray(item) && !item.length) continue;
         if ("datums" == x && !Object.entries(item || {}).length) continue;
         if ("signatures" == x) {
             if (!item) continue;
             item = item.map((s) => {
                 const addr = Address.fromHash(true, s.pubKeyHash);
-                return `🖊️ ${addrAsString(addr)} = 🔑…${s.pubKeyHash.hex.slice(
-                    -4
-                )}`;
+                const hashHex = s.pubKeyHash.toHex();
+                return `🖊️ ${addrAsString(addr)} = 🔑…${hashHex.slice(-4)}`;
             });
             if (item.length > 1) item.unshift("");
             item = item.join("\n    ");
         }
         if ("redeemers" == x) {
             if (!item) continue;
+            
             //!!! todo: augment with mph when that's available from the Activity.
-            item = item.map((x,) => {
+            item = item.map((x) => {
                 // console.log("redeemer keys", ...[ ...Object.keys(x2) ], x2.dump());
-                const isIndeterminate = x.inputIndex == -1;
+                // const isIndeterminate = x.inputIndex == -1;
                 // if (isIndeterminate) indeterminateRedeemerDetails = true;
-                const indexInfo = isIndeterminate
-                    ? `spend txin #‹tbd›`
-                    : "inputIndex" in x
-                    ? `spend txin ➡️  @${1 + x.inputIndex}`
-                    : `mint policy#${1 + x.mphIndex}`;
+                // debugger
+                // const indexInfo = isIndeterminate
+                //     ? `spend txin #‹tbd›`
+                const indexInfo =
+                    x.kind == "Minting"
+                        ? `minting policy ${x.index}`
+                        : `spend txin ➡️  @${1 + x.index}`;
 
                 return `🏧  ${indexInfo} ${x.data.toString()}`;
             });
             if (item.length > 1) item.unshift("");
             item = item.join("\n    ");
         }
-        if ("scripts" == x) {
+        if ("v2Scripts" == x) {
             if (!item) continue;
             item = item.map((s) => {
                 try {
-                    const mph = s.mintingPolicyHash.hex;
+                    const mph = s.mintingPolicyHash.toHex();
                     // debugger
                     return `🏦 ${mph.slice(0, 8)}…${mph.slice(-4)} (minting): ${
                         s.serializeBytes().length
                     } bytes`;
                 } catch (e) {
                     const vh = s.validatorHash;
-                    const vhh = vh.hex;
+
+                    const vhh = vh.toHex();
                     const addr = Address.fromHash(true, vh);
                     // debugger
                     return `📜 ${vhh.slice(0, 8)}…${vhh.slice(
@@ -412,26 +423,17 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
             if (item.length > 1) item.unshift("");
             item = item.join("\n    ");
         }
-        if ("refScripts" == x) {
+        if ("v2RefScripts" == x) {
             item = `${item.length} - see refInputs`;
             // todo: @helios give us refScripts outside of dump(), which only shows us hex.
         }
 
         if (!item) continue;
-        hasWinfo = true;
-        winfo[x] = item;
-    }
-    if (hasWinfo) {
-        details += Object.entries(winfo)
-            .map(([k, v]) => `  ${k}: ${v}\n`)
-            .join("");
+        details += `${skipLabel ? "" : "  " + x + ": "}${item}\n`;
     }
     try {
         details += `  txId: ${tx.id().toHex()}`;
-        if (networkParams)
-            details += `  size: ${
-                tx.toCbor().length
-            } bytes`;
+        if (networkParams) details += `  \n\nsize: ${tx.toCbor().length} bytes`;
     } catch (e) {
         details = details + `(Tx not yet finalized!)`;
         if (networkParams) details += `\n  - NOTE: can't determine txn size\n`;
@@ -447,27 +449,25 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
  * @public
  **/
 export function txInputAsString(
-    x: TxInput, 
+    x: TxInput,
     prefix = "-> ",
-    index? : number,
-    redeemers? : Record<number, string>
+    index?: number,
+    redeemers?: Record<number, string>
 ): string {
-    const {
-        output: oo
-    } = x;
+    const { output: oo } = x;
     const hasIndeterminate = redeemers?.["hasIndeterminate"];
-    const redeemerInfo = redeemers ? (
-            redeemers[index || -424242] ? 
-                `\n    r = ${redeemers[index || -424242]}`
-                    : hasIndeterminate ? "\n    r = ‹tbd›" : ""
-        ) : ""
-    return `${prefix}${addrAsString(x.address)}${showRefScript(oo.refScript as any)} ${valueAsString(
-        x.value
-    )} ${
-        datumSummary(oo.datum)
-    } = 📖 ${
-        txOutputIdAsString(x.id)
-    }${redeemerInfo}${
+    const redeemerInfo = redeemers
+        ? redeemers[index || -424242]
+            ? `\n    r = ${redeemers[index || -424242]}`
+            : hasIndeterminate
+            ? "\n    r = ‹tbd›"
+            : ""
+        : "";
+    return `${prefix}${addrAsString(x.address)}${showRefScript(
+        oo.refScript as any
+    )} ${valueAsString(x.value)} ${datumSummary(
+        oo.datum
+    )} = 📖 ${txOutputIdAsString(x.id)}${redeemerInfo}${
         "" /* datumExpanded(oo.datum) */
     }`;
 }
@@ -523,21 +523,28 @@ export function datumSummary(d: Datum | null | undefined): string {
     // debugger
     const dh = d.hash.toHex();
     const dhss = `${dh.slice(0, 8)}…${dh.slice(-4)}`;
-    if (d.isInline()) return `d‹inline:${dhss} - ${d.toCbor().length} bytes›`;
+    const attachedData = d.data.fromData;
+    if (attachedData) {
+        return `\n    d‹inline:${dhss} - ${
+            JSON.stringify(attachedData, datumSerializer, 4).slice(1,-1)
+        }=${d.toCbor().length} bytes›`
+    } else if (d.isInline()) {
+         return `d‹inline:${dhss} - ${d.toCbor().length} bytes›`;
+    }
     return `d‹hash:${dhss}…›`;
 }
 
 export function datumExpanded(d: Datum | null | undefined): string {
     if (!d) return "";
     if (!d.isInline()) return "";
-    const data = bytesToHex( d.data?.toCbor() )
+    const data = bytesToHex(d.data?.toCbor());
     return `\n    d = ${data}`;
 }
 
 /**
  * Displays a short summary of any provided reference script
  * @remarks
- * 
+ *
  * detailed remarks
  * @param ‹pName› - descr
  * @typeParam ‹pName› - descr (for generic types)
@@ -545,11 +552,11 @@ export function datumExpanded(d: Datum | null | undefined): string {
  **/
 export function showRefScript(rs?: UplcProgramV2 | null) {
     if (!rs) return "";
-    const hash : Hash = rs.hash();
+    const hash = rs.hash();
     const hh = bytesToHex(hash);
-    const size = rs.toCbor().length
-    const rshInfo = `${hh.slice(0, 8)}…${hh.slice(-4)}`
-    return ` ‹📀 refScript📜 ${rshInfo}: ${size} bytes› +`
+    const size = rs.toCbor().length;
+    const rshInfo = `${hh.slice(0, 8)}…${hh.slice(-4)}`;
+    return ` ‹📀 refScript📜 ${rshInfo}: ${size} bytes› +`;
 }
 
 /**
@@ -560,11 +567,9 @@ export function showRefScript(rs?: UplcProgramV2 | null) {
  * @public
  **/
 export function txOutputAsString(x: TxOutput, prefix = "<-"): string {
-    return `${prefix} ${addrAsString(x.address)}${
-        showRefScript(x.refScript as any)
-    } ${valueAsString(
-        x.value
-    )} ${datumSummary(x.datum)}`;
+    return `${prefix} ${addrAsString(x.address)}${showRefScript(
+        x.refScript as any
+    )} ${valueAsString(x.value)} ${datumSummary(x.datum)}`;
 }
 
 /**
@@ -597,7 +602,7 @@ export function errorMapAsString(em: ErrorMap, prefix = "  ") {
  * @public
  **/
 export function byteArrayListAsString(
-    items: ByteArray[] | ByteArrayData[],
+    items: ByteArrayData[],
     joiner = "\n  "
 ): string {
     return (
@@ -616,12 +621,8 @@ export function byteArrayListAsString(
  * @param ba - the byte array
  * @public
  **/
-export function byteArrayAsString(ba: ByteArray | ByteArrayData): string {
-    if (ba instanceof ByteArrayData) {
-        return hexToPrintableString(ba.toHex())
-    }
-    return displayTokenName(ba.bytes);
-    // hexToPrintableString(ba.hex);
+export function byteArrayAsString(ba: ByteArrayData): string {
+    return hexToPrintableString(ba.toHex());
 }
 
 /**
@@ -643,8 +644,6 @@ export function dumpAny(
         | TxInput[]
         | TxId
         | number[]
-        | ByteArray
-        | ByteArray[]
         | ByteArrayData
         | ByteArrayData[],
     networkParams?: NetworkParams,
@@ -653,14 +652,19 @@ export function dumpAny(
     if ("undefined" == typeof x) return "‹undefined›";
     if (Array.isArray(x)) {
         if (x[0] instanceof TxInput) {
-            return "utxos: \n" + utxosAsString(x);
+            return "utxos: \n" + utxosAsString(x as TxInput[]);
         }
-        if (x[0] instanceof ByteArray || x[0] instanceof ByteArrayData) {
-            return "byte array:\n" + byteArrayListAsString(x);
+        if (x[0] instanceof ByteArrayData) {
+            return (
+                "byte array:\n" + byteArrayListAsString(x as ByteArrayData[])
+            );
         }
         if ("number" == typeof x[0]) {
-            return "num array: " + byteArrayListAsString([new ByteArrayData(x as number[])])
-        }            
+            return (
+                "num array: " +
+                byteArrayListAsString([new ByteArrayData(x as number[])])
+            );
+        }
     }
 
     if (x instanceof Tx) {
@@ -692,23 +696,23 @@ export function dumpAny(
         return policyIdAsString(x);
     }
     if (x instanceof StellarTxnContext) {
-        throw new Error(`use await build() and dump the result instead.`)
-        return txAsString(x.txb, networkParams);
+        debugger;
+        throw new Error(`use await build() and dump the result instead.`);
     }
-    if (x instanceof ByteArray || x[0] instanceof ByteArrayData) {
-        return byteArrayAsString(x);
+    if (Array.isArray(x) && x[0] instanceof ByteArrayData) {
+        return x.map((xx) => byteArrayAsString(xx));
     }
     if ("bigint" == typeof x) {
         return (x as bigint).toString();
-    } 
-    if (forJson) return x
+    }
+    if (forJson) return x;
     debugger;
     return "dumpAny(): unsupported type or library mismatch";
 }
 
 export const betterJsonSerializer = (key, value) => {
     return dumpAny(value, undefined, true);
-}
+};
 
 if ("undefined" == typeof window) {
     globalThis.peek = dumpAny;

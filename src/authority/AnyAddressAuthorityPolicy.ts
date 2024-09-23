@@ -32,8 +32,11 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         return undefined;
     }
 
+    /**
+     * special-case activity for non-contract (no redeemer)
+     */
     @Activity.redeemer
-    activityAuthorizing(): isActivity<undefined> {
+    activityAuthorizing(): isActivity {
         return { redeemer: undefined };
     }
 
@@ -46,9 +49,9 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         const v = this.tvAuthorityToken();
 
         const { addrHint } = this.configIn!;
-        return this.mustFindActorUtxo(
+        return this.uh.mustFindActorUtxo(
             `${label}: ${bytesToText(this.configIn!.tn)}`,
-            this.mkTokenPredicate(v),
+            this.uh.mkTokenPredicate(v),
             tcx,
             "are you connected to the right wallet address? " +
                 (addrHint?.length
@@ -56,7 +59,7 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
                       addrHint
                           .map((x) => {
                               const addr =
-                                  "string" == typeof x ? new Address(x) : x;
+                                  "string" == typeof x ? Address.fromBech32(x) : x;
                               return dumpAny(addr) + " = " + addr.toBech32();
                           })
                           .join("\n or ")

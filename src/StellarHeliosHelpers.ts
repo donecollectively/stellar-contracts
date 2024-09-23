@@ -6,4 +6,4 @@
 import heliosModuleInfo from "./StellarHeliosHelpers.hl";
 import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 
-export const StellarHeliosHelpers = HeliosModuleSrc.parseFrom(heliosModuleInfo);
+export const StellarHeliosHelpers = HeliosModuleSrc.parseFromOptions(heliosModuleInfo);

@@ -60,7 +60,9 @@ func main(r : MinterActivity) -> Bool {
     mph: MintingPolicyHash = get_current_minting_policy_hash();
     value_minted: Value = tx.minted;
     assert(true || (/* never evaluated */ rev.serialize() == rev.serialize()), "no");
-    print(" 🚥❓ Capo minter: " + get_current_minting_policy_hash().show());
+    print(" 🚥❓ Capo minter: ");
+    print( get_current_minting_policy_hash().show());
+    print("\n");
 
     ok : Bool = r.switch {
         charter: mintingCharter => {
@@ -81,13 +83,13 @@ func main(r : MinterActivity) -> Bool {
 
             assert(value_minted >= charterVal,
                 "charter token not minted");
+            print("  -- creating charter");
 
             hasSeed: Bool = hasContractSeedUtxo(tx);
             minterSeed: TxOutputId = TxOutputId::new(seedTxn, seedIndex);
             mkUutName: (String) -> String = mkUutTnFactory(
                 minterSeed  
             );
-            print("defaultMinter @B");
             mintsUuts: Bool = validateUutMinting(
                 mph: mph,
                 seed: minterSeed,
@@ -101,7 +103,7 @@ func main(r : MinterActivity) -> Bool {
             });
             // ^^ fails if there's no charter output to the right address
 
-            print("defaultMinter @C");
+            // print("defaultMinter @C");
             charterData : Data = charterOutput.datum.inline;
             charterDatum = CapoDatum::CharterToken::from_data(charterData);
             CharterToken{
@@ -141,8 +143,8 @@ func main(r : MinterActivity) -> Bool {
             // );
             // assert(settingsOutput.value.contains(settingsValue), "settings output must contain settings UUT");
 
-            print("defaultMinter @E");
-            print( "head of this list is..." + ( []String{"aa", "bb", "cc"}.prepend("dd") ).head );
+            // print("defaultMinter @E");
+            // print( "head of this list is..." + ( []String{"aa", "bb", "cc"}.prepend("dd") ).head );
             // print("" + settingsMap.tag.show());
             // settingsMap.switch {
 
@@ -156,19 +158,21 @@ func main(r : MinterActivity) -> Bool {
             assert(spendInvariants.length == 0, "no spend invariants allowed at charter creation");
             assert(namedDelegates.length ==0, "no named delegates allowed at charter creation");
             
-            hasGoodDelegates : Bool = authDgt.hasValidOutput(mph) &&
-                mintDgt.hasValidOutput(mph) &&
-                spendDgt.hasValidOutput(mph);
+            print("  -- checking for required delegates\n");
+            hasGoodDelegates : Bool = true &&
+                authDgt.hasValidOutput(mph, true, "created ") &&
+                mintDgt.hasValidOutput(mph, true, "created ") &&
+                spendDgt.hasValidOutput(mph, true, "created ");
 
-            print("     -- hasSeed: " + hasSeed.show());
-            print("     -- mintsUuts: " + mintsUuts.show());
-            print("     -- hasGoodDelegates: " + hasGoodDelegates.show());
+            print("\n  -- hasSeed: " + hasSeed.show());
+            print("\n  -- mintsUuts: " + mintsUuts.show());
+            print("\n  -- hasGoodDelegates: " + hasGoodDelegates.show());
             hasGoodDelegates && mintsUuts && hasSeed
         },
 
         // ------------------------- MOST MINTING ACTIVITIES USE THIS CODE PATH --------------------
         mintWithDelegateAuthorizing => {
-            print("mintWithDelegateAuthorizing");
+            print("mintWithDelegateAuthorizing\n");
             requiresMintDelegateApproval(mph)
             // -------------------------  ^^^ deferring to the Capo's current minting delegate --------------------
         },
@@ -177,7 +181,7 @@ func main(r : MinterActivity) -> Bool {
             addMintInvariant : Int = 3;
 
             // XXXXXXXXXXXXXXXXXXX should be failing
-            print("checking for addingMintInvariant");
+            print("checking for addingMintInvariant\n");
                                     //!todo change this one
             mintsUutForCharterUsingRedeemerIndex(
                 charterRedeemerIndex: addMintInvariant,
@@ -191,7 +195,7 @@ func main(r : MinterActivity) -> Bool {
             addSpendInvariant : Int = 4;
             // XXXXXXXXXXXXXXXXXXX should be failing
                         //!todo change this one
-                        print("checking for addingSpendInvariant");
+                        print("checking for addingSpendInvariant\n");
             mintsUutForCharterUsingRedeemerIndex(
                 charterRedeemerIndex: addSpendInvariant,
                 mph: mph, 
@@ -202,7 +206,7 @@ func main(r : MinterActivity) -> Bool {
 
         ForcingNewMintDelegate{seed} => {
             updatingCharter : Int = 1; // general update to charter
-            print("checking for ForcingNewMintDelegate");
+            print("checking for ForcingNewMintDelegate\n");
                                     //!todo change this one
             mintsUutForCharterUsingRedeemerIndex(
                 charterRedeemerIndex: updatingCharter,
@@ -214,7 +218,7 @@ func main(r : MinterActivity) -> Bool {
         },
 
         CreatingNewSpendDelegate{seed, replaceExisting} => {
-            print("checking for CreatingNewSpendDelegate");
+            print("checking for CreatingNewSpendDelegate\n");
 
             otherMintedValue : Value = replaceExisting.switch {
                 Some{oldTokenName} => {
@@ -243,7 +247,8 @@ func main(r : MinterActivity) -> Bool {
     };
 
     // print("defaultMinter: minting value: " + value_minted.show());
-    print("🚥🟢 Capo minter: ok!");
+    print("\n\n🚥🟢 Capo minter: ok!\n");
+    // assert(false, "barfola");
     ok
 }
 

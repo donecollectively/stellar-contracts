@@ -51,12 +51,12 @@ export function heliosRollupLoader(
                 const code = 
                     `const heliosModule = {\n`+
                     `  content: ${JSON.stringify(content)},\n`+
-                    `  srcFile: ${JSON.stringify(relPath)},\n`+
+                    // `  srcFile: ${JSON.stringify(relPath)},\n`+
                     `  project: ${JSON.stringify(project)},\n`+
                     `  purpose: ${JSON.stringify(purpose)},\n`+
-                    `  name:  ${JSON.stringify(moduleName)},\n`+
+                    `  name:  ${JSON.stringify(relPath)}, // source filename\n`+
+                    `  moduleName:  ${JSON.stringify(moduleName)},\n`+
                     `}\n`+
-                    // `type foo={ hello: "world" }\n`+
                     `\nexport default heliosModule\n`
                 ;
 

@@ -337,8 +337,8 @@ describe("Capo", async () => {
                 expect(delegate).toBeTruthy();
                 expect(delegateValidatorHash).toBeTruthy();
                 expect(
-                    delegate.address.eq(
-                        Address.fromHash(delegateValidatorHash!)
+                    delegate.address.isEqual(
+                        Address.fromHash(false, delegateValidatorHash!)
                     ),
                     "addresses should have matched"
                 ).toBeTruthy();
@@ -380,10 +380,10 @@ describe("Capo", async () => {
                     { strategyName: "defaultV1" }
                 );
 
-                console.log(
-                    " delegateTxn :::::::::::: ",
-                    txAsString(tcx1b.tx, t.networkParams)
-                );
+                // console.log(
+                //     " delegateTxn :::::::::::: ",
+                //     txAsString(tcx1b.tx, t.networkParams)
+                // );
                 const createdDelegate = await t.connectDelegateWithLink(
                     "mintDelegate",
                     mintDelegateLink
@@ -470,8 +470,8 @@ describe("Capo", async () => {
                 expect(
                     tcx2b.txRefInputs.find(
                         (i) =>
-                            i.origOutput.refScript?.serialize() ==
-                            mintDelegate.compiledScript.serialize()
+                            i.output.refScript?.toString() == 
+                            mintDelegate.compiledScript.toString()
                     )
                 ).toBeTruthy();
             });
@@ -533,7 +533,7 @@ describe("Capo", async () => {
                 const spy = vi
                     .spyOn(mintDelegate, "mkDelegationDatum")
                     .mockImplementation((...args) => {
-                        const [dd, s] = args;
+                        // const [dd, s] = args;
                         const { capoAddr, mph, tn } = mintDelegate.configIn!;
                         const tn2 = [ ...  tn ]
                         // replace the start of the token name

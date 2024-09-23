@@ -258,6 +258,12 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
         );
     }
 
+    inlineDatum(datumName: string, data: any) {
+        return this.strella.inlineDatum(
+            datumName, data
+        );
+    }
+
     abstract datumName: string;
     /**
      * Transforms deserialized on-chain data into the preferred application type
@@ -329,7 +335,7 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
                         const field = stateVariant[fieldName];
                         return [fieldName, field];
                     })
-                ),
+                )
             };
         } else {
             return variantName;
@@ -338,12 +344,12 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
 
     uplcEnumMember(enumName: string, member: string, ...args: any[]) {
         const stateVariant = this.getEnumMember(enumName, member);
-
+throw new Error(`hiya`);
         const varSt = stateVariant.prototype._enumVariantStatement;
         const def = varSt.dataDefinition
         debugger
 
-        if (args.every(x => x instanceof helios.UplcData)) {
+        if (args.every(x => !!x.toCbor)) {
             // the data is already encoded as UplcData, so we can simply
             // wrap it in a ConstrData with the correct index
             return new helios.ConstrData(varSt.constrIndex, args);
@@ -358,17 +364,18 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
     ) {
         const enumDef = this.onChainTypes[enumName];
         if (!enumDef) {
-            debugger
+            const t= this.strella.contractSource
+            debugger // ^^ ???
+
             throw new Error(
                 `${this.constructor.name}: Enum ${enumName} not found in onChainTypes` +
                     `\n   ... try one of: (${Object.keys(
                         this.onChainTypes
                     ).join(", ")})` +
                     `\n   (from ${
-                        this.strella.compiledScript.properties.name
+                        this.strella.scriptProgram!.name
                     } in ${
-                        //@ts-expect-error
-                        this.strella.contractSource.srcFile || "‹unk srcFile›"
+                        this.strella.contractSource!.name || "‹unk file name›"
                     })`
             );
         }
@@ -384,6 +391,7 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
                       enumVariant.index
                     : -1;
 
+            debugger // ??? vvv            
             foundVariant =
                 enumDef.prototype._enumStatement.getEnumMember(index);
         }
@@ -452,7 +460,7 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
     }
 
     uplcValue(x: helios.Value) {
-        return x._toUplcData();
+        return x.toUplcData()
     }
 
     /**
@@ -480,14 +488,9 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
      * Parses an on-chain boolean enum value into a javascript boolean
      */
     fromUplcBool(x: ConstrData) {
-        //@ts-expect-error
         if (x.tag === 0) return false;
-        //@ts-expect-error
         if (x.tag === 1) return true;
-        //@ts-expect-error
-        if (x.index === 0) return false;
-        //@ts-expect-error
-        if (x.index === 1) return true;
+
         throw new Error(`fromUplcBool: unexpected ConstrData ${x}`);        
     }
 

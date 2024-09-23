@@ -82,7 +82,7 @@ func preventCharterChange(datum: CapoDatum::CharterToken) -> Bool {
         //     "... but was sent to " +actual
         // )
     } else { 
-        print("ok")
+        print("ok\n")
     };
 
     newDatum : CapoDatum = CapoDatum::from_data( 
@@ -97,20 +97,24 @@ func preventCharterChange(datum: CapoDatum::CharterToken) -> Bool {
 
 func checkpoint(s: String) -> Bool {
     print("checkpoint: " + s);
+    print("\n");
     true
 }
 
 func main(datum: Data, activity: CapoActivity) -> Bool {
     // now: Time = tx.time_range.start;
-    print("🚥❓Capo" + if (isDev) {
-            " - isDev @gen " + devGen.show()
-        } else { "" }
-    );
+    print("🚥❓Capo");
+    if (isDev) {
+        print(" - isDev @gen " + devGen.show())
+    };
+    print("\n");
     TODO("implement activity updatingTypeMap");
 
     showMyTokens : (Value) -> String = mkTokenShow(mph);
     input : TxInput = get_current_input();
-    print("  -- Capo: checks spend of "+ showMyTokens(input.value ));
+    print("  -- Capo: checks spend of ");
+    print(showMyTokens(input.value));
+    print("\n");
     
     capoDatum : CapoDatum = CapoDatum::from_data(datum);
     allDatumSpecificChecks: Bool = capoDatum.switch {
@@ -184,7 +188,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             delegateReturned: Bool = spendDelegate.hasValidOutput(mph).trace(" -- delegate returned ok? ");
 
             spendDgtInputRedeemer: Data = mustFindInputRedeemer(spendDelegateInput);
-            print("  -- check appropriate delegate activity");
+            print("  -- check appropriate delegate activity\n");
             getSpendingRecId : (Data) -> ByteArray = (dgSpendActivity : Data) -> ByteArray {
                 dgSpendActivity.switch {
                     ConstrData{index, fields} => {
@@ -234,6 +238,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                     );
                     TODO("TEST THIS v");
                     print("recId: " + datumId.show());
+                    print("\n");
                     REQT("spendDgt must be acting on the matching record-id");
                     assert(  // fails a test having a spending activity, but on wrong recId
                         ( found.length > 0 ).trace( "found activity for this recId? ")
@@ -250,6 +255,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                     spendDgtInputRedeemer.switch {
                         ConstrData{index, fields} => {
                             print("unexpected redeemer: " + index.show() );
+                            print("\n");
                             assert(true || /* never executed */ fields.length > 0, "no way");
                             error("spend delegate not triggered with a Spending activity")
                         },
@@ -285,7 +291,8 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                 nextGovDelegate,
                 oldTypeMapUut
             } = newCtDatum;
-            CapoDatum::CharterToken{
+
+            CharterToken{
                 oldSpendDelegate, 
                 oldSpendInvariants, 
                 oldSettingsUut,
@@ -324,32 +331,34 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
 
             if (isDev) {
                 print("is spendDgt unchanged? " + unchangedSpendDgt.show());
-                print("  - old: "+ oldSpendDelegate.uutName + " = " + oldSpendDelegate.strategyName);
-                print("       => "+  oldSpendDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"});
-                print("       + cfg " + oldSpendDelegate.config.decode_utf8());
-                print("  - new: "+ spendDelegate.uutName + " = " + spendDelegate.strategyName);
-                print("       => "+ spendDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"});
-                print("       + cfg " + spendDelegate.config.decode_utf8());
+                print("\n  - old: "+ oldSpendDelegate.uutName + " = " + oldSpendDelegate.strategyName);
+                print("\n       => "+  oldSpendDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"});
+                print("\n       + cfg " + oldSpendDelegate.config.decode_utf8());
+                print("\n  - new: "+ spendDelegate.uutName + " = " + spendDelegate.strategyName);
+                print("\n       => "+ spendDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"});
+                print("\n       + cfg " + spendDelegate.config.decode_utf8());
+                print("\n");
                 // print(" - old: " + oldSpendDelegate.serialize().show());
                 // print(" - new: " + spendDelegate.serialize().show());
 
-                print("is mintDgt unchanged?  " + unchangedMintDgt.show());
-                print("  - old: "+ oldMintDelegate.uutName + " = " + oldMintDelegate.strategyName);
-                print("       => "+ oldMintDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"});
-                print("       + cfg " + oldMintDelegate.config.decode_utf8());
-                print("  - new: "+ mintDelegate.uutName + " = " + mintDelegate.strategyName);
-                print("       => "+ mintDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"});
-                print("       + cfg " + mintDelegate.config.decode_utf8());
+                print(" -- is mintDgt unchanged?  " + unchangedMintDgt.show());
+                print("\n  - old: "+ oldMintDelegate.uutName + " = " + oldMintDelegate.strategyName);
+                print("\n       => "+ oldMintDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"});
+                print("\n       + cfg " + oldMintDelegate.config.decode_utf8());
+                print("\n  - new: "+ mintDelegate.uutName + " = " + mintDelegate.strategyName);
+                print("\n       => "+ mintDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"});
+                print("\n       + cfg " + mintDelegate.config.decode_utf8());
+                print("\n");
                 // print(" - old: " + oldMintDelegate.serialize().show());
                 // print(" - new: " + mintDelegate.serialize().show());
                 
 
-                print("is config unchanged? " + mustNotModifySettings.show() +
-                    "\n  - old: "+ oldSettingsUut.decode_utf8() +
-                    "\n  - new: "+ settingsUut.decode_utf8()
-                )
+                print(" -- is config unchanged? " + mustNotModifySettings.show());
+                print("\n  - old: "+ oldSettingsUut.decode_utf8());
+                print("\n  - new: "+ settingsUut.decode_utf8());
+                print("\n")
             } else {
-                print("not dev")
+                print(" -- not dev; no extra debug output for updatingCharter\n")
             };
             assert(mustNotModifySettings, "cannot change settings uut");
             assert(mustNotModifyTypeInfo, "cannot change typeInfo uut");
@@ -384,19 +393,19 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                     Some{mintDgtInput} => {
                         delegateActivity: AbstractDelegateActivitiesEnum = 
                             mintDelegate.getRedeemer(mintDgtInput);
-                        print("mint delegate input found");
+                        print("mint delegate input found\n");
                         delegateActivity.switch {
                             CapoLifecycleActivities{CLA} => CLA.switch {
                                 CreatingDelegate => {
-                                    print("TEMPORARY: allowing delegate creation while **updatingCharter**");
+                                    print("TEMPORARY: allowing delegate creation while **updatingCharter**\n");
 
                                     TODO("move delegate-creation to be separate from updatingCharter");
                                     TODO(" ?? use capo ActivatingXxxxDelegate activity when adopting delegate");
 
                                     mintDelegate.hasValidOutput(mph)
-                                },
+                                }
                                 // no other variants exist (yet).
-                                _ => error("invalid use of mint delegate during charter update")
+                                // _ => error("invalid use of mint delegate during charter update")
                             },
                             _ => error("invalid use of mint delegate during charter update")
                         }
@@ -425,7 +434,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                     oldNamedDelegates.get_safe(name).switch {
                         None => {
                             print (" - adopting named delegate: " + name);
-
+                            print("\n");
                             true
                         },
                         Some{oldDgt} => { 
@@ -435,7 +444,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                             } else {
                                 TODO("the old named delegate must be retired, or be force-replaced (in a different activity?)");
                                 //  the new one has to go to the right place
-                                dgt.hasValidOutput(mph)
+                                dgt.hasValidOutput(mph, required: true, createdOrReturned: "created ")
                             }
                         }
                     }
@@ -486,7 +495,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                         mph: mph
                     );
                     // it requires the govAuthority to be present 
-                    print( "❗ gov authority must be present");
+                    REQT( "gov authority must be present to update settings\n");
                     hasGovAuthority : Bool = mustHaveGovAuthority(
                         mph: mph,
                         charterDatum: charterDatum // already resolved
@@ -516,7 +525,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
 
                     inputs: []TxInput = tx.inputs;
 
-                    print( "❗ spend delegate must validate settings");
+                    REQT( "spend delegate must validate settings");
                     spendDelegateIsValidating : Bool = 
                         spendDelegate.validatesUpdatedSettings(
                             inputs: inputs,
@@ -524,7 +533,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                             inputRequired: true
                         ).unwrap();
 
-                    print( "❗ mint delegate must validate settings");
+                    REQT("mint delegate must validate settings");
                     mintDelegateIsValidating : Bool = 
                         mintDelegate.validatesUpdatedSettings(
                             inputs: inputs,
@@ -533,7 +542,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                         ).unwrap();
 
                     // govAuthority is checking the settings
-                    print( "❗ govDelegate might need to validate settings");
+                    REQT( "govDelegate MAY to validate settings");
                     govDelegateMaybeValidating : Bool = 
                         govDelegate.validatesUpdatedSettings(
                             inputs: inputs,
@@ -545,7 +554,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                         };
                     checkOneInvariant : (RelativeDelegateLink) -> Bool = 
                     (oneDgt: RelativeDelegateLink) -> Bool {
-                        print( "  ❗ invariant must validate settings");
+                        REQT( "invariant must validate settings");
                         oneDgt.validatesUpdatedSettings(
                             inputs: inputs,
                             mph: mph,
@@ -553,20 +562,22 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                         ).unwrap()
                     };
                     // spendInvariants are checking the settings
-                    print( "❗ spend invariants must validate settings");
+                    REQT( "spend invariants must validate settings");
                     spendInvariantsAreValidating : Bool = spendInvariants.all( 
                         checkOneInvariant
                     );
                     // mintInvariants are checking the settings
-                    print( "❗ mint invariants must validate settings");
+                    REQT( "mint invariants must validate settings");
                     mintInvariantsAreValidating : Bool = mintInvariants.all( 
                         checkOneInvariant
                     );
                     // namedDelegates are checking the settings
-                    print( "❗ named delegates must validate settings");
+                    REQT( "named delegates must validate settings");
                     namedDelegatesAreValidating : Bool = namedDelegates.fold( 
-                        (ok: Bool, _, dgt: RelativeDelegateLink) -> Bool {
-                            print( "    ❗ named delegate must validate settings");
+                        REQT( "  - each named delegate must validate settings");
+                        (ok: Bool, key: String, dgt: RelativeDelegateLink) -> Bool {
+                            print("  - named delegate: " + key);
+                            print("\n");
                             ok && dgt.validatesUpdatedSettings(
                                 inputs: inputs,
                                 mph: mph,
@@ -607,7 +618,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
              mph.serialize() /* never */ == mph.serialize(), 
         "unreachable"
     ); 
-    print("🚥🟢 Capo validator: ok!\n");
+    print("\n🚥🟢 Capo validator: ok!\n\n");
 
     allDatumSpecificChecks && 
     allActivitySpecificChecks

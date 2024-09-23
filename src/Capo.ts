@@ -1,7 +1,6 @@
 import {
     Address,
     Assets,
-    ByteArray,
     Datum,
     IntData,
     MintingPolicyHash,
@@ -11,12 +10,9 @@ import {
     Value,
     ValidatorHash,
     Crypto,
-    //@ts-expect-error
-    Option,
     bytesToText,
     bytesToHex,
     textToBytes,
-    TxBuilder,
 } from "@hyperionbt/helios";
 import { equalsBytes } from "@helios-lang/codec-utils";
 
@@ -39,6 +35,7 @@ import type {
     devConfigProps,
     anyDatumProps,
     anyUplcProgram,
+    UplcRecord,
 } from "./StellarContract.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import {
@@ -55,7 +52,7 @@ import {
     delegateRoles,
     defineRole,
 } from "./delegation/RolesAndDelegates.js";
-import { delegateLinkSerializer } from "./delegation/delegateLinkSerializer.js";
+import { delegateLinkSerializer } from "./delegation/jsonSerializers.js";
 
 import { UutName } from "./delegation/UutName.js";
 import type {
@@ -362,6 +359,9 @@ import type {
     hasAnyDataTemplate,
 } from "./DelegatedDatumAdapter.js";
 import { PriceValidator } from "./PriceValidator.js";
+import { Cast } from "@helios-lang/contract-utils";
+import type { UplcData } from "@helios-lang/uplc";
+import { TxOutputDatum } from "@helios-lang/ledger-babbage";
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
@@ -594,9 +594,11 @@ export abstract class Capo<SELF extends Capo<any>>
      * extracts the details that are key to parameterizing the Capo / leader's on-chain contract script
      * @public
      **/
-    getContractScriptParams(
+    getContractScriptParamsUplc(
         config: CapoBaseConfig
-    ): configBaseWithRev & devConfigProps & Partial<CapoBaseConfig> {
+    ): UplcRecord<configBaseWithRev & devConfigProps & 
+        Pick<CapoBaseConfig, "seedTxn" | "seedIndex" | "mph">
+    > {
         if (
             this.configIn &&
             config.mph &&
@@ -625,7 +627,7 @@ export abstract class Capo<SELF extends Capo<any>>
             params.devGen = this.devGen;
         }
 
-        return params;
+        return this.paramsToUplc(params) as any;
     }
 
     async init(args: StellarFactoryArgs<CapoBaseConfig>) {
@@ -637,7 +639,7 @@ export abstract class Capo<SELF extends Capo<any>>
         } = this;
 
         const { CharterToken } = this.onChainDatumType.typeMembers;
-        
+
         const updatingCharter = this.mustGetActivity("updatingCharter");
         const usingAuthority = this.mustGetActivity("usingAuthority");
 
@@ -794,15 +796,9 @@ export abstract class Capo<SELF extends Capo<any>>
 
     @Activity.redeemer
     activityUsingAuthority(): isActivity {
-        const usingAuthority = this.mustGetActivity("usingAuthority");
-        if (!usingAuthority) {
-            throw new Error(
-                `invalid contract without a usingAuthority redeemer`
-            );
+        return {
+            redeemer: this.activityVariantToUplc("usingAuthority", {})
         }
-        const t = new usingAuthority();
-
-        return { redeemer: t._toUplcData() };
     }
 
     tvCharter() {
@@ -924,7 +920,7 @@ export abstract class Capo<SELF extends Capo<any>>
     ): Promise<TCX>;
 
     /**
-     * @deprecated - use txnAddCharterRef(tcx) instead
+     * @deprecated - use {@link tcxWithCharterRef |tcxWithCharterRef(tcx)} instead
      */
     async txnMustUseCharterUtxo<TCX extends StellarTxnContext>(
         tcx: TCX,
@@ -955,19 +951,17 @@ export abstract class Capo<SELF extends Capo<any>>
                         `when using reference input for charter, arg3 must be omitted`
                     );
                 tcx.addRefInput(ctUtxo);
-            } else {
-                // caller requested to **spend** the charter token with a speciic activity / redeemer
-                const redeemer = redeemerOrRefInput;
-                this.txnAttachScriptOrRefScript(
-                    tcx.addInput(ctUtxo, redeemer),
-                    this.compiledScript
-                );
-                const datum =
-                    newDatum || (ctUtxo.output.datum as InlineDatum);
-
-                this.txnKeepCharterToken(tcx, datum);
             }
-            return tcx;
+            // caller requested to **spend** the charter token with a speciic activity / redeemer
+            const redeemer = redeemerOrRefInput;
+            const tcx2 = await this.txnAttachScriptOrRefScript(
+                tcx,
+                this.compiledScript
+            );
+            tcx2.addInput(ctUtxo, redeemer)
+            const datum = newDatum || (ctUtxo.output.datum as InlineDatum);
+
+            return this.txnKeepCharterToken(tcx2, datum);
         });
     }
 
@@ -1013,7 +1007,7 @@ export abstract class Capo<SELF extends Capo<any>>
     async txnAddGovAuthorityTokenRef<TCX extends StellarTxnContext>(
         tcx: TCX
     ): Promise<TCX> {
-        const tcx2 = await this.txnAddCharterRef(tcx);
+        const tcx2 = await this.tcxWithCharterRef(tcx);
 
         const tcx3 = await this.txnAddGovAuthority(tcx2);
         return tcx3;
@@ -1074,8 +1068,9 @@ export abstract class Capo<SELF extends Capo<any>>
         };
 
         function getMatchingTokenName(utxo: TxInput, mph: MintingPolicyHash) {
-            const tokenNamesExisting = utxo.value.assets.getPolicyTokenNames(mph)
-                .map((x) => bytesToText(x))
+            const tokenNamesExisting = utxo.value.assets
+                .getPolicyTokenNames(mph)
+                .map((x) => bytesToText(x));
 
             const tokenNames = tokenNamesExisting.filter((x) => {
                 // console.info("   - found token name: "+x);
@@ -1097,6 +1092,9 @@ export abstract class Capo<SELF extends Capo<any>>
             };
         }
         const { config } = link;
+        //@ts-expect-error
+        if (config.devGen) config.devGen = parseInt(config.devGen);
+        if (config.rev) config.rev = BigInt(config.rev);
         // console.log(" config = ", config );
         // debugger
         return link;
@@ -1216,15 +1214,7 @@ export abstract class Capo<SELF extends Capo<any>>
         } else if (!expectedMph) {
             console.log(`${this.constructor.name}: seeding new minting policy`);
         }
-        const mintingCharter = minter.mustGetActivity("mintingCharter");
-        if (!mintingCharter)
-            throw new Error(
-                `minting script doesn't offer required 'mintingCharter' activity-redeemer`
-            );
-        // if (!mintingUuts)
-        //     throw new Error(
-        //         `minting script doesn't offer required 'mintingUuts' activity-redeemer`
-        //     );
+        minter.mustHaveActivity("mintingCharter");
 
         //@ts-ignore-error - can't seem to indicate to typescript that minter's type can be relied on to be enough
         return (this.minter = minter);
@@ -1275,14 +1265,15 @@ export abstract class Capo<SELF extends Capo<any>>
             return accumulator.add(vMin);
         }
 
-        const uutSeed = this.uh.mkValuePredicate(totalMinUtxoValue.lovelace, tcx);
-        const seedUtxo = await this.uh.mustFindActorUtxo(
-            purpose,
-            uutSeed,
+        const uutSeed = this.uh.mkValuePredicate(
+            totalMinUtxoValue.lovelace,
             tcx
-        ).catch((x) => {
-            throw x;
-        });
+        );
+        const seedUtxo = await this.uh
+            .mustFindActorUtxo(purpose, uutSeed, tcx)
+            .catch((x) => {
+                throw x;
+            });
 
         const { txId: seedTxn, utxoIdx } = seedUtxo.id;
         const seedIndex = BigInt(utxoIdx);
@@ -1290,10 +1281,9 @@ export abstract class Capo<SELF extends Capo<any>>
             tokenNames.length > 1 ? `${tokenNames.length} uuts for ` : "";
         const hex = seedTxn.toHex();
         console.log(
-            `Seed tx for ${count}${purpose}: ${hex.slice(
-                0,
-                8
-            )}…${hex.slice(-4)}#${seedIndex}`
+            `Seed tx for ${count}${purpose}: ${hex.slice(0, 8)}…${hex.slice(
+                -4
+            )}#${seedIndex}`
         );
         return seedUtxo;
     }
@@ -1556,7 +1546,7 @@ export abstract class Capo<SELF extends Capo<any>>
             delegateLinkSerializer
             // 4 // indent 4 spaces
         );
-
+ 
         if (!cache[roleName]) cache[roleName] = {};
         const roleCache = cache[roleName];
         const cachedRole = roleCache[cacheKey];
@@ -1603,6 +1593,10 @@ export abstract class Capo<SELF extends Capo<any>>
             ...stratSettings,
         };
 
+        if (effectiveConfig.rev === "1") {
+            debugger
+        }
+        
         const serializedCfg1 = JSON.stringify(
             effectiveConfig,
             delegateLinkSerializer,
@@ -1655,13 +1649,17 @@ export abstract class Capo<SELF extends Capo<any>>
             config: configForLink,
             // reqdAddress,
             // addrHint,
+        
         });
+        debugger
 
         const dvh = delegate.delegateValidatorHash;
 
         if (expectedDvh && dvh && !expectedDvh.isEqual(dvh)) {
             throw new Error(
-                `${this.constructor.name}: ${roleName}: mismatched or modified delegate: expected validator ${expectedDvh?.toHex()}, got ${dvh.toHex()}`
+                `${
+                    this.constructor.name
+                }: ${roleName}: mismatched or modified delegate: expected validator ${expectedDvh?.toHex()}, got ${dvh.toHex()}`
             );
         }
         console.log(
@@ -1706,62 +1704,35 @@ export abstract class Capo<SELF extends Capo<any>>
     tvForDelegate(dgtLink: RelativeDelegateLink<any>) {
         return this.tokenAsValue(dgtLink.uutName);
     }
+
     mkDelegatePredicate(dgtLink: RelativeDelegateLink<any>) {
         return this.uh.mkTokenPredicate(this.tvForDelegate(dgtLink));
     }
 
-    /**
-     * indicates any specialization of the baseline Capo types
-     * @remarks
-     *
-     * The default implementation is an UnspecialiedCapo, which
-     * you can use as a template for your specialized Capo.
-     *
-     * Every specialization MUST include Datum and  Activity ("redeemer") enums,
-     * and MAY include additional functions, and methods on Datum / Activity.
-     *
-     * The datum enum SHOULD have a validateSpend(self, datum, ctx) method.
-     *
-     * The activity enum SHOULD have an allowActivity(self, datum, ctx) method.
-     *
-     * @public
-     **/
     get capoHelpers(): HeliosModuleSrc {
         return CapoHelpers;
     }
 
     @Activity.redeemer
     activityUpdatingCharter(): isActivity {
-        const updatingCharter = this.mustGetActivity("updatingCharter");
-        // let {uut, strategyName, reqdAddress: canRequireAddr, addrHint=[]} = args.govAuthority
-
-        // // const {Option} = this.onChainTypes;
-        // debugger
-        // const OptAddr = Option(Address);
-        // const needsAddr = new OptAddr(canRequireAddr);
-        const t = new updatingCharter();
-        // args.govDelegate,
-        // new hlRelativeDelegateLink(uut, strategyName, needsAddr, addrHint)
-
-        return { redeemer: t._toUplcData() };
+        return {
+            redeemer: this.activityVariantToUplc("updatingCharter", {}),
+        };
     }
 
     @Activity.redeemer
     activitySpendingDelegatedDatum() {
-        const spendingDelegatedDatum = this.mustGetActivity(
-            "spendingDelegatedDatum"
-        );
-        const t = new spendingDelegatedDatum();
-
-        return { redeemer: t._toUplcData() };
+        return {
+            redeemer: this.activityVariantToUplc("spendingDelegatedDatum", {}),
+        }
     }
 
     @Activity.redeemer
     activityUpdatingSettings(): isActivity {
-        const updatingSettings = this.mustGetActivity("updatingSettings");
-        const t = new updatingSettings();
 
-        return { redeemer: t._toUplcData() };
+        return { 
+            redeemer: this.activityVariantToUplc("updatingSettings", {})
+        };
     }
 
     /**
@@ -1887,10 +1858,9 @@ export abstract class Capo<SELF extends Capo<any>>
         ]);
     }
 
-    mkOnchainDelegateLink(dl: RelativeDelegateLink<any>) {
+    mkDelegateLink(dl: RelativeDelegateLink<any>) {
         const { RelativeDelegateLink: hlRelativeDelegateLink } =
             this.onChainTypes;
-            debugger
 
         let {
             uutName,
@@ -1900,63 +1870,44 @@ export abstract class Capo<SELF extends Capo<any>>
             // reqdAddress: canRequireAddr,
             // addrHint = [],
         } = dl;
-        const OptValidator = Option(ValidatorHash);
-        // const needsAddr = new OptAddr(canRequireAddr);
 
-        return new hlRelativeDelegateLink(
+        return { // this.typeToUplc(hlRelativeDelegateLink, {
             uutName,
             strategyName,
-            new OptValidator(delegateValidatorHash),
-            textToBytes(
-                JSON.stringify(config, delegateLinkSerializer) //, 4)
-            )
-            // needsAddr,
-            // addrHint
-        );
+            delegateValidatorHash,
+            config: textToBytes(JSON.stringify(config, delegateLinkSerializer)), //, 4)
+        }
     }
 
     @datum
     async mkDatumCharterToken(args: CharterDatumProps): Promise<Datum> {
-        //!!! todo: make it possible to type these datum helpers more strongly
-        //  ... at the interface to Helios
-        // console.log("--> mkDatumCharterToken", args);
-        const { CharterToken: hlCharterToken } = this.onChainDatumType;
-
-        // ugh, we've been here before - weaving back and forth between
-        // library essentials and application-layer types makes things hard
-        // and complicated.  -> use the spending delegate and separate UTXO
-        // for config data, instead of keeping config data in the charter datum.
-        const govAuthority = this.mkOnchainDelegateLink(args.govAuthorityLink);
-        const mintDelegate = this.mkOnchainDelegateLink(args.mintDelegateLink);
-        const spendDelegate = this.mkOnchainDelegateLink(
-            args.spendDelegateLink
-        );
-        const mintInvariants = args.mintInvariants.map((dl) => {
-            return this.mkOnchainDelegateLink(dl);
-        });
-        const spendInvariants = args.spendInvariants.map((dl) => {
-            return this.mkOnchainDelegateLink(dl);
-        });
-        const namedDelegates = new Map<string, any>(
-            Object.entries(args.namedDelegates).map(([k, v]) => {
-                return [k, this.mkOnchainDelegateLink(v)];
-            })
-        );
-        const OptByteArray = Option(ByteArray);
-        const settingsUutNameBytes = this.mkSettingsUutName(args.settingsUut);
-        const typeMapUutNameBytes = this.mkSettingsUutName(args.typeMapUut);
-        const t = new hlCharterToken(
-            spendDelegate,
-            spendInvariants,
-            settingsUutNameBytes,
-            namedDelegates,
-            mintDelegate,
-            mintInvariants,
-            govAuthority,
-            new OptByteArray(typeMapUutNameBytes)
-        );
-        return Datum.Inline(t._toUplcData());
+        
+        return this.inlineDatum("CharterToken", {
+            govAuthorityLink: this.mkDelegateLink(
+                args.govAuthorityLink
+            ),
+            mintDelegateLink: this.mkDelegateLink(
+                args.mintDelegateLink
+            ),
+            mintInvariants: args.mintInvariants.map((dl) => {
+                return this.mkDelegateLink(dl);
+            }),
+            spendDelegateLink: this.mkDelegateLink(
+                args.spendDelegateLink
+            ),
+            spendInvariants: args.spendInvariants.map((dl) => {
+                return this.mkDelegateLink(dl);
+            }),
+            settingsUut: this.mkSettingsUutName(args.settingsUut),
+            namedDelegates: new Map<string, any>(
+                Object.entries(args.namedDelegates).map(([k, v]) => {
+                    return [k, this.mkDelegateLink(v)];
+                })
+            ),
+            typeMapUut: this.mkSettingsUutName(args.typeMapUut),
+        })
     }
+
     mkSettingsUutName(settingsUut: UutName | number[]) {
         return settingsUut instanceof UutName
             ? textToBytes(settingsUut.name)
@@ -1965,13 +1916,7 @@ export abstract class Capo<SELF extends Capo<any>>
 
     @datum
     mkDatumScriptReference() {
-        const { ScriptReference: hlScriptReference } = this.onChainDatumType;
-
-        // this is a simple enum tag, indicating the role of this utxo: holding the script
-        // on-chain, so it can be used in later transactions without bloating those txns
-        // every time.
-        const t = new hlScriptReference();
-        return Datum.Inline(t._toUplcData());
+        return this.inlineDatum("ScriptReference", {})
     }
 
     settingsAdapter!: Awaited<ReturnType<this["initSettingsAdapter"]>>; // settingsAdapterType;
@@ -1982,44 +1927,18 @@ export abstract class Capo<SELF extends Capo<any>>
     async mkDatumSettingsData<THISTYPE extends Capo<any>>(
         this: THISTYPE,
         settings: CapoOffchainSettingsType<THISTYPE>
-    ): Promise<Datum> {
+    ): Promise<TxOutputDatum> {
         const adapter = this.settingsAdapter;
 
-        return adapter.toOnchainDatum(settings) as Datum;
+        return adapter.toOnchainDatum(settings) as any
     }
-
-    //x@ts-expect-error - method should be overridden
-    // mkInitialSettings() {
-    //     return {
-    //         meaning: 42,
-    //         happy: 1,
-    //     } as RealNumberSettingsMap;
-    // }
-
-    // settingsDataToUplc(config: ContractSettingsData<this>) {
-    //     const {RealnumSettingsValueV1} = this.onChainTypes;
-    //     return
-    //     //  new ListData([
-    //         //@ts-expect-error
-    //         Object.entries(config).map(([k, v]) => {
-    //             debugger
-    //             return new ConfigValue(k, BigInt(v) * 1_000_000n)._toUplcData();
-    //         })
-    //     // ])
-    //     // return new MapData([
-    //     //     [new ByteArrayData(textToBytes("empty")), new ByteArrayData(
-    //     //         textToBytes(config.empty)
-    //     //     )],
-    //     //     [new ByteArrayData(textToBytes("hi")), new ByteArrayData(
-    //     //         textToBytes("there")
-    //     //     )]
-    //     // ])
-    // }
 
     async findGovDelegate(charterDatum?: CharterDatumProps) {
         if (!charterDatum) {
+            debugger
             charterDatum = await this.findCharterDatum();
         }
+        debugger
         const capoGovDelegate = await this.connectDelegateWithLink(
             "govAuthority",
             charterDatum.govAuthorityLink
@@ -2264,9 +2183,8 @@ export abstract class Capo<SELF extends Capo<any>>
             }));
         const { mintingPolicyHash: mph } = minter;
         if (!didHaveDryRun) {
-            const csp = this.getContractScriptParams(
+            const csp = //this.getContractScriptParamsUplc(
                 this.partialConfig as CapoBaseConfig
-            );
 
             const bsc = {
                 ...csp,
@@ -2275,11 +2193,16 @@ export abstract class Capo<SELF extends Capo<any>>
                 seedIndex,
             }; // as configType;
             // this.scriptProgram = this.loadProgramScript({ ...csp, mph });
-            const fullScriptParams = (this.contractParams =
-                this.getContractScriptParams(bsc));
+            this.contractParams = this.getContractScriptParamsUplc(bsc)
+            const fullScriptParams = (
+                this.contractParams = this.contractParams
+            );
 
-            this.scriptProgram = this.loadProgramScript(fullScriptParams);
-            bsc.rootCapoScriptHash = new ValidatorHash(this.compiledScript.hash())
+            // this.scriptProgram = this.loadProgramScript();
+            this.compileWithScriptParams()
+            bsc.rootCapoScriptHash = new ValidatorHash(
+                this.compiledScript.hash()
+            );
 
             this.configIn = bsc;
         }
@@ -2453,6 +2376,7 @@ export abstract class Capo<SELF extends Capo<any>>
         const foundSettingsUtxo =
             settingsUtxo || (await this.findSettingsUtxo(tcx || charterUtxo));
 
+        debugger
         const data = (await this.readDatum(
             this.settingsAdapter,
             foundSettingsUtxo.output.datum as InlineDatum,
@@ -2576,7 +2500,8 @@ export abstract class Capo<SELF extends Capo<any>>
     @partialTxn
     async txnAttachScriptOrRefScript<TCX extends StellarTxnContext>(
         tcx: TCX,
-        program: anyUplcProgram = this.compiledScript
+        program: anyUplcProgram = this.compiledScript,
+        useRefScript = true
     ): Promise<TCX> {
         let expectedVh = program.hash();
         const isCorrectRefScript = (txin: TxInput) => {
@@ -2590,7 +2515,7 @@ export abstract class Capo<SELF extends Capo<any>>
             console.warn("suppressing second add of refScript");
             return tcx;
         }
-        const scriptReferences = await this.findScriptReferences();
+        const scriptReferences = useRefScript ? await this.findScriptReferences(): []
         // for (const [txin, refScript] of scriptReferences) {
         //     console.log("refScript", dumpAny(txin));
         // }
@@ -2600,7 +2525,9 @@ export abstract class Capo<SELF extends Capo<any>>
         );
         if (!matchingScriptRefs) {
             console.warn(
-                `missing refScript in Capo ${this.address.toBech32()} for expected script hash ${expectedVh}; adding script directly to txn`
+                `⚠️  missing refScript in Capo ${this.address.toBech32()} \n  ... for expected script hash ${
+                    bytesToHex(expectedVh)
+                }; adding script directly to txn`
             );
             // console.log("------------------- NO REF SCRIPT")
             return tcx.addScriptProgram(program);
@@ -2658,9 +2585,7 @@ export abstract class Capo<SELF extends Capo<any>>
     async mkTxnUpdateOnchainSettings<TCX extends StellarTxnContext>(
         data: CapoOffchainSettingsType<this>,
         settingsUtxo?: TxInput,
-        tcx: StellarTxnContext = new StellarTxnContext(
-            this.setup
-        )
+        tcx: StellarTxnContext = new StellarTxnContext(this.setup)
     ): Promise<TCX> {
         // uses the charter ref input
         settingsUtxo = settingsUtxo || (await this.findSettingsUtxo());
@@ -2915,9 +2840,7 @@ export abstract class Capo<SELF extends Capo<any>>
             strategyName: SN;
             forcedUpdate?: true;
         },
-        tcx: TCX = new StellarTxnContext(
-            this.setup
-        ) as TCX
+        tcx: TCX = new StellarTxnContext(this.setup) as TCX
     ) {
         const currentCharter = await this.mustFindCharterUtxo();
         const currentDatum = await this.findCharterDatum(currentCharter);
@@ -2945,7 +2868,6 @@ export abstract class Capo<SELF extends Capo<any>>
                   skipDelegateReturn: true, // so it can be burned without a txn imbalance
               } as NormalDelegateSetup);
 
-        debugger;
         const tcx2 = await this.txnMintingUuts(
             // todo: make sure seed-utxo is selected with enough minUtxo ADA for the new UUT name.
             tcxWithSeed,
@@ -3018,9 +2940,7 @@ export abstract class Capo<SELF extends Capo<any>>
     >(
         this: THIS,
         delegateInfo: DGI,
-        tcx: TCX = new StellarTxnContext(
-            this.setup
-        ) as TCX
+        tcx: TCX = new StellarTxnContext(this.setup) as TCX
     ): Promise<TCX> {
         const currentCharter = await this.mustFindCharterUtxo();
         const currentDatum = await this.findCharterDatum(currentCharter);
@@ -3115,9 +3035,7 @@ export abstract class Capo<SELF extends Capo<any>>
     >(
         this: THIS,
         delegateInfo: DGI,
-        tcx: TCX = new StellarTxnContext(
-            this.setup
-        ) as TCX
+        tcx: TCX = new StellarTxnContext(this.setup) as TCX
     ): Promise<StellarTxnContext> {
         const currentDatum = await this.findCharterDatum();
 
@@ -3196,9 +3114,7 @@ export abstract class Capo<SELF extends Capo<any>>
     >(
         this: THIS,
         delegateInfo: DGI,
-        tcx: TCX = new StellarTxnContext(
-            this.setup
-        ) as TCX
+        tcx: TCX = new StellarTxnContext(this.setup) as TCX
     ) {
         const currentDatum = await this.findCharterDatum();
         throw new Error(`test me!`);
@@ -3272,9 +3188,7 @@ export abstract class Capo<SELF extends Capo<any>>
         this: thisType,
         delegateName: delegateName,
         options: NamedDelegateCreationOptions<thisType, DT>,
-        tcx: TCX = new StellarTxnContext(
-            this.setup
-        ) as TCX
+        tcx: TCX = new StellarTxnContext(this.setup) as TCX
     ): Promise<
         hasAddlTxns<TCX & hasSeedUtxo & hasNamedDelegate<DT, delegateName>>
     > {
@@ -3472,10 +3386,10 @@ export abstract class Capo<SELF extends Capo<any>>
             mintDelegateActivity,
             skipDelegateReturn
         );
-        console.log(
-            "    🐞🐞 @end of txnMintingUuts",
-            dumpAny(tcx2, this.networkParams)
-        );
+        // console.log(
+        //     "    🐞🐞 @end of txnMintingUuts",
+        //     await tcx2.dump()
+        // );
         return tcx2;
         // const tcx4 = await mintDelegate.txnMintingUuts(tcx3,
         //     uutPurposes,
@@ -3491,9 +3405,7 @@ export abstract class Capo<SELF extends Capo<any>>
      * @remarks adds a seed utxo to a transaction-context,
      */
     async addSeedUtxo<TCX extends StellarTxnContext>(
-        tcx: TCX = new StellarTxnContext(
-            this.setup
-        ) as TCX,
+        tcx: TCX = new StellarTxnContext(this.setup) as TCX,
         seedUtxo?: TxInput
     ): Promise<TCX & hasSeedUtxo> {
         return this.tcxWithSeedUtxo(tcx, seedUtxo);

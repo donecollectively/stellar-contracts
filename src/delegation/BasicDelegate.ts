@@ -6,4 +6,4 @@
 import { HeliosModuleSrc } from "../HeliosModuleSrc.js";
 import heliosModuleInfo from "./BasicDelegate.hl";
 
-export const BasicDelegate = HeliosModuleSrc.parseFrom(heliosModuleInfo);
+export const BasicDelegate = HeliosModuleSrc.parseFromOptions(heliosModuleInfo);

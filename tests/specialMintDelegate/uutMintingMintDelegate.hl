@@ -64,7 +64,7 @@ enum DelegateDatum {
     }
     ScriptReference
 
-    func validateSettings(self, _settings: capoSettings) -> Bool{
+    func validateSettings(_self, _settings: capoSettings) -> Bool{
         assert(false, "not valid (stubbed)");
         // settings.serialize() != self.serialize() &&
         true
@@ -156,10 +156,10 @@ enum DelegateActivity {
         o : []TxOutput = get_cont_outputs();
         if (o.length != 1) { error("single utxo only") };
 
-        print (" - in uutMintingDelegate");
+        print (" - in uutMintingDelegate\n");
         isOk : Bool = returnsAuthzToken && 
 
-        unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize(), ctx) &&
+        unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize()) &&
 
         // This call can serve as a template for enforcing expected mints 
         // of uuts (and additional token values) in validation of application-
@@ -184,7 +184,7 @@ enum DelegateActivity {
     func additionalDelegateValidation( self,
         priorMddd: DelegateDatum::IsDelegation
     ) -> Bool {
-        print("  ----- uutMinting delegate - checking additional delegate validation");
+        print("  ----- uutMinting delegate - checking additional delegate validation\n");
         self.switch {
             // normal  lifecycle activities are already validated, but 
             //  ... you can add more constraints here if needed
@@ -195,8 +195,8 @@ enum DelegateActivity {
                         assert(purpose == "myNamedDgt", "unsupported delegate-creation purpose: " + purpose);
 
                         true
-                    },
-                    _ => error("test other delegate lifecycle activities?")
+                    }
+                    // _ => error("test other delegate lifecycle activities?")
                 }
             },
             SpendingActivities{activity} => {
@@ -206,7 +206,7 @@ enum DelegateActivity {
                 }
             },
             MintingActivities{activity} => {
-                print("uutMinting delegate - checking mintingActivities");
+                print("uutMinting delegate - checking mintingActivities\n");
                 activity.switch{
                     mintingUuts => self.genericUutMinting(priorMddd)
                     // _ => // leave as compile-time problem

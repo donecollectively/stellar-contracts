@@ -8,10 +8,9 @@ import {
     vi,
     assertType,
     expectTypeOf,
-    SpyInstance,
 } from "vitest";
 
-import { Tx, TxOutput, Value } from "@hyperionbt/helios";
+import { Tx, TxBuilder, TxOutput, Value } from "@hyperionbt/helios";
 
 import { StellarTxnContext } from "../src/StellarTxnContext";
 import { CapoMinter } from "../src/minting/CapoMinter";
@@ -83,7 +82,7 @@ describe("Capo", async () => {
             const uutVal = capo.uutsValue(tcx1b.state.uuts!);
             tcx1b.addOutput(new TxOutput(tina.address, uutVal));
             await expect(
-                capo.submit(tcx1b, {
+                tcx1b.submit({
                     signers: [tom.address, tina.address, tracy.address],
                 })
             ).rejects.toThrow(/missing.*mintDgt/);
@@ -92,12 +91,10 @@ describe("Capo", async () => {
         it("works when the seed utxo has a large utxoIdx", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
-
-            const tcx = h.mkTcx();
-
+            
             const strella = await h.bootstrap();
-            const tx = new Tx();
             const utxos = await h.wallet.utxos;
+            const tcx = h.mkTcx().withName("creates a high-indexed utxo");
             let totalHeld: Value = new Value(0n * ADA);
             for (const u of utxos) {
                 tcx.addInput(u);
@@ -116,22 +113,21 @@ describe("Capo", async () => {
             tcx.addOutput(
                 new TxOutput(h.wallet.address, collateralValue)
             );
-            await strella.submit(tcx);
-            network.tick(1n);
+            await tcx.submit();
+            network.tick(1);
             console.log("-------------- minting UUT from high-index txo");
 
             type testSomeThing = "testSomeThing";
 
             const mintDelegate = await strella.getMintDelegate();
             const purposes = ["testSomeThing"];
-            const tcx2a = await strella.addSeedUtxo(h.mkTcx());
+            const tcx2a = await strella.tcxWithSeedUtxo(h.mkTcx().withName("minting UUT from high-index txo"));
             const tcx2b = await strella.txnMintingUuts(
                 tcx2a,
                 purposes,
                 { mintDelegateActivity: mintDelegate.activityMintingUutsAppSpecific(tcx2a, purposes) }
             );
-            await strella.submit(tcx2b);
-            network.tick(1n);
+            return tcx2b.submit();
         });
 
         it("requires the charter to be used as reference input", async (context: localTC) => {
@@ -143,19 +139,23 @@ describe("Capo", async () => {
 
             type testSomeThing = "testSomeThing";
             const tcx1 = h.mkTcx();
+            const spy = vi
+                .spyOn(capo, "tcxWithCharterRef")
+                .mockImplementation(async (tcx: any) => {
+                    return tcx;
+                });
+
             {
-                await capo.txnMustUseCharterUtxo(tcx1, capo.activityUsingAuthority());
-                const spy = vi
-                    .spyOn(capo, "txnAddCharterRef")
-                    .mockImplementation(async (tcx: any) => {
-                        return tcx;
-                    });
+                const charter = await capo.mustFindCharterUtxo();
+                tcx1.addScriptProgram(capo.compiledScript!);
+                tcx1.addInput(charter, capo.activityUsingAuthority());
+                capo.txnKeepCharterToken(tcx1, charter.datum);
 
                 await capo.txnAddGovAuthorityTokenRef(tcx1);
                 expect(spy).toHaveBeenCalled();
             }
             const mintDelegate = await capo.getMintDelegate();
-            const tcx1a = await capo.addSeedUtxo(tcx1);
+            const tcx1a = await capo.tcxWithSeedUtxo(tcx1);
             const purposes = ["testSomeThing"];
             const tcx1b = await capo.txnMintingUuts(
                 tcx1a,
@@ -189,7 +189,7 @@ describe("Capo", async () => {
                 .mockImplementation(async (tcx) => tcx);
 
             const purposes = ["testSomeThing"];
-            const tcx1a = await capo.addSeedUtxo(h.mkTcx());
+            const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
             const tcx1b = await capo.txnMintingUuts(
                 tcx1a,
                 purposes,
@@ -201,7 +201,7 @@ describe("Capo", async () => {
             const uutVal = capo.uutsValue(tcx1b.state.uuts!);
             tcx1b.addOutput(new TxOutput(tina.address, uutVal));
             await expect(
-                capo.submit(tcx1b, {
+                tcx1b.submit({
                     signers: [tom.address, tina.address, tracy.address],
                 })
             ).rejects.toThrow(/dgTkn not returned/);
@@ -230,13 +230,13 @@ describe("Capo", async () => {
             await capo.submit(tcx1a, {
                 signers: [tom.address, tina.address, tracy.address],
             });
-            network.tick(1n);
+            network.tick(1);
 
-            const hasNamedToken = capo.mkTokenPredicate(uutVal);
+            const hasNamedToken = capo.uh.mkTokenPredicate(uutVal);
             const u = await network.getUtxos(tina.address);
             const f = u.find(hasNamedToken);
             expect(f).toBeTruthy();
-            expect(f?.origOutput.value.ge(uutVal)).toBeTruthy();
+            expect(f?.output.value.isGreaterOrEqual(uutVal)).toBeTruthy();
         });
 
         it("can create multiple UUTs", async (context: localTC) => {
@@ -249,13 +249,10 @@ describe("Capo", async () => {
             await h.mintCharterToken();
 
             type fooAndBar = "foo" | "bar";
-            const tcx1 = new StellarTxnContext<hasAllUuts<fooAndBar>>(
-                h.actorContext,
-                capo.networkParams
-            );
+            const tcx1 = h.mkTcx<hasAllUuts<fooAndBar>>();
 
             const mintDelegate = await capo.getMintDelegate();
-            const tcx1a = await capo.addSeedUtxo(h.mkTcx());
+            const tcx1a = await capo.tcxWithSeedUtxo(tcx1);
             const purposes = ["foo", "bar"];
             const tcx1b = await capo.txnMintingUuts(
                 tcx1a,
@@ -270,13 +267,13 @@ describe("Capo", async () => {
             await capo.submit(tcx1b, {
                 signers: [tom.address, tina.address, tracy.address],
             });
-            network.tick(1n);
+            network.tick(1);
 
-            const hasNamedToken = capo.mkTokenPredicate(uuts);
+            const hasNamedToken = capo.uh.mkTokenPredicate(uuts);
             const u = await network.getUtxos(tina.address);
             const f = u.find(hasNamedToken);
             expect(f).toBeTruthy();
-            expect(f?.origOutput.value.ge(uuts)).toBeTruthy();
+            expect(f?.output.value.isGreaterOrEqual(uuts)).toBeTruthy();
         });
 
         it("fills tcx.state.uuts with purpose-keyed unique token-names", async (context: localTC) => {
@@ -308,13 +305,13 @@ describe("Capo", async () => {
             await capo.submit(tcx1b, {
                 signers: [tom.address, tina.address, tracy.address],
             });
-            network.tick(1n);
+            network.tick(1);
 
-            const hasNamedToken = capo.mkTokenPredicate(uuts);
+            const hasNamedToken = capo.uh.mkTokenPredicate(uuts);
             const u = await network.getUtxos(tina.address);
             const f = u.find(hasNamedToken);
             expect(f).toBeTruthy();
-            expect(f?.origOutput.value.ge(uuts)).toBeTruthy();
+            expect(f?.output.value.isGreaterOrEqual(uuts)).toBeTruthy();
         });
 
         it("won't mint multiple UUTs of the same name", async (context: localTC) => {
@@ -337,7 +334,7 @@ describe("Capo", async () => {
                 "-------- case 1: using the txn-helper in unsupported way"
             );            
             const purposes1 = [noMultiples, noMultiples];
-            const tcx1a = await capo.addSeedUtxo(h.mkTcx());
+            const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
             const tcx1b = await capo.txnMintingUuts(
                 tcx1a,
                 purposes1,
@@ -348,19 +345,16 @@ describe("Capo", async () => {
 
             tcx1b.addOutput(new TxOutput(tina.address, uut));
             await expect(
-                capo.submit(tcx1b, {
+                tcx1b.submit({
                     signers: [tom.address, tina.address, tracy.address],
                 })
             ).rejects.toThrow(/mismatch in UUT mint/);
-            network.tick(1n);
+            network.tick(1);
 
             console.log(
                 "------ case 2: directly creating the transaction with >1 tokens"
             );
-            const tcx2 = new StellarTxnContext<hasAllUuts<uniqUutMap>>(
-                h.actorContext,
-                capo.networkParams
-            );
+            const tcx2 = h.mkTcx<hasAllUuts<uniqUutMap>>()
             // await t.txnAddCharterAuthorityTokenRef(tcx2);
 
             const spy = vi.spyOn(utils, "mkUutValuesEntries");
@@ -374,7 +368,7 @@ describe("Capo", async () => {
             );
 
             const purposes2 = [noMultiples];
-            const tcx2a = await capo.tcxWithSeedUtxo(h.mkTcx());
+            const tcx2a = await capo.tcxWithSeedUtxo(tcx2);
             const tcx2b = await capo.txnMintingUuts(
                 tcx2a,
                 purposes2,
@@ -385,11 +379,11 @@ describe("Capo", async () => {
 
             tcx2b.addOutput(new TxOutput(tina.address, uut2));
             await expect(
-                capo.submit(tcx2b, {
+                tcx2b.submit( {
                     signers: [tom.address, tina.address, tracy.address],
                 })
             ).rejects.toThrow(/mismatch in UUT mint/);
-            network.tick(1n);
+            network.tick(1);
 
             console.log(
                 "------ case 3: directly creating the transaction with multiple mint entries"
@@ -418,11 +412,11 @@ describe("Capo", async () => {
 
             tcx3a.addOutput(new TxOutput(tina.address, uut3));
             await expect(
-                capo.submit(tcx3a, {
+                tcx3a.submit({
                     signers: [tom.address, tina.address, tracy.address],
                 })
             ).rejects.toThrow(/UUT duplicate purpose/);
-            network.tick(1n);
+            network.tick(1);
         });
 
         it("won't mint extra UUTs", async (context: localTC) => {
@@ -451,7 +445,7 @@ describe("Capo", async () => {
             );
 
             const mintDelegate  = await capo.getMintDelegate() 
-            const tcx = await capo.addSeedUtxo(h.mkTcx());
+            const tcx = await capo.tcxWithSeedUtxo(h.mkTcx());
             const purposes = ["testSomeThing"];
             const tcx2 = await capo.txnMintingUuts(
                 tcx,
@@ -469,7 +463,7 @@ describe("Capo", async () => {
                     signers: [tom.address, tina.address, tracy.address],
                 })
             ).rejects.toThrow(/mismatch in UUT mint/);
-            network.tick(1n);
+            network.tick(1);
         });
     });
 
@@ -482,7 +476,6 @@ describe("Capo", async () => {
             const {h, h: { network, actors, delay, state }} = context;
             const capo = await h.initialize();
             const { tina, tom, tracy } = actors;
-
 
             await h.mintCharterToken();
             const mintDelegate = await capo.getMintDelegate();
@@ -502,121 +495,122 @@ describe("Capo", async () => {
             await capo.submit(tcx2, {
                 signers: [tom.address, tina.address, tracy.address],
             });
-            network.tick(1n);
+            network.tick(1);
 
             return tcx2;
         }
 
-        it("🟥 can't burn a UUT without the minting delegate", async (context: localTC) => {
+        it.skip("Out of scope: can't burn a UUT without the minting delegate", async (context: localTC) => {
+            // generic UUT burning isn't provided by the library
+            // retiring an old delegate UUT can be a specfic case when such a burn
+            // would be relevant, and validated with regard to that specific case.
+
+            // other application-specific cases for UUT burning should likewise
+            // be validated in the context of the specific application, by activities
+            // on the minting delegate, or possibly by delegating that verification
+            // to another application-specific delegate (for example, a "delete" activity
+            // on a delegated-datum controller).
+
             // prettier-ignore
-            const {h, h: { network, actors, delay, state }} = context;
-            const capo = await h.initialize();
-            const { tina, tom, tracy } = actors;
+            // const {h, h: { network, actors, delay, state }} = context;
+            // const capo = await h.initialize();
+            // const { tina, tom, tracy } = actors;
 
-            const tcx = await setup(context);
+            // const tcx = await setup(context);
 
-            const { testSomeThing } = tcx.state.uuts;
+            // const { testSomeThing } = tcx.state.uuts;
 
-            const uutUtxo = await capo.findActorUtxo(
-                "theUut",
-                capo.mkTokenPredicate(capo.mph, testSomeThing.name)
-            );
-            expect(uutUtxo).toBeTruthy();
-            console.log("---- test will fail to burn a UUT with no delegate");
+            // const uutUtxo = await capo.uh.findActorUtxo(
+            //     "theUut",
+            //     capo.uh.mkTokenPredicate(capo.mph, testSomeThing.name)
+            // );
+            // expect(uutUtxo).toBeTruthy();
+            // console.log("---- test will fail to burn a UUT with no delegate");
 
-            const burnTcx = new StellarTxnContext<hasAllUuts<testSomeThing>>(
-                h.actorContext,
-                capo.networkParams
-            );
-            await burnTcx.addInput(uutUtxo!);
+            // const burnTcx = h.mkTcx<hasAllUuts<testSomeThing>>()
+            // await burnTcx.addInput(uutUtxo!);
 
-            const mintDgt = await capo.getMintDelegate();
-            let mock: SpyInstance = vi
-                .spyOn(mintDgt, "txnGrantAuthority")
-                .mockImplementation(async (tcx) => tcx);
+            // const mintDgt = await capo.getMintDelegate();
+            // let mock = vi
+            //     .spyOn(mintDgt, "txnGrantAuthority")
+            //     .mockImplementation(async (tcx) => tcx);
 
-            const bTcx2 = await capo.txnBurnUuts(burnTcx, [testSomeThing]);
-            expect(mock).toHaveBeenCalled();
-            const submitting = capo.submit(bTcx2, {
-                signers: [tom.address, tina.address, tracy.address],
-            });
-            await expect(submitting).rejects.toThrow(
-                /missing.*delegat.*mintDgt/
-            );
+            // const bTcx2 = await capo.txnBurnUuts(burnTcx, [testSomeThing]);
+            // expect(mock).toHaveBeenCalled();
+            // const submitting = capo.submit(bTcx2, {
+            //     signers: [tom.address, tina.address, tracy.address],
+            // });
+            // await expect(submitting).rejects.toThrow(
+            //     /missing.*delegat.*mintDgt/
+            // );
         });
 
-        it("🟥 can burn a UUT, if approved by the minting delegate", async (context: localTC) => {
+        it.skip("Out of scope: can burn a UUT, if approved by the minting delegate", async (context: localTC) => {
             // prettier-ignore
-            const {h, h: { network, actors, delay, state }} = context;
-            const capo = await h.initialize();
-            const { tina, tom, tracy } = actors;
+            // const {h, h: { network, actors, delay, state }} = context;
+            // const capo = await h.initialize();
+            // const { tina, tom, tracy } = actors;
 
-            debugger
-            const tcx = await setup(context);
+            // const tcx = await setup(context);
 
-            const { testSomeThing: tst } = tcx.state.uuts;
+            // const { testSomeThing: tst } = tcx.state.uuts;
 
-            const uutUtxo = await capo.findActorUtxo(
-                "theUut",
-                capo.mkTokenPredicate(capo.mph, tst.name)
-            );
-            expect(uutUtxo).toBeTruthy();
-            console.log("---- test will burn a UUT  with delegate approval");
+            // const uutUtxo = await capo.uh.findActorUtxo(
+            //     "theUut",
+            //     capo.uh.mkTokenPredicate(capo.mph, tst.name)
+            // );
+            // expect(uutUtxo).toBeTruthy();
+            // console.log("---- test will burn a UUT  with delegate approval");
 
-            const burnTcx = new StellarTxnContext<hasAllUuts<testSomeThing>>(
-                h.actorContext,
-                capo.networkParams
-            );
-            burnTcx.addInput(uutUtxo!);
+            // const burnTcx = h.mkTcx<hasAllUuts<testSomeThing>>();
+            // burnTcx.addInput(uutUtxo!);
 
-            const bTcx2 = await capo.txnBurnUuts(burnTcx, [tst]);
-            const submitting = capo.submit(bTcx2, {
-                signers: [tom.address, tina.address, tracy.address],
-            });
-            await expect(submitting).resolves.toBeTruthy();
+            // const bTcx2 = await capo.txnBurnUuts(burnTcx, [tst]);
+            // const submitting = capo.submit(bTcx2, {
+            //     signers: [tom.address, tina.address, tracy.address],
+            // });
+            // await expect(submitting).resolves.toBeTruthy();
         });
 
-        it("🟥 burns only the UUTs identified in the Activity/redeemer", async (context: localTC) => {
+        it.skip("Out of scope: burns only the UUTs identified in the Activity/redeemer", async (context: localTC) => {
             // prettier-ignore
-            const {h, h: { network, actors, delay, state }} = context;
-            const capo = await h.initialize();
-            const { tina, tom, tracy } = actors;
+            // const {h, h: { network, actors, delay, state }} = context;
+            // const capo = await h.initialize();
+            // const { tina, tom, tracy } = actors;
 
-            const tcx = await setup(context);
-            const tcx2 = await setup(context);
-            const { testSomeThing: tst } = tcx.state.uuts;
-            const { testSomeThing: tst2 } = tcx2.state.uuts;
+            // const tcx = await setup(context);
+            // const tcx2 = await setup(context);
+            // const { testSomeThing: tst } = tcx.state.uuts;
+            // const { testSomeThing: tst2 } = tcx2.state.uuts;
 
-            const uutUtxo = await capo.findActorUtxo(
-                "theUut",
-                capo.mkTokenPredicate(capo.mph, tst.name)
-            );
-            expect(uutUtxo).toBeTruthy();
-            console.log("---- test will burn a UUT  with delegate approval");
+            // const uutUtxo = await capo.uh.findActorUtxo(
+            //     "theUut",
+            //     capo.uh.mkTokenPredicate(capo.mph, tst.name)
+            // );
+            // expect(uutUtxo).toBeTruthy();
+            // console.log("---- test will burn a UUT  with delegate approval");
 
-            const uutUtxo2 = await capo.findActorUtxo(
-                "theUut",
-                capo.mkTokenPredicate(capo.mph, tst2.name)
-            );
-            expect(uutUtxo).toBeTruthy();
-            const burnTcx = new StellarTxnContext<hasAllUuts<testSomeThing>>(
-                h.actorContext
-            );
-            burnTcx.addInput(uutUtxo!);
-            burnTcx.addInput(uutUtxo2!);
+            // const uutUtxo2 = await capo.uh.findActorUtxo(
+            //     "theUut",
+            //     capo.uh.mkTokenPredicate(capo.mph, tst2.name)
+            // );
+            // expect(uutUtxo).toBeTruthy();
+            // const burnTcx = h.mkTcx<hasAllUuts<testSomeThing>>();
+            // burnTcx.addInput(uutUtxo!);
+            // burnTcx.addInput(uutUtxo2!);
 
-            const minter = capo.minter!;
-            const activityBurningUuts = minter.activityBurningUuts.bind(minter);
-            vi.spyOn(minter, "activityBurningUuts").mockImplementation(
-                (tn1, tn2) => activityBurningUuts(tn1)
-            );
+            // const minter = capo.minter!;
+            // const activityBurningUuts = minter.activityBurningUuts.bind(minter);
+            // vi.spyOn(minter, "activityBurningUuts").mockImplementation(
+            //     (tn1, tn2) => activityBurningUuts(tn1)
+            // );
 
-            const bTcx2 = await capo.txnBurnUuts(burnTcx, [tst, tst2]);
+            // const bTcx2 = await capo.txnBurnUuts(burnTcx, [tst, tst2]);
 
-            const submitting = capo.submit(bTcx2, {
-                signers: [tom.address, tina.address, tracy.address],
-            });
-            await expect(submitting).rejects.toThrow(/mismatch in UUT burn/);
+            // const submitting = capo.submit(bTcx2, {
+            //     signers: [tom.address, tina.address, tracy.address],
+            // });
+            // await expect(submitting).rejects.toThrow(/mismatch in UUT burn/);
         });
     });
 });

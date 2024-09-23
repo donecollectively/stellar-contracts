@@ -7,32 +7,42 @@ import { Source } from "@helios-lang/compiler-utils"
  **/
 export type HeliosModuleOptions = {
     content?: string;
-    srcFile: string;
+    // srcFile: string;
     purpose: string;
-    name: string;
-    project?: string
-};
-export class HeliosModuleSrc extends Source {
-    static parseFrom(heliosModuleInfo: HeliosModuleOptions) {
-        return new HeliosModuleSrc(
-            heliosModuleInfo.content!,
-            heliosModuleInfo
-        );
-    }
-    srcFile: string;
-    purpose: string;
-    project?: string;
-    // todo: trim this back once we get better helios integration
     name: string;
     moduleName: string;
+    project?: string;
+    moreInfo?: string
+};
+
+export class HeliosModuleSrc extends Source {
+    static parseFromOptions(mInfo: HeliosModuleOptions | HeliosModuleSrc) {
+        if (mInfo instanceof HeliosModuleSrc) return mInfo;
+        if (!mInfo.content) throw new Error(`missing required {content} prop in contractSource()`);
+        // console.log(`HeliosModuleSrc.parseFrom: mInfo:`, mInfo)
+        return new HeliosModuleSrc(
+            mInfo.content!,
+            mInfo
+        );
+    }
+    // srcFile: string;
+    purpose: string;
+    project?: string;
+    // source filename is suitable here
+    name: string;
+    moduleName: string;
+    moreInfo?: string;
 
     constructor(public content: string, options: HeliosModuleOptions) {
         super(content, options);
-        this.srcFile = options.srcFile;
+        // this.srcFile = options.srcFile;
+        //@ts-expect-error
+        if (options.srcFile) throw new Error(`use name, not srcFile in HeliosModuleSrc`);
         this.purpose = options.purpose;
-        this.moduleName = options.name;
+        this.moduleName = options.moduleName;
         this.name = options.name;
         this.project = options.project;            
+        this.moreInfo = options.moreInfo;
     }
 }
 
@@ -40,10 +50,17 @@ export class HeliosModuleSrc extends Source {
  * Creates a String object from Helios source code, having additional properties about the helios source 
  * @remarks
  * 
- * `srcFile`, `purpose`, and `moduleName` are parsed from the Helios source string using a simple regular expression.
+ * `purpose` and `moduleName` are parsed from the Helios source string using a simple regular expression.
  * @public
  **/
-export function mkHeliosModule(src: string, filename: string, project : string = ""): HeliosModuleSrc {
+export function mkHeliosModule(
+    src: string, 
+    filename: string, 
+    {project = "", moreInfo = ""}:{
+        project?: string,
+        moreInfo?: string
+    }={}
+): HeliosModuleSrc {
     if (!src) { 
          const e = new Error(`mkHeliosModule: undefined is invalid as Helios source code (? in ${filename})\n  ... Are you using default import?  ->  \`import someModuleName ... \`, not \`import { someModuleName } ...\`  `);
          e.stack = e.stack?.split("\n").slice(3).join("\n");
@@ -55,8 +72,8 @@ export function mkHeliosModule(src: string, filename: string, project : string =
         src.match(/(module|minting|spending|endpoint)\s+([a-zA-Z0-9]+)/m) || [];
 
     const module = new HeliosModuleSrc(src, {
-        srcFile: filename,
-        purpose, project, name: moduleName
+        name: filename,
+        purpose, project, moduleName, moreInfo
     });
 
     return module;

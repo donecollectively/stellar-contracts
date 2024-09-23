@@ -25,13 +25,12 @@ func didSign(a: Address) -> Bool {
 
 func TODO(task: String) -> () {
     // red checkbox, face, sweat droplets
-    print("  🟥    😳💦  TODO v ");
-    print( task )
+    print("  🟥  😳💦  TODO: " + task + "\n")
 }
 
 func REQT(reqt: String) -> () {
     // red exclamation mark
-    print("❗ "+ reqt)
+    print("❗ "+ reqt + "\n")
 }
 func bREQT(reqt: String) -> Bool {
     REQT(reqt);

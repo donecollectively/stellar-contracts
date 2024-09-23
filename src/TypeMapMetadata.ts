@@ -6,4 +6,4 @@
 import heliosModuleInfo from "./TypeMapMetadata.hl";
 import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 
-export const TypeMapMetadata = HeliosModuleSrc.parseFrom(heliosModuleInfo);
+export const TypeMapMetadata = HeliosModuleSrc.parseFromOptions(heliosModuleInfo);

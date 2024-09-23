@@ -54,28 +54,23 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         return adapter.toOnchainDatum(record);
     }
     
-    /**
-     * Creates a utxo-spending reedemer for a delegated-data record, given its record-id and other args
-     *
-     * This is semantically equivalent to the super method of the same name, but with a more explicit and flexible signature.
-     * 
-     * In particular, the id arg may be provided as a string, which is implicitly converted to a byte-array.
-     * 
-     * If you have any difficulty instantiating a complex activity object (e.g. with nested Enums), 
-     * you may wish to provide the id using a UplcByteArray, along with any other Uplc-typed args.
-     * This allows the activity to be formed without reference to on-chain Enum types,
-     * which aren't all easily used from Javascript land
-     **/
-    mkSpendingActivity(
-        spendingActivityName: string, 
-        id: string | number[],
-        ...args: any[]
-    ) : isActivity {
-        if (Array.isArray(id)) {
-            return super.mkSpendingActivity(spendingActivityName, id, ...args);
-        }
-        return super.mkSpendingActivity(spendingActivityName, helios.textToBytes(id), ...args);
-    }
+    // /**
+    //  * Creates a utxo-spending reedemer for a delegated-data record, given its record-id and other args
+    //  *
+    //  * This is semantically equivalent to the super method of the same name, but with a more explicit and flexible signature.
+    //  * 
+    //  * In particular, the id arg may be provided as a string, which is implicitly converted to a byte-array.
+    //  **/
+    // mkSpendingActivity(
+    //     spendingActivityName: string, 
+    //     id: string | number[],
+    //     ...args: Record<string, any>
+    // ) : isActivity {
+    //     if (Array.isArray(id)) {
+    //         return super.mkSpendingActivity(spendingActivityName, id, ...args);
+    //     }
+    //     return super.mkSpendingActivity(spendingActivityName, helios.textToBytes(id), ...args);
+    // }
 
     /**
      * Creates an indirect reference to a seed activity with arguments,

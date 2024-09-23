@@ -160,7 +160,13 @@ describe("StellarContract", async () => {
 
         describe("transaction context: state", () => {
             it("allows keys to be added to the tcx state", async (context: localTC) => {
+                const {
+                    h,
+                    h: { network, actors, delay, state },
+                } = context;
+
                 type FOO = { foo: "bar"; uuts: {} };
+                await h.initialize();
                 const tcx : StellarTxnContext<FOO> = context.h.mkTcx() as any;
                 //! basic type-checks only
                 tcx.state.foo = "bar";

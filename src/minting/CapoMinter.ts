@@ -2,15 +2,11 @@ import {
     Address,
     Value,
     MintingPolicyHash,
-    Assets,
-    ByteArray,
-    //@ts-expect-error
-    Option,
-    TxOutputId,
-    ConstrData,
+    Assets
 } from "@hyperionbt/helios";
 import { Activity, StellarContract, partialTxn } from "../StellarContract.js";
 import type {
+    UplcRecord,
     configBaseWithRev,
     hasSeed,
     isActivity,
@@ -69,9 +65,10 @@ export class CapoMinter
     contractSource() {
         return contract;
     }
-    getContractScriptParams(
+
+    getContractScriptParamsUplc(
         config: BasicMinterParams
-    ): configBaseWithRev & SeedTxnScriptParams {
+    ): UplcRecord<configBaseWithRev & SeedTxnScriptParams> {
         const {
             seedIndex,
             seedTxn,
@@ -80,11 +77,11 @@ export class CapoMinter
             devGen,
         } = config;
 
-        return {
+        return this.paramsToUplc({
             rev,
             seedIndex,
             seedTxn,
-        };
+        });
     }
 
     get scriptActivitiesName() {
@@ -113,12 +110,7 @@ export class CapoMinter
      **/
     @Activity.redeemer
     activityMintingCharter(ownerInfo: MintCharterActivityArgs): isActivity {
-        const { owner } = ownerInfo;
-        const mintingCharter = this.mustGetActivity("mintingCharter");
-        const { DelegateDetails: hlDelegateDetails } = this.onChainTypes;
-        const t = new mintingCharter(owner);
-
-        return { redeemer: t._toUplcData() };
+        return this.activityRedeemer("mintingCharter", ownerInfo);
     }
 
     /**
@@ -132,12 +124,7 @@ export class CapoMinter
      **/
     @Activity.redeemer
     activityMintWithDelegateAuthorizing(): isActivity {
-        const mintWithDelegateAuthorizing = this.mustGetActivity(
-            "mintWithDelegateAuthorizing"
-        );
-        const t = new mintWithDelegateAuthorizing();
-
-        return { redeemer: t._toUplcData() };
+        return this.activityRedeemer("mintWithDelegateAuthorizing");    
     }
 
     /**
@@ -156,10 +143,7 @@ export class CapoMinter
     activityAddingMintInvariant(seedFrom: hasSeed): isActivity {
         const seed = this.getSeed(seedFrom);
 
-        const addingMintInvariant = this.mustGetActivity("addingMintInvariant");
-        const t = new addingMintInvariant(seed);
-
-        return { redeemer: t._toUplcData() };
+        return this.activityRedeemer("addingMintInvariant", {seed});
     }
 
     /** Mints a new UUT specifically for a spending invariant
@@ -172,12 +156,7 @@ export class CapoMinter
     @Activity.redeemer
     activityAddingSpendInvariant(seedFrom: hasSeed): isActivity {
         const seed = this.getSeed(seedFrom);
-        const addingSpendInvariant = this.mustGetActivity(
-            "addingSpendInvariant"
-        );
-        const t = new addingSpendInvariant(seed);
-
-        return { redeemer: t._toUplcData() };
+        return this.activityRedeemer("addingSpendInvariant", {seed});
     }
 
     /**
@@ -194,22 +173,8 @@ export class CapoMinter
             "NOTE: REPLACING THE MINT DELEGATE USING A DIRECT MINTER ACTIVITY\n" +
                 "THIS IS NOT THE RECOMMENDED PATH - prefer using the existing mint delegate's ReplacingMe activity'"
         );
-        const ReplacingMintDelegate = this.mustGetActivity(
-            "ForcingNewMintDelegate"
-        );
-        const variantStatement =
-            ReplacingMintDelegate.prototype._enumVariantStatement;
-        const variantIndex = variantStatement.constrIndex;
         const seed = this.getSeed(seedFrom);
-                // was...
-                // const t = new ReplacingMintDelegate(seed);
-                // return { redeemer: t._toUplcData()  },
-        return {
-            //prettier-ignore
-            redeemer: new ConstrData(variantIndex, [
-                seed._toUplcData()
-            ]),
-        };
+        return this.activityRedeemer("ForcingNewMintDelegate", {seed});
     }
 
     /**
@@ -231,79 +196,10 @@ export class CapoMinter
         seedFrom: hasSeed,
         replacingUut?: number[]
     ): isActivity {
-        const ReplacingSpendDelegate = this.mustGetActivity(
-            "CreatingNewSpendDelegate"
-        );
-        const enumVariantStatement = ReplacingSpendDelegate.prototype._enumVariantStatement;
-        const variantIndex = enumVariantStatement.constrIndex;
-        const OptByteArray = Option(ByteArray);
-        const seed = this.getSeed(seedFrom);
-        const uutName = new OptByteArray(replacingUut);
-
-        // was const t = new ReplacingSpendDelegate(seed, uutName);
-        // return { redeemer: t._toUplcData() };
-        return {
-            //prettier-ignore
-            redeemer: new ConstrData(variantIndex, [
-                seed._toUplcData(),
-                uutName._toUplcData()
-            ]),
-        };
-    }
-
-    /**
-     * @deprecated
-     **/
-    @Activity.redeemer
-    activityMintingUuts({ seed, purposes }: MintUutActivityArgs): isActivity {
-        throw new Error(
-            `minter:mintingUuts obsolete; use minter:MintWithDelegateAuthorizing with delegate:mintingUuts or another application-specific activity`
-        );
-        // const seedIndex = BigInt(sIdx);
-        // console.log("UUT redeemer seedTxn", seedTxn.hex);
-        // const {mintingUuts} = this.onChainActivitiesType;
-        // const t = new mintingUuts(
-        //     seedTxn,
-        //     seedIndex,
-        //     purposes
-        // );
-
-        // return { redeemer: t._toUplcData() };
-    }
-
-    /**
-     * @deprecated - use minter:MintWithDelegateAuthorizing with delegate:burningUuts
-     * or another application-specific activity
-     **/
-    @Activity.redeemer
-    activityBurningUuts(...uutNames: string[]): isActivity {
-        throw new Error(
-            `minter:burningUuts obsolete; use minter:MintWithDelegateAuthorizing with delegate:burningUuts or another application-specific activity`
-        );
-        // const {burningUuts} =this.onChainActivitiesType;
-        // const { DelegateDetails: hlDelegateDetails } = this.onChainTypes;
-        // const t = new burningUuts(uutNames);
-
-        // return { redeemer: t._toUplcData() };
-    }
-
-    @partialTxn
-    async txnBurnUuts<existingTcx extends StellarTxnContext<any>>(
-        initialTcx: existingTcx,
-        uutNames: UutName[]
-    ) {
-        const tokenNames = uutNames.map((un) => un.name);
-        const tcx2 = this.attachRefScript(
-            initialTcx.mintTokens(
-                this.mintingPolicyHash!,
-                tokenNames.map((tokenName) =>
-                    mkValuesEntry(tokenName, BigInt(-1))
-                ),
-                this.activityBurningUuts(...tokenNames).redeemer
-            )
-        );
-
-        return tcx2 as existingTcx & typeof tcx2;
+        const seed = this.getSeed(seedFrom);        
+        return this.activityRedeemer("CreatingNewSpendDelegate", {
+            seed, replacingUut
+        });
     }
 
     //! overrides base getter type with undefined not being allowed
@@ -369,22 +265,23 @@ export class CapoMinter
             spendDgtVE,
         ];
 
-        return this.attachRefScript(
-            tcx.mintTokens(
-                this.mintingPolicyHash!,
-                values,
-                this.activityMintingCharter({
-                    owner,
-                }).redeemer
-            )
-        );
-        // as TCX;
+        return (
+            await this.attachScript( tcx, false )
+        ).mintTokens(
+            this.mintingPolicyHash!,
+            values,
+            this.activityMintingCharter({
+                owner,
+            }).redeemer
+        )  as TCX;
     }
-    attachRefScript(tcx) {
+
+    attachScript<TCX extends StellarTxnContext<anyState>>(tcx : TCX, useRefScript=true) {
         return this.configIn!.capo.txnAttachScriptOrRefScript(
             tcx,
-            this.compiledScript
-        );
+            this.compiledScript,
+            useRefScript
+        ) as Promise<TCX>
     }
 
     @Activity.partialTxn
@@ -393,13 +290,11 @@ export class CapoMinter
         vEntries: valuesEntry[],
         minterActivity: isActivity
     ): Promise<TCX> {
-        return this.attachRefScript(
-            tcx.mintTokens(
-                this.mintingPolicyHash!,
-                vEntries,
-                minterActivity.redeemer
-            )
-        );
+        return ( await this.attachScript(tcx) ).mintTokens(
+            this.mintingPolicyHash!,
+            vEntries,
+            minterActivity.redeemer
+        ) as TCX
     }
 
     @Activity.partialTxn
@@ -412,20 +307,17 @@ export class CapoMinter
     ): Promise<TCX> {
         const { capo } = this.configIn!;
         const md = mintDelegate || (await capo.getMintDelegate());
-        const tcx1 = await capo.txnAddCharterRef(tcx);
+        const tcx1 = await capo.tcxWithCharterRef(tcx);
         const tcx2 = await md.txnGrantAuthority(
             tcx1,
             mintDgtRedeemer,
             skipReturningDelegate
         );
 
-        return this.attachRefScript(
-            tcx2.mintTokens(
-                this.mintingPolicyHash!,
-                vEntries,
-                this.activityMintWithDelegateAuthorizing().redeemer
-            )
-        );
-        //  as TCX;
+        return (await this.attachScript(tcx) ).mintTokens(
+            this.mintingPolicyHash!,
+            vEntries,
+            this.activityMintWithDelegateAuthorizing().redeemer
+        ) as TCX;
     }
 }

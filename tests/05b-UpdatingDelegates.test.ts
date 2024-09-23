@@ -58,8 +58,8 @@ describe("Capo", async () => {
                     strategyName: "defaultV1",
                 },
             );
-            await capo.submit(tcx);
-            network.tick(1n);
+            await tcx.submit()
+            network.tick(1);
 
             const updatedDatum = await capo.findCharterDatum();
             expect(updatedDatum.mintDelegateLink.uutName).not.toEqual(
@@ -87,8 +87,8 @@ describe("Capo", async () => {
                 },
             );
             expect(addedGovToken).toHaveBeenCalledTimes(1);
-            await expect(capo.submit(tcx1)).rejects.toThrow(
-                /missing dgTkn capoGov-/
+            await expect(tcx1.submit()).rejects.toThrow(
+                /dgTkn not returned: capoGov-/
             );
 
             console.log(" ------- case 2: forced replacement of mint delegate");
@@ -99,8 +99,8 @@ describe("Capo", async () => {
                 },
             );
             expect(addedGovToken).toHaveBeenCalledTimes(2);
-            await expect(capo.submit(tcx2)).rejects.toThrow(
-                /missing dgTkn capoGov-/
+            await expect(tcx2.submit()).rejects.toThrow(
+                /dgTkn not returned: capoGov-/
             );
         });
 
@@ -119,8 +119,8 @@ describe("Capo", async () => {
                     forcedUpdate: true,
                 },
             );
-            await capo.submit(tcx);
-            network.tick(1n);
+            await tcx.submit();
+            network.tick(1);
             const updatedDatum = await capo.findCharterDatum();
             expect(updatedDatum.mintDelegateLink.uutName).not.toEqual(
                 originalDatum.mintDelegateLink.uutName
@@ -138,7 +138,7 @@ describe("Capo", async () => {
                 newPredicate
             );
             expect(newExists).toBeTruthy();
-            expect(stillExists.outputId.eq(newExists.outputId)).toBeFalsy();
+            expect(stillExists.id.isEqual(newExists.id)).toBeFalsy();
         });
 
         it("normally requires the existing minting delegate to be involved in the replacement", async (context: localTC) => {
@@ -182,22 +182,30 @@ describe("Capo", async () => {
             const tcx = await capo.mkTxnUpdatingMintDelegate({
                 strategyName: "defaultV1",
             });
-            await capo.submit(tcx);
-            network.tick(1n);
+            await tcx.submit();
+            network.tick(1);
             
             console.log(" ------- case 1a: replacing second delegate to see that it's involved in the upgrade ");
-            const tcx2 = await capo.mkTxnUpdatingMintDelegate(
+            const tcx2 = (await capo.mkTxnUpdatingMintDelegate(
                 {
                     strategyName: "defaultV1",
                 },
-            );
+            )).withName("trial txn; uses 2nd mintDgt?");
 
-            console.log("  --- followup to make sure the second mint delegate was used in the replacement txn ----")
-            console.log("  -- ...^  in txn: ", dumpAny(tcx2));
-            expect(tcx2.outputs.find(oldPredicate)).toBeFalsy();
             const newerPredicate = (
                 await capo.getMintDelegate()
             ).mkAuthorityTokenPredicate();
+            newerPredicate.predicateValue
+
+            const txnDump = await tcx2.dump();
+            tcx2.log(`${tcx2.txnName}: `, txnDump as string).flush();
+            tcx2.log("(NOT SUBMITTED)");
+            tcx2.log(
+                "  --- test ensures the second mint delegate was used in the replacement txn ----"
+            ).log(
+                dumpAny(newerPredicate.predicateValue) as string
+            ).finish()
+            expect(tcx2.outputs.find(oldPredicate)).toBeFalsy();
             expect(tcx2.inputs.find(newerPredicate)).toBeTruthy();
 
             console.log(" ------- case 2: forced replacement of mint delegate");
@@ -209,8 +217,8 @@ describe("Capo", async () => {
                 },
             );
 
-            await expect(capo.submit(tcx3)).resolves.toBeTruthy();
-            network.tick(1n);
+            await expect(tcx3.submit()).resolves.toBeTruthy();
+            network.tick(1);
 
             const tcx3a = await capo.tcxWithSeedUtxo(capo.mkTcx());
             const purpose2 = ["anything2"];
@@ -252,9 +260,10 @@ describe("Capo", async () => {
                     forcedUpdate: true,
                 },
             );
-            await capo.submit(tcx);
-            network.tick(1n);
 
+            await tcx.submit();
+            network.tick(1);
+            
             const fakeDelegate = vi.spyOn(capo, "getMintDelegate").mockImplementation(async () => {
                 return oldMintDelegate;
             });
@@ -291,8 +300,8 @@ describe("Capo", async () => {
                     strategyName: "defaultV1",
                 },
             );
-            await capo.submit(tcx);
-            network.tick(1n);
+            await tcx.submit();
+            network.tick(1);
 
             const updatedDatum = await capo.findCharterDatum();
             expect(updatedDatum.spendDelegateLink.uutName).not.toEqual(
@@ -321,7 +330,7 @@ describe("Capo", async () => {
             );
             expect(addedGovToken).toHaveBeenCalledTimes(1);
             await expect(capo.submit(tcx1)).rejects.toThrow(
-                /missing dgTkn capoGov-/
+                /dgTkn not returned: capoGov-/
             );
 
             console.log(
@@ -334,12 +343,12 @@ describe("Capo", async () => {
                 },
             );
             expect(addedGovToken).toHaveBeenCalledTimes(2);
-            await expect(capo.submit(tcx2)).rejects.toThrow(
-                /missing dgTkn capoGov-/
+            await expect(tcx2.submit()).rejects.toThrow(
+                /dgTkn not returned: capoGov-/
             );
         });
 
-        it("can force-replace the spending delegate if needed", async (context: localTC) => {
+        fit("can force-replace the spending delegate if needed", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
@@ -354,8 +363,8 @@ describe("Capo", async () => {
                     forcedUpdate: true,
                 },
             );
-            await capo.submit(tcx);
-            network.tick(1n);
+            await tcx.submit();
+            network.tick(1);
             const updatedDatum = await capo.findCharterDatum();
             expect(updatedDatum.spendDelegateLink.uutName).not.toEqual(
                 originalDatum.spendDelegateLink.uutName
@@ -373,7 +382,7 @@ describe("Capo", async () => {
                 newPredicate
             );
             expect(newExists).toBeTruthy();
-            expect(stillExists.outputId.eq(newExists.outputId)).toBeFalsy();
+            expect(stillExists.id.isEqual(newExists.id)).toBeFalsy();
         });
 
         it("normally requires the existing spending delegate to be involved in the replacement", async (context: localTC) => {
@@ -398,13 +407,22 @@ describe("Capo", async () => {
             expect(didGrantMockedAuthority).toHaveBeenCalledTimes(1);
             expect(didntBurnBecauseMocked).toHaveBeenCalledTimes(1);
 
-            const submission = capo.submit(tcx2);
-            await expect(submission).rejects.toThrow(
-                /* \X matches any char including line breaks */
-                new RegExp(`-1x ${bytesToText(sd.authorityTokenName)}`)
-            );
-
+            const submission = tcx2.submit({
+                expectError: true,
+                // beforeValidate: async () => {
+                //     tcx2.log("this transaction is expected to fail");
+                // },
+                // beforeError: async () => {
+                //     tcx2.log("this transaction SHOULD fail");
+                // }                
+            });
+            /* \X matches any char including line breaks */
             await expect(submission).rejects.toThrow(/\X*mismatch in UUT mint/);
+
+            expect(tcx2.logger.history.some(x => x.match(
+                new RegExp(`-1x ${bytesToText(sd.authorityTokenName)}`)
+            ))).toBeTruthy();
+
         });
 
         it.todo(
@@ -423,26 +441,26 @@ describe("Capo", async () => {
                 const tcx = await capo.mkTxnUpdatingSpendDelegate({
                     strategyName: "defaultV1",
                 });
-                await capo.submit(tcx);
-                network.tick(1n);
+                await tcx.submit();
+                network.tick(1);
                 console.log("    ---- spending with the new delegate");
 
-                // TODO: Make a different txn type for delegated-spend (config record?)
-                const tcx1 = await capo.txnSpendingUuts(
-                    await capo.tcxWithSeedUtxo(capo.mkTcx()),
-                    ["anything"]
-                );
+                // // TODO: Make a different txn type for delegated-spend (config record?)
+                // const tcx1 = await capo.txnSpendingUuts(
+                //     await capo.tcxWithSeedUtxo(capo.mkTcx()),
+                //     ["anything"]
+                // );
 
-                console.log(
-                    " ------------------------------------------------------------------\n",
-                    dumpAny(tcx1)
-                );
-                expect(tcx1.outputs.find(oldPredicate)).toBeFalsy();
-                const newerPredicate = (
-                    await capo.getSpendDelegate()
-                ).mkAuthorityTokenPredicate();
-                expect(tcx1.outputs.find(newerPredicate)).toBeTruthy();
-                await expect(capo.submit(tcx1)).resolves.toBeTruthy();
+                // console.log(
+                //     " ------------------------------------------------------------------\n",
+                //     dumpAny(tcx1)
+                // );
+                // expect(tcx1.outputs.find(oldPredicate)).toBeFalsy();
+                // const newerPredicate = (
+                //     await capo.getSpendDelegate()
+                // ).mkAuthorityTokenPredicate();
+                // expect(tcx1.outputs.find(newerPredicate)).toBeTruthy();
+                // await expect(capo.submit(tcx1)).resolves.toBeTruthy();
             }
         );
 

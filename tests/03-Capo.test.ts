@@ -42,7 +42,7 @@ const describe = descrWithContext<localTC>;
 
 describe("Capo", async () => {
     beforeEach<localTC>(async (context) => {
-        await new Promise(res => setTimeout(res, 10));
+        await new Promise((res) => setTimeout(res, 10));
         await addTestContext(context, DefaultCapoTestHelper);
     });
 
@@ -62,8 +62,8 @@ describe("Capo", async () => {
             const unspent = await network.getUtxos(actors.tina.address);
             const empty = unspent.find((x) => {
                 return (
-                    x.outputId.txId == seedTxn &&
-                    BigInt(x.outputId.utxoIdx) == BigInt(seedIndex)
+                    x.id.txId == seedTxn &&
+                    BigInt(x.id.utxoIdx) == BigInt(seedIndex)
                 );
             });
             expect(empty).toBeFalsy();
@@ -81,7 +81,7 @@ describe("Capo", async () => {
             });
             await h.bootstrap();
 
-            expect(t1.mph.hex).not.toEqual(t2.mph.hex);
+            expect(t1.mph.toHex()).not.toEqual(t2.mph.toHex());
         });
     });
 
@@ -127,11 +127,9 @@ describe("Capo", async () => {
                     throw e;
                 }
                 state.mintedCharterToken = null;
-                const minting = h.mintCharterToken()
+                const minting = h.mintCharterToken();
                 // await minting
-                return expect(minting).rejects.toThrow(
-                    "already configured"
-                );
+                return expect(minting).rejects.toThrow("already configured");
             });
             it("creates a dgTkn UUT for the govAuthority delegate, sent to user wallet", async (context: localTC) => {
                 const {
@@ -147,8 +145,9 @@ describe("Capo", async () => {
                 expect(
                     tcx.outputs.find((o: TxOutput) => {
                         return (
-                            o.value.ge(treasury.tokenAsValue(capoGov)) &&
-                            o.address.eq(h.wallet.address)
+                            o.value.isGreaterOrEqual(
+                                treasury.tokenAsValue(capoGov)
+                            ) && o.address.isEqual(h.wallet.address)
                         );
                     })
                 ).toBeTruthy();
@@ -172,8 +171,9 @@ describe("Capo", async () => {
                 expect(
                     tcx.outputs.find((o: TxOutput) => {
                         return (
-                            o.value.ge(capo.tokenAsValue(mintDgt)) &&
-                            o.address.eq(mintDelegate.address)
+                            o.value.isGreaterOrEqual(
+                                capo.tokenAsValue(mintDgt)
+                            ) && o.address.isEqual(mintDelegate.address)
                         );
                     }),
                     "should find the mintDgt token"
@@ -185,8 +185,8 @@ describe("Capo", async () => {
                     "mint delegate refScript",
                     (utxo) => {
                         return (
-                            utxo.origOutput.refScript?.serialize() ==
-                            mintDelegate.compiledScript.serialize()
+                            utxo.output.refScript?.toString() ==
+                            mintDelegate.compiledScript.toString()
                         );
                     }
                 );
@@ -200,7 +200,6 @@ describe("Capo", async () => {
         });
     });
 
-
     describe("the charter token is always kept in the contract", () => {
         it("fails to use the charter token without the capoGov token", async (context: localTC) => {
             const {
@@ -209,11 +208,11 @@ describe("Capo", async () => {
             } = context;
 
             const capo = await h.initialize();
-            vi.spyOn(capo, "txnAddGovAuthority").mockImplementation(
-                (async (tcx) => {
-                    return tcx;
-                }) as any
-            );
+            vi.spyOn(capo, "txnAddGovAuthority").mockImplementation((async (
+                tcx
+            ) => {
+                return tcx;
+            }) as any);
             console.log(
                 "------ mkCharterSpend (mocked out txnAddGovAuthority)"
             );
@@ -238,7 +237,7 @@ describe("Capo", async () => {
             expect(tcx.outputs).toHaveLength(2);
 
             const treasury = context.strella!;
-            const hasCharterToken = treasury.mkTokenPredicate(
+            const hasCharterToken = treasury.uh.mkTokenPredicate(
                 treasury.tvCharter()
             );
             expect(
@@ -392,23 +391,22 @@ describe("Capo", async () => {
             const {h, h:{network, actors, delay, state} } = context;
 
             const strella = await h.bootstrap();
-            const tcx = strella.mkTcx()
+            const tcx = strella.mkTcx();
             const tcx2 = await strella.txnAttachScriptOrRefScript(tcx);
             expect(
-                tcx2.txRefInputs[0].origOutput.refScript?.validatorHash.eq(
-                    strella.compiledScript.validatorHash
-                )
-            ).toBeTruthy();
+                tcx2.txRefInputs[0].output.refScript?.toString()
+            ).toEqual(strella.compiledScript.toString());
+
             const tcx3 = await strella.txnAttachScriptOrRefScript(
                 tcx,
                 strella.minter.compiledScript
             );
             expect(
-                tcx3.txRefInputs[1].origOutput.refScript?.mintingPolicyHash.eq(
-                    strella.minter.compiledScript.mintingPolicyHash
-                )
-            ).toBeTruthy();
-            expect(tcx3.tx.dump().witnesses.refScripts.length).toBe(2);
+                tcx3.txRefInputs[1].output.refScript?.toString()
+            ).toEqual(strella.minter.compiledScript.toString());
+                
+            const tx = await tcx3.buildTx()
+            expect(tx.witnesses.v2RefScripts.length).toBe(2);
         });
     });
 });

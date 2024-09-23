@@ -22,7 +22,7 @@ import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
 export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig> {
     static currentRev = 1n;
     get delegateName() { return "mintDelegate" }
-    get isMintAndSpendDelegate() { return false }
+    get isMintAndSpendDelegate() { return true }
 
     // uses the basic delegate script, plus the isMintDelegate param
 
@@ -53,7 +53,7 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
         // was return { redeemer: new Activity( /* ... seed stuff ... */, uutPurpose) }
         return {
             redeemer: new helios.ConstrData(creatingDgDataIndex, [
-                seed._toUplcData(),
+                seed.toUplcData(),
                 new helios.ByteArrayData(uutPurposeBytes)
             ])
         }

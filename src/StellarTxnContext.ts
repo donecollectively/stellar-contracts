@@ -16,12 +16,15 @@ import {
 import { dumpAny, txAsString } from "./diagnostics.js";
 import type { hasUutContext } from "./Capo.js";
 import { UutName, type SeedAttrs } from "./delegation/UutName.js";
-import type { ActorContext, SetupDetails, isActivity } from "./StellarContract.js";
-import { delegateLinkSerializer } from "./delegation/delegateLinkSerializer.js";
-import {
-    UtxoHelper
-} from "./UtxoHelper.js";
+import type {
+    ActorContext,
+    SetupDetails,
+    isActivity,
+} from "./StellarContract.js";
+import { delegateLinkSerializer } from "./delegation/jsonSerializers.js";
+import { UtxoHelper } from "./UtxoHelper.js";
 import type { UplcData } from "@helios-lang/uplc";
+import { UplcConsoleLogger } from "./UplcConsoleLogger.js";
 
 /**
  * A txn context having a seedUtxo in its state
@@ -118,7 +121,7 @@ type addRefInputArgs = Parameters<TxBuilder["addRefInput"]>;
 type addRefInputsArgs = Parameters<TxBuilder["addRefInput"]>;
 
 type RedeemerArg = {
-    redeemer?: UplcData
+    redeemer?: UplcData;
 };
 
 /**
@@ -158,13 +161,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     get wallet() {
-        return this.setup.actorContext.wallet!
+        return this.setup.actorContext.wallet!;
     }
 
     get uh() {
         return this.setup.uh;
     }
-
+    logger = new UplcConsoleLogger();
     constructor(
         setup: SetupDetails,
         state: Partial<S> = {},
@@ -188,15 +191,14 @@ export class StellarTxnContext<S extends anyState = anyState> {
         return this.actorContext.wallet;
     }
 
-    async dump() {
-        const { txb } = this;
-        return txAsString(
-            await txb.build({
-                changeAddress: this.actorContext.wallet?.address,
-                networkParams: this.networkParams,
-            }),
-            this.setup.networkParams
-        );
+    dump(tx? : Tx) : string
+    dump() : Promise<string>
+    dump(tx? : Tx) : string | Promise<string> {
+        const t = tx || this.builtTx
+        if (t instanceof Promise) {
+            return t.then(tx => txAsString(tx, this.setup.networkParams))
+        }
+        return txAsString(t, this.setup.networkParams);
     }
 
     includeAddlTxn<
@@ -213,9 +215,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
         return thisWithMoreType;
     }
 
-    mintTokens(...args: Parameters<TxBuilder["mint"]>): StellarTxnContext<S> {
-        if (this.txb.mint) {
-            this.txb.mint(...args);
+    mintTokens(
+        ...args: Parameters<TxBuilder["mintUnsafe"]>
+    ): StellarTxnContext<S> {
+        if (this.txb.mintUnsafe) {
+            this.txb.mintUnsafe(...args);
         } else {
             //@ts-expect-error
             this.txb.mintTokens(...args);
@@ -450,20 +454,13 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
         //@ts-expect-error private field
         const v2sBefore = this.txb.v2Scripts;
-        //@ts-expect-error private field
-        const v3sBefore = this.txb.v3Scripts;
         this.txb.refer(input);
         //@ts-expect-error private field
         const v2sAfter = this.txb.v2Scripts;
-        //@ts-expect-error private field
-        const v3sAfter = this.txb.v3Scripts;
 
         // const t2 = this.txb.witnesses.scripts.length;
         // if (t2 > t) {
-        if (
-            v2sAfter.length > v2sBefore.length ||
-            v3sAfter.length > v3sBefore.length
-        ) {
+        if (v2sAfter.length > v2sBefore.length) {
             console.log("       --- addRefInput added a script to tx.scripts");
         }
 
@@ -501,11 +498,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
         try {
             this.txb.spendUnsafe(input, r?.redeemer);
         } catch (e: any) {
-            console.log("failed adding input to txn: ", dumpAny(this));
+            // console.log("failed adding input to txn: ", dumpAny(this));
 
             throw new Error(
                 `addInput: ${e.message}` +
-                    "\n   ...see partial txn above.  Failed TxInput:\n" +
+                    "\n   ...TODO: dump partial txn from txb above.  Failed TxInput:\n" +
                     dumpAny(input)
             );
         }
@@ -586,7 +583,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     _btx?: Tx | Promise<Tx>;
     get builtTx() {
         if (!this._btx) {
-            return (this._btx = this.buildTx().then((tx) => {
+            return (this._btx = this.build().then(({tx}) => {
                 this._btx = tx;
                 return tx;
             }));
@@ -594,18 +591,18 @@ export class StellarTxnContext<S extends anyState = anyState> {
         return this._btx;
     }
 
-    async buildTx() {
-        const { wallet } = this.setup.actorContext;
-        const wHelper = wallet && new WalletHelper(wallet);
+    // async buildTx() {
+    //     const { wallet } = this.setup.actorContext;
+    //     const wHelper = wallet && new WalletHelper(wallet);
 
-        return this.txb.build({
-            changeAddress:
-                ((await wallet?.unusedAddresses) || [])[0] ||
-                ((await wallet?.usedAddresses) || [])[0],
-            spareUtxos: await this.findAnySpareUtxos(),
-            networkParams: this.networkParams,
-        });
-    }
+    //     return this.txb.build({
+    //         changeAddress:
+    //             ((await wallet?.unusedAddresses) || [])[0] ||
+    //             ((await wallet?.usedAddresses) || [])[0],
+    //         spareUtxos: await this.findAnySpareUtxos(),
+    //         networkParams: this.networkParams,
+    //     });
+    // }
 
     async addSignature(wallet: Wallet) {
         const builtTx = (await this.builtTx) as Tx;
@@ -630,7 +627,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 .sort(uh.utxoSortSmallerAndPureADA);
 
             if (allSpares.reduce(uh.reduceUtxosCountAdaOnly, 0) > 0) {
-                return allSpares.filter(uh.utxoIsPureADA).map(uh.sortInfoBackToUtxo);
+                return allSpares
+                    .filter(uh.utxoIsPureADA)
+                    .map(uh.sortInfoBackToUtxo);
             }
             return allSpares.map(uh.sortInfoBackToUtxo);
         });
@@ -642,65 +641,65 @@ export class StellarTxnContext<S extends anyState = anyState> {
         } = this;
         if (!wallet) {
             throw new Error(
-                `⚠️ ${this.constructor.name}: no this.actorContext.wallet; can't get required change address!`
+                `⚠️  ${this.constructor.name}: no this.actorContext.wallet; can't get required change address!`
             );
         }
         let unused = (await wallet.unusedAddresses).at(0);
         if (!unused) unused = (await wallet.usedAddresses).at(-1);
         if (!unused)
             throw new Error(
-                `⚠️ ${this.constructor.name}: can't find a good change address!`
+                `⚠️  ${this.constructor.name}: can't find a good change address!`
             );
         return unused;
     }
 
-    async submit(
+    async build(
         this: StellarTxnContext<any>,
         {
             signers = [],
             addlTxInfo = {
-                description: this.txnName || "(unnamed)",
+                description: this.txnName ? ": " + this.txnName : "",
             },
+            beforeValidate            
         }: {
             signers?: Address[];
             addlTxInfo?: Pick<TxDescription<any>, "description">;
+            beforeValidate?: (tx: Tx) => Promise<any> | any
         } = {}
-    ) {
+    ): Promise<{
+        tx: Tx;
+        willSign: PubKeyHash[];
+        walletMustSign: boolean;
+        wallet: Wallet;
+        wHelper: WalletHelper<any>;
+    }> {
         let { txb } = this;
+        console.timeStamp?.(`submit() txn ${this.txnName}`);
+        let { description } = addlTxInfo;
+        if (description && !description.match(/^:/)) {
+            description = ": " + description;
+        }
         const {
             actorContext: { wallet },
         } = this;
 
         let walletMustSign = false;
-        let sigs: Signature[] | null = [];
         let tx: Tx;
+
+        const logger = this.logger;
         if (wallet || signers.length) {
+            console.timeStamp?.(`submit(): findChangeAddr()`);
             const changeAddress = await this.findChangeAddr();
 
+            console.timeStamp?.(`submit(): findAnySpareUtxos()`);
             const spares = await this.findAnySpareUtxos();
 
             const willSign = [...signers, ...this.neededSigners]
                 .map((addr) => addr.pubKeyHash)
                 .flat(1) as PubKeyHash[];
+            console.timeStamp?.(`submit(): addSIgners()`);
             txb.addSigners(...willSign);
             const wHelper = wallet && new WalletHelper(wallet);
-            // if (false)  { if (wallet && wHelper) {
-            //     //@ts-expect-error on internal isSmart()
-            //     if (tx.isSmart() && !tcx.collateral) {
-            //         let [c] = await wallet.collateral;
-            //         if (!c) {
-            //             c = await wHelper.pickCollateral(this.ADA(5n));
-            //             if (c.value.lovelace > this.ADA(20n))
-            //                 throw new Error(
-            //                     `The only collateral-eligible utxos in this wallet have more than 20 ADA.  It's recommended to create and maintain collateral values between 2 and 20 ADA (or 5 and 20, for more complex txns)`
-            //                 );
-            //         }
-            //         tcx.addCollateral(c); // adds it also to the tx.
-            //     }
-            // } }
-            // if (sign && this.wallet) {
-            //     willSign.push(this.wallet);
-            // }
 
             // determine whether we need to request signing from wallet.
             // may involve adding signers to the txn
@@ -732,122 +731,144 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 changeAddress,
                 spareUtxos: spares,
                 networkParams: this.networkParams,
+                logOptions: logger,
+                throwBuildPhaseScriptErrors: false,
+                beforeValidate
             });
-            for (const pkh of willSign) {
-                if (!pkh) continue;
-                if (tx.body.signers.find((s) => pkh.isEqual(s))) continue;
-                throw new Error(
-                    `incontheeivable! all signers should have been added to the builder above`
-                );
-                // tx.addSigner(pkh);
-            }
-
-            // const feeEstimated = tx.estimateFee(this.networkParams);
-            // if (feeEstimated > feeLimit) {
-            //     console.log("outrageous fee - adjust tcx.feeLimit to get a different threshold")
-            //     throw new Error(`outrageous fee-computation found - check txn setup for correctness`)
-            // }
-            try {
-                tx.validate(this.networkParams);
-                // const elapsed = t2 - t1;
-                // console.log(
-                //     // stopwatch emoji: ⏱
-                //     `          :::::::::: ⏱ tx validation time: ${elapsed}ms ⏱`
-                // );
-                // result: validations for non-trivial txns can take ~800+ ms
-                //  - validations with simplify:true, ~250ms - but ...
-                //    ... with elided error messages that don't support negative-testing very well
-            } catch (e: any) {
-                if (
-                    e.message.match(
-                        /multi:Minting: only dgData activities ok in mintDgt/
-                    )
-                ) {
-                    console.log(
-                        `⚠️⚠️⚠️ mint delegate for multiple activities should be given delegated-data activities, not the activities of the delegate`
-                    );
-                }
-
-                // todo: find a way to run the same scripts again, with tracing retained
-                // for client-facing transparency of failures that can be escalated in a meaningful
-                // way to users.
-                console.log(
-                    `FAILED submitting tx: ${addlTxInfo.description}:`,
-                    this.dump()
-                );
-                debugger;
-                throw e;
-            }
+            logger.flush();
+            this._btx = tx;
+            return {
+                tx,
+                willSign,
+                walletMustSign,
+                wallet,
+                wHelper,
+            };
         } else {
-            throw new Error("no 'actorContext.wallet'; not making a txn");
+            throw new Error("no 'actorContext.wallet'; can't make  a txn");
+        }
+    }
+    log(...msgs: string[]) {
+        this.logger.log(...msgs);
+        return this
+    }
+    flush() {
+        this.logger.flush();
+        return this;
+    }
+    finish() {
+        this.logger.finish();
+        return this;
+    }
+
+    async submit(
+        this: StellarTxnContext<any>,
+        {
+            signers = [],
+            addlTxInfo = {
+                description: this.txnName ? ": " + this.txnName : "",
+            },
+            expectError,
+            beforeError,
+            beforeValidate
+        }: {
+            signers?: Address[];
+            addlTxInfo?: Pick<TxDescription<any>, "description">;
+            expectError? : true,
+            beforeError?: (tx: Tx) => Promise<any> | any
+            beforeValidate?: (tx: Tx) => Promise<any> | any
+        } = {}
+    ) {
+        const { tx, willSign, walletMustSign, wallet, wHelper } =
+            await this.build({
+                signers,
+                addlTxInfo,
+                beforeValidate,
+            });
+        const { logger, txb } = this;
+        const { description } = addlTxInfo;
+
+        const errMsg = tx.hasValidationError;
+        if (errMsg) {
+            // console.log(`submit(): FAILED tx.validate(): ${errMsg}`);
+            // console.profileEnd?.("tx.validate()");
+            // @ts-ignore
+            // if (console.profileEnd) {
+            //     debugger;
+            // }
+
+            logger.logPrint(`⚠️  txn validation failed: ${errMsg}\n`);
+            logger.logPrint(this.dump(tx));
+            logger.flush();
+            if (beforeError) {
+                await beforeError(tx);
+            }
+            logger.logError(`FAILED submitting tx: ${description}:`);
+            if (expectError) {
+                logger.logPrint(`\n💣🎉 💣🎉 🎉 🎉 transaction failed (as expected)`);
+            }
+            logger.flushError();
+            if (
+                errMsg.match(
+                    /multi:Minting: only dgData activities ok in mintDgt/
+                )
+            ) {
+                console.log(
+                    `⚠️  mint delegate for multiple activities should be given delegated-data activities, not the activities of the delegate`
+                );
+            }
+            debugger;
+            throw new Error(errMsg);
+        }
+        // const elapsed = t2 - t1;
+        // console.log(
+        //     // stopwatch emoji: ⏱
+        //     `          :::::::::: ⏱ tx validation time: ${elapsed}ms ⏱`
+        // );
+        // result: validations for non-trivial txns can take ~800+ ms
+        //  - validations with simplify:true, ~250ms - but ...`
+        //    ... with elided error messages that don't support negative-testing very well
+        for (const pkh of willSign) {
+            if (!pkh) continue;
+            if (tx.body.signers.find((s) => pkh.isEqual(s))) continue;
+            throw new Error(
+                `incontheeivable! all signers should have been added to the builder above`
+            );
         }
         if (walletMustSign) {
-            const walletSign = wallet.signTx(txb);
-            sigs = await walletSign.catch((e) => {
-                console.warn(
-                    "signing via wallet failed: " + e.message,
-                    this.dump()
-                );
+            console.timeStamp?.(`submit(): wallet.signTx()`);
+            const walletSign = wallet.signTx(tx);
+            const sigs = await walletSign.catch((e) => {
+                logger.logError("signing via wallet failed: " + e.message);
+                logger.logPrint(this.dump(tx));
+                logger.flushError();
                 return null;
             });
-            //! doesn't need to re-verify a sig it just collected
-            //   (sig verification is ~2x the cost of signing)
+            console.timeStamp?.(`submit(): tx.addSignatures()`);
             if (sigs) {
+                //! doesn't need to re-verify a sig it just collected
+                //   (sig verification is ~2x the cost of signing)
                 tx.addSignatures(sigs, false);
             } else {
                 throw new Error(`wallet signing failed`);
             }
         }
-        console.log(
-            `Submitting tx: ${addlTxInfo.description}: `,
-            this.dump()
-        );
+        logger.logPrint(`tx transcript: ${description}\n`);
+        logger.logPrint(this.dump(tx));
+        logger.flush();
 
+        console.timeStamp?.(`submit(): to net/wallet`);
         const promises = [
-            this.setup.network.submitTx(tx).catch((e) => {
+            //@ts-expect-error on non-standard submitTx() in emulator
+            this.setup.network.submitTx(tx, logger).catch((e) => {
                 if (
                     "currentSlot" in this.setup.network &&
                     e.message.match(/or slot out of range/)
                 ) {
-                    const b = tx.body;
-                    const db = tx.dump().body;
-                    function getAttr(x: string) {
-                        return tx.body[x] || db[x];
-                    }
-
-                    const validFrom = getAttr("firstValidSlot");
-                    const validTo = getAttr("lastValidSlot");
-
-                    // vf = 100,  current = 102, vt = 110  =>   FROM now -2, TO now +8; VALID
-                    // vf = 100,  current = 98,   vt = 110  =>   FROM now +2, TO now +12; FUTURE
-                    // vf = 100,  current = 100,  vt = 110  =>  FROM now, TO now +10; VALID
-                    // vf = 100, current = 120, vt = 110  =>  FROM now -20, TO now -10; PAST
-
-                    const currentSlot = this.setup.network.currentSlot as bigint;
-                    const diff1 = validFrom - currentSlot;
-                    const diff2 = validTo - currentSlot;
-                    const disp1 =
-                        diff1 > 0
-                            ? `NOT VALID for +${diff1}s`
-                            : `${
-                                  diff2 > 0 ? "starting" : "was valid"
-                              } ${diff1}s ago`;
-                    const disp2 =
-                        diff2 > 0
-                            ? `${
-                                  diff1 > 0 ? "would be " : ""
-                              }VALID until now +${diff2}s`
-                            : `EXPIRED ${0n - diff2}s ago`;
-
-                    console.log(
-                        `  ⚠️ slot validity issue?\n` +
-                            `    - validFrom: ${validFrom} - ${disp1}\n` +
-                            `    - validTo: ${validTo} - ${disp2}\n` +
-                            `    - current: ${currentSlot}\n`
-                    );
+                    this.checkTxValidityDetails(tx);
                 }
                 console.warn(
-                    "⚠️⚠️⚠️ submitting via helios Network failed: ",
+                    "⚠️  submitting via helios Network failed: ",
                     e.message
                 );
                 debugger;
@@ -858,9 +879,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
             if (!this.setup.isTest) {
                 // submit via wallet in addition to the network, may allow for faster confirmation
                 promises.push(
-                    wallet.submitTx(txb).catch((e) => {
+                    wallet.submitTx(tx).catch((e) => {
                         console.log(
-                            "⚠️⚠️⚠️ submitting via wallet failed: ",
+                            "⚠️  submitting via wallet failed: ",
                             e.message
                         );
                         debugger;
@@ -869,10 +890,57 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 );
             }
         }
-        return Promise.any(promises).then((r) => {
-            console.log(`   🎉🎉  ^^^ success: ${addlTxInfo.description} 🎉🎉`);
+        const anySuccess = Promise.any(promises);
+        try {
+            await anySuccess;
+        } catch (e: any) {
+            logger.logError(
+                `submitting tx failed: ${description}: ${e.message}`
+            );
+            logger.flushError();
+        }
+        return anySuccess.then((r) => {
+            console.timeStamp?.(`submit(): success`);
+            logger.logPrint(`\n\n\n🎉🎉 tx submitted${description} 🎉🎉`);
+
+            logger.finish();
             return r;
         });
+    }
+
+    private checkTxValidityDetails(tx: Tx) {
+        const b = tx.body;
+        const db = tx.dump().body;
+        function getAttr(x: string) {
+            return tx.body[x] || db[x];
+        }
+
+        const validFrom = getAttr("firstValidSlot");
+        const validTo = getAttr("lastValidSlot");
+
+        // vf = 100,  current = 102, vt = 110  =>   FROM now -2, TO now +8; VALID
+        // vf = 100,  current = 98,   vt = 110  =>   FROM now +2, TO now +12; FUTURE
+        // vf = 100,  current = 100,  vt = 110  =>  FROM now, TO now +10; VALID
+        // vf = 100, current = 120, vt = 110  =>  FROM now -20, TO now -10; PAST
+        debugger;
+        const currentSlot = this.setup.network.currentSlot as bigint;
+        const diff1 = validFrom - currentSlot;
+        const diff2 = validTo - currentSlot;
+        const disp1 =
+            diff1 > 0
+                ? `NOT VALID for +${diff1}s`
+                : `${diff2 > 0 ? "starting" : "was valid"} ${diff1}s ago`;
+        const disp2 =
+            diff2 > 0
+                ? `${diff1 > 0 ? "would be " : ""}VALID until now +${diff2}s`
+                : `EXPIRED ${0n - diff2}s ago`;
+
+        console.log(
+            `  ⚠️  slot validity issue?\n` +
+                `    - validFrom: ${validFrom} - ${disp1}\n` +
+                `    - validTo: ${validTo} - ${disp2}\n` +
+                `    - current: ${currentSlot}\n`
+        );
     }
 
     /**
@@ -886,10 +954,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
      * @public
      **/
     async submitAddlTxns(
-        tcx: hasAddlTxns<any, any>,
+        this: hasAddlTxns<any, any>,
         callback?: MultiTxnCallback
     ) {
-        const { addlTxns } = tcx.state;
+        const { addlTxns } = this.state;
         return this.submitTxns(Object.values(addlTxns), callback);
     }
 

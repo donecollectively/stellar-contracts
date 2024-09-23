@@ -15,6 +15,7 @@ import {
     TxOutput,
     TxInput,
     Value,
+    TxBuilder,
 } from "@hyperionbt/helios";
 
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
@@ -49,7 +50,9 @@ describe("Test environment", async () => {
             const tomMoney = await tom.utxos;
             const tracyMoney = await tracy.utxos;
             expect(tinaMoney.length).toBe(4);
-            expect(tinaMoney[0].value.assets.nTokenTypes).toBe(0);
+
+            // was nTokenTypes:
+            expect(tinaMoney[0].value.assets.countTokens).toBe(0);
             expect(tinaMoney[0].value.assets.isZero).toBeTruthy();
             expect(tinaMoney[1].value.assets.isZero).toBeTruthy();
 
@@ -74,18 +77,25 @@ describe("Test environment", async () => {
             const firstUtxo = tomMoney[0];
 
             async function tryWithSlop(margin: bigint) {
-                const tx = new Tx();
+                const txb = new TxBuilder({
+                    isMainnet: false,
+                });
 
-                tx.addInput(firstUtxo);
-                tx.addOutput(new TxOutput(tom.address, new Value(3n * ADA)));
-                tx.addOutput(
+                txb.spendUnsafe(firstUtxo);
+                txb.payUnsafe(new TxOutput(tom.address, new Value(3n * ADA)));
+                txb.payUnsafe(
                     new TxOutput(
                         tom.address,
                         new Value(firstUtxo.value.lovelace - margin)
                     )
                 );
                 // console.log("s2")
-                return h.submitTx(tx, "force");
+                return h.submitTx(await txb.build(
+                    {
+                        networkParams: h.networkParams,
+                        changeAddress: tom.address,
+                    }
+                ), "force");
             }
             console.log(
                 "case 1a: should work if finalize doesn't over-estimate fees"
