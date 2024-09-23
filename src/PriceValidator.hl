@@ -1,5 +1,11 @@
 module PriceValidator
 
+import {
+    tx, 
+    get_current_input,
+    get_current_validator_hash
+} from ScriptContext
+
 // Module requirements:
 //   REQT: can express a set of minimum prices.
 //   REQT: if a person pays any of these prices, the price is satisfied.
@@ -79,7 +85,6 @@ struct ValidationTraceEntry[RESULT_TYPE, NODE_TYPE] {
 //   used by the ValueValidator to provide low-cost checks on input values
 //   and outputs to the indicated contract address.
 struct ValueValidationContext {
-    ctx: ScriptContext
     scriptAddr: Address
     inputValueTotal: Option[Value]
     fundsLockedAtScript: Option[Value]
@@ -105,7 +110,7 @@ struct ValueValidationContext {
     }
 
     func addOutputValues(self, addr: Address) -> Value{
-        self.ctx.tx.outputs.fold(
+        tx.outputs.fold(
             (v : Value, out: TxOutput) -> Value {
                 if (out.address == addr) {
                     v + out.value
@@ -132,7 +137,7 @@ struct ValueValidationContext {
     }
 
     func computeInputTotal(self) -> Value {
-        self.ctx.tx.inputs.fold(
+        tx.inputs.fold(
             (v : Value, inp: TxInput) -> Value {
                 v + inp.value
             },
@@ -181,13 +186,11 @@ struct ValueValidationContext {
 }
 
 func initialValidationContext(
-    ctx: ScriptContext, 
     scriptAddress: Address,
     inputValueTotal: Option[Value] = Option[Value]::None,
     fundsLockedAtScript: Option[Value] = Option[Value]::None
 ) -> ValueValidationContext {
     ValueValidationContext{
-        ctx: ctx,
         scriptAddr: scriptAddress,
         inputValueTotal: inputValueTotal,
         fundsLockedAtScript: fundsLockedAtScript
@@ -347,13 +350,12 @@ struct ValueValidator {
 }
 
 func validateRequiredValue(
-    ctx: ScriptContext, 
     scriptAddress: Address,
     needed: PriceNeeded
 ) -> ValueValidator {
     print("validateRequiredValue: ");
     ValueValidator{
-        vvCtx: initialValidationContext(ctx, scriptAddress),
+        vvCtx: initialValidationContext(scriptAddress),
         trace: []ValidationTraceEntry[ValidationResult, PriceType]{ /* empty list */ },
         result: ValidationResult::pending
     }.validate(needed)

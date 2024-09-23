@@ -1,5 +1,12 @@
 module unspecializedDelegate
 
+import {
+    tx, 
+    get_current_input,
+    get_current_validator_hash,
+    get_cont_outputs
+} from ScriptContext
+
 // specialized to ...
 //   -   NOT YET SPECIALIZED (replace with your specialization notes here) - 
 // original notes about (un)specialization follow:
@@ -92,10 +99,9 @@ enum DelegateDatum {
     }
     ScriptReference
 
-    func validateSettings(self, ctx: ScriptContext, settings: capoSettings) -> Bool{
+    func validateSettings(self, settings: capoSettings) -> Bool{
         assert(false, "not valid (stubbed)");
         settings.serialize() != self.serialize() &&
-        ctx.tx.serialize() != self.serialize() &&        
         true
     }
 }
@@ -188,26 +194,24 @@ enum DelegateActivity {
     // 
     // func genericUutMinting(self, 
     //     mdd: DelegateDatum,
-    //     ctx: ScriptContext
     // ) -> Bool {
     //     //!!! replace with an activity using the same seed-txn pattern:
     //     // MintingActivities::SomethingMintingUuts{seed, purposes} = self;
     //     DelegateDatum::IsDelegation{dd} = mdd;
-    //     returnsAuthzToken : Bool = mustReturnValueToScript(tvAuthorityToken(dd), ctx);
+    //     returnsAuthzToken : Bool = mustReturnValueToScript(tvAuthorityToken(dd));
 
-    //     o : []TxOutput = ctx.get_cont_outputs();
+    //     o : []TxOutput = get_cont_outputs();
     //     if (o.length != 1) { error("single utxo only") };
 
     //     print ("in unsp_MD");
     //     isOk : Bool = returnsAuthzToken && 
 
-    //     unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize(), ctx) &&
+    //     unmodifiedDelegation( /* isD, same as mdd */ mdd.serialize()) &&
 
     //     // This call can serve as a template for enforcing expected mints 
     //     // of uuts (and additional token values) in validation of application-
     //     // specific activities, given (mph, seed, purposes)
     //     validateUutMinting(
-    //         ctx: ctx, 
     //         mph: dd.mph,
     //         seed: seed,
     //         purposes: purposes,
@@ -226,8 +230,7 @@ enum DelegateActivity {
     //    administrative expectations for DelegateLifecycleActivities and CapoLifecycleActivities
     //    so a specialization doesn't need to re-implement those checks.
     func additionalDelegateValidation( self,
-        priorMddd: DelegateDatum::IsDelegation, 
-        ctx: ScriptContext
+        priorMddd: DelegateDatum::IsDelegation
     ) -> Bool {
         // print("  ----- checking additional delegate validation");
         self.switch {
@@ -252,7 +255,6 @@ enum DelegateActivity {
                             None => error("can't mint delegate with unsupported purpose"),
                             Some => {
                                 validateUutMinting(
-                                    ctx: ctx, 
                                     mph: priorMddd.dd.mph,
                                     seed: seed,
                                     purposes: []String{purpose},
@@ -271,7 +273,7 @@ enum DelegateActivity {
                 error("unspecialized mint delegate doesn't have any MintingActivities")
             },
             _ => false
-        } || ctx.tx.serialize() == priorMddd.serialize()        
+        } || tx.serialize() == priorMddd.serialize()        
     }
     func supportedCapoDelegatePurposes(self) -> []String {
         assert(true || /* prevent unused variable */ self == self, "no way" );
@@ -287,8 +289,7 @@ enum DelegateActivity {
     // ...  in which the isDelegation token is being spent with an application-specific
     // ...  activity/redeemer
     func otherDatumValidation( self,
-        priorMdd: DelegateDatum, 
-        ctx: ScriptContext
+        _priorMdd: DelegateDatum
     ) -> Bool {
         neverTriggered = () -> {  error("never called") };
         self.switch{
@@ -303,7 +304,7 @@ enum DelegateActivity {
             //  -- see above for normal cases
 
             _ => false  // prevents non-exhaustive match errors, even if you remove the above neverTriggered() calls
-        } && (priorMdd.serialize() != ctx.serialize())
+        }
     }
 }
 

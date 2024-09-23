@@ -48,17 +48,21 @@ export function heliosRollupLoader(
                 if (!(purpose && moduleName))
                     throw new Error(`Bad format for helios file ${id}`);
 
-                const code = `const code = new String(${JSON.stringify(content)});\n\n`+
-                    `code.srcFile = ${JSON.stringify(relPath)};\n`+
-                    `code.project = ${JSON.stringify(project)};\n`+
-                    `code.purpose = ${JSON.stringify(purpose)}\n`+
-                    `code.moduleName = ${JSON.stringify(moduleName)}\n`+
+                const code = 
+                    `const heliosModule = {\n`+
+                    `  content: ${JSON.stringify(content)},\n`+
+                    `  srcFile: ${JSON.stringify(relPath)},\n`+
+                    `  project: ${JSON.stringify(project)},\n`+
+                    `  purpose: ${JSON.stringify(purpose)},\n`+
+                    `  name:  ${JSON.stringify(moduleName)},\n`+
+                    `}\n`+
                     // `type foo={ hello: "world" }\n`+
-                    `\nexport default code\n`
+                    `\nexport default heliosModule\n`
                 ;
 
                 return {
                     code: code,                    
+                    id: `${id}‹generated›.ts`,
                     map: { mappings: "" },
                 };
             }

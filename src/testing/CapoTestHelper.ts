@@ -113,8 +113,8 @@ export abstract class CapoTestHelper<
         console.log(
             name,
             address.toBech32().substring(0, 18) + "…",
-            "vHash 📜 " + strella.validatorHash.hex.substring(0, 12) + "…",
-            "mph 🏦 " + mph?.hex.substring(0, 12) + "…"
+            "vHash 📜 " + strella.validatorHash.toHex().substring(0, 12) + "…",
+            "mph 🏦 " + mph?.toHex().substring(0, 12) + "…"
         );
         console.log("<- CAPO initialized()");
         return strella;
@@ -136,7 +136,7 @@ export abstract class CapoTestHelper<
      * @public
      **/
     mkTcx() {
-        return new StellarTxnContext(this.actorContext, this.networkParams);
+        return new StellarTxnContext(this.strella.setup)
     }
 
     loadSnapshot(snapName: string) {
@@ -227,7 +227,7 @@ export abstract class CapoTestHelper<
                                         `actorName mismatch during snapshot generation; was '${this.actorName}', expected '${actorName}'`
                                     );
                                 }
-                                this.network.tick(1n);
+                                this.network.tick(1);
                                 return result;
                             });
                     }

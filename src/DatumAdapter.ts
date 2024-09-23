@@ -70,6 +70,14 @@ export type OnchainEnum<
     innerDetails: innerDetailsType;
 };
 
+/**
+ * Bridge-type definition for on-chain Option[T] types, undefined | T offchain
+ */
+export type Optional<WrappedTypeName extends string, bridgeType> = {
+    typeName: WrappedTypeName;
+    details: bridgeType;
+}
+
 export type RawBytes<offchainType> = {
     repr?: offchainType;
     rawBytes: number[];
@@ -88,6 +96,8 @@ export type adapterParsedOnchainData<
     : t extends helios.Value
     ? Record<string, Record<string, bigint>>
     : t extends OnchainEnum<any, undefined>
+    ? helios.ConstrData
+    : t extends Optional<any, infer T>
     ? helios.ConstrData
     : t extends OnchainEnum2<any, infer LABELS, undefined>
     ? helios.ConstrData
@@ -151,6 +161,8 @@ export type offchainDatumType<
     ? helios.MintingPolicyHash
     : t extends helios.Value
     ? helios.Value
+    : t extends Optional<any, infer T>
+    ? T | undefined
     : t extends OnchainEnum2<any, infer LABELS, undefined>
     ? string
     : t extends OnchainEnum2<any, infer LABELS, infer NESTED_STRUCT>
@@ -397,6 +409,7 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
             Value: this.fromUplcValue.bind(this),
             Enum: this.fromUplcEnum.bind(this),
             Bool: this.fromUplcBool.bind(this),
+            Option: this.fromUplcOption.bind(this),
         };
     }
 
@@ -447,6 +460,13 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
      */
     uplcBytes(x: number[]) {
         return new ByteArrayData(x);
+    }
+
+    fromUplcOption(x: ConstrData) : UplcData | undefined {
+        //@ts-ignore
+        if (x.index==1) return undefined
+        //@ts-ignore
+        return x.fields[0]
     }
 
     /**

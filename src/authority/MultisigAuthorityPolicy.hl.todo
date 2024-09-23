@@ -9,7 +9,7 @@ func preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {
     charterOutput : TxOutput = getCharterOutput(tx);
 
     cvh : ValidatorHash = ctx.get_current_validator_hash();
-    myself : Credential = Credential::new_validator(cvh);
+    myself : SpendingCredential = SpendingCredential::new_validator(cvh);
     if (charterOutput.address.credential != myself) {
         error("charter token must be returned to the contract")
         // actual : String = charterOutput.address.credential.switch{
@@ -24,7 +24,7 @@ func preventCharterChange(ctx: ScriptContext, datum: Datum) -> Bool {
 
     Datum::CharterToken{trustees, minSigs} = datum;
     Datum::CharterToken{newTrustees, newMinSigs} = Datum::from_data( 
-        charterOutput.datum.get_inline_data() 
+        charterOutput.datum.inline
     );
     if ( !(
         newTrustees == trustees &&

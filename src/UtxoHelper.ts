@@ -1,0 +1,737 @@
+import {
+    Address,
+    AssetClass,
+    Assets,
+    MintingPolicyHash,
+    TxInput,
+    TxOutput,
+    Value,
+} from "@hyperionbt/helios";
+import { StellarTxnContext } from "./StellarTxnContext.js";
+import type { ByteArrayLike } from "@helios-lang/codec-utils";
+import type { SimpleWallet, Wallet } from "@helios-lang/tx-utils";
+import type { SimpleWallet_stellar } from "./testing/StellarNetworkEmulator.js";
+import { dumpAny, utxosAsString } from "./diagnostics.js";
+import { UutName } from "./delegation/UutName.js";
+import { stringToNumberArray } from "./utils.js";
+import type { SetupDetails } from "./StellarContract.js";
+
+export type utxoSortInfo = {
+    u: TxInput;
+    sufficient: boolean;
+    free: bigint;
+    minAdaAmount: bigint;
+};
+
+export type canHaveToken = TxInput | TxOutput | Assets;
+export type tokenPredicate<tokenBearer extends canHaveToken> = ((
+    something: tokenBearer
+) => tokenBearer | undefined) & { predicateValue: Value };
+
+/**
+ * a function that can filter txInputs for coin-selection
+ * @remarks
+ *
+ * short form: "returns truthy" if the input is matchy for the context
+ * @public
+ **/
+export type utxoPredicate = (
+    | ((u: TxInput) => TxInput | undefined)
+    | ((u: TxInput) => boolean)
+    | ((u: TxInput) => boolean | undefined)
+) & {
+    predicateValue?: Value;
+};
+
+export type UtxoSearchScope = {
+    address?: Address;
+    wallet?: Wallet | SimpleWallet | SimpleWallet_stellar;
+    exceptInTcx?: StellarTxnContext;
+    // utxos : TxInput[]
+};
+
+export type UtxoSearchScopeWithUtxos = UtxoSearchScope & {
+    utxos: TxInput[];
+    required?: true;
+};
+
+export class UtxoHelper {
+    setup: SetupDetails;
+
+    constructor(setup: SetupDetails) {
+        this.setup = setup;
+    }
+    get networkParams() {
+        return this.setup.networkParams;
+    }
+
+    get wallet() {
+        return this.setup.actorContext.wallet!;
+    }
+
+    get network() {
+        return this.setup.network;
+    }
+
+    hasOnlyAda(value: Value, tcx: StellarTxnContext | undefined, u: TxInput) {
+        const toSortInfo = this.mkUtxoSortInfo(value.lovelace);
+
+        const found = [u]
+            .map(toSortInfo)
+            .filter(this.utxoIsSufficient)
+            .filter(this.utxoIsPureADA)
+            .map(this.sortInfoBackToUtxo)
+            .at(0);
+
+        return found;
+    }
+
+    utxoSortSmallerAndPureADA(
+        { free: free1, minAdaAmount: r1 }: utxoSortInfo,
+        { free: free2, minAdaAmount: r2 }: utxoSortInfo
+    ) {
+        {
+            //! primary: treats pure-ada utxos as always better
+            if (!r1 && r2) {
+                return -1;
+            }
+            if (r1 && !r2) {
+                return 1; //
+            }
+        }
+        //! secondary: smaller utxos are more preferred than larger ones
+        if (free2 > free1) return -1;
+        if (free2 < free1) return 1;
+        return 0;
+    }
+
+    /**
+     * Filters out utxos that are not sufficient to cover the minimum ADA amount established in
+     * the utxo sort info in {@link mkUtxoSortInfo | mkUtxoSortInfo(min, max?)}.  Use in a filter() call.
+     */
+    utxoIsSufficient({ sufficient }: utxoSortInfo) {
+        return !!sufficient;
+    }
+
+    /**
+     * Filters out utxos that have non-ADA tokens, given a utxo sort info object.  Use in a filter() call.
+     */
+    utxoIsPureADA({ u }: utxoSortInfo) {
+        return u.value.assets.isZero() ? u : undefined;
+    }
+
+    /**
+     * transforms utxo sort info back to just the utxo.
+     */
+    sortInfoBackToUtxo({ u }: utxoSortInfo) {
+        return u;
+    }
+
+    /**
+     * Creates a function that creates sort-info details for a utxo, given a minimum ADA amount
+     * and an optional maximum ADA amount.
+     **/
+    mkUtxoSortInfo(min: bigint, max?: bigint) {
+        return (u: TxInput): utxoSortInfo => {
+            const minAdaAmount = u.value.assets.isZero()
+                ? BigInt(0)
+                : (() => {
+                      const dummy = new TxOutput(
+                          u.output.address,
+                          new Value(undefined, u.output.value.assets)
+                      );
+                      dummy.correctLovelace(this.networkParams);
+                      return dummy.value.lovelace;
+                  })();
+            const free = u.value.lovelace - minAdaAmount;
+            const sufficient = free > min && (max ? free < max : true);
+            const t = { u, sufficient, free, minAdaAmount };
+            // console.log(t, utxoAsString(u))
+            return t;
+        };
+    }
+    /**
+     * accumulates the count of utxos, but only if the utxo is ADA-only.  Use in a reduce() call.
+     **/
+    reduceUtxosCountAdaOnly(c: number, { minAdaAmount }: utxoSortInfo): number {
+        return c + (minAdaAmount ? 0 : 1);
+    }
+
+    hasToken<tokenBearer extends canHaveToken>(
+        something: tokenBearer,
+        value: Value,
+        tokenName?: string,
+        quantity?: bigint
+    ): tokenBearer | undefined {
+        if (something instanceof TxInput)
+            return (
+                (this.utxoHasToken(something, value, tokenName, quantity) &&
+                    something) ||
+                undefined
+            );
+        if (something instanceof TxOutput)
+            return (
+                (this.outputHasToken(something, value, tokenName, quantity) &&
+                    something) ||
+                undefined
+            );
+        if (something instanceof Assets)
+            return (
+                (this.assetsHasToken(something, value, tokenName, quantity) &&
+                    something) ||
+                undefined
+            );
+
+        //!!! todo: more explicit match for TxInput, which seems to be a type but not an 'instanceof'-testable thing.
+        return (
+            (this.inputHasToken(something, value, tokenName, quantity) &&
+                something) ||
+            undefined
+        );
+    }
+
+    utxoHasToken(
+        u: TxInput,
+        value: Value,
+        tokenName?: string,
+        quantity?: bigint
+    ) {
+        return this.outputHasToken(u.output, value, tokenName, quantity) && u;
+    }
+
+    inputHasToken(
+        i: TxInput,
+        value: Value,
+        tokenName?: string,
+        quantity?: bigint
+    ) {
+        return this.outputHasToken(i.output, value, tokenName, quantity) && i;
+    }
+
+    assetsHasToken(
+        a: Assets,
+        vOrMph: Value | MintingPolicyHash,
+        tokenName?: string,
+        quantity?: bigint
+    ) {
+        const v =
+            vOrMph instanceof MintingPolicyHash
+                ? this.mkAssetValue(vOrMph, tokenName!, quantity!)
+                : vOrMph;
+
+        return a.isGreaterOrEqual(v.assets);
+    }
+
+    outputHasToken(
+        o: TxOutput,
+        vOrMph: Value | MintingPolicyHash,
+        tokenName?: string,
+        quantity?: bigint
+    ) {
+        const isValue = vOrMph instanceof Value;
+        if (!isValue) {
+            if (!tokenName || !quantity) {
+                throw new Error(
+                    `missing required tokenName/quantity (or use a Value in arg2`
+                );
+            }
+        }
+
+        const v = isValue
+            ? vOrMph
+            : this.mkAssetValue(vOrMph, tokenName!, quantity!);
+
+        return o.value.isGreaterOrEqual(v);
+    }
+
+    mkAssetValue(
+        mph: MintingPolicyHash,
+        tokenName: ByteArrayLike,
+        count: bigint = 1n
+    ) {
+        // const TL  = [ tokenName, count ] as [ ByteArrayLike, bigint ];
+        // const oneAssetLike = [ mph, [
+        //     TL
+        //  ] ] as [ MintingPolicyHash, [ ByteArrayLike, bigint ][] ];
+        //  const v1 = new Value(undefined, [
+        //     oneAssetLike
+        // ]);
+        // const v2 = new Value(undefined, [
+        //     [ mph, [ TL ] ]
+        // ]);
+        const v = new Value(undefined, [
+            [
+                mph,
+                [
+                    // ... token map:
+                    [tokenName, count],
+                    // ...other token-name/count pairs in the map
+                ],
+            ],
+            // ...other mph / token-map pairs
+        ]);
+        return v;
+    }
+
+    findSmallestUnusedUtxo(
+        lovelace: bigint,
+        utxos: TxInput[],
+        tcx?: StellarTxnContext
+    ): TxInput | undefined {
+        const value = new Value(lovelace);
+        const toSortInfo = this.mkUtxoSortInfo(value.lovelace);
+
+        const found = utxos
+            .map(toSortInfo)
+            .filter(this.utxoIsPureADA)
+            .filter(this.utxoIsSufficient)
+            .filter((uInfo: utxoSortInfo) => {
+                if (!tcx) return true;
+                return !!tcx?.utxoNotReserved(uInfo.u);
+            })
+            .sort(this.utxoSortSmallerAndPureADA)
+            .map(this.sortInfoBackToUtxo);
+        console.log("smallest utxos: ", utxosAsString(found));
+        const chosen = found.at(0);
+
+        return chosen;
+    }
+
+
+    //! creates a filtering function, currently for TxInput-filtering only.
+    //! with the optional tcx argument, utxo's already reserved
+    //  ... in that transaction context will be skipped.
+    mkValuePredicate(
+        lovelace: bigint,
+        tcx?: StellarTxnContext
+    ): tokenPredicate<TxInput> {
+        const value = new Value(lovelace);
+        const predicate = _adaPredicate.bind(this, tcx) as tokenPredicate<any>;
+        predicate.predicateValue = value;
+        return predicate;
+
+        function _adaPredicate(
+            this: UtxoHelper,
+            tcx: StellarTxnContext | undefined,
+            utxo: TxInput
+        ): TxInput | undefined {
+            return this.hasOnlyAda(value, tcx, utxo);
+        }
+    }
+
+
+    mkMinTv(
+        mph: MintingPolicyHash,
+        tokenName: string | UutName | number[],
+        count: bigint = 1n
+    ) {
+        const tnBytes = Array.isArray(tokenName)
+            ? tokenName
+            : stringToNumberArray(tokenName.toString());
+
+        return this.mkMinAssetValue(mph, tnBytes, count);
+    }
+
+
+    mkMinAssetValue(mph: MintingPolicyHash, tokenName: ByteArrayLike, count: bigint=1n) {
+        const v = this.mkAssetValue(mph, tokenName, count);
+        // uses a dummy address so it can be used even during bootstrap
+        const txo = new TxOutput(
+            new Address(Array<number>(29).fill(0)),
+            v
+        );
+        txo.correctLovelace(this.networkParams);
+        return txo.value;
+    }
+
+    tokenAsValue(
+        tokenName: string | number[] | UutName,
+        count: bigint = 1n
+    ): Value {
+        throw new Error(`only implemented by Capo`);
+    }
+
+    /**
+     * Creates a token predicate suitable for mustFindActorUtxo or mustFindMyUtxo
+     * @remarks This variant takes just a token-name / quantity, working only on Capo instances,
+     * and seeks a token created by the Capo's minting policy.
+     *
+     * Choose from one of the other variants to make a more specific token predicate.
+     */
+    mkTokenPredicate(
+        tokenName: UutName | number[] | string,
+        quantity?: bigint
+    ): tokenPredicate<any>;
+    /**
+     * Creates a token predicate suitable for mustFindActorUtxo or mustFindMyUtxo
+     * @remarks This variant uses a Value for filtering - each matched item must have the ENTIRE value.
+     */
+    mkTokenPredicate(val: Value): tokenPredicate<any>;
+    /**
+     * Creates a token predicate suitable for mustFindActorUtxo or mustFindMyUtxo
+     * @remarks This variant uses an explicit combination of policy/token-name/quantity
+     */
+    mkTokenPredicate(
+        mph: MintingPolicyHash,
+        tokenName: string,
+        quantity?: bigint
+    ): tokenPredicate<any>;
+    /**
+     * Creates a token predicate suitable for mustFindActorUtxo or mustFindMyUtxo
+     * @remarks This variant uses an AssetClass(policy/token-name) and quantity
+     */
+    mkTokenPredicate(
+        mphAndTokenName: AssetClass,
+        quantity?: bigint
+    ): tokenPredicate<any>;
+    mkTokenPredicate(
+        specifier:
+            | Value
+            | MintingPolicyHash
+            | AssetClass
+            | UutName
+            | number[]
+            | string,
+        quantOrTokenName?: string | bigint,
+        quantity?: bigint
+    ): tokenPredicate<any> {
+        let v: Value;
+        let mph: MintingPolicyHash;
+        let tokenName: string;
+        //!!! todo: support (AssetClass, quantity) input form
+        if (!specifier)
+            throw new Error(
+                `missing required Value or MintingPolicyHash or UutName (or uut-name as byte-array) in arg1`
+            );
+        const predicate = _tokenPredicate.bind(this) as tokenPredicate<any>;
+
+        const isValue = specifier instanceof Value;
+        const isTokenNameOnly =
+            "string" === typeof specifier ||
+            (Array.isArray(specifier) && "number" === typeof specifier[0]);
+        const isUut = specifier instanceof UutName;
+        if (isValue) {
+            // v = predicate.value = specifier;
+            const t = _tokenPredicate.bind(
+                this,
+                specifier
+            ) as tokenPredicate<any>;
+            t.predicateValue = specifier;
+            return t;
+        } else if (isUut || isTokenNameOnly) {
+            const tn = specifier as UutName | number[] | string;
+            const quant = quantOrTokenName ? BigInt(quantOrTokenName) : 1n;
+            const tv = this.tokenAsValue(
+                tn,
+                quant // quantity if any
+            );
+            const t = _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
+            t.predicateValue = tv;
+            return t;
+        } else if (specifier instanceof MintingPolicyHash) {
+            mph = specifier;
+            if ("string" !== typeof quantOrTokenName)
+                throw new Error(
+                    `with minting policy hash, token-name must be a string (or ByteArray support is TODO)`
+                );
+            tokenName = quantOrTokenName;
+            quantity = quantity || 1n;
+
+            // v = predicate.value = this.mkTokenValue(tokenName, quantity, mph);
+            // return predicate;
+            const tv = this.mkAssetValue(mph, tokenName, quantity);
+
+            const t = _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
+            t.predicateValue = tv;
+            return t;
+        } else if (specifier instanceof AssetClass) {
+            mph = specifier.mph;
+            if (!quantOrTokenName) quantOrTokenName = 1n;
+            if ("bigint" !== typeof quantOrTokenName)
+                throw new Error(
+                    `with AssetClass, the second arg must be a bigint like 3n, or omitted`
+                );
+            quantity = quantOrTokenName;
+
+            // v = predicate.value = new Value(0n, [[specifier, quantity]]);
+            // return predicate;
+            const tv = new Value(0n, [
+                [ specifier.mph, [
+                        [specifier.tokenName, quantity]
+                    ]
+                ]
+            ]);
+            const t = _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
+            t.predicateValue = tv;
+            return t;
+        } else {
+            throw new Error(
+                `wrong token specifier (need Value, MPH+tokenName, or AssetClass`
+            );
+        }
+
+        function _tokenPredicate<tokenBearer extends canHaveToken>(
+            this: UtxoHelper,
+            v: Value,
+            something: tokenBearer
+        ): tokenBearer | undefined {
+            return this.hasToken(something, v);
+        }
+    }
+
+
+    /**
+     * adds the values of the given TxInputs
+     */ 
+    totalValue(utxos: TxInput[]): Value {
+        return utxos.reduce((v: Value, u: TxInput) => {
+            return v.add(u.value);
+        }, new Value(0n));
+    }
+
+
+    /**
+     * Creates a Value object representing a token with the given name and quantity
+     * @deprecated - Use {@link mkAssetValue | mkAssetValue(mph, tokenName, quantity)} instead.
+     * @remarks
+     * This method doesn't include any lovelace in the Value object.
+     * use mkMinAssetValue() to include the minimum lovelace for storing that token in its own utxo
+     * @param tokenName - the name of the token
+     * @param quantity - the quantity of the token
+     * @param mph - the minting policy hash of the token
+     * @public
+     **/
+    mkTokenValue(
+        tokenName: string | number[],
+        quantity: bigint,
+        mph: MintingPolicyHash
+    ): Value {
+        return this.mkAssetValue(mph, tokenName, quantity);
+    }
+
+    /**
+     * Creates a Value having enough lovelace to store the indicated token
+     * @deprecated - Use {@link mkMinAssetValue | mkMinAssetValue(mph, tokenName, quantity)} instead.
+     * @remarks
+     * This is equivalent to mkTokenValue() with an extra min-utxo calculation
+     * @public
+     **/
+    mkMinTokenValue(
+        tokenName: string | number[],
+        quantity: bigint,
+        mph: MintingPolicyHash
+    ) {
+        return this.mkMinAssetValue(mph, tokenName, quantity);
+    }
+
+
+    async findActorUtxo(
+        name: string,
+        predicate: (u: TxInput) => TxInput | undefined
+    ) {
+        const { wallet } = this;
+        const utxos = await wallet.utxos;
+
+        return this.hasUtxo(name, predicate, { wallet, utxos });
+    }
+
+            /**
+     * Try finding a utxo matching a predicate
+     * @remarks
+     *
+     * Finds the first matching utxo, if any, either in the indicated search-scope's `wallet` or `address`.
+     *
+     * @public
+     **/
+            async hasUtxo(
+                semanticName: string,
+                predicate: utxoPredicate,
+                {
+                    address,
+                    wallet,
+                    exceptInTcx,
+                    utxos,
+                    required,
+                }: UtxoSearchScopeWithUtxos
+            ): Promise<TxInput | undefined> {
+                const collateral = (wallet ? await wallet.collateral : [])[0];
+                // const filterUtxos = [
+                //     ...collateral,
+                //     ...(exceptInTcx?.reservedUtxos() || []),
+                // ];
+                const notCollateral = utxos.filter((u) => !collateral?.isEqual(u));
+                const filtered = exceptInTcx
+                    ? notCollateral.filter(
+                          exceptInTcx.utxoNotReserved.bind(exceptInTcx)
+                      )
+                    : notCollateral;
+        
+                const joiner = "\n   🔎  ";
+                const detail = // true ||
+                    globalThis.utxoDump
+                        ? "\n  from set: " + joiner + utxosAsString(filtered, joiner)
+                        : `(${filtered.length} candidates; set globalThis.utxoDump to see details)`;
+                console.log(
+                    `  🔎 finding '${semanticName}' utxo${
+                        exceptInTcx ? " (not already being spent in txn)" : ""
+                        // } from set:\n    🔎 ${detail}`
+                    } ${detail}`
+                    // ...(exceptInTcx && filterUtxos?.length
+                    //     ? [
+                    //           "\n  ... after filtering out:\n ",
+                    //           utxosAsString(exceptInTcx.reservedUtxos(), "\n  "),
+                    //       ]
+                    //     : [])
+                );
+        
+                const found = filtered.find(predicate);
+                if (found) {
+                    console.log("   🎈found" + utxosAsString([found]));
+                } else {
+                    if (exceptInTcx) {
+                        const alreadyInTcx = exceptInTcx.inputs.find(predicate);
+                        if (alreadyInTcx) {
+                            console.log(
+                                `\n  um... value ${dumpAny(
+                                    predicate.predicateValue
+                                )} not found. \n` +
+                                    `     ${dumpAny(alreadyInTcx)}\n` +
+                                    `  FYI, it seems this ^^ current txn input already has the target value. \n` +
+                                    "    NOTE: You may want to adjust your dAPI to create an explicit fail-if-already-present semantic\n" +
+                                    "    ... or, alternatively, to allow this token to authenticate multiple transaction elements\n" +
+                                    "    ... by using explicitly idempotent 'addOrReuse' semantics, with details stored in tcx.state\n\n  ... go with care, and ask the community for help if you're unsure\n  )" +
+                                    (required
+                                        ? "\nBTW, here is that txn as of this time: " +
+                                          dumpAny(exceptInTcx) +
+                                          "\n\n 👁️   👁️ 👁️ ^^^^^^^ More details about the utxo search failure above ^^^^^^^ 👁️ 👁️   👁️"
+                                        : "")
+                            );
+                            return undefined;
+                        }
+                    }
+                }
+                return found;
+            }
+        
+    
+
+    async mustFindActorUtxo(
+        name: string,
+        predicate: (u: TxInput) => TxInput | undefined,
+        exceptInTcx: StellarTxnContext<any>,
+        extraErrorHint?: string
+    ): Promise<TxInput>;
+    async mustFindActorUtxo(
+        name: string,
+        predicate: (u: TxInput) => TxInput | undefined,
+        extraErrorHint?: string
+    ): Promise<TxInput>;
+
+    async mustFindActorUtxo(
+        name: string,
+        predicate: (u: TxInput) => TxInput | undefined,
+        hintOrExcept?: string | StellarTxnContext,
+        hint?: string
+    ): Promise<TxInput> {
+        const { wallet } = this;
+
+        const isTcx = hintOrExcept instanceof StellarTxnContext;
+        const exceptInTcx = isTcx ? hintOrExcept : undefined;
+        const extraErrorHint = isTcx
+            ? hint
+            : "string" == typeof hintOrExcept
+            ? hintOrExcept
+            : undefined;
+
+        return this.mustFindUtxo(
+            name,
+            predicate,
+            {
+                wallet,
+                exceptInTcx,
+            },
+            extraErrorHint
+        );
+    }
+
+    async mustFindUtxo(
+        semanticName: string,
+        predicate: utxoPredicate,
+        searchScope: UtxoSearchScope,
+        extraErrorHint: string = ""
+    ): Promise<TxInput> {
+        const { address, wallet, exceptInTcx } = searchScope;
+        const utxos = address
+            ? await this.network.getUtxos(address)
+            : await wallet!.utxos;
+
+        const found = await this.hasUtxo(semanticName, predicate, {
+            address,
+            wallet,
+            exceptInTcx,
+            utxos,
+            required: true,
+        });
+        if (!found) {
+            const walletAddr = wallet
+                ? //@ts-ignore - sorry typescript, address sometimes is present on a SimpleWallet in test environment
+                  wallet.address || (await wallet.usedAddresses)
+                : undefined;
+            if (!globalThis.utxoDump) {
+                console.log(
+                    // warning emoji: "⚠️"
+                    " ⚠️ find failed in candidate",
+                    dumpAny(utxos)
+                );
+            }
+            throw new Error(
+                this.utxoSearchError(
+                    semanticName,
+                    searchScope,
+                    extraErrorHint,
+                    walletAddr
+                )
+            );
+        }
+
+        return found;
+    }
+
+    utxoSearchError(
+        semanticName: string,
+        searchScope: UtxoSearchScope,
+        extraErrorHint?: string,
+        walletAddresses?: Address | Address[]
+    ): string {
+        const where = searchScope.address
+            ? `searched in address ${searchScope.address.toBech32()}\n`
+            : ``;
+        const wAddrs: Address[] = Array.isArray(walletAddresses)
+            ? walletAddresses
+            : walletAddresses
+            ? [walletAddresses]
+            : [];
+        let more = wAddrs.length
+            ? wAddrs.map((x) => dumpAny(x) + ` = ${x.toBech32()}`).join("\n")
+            : "";
+        if (wAddrs.length > 1) {
+            more = "\n  ... wallet addrs:\n";
+        } else {
+            more = wAddrs.length ? `\n  ... in wallet addr: ${more}` : "";
+        }
+        if (extraErrorHint) more += "\n";
+
+        return `${
+            this.constructor.name
+        }: '${semanticName}' utxo not found ${more}  ... ${
+            extraErrorHint || "sorry, no extra clues available"
+        }${where}\n  ... see further logged details above`;
+    }
+
+    toUtxoId(u: TxInput) {
+        return `${u.id.txId.toHex()}@${u.id.utxoIdx}`;
+    }
+
+
+
+}

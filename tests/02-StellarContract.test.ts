@@ -18,6 +18,7 @@ import {
     TxOutput,
     TxInput,
     Value,
+    TxBuilder,
 } from "@hyperionbt/helios";
 
 import { StellarTxnContext } from "../src/StellarTxnContext";
@@ -111,19 +112,16 @@ describe("StellarContract", async () => {
 
                 const t = await h.bootstrap();
 
-                expect(() => {
-                    t.compiledScript.mintingPolicyHash;
-                }).toThrow("unexpected");
-                expect(t.mph.hex).toEqual(t.mintingPolicyHash.hex);
-                expect(t.mph.hex).toEqual(t.minter!.mintingPolicyHash.hex);
+                expect(t.mph.toHex()).toEqual(t.mintingPolicyHash.toHex());
+                expect(t.mph.toHex()).toEqual(t.minter!.mintingPolicyHash.toHex());
                 expect(t.minter!.mintingPolicyHash).toBeInstanceOf(
                     MintingPolicyHash
                 );
                 console.log("--- init again with different seed");
                 const t2 = await h.initialize({ randomSeed: 43 });
                 await h.bootstrap();
-                const t1h = t.mph.hex;
-                const t2h = t2.mph.hex;
+                const t1h = t.mph.toHex();
+                const t2h = t2.mph.toHex();
                 expect(t2h).not.toEqual(t1h);
             });
         });
@@ -163,7 +161,7 @@ describe("StellarContract", async () => {
         describe("transaction context: state", () => {
             it("allows keys to be added to the tcx state", async (context: localTC) => {
                 type FOO = { foo: "bar"; uuts: {} };
-                const tcx = new StellarTxnContext<FOO>(context.h.actorContext);
+                const tcx : StellarTxnContext<FOO> = context.h.mkTcx() as any;
                 //! basic type-checks only
                 tcx.state.foo = "bar";
                 //@ts-expect-error
@@ -214,7 +212,7 @@ describe("StellarContract", async () => {
 
                     expect(tv).toBeInstanceOf(Value);
                     expect(
-                        tv.assets.get(t.mph, stringToNumberArray(tokenName))
+                        tv.assets.getQuantity([t.mph, stringToNumberArray(tokenName)])
                     ).toBe(tokenCount);
                 });
             });
@@ -267,8 +265,8 @@ describe("StellarContract", async () => {
 
                         const t = await h.initialize();
 
-                        const tcx = new StellarTxnContext(h.actorContext);
-                        const found = await t.mustFindActorUtxo(
+                        const tcx = h.mkTcx()
+                        const found = await t.uh.mustFindActorUtxo(
                             "biggest",
                             (u) => {
                                 return (
@@ -292,16 +290,16 @@ describe("StellarContract", async () => {
 
                         const t = await h.initialize();
 
-                        const tcx = new StellarTxnContext(h.actorContext);
+                        const tcx = h.mkTcx();
                         let findingInWallet;
                         const hasUtxo = vi
-                            .spyOn(t, "hasUtxo")
+                            .spyOn(t.utxoHelper, "hasUtxo")
                             .mockImplementation(async (_a, _b, { wallet }) => {
                                 findingInWallet = wallet;
                                 return undefined;
                             });
                         await expect(
-                            t.mustFindActorUtxo("any", (x) => x, tcx)
+                            t.utxoHelper.mustFindActorUtxo("any", (x) => x, tcx)
                         ).rejects.toThrow();
                         expect(hasUtxo).toHaveBeenCalled();
                         expect(findingInWallet).toBe(actors.tina);
@@ -314,9 +312,9 @@ describe("StellarContract", async () => {
                         } = context;
 
                         const t = await h.initialize();
-                        const tcx = new StellarTxnContext(h.actorContext);
+                        const tcx = h.mkTcx();
                         await expect(
-                            t.mustFindActorUtxo(
+                            t.utxoHelper.mustFindActorUtxo(
                                 "testSomeThing",
                                 () => undefined,
                                 tcx
@@ -337,55 +335,59 @@ describe("StellarContract", async () => {
                             const tinaMoney = await tina.utxos;
                             const firstUtxo = tinaMoney[0];
 
-                            const tx = new Tx();
+                            const tx = new TxBuilder({
+                                isMainnet: false
+                            });
 
-                            tx.addInput(firstUtxo);
-                            tx.addOutput(
-                                new TxOutput(tina.address, new Value(3n * ADA))
+                            tx.spendUnsafe(firstUtxo);
+                            tx.payUnsafe( 
+                                tina.address, new Value(3n * ADA)
                             );
-                            tx.addOutput(
-                                new TxOutput(tina.address, new Value(10n * ADA))
+                            tx.payUnsafe(
+                                tina.address, new Value(45n * ADA)
                             );
-                            tx.addOutput(
-                                new TxOutput(tina.address, new Value(32n * ADA))
+                            tx.payUnsafe(
+                                tina.address, new Value(32n * ADA)
                             );
+
                             // console.log("s2")
-                            await h.submitTx(tx, "force");
-                            h.network.tick(1n);
+                            await h.submitTx(await tx.build({
+                                changeAddress: tina.address
+                            }), "force");
+                            h.network.tick(1);
 
-                            const t: CapoWithoutSettings = await h.initialize();
-                            const tcx = new StellarTxnContext(h.actorContext);
-                            const isEnoughT = t.mkTokenPredicate(
-                                new Value({
-                                    lovelace: 42000,
-                                })
+                            const capo: CapoWithoutSettings = await h.initialize();
+                            const uh = capo.utxoHelper;
+                            const tcx = h.mkTcx()
+                            const isEnoughT = uh.mkTokenPredicate(
+                                new Value(42000)
                             );
-                            const u1 = await t.mustFindActorUtxo(
+                            const u1 = await uh.mustFindActorUtxo(
                                 "first with token",
                                 isEnoughT,
                                 tcx
                             );
-                            const u1a = await t.mustFindActorUtxo(
+                            const u1a = await uh.mustFindActorUtxo(
                                 "t1a",
                                 isEnoughT
                             );
-                            const u1b = await t.mustFindActorUtxo(
+                            const u1b = await uh.mustFindActorUtxo(
                                 "t1b",
                                 isEnoughT,
                                 tcx
                             );
 
-                            expect(t.toUtxoId(u1a)).toEqual(t.toUtxoId(u1));
-                            expect(t.toUtxoId(u1b)).toEqual(t.toUtxoId(u1));
+                            expect(uh.toUtxoId(u1a)).toEqual(uh.toUtxoId(u1));
+                            expect(uh.toUtxoId(u1b)).toEqual(uh.toUtxoId(u1));
 
                             tcx.addInput(u1);
-                            const u2 = await t.mustFindActorUtxo(
+                            const u2 = await uh.mustFindActorUtxo(
                                 "second with token",
                                 isEnoughT,
                                 tcx
                             );
                             tcx.addCollateral(u2);
-                            const u3 = await t.mustFindActorUtxo(
+                            const u3 = await uh.mustFindActorUtxo(
                                 "third, with token",
                                 isEnoughT,
                                 tcx
@@ -398,14 +400,14 @@ describe("StellarContract", async () => {
                             expect(u3 === u2).not.toBeTruthy();
 
                             // using the utxo's own eq() logic:
-                            expect(u2.eq(u1)).not.toBeTruthy();
-                            expect(u3.eq(u1)).not.toBeTruthy();
-                            expect(u3.eq(u2)).not.toBeTruthy();
+                            expect(u2.isEqual(u1)).not.toBeTruthy();
+                            expect(u3.isEqual(u1)).not.toBeTruthy();
+                            expect(u3.isEqual(u2)).not.toBeTruthy();
 
                             // using stringified forms:
-                            const t1 = t.toUtxoId(u1);
-                            const t2 = t.toUtxoId(u2);
-                            const t3 = t.toUtxoId(u3);
+                            const t1 = uh.toUtxoId(u1);
+                            const t2 = uh.toUtxoId(u2);
+                            const t3 = uh.toUtxoId(u3);
                             expect(t2).not.toEqual(t1);
                             expect(t3).not.toEqual(t1);
                             expect(t3).not.toEqual(t2);
@@ -422,52 +424,52 @@ describe("StellarContract", async () => {
                         } = context;
                         // await delay(1000)
                         const t: CapoWithoutSettings = await h.initialize();
-                        const tcx = new StellarTxnContext(h.actorContext);
+                        const uh = t.utxoHelper;
+                        const tcx = t.mkTcx()
 
                         const tina = h.wallet;
                         const tinaMoney = await tina.utxos;
                         const firstUtxo = tinaMoney[0];
 
-                        const tx = new Tx();
+                        const tx = new TxBuilder({
+                            isMainnet: false
+                        });
 
-                        tx.addInput(firstUtxo);
-                        tx.addOutput(
-                            new TxOutput(tina.address, new Value(3n * ADA))
-                        );
-                        tx.addOutput(
-                            new TxOutput(tina.address, new Value(45n * ADA))
-                        );
-                        tx.addOutput(
-                            new TxOutput(tina.address, new Value(77n * ADA))
-                        );
+                        tx.spendUnsafe(firstUtxo);
+                        tx.payUnsafe(tina.address, new Value(3n * ADA));
+                        tx.payUnsafe(tina.address, new Value(45n * ADA));
+                        tx.payUnsafe(tina.address, new Value(77n * ADA));
+
                         // console.log("s2")
-                        await h.submitTx(tx, "force");
-                        h.network.tick(1n);
+                        await h.submitTx(await tx.build({
+                            changeAddress: tina.address
+                        }), "force");
+                        h.network.tick(1);
 
-                        const isEnough = t.mkValuePredicate(42_000n, tcx);
-                        const u1 = await t.mustFindActorUtxo(
+                        const isEnough = uh.mkValuePredicate(42_000n, tcx);
+                        const u1 = await uh.mustFindActorUtxo(
                             "first",
                             isEnough,
                             tcx
                         );
-                        const u1a = await t.mustFindActorUtxo("1a", isEnough);
-                        const u1b = await t.mustFindActorUtxo(
+                        const u1a = await uh.mustFindActorUtxo("1a", isEnough);
+                        const u1b = await uh.mustFindActorUtxo(
                             "1b",
                             isEnough,
                             tcx
                         );
 
-                        expect(t.toUtxoId(u1a)).toEqual(t.toUtxoId(u1));
-                        expect(t.toUtxoId(u1b)).toEqual(t.toUtxoId(u1));
+                        expect(uh.toUtxoId(u1a)).toEqual(uh.toUtxoId(u1));
+                        expect(uh.toUtxoId(u1b)).toEqual(uh.toUtxoId(u1));
 
                         tcx.addInput(u1);
-                        const u2 = await t.mustFindActorUtxo(
+                        const u2 = await uh.mustFindActorUtxo(
                             "second",
                             isEnough,
                             tcx
                         );
                         tcx.addCollateral(u2);
-                        const u3 = await t.mustFindActorUtxo(
+                        const u3 = await uh.mustFindActorUtxo(
                             "#3with token",
                             isEnough,
                             tcx
@@ -480,14 +482,14 @@ describe("StellarContract", async () => {
                         expect(u3 === u2).not.toBeTruthy();
 
                         // using the utxo's own eq() logic:
-                        expect(u2.eq(u1)).not.toBeTruthy();
-                        expect(u3.eq(u1)).not.toBeTruthy();
-                        expect(u3.eq(u2)).not.toBeTruthy();
+                        expect(u2.isEqual(u1)).not.toBeTruthy();
+                        expect(u3.isEqual(u1)).not.toBeTruthy();
+                        expect(u3.isEqual(u2)).not.toBeTruthy();
 
                         // using stringified forms:
-                        const t1 = t.toUtxoId(u1);
-                        const t2 = t.toUtxoId(u2);
-                        const t3 = t.toUtxoId(u3);
+                        const t1 = uh.toUtxoId(u1);
+                        const t2 = uh.toUtxoId(u2);
+                        const t3 = uh.toUtxoId(u3);
                         expect(t2).not.toEqual(t1);
                         expect(t3).not.toEqual(t1);
                         expect(t3).not.toEqual(t2);
@@ -506,10 +508,10 @@ describe("StellarContract", async () => {
 
                     const t = await h.initialize();
 
-                    const tcx = new StellarTxnContext(h.actorContext);
+                    const tcx = h.mkTcx();
                     let foundAddress;
                     const hasUtxo = vi
-                        .spyOn(t, "hasUtxo")
+                        .spyOn(t.utxoHelper, "hasUtxo")
                         .mockImplementation(async (_a, _b, { address }) => {
                             foundAddress = address;
                             return undefined;
@@ -533,16 +535,16 @@ describe("StellarContract", async () => {
 
                     const t = await h.initialize();
 
-                    const tcx = new StellarTxnContext(h.actorContext);
+                    h.mkTcx();
                     let foundAddress;
                     const hasUtxo = vi
-                        .spyOn(t, "hasUtxo")
+                        .spyOn(t.utxoHelper, "hasUtxo")
                         .mockImplementation(async (_a, _b, { address }) => {
                             foundAddress = address;
                             return undefined;
                         });
                     await expect(
-                        t.mustFindUtxo("any", (x) => x, {
+                        t.utxoHelper.mustFindUtxo("any", (x) => x, {
                             address: actors.tracy.address,
                         })
                     ).rejects.toThrow();

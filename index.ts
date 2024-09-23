@@ -132,12 +132,13 @@ export { DatumAdapter } from "./src/DatumAdapter.js";
 export type { 
     BigIntRecord,
     Numeric,
+    RawBytes,
+    Optional,
     OnchainEnum,
     OnchainEnum2,
     adapterParsedOnchainData,
     offchainDatumType,
     inferOffchainNumericType,
-    RawBytes
 } from "./src/DatumAdapter.js";
 
 export { 

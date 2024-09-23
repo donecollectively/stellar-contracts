@@ -1,6 +1,6 @@
 {
     "name": "@donecollectively/stellar-contracts",
-    "version": "0.9.0alpha2",
+    "version": "0.9.0alpha3",
     "description": "Smart contract fusion for Cardano",
     "license": "SEE LICENSE IN LICENSE.TXT",
     "main": "./dist/stellar-contracts.mjs",
@@ -20,18 +20,22 @@
         }
     },
     "type": "module",
-    "peerDependencies": {
-        "@hyperionbt/helios": "^0.16.7"
+    "pnpm": {
+        "overrides": {
+            "@hyperionbt/helios": "node_modules/@helios-lang/compat",
+            "@helios-lang/Xcompiler": "../helios/compiler",
+            "@helios-lang/Xcompiler-utils": "../helios/compiler-utils"
+        }
     },
     "scripts": {
         "build": "scripts/build",
         "build:watch": "scripts/build --watch",
         "dev": "scripts/build --watch",
         "smoke:test": "SMOKE=1 vitest run 02 04",
-        "smoke:testing": "SMOKE=1 vitest --inspect --threads false 02 04 watch",
+        "smoke:testing": "SMOKE=1 vitest --inspect --poolOptions.forks.singleFork watch 02 04",
         "test": "vitest run ",
         "testing": "vitest watch",
-        "testing:debug": "vitest --inspect --threads false watch ",
+        "testing:debug": "vitest --inspect --poolOptions.forks.singleFork watch",
         "test:ui": "vitest --ui",
         "test:run": "vitest run"
     },
@@ -40,13 +44,24 @@
         "semver": ">=7.5.2"
     },
     "devDependencies": {
+        "@helios-lang/codec-utils": "link:../helios/codec-utils",
+        "@helios-lang/compat": "link:../helios/compat",
+        "@helios-lang/compiler": "link:../helios/compiler",
+        "@helios-lang/compiler-utils": "link:../helios/compiler-utils",
+        "@helios-lang/contract-utils": "link:../helios/contract-utils",
+        "@helios-lang/crypto": "link:../helios/crypto",
+        "@helios-lang/ledger": "link:../helios/ledger",
+        "@helios-lang/ledger-babbage": "link:../helios/ledger-babbage",
+        "@helios-lang/ledger-conway": "link:../helios/ledger-conway",
+        "@helios-lang/ledger-shelley": "link:../helios/ledger-shelley",
+        "@helios-lang/tx-utils": "link:../helios/tx-utils",
+        "@helios-lang/uplc": "link:../helios/uplc",
+        "@hyperionbt/helios": "^0.16.3",
         "@microsoft/api-extractor": "^7.43.0",
         "@rollup/plugin-json": "^6.0.1",
         "@rollup/plugin-node-resolve": "^15.1.0",
-        "@hyperionbt/helios": "^0.16.7",
         "@rollup/pluginutils": "^5.0.2",
         "@types/node": "^20.2.5",
-        "@vitest/ui": "^0.34.6",
         "esbuild": "^0.19.4",
         "rollup": "^3.23.1",
         "rollup-plugin-api-extractor": "^0.2.5",
@@ -61,7 +76,6 @@
         "tslib": "^2.5.3",
         "typescript": "5.4.2",
         "vite": "^4.4.11",
-        "vitest": "^0.34.6",
-        "webdriverio": "^8.10.7"
+        "vitest": "^2.1.1"
     }
 }

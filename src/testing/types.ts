@@ -11,20 +11,15 @@ import type {
 } from "../StellarContract.js";
 import type { StellarTestContext } from "./StellarTestContext.js";
 import type { StellarTestHelper } from "./StellarTestHelper.js";
-import ppParams from "../../preprod.json" assert { type: "json" };
 import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
 import type { Capo, CapoBaseConfig } from "../Capo.js";
 import type { NetworkSnapshot, SimpleWallet_stellar as emulatedWallet } from "./StellarNetworkEmulator.js";
-
-//   ppParams.latestParams.maxTxExecutionUnits.memory = 28_000_000
-
-export const preProdParams = ppParams;
 
 export type enhancedNetworkParams = NetworkParams & {
     slotToTimestamp(n: bigint): Date;
 };
 export type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (
-    config: ConfigFor<SC> & canHaveRandomSeed, helperState: any
+    stConfig: ConfigFor<SC> & canHaveRandomSeed, helperState: any
 ) => StellarTestHelper<SC>;
 
 export type DefaultCapoTestHelperClass<SC extends Capo<any>> = new (
@@ -56,16 +51,16 @@ export type TestHelperState<SC extends StellarContract<any>> = {
  *
  * @param context -  a vitest context, typically created with StellarTestContext
  * @param TestHelperClass - typically created with DefaultCapoTestHelper
- * @param params - preset configuration for the contract under test
+ * @param stConfig - preset configuration for the contract under test
  * @public
  **/
 export async function addTestContext<
     SC extends StellarContract<any>,
-    P extends configBaseWithRev = ConfigFor<SC>
+    ST_CONFIG extends configBaseWithRev & ConfigFor<SC> = ConfigFor<SC>
 >(
     context: StellarTestContext<any, SC>,
     TestHelperClass: stellarTestHelperSubclass<SC>,
-    params?: P,
+    stConfig?: ST_CONFIG,
     helperState?: TestHelperState<SC>
 ) {
     console.log(" ======== ======== ======== +test context");
@@ -75,13 +70,13 @@ export async function addTestContext<
         },
     });
 
-    context.initHelper = async (params, helperState) => {
+    context.initHelper = async (stConfig, helperState) => {
         //@ts-expect-error
-        const helper = new TestHelperClass(params, helperState);
+        const helper = new TestHelperClass(stConfig, helperState);
         // await helper.setupPending;
         if (context.h) {
             //xx@ts-expect-error temporarily
-            if (!params.skipSetup)
+            if (!stConfig.skipSetup)
                 throw new Error(
                     `re-initializing shouldn't be necessary without skipSetup`
                 );
@@ -95,9 +90,9 @@ export async function addTestContext<
     };
     try {
         //@ts-expect-error
-        await context.initHelper(params, helperState);
+        await context.initHelper(stConfig, helperState);
     } catch (e) {
-        if (!params) {
+        if (!stConfig) {
             // console.error(e.stack || e.message || JSON.stringify(e));
             console.error(
                 `${TestHelperClass.name}: error during initialization; does this test helper require initialization with explicit params?`

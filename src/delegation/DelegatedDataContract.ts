@@ -191,7 +191,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         return tcx2.addOutput(
             new helios.TxOutput(
                 this.capo.address,
-                this.mkMinTv(this.capo.mph, uut).add(extraCreationValue),
+                this.uh.mkMinTv(this.capo.mph, uut).add(extraCreationValue),
                 newDatum
             )
         ) as TCX & typeof tcx2;

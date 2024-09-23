@@ -1,6 +1,13 @@
 module CapoDelegateHelpers
 
 import {
+    tx, 
+    get_current_input,
+    get_current_validator_hash,
+    get_cont_outputs
+} from ScriptContext
+
+import {
     mustFindInputRedeemer,
     mkTv,
     returnsValueToScript
@@ -99,12 +106,10 @@ struct RelativeDelegateLink {
     // !!! todo ???  - for namedDelegates particularly
     // stakingCred: stakingKeyRequirement
 
-    func getRedeemer(self,  input : TxInput, ctx: ScriptContext)  -> AbstractDelegateActivitiesEnum {
-        if(false) {
-            assert(self == self, "no way")// avoid unused variable
-        };
+    func getRedeemer(self,  input : TxInput)  -> AbstractDelegateActivitiesEnum {
+        assert(self == self, "no way");// avoid unused variable
         AbstractDelegateActivitiesEnum::from_data( 
-            mustFindInputRedeemer(ctx, input)
+            mustFindInputRedeemer(input)
         )
     }
 
@@ -115,8 +120,7 @@ struct RelativeDelegateLink {
     func validatesUpdatedSettings(self,
         inputs: []TxInput,
         mph: MintingPolicyHash,
-        inputRequired: Bool,
-        ctx: ScriptContext
+        inputRequired: Bool
     ) -> Option[Bool] {
         self.hasDelegateInput(
             inputs: inputs,
@@ -127,13 +131,11 @@ struct RelativeDelegateLink {
             None => Option[Bool]::None, // clean "not found but the caller indicated that's ok"
             Some{spendDelegateInput} => {
                 spendDelegateIsValid : Bool = AbstractDelegateActivitiesEnum::from_data( 
-                    mustFindInputRedeemer(ctx, spendDelegateInput)
+                    mustFindInputRedeemer(spendDelegateInput)
                 ).switch {
                     DelegateLifecycleActivities{a} => {
                         a.switch {
-                            ValidatingSettings => self.hasValidOutput(
-                                 mph, ctx
-                            ),
+                            ValidatingSettings => self.hasValidOutput(mph),
                             _ => error("delegate not ValidatingSettings: "+ self.uutName)
                         }
                     },
@@ -156,11 +158,12 @@ struct RelativeDelegateLink {
             None => {
                 if (required) {
                     error("❌ ➡️ 💁missing required input for delegate link " + self.uutName)
-                };
-                Option[TxInput]::None
+                } else {
+                    Option[TxInput]::None
+                }
             },
             Some{vh} => {
-                needsAddrWithCred : Credential = Credential::new_validator(vh);
+                needsAddrWithCred : SpendingCredential = SpendingCredential::new_validator(vh);
                 // if we arrived here, then we have a delegate that's supposed to be at a specific address.
                 // if we can't find an input with that address, it's an error condition.
                 // we need an input with this address, having the expected UUT.
@@ -177,9 +180,10 @@ struct RelativeDelegateLink {
                     /* notFound: */ None => {
                         if (required) {
                             error("_❌ ➡️  💁 missing req'd ^ input dgTkn (at script addr) " + self.uutName)
-                        };
-                        print (" <- ❌  ➡️ 💁 no input for ^ dgTkn; not req'd; ret false");
-                        Option[TxInput]::None
+                        } else {
+                            print (" <- ❌  ➡️ 💁 no input for ^ dgTkn; not req'd; ret false");
+                            Option[TxInput]::None
+                        }
                     }
                 }
             }        
@@ -188,7 +192,6 @@ struct RelativeDelegateLink {
     
     // func delegateUnchanged(self,
     //     mph: MintingPolicyHash, 
-    //     ctx : ScriptContext,
     //     input: TxInput,
     // ) -> Bool {
     //     RelativeDelegateLink{
@@ -201,13 +204,13 @@ struct RelativeDelegateLink {
     //         Some{vh} => {
     //             // print(" ⬅️ 🔎 💁 expect dgTkn "+uut + " sent to vh " + vh.show());
     //             assert(
-    //                 ctx.tx.value_locked_by(vh)   .
+    //                 tx.value_locked_by(vh)   .
     //                 contains(
     //                     mkTv(mph, uut)
     //                 ), 
     //                 "dgTkn not returned: "+ uut
     //             );
-    //             ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {
+    //             tx.outputs.find_safe((o : TxOutput) -> Bool {
     //                 o.datum.serialize() == input.datum.serialize()
     //             }).switch{
     //                 Some => true, 
@@ -226,7 +229,6 @@ struct RelativeDelegateLink {
     func hasValidOutput(
         self, // delegateLink: RelativeDelegateLink, 
         mph: MintingPolicyHash, 
-        ctx : ScriptContext,
         required: Bool = true
     ) -> Bool {
         RelativeDelegateLink{
@@ -239,7 +241,7 @@ struct RelativeDelegateLink {
             // error("strategy must be at least 4 bytes, got: '"+strategy +
             //     "' = "+ strategy.encode_utf8().length.show()
             // )
-        };
+        } else { assert(true, "no") };
     
         v : Value = mkTv(mph, uut);
         hasDelegate : Bool = validatorHash.switch{
@@ -247,12 +249,12 @@ struct RelativeDelegateLink {
                 print(uut);
                 print(" ⬅️ 🔎 💁 expect ^ dgTkn sent to vh  vv");
                 print(vh.show());
-                ctx.tx.value_locked_by(vh).contains(v)
+                tx.value_locked_by(vh).contains(v)
             },
             None => {
                 print( uut );
                 print( " ⬅️ 🔎 💁  expect ^ dgTkn sent anywhere");
-                ctx.tx.outputs.find_safe((o : TxOutput) -> Bool {
+                tx.outputs.find_safe((o : TxOutput) -> Bool {
                     o.value.contains(v)
                 }).switch{
                     Some => true, 
@@ -295,22 +297,23 @@ enum BASE_DELEGATE_Datum {
 
 func mustReturnValueToScript(
     value : Value, 
-    ctx : ScriptContext,
     tokenName: ByteArray = #
 ) -> Bool {
-    if (!returnsValueToScript( value, ctx)) {
+    if (!returnsValueToScript( value)) {
         print("failed matching value: "+ value.show());
         error(" ❌ dgTkn not returned: " + tokenName.decode_utf8())
         // error("the authZor token MUST be returned")
-    };
+    } else { 
     true
+    }
 }
 
 //!!! call with existing delegate Datum.serialize()
-func unmodifiedDelegation(oldDD : ByteArray, ctx: ScriptContext) -> Bool {
-    o : []TxOutput = ctx.get_cont_outputs();
-    //    print("::::::::::::::::::::::::::::::::: hi "+o.head.datum.get_inline_data().serialize().show());
-    assert(o.head.datum.get_inline_data().serialize() == oldDD,
+func unmodifiedDelegation(oldDD : ByteArray) -> Bool {
+    o : []TxOutput = get_cont_outputs();
+    //    print("::::::::::::::::::::::::::::::::: hi "+o.head.datum.inline.serialize().show());
+
+    assert(o.head.datum.inline.serialize() == oldDD,
     // "delegation datum must not be modified"
     "modified dgtDtm"
 );
@@ -343,17 +346,17 @@ func acAuthorityToken(dd: DelegationDetail) -> AssetClass {
 
 func requiresNoDelegateInput(
     delegateLink: RelativeDelegateLink, 
-    mph: MintingPolicyHash, 
-    ctx : ScriptContext
+    mph: MintingPolicyHash
 ) -> Bool {
     v : Value = mkTv(mph, delegateLink.uutName);
-    if (ctx.tx.inputs.any((i: TxInput) -> Bool {
+    if (tx.inputs.any((i: TxInput) -> Bool {
         i.value.contains(v)
     })) {
         error("must not have dgTkn input: "+delegateLink.uutName)
-    };
+    } else {
     print("ok: no dgTkn input: "+ delegateLink.uutName);
     true
+    }
 }
 
 // just some convenience stuff to lead people to the right place
@@ -364,14 +367,12 @@ struct delegateLink_hasValidOutput_asMethod {
 // func requiresValidDelegateOutput(
 //     delegateLink: delegateLink_hasValidOutput_asMethod,
 //     mph: MintingPolicyHash, 
-//     ctx : ScriptContext,
 //     required: Bool = true
 // ) -> Bool {
          ///                  vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 //     assert(false, "replaced by delegateLink.hasValidOutput(...)");
 //     assert(delegateLink==delegateLink, "no way");
 //     assert(mph==mph, "no");
-//     assert(ctx==ctx, "no");
 //     assert(required==required, "no way");
 //     true
 // }

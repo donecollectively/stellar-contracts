@@ -10,6 +10,12 @@ const isDev: Bool = false
 //     tvCharter
 // } from CapoHelpers
 
+import {
+    tx, 
+    get_current_input,
+    get_current_validator_hash
+} from ScriptContext
+
 import { 
     AbstractDelegateActivitiesEnum,
     requiresNoDelegateInput,    
@@ -24,8 +30,7 @@ import {
     AnyData,
     tvCharter,
     mkTv,
-    didSign,
-    didSignInCtx
+    didSign
 } from StellarHeliosHelpers
 
 import {
@@ -40,10 +45,10 @@ import {
     capoSettings
 } from CustomCapoSettings
 
-func requiresAuthorization(ctx: ScriptContext, ctd: CapoDatum::CharterToken) -> Bool {
+func requiresAuthorization(ctd: CapoDatum::CharterToken) -> Bool {
     govDelegate : RelativeDelegateLink = ctd.govAuthorityLink;
 
-    govDelegate.hasValidOutput(mph, ctx)
+    govDelegate.hasValidOutput(mph)
 }
 
 func getCharterOutput(tx: Tx) -> TxOutput {
@@ -61,13 +66,11 @@ func getCharterOutput(tx: Tx) -> TxOutput {
     }
 }
 
-func preventCharterChange(ctx: ScriptContext, datum: CapoDatum::CharterToken) -> Bool {
-    tx: Tx = ctx.tx;
-
+func preventCharterChange(datum: CapoDatum::CharterToken) -> Bool {
     charterOutput : TxOutput = getCharterOutput(tx);
 
-    cvh : ValidatorHash = ctx.get_current_validator_hash();
-    myself : Credential = Credential::new_validator(cvh);
+    cvh : ValidatorHash = get_current_validator_hash();
+    myself : SpendingCredential = SpendingCredential::new_validator(cvh);
     if (charterOutput.address.credential != myself) {
         error("charter token must be returned to the contract ")
         // actual : String = charterOutput.address.credential.switch{
@@ -78,16 +81,18 @@ func preventCharterChange(ctx: ScriptContext, datum: CapoDatum::CharterToken) ->
         //     "charter token must be returned to the contract " + cvh.show() +
         //     "... but was sent to " +actual
         // )
+    } else { 
+        print("ok")
     };
 
     newDatum : CapoDatum = CapoDatum::from_data( 
-        charterOutput.datum.get_inline_data() 
+        charterOutput.datum.inline
     );
     if (datum.serialize() != newDatum.serialize()) {
         error("invalid update to charter settings") 
-    };
-
-    true
+    } else {
+        true
+    }
 }
 
 func checkpoint(s: String) -> Bool {
@@ -95,8 +100,7 @@ func checkpoint(s: String) -> Bool {
     true
 }
 
-func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
-    tx: Tx = ctx.tx;
+func main(datum: Data, activity: CapoActivity) -> Bool {
     // now: Time = tx.time_range.start;
     print("🚥❓Capo" + if (isDev) {
             " - isDev @gen " + devGen.show()
@@ -105,7 +109,7 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
     TODO("implement activity updatingTypeMap");
 
     showMyTokens : (Value) -> String = mkTokenShow(mph);
-    input : TxInput = ctx.get_current_input();
+    input : TxInput = get_current_input();
     print("  -- Capo: checks spend of "+ showMyTokens(input.value ));
     
     capoDatum : CapoDatum = CapoDatum::from_data(datum);
@@ -121,7 +125,7 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
                 retiringSettings => error(invalid),
                 spendingDelegatedDatum => error(invalid),
                 _ => {
-                    preventCharterChange(ctx, ctd)  // throws if bad                
+                    preventCharterChange(ctd)  // throws if bad                
                     // ... plus activity-specific checks below.
                 }
             }
@@ -166,27 +170,27 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
             };
             hasMatchingValue : Bool = input.value.contains(mkTv(mph: mph, tnBytes: datumId));
             charterDatum : CapoDatum::CharterToken = getTxCharterDatum(
-                ctx: ctx,
                 mph: mph
             );
             spendDelegate: RelativeDelegateLink = charterDatum.spendDelegateLink;
             
             // consider allowing this as a refInput, with other stuff to enable more parallelism for populations
             spendDelegateInput: TxInput = spendDelegate.hasDelegateInput(
-                inputs: ctx.tx.inputs,
+                //!!!!!! todo: audit for usages of hasDelegateInput - do we need to pass inputs as an arg?
+                inputs: tx.inputs,
                 mph: mph
             ).unwrap();
 
-            delegateReturned: Bool = spendDelegate.hasValidOutput(mph, ctx).trace(" -- delegate returned ok? ");
+            delegateReturned: Bool = spendDelegate.hasValidOutput(mph).trace(" -- delegate returned ok? ");
 
-            spendDgtInputRedeemer: Data = mustFindInputRedeemer(ctx, spendDelegateInput);
+            spendDgtInputRedeemer: Data = mustFindInputRedeemer(spendDelegateInput);
             print("  -- check appropriate delegate activity");
             getSpendingRecId : (Data) -> ByteArray = (dgSpendActivity : Data) -> ByteArray {
                 dgSpendActivity.switch {
-                    (index: Int, fields : []Data) => {
+                    ConstrData{index, fields} => {
                         assert(true || index==index, "no way"); // prevent unused variable warning
                         fields.head.switch {
-                            recId: ByteArray => recId,
+                            ByteArrayData{recId} => recId,
                             _ => error("spending activity must have a record-id as first field")
                         }
                     },
@@ -244,7 +248,7 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
                 },
                 _ => {
                     spendDgtInputRedeemer.switch {
-                        (index: Int, fields: []Data) => {
+                        ConstrData{index, fields} => {
                             print("unexpected redeemer: " + index.show() );
                             assert(true || /* never executed */ fields.length > 0, "no way");
                             error("spend delegate not triggered with a Spending activity")
@@ -264,11 +268,12 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
 
             charterOutput : TxOutput = getCharterOutput(tx);
             newCtDatum = CapoDatum::CharterToken::from_data( 
-                charterOutput.datum.get_inline_data() 
+                charterOutput.datum.inline
             );
+
             oldCtDatum : CapoDatum::CharterToken = capoDatum.switch {
                 octd: CharterToken => octd,
-                _ => error("wrong use of updatingCharter action for non-CharterToken datum")
+                _ => error("wrong use of updatingCharter action for non-CharterToken datum")                
             };
             CapoDatum::CharterToken{                
                 spendDelegate, 
@@ -280,7 +285,6 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
                 nextGovDelegate,
                 oldTypeMapUut
             } = newCtDatum;
-
             CapoDatum::CharterToken{
                 oldSpendDelegate, 
                 oldSpendInvariants, 
@@ -290,7 +294,9 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
                 oldMintInvariants,
                 oldGovDelegate,
                 typeMapUut
-            } = oldCtDatum;
+            } = capoDatum; // or oldCtDatum - same error result either way
+
+
 
             mustNotModifyMintInvariants : Bool =  ( mintInvariants == oldMintInvariants );
             mustNotModifySpendInvariants : Bool = ( spendInvariants == oldSpendInvariants );
@@ -298,7 +304,7 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
 
             hasNeededGovDelegate : Bool =  true ||
             checkpoint("must be validated by existing govDelegate") && 
-            nextGovDelegate.hasValidOutput(mph, ctx) && (
+            nextGovDelegate.hasValidOutput(mph) && (
                 unchangedGovDelegate || oldGovDelegate.hasDelegateInput( 
                     inputs: tx.inputs, 
                     mph: mph,
@@ -342,6 +348,8 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
                     "\n  - old: "+ oldSettingsUut.decode_utf8() +
                     "\n  - new: "+ settingsUut.decode_utf8()
                 )
+            } else {
+                print("not dev")
             };
             assert(mustNotModifySettings, "cannot change settings uut");
             assert(mustNotModifyTypeInfo, "cannot change typeInfo uut");
@@ -364,18 +372,18 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
                 // unchanged mintDgt must not be included in the tx
                 checkpoint("2b") &&
                 mintDelegate.hasDelegateInput(
-                    inputs: ctx.tx.inputs, 
+                    inputs: tx.inputs, 
                     mph: mph,
                     required: false
                 ).switch {
                     None => {
-                        // was requiresNoDelegateInput(mintDelegate, mph, ctx)
+                        // was requiresNoDelegateInput(mintDelegate, mph)
                         //  - it's ok to have it not included.
                         true
                     },
                     Some{mintDgtInput} => {
                         delegateActivity: AbstractDelegateActivitiesEnum = 
-                            mintDelegate.getRedeemer(mintDgtInput, ctx);
+                            mintDelegate.getRedeemer(mintDgtInput);
                         print("mint delegate input found");
                         delegateActivity.switch {
                             CapoLifecycleActivities{CLA} => CLA.switch {
@@ -385,8 +393,9 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
                                     TODO("move delegate-creation to be separate from updatingCharter");
                                     TODO(" ?? use capo ActivatingXxxxDelegate activity when adopting delegate");
 
-                                    mintDelegate.hasValidOutput(mph, ctx)
+                                    mintDelegate.hasValidOutput(mph)
                                 },
+                                // no other variants exist (yet).
                                 _ => error("invalid use of mint delegate during charter update")
                             },
                             _ => error("invalid use of mint delegate during charter update")
@@ -396,17 +405,17 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
             } else {
                 //  the new one has to go to the right place
                 checkpoint("2a") &&
-                 mintDelegate.hasValidOutput(mph, ctx)
+                 mintDelegate.hasValidOutput(mph)
             } && 
             checkpoint("3") &&
             if ( unchangedSpendDgt) {
                 // unchanged spendDgt must not be included in the tx
                 checkpoint("4b") &&
-                requiresNoDelegateInput(spendDelegate, mph, ctx)
+                requiresNoDelegateInput(spendDelegate, mph)
             } else {
                 //  the new one has to go to the right place
                 checkpoint("4a") &&
-                spendDelegate.hasValidOutput(mph, ctx)
+                spendDelegate.hasValidOutput(mph)
             } &&
             checkpoint("5") &&
             if (!changedAnyNamedDelegate) { true } else {
@@ -422,11 +431,11 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
                         Some{oldDgt} => { 
                             if (oldDgt.serialize() == dgt.serialize()) {
                                // unchanged named delegate must not be included in the tx
-                                requiresNoDelegateInput(dgt, mph, ctx)
+                                requiresNoDelegateInput(dgt, mph)
                             } else {
                                 TODO("the old named delegate must be retired, or be force-replaced (in a different activity?)");
                                 //  the new one has to go to the right place
-                                dgt.hasValidOutput(mph, ctx)
+                                dgt.hasValidOutput(mph)
                             }
                         }
                     }
@@ -434,7 +443,7 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
             } &&
             mustNotModifyMintInvariants &&
             mustNotModifySpendInvariants &&
-            requiresAuthorization(ctx, oldCtDatum) &&
+            requiresAuthorization(oldCtDatum) &&
             checkpoint("6")
         },
 
@@ -446,7 +455,7 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
                 _ => error("wrong use of retiringRefScript action for non-ScriptRef datum")
             };
 
-            hasGovAuthority : Bool = mustHaveGovAuthority(ctx,mph);
+            hasGovAuthority : Bool = mustHaveGovAuthority(mph);
 
             isSpendingRefScript && 
             hasGovAuthority &&
@@ -459,7 +468,7 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
             print( "  ...with activity usingAuthority\n");
             capoDatum.switch {
                  // throws if bad
-                ctd : CharterToken => requiresAuthorization(ctx, ctd),
+                ctd : CharterToken => requiresAuthorization(ctd),
                 _ => error("wrong use of usingAuthority action for non-CharterToken datum")
             }
         },
@@ -474,13 +483,11 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
             if (isRelevantDatum) { // temporary to minimize commit diff
                 if (isRelevantDatum) { // temporary to minimize commit diff
                     charterDatum : CapoDatum::CharterToken = getTxCharterDatum(
-                        ctx: ctx,
                         mph: mph
                     );
                     // it requires the govAuthority to be present 
                     print( "❗ gov authority must be present");
                     hasGovAuthority : Bool = mustHaveGovAuthority(
-                        ctx : ctx,
                         mph: mph,
                         charterDatum: charterDatum // already resolved
                    );
@@ -507,15 +514,14 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
                     //    - ... and no separate is-anything-missing checks.
                     // ^^^ option 2 has to be cheaper.
 
-                    inputs: []TxInput = ctx.tx.inputs;
+                    inputs: []TxInput = tx.inputs;
 
                     print( "❗ spend delegate must validate settings");
                     spendDelegateIsValidating : Bool = 
                         spendDelegate.validatesUpdatedSettings(
                             inputs: inputs,
                             mph: mph,
-                            inputRequired: true,
-                            ctx: ctx
+                            inputRequired: true
                         ).unwrap();
 
                     print( "❗ mint delegate must validate settings");
@@ -523,8 +529,7 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
                         mintDelegate.validatesUpdatedSettings(
                             inputs: inputs,
                             mph: mph,
-                            inputRequired: true,
-                            ctx: ctx
+                            inputRequired: true
                         ).unwrap();
 
                     // govAuthority is checking the settings
@@ -533,8 +538,7 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
                         govDelegate.validatesUpdatedSettings(
                             inputs: inputs,
                             mph: mph,
-                            inputRequired: false,
-                            ctx: ctx
+                            inputRequired: false
                         ).switch{
                             Some => true,
                             None => true
@@ -545,8 +549,7 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
                         oneDgt.validatesUpdatedSettings(
                             inputs: inputs,
                             mph: mph,
-                            inputRequired: true,
-                            ctx: ctx
+                            inputRequired: true
                         ).unwrap()
                     };
                     // spendInvariants are checking the settings
@@ -567,8 +570,7 @@ func main(datum: Data, activity: CapoActivity, ctx: ScriptContext) -> Bool {
                             ok && dgt.validatesUpdatedSettings(
                                 inputs: inputs,
                                 mph: mph,
-                                inputRequired: true,
-                                ctx: ctx
+                                inputRequired: true
                             ).unwrap()
                         }, true
                     );

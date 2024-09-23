@@ -1,5 +1,12 @@
 module uutMintingDelegate
 
+import {
+    tx, 
+    get_current_input,
+    get_current_validator_hash,
+    get_cont_outputs
+} from ScriptContext
+
 // specialized to allow Tests to trigger generic UUT minting
 // ... as a placeholder for application-specific UUT-minting use-cases
 // original notes about (un)specialization follow:
@@ -57,10 +64,9 @@ enum DelegateDatum {
     }
     ScriptReference
 
-    func validateSettings(self, ctx: ScriptContext, settings: capoSettings) -> Bool{
+    func validateSettings(self, _settings: capoSettings) -> Bool{
         assert(false, "not valid (stubbed)");
-        settings.serialize() != self.serialize() &&
-        ctx.tx.serialize() != self.serialize() &&        
+        // settings.serialize() != self.serialize() &&
         true
     }
 }
@@ -134,8 +140,7 @@ enum DelegateActivity {
     // valid uut mints. A specialization might modify it use different policies
     // or enforce additional requirements
     func genericUutMinting(self, 
-        mdd: DelegateDatum,
-        ctx: ScriptContext
+        mdd: DelegateDatum
     ) -> Bool {
         DelegateActivity::MintingActivities{
             MintingActivity::mintingUuts{
@@ -145,11 +150,10 @@ enum DelegateActivity {
         DelegateDatum::IsDelegation{dd} = mdd;
         returnsAuthzToken : Bool = mustReturnValueToScript(
             tvAuthorityToken(dd), 
-            ctx,
             dd.tn
         );
 
-        o : []TxOutput = ctx.get_cont_outputs();
+        o : []TxOutput = get_cont_outputs();
         if (o.length != 1) { error("single utxo only") };
 
         print (" - in uutMintingDelegate");
@@ -161,7 +165,6 @@ enum DelegateActivity {
         // of uuts (and additional token values) in validation of application-
         // specific activities, given (mph, seed, purposes)
         validateUutMinting(
-            ctx: ctx, 
             mph: dd.mph,
             seed: seed,
             purposes: purposes,
@@ -179,8 +182,7 @@ enum DelegateActivity {
     // ...  in which the isDelegation token is being spent with an application-specific
     // ...  activity/redeemer    func additionalDelegateValidation( self,
     func additionalDelegateValidation( self,
-        priorMddd: DelegateDatum::IsDelegation, 
-        ctx: ScriptContext
+        priorMddd: DelegateDatum::IsDelegation
     ) -> Bool {
         print("  ----- uutMinting delegate - checking additional delegate validation");
         self.switch {
@@ -206,12 +208,12 @@ enum DelegateActivity {
             MintingActivities{activity} => {
                 print("uutMinting delegate - checking mintingActivities");
                 activity.switch{
-                    mintingUuts => self.genericUutMinting(priorMddd, ctx)
+                    mintingUuts => self.genericUutMinting(priorMddd)
                     // _ => // leave as compile-time problem
                 }
             },
             _ => false
-        } || ctx.tx.serialize() == priorMddd.serialize()
+        }
     }
 
     //! used only for validating non-IsDelegation datum types and activities.
@@ -220,8 +222,7 @@ enum DelegateActivity {
     //   above, in which the isDelegation token is being spent with an application-specific
     //   activity/redeemer
     func otherDatumValidation( self,
-        priorMdd: DelegateDatum, 
-        ctx: ScriptContext
+        _priorMdd: DelegateDatum
     ) -> Bool {
         neverTriggered = () -> {  error("never called") };
         self.switch{
@@ -232,6 +233,6 @@ enum DelegateActivity {
             // ------------------- application-specific activities can be added here
 
             _ => false  // prevents non-exhaustive match errors, even if you remove the above neverTriggered() calls
-        } && (priorMdd.serialize() != ctx.serialize())
+        }
     }
 }

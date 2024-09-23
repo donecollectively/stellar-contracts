@@ -9,6 +9,12 @@ const isMintDelegate : Bool = false
 const isSpendDelegate : Bool = false
 
 import {
+    tx, 
+    get_current_input,
+    get_current_validator_hash
+} from ScriptContext
+
+import {
     // DelegationDetail,
     acAuthorityToken,
     tvAuthorityToken
@@ -50,14 +56,14 @@ import {
 } from specializedDelegate
 
 
-func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) -> Bool {
+func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
     print(" 🚥❓delegate: " + delegateName +
         if (isDev) {
             " - is dev @gen " + devGen.show()
         } else { "" }
     );
 
-    // input = ctx.get_current_input();
+    // input = get_current_input();
     result :Bool = mdd.switch{
         //! performs essential checks of policy for spending the minting delegate's authority token "mintDgt-*"
         // ... it also calls any additionalDelegateValidation() defined in a specialized minting delegate,
@@ -71,14 +77,14 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
         isD : IsDelegation{dd} => {
             // MintDelegateDatum::IsDelegation{dd, cfg} = isD;
             showMyTokens : (Value) -> String = mkTokenShow(dd.mph);
-            print("  -- checking spend of dgTkn "+ showMyTokens(ctx.get_current_input().value ));
+            print("  -- checking spend of dgTkn "+ showMyTokens(get_current_input().value ));
 
             activity.switch {
                 MultipleDelegateActivities{activities} => {
                     activities
                         .map(DelegateActivity::from_data)
                         .all( (a : DelegateActivity) -> Bool { 
-                        cctx : CapoCtx = mkCapoCtx(ctx, dd.mph).withCharterRef();
+                        cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
 
                         // Context: the Capo ensures that each spent UTxO is addressed by EXACTLY ONE SpendDgt activity.
                         //   ... when we hit this path as a SpendDelegate, we ensure that each of the activities 
@@ -92,7 +98,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                                     // " ... use MintingActivities in a delegated-data controller"
                                 );
                                 cctx.actingAsMintDgt() &&
-                                main(mdd, a, ctx)
+                                main(mdd, a)
                             },
                             UpdatingDelegatedData{/*typeName*/ _, recId} => {
                                 assert(isSpendDelegate,
@@ -103,7 +109,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                                 assert(inputDD == inputDD, "no way");
             
                                 cctx.actingAsSpendDgt() &&
-                                main(mdd, a, ctx)
+                                main(mdd, a)
                             },
                             DeletingDelegatedData => {
                                 assert(isMintDelegate,
@@ -111,7 +117,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                                     // " ... use BurningActivities in a delegated-data controller"
                                 );
                                 cctx.actingAsMintDgt() &&
-                                main(mdd, a, ctx)
+                                main(mdd, a)
                             },
                             // in the delegated-data controllers, we have to support these multi-activities.                            
                             SpendingActivities => {
@@ -133,7 +139,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                                 // this will pass through the individual activity to be individually validated
                                 // by the specialized delegate module that governs the data-controller's UUT
                                 // ... in its additionalDelegateValidation() function.
-                                main(mdd, a, ctx)
+                                main(mdd, a)
                             },
                             MintingActivities => {
                                 // XXX error("MintingActivities not currently supported in MultipleDelegateActivities"),
@@ -152,7 +158,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                                 // this will pass through the individual activity to be individually validated
                                 // by the specialized delegate module that governs the data-controller's UUT
                                 // ... in its additionalDelegateValidation() function.
-                                main(mdd, a, ctx)
+                                main(mdd, a)
                             },
                             BurningActivities => {
                                 assert(false, "multi:BurningActivities not yet supported");
@@ -171,7 +177,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                                 // this will pass through the individual activity to be individually validated
                                 // by the specialized delegate module that governs the data-controller's UUT
                                 // ... in its additionalDelegateValidation() function.
-                                result : Bool = main(mdd, a, ctx);
+                                result : Bool = main(mdd, a);
                                 // when we're confident in our good treatment of real use-cases for this, 
                                 // ... we can remove the errors and return results
                                 result
@@ -197,8 +203,8 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                         // should burn the old UUT, mint the new UUT, and update the Charter
                         // with the new mint authority
 
-                        //xxx -   ctx.tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&
-                        //xxx -   !returnsValueToScript( tvAuthorityToken(dd), ctx)
+                        //xxx -   tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&
+                        //xxx -   !returnsValueToScript( tvAuthorityToken(dd))
 
                         BURNED: Int = -1;
                         otherMintedValue: Value = Value::new(
@@ -208,7 +214,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                     
                         print("checking ReplacingMe on "+purpose+": "+dd.tn.decode_utf8());
                         
-                        cctx : CapoCtx = mkCapoCtx(ctx, dd.mph).withCharterInput();
+                        cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterInput();
                         isUpdatingCharter : Bool = cctx.getCharterRedeemer().switch {
                             // THE CHARTER UPDATE ITSELF WILL CHECK THAT THERE'S A VALID DELEGATE OUTPUT FOR THE NEW DELEGATE
                             updatingCharter => true,
@@ -216,7 +222,6 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                         };
 
                         isMintingOk : Bool = validateUutMinting(
-                            ctx: ctx, 
                             mph: dd.mph,
                             seed: seed,
                             purposes: []String{purpose}, 
@@ -238,7 +243,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                     //
                     // Retiring is not suitable for authorizing token-burning.
                     Retiring => {
-                        ctx.tx.minted.get(acAuthorityToken(dd)) == -1
+                        tx.minted.get(acAuthorityToken(dd)) == -1
                     },
 
                     ValidatingSettings => {
@@ -251,10 +256,10 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                         //     /* mintDgt */ _, 
                         //     /* mintInvariants */ _, 
                         //     /* govAuthority */ _
-                    // } = getTxCharterDatum(ctx, dd.mph);
-                    charter : CapoDatum::CharterToken = getTxCharterDatum(ctx, dd.mph);
+                    // } = getTxCharterDatum(dd.mph);
+                    charter : CapoDatum::CharterToken = getTxCharterDatum(dd.mph);
                     foundSettings : outputAndDatum[CapoDatum::SettingsData] = 
-                        charter.mustFindSettingsOutput(ctx, dd.mph, dd.capoAddr);
+                        charter.mustFindSettingsOutput(dd.mph, dd.capoAddr);
                     customSettings = capoSettings::from_data(foundSettings.rawData);
 
                     print(delegateName + ": delegate TRYING TO VALIDATE SETTINGS");
@@ -266,8 +271,8 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
 
                     validated && 
                         // isValid : Bool = 
-                        //     ((isTest && throwIfBadSettings(ctx, mdd, settings)) || true) &&
-                        //     mdd.validateSettings(settings, ctx);
+                        //     ((isTest && throwIfBadSettings(mdd, settings)) || true) &&
+                        //     mdd.validateSettings(settings);
                         // isValid
                         true
                     }
@@ -288,7 +293,6 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                             REQT("validates creation of UUT for the new delegate, aligned to the purpose indicated");
                                 // true || 
                                 validateUutMinting(
-                                    ctx: ctx, 
                                     mph: dd.mph,
                                     seed: seed,
                                     purposes: []String{purpose},
@@ -316,7 +320,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                 // In each of those cases, it follows the same high-level logic, hitting different paths through this file, 
                 // ... while processing different tokens for each zone of authority/responsibility.
                 CreatingDelegatedData{seed, dataTypePurpose} => {
-                    cctx : CapoCtx = mkCapoCtx(ctx, dd.mph).withCharterRef();
+                    cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
                     tnFactory : (String) -> String = mkUutTnFactory(seed);
                     newDataId : ByteArray = tnFactory(dataTypePurpose).encode_utf8();
                     // as a mint delegate, we should see to it that any minting does play by the rules
@@ -335,7 +339,6 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                     && isMintDelegate 
                     && cctx.actingAsMintDgt()
                     && validateUutMinting(
-                        ctx: ctx, 
                         mph: dd.mph,
                         seed: seed,
                         purposes: []String{dataTypePurpose},
@@ -364,7 +367,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                 // In each of those cases, it follows the same high-level logic, hitting different paths through this file, 
                 // ... while processing different tokens for each zone of authority/responsibility.
                 UpdatingDelegatedData{dDataType, recId} => {
-                    cctx : CapoCtx = mkCapoCtx(ctx, dd.mph).withCharterRef();
+                    cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
                     TODO("Basic delegate: implement typeMap-based redelegation");
                     TODO("for now, the application-level Spend Delegate MUST enforce correct data-controller delegation");
                     // check data controller's SpendingActivities
@@ -402,7 +405,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
                 MintingActivities => true,
                 BurningActivities => true,
                 _ => true
-            } && if (activity.additionalDelegateValidation(isD, ctx)) {
+            } && if (activity.additionalDelegateValidation(isD)) {
                 print ("delegate: "+ delegateName + ": additionalDelegateValidation ok!");
                 true
             } else {
@@ -416,7 +419,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity, ctx: ScriptContext) ->
             activity.switch{
                 DelegateLifecycleActivities => kaboomInvalidRedeemer(), 
                 CapoLifecycleActivities => kaboomInvalidRedeemer(),
-                _ => activity.otherDatumValidation(mdd, ctx)
+                _ => activity.otherDatumValidation(mdd)
             }
         }
     };

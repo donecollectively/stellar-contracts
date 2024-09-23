@@ -1,27 +1,26 @@
 module StellarHeliosHelpers
 
+import {
+    tx, 
+    get_current_input,
+    get_current_validator_hash
+} from ScriptContext
+
 // keep this as-is.  Make RealnumSettingsValueV2 or something else if it needs to change
 struct RealnumSettingsValueV1 {
     name: String
     microInt: Int // "Real" semantics, times 1_000_000
 }
 
-func didSign(ctx : ScriptContext, a: Address) -> Bool {
-    tx : Tx = ctx.tx;
-
+func didSign(a: Address) -> Bool {
     pkh : PubKeyHash = a.credential.switch{
         PubKey{h} => h,
-        _ => error("trustee can't be a contract")
+        Validator => error("trustee can't be a contract")
+        // _ => error("trustee can't be a contract")
     };
     // print("checking if trustee signed: " + pkh.show());
 
     tx.is_signed_by(pkh)
-}
-
-func didSignInCtx(ctx: ScriptContext) -> (a: Address) -> Bool {
-    (a : Address) -> Bool {
-        didSign(ctx, a)
-    }
 }
 
 func TODO(task: String) -> () {
@@ -58,26 +57,26 @@ func tvCharter(mph: MintingPolicyHash)  -> Value {
     mkTv(mph, "charter")
 }
 
-func spendsAndReturns(value : Value, ctx : ScriptContext, input: TxInput) -> Bool {
+func spendsAndReturns(value : Value, input: TxInput) -> Bool {
     input.value.contains(value) &&
-    ctx.tx.outputs.any( (txo : TxOutput) -> Bool {
+    tx.outputs.any( (txo : TxOutput) -> Bool {
         txo.address == input.address &&
         txo.value.contains(value)
     } )
 }
 
-func returnsValueToScript(value : Value, ctx : ScriptContext) -> Bool {
-    input : TxInput = ctx.get_current_input();
+func returnsValueToScript(value : Value) -> Bool {
+    input : TxInput = get_current_input();
     input.value.contains(value) &&
-    ctx.tx.outputs.any( (txo : TxOutput) -> Bool {
+    tx.outputs.any( (txo : TxOutput) -> Bool {
         txo.address == input.address &&
         txo.value.contains(value)
     } )
 }
 
 
-func getOutputWithValue(ctx: ScriptContext, v : Value) -> TxOutput {
-    ctx.tx.outputs.find((txo: TxOutput) -> { txo.value >= v })
+func getOutputWithValue(v : Value) -> TxOutput {
+    tx.outputs.find((txo: TxOutput) -> { txo.value >= v })
 }
 
 struct outputAndDatum[T] {
@@ -102,23 +101,22 @@ func getSingleAssetValue(input: TxInput) -> Value{
     input.value.get_assets()
 }
 
-func outputDatum[T](newTxo : TxOutput) -> T {
-    T::from_data(newTxo.datum.get_inline_data())
-}
+// func outputDatum[T](newTxo : TxOutput) -> T {
+//     T::from_data(newTxo.datum.inline)
+// }
 
-func getOutputForInput(ctx: ScriptContext, input: TxInput) -> TxOutput {
+func getOutputForInput(input: TxInput) -> TxOutput {
     inputValue : Value = getSingleAssetValue(input);
 
-    getOutputWithValue(ctx, inputValue)
+    getOutputWithValue(inputValue)
 }
 
 //! retrieves the redeemer for a specific input
 func mustFindInputRedeemer(
-    ctx : ScriptContext,
     txInput: TxInput    
 ) -> Data {
     targetId : TxOutputId = txInput.output_id;
-    redeemers : Map[ScriptPurpose]Data = ctx.tx.redeemers;
+    redeemers : Map[ScriptPurpose]Data = tx.redeemers;
     spendsExpectedInput : ScriptPurpose = redeemers.find_key( 
         (purpose : ScriptPurpose) -> { purpose.switch{ 
             sp: Spending => {
@@ -137,21 +135,21 @@ func mustFindInputRedeemer(
 // Instead, the off-chain code needs to construct the wrapper,
 // but the field needs to pretend there is no wrapper.
 
-enum NestedTaggedStruct[T] {
-    Solo{ thing: T }
+// enum NestedTaggedStruct[T] {
+//     Solo{ thing: T }
 
-    func unwrap(self) -> T {
-        print("NestedTaggedStruct: unwrap");
+//     func unwrap(self) -> T {
+//         print("NestedTaggedStruct: unwrap");
 
-        self.switch {
-            Solo{ thing } => {
-                print("NestedTaggedStruct: unwrapped thing");
-                thing
-            },
-            _ => error("NestedTaggedStruct: unwrap: unknown variant")
-        }
-    }
-}
+//         self.switch {
+//             Solo{ thing } => {
+//                 print("NestedTaggedStruct: unwrapped thing");
+//                 thing
+//             },
+//             _ => error("NestedTaggedStruct: unwrap: unknown variant")
+//         }
+//     }
+// }
  
 // field-names style of struct, arbitrary & extensible
 // field list, can be interpreted by any script that defines a 

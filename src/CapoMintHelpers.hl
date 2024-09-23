@@ -9,6 +9,8 @@ import {
     tvCharter
 } from StellarHeliosHelpers
 
+import {tx, get_current_input} from ScriptContext
+
 import {
     getTxCharterDatum,
     CapoCtx,
@@ -41,13 +43,12 @@ func hasSeedUtxo(tx: Tx, seedUtxo: TxOutputId
 func requiresDelegateAuthorizingMint(
     delegateLink: RelativeDelegateLink, 
     mph: MintingPolicyHash, 
-    ctx : ScriptContext,
     extraMintDelegateRedeemerCheck: Bool = true
 ) -> Bool {
     authzVal : Value = Value::new(AssetClass::new(mph, delegateLink.uutName.encode_utf8()), 1);
     print( delegateLink.uutName);
     print("finding ^ my inp");
-    targetId: TxOutputId = ctx.tx.inputs.find_safe((i: TxInput) -> {
+    targetId: TxOutputId = tx.inputs.find_safe((i: TxInput) -> {
         // print("   ?  in "+i.value.show());
         i.value.contains(authzVal) // find my authority token
     }).switch{
@@ -55,7 +56,7 @@ func requiresDelegateAuthorizingMint(
         None => error("missing dgTkn "+delegateLink.uutName)
     };
     print ("     found ^");
-    spendsAuthorityUut : ScriptPurpose = ctx.tx.redeemers.find_key( 
+    spendsAuthorityUut : ScriptPurpose = tx.redeemers.find_key( 
         (purpose : ScriptPurpose) -> { purpose.switch{ 
             sp: Spending => {
                 // print ("oid: " + sp.output_id.show());
@@ -65,20 +66,19 @@ func requiresDelegateAuthorizingMint(
         } }
     );
 
-    // r : Data = ctx.tx.redeemers.get(  // index redeemers by...
+    // r : Data = tx.redeemers.get(  // index redeemers by...
     //     ScriptPurpose::new_spending(  // [spending, plus ...
     //     );
         //!!! Todo replace this with a return of Option[delegate-redeemer}?
     err : String = "dgTkn "+delegateLink.uutName+" not being spent as expected"; // "not spent with an authorizing activity!")
-    maybeCheckedMintDelegateAuthority : Bool = ctx.tx.redeemers.get_safe(
+    maybeCheckedMintDelegateAuthority : Bool = tx.redeemers.get_safe(
         spendsAuthorityUut
     ).switch {
         None => {
             error(err)
         },
         Some{x} => x.switch {
-            (index: Int, fields: []Data) => {
-
+            ConstrData{index, fields} => {
                 /* avoids unused-variable warning: */ fields == fields && 
                 if (!extraMintDelegateRedeemerCheck) {
                     print("  -- ok, dgTkn spent");
@@ -113,25 +113,24 @@ func requiresDelegateAuthorizingMint(
     //     print("  -- skipping check for expected delegate output ");
     //     true
     // } else {
-    //     delegateLink.hasValidOutput(mph, ctx)        
+    //     delegateLink.hasValidOutput(mph)        
     // };
     delegateDidAuthorize && maybeCheckedMintDelegateAuthority
 }
 
 func requiresMintDelegateApproval(
-    ctx: ScriptContext, 
     mph: MintingPolicyHash
 ) -> Bool {
-    cctx : CapoCtx = mkCapoCtx(ctx, mph).withCharterRef();
+    cctx : CapoCtx = mkCapoCtx(mph).withCharterRef();
     print("Minter needs mintDgt + mint activity");
     REQT("EXPECTS the application-specific mintDelegate to explicitly check and approve the full minted value");
     print("    -- ^ e.g. assert(tx.minted.get_policy(mph) == expectedMintedValue);");
     print("    ---- (if it's only responsible for one minting policy)");
 
-    if (true) {
+    // if (true) {
         // todo: enforces minting invariants.
-        TODO("must enforce minting invariants")
-    }; 
+        TODO("must enforce minting invariants");
+    // }; 
 
     mintDgtInput : DelegateInput = cctx.requiresMintDelegateInput();
     mintDgtActivity : AbstractDelegateActivitiesEnum = mintDgtInput.genericDelegateActivity();
@@ -139,16 +138,16 @@ func requiresMintDelegateApproval(
 
     // TODO restore this: mintDgtInput.requiresValidOutput() && 
     mintDgtActivity.switch {
-        SpendingActivities => error("DelegateInput::SpendingActivity can't mint!"),
         CapoLifecycleActivities{CLA} => CLA.switch {
             CreatingDelegate => {
                 print("  -- minter wants mintDgt + CapoLifecycle (delegate-creation)");
 
                 mintDgtInput.requiresValidOutput() && 
                 true
-            }
-            // _ => // ---- left as a compile-time error if any further variants are added 
+            },
+            _ => error("no")// ---- left as a compile-time error if any further variants are added 
         },
+        SpendingActivities => error("DelegateInput::SpendingActivity can't mint!"),
         DelegateLifecycleActivities{DLA} => {
             DLA.switch {
                 ReplacingMe => {
@@ -226,14 +225,13 @@ func requiresMintDelegateApproval(
     //     mintDgt, 
     //     /* mintInvariants */ _, 
     //     /* govAuthority */ _
-    // } = getRefCharterDatum(ctx, mph);
+    // } = getRefCharterDatum(mph);
 
 
 
     // requiresDelegateAuthorizingMint(
     //     delegateLink: mintDgt, 
     //     mph: mph,
-    //     ctx: ctx
     // )
 }
 
@@ -294,7 +292,6 @@ func tnCip68ref100(tn : String) -> ByteArray {
 //  - the mint includes the seed UTXO
 //  - the mint matches the UUTs indicated by the list of purposes
 func validateUutMinting(
-    ctx: ScriptContext, 
     mph: MintingPolicyHash,
     seed: TxOutputId,
     purposes: []String,     
@@ -304,8 +301,6 @@ func validateUutMinting(
     needsMintDelegateApproval: Bool = true,
     extraMintDelegateRedeemerCheck: Bool = true
 ) -> Bool {
-    tx: Tx = ctx.tx;
-
     isBootstrapping : Bool = !( bootstrapCharter.is_zero() );
     delegateApproval : Bool = if ( isBootstrapping ) { 
         true 
@@ -320,7 +315,7 @@ func validateUutMinting(
             /* mintInvariants */ _, 
             /* govAuthority */ _,
             /* typeInfo */ _
-        } = getTxCharterDatum(ctx, mph);
+        } = getTxCharterDatum(mph);
 
         if (needsMintDelegateApproval) {
             //!!! todo: add explicit activity details in authorization
@@ -328,7 +323,6 @@ func validateUutMinting(
             requiresDelegateAuthorizingMint(
                 delegateLink: mintDgt, 
                 mph: mph, 
-                ctx: ctx,
                 extraMintDelegateRedeemerCheck: extraMintDelegateRedeemerCheck
             )
         } else {
@@ -368,6 +362,9 @@ func validateUutMinting(
         print( mph.show() );
         print(valueMinted.show() );
         error(") - validateUutMinting(): no mint")
+    } else {
+        assert(true, "no")
+        // print("  -- minted: " + valueMinted.get_policy(mph).show());
     };
 
     actualMint : Map[ByteArray]Int = valueMinted.get_policy(mph);
@@ -388,6 +385,8 @@ func validateUutMinting(
             print( "    ℹ️ 🐞 expected: ");
             print( i.show() + "x " + b.decode_utf8())
         })
+    } else {
+        assert(true, "never")
     };
 
     temp : []ByteArray = actualMint.fold( (l: []ByteArray, b : ByteArray, i: Int) -> {
@@ -417,7 +416,6 @@ func validateUutMinting(
 }
 
 func mintsUutForCharterUsingRedeemerIndex(
-    ctx: ScriptContext,
     mph: MintingPolicyHash,
     purpose: String,
     seed: TxOutputId,
@@ -440,14 +438,14 @@ func mintsUutForCharterUsingRedeemerIndex(
     REQT("ensures granted authority, implied by requiring the charter to be spent with the indicated minting activity");
     hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
     print("  --- finding required charter input ");
-    charterInput : TxInput = ctx.tx.inputs.find(hasCharter);
+    charterInput : TxInput = tx.inputs.find(hasCharter);
     print ("  <-- found charter input");
-    charterRedeemer : Data  = mustFindInputRedeemer(ctx, charterInput);
+    charterRedeemer : Data  = mustFindInputRedeemer(charterInput);
     // print("defaultMinter @A");
 
     charterRedeemer.switch{
-        (index: Int, _fields: []Data) => {
-            /* avoids unused-variable warning: */ _fields == _fields && 
+        ConstrData{index, _fields} => {
+//            /* avoids unused-variable warning: */ _fields == _fields && 
 
             if (index == charterRedeemerIndex) { 
                 // ok, good charter-redeemer as expected; print("ok here");
@@ -463,7 +461,6 @@ func mintsUutForCharterUsingRedeemerIndex(
         _ => error("incontheeivable!")
     } &&
     validateUutMinting(
-        ctx: ctx, 
         mph: mph,
         seed: seed,
         purposes: []String{purpose}, 

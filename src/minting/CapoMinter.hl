@@ -1,5 +1,13 @@
 minting CapoMinter
 
+import {
+    tx, 
+    get_current_input,
+    get_current_validator_hash,
+    get_current_minting_policy_hash,
+    get_cont_outputs
+} from ScriptContext
+
 import { 
     hasSeedUtxo, 
     mkUutTnFactory,
@@ -48,12 +56,11 @@ func hasContractSeedUtxo(tx: Tx) -> Bool {
 // }
 
 
-func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
-    tx: Tx = ctx.tx;
-    mph: MintingPolicyHash = ctx.get_current_minting_policy_hash();
+func main(r : MinterActivity) -> Bool {
+    mph: MintingPolicyHash = get_current_minting_policy_hash();
     value_minted: Value = tx.minted;
     assert(true || (/* never evaluated */ rev.serialize() == rev.serialize()), "no");
-    print(" 🚥❓ Capo minter: " + ctx.get_current_minting_policy_hash().show());
+    print(" 🚥❓ Capo minter: " + get_current_minting_policy_hash().show());
 
     ok : Bool = r.switch {
         charter: mintingCharter => {
@@ -82,7 +89,6 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
             );
             print("defaultMinter @B");
             mintsUuts: Bool = validateUutMinting(
-                ctx: ctx, 
                 mph: mph,
                 seed: minterSeed,
                 purposes: purposes, 
@@ -96,9 +102,9 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
             // ^^ fails if there's no charter output to the right address
 
             print("defaultMinter @C");
-            charterData : Data = charterOutput.datum.get_inline_data();
+            charterData : Data = charterOutput.datum.inline;
             charterDatum = CapoDatum::CharterToken::from_data(charterData);
-            CapoDatum::CharterToken{
+            CharterToken{
                 spendDgt, 
                 spendInvariants,
                 /* settingsUut */ _, 
@@ -109,13 +115,13 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                 /* typeMapUut */ _
             } = charterDatum;
             foundSettings : outputAndDatum[CapoDatum::SettingsData] = 
-                charterDatum.mustFindSettingsOutput(ctx: ctx, mph: mph, inAddr: charter.owner);
+                charterDatum.mustFindSettingsOutput(mph: mph, inAddr: charter.owner);
             assert(foundSettings == foundSettings, "no way");
 
                 // charterData.switch{
             //         // c: Datum => c.switch{ 
             //         // c:CharterToken => c, _ => error("unexpected datum type") },
-            //     (index: Int, fields: []Data) => {
+            //     ConstrData{index, fields} => {
             //         assert(index==0, "charter token must be at index 0");
             //         assert(fields.length == 7, "charter token must have 7 fields");
             //         // {authDgt, mintDgt, spendDgt, mintInvariants, spendInvariants}
@@ -150,9 +156,9 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
             assert(spendInvariants.length == 0, "no spend invariants allowed at charter creation");
             assert(namedDelegates.length ==0, "no named delegates allowed at charter creation");
             
-            hasGoodDelegates : Bool = authDgt.hasValidOutput(mph, ctx) &&
-                mintDgt.hasValidOutput(mph, ctx) &&
-                spendDgt.hasValidOutput(mph, ctx);
+            hasGoodDelegates : Bool = authDgt.hasValidOutput(mph) &&
+                mintDgt.hasValidOutput(mph) &&
+                spendDgt.hasValidOutput(mph);
 
             print("     -- hasSeed: " + hasSeed.show());
             print("     -- mintsUuts: " + mintsUuts.show());
@@ -163,7 +169,7 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
         // ------------------------- MOST MINTING ACTIVITIES USE THIS CODE PATH --------------------
         mintWithDelegateAuthorizing => {
             print("mintWithDelegateAuthorizing");
-            requiresMintDelegateApproval(ctx, mph)
+            requiresMintDelegateApproval(mph)
             // -------------------------  ^^^ deferring to the Capo's current minting delegate --------------------
         },
 
@@ -175,7 +181,6 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                                     //!todo change this one
             mintsUutForCharterUsingRedeemerIndex(
                 charterRedeemerIndex: addMintInvariant,
-                ctx : ctx, 
                 mph: mph, 
                 purpose: "mintInvar", 
                 seed: seed
@@ -189,7 +194,6 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                         print("checking for addingSpendInvariant");
             mintsUutForCharterUsingRedeemerIndex(
                 charterRedeemerIndex: addSpendInvariant,
-                ctx : ctx, 
                 mph: mph, 
                 purpose: "spendInvar", 
                 seed: seed
@@ -202,7 +206,6 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                                     //!todo change this one
             mintsUutForCharterUsingRedeemerIndex(
                 charterRedeemerIndex: updatingCharter,
-                ctx : ctx, 
                 mph: mph, 
                 purpose: "mintDgt",
                 seed: seed, 
@@ -229,15 +232,14 @@ func main(r : MinterActivity, ctx: ScriptContext) -> Bool {
                         //!todo change this one
             mintsUutForCharterUsingRedeemerIndex(
                 charterRedeemerIndex: updatingCharter,
-                ctx : ctx,
                 mph: mph,
                 purpose: "spendDgt",
                 seed: seed,
                 needsMintDelegateApproval: false,
                 otherMintedValue: otherMintedValue
             )
-        },
-        _ => true
+        }        
+        // _ => true
     };
 
     // print("defaultMinter: minting value: " + value_minted.show());

@@ -2,58 +2,26 @@ import { statSync } from "fs";
 
 import {
     Address,
-    Assets,
-    HeliosData,
     MintingPolicyHash,
-    NetworkParams,
     Program,
     TxOutput,
     TxInput,
-    UplcData,
-    UplcDataValue,
-    UplcProgram,
     Value,
     Datum,
-    AssetClass,
     ListData,
     ConstrData,
-    WalletHelper,
 } from "@hyperionbt/helios";
 import * as helios from "@hyperionbt/helios";
-import type { Network, Wallet } from "@hyperionbt/helios";
+import { SimpleWallet } from "@helios-lang/tx-utils";
+import {UplcProgramV2, type UplcData} from "@helios-lang/uplc"
+import type { Network, Wallet,  } from "@hyperionbt/helios";
+// export type UplcProgramV2 = ReturnType<Program["compile"]>
+export type anyUplcProgram = UplcProgramV2 
+// | UplcProgramV3;
 
-const innerHash = UplcProgram.prototype.hash;
-Object.defineProperty(UplcProgram.prototype, "hash", {
-    value() {
-        if (this.__cachedHash) {
-            // console.log(`    8888888888888    cached hash saved ${this.__CHsaved}ms`);
-            return this.__cachedHash;
-        }
-        const ts1 = Date.now();
-        const result = innerHash.call(this);
-        const ts2 = Date.now();
-        const diff = ts2 - ts1;
-        this.__CHsaved = diff;
-        return (this.__cachedHash = result);
-    },
-});
-
-const innerSerializeBytes = UplcProgram.prototype.serializeBytes;
-Object.defineProperty(UplcProgram.prototype, "serializeBytes", {
-    value() {
-        if (this.__cachedSerializeBytes) {
-            // console.log(`    8888888888888    cached serializeBytes saved ${this.__SBsaved}ms`);
-            return this.__cachedSerializeBytes;
-        }
-        const ts1 = Date.now();
-        const result = innerSerializeBytes.call(this);
-        const ts2 = Date.now();
-        const diff = ts2 - ts1;
-
-        this.__SBsaved = ts2 - ts1;
-        return (this.__cachedSerializeBytes = result);
-    },
-});
+export function isUplcData(x: any): x is UplcData {
+    return "kind" in x && "memsize" in x && "toCbor" in x;
+}
 
 import {
     StellarTxnContext,
@@ -69,17 +37,15 @@ import {
     valueAsString,
 } from "./diagnostics.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
-import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
+import { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import { mkTv, mkValuesEntry, stringToNumberArray } from "./utils.js";
 import { UutName, type SeedAttrs } from "./delegation/UutName.js";
 import type { Capo } from "./Capo.js";
 import { DatumAdapter, type adapterParsedOnchainData } from "./DatumAdapter.js";
 import type { DatumAdapterOffchainType } from "./CapoSettingsTypes.js";
 import type { SimpleWallet_stellar } from "./testing/StellarNetworkEmulator.js";
-
-type tokenPredicate<tokenBearer extends canHaveToken> = ((
-    something: tokenBearer
-) => tokenBearer | undefined) & { predicateValue: Value };
+import type { ByteArrayLike } from "@helios-lang/uplc/types/data/ByteArrayData.js";
+import { UtxoHelper, type utxoPredicate } from "./UtxoHelper.js";
 
 type NetworkName = "testnet" | "mainnet";
 let configuredNetwork: NetworkName | undefined = undefined;
@@ -89,21 +55,16 @@ let configuredNetwork: NetworkName | undefined = undefined;
  *
  * @public
  */
-export type isActivity<T = never> = {
-    redeemer: UplcDataValue | UplcData | T;
+export type isActivity = {
+    // redeemer: UplcDataValue | UplcData | T;
+    redeemer?:  UplcData;
+    details?: string;
 };
 
 type WalletsAndAddresses = {
     wallets: Wallet[];
     addresses?: Address[];
 };
-export type utxoInfo = {
-    u: TxInput;
-    sufficient: boolean;
-    free: bigint;
-    minAdaAmount: bigint;
-};
-
 /**
  * Type for the Class that constructs to a given type
  * @remarks
@@ -295,7 +256,7 @@ export async function findInputsInWallets(
     v: Value,
     searchIn: WalletsAndAddresses,
     network: Network
-) {
+) : Promise<TxInput<null, any>>{
     const { wallets, addresses } = searchIn;
 
     const lovelaceOnly = v.assets.isZero();
@@ -310,12 +271,12 @@ export async function findInputsInWallets(
         for (const u of utxos) {
             if (lovelaceOnly) {
                 if (u.value.assets.isZero() && u.value.lovelace >= v.lovelace) {
-                    return u;
+                    return u as any;
                 }
                 console.log("  - too small; skipping ", u.value.dump());
             } else {
-                if (u.value.ge(v)) {
-                    return u;
+                if (u.value.isGreaterOrEqual(v)) {
+                    return u as any
                 }
             }
         }
@@ -332,8 +293,8 @@ export async function findInputsInWallets(
         for (const a of addresses) {
             const utxos = await network.getUtxos(a);
             for (const u of utxos) {
-                if (u.value.ge(v)) {
-                    return u;
+                if (u.value.isGreaterOrEqual(v)) {
+                    return u as any
                 }
             }
         }
@@ -352,11 +313,12 @@ export async function findInputsInWallets(
  **/
 export type SetupDetails = {
     network: Network;
-    networkParams: NetworkParams;
+    networkParams: helios.NetworkParams;
     isMainnet?: boolean;
     actorContext: ActorContext;
     isTest?: boolean;
     isDev?: boolean;
+    uh: UtxoHelper;
     optimize?: boolean;
 };
 
@@ -383,21 +345,6 @@ export type StellarFactoryArgs<CT extends configBaseWithRev> = {
     partialConfig?: Partial<CT>;
 };
 
-/**
- * a function that can filter txInputs for coin-selection
- * @remarks
- *
- * short form: "returns truthy" if the input is matchy for the context
- * @public
- **/
-export type utxoPredicate = (
-    | ((u: TxInput) => TxInput | undefined)
-    | ((u: TxInput) => boolean)
-    | ((u: TxInput) => boolean | undefined)
-) & {
-    predicateValue?: Value;
-};
-
 type scriptPurpose =
     | "testing"
     | "minting"
@@ -406,18 +353,6 @@ type scriptPurpose =
     | "module"
     | "endpoint";
 
-export type canHaveToken = TxInput | TxOutput | Assets;
-type UtxoSearchScope = {
-    address?: Address;
-    wallet?: Wallet | helios.SimpleWallet | SimpleWallet_stellar;
-    exceptInTcx?: StellarTxnContext;
-    // utxos : TxInput[]
-};
-
-type UtxoSearchScopeWithUtxos = UtxoSearchScope & {
-    utxos: TxInput[];
-    required?: true;
-};
 
 type ComputedScriptProperties = Partial<{
     vh: helios.ValidatorHash;
@@ -469,7 +404,7 @@ export class StellarContract<
     contractParams?: configBaseWithRev;
     setup: SetupDetails;
     network: Network;
-    networkParams: NetworkParams;
+    networkParams: helios.NetworkParams;
     actorContext: ActorContext<any>;
     // isTest?: boolean
     static get defaultParams() {
@@ -552,6 +487,7 @@ export class StellarContract<
      **/
     constructor(setup: SetupDetails, internal: typeof isInternalConstructor) {
         this.setup = setup;
+        this._utxoHelper = new UtxoHelper(this);
         if (internal !== isInternalConstructor) {
             throw new Error(
                 `StellarContract: use createWith() factory function`
@@ -562,7 +498,7 @@ export class StellarContract<
         const { network, networkParams, isTest, isMainnet, actorContext } =
             setup;
         this.actorContext = actorContext;
-        helios.config.set({ IS_TESTNET: !isMainnet });
+        // helios.config.set({ IS_TESTNET: !isMainnet }); use for TxBuilderConfig from this.setup.isMainnet
         this.network = network;
         this.networkParams = networkParams;
         // this.isTest = isTest
@@ -606,7 +542,7 @@ export class StellarContract<
         return this;
     }
 
-    compiledScript!: UplcProgram; // initialized in loadProgramScript
+    compiledScript!: anyUplcProgram; // initialized in loadProgramScript
 
     get datumType() {
         return this.onChainDatumType;
@@ -617,7 +553,6 @@ export class StellarContract<
     _purpose?: scriptPurpose;
     get purpose() {
         if (this._purpose) return this._purpose;
-
         const purpose = this.scriptProgram?.purpose as scriptPurpose;
         if (!purpose) return "non-script";
         return (this._purpose = purpose as scriptPurpose);
@@ -627,7 +562,7 @@ export class StellarContract<
         const { vh } = this._cache;
         if (vh) return vh;
         // console.log(this.constructor.name, "cached vh", vh?.hex || "none");
-        const nvh = this.compiledScript.validatorHash;
+        const nvh = this.compiledScript.hash();
         // console.log("nvh", nvh.hex);
         // if (vh) {
         //     if (!vh.eq(nvh)) {
@@ -635,7 +570,7 @@ export class StellarContract<
         //         debugger
         //     }
         // }
-        return (this._cache.vh = nvh);
+        return (this._cache.vh = new helios.ValidatorHash(nvh));
     }
 
     //  todo: stakingAddress?: Address or credential or whatever;
@@ -649,7 +584,11 @@ export class StellarContract<
         );
         console.log("and that the onchain part also supports it");
 
-        const nAddr = Address.fromHashes(this.validatorHash);
+        const nAddr = Address.fromHash(
+            this.setup.isMainnet || false,
+            this.validatorHash
+        );
+        // this.validatorHash);
         // console.log("nAddr", nAddr.toBech32());
         // if (this._address) {
         //     if (!this._address.eq(nAddr)) {
@@ -665,7 +604,7 @@ export class StellarContract<
         const { mph } = this._cache;
         if (mph) return mph;
         // console.log(this.constructor.name, "_mph", this._mph?.hex || "none");
-        const nMph = this.compiledScript.mintingPolicyHash;
+        const nMph = new helios.MintingPolicyHash(this.compiledScript.hash());
         // console.log("nMph", nMph.hex);
         // if (this._mph) {
         //     if (!this._mph.eq(nMph)) {
@@ -711,15 +650,8 @@ export class StellarContract<
         // const dump = utxosAsString(myUtxos)
         // console.log({dump})
         return myUtxos.filter((u) => {
-            return u.origOutput.datum?.hash.hex == datum.hash.hex;
+            return u.output.datum?.hash.isEqual(datum.hash);
         });
-    }
-
-    //! adds the values of the given TxInputs
-    totalValue(utxos: TxInput[]): Value {
-        return utxos.reduce((v: Value, u: TxInput) => {
-            return v.add(u.value);
-        }, new Value(0n));
     }
 
     /**
@@ -799,26 +731,12 @@ export class StellarContract<
      *
      * @public
      **/
-    get onChainTypes() {
-        const types = { ...this.scriptProgram!.types };
-        //@ts-expect-error because allStatements is marked as internal
-        const statements = this.scriptProgram!.allStatements;
+    get onChainTypes() : Program["userTypes"][string]{        
+        // compiledScript.userTypes()
+        // const types = { ...this.scriptProgram!.types };
 
-        for (const [statement, _someBoolThingy] of statements) {
-            const name = statement.name.value;
-            if (types[name]) continue;
-            const protoName = Object.getPrototypeOf(statement).constructor.name;
-            if (
-                "StructStatement" == protoName ||
-                "EnumStatement" == protoName
-            ) {
-                const type = statement.genOffChainType(); // an off-chain type **representing** an on-chain type
-                const name = type.name.value;
-                if (types[name]) throw new Error(`ruh roh`);
-                types[name] = type;
-            }
-        }
-        return types;
+        const scriptNamespace = this.scriptProgram!.name
+        return this.scriptProgram!.userTypes[scriptNamespace]        
     }
 
     /**
@@ -844,7 +762,11 @@ export class StellarContract<
      **/
     get onChainDatumType() {
         const { scriptDatumName: onChainDatumName } = this;
-        const { [onChainDatumName]: DatumType } = this.scriptProgram!.types;
+        const scriptNamespace = this.scriptProgram!.name
+        const { 
+            [scriptNamespace]: {
+                [onChainDatumName]: DatumType 
+        }   } = this.scriptProgram!.userTypes;
         return DatumType;
     }
 
@@ -861,12 +783,8 @@ export class StellarContract<
     }
 
     getSeed(arg: hasSeed): helios.TxOutputId {
-        const {
-            txId,
-            idx
-        } = arg instanceof StellarTxnContext
-            ? arg.getSeedUtxoDetails()
-            : arg;
+        const { txId, idx } =
+            arg instanceof StellarTxnContext ? arg.getSeedUtxoDetails() : arg;
 
         return new helios.TxOutputId(txId, idx);
     }
@@ -885,9 +803,13 @@ export class StellarContract<
     get onChainActivitiesType() {
         const { scriptActivitiesName: onChainActivitiesName } = this;
         if (!this.scriptProgram) throw new Error(`no scriptProgram`);
+        const scriptNamespace = this.scriptProgram!.name
+        const { 
+            [scriptNamespace]: {
+                [onChainActivitiesName]: ActivitiesType 
+        }   } = this.scriptProgram!.userTypes;
 
-        const { [onChainActivitiesName]: ActivitiesType } =
-            this.scriptProgram!.types;
+        
         return ActivitiesType;
     }
 
@@ -905,25 +827,36 @@ export class StellarContract<
         return this.mustGetEnumVariant(ocat, activityName);
     }
 
-    mustGetEnumVariant(enumType: typeof UplcData, variantName: string) {
+    mustGetEnumVariant(enumType: helios.UplcData, variantName: string) {
         //@ts-expect-error
-        const { [variantName]: variantType } = enumType;
+        const { [variantName]: variantType } = enumType.typeMembers;
 
         if (!variantType) {
             // const { scriptActivitiesName: onChainActivitiesName } = this;
             const variantNames: string[] = [];
             //inspect the properties in `this`, using property descriptors.
             for (const [name, _] of Object.entries(
-                Object.getOwnPropertyDescriptors(enumType)
+                //@ts-expect-error
+                enumType.typeMembers
             )) {
                 //Some of them will point to Class definitions.
                 // check if any of those classes inherit from UplcData.
-                if (enumType[name].prototype instanceof helios.UplcData) {
+                debugger
+                if (isUplcData(enumType[name].prototype)) {
+                    console.warn(
+                        "\n".repeat(8) +
+                            "------------------------ check enum variant name",
+                        name
+                    );
+                    debugger;
                     // if so, add the name to activityNames.
                     variantNames.push(name);
-                } else if (enumType[name].protototype instanceof helios.HeliosData) {
-                    throw new Error("variant names only available via HeliosData : (")
-                }                
+                } else {
+                    debugger;
+                    throw new Error(
+                        "variant names only available via HeliosData : ("
+                    );
+                }
             }
             debugger;
             //!!! TODO
@@ -1025,7 +958,6 @@ export class StellarContract<
             return singleFieldStruct;
         }
 
-        //@ts-expect-error until Helios exposes right type info for the list element
         const nestedFieldList = uplcData.list;
         return Object.fromEntries(
             await Promise.all(
@@ -1053,13 +985,13 @@ export class StellarContract<
     ) {
         const fieldNames: string[] = enumDataDef.fieldNames;
 
-        //@ts-expect-error TS doesn't understand this enum variant data
         const { fields } = uplcData;
         return Object.fromEntries(
             await Promise.all(
                 fieldNames.map(async (fn, i) => {
                     const fieldData = fields[i];
                     const fieldType = enumDataDef.fields[i].type;
+
                     const value = await this.readUplcField(
                         fn,
                         fieldType,
@@ -1262,7 +1194,6 @@ export class StellarContract<
         }
         if (uplcDataField instanceof helios.ListData) {
             const entries = [];
-            //@ts-expect-error
             const promises = uplcDataField.list.map((item, i) => {
                 const readOne = this.readOtherUplcType(
                     `${fn}.[${i}]`,
@@ -1287,7 +1218,6 @@ export class StellarContract<
             return uplcDataField.value;
         }
         if (uplcDataField instanceof helios.ByteArrayData) {
-            //@ts-expect-error
             return uplcDataField.bytes;
         }
 
@@ -1303,7 +1233,7 @@ export class StellarContract<
                     // prettier-ignore
                     //@ts-expect-error
                     (uplcDataField.fields.length != 1 || uplcDataField.fields.length != 3) &&
-                    //@ts-expect-error
+
                     !(uplcDataField.fields[0] instanceof helios.MapData
                 )
                 ) {
@@ -1317,7 +1247,7 @@ export class StellarContract<
                     );
                 }
             }
-            //@ts-expect-error
+
             if (!uplcDataField.fields.length) {
                 // console.log(`datum: field ${fn}: empty ConstrData`, {
                 //     fieldType,
@@ -1328,7 +1258,7 @@ export class StellarContract<
             }
             return this.readOtherUplcType(
                 `${fn}.${fieldName}`,
-                //@ts-expect-error - it can be a ConstrData and also have fields, but the Helios type doesn't seem to know that
+
                 uplcDataField.fields[0],
                 undefined
             );
@@ -1361,457 +1291,24 @@ export class StellarContract<
         return uplcDataField;
     }
 
-    findSmallestUnusedUtxo(
-        lovelace: bigint,
-        utxos: TxInput[],
-        tcx?: StellarTxnContext
-    ): TxInput | undefined {
-        const value = new Value({ lovelace });
-        const toSortInfo = this._mkUtxoSortInfo(value.lovelace);
-
-        const found = utxos
-            .map(toSortInfo)
-            .filter(this._utxoIsPureADA)
-            .filter(this._utxoIsSufficient)
-            .filter((uInfo: utxoInfo) => {
-                if (!tcx) return true;
-                return !!tcx?.utxoNotReserved(uInfo.u);
-            })
-            .sort(this._utxoSortSmallerAndPureADA)
-            .map(this._infoBackToUtxo);
-        console.log("smallest utxos: ", utxosAsString(found));
-        const chosen = found.at(0);
-
-        return chosen;
-    }
-
-    //! creates a filtering function, currently for TxInput-filtering only.
-    //! with the optional tcx argument, utxo's already reserved
-    //  ... in that transaction context will be skipped.
-    mkValuePredicate(
-        lovelace: bigint,
-        tcx?: StellarTxnContext
-    ): tokenPredicate<TxInput> {
-        const value = new Value({ lovelace });
-        const predicate = _adaPredicate.bind(this, tcx) as tokenPredicate<any>;
-        predicate.predicateValue = value;
-        return predicate;
-
-        function _adaPredicate(
-            this: StellarContract<ConfigType>,
-            tcx: StellarTxnContext | undefined,
-            utxo: TxInput
-        ): TxInput | undefined {
-            return this.hasOnlyAda(value, tcx, utxo);
-        }
-    }
-
-    mkMinTv(
-        mph: MintingPolicyHash,
-        tokenName: string | UutName | number[],
-        count: bigint = 1n
-    ) {
-        const tnBytes = Array.isArray(tokenName)
-            ? tokenName
-            : stringToNumberArray(tokenName.toString());
-
-        return this.mkMinAssetValue(new AssetClass([mph, tnBytes]), count);
-    }
-
-    mkAssetValue(tokenId: AssetClass, count: bigint = 1n) {
-        const assets = [[tokenId, count] as [AssetClass, bigint]];
-        const v = new Value(undefined, assets);
-        return v;
-    }
-
-    mkMinAssetValue(tokenId: AssetClass, count: bigint = 1n) {
-        const v = this.mkAssetValue(tokenId, count);
-        // uses a dummy address so it can be used even during bootstrap
-        const txo = new TxOutput(
-            new Address(Array<number>(29).fill(0)),
-            this.mkAssetValue(tokenId, count)
-        );
-        txo.correctLovelace(this.networkParams);
-        return txo.value;
-    }
-
-    tokenAsValue(
-        tokenName: string | number[] | UutName,
-        count: bigint = 1n
-    ): Value {
-        throw new Error(`only implemented by Capo`);
-    }
-
+    _utxoHelper: UtxoHelper;
     /**
-     * Creates a token predicate suitable for mustFindActorUtxo or mustFindMyUtxo
-     * @remarks This variant takes just a token-name / quantity, working only on Capo instances,
-     * and seeks a token created by the Capo's minting policy.
-     *
-     * Choose from one of the other variants to make a more specific token predicate.
+     * Provides access to a UtxoHelper instance
      */
-    mkTokenPredicate(
-        this: Capo<any>,
-        tokenName: UutName | number[] | string,
-        quantity?: bigint
-    ): tokenPredicate<any>;
+    get utxoHelper() {
+        return this._utxoHelper;
+    }
     /**
-     * Creates a token predicate suitable for mustFindActorUtxo or mustFindMyUtxo
-     * @remarks This variant uses a Value for filtering - each matched item must have the ENTIRE value.
+     * Provides access to a UtxoHelper instance
+    * @remarks - same as utxoHelper, but with a shorter name
      */
-    mkTokenPredicate(val: Value): tokenPredicate<any>;
+    get uh() {
+        return this._utxoHelper;
+    }
+
     /**
-     * Creates a token predicate suitable for mustFindActorUtxo or mustFindMyUtxo
-     * @remarks This variant uses an explicit combination of policy/token-name/quantity
+     * @deprecated - use `tcx.submit()` instead.
      */
-    mkTokenPredicate(
-        mph: MintingPolicyHash,
-        tokenName: string,
-        quantity?: bigint
-    ): tokenPredicate<any>;
-    /**
-     * Creates a token predicate suitable for mustFindActorUtxo or mustFindMyUtxo
-     * @remarks This variant uses an AssetClass(policy/token-name) and quantity
-     */
-    mkTokenPredicate(
-        mphAndTokenName: AssetClass,
-        quantity?: bigint
-    ): tokenPredicate<any>;
-    mkTokenPredicate(
-        specifier:
-            | Value
-            | MintingPolicyHash
-            | AssetClass
-            | UutName
-            | number[]
-            | string,
-        quantOrTokenName?: string | bigint,
-        quantity?: bigint
-    ): tokenPredicate<any> {
-        let v: Value;
-        let mph: MintingPolicyHash;
-        let tokenName: string;
-        //!!! todo: support (AssetClass, quantity) input form
-        if (!specifier)
-            throw new Error(
-                `missing required Value or MintingPolicyHash or UutName (or uut-name as byte-array) in arg1`
-            );
-        const predicate = _tokenPredicate.bind(this) as tokenPredicate<any>;
-
-        const isValue = specifier instanceof Value;
-        const isTokenNameOnly =
-            "string" === typeof specifier ||
-            (Array.isArray(specifier) && "number" === typeof specifier[0]);
-        const isUut = specifier instanceof UutName;
-        if (isValue) {
-            // v = predicate.value = specifier;
-            const t = _tokenPredicate.bind(
-                this,
-                specifier
-            ) as tokenPredicate<any>;
-            t.predicateValue = specifier;
-            return t;
-        } else if (isUut || isTokenNameOnly) {
-            const tn = specifier as UutName | number[] | string;
-            const quant = quantOrTokenName ? BigInt(quantOrTokenName) : 1n;
-            const tv = this.tokenAsValue(
-                tn,
-                quant // quantity if any
-            );
-            const t = _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
-            t.predicateValue = tv;
-            return t;
-        } else if (specifier instanceof MintingPolicyHash) {
-            mph = specifier;
-            if ("string" !== typeof quantOrTokenName)
-                throw new Error(
-                    `with minting policy hash, token-name must be a string (or ByteArray support is TODO)`
-                );
-            tokenName = quantOrTokenName;
-            quantity = quantity || 1n;
-
-            // v = predicate.value = this.mkTokenValue(tokenName, quantity, mph);
-            // return predicate;
-            const tv = this.mkTokenValue(tokenName, quantity, mph);
-
-            const t = _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
-            t.predicateValue = tv;
-            return t;
-        } else if (specifier instanceof AssetClass) {
-            mph = specifier.mintingPolicyHash;
-            if (!quantOrTokenName) quantOrTokenName = 1n;
-            if ("bigint" !== typeof quantOrTokenName)
-                throw new Error(
-                    `with AssetClass, the second arg must be a bigint like 3n, or omitted`
-                );
-            quantity = quantOrTokenName;
-
-            // v = predicate.value = new Value(0n, [[specifier, quantity]]);
-            // return predicate;
-            const tv = new Value(0n, [[specifier, quantity]]);
-            const t = _tokenPredicate.bind(this, tv) as tokenPredicate<any>;
-            t.predicateValue = tv;
-            return t;
-        } else {
-            throw new Error(
-                `wrong token specifier (need Value, MPH+tokenName, or AssetClass`
-            );
-        }
-
-        function _tokenPredicate<tokenBearer extends canHaveToken>(
-            this: StellarContract<ConfigType>,
-            v: Value,
-            something: tokenBearer
-        ): tokenBearer | undefined {
-            return this.hasToken(something, v);
-        }
-    }
-
-    private hasToken<tokenBearer extends canHaveToken>(
-        something: tokenBearer,
-        value: Value,
-        tokenName?: string,
-        quantity?: bigint
-    ): tokenBearer | undefined {
-        if (something instanceof TxInput)
-            return (
-                (this.utxoHasToken(something, value, tokenName, quantity) &&
-                    something) ||
-                undefined
-            );
-        if (something instanceof TxOutput)
-            return (
-                (this.outputHasToken(something, value, tokenName, quantity) &&
-                    something) ||
-                undefined
-            );
-        if (something instanceof Assets)
-            return (
-                (this.assetsHasToken(something, value, tokenName, quantity) &&
-                    something) ||
-                undefined
-            );
-
-        //!!! todo: more explicit match for TxInput, which seems to be a type but not an 'instanceof'-testable thing.
-        return (
-            (this.inputHasToken(something, value, tokenName, quantity) &&
-                something) ||
-            undefined
-        );
-    }
-
-    private utxoHasToken(
-        u: TxInput,
-        value: Value,
-        tokenName?: string,
-        quantity?: bigint
-    ) {
-        return (
-            this.outputHasToken(u.origOutput, value, tokenName, quantity) && u
-        );
-    }
-    private inputHasToken(
-        i: TxInput,
-        value: Value,
-        tokenName?: string,
-        quantity?: bigint
-    ) {
-        return (
-            this.outputHasToken(i.origOutput, value, tokenName, quantity) && i
-        );
-    }
-
-    private assetsHasToken(
-        a: Assets,
-        vOrMph: Value | MintingPolicyHash,
-        tokenName?: string,
-        quantity?: bigint
-    ) {
-        const v =
-            vOrMph instanceof MintingPolicyHash
-                ? this.mkTokenValue(tokenName!, quantity!, vOrMph)
-                : vOrMph;
-
-        return a.ge(v.assets);
-    }
-
-    private outputHasToken(
-        o: TxOutput,
-        vOrMph: Value | MintingPolicyHash,
-        tokenName?: string,
-        quantity?: bigint
-    ) {
-        const isValue = vOrMph instanceof Value;
-        if (!isValue) {
-            if (!tokenName || !quantity) {
-                throw new Error(
-                    `missing required tokenName/quantity (or use a Value in arg2`
-                );
-            }
-        }
-
-        const v = isValue
-            ? vOrMph
-            : this.mkTokenValue(tokenName!, quantity!, vOrMph);
-
-        return o.value.ge(v);
-    }
-
-    /**
-     * Creates a Value object representing a token with the given name and quantity
-     * @remarks
-     * This method doesn't include any lovelace in the Value object.
-     * use mkMinTokenValue() to include the minimum lovelace for storing that token in its own utxo
-     * @param tokenName - the name of the token
-     * @param quantity - the quantity of the token
-     * @param mph - the minting policy hash of the token
-     * @public
-     **/
-    mkTokenValue(
-        tokenName: string | number[],
-        quantity: bigint,
-        mph: MintingPolicyHash
-    ): Value {
-        return new Value(
-            this.ADA(0),
-            new Assets([[mph, [mkValuesEntry(tokenName, quantity)]]])
-        );
-    }
-    /**
-     * Creates a Value having enough lovelace to store the indicated token
-     * @remarks
-     * This is equivalent to mkTokenValue() with an extra min-utxo calculation
-     * @public
-     **/
-    mkMinTokenValue(
-        tokenName: string | number[],
-        quantity: bigint,
-        mph: MintingPolicyHash
-    ) {
-        const v = this.mkTokenValue(tokenName, quantity, mph);
-        const o = new TxOutput(this.address, v);
-        v.setLovelace(o.calcMinLovelace(this.networkParams));
-
-        return v;
-    }
-
-    hasOnlyAda(value: Value, tcx: StellarTxnContext | undefined, u: TxInput) {
-        const toSortInfo = this._mkUtxoSortInfo(value.lovelace);
-
-        const found = [u]
-            .map(toSortInfo)
-            .filter(this._utxoIsSufficient)
-            .filter(this._utxoIsPureADA)
-            .map(this._infoBackToUtxo)
-            .at(0);
-
-        return found;
-    }
-
-    /**
-     * @internal
-     **/
-    protected _utxoSortSmallerAndPureADA(
-        { free: free1, minAdaAmount: r1 }: utxoInfo,
-        { free: free2, minAdaAmount: r2 }: utxoInfo
-    ) {
-        {
-            //! primary: treats pure-ada utxos as always better
-            if (!r1 && r2) {
-                return -1;
-            }
-            if (r1 && !r2) {
-                return 1; //
-            }
-        }
-        //! secondary: smaller utxos are more preferred than larger ones
-        if (free2 > free1) return -1;
-        if (free2 < free1) return 1;
-        return 0;
-    }
-
-    /**
-     * @internal
-     **/
-    protected _utxoIsSufficient({ sufficient }: utxoInfo) {
-        return !!sufficient;
-    }
-    /**
-     * @internal
-     **/
-    protected _utxoIsPureADA({ u }: utxoInfo) {
-        return u.value.assets.isZero() ? u : undefined;
-    }
-    /*
-     * @internal
-     **/
-    protected _infoBackToUtxo({ u }: utxoInfo) {
-        return u;
-    }
-    /**
-     * @internal
-     **/
-    protected _mkUtxoSortInfo(min: bigint, max?: bigint) {
-        return (u: TxInput): utxoInfo => {
-            const minAdaAmount = u.value.assets.isZero()
-                ? BigInt(0)
-                : u.origOutput.calcMinLovelace(this.networkParams);
-            const free = u.value.lovelace - minAdaAmount;
-            const sufficient = free > min && (max ? free < max : true);
-            const t = { u, sufficient, free, minAdaAmount };
-            // console.log(t, utxoAsString(u))
-            return t;
-        };
-    }
-    /**
-     * @internal
-     **/
-    protected _utxoCountAdaOnly(c: number, { minAdaAmount }: utxoInfo): number {
-        return c + (minAdaAmount ? 0 : 1);
-    }
-
-    async findAnySpareUtxos(
-        tcx: StellarTxnContext
-    ): Promise<TxInput[] | never> {
-        const mightNeedFees = this.ADA(3.5);
-
-        const toSortInfo = this._mkUtxoSortInfo(mightNeedFees);
-        const notReserved =
-            tcx?.utxoNotReserved.bind(tcx) || ((u: TxInput) => u);
-
-        return this.wallet.utxos.then((utxos) => {
-            const allSpares = utxos
-                .filter(notReserved)
-                .map(toSortInfo)
-                .filter(this._utxoIsSufficient)
-                .sort(this._utxoSortSmallerAndPureADA);
-
-            if (allSpares.reduce(this._utxoCountAdaOnly, 0) > 0) {
-                return allSpares
-                    .filter(this._utxoIsPureADA)
-                    .map(this._infoBackToUtxo);
-            }
-            return allSpares.map(this._infoBackToUtxo);
-        });
-    }
-
-    async findChangeAddr(): Promise<Address> {
-        const {
-            actorContext: { wallet },
-        } = this;
-        if (!wallet) {
-            throw new Error(
-                `⚠️ ${this.constructor.name}: no this.actorContext.wallet; can't get required change address!`
-            );
-        }
-        let unused = (await wallet.unusedAddresses).at(0);
-        if (!unused) unused = (await wallet.usedAddresses).at(-1);
-        if (!unused)
-            throw new Error(
-                `⚠️ ${this.constructor.name}: can't find a good change address!`
-            );
-        return unused;
-    }
-
     async submit(
         tcx: StellarTxnContext,
         {
@@ -1824,260 +1321,8 @@ export class StellarContract<
             addlTxInfo?: Pick<TxDescription<any>, "description">;
         } = {}
     ) {
-        let { tx, feeLimit = 2_000_000n } = tcx;
-        const {
-            actorContext: { wallet },
-        } = this;
-
-        let walletMustSign = false;
-        let sigs: helios.Signature[] | null = [];
-
-        if (wallet || signers.length) {
-            const changeAddress = await this.findChangeAddr();
-
-            const spares = await this.findAnySpareUtxos(tcx);
-            const willSign = [...signers, ...tcx.neededSigners];
-
-            const wHelper = wallet && new WalletHelper(wallet);
-            // if (false)  { if (wallet && wHelper) {
-            //     //@ts-expect-error on internal isSmart()
-            //     if (tx.isSmart() && !tcx.collateral) {
-            //         let [c] = await wallet.collateral;
-            //         if (!c) {
-            //             c = await wHelper.pickCollateral(this.ADA(5n));
-            //             if (c.value.lovelace > this.ADA(20n))
-            //                 throw new Error(
-            //                     `The only collateral-eligible utxos in this wallet have more than 20 ADA.  It's recommended to create and maintain collateral values between 2 and 20 ADA (or 5 and 20, for more complex txns)`
-            //                 );
-            //         }
-            //         tcx.addCollateral(c); // adds it also to the tx.
-            //     }
-            // } }
-            // if (sign && this.wallet) {
-            //     willSign.push(this.wallet);
-            // }
-            for (const { pubKeyHash: pkh } of willSign) {
-                if (!pkh) continue;
-                if (tx.body.signers.find((s) => pkh.eq(s))) continue;
-
-                tx.addSigner(pkh);
-            }
-            // const feeEstimated = tx.estimateFee(this.networkParams);
-            // if (feeEstimated > feeLimit) {
-            //     console.log("outrageous fee - adjust tcx.feeLimit to get a different threshold")
-            //     throw new Error(`outrageous fee-computation found - check txn setup for correctness`)
-            // }
-            try {
-                const t1 = new Date().getTime();
-                await tx.finalize(this.networkParams, changeAddress, spares);
-                const t2 = new Date().getTime();
-                const elapsed = t2 - t1;
-                console.log(
-                    // stopwatch emoji: ⏱
-                    `          :::::::::: ⏱ tx validation time: ${elapsed}ms ⏱`
-                );
-                // result: validations for non-trivial txns can take ~800+ ms
-                //  - validations with simplify:true, ~250ms - but ...
-                //    ... with elided error messages that don't support negative-testing very well
-            } catch (e: any) {
-                if (e.message.match(/multi:Minting: only dgData activities ok in mintDgt/)) {
-                    console.log(
-                        `⚠️⚠️⚠️ mint delegate for multiple activities should be given delegated-data activities, not the activities of the delegate`
-                    )
-                }
-
-                // todo: find a way to run the same scripts again, with tracing retained
-                // for client-facing transparency of failures that can be escalated in a meaningful
-                // way to users.
-                console.log(
-                    `FAILED submitting tx: ${addlTxInfo.description}:`,
-                    tcx.dump(this.networkParams)
-                );
-                debugger;
-                throw e;
-            }
-            if (wallet && wHelper) {
-                for (const a of willSign) {
-                    if (!(await wHelper.isOwnAddress(a))) continue;
-                    walletMustSign = true;
-                    break;
-                }
-                // if any inputs from the wallet were added as part of finalizing,
-                // add the wallet's signature to the txn
-                if (!walletMustSign)
-                    for (const input of tx.body.inputs) {
-                        if (!(await wHelper.isOwnAddress(input.address)))
-                            continue;
-                        walletMustSign = true;
-                        tcx.neededSigners.push(input.address);
-                        break;
-                    }
-                if (walletMustSign) {
-                    const walletSign = wallet.signTx(tx);
-                    sigs = await walletSign.catch((e) => {
-                        console.warn(
-                            "signing via wallet failed: " + e.message,
-                            tcx.dump(this.networkParams)
-                        );
-                        return null;
-                    });
-                    //! doesn't need to re-verify a sig it just collected
-                    //   (sig verification is ~2x the cost of signing)
-                    if (sigs) tx.addSignatures(sigs, false);
-                }
-            }
-        } else {
-            console.warn("no 'actorContext.wallet'; not finalizing");
-        }
-        if (walletMustSign && !sigs) {
-            throw new Error(`wallet signing failed`);
-        }
-        console.log(
-            `Submitting tx: ${addlTxInfo.description}: `,
-            tcx.dump(this.networkParams)
-        );
-        const promises = [
-            this.network.submitTx(tx).catch((e) => {
-                if (
-                    "currentSlot" in this.network &&
-                    e.message.match(/or slot out of range/)
-                ) {
-                    const b = tx.body;
-                    const db = tx.dump().body;
-                    function getAttr(x: string) {
-                        return tx.body[x] || db[x];
-                    }
-
-                    const validFrom = getAttr("firstValidSlot");
-                    const validTo = getAttr("lastValidSlot");
-
-                    // vf = 100,  current = 102, vt = 110  =>   FROM now -2, TO now +8; VALID
-                    // vf = 100,  current = 98,   vt = 110  =>   FROM now +2, TO now +12; FUTURE
-                    // vf = 100,  current = 100,  vt = 110  =>  FROM now, TO now +10; VALID
-                    // vf = 100, current = 120, vt = 110  =>  FROM now -20, TO now -10; PAST
-
-                    const currentSlot = this.network.currentSlot as bigint;
-                    const diff1 = validFrom - currentSlot;
-                    const diff2 = validTo - currentSlot;
-                    const disp1 =
-                        diff1 > 0
-                            ? `NOT VALID for +${diff1}s`
-                            : `${
-                                  diff2 > 0 ? "starting" : "was valid"
-                              } ${diff1}s ago`;
-                    const disp2 =
-                        diff2 > 0
-                            ? `${
-                                  diff1 > 0 ? "would be " : ""
-                              }VALID until now +${diff2}s`
-                            : `EXPIRED ${0n - diff2}s ago`;
-
-                    console.log(
-                        `  ⚠️ slot validity issue?\n` +
-                            `    - validFrom: ${validFrom} - ${disp1}\n` +
-                            `    - validTo: ${validTo} - ${disp2}\n` +
-                            `    - current: ${currentSlot}\n`
-                    );
-                }
-                console.warn(
-                    "⚠️⚠️⚠️ submitting via helios Network failed: ",
-                    e.message
-                );
-                debugger;
-                throw e;
-            }),
-        ];
-        if (wallet) {
-            if (!this.setup.isTest)
-                promises.push(
-                    wallet.submitTx(tx).catch((e) => {
-                        console.log(
-                            "⚠️⚠️⚠️ submitting via wallet failed: ",
-                            e.message
-                        );
-                        debugger;
-                        throw e;
-                    })
-                );
-        }
-        return Promise.any(promises).then((r) => {
-            console.log(`   🎉🎉  ^^^ success: ${addlTxInfo.description} 🎉🎉`);
-            return r;
-        });
-    }
-
-    /**
-     * Executes additional transactions indicated by an existing transaction
-     * @remarks
-     *
-     * During the off-chain txn-creation process, additional transactions may be
-     * queued for execution.  This method is used to execute those transactions.
-     * @param tcx - the prior txn context having the additional txns to execute
-     * @param callback - an optional async callback that you can use to notify a user, or to log the results of the additional txns
-     * @public
-     **/
-    async submitAddlTxns(
-        tcx: hasAddlTxns<any, any>,
-        callback?: MultiTxnCallback
-    ) {
-        const { addlTxns } = tcx.state;
-        return this.submitTxns(Object.values(addlTxns), callback);
-    }
-
-    async submitTxns(
-        txns: TxDescription<any>[],
-        callback?: MultiTxnCallback,
-        onSubmitted?: MultiTxnCallback
-    ) {
-        for (const [txName, addlTxInfo] of Object.entries(txns) as [
-            string,
-            TxDescription<any>
-        ][]) {
-            const tcx = (
-                "function" == typeof addlTxInfo.tcx
-                    ? await addlTxInfo.tcx()
-                    : addlTxInfo.tcx
-            ) as StellarTxnContext;
-            const { txName, description } = addlTxInfo;
-            // if (callback) {
-            //     console.log("   -- submitTxns: callback", {
-            //         txName,
-            //         description,
-            //         callback,
-            //     });
-            // }
-            const replacementTcx =
-                (callback &&
-                    ((await callback({
-                        ...addlTxInfo,
-                        tcx,
-                    })) as typeof replacementTcx | boolean)) ||
-                tcx;
-            if (false === replacementTcx) {
-                console.log("callback cancelled txn: ", txName);
-                continue;
-            }
-            if (replacementTcx !== true && replacementTcx !== tcx) {
-                console.log(
-                    `callback replaced txn ${txName} with a different txn: `,
-                    dumpAny(replacementTcx)
-                );
-            }
-            // if the callback returns true or void, we execute the txn as already resolved.
-            // if it returns an alternative txn, we use that instead.
-            const effectiveTcx =
-                true === replacementTcx ? tcx : replacementTcx || tcx;
-            await this.submit(effectiveTcx, {
-                addlTxInfo, // just for its description.
-            });
-            if (onSubmitted) {
-                console.log(
-                    "   -- submitTxns: triggering onSubmitted callback"
-                );
-                await onSubmitted(addlTxInfo);
-                console.log("   -- submitTxns: onSubmitted callback completed");
-            }
-        }
+        console.warn("deprecated: use tcx.submit() instead");
+        return tcx.submit({ signers, addlTxInfo });
     }
 
     ADA(n: bigint | number): bigint {
@@ -2089,7 +1334,7 @@ export class StellarContract<
     }
 
     //! it requires each subclass to define a contractSource
-    contractSource(): HeliosModuleSrc | string | never {
+    contractSource(): HeliosModuleSrc |  | never {
         throw new Error(
             `${this.constructor.name}: missing required implementation of contractSource()`
         );
@@ -2140,24 +1385,39 @@ export class StellarContract<
     }
     _cache: ComputedScriptProperties = {};
 
-    loadProgramScript(params?: Partial<ConfigType>): Program | undefined {
-        const src = this.contractSource();
+    loadProgramScript(
+        params?: Partial<ConfigType>
+    ): Program | undefined {
+        let codeModule = this.contractSource();
+
+        if (!(codeModule instanceof HeliosModuleSrc)) {
+            const {content, ... options} = codeModule;
+            codeModule = new HeliosModuleSrc(content, options);
+        }
+
         const modules = [...new Set(this.importModules())];
         console.log(
             `${this.constructor.name} <- `,
-            //@ts-expect-error
-            src.srcFile || "‹unknown path›"
+            codeModule.srcFile || "‹unknown path›"
         );
-        for (const module of modules) {
-            const { srcFile, purpose, moduleName, project } = module;
+        for (let module of modules) {
+            const { srcFile, purpose, name, project, content } = module;
+            if (!(module instanceof HeliosModuleSrc)) {
+                module = new HeliosModuleSrc(content, {
+                    srcFile,
+                    purpose,
+                    name: name,
+                    project,
+                });
+            }
             console.log(
-                `  -- ${purpose}: ${moduleName} from ${srcFile} in proj ${
+                `  -- ${purpose}: ${name} from ${srcFile} in proj ${
                     project || "‹unknown›"
                 }`
             );
-            if (!(srcFile && purpose && moduleName)) {
+            if (!(srcFile && purpose && name)) {
                 console.log(
-                    `  -- ${purpose}: ${moduleName} from ${srcFile} in proj ${
+                    `  -- ${purpose}: ${name} from ${srcFile} in proj ${
                         project || "‹unknown›"
                     }`
                 );
@@ -2169,7 +1429,7 @@ export class StellarContract<
                     }: invalid module returned from importModules():\n${
                         srcFile ? `${srcFile}\n` : ""
                     }\n${
-                        module.split("\n").slice(0, 3).join("\n") // prettier-ignore
+                        content.split("\n").slice(0, 3).join("\n") // prettier-ignore
                     }${
                         purpose
                             ? ""
@@ -2181,8 +1441,12 @@ export class StellarContract<
         // console.log({src, Program, modules})
 
         try {
-            const script = Program.new(src, modules);
-            if (params) script.parameters = params;
+            const script = new Program(codeModule, {
+                moduleSources: modules,                
+            });
+            for (const [p, v] of Object.entries(params || {})) {
+                script.changeParam(p, v);
+            }
 
             const simplify = // true ; const t =
                 "optimize" in this.setup
@@ -2210,6 +1474,7 @@ export class StellarContract<
 
             //!!! todo: consider pushing this to JIT or async
             this.compiledScript = script.compile(simplify);
+
             console.log(`       ✅ ${this.constructor.name}`);
             this._cache = {};
             // const t2 = new Date().getTime();
@@ -2255,17 +1520,25 @@ export class StellarContract<
                     // debugger'ing?  YOU ARE AWESOME!
                     //  reminder: ensure "pause on caught exceptions" is enabled
                     //  before playing this next line to dig deeper into the error.
-                    const script2 = Program.new(src, modules);
+                    const script2 = new Program(codeModule, {
+                        moduleSources: modules,
+                        isTestnet: this.setup.isTest,                        
+                    });
                     console.log({ params });
-                    if (params) script2.parameters = params;
+                    if (params) {                        
+                        for (const [p, v] of Object.entries(params || {})) {
+                            script2.changeParam(p, v);
+                        }
+                        script2.compile();
+                    }            
                 } catch (sameError) {
                     throw sameError;
                 }
                 throw e;
             }
             const moduleName = e.src.name;
-            const errorModule = [src, ...modules].find(
-                (m) => (m as any).moduleName == moduleName
+            const errorModule = [codeModule, ...modules].find(
+                (m) => (m as any).name == moduleName
             );
             const { project, srcFile = "‹unknown path to module›" } =
                 (errorModule as any) || {};
@@ -2309,55 +1582,6 @@ export class StellarContract<
         }
     }
 
-    async findActorUtxo(
-        name: string,
-        predicate: (u: TxInput) => TxInput | undefined
-    ) {
-        const { wallet } = this;
-        const utxos = await wallet.utxos;
-
-        return this.hasUtxo(name, predicate, { wallet, utxos });
-    }
-
-    async mustFindActorUtxo(
-        name: string,
-        predicate: (u: TxInput) => TxInput | undefined,
-        exceptInTcx: StellarTxnContext<any>,
-        extraErrorHint?: string
-    ): Promise<TxInput>;
-    async mustFindActorUtxo(
-        name: string,
-        predicate: (u: TxInput) => TxInput | undefined,
-        extraErrorHint?: string
-    ): Promise<TxInput>;
-
-    async mustFindActorUtxo(
-        name: string,
-        predicate: (u: TxInput) => TxInput | undefined,
-        hintOrExcept?: string | StellarTxnContext,
-        hint?: string
-    ): Promise<TxInput> {
-        const { wallet } = this;
-
-        const isTcx = hintOrExcept instanceof StellarTxnContext;
-        const exceptInTcx = isTcx ? hintOrExcept : undefined;
-        const extraErrorHint = isTcx
-            ? hint
-            : "string" == typeof hintOrExcept
-            ? hintOrExcept
-            : undefined;
-
-        return this.mustFindUtxo(
-            name,
-            predicate,
-            {
-                wallet,
-                exceptInTcx,
-            },
-            extraErrorHint
-        );
-    }
-
     /**
      * Locates a UTxO locked in a validator contract address
      * @remarks
@@ -2397,7 +1621,7 @@ export class StellarContract<
             ? hintOrExcept
             : undefined;
 
-        return this.mustFindUtxo(
+        return this.utxoHelper.mustFindUtxo(
             semanticName,
             predicate,
             { address, exceptInTcx },
@@ -2405,172 +1629,17 @@ export class StellarContract<
         );
     }
 
-    async mustFindUtxo(
-        semanticName: string,
-        predicate: utxoPredicate,
-        searchScope: UtxoSearchScope,
-        extraErrorHint: string = ""
-    ): Promise<TxInput> {
-        const { address, wallet, exceptInTcx } = searchScope;
-        const utxos = address
-            ? await this.network.getUtxos(address)
-            : await wallet!.utxos;
+    // async hasMyUtxo(
+    //     semanticName: string,
+    //     predicate: utxoPredicate
+    // ): Promise<TxInput | undefined> {
+    //     const utxos = await this.network.getUtxos(this.address);
 
-        const found = await this.hasUtxo(semanticName, predicate, {
-            address,
-            wallet,
-            exceptInTcx,
-            utxos,
-            required: true,
-        });
-        if (!found) {
-            const walletAddr = wallet
-                ? //@ts-ignore - sorry typescript, address sometimes is present on a SimpleWallet in test environment
-                  wallet.address || (await wallet.usedAddresses)
-                : undefined;
-            if (!globalThis.utxoDump) {
-                console.log(
-                    // warning emoji: "⚠️"
-                    " ⚠️ find failed in candidate", dumpAny(utxos)
-                );
-            }
-            throw new Error(
-                this.utxoSearchError(
-                    semanticName,
-                    searchScope,
-                    extraErrorHint,
-                    walletAddr
-                )
-            );
-        }
-
-        return found;
-    }
-
-    utxoSearchError(
-        semanticName: string,
-        searchScope: UtxoSearchScope,
-        extraErrorHint?: string,
-        walletAddresses?: Address | Address[]
-    ): string {
-        const where = searchScope.address
-            ? `searched in address ${searchScope.address.toBech32()}\n`
-            : ``;
-        const wAddrs: Address[] = Array.isArray(walletAddresses)
-            ? walletAddresses
-            : walletAddresses
-            ? [walletAddresses]
-            : [];
-        let more = wAddrs.length
-            ? wAddrs.map((x) => dumpAny(x) + ` = ${x.toBech32()}`).join("\n")
-            : "";
-        if (wAddrs.length > 1) {
-            more = "\n  ... wallet addrs:\n";
-        } else {
-            more = wAddrs.length ? `\n  ... in wallet addr: ${more}` : "";
-        }
-        if (extraErrorHint) more += "\n";
-
-        return `${
-            this.constructor.name
-        }: '${semanticName}' utxo not found ${more}  ... ${
-            extraErrorHint || "sorry, no extra clues available"
-        }${where}\n  ... see further logged details above`;
-    }
-
-    toUtxoId(u: TxInput) {
-        return `${u.outputId.txId.hex}@${u.outputId.utxoIdx}`;
-    }
-
-    /**
-     * Try finding a utxo matching a predicate
-     * @remarks
-     *
-     * Finds the first matching utxo, if any, either in the indicated search-scope's `wallet` or `address`.
-     *
-     * @public
-     **/
-    async hasUtxo(
-        semanticName: string,
-        predicate: utxoPredicate,
-        {
-            address,
-            wallet,
-            exceptInTcx,
-            utxos,
-            required,
-        }: UtxoSearchScopeWithUtxos
-    ): Promise<TxInput | undefined> {
-        const collateral = (wallet ? await wallet.collateral : [])[0];
-        // const filterUtxos = [
-        //     ...collateral,
-        //     ...(exceptInTcx?.reservedUtxos() || []),
-        // ];
-        const notCollateral = utxos.filter((u) => !collateral?.eq(u));
-        const filtered = exceptInTcx
-            ? notCollateral.filter(
-                  exceptInTcx.utxoNotReserved.bind(exceptInTcx)
-              )
-            : notCollateral;
-
-        const joiner = "\n   🔎  ";
-        const detail = // true ||
-            globalThis.utxoDump
-                ? "\n  from set: " + joiner + utxosAsString(filtered, joiner)
-                : `(${filtered.length} candidates; set globalThis.utxoDump to see details)`;
-        console.log(
-            `  🔎 finding '${semanticName}' utxo${
-                exceptInTcx ? " (not already being spent in txn)" : ""
-                // } from set:\n    🔎 ${detail}`
-            } ${detail}`
-            // ...(exceptInTcx && filterUtxos?.length
-            //     ? [
-            //           "\n  ... after filtering out:\n ",
-            //           utxosAsString(exceptInTcx.reservedUtxos(), "\n  "),
-            //       ]
-            //     : [])
-        );
-
-        const found = filtered.find(predicate);
-        if (found) {
-            console.log("   🎈found" + utxosAsString([found]));
-        } else {
-            if (exceptInTcx) {
-                const alreadyInTcx = exceptInTcx.inputs.find(predicate);
-                if (alreadyInTcx) {
-                    console.log(
-                        `\n  um... value ${dumpAny(
-                            predicate.predicateValue
-                        )} not found. \n` +
-                            `     ${dumpAny(alreadyInTcx)}\n` +
-                            `  FYI, it seems this ^^ current txn input already has the target value. \n` +
-                            "    NOTE: You may want to adjust your dAPI to create an explicit fail-if-already-present semantic\n" +
-                            "    ... or, alternatively, to allow this token to authenticate multiple transaction elements\n" +
-                            "    ... by using explicitly idempotent 'addOrReuse' semantics, with details stored in tcx.state\n\n  ... go with care, and ask the community for help if you're unsure\n  )" +
-                            (required
-                                ? "\nBTW, here is that txn as of this time: " +
-                                  dumpAny(exceptInTcx) +
-                                  "\n\n 👁️   👁️ 👁️ ^^^^^^^ More details about the utxo search failure above ^^^^^^^ 👁️ 👁️   👁️"
-                                : "")
-                    );
-                    return undefined;
-                }
-            }
-        }
-        return found;
-    }
-
-    async hasMyUtxo(
-        semanticName: string,
-        predicate: utxoPredicate
-    ): Promise<TxInput | undefined> {
-        const utxos = await this.network.getUtxos(this.address);
-
-        return this.hasUtxo(semanticName, predicate, {
-            address: this.address,
-            utxos,
-        });
-    }
+    //     return this.utxoHelper.hasUtxo(semanticName, predicate, {
+    //         address: this.address,
+    //         utxos,
+    //     });
+    // }
 
     /**
      * Reuses an existing transaction context, or creates a new one with the given name and the current actor context
@@ -2587,7 +1656,9 @@ export class StellarContract<
         const tcx =
             tcxOrName instanceof StellarTxnContext
                 ? tcxOrName
-                : new StellarTxnContext(this.actorContext, this.networkParams).withName(name || "");
+                : new StellarTxnContext(
+                      this.setup
+                  ).withName(name || "");
         const effectiveName =
             tcxOrName instanceof StellarTxnContext ? name : tcxOrName;
 
@@ -2619,8 +1690,7 @@ export class StellarContract<
      **/
     async tcxWithSeedUtxo<TCX extends StellarTxnContext>(
         tcx: TCX = new StellarTxnContext(
-            this.actorContext,
-            this.networkParams
+            this.setup
         ) as TCX,
         seedUtxo?: TxInput
     ): Promise<TCX & hasSeedUtxo> {
@@ -2632,7 +1702,7 @@ export class StellarContract<
             return tcx as TCX & hasSeedUtxo;
         }
         if (seedUtxo) {
-            if (!tcx.inputs.find((utxo) => utxo.eq(seedUtxo))) {
+            if (!tcx.inputs.find((utxo) => utxo.isEqual(seedUtxo))) {
                 throw new Error(`seedUtxo not found in transaction inputs`);
             }
             const tcx2 = tcx as TCX & hasSeedUtxo;
@@ -2647,8 +1717,9 @@ export class StellarContract<
     }
     async findUutSeedUtxo(uutPurposes: string[], tcx: StellarTxnContext<any>) {
         //!!! make it big enough to serve minUtxo for the new UUT(s)
-        const uutSeed = this.mkValuePredicate(BigInt(42_000_000), tcx);
-        return this.mustFindActorUtxo(
+        const uh = this.utxoHelper;
+        const uutSeed = uh.mkValuePredicate(BigInt(42_000_000), tcx);
+        return uh.mustFindActorUtxo(
             `seed-for-uut ${uutPurposes.join("+")}`,
             uutSeed,
             tcx

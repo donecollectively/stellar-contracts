@@ -31,6 +31,7 @@ const codeBundle = (config) => {
 
     return {
         ...config,
+
         external: (id) => {
             // console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ext check")
             if (serverBundledModules.includes(id)) {
@@ -68,6 +69,7 @@ export default [
             esbuild({
                 tsconfig: "./tsconfig.json",
                 target: ["node18" ],
+                
                 sourceMap: false,
             }),
             execute({

@@ -122,13 +122,13 @@ import {
             );
         }
         const specialDgt = this.specializedDelegateModule;
-        if (specialDgt.moduleName == "specializedDelegate") {
+        if (specialDgt.name == "specializedDelegate") {
             throw new Error(
                 `${this.constructor.name}: specializedDelegateModule() module name must not be ` +
                     `'specializedDelegate'\n  ... in ${specialDgt.srcFile}\n  (we now provide a wrapper for your module)`
             );
         }
-        const delegateWrapper = this.mkDelegateWrapper(specialDgt.moduleName);
+        const delegateWrapper = this.mkDelegateWrapper(specialDgt.name);
         // console.log("specializedDelegate", specializedDelegate);
         // console.log("delegateWrapper", delegateWrapper);
 

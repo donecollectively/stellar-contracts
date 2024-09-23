@@ -16,9 +16,12 @@ import {
     Hash,
     textToBytes,
     Redeemer,
+    bytesToHex,
 } from "@hyperionbt/helios";
 import type { ErrorMap } from "./delegation/RolesAndDelegates.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
+import type { anyUplcProgram } from "./StellarContract.js";
+import type { UplcProgramV2 } from "@helios-lang/uplc";
 
 /**
  * converts a hex string to a printable alternative, with no assumptions about the underlying data
@@ -149,13 +152,12 @@ export function assetsAsString(
     showNegativeAsBurn? : "withBURN",
     mintRedeemers? : Record<number, string>
 ) {
-    //@ts-expect-error it's marked as private, but thankfully it's still accessible
     const assets = a.assets;
     return (assets?.map(([policyId, tokenEntries], index) => {
             const tokenString = tokenEntries
-                .map(([nameBytes, count] : [ByteArray, bigint]) => {
+                .map(([nameBytes, count] : [number[], bigint]) => {
                     // const nameString =  hexToPrintableString(nameBytes.hex);
-                    const nameString = displayTokenName(nameBytes.bytes)
+                    const nameString = displayTokenName(nameBytes)
 
                     let redeemerInfo = mintRedeemers?.[index] || "";
                     if (redeemerInfo) {
@@ -180,7 +182,7 @@ export function assetsAsString(
 }
 
 export function policyIdAsString(p: MintingPolicyHash) {
-    const pIdHex = p.hex;
+    const pIdHex = p.toHex();
     return `🏦 ${pIdHex.slice(0, 8)}…${pIdHex.slice(-4)}`;
 }
 
@@ -332,7 +334,8 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
             item = parseInt(item);
             item =
                 `${(Math.round(item / 1000) / 1000).toFixed(3)} ADA ` +
-                tx.profileReport.split("\n")[0];
+                "" // tx.profileReport.split("\n")[0];
+                // todo: find profile info and restore it here
 
             // console.log("fee", item)
         }
@@ -359,7 +362,7 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
         if ("signatures" == x) {
             if (!item) continue;
             item = item.map((s) => {
-                const addr = Address.fromHash(s.pubKeyHash);
+                const addr = Address.fromHash(true, s.pubKeyHash);
                 return `🖊️ ${addrAsString(addr)} = 🔑…${s.pubKeyHash.hex.slice(
                     -4
                 )}`;
@@ -397,7 +400,7 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
                 } catch (e) {
                     const vh = s.validatorHash;
                     const vhh = vh.hex;
-                    const addr = Address.fromHash(vh);
+                    const addr = Address.fromHash(true, vh);
                     // debugger
                     return `📜 ${vhh.slice(0, 8)}…${vhh.slice(
                         -4
@@ -424,10 +427,10 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
             .join("");
     }
     try {
-        details += `  txId: ${tx.id().hex}`;
+        details += `  txId: ${tx.id().toHex()}`;
         if (networkParams)
             details += `  size: ${
-                tx.toTxData(networkParams).toCbor().length
+                tx.toCbor().length
             } bytes`;
     } catch (e) {
         details = details + `(Tx not yet finalized!)`;
@@ -450,7 +453,7 @@ export function txInputAsString(
     redeemers? : Record<number, string>
 ): string {
     const {
-        origOutput: oo
+        output: oo
     } = x;
     const hasIndeterminate = redeemers?.["hasIndeterminate"];
     const redeemerInfo = redeemers ? (
@@ -458,12 +461,12 @@ export function txInputAsString(
                 `\n    r = ${redeemers[index || -424242]}`
                     : hasIndeterminate ? "\n    r = ‹tbd›" : ""
         ) : ""
-    return `${prefix}${addrAsString(x.address)}${showRefScript(oo.refScript)} ${valueAsString(
+    return `${prefix}${addrAsString(x.address)}${showRefScript(oo.refScript as any)} ${valueAsString(
         x.value
     )} ${
         datumSummary(oo.datum)
     } = 📖 ${
-        txOutputIdAsString(x.outputId)
+        txOutputIdAsString(x.id)
     }${redeemerInfo}${
         "" /* datumExpanded(oo.datum) */
     }`;
@@ -489,7 +492,7 @@ export function txOutputIdAsString(x: TxOutputId): string {
 }
 
 export function txidAsString(x: TxId): string {
-    const tid = x.hex;
+    const tid = x.toHex();
     return `${tid.slice(0, 6)}…${tid.slice(-4)}`;
 }
 
@@ -501,8 +504,8 @@ export function txidAsString(x: TxId): string {
  * @internal
  **/
 export function utxoAsString(x: TxInput, prefix = "💵"): string {
-    return ` 📖 ${txOutputIdAsString(x.outputId)}: ${txOutputAsString(
-        x.origOutput,
+    return ` 📖 ${txOutputIdAsString(x.id)}: ${txOutputAsString(
+        x.output,
         prefix
     )}`; // or 🪙
 }
@@ -518,7 +521,7 @@ export function datumSummary(d: Datum | null | undefined): string {
     if (!d) return ""; //"‹no datum›";
 
     // debugger
-    const dh = d.hash.hex;
+    const dh = d.hash.toHex();
     const dhss = `${dh.slice(0, 8)}…${dh.slice(-4)}`;
     if (d.isInline()) return `d‹inline:${dhss} - ${d.toCbor().length} bytes›`;
     return `d‹hash:${dhss}…›`;
@@ -527,7 +530,7 @@ export function datumSummary(d: Datum | null | undefined): string {
 export function datumExpanded(d: Datum | null | undefined): string {
     if (!d) return "";
     if (!d.isInline()) return "";
-    const data = d.data?.toCborHex()
+    const data = bytesToHex( d.data?.toCbor() )
     return `\n    d = ${data}`;
 }
 
@@ -540,20 +543,13 @@ export function datumExpanded(d: Datum | null | undefined): string {
  * @typeParam ‹pName› - descr (for generic types)
  * @public
  **/
-export function showRefScript(rs?: UplcProgram | null) {
+export function showRefScript(rs?: UplcProgramV2 | null) {
     if (!rs) return "";
-    const thisPurpose = rs.properties?.purpose;
-    const whichHash = 
-        thisPurpose == "minting" ? "mintingPolicyHash" 
-        : thisPurpose == "staking" ? "stakingValidatorHash" 
-        : "validatorHash" // : thisPurpose == "spending" ?  "validatorHash" : ""
-        // when thisPurpose is empty, it's a refScript from on-chain, and it doesn't have a purpose
-        // ... but all its hash properties are the same, so it doesn't matter which one we use.
-    const expected : Hash = rs[whichHash];
-
-    const rsh = expected.hex;
-    const rshInfo = `${rsh.slice(0, 8)}…${rsh.slice(-4)}`
-    return ` ‹📀 refScript📜 ${rshInfo}: ${rs.calcSize()} bytes› +`
+    const hash : Hash = rs.hash();
+    const hh = bytesToHex(hash);
+    const size = rs.toCbor().length
+    const rshInfo = `${hh.slice(0, 8)}…${hh.slice(-4)}`
+    return ` ‹📀 refScript📜 ${rshInfo}: ${size} bytes› +`
 }
 
 /**
@@ -564,7 +560,9 @@ export function showRefScript(rs?: UplcProgram | null) {
  * @public
  **/
 export function txOutputAsString(x: TxOutput, prefix = "<-"): string {
-    return `${prefix} ${addrAsString(x.address)}${showRefScript(x.refScript)} ${valueAsString(
+    return `${prefix} ${addrAsString(x.address)}${
+        showRefScript(x.refScript as any)
+    } ${valueAsString(
         x.value
     )} ${datumSummary(x.datum)}`;
 }
@@ -655,11 +653,9 @@ export function dumpAny(
     if ("undefined" == typeof x) return "‹undefined›";
     if (Array.isArray(x)) {
         if (x[0] instanceof TxInput) {
-            //@ts-expect-error sorry, typescript : /
             return "utxos: \n" + utxosAsString(x);
         }
         if (x[0] instanceof ByteArray || x[0] instanceof ByteArrayData) {
-            //@ts-expect-error sorry, typescript : /
             return "byte array:\n" + byteArrayListAsString(x);
         }
         if ("number" == typeof x[0]) {
@@ -696,10 +692,10 @@ export function dumpAny(
         return policyIdAsString(x);
     }
     if (x instanceof StellarTxnContext) {
-        return txAsString(x.tx, networkParams);
+        throw new Error(`use await build() and dump the result instead.`)
+        return txAsString(x.txb, networkParams);
     }
     if (x instanceof ByteArray || x[0] instanceof ByteArrayData) {
-        //@ts-expect-error sorry, typescript : /
         return byteArrayAsString(x);
     }
     if ("bigint" == typeof x) {
