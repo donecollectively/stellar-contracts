@@ -1,5 +1,5 @@
 import {
-    NetworkParams,
+    type NetworkParams,
     type Network,
 } from "@hyperionbt/helios";
 
@@ -22,14 +22,12 @@ export type stellarTestHelperSubclass<SC extends StellarContract<any>> = new (
     stConfig: ConfigFor<SC> & canHaveRandomSeed, helperState: any
 ) => StellarTestHelper<SC>;
 
+/**
+ * @public
+ */
 export type DefaultCapoTestHelperClass<SC extends Capo<any>> = new (
     config: ConfigFor<SC> & canHaveRandomSeed
 ) => StellarTestHelper<SC> & DefaultCapoTestHelper<SC> 
-// & { get stellarClass(): stellarSubclass<SC> };
-
-// type DefaultCapoTestHelperSubclass<SC extends DefaultCapo<any>> = new (
-//     args: StellarConstructorArgs<CapoBaseConfig>
-// ) => DefaultCapoTestHelper<SC>;
 
 export type canHaveRandomSeed = {
     randomSeed?: number;
@@ -38,6 +36,9 @@ export type canSkipSetup = {
     skipSetup?: true;
 };
 
+/**
+ * @public
+ */
 export type TestHelperState<SC extends StellarContract<any>> = {
     bootstrapped: Boolean;
     bootstrappedStrella?: SC;

@@ -2,14 +2,17 @@ import {
     ByteArrayData,
     IntData,
     MapData,
-    UplcData,
     textToBytes,
+    type UplcData,
     type Datum,
     ConstrData,
 } from "@hyperionbt/helios";
 import type { StellarContract } from "./StellarContract.js";
 import * as helios from "@hyperionbt/helios";
 
+/**
+ * @public
+ */
 export type BigIntRecord<T extends Record<string, number>> = {
     [K in keyof T]: Numeric<"bigint">;
 };
@@ -51,6 +54,9 @@ export type BigIntRecord<T extends Record<string, number>> = {
 //         } :
 //         never
 
+/**
+ * @public
+ */
 export type OnchainEnum2<
     EnumName extends string,
     EnumOptionLabels extends string,
@@ -62,6 +68,9 @@ export type OnchainEnum2<
     innerDetails: innerDetailsType;
 };
 
+/**
+ * @public
+ */
 export type OnchainEnum<
     EnumName extends string, 
     innerDetailsType=undefined
@@ -72,12 +81,16 @@ export type OnchainEnum<
 
 /**
  * Bridge-type definition for on-chain Option[T] types, undefined | T offchain
+ * @public
  */
 export type Optional<WrappedTypeName extends string, bridgeType> = {
     typeName: WrappedTypeName;
     details: bridgeType;
 }
 
+/**
+ * @public
+ */
 export type RawBytes<offchainType> = {
     repr?: offchainType;
     rawBytes: number[];
@@ -87,7 +100,10 @@ export type RawBytes<offchainType> = {
 // on-chain "Bridge" type with abstract Numeric<>s, we can benefit from
 // conversion to some equivalate structural types.
 
-// This one represents data that has been parsed FROM on-chain UPLC data.
+/**
+ * represents data that has been parsed FROM on-chain UPLC data.
+ * @public
+ */
 export type adapterParsedOnchainData<
     t,
     k extends string
@@ -133,14 +149,15 @@ export type adapterParsedOnchainData<
     : never;
 
 /**
- * flags data types supporting abstract Numeric<"something"> types.
+ * flags data types supporting abstract {@link Numeric|Numeric<"something">} types.
  * {@link adapterParsedOnchainData} and {@link offchainDatumType} can
  * be used to represent the same essential type in other forms for different
  * purposes, mastered from the single "Chain Bridge" type.
  *
- * Use Numeric<> to express all numerically-encoded data types, which
+ * Use `Numeric<>` types to express all numerically-encoded data types, which
  * will be represented as a BigInt (Plutus "Integer" on-chain), and an indicated other
  * numeric-like form off-chain
+ * @public
  */
 interface isChainTypeBridge {
     chainTypeBridge: true;
@@ -153,7 +170,8 @@ interface isChainTypeBridge {
  * class.  For an application not needing a special off-chain class, this form can be used
  * directly.  We'll probably have a converter that transforms the numerics from parsed
  * to off-chain form, elimintating boilerplat for the simple cases.
- */
+ * @public
+*/
 export type offchainDatumType<
     t,
     k extends string
@@ -187,6 +205,9 @@ export type offchainDatumType<
       }
     : never;
 
+/**
+ * @public
+ */
 export type Numeric<
     T extends "real" | "int" | "bigint" | "Time" | "Duration",
     inferred = T extends "real"
@@ -204,6 +225,9 @@ export type Numeric<
     number: inferred;
 };
 
+/**
+ * @public
+ */
 export type inferOffchainNumericType<T extends Numeric<any>> =
     T extends Numeric<any, infer N> ? N : never;
 

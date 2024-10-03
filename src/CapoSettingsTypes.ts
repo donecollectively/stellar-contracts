@@ -8,6 +8,9 @@ import type {
 
 // an incantation so that settings adapters don't have to get the finicky details right
 
+/**
+ * @public
+ */
 export type ParsedSettings<
     T extends anyDatumProps,
     innerParsedDetails = WrappedSettingsAdapterBridge<T> extends
@@ -16,6 +19,9 @@ export type ParsedSettings<
     data: adapterParsedOnchainData<AnyDataTemplate<"set-", T>, "SettingsData">
 };
 
+/**
+ * @public
+ */
 export abstract class SettingsAdapter<
     appType, settingsBridgeUnwrapped
 > extends DatumAdapter<appType, WrappedSettingsAdapterBridge<settingsBridgeUnwrapped>> {
@@ -34,6 +40,9 @@ export abstract class SettingsAdapter<
  * that it's always wrapped in a data field, and that it has the "anyData" form
  * (which is a CIP-68-style k/v struct).
  */
+/**
+ * @public
+ */
 export type WrappedSettingsAdapterBridge<
     unwrappedBT,
     canBeBridgeType extends adapterParsedOnchainData<
@@ -48,6 +57,9 @@ export type WrappedSettingsAdapterBridge<
 
 // arranges an abstract interface for indicating the general
 // type of settings adapters for Capo classes.
+/**
+ * @public
+ */
 export interface hasSettingsType<C extends Capo<any>> {
     mkInitialSettings(): Promise<any>; //OffchainSettingsType<C>;
     initSettingsAdapter(): DatumAdapter<any, any> | Promise<DatumAdapter<any, any>>;
@@ -55,17 +67,26 @@ export interface hasSettingsType<C extends Capo<any>> {
 
 // independently knows how to inspect the concrete
 // type for the settings adapater for a particular Capo class.
+/**
+ * @internal
+ */
 export interface detectCapoSettingsType<DAT extends DatumAdapter<any, any>> {
     initSettingsAdapter(): DAT;
     // mkInitialSettings() : OffchainType<DAT>;
 }
 
+/**
+ * @public
+ */
 export type CapoSettingsAdapterFor<
     CAPO_TYPE extends Capo<any>,
     // CCT extends Capo<any> = CAPO_TYPE extends Capo<infer cct> ? cct : never,
     SAT = CAPO_TYPE extends detectCapoSettingsType<infer DAT> ? DAT : never
 > = DatumAdapter<any, any> & SAT;
 
+/**
+ * @public
+ */
 export type CapoOnchainSettingsType<CAPO_TYPE extends Capo<any>> =
     hasAnyDataTemplate<"set-", any> &
         CapoSettingsAdapterFor<CAPO_TYPE> extends DatumAdapter<
@@ -77,6 +98,9 @@ export type CapoOnchainSettingsType<CAPO_TYPE extends Capo<any>> =
             : never //"TYPE_MISMATCH: settings DatumAdapter must have an on-chain 'data' field of type AnyDataTemplate<'set-'>"
         : never;
 
+/**
+ * @public
+ */
 export type CapoOffchainSettingsType<CAPO_TYPE extends Capo<any>> =
     CapoSettingsAdapterFor<CAPO_TYPE> extends DatumAdapter<
         infer appSettingsType,
@@ -85,6 +109,9 @@ export type CapoOffchainSettingsType<CAPO_TYPE extends Capo<any>> =
         ? appSettingsType
         : never;
 
+/**
+ * @public
+ */
 export type DatumAdapterOffchainType<DAT extends DatumAdapter<any, any>> =
     DAT extends DatumAdapter<infer appSettingsType, any>
         ? appSettingsType

@@ -3,7 +3,6 @@
 import {
     Assets,
     Bip32PrivateKey,
-    Crypto,
     type NetworkParams,
     TxId,
     TxInput,
@@ -12,19 +11,14 @@ import {
     Value,
     type NumberGenerator,
     bigIntToBytes,
-    rawNetworkEmulatorParams,
     type Wallet,
     type Network,    
-    // Address,
     StakeAddress,
     Signature,
-    // PubKey,
-    PubKeyHash as PKH_h,
+    // PubKeyHash as PKH_h,
     Tx,
 } from "@hyperionbt/helios";
 
-// import {Address} from "@helios-lang/ledger";
-// import { PubKeyHash as PKH_ledger } from "@helios-lang/ledger";
 import { Address, PubKey, PubKeyHash } from "@helios-lang/ledger-babbage";
 // import { PubKeyHash} from "@helios-lang/ledger-shelley";
 
@@ -62,7 +56,6 @@ import { equalsBytes } from "@helios-lang/codec-utils";
 import { NetworkParamsHelper } from "@helios-lang/ledger";
 import {
     BIP39_DICT_EN,
-    NetworkHelper,
     RootPrivateKey,
     SECOND,
     type EmulatorTx,
@@ -405,23 +398,18 @@ export class StellarNetworkEmulator implements Network {
     }
     /**
      * Each slot is assumed to be 1000 milliseconds
-     * @returns {number} - milliseconds since start of emulation
+     * 
+     * returns milliseconds since start of emulation
      */
     get now(): number {
         return SECOND * this.currentSlot;
     }
-    /**
-     * @returns {Promise<NetworkParams>}
-     */
+
     get parameters(): Promise<NetworkParams> {
         return new Promise((resolve, _) => resolve(this.parametersSync));
     }
 
-        /**
-     * @returns {NetworkParams}
-     */
     get parametersSync() {
-
         return {
             ...this.params,
             refTipSlot: this.currentSlot,

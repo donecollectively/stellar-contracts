@@ -3,6 +3,9 @@ import { DatumAdapter  } from "./DatumAdapter.js";
 import type { StellarContract, anyDatumProps } from "./StellarContract.js";
 import type { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 
+/**
+ * @public
+ */
 export type AnyDataTemplate<TYPENAME extends string, others extends anyDatumProps> = {
     [ key in string & ( "@id" | "tpe" | keyof Omit<others, "id"> ) ]: 
         key extends "@id" ? string :  // same as the UUT-name on the data
@@ -10,6 +13,9 @@ export type AnyDataTemplate<TYPENAME extends string, others extends anyDatumProp
             others[key]
 } // & anyDatumProps 
 
+/**
+ * @public
+ */
 export interface hasAnyDataTemplate<DATA_TYPE extends string, T extends anyDatumProps> {
     data: AnyDataTemplate<DATA_TYPE, T> 
 }
@@ -65,6 +71,9 @@ export interface hasAnyDataTemplate<DATA_TYPE extends string, T extends anyDatum
 // TODO: update this to collaborate with a DelegatedDataController class 
 // (a new subclass of ContractBasedDelegate) for easier type-safety and developer experience.
 
+/**
+ * @public
+ */
 export abstract class DelegatedDatumAdapter<
     appType extends { id: string; type: string },
     OnchainBridgeType extends hasAnyDataTemplate<any, anyDatumProps>
@@ -87,7 +96,7 @@ export abstract class DelegatedDatumAdapter<
      * You may wish to use this.uplcString(), this.uplcint(), this.toMphUplc(), etc,
      * to convert your data to UplcData objects.
      * 
-     * @param d - an object map of the UplcData (suitable for use in this.toMapData({...})) 
+     * @param d - an object map of the UplcData (suitable for use in `this.toMapData({...})`) 
      */
     DelegatedData(d: DelegatedDataAttrs<OnchainBridgeType["data"]>): helios.Datum {
         const DD = this.capo.onChainDatumType.DelegatedData;

@@ -370,6 +370,9 @@ type ComputedScriptProperties = Partial<{
     identity: string;
 }>;
 
+/**
+ * @public
+ */
 export type hasSeed = SeedAttrs | hasSeedUtxo;
 
 const isInternalConstructor = Symbol("internalConstructor");
@@ -820,7 +823,7 @@ export class StellarContract<
     }
 
     /**
-     * @deprecated - see {@link activityVariantToUplc|this.activityVariantToUplc(variant, data)} instead
+     * @deprecated - see {@link StellarContract.activityVariantToUplc|this.activityVariantToUplc(variant, data)} instead
      * Retrieves an on-chain type for a specific named activity ("redeemer")
      * @remarks
      *

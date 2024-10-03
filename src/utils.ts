@@ -95,6 +95,7 @@ export function mkTv(
  * @remarks
  * The numbers can be whole or fractional, with 6 decimal places of honored precision.
  * The result is rounded to 6 decimal places.
+ * @public
  */
 export function realMul(a: number, b: number) {
     const a2 = Math.trunc(1000000 * a);
@@ -115,6 +116,7 @@ export function realMul(a: number, b: number) {
  * @remarks
  * The numbers can be whole or fractional, with 6 decimal places of honored precision.
  * The result is rounded to 6 decimal places.
+ * @public
  */
 export function realDiv(a: number, b: number) {
     const a2 = Math.trunc(1_000_000 * a);
@@ -132,7 +134,9 @@ export function realDiv(a: number, b: number) {
 }
 
 /**
- * Rounds a number to 6 decimal places, with correction for low-value floating-point errors (2.999999999) -> 3.0
+ * Rounds a number to 6 decimal places, with correction for low-value floating-point 
+ * errors e.g. `(2.999999999) -> 3.0`
+ * @public
  */
 export function toFixedReal(n: number) {
     return parseFloat(
@@ -141,6 +145,7 @@ export function toFixedReal(n: number) {
 }
 /**
  * Temporarily enable debugRealMath for the duration of the callback
+ * @internal
  */
 export function debugMath<T extends number>(callback: () => T) : T {
     const old = debugRealMath;

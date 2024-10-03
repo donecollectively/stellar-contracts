@@ -4,6 +4,10 @@
         {
             "tagName": "@reqt",
             "syntaxKind": "block"
+        },
+        {
+            "tagName": "@todo",
+            "syntaxKind": "block"
         }
     ],
     "supportForTags": {
@@ -19,6 +23,7 @@
         "@param": true,
         "@typeParam": true,
         "@deprecated": true,
+        "@todo": true,
         "@reqt": true
     }
 }

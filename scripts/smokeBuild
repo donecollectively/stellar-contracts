@@ -72,6 +72,12 @@ if [ "$SMOKE" != "" ]; then {
         # cat $tmpfile
         # exit 1
     } fi
+    if wait $docs ; then {
+        echo "API Extractor passed"
+    } else {
+        echo "API Extractor failed" >&2
+        exit 42
+    } fi
 
 } else {
     if ! wait $typecheck; then {
@@ -84,7 +90,7 @@ if [ "$SMOKE" != "" ]; then {
         exit 1
     } fi
     playSound hum & 
-    api-extractor run --local --verbose  &
+    api-extractor run  --local --verbose 2>&1 &
     docs=$!
 } fi
 
@@ -98,7 +104,12 @@ while kill -0 $docs > /dev/null 2>&1; do
         playSound hum &
     fi
 done
-wait $docs
+if wait $docs ; then {
+    echo "API Extractor passed"
+} else {
+    echo "API Extractor failed" >&2
+    exit 42
+} fi
 
 
 

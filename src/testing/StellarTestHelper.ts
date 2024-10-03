@@ -12,7 +12,7 @@ import {
      NetworkParamsHelper,
      DEFAULT_NETWORK_PARAMS
     } from "@helios-lang/ledger";
-import { generateBytes, mulberry32 } from "@helios-lang/crypto"
+import { generateBytes } from "@helios-lang/crypto"
 import type { Wallet } from "@hyperionbt/helios";
 
 import { SimpleWallet_stellar as emulatedWallet } from "./StellarNetworkEmulator.js";
@@ -230,7 +230,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         // this.setupPending = this.initialize();
     }
 
-    fixupParams(preProdParams: NetworkParams) {
+    fixupParams(preProdParams: NetworkParams) : NetworkParams {
         //@ts-expect-error on our synthetic property
         if (preProdParams.isFixedUp) return preProdParams;
         
@@ -663,7 +663,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     //  -- script addresses -> names
     addrRegistry : Record<string, string> = {};
 
-    get networkParams() {
+    get networkParams() : NetworkParams {
         return this.netPHelper.params
     }
 

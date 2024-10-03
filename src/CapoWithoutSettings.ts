@@ -40,6 +40,9 @@ class NoSettingsAdapter extends SettingsAdapter<NoSettings, BridgeNoSettings> {
     }
 }
 
+/**
+ * @internal
+ */
 export class CapoWithoutSettings extends Capo<CapoWithoutSettings> {
     initSettingsAdapter() {
         return new NoSettingsAdapter(this);

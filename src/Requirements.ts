@@ -58,9 +58,7 @@ export type ReqtsMap<validReqts extends string, inheritedNames extends string | 
 
 /**
  * Factory for type-safe requirements details for a unit of software
- * @public
  * @remarks
- *
  * return `hasReqts({... requirements})` from a requirements() or other method in a class, to express
  * requirements using a standardized form that supports arbitrary amounts of detailed requirements
  * with references to unit-test labels that can verify the impl details.
@@ -71,8 +69,8 @@ export type ReqtsMap<validReqts extends string, inheritedNames extends string | 
  *
  * NOTE: Type parameters are inferred from the provided data structure
  * @param reqtsMap - the ReqtsMap structure for the software unit
- *
- **/
+ * @public
+ */
 export function hasReqts<
     R extends ReqtsMap<validReqts, inheritedNames>,
     const validReqts extends string = string & keyof R,

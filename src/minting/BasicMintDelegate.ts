@@ -39,9 +39,9 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
      * A mint-delegate activity indicating that a delegated-data controller will be governing
      * creation of a specific piece of delegated data.  No further redeemer details are needed here,
      * but the data-delegate's controller-token may have additional details in ITS redeemer,
-     * which will be aligned with the one, as described in {@link activityUpdatingDelegatedData}.
+     * which will be aligned with the one, as described in {@link BasicMintDelegate.activityUpdatingDelegatedData}.
      * See that topic for more details including multi-activity scenarios.
-     */
+    */
     @Activity.redeemer
     activityCreatingDelegatedData(seedFrom: hasSeed, uutPurpose: string) {
         const seed = this.getSeed(seedFrom);
@@ -64,7 +64,7 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
      * an update to a specific piece of delegated data.  No further redeemer details are needed here,
      * but the data-delegate's controller-token may have additional details in ITS redeemer,
      * which will be aligned with the one.
-     * 
+     *
      * May be present in the context of a nested MultipleDelegateActivities redeemer, in which
      * case, multiple cases of the above scenario will be present in a single transaction.
      */
@@ -81,7 +81,7 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
      * A mint-delegate activity indicating that a delegated-data controller will be governing
      * a deletion (burning its UUT) of a specific piece of delegated data.  No further redeemer details are needed here,
      * but the data-delegate's controller-token may have additional details in ITS redeemer,
-     * as described in {@link activityUpdatingDelegatedData}.  See that topic for more details
+     * as described in {@link BasicMintDelegate.activityUpdatingDelegatedData}.  See that topic for more details
      * including multi-activity scenarios.
      */
     @Activity.redeemer
@@ -96,8 +96,8 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
     /**
      * A mint-delegate activity indicating that a delegated-data controller UUT is being created
      * to govern a class of delegated data.  ONLY the indicated data-controller UUT must be minted,
-     * and is expected to be deposited into the data-controller's policy-script address.  Use the 
-     * {@DelegatedDataContract} class to create the off-chain data controller and its on-chain policy.
+     * and is expected to be deposited into the data-controller's policy-script address.  Use the
+     * {@link DelegatedDataContract} class to create the off-chain data controller and its on-chain policy.
      */
     @Activity.redeemer
     activityCreatingDataDelegate(seedFrom: hasSeed, uutPurpose: string) {

@@ -3,6 +3,9 @@ import { TxId, bytesToText } from "@hyperionbt/helios";
 export const _uutName = Symbol("uutName");
 export const maxUutName = 32;
 
+/**
+ * @public
+ */
 export type SeedAttrs = {
     txId: TxId,
     idx: bigint,

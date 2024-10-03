@@ -14,7 +14,9 @@ export type HeliosModuleOptions = {
     project?: string;
     moreInfo?: string
 };
-
+/**
+ * @public
+ */
 export class HeliosModuleSrc extends Source {
     static parseFromOptions(mInfo: HeliosModuleOptions | HeliosModuleSrc) {
         if (mInfo instanceof HeliosModuleSrc) return mInfo;

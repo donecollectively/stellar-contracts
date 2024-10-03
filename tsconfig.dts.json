@@ -1,11 +1,11 @@
 {
-    "extends": "./tsconfig.json",
+    // "extends": "./tsconfig.json",
     "compilerOptions": {
-        "noEmit": false,
+        "noEmit": true,
         "module": "NodeNext",
         "allowArbitraryExtensions": true,
         "moduleResolution": "NodeNext",
-        "baseUrl": ".",
+        "baseUrl": "dist/",
         "resolveJsonModule": true,
         // "isolatedModules": true,
         "experimentalDecorators": true,
@@ -35,6 +35,7 @@
     ],
     "exclude": [
         "node_modules",
+        "src/**/*.ts",
         "**/node_modules/"
     ]
 }

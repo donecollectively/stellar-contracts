@@ -36,6 +36,9 @@ export type hasSeedUtxo = StellarTxnContext<
     }
 >;
 
+/**
+ * @public
+ */
 export type TxDescription<T extends StellarTxnContext> = {
     tcx: T | (() => T) | (() => Promise<T>);
 
@@ -45,6 +48,9 @@ export type TxDescription<T extends StellarTxnContext> = {
     txName?: string;
 };
 
+/**
+ * @public
+ */
 export type MultiTxnCallback =
     | ((futTx: TxDescription<any>) => void)
     | ((futTx: TxDescription<any>) => Promise<void>)
@@ -62,7 +68,7 @@ export type MultiTxnCallback =
  * current transaction is executed.  This type allows the transaction context to include such
  * future transactions in its state, so that they can be executed later.
  *
- * The future transactions can be executed using the {@link StellarContract.submitAddlTxns}
+ * The future transactions can be executed using the {@link StellarTxnContext.submitAddlTxns}
  * helper method.
  * @public
  **/
@@ -342,8 +348,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
     /**
      * Calculates the time (in milliseconds in 01/01/1970) associated with a given slot number.
-     * @param {bigint} slot Slot number
-     * @returns {bigint} Time in milliseconds since 01/01/1970
+     * @param slot - Slot number
      */
     slotToTime(slot: bigint): bigint {
         let secondsPerSlot = this.assertNumber(
@@ -359,9 +364,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     /**
-     * Calculates the slot number associated with a given time. Time is specified as milliseconds since 01/01/1970.
-     * @param {bigint} time Milliseconds since 1970
-     * @returns {bigint} Slot number
+     * Calculates the slot number associated with a given time. 
+     * @param time - Milliseconds since 1970
      */
     timeToSlot(time: bigint): bigint {
         let secondsPerSlot = this.assertNumber(
@@ -400,17 +404,17 @@ export class StellarTxnContext<S extends anyState = anyState> {
     /**
      * Sets an on-chain validity period for the transaction, in miilliseconds
      *
-     * @remarks if futureDate() has been set on the transaction, that date will be used as the starting point for the validity period
+     * @remarks if futureDate() has been set on the transaction, that 
+     * date will be used as the starting point for the validity period.
+     * 
+     * Returns the transaction context for chaining.
      *
-     * @param durationMs the total validity duration for the transaction.  On-chain checks using CapoCtx `now(granularity)` can enforce this duration
-     * @param backwardMs a look-back interval allowing the transaction to be included in a very recent slot
-     *
-     * @returns
+     * @param durationMs - the total validity duration for the transaction.  On-chain 
+     *  checks using CapoCtx `now(granularity)` can enforce this duration
      */
     validFor<TCX extends StellarTxnContext<S>>(
         this: TCX,
         durationMs: number
-        // backwardMs = 1 * 60 * 1000 // allow it to be up to ~3 blocks / 1 minute old by default
     ): TCX {
         const startMoment = this.txnTime.getTime();
         if (this.txb.validFromTime) {

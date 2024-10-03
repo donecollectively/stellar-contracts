@@ -103,7 +103,6 @@ import { dumpAny, txAsString, utxosAsString } from "./diagnostics.js";
 // import { MultisigAuthorityPolicy } from "./authority/MultisigAuthorityPolicy.js";
 import { CapoHelpers } from "./CapoHelpers.js";
 import {
-    type DelegateCreationOptions,
     type NamedDelegateCreationOptions,
 } from "./delegation/ContractBasedDelegate.js";
 
@@ -137,6 +136,10 @@ export type MinimalDelegateLink<
 //     strategyValidation,
 // } from "./delegation/RolesAndDelegates.js";
 
+/**
+ * represents a UUT found in a user-wallet, for use in authorizing a transaction
+ * @public
+ */
 export type FoundUut = { utxo: TxInput; uut: UutName };
 
 /**
@@ -178,6 +181,12 @@ export type NormalDelegateSetup = {
     mintDelegateActivity: isActivity;
     // withoutMintDelegate: never
 };
+
+/**
+ * Pre-parsed results of finding and matching contract-held UTxOs
+ * with datum details.
+ * @public
+ */
 
 export type FoundDatumUtxo<
     DelegatedDatumType extends AnyDataTemplate<any, any>
@@ -274,7 +283,10 @@ export type rootCapoConfig = devConfigProps & {
     rootCapoScriptHash?: ValidatorHash;
 };
 
-//!!! todo: let this be parameterized for more specificity
+/**
+ * Configuration details for a Capo
+ * @public
+ */
 export type CapoBaseConfig = configBaseWithRev &
     rootCapoConfig &
     devConfigProps &
@@ -292,7 +304,7 @@ export type CapoBaseConfig = configBaseWithRev &
  * should be captured for reproducibility, and this type allows the bootstrap
  * transaction to expose that configuration.
  *
- * {@link mkTxnMintCharterToken | mkTxnMintCharterToken()} returns a transaction context
+ * {@link Capo.mkTxnMintCharterToken | mkTxnMintCharterToken()} returns a transaction context
  * of this type, with `state.bootstrappedConfig`;
  * @public
  **/
@@ -330,6 +342,9 @@ export interface basicRoleMap {
     >;
 }
 
+/**
+ * @public
+ */
 export type hasCharterRef = StellarTxnContext<
     anyState & {
         charterRef: TxInput;
@@ -362,6 +377,7 @@ import { PriceValidator } from "./PriceValidator.js";
 import { Cast } from "@helios-lang/contract-utils";
 import type { UplcData } from "@helios-lang/uplc";
 import { TxOutputDatum } from "@helios-lang/ledger-babbage";
+import type { tokenPredicate } from "./UtxoHelper.js";
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
@@ -417,6 +433,7 @@ export type HeldAssetsArgs = {
 
 /**
  * A transaction context flagged as containing a settings-utxo reference
+ * @public
  */
 export type hasSettingsRef = StellarTxnContext<
     anyState & { settingsRef: TxInput }
@@ -512,10 +529,20 @@ type UnkFooNo = unknown extends { foo: string } ? "yes" : "no";
 type ConstStringUnkYES = "MyCONST STRING" extends unknown ? "yes" : "no";
 type FooUnkYES = { foo: string } extends unknown ? "yes" : "no";
 
+/**
+ * @public
+ */
 export type DelegatedDataPredicate<
     DATUM_TYPE extends anyDatumProps & AnyDataTemplate<any, any>
 > = (utxo: TxInput, data: DATUM_TYPE) => boolean;
 
+/**
+ * Base class for a "leader" contract that supports custom settings,
+ * multiple data types that can evolve over time, support for the software
+ * development lifecycle with evolving policies, and a flexible delegation
+ * system for managing the contract's roles.  
+ * @public
+ */
 export abstract class Capo<SELF extends Capo<any>>
     extends StellarContract<CapoBaseConfig>
     implements hasSettingsType<SELF>
@@ -535,6 +562,19 @@ export abstract class Capo<SELF extends Capo<any>>
     contractSource() {
         return contract;
     }
+
+    /**
+     * Reveals any bootstrapping details that may be present during initial creation
+     * of the Capo contract, for use during and immediately after charter-creation.
+     *
+     * @public
+     **/
+    bootstrapping?: {
+        [key in
+            | "govAuthority"
+            | "mintDelegate"
+            | "spendDelegate"]: ConfiguredDelegate<any>;
+    };
 
     abstract mkInitialSettings(): Promise<CapoOffchainSettingsType<SELF>>;
     abstract initSettingsAdapter():
@@ -702,10 +742,10 @@ export abstract class Capo<SELF extends Capo<any>>
      * This method is a hook for subclasses to add extra transactions during the
      * charter creation process.  It is called during the creation of the charter transaction.
      *
-     * The Capo has a {@Link bootstrapping} property that can be referenced as needed
+     * The Capo has a {@link Capo.bootstrapping|`bootstrapping`} property that can be referenced as needed
      * during extra transaction creation.
      *
-     * This method should use {@Link StellarTxnContext.includeAddlTxn} to add transactions
+     * This method should use {@link StellarTxnContext.includeAddlTxn} to add transactions
      * to the context.
      *
      * @public
@@ -797,8 +837,8 @@ export abstract class Capo<SELF extends Capo<any>>
     @Activity.redeemer
     activityUsingAuthority(): isActivity {
         return {
-            redeemer: this.activityVariantToUplc("usingAuthority", {})
-        }
+            redeemer: this.activityVariantToUplc("usingAuthority", {}),
+        };
     }
 
     tvCharter() {
@@ -826,7 +866,7 @@ export abstract class Capo<SELF extends Capo<any>>
         ];
     }
 
-    get charterTokenPredicate() {
+    get charterTokenPredicate(): tokenPredicate<any> {
         const predicate = this.uh.mkTokenPredicate(this.tvCharter());
 
         return predicate;
@@ -875,7 +915,6 @@ export abstract class Capo<SELF extends Capo<any>>
 
     /**
      * @deprecated - use tcxWithCharterRef() instead
-     * @param tcx
      */
     async txnAddCharterRef<TCX extends StellarTxnContext>(
         tcx: TCX
@@ -920,7 +959,7 @@ export abstract class Capo<SELF extends Capo<any>>
     ): Promise<TCX>;
 
     /**
-     * @deprecated - use {@link tcxWithCharterRef |tcxWithCharterRef(tcx)} instead
+     * @deprecated - use {@link Capo.tcxWithCharterRef |tcxWithCharterRef(tcx)} instead
      */
     async txnMustUseCharterUtxo<TCX extends StellarTxnContext>(
         tcx: TCX,
@@ -1299,7 +1338,7 @@ export abstract class Capo<SELF extends Capo<any>>
      * Combines partal and implied configuration settings, validating the resulting configuration.
      *
      * It expects the transaction-context to have a UUT whose name (or a UUT roleName) matching
-     * the indicated `roleName`.  Use {@link txnWillMintUuts`} or {@link txnMintingUuts} to construct
+     * the indicated `roleName`.  Use {@link Capo.txnWillMintUuts|txnWillMintUuts()} or {@link Capo.txnMintingUuts|txnMintingUuts()} to construct
      * a transaction having that and a compliant txn-type.
      *
      * The resulting "relative" delegate link can be used directly in a Datum field of type RelativeDelegateLink
@@ -2348,19 +2387,6 @@ export abstract class Capo<SELF extends Capo<any>>
         return tcxWithSettings as TCX3 & Awaited<typeof tcxWithSettings>;
     }
 
-    /**
-     * Reveals any bootstrapping details that may be present during initial creation
-     * of the Capo contract, for use during and immediately after charter-creation.
-     *
-     * @public
-     **/
-    bootstrapping?: {
-        [key in
-            | "govAuthority"
-            | "mintDelegate"
-            | "spendDelegate"]: ConfiguredDelegate<any>;
-    };
-
     async findSettingsDatum<thisType extends Capo<any>>(
         this: thisType,
         {
@@ -3268,34 +3294,15 @@ export abstract class Capo<SELF extends Capo<any>>
      * Constructs UUTs with the indicated purposes, and adds them to the contract state.
      * This is a useful generic capability to support any application-specific purpose.
      *
-     * The provided transaction context must have a seedUtxo - use {@link addSeedUtxo | addSeedUtxo()} to add one
+     * The provided transaction context must have a seedUtxo - use {@link Capo.addSeedUtxo | addSeedUtxo()} to add one
      * from the current user's wallet. The seed utxo is consumed, so it can never be used again; its
      * value will be returned to the user wallet.  All the uuts named in the uutPurposes argument will
      * be minted from the same seedUtxo, and will share the same suffix, because it is derived from the
      * seedUtxo's outputId.
-     *
-     * This method uses a generic uutMinting activity in the transaction by default, which may
-     * fail if the mint delegate has disabled that generic minting.   In this case, add an `options.activity`
-     * matching an app-specific activity/redeemer.
-     *
-     * It's recommended to create custom activities in the minting delegate, to go with your
-     * application's use-cases for minting UUTs.  To include the seedUtxo details in the transaction,
-     * you can follow the SeedAttrs pattern  seen in {@link CapoMinter.activityMintingUuts | activityMintingUuts()},
-     * using the StellarTxnContext's {@link StellarTxnContext.getSeedAttrs | getSeedAttrs()}
-     * method to access the seedUtxo details.
-     *
-     * The mintingUuts\{...\} activity defined in the on-chain specialized mint delegate demonstrates
-     * the inclusion of seedUtxo details in the activity/redeemer type, and the use of those details in
-     * its on-chain call to `validateUutMinting()`.
-     *
-     * If additional mints or burns are needed in the transaction, they can be included in
-     * `options.additionalMintValues`.  See {@link mkValuesEntry | mkValuesEntry()} to create
-     * these.  In this case, you'll need to provide a `options.activity`, whose on-chain
-     * validation should ensure that all-and-only the expected values are minted.
-     *
-     * The returnExistingDelegate option can be used if needed to prevent a burned delegate
-     * token from being returned to the delegate contract's script address, creating an imbalanced txn.
-     *
+     * 
+     * Many cases of UUT minting are covered by the delegation pattern, where this method
+     * is used implicitly.  
+     * 
      * @param initialTcx - an existing transaction context
      * @param uutPurposes - a set of purpose-names (prefixes) for the UUTs to be minted
      * @param options - additional options for the minting operation.  In particular, you likely want
@@ -3423,13 +3430,12 @@ export abstract class Capo<SELF extends Capo<any>>
      * all the minting/burning needed for the txn can (because it must) be done in one minting instruction.
      *
      * If the uuts being minted are the only minting/burning needed in the transaction, then
-     * you can use {@link txnMintingUuts | txnMintingUuts()} instead of this method.
+     * you can use {@link Capo.txnMintingUuts | txnMintingUuts()} instead of this method.
      *
      * @param tcx - the transaction context
      * @param uutPurposes - a list of short names for the UUTs (will be augmented with unique suffixes)
      * @param usingSeedUtxo - the seed utxo to be used for minting the UUTs (consumed in the transaction, and controls the suffixes)
      * @param roles - a map of role-names to purpose-names
-     * @typeParam ‹pName› - descr (for generic types)
      * @public
      **/
     @partialTxn

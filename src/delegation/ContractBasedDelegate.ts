@@ -1,10 +1,4 @@
 import {
-    Address,
-    ByteArrayData,
-    ConstrData,
-    IntData,
-    ListData,
-    TxId,
     TxInput,
     TxOutput,
     TxOutputId,
@@ -13,10 +7,7 @@ import {
     textToBytes,
 } from "@hyperionbt/helios";
 
-import type { UplcDataValue } from "@helios-lang/uplc";
-import { TxOutputDatum } from "@helios-lang/ledger-babbage";
 import type { GenericEnumMemberType } from "@helios-lang/compiler/types/typecheck/common.js";
-import { Cast } from "@helios-lang/contract-utils";
 
 import type {
     Capo,
@@ -28,14 +19,11 @@ import type {
     hasSettingsRef,
 } from "../Capo.js";
 import {
-    Datum,
-    type InlineDatum,
     type ValidatorHash,
 } from "../HeliosPromotedTypes.js";
 import {
     Activity,
     datum,
-    type UplcRecord,
     type configBaseWithRev,
     type isActivity,
 } from "../StellarContract.js";
@@ -332,8 +320,6 @@ import {
 
     /**
      * Creates a reedemer for the indicated spending activity name
-     *
-     * For delegated-data controllers, see the more explicit equivalent in DelegatedDataContract
      **/
     mkSpendingActivity(
         spendingActivityName: string,
@@ -508,7 +494,7 @@ import {
     }
 
     /**
-     * {@inheritdoc AnyDelegate.DelegateMustFindAuthorityToken}
+     * {@inheritdoc StellarDelegate.DelegateMustFindAuthorityToken}
      **/
     async DelegateMustFindAuthorityToken(
         tcx: StellarTxnContext,
@@ -527,10 +513,7 @@ import {
      * @remarks
      * Given a delegate already configured by a Capo, this method implements
      * transaction-building logic needed to include the UUT into the `tcx`.
-     * the `utxo` is discovered by {@link AnyDelegate.DelegateMustFindAuthorityToken | DelegateMustFindAuthorityToken() }
-     *
-     * The default implementation adds the `uutxo` to the transaction
-     * using {@link ContractBasedDelegate.activityAuthorizing | activityAuthorizing() }.
+     * the `utxo` is discovered by {@link StellarDelegate.DelegateMustFindAuthorityToken | DelegateMustFindAuthorityToken() }
      *
      * The off-chain code shouldn't need to check the details; it can simply
      * arrange the details properly and spend the delegate's authority token,
@@ -592,7 +575,7 @@ import {
     }
 
     /**
-     * {@inheritdoc AnyDelegate.DelegateAddsAuthorityToken}
+     * {@inheritdoc StellarDelegate.DelegateAddsAuthorityToken}
      **/
     async DelegateRetiresAuthorityToken<TCX extends StellarTxnContext>(
         tcx: StellarTxnContext,

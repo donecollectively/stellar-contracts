@@ -57,6 +57,11 @@ export type {
 } from "./src/Capo.js";
 
 export {
+   type utxoPredicate,
+   UtxoHelper
+} from "./src/UtxoHelper.js";
+
+export {
     SettingsAdapter,
 } from "./src/CapoSettingsTypes.js";
 export type {
@@ -119,7 +124,6 @@ export {
 export type {
     stellarSubclass,
     isActivity,
-    utxoPredicate,
     anyDatumProps,
     configBaseWithRev as configBase, // as paramsBase,
     StellarFactoryArgs,
@@ -162,6 +166,7 @@ import type { CharterDatumProps } from "./src/Capo.js";
 
 /**
  * @deprecated - use CharterDatumProps instead
+ * @internal
  */
 export type DefaultCharterDatumArgs = CharterDatumProps;
 

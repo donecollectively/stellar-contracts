@@ -25,11 +25,10 @@ import { datumSerializer, delegateLinkSerializer, abbreviatedDetail } from "./de
  *
  * Unlike Helios' bytesToText, hexToPrintable() simply changes printable characters to characters,
  * and represents non-printable characters in '‹XX›' format.
- * @param ‹pName› - descr
- * @typeParam ‹pName› - descr (for generic types)
+ * @param hexStr - hex input
  * @public
  **/
-export function hexToPrintableString(hexStr) {
+export function hexToPrintableString(hexStr: string) {
     let result = "";
     for (let i = 0; i < hexStr.length; i += 2) {
         let hexChar = hexStr.substring(i, i + 2);
@@ -59,6 +58,13 @@ export function hexToPrintableString(hexStr) {
     return result;
 }
 
+/**
+ * Displays a token name in a human-readable form
+ * @remarks
+ * Recognizes CIP-68 token names and displays them in a special format.
+ * @param nameBytesOrString - the token name, as a string or byte array
+ * @public
+ */
 export function displayTokenName(nameBytesOrString: string | number[]) {
     // check if it is a cip-68 token name by inspecting the first 4 bytes.  If they don't match the cip-68 pattern, display using stringToPrintableString.
     // if it has a cip-68 tag in the first 4 bytes, show the cip-68 tag as `‹cip68/{tag}›` and append the rest of the token name as a string.
@@ -111,6 +117,13 @@ export function displayTokenName(nameBytesOrString: string | number[]) {
     return nameString;
 }
 
+/**
+ * Presents a string in printable form, even if it contains non-printable characters
+ * 
+ * @remarks
+ * Non-printable characters are shown in '‹XX›' format.
+ * @public
+ */
 export function stringToPrintableString(str: string | number[]) {
     if ("string" != typeof str) {
         // use a TextEncoder to identify if it is a utf8 string
@@ -185,6 +198,10 @@ export function assetsAsString(
     ).join(joiner);
 }
 
+/**
+ * Converts a MintingPolicyHash to a printable form
+ * @public
+ **/
 export function policyIdAsString(p: MintingPolicyHash) {
     const pIdHex = p.toHex();
     const abbrev = abbreviatedDetail(pIdHex);
@@ -482,7 +499,10 @@ export function txInputAsString(
 export function utxosAsString(utxos: TxInput[], joiner = "\n"): string {
     return utxos.map((u) => utxoAsString(u, " 💵")).join(joiner);
 }
-
+/**
+ * Converts a TxOutputId to printable form
+ * @public
+ */
 export function txOutputIdAsString(x: TxOutputId): string {
     return (
         txidAsString(x.txId) +
@@ -491,6 +511,13 @@ export function txOutputIdAsString(x: TxOutputId): string {
     );
 }
 
+/**
+ * Converts a TxId to printable form
+ * @remarks
+ *
+ * ... showing only the first 6 and last 4 characters of the hex
+ * @public
+ **/
 export function txidAsString(x: TxId): string {
     const tid = x.toHex();
     return `${tid.slice(0, 6)}…${tid.slice(-4)}`;
@@ -533,7 +560,9 @@ export function datumSummary(d: Datum | null | undefined): string {
     }
     return `d‹hash:${dhss}…›`;
 }
-
+/**
+ * @internal
+ */
 export function datumExpanded(d: Datum | null | undefined): string {
     if (!d) return "";
     if (!d.isInline()) return "";
@@ -616,7 +645,7 @@ export function byteArrayListAsString(
  * Renders a byteArray in printable form, assuming it contains (mostly) text
  * @remarks
  *
- * Because it uses {@link hexToPrintableString()}, it will render any non-printable
+ * Because it uses {@link hexToPrintableString | hexToPrintableString()}, it will render any non-printable
  * characters using ‹hex› notation.
  * @param ba - the byte array
  * @public
@@ -710,6 +739,9 @@ export function dumpAny(
     return "dumpAny(): unsupported type or library mismatch";
 }
 
+/**
+ * @public
+ */
 export const betterJsonSerializer = (key, value) => {
     return dumpAny(value, undefined, true);
 };

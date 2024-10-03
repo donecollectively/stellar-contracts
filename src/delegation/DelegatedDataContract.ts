@@ -14,19 +14,31 @@ import type { UutName } from "./UutName.js";
 import type { BasicMintDelegate } from "../minting/BasicMintDelegate.js";
 import { betterJsonSerializer, dumpAny } from "../diagnostics.js";
 
+/**
+ * @public
+ */
 export type DelegatedDatumType<T extends DelegatedDataContract> = ReturnType<
     T["mkDatumAdapter"]
 > extends DelegatedDatumAdapter<infer D, any>
     ? D
     : never;
 
+/**
+ * @public
+ */
 export type DelegatedDatumTypeName<
     T extends DelegatedDataContract,
     TN extends string = T["recordTypeName"]
 > = TN;
 
-// DelegatedDataContract provides a base class for utility functions
-// to simplify implementation of delegate controllers
+/**
+ * DelegatedDataContract provides a base class for utility functions
+ * to simplify implementation of delegate controllers.  They are used
+ * to manage the creation and updating of records in a delegated data store,
+ * where the data is stored in a Capo, and the controller is forced into the
+ * transaction by the Capo's delegate policy (or its spend-delegate's).
+ *@public
+ */
 export abstract class DelegatedDataContract extends ContractBasedDelegate {
     abstract get recordTypeName(): string;
     get delegateName() {
@@ -53,36 +65,18 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
 
         return adapter.toOnchainDatum(record);
     }
-    
-    // /**
-    //  * Creates a utxo-spending reedemer for a delegated-data record, given its record-id and other args
-    //  *
-    //  * This is semantically equivalent to the super method of the same name, but with a more explicit and flexible signature.
-    //  * 
-    //  * In particular, the id arg may be provided as a string, which is implicitly converted to a byte-array.
-    //  **/
-    // mkSpendingActivity(
-    //     spendingActivityName: string, 
-    //     id: string | number[],
-    //     ...args: Record<string, any>
-    // ) : isActivity {
-    //     if (Array.isArray(id)) {
-    //         return super.mkSpendingActivity(spendingActivityName, id, ...args);
-    //     }
-    //     return super.mkSpendingActivity(spendingActivityName, helios.textToBytes(id), ...args);
-    // }
 
     /**
      * Creates an indirect reference to a seed activity with arguments,
      * using a seed placeholder.
-     * 
+     *
      * @remarks
      * Provide a seed activity function, a placeholder for the seed, any other args
      * for the on-chain activity/redeemer.
-     * 
+     *
      * The arguments are passed to the seed activity function, which is expected to return
      * an {@link isActivity} object serializing the `{redeemer}` data as a UplcData object.
-     * Normally that's done with {@link mkSeededMintingActivity()}
+     * Normally that's done with {@link ContractBasedDelegate.mkSeededMintingActivity|mkSeededMintingActivity()}
      */
     usesSeedActivity<SA extends seedActivityFunc<any>>(
         a: SA,
@@ -166,7 +160,8 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
             addedUtxoValue: extraCreationValue = new helios.Value(0n),
             beforeSave = (x) => x,
         } = extraCreationOptions;
-        console.log(`🏒 creating ${newType} ->`, 
+        console.log(
+            `🏒 creating ${newType} ->`,
             JSON.parse(JSON.stringify(record, betterJsonSerializer, 2))
         );
 
@@ -174,7 +169,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
 
         const uut = tcx.state.uuts[newType];
         const newRecord: DDType = {
-            ...record as unknown as DDType,
+            ...(record as unknown as DDType),
             id: uut.toString(),
             type: newType,
             ...this.creationDefaultDetails(),
@@ -195,17 +190,17 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
     /**
      * Creates an indirect reference to an an update activity with arguments,
      * using a record-id placeholder.
-     * 
+     *
      * @remarks
-     * Provide an update activity function, a placeholder for the record-id, any other args 
+     * Provide an update activity function, a placeholder for the record-id, any other args
      * for the on-chain activity/redeemer.
-     * 
-     * This approach is similar to the creation-time {@link usesSeedActivity()} method,
+     *
+     * This approach is similar to the creation-time {@link DelegatedDataContract.usesSeedActivity|usesSeedActivity()} method,
      * with a "...recId" placeholder instead of a "...seed" placeholder.
-     * 
+     *
      * The arguments are passed to the update activity function, which is expected to return
-     * an {@link isActivity} object serializing the `{redeemer}` data as a UplcData object.  
-     * Normally that's done with {@link mkSpendingActivity()}.
+     * an {@link isActivity} object serializing the `{redeemer}` data as a UplcData object.
+     * Normally that's done with {@link ContractBasedDelegate.mkSpendingActivity | mkSpendingActivity()}.
      */
     usesUpdateActivity<
         UA extends updateActivityFunc<any>
@@ -216,13 +211,13 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
 
     /**
      * Creates a transaction for updating a record in the delegated data store
-     * 
+     *
      * @remarks
      * Provide a transaction name, an existing item, and a controller activity to trigger.
-     * The activity MUST either be an activity triggering one of the controller's SpendingActivity variants, 
-     * or the result of calling {@link usesUpdateActivity()}.
+     * The activity MUST either be an activity triggering one of the controller's SpendingActivity variants,
+     * or the result of calling {@link DelegatedDataContract.usesUpdateActivity | usesUpdateActivity()}.
      *   **or TODO support a multi-activity**
-     * 
+     *
      * The updatedRecord only needs to contain the fields that are being updated.
      */
     async mkTxnUpdateRecord<
@@ -297,15 +292,22 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         options: ExtraUpdateOptions<DelegatedDatumType<THIS>> = {}
     ): Promise<TCX> {
         const recType = this.recordTypeName as DelegatedDatumTypeName<THIS>;
-        console.log(`🏒 updating ${recType} ->`, 
+        console.log(
+            `🏒 updating ${recType} ->`,
             JSON.parse(JSON.stringify(record, betterJsonSerializer, 2))
         );
 
         const tcx2 = await this.txnGrantAuthority(tcx, controllerActivity);
         const { addedUtxoValue = new helios.Value(0n), beforeSave = (x) => x } =
             options;
-        console.log("    -- prev value in dgData utxo:", dumpAny(item.utxo.value));
-        console.log("    -- addedUtxoValue in dgData utxo:", dumpAny(addedUtxoValue));
+        console.log(
+            "    -- prev value in dgData utxo:",
+            dumpAny(item.utxo.value)
+        );
+        console.log(
+            "    -- addedUtxoValue in dgData utxo:",
+            dumpAny(addedUtxoValue)
+        );
         return tcx2.addOutput(
             new helios.TxOutput(
                 this.capo.address,
@@ -319,6 +321,9 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
     }
 }
 
+/**
+ * @public
+ */
 export type DgDataCreationAttrs<
     T extends DelegatedDataContract | DelegatedDatumAdapter<any, any>
 > = T extends DelegatedDatumAdapter<infer D, any>
@@ -335,6 +340,9 @@ export type DgDataCreationAttrs<
 type SeedActivityArgs<SA extends seedActivityFunc<any>> =
     SA extends seedActivityFunc<infer ARGS> ? ARGS : never;
 
+/**
+ * @public
+ */
 export type seedActivityFunc<ARGS extends [...any]> = (
     seed: hasSeed,
     ...args: ARGS
@@ -362,6 +370,9 @@ class SeedActivity<
     }
 }
 
+/**
+ * @public
+ */
 export type updateActivityFunc<ARGS extends [...any]> = (
     recId: hasRecId,
     ...args: ARGS
@@ -387,13 +398,8 @@ class UpdateActivity<
     }
 
     mkRedeemer(recId: hasRecId) {
-        return this.factoryFunc.call(
-            this.host, 
-            recId,
-            ...this.args
-        );
+        return this.factoryFunc.call(this.host, recId, ...this.args);
     }
-
 }
 
 type hasRecId = string | UutName;

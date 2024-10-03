@@ -31,6 +31,10 @@ type MintCharterActivityArgs<T = {}> = T & {
     owner: Address;
 };
 
+/**
+ * The parameters for the Capo's basic minter
+ * @public
+ */
 export type BasicMinterParams = configBaseWithRev &
     SeedTxnScriptParams & {
         capo: Capo<any>;
@@ -105,7 +109,7 @@ export class CapoMinter
      * @remarks
      *
      * This is the fundamental bootstrapping event for a Capo.
-     * @param ownerInfo - contains the {owner} address of the Capo contract
+     * @param ownerInfo - contains the `{owner}` address of the Capo contract
      * @public
      **/
     @Activity.redeemer
@@ -136,7 +140,7 @@ export class CapoMinter
      * change needed.  The Capo's authority token is all the minter requires
      * to create the needed UUT.
      *
-     * @param seedFrom - either a transaction-context with seedUtxo, or {seedTxn, seedIndex}
+     * @param seedFrom - either a transaction-context with seedUtxo, or `{seedTxn, seedIndex}`
      * @public
      **/
     @Activity.redeemer
@@ -187,7 +191,7 @@ export class CapoMinter
      * provided.  If replacingUut is not provided, the existing spend delegate is left in plac,e
      * although it won't be useful because the new spend delegate will have been installed.
      *
-     * @param seedFrom - either a transaction-context with seedUtxo, or {seedTxn, seedIndex}
+     * @param seedFrom - either a transaction-context with seedUtxo, or `{seedTxn, seedIndex}`
      * @param replacingUut - the name of an exiting delegate being replaced
      * @public
      **/
