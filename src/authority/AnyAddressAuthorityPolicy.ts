@@ -28,6 +28,13 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         return undefined;
     }
 
+    usesContractScript : boolean = false;
+
+
+    getContractScriptParamsUplc() {
+        return {};
+    }
+
     get delegateValidatorHash() {
         return undefined;
     }

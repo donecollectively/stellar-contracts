@@ -21,6 +21,7 @@ import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { TestHelperState } from "../src/testing/types";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts.js";
+import { expectTxnError } from "../src/testing/StellarTestHelper.js";
 
 type localTC = StellarTestContext<
     DefaultCapoTestHelper<CapoCanMintGenericUuts>
@@ -78,6 +79,7 @@ describe("Capo Minter", async () => {
             });
             await h.submitTxnWithBlock(tcx1a);
         });
+
         it("fails minting if the mintDgt has a SpendingActivity", async (context: localTC) => {
             const {
                 h,
@@ -96,9 +98,9 @@ describe("Capo Minter", async () => {
                 ),
             });
 
-            await expect(h.submitTxnWithBlock(tcx1a)).rejects.toThrow(
-                /SpendingActivity can't mint/
-            );
+            await expect(
+                h.submitTxnWithBlock(tcx1a, expectTxnError)
+            ).rejects.toThrow(/SpendingActivity can't mint/);
         });
     });
     describe("defers to the capo's mint delegate with MultipleDelegateActivities", () => {
@@ -124,8 +126,10 @@ describe("Capo Minter", async () => {
                     ),
             });
 
-            await expect(h.submitTxnWithBlock(tcx1a)).rejects.toThrow(
-                /multi:Minting: only dgData activities ok in mintDgt/
+            await expect(
+                h.submitTxnWithBlock(tcx1a, expectTxnError)
+            ).rejects.toThrow(
+                /mintDgt: MultipleDelegateActivities: nested MintingActivities invalid/
             );
         });
 
@@ -150,12 +154,12 @@ describe("Capo Minter", async () => {
                     ),
             });
 
-            await expect(h.submitTxnWithBlock(tcx1a)).rejects.toThrow(
-                /mintDgt can't do SpendingActivit/
-            );
+            await expect(
+                h.submitTxnWithBlock(tcx1a, expectTxnError)
+            ).rejects.toThrow(/mintDgt: Multi.* SpendingActivities invalid/);
         });
 
-        it("FIX TEST: fails minting if the mintDgt has a UpdatingDelegatedDatum activity", async (context: localTC) => {
+        it("fails minting if the mintDgt has a UpdatingDelegatedDatum activity", async (context: localTC) => {
             const {
                 h,
                 h: { network, actors, delay, state },
@@ -166,32 +170,20 @@ describe("Capo Minter", async () => {
             const tcx1 = await capo.tcxWithSeedUtxo(h.mkTcx());
             const purposes = ["fooPurpose"];
 
-            // TODO: the test fails because the token isn't present for possible updating.
-            // ... for this test to actually work, we'd need to have a data delegate that creates such a thing,
-            // ... or otherwise provide a matching token that would pass the inDD check in the mint delegate.
-            // It might also need a special bit of code in the uut mintDgt policy that would allow the special case,
-            // .. in order that the essential minting policy's failure is triggered as expected
-
-            // hacks the use of the SpendingDelegatedDatum activity
-            const Hacktivity = mintDelegate.mustGetActivity(
-                "UpdatingDelegatedData"
-            );
-            const hacktivity = mintDelegate.activityRedeemer(
-                "UpdatingDelegatedData", {
-                    id: "fooPurpose-xyz123"
-                }
+            const hacktivity = mintDelegate.activityUpdatingDelegatedData(
+                "fooPurpose-xyz123"
             );
 
             const tcx1a = await capo.txnMintingUuts(tcx1, purposes, {
                 mintDelegateActivity: hacktivity,
             });
 
-            await expect(h.submitTxnWithBlock(tcx1a)).rejects.toThrow(
-                /UpdatingDelegatedDatum can't mint/
-            );
+            await expect(
+                h.submitTxnWithBlock(tcx1a, expectTxnError)
+            ).rejects.toThrow(/UpdatingDelegatedDatum can't mint/);
         });
 
-        it("FIX TEST: can mint with MultipleDelegateActivities having one CreatingDelegatedDatum", async (context: localTC) => {
+        it("can mint with MultipleDelegateActivities having one CreatingDelegatedDatum", async (context: localTC) => {
             const {
                 h,
                 h: { network, actors, delay, state },
@@ -201,26 +193,22 @@ describe("Capo Minter", async () => {
             const mintDelegate = await capo.getMintDelegate();
             const tcx1 = await capo.tcxWithSeedUtxo(h.mkTcx());
             const purposes = ["fooPurpose"];
-
-            // this test doesn't work because there are no delegated-data controllers in the current test setup
-            // ^^ fix by adding a delegated data controller for it
-
-            // hacks the use of the CreatingDelegatedDatum activity
-            const Hacktivity = mintDelegate.mustGetActivity(
-                "CreatingDelegatedData"
-            );
-            const hacktivity = mintDelegate.activityRedeemer(
-                "CreatingDelegatedData", {
-                    id: "fooPurpose-xyz123"
-                }
-            );
-
+            
+            const hacktivity = mintDelegate.activityCreatingDelegatedData(tcx1, "fooPurpose")
+            
             const tcx1a = await capo.txnMintingUuts(tcx1, purposes, {
                 mintDelegateActivity:
-                    mintDelegate.activityMultipleDelegateActivities(hacktivity),
+                mintDelegate.activityMultipleDelegateActivities(hacktivity),
             });
-
-            await h.submitTxnWithBlock(tcx1a);
+            
+            // this test doesn't run a txn successfully, because there are no 
+            // delegated-data controllers in the current test setup
+            // ... however, the failure message indicates that the test is
+            // ... unwrapping the MultipleDelegateActivities and trying to
+            // ... mint the new delegated data record.
+            await expect(tcx1.submit({expectError: true})).rejects.toThrow(
+                /no .* delegated-data out/
+            );
         });
 
         it.todo(

@@ -30,6 +30,7 @@ import { Address } from "@hyperionbt/helios";
 import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateWithGenericUuts";
 import { Capo } from "../src/Capo";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
+import { expectTxnError } from "../src/testing/StellarTestHelper";
 
 class DelegationTestCapo extends CapoWithoutSettings {
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {
@@ -260,7 +261,7 @@ describe("Capo", async () => {
                 });
 
                 const mintDelegate = await t.getMintDelegate();
-                const tcx1a = await t.addSeedUtxo(h.mkTcx());
+                const tcx1a = await t.tcxWithSeedUtxo(h.mkTcx());
                 const purpose = ["mintDgt"];
                 const tcx1b = await t.txnMintingUuts(
                     tcx1a,
@@ -284,8 +285,9 @@ describe("Capo", async () => {
                     });
                 };
                 await expect(getDelegate()).resolves.toBeTruthy();
-
+                console.log("---------------------------------");
                 config = { rev: 1n, badSomeUnplannedWay: true };
+                debugger
                 const p1 = getDelegate();
                 await expect(p1).rejects.toThrow(/invalid param/);
                 // await expect(p1).rejects.toThrow(DelegateConfigNeeded);
@@ -384,6 +386,7 @@ describe("Capo", async () => {
                 //     " delegateTxn :::::::::::: ",
                 //     txAsString(tcx1b.tx, t.networkParams)
                 // );
+                
                 const createdDelegate = await t.connectDelegateWithLink(
                     "mintDelegate",
                     mintDelegateLink
@@ -464,7 +467,7 @@ describe("Capo", async () => {
                 );
                 expect(spentDgtToken).toBeTruthy();
                 expect(returnedToken).toBeTruthy();
-                await expect(t.submit(tcx2b)).resolves.toBeTruthy();
+                await expect(tcx2b.submit()).resolves.toBeTruthy();
 
                 // uses the reference script in the minting txn:
                 expect(
@@ -515,7 +518,7 @@ describe("Capo", async () => {
                             ),
                     }
                 );
-                await expect(t.submit(tcx1b)).rejects.toThrow(
+                await expect(tcx1b.submit(expectTxnError)).rejects.toThrow(
                     /missing .*mintDgt/
                 );
             });
@@ -568,7 +571,7 @@ describe("Capo", async () => {
                 console.log(
                     "------ submitting bogus txn with modified delegate datum"
                 );
-                const submitting = capo.submit(tcx1b);
+                const submitting = tcx1b.submit(expectTxnError);
                 // await submitting
                 await expect(submitting).rejects.toThrow(
                     // /delegation datum must not be modified/

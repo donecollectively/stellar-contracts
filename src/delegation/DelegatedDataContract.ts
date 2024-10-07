@@ -253,7 +253,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         const typeName = this.recordTypeName;
         const tcx2a = await spendDelegate.txnGrantAuthority(
             tcx2,
-            spendDelegate.activityUpdatingDelegatedData(typeName, id)
+            spendDelegate.activityUpdatingDelegatedData(id)
         );
 
         const activity: isActivity =

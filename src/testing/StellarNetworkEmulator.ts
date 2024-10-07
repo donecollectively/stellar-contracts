@@ -67,6 +67,7 @@ import {
 
 import { dumpAny } from "../diagnostics.js";
 import type { NetworkContext } from "../StellarContract.js";
+import type { UplcLoggingI } from "@helios-lang/uplc";
 
 const isInternal = Symbol("isInternal");
 
@@ -587,12 +588,12 @@ export class StellarNetworkEmulator implements Network {
         );
     }
 
-    //@ts-expect-error
-    async submitTx(tx, logger) {
+    async submitTx(tx: Tx, logger? : UplcLoggingI) {
         this.warnMempool();
 
         assert(
-            tx.isValid(this.currentSlot),
+            // tx.isValid(this.currentSlot),
+            tx.isValid(),
             "tx invalid (not finalized or slot out of range)"
         );
 

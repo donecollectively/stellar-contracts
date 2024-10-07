@@ -205,25 +205,25 @@ func requiresMintDelegateApproval(
                         CreatingDelegatedData => true, // short version of recursing the full check
                         DeletingDelegatedData => true, // short version of recursing the full check
                         MintingActivities => error(
-                            "invalid use of MintingActivities in mintDgt MultipleDelegateActivities"
+                            "mintDgt: MultipleDelegateActivities: nested MintingActivities invalid"
                         ),
                         BurningActivities => error(
-                            "invalid use of BurningActivities in mintDgt MultipleDelegateActivities"
+                            "mintDgt: MultipleDelegateActivities: nested BurningActivities invalid"
                         ),
                         MultipleDelegateActivities => error(
-                            "invalid nested MultipleDelegateActivities in mintDgt activity/redeemer"
+                            "mintDgt: MultipleDelegateActivities: nested MultipleDelegateActivities invalid"
                         ),
                         UpdatingDelegatedData => error(
-                            "invalid use of UpdatingDelegatedData in mintDgt MultipleDelegateActivities"
+                            "mintDgt: MultipleDelegateActivities: nested UpdatingDelegatedData invalid"
                         ),
                         SpendingActivities => error(
-                            "invalid use of SpendingActivities in mintDgt MultipleDelegateActivities"
+                            "mintDgt: MultipleDelegateActivities: nested SpendingActivities invalid"
                         ),
                         CapoLifecycleActivities => error(
-                            "invalid use of CapoLifecycleActivities in mintDgt MultipleDelegateActivities"
+                            "mintDgt: MultipleDelegateActivities: nested CapoLifecycleActivities invalid"
                         ),
                         DelegateLifecycleActivities => error(
-                            "invalid use of DelegateLifecycleActivities in mintDgt MultipleDelegateActivities"
+                            "mintDgt: MultipleDelegateActivities: nested DelegateLifecycleActivities invalid"
                         )
                     }
                 }
@@ -382,7 +382,7 @@ func validateUutMinting(
         // print("  -- minted: " + valueMinted.get_policy(mph).show());
     };
 
-    print("  -- uut-minting seed: " + seed.tx_id.show() + "🔹#"+seed.index.show() + "\n");
+    print("\n  -- uut-minting seed: " + seed.tx_id.show() + "🔹#"+seed.index.show() + "\n");
 
     expectedValue.get_policy(mph).for_each( (b : ByteArray, i: Int) -> {
         print( "    ℹ️ 🐞 expected: "+ i.show() + "x " + b.decode_utf8() + "\n" )

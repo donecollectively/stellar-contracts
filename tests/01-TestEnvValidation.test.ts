@@ -52,7 +52,7 @@ describe("Test environment", async () => {
             expect(tinaMoney.length).toBe(4);
 
             // was nTokenTypes:
-            expect(tinaMoney[0].value.assets.countTokens).toBe(0);
+            expect(tinaMoney[0].value.assets.countTokens()).toBe(0);
             expect(tinaMoney[0].value.assets.isZero).toBeTruthy();
             expect(tinaMoney[1].value.assets.isZero).toBeTruthy();
 
@@ -135,7 +135,7 @@ describe("Test environment", async () => {
             h.waitUntil(new Date(now + 10 * seconds));
             const waitedSlots = h.waitUntil(new Date(now + 110 * seconds));
 
-            expect(waitedSlots).toBe(100n);
+            expect(waitedSlots).toBe(100);
         });
 
         //     it("can access types in the contract", async (context: localTC) => {

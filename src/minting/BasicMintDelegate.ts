@@ -1,13 +1,9 @@
-import {
-    Datum,
-} from "@hyperionbt/helios";
- import * as helios from "@hyperionbt/helios";
+import { Datum } from "@hyperionbt/helios";
+import * as helios from "@hyperionbt/helios";
 
-import {  Activity, datum } from "../StellarContract.js";
+import { Activity, datum } from "../StellarContract.js";
 import type { hasSeed, isActivity } from "../StellarContract.js";
-import {
-    StellarTxnContext,
-} from "../StellarTxnContext.js";
+import { StellarTxnContext } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
 
 import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
@@ -21,8 +17,12 @@ import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
  **/
 export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig> {
     static currentRev = 1n;
-    get delegateName() { return "mintDelegate" }
-    get isMintAndSpendDelegate() { return true }
+    get delegateName() {
+        return "mintDelegate";
+    }
+    get isMintAndSpendDelegate() {
+        return true;
+    }
 
     // uses the basic delegate script, plus the isMintDelegate param
 
@@ -31,8 +31,8 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
             ...super.defaultParams,
             delegateName: "mintDelegate",
             isMintDelegate: true,
-            isSpendDelegate: this.prototype.isMintAndSpendDelegate 
-        }
+            isSpendDelegate: this.prototype.isMintAndSpendDelegate,
+        };
     }
 
     /**
@@ -41,22 +41,25 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
      * but the data-delegate's controller-token may have additional details in ITS redeemer,
      * which will be aligned with the one, as described in {@link BasicMintDelegate.activityUpdatingDelegatedData}.
      * See that topic for more details including multi-activity scenarios.
-    */
+     */
     @Activity.redeemer
     activityCreatingDelegatedData(seedFrom: hasSeed, uutPurpose: string) {
         const seed = this.getSeed(seedFrom);
-        const Activity = this.mustGetActivity("CreatingDelegatedData");
-        const enumVariantStatement = Activity.prototype._enumVariantStatement;
-        const creatingDgDataIndex = enumVariantStatement.constrIndex;
-        const uutPurposeBytes = helios.textToBytes(uutPurpose);
+        const redeemer = this.activityVariantToUplc("CreatingDelegatedData", {
+            seed,
+            dataType: uutPurpose,
+        });
+        return { redeemer };
+        // const enumVariantStatement = Activity.prototype._enumVariantStatement;
+        // const creatingDgDataIndex = enumVariantStatement.constrIndex;
+        // const uutPurposeBytes = helios.textToBytes(uutPurpose);
 
-        // was return { redeemer: new Activity( /* ... seed stuff ... */, uutPurpose) }
-        return {
-            redeemer: new helios.ConstrData(creatingDgDataIndex, [
-                seed.toUplcData(),
-                new helios.ByteArrayData(uutPurposeBytes)
-            ])
-        }
+        // return {
+        //     redeemer: new helios.ConstrData(creatingDgDataIndex, [
+        //         seed.toUplcData(),
+        //         new helios.ByteArrayData(uutPurposeBytes)
+        //     ])
+        // }
     }
 
     /**
@@ -69,12 +72,19 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
      * case, multiple cases of the above scenario will be present in a single transaction.
      */
     @Activity.redeemer
-    activityUpdatingDelegatedData(uutPurpose: string, recId: string | number[]) : isActivity {
-        const recIdBytes = Array.isArray(recId) ? recId : helios.textToBytes(recId);
-        const Activity = this.mustGetActivity("UpdatingDelegatedData");
+    activityUpdatingDelegatedData(
+        recId: string | number[]
+    ): isActivity {
+        const recIdBytes = Array.isArray(recId)
+            ? recId
+            : helios.textToBytes(recId);
+        // const Activity = this.mustGetActivity("UpdatingDelegatedData");
         return {
-            redeemer: new Activity(uutPurpose, recIdBytes)
-        }
+            // redeemer: new Activity(uutPurpose, recIdBytes),
+            redeemer: this.activityVariantToUplc("UpdatingDelegatedData", {
+                recId: recIdBytes,
+            }),
+        };
     }
 
     /**
@@ -85,12 +95,18 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
      * including multi-activity scenarios.
      */
     @Activity.redeemer
-    activityDeletingDelegatedData(uutPurpose: string, recId: string | number[]) : isActivity {
-        const recIdBytes = Array.isArray(recId) ? recId : helios.textToBytes(recId);
-        const Activity = this.mustGetActivity("DeletingDelegatedData");
-        return {
-            redeemer: new Activity(uutPurpose, recIdBytes)
-        }
+    activityDeletingDelegatedData(
+        recId: string | number[]
+    ): isActivity {
+        const recIdBytes = Array.isArray(recId)
+            ? recId
+            : helios.textToBytes(recId);
+
+            return {
+            redeemer: this.activityVariantToUplc("DeletingDelegatedData", {
+                recId: recIdBytes,
+            }),
+        };
     }
 
     /**
@@ -102,35 +118,41 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
     @Activity.redeemer
     activityCreatingDataDelegate(seedFrom: hasSeed, uutPurpose: string) {
         const seed = this.getSeed(seedFrom);
-        return this.mkCapoLifecycleActivity("CreatingDelegate", seed, 
-            new helios.ByteArrayData(helios.textToBytes(uutPurpose))
+        return this.mkCapoLifecycleActivity(
+            "CreatingDelegate",
+            {
+                seed,
+                purpose: uutPurpose,
+            }
+            // new helios.ByteArrayData(helios.textToBytes(uutPurpose))
         );
     }
-
 
     @datum
     mkDatumScriptReference() {
         throw new Error(`obsolete mkDatumScriptReference!!!`);
+        //@ts-ignore
         const { ScriptReference: hlScriptReference } = this.onChainDatumType;
 
         // this is a simple enum tag, indicating the role of this utxo: holding the script
         // on-chain, so it can be used in later transactions without bloating those txns
         // every time.
         const t = new hlScriptReference();
+        //@ts-ignore
         return Datum.inline(t._toUplcData());
     }
 
     async txnGrantAuthority<TCX extends StellarTxnContext>(
         tcx: TCX,
         redeemer: isActivity,
-        skipReturningDelegate? :  "skipDelegateReturn"
+        skipReturningDelegate?: "skipDelegateReturn"
     ) {
         if (!redeemer)
             throw new Error(
                 `mint delegate requires an explicit redeemer for txnGrantAuthority()`
             );
 
-        const {capo} = this.configIn!;
+        const { capo } = this.configIn!;
         await capo.txnAttachScriptOrRefScript(tcx, this.compiledScript);
 
         return super.txnGrantAuthority(tcx, redeemer, skipReturningDelegate);

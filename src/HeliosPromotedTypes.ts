@@ -23,7 +23,7 @@ export type {
     Network,
 } from "@hyperionbt/helios";
 
-const DatumInline = Datum.inline;
+const DatumInline = Datum.Inline
 /**
  * Inline Datum for contract outputs
  * @public

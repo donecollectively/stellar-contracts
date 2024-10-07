@@ -8,50 +8,41 @@ import {
     TxInput,
     Value,
     Datum,
-    UplcProgramV2,
     type UplcData,
     ListData,
     ConstrData,
 } from "@hyperionbt/helios";
 import * as helios from "@hyperionbt/helios";
-import type { DataType } from "@helios-lang/compiler/types/typecheck/common.js";
-import { SimpleWallet } from "@helios-lang/tx-utils";
+import { Cast } from "@helios-lang/contract-utils";
+import { TxOutputDatum } from "@helios-lang/ledger-babbage";
+import type { UplcProgramV2I, UplcProgramV3I, UplcProgramV2, UplcProgramV3 } from "@helios-lang/uplc";
+import type { DataType } from "@helios-lang/compiler";
 import type { Network, Wallet } from "@hyperionbt/helios";
-export type anyUplcProgram = UplcProgramV2;
-// | UplcProgramV3;
-
-export function isUplcData(x: any): x is UplcData {
-    return "kind" in x && "memsize" in x && "toCbor" in x;
-}
+export type anyUplcProgram = 
+| UplcProgramV2I  
+| UplcProgramV3I 
+| UplcProgramV2 
+| UplcProgramV3;
 
 import {
     StellarTxnContext,
     type TxDescription,
-    type MultiTxnCallback,
-    type hasAddlTxns,
     type hasSeedUtxo,
 } from "./StellarTxnContext.js";
 import {
     betterJsonSerializer,
-    dumpAny,
-    utxosAsString,
-    valueAsString,
 } from "./diagnostics.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import {
     HeliosModuleSrc,
     type HeliosModuleOptions,
 } from "./HeliosModuleSrc.js";
-import { mkTv, mkValuesEntry, stringToNumberArray } from "./utils.js";
-import { UutName, type SeedAttrs } from "./delegation/UutName.js";
+import { type SeedAttrs } from "./delegation/UutName.js";
 import type { Capo } from "./Capo.js";
 import { DatumAdapter, type adapterParsedOnchainData } from "./DatumAdapter.js";
-import type { DatumAdapterOffchainType } from "./CapoSettingsTypes.js";
-import type { SimpleWallet_stellar } from "./testing/StellarNetworkEmulator.js";
-import type { ByteArrayLike } from "@helios-lang/uplc/types/data/ByteArrayData.js";
 import { UtxoHelper, type utxoPredicate } from "./UtxoHelper.js";
-import { Cast } from "@helios-lang/contract-utils";
-import { TxOutputDatum } from "@helios-lang/ledger-babbage";
+import { CachedHeliosProgram } from "./CachedHeliosProgram.js";
+import { uplcDataSerializer } from "./delegation/jsonSerializers.js";
 
 type NetworkName = "testnet" | "mainnet";
 let configuredNetwork: NetworkName | undefined = undefined;
@@ -66,6 +57,11 @@ export type isActivity = {
     redeemer?: UplcData;
     details?: string;
 };
+
+
+export function isUplcData(x: any): x is UplcData {
+    return "kind" in x && "toCbor" in x;
+}
 
 type WalletsAndAddresses = {
     wallets: Wallet[];
@@ -105,11 +101,6 @@ export type anyDatumProps = Record<string, any>;
 export interface configBaseWithRev {
     rev: bigint;
 }
-
-export type devConfigProps = {
-    isDev: boolean;
-    devGen: bigint;
-};
 
 export type UplcRecord<CT extends configBaseWithRev> = {
     [key in keyof CT]: UplcData;
@@ -164,7 +155,7 @@ export const Activity = {
                 `@Activity.redeemer: ${thingName}: name should start with '(activity|burn|mint)[A-Z]...'`
             );
         }
-        needsActiveVerb(thingName, !!"okwhatever");
+        needsActiveVerb(thingName, /* show workaround offer */ true);
         return Activity.redeemerData(proto, thingName, descriptor);
     },
     redeemerData(proto, thingName, descriptor) {
@@ -327,7 +318,6 @@ export type SetupDetails = {
     isMainnet?: boolean;
     actorContext: ActorContext;
     isTest?: boolean;
-    isDev?: boolean;
     uh: UtxoHelper;
     optimize?: boolean;
 };
@@ -410,7 +400,7 @@ export class StellarContract<
 > {
     //! it has scriptProgram: a parameterized instance of the contract
     //  ... with specific `parameters` assigned.
-    scriptProgram?: Program;
+    scriptProgram?: CachedHeliosProgram;
     configIn?: ConfigType;
     partialConfig?: Partial<ConfigType>;
     contractParams?: UplcRecord<ConfigType>;
@@ -544,16 +534,20 @@ export class StellarContract<
         const { config, partialConfig } = args;
         if (config) {
             this.configIn = config;
-            
+
             this.scriptProgram = this.loadProgramScript(args);
+            this.contractParams = this.getContractScriptParamsUplc(config);
+            await this.compileWithScriptParams();
         } else {
             this.partialConfig = partialConfig;
             this.scriptProgram = this.loadProgramScript();
         }
+
         return this;
     }
 
     compiledScript!: anyUplcProgram; // initialized in loadProgramScript
+    usesContractScript : boolean = true;
 
     get datumType() {
         return this.onChainDatumType;
@@ -778,6 +772,7 @@ export class StellarContract<
         const {
             [scriptNamespace]: { [onChainDatumName]: DatumType },
         } = this.scriptProgram!.userTypes;
+        
         return DatumType;
     }
 
@@ -906,8 +901,7 @@ export class StellarContract<
                 `$${
                     this.constructor.name
                 }: activity/enum-variant name mismatch in ${
-                    //@ts-expect-error
-                    enumType.name.value
+                    enumType.name
                 }: variant '${variantName}' unknown\n` +
                     ` ... variants in this enum: ${variantNames.join(", ")}`
             );
@@ -923,11 +917,7 @@ export class StellarContract<
         );
     }
 
-    typeToUplc(
-        type: DataType,
-        data: any,
-        path: string = ""
-    ): UplcData {
+    typeToUplc(type: DataType, data: any, path: string = ""): UplcData {
         const schema = type.toSchema();
         const cast = new Cast(schema, {
             isMainnet: this.setup.isMainnet || false,
@@ -944,6 +934,29 @@ export class StellarContract<
                 const fullName = `${namespace}::${paramName}`;
                 // console.log("  -- param", fullName);
                 const thatType = paramTypes[fullName];
+                if (!thatType) {
+                    debugger;
+                    // group the params by namespace to produce a list of:
+                    //   "namespace::{ ... paramNames ... }"
+                    //   "namespace2::{ ... paramNames ... }"
+                    const availableParams = Object.entries(paramTypes).reduce(
+                        (acc, [k, v]) => {
+                            const [ns, name] = k.split("::");
+                            if (!acc[ns]) acc[ns] = [];
+                            acc[ns].push(name);
+                            return acc;
+                        },
+                        {} as Record<string, string[]>
+                    );
+                    // throw an error showing all the namespaces and all the short params in each
+                    const availableScriptParams = Object.entries(availableParams).map(
+                        ([ns, names]) => `  ${ns}::{${names.join(", ")}}`
+                    ).join("\n");
+                    console.log("availableScriptParams", availableScriptParams);
+                    throw new Error(
+                        `invalid parameter name ${paramName} in namespace '${namespace}' \n`
+                    );
+                }
                 return [
                     fullName,
                     this.typeToUplc(thatType, data, `params[${fullName}]`),
@@ -976,7 +989,7 @@ export class StellarContract<
         const cast = new Cast(scriptDatumType.toSchema(), {
             isMainnet: this.setup.isMainnet || false,
         });
-        
+
         const parsedData = (cast.fromUplcData(datum.data) as any)[datumName];
         const ts2 = Date.now();
         // throw new Error(`todo: parse some datum here`);
@@ -1402,7 +1415,7 @@ export class StellarContract<
         {
             signers = [],
             addlTxInfo = {
-                description: tcx.txnName ? ": "+tcx.txnName : "",
+                description: tcx.txnName ? ": " + tcx.txnName : "",
             },
         }: {
             signers?: Address[];
@@ -1473,13 +1486,15 @@ export class StellarContract<
     }
     _cache: ComputedScriptProperties = {};
 
-    compileWithScriptParams() {
+    async compileWithScriptParams() {
         if (this.compiledScript) {
             console.warn(
                 "compileWithScriptParams() called after script compilation already done"
             );
             debugger;
         }
+        if (!this.usesContractScript) return
+
         if (!this.contractParams) {
             throw new Error(`contractParams not set`);
         }
@@ -1500,40 +1515,31 @@ export class StellarContract<
 
         console.log(
             `${this.constructor.name} with params:`,
-            this.contractParams
+            this.scriptProgram!.entryPoint.paramsDetails()
         );
-        // debugger
-        // console.log(
-        //     new Error(
-        //         "who is triggering script compilation here?"
-        //     ).stack!.split("\n").join("\n")
-        // );
 
         global.isCompiling = true;
-        // console.profile?.("compile");
 
-        this.compiledScript = script.compile({
-            optimize: false,
-            // optimize: {
+        this.compiledScript = await script.compileCached({
+            optimize: {
             //     factorizeCommon: false,
-            //     keepTracing: true,
+                keepTracing: true,
             //     flattenNestedFuncExprs: false,
             //     inlineSimpleExprs: false,
             //     removeUnusedArgs: false,
             //     replaceUncalledArgsWithUnit: false,
             //     inlineErrorFreeSingleUserCallExprs: false,
             //     inlineSingleUseFuncExprs: false
-            // },
-            // withAlt: true,
-            //     factorizeCommon: false,                
-            // }
+            },
+            withAlt: true,
+            //     factorizeCommon: false,
         });
         global.isCompiling = false;
-        
+
         console.log(`       ✅ ${this.constructor.name}`);
         this._cache = {};
         const t2 = new Date().getTime();
-        
+
         // Result: ~80ms cold-start or (much) faster on additional compiles
         console.log("::::::::::::::::::::::::compile time " + (t2 - t) + "ms");
         // console.profileEnd?.("compile");
@@ -1542,7 +1548,7 @@ export class StellarContract<
 
     loadProgramScript(
         args?: StellarFactoryArgs<ConfigType>
-    ): Program | undefined {
+    ): CachedHeliosProgram | undefined {
         let codeModule = HeliosModuleSrc.parseFromOptions(
             this.contractSource()
         );
@@ -1598,14 +1604,13 @@ export class StellarContract<
 
         const { config: params } = args || {};
         try {
-            const script = new Program(codeModule, {
+            const script = CachedHeliosProgram.forCurrentPlatform(codeModule, {
                 moduleSources: modules,
             });
             this.scriptProgram = script;
 
             if (params) {
                 this.contractParams = this.getContractScriptParamsUplc(params);
-                this.compileWithScriptParams();
             }
 
             return script;
@@ -1671,7 +1676,7 @@ export class StellarContract<
             // const errorModule = [codeModule, ...modules].find(
             //     (m) => (m as any).name == moduleName
             // );
-            debugger;
+
             const {
                 project,
                 moduleName,
@@ -1693,20 +1698,23 @@ export class StellarContract<
                       `${indent}  ... (possibly in mkHeliosModule(heliosCode, \n${indent}    "${srcFilename}"\n${indent})\n`;
             }
 
-            debugger;
             const { startLine, startColumn } = e.site;
             const t = new Error(errorInfo);
             const modifiedStack = t.stack!.split("\n").slice(1).join("\n");
-            //!!! todo: restore additional errors
-            // const additionalErrors = e.src.errors
-            //     .slice(1)
-            //     .map((x) => `       |         ⚠️  also: ${x}`);
-            // const addlErrorText = additionalErrors.length
-            //     ? ["", ...additionalErrors, "       v"].join("\n")
-            //     : "";
+            const additionalErrors = e.otherErrors
+                .slice(1)
+                .map((oe) => `       |         ⚠️  also: ${
+                    // (oe.message as string).replace(e.site.file, "")}`);
+                    oe.site.file == e.site.file ? 
+                        oe.site.toString().replace(e.site.file+":", "at ") + ": "+ oe.originalMessage
+                    : oe.site.toString()
+                }`);
+            const addlErrorText = additionalErrors.length
+                ? ["", ...additionalErrors, "       v"].join("\n")
+                : "";
             t.message = `${e.kind}: ${this.constructor.name}: ${
                 e.originalMessage
-                /* addlErrorText}${ */
+            }${addlErrorText
             }\n${errorInfo}`;
 
             t.stack =

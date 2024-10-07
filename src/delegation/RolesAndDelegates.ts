@@ -91,8 +91,6 @@ export type capoDelegateConfig = configBaseWithRev & devConfigProps & {
     delegateName: string;
     tn: number[];
     rev: bigint;
-    isDev: boolean;
-    devGen: bigint;
     addrHint: Address[];
 };
 

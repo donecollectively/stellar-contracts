@@ -17,7 +17,8 @@ import {
 
 import { 
     RelativeDelegateLink,
-    AbstractDelegateActivitiesEnum
+    AbstractDelegateActivitiesEnum,
+    DgTknDisposition as DgTkn
 } from CapoDelegateHelpers
 
 func mkTokenShow(mph: MintingPolicyHash) -> (Value) -> String {
@@ -101,14 +102,14 @@ enum CapoDatum {
     }
 
     func mustFindSettingsOutput(self, mph: MintingPolicyHash, inAddr: Address) -> outputAndDatum[CapoDatum::SettingsData] {
-        print( " ⬅️ 🔎 finding settings output: " );
         settingsVal : Value = mkTv(mph: mph, tnBytes: self.switch {
             ct: CharterToken => {
-                print(ct.settingsUut.decode_utf8());
+                print( " ⬅️ 🔎 finding settings output: "+ ct.settingsUut.decode_utf8() + "\n");
                 ct.settingsUut
             },
             _ => error("mustFindSettings - only valid on CharterToken datum")
         });
+        
         notFound = Option[outputAndDatum[CapoDatum::SettingsData]]::None;
         foundSettings: []outputAndDatum[CapoDatum::SettingsData] = 
             tx.outputs.map_option[
@@ -141,7 +142,6 @@ enum CapoDatum {
                 }
             );
 
-        // if (isDev) { 
         assert(foundSettings.length < 2, "too many settings outputs") ;
         assert(foundSettings.length == 1, "no settings output");
 
@@ -453,7 +453,7 @@ struct DelegateInput {
     }
 
 
-    func requiresValidOutput(self, createdOrReturned : String="returned") -> Bool {
+    func requiresValidOutput(self, createdOrReturned : DgTkn=DgTkn::Returned) -> Bool {
         // TODO - would want this to be able to call our assert/error methods
         self.link.hasValidOutput(
             mph: self.mph, 
@@ -870,10 +870,10 @@ struct CapoCtx {
                 Some{i} => i == input,
                 None => false
             }
-        ).trace("acting on mintDgt-* right now? ");
+        ).trace("\nacting on mintDgt-* right now? ");
         assert(
             isMintDgt || !required
-            , "not acting as mint delegate"
+            , "\nnot acting as mint delegate"
         );
         isMintDgt
     }
@@ -885,7 +885,7 @@ struct CapoCtx {
                 Some{i} => i == input,
                 None => false
             }
-        ).trace("acting on spendDgt-* right now? ");
+        ).trace("\nacting on spendDgt-* right now? ");
         assert(
              isSpendDgt || !required
             , "not acting as spend delegate"

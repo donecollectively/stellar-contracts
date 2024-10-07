@@ -9,7 +9,7 @@ import type {
     hasUutContext,
 } from "../Capo.js";
 
-import { StellarTxnContext, type anyState, type hasAddlTxns } from "../StellarTxnContext.js";
+import { StellarTxnContext, type anyState, type hasAddlTxns, type SubmitOptions } from "../StellarTxnContext.js";
 import { StellarTestHelper } from "./StellarTestHelper.js";
 import { CapoMinter } from "../minting/CapoMinter.js";
 
@@ -359,7 +359,10 @@ export abstract class CapoTestHelper<
         return this.strella;
     }
 
-    async bootstrap(args?: Partial<MinimalCharterDatumArgs>) {
+    async bootstrap(
+        args?: Partial<MinimalCharterDatumArgs>,
+        submitOptions: SubmitOptions = {}
+    ) {
         let strella = this.strella || (await this.initialize(undefined, args));
         if (this.bootstrap != CapoTestHelper.prototype.bootstrap) {
             throw new Error(
@@ -374,7 +377,7 @@ export abstract class CapoTestHelper<
             return strella;
         }
 
-        await this.mintCharterToken(args);
+        await this.mintCharterToken(args, submitOptions);
         console.log(
             "       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap with charter"
         );
@@ -388,7 +391,8 @@ export abstract class CapoTestHelper<
 
     abstract mkDefaultCharterArgs(): Partial<MinimalCharterDatumArgs>;
     abstract mintCharterToken(
-        args?: Partial<MinimalCharterDatumArgs>
+        args?: Partial<MinimalCharterDatumArgs>,
+        submitOptions?: SubmitOptions
     ): Promise<
         hasUutContext<
             "govAuthority" | "capoGov" | "mintDelegate" | "mintDgt" | "settings"

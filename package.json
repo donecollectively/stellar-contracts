@@ -41,6 +41,8 @@
     },
     "author": "Done Collectively LCA",
     "dependencies": {
+        "@types/proper-lockfile": "^4.1.4",
+        "proper-lockfile": "^4.1.2",
         "semver": ">=7.5.2"
     },
     "devDependencies": {
@@ -57,7 +59,7 @@
         "@helios-lang/tx-utils": "link:../helios/tx-utils",
         "@helios-lang/uplc": "link:../helios/uplc",
         "@hyperionbt/helios": "^0.16.3",
-        "@microsoft/api-extractor": "^7.43.0",
+        "@microsoft/api-extractor": "^7.47.9",
         "@rollup/plugin-json": "^6.0.1",
         "@rollup/plugin-node-resolve": "^15.1.0",
         "@rollup/pluginutils": "^5.0.2",
@@ -74,7 +76,7 @@
         "rollup-pluginutils": "^2.8.2",
         "semver": ">=7.5.2",
         "tslib": "^2.5.3",
-        "typescript": "5.4.2",
+        "typescript": "5.6.2",
         "vite": "^4.4.11",
         "vitest": "^2.1.1"
     }

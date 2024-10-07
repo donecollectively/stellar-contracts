@@ -1,4 +1,5 @@
 node_modules
+.hlcache/
 lib/
 /z/
 /zz_junk

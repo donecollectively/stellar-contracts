@@ -17,6 +17,8 @@ import type { Wallet } from "@hyperionbt/helios";
 
 import { SimpleWallet_stellar as emulatedWallet } from "./StellarNetworkEmulator.js";
 
+export const expectTxnError = { expectError: true as const } as Partial<SubmitOptions>
+
 import { StellarContract, findInputsInWallets } from "../StellarContract.js";
 import type {
     stellarSubclass,
@@ -42,7 +44,7 @@ import type {
     enhancedNetworkParams,
 } from "./types.js";
 import { SimpleWallet_stellar, StellarNetworkEmulator, type NetworkSnapshot } from "./StellarNetworkEmulator.js";
-import type { StellarTxnContext } from "../StellarTxnContext.js";
+import type { StellarTxnContext, SubmitOptions } from "../StellarTxnContext.js";
 import { RootPrivateKey } from "@helios-lang/tx-utils";
 import { UtxoHelper } from "../UtxoHelper.js";
 
@@ -254,11 +256,15 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         return preProdParams;
     }
 
-    async submitTxnWithBlock(tcx: StellarTxnContext | Promise<StellarTxnContext>, futureDate?: Date) {
+    async submitTxnWithBlock(
+        tcx: StellarTxnContext | Promise<StellarTxnContext>, options: SubmitOptions & {
+            futureDate?: Date
+        }={}
+    ) {
         const t = await tcx;
-        await this.advanceNetworkTimeForTx(t, futureDate);
+        await this.advanceNetworkTimeForTx(t, options.futureDate);
 
-        return t.submit().then(() => {
+        return t.submit(options).then(() => {
             this.network.tick(1);
             return tcx;
         });
@@ -268,15 +274,11 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         const { txb: txb } = tcx;
 
         // determines the validity range of the transaction 
-        const tx = await txb.build({
-            changeAddress: this.wallet.address,
-            networkParams: this.networkParams,
-        })
+        const tx = await tcx.builtTx
 
         const txBody = tx.body;
-        const txDumpBody = tx.dump().body;
         function txnAttr(x: string) {
-            return txBody[x] || txDumpBody[x];
+            return txBody[x]
         }
         function withPositiveSign(x: number | bigint) {
             return x < 0 ? `${x}` : `+${x}`;
@@ -288,11 +290,11 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         let targetTime: number = futureDate?.getTime() || Date.now();
         let targetSlot = this.netPHelper.timeToSlot(BigInt(targetTime));
 
-        console.log("    ⚗️ 🐞ℹ️  advanceNetworkTimeForTx: "+ ( tcx.txnName || ""));
+        tcx.logger.logPrint("\n  ⚗️ 🐞ℹ️  advanceNetworkTimeForTx: "+ ( tcx.txnName || ""));
         if (futureDate) {
             debugger
-            console.log(
-            `    ---- ⚗️ 🐞🐞 explicit futureDate ${futureDate.toISOString()} -> slot ${targetSlot}`
+            tcx.logger.logPrint(
+            `\n    ---- ⚗️ 🐞🐞 explicit futureDate ${futureDate.toISOString()} -> slot ${targetSlot}`
             )
         }
         const { currentSlot } = this.network;
@@ -302,8 +304,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
 
         const validInPast = validTo && nowSlot > validTo;
         const validInFuture = validFrom && nowSlot < validFrom;
-        console.log(
-            `    ---- ⚗️ 🐞🐞 advanceNetworkTimeForTx: tx valid ${
+        tcx.logger.logPrint(
+            `\n    ---- ⚗️ 🐞🐞 advanceNetworkTimeForTx: tx valid ${
                 validFrom || "anytime"
             } -> ${validTo || "anytime"}`
         );
@@ -311,8 +313,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         const currentToTargetDiff = withPositiveSign(slotDiff);
         let effectiveNetworkSlot = targetSlot;
         function showEffectiveNetworkSlotTIme() {
-            console.log(
-                `    ⚗️ 🐞ℹ️  with now=network slot ${effectiveNetworkSlot}: ${nph.slotToTime(effectiveNetworkSlot)}\n`+
+            tcx.logger.logPrint(
+                `\n    ⚗️ 🐞ℹ️  with now=network slot ${effectiveNetworkSlot}: ${nph.slotToTime(effectiveNetworkSlot)}\n`+
                 `           tx valid ${
                     validFrom ? withPositiveSign(effectiveNetworkSlot - validFrom) : "anytime"
                 } -> ${
@@ -321,8 +323,8 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             );
     
         }
-        console.log(
-            `    ---- ⚗️ 🐞🐞 current slot ${currentSlot} ${currentToNowDiff} = now slot ${nowSlot} \n`+
+        tcx.logger.logPrint(
+            `\n    ---- ⚗️ 🐞🐞 current slot ${currentSlot} ${currentToNowDiff} = now slot ${nowSlot} \n`+
             `                    current ${currentToTargetDiff} = targetSlot ${targetSlot}`
         );
         if (
@@ -333,14 +335,16 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
                 // ":test: ⚗️"
                 // ":debug: 🐞 "
                 // info emoji with i in a blue square: "ℹ️"
-                console.log(`    ---- ⚗️ 🐞ℹ️  txnTime ${validInPast ? "already in the past" : validInFuture ? "not yet valid" : "‹??incontheevable??›"}; advancing to explicit futureDate @now + ${targetSlot - nowSlot}s`);
+                tcx.logger.logPrint(`\n    ---- ⚗️ 🐞ℹ️  txnTime ${validInPast ? "already in the past" : validInFuture ? "not yet valid" : "‹??incontheevable??›"}; advancing to explicit futureDate @now + ${targetSlot - nowSlot}s`);
             } else {
                 // test an old txn by constructing it with a date less than Date.now()
-                console.log(
-                    `    -- ⚗️ 🐞 txnTime ${validInPast ? "already in the past" : validInFuture ? "not yet valid" : "‹??incontheevable??›"}; no futureDate specified; not interfering with network time`
+                tcx.logger.logPrint(
+                    `\n    -- ⚗️ 🐞 txnTime ${validInPast ? "already in the past" : validInFuture ? "not yet valid" : "‹??incontheevable??›"}; no futureDate specified; not interfering with network time`
                 );
                 effectiveNetworkSlot = nowSlot;
                 showEffectiveNetworkSlotTIme();
+                tcx.logger.flush()
+
                 return;
             }
         }
@@ -349,27 +353,29 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
             effectiveNetworkSlot = nowSlot;
             showEffectiveNetworkSlotTIme();
             if (futureDate) {
-                console.log(
-                    `    ------ ⚗️ 🐞🐞🐞🐞🐞🐞🐞🐞can't go back in time ${slotDiff}s (current slot ${this.network.currentSlot}, target ${targetSlot})`
+                tcx.logger.logPrint(
+                   `\n    ------ ⚗️ 🐞🐞🐞🐞🐞🐞🐞🐞can't go back in time ${slotDiff}s (current slot ${this.network.currentSlot}, target ${targetSlot})`
                 );
                 throw new Error(`explicit futureDate ${futureDate} is in the past; can't go back ${slotDiff}s`);
             }
-            console.log(
-                `   -- ⚗️ 🐞🐞🐞🐞⚗️  NOT ADVANCING: the network is already ahead of the current time by ${
+            tcx.logger.logPrint(
+                `\n   -- ⚗️ 🐞🐞🐞🐞⚗️  NOT ADVANCING: the network is already ahead of the current time by ${
                     0 - slotDiff
                 }s ⚗️ 🐞🐞🐞🐞⚗️`
             );
+            tcx.logger.flush()
             return;
         }
         if (this.network.currentSlot < targetSlot) {
             effectiveNetworkSlot = targetSlot;
-            console.log(`    ⚗️ 🐞ℹ️  advanceNetworkTimeForTx ${withPositiveSign(slotDiff)} slots`);
+            tcx.logger.logPrint(`\n    ⚗️ 🐞ℹ️  advanceNetworkTimeForTx ${withPositiveSign(slotDiff)} slots`);
             showEffectiveNetworkSlotTIme();
             this.network.tick(slotDiff);
         } else {
             effectiveNetworkSlot  = currentSlot
             showEffectiveNetworkSlotTIme();
         }
+        tcx.logger.flush()
     }
 
     async initialize({
@@ -690,7 +696,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
     }
 
     currentSlot() {
-        return this.networkParams.refTipSlot;
+        return this.network.currentSlot;
     }
 
     waitUntil(time: Date) {

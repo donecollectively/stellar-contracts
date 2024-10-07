@@ -75,18 +75,25 @@ enum AbstractDelegateActivitiesEnum {
     CreatingDelegatedData {
         seed: TxOutputId
         dataType: String
+        // id from seed
     }
     UpdatingDelegatedData {
+        // seed not used
         dataType: String
         recId: ByteArray
     }
     DeletingDelegatedData {
+        // seed not used
         dataType: String
         recId: ByteArray
     }
     MultipleDelegateActivities {
         activities: []Data
     }
+}
+enum DgTknDisposition {
+    Returned
+    Created
 }
 
 // data stored in the Capo, representing basic delegate info
@@ -154,7 +161,7 @@ struct RelativeDelegateLink {
             // when no special input is needed by the delegate, 
             None => {
                 if (required) {
-                    error("❌ ➡️ 💁missing required input for delegate link " + self.uutName)
+                    error("_❌ ➡️ 💁 missing required input with dgTkn " + self.uutName)
                 } else {
                     Option[TxInput]::None
                 }
@@ -176,9 +183,9 @@ struct RelativeDelegateLink {
                     },
                     /* notFound: */ None => {
                         if (required) {
-                            error("_❌ ➡️  💁 missing req'd ^ input dgTkn (at script addr) " + self.uutName)
+                            error("_❌ ➡️  💁 missing req'd input dgTkn (at script addr) " + self.uutName)
                         } else {
-                            print (" <- 🚫 ➡️ 💁 no input for ^ dgTkn; not req'd; ret false\n");
+                            print (" <- 🚫 ➡️ 💁 no input with ^ dgTkn; not req'd; returning false\n");
                             Option[TxInput]::None
                         }
                     }
@@ -192,7 +199,7 @@ struct RelativeDelegateLink {
         self, // delegateLink: RelativeDelegateLink, 
         mph: MintingPolicyHash, 
         required: Bool = true,
-        createdOrReturned: String = "returned"
+        createdOrReturned: DgTknDisposition = DgTknDisposition::Returned
     ) -> Bool {
         RelativeDelegateLink{
             uut, strategy,
@@ -207,7 +214,11 @@ struct RelativeDelegateLink {
         } else { assert(true, "no") };
     
         v : Value = mkTv(mph, uut);
-        print(" ⬅️ 🔎 💁 expect dgTkn "+createdOrReturned + ": "+ uut);
+        cOrR : String = createdOrReturned.switch{
+            Returned => "returned",
+            Created => "created"
+        };
+        print(" ⬅️ 🔎 💁 expect dgTkn "+ cOrR + ": "+ uut);
         hasDelegate : Bool = validatorHash.switch{
             Some{vh} => {
                 print( " sent to validator: "+vh.show()+"\n");
@@ -226,16 +237,33 @@ struct RelativeDelegateLink {
         };
     
         if (!hasDelegate && required) {
-            error("⬅️ ❌ 💁 dgTkn not "+createdOrReturned+": "+ uut )
+            // this branch has no on-chain cost
+            // throws for a missing input 
+            createdOrReturned.switch {
+                Created => error("⬅️ ❌ 💁 dgTkn not created: "+ uut),
+                Returned => { // throws unless the right INPUT is                    
+                    _ = self.hasDelegateInput(tx.inputs, mph, true);
+                    error("⬅️ ❌ 💁 dgTkn not returned: "+ uut )
+                }
+            }
         } else {
             // print(uut);
             if (hasDelegate) {
-                print(" ⬅️ ✅ 💁 ok:  ^ dgTkn has "+createdOrReturned+" a valid output\n")
+                print(" ⬅️ ✅ 💁 ok:  ^ dgTkn has "+cOrR+" a valid output\n")
             } else {
                 print(" ⬅️ 🚫 💁 no delegate but not req'd; false")
             }
         };
         hasDelegate
+
+                    // self.hasDelegateInput(tx.inputs, mph, true).switch {
+                    //     Some => {
+                    //         // throws if it's spent, but not returned correctly:
+                    //         error("⬅️ ❌ 💁 dgTkn not returned: "+ uut )
+                    //     },
+                    //     _ => error("no way")
+                    // }
+
     }
     
     // config: Data

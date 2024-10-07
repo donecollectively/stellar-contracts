@@ -38,8 +38,6 @@ type MintCharterActivityArgs<T = {}> = T & {
 export type BasicMinterParams = configBaseWithRev &
     SeedTxnScriptParams & {
         capo: Capo<any>;
-        isDev: boolean;
-        devGen: bigint;
     };
 
 /**
@@ -77,8 +75,6 @@ export class CapoMinter
             seedIndex,
             seedTxn,
             rev = this.currentRev,
-            isDev,
-            devGen,
         } = config;
 
         return this.paramsToUplc({

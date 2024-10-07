@@ -7,7 +7,7 @@ import {
     textToBytes,
 } from "@hyperionbt/helios";
 
-import type { GenericEnumMemberType } from "@helios-lang/compiler/types/typecheck/common.js";
+import type { GenericEnumMemberType } from "@helios-lang/compiler";
 
 import type {
     Capo,
@@ -24,7 +24,6 @@ import {
 import {
     Activity,
     datum,
-    type configBaseWithRev,
     type isActivity,
 } from "../StellarContract.js";
 import { StellarDelegate } from "./StellarDelegate.js";
@@ -145,7 +144,6 @@ import {
     static get defaultParams() {
         const params = {
             rev: this.currentRev,
-            devGen: 0n,
             isSpendDelegate: this.prototype.isSpendDelegate,
         };
         return params;
@@ -156,23 +154,15 @@ import {
         // //@ts-expect-error - spurious "could be instantiated with an unrelated type"
         // const params: CT = {
         //     rev: config.rev,
-        //     isDev: false,
-        //     devGen: 0n,
         //     delegateName: this.delegateName,
         // };
 
         const { capoAddr, mph, tn, capo, ...otherConfig } = config;
-        // otherConfig["BasicDelegate::delegateName"] = this.delegateName;
 
-        if ("development" === process.env.NODE_ENV) {
-            otherConfig.isDev = true;
-            if (!otherConfig.devGen) {
-                throw new Error(
-                    `Missing expected devGen in config for ${this.constructor.name}`
-                );
-            }
-        }
-        return this.paramsToUplc(otherConfig);
+        return this.paramsToUplc({
+            ...otherConfig,
+            delegateName: this.delegateName,
+        });
         // console.log(`${this.constructor.name} config:`, otherConfig);
         // const namespace = this.scriptProgram!.name;
         // const {paramTypes} = this.scriptProgram!;
@@ -323,20 +313,23 @@ import {
      **/
     mkSpendingActivity(
         spendingActivityName: string,
-        args: { id: string } & Record<string, any>
+        args: { id: string | number[] } & Record<string, any>
     ): isActivity {
         try {
+            let {id} = args;
+            if ("string" == typeof id) {
+                id = textToBytes(id);
+            }
+            // TODO: require that the on-chain type have first field = 'id', not 'recId' or whatever
             return this.activityRedeemer("SpendingActivities", {
                 activity: {
-                    [spendingActivityName]: args,
+                    [spendingActivityName]: {...args, id},
                 },
             });
         } catch (e: any) {
             // warning emoji: "⚠️"
             e.message =
-                "⚠️ ⚠️ ⚠️ error constructing spending activity.  You might need " +
-                "to format the args as UplcData, if the enum doesn't recognize a valid " +
-                " off-chain type.\nSpending activity: " +
+                "⚠️ ⚠️ ⚠️ error constructing spending activity: " +
                 e.message;
             throw e;
         }
@@ -352,6 +345,7 @@ import {
             mintingActivityName
         );
         debugger; // ??? vvv
+        //@ts-ignore !!!! 
         const nestedVarSt = NestedVariant.prototype._enumVariantStatement;
         const firstActivityField =
             nestedVarSt.dataDefinition.fields[0].name.value;
@@ -412,7 +406,6 @@ import {
         }
 
         try {
-            debugger;
             return this.activityRedeemer("MintingActivities", {
                 activity: { [mintingActivityName]: args },
             });
@@ -577,6 +570,7 @@ import {
     /**
      * {@inheritdoc StellarDelegate.DelegateAddsAuthorityToken}
      **/
+
     async DelegateRetiresAuthorityToken<TCX extends StellarTxnContext>(
         tcx: StellarTxnContext,
         fromFoundUtxo: TxInput

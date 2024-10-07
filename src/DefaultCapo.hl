@@ -3,8 +3,6 @@ spending Capo
 // needed in helios 0.13: defaults
 const mph : MintingPolicyHash = MintingPolicyHash::new(#1234)
 const rev : Int = 1
-const devGen : Int = 0
-const isDev: Bool = false
 
 // import {
 //     tvCharter
@@ -18,6 +16,7 @@ import {
 
 import { 
     AbstractDelegateActivitiesEnum,
+    DgTknDisposition as DgTkn,
     requiresNoDelegateInput,    
     RelativeDelegateLink
 } from CapoDelegateHelpers
@@ -103,11 +102,7 @@ func checkpoint(s: String) -> Bool {
 
 func main(datum: Data, activity: CapoActivity) -> Bool {
     // now: Time = tx.time_range.start;
-    print("🚥❓Capo");
-    if (isDev) {
-        print(" - isDev @gen " + devGen.show())
-    };
-    print("\n");
+    print("🚥❓Capo\n");
     TODO("implement activity updatingTypeMap");
 
     showMyTokens : (Value) -> String = mkTokenShow(mph);
@@ -324,12 +319,17 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
 
             unchangedSpendDgt : Bool = ( spendDelegate.serialize() == oldSpendDelegate.serialize() );
             unchangedMintDgt : Bool = ( mintDelegate.serialize() == oldMintDelegate.serialize() );
+            // print(" oldMintDgt: " + oldMintDelegate.serialize().show());
+            // print("\n");
+            // print(" newMintDgt: " + mintDelegate.serialize().show());
+            // print("\n");
+            
             changedAnyNamedDelegate : Bool = ( namedDelegates.serialize() != oldNamedDelegates.serialize() );
 
             mustNotModifySettings : Bool = ( settingsUut == oldSettingsUut );
             mustNotModifyTypeInfo : Bool = ( typeMapUut == oldTypeMapUut );
 
-            if (isDev) {
+            if (true) {
                 print("is spendDgt unchanged? " + unchangedSpendDgt.show());
                 print("\n  - old: "+ oldSpendDelegate.uutName + " = " + oldSpendDelegate.strategyName);
                 print("\n       => "+  oldSpendDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"});
@@ -357,8 +357,6 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                 print("\n  - old: "+ oldSettingsUut.decode_utf8());
                 print("\n  - new: "+ settingsUut.decode_utf8());
                 print("\n")
-            } else {
-                print(" -- not dev; no extra debug output for updatingCharter\n")
             };
             assert(mustNotModifySettings, "cannot change settings uut");
             assert(mustNotModifyTypeInfo, "cannot change typeInfo uut");
@@ -367,11 +365,13 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             // the high-level use-cases that can update charter are all mutually exclusive.  Count them
             // and ensure that only one is present.
             countUpdatedThings : Int = 
-                if (unchangedGovDelegate.trace("govDgt unchanged? ")) { 0 } else { 1 } +
-                if (unchangedSpendDgt.trace("spendDgt unchanged? ") ) { 0 } else { 1 } +
-                if (unchangedMintDgt.trace("mintDgt unchanged? ") ) { 0 } else { 1 } +
-                if (changedAnyNamedDelegate.trace("namedDgt changed? ") ) { 1 } else { 0 };
-            assert(countUpdatedThings == 1, "only one type of charterUpdate can be performed at once");            
+                if ((!unchangedGovDelegate).trace("\n -- govDgt changed? ")) { 1 } else { 0 } +
+                if ((!unchangedSpendDgt).trace("\n -- spendDgt changed? ") ) { 1 } else { 0 } +
+                if ((!unchangedMintDgt).trace("\n -- mintDgt changed? ") ) { 1 } else { 0 } +
+                if (changedAnyNamedDelegate.trace("\n -- namedDgt changed? ") ) { 1 } else { 0 };
+            assert(countUpdatedThings == 1, "\n"+countUpdatedThings.show() + 
+              " types of charterUpdate found; expected exactly one"
+            );            
 
             mustNotModifySettings &&
             mustNotModifyTypeInfo &&
@@ -444,7 +444,9 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                             } else {
                                 TODO("the old named delegate must be retired, or be force-replaced (in a different activity?)");
                                 //  the new one has to go to the right place
-                                dgt.hasValidOutput(mph, required: true, createdOrReturned: "created ")
+                                dgt.hasValidOutput(
+                                    mph, required: true, 
+                                    createdOrReturned: DgTkn::Created)
                             }
                         }
                     }
@@ -495,7 +497,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                         mph: mph
                     );
                     // it requires the govAuthority to be present 
-                    REQT( "gov authority must be present to update settings\n");
+                    REQT( "gov authority must be present to update settings");
                     hasGovAuthority : Bool = mustHaveGovAuthority(
                         mph: mph,
                         charterDatum: charterDatum // already resolved
@@ -542,7 +544,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                         ).unwrap();
 
                     // govAuthority is checking the settings
-                    REQT( "govDelegate MAY to validate settings");
+                    REQT( "govDelegate MAY contribute to settings validation");
                     govDelegateMaybeValidating : Bool = 
                         govDelegate.validatesUpdatedSettings(
                             inputs: inputs,
@@ -550,7 +552,10 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                             inputRequired: false
                         ).switch{
                             Some => true,
-                            None => true
+                            None => {
+                                print("  -- govAuthority isn't a script-based validator; doesn't validate new settings\n");
+                                true
+                            }
                         };
                     checkOneInvariant : (RelativeDelegateLink) -> Bool = 
                     (oneDgt: RelativeDelegateLink) -> Bool {

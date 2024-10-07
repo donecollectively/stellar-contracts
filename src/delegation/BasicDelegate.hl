@@ -2,8 +2,6 @@ spending BasicDelegate
 
 const rev : Int = 1
 const instance : ByteArray = #67656e6572616c // -> "general"
-const devGen : Int = 0
-const isDev: Bool = false
 const delegateName : String // = "💩  noName Delegate : ( "
 const isMintDelegate : Bool = false
 const isSpendDelegate : Bool = false
@@ -46,6 +44,7 @@ import {
     // mkTv,
     outputAndDatum,
     TODO,
+    fromCip68Wrapper,
     REQT
     // tvCharter
 } from StellarHeliosHelpers
@@ -59,11 +58,7 @@ import {
 } from specializedDelegate
 
 func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
-    print(" 🚥❓delegate: "+delegateName);
-    if (isDev) {
-        print(" - is dev @gen " + devGen.show())
-    };
-    print("\n");
+    print(" 🚥❓delegate: "+delegateName + "\n");
 
     // input = get_current_input();
     result :Bool = mdd.switch{
@@ -236,9 +231,11 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         charter : CapoDatum::CharterToken = getTxCharterDatum(dd.mph);
                         foundSettings : outputAndDatum[CapoDatum::SettingsData] = 
                             charter.mustFindSettingsOutput(dd.mph, dd.capoAddr);
-                        customSettings = capoSettings::from_data(foundSettings.rawData);
 
-                        print(delegateName + ": delegate TRYING TO VALIDATE SETTINGS\n");
+                        // customSettings = capoSettings::from_data(foundSettings.rawData);
+                        customSettings = fromCip68Wrapper[capoSettings](foundSettings.rawData);
+
+                        print("\n" + delegateName + ": delegate TRYING TO VALIDATE SETTINGS\n");
                         validated : Bool = customSettings.validate();
                         print("HURRAY\n");
 

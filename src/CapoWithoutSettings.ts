@@ -12,6 +12,7 @@ export type BridgeNoSettings = {
 // };
 
 export type NoSettings = {
+    id: string;
     none: string;
 };
 
@@ -25,7 +26,8 @@ class NoSettingsAdapter extends SettingsAdapter<NoSettings, BridgeNoSettings> {
         >
     ): NoSettings {
         return {
-            none: ""
+            id: parsedDatum.data["@id"],
+            none: "nothing here"
         };
     }
 
@@ -34,7 +36,7 @@ class NoSettingsAdapter extends SettingsAdapter<NoSettings, BridgeNoSettings> {
             data: {
                 "tpe": this.uplcString("set-"),
                 "@id": this.uplcString("set-42"),
-                none: this.uplcString("")
+                none: this.uplcString("nothing here")
             }
         });
     }
@@ -58,7 +60,7 @@ export class CapoWithoutSettings extends Capo<CapoWithoutSettings> {
 
     async mkInitialSettings() {
         return {
-            none: "" as const,
+            none: "🙈" as const,
         } //as NoSettings
     }
 }

@@ -89,13 +89,13 @@ enum SpendingActivity {
     // application can replace the placeholder, which is only here to 
     // avoid a syntax error in the unspecialized version
     _placeholder2SA {
-        recId: ByteArray
+        id: ByteArray
     }
 
     // for testing - allowed by this policy, but always rejected by the CapoMinter policy 
     // ... even though allowed by the mintDgt
     mockWorkingSpendActivity {
-        recId: ByteArray
+        id: ByteArray
     }
 }
 

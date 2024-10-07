@@ -22,6 +22,9 @@ import {
     CapoActivity,
     getRefCharterUtxo
 } from CapoHelpers
+import {
+    DgTknDisposition as DgTkn
+} from CapoDelegateHelpers
 
 import {
     mustFindInputRedeemer,
@@ -33,8 +36,6 @@ import {
 const seedTxn : TxId = TxId::new(#1234)
 const seedIndex : Int = 42
 const rev : Int = 1
-//!!! todo propagate isDev from Capo
-const isDev : Bool = false
 
 func hasContractSeedUtxo(tx: Tx) -> Bool {
     hasSeedUtxo(tx, TxOutputId::new(seedTxn, seedIndex))
@@ -120,39 +121,6 @@ func main(r : MinterActivity) -> Bool {
                 charterDatum.mustFindSettingsOutput(mph: mph, inAddr: charter.owner);
             assert(foundSettings == foundSettings, "no way");
 
-                // charterData.switch{
-            //         // c: Datum => c.switch{ 
-            //         // c:CharterToken => c, _ => error("unexpected datum type") },
-            //     ConstrData{index, fields} => {
-            //         assert(index==0, "charter token must be at index 0");
-            //         assert(fields.length == 7, "charter token must have 7 fields");
-            //         // {authDgt, mintDgt, spendDgt, mintInvariants, spendInvariants}
-            //         print("defaultMinter @D");
-            //         settingsIndex : Int = 2;
-
-            //         t : Data = fields.get(settingsIndex);
-            //         print("ok: "+ t.serialize().show());
-
-            //         CapoDatum::CharterToken::from_data(charterData)
-            //     },
-            //     _ => error("unexpected datum type")  
-            // };
-            // settingsValue : Value = mkTv(
-            //     mph: mph, 
-            //     tnBytes: settingsUut
-            // );
-            // assert(settingsOutput.value.contains(settingsValue), "settings output must contain settings UUT");
-
-            // print("defaultMinter @E");
-            // print( "head of this list is..." + ( []String{"aa", "bb", "cc"}.prepend("dd") ).head );
-            // print("" + settingsMap.tag.show());
-            // settingsMap.switch {
-
-            // };
-            // print(settingsMap.show());
-            // assert(settings.id == "set", "must have settings.id='set'");
-            // assert(settingsMap.length == 1, "no settings fields allowed at charter creation");
-
             // once we have burned down the test backlog a bit, we can add these in:
             assert(mintInvariants.length == 0, "no mint invariants allowed at charter creation");
             assert(spendInvariants.length == 0, "no spend invariants allowed at charter creation");
@@ -160,9 +128,9 @@ func main(r : MinterActivity) -> Bool {
             
             print("  -- checking for required delegates\n");
             hasGoodDelegates : Bool = true &&
-                authDgt.hasValidOutput(mph, true, "created ") &&
-                mintDgt.hasValidOutput(mph, true, "created ") &&
-                spendDgt.hasValidOutput(mph, true, "created ");
+                authDgt.hasValidOutput(mph, true, DgTkn::Created) &&
+                mintDgt.hasValidOutput(mph, true, DgTkn::Created) &&
+                spendDgt.hasValidOutput(mph, true, DgTkn::Created);
 
             print("\n  -- hasSeed: " + hasSeed.show());
             print("\n  -- mintsUuts: " + mintsUuts.show());

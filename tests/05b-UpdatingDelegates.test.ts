@@ -26,6 +26,7 @@ import { ConfigFor } from "../src/StellarContract";
 import { dumpAny } from "../src/diagnostics";
 import { DelegationDetail } from "../src/delegation/RolesAndDelegates";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
+import { expectTxnError } from "../src/testing/StellarTestHelper";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
@@ -87,8 +88,8 @@ describe("Capo", async () => {
                 },
             );
             expect(addedGovToken).toHaveBeenCalledTimes(1);
-            await expect(tcx1.submit()).rejects.toThrow(
-                /dgTkn not returned: capoGov-/
+            await expect(tcx1.submit(expectTxnError)).rejects.toThrow(
+                /missing.* input.* dgTkn capoGov-/
             );
 
             console.log(" ------- case 2: forced replacement of mint delegate");
@@ -99,8 +100,8 @@ describe("Capo", async () => {
                 },
             );
             expect(addedGovToken).toHaveBeenCalledTimes(2);
-            await expect(tcx2.submit()).rejects.toThrow(
-                /dgTkn not returned: capoGov-/
+            await expect(tcx2.submit(expectTxnError)).rejects.toThrow(
+                /missing.* input.* dgTkn capoGov-/
             );
         });
 
@@ -163,7 +164,7 @@ describe("Capo", async () => {
             expect(didGrantMockedAuthority).toHaveBeenCalledTimes(1);
             expect(didntBurnBecauseMocked).toHaveBeenCalledTimes(1);
 
-            await expect(capo.submit(tcx2)).rejects.toThrow(
+            await expect(tcx2.submit(expectTxnError)).rejects.toThrow(
                 /missing req.* input .*script addr.* mintDgt-/
             );
         });
@@ -198,7 +199,7 @@ describe("Capo", async () => {
             newerPredicate.predicateValue
 
             const txnDump = await tcx2.dump();
-            tcx2.log(`${tcx2.txnName}: `, txnDump as string).flush();
+            tcx2.log(`${tcx2.txnName}: `+ txnDump as string).flush();
             tcx2.log("(NOT SUBMITTED)");
             tcx2.log(
                 "  --- test ensures the second mint delegate was used in the replacement txn ----"
@@ -220,6 +221,7 @@ describe("Capo", async () => {
             await expect(tcx3.submit()).resolves.toBeTruthy();
             network.tick(1);
 
+            console.log(" ------- case 3: minting with the new delegate");
             const tcx3a = await capo.tcxWithSeedUtxo(capo.mkTcx());
             const purpose2 = ["anything2"];
             const tcx3b = await capo.txnMintingUuts(
@@ -236,6 +238,7 @@ describe("Capo", async () => {
             const newestPredicate = (
                 await capo.getMintDelegate()
             ).mkAuthorityTokenPredicate();
+            console.log(" -- -hi")
             expect(tcx3b.outputs.find(newestPredicate)).toBeTruthy();
         });
 
@@ -280,7 +283,7 @@ describe("Capo", async () => {
             expect(fakeCharter).toHaveBeenCalled();
             expect(tcx2.inputs.find(oldPredicate)).toBeTruthy();
 
-            await expect(capo.submit(tcx2)).rejects.toThrow(
+            await expect(tcx2.submit(expectTxnError)).rejects.toThrow(
                 /missing .*mintDgt/
             );
         });
@@ -329,8 +332,8 @@ describe("Capo", async () => {
                 },
             );
             expect(addedGovToken).toHaveBeenCalledTimes(1);
-            await expect(capo.submit(tcx1)).rejects.toThrow(
-                /dgTkn not returned: capoGov-/
+            await expect(tcx1.submit(expectTxnError)).rejects.toThrow(
+                /missing.* input.* dgTkn capoGov-/
             );
 
             console.log(
@@ -343,12 +346,12 @@ describe("Capo", async () => {
                 },
             );
             expect(addedGovToken).toHaveBeenCalledTimes(2);
-            await expect(tcx2.submit()).rejects.toThrow(
-                /dgTkn not returned: capoGov-/
+            await expect(tcx2.submit(expectTxnError)).rejects.toThrow(
+                /missing.* input.* dgTkn capoGov-/
             );
         });
 
-        fit("can force-replace the spending delegate if needed", async (context: localTC) => {
+        it("can force-replace the spending delegate if needed", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
@@ -391,6 +394,7 @@ describe("Capo", async () => {
 
             const capo = await h.bootstrap();
 
+            global.id = "05b"
             const sd = await capo.getSpendDelegate();
             console.log(
                 "  ----------- mocking spend delegate's txnGrantAuthority()"
@@ -407,15 +411,7 @@ describe("Capo", async () => {
             expect(didGrantMockedAuthority).toHaveBeenCalledTimes(1);
             expect(didntBurnBecauseMocked).toHaveBeenCalledTimes(1);
 
-            const submission = tcx2.submit({
-                expectError: true,
-                // beforeValidate: async () => {
-                //     tcx2.log("this transaction is expected to fail");
-                // },
-                // beforeError: async () => {
-                //     tcx2.log("this transaction SHOULD fail");
-                // }                
-            });
+            const submission = tcx2.submit(expectTxnError);
             /* \X matches any char including line breaks */
             await expect(submission).rejects.toThrow(/\X*mismatch in UUT mint/);
 

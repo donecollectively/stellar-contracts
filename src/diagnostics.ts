@@ -17,7 +17,10 @@ import type { ErrorMap } from "./delegation/RolesAndDelegates.js";
 import { StellarTxnContext } from "./StellarTxnContext.js";
 import type { UplcProgramV2 } from "@helios-lang/uplc";
 import { Address, type TxRedeemer } from "@helios-lang/ledger-babbage";
-import { datumSerializer, delegateLinkSerializer, abbreviatedDetail } from "./delegation/jsonSerializers.js";
+import {
+    uplcDataSerializer,
+    abbreviatedDetail,
+} from "./delegation/jsonSerializers.js";
 
 /**
  * converts a hex string to a printable alternative, with no assumptions about the underlying data
@@ -206,7 +209,6 @@ export function policyIdAsString(p: MintingPolicyHash) {
     const pIdHex = p.toHex();
     const abbrev = abbreviatedDetail(pIdHex);
     return `🏦 ${abbrev}`;
-
 }
 
 /**
@@ -236,25 +238,25 @@ export function valueAsString(v: Value) {
  **/
 export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
     const outputOrder = [
-        [ "body", "inputs" ],
-        [ "body", "minted" ],
-        [ "body", "outputs" ],
-        [ "body", "refInputs" ],
-        [ "witnesses", "redeemers" ],
-        [ "body", "signers" ],
-        [ "witnesses", "v2refScripts" ],
-        [ "witnesses", "v2scripts" ],
-        [ "witnesses", "nativeScripts" ],
-        [ "body", "collateral" ],
-        [ "body", "collateralReturn" ],
-        [ "body", "scriptDataHash" ],
-        [ "body", "metadataHash" ],
-        [ "witnesses", "signatures" ],
-        [ "witnesses", "datums" ],
-        [ "body", "lastValidSlot" ],
-        [ "body", "firstValidSlot" ],
-        [ "body", "fee" ],
-    ]
+        ["body", "inputs"],
+        ["body", "minted"],
+        ["body", "outputs"],
+        ["body", "refInputs"],
+        ["witnesses", "redeemers"],
+        ["body", "signers"],
+        ["witnesses", "v2refScripts"],
+        ["witnesses", "v2scripts"],
+        ["witnesses", "nativeScripts"],
+        ["body", "collateral"],
+        ["body", "collateralReturn"],
+        ["body", "scriptDataHash"],
+        ["body", "metadataHash"],
+        ["witnesses", "signatures"],
+        ["witnesses", "datums"],
+        ["body", "lastValidSlot"],
+        ["body", "firstValidSlot"],
+        ["body", "fee"],
+    ];
 
     let details = "";
     if (!networkParams) {
@@ -265,10 +267,14 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
     }
 
     // const d = tx.dump();
+    const seenRedeemers = new Set();
 
     const allRedeemers = tx.witnesses.redeemers as any;
     let hasIndeterminate = false;
-    const inputRedeemers = Object.fromEntries(
+    const inputRedeemers: Record<
+        string | number,
+        { r?: TxRedeemer<any>; display: string }
+    > = Object.fromEntries(
         allRedeemers
             .map((x: TxRedeemer<any>, index: number) => {
                 // debugger;
@@ -278,11 +284,18 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
                 if (isIndeterminate) hasIndeterminate = true;
                 const inpIndex = isIndeterminate ? `‹unk${index}›` : inputIndex;
                 if (!x.data) debugger;
-                return [inpIndex, x.data?.toString() || "‹no data›"];
+                const showData = x.data.rawData
+                    ? uplcDataSerializer("", x.data.rawData)
+                    : x.data?.toString() || "‹no data›";
+                return [inpIndex, { r: x, display: showData }];
             })
             .filter((x) => !!x)
     );
-    if (hasIndeterminate) inputRedeemers["hasIndeterminate"] = true;
+    if (hasIndeterminate)
+        inputRedeemers["hasIndeterminate"] = {
+            r: undefined,
+            display: "‹unk›",
+        };
 
     const mintRedeemers = Object.fromEntries(
         allRedeemers
@@ -314,14 +327,19 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
         if (!item) continue;
         if ("inputs" == x) {
             item = `\n  ${item
-                .map((x, i) =>
-                    txInputAsString(
+                .map((x : TxInput, i) => {
+                    const { r, display } =
+                        inputRedeemers[i] || inputRedeemers["hasIndeterminate"]
+                        || {};
+//                    if (!display && x.datum?.data) debugger;
+                    if (r) seenRedeemers.add(r);
+                    return txInputAsString(
                         x,
-                        "➡️  " /* <- unicode blue arrow right */ + `@${1 + i} `,
+                        /* unicode blue arrow right -> */ "➡️  " + `@${1 + i} `,
                         i,
-                        inputRedeemers
-                    )
-                )
+                        display || "‹failed to find redeemer info›"
+                    );
+                })
                 .join("\n  ")}`;
         }
         if ("refInputs" == x) {
@@ -396,7 +414,7 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
         }
         if ("redeemers" == x) {
             if (!item) continue;
-            
+
             //!!! todo: augment with mph when that's available from the Activity.
             item = item.map((x) => {
                 // console.log("redeemer keys", ...[ ...Object.keys(x2) ], x2.dump());
@@ -410,7 +428,12 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
                         ? `minting policy ${x.index}`
                         : `spend txin ➡️  @${1 + x.index}`;
 
-                return `🏧  ${indexInfo} ${x.data.toString()}`;
+                const showData = seenRedeemers.has(x)
+                    ? "(see above)"
+                    : x.data.fromData
+                    ? uplcDataSerializer("", x.data.fromData)
+                    : x.data.toString();
+                return `🏧  ${indexInfo} ${showData}`;
             });
             if (item.length > 1) item.unshift("");
             item = item.join("\n    ");
@@ -469,17 +492,10 @@ export function txInputAsString(
     x: TxInput,
     prefix = "-> ",
     index?: number,
-    redeemers?: Record<number, string>
+    redeemer?: string
 ): string {
     const { output: oo } = x;
-    const hasIndeterminate = redeemers?.["hasIndeterminate"];
-    const redeemerInfo = redeemers
-        ? redeemers[index || -424242]
-            ? `\n    r = ${redeemers[index || -424242]}`
-            : hasIndeterminate
-            ? "\n    r = ‹tbd›"
-            : ""
-        : "";
+    const redeemerInfo = redeemer ? `\n    r = ${redeemer}` : "";
     return `${prefix}${addrAsString(x.address)}${showRefScript(
         oo.refScript as any
     )} ${valueAsString(x.value)} ${datumSummary(
@@ -534,7 +550,7 @@ export function utxoAsString(x: TxInput, prefix = "💵"): string {
     return ` 📖 ${txOutputIdAsString(x.id)}: ${txOutputAsString(
         x.output,
         prefix
-    )}`; // or 🪙
+    )}`;
 }
 
 /**
@@ -550,13 +566,13 @@ export function datumSummary(d: Datum | null | undefined): string {
     // debugger
     const dh = d.hash.toHex();
     const dhss = `${dh.slice(0, 8)}…${dh.slice(-4)}`;
-    const attachedData = d.data.fromData;
+    const attachedData = d.data.rawData;
     if (attachedData) {
         return `\n    d‹inline:${dhss} - ${
-            JSON.stringify(attachedData, datumSerializer, 4).slice(1,-1)
-        }=${d.toCbor().length} bytes›`
+            uplcDataSerializer("", attachedData) //.slice(1,-1)
+        }=${d.toCbor().length} bytes›`;
     } else if (d.isInline()) {
-         return `d‹inline:${dhss} - ${d.toCbor().length} bytes›`;
+        return `d‹inline:${dhss} - ${d.toCbor().length} bytes›`;
     }
     return `d‹hash:${dhss}…›`;
 }

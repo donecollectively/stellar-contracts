@@ -27,8 +27,9 @@ import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import * as utils from "../src/utils";
 import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts";
 
-
-type localTC = StellarTestContext<DefaultCapoTestHelper<CapoCanMintGenericUuts>>;
+type localTC = StellarTestContext<
+    DefaultCapoTestHelper<CapoCanMintGenericUuts>
+>;
 const wrongMinSigs = /minSigs can't be more than the size of the trustee-list/;
 const notEnoughSignaturesRegex = /not enough trustees.*have signed/;
 
@@ -44,7 +45,7 @@ const smokeTest = (smoke ? fit : it) as smokeTestType;
 
 describe("Capo", async () => {
     beforeEach<localTC>(async (context) => {
-        await new Promise(res => setTimeout(res, 10));
+        await new Promise((res) => setTimeout(res, 10));
         await addTestContext(
             context,
             DefaultCapoTestHelper.forCapoClass(CapoCanMintGenericUuts)
@@ -54,44 +55,51 @@ describe("Capo", async () => {
     describe("UUTs for contract utility", () => {
         it.todo("🟥 TEST: doesn't mint a uut without spending the seed utxo");
 
-        smokeTest("won't create a UUT without the minting delegate's involvement", async (context: localTC) => {
-            // prettier-ignore
-            const {h, h: { network, actors, delay, state }} = context;
-            const capo = await h.initialize();
-            const { tina, tom, tracy } = actors;
+        smokeTest(
+            "won't create a UUT without the minting delegate's involvement",
+            async (context: localTC) => {
+                // prettier-ignore
+                const {h, h: { network, actors, delay, state }} = context;
+                const capo = await h.initialize();
+                const { tina, tom, tracy } = actors;
 
-            await h.mintCharterToken();
-            // await delay(1000);
-            type testSomeThing = "testSomeThing";
+                await h.mintCharterToken();
+                // await delay(1000);
+                type testSomeThing = "testSomeThing";
 
-            const mintDelegate = await capo.getMintDelegate();
-            {
-                vi.spyOn(mintDelegate, "txnGrantAuthority").mockImplementation(
-                    async (tcx) => tcx
-                );
+                const mintDelegate = await capo.getMintDelegate();
+                {
+                    vi.spyOn(
+                        mintDelegate,
+                        "txnGrantAuthority"
+                    ).mockImplementation(async (tcx) => tcx);
+                }
+
+                const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
+                const purposes = ["testSomeThing"];
+                const tcx1b = await capo.txnMintingUuts(tcx1a, purposes, {
+                    mintDelegateActivity:
+                        mintDelegate.activityMintingUutsAppSpecific(
+                            tcx1a,
+                            purposes
+                        ),
+                });
+
+                const uutVal = capo.uutsValue(tcx1b.state.uuts!);
+                tcx1b.addOutput(new TxOutput(tina.address, uutVal));
+                await expect(
+                    tcx1b.submit({
+                        signers: [tom.address, tina.address, tracy.address],
+                        expectError: true,
+                    })
+                ).rejects.toThrow(/missing.*mintDgt/);
             }
-
-            const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
-            const purposes = ["testSomeThing"];
-            const tcx1b = await capo.txnMintingUuts(
-                tcx1a,
-                purposes,
-                { mintDelegateActivity: mintDelegate.activityMintingUutsAppSpecific(tcx1a, purposes) }
-            );
-
-            const uutVal = capo.uutsValue(tcx1b.state.uuts!);
-            tcx1b.addOutput(new TxOutput(tina.address, uutVal));
-            await expect(
-                tcx1b.submit({
-                    signers: [tom.address, tina.address, tracy.address],
-                })
-            ).rejects.toThrow(/missing.*mintDgt/);
-        });
+        );
 
         it("works when the seed utxo has a large utxoIdx", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
-            
+
             const strella = await h.bootstrap();
             const utxos = await h.wallet.utxos;
             const tcx = h.mkTcx().withName("creates a high-indexed utxo");
@@ -107,12 +115,8 @@ describe("Capo", async () => {
             }
             //! when the current actor has only outputs with high txo-index:
             tcx.addOutput(new TxOutput(h.wallet.address, tinyValue));
-            tcx.addOutput(
-                new TxOutput(h.wallet.address, collateralValue)
-            );
-            tcx.addOutput(
-                new TxOutput(h.wallet.address, collateralValue)
-            );
+            tcx.addOutput(new TxOutput(h.wallet.address, collateralValue));
+            tcx.addOutput(new TxOutput(h.wallet.address, collateralValue));
             await tcx.submit();
             network.tick(1);
             console.log("-------------- minting UUT from high-index txo");
@@ -121,12 +125,16 @@ describe("Capo", async () => {
 
             const mintDelegate = await strella.getMintDelegate();
             const purposes = ["testSomeThing"];
-            const tcx2a = await strella.tcxWithSeedUtxo(h.mkTcx().withName("minting UUT from high-index txo"));
-            const tcx2b = await strella.txnMintingUuts(
-                tcx2a,
-                purposes,
-                { mintDelegateActivity: mintDelegate.activityMintingUutsAppSpecific(tcx2a, purposes) }
+            const tcx2a = await strella.tcxWithSeedUtxo(
+                h.mkTcx().withName("minting UUT from high-index txo")
             );
+            const tcx2b = await strella.txnMintingUuts(tcx2a, purposes, {
+                mintDelegateActivity:
+                    mintDelegate.activityMintingUutsAppSpecific(
+                        tcx2a,
+                        purposes
+                    ),
+            });
             return tcx2b.submit();
         });
 
@@ -135,7 +143,6 @@ describe("Capo", async () => {
             const {h, h: { network, actors, delay, state }} = context;
             const capo = await h.bootstrap();
             const { tina, tom, tracy } = actors;
-
 
             type testSomeThing = "testSomeThing";
             const tcx1 = h.mkTcx();
@@ -157,55 +164,64 @@ describe("Capo", async () => {
             const mintDelegate = await capo.getMintDelegate();
             const tcx1a = await capo.tcxWithSeedUtxo(tcx1);
             const purposes = ["testSomeThing"];
-            const tcx1b = await capo.txnMintingUuts(
-                tcx1a,
-                purposes,
-                { mintDelegateActivity: mintDelegate.activityMintingUutsAppSpecific(tcx1a, purposes) }
-            );
+            const tcx1b = await capo.txnMintingUuts(tcx1a, purposes, {
+                mintDelegateActivity:
+                    mintDelegate.activityMintingUutsAppSpecific(
+                        tcx1a,
+                        purposes
+                    ),
+            });
 
             const uutVal = capo.uutsValue(tcx1b.state.uuts!);
             tcx1b.addOutput(new TxOutput(tina.address, uutVal));
             await expect(
-                capo.submit(tcx1b, {
+                tcx1.submit({
                     signers: [tom.address, tina.address, tracy.address],
+                    expectError: true,
                 })
             ).rejects.toThrow(/Missing charter in required ref_inputs/);
         });
 
-        smokeTest("fails when the mint-delegate dgTkn isn't returned", async (context: localTC) => {
-            // prettier-ignore
-            const {h, h: { network, actors, delay, state }} = context;
-            const capo = await h.initialize();
-            const { tina, tom, tracy } = actors;
+        smokeTest(
+            "fails when the mint-delegate dgTkn isn't returned",
+            async (context: localTC) => {
+                // prettier-ignore
+                const {h, h: { network, actors, delay, state }} = context;
+                const capo = await h.initialize();
+                const { tina, tom, tracy } = actors;
 
-            await h.mintCharterToken();
-            // await delay(1000);
-            type testSomeThing = "testSomeThing";
+                await h.mintCharterToken();
+                // await delay(1000);
+                type testSomeThing = "testSomeThing";
 
-            // const tcx2 = await t.txnAddCharterAuthorityTokenRef(tcx);
-            const mintDelegate = await capo.getMintDelegate();
-            const mock = vi
-                .spyOn(mintDelegate, "txnReceiveAuthorityToken")
-                .mockImplementation(async (tcx) => tcx);
+                // const tcx2 = await t.txnAddCharterAuthorityTokenRef(tcx);
+                const mintDelegate = await capo.getMintDelegate();
+                const mock = vi
+                    .spyOn(mintDelegate, "txnReceiveAuthorityToken")
+                    .mockImplementation(async (tcx) => tcx);
 
-            const purposes = ["testSomeThing"];
-            const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
-            const tcx1b = await capo.txnMintingUuts(
-                tcx1a,
-                purposes,
-                { mintDelegateActivity: mintDelegate.activityMintingUutsAppSpecific(tcx1a, purposes) }
-            );
+                const purposes = ["testSomeThing"];
+                const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
+                const tcx1b = await capo.txnMintingUuts(tcx1a, purposes, {
+                    mintDelegateActivity:
+                        mintDelegate.activityMintingUutsAppSpecific(
+                            tcx1a,
+                            purposes
+                        ),
+                });
 
-            expect(mock).toHaveBeenCalled();
+                expect(mock).toHaveBeenCalled();
 
-            const uutVal = capo.uutsValue(tcx1b.state.uuts!);
-            tcx1b.addOutput(new TxOutput(tina.address, uutVal));
-            await expect(
-                tcx1b.submit({
-                    signers: [tom.address, tina.address, tracy.address],
-                })
-            ).rejects.toThrow(/dgTkn not returned/);
-        });
+                const uutVal = capo.uutsValue(tcx1b.state.uuts!);
+                tcx1b.addOutput(new TxOutput(tina.address, uutVal));
+                await expect(
+                    tcx1b.submit({
+                        signers: [tom.address, tina.address, tracy.address],
+                        expectError: true,
+                    })
+                ).rejects.toThrow(/dgTkn not returned/);
+            }
+        );
 
         it("can create a UUT and send it anywhere", async (context: localTC) => {
             // prettier-ignore
@@ -219,11 +235,13 @@ describe("Capo", async () => {
             const mintDelegate = await capo.getMintDelegate();
             const tcx1a = await capo.addSeedUtxo(h.mkTcx());
             const purposes = ["testSomeThing"];
-            const tcx1b = await capo.txnMintingUuts(
-                tcx1a,
-                purposes,
-                { mintDelegateActivity: mintDelegate.activityMintingUutsAppSpecific(tcx1a, purposes) }
-            );
+            const tcx1b = await capo.txnMintingUuts(tcx1a, purposes, {
+                mintDelegateActivity:
+                    mintDelegate.activityMintingUutsAppSpecific(
+                        tcx1a,
+                        purposes
+                    ),
+            });
 
             const uutVal = capo.uutsValue(tcx1b.state.uuts!);
             tcx1a.addOutput(new TxOutput(tina.address, uutVal));
@@ -245,7 +263,6 @@ describe("Capo", async () => {
             const capo = await h.initialize();
             const { tina, tom, tracy } = actors;
 
-
             await h.mintCharterToken();
 
             type fooAndBar = "foo" | "bar";
@@ -254,11 +271,13 @@ describe("Capo", async () => {
             const mintDelegate = await capo.getMintDelegate();
             const tcx1a = await capo.tcxWithSeedUtxo(tcx1);
             const purposes = ["foo", "bar"];
-            const tcx1b = await capo.txnMintingUuts(
-                tcx1a,
-                purposes,
-                { mintDelegateActivity: mintDelegate.activityMintingUutsAppSpecific(tcx1a, purposes) }
-            );
+            const tcx1b = await capo.txnMintingUuts(tcx1a, purposes, {
+                mintDelegateActivity:
+                    mintDelegate.activityMintingUutsAppSpecific(
+                        tcx1a,
+                        purposes
+                    ),
+            });
 
             // await delay(4000);
             const uuts = capo.uutsValue(tcx1b.state.uuts!);
@@ -289,11 +308,13 @@ describe("Capo", async () => {
             const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
 
             const purposes = ["foo", "bar"];
-            const tcx1b = await capo.txnMintingUuts(
-                tcx1a,
-                purposes,
-                { mintDelegateActivity: mintingDelegate.activityMintingUutsAppSpecific(tcx1a, purposes) }
-            );
+            const tcx1b = await capo.txnMintingUuts(tcx1a, purposes, {
+                mintDelegateActivity:
+                    mintingDelegate.activityMintingUutsAppSpecific(
+                        tcx1a,
+                        purposes
+                    ),
+            });
 
             const uuts = capo.uutsValue(tcx1b.state.uuts!);
 
@@ -328,18 +349,20 @@ describe("Capo", async () => {
             const noMultiples = "multiple-is-bad";
             type uniqUutMap = typeof noMultiples;
 
-            const mintDelegate  = await capo.getMintDelegate() 
+            const mintDelegate = await capo.getMintDelegate();
 
             console.log(
                 "-------- case 1: using the txn-helper in unsupported way"
-            );            
+            );
             const purposes1 = [noMultiples, noMultiples];
             const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
-            const tcx1b = await capo.txnMintingUuts(
-                tcx1a,
-                purposes1,
-                { mintDelegateActivity: mintDelegate.activityMintingUutsAppSpecific(tcx1a, purposes1) }
-            );
+            const tcx1b = await capo.txnMintingUuts(tcx1a, purposes1, {
+                mintDelegateActivity:
+                    mintDelegate.activityMintingUutsAppSpecific(
+                        tcx1a,
+                        purposes1
+                    ),
+            });
 
             const uut = capo.uutsValue(tcx1b.state.uuts!);
 
@@ -347,6 +370,7 @@ describe("Capo", async () => {
             await expect(
                 tcx1b.submit({
                     signers: [tom.address, tina.address, tracy.address],
+                    expectError: true,
                 })
             ).rejects.toThrow(/mismatch in UUT mint/);
             network.tick(1);
@@ -354,7 +378,7 @@ describe("Capo", async () => {
             console.log(
                 "------ case 2: directly creating the transaction with >1 tokens"
             );
-            const tcx2 = h.mkTcx<hasAllUuts<uniqUutMap>>()
+            const tcx2 = h.mkTcx<hasAllUuts<uniqUutMap>>();
             // await t.txnAddCharterAuthorityTokenRef(tcx2);
 
             const spy = vi.spyOn(utils, "mkUutValuesEntries");
@@ -369,18 +393,21 @@ describe("Capo", async () => {
 
             const purposes2 = [noMultiples];
             const tcx2a = await capo.tcxWithSeedUtxo(tcx2);
-            const tcx2b = await capo.txnMintingUuts(
-                tcx2a,
-                purposes2,
-                { mintDelegateActivity: mintDelegate.activityMintingUutsAppSpecific(tcx2a, purposes2) }
-            );
+            const tcx2b = await capo.txnMintingUuts(tcx2a, purposes2, {
+                mintDelegateActivity:
+                    mintDelegate.activityMintingUutsAppSpecific(
+                        tcx2a,
+                        purposes2
+                    ),
+            });
 
             const uut2 = capo.uutsValue(tcx2b.state.uuts!);
 
             tcx2b.addOutput(new TxOutput(tina.address, uut2));
             await expect(
-                tcx2b.submit( {
+                tcx2b.submit({
                     signers: [tom.address, tina.address, tracy.address],
+                    expectError: true,
                 })
             ).rejects.toThrow(/mismatch in UUT mint/);
             network.tick(1);
@@ -402,11 +429,10 @@ describe("Capo", async () => {
 
             const purposes = [noMultiples];
             const tcx3 = await capo.tcxWithSeedUtxo(h.mkTcx());
-            const tcx3a = await capo.txnMintingUuts(
-                tcx3,
-                purposes,
-                { mintDelegateActivity: mintDelegate.activityMintingUutsAppSpecific(tcx3, purposes) }
-            );
+            const tcx3a = await capo.txnMintingUuts(tcx3, purposes, {
+                mintDelegateActivity:
+                    mintDelegate.activityMintingUutsAppSpecific(tcx3, purposes),
+            });
 
             const uut3 = capo.uutsValue(tcx3a.state.uuts!);
 
@@ -414,6 +440,7 @@ describe("Capo", async () => {
             await expect(
                 tcx3a.submit({
                     signers: [tom.address, tina.address, tracy.address],
+                    expectError: true,
                 })
             ).rejects.toThrow(/UUT duplicate purpose/);
             network.tick(1);
@@ -444,23 +471,22 @@ describe("Capo", async () => {
                 }
             );
 
-            const mintDelegate  = await capo.getMintDelegate() 
+            const mintDelegate = await capo.getMintDelegate();
             const tcx = await capo.tcxWithSeedUtxo(h.mkTcx());
             const purposes = ["testSomeThing"];
-            const tcx2 = await capo.txnMintingUuts(
-                tcx,
-                purposes, {
-                    // minterActivity: capo.activityUsingAuthority(),
-                    // usingMintDelegateActivity: capo.activityUsingAuthority(),
-                    mintDelegateActivity: mintDelegate.activityMintingUutsAppSpecific(tcx, purposes)
-                }
-            );
+            const tcx2 = await capo.txnMintingUuts(tcx, purposes, {
+                // minterActivity: capo.activityUsingAuthority(),
+                // usingMintDelegateActivity: capo.activityUsingAuthority(),
+                mintDelegateActivity:
+                    mintDelegate.activityMintingUutsAppSpecific(tcx, purposes),
+            });
             const uut = capo.uutsValue(tcx2);
 
             tcx2.addOutput(new TxOutput(tina.address, uut));
             await expect(
-                capo.submit(tcx2, {
+                tcx2.submit({
                     signers: [tom.address, tina.address, tracy.address],
+                    expectError: true,
                 })
             ).rejects.toThrow(/mismatch in UUT mint/);
             network.tick(1);
@@ -482,13 +508,12 @@ describe("Capo", async () => {
             const tcx = await capo.tcxWithSeedUtxo(h.mkTcx());
 
             // await t.txnAddCharterAuthorityTokenRef(tcx);
-            const tcx2 = await capo.txnMintingUuts(
-                tcx,
-                ["testSomeThing"],
-                { 
-                    mintDelegateActivity: mintDelegate.activityMintingUutsAppSpecific(tcx, ["testSomeThing"]) 
-                }
-            );
+            const tcx2 = await capo.txnMintingUuts(tcx, ["testSomeThing"], {
+                mintDelegateActivity:
+                    mintDelegate.activityMintingUutsAppSpecific(tcx, [
+                        "testSomeThing",
+                    ]),
+            });
 
             const uutVal = capo.uutsValue(tcx2.state.uuts!);
             tcx2.addOutput(new TxOutput(tina.address, uutVal));

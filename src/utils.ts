@@ -95,6 +95,7 @@ export function mkTv(
  * @remarks
  * The numbers can be whole or fractional, with 6 decimal places of honored precision.
  * The result is rounded to 6 decimal places.
+ * @todo - delegate this to a call into the on-chain version of same
  * @public
  */
 export function realMul(a: number, b: number) {
@@ -116,6 +117,7 @@ export function realMul(a: number, b: number) {
  * @remarks
  * The numbers can be whole or fractional, with 6 decimal places of honored precision.
  * The result is rounded to 6 decimal places.
+ * @todo - delegate this to a call into the on-chain version of same
  * @public
  */
 export function realDiv(a: number, b: number) {

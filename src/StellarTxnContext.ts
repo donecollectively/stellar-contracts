@@ -3,8 +3,8 @@ import {
     TxOutput,
     TxInput,
     WalletHelper,
-    Signature,
     PubKeyHash,
+    bytesToHex,
 } from "@hyperionbt/helios";
 import {
     TxBuilder,
@@ -22,9 +22,9 @@ import type {
     isActivity,
 } from "./StellarContract.js";
 import { delegateLinkSerializer } from "./delegation/jsonSerializers.js";
-import { UtxoHelper } from "./UtxoHelper.js";
 import type { UplcData } from "@helios-lang/uplc";
 import { UplcConsoleLogger } from "./UplcConsoleLogger.js";
+import { NetworkParamsHelper } from "@helios-lang/ledger-babbage";
 
 /**
  * A txn context having a seedUtxo in its state
@@ -130,6 +130,14 @@ type RedeemerArg = {
     redeemer?: UplcData;
 };
 
+export type SubmitOptions = {
+    signers?: Address[];
+    addlTxInfo?: Pick<TxDescription<any>, "description">;
+    expectError?: true;
+    beforeError?: (tx: Tx) => Promise<any> | any;
+    beforeValidate?: (tx: Tx) => Promise<any> | any;
+};
+
 /**
  * Transaction-building context for Stellar Contract transactions
  * @remarks
@@ -186,23 +194,25 @@ export class StellarTxnContext<S extends anyState = anyState> {
         this.txb = new TxBuilder({
             isMainnet: this.setup.isMainnet || false,
         });
-        const { uuts = { ...emptyUuts }, ...moreState } = state;
+        // const { uuts = { ...emptyUuts }, ...moreState } = state;
         //@ts-expect-error
         this.state = {
-            uuts,
-            ...moreState,
+            ...state,
+            uuts: state.uuts || { ...emptyUuts },
         };
     }
     get actorWallet() {
         return this.actorContext.wallet;
     }
 
-    dump(tx? : Tx) : string
-    dump() : Promise<string>
-    dump(tx? : Tx) : string | Promise<string> {
-        const t = tx || this.builtTx
+    dump(tx?: Tx): string;
+    dump(): Promise<string>;
+    dump(tx?: Tx): string | Promise<string> {
+        const t = tx || this.builtTx;
         if (t instanceof Promise) {
-            return t.then(tx => txAsString(tx, this.setup.networkParams))
+            return t.then((tx) => {
+                return txAsString(tx, this.setup.networkParams);
+            });
         }
         return txAsString(t, this.setup.networkParams);
     }
@@ -235,9 +245,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     getSeedAttrs<TCX extends hasSeedUtxo>(this: TCX): SeedAttrs {
-        const { seedUtxo } = this.state;
-        const { txId, utxoIdx: seedIndex } = seedUtxo.id;
-        return { txId, idx: BigInt(seedIndex) };
+        // const { seedUtxo } = this.state;  // bad api-extractor!
+        const seedUtxo = this.state.seedUtxo;
+        // const { txId, utxoIdx: seedIndex } = seedUtxo.id; // ugh, api-extractor!
+        return { txId: seedUtxo.id.txId, idx: BigInt(seedUtxo.id.utxoIdx) };
     }
 
     reservedUtxos(): TxInput[] {
@@ -317,7 +328,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
      *
      * In the test environment, the network wil normally be advanced to this date
      * before executing the transaction, unless a different execution time is indicated.
-     * Use the test helper's `submitTxnWithBlock(txn, otherTime)` or `advanceNetworkTimeForTx()` methods, or args to
+     * Use the test helper's `submitTxnWithBlock(txn, {futureDate})` or `advanceNetworkTimeForTx()` methods, or args to
      * use-case-specific functions that those methods.
      */
     futureDate<TCX extends StellarTxnContext<S>>(this: TCX, date: Date) {
@@ -364,7 +375,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     /**
-     * Calculates the slot number associated with a given time. 
+     * Calculates the slot number associated with a given time.
      * @param time - Milliseconds since 1970
      */
     timeToSlot(time: bigint): bigint {
@@ -404,12 +415,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
     /**
      * Sets an on-chain validity period for the transaction, in miilliseconds
      *
-     * @remarks if futureDate() has been set on the transaction, that 
+     * @remarks if futureDate() has been set on the transaction, that
      * date will be used as the starting point for the validity period.
-     * 
+     *
      * Returns the transaction context for chaining.
      *
-     * @param durationMs - the total validity duration for the transaction.  On-chain 
+     * @param durationMs - the total validity duration for the transaction.  On-chain
      *  checks using CapoCtx `now(granularity)` can enforce this duration
      */
     validFor<TCX extends StellarTxnContext<S>>(
@@ -443,7 +454,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
         this: TCX,
         ...inputArgs: addRefInputArgs
     ) {
-        const [input, ...moreArgs] = inputArgs;
+        // const [input, ...moreArgs] = inputArgs; // ugh, api-extractor!
+        const input = inputArgs[0];
         if (this.txRefInputs.find((v) => v.id.isEqual(input.id))) {
             console.warn("suppressing second add of refInput");
             return this;
@@ -581,38 +593,27 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
         return this;
     }
-    clearBuiltTx() {
-        this._btx = undefined;
+
+    wasModified() {
+        //@ts-expect-error private method
+        this.txb.wasModified();
     }
-    _btx?: Tx | Promise<Tx>;
+
+    _builtTx?: Tx | Promise<Tx>;
     get builtTx() {
-        if (!this._btx) {
-            return (this._btx = this.build().then(({tx}) => {
-                this._btx = tx;
-                return tx;
+        if (!this._builtTx) {
+            return (this._builtTx = this.build().then(({ tx }) => {
+                return (this._builtTx = tx);
             }));
         }
-        return this._btx;
+        return this._builtTx;
     }
 
-    // async buildTx() {
-    //     const { wallet } = this.setup.actorContext;
-    //     const wHelper = wallet && new WalletHelper(wallet);
-
-    //     return this.txb.build({
-    //         changeAddress:
-    //             ((await wallet?.unusedAddresses) || [])[0] ||
-    //             ((await wallet?.usedAddresses) || [])[0],
-    //         spareUtxos: await this.findAnySpareUtxos(),
-    //         networkParams: this.networkParams,
-    //     });
-    // }
-
     async addSignature(wallet: Wallet) {
-        const builtTx = (await this.builtTx) as Tx;
-        const [sig] = await wallet.signTx(builtTx);
+        const builtTx = await this.builtTx;
+        const sig = await wallet.signTx(builtTx);
 
-        builtTx.addSignature(sig);
+        builtTx.addSignature(sig[0]);
     }
 
     async findAnySpareUtxos(): Promise<TxInput[] | never> {
@@ -622,7 +623,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         const notReserved =
             this.utxoNotReserved.bind(this) || ((u: TxInput) => u);
 
-        const { uh } = this;
+        const uh = this.uh;
         return this.wallet.utxos.then((utxos) => {
             const allSpares = utxos
                 .filter(notReserved)
@@ -640,9 +641,10 @@ export class StellarTxnContext<S extends anyState = anyState> {
     }
 
     async findChangeAddr(): Promise<Address> {
-        const {
-            actorContext: { wallet },
-        } = this;
+        // const {
+        //     actorContext: { wallet },
+        // } = this; // ugh, api-extractor!
+        const wallet = this.actorContext.wallet;
         if (!wallet) {
             throw new Error(
                 `⚠️  ${this.constructor.name}: no this.actorContext.wallet; can't get required change address!`
@@ -664,11 +666,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
             addlTxInfo = {
                 description: this.txnName ? ": " + this.txnName : "",
             },
-            beforeValidate            
+            beforeValidate,
         }: {
             signers?: Address[];
             addlTxInfo?: Pick<TxDescription<any>, "description">;
-            beforeValidate?: (tx: Tx) => Promise<any> | any
+            beforeValidate?: (tx: Tx) => Promise<any> | any;
         } = {}
     ): Promise<{
         tx: Tx;
@@ -677,8 +679,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
         wallet: Wallet;
         wHelper: WalletHelper<any>;
     }> {
-        let { txb } = this;
         console.timeStamp?.(`submit() txn ${this.txnName}`);
+        console.log("tcx build() @top");
+
         let { description } = addlTxInfo;
         if (description && !description.match(/^:/)) {
             description = ": " + description;
@@ -702,7 +705,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 .map((addr) => addr.pubKeyHash)
                 .flat(1) as PubKeyHash[];
             console.timeStamp?.(`submit(): addSIgners()`);
-            txb.addSigners(...willSign);
+            this.txb.addSigners(...willSign);
             const wHelper = wallet && new WalletHelper(wallet);
 
             // determine whether we need to request signing from wallet.
@@ -718,29 +721,51 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     // if any inputs from the wallet were added as part of finalizing,
                     // add the wallet's signature to the txn
                     //@ts-expect-error on internal prop
-                    const inputs = txb.inputs as TxInput[];
+                    const inputs = this.txb.inputs as TxInput[];
                     if (!inputs) throw new Error(`no inputs in txn`);
                     for (const input of inputs) {
                         if (!(await wHelper.isOwnAddress(input.address)))
                             continue;
                         this.neededSigners.push(input.address);
                         walletMustSign = true;
-                        txb.addSigners(input.address.pubKeyHash!);
+                        this.txb.addSigners(input.address.pubKeyHash!);
                         break;
                     }
                 }
             }
 
-            tx = await txb.build({
-                changeAddress,
-                spareUtxos: spares,
-                networkParams: this.networkParams,
-                logOptions: logger,
-                throwBuildPhaseScriptErrors: false,
-                beforeValidate
-            });
-            logger.flush();
-            this._btx = tx;
+            try {
+                // the transaction can fail validation without throwing an error
+                tx = await this.txb.buildUnsafe({
+                    changeAddress,
+                    spareUtxos: spares,
+                    networkParams: this.networkParams,
+                    logOptions: logger,
+                    beforeValidate,
+                });
+            } catch (e: any) {
+                // buildUnsafe shouldn't throw errors.
+                throw new Error(`this shouldn't be possible`);
+
+                logger.logError(`txn build failed: ${e.message}`);
+                logger.logPrint(this.dump(tx!));
+                logger.flushError();
+                throw e;
+            }
+            if (tx.hasValidationError) {
+                logger.logError(
+                    `Unexpected build-phase failure: \n  ${
+                        tx.hasValidationError.message || tx.hasValidationError
+                    }`
+                );
+                logger.flush();
+                console.log(
+                    "------------------- failed tx Cbor as hex -------------------\n",
+                    bytesToHex(tx.toCbor()),
+                    "\n------------------^ failed tx Cbor as hex ^------------------",
+                );
+            }
+
             return {
                 tx,
                 willSign,
@@ -753,8 +778,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }
     }
     log(...msgs: string[]) {
-        this.logger.log(...msgs);
-        return this
+        if (msgs.length > 1) {
+            debugger;
+            throw new Error(`no multi-arg log() calls`);
+        }
+        this.logger.logPrint(msgs[0]);
+        return this;
     }
     flush() {
         this.logger.flush();
@@ -774,25 +803,19 @@ export class StellarTxnContext<S extends anyState = anyState> {
             },
             expectError,
             beforeError,
-            beforeValidate
-        }: {
-            signers?: Address[];
-            addlTxInfo?: Pick<TxDescription<any>, "description">;
-            expectError? : true,
-            beforeError?: (tx: Tx) => Promise<any> | any
-            beforeValidate?: (tx: Tx) => Promise<any> | any
-        } = {}
+            beforeValidate,
+        }: SubmitOptions = {}
     ) {
+        const { logger } = this;
         const { tx, willSign, walletMustSign, wallet, wHelper } =
             await this.build({
                 signers,
                 addlTxInfo,
                 beforeValidate,
             });
-        const { logger, txb } = this;
         const { description } = addlTxInfo;
 
-        const errMsg = tx.hasValidationError;
+        const errMsg = tx.hasValidationError?.toString();
         if (errMsg) {
             // console.log(`submit(): FAILED tx.validate(): ${errMsg}`);
             // console.profileEnd?.("tx.validate()");
@@ -807,9 +830,12 @@ export class StellarTxnContext<S extends anyState = anyState> {
             if (beforeError) {
                 await beforeError(tx);
             }
-            logger.logError(`FAILED submitting tx: ${description}:`);
+            logger.logError(`FAILED submitting tx: ${description}`);
+            logger.logPrint(errMsg);
             if (expectError) {
-                logger.logPrint(`\n💣🎉 💣🎉 🎉 🎉 transaction failed (as expected)`);
+                logger.logPrint(
+                    `\n\n💣🎉 💣🎉 🎉 🎉 transaction failed (as expected)`
+                );
             }
             logger.flushError();
             if (
@@ -905,13 +931,18 @@ export class StellarTxnContext<S extends anyState = anyState> {
         }
         return anySuccess.then((r) => {
             console.timeStamp?.(`submit(): success`);
-            logger.logPrint(`\n\n\n🎉🎉 tx submitted${description} 🎉🎉`);
+            logger.logPrint(`\n\n\n🎉🎉 tx submitted: ${description} 🎉🎉`);
 
             logger.finish();
             return r;
         });
     }
 
+    get currentSlot() {
+        return new NetworkParamsHelper(this.networkParams).timeToSlot(
+            this.setup.network.now
+        );
+    }
     private checkTxValidityDetails(tx: Tx) {
         const b = tx.body;
         const db = tx.dump().body;
@@ -927,7 +958,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         // vf = 100,  current = 100,  vt = 110  =>  FROM now, TO now +10; VALID
         // vf = 100, current = 120, vt = 110  =>  FROM now -20, TO now -10; PAST
         debugger;
-        const currentSlot = this.setup.network.currentSlot as bigint;
+        const { currentSlot } = this;
         const diff1 = validFrom - currentSlot;
         const diff2 = validTo - currentSlot;
         const disp1 =
@@ -937,7 +968,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
         const disp2 =
             diff2 > 0
                 ? `${diff1 > 0 ? "would be " : ""}VALID until now +${diff2}s`
-                : `EXPIRED ${0n - diff2}s ago`;
+                : `EXPIRED ${0 - diff2}s ago`;
 
         console.log(
             `  ⚠️  slot validity issue?\n` +

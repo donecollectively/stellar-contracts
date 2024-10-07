@@ -1,5 +1,5 @@
 
-import { StellarTxnContext } from "../StellarTxnContext.js";
+import { StellarTxnContext, type SubmitOptions } from "../StellarTxnContext.js";
 import { ADA } from "./types.js";
 import type {
     DefaultCapoTestHelperClass,
@@ -188,7 +188,8 @@ export class DefaultCapoTestHelper<
     }
 
     async mintCharterToken(
-        args?: Partial<MinimalCharterDatumArgs>
+        args?: Partial<MinimalCharterDatumArgs>,
+        submitOptions: SubmitOptions = {}
     ) {
         const { delay } = this;
         const { tina, tom, tracy } = this.actors;
@@ -218,7 +219,7 @@ export class DefaultCapoTestHelper<
 
         expect(capo.network).toBe(this.network);
 
-        await tcx.submit()
+        await tcx.submit(submitOptions)
         console.log(
             `----- charter token minted at slot ${this.network.currentSlot}`
         );
@@ -236,24 +237,30 @@ export class DefaultCapoTestHelper<
         return tcx;
     }
 
-    async updateCharter(args: CharterDatumProps): Promise<StellarTxnContext> {
+    async updateCharter(
+        args: CharterDatumProps,
+        submitSettings: SubmitOptions = {}
+    ): Promise<StellarTxnContext> {
         await this.mintCharterToken();
         const treasury = await this.strella!;
 
         const { signers } = this.state;
 
         const tcx = await treasury.mkTxnUpdateCharter(args);
-        return tcx.submit({ signers }).then(() => {
+        return tcx.submit({ 
+            signers ,
+            ...submitSettings,
+        }).then(() => {
             this.network.tick(1);
             return tcx;
         });
     }
 
-    async updateSettings(args: CapoOffchainSettingsType<CAPO>) {
+    async updateSettings(args: CapoOffchainSettingsType<CAPO>, submitSettings: SubmitOptions={}) {
         await this.mintCharterToken();
         const capo = this.strella!;
         const tcx = await capo.mkTxnUpdateOnchainSettings(args);
-        return tcx.submit().then(() => {
+        return tcx.submit(submitSettings).then(() => {
             this.network.tick(1);
             return tcx;
         });

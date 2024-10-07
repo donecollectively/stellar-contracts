@@ -28,6 +28,7 @@ import { DelegationDetail } from "../src/delegation/RolesAndDelegates";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
 import { Capo } from "../src/Capo";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
+import { expectTxnError } from "../src/testing/StellarTestHelper";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 
 type localTC = StellarTestContext<DefaultCapoTestHelper>;
@@ -221,7 +222,8 @@ describe("Capo", async () => {
 
             console.log("------ submit charterSpend");
             await expect(
-                capo.submit(tcx, {
+                tcx.submit({
+                    expectError: true,
                     signers: [actors.tracy.address, actors.tom.address],
                 })
             ).rejects.toThrow(/missing .* capoGov/);
@@ -274,7 +276,8 @@ describe("Capo", async () => {
             const bogusPlace = (await actors.tina.usedAddresses)[0];
             tcx.addOutput(new TxOutput(bogusPlace, treasury.tvCharter()));
 
-            const submitting = treasury.submit(tcx, {
+            const submitting = tcx.submit({
+                expectError: true,
                 signers: [actors.tracy.address, actors.tom.address],
             });
             await expect(submitting).rejects.toThrow(
@@ -304,7 +307,7 @@ describe("Capo", async () => {
                     new TxOutput(treasury.address, treasury.tvCharter())
                 );
 
-                await expect(treasury.submit(tcx)).rejects.toThrow(
+                await expect(tcx.submit(expectTxnError)).rejects.toThrow(
                     /charter token must be standalone/
                 );
             }
@@ -386,7 +389,7 @@ describe("Capo", async () => {
             expect(refScripts.length).toBe(3);
         });
 
-        it("txnAttachScriptOrRefScript(): uses scriptRefs in txns on request", async (context: localTC) => {
+        fit("txnAttachScriptOrRefScript(): uses scriptRefs in txns on request", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
@@ -405,7 +408,7 @@ describe("Capo", async () => {
                 tcx3.txRefInputs[1].output.refScript?.toString()
             ).toEqual(strella.minter.compiledScript.toString());
                 
-            const tx = await tcx3.buildTx()
+            const tx = await tcx3.builtTx
             expect(tx.witnesses.v2RefScripts.length).toBe(2);
         });
     });

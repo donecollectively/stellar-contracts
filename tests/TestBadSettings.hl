@@ -6,16 +6,16 @@ struct capoSettings {
     badMinterSetting : Int "badSettingToMintDelegate"
 
     func validate(self) -> Bool { // , _, _) -> Bool {// context, mdd) {
-        print ("hi from custom capo settings");
+        print ("hi from custom capo settings validate!\n");
 
         if (self.badSpenderSetting > 0) {
             error(" must not have badSettingToSpendDelegate")
         };
-        print ("hi2 from custom capo settings");
+        print ("custom capo settings: checkpoint 1");
         if (self.badMinterSetting > 0) {
             error(" must not have badSettingToMintDelegate")
         };
-        print ("hi from custom capo settings");
+        print ("custom capo settings: validate: ok!");
         true
     }
 }

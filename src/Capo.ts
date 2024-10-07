@@ -32,7 +32,6 @@ import type {
     configBaseWithRev,
     stellarSubclass,
     ConfigFor,
-    devConfigProps,
     anyDatumProps,
     anyUplcProgram,
     UplcRecord,
@@ -43,7 +42,6 @@ import {
     StellarTxnContext,
     type hasAddlTxns,
     type hasSeedUtxo,
-    type otherAddlTxnNames,
     type anyState,
 } from "./StellarTxnContext.js";
 
@@ -58,7 +56,6 @@ import { UutName } from "./delegation/UutName.js";
 import type {
     ConfiguredDelegate,
     ErrorMap,
-    RoleMap,
     VariantStrategy,
     RelativeDelegateLink,
     RoleInfo,
@@ -279,7 +276,7 @@ export interface MinterBaseMethods {
 
 export type anyDatumArgs = Record<string, any>;
 
-export type rootCapoConfig = devConfigProps & {
+export type rootCapoConfig = {
     rootCapoScriptHash?: ValidatorHash;
 };
 
@@ -289,7 +286,6 @@ export type rootCapoConfig = devConfigProps & {
  */
 export type CapoBaseConfig = configBaseWithRev &
     rootCapoConfig &
-    devConfigProps &
     SeedTxnScriptParams & {
         mph: MintingPolicyHash;
         rev: bigint;
@@ -391,10 +387,12 @@ export interface CharterDatumProps extends configBaseWithRev {
     spendInvariants: RelativeDelegateLink<
         ContractBasedDelegate<capoDelegateConfig>
     >[];
-    namedDelegates: Record<
-        string,
-        RelativeDelegateLink<StellarDelegate<capoDelegateConfig>>
-    >;
+    namedDelegates:
+        | Map<string, RelativeDelegateLink<StellarDelegate<capoDelegateConfig>>>
+        | Record<
+              string,
+              RelativeDelegateLink<StellarDelegate<capoDelegateConfig>>
+          >;
     settingsUut: UutName | number[];
     mintDelegateLink: RelativeDelegateLink<BasicMintDelegate>;
     mintInvariants: RelativeDelegateLink<
@@ -549,7 +547,6 @@ export abstract class Capo<SELF extends Capo<any>>
 {
     //, hasRoleMap<SELF>
     static currentRev: bigint = 1n;
-    devGen: bigint = 0n;
     verifyConfigs(): Promise<any> {
         return this.verifyCoreDelegates();
     }
@@ -622,7 +619,6 @@ export abstract class Capo<SELF extends Capo<any>>
     static get defaultParams() {
         const params = {
             rev: this.currentRev,
-            devGen: 0n,
         };
         return params;
     }
@@ -636,8 +632,10 @@ export abstract class Capo<SELF extends Capo<any>>
      **/
     getContractScriptParamsUplc(
         config: CapoBaseConfig
-    ): UplcRecord<configBaseWithRev & devConfigProps & 
-        Pick<CapoBaseConfig, "seedTxn" | "seedIndex" | "mph">
+    ): UplcRecord<
+        configBaseWithRev &
+            devConfigProps &
+            Pick<CapoBaseConfig, "seedTxn" | "seedIndex" | "mph">
     > {
         if (
             this.configIn &&
@@ -653,19 +651,7 @@ export abstract class Capo<SELF extends Capo<any>>
         const params = {
             mph,
             rev,
-            isDev: false,
-            devGen: 0n,
         }; //as configType;
-
-        if ("production" !== process.env.NODE_ENV) {
-            if (0n === this.devGen && "test" !== process.env.NODE_ENV) {
-                throw new Error(
-                    `${this.constructor.name}: missing required instance property devGen : bigint > 0n`
-                );
-            }
-            params.isDev = true;
-            params.devGen = this.devGen;
-        }
 
         return this.paramsToUplc(params) as any;
     }
@@ -997,7 +983,7 @@ export abstract class Capo<SELF extends Capo<any>>
                 tcx,
                 this.compiledScript
             );
-            tcx2.addInput(ctUtxo, redeemer)
+            tcx2.addInput(ctUtxo, redeemer);
             const datum = newDatum || (ctUtxo.output.datum as InlineDatum);
 
             return this.txnKeepCharterToken(tcx2, datum);
@@ -1120,7 +1106,9 @@ export abstract class Capo<SELF extends Capo<any>>
         }
     }
 
-    offchainLink<T extends RelativeDelegateLink<any>>(link: T): T {
+    offchainLink<
+        T extends MinimalDelegateLink<any> | RelativeDelegateLink<any>
+    >(link: T): T {
         if ("string" == typeof link.config) {
             throw new Error(`wrong type`);
         }
@@ -1131,8 +1119,7 @@ export abstract class Capo<SELF extends Capo<any>>
             };
         }
         const { config } = link;
-        //@ts-expect-error
-        if (config.devGen) config.devGen = parseInt(config.devGen);
+        //@ts-expect-error on these type proble
         if (config.rev) config.rev = BigInt(config.rev);
         // console.log(" config = ", config );
         // debugger
@@ -1147,6 +1134,10 @@ export abstract class Capo<SELF extends Capo<any>>
         // mintInvariants: RelativeDelegateLink<ContractBasedDelegate<capoDelegateConfig>>[];
         // govAuthorityLink: RelativeDelegateLink<AuthorityPolicy>;
 
+        const { namedDelegates: nDgts } = charterDatum;
+        const namedDgtEntries =
+            nDgts instanceof Map ? [...nDgts.entries()] : Object.entries(nDgts);
+
         const withParsedOffchainLinks: CharterDatumProps = {
             ...charterDatum,
             spendDelegateLink: this.offchainLink(
@@ -1159,10 +1150,7 @@ export abstract class Capo<SELF extends Capo<any>>
             mintInvariants: charterDatum.mintInvariants.map(this.offchainLink),
             govAuthorityLink: this.offchainLink(charterDatum.govAuthorityLink),
             namedDelegates: Object.fromEntries(
-                Object.entries(charterDatum.namedDelegates).map(([k, v]) => [
-                    k,
-                    this.offchainLink(v),
-                ])
+                namedDgtEntries.map(([k, v]) => [k, this.offchainLink(v)])
             ),
         };
         return withParsedOffchainLinks;
@@ -1204,7 +1192,7 @@ export abstract class Capo<SELF extends Capo<any>>
                 ? await this.findCharterDatum(chUtxo as TxInput)
                 : charterRefOrInputOrProps;
         const uutName = charterDatum.settingsUut;
-        // console.log("findSettingsUut", { uutName, charterDatum });
+
         const uutValue = this.uutsValue(uutName);
 
         return await this.mustFindMyUtxo(
@@ -1222,23 +1210,18 @@ export abstract class Capo<SELF extends Capo<any>>
         const { seedTxn, seedIndex } = params;
         const {
             mph: expectedMph,
-            devGen,
-            isDev,
             rev,
         } = this.configIn || {
-            isDev: false,
             mph: undefined,
             ...(this.constructor as typeof Capo).defaultParams,
         };
 
         const minter = await this.addStrellaWithConfig(minterClass, {
-            isDev,
-            devGen,
             rev,
             seedTxn,
             seedIndex,
             //xxx@ts-expect-error - subclassing Capo in a different way than DefaultCapo
-            //   isn't actively supported yet
+            //   ~~isn't actively supported yet~~ is never expected to happen
             capo: this,
         });
 
@@ -1400,7 +1383,7 @@ export abstract class Capo<SELF extends Capo<any>>
 
     // this is just type sugar - a configured delegate already has all the relative-delegate link properties.
     relativeLink<DT extends StellarDelegate<capoDelegateConfig>>(
-        configured: ConfiguredDelegate<DT>
+        configured: ConfiguredDelegate<DT> | RelativeDelegateLink<DT>
     ): RelativeDelegateLink<DT> {
         const {
             uutName,
@@ -1495,7 +1478,6 @@ export abstract class Capo<SELF extends Capo<any>>
         const fullCapoDgtConfig: ConfigFor<sDT_1> = {
             ...configForLink,
             ...impliedDelegationDetails,
-            devGen: this.devGen,
             capo: this,
         } as unknown as ConfigFor<sDT_1>;
 
@@ -1531,6 +1513,7 @@ export abstract class Capo<SELF extends Capo<any>>
         //         delegateSettings.addrHint = addrHint;
         //     }
         // }
+
         const { delegateValidatorHash } = delegate;
         const pcd: ConfiguredDelegate<sDT_1> = {
             ...delegateSettings,
@@ -1581,11 +1564,11 @@ export abstract class Capo<SELF extends Capo<any>>
         const cache = this.#_delegateCache;
 
         const cacheKey = JSON.stringify(
-            delegateLink,
+            this.relativeLink(delegateLink),
             delegateLinkSerializer
             // 4 // indent 4 spaces
         );
- 
+
         if (!cache[roleName]) cache[roleName] = {};
         const roleCache = cache[roleName];
         const cachedRole = roleCache[cacheKey];
@@ -1632,10 +1615,10 @@ export abstract class Capo<SELF extends Capo<any>>
             ...stratSettings,
         };
 
-        if (effectiveConfig.rev === "1") {
-            debugger
+        if ((effectiveConfig.rev as bigint | string) === "1") {
+            debugger;
         }
-        
+
         const serializedCfg1 = JSON.stringify(
             effectiveConfig,
             delegateLinkSerializer,
@@ -1664,7 +1647,6 @@ export abstract class Capo<SELF extends Capo<any>>
             ...effectiveConfig,
             ...configForLink,
             ...impliedDelegationDetails,
-            devGen: this.devGen,
             capo: this,
         };
         //configured delegate:
@@ -1688,9 +1670,7 @@ export abstract class Capo<SELF extends Capo<any>>
             config: configForLink,
             // reqdAddress,
             // addrHint,
-        
         });
-        debugger
 
         const dvh = delegate.delegateValidatorHash;
 
@@ -1763,14 +1743,13 @@ export abstract class Capo<SELF extends Capo<any>>
     activitySpendingDelegatedDatum() {
         return {
             redeemer: this.activityVariantToUplc("spendingDelegatedDatum", {}),
-        }
+        };
     }
 
     @Activity.redeemer
     activityUpdatingSettings(): isActivity {
-
-        return { 
-            redeemer: this.activityVariantToUplc("updatingSettings", {})
+        return {
+            redeemer: this.activityVariantToUplc("updatingSettings", {}),
         };
     }
 
@@ -1910,30 +1889,24 @@ export abstract class Capo<SELF extends Capo<any>>
             // addrHint = [],
         } = dl;
 
-        return { // this.typeToUplc(hlRelativeDelegateLink, {
+        return {
+            // this.typeToUplc(hlRelativeDelegateLink, {
             uutName,
             strategyName,
             delegateValidatorHash,
             config: textToBytes(JSON.stringify(config, delegateLinkSerializer)), //, 4)
-        }
+        };
     }
 
     @datum
     async mkDatumCharterToken(args: CharterDatumProps): Promise<Datum> {
-        
         return this.inlineDatum("CharterToken", {
-            govAuthorityLink: this.mkDelegateLink(
-                args.govAuthorityLink
-            ),
-            mintDelegateLink: this.mkDelegateLink(
-                args.mintDelegateLink
-            ),
+            govAuthorityLink: this.mkDelegateLink(args.govAuthorityLink),
+            mintDelegateLink: this.mkDelegateLink(args.mintDelegateLink),
             mintInvariants: args.mintInvariants.map((dl) => {
                 return this.mkDelegateLink(dl);
             }),
-            spendDelegateLink: this.mkDelegateLink(
-                args.spendDelegateLink
-            ),
+            spendDelegateLink: this.mkDelegateLink(args.spendDelegateLink),
             spendInvariants: args.spendInvariants.map((dl) => {
                 return this.mkDelegateLink(dl);
             }),
@@ -1944,7 +1917,7 @@ export abstract class Capo<SELF extends Capo<any>>
                 })
             ),
             typeMapUut: this.mkSettingsUutName(args.typeMapUut),
-        })
+        });
     }
 
     mkSettingsUutName(settingsUut: UutName | number[]) {
@@ -1955,7 +1928,7 @@ export abstract class Capo<SELF extends Capo<any>>
 
     @datum
     mkDatumScriptReference() {
-        return this.inlineDatum("ScriptReference", {})
+        return this.inlineDatum("ScriptReference", {});
     }
 
     settingsAdapter!: Awaited<ReturnType<this["initSettingsAdapter"]>>; // settingsAdapterType;
@@ -1969,15 +1942,14 @@ export abstract class Capo<SELF extends Capo<any>>
     ): Promise<TxOutputDatum> {
         const adapter = this.settingsAdapter;
 
-        return adapter.toOnchainDatum(settings) as any
+        return adapter.toOnchainDatum(settings) as any;
     }
 
     async findGovDelegate(charterDatum?: CharterDatumProps) {
         if (!charterDatum) {
-            debugger
             charterDatum = await this.findCharterDatum();
         }
-        debugger
+
         const capoGovDelegate = await this.connectDelegateWithLink(
             "govAuthority",
             charterDatum.govAuthorityLink
@@ -2220,10 +2192,11 @@ export abstract class Capo<SELF extends Capo<any>>
                 seedIndex,
                 seedTxn,
             }));
+            
         const { mintingPolicyHash: mph } = minter;
         if (!didHaveDryRun) {
             const csp = //this.getContractScriptParamsUplc(
-                this.partialConfig as CapoBaseConfig
+                this.partialConfig as CapoBaseConfig;
 
             const bsc = {
                 ...csp,
@@ -2232,13 +2205,12 @@ export abstract class Capo<SELF extends Capo<any>>
                 seedIndex,
             }; // as configType;
             // this.scriptProgram = this.loadProgramScript({ ...csp, mph });
-            this.contractParams = this.getContractScriptParamsUplc(bsc)
-            const fullScriptParams = (
-                this.contractParams = this.contractParams
-            );
+            this.contractParams = this.getContractScriptParamsUplc(bsc);
+            const fullScriptParams = (this.contractParams =
+                this.contractParams);
 
             // this.scriptProgram = this.loadProgramScript();
-            this.compileWithScriptParams()
+            await this.compileWithScriptParams();
             bsc.rootCapoScriptHash = new ValidatorHash(
                 this.compiledScript.hash()
             );
@@ -2402,7 +2374,6 @@ export abstract class Capo<SELF extends Capo<any>>
         const foundSettingsUtxo =
             settingsUtxo || (await this.findSettingsUtxo(tcx || charterUtxo));
 
-        debugger
         const data = (await this.readDatum(
             this.settingsAdapter,
             foundSettingsUtxo.output.datum as InlineDatum,
@@ -2416,7 +2387,11 @@ export abstract class Capo<SELF extends Capo<any>>
     async txnAddSettingsOutput<
         TCX extends StellarTxnContext<hasAllUuts<"set">>
     >(tcx: TCX, settings: CapoOffchainSettingsType<this>): Promise<TCX> {
-        const settingsDatum = await this.mkDatumSettingsData(settings);
+        const settingsDatum = await this.mkDatumSettingsData(
+            {
+                id: tcx.state.uuts.set,
+                ... (settings as any),
+            });
 
         const settingsOut = new TxOutput(
             this.address,
@@ -2541,7 +2516,9 @@ export abstract class Capo<SELF extends Capo<any>>
             console.warn("suppressing second add of refScript");
             return tcx;
         }
-        const scriptReferences = useRefScript ? await this.findScriptReferences(): []
+        const scriptReferences = useRefScript
+            ? await this.findScriptReferences()
+            : [];
         // for (const [txin, refScript] of scriptReferences) {
         //     console.log("refScript", dumpAny(txin));
         // }
@@ -2551,9 +2528,9 @@ export abstract class Capo<SELF extends Capo<any>>
         );
         if (!matchingScriptRefs) {
             console.warn(
-                `⚠️  missing refScript in Capo ${this.address.toBech32()} \n  ... for expected script hash ${
-                    bytesToHex(expectedVh)
-                }; adding script directly to txn`
+                `⚠️  missing refScript in Capo ${this.address.toBech32()} \n  ... for expected script hash ${bytesToHex(
+                    expectedVh
+                )}; adding script directly to txn`
             );
             // console.log("------------------- NO REF SCRIPT")
             return tcx.addScriptProgram(program);
@@ -3024,8 +3001,6 @@ export abstract class Capo<SELF extends Capo<any>>
             tcx2a,
             newSpendDelegate.delegate.tvAuthorityToken()
         );
-
-        debugger;
 
         //@xts-expect-error "could be instantiated with different subtype"
         const fullCharterArgs: CharterDatumProps = {

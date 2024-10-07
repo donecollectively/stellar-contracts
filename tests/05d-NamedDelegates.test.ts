@@ -31,6 +31,7 @@ import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateW
 import { StellarDelegate } from "../dist/stellar-contracts";
 import { ContractBasedDelegate } from "../src/delegation/ContractBasedDelegate";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
+import { expectTxnError } from "../src/testing/StellarTestHelper";
 
 class NamedDelegateTestCapo extends CapoWithoutSettings {
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {
@@ -172,8 +173,8 @@ describe("Capo", async () => {
                 const tcx = await capo.mkTxnCreatingTestNamedDelegate("myNamedDgt");
 
                 expect(addedGovToken).toHaveBeenCalledTimes(1);
-                await expect(capo.submit(tcx)).rejects.toThrow(
-                    /missing dgTkn capoGov-/
+                await expect(tcx.submit(expectTxnError)).rejects.toThrow(
+                    /missing.*input .* dgTkn capoGov-/
                 );
             })
 
@@ -210,8 +211,9 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 
                 const tcx = await capo.mkTxnCreatingTestNamedDelegate("notMyNamedDgt");
-                await expect(capo.submit(tcx)).rejects.toThrow(/unsupported delegate-creation purpose/);
+                await expect(tcx.submit(expectTxnError)).rejects.toThrow(/unsupported delegate-creation purpose/);
             })
+
 
         });
     });

@@ -7,7 +7,7 @@ import {
     type Datum,
     ConstrData,
 } from "@hyperionbt/helios";
-import type { StellarContract } from "./StellarContract.js";
+import { isUplcData, type StellarContract } from "./StellarContract.js";
 import * as helios from "@hyperionbt/helios";
 
 /**
@@ -61,7 +61,9 @@ export type OnchainEnum2<
     EnumName extends string,
     EnumOptionLabels extends string,
     // TODO support a type for nested structs in each variant
-    innerDetailsType extends { [k in keyof EnumOptionLabels] : any } | undefined = undefined
+    innerDetailsType extends
+        | { [k in keyof EnumOptionLabels]: any }
+        | undefined = undefined
 > = {
     constrData: EnumName;
     variant: EnumOptionLabels;
@@ -72,8 +74,8 @@ export type OnchainEnum2<
  * @public
  */
 export type OnchainEnum<
-    EnumName extends string, 
-    innerDetailsType=undefined
+    EnumName extends string,
+    innerDetailsType = undefined
 > = {
     constrData: EnumName;
     innerDetails: innerDetailsType;
@@ -86,7 +88,7 @@ export type OnchainEnum<
 export type Optional<WrappedTypeName extends string, bridgeType> = {
     typeName: WrappedTypeName;
     details: bridgeType;
-}
+};
 
 /**
  * @public
@@ -124,9 +126,9 @@ export type adapterParsedOnchainData<
     : t extends RawBytes<any>
     ? number[]
     : t extends boolean
-    // use bool directly by updating parser? 
-    //    xxx - it's just a ConstrData so the parser can't distinguish it from any other ConstrData
-    ? helios.ConstrData 
+    ? // use bool directly by updating parser?
+      //    xxx - it's just a ConstrData so the parser can't distinguish it from any other ConstrData
+      helios.ConstrData
     : t extends bigint
     ? bigint
     : t extends Numeric<any>
@@ -171,7 +173,7 @@ interface isChainTypeBridge {
  * directly.  We'll probably have a converter that transforms the numerics from parsed
  * to off-chain form, elimintating boilerplat for the simple cases.
  * @public
-*/
+ */
 export type offchainDatumType<
     t,
     k extends string
@@ -184,7 +186,7 @@ export type offchainDatumType<
     : t extends OnchainEnum2<any, infer LABELS, undefined>
     ? string
     : t extends OnchainEnum2<any, infer LABELS, infer NESTED_STRUCT>
-    ? "TODO: SUPPORT NESTED STRUCT BRIDGE" 
+    ? "TODO: SUPPORT NESTED STRUCT BRIDGE"
     : t extends OnchainEnum<any>
     ? string
     : t extends RawBytes<infer reprType>
@@ -283,9 +285,7 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
     }
 
     inlineDatum(datumName: string, data: any) {
-        return this.strella.inlineDatum(
-            datumName, data
-        );
+        return this.strella.inlineDatum(datumName, data);
     }
 
     abstract datumName: string;
@@ -359,7 +359,7 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
                         const field = stateVariant[fieldName];
                         return [fieldName, field];
                     })
-                )
+                ),
             };
         } else {
             return variantName;
@@ -368,12 +368,12 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
 
     uplcEnumMember(enumName: string, member: string, ...args: any[]) {
         const stateVariant = this.getEnumMember(enumName, member);
-throw new Error(`hiya`);
+        throw new Error(`hiya`);
         const varSt = stateVariant.prototype._enumVariantStatement;
-        const def = varSt.dataDefinition
-        debugger
+        const def = varSt.dataDefinition;
+        debugger;
 
-        if (args.every(x => !!x.toCbor)) {
+        if (args.every((x) => !!x.toCbor)) {
             // the data is already encoded as UplcData, so we can simply
             // wrap it in a ConstrData with the correct index
             return new helios.ConstrData(varSt.constrIndex, args);
@@ -388,17 +388,15 @@ throw new Error(`hiya`);
     ) {
         const enumDef = this.onChainTypes[enumName];
         if (!enumDef) {
-            const t= this.strella.contractSource
-            debugger // ^^ ???
+            const t = this.strella.contractSource;
+            debugger; // ^^ ???
 
             throw new Error(
                 `${this.constructor.name}: Enum ${enumName} not found in onChainTypes` +
                     `\n   ... try one of: (${Object.keys(
                         this.onChainTypes
                     ).join(", ")})` +
-                    `\n   (from ${
-                        this.strella.scriptProgram!.name
-                    } in ${
+                    `\n   (from ${this.strella.scriptProgram!.name} in ${
                         this.strella.contractSource!.name || "‹unk file name›"
                     })`
             );
@@ -415,8 +413,9 @@ throw new Error(`hiya`);
                       enumVariant.index
                     : -1;
 
-            debugger // ??? vvv            
+            debugger; // ??? vvv
             foundVariant =
+                //@ts-expect-error
                 enumDef.prototype._enumStatement.getEnumMember(index);
         }
         if (!foundVariant) {
@@ -448,7 +447,7 @@ throw new Error(`hiya`);
     uplcReal(n: number): IntData {
         // supports fractional inputs (they can always be represented as a BigInt, with sufficient precision)
         // note: don't expect very very small numbers to be accurately represented
-        const microInt1 = Math.trunc( Number(n) * 1_000_000 + 0.1 )
+        const microInt1 = Math.trunc(Number(n) * 1_000_000 + 0.1);
         // supports larger integer inputs
         BigInt((42.008).toFixed(0));
 
@@ -484,7 +483,7 @@ throw new Error(`hiya`);
     }
 
     uplcValue(x: helios.Value) {
-        return x.toUplcData()
+        return x.toUplcData();
     }
 
     /**
@@ -494,17 +493,17 @@ throw new Error(`hiya`);
         return new ByteArrayData(x);
     }
 
-    fromUplcOption(x: ConstrData) : UplcData | undefined {
+    fromUplcOption(x: ConstrData): UplcData | undefined {
         //@ts-ignore
-        if (x.index==1) return undefined
+        if (x.index == 1) return undefined;
         //@ts-ignore
-        return x.fields[0]
+        return x.fields[0];
     }
 
     /**
      * Formats a boolean for use on-chain.  Uses the underlying enum 0/1 representation.
      */
-    uplcBool(x: boolean) : UplcData & ConstrData {
+    uplcBool(x: boolean): UplcData & ConstrData {
         return new ConstrData(x ? 1 : 0, []);
     }
 
@@ -515,7 +514,7 @@ throw new Error(`hiya`);
         if (x.tag === 0) return false;
         if (x.tag === 1) return true;
 
-        throw new Error(`fromUplcBool: unexpected ConstrData ${x}`);        
+        throw new Error(`fromUplcBool: unexpected ConstrData ${x}`);
     }
 
     uplcMph(x: helios.MintingPolicyHash) {
@@ -524,25 +523,31 @@ throw new Error(`hiya`);
 
     wrapCIP68(enumVariant: any, d: MapData | ConstrData): UplcData & ConstrData;
     wrapCIP68(d: MapData): UplcData & ConstrData;
-    wrapCIP68(dOrV: MapData | any, d?: MapData | ConstrData): UplcData & ConstrData {
+    wrapCIP68(
+        dOrV: MapData | any,
+        d?: MapData | ConstrData
+    ): UplcData & ConstrData {
         let index = 242; // abstract CIP-68 wrapper
         let mapData: MapData | ConstrData;
         if (!d) {
             mapData = dOrV;
         } else {
             mapData = d;
-            index = "number" == typeof dOrV ? dOrV : dOrV.prototype._enumVariantStatement.constrIndex;
+            index =
+                "number" == typeof dOrV
+                    ? dOrV
+                    : dOrV.prototype._enumVariantStatement.constrIndex;
         }
         // console.log("creating CIP68 struct with index ", index, mapData);
         // debugger
         return new ConstrData(index, [
-            mapData,  
+            mapData,
             // this.uplcInt(2n),
             // this.uplcInt(0n),
         ]);
     }
 
-    uplcTaggedStruct(k: Record<string, UplcData>) : UplcData & ConstrData {
+    uplcTaggedStruct(k: Record<string, UplcData>): UplcData & ConstrData {
         return this.wrapCIP68(this.toMapData(k));
     }
 
@@ -556,30 +561,46 @@ throw new Error(`hiya`);
         transformer?: (n: any) => UplcData
     ): MapData {
         const t = new MapData(
-            Object.entries(k).map(([key, value]) => {
+            Object.entries(
+                transformer ? this.valuesToUplc(k, transformer) : k
+            ).map(([key, uplcValue]) => {
                 const keyBytes = new ByteArrayData(textToBytes(key));
-                const uplcValue = transformer ? transformer(value) : value;
-                if (!uplcValue?.memSize || Number.isNaN(uplcValue?.memSize)) {
-                    console.log(
-                        "  ⚠️ ⚠️ ⚠️  toMapData: bad UplcData value - must have numeric memSize",
-                        key,
-                        value
-                    );
-                    if (uplcValue?._toUplcData) {
-                        debugger;
-                        throw new Error(
-                            `toMapData(): value for ${key} not converted to uplc - try _toUplcData()`
-                        );
-                    }
-                    debugger
-                    throw new Error(
-                        `toMapData(): value for ${key} not converted to uplc`
-                    );
-                }
+
                 return [keyBytes, uplcValue] as [UplcData, UplcData];
             })
         );
         return t;
+    }
+
+    valuesToUplc(
+        k: Record<string, any>,
+        transformer: (n: any) => UplcData
+    ): Record<string, UplcData> {
+        return Object.fromEntries(
+            Object.entries(k).map(([key, value]) => {
+                const uplcValue = transformer(value);
+                if (!isUplcData(uplcValue)) {
+                    //@ts-expect-error on this type probe
+                    if (uplcValue?._toUplcData || uplcValue?._toUplcData) {
+                        debugger;
+                        throw new Error(
+                            `transformValues(): value for ${key} not converted to uplc - try _toUplcData()`
+                        );
+                    } else {
+                        debugger // keep-debugger to help downstream devs
+                        isUplcData(uplcValue); // temp
+                        console.log(
+                            `  ⚠️ ⚠️ ⚠️  transformValues(): bad UplcData value for '${key}':`,
+                            uplcValue
+                        );
+                        throw new Error(
+                            `transformValues(): value for ${key} must be uplc`
+                        );
+                    }
+                }
+                return [key, uplcValue];
+            })
+        );
     }
 
     fromOnchainIntMap<KEYS extends string>(

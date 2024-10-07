@@ -1,4 +1,7 @@
-export class UplcConsoleLogger {
+import type { Site } from "@helios-lang/compiler-utils";
+import type { UplcLoggingI } from "@helios-lang/uplc";
+
+export class UplcConsoleLogger implements UplcLoggingI{
     didStart: boolean = false;
     lines: string[] = [];
     lastMsg: string = "";
@@ -25,34 +28,40 @@ export class UplcConsoleLogger {
             return;
         }
     }
-    log(...msgs: string[]) {
-        return this.logPrintLn(...msgs);
-    }
-    error(...msgs: string[]) {
-        return this.logError(...msgs, "\n");
-    }
+    // log(...msgs: string[]) {
+    //     return this.logPrint(...msgs);
+    // }
+    // error(...msgs: string[]) {
+    //     return this.logError(...msgs, "\n");
+    // }
 
-    logPrintLn(...msgs: string[]) {
-        return this.logPrint(...msgs, "\n");
-    }
+    // logPrintLn(...msgs: string[]) {
+    //     return this.logPrint(...msgs, "\n");
+    // }
 
-    logPrint(... msgs: string[]) {
+    logPrint(message: string, site?: Option<Site>) {
         // if ( global.validating) debugger
         // if (msg == "no") { debugger }
         // if (this.lastReason && this.lastReason == "validate") {
         //     debugger
         // }
-        const joined = msgs.join(" ");
-        this.lastMsg = joined
-        this.lines.push(joined);
+        if ("string" != typeof message) {
+            console.log("wtf");
+        }
+        this.lastMsg = message;
+        this.lines.push(message);
         return this;
     }
-    logError(...msgs: string[]) {
-        this.logPrint( "\n\n" )
-        this.logPrint( "-".repeat(((process?.stdout?.columns || 65) - 8) ) )
-         this.logPrint("\n--- ⚠️  ERROR: " + msgs.join(" ") + "\n")
-         this.logPrint( "-".repeat(((process?.stdout?.columns || 65) - 8) ) )
-         return this;
+    logError(message: string, site? : Option<Site>) {
+        this.logPrint("\n\n");
+        this.logPrint(
+            "-".repeat((process?.stdout?.columns || 65) - 8)
+        );
+        this.logPrint("\n--- ⚠️  ERROR: " + message.trimStart() + "\n");
+        this.logPrint(
+            "-".repeat((process?.stdout?.columns || 65) - 8) + "\n\n"
+        );
+        return this;
     }
     // printlnFunction(msg) {
     //     console.log("                              ---- println")
@@ -65,14 +74,14 @@ export class UplcConsoleLogger {
         this.toggler = 1 - this.toggler;
     }
     get isMine() {
-        return true
+        return true;
     }
     resetDots() {
         this.toggler = 0;
     }
     showDot() {
         // ◌ or ●
-        const s = this.toggler ? "│   ┊ " : "│ ● ┊ "
+        const s = this.toggler ? "│   ┊ " : "│ ● ┊ ";
         this.toggleDots();
         return s;
     }
@@ -86,20 +95,19 @@ export class UplcConsoleLogger {
         this.history.push(thisBatch);
         if (!this.didStart) {
             this.didStart = true;
-            content.push(
-                "╭┈┈┈┬"+("┈".repeat(terminalWidth - 5))
-            );
+            content.push("╭┈┈┈┬" + "┈".repeat(terminalWidth - 5));
             this.resetDots();
         } else if (this.lines.length) {
-            content.push(
-                "├┈┈┈┼"+("┈".repeat(terminalWidth - 5))
-            );
+            content.push("├┈┈┈┼" + "┈".repeat(terminalWidth - 5));
             this.resetDots();
         }
         for (const line of thisBatch.split("\n")) {
             //"│" or "┊" or "┆" or "┇" // unicode tiny  circle "·"
             content.push(`${this.showDot()}${line}`);
         }
+        // adds a little extra space before the footer
+        content.push(this.showDot());
+        // feed extra space if needed for the dots to look consistent
         if (!this.toggler) {
             content.push(this.showDot());
         }
@@ -117,7 +125,7 @@ export class UplcConsoleLogger {
     }
     finish() {
         this.flushLines(
-            "╰┈┈┈┴"+("┈".repeat((process?.stdout?.columns || 65) - 5))
+            "╰┈┈┈┴" + "┈".repeat((process?.stdout?.columns || 65) - 5)
         );
         return this;
     }
@@ -127,7 +135,7 @@ export class UplcConsoleLogger {
             if (this.lastMsg.at(-1) != "\n") {
                 this.lines.push("\n");
             }
-            this.flushLines()
+            this.flushLines();
             //     "╰,"┈"
             // );
         }
@@ -145,11 +153,11 @@ export class UplcConsoleLogger {
             message = message.slice(0, -1);
         }
         const terminalWidth = process?.stdout?.columns || 65;
-        if (message) this.logError( message)
+        if (message) this.logError(message);
         if (this.lines.length) {
             this.flushLines(
-                "⎽⎼⎻⎺⎻⎺⎼⎼⎻⎺⎻⎽⎼⎺⎻⎻⎺⎼⎼⎻⎺".repeat((terminalWidth - 2)/21),
-            );    
+                "⎽⎼⎻⎺⎻⎺⎼⎼⎻⎺⎻⎽⎼⎺⎻⎻⎺⎼⎼⎻⎺".repeat((terminalWidth - 2) / 21)
+            );
         }
         // this.didStart = false;
         return this;
