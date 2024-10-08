@@ -389,7 +389,7 @@ describe("Capo", async () => {
             expect(refScripts.length).toBe(3);
         });
 
-        fit("txnAttachScriptOrRefScript(): uses scriptRefs in txns on request", async (context: localTC) => {
+        it("txnAttachScriptOrRefScript(): uses scriptRefs in txns on request", async (context: localTC) => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 

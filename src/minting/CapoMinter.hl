@@ -71,12 +71,12 @@ func main(r : MinterActivity) -> Bool {
 
             // these must be sorted by length first, then lexicographically
             //   (actually byte-wise, but ~same diff)
-            settingsTnBase: String = "set";
+            // settingsTnBase: String = "set";
             authTnBase : String = "capoGov";
             mintDgtTnBase : String = "mintDgt";  
             spendDgtTnBase: String = "spendDgt";
             purposes = []String{
-                settingsTnBase,
+                // settingsTnBase,
                 authTnBase, 
                 mintDgtTnBase, 
                 spendDgtTnBase

@@ -54,9 +54,9 @@ import {
     mkUutTnFactory
 } from CapoMintHelpers
 
-import {
-    capoSettings
-} from CustomCapoSettings
+// import {
+//     capoSettings
+// } from CustomCapoSettings
 
 enum DelegateDatum {
     IsDelegation {
@@ -64,11 +64,11 @@ enum DelegateDatum {
     }
     ScriptReference
 
-    func validateSettings(_self, _settings: capoSettings) -> Bool{
-        assert(false, "not valid (stubbed)");
-        // settings.serialize() != self.serialize() &&
-        true
-    }
+    // func validateSettings(_self, _settings: capoSettings) -> Bool{
+    //     assert(false, "not valid (stubbed)");
+    //     // settings.serialize() != self.serialize() &&
+    //     true
+    // }
 }
 enum MintingActivity {
     // application can replace the placeholder, which is only here to 

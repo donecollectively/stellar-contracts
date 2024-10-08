@@ -58,9 +58,9 @@ import {
     mkUutTnFactory
 } from CapoMintHelpers
 
-import {
-    capoSettings
-} from CustomCapoSettings
+// import {
+//     capoSettings
+// } from CustomCapoSettings
 
 enum DelegateDatum {
     // we only have to use this if we decide Constr#0 is essential for practical CIP-68 compat
@@ -99,11 +99,11 @@ enum DelegateDatum {
     }
     ScriptReference
 
-    func validateSettings(self, settings: capoSettings) -> Bool{
-        assert(false, "not valid (stubbed)");
-        settings.serialize() != self.serialize() &&
-        true
-    }
+    // func validateSettings(self, settings: capoSettings) -> Bool{
+    //     assert(false, "not valid (stubbed)");
+    //     settings.serialize() != self.serialize() &&
+    //     true
+    // }
 }
 
 enum MintingActivity {

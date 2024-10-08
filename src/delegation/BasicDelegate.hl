@@ -20,9 +20,9 @@ import {
     // mustReturnValueToScript
 } from CapoDelegateHelpers
 
-import {
-    capoSettings
-} from CustomCapoSettings
+// import {
+//     capoSettings
+// } from CustomCapoSettings
 
 import {
     getTxCharterDatum,
@@ -228,26 +228,29 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         //     /* mintInvariants */ _, 
                         //     /* govAuthority */ _
                         // } = getTxCharterDatum(dd.mph);
-                        charter : CapoDatum::CharterToken = getTxCharterDatum(dd.mph);
-                        foundSettings : outputAndDatum[CapoDatum::SettingsData] = 
-                            charter.mustFindSettingsOutput(dd.mph, dd.capoAddr);
+                        _charter : CapoDatum::CharterToken = getTxCharterDatum(dd.mph);
+                        // foundSettings : outputAndDatum[CapoDatum::SettingsData] = 
+                        //     charter.mustFindSettingsOutput(dd.mph, dd.capoAddr);
 
-                        // customSettings = capoSettings::from_data(foundSettings.rawData);
-                        customSettings = fromCip68Wrapper[capoSettings](foundSettings.rawData);
+                        // customSettings = fromCip68Wrapper[capoSettings](foundSettings.rawData);
 
-                        print("\n" + delegateName + ": delegate TRYING TO VALIDATE SETTINGS\n");
-                        validated : Bool = customSettings.validate();
-                        print("HURRAY\n");
+                        // print("\n" + delegateName + ": delegate TRYING TO VALIDATE SETTINGS\n");
+                        // validated : Bool = customSettings.validate();
+                        // print("HURRAY\n");
 
                         // TODO: also validate any typeMap (can do this later and adopt the new delegate 
                         // into the Capo when this code is written)
 
-                        validated && 
+                        assert( false && 
+                            // validated && 
                             // isValid : Bool = 
                             //     ((isTest && throwIfBadSettings(mdd, settings)) || true) &&
                             //     mdd.validateSettings(settings);
                             // isValid
-                        true
+                            true,
+                            "ValidateSettings temporarily disabled"
+                        );
+                        false
                     }
 
                 },
