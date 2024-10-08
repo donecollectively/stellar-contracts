@@ -122,7 +122,7 @@ export function displayTokenName(nameBytesOrString: string | number[]) {
 
 /**
  * Presents a string in printable form, even if it contains non-printable characters
- * 
+ *
  * @remarks
  * Non-printable characters are shown in '‹XX›' format.
  * @public
@@ -278,8 +278,9 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
         allRedeemers
             .map((x: TxRedeemer<any>, index: number) => {
                 // debugger;
-                if (!("inputIndex" in x)) return undefined;
-                const { inputIndex } = x;
+                if (x.kind != "Spending") return undefined;
+                // if (!("inputIndex" in x)) return undefined;
+                const { index: inputIndex } = x;
                 const isIndeterminate = inputIndex == -1;
                 if (isIndeterminate) hasIndeterminate = true;
                 const inpIndex = isIndeterminate ? `‹unk${index}›` : inputIndex;
@@ -312,7 +313,11 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
                     );
                 if (!x.data) debugger;
 
-                return [x.props.policyIndex, x.data?.toString() || "‹no data›"];
+                const showData = x.data.rawData
+                    ? uplcDataSerializer("", x.data.rawData)
+                    : x.data?.toString() || "‹no data›";
+
+                return [x.props.policyIndex, showData];
             })
             .filter((x) => !!x)
     );
@@ -327,11 +332,13 @@ export function txAsString(tx: Tx, networkParams?: NetworkParams): string {
         if (!item) continue;
         if ("inputs" == x) {
             item = `\n  ${item
-                .map((x : TxInput, i) => {
+                .map((x: TxInput, i) => {
                     const { r, display } =
-                        inputRedeemers[i] || inputRedeemers["hasIndeterminate"]
-                        || {};
-//                    if (!display && x.datum?.data) debugger;
+                        inputRedeemers[i] ||
+                        inputRedeemers["hasIndeterminate"] ||
+                        {};
+                    if (!display && x.datum?.data) debugger;
+                    tx;
                     if (r) seenRedeemers.add(r);
                     return txInputAsString(
                         x,
