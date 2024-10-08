@@ -19,8 +19,6 @@ import type { UplcProgramV2I, UplcProgramV3I, UplcProgramV2, UplcProgramV3 } fro
 import type { DataType } from "@helios-lang/compiler";
 import type { Network, Wallet } from "@hyperionbt/helios";
 export type anyUplcProgram = 
-| UplcProgramV2I  
-| UplcProgramV3I 
 | UplcProgramV2 
 | UplcProgramV3;
 

@@ -371,7 +371,7 @@ import type {
 } from "./DelegatedDatumAdapter.js";
 import { PriceValidator } from "./PriceValidator.js";
 import { Cast } from "@helios-lang/contract-utils";
-import type { UplcData } from "@helios-lang/uplc";
+import type { UplcData, UplcProgramV2, UplcProgramV3 } from "@helios-lang/uplc";
 import { TxOutputDatum } from "@helios-lang/ledger-babbage";
 import type { tokenPredicate } from "./UtxoHelper.js";
 

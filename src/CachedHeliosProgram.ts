@@ -188,7 +188,7 @@ export class CachedHeliosProgram extends Program {
 
     static programFromCacheEntry(
         fromCache: StringifiedCacheEntry
-    ): UplcProgramV2I | UplcProgramV3I {
+    ): UplcProgramV2 | UplcProgramV3 {
         // the program is a hex-string, accepted by both UplcProgramV2 and UplcProgramV3
         const { optimized, optimizedIR, unoptimized, unoptimizedIR, version } =
             fromCache;
@@ -206,7 +206,7 @@ export class CachedHeliosProgram extends Program {
             : undefined;
         if (o) {
             if (u) {
-                return o.withAlt(u as any);
+                return o.withAlt(u as any) as UplcProgramV2 | UplcProgramV3;
             }
             return o;
         }
@@ -435,8 +435,7 @@ export class CachedHeliosProgram extends Program {
      */
     async compileCached(
         optimizeOrOptions: boolean | CompileOptionsForCachedHeliosProgram
-    ): Promise<UplcProgramV2I | UplcProgramV3I> {
-        const options =
+    ): Promise<UplcProgramV2 | UplcProgramV3> {
             typeof optimizeOrOptions === "boolean"
                 ? { optimize: optimizeOrOptions }
                 : optimizeOrOptions;
@@ -545,7 +544,7 @@ export class CachedHeliosProgram extends Program {
 
     async getFromCache(
         cacheKey: string
-    ): Promise<UplcProgramV2I | UplcProgramV3I | null> {
+    ): Promise<Option<UplcProgramV2 | UplcProgramV3>> {
         const cacheEntry = await this.ifCached(cacheKey);
         if (cacheEntry) return this.programFromCacheEntry(cacheEntry);
         return null;
@@ -709,7 +708,7 @@ export class CachedHeliosProgram extends Program {
     }
     programFromCacheEntry(
         fromCache: StringifiedCacheEntry
-    ): UplcProgramV2I | UplcProgramV3I {
+    ): UplcProgramV2 | UplcProgramV3 {
         return this.subclass.programFromCacheEntry(fromCache);
     }
 }
