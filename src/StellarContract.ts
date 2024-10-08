@@ -1516,23 +1516,20 @@ export class StellarContract<
             this.scriptProgram!.entryPoint.paramsDetails()
         );
 
-        global.isCompiling = true;
-
         this.compiledScript = await script.compileCached({
-            optimize: {
+            optimize: false,
+            // optimize: {
+            //     keepTracing: true,
             //     factorizeCommon: false,
-                keepTracing: true,
-            //     flattenNestedFuncExprs: false,
             //     inlineSimpleExprs: false,
+            //     flattenNestedFuncExprs: false,
             //     removeUnusedArgs: false,
             //     replaceUncalledArgsWithUnit: false,
             //     inlineErrorFreeSingleUserCallExprs: false,
-            //     inlineSingleUseFuncExprs: false
-            },
+            //     inlineSingleUseFuncExprs: false,                
+            // },
             withAlt: true,
-            //     factorizeCommon: false,
         });
-        global.isCompiling = false;
 
         console.log(`       ✅ ${this.constructor.name}`);
         this._cache = {};
@@ -1699,7 +1696,7 @@ export class StellarContract<
             const { startLine, startColumn } = e.site;
             const t = new Error(errorInfo);
             const modifiedStack = t.stack!.split("\n").slice(1).join("\n");
-            const additionalErrors = e.otherErrors
+            const additionalErrors = (e.otherErrors || [])
                 .slice(1)
                 .map((oe) => `       |         ⚠️  also: ${
                     // (oe.message as string).replace(e.site.file, "")}`);
