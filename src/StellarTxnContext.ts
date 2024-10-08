@@ -815,7 +815,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             });
         const { description } = addlTxInfo;
 
-        const errMsg = tx.hasValidationError?.toString();
+        const errMsg = tx.hasValidationError && tx.hasValidationError.toString();
         if (errMsg) {
             // console.log(`submit(): FAILED tx.validate(): ${errMsg}`);
             // console.profileEnd?.("tx.validate()");
