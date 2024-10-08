@@ -40,9 +40,9 @@ import {
     CapoActivity
 } from CapoHelpers
 
-import {
-    capoSettings
-} from CustomCapoSettings
+// import {
+//     capoSettings
+// } from CustomCapoSettings
 
 func requiresAuthorization(ctd: CapoDatum::CharterToken) -> Bool {
     govDelegate : RelativeDelegateLink = ctd.govAuthorityLink;
@@ -120,8 +120,8 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             activity.switch {
                 updatingCharter => true,  // more activity-checks happen below.
                 addingSpendInvariant => error("todo"),
-                updatingSettings => error(invalid),
-                retiringSettings => error(invalid),
+                // updatingSettings => error(invalid),
+                // retiringSettings => error(invalid),
                 spendingDelegatedDatum => error(invalid),
                 _ => {
                     preventCharterChange(ctd)  // throws if bad                
@@ -129,11 +129,11 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                 }
             }
         },
-        SettingsData => activity.switch {
-            updatingSettings => true,  // more checks below.
-            retiringSettings => error("there is no use case for this activity, unless it's part of a complete teardown"),
-            _ => error("invalid activity on SettingsData")
-        },
+        // SettingsData => activity.switch {
+        //     updatingSettings => true,  // more checks below.
+        //     retiringSettings => error("there is no use case for this activity, unless it's part of a complete teardown"),
+        //     _ => error("invalid activity on SettingsData")
+        // },
         ScriptReference => activity.switch {
             retiringRefScript => true,
             _ => error("invalid activity on ScriptReference")            
@@ -279,23 +279,23 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             CapoDatum::CharterToken{                
                 spendDelegate, 
                 spendInvariants,
-                settingsUut,
+                // settingsUut,
                 namedDelegates,
                 mintDelegate, 
                 mintInvariants,
-                nextGovDelegate,
-                oldTypeMapUut
+                nextGovDelegate
+                // oldTypeMapUut
             } = newCtDatum;
 
             CharterToken{
                 oldSpendDelegate, 
                 oldSpendInvariants, 
-                oldSettingsUut,
+                // oldSettingsUut,
                 oldNamedDelegates,
                 oldMintDelegate, 
                 oldMintInvariants,
-                oldGovDelegate,
-                typeMapUut
+                oldGovDelegate
+                // typeMapUut
             } = capoDatum; // or oldCtDatum - same error result either way
 
 
@@ -326,8 +326,8 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             
             changedAnyNamedDelegate : Bool = ( namedDelegates.serialize() != oldNamedDelegates.serialize() );
 
-            mustNotModifySettings : Bool = ( settingsUut == oldSettingsUut );
-            mustNotModifyTypeInfo : Bool = ( typeMapUut == oldTypeMapUut );
+            // mustNotModifySettings : Bool = ( settingsUut == oldSettingsUut );
+            // mustNotModifyTypeInfo : Bool = ( typeMapUut == oldTypeMapUut );
 
             if (true) {
                 print("is spendDgt unchanged? " + unchangedSpendDgt.show());
@@ -348,18 +348,17 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                 print("\n  - new: "+ mintDelegate.uutName + " = " + mintDelegate.strategyName);
                 print("\n       => "+ mintDelegate.delegateValidatorHash.switch{Some{v} => v.show(), None => " (any addr)"});
                 print("\n       + cfg " + mintDelegate.config.decode_utf8());
-                print("\n");
+                print("\n")
                 // print(" - old: " + oldMintDelegate.serialize().show());
                 // print(" - new: " + mintDelegate.serialize().show());
-                
 
-                print(" -- is config unchanged? " + mustNotModifySettings.show());
-                print("\n  - old: "+ oldSettingsUut.decode_utf8());
-                print("\n  - new: "+ settingsUut.decode_utf8());
-                print("\n")
+                // print(" -- is config unchanged? " + mustNotModifySettings.show());
+                // print("\n  - old: "+ oldSettingsUut.decode_utf8());
+                // print("\n  - new: "+ settingsUut.decode_utf8());
+                // print("\n")
             };
-            assert(mustNotModifySettings, "cannot change settings uut");
-            assert(mustNotModifyTypeInfo, "cannot change typeInfo uut");
+            // assert(mustNotModifySettings, "cannot change settings uut");
+            // assert(mustNotModifyTypeInfo, "cannot change typeInfo uut");
 
 
             // the high-level use-cases that can update charter are all mutually exclusive.  Count them
@@ -373,8 +372,8 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
               " types of charterUpdate found; expected exactly one"
             );            
 
-            mustNotModifySettings &&
-            mustNotModifyTypeInfo &&
+            // mustNotModifySettings &&
+            // mustNotModifyTypeInfo &&
             hasNeededGovDelegate &&
             checkpoint("1") &&
             if (unchangedMintDgt) {
@@ -484,128 +483,128 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             }
         },
 
-        updatingSettings => {
-            print( "  ...with activity updatingSettings\n");
-            isRelevantDatum : Bool = capoDatum.switch {
-                SettingsData => true,
-                TypeMapInfo => true,
-                _ => error("wrong use of updatingSettings action; must use only on Settings and TypeInfo")
-            };
-            if (isRelevantDatum) { // temporary to minimize commit diff
-                if (isRelevantDatum) { // temporary to minimize commit diff
-                    charterDatum : CapoDatum::CharterToken = getTxCharterDatum(
-                        mph: mph
-                    );
-                    // it requires the govAuthority to be present 
-                    REQT( "gov authority must be present to update settings");
-                    hasGovAuthority : Bool = mustHaveGovAuthority(
-                        mph: mph,
-                        charterDatum: charterDatum // already resolved
-                   );
-                   CapoDatum::CharterToken{
-                        spendDelegate,
-                        spendInvariants,
-                        /* settingsUut */ _,
-                        namedDelegates,
-                        mintDelegate ,
-                        mintInvariants,
-                        govDelegate,
-                        /* oldTypeMapUut */ _
-                    } = charterDatum;
+        // updatingSettings => {
+        //     print( "  ...with activity updatingSettings\n");
+        //     isRelevantDatum : Bool = capoDatum.switch {
+        //         // SettingsData => true,
+        //         TypeMapInfo => true,
+        //         _ => error("wrong use of updatingSettings action; must use only on Settings and TypeInfo")
+        //     };
+        //     if (isRelevantDatum) { // temporary to minimize commit diff
+        //         if (isRelevantDatum) { // temporary to minimize commit diff
+        //             charterDatum : CapoDatum::CharterToken = getTxCharterDatum(
+        //                 mph: mph
+        //             );
+        //             // it requires the govAuthority to be present 
+        //             REQT( "gov authority must be present to update settings");
+        //             hasGovAuthority : Bool = mustHaveGovAuthority(
+        //                 mph: mph,
+        //                 charterDatum: charterDatum // already resolved
+        //            );
+        //            CapoDatum::CharterToken{
+        //                 spendDelegate,
+        //                 spendInvariants,
+        //                 /* settingsUut */ _,
+        //                 namedDelegates,
+        //                 mintDelegate ,
+        //                 mintInvariants,
+        //                 govDelegate,
+        //                 /* oldTypeMapUut */ _
+        //             } = charterDatum;
                     
-                   // ?? can we iterate inputs along with delegates, to reduce the overhead
-                   //    ... of multiple passes over the tx inputs?
-                    //  option 1: pay for iterating N inputs, 
-                    //    - times a switch{} for delegate-matching
-                    //    -    ... and invariants-iteration
-                    //    -    ... and namedDelegates-iteration
-                    //    - Plus a "is-anything-missing" check over delegates/invariants/namedDelegates
-                    // option 2: switch and iterate over delegates, invariants, namedDelegates
-                    //    - times a switch for input-finding
-                    //    - ... and no separate is-anything-missing checks.
-                    // ^^^ option 2 has to be cheaper.
+        //            // ?? can we iterate inputs along with delegates, to reduce the overhead
+        //            //    ... of multiple passes over the tx inputs?
+        //             //  option 1: pay for iterating N inputs, 
+        //             //    - times a switch{} for delegate-matching
+        //             //    -    ... and invariants-iteration
+        //             //    -    ... and namedDelegates-iteration
+        //             //    - Plus a "is-anything-missing" check over delegates/invariants/namedDelegates
+        //             // option 2: switch and iterate over delegates, invariants, namedDelegates
+        //             //    - times a switch for input-finding
+        //             //    - ... and no separate is-anything-missing checks.
+        //             // ^^^ option 2 has to be cheaper.
 
-                    inputs: []TxInput = tx.inputs;
+        //             inputs: []TxInput = tx.inputs;
 
-                    REQT( "spend delegate must validate settings");
-                    spendDelegateIsValidating : Bool = 
-                        spendDelegate.validatesUpdatedSettings(
-                            inputs: inputs,
-                            mph: mph,
-                            inputRequired: true
-                        ).unwrap();
+        //             REQT( "spend delegate must validate settings");
+        //             spendDelegateIsValidating : Bool = 
+        //                 spendDelegate.validatesUpdatedSettings(
+        //                     inputs: inputs,
+        //                     mph: mph,
+        //                     inputRequired: true
+        //                 ).unwrap();
 
-                    REQT("mint delegate must validate settings");
-                    mintDelegateIsValidating : Bool = 
-                        mintDelegate.validatesUpdatedSettings(
-                            inputs: inputs,
-                            mph: mph,
-                            inputRequired: true
-                        ).unwrap();
+        //             REQT("mint delegate must validate settings");
+        //             mintDelegateIsValidating : Bool = 
+        //                 mintDelegate.validatesUpdatedSettings(
+        //                     inputs: inputs,
+        //                     mph: mph,
+        //                     inputRequired: true
+        //                 ).unwrap();
 
-                    // govAuthority is checking the settings
-                    REQT( "govDelegate MAY contribute to settings validation");
-                    govDelegateMaybeValidating : Bool = 
-                        govDelegate.validatesUpdatedSettings(
-                            inputs: inputs,
-                            mph: mph,
-                            inputRequired: false
-                        ).switch{
-                            Some => true,
-                            None => {
-                                print("  -- govAuthority isn't a script-based validator; doesn't validate new settings\n");
-                                true
-                            }
-                        };
-                    checkOneInvariant : (RelativeDelegateLink) -> Bool = 
-                    (oneDgt: RelativeDelegateLink) -> Bool {
-                        REQT( "invariant must validate settings");
-                        oneDgt.validatesUpdatedSettings(
-                            inputs: inputs,
-                            mph: mph,
-                            inputRequired: true
-                        ).unwrap()
-                    };
-                    // spendInvariants are checking the settings
-                    REQT( "spend invariants must validate settings");
-                    spendInvariantsAreValidating : Bool = spendInvariants.all( 
-                        checkOneInvariant
-                    );
-                    // mintInvariants are checking the settings
-                    REQT( "mint invariants must validate settings");
-                    mintInvariantsAreValidating : Bool = mintInvariants.all( 
-                        checkOneInvariant
-                    );
-                    // namedDelegates are checking the settings
-                    REQT( "named delegates must validate settings");
-                    namedDelegatesAreValidating : Bool = namedDelegates.fold( 
-                        REQT( "  - each named delegate must validate settings");
-                        (ok: Bool, key: String, dgt: RelativeDelegateLink) -> Bool {
-                            print("  - named delegate: " + key);
-                            print("\n");
-                            ok && dgt.validatesUpdatedSettings(
-                                inputs: inputs,
-                                mph: mph,
-                                inputRequired: true
-                            ).unwrap()
-                        }, true
-                    );
+        //             // govAuthority is checking the settings
+        //             REQT( "govDelegate MAY contribute to settings validation");
+        //             govDelegateMaybeValidating : Bool = 
+        //                 govDelegate.validatesUpdatedSettings(
+        //                     inputs: inputs,
+        //                     mph: mph,
+        //                     inputRequired: false
+        //                 ).switch{
+        //                     Some => true,
+        //                     None => {
+        //                         print("  -- govAuthority isn't a script-based validator; doesn't validate new settings\n");
+        //                         true
+        //                     }
+        //                 };
+        //             checkOneInvariant : (RelativeDelegateLink) -> Bool = 
+        //             (oneDgt: RelativeDelegateLink) -> Bool {
+        //                 REQT( "invariant must validate settings");
+        //                 oneDgt.validatesUpdatedSettings(
+        //                     inputs: inputs,
+        //                     mph: mph,
+        //                     inputRequired: true
+        //                 ).unwrap()
+        //             };
+        //             // spendInvariants are checking the settings
+        //             REQT( "spend invariants must validate settings");
+        //             spendInvariantsAreValidating : Bool = spendInvariants.all( 
+        //                 checkOneInvariant
+        //             );
+        //             // mintInvariants are checking the settings
+        //             REQT( "mint invariants must validate settings");
+        //             mintInvariantsAreValidating : Bool = mintInvariants.all( 
+        //                 checkOneInvariant
+        //             );
+        //             // namedDelegates are checking the settings
+        //             REQT( "named delegates must validate settings");
+        //             namedDelegatesAreValidating : Bool = namedDelegates.fold( 
+        //                 REQT( "  - each named delegate must validate settings");
+        //                 (ok: Bool, key: String, dgt: RelativeDelegateLink) -> Bool {
+        //                     print("  - named delegate: " + key);
+        //                     print("\n");
+        //                     ok && dgt.validatesUpdatedSettings(
+        //                         inputs: inputs,
+        //                         mph: mph,
+        //                         inputRequired: true
+        //                     ).unwrap()
+        //                 }, true
+        //             );
 
-                    isRelevantDatum &&
-                    spendDelegateIsValidating &&
-                    mintDelegateIsValidating &&
-                    govDelegateMaybeValidating &&
-                    spendInvariantsAreValidating &&
-                    mintInvariantsAreValidating &&
-                    namedDelegatesAreValidating &&
-                    hasGovAuthority
-                } else { error("unreachable") }
-            } else { error("unreachable") }
-        },
-        retiringSettings => {
-            print( "  ...with activity retiringSettings\n");
-            error("implement me")
-        },
+        //             isRelevantDatum &&
+        //             spendDelegateIsValidating &&
+        //             mintDelegateIsValidating &&
+        //             govDelegateMaybeValidating &&
+        //             spendInvariantsAreValidating &&
+        //             mintInvariantsAreValidating &&
+        //             namedDelegatesAreValidating &&
+        //             hasGovAuthority
+        //         } else { error("unreachable") }
+        //     } else { error("unreachable") }
+        // },
+        // retiringSettings => {
+        //     print( "  ...with activity retiringSettings\n");
+        //     error("implement me")
+        // },
         updatingTypeMap => {
             print( "  ...with activity updatingTypeMap\n");
             error("implement me")            

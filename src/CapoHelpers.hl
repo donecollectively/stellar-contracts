@@ -48,17 +48,20 @@ enum CapoDatum {
     CharterToken {
         spendDelegateLink: RelativeDelegateLink
         spendInvariants: []RelativeDelegateLink
-        settingsUut: ByteArray          // UUT-name links to SettingsData
+        // settingsUut: ByteArray          // UUT-name links to SettingsData
         namedDelegates: Map[String]RelativeDelegateLink
         mintDelegateLink: RelativeDelegateLink
         mintInvariants: []RelativeDelegateLink
         govAuthorityLink: RelativeDelegateLink
-        typeMapUut: Option[ByteArray]   // optional reference to a UUT having TypeMapInfo datum
+        // typeMapUut: Option[ByteArray]   // optional reference to a UUT having TypeMapInfo datum
     }
     ScriptReference
-    SettingsData {
-        data:  Map[String]Data
-    }
+    // settings are now just a distinguished case of delegated data
+    // ... for contracts that use settings,
+    // ... instead of being a special type of Datum
+    // SettingsData {
+    //     data:  Map[String]Data
+    // }
     DelegatedData {  // the Capo redirects control of these to the spend delegate
         data: AnyData // the spend delegate may redirect control further, depending on what it sees in there
         version: Int // for CIP-68 compatibility
@@ -101,65 +104,65 @@ enum CapoDatum {
         }
     }
 
-    func mustFindSettingsOutput(self, mph: MintingPolicyHash, inAddr: Address) -> outputAndDatum[CapoDatum::SettingsData] {
-        settingsVal : Value = mkTv(mph: mph, tnBytes: self.switch {
-            ct: CharterToken => {
-                print( " ⬅️ 🔎 finding settings output: "+ ct.settingsUut.decode_utf8() + "\n");
-                ct.settingsUut
-            },
-            _ => error("mustFindSettings - only valid on CharterToken datum")
-        });
+    // func mustFindSettingsOutput(self, mph: MintingPolicyHash, inAddr: Address) -> outputAndDatum[CapoDatum::SettingsData] {
+    //     settingsVal : Value = mkTv(mph: mph, tnBytes: self.switch {
+    //         ct: CharterToken => {
+    //             print( " ⬅️ 🔎 finding settings output: "+ ct.settingsUut.decode_utf8() + "\n");
+    //             ct.settingsUut
+    //         },
+    //         _ => error("mustFindSettings - only valid on CharterToken datum")
+    //     });
         
-        notFound = Option[outputAndDatum[CapoDatum::SettingsData]]::None;
-        foundSettings: []outputAndDatum[CapoDatum::SettingsData] = 
-            tx.outputs.map_option[
-                outputAndDatum[CapoDatum::SettingsData]
-            ](
-                 (output: TxOutput) -> Option[outputAndDatum[CapoDatum::SettingsData]] {
-                    if ( output.address != inAddr ) {
-                        // print("not the right address");
-                        notFound
-                    } else {
-                        rawDatum : Data = output.datum.inline;
-                        CapoDatum::from_data(
-                            rawDatum
-                        ).switch {
-                            settings: SettingsData => {
-                                Option[
-                                    outputAndDatum[CapoDatum::SettingsData]
-                                ]::Some{
-                                    outputAndDatum[CapoDatum::SettingsData] {
-                                        output, settings, rawDatum
-                                    }
-                                }
-                            },
-                            _ => {
-                                // print("found non-SettingsData");
-                                notFound
-                            }
-                        }
-                    }
-                }
-            );
+    //     notFound = Option[outputAndDatum[CapoDatum::SettingsData]]::None;
+    //     foundSettings: []outputAndDatum[CapoDatum::SettingsData] = 
+    //         tx.outputs.map_option[
+    //             outputAndDatum[CapoDatum::SettingsData]
+    //         ](
+    //              (output: TxOutput) -> Option[outputAndDatum[CapoDatum::SettingsData]] {
+    //                 if ( output.address != inAddr ) {
+    //                     // print("not the right address");
+    //                     notFound
+    //                 } else {
+    //                     rawDatum : Data = output.datum.inline;
+    //                     CapoDatum::from_data(
+    //                         rawDatum
+    //                     ).switch {
+    //                         settings: SettingsData => {
+    //                             Option[
+    //                                 outputAndDatum[CapoDatum::SettingsData]
+    //                             ]::Some{
+    //                                 outputAndDatum[CapoDatum::SettingsData] {
+    //                                     output, settings, rawDatum
+    //                                 }
+    //                             }
+    //                         },
+    //                         _ => {
+    //                             // print("found non-SettingsData");
+    //                             notFound
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         );
 
-        assert(foundSettings.length < 2, "too many settings outputs") ;
-        assert(foundSettings.length == 1, "no settings output");
+    //     assert(foundSettings.length < 2, "too many settings outputs") ;
+    //     assert(foundSettings.length == 1, "no settings output");
 
-        settingsOutput : TxOutput = foundSettings.head.output;
-        assert(
-            // already checked above.
-            // settingsOutput.address == charter.owner &&
-            settingsOutput.value.contains(settingsVal),
-                "settings output not found in contract with expected UUT"
-        );
-        assert(settingsVal.contains(settingsOutput.value.get_assets()), 
-            "excess value in settings output: "+(settingsOutput.value - settingsVal).show()
-        );
-        print("\n ⬅️ ✅ found CapoDatum::SettingsData\n");
-        foundSettings.head
-        // ^^ fails if there's no settings output to the right address
+    //     settingsOutput : TxOutput = foundSettings.head.output;
+    //     assert(
+    //         // already checked above.
+    //         // settingsOutput.address == charter.owner &&
+    //         settingsOutput.value.contains(settingsVal),
+    //             "settings output not found in contract with expected UUT"
+    //     );
+    //     assert(settingsVal.contains(settingsOutput.value.get_assets()), 
+    //         "excess value in settings output: "+(settingsOutput.value - settingsVal).show()
+    //     );
+    //     print("\n ⬅️ ✅ found CapoDatum::SettingsData\n");
+    //     foundSettings.head
+    //     // ^^ fails if there's no settings output to the right address
 
-    }
+    // }
 }
 
 enum CapoActivity {
@@ -168,8 +171,8 @@ enum CapoActivity {
     retiringRefScript // variant 2
     addingSpendInvariant // variant 3
     spendingDelegatedDatum // variant 4
-    updatingSettings // variant 5
-    retiringSettings // variant 6
+    // updatingSettings // variant 5
+    // retiringSettings // variant 6
     updatingTypeMap // variant 7
 }
 
@@ -811,8 +814,8 @@ struct CapoCtx {
                 };
                 activity.switch {
                     retiringRefScript => wrongActivity(),
-                    updatingSettings => wrongActivity(),
-                    retiringSettings => wrongActivity(),
+                    // updatingSettings => wrongActivity(),
+                    // retiringSettings => wrongActivity(),
                     updatingTypeMap => wrongActivity(),
                     spendingDelegatedDatum => wrongActivity(),
 
@@ -826,20 +829,20 @@ struct CapoCtx {
         }
     }
 
-    func getRefSettingsUtxo(self) -> TxInput {
-        charterDatum : CapoDatum::CharterToken = self.resolveCharterDatum();
-        settingsValue : Value = mkTv(mph: self.mph, tnBytes: charterDatum.settingsUut);
-        hasSettings = (txin : TxInput) -> Bool { txin.value.contains(settingsValue) };
+    // func getRefSettingsUtxo(self) -> TxInput {
+    //     charterDatum : CapoDatum::CharterToken = self.resolveCharterDatum();
+    //     settingsValue : Value = mkTv(mph: self.mph, tnBytes: charterDatum.settingsUut);
+    //     hasSettings = (txin : TxInput) -> Bool { txin.value.contains(settingsValue) };
 
-        print("getting ref_input for settings\n");
-        settingsUtxo : TxInput =  tx.ref_inputs.find_safe(hasSettings).switch{
-            Some{s} => s,
-            //!!! todo adjust this message: Missing required charter in ref_inputs
-            None => error("Missing settings in required ref_inputs (use capo.addSettingsRef(tcx, 'refInput') in txn builder)")
-        };
+    //     print("getting ref_input for settings\n");
+    //     settingsUtxo : TxInput =  tx.ref_inputs.find_safe(hasSettings).switch{
+    //         Some{s} => s,
+    //         //!!! todo adjust this message: Missing required charter in ref_inputs
+    //         None => error("Missing settings in required ref_inputs (use capo.addSettingsRef(tcx, 'refInput') in txn builder)")
+    //     };
     
-        settingsUtxo
-    }
+    //     settingsUtxo
+    // }
 
     func requiresGovAuthority(self) -> Bool {
         self.resolveCharterDatum().govAuthorityLink.hasValidOutput(
@@ -847,11 +850,11 @@ struct CapoCtx {
         )
     }
 
-    func getSettings[SettingsTYPE](self) -> SettingsTYPE {
-        settings : TxInput = self.getRefSettingsUtxo();
+    // func getSettings[SettingsTYPE](self) -> SettingsTYPE {
+    //     settings : TxInput = self.getRefSettingsUtxo();
 
-        SettingsTYPE::from_data(settings.datum.inline)
-    }
+    //     SettingsTYPE::from_data(settings.datum.inline)
+    // }
 
     func requiresNamedDelegateInput(self, dgtName: String) -> DelegateInput {
         self.resolveCharterDatum().namedDelegates.get_safe(dgtName).switch{

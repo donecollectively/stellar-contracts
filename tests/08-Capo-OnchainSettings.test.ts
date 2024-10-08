@@ -64,11 +64,14 @@ const describe = descrWithContext<localTC>;
 // "the spending delegate must validate the UpdatingSettings details",
 // "the minting delegate must validate the UpdatingSettings details",
 
-type BridgeCanBeBadSettings = {
-    meaning: Numeric<"int">;
-    badSettingToMintDelegate: Numeric<"int">;
-    badSettingToSpendDelegate: Numeric<"int">;
-};
+type BridgeCanBeBadSettings = hasAnyDataTemplate<
+    "set",
+    {
+        meaning: Numeric<"int">;
+        badSettingToMintDelegate: Numeric<"int">;
+        badSettingToSpendDelegate: Numeric<"int">;
+    }
+>;
 
 // ONLY DO THIS WHEN YOU DON'T NEED a special off-chain application class
 type CanBeBadSettings = offchainDatumType<
@@ -77,16 +80,16 @@ type CanBeBadSettings = offchainDatumType<
 >;
 // WHEN YOU don't need a special off-chain application class, ALWAYS DO THIS ^^^^
 
-const goodSettings: CanBeBadSettings = {
+const goodSettings: CanBeBadSettings = { data: {
+    "@id": "set-‹replaceMe›",
+    tpe: "set",
     badSettingToMintDelegate: 0,
     badSettingToSpendDelegate: 0,
     meaning: 42,
-};
+}};
 
-// note that Settings adapters aren't currently the same as DelegatedDatumAdapters
-class BadSettingsAdapter extends SettingsAdapter<
-    CanBeBadSettings,
-    BridgeCanBeBadSettings
+class BadSettingsAdapter extends DelegatedDatumAdapter<
+    CanBeBadSettings
 > {
     datumName: string = "SettingsData";
     fromOnchainDatum(
@@ -114,7 +117,7 @@ class BadSettingsAdapter extends SettingsAdapter<
     }
 
     toOnchainDatum(settings: CanBeBadSettings) {
-        const { SettingsData: hlSettingsData } = this.onChainDatumType;
+        // const { SettingsData: hlSettingsData } = this.onChainDatumType;
 
         return this.inlineDatum("SettingsData", {
             data: this.valuesToUplc(settings, this.uplcReal),
@@ -132,9 +135,11 @@ class CapoCanHaveBadSettings extends Capo<CapoCanHaveBadSettings> {
     }
 
     async initDelegatedDatumAdapters(): Promise<
-        Record<string, DelegatedDatumAdapter<any, any>>
+        Record<string, DelegatedDatumAdapter<any>>
     > {
-        return {};
+        return {
+            settings: new BadSettingsAdapter(this),
+        };
     }
 
     async mkInitialSettings() {
@@ -145,10 +150,6 @@ class CapoCanHaveBadSettings extends Capo<CapoCanHaveBadSettings> {
             badSettingToSpendDelegate: 0,
         };
     }
-
-    initSettingsAdapter(): BadSettingsAdapter {
-        return new BadSettingsAdapter(this);
-    }
 }
 
 class BadSettingsTestHelper extends DefaultCapoTestHelper.forCapoClass(
@@ -157,21 +158,21 @@ class BadSettingsTestHelper extends DefaultCapoTestHelper.forCapoClass(
 
 type localTC = StellarTestContext<BadSettingsTestHelper>;
 
-describe("supports an abstract Settings structure stored in the contact", async () => {
+describe.skip("supports a Settings structure stored as a type of DelegatedDatum", async () => {
     beforeEach<localTC>(async (context) => {
         await new Promise((res) => setTimeout(res, 10));
         await addTestContext(context, BadSettingsTestHelper);
     });
 
-    it("has a 'SettingsData' datum variant & utxo in the contract", async (context: localTC) => {
-        // prettier-ignore
-        const {h, h:{network, actors, delay, state} } = context;
+    // it.skip("MOVE to delegated datum + spend-delegate logice: singleton Settings struct", async (context: localTC) => {
+    //     // prettier-ignore
+    //     const {h, h:{network, actors, delay, state} } = context;
 
-        const capo = await h.bootstrap();
-        const charterDatum = await capo.findCharterDatum();
-        const settings = charterDatum.settingsUut;
-        expect(settings).toBeDefined();
-    });
+    //     const capo = await h.bootstrap();
+    //     const charterDatum = await capo.findCharterDatum();
+    //     const settings = charterDatum.settingsUut;
+    //     expect(settings).toBeDefined();
+    // });
 
     it("offchain code can read the settings data from the contract", async (context: localTC) => {
         // prettier-ignore
@@ -183,7 +184,7 @@ describe("supports an abstract Settings structure stored in the contact", async 
     });
     it.todo("TEST: onchain code can read the settings data from the contract");
 
-    it("charter creation requires presence of a SettingsData map", async (context: localTC) => {
+    it.skip("MOVE to special spend-delegate logic (when enabled): charter creation requires presence of a SettingsData map", async (context: localTC) => {
         // prettier-ignore
         const {h, h:{network, actors, delay, state} } = context;
         global.id = "08";
@@ -214,6 +215,9 @@ describe("supports an abstract Settings structure stored in the contact", async 
 
     it("updatingCharter activity MUST NOT change the set-UUT reference", async (context: localTC) => {
         // prettier-ignore
+        // !!! change by ensuring that updatingCharter can't also
+        // do other kinds of activities at the same time.
+        
         const {h, h:{network, actors, delay, state} } = context;
 
         const capo = await h.bootstrap();

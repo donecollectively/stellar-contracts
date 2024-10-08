@@ -321,14 +321,14 @@ func validateUutMinting(
     } else {
         // not bootstrapping; must honor the mintDelegate's authority
         CapoDatum::CharterToken {
-            /*spendDgt*/ _,  
-            /* spendInvariants */ _,
-            /* settings */ _,
-            /* namedDelegates */ _,
+            _spendDgt,
+            _spendInvariants,
+            // _settings,
+            _namedDelegates,
             mintDgt, 
-            /* mintInvariants */ _, 
-            /* govAuthority */ _,
-            /* typeInfo */ _
+            _mintInvariants, 
+            _govAuthority
+            /* _typeInfo */ 
         } = getTxCharterDatum(mph);
 
         if (needsMintDelegateApproval) {

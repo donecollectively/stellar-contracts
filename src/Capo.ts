@@ -393,13 +393,13 @@ export interface CharterDatumProps extends configBaseWithRev {
               string,
               RelativeDelegateLink<StellarDelegate<capoDelegateConfig>>
           >;
-    settingsUut: UutName | number[];
+    // settingsUut: UutName | number[];
     mintDelegateLink: RelativeDelegateLink<BasicMintDelegate>;
     mintInvariants: RelativeDelegateLink<
         ContractBasedDelegate<capoDelegateConfig>
     >[];
     govAuthorityLink: RelativeDelegateLink<AuthorityPolicy>;
-    typeMapUut: UutName | number[];
+    // typeMapUut: UutName | number[];
 }
 
 /**
@@ -467,10 +467,6 @@ export type hasRoleMap<
 /**
  * Base class for leader contracts, with predefined roles for delegating governance authority and minting policies
  * @remarks
- *
- * Usage: you can use CapoWithoutSettings if you don't need any custom settings.  For custom settings,
- * declare YourCapoClass extends CapoBase<YourCapoClass>, and implement initSettingsAdapter() and
- * mkInitialSettings().
  *
  * A Capo contract provides a central contract address that can act as a treasury or data registry;
  * it can mint tokens using its connected minting-policy, and it can delegate policies to other contract
@@ -543,13 +539,14 @@ export type DelegatedDataPredicate<
  */
 export abstract class Capo<SELF extends Capo<any>>
     extends StellarContract<CapoBaseConfig>
-    implements hasSettingsType<SELF>
+    // implements hasSettingsType<SELF>
 {
     //, hasRoleMap<SELF>
     static currentRev: bigint = 1n;
     verifyConfigs(): Promise<any> {
         return this.verifyCoreDelegates();
     }
+
     get isConfigured(): Promise<boolean> {
         if (!this.configIn) return Promise.resolve(false);
         // if (this._verifyingConfigs) return this._verifyingConfigs;
@@ -573,12 +570,8 @@ export abstract class Capo<SELF extends Capo<any>>
             | "spendDelegate"]: ConfiguredDelegate<any>;
     };
 
-    abstract mkInitialSettings(): Promise<CapoOffchainSettingsType<SELF>>;
-    abstract initSettingsAdapter():
-        | DatumAdapter<any, any>
-        | Promise<DatumAdapter<any, any>>;
     abstract initDelegatedDatumAdapters(): Promise<
-        Record<string, DelegatedDatumAdapter<any, any>>
+        Record<string, DelegatedDatumAdapter<any>>
     >;
 
     static parseConfig(rawJsonConfig: {
@@ -605,9 +598,9 @@ export abstract class Capo<SELF extends Capo<any>>
         return outputConfig;
     }
 
-    get customCapoSettingsModule(): HeliosModuleSrc {
-        return UncustomCapoSettings;
-    }
+    // get customCapoSettingsModule(): HeliosModuleSrc {
+    //     return UncustomCapoSettings;
+    // }
 
     get scriptDatumName() {
         return "CapoDatum";
@@ -634,7 +627,6 @@ export abstract class Capo<SELF extends Capo<any>>
         config: CapoBaseConfig
     ): UplcRecord<
         configBaseWithRev &
-            devConfigProps &
             Pick<CapoBaseConfig, "seedTxn" | "seedIndex" | "mph">
     > {
         if (
@@ -704,10 +696,7 @@ export abstract class Capo<SELF extends Capo<any>>
             // this.connectMintingScript(this.getMinterParams());
         }
 
-        //@ts-expect-error - trust the subclass's initSettingsAdapter() to be type-matchy
-        //   ... based on other abstract methods defined below
-        this.settingsAdapter = await this.initSettingsAdapter();
-        //@ts-expect-error - trust the subclass's initSettingsAdapter() to be type-matchy
+        //@ts-expect-error - trust the subclass's initDelegatedDatumAdapters() to be type-matchy
         //   ... based on other abstract methods defined below
         this.datumAdapters = await this.initDelegatedDatumAdapters();
 
@@ -742,16 +731,16 @@ export abstract class Capo<SELF extends Capo<any>>
         return tcx;
     }
 
-    async readSettingsDatum<THIS extends Capo<any>>(
-        this: THIS,
-        parsedDatum: adapterParsedOnchainData<
-            CapoOnchainSettingsType<THIS>,
-            "SettingsData"
-        >
-    ): Promise<CapoOffchainSettingsType<THIS>> {
-        type t = CapoOnchainSettingsType<THIS>;
-        return this.settingsAdapter.fromOnchainDatum(parsedDatum);
-    }
+    // async readSettingsDatum<THIS extends Capo<any>>(
+    //     this: THIS,
+    //     parsedDatum: adapterParsedOnchainData<
+    //         CapoOnchainSettingsType<THIS>,
+    //         "SettingsData"
+    //     >
+    // ): Promise<CapoOffchainSettingsType<THIS>> {
+    //     type t = CapoOnchainSettingsType<THIS>;
+    //     return this.settingsAdapter.fromOnchainDatum(parsedDatum);
+    // }
 
     get minterClass(): stellarSubclass<CapoMinter> {
         return CapoMinter;
@@ -839,10 +828,10 @@ export abstract class Capo<SELF extends Capo<any>>
     }
 
     importModules(): HeliosModuleSrc[] {
-        const { customCapoSettingsModule } = this;
+        // const { customCapoSettingsModule } = this;
 
         return [
-            customCapoSettingsModule,
+            // customCapoSettingsModule,
             this.capoHelpers,
             TypeMapMetadata,
             PriceValidator,
@@ -1179,27 +1168,27 @@ export abstract class Capo<SELF extends Capo<any>>
         return this.parseDelegateLinksInCharter(charterDatum);
     }
 
-    async findSettingsUtxo(
-        charterRefOrInputOrProps?: hasCharterRef | TxInput | CharterDatumProps
-    ) {
-        const chUtxo =
-            charterRefOrInputOrProps || (await this.mustFindCharterUtxo());
-        const charterDatum =
-            charterRefOrInputOrProps instanceof StellarTxnContext
-                ? charterRefOrInputOrProps.state.charterDatum
-                : !charterRefOrInputOrProps ||
-                  charterRefOrInputOrProps instanceof TxInput
-                ? await this.findCharterDatum(chUtxo as TxInput)
-                : charterRefOrInputOrProps;
-        const uutName = charterDatum.settingsUut;
+    // async findSettingsUtxo(
+    //     charterRefOrInputOrProps?: hasCharterRef | TxInput | CharterDatumProps
+    // ) {
+    //     const chUtxo =
+    //         charterRefOrInputOrProps || (await this.mustFindCharterUtxo());
+    //     const charterDatum =
+    //         charterRefOrInputOrProps instanceof StellarTxnContext
+    //             ? charterRefOrInputOrProps.state.charterDatum
+    //             : !charterRefOrInputOrProps ||
+    //               charterRefOrInputOrProps instanceof TxInput
+    //             ? await this.findCharterDatum(chUtxo as TxInput)
+    //             : charterRefOrInputOrProps;
+    //     const uutName = charterDatum.settingsUut;
 
-        const uutValue = this.uutsValue(uutName);
+    //     const uutValue = this.uutsValue(uutName);
 
-        return await this.mustFindMyUtxo(
-            "settings uut",
-            this.uh.mkTokenPredicate(uutValue)
-        );
-    }
+    //     return await this.mustFindMyUtxo(
+    //         "settings uut",
+    //         this.uh.mkTokenPredicate(uutValue)
+    //     );
+    // }
 
     async connectMintingScript(
         params: SeedTxnScriptParams
@@ -1746,12 +1735,12 @@ export abstract class Capo<SELF extends Capo<any>>
         };
     }
 
-    @Activity.redeemer
-    activityUpdatingSettings(): isActivity {
-        return {
-            redeemer: this.activityVariantToUplc("updatingSettings", {}),
-        };
-    }
+    // @Activity.redeemer
+    // activityUpdatingSettings(): isActivity {
+    //     return {
+    //         redeemer: this.activityVariantToUplc("updatingSettings", {}),
+    //     };
+    // }
 
     /**
      * USE THE `delegateRoles` GETTER INSTEAD
@@ -1910,40 +1899,40 @@ export abstract class Capo<SELF extends Capo<any>>
             spendInvariants: args.spendInvariants.map((dl) => {
                 return this.mkDelegateLink(dl);
             }),
-            settingsUut: this.mkSettingsUutName(args.settingsUut),
+            // settingsUut: this.mkSettingsUutName(args.settingsUut),
             namedDelegates: new Map<string, any>(
                 Object.entries(args.namedDelegates).map(([k, v]) => {
                     return [k, this.mkDelegateLink(v)];
                 })
             ),
-            typeMapUut: this.mkSettingsUutName(args.typeMapUut),
+            // typeMapUut: this.mkSettingsUutName(args.typeMapUut),
         });
     }
 
-    mkSettingsUutName(settingsUut: UutName | number[]) {
-        return settingsUut instanceof UutName
-            ? textToBytes(settingsUut.name)
-            : settingsUut;
-    }
+    // mkSettingsUutName(settingsUut: UutName | number[]) {
+    //     return settingsUut instanceof UutName
+    //         ? textToBytes(settingsUut.name)
+    //         : settingsUut;
+    // }
 
     @datum
     mkDatumScriptReference() {
         return this.inlineDatum("ScriptReference", {});
     }
 
-    settingsAdapter!: Awaited<ReturnType<this["initSettingsAdapter"]>>; // settingsAdapterType;
+
     datumAdapters!: Record<string, DelegatedDatumAdapter<any, any>> &
         Awaited<ReturnType<this["initDelegatedDatumAdapters"]>>;
 
-    @datum
-    async mkDatumSettingsData<THISTYPE extends Capo<any>>(
-        this: THISTYPE,
-        settings: CapoOffchainSettingsType<THISTYPE>
-    ): Promise<TxOutputDatum> {
-        const adapter = this.settingsAdapter;
+    // @datum
+    // async mkDatumSettingsData<THISTYPE extends Capo<any>>(
+    //     this: THISTYPE,
+    //     settings: CapoOffchainSettingsType<THISTYPE>
+    // ): Promise<TxOutputDatum> {
+    //     const adapter = this.settingsAdapter;
 
-        return adapter.toOnchainDatum(settings) as any;
-    }
+    //     return adapter.toOnchainDatum(settings) as any;
+    // }
 
     async findGovDelegate(charterDatum?: CharterDatumProps) {
         if (!charterDatum) {
@@ -2287,7 +2276,7 @@ export abstract class Capo<SELF extends Capo<any>>
         //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
         const fullCharterArgs: CharterDatumProps = {
             ...charterDatumArgs,
-            settingsUut: uuts.set,
+            // settingsUut: uuts.set,
             govAuthorityLink: govAuthority,
             mintDelegateLink: mintDelegate,
             namedDelegates: {}, // can only be empty at charter, for now.
@@ -2308,40 +2297,40 @@ export abstract class Capo<SELF extends Capo<any>>
 
         // mints the charter, along with the capoGov and mintDgt UUTs.
         // TODO: if there are additional UUTs needed for other delegates, include them here.
-        const tcxWithMint = await this.minter.txnMintingCharter(tcx, {
+        const tcxWithCharterMint = await this.minter.txnMintingCharter(tcx, {
             owner: this.address,
             capoGov: uuts.capoGov, // same as govAuthority,
             mintDelegate: uuts.mintDelegate,
             spendDelegate: uuts.spendDelegate,
-            settingsUut: uuts.set,
+            // settingsUut: uuts.set,
         });
 
-        const settings =
-            (await this.mkInitialSettings()) as unknown as CapoOffchainSettingsType<this>;
-        const tcxWithSettings = await this.txnAddSettingsOutput(
-            tcxWithMint,
-            settings
-        );
+        // const settings =
+        //     (await this.mkInitialSettings()) as unknown as CapoOffchainSettingsType<this>;
+        // const tcxWithSettings = await this.txnAddSettingsOutput(
+        //     tcxWithMint,
+        //     settings
+        // );
 
         // creates an addl txn that stores a refScript in the delegate;
         //   that refScript could be stored somewhere else instead (e.g. the Capo)
         //   but for now it's in the delegate addr.
         const tcx2 = await this.txnMkAddlRefScriptTxn(
-            tcxWithSettings,
+            tcxWithCharterMint,
             "mintDelegate",
             mintDelegate.delegate.compiledScript
         );
         const tcx3 = await this.txnMkAddlRefScriptTxn(
-            tcxWithSettings,
+            tcxWithCharterMint,
             "capo",
             this.compiledScript
         );
         const tcx4 = await this.txnMkAddlRefScriptTxn(
-            tcxWithSettings,
+            tcxWithCharterMint,
             "minter",
             minter.compiledScript
         );
-        const tcx4a = await this.mkAdditionalTxnsForCharter(tcxWithSettings);
+        const tcx4a = await this.mkAdditionalTxnsForCharter(tcxWithCharterMint);
         if (!tcx4a)
             throw new Error(
                 `${this.constructor.name}: mkAdditionalTxnsForCharter() must return a txn context`
@@ -2356,51 +2345,51 @@ export abstract class Capo<SELF extends Capo<any>>
         //     T extends (...args: infer A) => infer R ? (...args: Normalize<A>) => Normalize<R>
         //     : T extends any ? {[K in keyof T]: Normalize<T[K]>} : never
 
-        return tcxWithSettings as TCX3 & Awaited<typeof tcxWithSettings>;
+        return tcxWithCharterMint as TCX3 & Awaited<typeof tcxWithCharterMint>;
     }
 
-    async findSettingsDatum<thisType extends Capo<any>>(
-        this: thisType,
-        {
-            settingsUtxo,
-            tcx,
-            charterUtxo,
-        }: {
-            settingsUtxo?: TxInput;
-            tcx?: hasCharterRef;
-            charterUtxo?: TxInput;
-        } = {}
-    ): Promise<CapoOffchainSettingsType<thisType>> {
-        const foundSettingsUtxo =
-            settingsUtxo || (await this.findSettingsUtxo(tcx || charterUtxo));
+    // async findSettingsDatum<thisType extends Capo<any>>(
+    //     this: thisType,
+    //     {
+    //         settingsUtxo,
+    //         tcx,
+    //         charterUtxo,
+    //     }: {
+    //         settingsUtxo?: TxInput;
+    //         tcx?: hasCharterRef;
+    //         charterUtxo?: TxInput;
+    //     } = {}
+    // ): Promise<CapoOffchainSettingsType<thisType>> {
+    //     const foundSettingsUtxo =
+    //         settingsUtxo || (await this.findSettingsUtxo(tcx || charterUtxo));
 
-        const data = (await this.readDatum(
-            this.settingsAdapter,
-            foundSettingsUtxo.output.datum as InlineDatum,
-            "ignoreOtherTypes"
-        )) as CapoOffchainSettingsType<thisType>;
+    //     const data = (await this.readDatum(
+    //         this.settingsAdapter,
+    //         foundSettingsUtxo.output.datum as InlineDatum,
+    //         "ignoreOtherTypes"
+    //     )) as CapoOffchainSettingsType<thisType>;
 
-        if (!data) throw Error(`missing or invalid settings UTxO datum`);
-        return data;
-    }
+    //     if (!data) throw Error(`missing or invalid settings UTxO datum`);
+    //     return data;
+    // }
 
-    async txnAddSettingsOutput<
-        TCX extends StellarTxnContext<hasAllUuts<"set">>
-    >(tcx: TCX, settings: CapoOffchainSettingsType<this>): Promise<TCX> {
-        const settingsDatum = await this.mkDatumSettingsData(
-            {
-                id: tcx.state.uuts.set,
-                ... (settings as any),
-            });
+    // async txnAddSettingsOutput<
+    //     TCX extends StellarTxnContext<hasAllUuts<"set">>
+    // >(tcx: TCX, settings: CapoOffchainSettingsType<this>): Promise<TCX> {
+    //     const settingsDatum = await this.mkDatumSettingsData(
+    //         {
+    //             id: tcx.state.uuts.set.name, 
+    //             ... (settings as any),
+    //         });
 
-        const settingsOut = new TxOutput(
-            this.address,
-            this.uutsValue(tcx.state.uuts.set),
-            settingsDatum
-        );
-        settingsOut.correctLovelace(this.networkParams);
-        return tcx.addOutput(settingsOut);
-    }
+    //     const settingsOut = new TxOutput(
+    //         this.address,
+    //         this.uutsValue(tcx.state.uuts.set),
+    //         settingsDatum
+    //     );
+    //     settingsOut.correctLovelace(this.networkParams);
+    //     return tcx.addOutput(settingsOut);
+    // }
 
     /**
      * @deprecated - use tcxWithSettingsRef() instead
@@ -2533,7 +2522,10 @@ export abstract class Capo<SELF extends Capo<any>>
                 )}; adding script directly to txn`
             );
             // console.log("------------------- NO REF SCRIPT")
-            return tcx.addScriptProgram(program);
+            return tcx.addScriptProgram(
+                //@ts-expect-error (until UplcProgramV3 is supported)
+                program
+            );
         }
         // console.log("------------------- REF SCRIPT")
         return tcx.addRefInput(matchingScriptRefs[0]);
@@ -2584,58 +2576,58 @@ export abstract class Capo<SELF extends Capo<any>>
         );
     }
 
-    @txn
-    async mkTxnUpdateOnchainSettings<TCX extends StellarTxnContext>(
-        data: CapoOffchainSettingsType<this>,
-        settingsUtxo?: TxInput,
-        tcx: StellarTxnContext = new StellarTxnContext(this.setup)
-    ): Promise<TCX> {
-        // uses the charter ref input
-        settingsUtxo = settingsUtxo || (await this.findSettingsUtxo());
-        const spendingDelegate = await this.getSpendDelegate();
-        const mintDelegate = await this.getMintDelegate();
+    // @txn
+    // async mkTxnUpdateOnchainSettings<TCX extends StellarTxnContext>(
+    //     data: CapoOffchainSettingsType<this>,
+    //     settingsUtxo?: TxInput,
+    //     tcx: StellarTxnContext = new StellarTxnContext(this.setup)
+    // ): Promise<TCX> {
+    //     // uses the charter ref input
+    //     settingsUtxo = settingsUtxo || (await this.findSettingsUtxo());
+    //     const spendingDelegate = await this.getSpendDelegate();
+    //     const mintDelegate = await this.getMintDelegate();
 
-        const tcx2 = await this.txnAddGovAuthority(tcx);
-        const tcx2a = await this.txnAddCharterRef(tcx2);
-        const tcx2b = await this.txnAttachScriptOrRefScript(tcx2a);
-        const tcx2c = await spendingDelegate.txnGrantAuthority(
-            tcx2b,
-            spendingDelegate.activityValidatingSettings()
-        );
+    //     const tcx2 = await this.txnAddGovAuthority(tcx);
+    //     const tcx2a = await this.txnAddCharterRef(tcx2);
+    //     const tcx2b = await this.txnAttachScriptOrRefScript(tcx2a);
+    //     const tcx2c = await spendingDelegate.txnGrantAuthority(
+    //         tcx2b,
+    //         spendingDelegate.activityValidatingSettings()
+    //     );
 
-        // console.log("   🐞🐞🐞🐞🐞🐞🐞🐞")
-        const tcx2d = await mintDelegate.txnGrantAuthority(
-            tcx2c,
-            mintDelegate.activityValidatingSettings()
-        );
+    //     // console.log("   🐞🐞🐞🐞🐞🐞🐞🐞")
+    //     const tcx2d = await mintDelegate.txnGrantAuthority(
+    //         tcx2c,
+    //         mintDelegate.activityValidatingSettings()
+    //     );
 
-        const { charterDatum } = tcx2d.state;
-        const namedDelegates = charterDatum.namedDelegates;
+    //     const { charterDatum } = tcx2d.state;
+    //     const namedDelegates = charterDatum.namedDelegates;
 
-        let tcx3: typeof tcx2d = tcx2d;
-        for (const [delegateName, delegate] of Object.entries(
-            await this.getNamedDelegates()
-        )) {
-            tcx3 = await this.txnAddNamedDelegateAuthority(
-                tcx3,
-                delegateName,
-                delegate,
-                delegate.activityValidatingSettings()
-            );
-        }
+    //     let tcx3: typeof tcx2d = tcx2d;
+    //     for (const [delegateName, delegate] of Object.entries(
+    //         await this.getNamedDelegates()
+    //     )) {
+    //         tcx3 = await this.txnAddNamedDelegateAuthority(
+    //             tcx3,
+    //             delegateName,
+    //             delegate,
+    //             delegate.activityValidatingSettings()
+    //         );
+    //     }
 
-        const settingsDatum = await this.mkDatumSettingsData(data);
-        const tcx4 = tcx3
-            .addInput(settingsUtxo, this.activityUpdatingSettings())
-            .addOutput(
-                new TxOutput(
-                    this.address,
-                    settingsUtxo.output.value,
-                    settingsDatum
-                )
-            );
-        return tcx4 as TCX & typeof tcx3;
-    }
+    //     const settingsDatum = await this.mkDatumSettingsData(data);
+    //     const tcx4 = tcx3
+    //         .addInput(settingsUtxo, this.activityUpdatingSettings())
+    //         .addOutput(
+    //             new TxOutput(
+    //                 this.address,
+    //                 settingsUtxo.output.value,
+    //                 settingsDatum
+    //             )
+    //         );
+    //     return tcx4 as TCX & typeof tcx3;
+    // }
 
     @partialTxn
     async txnAddNamedDelegateAuthority<TCX extends StellarTxnContext>(
@@ -3840,36 +3832,36 @@ export abstract class Capo<SELF extends Capo<any>>
                     "  ... so that that the Capo's code won't be changed if any methods are modified.",
                 ],
                 mech: [
-                    "has a 'SettingsData' datum variant & utxo in the contract",
-                    "offchain code can read the settings data from the contract",
-                    "TODO: TEST onchain code can read the settings data from the contract",
-                    "charter creation requires a CharterToken reference to the settings UUT",
-                    "charter creation requires presence of a SettingsData map",
-                    "updatingCharter activity MUST NOT change the set-UUT reference",
+                    // "has a 'SettingsData' datum variant & utxo in the contract",
+                    // "offchain code can read the settings data from the contract",
+                    // "TODO: TEST onchain code can read the settings data from the contract",
+                    // "charter creation requires a CharterToken reference to the settings UUT",
+                    // "charter creation requires presence of a SettingsData map",
+                    // "updatingCharter activity MUST NOT change the set-UUT reference",
                 ],
                 requires: [
-                    "mkTxnUpdateSettings(): can update the settings",
+                    // "mkTxnUpdateSettings(): can update the settings",
                     "added and updated delegates always validate the present configuration data",
                 ],
             },
-            "mkTxnUpdateSettings(): can update the settings": {
-                purpose: "to support parameter changes",
-                impl: "mkTxnUpdateSettings()",
-                details: [
-                    "The minting delegate is expected to validate all updates to the configuration data.",
-                    "The spending delegate is expected to validate all updates to the configuration data.",
-                    "Settings changes are validated by all registered delegates before being accepted.",
-                ],
-                mech: [
-                    "can update the settings data with a separate UpdatingSettings Activity on the Settings",
-                    "requires the capoGov- authority uut to update the settings data",
-                    "the spending delegate must validate the UpdatingSettings details",
-                    "the minting delegate must validate the UpdatingSettings details",
-                    "all named delegates must validate the UpdatingSettings details",
-                    "TODO: the spending invariant delegates must validate the UpdatingSettings details",
-                    "TODO: the minting invariant delegates must validate the UpdatingSettings details",
-                ],
-            },
+            // "mkTxnUpdateSettings(): can update the settings": {
+            //     purpose: "to support parameter changes",
+            //     impl: "mkTxnUpdateSettings()",
+            //     details: [
+            //         "The minting delegate is expected to validate all updates to the configuration data.",
+            //         "The spending delegate is expected to validate all updates to the configuration data.",
+            //         "Settings changes are validated by all registered delegates before being accepted.",
+            //     ],
+            //     mech: [
+            //         "can update the settings data with a separate UpdatingSettings Activity on the Settings",
+            //         "requires the capoGov- authority uut to update the settings data",
+            //         "the spending delegate must validate the UpdatingSettings details",
+            //         "the minting delegate must validate the UpdatingSettings details",
+            //         "all named delegates must validate the UpdatingSettings details",
+            //         "TODO: the spending invariant delegates must validate the UpdatingSettings details",
+            //         "TODO: the minting invariant delegates must validate the UpdatingSettings details",
+            //     ],
+            // },
             "added and updated delegates always validate the present configuration data":
                 {
                     purpose:

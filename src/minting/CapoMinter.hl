@@ -110,16 +110,24 @@ func main(r : MinterActivity) -> Bool {
             CharterToken{
                 spendDgt, 
                 spendInvariants,
-                /* settingsUut */ _, 
+                // _settingsUut,
                 namedDelegates,
                 mintDgt, 
                 mintInvariants, 
-                authDgt,
-                /* typeMapUut */ _
+                authDgt
+                // _typeMapUut
             } = charterDatum;
-            foundSettings : outputAndDatum[CapoDatum::SettingsData] = 
-                charterDatum.mustFindSettingsOutput(mph: mph, inAddr: charter.owner);
-            assert(foundSettings == foundSettings, "no way");
+            // settings are not essential to a Capo.
+            // ... some Capos could use settings, and it would be
+            // ... up to its mint/spend delegate to enforce their presence.
+            // Also, their verification by other delegates, in case of updating
+            // the settings.  This gives settings a slightly special role,
+            // but much less than the special status they had when Settings
+            // were a separate datum type.
+
+            // foundSettings : outputAndDatum[CapoDatum::SettingsData] = 
+            //     charterDatum.mustFindSettingsOutput(mph: mph, inAddr: charter.owner);
+            // assert(foundSettings == foundSettings, "no way");
 
             // once we have burned down the test backlog a bit, we can add these in:
             assert(mintInvariants.length == 0, "no mint invariants allowed at charter creation");

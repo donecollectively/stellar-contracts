@@ -24,7 +24,7 @@ export type ParsedSettings<
  */
 export abstract class SettingsAdapter<
     appType, settingsBridgeUnwrapped
-> extends DatumAdapter<appType, WrappedSettingsAdapterBridge<settingsBridgeUnwrapped>> {
+> extends DatumAdapter<appType> {
     // constructor(strella: StellarContract<any>) {
     //     super(strella);
 
@@ -62,57 +62,13 @@ export type WrappedSettingsAdapterBridge<
  */
 export interface hasSettingsType<C extends Capo<any>> {
     mkInitialSettings(): Promise<any>; //OffchainSettingsType<C>;
-    initSettingsAdapter(): DatumAdapter<any, any> | Promise<DatumAdapter<any, any>>;
-}
-
-// independently knows how to inspect the concrete
-// type for the settings adapater for a particular Capo class.
-/**
- * @internal
- */
-export interface detectCapoSettingsType<DAT extends DatumAdapter<any, any>> {
-    initSettingsAdapter(): DAT;
-    // mkInitialSettings() : OffchainType<DAT>;
+    initSettingsAdapter(): DatumAdapter<any> | Promise<DatumAdapter<any>>;
 }
 
 /**
  * @public
  */
-export type CapoSettingsAdapterFor<
-    CAPO_TYPE extends Capo<any>,
-    // CCT extends Capo<any> = CAPO_TYPE extends Capo<infer cct> ? cct : never,
-    SAT = CAPO_TYPE extends detectCapoSettingsType<infer DAT> ? DAT : never
-> = DatumAdapter<any, any> & SAT;
-
-/**
- * @public
- */
-export type CapoOnchainSettingsType<CAPO_TYPE extends Capo<any>> =
-    hasAnyDataTemplate<"set-", any> &
-        CapoSettingsAdapterFor<CAPO_TYPE> extends DatumAdapter<
-        any,
-        infer Onchain
-    >
-        ? Onchain extends hasAnyDataTemplate<"set-", any>
-            ? Onchain["data"]
-            : never //"TYPE_MISMATCH: settings DatumAdapter must have an on-chain 'data' field of type AnyDataTemplate<'set-'>"
-        : never;
-
-/**
- * @public
- */
-export type CapoOffchainSettingsType<CAPO_TYPE extends Capo<any>> =
-    CapoSettingsAdapterFor<CAPO_TYPE> extends DatumAdapter<
-        infer appSettingsType,
-        any
-    >
-        ? appSettingsType
-        : never;
-
-/**
- * @public
- */
-export type DatumAdapterOffchainType<DAT extends DatumAdapter<any, any>> =
-    DAT extends DatumAdapter<infer appSettingsType, any>
+export type DatumAdapterOffchainType<DAT extends DatumAdapter<any>> =
+    DAT extends DatumAdapter<infer appSettingsType>
         ? appSettingsType
         : never;
