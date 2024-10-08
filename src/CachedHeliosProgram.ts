@@ -49,10 +49,12 @@ export type CompileOptionsForCachedHeliosProgram = CompileOptions & {
     timeout?: number;
 };
 
-type OptimizeOptions = Omit<
-    CompileOptions["optimize"],
-    "iterSpecificOptions"
->
+type OptimizeOptions =
+    | false
+    | Omit<
+          Exclude<CompileOptions["optimize"], boolean | undefined>,
+          "iterSpecificOptions" | "commonSubExprCount"
+      >;
 export type HeliosProgramCacheEntry = {
     version: "PlutusV2" | "PlutusV3";
     createdBy: string;
@@ -358,7 +360,7 @@ export class CachedHeliosProgram extends Program {
         // let optimize: OptimizeOptions = options.optimize ?? {};
         // if (true == optimize) optimize = {};
         // const optimizeText =
-            // false == optimize ? "unoptimized" : this.objectToText(optimize);
+        // false == optimize ? "unoptimized" : this.objectToText(optimize);
         const optimizeText = this.textOptimizeOptions(options);
         const optimizeHash = bytesToHex(blake2b(textToBytes(optimizeText)));
 
@@ -366,18 +368,43 @@ export class CachedHeliosProgram extends Program {
             this.hashObjectEntries({ params: paramsContent })
         );
         return bytesToHex(
-            blake2b(textToBytes(
-                elementsText + "\n" + 
-                paramsHashText + "\n" +
-                optimizeHash + "\n"
-            ))
+            blake2b(
+                textToBytes(
+                    elementsText +
+                        "\n" +
+                        paramsHashText +
+                        "\n" +
+                        optimizeHash +
+                        "\n"
+                )
+            )
         );
     }
 
+    optimizeOptions(
+        options: CompileOptionsForCachedHeliosProgram
+    ): OptimizeOptions {
+        let optimize: OptimizeOptions =
+            true == options.optimize
+                ? {}
+                : (options.optimize as OptimizeOptions) ?? {};
+
+        return optimize;
+    }
+
     textOptimizeOptions(options: CompileOptionsForCachedHeliosProgram): string {
-        let optimize: OptimizeOptions = options.optimize ?? {};
-        if (true == optimize) optimize = {};
-        return false == optimize ? "unoptimized" : this.objectToText(optimize);
+        let optimize = this.optimizeOptions(options);
+        if (false == optimize) return "unoptimized";
+        type justOptions = Exclude<OptimizeOptions, false>;
+        let o : justOptions = optimize as any
+        return this.objectToText(
+                  // sort the keys in optimize.
+                  Object.fromEntries(
+                      Object.entries(o).sort(([a], [b]) =>
+                          a.localeCompare(b)
+                      )
+                  ) as justOptions
+              );
     }
 
     getCacheKey(options: CompileOptionsForCachedHeliosProgram): string {
@@ -436,9 +463,11 @@ export class CachedHeliosProgram extends Program {
     async compileCached(
         optimizeOrOptions: boolean | CompileOptionsForCachedHeliosProgram
     ): Promise<UplcProgramV2 | UplcProgramV3> {
+        const options: CompileOptionsForCachedHeliosProgram =
             typeof optimizeOrOptions === "boolean"
                 ? { optimize: optimizeOrOptions }
                 : optimizeOrOptions;
+        const optimize = this.optimizeOptions(optimizeOrOptions as any);
 
         const programElements = (this.programElements =
             this.gatherProgramElements());
@@ -488,7 +517,7 @@ export class CachedHeliosProgram extends Program {
             const cacheEntry: HeliosProgramCacheEntry = {
                 version: "PlutusV2",
                 createdBy: this.id,
-                optimizeOptions: this.textOptimizeOptions(options),
+                optimizeOptions: optimize,
                 programElements,
             };
             if (program.alt) {
