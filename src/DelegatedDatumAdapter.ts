@@ -76,8 +76,8 @@ export interface hasAnyDataTemplate<DATA_TYPE extends string, T extends anyDatum
  */
 export abstract class DelegatedDatumAdapter<
     appType extends { id: string; type: string },
-    OnchainBridgeType extends hasAnyDataTemplate<any, anyDatumProps>
-> extends DatumAdapter<appType, OnchainBridgeType>{
+    // OnchainBridgeType extends hasAnyDataTemplate<any, anyDatumProps>
+> extends DatumAdapter<appType>{
     constructor(strella: ContractBasedDelegate<any>) {
         super(strella)
     }
@@ -110,6 +110,7 @@ export abstract class DelegatedDatumAdapter<
             this.uplcInt(CIP68version),
             this.toMapData({})
         ]);
+        //@ts-ignore !!!
         return helios.Datum.inline(
             constrData
         )

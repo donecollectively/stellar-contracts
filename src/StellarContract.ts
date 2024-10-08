@@ -965,13 +965,13 @@ export class StellarContract<
 
     async readDatum<
         DPROPS extends anyDatumProps,
-        adapterType extends DatumAdapter<any, DPROPS> | undefined = undefined
+        adapterType extends DatumAdapter<any> | undefined = undefined
     >(
         datumNameOrAdapter: string | adapterType,
         datum: Datum | InlineDatum,
         ignoreOtherTypes?: "ignoreOtherTypes"
     ): Promise<
-        | (adapterType extends DatumAdapter<any, any> ? adapterType : DPROPS)
+        | (adapterType extends DatumAdapter<any> ? adapterType : DPROPS)
         | undefined
     > {
         const ts1 = Date.now();

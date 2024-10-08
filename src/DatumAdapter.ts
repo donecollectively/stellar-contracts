@@ -253,7 +253,7 @@ export type inferOffchainNumericType<T extends Numeric<any>> =
  * @typeParam contractType - the specific contract class that uses this data type
  * @public
  **/
-export abstract class DatumAdapter<appType, OnchainBridgeType> {
+export abstract class DatumAdapter<appType> {
     strella: StellarContract<any>;
     constructor(strella: StellarContract<any>) {
         this.strella = strella;
@@ -276,7 +276,7 @@ export abstract class DatumAdapter<appType, OnchainBridgeType> {
     }
 
     get capo() {
-        if ("initSettingsAdapter" in this.strella) return this.strella;
+        if ("initDelegatedDatumAdapters" in this.strella) return this.strella;
         if (this.strella.configIn?.capo) return this.strella.configIn?.capo;
 
         throw new Error(
