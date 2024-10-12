@@ -965,13 +965,13 @@ export class StellarContract<
 
     async readDatum<
         DPROPS extends anyDatumProps,
-        adapterType extends DatumAdapter<any> | undefined = undefined
+        adapterType extends DatumAdapter<DPROPS, any> | undefined = undefined
     >(
         datumNameOrAdapter: string | adapterType,
         datum: Datum | InlineDatum,
         ignoreOtherTypes?: "ignoreOtherTypes"
     ): Promise<
-        | (adapterType extends DatumAdapter<any> ? adapterType : DPROPS)
+        | (adapterType extends DatumAdapter<any,any> ? adapterType : DPROPS)
         | undefined
     > {
         const ts1 = Date.now();
@@ -988,7 +988,7 @@ export class StellarContract<
             isMainnet: this.setup.isMainnet || false,
         });
 
-        const parsedData = (cast.fromUplcData(datum.data) as any)[datumName];
+        const parsedData = (cast.fromUplcData(datum.data) as any)[datumName] as DPROPS;
         const ts2 = Date.now();
         // throw new Error(`todo: parse some datum here`);
         // // console.log(` ----- read datum ${datumName}`)
@@ -1021,10 +1021,7 @@ export class StellarContract<
         if (hasAdapter) {
             debugger; // ??? vvv
             const adapted = datumNameOrAdapter.fromOnchainDatum(
-                parsedData as unknown as adapterParsedOnchainData<
-                    DPROPS,
-                    "adapterHasConcreteTypeInfo"
-                >
+                parsedData
             );
             const ts3 = Date.now();
             const elapsed = ts3 - ts1;

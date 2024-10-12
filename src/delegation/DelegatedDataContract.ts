@@ -14,12 +14,26 @@ import type { UutName } from "./UutName.js";
 import type { BasicMintDelegate } from "../minting/BasicMintDelegate.js";
 import { betterJsonSerializer, dumpAny } from "../diagnostics.js";
 
+
+export const NO_ADAPTER = Symbol("no adapter; uses on-chain type directly");
+export type NoAdapter = {
+    [NO_ADAPTER]: true;
+}
+
+type OnchainType = {
+    placeholder: true,
+    id: string,
+    type: string,
+}
+
 /**
  * @public
  */
 export type DelegatedDatumType<T extends DelegatedDataContract> = ReturnType<
     T["mkDatumAdapter"]
-> extends DelegatedDatumAdapter<infer D, any>
+> extends NoAdapter ? OnchainType : ReturnType<
+    T["mkDatumAdapter"]
+> extends DelegatedDatumAdapter<infer D>
     ? D
     : never;
 
@@ -55,15 +69,28 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
             })
             .then(this.capo.singleItem);
     }
-    abstract mkDatumAdapter(): DelegatedDatumAdapter<any, any>;
+    /**
+     * Optional method specifying a class that is used at application runtime
+     * for business logic on a record.  If not implemented, the record is
+     * returned from the on-chain store as a plain object, and updates are
+     * performed based on the plain object.
+     */
+    mkDatumAdapter(): DelegatedDatumAdapter<any> | NoAdapter {
+        return {
+            [NO_ADAPTER]: true,
+        }
+    }
 
     async mkDatumDelegatedDataRecord<THIS extends DelegatedDataContract>(
         this: THIS,
         record: DelegatedDatumType<THIS>
     ): Promise<helios.Datum> {
         const adapter = this.mkDatumAdapter();
-
-        return adapter.toOnchainDatum(record);
+        let data = record
+        throw new Error(`implement on-chain path for DgData`)
+        if (adapter) {
+            // data = record.toOnchain()
+        }
     }
 
     /**
@@ -326,13 +353,12 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
  * @public
  */
 export type DgDataCreationAttrs<
-    T extends DelegatedDataContract | DelegatedDatumAdapter<any, any>
-> = T extends DelegatedDatumAdapter<infer D, any>
+    T extends DelegatedDataContract | DelegatedDatumAdapter<any>
+> = T extends DelegatedDatumAdapter<infer D>
     ? Omit<D, "id" | "type">
     : T extends DelegatedDataContract
     ? ReturnType<T["mkDatumAdapter"]> extends DelegatedDatumAdapter<
-          infer D,
-          any
+          infer D
       >
         ? Omit<D, "id" | "type">
         : never
