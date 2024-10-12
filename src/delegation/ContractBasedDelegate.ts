@@ -209,11 +209,11 @@ import {
     tcxWithCharterRef<TCX extends StellarTxnContext | hasCharterRef>(tcx: TCX) {
         return this.capo.tcxWithCharterRef(tcx);
     }
-    tcxWithSettingsRef<TCX extends StellarTxnContext | hasSettingsRef>(
-        tcx: TCX
-    ) {
-        return this.capo.tcxWithSettingsRef(tcx);
-    }
+    // tcxWithSettingsRef<TCX extends StellarTxnContext | hasSettingsRef>(
+    //     tcx: TCX
+    // ) {
+    //     return this.capo.tcxWithSettingsRef(tcx);
+    // }
 
     /**
      * Adds a mint-delegate-specific authority token to the txn output

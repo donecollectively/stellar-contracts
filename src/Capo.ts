@@ -80,9 +80,9 @@ import {
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
 import type { DatumAdapter, adapterParsedOnchainData } from "./DatumAdapter.js";
 import {
-    type CapoOnchainSettingsType,
-    type CapoOffchainSettingsType,
-    type CapoSettingsAdapterFor,
+    // type CapoOnchainSettingsType,
+    // type CapoOffchainSettingsType,
+    // type CapoSettingsAdapterFor,
     type DatumAdapterOffchainType,
     type hasSettingsType,
 } from "./CapoSettingsTypes.js";
@@ -2391,42 +2391,42 @@ export abstract class Capo<SELF extends Capo<any>>
     //     return tcx.addOutput(settingsOut);
     // }
 
-    /**
-     * @deprecated - use tcxWithSettingsRef() instead
-     */
-    async addSettingsRef<TCX extends StellarTxnContext>(
-        tcx: TCX
-    ): Promise<TCX & hasSettingsRef> {
-        return this.tcxWithSettingsRef(tcx);
-    }
-    /**
-     * ensures that the transaction context has a reference to the settings UTXO
-     * @public
-     * @remarks
-     *
-     * Accepts a transaction context, and ensures that it has a reference to the
-     * settings UTXO.  If the transaction context already has a settings reference,
-     * it is returned as-is.  Otherwise, the settings UTXO is found and added to
-     * the transaction context.
-     */
-    async tcxWithSettingsRef<TCX extends StellarTxnContext>(
-        tcx: TCX
-    ): Promise<TCX & hasSettingsRef> {
-        if (
-            //@ts-expect-error on type-probe:
-            tcx.state.settingsRef
-        )
-            return tcx as TCX & hasSettingsRef;
+    // /**
+    //  * @deprecated - use tcxWithSettingsRef() instead
+    //  */
+    // async addSettingsRef<TCX extends StellarTxnContext>(
+    //     tcx: TCX
+    // ): Promise<TCX & hasSettingsRef> {
+    //     return this.tcxWithSettingsRef(tcx);
+    // }
+    // /**
+    //  * ensures that the transaction context has a reference to the settings UTXO
+    //  * @public
+    //  * @remarks
+    //  *
+    //  * Accepts a transaction context, and ensures that it has a reference to the
+    //  * settings UTXO.  If the transaction context already has a settings reference,
+    //  * it is returned as-is.  Otherwise, the settings UTXO is found and added to
+    //  * the transaction context.
+    //  */
+    // async tcxWithSettingsRef<TCX extends StellarTxnContext>(
+    //     tcx: TCX
+    // ): Promise<TCX & hasSettingsRef> {
+    //     if (
+    //         //@ts-expect-error on type-probe:
+    //         tcx.state.settingsRef
+    //     )
+    //         return tcx as TCX & hasSettingsRef;
 
-        const settingsUtxo = await this.findSettingsUtxo(
-            //@ts-expect-error it's ok if it's not there
-            tcx.state.charterDatum
-        );
-        const tcx2 = tcx.addRefInput(settingsUtxo) as TCX & hasSettingsRef;
-        tcx2.state.settingsRef = settingsUtxo;
+    //     const settingsUtxo = await this.findSettingsUtxo(
+    //         //@ts-expect-error it's ok if it's not there
+    //         tcx.state.charterDatum
+    //     );
+    //     const tcx2 = tcx.addRefInput(settingsUtxo) as TCX & hasSettingsRef;
+    //     tcx2.state.settingsRef = settingsUtxo;
 
-        return tcx2;
-    }
+    //     return tcx2;
+    // }
 
     /**
      * Creates an additional reference-script-creation txn

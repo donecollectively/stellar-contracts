@@ -106,7 +106,8 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         // all the reference data that can be needed by the creation policy
         const tcx1a = await this.tcxWithCharterRef(tcx);
         const tcx1b = await this.tcxWithSeedUtxo(tcx1a);
-        const tcx1c = await this.tcxWithSettingsRef(tcx1b);
+        const tcx1c = tcx1b;
+        // const tcx1c = await this.tcxWithSettingsRef(tcx1b);
         const { capo } = this;
         const mintDelegate = await capo.getMintDelegate();
 
@@ -144,7 +145,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         TCX extends StellarTxnContext &
             hasCharterRef &
             hasSeedUtxo &
-            hasSettingsRef &
+            // hasSettingsRef &
             hasUutContext<DelegatedDatumTypeName<THIS>>,
         DDType extends DelegatedDatumType<THIS> = DelegatedDatumType<THIS>,
         minDDType extends DgDataCreationAttrs<THIS> = DgDataCreationAttrs<THIS>
@@ -236,8 +237,8 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         tcx = tcx || (this.mkTcx(txnName) as TCX);
         const { capo } = this;
         const mintDelegate = await capo.getMintDelegate();
-        const tcx1a = await this.tcxWithCharterRef(tcx);
-        const tcx1 = await this.tcxWithSettingsRef(tcx1a);
+        const /* tcx1a*/ tcx1 = await this.tcxWithCharterRef(tcx);
+        // const tcx1 = await this.tcxWithSettingsRef(tcx1a);
 
         // tell Capo to spend the DD record
         const tcx2 = await capo.txnAttachScriptOrRefScript(
@@ -279,9 +280,9 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
     async txnUpdatingRecord<
         THIS extends DelegatedDataContract,
         TCX extends StellarTxnContext &
-            hasCharterRef &
+            hasCharterRef 
             // hasSeedUtxo &
-            hasSettingsRef
+            // hasSettingsRef
     >(
         this: THIS,
         tcx: TCX,

@@ -19,7 +19,7 @@ import type {
 import { CapoMinter } from "../minting/CapoMinter.js";
 
 import type { expect as expectType } from "vitest";
-import type { CapoOffchainSettingsType } from "../CapoSettingsTypes.js";
+// import type { CapoOffchainSettingsType } from "../CapoSettingsTypes.js";
 import { CapoWithoutSettings } from "../CapoWithoutSettings.js";
 import type { VariantStrategy } from "../delegation/RolesAndDelegates.js";
 
@@ -256,13 +256,13 @@ export class DefaultCapoTestHelper<
         });
     }
 
-    async updateSettings(args: CapoOffchainSettingsType<CAPO>, submitSettings: SubmitOptions={}) {
-        await this.mintCharterToken();
-        const capo = this.strella!;
-        const tcx = await capo.mkTxnUpdateOnchainSettings(args);
-        return tcx.submit(submitSettings).then(() => {
-            this.network.tick(1);
-            return tcx;
-        });
-    }
+    // async updateSettings(args: CapoOffchainSettingsType<CAPO>, submitSettings: SubmitOptions={}) {
+    //     await this.mintCharterToken();
+    //     const capo = this.strella!;
+    //     const tcx = await capo.mkTxnUpdateOnchainSettings(args);
+    //     return tcx.submit(submitSettings).then(() => {
+    //         this.network.tick(1);
+    //         return tcx;
+    //     });
+    // }
 }

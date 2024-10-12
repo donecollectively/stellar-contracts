@@ -67,9 +67,9 @@ export {
 export type {
     ParsedSettings,
     WrappedSettingsAdapterBridge,
-    CapoOffchainSettingsType,
-    CapoOnchainSettingsType,
-    CapoSettingsAdapterFor,
+    // CapoOffchainSettingsType,
+    // CapoOnchainSettingsType,
+    // CapoSettingsAdapterFor,
     DatumAdapterOffchainType,
 } from "./src/CapoSettingsTypes.js";
 
