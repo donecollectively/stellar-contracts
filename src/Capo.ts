@@ -17,7 +17,6 @@ import {
 import { equalsBytes } from "@helios-lang/codec-utils";
 
 import { CapoMinter } from "./minting/CapoMinter.js";
-import type { BasicMinterParams } from "./minting/CapoMinter.js";
 import {
     Activity,
     StellarContract,
@@ -64,11 +63,16 @@ import type {
     capoDelegateConfig,
 } from "./delegation/RolesAndDelegates.js";
 
-import { CapoDelegateHelpers } from "./delegation/CapoDelegateHelpers.js";
 import type { SeedTxnScriptParams } from "./SeedTxnScriptParams.js";
-import { CapoMintHelpers } from "./CapoMintHelpers.js";
-import { StellarHeliosHelpers } from "./StellarHeliosHelpers.js";
-import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
+import type { HeliosModuleSrc } from "./helios/HeliosModuleSrc.js";
+
+// import CapoMintHelpers from "./CapoMintHelpers.hl"
+// import CapoDelegateHelpers from "./delegation/CapoDelegateHelpers.hl";
+// import StellarHeliosHelpers from "./StellarHeliosHelpers.hl";
+// import contract from "./DefaultCapo.hl";
+// export { contract };
+import CapoBundle from "./Capo.hlbundle.js";
+
 import { errorMapAsString } from "./diagnostics.js";
 import { hasReqts } from "./Requirements.js";
 
@@ -89,19 +93,12 @@ import {
 
 import { TxOutputId, type ScriptHash, type Wallet } from "@hyperionbt/helios";
 
-//@ts-expect-error
-import contract from "./DefaultCapo.hl";
-export { contract };
-// import contract from "./BaselineCapo.hl";
-
 import { BasicMintDelegate } from "./minting/BasicMintDelegate.js";
 import { AnyAddressAuthorityPolicy } from "./authority/AnyAddressAuthorityPolicy.js";
 import { dumpAny, txAsString, utxosAsString } from "./diagnostics.js";
 // import { MultisigAuthorityPolicy } from "./authority/MultisigAuthorityPolicy.js";
 import { CapoHelpers } from "./CapoHelpers.js";
-import {
-    type NamedDelegateCreationOptions,
-} from "./delegation/ContractBasedDelegate.js";
+import { type NamedDelegateCreationOptions } from "./delegation/ContractBasedDelegate.js";
 
 /**
  * Includes key details needed to create a delegate link
@@ -362,14 +359,12 @@ export type hasGovAuthority = StellarTxnContext<
 
 import { UncustomCapoSettings } from "./UncustomCapoSettings.js";
 import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
-import { TypeMapMetadata } from "./TypeMapMetadata.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
 import type {
     AnyDataTemplate,
     DelegatedDatumAdapter,
     hasAnyDataTemplate,
 } from "./DelegatedDatumAdapter.js";
-import { PriceValidator } from "./PriceValidator.js";
 import { Cast } from "@helios-lang/contract-utils";
 import type { UplcData, UplcProgramV2, UplcProgramV3 } from "@helios-lang/uplc";
 import { TxOutputDatum } from "@helios-lang/ledger-babbage";
@@ -534,15 +529,16 @@ export type DelegatedDataPredicate<
  * Base class for a "leader" contract that supports custom settings,
  * multiple data types that can evolve over time, support for the software
  * development lifecycle with evolving policies, and a flexible delegation
- * system for managing the contract's roles.  
+ * system for managing the contract's roles.
  * @public
  */
-export abstract class Capo<SELF extends Capo<any>>
-    extends StellarContract<CapoBaseConfig>
+export abstract class Capo<
+    SELF extends Capo<any>
+> extends StellarContract<CapoBaseConfig> {
     // implements hasSettingsType<SELF>
-{
     //, hasRoleMap<SELF>
     static currentRev: bigint = 1n;
+
     verifyConfigs(): Promise<any> {
         return this.verifyCoreDelegates();
     }
@@ -553,8 +549,8 @@ export abstract class Capo<SELF extends Capo<any>>
         return Promise.resolve(true);
     }
 
-    contractSource() {
-        return contract;
+    scriptBundle() {
+        return new CapoBundle();
     }
 
     /**
@@ -827,19 +823,23 @@ export abstract class Capo<SELF extends Capo<any>>
         return this.tvCharter();
     }
 
-    importModules(): HeliosModuleSrc[] {
-        // const { customCapoSettingsModule } = this;
+    // importModules(): HeliosModuleSrc[] {
+    //     // const { customCapoSettingsModule } = this;
 
-        return [
-            // customCapoSettingsModule,
-            this.capoHelpers,
-            TypeMapMetadata,
-            PriceValidator,
-            StellarHeliosHelpers,
-            CapoDelegateHelpers,
-            CapoMintHelpers,
-        ];
-    }
+    //     console.log( {
+    //         CapoDelegateHelpers,
+    //         CapoMintHelpers
+    //     });
+    //     return [
+    //         // customCapoSettingsModule,
+    //         this.capoHelpers,
+    //         TypeMapMetadata,
+    //         PriceValidator,
+    //         StellarHeliosHelpers,
+    //         CapoDelegateHelpers,
+    //         CapoMintHelpers,
+    //     ];
+    // }
 
     get charterTokenPredicate(): tokenPredicate<any> {
         const predicate = this.uh.mkTokenPredicate(this.tvCharter());
@@ -1197,10 +1197,7 @@ export abstract class Capo<SELF extends Capo<any>>
             throw new Error(`just use this.minter when it's already present`);
         const { minterClass } = this;
         const { seedTxn, seedIndex } = params;
-        const {
-            mph: expectedMph,
-            rev,
-        } = this.configIn || {
+        const { mph: expectedMph, rev } = this.configIn || {
             mph: undefined,
             ...(this.constructor as typeof Capo).defaultParams,
         };
@@ -1209,8 +1206,6 @@ export abstract class Capo<SELF extends Capo<any>>
             rev,
             seedTxn,
             seedIndex,
-            //xxx@ts-expect-error - subclassing Capo in a different way than DefaultCapo
-            //   ~~isn't actively supported yet~~ is never expected to happen
             capo: this,
         });
 
@@ -1850,7 +1845,7 @@ export abstract class Capo<SELF extends Capo<any>>
             );
 
             throw new Error(
-                `${this.constructor.name}: the leader contract script '${this.scriptProgram?.name}', or one of its dependencies, has been modified`
+                `${this.constructor.name}: the leader contract script '${this.program.name}', or one of its dependencies, has been modified`
             );
         }
 
@@ -2522,10 +2517,7 @@ export abstract class Capo<SELF extends Capo<any>>
                 )}; adding script directly to txn`
             );
             // console.log("------------------- NO REF SCRIPT")
-            return tcx.addScriptProgram(
-                //@ts-expect-error (until UplcProgramV3 is supported)
-                program
-            );
+            return tcx.addScriptProgram(program);
         }
         // console.log("------------------- REF SCRIPT")
         return tcx.addRefInput(matchingScriptRefs[0]);
@@ -3266,10 +3258,10 @@ export abstract class Capo<SELF extends Capo<any>>
      * value will be returned to the user wallet.  All the uuts named in the uutPurposes argument will
      * be minted from the same seedUtxo, and will share the same suffix, because it is derived from the
      * seedUtxo's outputId.
-     * 
+     *
      * Many cases of UUT minting are covered by the delegation pattern, where this method
-     * is used implicitly.  
-     * 
+     * is used implicitly.
+     *
      * @param initialTcx - an existing transaction context
      * @param uutPurposes - a set of purpose-names (prefixes) for the UUTs to be minted
      * @param options - additional options for the minting operation.  In particular, you likely want

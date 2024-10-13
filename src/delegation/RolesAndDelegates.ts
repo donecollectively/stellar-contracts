@@ -2,7 +2,6 @@ import { Address, MintingPolicyHash, ValidatorHash } from "@hyperionbt/helios";
 import type {
     ConfigFor,
     configBaseWithRev,
-    devConfigProps,
     stellarSubclass,
 } from "../StellarContract.js";
 import {
@@ -84,7 +83,7 @@ export type DelegationDetail = {
  *
  * @public
  **/
-export type capoDelegateConfig = configBaseWithRev & devConfigProps & {
+export type capoDelegateConfig = configBaseWithRev & {
     capoAddr: Address;
     capo: Capo<any>;
     mph: MintingPolicyHash;

@@ -206,9 +206,9 @@ export {
 } from "./src/testing/StellarNetworkEmulator.js";
 
 export { helios };
-export { mkHeliosModule } from "./src/HeliosModuleSrc.js";
-export type { HeliosModuleSrc } from "./src/HeliosModuleSrc.js";
-export { heliosRollupLoader } from "./src/heliosRollupLoader.js";
+export { mkHeliosModule } from "./src/helios/HeliosModuleSrc.js";
+export type { HeliosModuleSrc } from "./src/helios/HeliosModuleSrc.js";
+export { heliosRollupLoader } from "./src/helios/heliosRollupLoader.js";
 export * from "./src/testing/index.js";
 
 export type { TestHelperState } from "./src/testing/types.js";

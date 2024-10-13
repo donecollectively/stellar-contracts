@@ -3,6 +3,7 @@ import { Capo } from "./Capo.js";
 import { DatumAdapter, type offchainDatumType, type adapterParsedOnchainData } from "./DatumAdapter.js";
 import { SettingsAdapter, type ParsedSettings } from "./CapoSettingsTypes.js";
 import type { DelegatedDatumAdapter } from "./DelegatedDatumAdapter.js";
+import type { StellarTestContext } from "./testing/StellarTestContext.js";
 
 // export type BridgeNoSettings = {
 //     none: string;
@@ -64,4 +65,5 @@ export class CapoWithoutSettings extends Capo<CapoWithoutSettings> {
     //     } //as NoSettings
     // }
 }
+
 

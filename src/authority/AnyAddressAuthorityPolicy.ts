@@ -12,6 +12,7 @@ import type { isActivity } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { AuthorityPolicy } from "./AuthorityPolicy.js";
 import { dumpAny } from "../diagnostics.js";
+import { UplcInt } from "@helios-lang/uplc";
 
 /**
  * Token-based authority
@@ -24,7 +25,7 @@ import { dumpAny } from "../diagnostics.js";
  * @public
  **/
 export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
-    loadProgramScript(params) {
+    loadBundle(params) {
         return undefined;
     }
 
@@ -32,7 +33,9 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
 
 
     getContractScriptParamsUplc() {
-        return {};
+        return {
+            rev: new UplcInt(0) as any
+        }
     }
 
     get delegateValidatorHash() {

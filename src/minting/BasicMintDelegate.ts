@@ -7,6 +7,8 @@ import { StellarTxnContext } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
 
 import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
+import MintDelegateBundle from "../delegation/UnspecializedDelegate.hlbundle.js";
+
 
 /**
  * Serves a delegated minting-policy role for Capo contracts
@@ -17,11 +19,17 @@ import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
  **/
 export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig> {
     static currentRev = 1n;
+
     get delegateName() {
         return "mintDelegate";
     }
+
     get isMintAndSpendDelegate() {
         return true;
+    }
+
+    scriptBundle() {
+        return this.mkCapoBundle(MintDelegateBundle);
     }
 
     // uses the basic delegate script, plus the isMintDelegate param

@@ -28,10 +28,10 @@ import { configBaseWithRev, txn } from "../src/StellarContract";
 import { dumpAny, txAsString } from "../src/diagnostics";
 import { Address } from "@hyperionbt/helios";
 import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateWithGenericUuts";
-import { StellarDelegate } from "../dist/stellar-contracts";
 import { ContractBasedDelegate } from "../src/delegation/ContractBasedDelegate";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { expectTxnError } from "../src/testing/StellarTestHelper";
+import UnspecializedDelegateBundle from "../src/delegation/UnspecializedDelegate.hlbundle.js"
 
 class NamedDelegateTestCapo extends CapoWithoutSettings {
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {
@@ -103,12 +103,14 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
         })// as any; // TODO - update types so this structure fits the expected type
     }
 }
+
 export class TestNamedDelegate extends ContractBasedDelegate {
     get delegateName() { return "myNamedDgt" }
+    scriptBundle() {
+        return this.mkCapoBundle(UnspecializedDelegateBundle)
+    }
 }
 
-
-//xxx@ts-expect-error
 type localTC = StellarTestContext<DefaultCapoTestHelper<NamedDelegateTestCapo>>;
 
 const it = itWithContext<localTC>;

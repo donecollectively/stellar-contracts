@@ -12,20 +12,20 @@ import type {
     isActivity,
 } from "../StellarContract.js";
 
-//@ts-expect-error - typescript doesn't grok Helios
-import contract from "./CapoMinter.hl";
-export const MinterContract = contract;
-
 import { StellarTxnContext, type anyState } from "../StellarTxnContext.js";
 import type { Capo, MintUutActivityArgs, MinterBaseMethods } from "../Capo.js";
 import type { SeedTxnScriptParams } from "../SeedTxnScriptParams.js";
 import type { valuesEntry } from "../HeliosPromotedTypes.js";
 import { UutName } from "../delegation/UutName.js";
 
-import type { HeliosModuleSrc } from "../HeliosModuleSrc.js";
+import type { HeliosModuleSrc } from "../helios/HeliosModuleSrc.js";
 import { mkValuesEntry } from "../utils.js";
 
 import type { BasicMintDelegate } from "./BasicMintDelegate.js";
+import CapoMinterBundle from "./CapoMinter.hlbundle.js";
+import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
+import type CapoBundle from "../Capo.hlbundle.js";
+import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 
 type MintCharterActivityArgs<T = {}> = T & {
     owner: Address;
@@ -64,8 +64,18 @@ export class CapoMinter
     implements MinterBaseMethods
 {
     currentRev: bigint = 1n;
-    contractSource() {
-        return contract;
+    scriptBundle() {
+        return this.mkCapoBundle(CapoMinterBundle);
+    }
+
+    mkCapoBundle(BundleClass: new (capoBundle: CapoBundle) => HeliosScriptBundle) {
+        const { capo } = this.configIn || this.partialConfig || {};
+        if (!capo)
+            throw new Error(
+                `missing capo in config or partial-config for ${this.constructor.name}`
+            );
+
+        return new BundleClass(capo.bundle);
     }
 
     getContractScriptParamsUplc(
@@ -86,18 +96,6 @@ export class CapoMinter
 
     get scriptActivitiesName() {
         return "MinterActivity";
-    }
-
-    importModules(): HeliosModuleSrc[] {
-        //@ts-expect-error
-        const { capo } = this.configIn || this.partialConfig;
-
-        if (!capo)
-            throw new Error(
-                `missing capo in config or partial-config for ${this.constructor.name}`
-            );
-
-        return capo.importModules();
     }
 
     /**

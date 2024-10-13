@@ -9,11 +9,10 @@ import json from "@rollup/plugin-json";
 import execute from "rollup-plugin-shell";
 import sourcemaps from "rollup-plugin-sourcemaps";
 
-
 // const packageJson = await import("./package.json", { assert: { type: "json" } });
 
 import packageJson from "./package.json" assert { type: "json" };
-import { heliosRollupLoader } from "./src/heliosRollupLoader.js";
+import { heliosRollupLoader } from "./src/helios/heliosRollupLoader.js";
 const name = packageJson.main.replace(/\.m?js$/, "");
 
 const serverBundledModules : string[] = [
@@ -72,6 +71,7 @@ export default [
                 
                 sourceMap: false,
             }),
+            // heliosRollupTypeGen(),
             execute({
                 sync: true,
                 commands: [

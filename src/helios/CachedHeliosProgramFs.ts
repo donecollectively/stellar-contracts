@@ -11,13 +11,13 @@ import {
 } from "./CachedHeliosProgram.js";
 import { existsSync, mkdirSync } from "fs";
 
-const cacheStore = ".hlcache";
+const cacheStore = ".hltemp/cache";
 
 export function mkCachedHeliosProgramFS(): typeof CachedHeliosProgram {
     // if the cacheStore directory doesn't exist, create it.
     if (!existsSync(cacheStore)) {
         console.log(`🐢${CachedHeliosProgram.id} Creating helios compiler cache in ${cacheStore}`);
-        mkdirSync(cacheStore);
+        mkdirSync(cacheStore, {recursive: true});
     }
     return class CachedHeliosProgramFS extends CachedHeliosProgram {
         static async ifCached(cacheKey: string): Promise<string | null> {

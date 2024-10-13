@@ -109,7 +109,7 @@ export abstract class CapoTestHelper<
         this.strella = strella;
         const { address, mintingPolicyHash: mph } = strella;
 
-        const { name } = strella.scriptProgram!;
+        const { name } = strella.program;
         console.log(
             name,
             address.toBech32().substring(0, 18) + "…",

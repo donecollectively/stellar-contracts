@@ -1,12 +1,18 @@
-import { Activity, hasSeed } from "../../src/StellarContract";
-import { hasSeedUtxo } from "../../src/StellarTxnContext";
-import { BasicMintDelegate } from "../../src/minting/BasicMintDelegate";
-import { uutMintingMintDelegate } from "./uutMintingMintDelegate";
-import { ByteArrayData, ListData, textToBytes } from "@hyperionbt/helios";
+import { Activity, type hasSeed } from "../../src/StellarContract.js";
+import { type hasSeedUtxo } from "../../src/StellarTxnContext.js";
+// import { HeliosScriptBundle } from "../../helios/HeliosScriptBundle.js";
+import { BasicMintDelegate } from "../../src/minting/BasicMintDelegate.js";
+// import { uutMintingMintDelegate } from "./uutMintingMintDelegate.js";
+// import { ByteArrayData, ListData, textToBytes } from "@hyperionbt/helios";
+import uutMintingMintDelegateBundle from "./uutMintingMintDelegate.hlbundle.js";
 
 export class MintDelegateWithGenericUuts extends BasicMintDelegate {
     get delegateName() { return "uutMintingDelegate" }
 
+    scriptBundle() {
+        return this.mkCapoBundle(uutMintingMintDelegateBundle);
+    }
+    
     @Activity.redeemer
     activityMintingUutsAppSpecific(seedFrom: hasSeedUtxo, purposes: string[]) {
         const seed = this.getSeed(seedFrom);
@@ -26,7 +32,7 @@ export class MintDelegateWithGenericUuts extends BasicMintDelegate {
         });
     }
 
-    get specializedDelegateModule() {
-        return uutMintingMintDelegate;
-    }
+    // get specializedDelegateModule() {
+    //     return uutMintingMintDelegate;
+    // }
 }

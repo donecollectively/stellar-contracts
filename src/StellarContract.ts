@@ -20,27 +20,26 @@ import type { DataType } from "@helios-lang/compiler";
 import type { Network, Wallet } from "@hyperionbt/helios";
 export type anyUplcProgram = 
 | UplcProgramV2 
-| UplcProgramV3;
+// | UplcProgramV3;
 
 import {
     StellarTxnContext,
     type TxDescription,
     type hasSeedUtxo,
 } from "./StellarTxnContext.js";
-import {
-    betterJsonSerializer,
-} from "./diagnostics.js";
+import { betterJsonSerializer } from "./diagnostics.js";
 import type { InlineDatum, valuesEntry } from "./HeliosPromotedTypes.js";
 import {
     HeliosModuleSrc,
     type HeliosModuleOptions,
-} from "./HeliosModuleSrc.js";
+} from "./helios/HeliosModuleSrc.js";
 import { type SeedAttrs } from "./delegation/UutName.js";
 import type { Capo } from "./Capo.js";
 import { DatumAdapter, type adapterParsedOnchainData } from "./DatumAdapter.js";
 import { UtxoHelper, type utxoPredicate } from "./UtxoHelper.js";
-import { CachedHeliosProgram } from "./CachedHeliosProgram.js";
+import { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
 import { uplcDataSerializer } from "./delegation/jsonSerializers.js";
+import { HeliosScriptBundle } from "./helios/HeliosScriptBundle.js";
 
 type NetworkName = "testnet" | "mainnet";
 let configuredNetwork: NetworkName | undefined = undefined;
@@ -349,12 +348,14 @@ type scriptPurpose =
     | "spending"
     | "staking"
     | "module"
-    | "endpoint";
+    | "endpoint"
+    | "non-script";
 
 type ComputedScriptProperties = Partial<{
     vh: helios.ValidatorHash;
     addr: Address;
     mph: MintingPolicyHash;
+    program: CachedHeliosProgram;
     identity: string;
 }>;
 
@@ -398,7 +399,7 @@ export class StellarContract<
 > {
     //! it has scriptProgram: a parameterized instance of the contract
     //  ... with specific `parameters` assigned.
-    scriptProgram?: CachedHeliosProgram;
+    // bundle?: HeliosScriptBundle;
     configIn?: ConfigType;
     partialConfig?: Partial<ConfigType>;
     contractParams?: UplcRecord<ConfigType>;
@@ -533,19 +534,36 @@ export class StellarContract<
         if (config) {
             this.configIn = config;
 
-            this.scriptProgram = this.loadProgramScript(args);
+            // this.bundle = this.loadBundle(args);
             this.contractParams = this.getContractScriptParamsUplc(config);
             await this.compileWithScriptParams();
         } else {
             this.partialConfig = partialConfig;
-            this.scriptProgram = this.loadProgramScript();
+            // this.bundle = this.loadBundle();
+        }
+        if (this.usesContractScript) {
+            if (!this.bundle) {
+                throw new Error(
+                    `${this.constructor.name}: missing required this.bundle for contract class`
+                );
+            } else if (!(this.bundle instanceof HeliosScriptBundle)) {
+                throw new Error(
+                    `${
+                        this.constructor.name
+                    }: this.bundle must be a HeliosScriptBundle; got ${
+                        (this.bundle as any).constructor.name
+                    }`
+                );
+            } else {
+                console.log(this.program.name, "bundle loaded");
+            }
         }
 
         return this;
     }
 
     compiledScript!: anyUplcProgram; // initialized in loadProgramScript
-    usesContractScript : boolean = true;
+    usesContractScript: boolean = true;
 
     get datumType() {
         return this.onChainDatumType;
@@ -554,12 +572,10 @@ export class StellarContract<
     /**
      * @internal
      **/
-    _purpose?: scriptPurpose;
-    get purpose() {
-        if (this._purpose) return this._purpose;
-        const purpose = this.scriptProgram?.purpose as scriptPurpose;
+    get purpose(): scriptPurpose {
+        const purpose = this.program.purpose as scriptPurpose;
         if (!purpose) return "non-script";
-        return (this._purpose = purpose as scriptPurpose);
+        return purpose;
     }
 
     get validatorHash() {
@@ -574,7 +590,9 @@ export class StellarContract<
         //         debugger
         //     }
         // }
-        return (this._cache.vh = new helios.ValidatorHash(nvh));
+        return (this._cache.vh = new helios.ValidatorHash(
+            this.compiledScript.hash()
+        ));
     }
 
     //  todo: stakingAddress?: Address or credential or whatever;
@@ -739,8 +757,8 @@ export class StellarContract<
         // compiledScript.userTypes()
         // const types = { ...this.scriptProgram!.types };
 
-        const scriptNamespace = this.scriptProgram!.name;
-        return this.scriptProgram!.userTypes[scriptNamespace];
+        const scriptNamespace = this.program.name;
+        return this.program.userTypes[scriptNamespace];
     }
 
     /**
@@ -766,10 +784,10 @@ export class StellarContract<
      **/
     get onChainDatumType(): DataType {
         const { scriptDatumName: onChainDatumName } = this;
-        const scriptNamespace = this.scriptProgram!.name;
+        const scriptNamespace = this.program.name;
         const {
             [scriptNamespace]: { [onChainDatumName]: DatumType },
-        } = this.scriptProgram!.userTypes;
+        } = this.program.userTypes;
         
         return DatumType;
     }
@@ -806,11 +824,11 @@ export class StellarContract<
      **/
     get onChainActivitiesType() {
         const { scriptActivitiesName: onChainActivitiesName } = this;
-        if (!this.scriptProgram) throw new Error(`no scriptProgram`);
-        const scriptNamespace = this.scriptProgram!.name;
+        if (!this.bundle) throw new Error(`no scriptProgram`);
+        const scriptNamespace = this.program.name;
         const {
             [scriptNamespace]: { [onChainActivitiesName]: ActivitiesType },
-        } = this.scriptProgram!.userTypes;
+        } = this.program.userTypes;
 
         return ActivitiesType;
     }
@@ -896,11 +914,7 @@ export class StellarContract<
             // enumType.name.site.syntaxError("yuck")
             ///or similar (search: getFilePos())
             throw new Error(
-                `$${
-                    this.constructor.name
-                }: activity/enum-variant name mismatch in ${
-                    enumType.name
-                }: variant '${variantName}' unknown\n` +
+                `$${this.constructor.name}: activity/enum-variant name mismatch in ${enumType.name}: variant '${variantName}' unknown\n` +
                     ` ... variants in this enum: ${variantNames.join(", ")}`
             );
         }
@@ -924,8 +938,8 @@ export class StellarContract<
     }
 
     paramsToUplc(params: Record<string, any>): UplcRecord<ConfigType> {
-        const namespace = this.scriptProgram!.name;
-        const { paramTypes } = this.scriptProgram!;
+        const namespace = this.program.name;
+        const { paramTypes } = this.program;
 
         return Object.fromEntries(
             Object.entries(params).map(([paramName, data]) => {
@@ -947,9 +961,11 @@ export class StellarContract<
                         {} as Record<string, string[]>
                     );
                     // throw an error showing all the namespaces and all the short params in each
-                    const availableScriptParams = Object.entries(availableParams).map(
-                        ([ns, names]) => `  ${ns}::{${names.join(", ")}}`
-                    ).join("\n");
+                    const availableScriptParams = Object.entries(
+                        availableParams
+                    )
+                        .map(([ns, names]) => `  ${ns}::{${names.join(", ")}}`)
+                        .join("\n");
                     console.log("availableScriptParams", availableScriptParams);
                     throw new Error(
                         `invalid parameter name ${paramName} in namespace '${namespace}' \n`
@@ -961,6 +977,14 @@ export class StellarContract<
                 ];
             })
         ) as UplcRecord<ConfigType>;
+    }
+
+    get program() {
+        if (this._cache.program) return this._cache.program;
+
+        const program = this.bundle!.program;
+
+        return (this._cache.program = program);
     }
 
     async readDatum<
@@ -1429,10 +1453,18 @@ export class StellarContract<
         return bn;
     }
 
+    _bundle: HeliosScriptBundle | undefined;
+    get bundle() {
+        if (!this._bundle) {
+            this._bundle = this.scriptBundle();
+        }
+        return this._bundle;
+    }
+
     //! it requires each subclass to define a contractSource
-    contractSource(): HeliosModuleSrc | HeliosModuleOptions {
+    scriptBundle(): HeliosScriptBundle {
         throw new Error(
-            `${this.constructor.name}: missing required implementation of contractSource()`
+            `${this.constructor.name}: missing required implementation of scriptBundle()`
         );
     }
 
@@ -1476,9 +1508,9 @@ export class StellarContract<
      * Note that the super class may provide import modules, so you should include the result
      * of `super.importModules()` in your return value.
      */
-    importModules(): HeliosModuleSrc[] {
-        return [];
-    }
+    // importModules(): HeliosModuleSrc[] {
+    //     return [];
+    // }
     _cache: ComputedScriptProperties = {};
 
     async compileWithScriptParams() {
@@ -1488,13 +1520,13 @@ export class StellarContract<
             );
             debugger;
         }
-        if (!this.usesContractScript) return
+        if (!this.usesContractScript) return;
 
         if (!this.contractParams) {
             throw new Error(`contractParams not set`);
         }
 
-        const script = this.scriptProgram;
+        const script = this.program;
         if (!script) {
             console.warn(
                 "compileWithScriptParams() called without loaded script"
@@ -1510,7 +1542,7 @@ export class StellarContract<
 
         console.log(
             `${this.constructor.name} with params:`,
-            this.scriptProgram!.entryPoint.paramsDetails()
+            script.entryPoint.paramsDetails()
         );
 
         this.compiledScript = await script.compileCached({
@@ -1538,187 +1570,137 @@ export class StellarContract<
         // if (console.profileEnd) debugger;
     }
 
-    loadProgramScript(
-        args?: StellarFactoryArgs<ConfigType>
-    ): CachedHeliosProgram | undefined {
-        let codeModule = HeliosModuleSrc.parseFromOptions(
-            this.contractSource()
-        );
+    // XXXloadBundle(
+    //     args?: StellarFactoryArgs<ConfigType>
+    // ): HeliosScriptBundle | undefined {
 
-        if (this.scriptProgram) {
-            throw new Error("already set program");
-            console.warn("already set program");
-            debugger;
-        }
 
-        const modules = [...new Set(this.importModules())];
-        const moduleInfo: Record<string, HeliosModuleSrc> = {
-            [codeModule.name]: codeModule,
-        };
-        console.log(
-            `${this.constructor.name} <- `,
-            codeModule.name || "‹unknown path›"
-        );
-        for (let module of modules) {
-            const m = HeliosModuleSrc.parseFromOptions(module);
-            moduleInfo[m.name] = m;
+    //     const { config: params } = args || {};
+    //     try {
+    //         const script = CachedHeliosProgram.forCurrentPlatform(codeModule, {
+    //             moduleSources: modules,
+    //         });
+    //         // this.bundle = script;
 
-            const { moduleName, purpose, name, project, content } = m;
-            console.log(
-                `  -- ${purpose}: ${moduleName} from ${name} in proj ${
-                    project || "‹unknown›"
-                }`
-            );
-            if (!(name && purpose && moduleName)) {
-                console.log(
-                    `  -- ${purpose}: ${moduleName} from ${name} in proj ${
-                        project || "‹unknown›"
-                    }`
-                );
+    //         if (params) {
+    //             this.contractParams = this.getContractScriptParamsUplc(params);
+    //         }
 
-                debugger;
-                throw new Error(
-                    `${
-                        this.constructor.name
-                    }: invalid module returned from importModules():\n${
-                        name ? `${name}\n` : ""
-                    }\n${
-                        content.split("\n").slice(0, 3).join("\n") // prettier-ignore
-                    }${
-                        purpose
-                            ? ""
-                            : "!!! missing script purpose on line 1, or not tagged as a Helios module.\n"
-                    }\n... make sure you're using the result of mkHeliosModule(), if heliosRollupLoader() isn't suitable for your project`
-                );
-            }
-        }
-        // console.log({src, Program, modules})
+    //         return script;
+    //     } catch (e: any) {
+    //         // !!! probably this stuff needs to move to compileWithScriptParams()
+    //         if (e.message.match(/invalid parameter name/)) {
+    //             throw new Error(
+    //                 e.message +
+    //                     `\n   ... this typically occurs when your StellarContract class (${this.constructor.name})` +
+    //                     "\n   ... can be missing a getContractScriptParamsUplc() method " +
+    //                     "\n   ... to map from the configured settings to contract parameters"
+    //             );
+    //         }
+    //         const [unsetConst, constName] =
+    //             e.message.match(/used unset const '(.*?)'/) || [];
+    //         if (unsetConst) {
+    //             console.log(e.message);
+    //             throw new Error(
+    //                 `${this.constructor.name}: missing required script param '${constName}' in static getDefaultParams() or getContractScriptParams()`
+    //             );
+    //         }
+    //         if (!e.src) {
+    //             console.error(
+    //                 `unexpected error while compiling helios program (or its imported module) \n` +
+    //                     `> ${e.message}\n` +
+    //                     `Suggested: connect with debugger (we provided a debugging point already)\n` +
+    //                     `  ... and use 'break on caught exceptions' to analyze the error \n` +
+    //                     `This likely indicates a problem in Helios' error reporting - \n` +
+    //                     `   ... please provide a minimal reproducer as an issue report for repair!\n\n` +
+    //                     e.stack.split("\n").slice(1).join("\n")
+    //             );
+    //             try {
+    //                 debugger;
+    //                 // debugger'ing?  YOU ARE AWESOME!
+    //                 //  reminder: ensure "pause on caught exceptions" is enabled
+    //                 //  before playing this next line to dig deeper into the error.
+    //                 const script2 = new Program(codeModule, {
+    //                     moduleSources: modules,
+    //                     isTestnet: this.setup.isTest,
+    //                 });
+    //                 console.log({ params });
+    //                 if (params) {
+    //                     for (const [p, v] of Object.entries(params || {})) {
+    //                         script2.changeParam(p, v);
+    //                     }
+    //                     script2.compile();
+    //                 }
+    //                 console.warn("NOTE: no error thrown on second attempt");
+    //             } catch (sameError) {
+    //                 // entirely expected it would throw the same error
+    //                 // throw sameError;
+    //             }
+    //             // throw e;
+    //         }
+    //         debugger;
+    //         if (!e.site) {
+    //             console.warn(
+    //                 "error thrown from helios doesn't have source site info; rethrowing it"
+    //             );
+    //             throw e;
+    //         }
+    //         const moduleName2 = e.site.file; // moduleName? & filename ? :pray:
+    //         const errorModule = moduleInfo[moduleName2];
+    //         // const errorModule = [codeModule, ...modules].find(
+    //         //     (m) => (m as any).name == moduleName
+    //         // );
 
-        const { config: params } = args || {};
-        try {
-            const script = CachedHeliosProgram.forCurrentPlatform(codeModule, {
-                moduleSources: modules,
-            });
-            this.scriptProgram = script;
+    //         const {
+    //             project,
+    //             moduleName,
+    //             name: srcFilename = "‹unknown path to module›",
+    //             moreInfo,
+    //         } = errorModule || {};
+    //         let errorInfo: string = "";
+    //         try {
+    //             statSync(srcFilename).isFile();
+    //         } catch (e) {
+    //             const indent = " ".repeat(6);
+    //             errorInfo = project
+    //                 ? `\n${indent}Error found in project ${project}:${srcFilename}\n` +
+    //                   `${indent}- in module ${moduleName}:\n${moreInfo}\n` +
+    //                   `${indent}  ... this can be caused by not providing correct types in a module specialization,\n` +
+    //                   `${indent}  ... or if your module definition doesn't include a correct path to your helios file\n`
+    //                 : `\n${indent}WARNING: the error was found in a Helios file that couldn't be resolved in your project\n` +
+    //                   `${indent}  ... this can be caused if your module definition doesn't include a correct path to your helios file\n` +
+    //                   `${indent}  ... (possibly in mkHeliosModule(heliosCode, \n${indent}    "${srcFilename}"\n${indent})\n`;
+    //         }
 
-            if (params) {
-                this.contractParams = this.getContractScriptParamsUplc(params);
-            }
+    //         const { startLine, startColumn } = e.site;
+    //         const t = new Error(errorInfo);
+    //         const modifiedStack = t.stack!.split("\n").slice(1).join("\n");
+    //         const additionalErrors = (e.otherErrors || [])
+    //             .slice(1)
+    //             .map((oe) => `       |         ⚠️  also: ${
+    //                 // (oe.message as string).replace(e.site.file, "")}`);
+    //                 oe.site.file == e.site.file ?
+    //                     oe.site.toString().replace(e.site.file+":", "at ") + ": "+ oe.originalMessage
+    //                 : oe.site.toString()
+    //             }`);
+    //         const addlErrorText = additionalErrors.length
+    //             ? ["", ...additionalErrors, "       v"].join("\n")
+    //             : "";
+    //         t.message = `${e.kind}: ${this.constructor.name}: ${
+    //             e.originalMessage
+    //         }${addlErrorText
+    //         }\n${errorInfo}`;
 
-            return script;
-        } catch (e: any) {
-            if (e.message.match(/invalid parameter name/)) {
-                throw new Error(
-                    e.message +
-                        `\n   ... this typically occurs when your StellarContract class (${this.constructor.name})` +
-                        "\n   ... can be missing a getContractScriptParams() method " +
-                        "\n   ... to map from the configured settings to contract parameters"
-                );
-            }
-            const [unsetConst, constName] =
-                e.message.match(/used unset const '(.*?)'/) || [];
-            if (unsetConst) {
-                console.log(e.message);
-                throw new Error(
-                    `${this.constructor.name}: missing required script param '${constName}' in static getDefaultParams() or getContractScriptParams()`
-                );
-            }
-            if (!e.src) {
-                console.error(
-                    `unexpected error while compiling helios program (or its imported module) \n` +
-                        `> ${e.message}\n` +
-                        `Suggested: connect with debugger (we provided a debugging point already)\n` +
-                        `  ... and use 'break on caught exceptions' to analyze the error \n` +
-                        `This likely indicates a problem in Helios' error reporting - \n` +
-                        `   ... please provide a minimal reproducer as an issue report for repair!\n\n` +
-                        e.stack.split("\n").slice(1).join("\n")
-                );
-                try {
-                    debugger;
-                    // debugger'ing?  YOU ARE AWESOME!
-                    //  reminder: ensure "pause on caught exceptions" is enabled
-                    //  before playing this next line to dig deeper into the error.
-                    const script2 = new Program(codeModule, {
-                        moduleSources: modules,
-                        isTestnet: this.setup.isTest,
-                    });
-                    console.log({ params });
-                    if (params) {
-                        for (const [p, v] of Object.entries(params || {})) {
-                            script2.changeParam(p, v);
-                        }
-                        script2.compile();
-                    }
-                    console.warn("NOTE: no error thrown on second attempt");
-                } catch (sameError) {
-                    // entirely expected it would throw the same error
-                    // throw sameError;
-                }
-                // throw e;
-            }
-            debugger;
-            if (!e.site) {
-                console.warn(
-                    "error thrown from helios doesn't have source site info; rethrowing it"
-                );
-                throw e;
-            }
-            const moduleName2 = e.site.file; // moduleName? & filename ? :pray:
-            const errorModule = moduleInfo[moduleName2];
-            // const errorModule = [codeModule, ...modules].find(
-            //     (m) => (m as any).name == moduleName
-            // );
+    //         t.stack =
+    //             `${this.constructor.name}: ${
+    //                 e.message
+    //             }\n    at ${moduleName2} (${srcFilename}:${1 + startLine}:${
+    //                 1 + startColumn
+    //             })\n` + modifiedStack;
 
-            const {
-                project,
-                moduleName,
-                name: srcFilename = "‹unknown path to module›",
-                moreInfo,
-            } = errorModule || {};
-            let errorInfo: string = "";
-            try {
-                statSync(srcFilename).isFile();
-            } catch (e) {
-                const indent = " ".repeat(6);
-                errorInfo = project
-                    ? `\n${indent}Error found in project ${project}:${srcFilename}\n` +
-                      `${indent}- in module ${moduleName}:\n${moreInfo}\n` +
-                      `${indent}  ... this can be caused by not providing correct types in a module specialization,\n` +
-                      `${indent}  ... or if your module definition doesn't include a correct path to your helios file\n`
-                    : `\n${indent}WARNING: the error was found in a Helios file that couldn't be resolved in your project\n` +
-                      `${indent}  ... this can be caused if your module definition doesn't include a correct path to your helios file\n` +
-                      `${indent}  ... (possibly in mkHeliosModule(heliosCode, \n${indent}    "${srcFilename}"\n${indent})\n`;
-            }
-
-            const { startLine, startColumn } = e.site;
-            const t = new Error(errorInfo);
-            const modifiedStack = t.stack!.split("\n").slice(1).join("\n");
-            const additionalErrors = (e.otherErrors || [])
-                .slice(1)
-                .map((oe) => `       |         ⚠️  also: ${
-                    // (oe.message as string).replace(e.site.file, "")}`);
-                    oe.site.file == e.site.file ? 
-                        oe.site.toString().replace(e.site.file+":", "at ") + ": "+ oe.originalMessage
-                    : oe.site.toString()
-                }`);
-            const addlErrorText = additionalErrors.length
-                ? ["", ...additionalErrors, "       v"].join("\n")
-                : "";
-            t.message = `${e.kind}: ${this.constructor.name}: ${
-                e.originalMessage
-            }${addlErrorText
-            }\n${errorInfo}`;
-
-            t.stack =
-                `${this.constructor.name}: ${
-                    e.message
-                }\n    at ${moduleName2} (${srcFilename}:${1 + startLine}:${
-                    1 + startColumn
-                })\n` + modifiedStack;
-
-            throw t;
-        }
-    }
+    //         throw t;
+    //     }
+    // }
 
     /**
      * Locates a UTxO locked in a validator contract address

@@ -388,7 +388,7 @@ export abstract class DatumAdapter<appType> {
     ) {
         const enumDef = this.onChainTypes[enumName];
         if (!enumDef) {
-            const t = this.strella.contractSource;
+            const t = this.strella.scriptBundle;
             debugger; // ^^ ???
 
             throw new Error(
@@ -396,8 +396,8 @@ export abstract class DatumAdapter<appType> {
                     `\n   ... try one of: (${Object.keys(
                         this.onChainTypes
                     ).join(", ")})` +
-                    `\n   (from ${this.strella.scriptProgram!.name} in ${
-                        this.strella.contractSource!.name || "‹unk file name›"
+                    `\n   (from ${this.strella.program.name} in ${
+                        this.strella.scriptBundle!.name || "‹unk file name›"
                     })`
             );
         }
