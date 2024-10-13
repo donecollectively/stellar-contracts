@@ -11,7 +11,7 @@ import sourcemaps from "rollup-plugin-sourcemaps";
 
 // const packageJson = await import("./package.json", { assert: { type: "json" } });
 
-import packageJson from "./package.json" assert { type: "json" };
+import packageJson from "./package.json" with { type: "json" };
 import { heliosRollupLoader } from "./src/helios/heliosRollupLoader.js";
 const name = packageJson.main.replace(/\.m?js$/, "");
 

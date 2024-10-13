@@ -755,6 +755,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             if (tx.hasValidationError) {
                 logger.logError(
                     `Unexpected build-phase failure: \n  ${
+                        //@ts-expect-error
                         tx.hasValidationError.message || tx.hasValidationError
                     }`
                 );

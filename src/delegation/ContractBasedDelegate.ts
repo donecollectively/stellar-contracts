@@ -116,22 +116,22 @@ export class ContractBasedDelegate<
     //         });
     //     }
 
-    /**
-     * Sets a list of Helios source modules to be available for import by the smart contract
-     * indicated by `this.specializedDelegateModule()`
-     * @remarks
-     * The list of modules is used when compiling the smart contract.
-     *
-     * Note that the super class may provide import modules, so you should include the result
-     * of `super.importModules()` in your return value.
-     */
-    importModules(): HeliosModuleSrc[] {
-        const specialDgt = this.specializedDelegateModule;
+    // /**
+    //  * Sets a list of Helios source modules to be available for import by the smart contract
+    //  * indicated by `this.specializedDelegateModule()`
+    //  * @remarks
+    //  * The list of modules is used when compiling the smart contract.
+    //  *
+    //  * Note that the super class may provide import modules, so you should include the result
+    //  * of `super.importModules()` in your return value.
+    //  */
+    // importModules(): HeliosModuleSrc[] {
+    //     const specialDgt = this.specializedDelegateModule;
 
-        const delegateWrapper = this.mkDelegateWrapper(specialDgt.moduleName);
+    //     const delegateWrapper = this.mkDelegateWrapper(specialDgt.moduleName);
 
-        return [specialDgt, delegateWrapper, ...capo.importModules()];
-    }
+    //     return [specialDgt, delegateWrapper, ...capo.importModules()];
+    // }
 
     static get defaultParams() {
         const params = {

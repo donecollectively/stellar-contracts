@@ -15,11 +15,15 @@ import {
 import * as helios from "@hyperionbt/helios";
 import { Cast } from "@helios-lang/contract-utils";
 import { TxOutputDatum } from "@helios-lang/ledger-babbage";
-import type { UplcProgramV2I, UplcProgramV3I, UplcProgramV2, UplcProgramV3 } from "@helios-lang/uplc";
+import type {
+    UplcProgramV2I,
+    UplcProgramV3I,
+    UplcProgramV2,
+    UplcProgramV3,
+} from "@helios-lang/uplc";
 import type { DataType } from "@helios-lang/compiler";
 import type { Network, Wallet } from "@hyperionbt/helios";
-export type anyUplcProgram = 
-| UplcProgramV2 
+export type anyUplcProgram = UplcProgramV2;
 // | UplcProgramV3;
 
 import {
@@ -37,9 +41,10 @@ import { type SeedAttrs } from "./delegation/UutName.js";
 import type { Capo } from "./Capo.js";
 import { DatumAdapter, type adapterParsedOnchainData } from "./DatumAdapter.js";
 import { UtxoHelper, type utxoPredicate } from "./UtxoHelper.js";
-import { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
-import { uplcDataSerializer } from "./delegation/jsonSerializers.js";
+// import { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
+// import { uplcDataSerializer } from "./delegation/jsonSerializers.js";
 import { HeliosScriptBundle } from "./helios/HeliosScriptBundle.js";
+import type { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
 
 type NetworkName = "testnet" | "mainnet";
 let configuredNetwork: NetworkName | undefined = undefined;
@@ -54,7 +59,6 @@ export type isActivity = {
     redeemer?: UplcData;
     details?: string;
 };
-
 
 export function isUplcData(x: any): x is UplcData {
     return "kind" in x && "toCbor" in x;
@@ -1555,7 +1559,7 @@ export class StellarContract<
             //     removeUnusedArgs: false,
             //     replaceUncalledArgsWithUnit: false,
             //     inlineErrorFreeSingleUserCallExprs: false,
-            //     inlineSingleUseFuncExprs: false,                
+            //     inlineSingleUseFuncExprs: false,
             // },
             withAlt: true,
         });
@@ -1573,7 +1577,6 @@ export class StellarContract<
     // XXXloadBundle(
     //     args?: StellarFactoryArgs<ConfigType>
     // ): HeliosScriptBundle | undefined {
-
 
     //     const { config: params } = args || {};
     //     try {

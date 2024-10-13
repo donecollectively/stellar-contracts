@@ -9,7 +9,6 @@ import { heiiosRollupTypeGen } from "./src/helios/heliosRollupTypeGen";
 import { sourceMapsEnabled } from "process";
 import { debug } from "console";
 
-debugger
 const profiling = parseInt(process.env.PROFILE);
 // WTF Vitest? suppressing console output AND stderr output?!? BAD!
 // ... can't even stop with the debugger! : ( 
@@ -34,7 +33,7 @@ const profilingOptions = profiling ? {
 export default defineConfig({
     plugins: [
         heliosRollupLoader({ project: "stellar-contracts" }),
-        heiiosRollupTypeGen()
+        // heiiosRollupTypeGen()
     ],
     test: {
         // include: ['tests/new*.test.ts', ],

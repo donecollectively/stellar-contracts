@@ -24,14 +24,20 @@
         "allowSyntheticDefaultImports": true,
         "allowJs": true,
         "noImplicitAny": false,
+        // "typeRoots": ["./node_modules/@types", "./src/@types"],
         "rootDir": ".",
         "outDir": "lib"
     },
-    "files": [ "index.ts" ],
+    "files": [ "index.ts", 
+     //"src/helios/HeliosScriptBundle.js" 
+     ],
     "include": [
+        "src/@types/heliosModule.d.ts",
         "src/**/*.hl",
         "src/**/*.ts", 
-        "src/**/*.js" 
+        "src/**/*.js",
+        "test/**/*.ts", 
+        "test/**/*.hl", 
     ],
     "exclude": ["**/node_modules/"]
 }

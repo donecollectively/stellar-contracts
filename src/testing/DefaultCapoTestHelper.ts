@@ -16,7 +16,7 @@ import type {
     hasBootstrappedConfig,
     hasUutContext,
 } from "../Capo.js";
-import { CapoMinter } from "../minting/CapoMinter.js";
+// import { CapoMinter } from "../minting/CapoMinter.js";
 
 import type { expect as expectType } from "vitest";
 // import type { CapoOffchainSettingsType } from "../CapoSettingsTypes.js";
