@@ -16,6 +16,8 @@ import {
 } from "@hyperionbt/helios";
 import { equalsBytes } from "@helios-lang/codec-utils";
 
+import type { HeliosModuleSrc } from "./helios/HeliosModuleSrc.js";
+import CapoBundle from "./Capo.hlbundle.js";
 import { CapoMinter } from "./minting/CapoMinter.js";
 import {
     Activity,
@@ -64,14 +66,12 @@ import type {
 } from "./delegation/RolesAndDelegates.js";
 
 import type { SeedTxnScriptParams } from "./SeedTxnScriptParams.js";
-import type { HeliosModuleSrc } from "./helios/HeliosModuleSrc.js";
 
 // import CapoMintHelpers from "./CapoMintHelpers.hl"
 // import CapoDelegateHelpers from "./delegation/CapoDelegateHelpers.hl";
 // import StellarHeliosHelpers from "./StellarHeliosHelpers.hl";
 // import contract from "./DefaultCapo.hl";
 // export { contract };
-import CapoBundle from "./Capo.hlbundle.js";
 
 import { errorMapAsString } from "./diagnostics.js";
 import { hasReqts } from "./Requirements.js";
@@ -82,8 +82,9 @@ import {
     stringToNumberArray,
 } from "./utils.js";
 import { StellarDelegate } from "./delegation/StellarDelegate.js";
-import type { DatumAdapter, adapterParsedOnchainData } from "./DatumAdapter.js";
+
 import {
+    type DatumAdapterAppType,
     // type CapoOnchainSettingsType,
     // type CapoOffchainSettingsType,
     // type CapoSettingsAdapterFor,
@@ -1915,8 +1916,7 @@ export abstract class Capo<
         return this.inlineDatum("ScriptReference", {});
     }
 
-
-    datumAdapters!: Record<string, DelegatedDatumAdapter<any, any>> &
+    datumAdapters!: Record<string, DelegatedDatumAdapter<any>> &
         Awaited<ReturnType<this["initDelegatedDatumAdapters"]>>;
 
     // @datum
@@ -2176,7 +2176,7 @@ export abstract class Capo<
                 seedIndex,
                 seedTxn,
             }));
-            
+
         const { mintingPolicyHash: mph } = minter;
         if (!didHaveDryRun) {
             const csp = //this.getContractScriptParamsUplc(
@@ -2373,7 +2373,7 @@ export abstract class Capo<
     // >(tcx: TCX, settings: CapoOffchainSettingsType<this>): Promise<TCX> {
     //     const settingsDatum = await this.mkDatumSettingsData(
     //         {
-    //             id: tcx.state.uuts.set.name, 
+    //             id: tcx.state.uuts.set.name,
     //             ... (settings as any),
     //         });
 
@@ -2653,16 +2653,16 @@ export abstract class Capo<
     async findDelegatedDataUtxos<
         const T extends undefined | (string & keyof this["datumAdapters"]),
         // prettier-ignore
-        ADAPTER_TYPE extends DelegatedDatumAdapter<any, any> 
+        ADAPTER_TYPE extends DelegatedDatumAdapter<any> | undefined
                 = T extends keyof this["datumAdapters"]
                 ? this["datumAdapters"][T]
-                : DelegatedDatumAdapter<any, any>,
+                : undefined,
         DATUM_TYPE extends anyDatumProps &
             AnyDataTemplate<
                 T extends undefined ? any : T,
-                DatumAdapterOffchainType<ADAPTER_TYPE>
-            > &
-            DatumAdapterOffchainType<ADAPTER_TYPE> = DatumAdapterOffchainType<ADAPTER_TYPE>
+                any
+            > = any
+            // &DatumAdapterAppType<ADAPTER_TYPE> = DatumAdapterAppType<ADAPTER_TYPE>
     >({
         type,
         id,
@@ -2720,16 +2720,14 @@ export abstract class Capo<
                         );
                         return null;
                     }
+                    const adapter =
+                        type &&
+                        (this.datumAdapters[type] as unknown as ADAPTER_TYPE);
+
                     return (
-                        "undefined" !== typeof type
-                            ? this.readDatum(
-                                  this.datumAdapters[
-                                      type
-                                  ] as unknown as ADAPTER_TYPE,
-                                  datum,
-                                  "ignoreOtherTypes"
-                              )
-                            : this.readDatum(
+                        // adapter
+                        //     ? this.readDatum(adapter, datum, "ignoreOtherTypes") :
+                         this.readDatum(
                                   "DelegatedData",
                                   datum,
                                   "ignoreOtherTypes"

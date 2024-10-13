@@ -75,9 +75,9 @@ export interface hasAnyDataTemplate<DATA_TYPE extends string, T extends anyDatum
  * @public
  */
 export abstract class DelegatedDatumAdapter<
-    appType extends { id: string; type: string },
+onChainType extends { id: string; type: string },
     // OnchainBridgeType extends hasAnyDataTemplate<any, anyDatumProps>
-> extends DatumAdapter<appType>{
+> extends DatumAdapter<onChainType, any>{
     constructor(strella: ContractBasedDelegate<any>) {
         super(strella)
     }
@@ -98,7 +98,7 @@ export abstract class DelegatedDatumAdapter<
      * 
      * @param d - an object map of the UplcData (suitable for use in `this.toMapData({...})`) 
      */
-    DelegatedData(d: DelegatedDataAttrs<OnchainBridgeType["data"]>): helios.Datum {
+    DelegatedData(d: DelegatedDataAttrs<onChainType>): helios.Datum {
         const DD = this.capo.onChainDatumType.DelegatedData;
         const {constrIndex} = DD.prototype._enumVariantStatement;
 

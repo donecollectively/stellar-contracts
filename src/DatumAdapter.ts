@@ -253,7 +253,7 @@ export type inferOffchainNumericType<T extends Numeric<any>> =
  * @typeParam contractType - the specific contract class that uses this data type
  * @public
  **/
-export abstract class DatumAdapter<appType> {
+export abstract class DatumAdapter<onChainType, appType> {
     strella: StellarContract<any>;
     constructor(strella: StellarContract<any>) {
         this.strella = strella;
@@ -298,7 +298,7 @@ export abstract class DatumAdapter<appType> {
      * @public
      **/
     abstract fromOnchainDatum(
-        raw: adapterParsedOnchainData<OnchainBridgeType, any>
+        raw: onChainType
     ): appType | Promise<appType>;
     /**
      * Should construct the right form of on-chain data, using classes provided by the Helios contract
@@ -307,8 +307,10 @@ export abstract class DatumAdapter<appType> {
      * The type constructed by this method will (short-term) be on-chain types.
      * Soon, this can simply be an adapted form of JSON suitable for Helios' JSON-structured data bridge.
      * @public
+     * @deprecated
      **/
-    abstract toOnchainDatum(d: appType): Datum | Promise<Datum>;
+    abstract toOnchainDatum(d: onChainType): Datum | Promise<Datum>;
+    abstract toOnchain(d: onChainType): Datum | Promise<Datum>;
 
     fromUplcValue(valueInfo: Record<string, Record<string, bigint>>) {
         return new helios.Value(

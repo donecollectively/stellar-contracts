@@ -24,7 +24,7 @@ export type ParsedSettings<
  */
 export abstract class SettingsAdapter<
     appType, settingsBridgeUnwrapped
-> extends DatumAdapter<appType> {
+> extends DatumAdapter<any, appType> {
     // constructor(strella: StellarContract<any>) {
     //     super(strella);
 
@@ -62,13 +62,18 @@ export type WrappedSettingsAdapterBridge<
  */
 export interface hasSettingsType<C extends Capo<any>> {
     mkInitialSettings(): Promise<any>; //OffchainSettingsType<C>;
-    initSettingsAdapter(): DatumAdapter<any> | Promise<DatumAdapter<any>>;
+    initSettingsAdapter(): DatumAdapter<any,any> | Promise<DatumAdapter<any,any>>;
 }
 
 /**
  * @public
  */
-export type DatumAdapterOffchainType<DAT extends DatumAdapter<any>> =
-    DAT extends DatumAdapter<infer appSettingsType>
+export type DatumAdapterOffchainType<DAT extends DatumAdapter<any, any>> =
+    DAT extends DatumAdapter<infer offChainType, any>
+        ? offChainType
+        : never;
+
+        export type DatumAdapterAppType<DAT extends DatumAdapter<any, any>> =
+    DAT extends DatumAdapter<any, infer appSettingsType>
         ? appSettingsType
         : never;

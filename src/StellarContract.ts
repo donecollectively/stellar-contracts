@@ -788,7 +788,7 @@ export class StellarContract<
         const {
             [scriptNamespace]: { [onChainDatumName]: DatumType },
         } = this.program.userTypes;
-        
+
         return DatumType;
     }
 
@@ -995,7 +995,7 @@ export class StellarContract<
         datum: Datum | InlineDatum,
         ignoreOtherTypes?: "ignoreOtherTypes"
     ): Promise<
-        | (adapterType extends DatumAdapter<any,any> ? adapterType : DPROPS)
+        | (adapterType extends DatumAdapter<any, any> ? adapterType : DPROPS)
         | undefined
     > {
         const ts1 = Date.now();
@@ -1012,7 +1012,9 @@ export class StellarContract<
             isMainnet: this.setup.isMainnet || false,
         });
 
-        const parsedData = (cast.fromUplcData(datum.data) as any)[datumName] as DPROPS;
+        const parsedData = (cast.fromUplcData(datum.data) as any)[
+            datumName
+        ] as DPROPS;
         const ts2 = Date.now();
         // throw new Error(`todo: parse some datum here`);
         // // console.log(` ----- read datum ${datumName}`)
@@ -1044,9 +1046,7 @@ export class StellarContract<
         // if (!rawParsedData) return undefined;
         if (hasAdapter) {
             debugger; // ??? vvv
-            const adapted = datumNameOrAdapter.fromOnchainDatum(
-                parsedData
-            );
+            const adapted = datumNameOrAdapter.fromOnchainDatum(parsedData);
             const ts3 = Date.now();
             const elapsed = ts3 - ts1;
             if (elapsed > 10) {
