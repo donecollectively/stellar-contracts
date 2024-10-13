@@ -1,5 +1,8 @@
 #!/bin/bash
 
+DIAGS=""
+DIAGS="--diagnostics"  # for api-extractor troubleshooting if needed
+
 playSound() {
     if [ -f /usr/share/sounds/gnome/default/alerts/$1.ogg ]; then
         play /usr/share/sounds/gnome/default/alerts/$1.ogg > /dev/null 2>&1
@@ -50,7 +53,9 @@ if [ "$SMOKE" != "" ]; then {
     playSound hum &
     sleep 0.2
     playSound hum &
-    api-extractor run --local --verbose > $tmpfile2 2>&1 &
+    # debug api-extractor
+    api-extractor run $DIAGS \
+        --local --verbose > $tmpfile2 2>&1 &
     docs=$!
 
     # wait 3 seconds at a time for the $smokeTest process to finish.
@@ -90,7 +95,7 @@ if [ "$SMOKE" != "" ]; then {
         exit 1
     } fi
     playSound hum & 
-    api-extractor run  --local --verbose 2>&1 &
+    api-extractor run  $DIAGS --local --verbose 2>&1 &
     docs=$!
 } fi
 
