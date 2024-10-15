@@ -1,4 +1,4 @@
-import type CapoBundle from "../Capo.hlbundle.js";
+import {CapoHeliosBundle} from "../CapoHeliosBundle.js";
 import { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 import CapoMinter from "./CapoMinter.hl";
 
@@ -7,8 +7,9 @@ import CapoMinter from "./CapoMinter.hl";
  *  to the minter for imports
  **/
 export default class CapoMinterBundle extends HeliosScriptBundle {
-    constructor(public capoBundle: CapoBundle) {
+    constructor(capoBundle) { // : CapoHeliosBundle) {
         super();
+        this.capoBundle = capoBundle;
     }
 
     get main() {

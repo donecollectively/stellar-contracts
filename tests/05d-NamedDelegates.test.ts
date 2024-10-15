@@ -107,7 +107,7 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
 export class TestNamedDelegate extends ContractBasedDelegate {
     get delegateName() { return "myNamedDgt" }
     scriptBundle() {
-        return this.mkCapoBundle(UnspecializedDelegateBundle)
+        return this.mkBundleWithCapo(UnspecializedDelegateBundle)
     }
 }
 

@@ -24,8 +24,8 @@ import { mkValuesEntry } from "../utils.js";
 import type { BasicMintDelegate } from "./BasicMintDelegate.js";
 import CapoMinterBundle from "./CapoMinter.hlbundle.js";
 import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
-import type CapoBundle from "../Capo.hlbundle.js";
-import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
+import type {CapoHeliosBundle } from "../CapoHeliosBundle.js";
+import type { HeliosBundleClass, HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 
 type MintCharterActivityArgs<T = {}> = T & {
     owner: Address;
@@ -65,17 +65,18 @@ export class CapoMinter
 {
     currentRev: bigint = 1n;
     scriptBundle() {
-        return this.mkCapoBundle(CapoMinterBundle);
+        return this.mkBundleWithCapo(CapoMinterBundle);
     }
 
-    mkCapoBundle(BundleClass: new (capoBundle: CapoBundle) => HeliosScriptBundle) {
+    mkBundleWithCapo(BundleClass: new (capo: CapoHeliosBundle) => HeliosScriptBundle) {
         const { capo } = this.configIn || this.partialConfig || {};
         if (!capo)
             throw new Error(
                 `missing capo in config or partial-config for ${this.constructor.name}`
             );
 
-        return new BundleClass(capo.bundle);
+        const t = new BundleClass(capo.bundle);
+        return t
     }
 
     getContractScriptParamsUplc(

@@ -13,6 +13,8 @@ import sourcemaps from "rollup-plugin-sourcemaps";
 
 import packageJson from "./package.json" with { type: "json" };
 import { heliosRollupLoader } from "./src/helios/heliosRollupLoader.js";
+import {heliosRollupTypeGen} from "./src/helios/heliosRollupTypeGen.js";
+
 const name = packageJson.main.replace(/\.m?js$/, "");
 
 const serverBundledModules : string[] = [
@@ -59,6 +61,7 @@ export default [
             heliosRollupLoader({
                 project: "stellar-contracts"
             }),
+            heliosRollupTypeGen(),
             json(),
             resolve({
                 ...platformModulePaths("server"),
@@ -71,7 +74,6 @@ export default [
                 
                 sourceMap: false,
             }),
-            // heliosRollupTypeGen(),
             execute({
                 sync: true,
                 commands: [

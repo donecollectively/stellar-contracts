@@ -1,7 +1,13 @@
-import type CapoBundle from "../Capo.hlbundle.js";
+import {CapoHeliosBundle} from "../CapoHeliosBundle.js";
 import { mkHeliosModule, type HeliosModuleSrc } from "../helios/HeliosModuleSrc.js";
 import { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 import BasicDelegate from "./BasicDelegate.hl";
+
+
+export type CapoDelegateBundleClass = new (
+    capoBundle: CapoHeliosBundle
+) => CapoDelegateBundle;
+
 /**
  * for any Capo delegate; combines the BasicDelegate with a
  *  concrete specialization
@@ -9,7 +15,7 @@ import BasicDelegate from "./BasicDelegate.hl";
 export abstract class CapoDelegateBundle extends HeliosScriptBundle {
     abstract get specializedDelegateModule(): HeliosModuleSrc;
 
-    constructor(public capoBundle: CapoBundle) {
+    constructor(public capoBundle: CapoHeliosBundle) {
         super();
     }
 

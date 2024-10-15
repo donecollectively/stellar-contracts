@@ -79,7 +79,7 @@ export function heliosRollupLoader(
 
                 const content = readFileSync(relPath, "utf-8");
                 console.warn(
-                    `heliosLoader: generating javascript for ${relPath} = ${id}`
+                    `heliosLoader: ${relPath}`
                 );
 
                 // helios.Program.new(content) // fails unless it can resolve deps

@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if [[ -z $DEBUG ]] ; then
+  node node_modules/vitest/vitest.mjs $@
+else
+  node --inspect-brk node_modules/vitest/vitest.mjs $@
+fi

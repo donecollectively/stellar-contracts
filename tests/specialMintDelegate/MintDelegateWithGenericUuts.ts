@@ -10,7 +10,7 @@ export class MintDelegateWithGenericUuts extends BasicMintDelegate {
     get delegateName() { return "uutMintingDelegate" }
 
     scriptBundle() {
-        return this.mkCapoBundle(uutMintingMintDelegateBundle);
+        return this.mkBundleWithCapo(uutMintingMintDelegateBundle);
     }
     
     @Activity.redeemer

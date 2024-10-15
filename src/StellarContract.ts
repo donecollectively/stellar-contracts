@@ -1,5 +1,3 @@
-import { statSync } from "fs";
-
 import {
     Address,
     MintingPolicyHash,
@@ -1468,7 +1466,12 @@ export class StellarContract<
     //! it requires each subclass to define a contractSource
     scriptBundle(): HeliosScriptBundle {
         throw new Error(
-            `${this.constructor.name}: missing required implementation of scriptBundle()`
+            `${this.constructor.name}: missing required implementation of scriptBundle()\n` +
+                `...each Stellar Contract must provide a scriptBundle() method. \n` +
+                `It should return an instance of a class defined in a *.hlbundle.js file.  At minimum:\n\n` +
+                `    export default class MyScriptBundle extends HeliosScriptBundle {\n\n    }\n\n` +
+                `We'll generate types for that .js file, based on the types in your Helios sources.\n`+
+                `Your scriptBundle() method can \`return new MyScriptBundle();\``
         );
     }
 

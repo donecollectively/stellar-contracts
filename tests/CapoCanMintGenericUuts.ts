@@ -4,6 +4,7 @@ import {
 } from "../src/delegation/RolesAndDelegates";
 import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateWithGenericUuts";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
+import { withGenericUuts } from "./withGenericUuts.hlbundle.js";
 
 export class CapoCanMintGenericUuts extends CapoWithoutSettings {
 
@@ -11,6 +12,10 @@ export class CapoCanMintGenericUuts extends CapoWithoutSettings {
         return await super.getMintDelegate() as MintDelegateWithGenericUuts;
     }
 
+    scriptBundle() {
+        return new withGenericUuts();
+    }    
+    
     initDelegateRoles() {
         const inherited = super.initDelegateRoles();
         return {

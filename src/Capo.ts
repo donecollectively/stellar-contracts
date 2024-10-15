@@ -17,7 +17,7 @@ import {
 import { equalsBytes } from "@helios-lang/codec-utils";
 
 import type { HeliosModuleSrc } from "./helios/HeliosModuleSrc.js";
-import CapoBundle from "./Capo.hlbundle.js";
+import { CapoHeliosBundle } from "./CapoHeliosBundle.js";
 import { CapoMinter } from "./minting/CapoMinter.js";
 import {
     Activity,
@@ -370,6 +370,7 @@ import { Cast } from "@helios-lang/contract-utils";
 import type { UplcData, UplcProgramV2, UplcProgramV3 } from "@helios-lang/uplc";
 import { TxOutputDatum } from "@helios-lang/ledger-babbage";
 import type { tokenPredicate } from "./UtxoHelper.js";
+import type { HeliosScriptBundle } from "./helios/HeliosScriptBundle.js";
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
@@ -550,8 +551,21 @@ export abstract class Capo<
         return Promise.resolve(true);
     }
 
-    scriptBundle() {
-        return new CapoBundle();
+    scriptBundle() : CapoHeliosBundle {
+        throw new Error(`${this.constructor.name}: each Capo must provide a scriptBundle() method.\n`+
+            `It should return an instance of a class defined in a *.hlbundle.js file.  At minimum:\n\n`+
+            `    export default class MyCapoBundle extends CapoHeliosBundle {\n`+
+            `       // get modules() {  // optional\n`+
+            `       //     return [\n`+
+            `       //         ...super.modules(),\n`+
+            `       //         // additional custom .hl module imports here\n`+
+            `       //     ];\n`+
+            `       // }\n`+
+            `    }\n\n`+
+            `We'll generate types for that .js file, based on the types in your Helios sources.\n`+
+            `Your scriptBundle() method can \`return new MyCapoBundle();\``
+    );
+        // return new CapoBundle();
     }
 
     /**

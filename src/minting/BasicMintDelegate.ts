@@ -29,7 +29,7 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
     }
 
     scriptBundle() {
-        return this.mkCapoBundle(MintDelegateBundle);
+        return this.mkBundleWithCapo(MintDelegateBundle);
     }
 
     // uses the basic delegate script, plus the isMintDelegate param

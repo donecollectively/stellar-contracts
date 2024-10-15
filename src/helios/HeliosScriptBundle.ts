@@ -1,6 +1,7 @@
 import { CachedHeliosProgram } from "./CachedHeliosProgram.js";
 import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 
+export type HeliosBundleClass = new () => HeliosScriptBundle;
 
 export abstract class HeliosScriptBundle {
     abstract get main(): HeliosModuleSrc;

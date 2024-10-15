@@ -26,7 +26,10 @@
         "outFile": "dist/stellar-contracts-raw.d.ts",
         "rootDir": ".",
     },
-    "files": [ "index.ts" ],
+    "files": [ 
+        "index.ts",
+        "src/@types/heliosModule.d.ts",
+    ],
     "include": [
         // "lib/**/*.json", 
         // "src/**/*.hl",

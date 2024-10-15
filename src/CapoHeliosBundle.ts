@@ -10,7 +10,9 @@ import BasicDelegate from "./delegation/BasicDelegate.hl";
 import mainContract from "./DefaultCapo.hl";
 import { HeliosScriptBundle } from "./helios/HeliosScriptBundle.js";
 
-export default class CapoBundle extends HeliosScriptBundle {
+export type CapoHeliosBundleClass = new () => CapoHeliosBundle;
+
+export class CapoHeliosBundle extends HeliosScriptBundle {
     main = mainContract;
 
     get modules() {

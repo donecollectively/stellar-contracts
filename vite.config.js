@@ -5,7 +5,7 @@
 import { resolve } from "path";
 import { defineConfig } from "vite";
 import { heliosRollupLoader } from "./src/helios/heliosRollupLoader";
-import { heiiosRollupTypeGen } from "./src/helios/heliosRollupTypeGen";
+import { heliosRollupTypeGen } from "./src/helios/heliosRollupTypeGen";
 import { sourceMapsEnabled } from "process";
 import { debug } from "console";
 
@@ -33,7 +33,7 @@ const profilingOptions = profiling ? {
 export default defineConfig({
     plugins: [
         heliosRollupLoader({ project: "stellar-contracts" }),
-        // heiiosRollupTypeGen()
+        heliosRollupTypeGen(),
     ],
     test: {
         // include: ['tests/new*.test.ts', ],
