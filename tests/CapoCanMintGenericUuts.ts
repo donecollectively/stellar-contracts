@@ -4,7 +4,7 @@ import {
 } from "../src/delegation/RolesAndDelegates";
 import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateWithGenericUuts";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
-import { withGenericUuts } from "./withGenericUuts.hlbundle.js";
+import withGenericUuts from "./withGenericUuts.hlbundle.js";
 
 export class CapoCanMintGenericUuts extends CapoWithoutSettings {
 

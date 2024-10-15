@@ -1,4 +1,3 @@
-import {CapoHeliosBundle} from "../CapoHeliosBundle.js";
 import { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 import CapoMinter from "./CapoMinter.hl";
 

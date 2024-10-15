@@ -89,8 +89,8 @@ export default [
         output: [
             {
                 file: `${name}.mjs`,
-                format: "es",
                 sourcemap: false,
+                format: "es",
                 // tells Chrome devtools to automatically omit these files from the stack presentation 
                 // sourcemapIgnoreList: (relativeSourcePath, sourcemapPath) => {
                 //     // console.warn("ignore list? ", relativeSourcePath);

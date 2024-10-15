@@ -9,10 +9,11 @@ import {
     type ResolveIdResult,
     type PartialResolvedId,
     type PluginContext,
+    type LoadHook,
 } from "rollup";
 
 // use design details for Copilot:
-// import design from "./typgen-approach2.md" with { type: "markdown" };
+// import design from "./typegen-approach2.md" with { type: "markdown" };
 
 // import CapoBundle from "../Capo.hlbundle.js";
 import type { HeliosScriptBundle } from "./HeliosScriptBundle.js";
@@ -70,19 +71,20 @@ export function heliosRollupTypeGen(
     const isJavascript = /\.js$/;
     return {
         name: "helios-type-gen",
-        async buildStart(options: InputOptions): Promise<void> {
+        async buildStart(this: PluginContext, options: InputOptions): Promise<void> {
             console.log("heliosTypeGen: buildStart");
-    
             const loading = StellarHeliosProject.loadExistingProject();
             if (loading) {
                 project = await loading;
             } else {
                 project = new StellarHeliosProject();
+                project.writeProjectFile()
             }
+            this.addWatchFile(project.projectFilename)
         },
         buildEnd: {
             order: "pre",
-            handler(error?: Error) {
+            handler(this: PluginContext, error?: Error) {
                 console.log("heliosTypeGen: buildEnd");
             },
         },
@@ -117,78 +119,46 @@ export function heliosRollupTypeGen(
                         return resolved;
                     }
                 }
+            }
+        },
+        load: {
+            order: "pre",
+            handler: function(id: string) {
                 // the source is a relative path name
                 // the importer is an a fully resolved id of the imported module
                 // console.log("heliosTypeGen: resolveId");
 
-                if (!filter(source)) {
-                    if (source.match(/hlbundle/)) {
+                if (!filter(id)) {
+                    if (id.match(/hlbundle/)) {
                         console.log(
                             `typeGen resolve: skipping due to filter mismatch`,
-                            { source, importer }
+                            { source: id }
                         );
                         debugger;
-                        filter(source);
+                        filter(id);
                     }
 
                     return null;
                 }
 
-                if (source.match(/\.hlbundle\.ts$/)) {
+                if (id.match(/\.hlbundle\.ts$/)) {
                     throw new Error(
-                        `${source} should be a .js file, not a .ts file (HeliosTypeGen will provide types for it)`
+                        `${id} should be a .js file, not a .ts file (HeliosTypeGen will provide types for it)`
                     );
                 }
-                if (project.hasBundleClass(source)) {
-                    project.writeTypeInfo(source);
+                if (project.hasBundleClass(id)) {
+                    project.writeTypeInfo(id);
                 } else {
-                    console.log(`heliosTypeGen: new .hlbundle: ${source}`);
-                    project.addBundle(source);
+                    console.log(`heliosTypeGen: new .hlbundle: ${id}`);
+                    project.addBundle(id);                    
                 }
                 return null;
                 //     id: source,
                 // };
                 //  throw new Error(`heliosLoader: ${importer} is importing ${source}`);
-            },
+            } as LoadHook,
         },
     };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     const transform = {
         order: "post",
