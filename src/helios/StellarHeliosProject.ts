@@ -5,6 +5,13 @@ import { type TypeSchema, genTypes } from "@helios-lang/contract-utils";
 import * as rollup from "rollup";
 import { heliosRollupLoader } from "./heliosRollupLoader.js";
 import esbuild from "rollup-plugin-esbuild";
+import type { UplcData } from "@helios-lang/uplc";
+import {
+    BundleTypeContext,
+    type HeliosBundleTypeInfo,
+    type HeliosEnumInfo,
+    type HeliosTypeInfo,
+} from "./BundleTypeContext.js";
 // import {CapoHeliosBundle} from "../CapoHeliosBundle.js";
 
 const startTime = Date.now();
@@ -12,33 +19,20 @@ const writeDelay: number = process?.env?.BUILD_LATENCY
     ? parseInt(process?.env?.BUILD_LATENCY)
     : 2500;
 
-type HeliosTypeInfo = {
-    kind: TypeSchema["kind"];
-    canonicalType: string;
-    permissiveType: string;
-};
-type HeliosVariantInfo = {
-    fields: Record<string, HeliosTypeInfo>;
-};
-
-type HeliosEnumInfo = {
-    kind: "enum";
-    variants: Record<string, HeliosVariantInfo>;
-};
-
-type HeliosBundleTypes = {
-    datum: HeliosTypeInfo | HeliosEnumInfo;
-    redeemer: HeliosTypeInfo | HeliosEnumInfo;
-};
-
 type BundleStatusEntry = {
     filename: string;
     status: "registering" | "pendingLoad" | "loaded";
-    importName: string;
+    bundleClassName: string;
+    parentClassName?: string;
     bundleClass?: typeof HeliosScriptBundle; // or a subclass
     bundle?: Option<HeliosScriptBundle>;
-    types?: Option<HeliosBundleTypes>;
+    // types?: Option<HeliosBundleTypeInfo>;
 };
+
+export function isUplcData(x: any): x is UplcData {
+    return "kind" in x && "toCbor" in x;
+}
+
 /**
  * Gathers `*.hlbundle.js` files along with their status and attributes.
  * @public
@@ -84,10 +78,11 @@ export class StellarHeliosProject {
     }
 
     addBundleWithMockTypes(filename: string) {
+        throw new Error(`unused?`);
         this.bundleEntries.set(filename, {
             filename,
             status: "registering",
-            importName: this.getImportNameFromHlBundle(filename),
+            bundleClassName: this.getImportNameFromHlBundle(filename),
         });
         // probably the generic types of the mkDatum, mkRedeemer, and readDatum proxies
         // in the base class will be enough to bootstrap the real types, in which those proxies
@@ -104,23 +99,26 @@ export class StellarHeliosProject {
         absoluteFilename: string,
         bundleClass: typeof HeliosScriptBundle
     ) {
-        
         // if the file location is within the project root, make it relative
         // otherwise, use the absolute path
         const filename = absoluteFilename.startsWith(this.projectRoot)
             ? path.relative(this.projectRoot, absoluteFilename)
             : absoluteFilename;
-        
-        if (filename.startsWith('/')) debugger
+
+        if (filename.startsWith("/")) debugger;
         const importName = bundleClass.name;
 
         // we need to do rollup on the project before we'll ever hit this path
         let bundle: HeliosScriptBundle | undefined;
         // if the bundle has a CapoBundle, use it
         // searches the bundle class hierarchy for the presence of a class named CapoHeliosBundle.
-        let isCapoBundle = false
+        let isCapoBundle = false;
         let proto = bundleClass.prototype;
+        let parentClassName = "";
         while (proto) {
+            if (!parentClassName) {
+                parentClassName = proto.constructor.name;
+            }
             if (proto.constructor.name === "CapoHeliosBundle") {
                 isCapoBundle = true;
                 break;
@@ -128,53 +126,53 @@ export class StellarHeliosProject {
             proto = Object.getPrototypeOf(proto);
         }
         if (isCapoBundle) {
-            //bundleClass.prototype instanceof CapoBundle) {
-            if (this.bundleEntries.size > 0) {
-                if (this.capoBundle) {
-                    throw new Error(
-                        `only one CapoBundle is currently supported`
-                    );
-                } else {
-                    // update any pending bundles with an instantiated
-                    // bundle including the newly-discovered CapoBundle
-                    for (const filename of this.bundleEntries.keys()) {
-                        const entry = this.bundleEntries.get(filename);
-                        if (entry?.status !== "pendingLoad") {
-                            throw new Error(`unexpected status: ${entry?.status}`);
-                        }
-                        const bundleClass = entry.bundleClass;
-                        if (!bundleClass) {
-                            throw new Error(
-                                `no bundleClass for entry with status '${entry?.status}': ${filename}`
-                            );
-                        }
-                        entry.bundle = new (bundleClass as any)(this.capoBundle);
-                        entry.status = "loaded";
-                    }
-                }
+            if (this.capoBundle) {
+                throw new Error(`only one CapoBundle is currently supported`);
             }
             this.capoBundle = new (bundleClass as any)();
+            if (this.bundleEntries.size > 0) {
+                // update any pending bundles with an instantiated
+                // bundle including the newly-discovered CapoBundle
+                for (const filename of this.bundleEntries.keys()) {
+                    const entry = this.bundleEntries.get(filename);
+                    if (entry?.status !== "pendingLoad") {
+                        throw new Error(`unexpected status: ${entry?.status}`);
+                    }
+                    const bundleClass = entry.bundleClass;
+                    if (!bundleClass) {
+                        throw new Error(
+                            `no bundleClass for entry with status '${entry?.status}': ${filename}`
+                        );
+                    }
+                    console.log("finishing pending load for", filename);
+                    entry.bundle = new (bundleClass as any)(this.capoBundle);
+                    entry.status = "loaded";
+                }
+            }
             this.bundleEntries.set(filename, {
                 filename,
                 status: "loaded",
                 bundle: this.capoBundle,
-                importName,
+                bundleClassName: importName,
+                parentClassName,
                 bundleClass,
             });
         } else {
-            const bundleEntry : BundleStatusEntry = {
+            const bundleEntry: BundleStatusEntry = {
                 filename,
                 status: "registering", // overwritten below, one way or other
                 bundleClass,
-                importName,
+                bundleClassName: importName,
+                parentClassName,
             };
             // if we have the CapoBundle, we can use it to instantiate this bundle now.
             if (this.capoBundle) {
+                debugger;
                 bundle = new (bundleClass as any)(this.capoBundle);
                 bundleEntry.bundle = bundle;
                 bundleEntry.status = "loaded";
             } else {
-                bundleEntry.status = "pendingLoad"
+                bundleEntry.status = "pendingLoad";
             }
             this.bundleEntries.set(filename, bundleEntry);
         }
@@ -184,12 +182,12 @@ export class StellarHeliosProject {
 
     registerBundle(absoluteFilename: string) {
         const filename = absoluteFilename.startsWith(this.projectRoot)
-            ? path.relative(this.projectRoot, absoluteFilename)
+            ? "./" + path.relative(this.projectRoot, absoluteFilename)
             : absoluteFilename;
 
-        if (filename.startsWith('/')) debugger
+        if (filename.startsWith("/")) debugger;
         if (this.bundleEntries.has(filename)) {
-            return // already registered AND loaded
+            return; // already registered AND loaded
         }
         console.log(`heliosTypeGen: new .hlbundle: ${filename}`);
 
@@ -198,7 +196,7 @@ export class StellarHeliosProject {
         this.bundleEntries.set(filename, {
             filename,
             status: "registering",
-            importName,
+            bundleClassName: importName,
         });
         this.deferredWriteProjectFile();
     }
@@ -224,7 +222,6 @@ export class StellarHeliosProject {
     }
 
     hasBundleClass(filename: string) {
-
         if (this.bundleEntries.has(filename)) {
             return this.bundleEntries.get(filename)?.bundle !== undefined;
         }
@@ -245,52 +242,50 @@ export class StellarHeliosProject {
     }
 
     writeTypeInfo(filename: string) {
-        const bundle = this.bundleEntries.get(filename);
-        if (!bundle) {
+        const bundleEntry = this.bundleEntries.get(filename);
+        if (!bundleEntry) {
             throw new Error(`bundle not found: ${filename}`);
-        } else if (!bundle.bundle) {
+        }
+        const { bundle, status } = bundleEntry;
+        if (!bundle) {
             throw new Error(
-                `cannot write type info for ${filename} for newly-added bundle (check for hasBundleClass first)`
+                `cannot write type info for ${filename} for newly-added bundle (check for hasBundleClass() first?)`
             );
         }
-        const types = this.genTypes(bundle.bundle);
+        if (status !== "loaded") {
+            throw new Error(
+                `cannot generate types for ${filename} with status ${status}`
+            );
+        }
         const typeFilename = filename.replace(
             /\.hlbundle\.js$/,
             ".hlbundle.d.ts"
         );
-        const className = bundle.bundle.constructor.name;
+        const { bundleClassName, parentClassName } = bundleEntry;
 
-        const parentClass = "Placehodler"; // bundle.bundle?.constructor.name || "HeliosScriptBundle";
-        debugger;
-        throw new Error(`todo: write type info to ${typeFilename}`);
-        writeFileSync(
-            typeFilename,
-            `// generated by StellarHeliosProject using Stellar Helios Rollup type-generator
-import type {CapoBundle} from "src/CapoHeliosBundle.ts"   // todo import  from @stellar-contracts
-import type {HeliosScriptBundle} from "src/helios/HeliosScriptBundle.ts" // todo import from @stellar-contracts
-
-export default class ${className} extends ${parentClass} {
-    mkDatum: {
-        placeholder: "generate proxy types here";
-    }
-    mkRedeemer: {
-        placeholder: "make proxy types here";
-    }
-    readDatum: {
-        placeholder: "show proxy types here";
-    }
-}
-           `
+        if (!parentClassName) {
+            throw new Error(`no parent class name for ${filename}`);
+        }
+        // how long does this take?
+        const ts1 = Date.now();
+        const typeContext = new BundleTypeContext(bundle);
+        const ts2 = Date.now();
+        console.log(
+            `📦 StellarHeliosProject: gathered type context for ${filename} in ${
+                ts2 - ts1
+            }ms`
         );
-    }
-
-    genTypes(bundle: HeliosScriptBundle): HeliosBundleTypes {
-        debugger;
-        throw new Error(
-            `todo: detect enums, generate enum-variant types for each`
+        const typesSource = typeContext.generateTypesSource(
+            bundleClassName,
+            parentClassName
+        );
+        console.log(
+            `📦 StellarHeliosProject: generated ${typeFilename} in ${
+                Date.now() - ts2
+            }ms`
         );
 
-        // const [canonicalType, permissiveType] = genTypes(bundle)
+        writeFileSync(typeFilename, typesSource);
     }
 
     private _didCreateBackupFile = false;
@@ -419,11 +414,11 @@ export default class ${className} extends ${parentClass} {
 import { StellarHeliosProject } from "./src/helios/StellarHeliosProject.ts" // todo import from @stellar-contracts
 `;
         for (const [filename, bundle] of this.bundleEntries) {
-            content += `import ${bundle.importName} from "./${filename}";\n`;
+            content += `import ${bundle.bundleClassName} from "${filename}";\n`;
         }
         content += `\nexport const project = new StellarHeliosProject();\n\n`;
         for (const [filename, bundle] of this.bundleEntries) {
-            content += `project.loadBundleWithClass("./${filename}", ${bundle.importName});\n`;
+            content += `project.loadBundleWithClass("${filename}", ${bundle.bundleClassName});\n`;
         }
         // compare the content to the existing file
         // ONLY if it is different, write the new file
@@ -445,7 +440,7 @@ import { StellarHeliosProject } from "./src/helios/StellarHeliosProject.ts" // t
         }
         return Promise.resolve(this._rollupInProgress).then(() => {
             resolver?.(content);
-        })
+        });
     }
 
     _rollupInProgress: Promise<void> | null = null;
@@ -476,14 +471,16 @@ import { StellarHeliosProject } from "./src/helios/StellarHeliosProject.ts" // t
                         sourceMap: false,
                     }),
                 ],
-                output: {
-                    file: this.compiledProjectFilename,
-                    format: "es",
-                },
+                // output: {
+                //     file: this.compiledProjectFilename,
+                //     sourcemap: true,
+                //     format: "es",
+                // },
             })
             .then((bundle) => {
                 bundle.write({
                     file: this.compiledProjectFilename,
+                    // sourcemap: true,  // ?? how to get this to work properly?  debugging goes to wrong site
                     format: "es",
                 });
                 const buildTime = Date.now() - buildStartTime;

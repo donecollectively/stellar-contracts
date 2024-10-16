@@ -24,7 +24,7 @@ import { mkValuesEntry } from "../utils.js";
 import type { BasicMintDelegate } from "./BasicMintDelegate.js";
 import CapoMinterBundle from "./CapoMinter.hlbundle.js";
 import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
-import type {CapoHeliosBundle } from "../CapoHeliosBundle.js";
+import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 import type { HeliosBundleClass, HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 
 type MintCharterActivityArgs<T = {}> = T & {

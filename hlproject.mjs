@@ -3,10 +3,14 @@
 // import { HeliosScriptBundle } from "./src/helios/HeliosScriptBundle.ts"     // todo import from @stellar-contracts
 // import { CapoHeliosBundle } from "./src/CapoHeliosBundle.ts"                // todo import from @stellar-contracts
 import { StellarHeliosProject } from "./src/helios/StellarHeliosProject.ts" // todo import from @stellar-contracts
-import UnspecializedDgtBundle from "././src/delegation/UnspecializedDelegate.hlbundle.js";
-import CapoMinterBundle from "././src/minting/CapoMinter.hlbundle.js";
+import CapoMinterBundle from "./src/minting/CapoMinter.hlbundle.js";
+import UnspecializedDgtBundle from "./src/delegation/UnspecializedDelegate.hlbundle.js";
+import BundleMintDelegateWithGenericUuts from "./tests/specialMintDelegate/uutMintingMintDelegate.hlbundle.js";
+import withGenericUuts from "./tests/withGenericUuts.hlbundle.js";
 
 export const project = new StellarHeliosProject();
 
-project.loadBundleWithClass("././src/delegation/UnspecializedDelegate.hlbundle.js", UnspecializedDgtBundle);
-project.loadBundleWithClass("././src/minting/CapoMinter.hlbundle.js", CapoMinterBundle);
+project.loadBundleWithClass("./src/minting/CapoMinter.hlbundle.js", CapoMinterBundle);
+project.loadBundleWithClass("./src/delegation/UnspecializedDelegate.hlbundle.js", UnspecializedDgtBundle);
+project.loadBundleWithClass("./tests/specialMintDelegate/uutMintingMintDelegate.hlbundle.js", BundleMintDelegateWithGenericUuts);
+project.loadBundleWithClass("./tests/withGenericUuts.hlbundle.js", withGenericUuts);
