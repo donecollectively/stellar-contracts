@@ -6,7 +6,7 @@ import {
 import type { Source } from "@helios-lang/compiler-utils";
 import {
     UplcProgramV2,
-    UplcProgramV3,
+    // UplcProgramV3,
     type UplcProgramV2I,
     type UplcProgramV3I,
 } from "@helios-lang/uplc";

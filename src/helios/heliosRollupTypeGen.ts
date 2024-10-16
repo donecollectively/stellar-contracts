@@ -76,16 +76,23 @@ export function heliosRollupTypeGen(
             const loading = StellarHeliosProject.loadExistingProject();
             if (loading) {
                 project = await loading;
+                // write all the types for the bundles loaded in the project
+                project.generateBundleTypes()
             } else {
                 project = new StellarHeliosProject();
-                project.writeProjectFile()
+                // gives the rollup build a chance to gather all new bundles at once
+                project.deferredWriteProjectFile(5000)
             }
             this.addWatchFile(project.projectFilename)
+            this.addWatchFile(project.compiledProjectFilename)
         },
         buildEnd: {
             order: "pre",
             handler(this: PluginContext, error?: Error) {
+                // write the project file after the build, skipping any 
+                // pending delay from calls to `deferredWriteProjectFile()`
                 console.log("heliosTypeGen: buildEnd");
+                return project.writeProjectFile();  
             },
         },
         resolveId: {
@@ -147,10 +154,10 @@ export function heliosRollupTypeGen(
                     );
                 }
                 if (project.hasBundleClass(id)) {
-                    project.writeTypeInfo(id);
+                    //      writing types is handled in a batch at the top
+                    //      project.writeTypeInfo(id);
                 } else {
-                    console.log(`heliosTypeGen: new .hlbundle: ${id}`);
-                    project.addBundle(id);                    
+                    project.registerBundle(id);
                 }
                 return null;
                 //     id: source,

@@ -12,6 +12,7 @@
         "baseUrl": ".",
         "strict": true,
         "verbatimModuleSyntax": true,
+        // "exactOptionalPropertyTypes": true,
         "resolveJsonModule": true,
         "esModuleInterop": true,
         "skipLibCheck": true,

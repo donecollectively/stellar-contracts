@@ -1,28 +1,10 @@
 import { readFileSync } from "fs";
 import path from "path";
 import { createFilter } from "rollup-pluginutils";
-
-type ResolveIdHook = (
-	source: string,
-	importer: string | undefined,
-	options: {
-		attributes: Record<string, string>;
-		custom?: { [plugin: string]: any };
-		isEntry: boolean;
-	}
-) => ResolveIdResult;
-
-type ResolveIdResult = string | null | false | PartialResolvedId;
-
-interface PartialResolvedId {
-	id: string;
-	external?: boolean | 'absolute' | 'relative';
-	attributes?: Record<string, string> | null;
-	meta?: { [plugin: string]: any } | null;
-	moduleSideEffects?: boolean | 'no-treeshake' | null;
-	resolvedBy?: string | null;
-	syntheticNamedExports?: boolean | string | null;
-}
+import {
+    type LoadResult,
+    type ResolveIdResult
+} from "rollup";
 
 /**
  * Rollup loader for Helios source files
@@ -30,7 +12,7 @@ interface PartialResolvedId {
  **/
 export function heliosRollupLoader(
     opts : {include? : string, exclude? : string[], project?: string} = {}
-)  {
+) {
     const filterOpts = {
         ...{
             include: ["*.hl", "**/*.hl" ],
@@ -51,12 +33,12 @@ export function heliosRollupLoader(
         map: {mappings: string} 
     }
     let esbuildApi;
-    const resolveId : ResolveIdHook = (source, importer, options) => {
+    const resolveId = (source, importer, options) => {
         // the source is a relative path name
-        // the importer is an a fully resolved id of the imported module
-        // const where = new Error(`hi`).stack
+        // the importer is an a fully resolved id of the imported module    
+        const where = new Error(`here!`).stack
         if (!filter(source)) {
-        //     console.log(`resolver1: resolving ${source} for ${importer}`, where);
+            // console.log(`resolver1: resolving ${source} for ${importer}`, where);
         // } else {
             // if (source.match(/\.hl$/))
             // console.log(
@@ -67,13 +49,12 @@ export function heliosRollupLoader(
         }
         return {
             id: source
-        }
-        // throw new Error(`heliosLoader: ${importer} is importing ${source}`)
+        } as ResolveIdResult
     }
     return {
         name: "helios",
         resolveId,
-        load(id) {
+        load(id) : LoadResult{
             if (filter(id)) {
                 const relPath = path.relative(".", id);
 
@@ -106,8 +87,8 @@ export function heliosRollupLoader(
                 ;
 
                 return {
-                    code: code,                    
-                    id: `${id}‹generated›.ts`,
+                    code: code,            
+                    // id: `${id}‹generated›.ts`,
                     map: { mappings: "" },
                 };
             }
