@@ -56,6 +56,9 @@ importers:
       '@helios-lang/tx-utils':
         specifier: link:../helios/tx-utils
         version: link:../helios/tx-utils
+      '@helios-lang/type-utils':
+        specifier: link:../helios/type-utils
+        version: link:../helios/type-utils
       '@helios-lang/uplc':
         specifier: link:../helios/uplc
         version: link:../helios/uplc

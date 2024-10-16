@@ -1,20 +1,32 @@
 import { genTypes, type TypeSchema } from "@helios-lang/contract-utils";
 import type { HeliosScriptBundle } from "./HeliosScriptBundle.js";
+import type { EnumTypeSchema, VariantTypeSchema } from "@helios-lang/type-utils";
 
-export type HeliosTypeInfo = {
-    kind: TypeSchema["kind"];
-    canonicalType: string;
-    permissiveType: string;
+export type AnyHeliosTypeInfo = TypeSchema | anyTypeDetails;
+export type anyTypeDetails = typeDetails | enumTypeDetails;
+
+export type typeDetails = {
+    typeSchema: TypeSchema;
+    typeName?: string;
+    canonicalType: string; // minimal canonical type
+    permissiveType?: string; // minimal permissive type
 };
 
-export type HeliosVariantInfo = {
-    fields: Record<string, HeliosTypeInfo>;
+export type variantTypeDetails = {
+    variantName : string; // ??????????????????????
+    fieldCount: number;
+    fields: Record<string, anyTypeDetails>;
+    typeSchema: VariantTypeSchema; // for consistency
+    canonicalType: string; // minimal canonical type
+    permissiveType: string; // minimal permissive type
 };
 
-export type HeliosEnumInfo = {
-    kind: "enum";
+export type enumTypeDetails = {
     enumName: string;
-    variants: Record<string, HeliosVariantInfo>;
+    typeSchema: EnumTypeSchema; // for consistency
+    variants: Record<string, variantTypeDetails>;
+    canonicalType: string; // minimal canonical type
+    permissiveType: string; // minimal permissive type
 };
 
 /**
@@ -26,8 +38,8 @@ export type HeliosEnumInfo = {
  * each variant.
  */
 export type HeliosBundleTypeInfo = {
-    datum: Option<HeliosTypeInfo | HeliosEnumInfo>;
-    redeemer: HeliosTypeInfo | HeliosEnumInfo;
+    datum: Option<typeDetails | enumTypeDetails>;
+    redeemer: typeDetails | enumTypeDetails;
 };
 
 /**
@@ -42,27 +54,26 @@ export type HeliosBundleTypeInfo = {
  */
 export class BundleTypeContext {
     bundle: HeliosScriptBundle;
+    topLevelTypes: HeliosBundleTypeInfo;
+    namedTypes: Record<string, typeDetails | enumTypeDetails> = {};
+
     constructor(bundle: HeliosScriptBundle) {
         this.bundle = bundle;
+        this.namedTypes = {};
+        this.topLevelTypes = this.gatherTopLevelTypes();
+        // const types = this.gatherRawTypes(bundle);
 
-        const types = this.gatherRawTypes(bundle);
-
-        const redeemerApiTypes = this.mkRedeemerApiTypes(types.redeemer);
-        if (types.datum) {
-            const mkDatumApiTypes = this.mkDatumApiTypes(types.datum);
-            const readDatumApiTypes = this.readDatumApiTypes(types.datum);
-        }
+        // const redeemerApiTypes = this.mkRedeemerApiTypes(types.redeemer);
+        // if (types.datum) {
+        //     const mkDatumApiTypes = this.mkDatumApiTypes(types.datum);
+        //     const readDatumApiTypes = this.readDatumApiTypes(types.datum);
+        // }
     }
+
     // it can begin gathering the types from the bundle's main contract
-
-    gatherTypesFromBundle(bundle: HeliosScriptBundle) {
-    }
-
-    gatherRawTypes(
-        bundle: HeliosScriptBundle,
-        typeContext: BundleTypeContext
-    ): HeliosBundleTypeInfo {
-        const { program } = bundle;
+    // this has a side-effect of adding all nested named types to the context
+    gatherTopLevelTypes() : HeliosBundleTypeInfo {
+        const { program } = this.bundle;
         const argTypes = program.entryPoint.mainArgTypes;
         const argCount = argTypes.length;
         const programName = program.name;
@@ -82,79 +93,167 @@ export class BundleTypeContext {
         const datumSchema = datumType?.toSchema();
         const redeemerSchema = redeemerType.toSchema();
 
-        const types: HeliosBundleTypeInfo = {
-            datum: null,
-            redeemer: null,
-        } as any;
-
-        if (redeemerSchema.kind == "enum") {
-            // redeemers are write-only; no need for reading them.
-            types.redeemer = {
-                kind: "enum",
-                enumName: redeemerSchema.name,
-                variants: Object.fromEntries(
-                    redeemerSchema.variantTypes.map((variant) => {
-                        // todo: treat single-field variants without extra nesting
-                        // todo: treat zero-field variants directly
-                        const [canonicalType, permissiveType] =
-                            genTypes(variant);
-                        return [
-                            variant.name,
-                            {
-                                kind: "variant",
-                                canonicalType,
-                                permissiveType,
-                            },
-                        ];
-                    })
-                ),
-            };
-        } else {
-            const [canonicalType, permissiveType] = genTypes(redeemerSchema);
-            types.redeemer = {
-                kind: redeemerSchema.kind,
-                canonicalType,
-                permissiveType,
-            };
-            // todo
-        }
-
-        // these are the essential/low-level details about the datum, not
-        // the developer-facing types provided by TS type-generation.
-        // each enum variant's type is available separately.
-        if (datumSchema?.kind == "enum") {
-            types.datum = {
-                kind: "enum",
-                enumName: datumSchema.name,
-                variants: Object.fromEntries(
-                    datumSchema.variantTypes.map((variant) => {
-                        const [canonicalType, permissiveType] =
-                            genTypes(variant);
-                        return [
-                            variant.name,
-                            {
-                                kind: "variant",
-                                canonicalType,
-                                permissiveType,
-                            },
-                        ];
-                    })
-                ),
-            };
-            // when reading a datum, ... todo: more here ...
-
-            debugger;
-        } else if (datumSchema) {
-            const [canonicalType, permissiveType] = genTypes(datumSchema);
-            types.datum = {
-                kind: datumSchema.kind,
-                canonicalType,
-                permissiveType,
-            };
-        }
-
-        return types;
+        return {
+            datum: datumSchema ? this.gatherTypeInfo(datumSchema) : null,
+            redeemer: this.gatherTypeInfo(redeemerSchema)
+        }         
     }
+
+    gatherTypeInfo(schema: TypeSchema) : typeDetails | enumTypeDetails {
+        if (schema.kind === "enum") {
+            return this.gatherEnumInfo(schema);
+        } else {
+            return this.gatherNonEnumTypeInfo(schema);
+        }
+    }
+
+    gatherEnumInfo(schema: EnumTypeSchema) : enumTypeDetails {
+        return {
+            enumName: schema.name,
+            typeSchema: schema,            
+            variants: Object.fromEntries(
+                schema.variantTypes.map((variant) => {
+                    return [
+                        variant.name,
+                        this.gatherVariantInfo(variant)
+                    ];
+                })
+            ),
+            canonicalType: this.mkMinimalType("canonical", schema),
+            permissiveType: this.mkMinimalType("permissive", schema),
+        };
+    }
+
+    gatherNonEnumTypeInfo(schema: TypeSchema) : typeDetails {
+        let typeName : string | undefined = undefined
+        if ("internal" != schema.kind && "name" in schema) {
+            typeName = schema.name
+        }
+
+        return {
+            typeSchema: schema,
+            typeName,            
+            canonicalType: this.mkMinimalType("canonical", schema),
+            permissiveType: this.mkMinimalType("permissive", schema),
+        };
+    }
+
+    gatherVariantInfo(schema: VariantTypeSchema) : variantTypeDetails {
+        return {
+            fields: Object.fromEntries(
+                schema.fieldTypes.map((field) => {
+                    return [
+                        field.name,
+                        this.gatherNonEnumTypeInfo(field.type)
+                    ];
+                })
+            ),
+            fieldCount: schema.fieldTypes.length,
+            typeSchema: schema,
+            variantName: schema.name,
+            canonicalType: this.mkMinimalType("canonical", schema),
+            permissiveType: this.mkMinimalType("permissive", schema),
+        };
+    }
+
+//    // this function is not intended to be the final form of type-gathering.
+//    // Copilot should use this as a reference.
+    // gatherRawTypes(
+    //     bundle: HeliosScriptBundle,
+    // ): HeliosBundleTypeInfo {
+    //     const { program } = bundle;
+    //     const argTypes = program.entryPoint.mainArgTypes;
+    //     const argCount = argTypes.length;
+    //     const programName = program.name;
+    //     const mainModuleTypes = program.entryPoint.userTypes[programName];
+    //
+    //     let datumTypeName, datumType, redeemerTypeName, redeemerType;
+    //     if (argCount === 2) {
+    //         datumType = argTypes[0];
+    //         // datumTypeName = argTypes[0].name
+    //         redeemerType = argTypes[1];
+    //     } else {
+    //         // no datum-type for minter
+    //         // datumType = program.entryPoint.mainArgTypes[0]
+    //         redeemerType = argTypes[0];
+    //     }
+    //
+    //     const datumSchema = datumType?.toSchema();
+    //     const redeemerSchema = redeemerType.toSchema();
+    //
+    //     const types: HeliosBundleTypeInfo = {
+    //         datum: null,
+    //         redeemer: null,
+    //     } as any;
+    //
+     //     if (redeemerSchema.kind == "enum") {
+    //         // redeemers are write-only; no need for reading them.
+    //         types.redeemer = {
+    //             enumName: redeemerSchema.name,
+    //             typeSchema: redeemerSchema,
+    //             variants: Object.fromEntries(
+    //                 redeemerSchema.variantTypes.map((variant) => {
+    //                     // todo: treat single-field variants without extra nesting
+    //                     // todo: treat zero-field variants directly
+    //                     const [canonicalType, permissiveType] =
+    //                         genTypes(variant);
+    //                     return [
+    //                         variant.name,
+    //                         {
+    //                             kind: "variant",
+    //                             canonicalType,
+    //                             permissiveType,
+    //                         },
+    //                     ];
+    //                 })
+    //             ),
+    //         };
+    //     } else {
+    //         const [canonicalType, permissiveType] = genTypes(redeemerSchema);
+    //         types.redeemer = {
+    //             kind: redeemerSchema.kind,
+    //             canonicalType,
+    //             permissiveType,
+    //         };
+    //         // todo
+    //     }
+    //
+    //     // these are the essential/low-level details about the datum, not
+    //     // the developer-facing types provided by TS type-generation.
+    //     // each enum variant's type is available separately.
+    //     if (datumSchema?.kind == "enum") {
+    //         types.datum = {
+    //             kind: "enum",
+    //             enumName: datumSchema.name,
+    //             variants: Object.fromEntries(
+    //                 datumSchema.variantTypes.map((variant) => {
+    //                     const [canonicalType, permissiveType] =
+    //                         genTypes(variant);
+    //                     return [
+    //                         variant.name,
+    //                         {
+    //                             kind: "variant",
+    //                             canonicalType,
+    //                             permissiveType,
+    //                         },
+    //                     ];
+    //                 })
+    //             ),
+    //         };
+    //         // when reading a datum, ... todo: more here ...
+    //
+    //         debugger;
+    //     } else if (datumSchema) {
+    //         const [canonicalType, permissiveType] = genTypes(datumSchema);
+    //         types.datum = {
+    //             kind: datumSchema.kind,
+    //             canonicalType,
+    //             permissiveType,
+    //         };
+    //     }
+    //
+    //     return types;
+    // }
 
     // it can add any found types to the context by name.
     
@@ -168,38 +267,45 @@ export class BundleTypeContext {
 import type {CapoBundle} from "src/CapoHeliosBundle.ts"   // todo import  from @stellar-contracts
 import type {HeliosScriptBundle} from "src/helios/HeliosScriptBundle.ts" // todo import from @stellar-contracts
 
-type ${className}Activity = ${this.proxyOrRawFunctionType("redeemer")} 
+${this.generateNamedDependencyTypes()}
+
+type ${className}Activity = ${this.generateProxyOrRawFunctionType("redeemer")} 
 
 export default class ${className} extends ${parentClassName} {
     ${this.generateDatumApiTypes()}
-    Activity: ${className}Activity
-    
-    mkDatum: {
-        placeholder: "generate proxy types here";
-    }
-    readDatum: {
-        placeholder: "show proxy types here";
-    }
+    Activity: ${className}Activity    
 }
 `
-                
     }
 
     // redeemer is write-only
-    generateRedeemerApiTypes(redeemer: HeliosTypeInfo | HeliosEnumInfo) {
-        return this.generateWriteApiTypes(redeemer);
+    generateRedeemerApiTypes() {
+        return this.generateWriteApiTypes(this.topLevelTypes.redeemer);
     }
-    // datums are read/write
-    generateDatumApiTypes(datum: HeliosTypeInfo | HeliosEnumInfo) {
-        this.generateWriteApiTypes(datum);
-        this.generateReadApiTypes(datum);        
+
+    // datums are read/write, when present
+    generateDatumApiTypes() { // datum: HeliosTypeInfo | HeliosEnumInfo) {
+        if (!this.topLevelTypes.datum) {
+            return `// no datum types in this script`;
+        }
+
+        this.generateWriteApiTypes(this.topLevelTypes.datum) +
+        this.generateReadApiTypes(this.topLevelTypes.datum);        
+
+        // mkDatum: {
+        //     placeholder: "generate proxy types here";
+        // }            
+        // readDatum: {
+        //     placeholder: "show proxy types here";
+        // }
+    
     }
 
     // generateReadDatumApiTypes(datum: HeliosTypeInfo | HeliosEnumInfo) {
     // }
 
-    generateWriteApiTypes(typeInfo: HeliosTypeInfo | HeliosEnumInfo) {
-        if (typeInfo.kind === "enum") {
+    generateWriteApiTypes(typeInfo: anyTypeDetails) {
+        if (typeInfo.typeSchema.kind === "enum") {
             // When writing an enum variant with 0 fields, the typescript api for generating
             //   ... that enum variant data should require only the variant name,
             //   ... IF it is accessed via that type's named proxy (e.g. mkDatum.variantName
@@ -225,7 +331,7 @@ export default class ${className} extends ${parentClassName} {
             //
             // The types returned by the proxy's accessors will be identical to the raw types.
 
-            return Object.entries((typeInfo as HeliosEnumInfo).variants)
+            return Object.entries((typeInfo as enumTypeDetails).variants)
                 .map(([variantName, variant]) => {
                     if (Object.keys(variant.fields).length === 0) {
                         return `${variantName}: ConstrData`;
@@ -248,7 +354,7 @@ export default class ${className} extends ${parentClassName} {
         }
     }
 
-    generateReadApiTypes(typeInfo: HeliosTypeInfo | HeliosEnumInfo) {
+    generateReadApiTypes(typeInfo: typeDetails | enumTypeDetails) {
         // this generates types for a function that takes on-chain
         // datum info, doing light transformations for ergonomics,
         // and returns the underlying data in its canonical form.
@@ -259,8 +365,8 @@ export default class ${className} extends ${parentClassName} {
         //   pointing to the nested field type
         // Enums with multiple fields are returnd as an object with the
 
-        if (typeInfo.kind === "enum") {
-            return Object.entries((typeInfo as HeliosEnumInfo).variants)
+        if (typeInfo.typeSchema.kind === "enum") {
+            return Object.entries((typeInfo as enumTypeDetails).variants)
                 .map(([variantName, variant]) => {
                     if (Object.keys(variant.fields).length === 0) {
                         return `${variantName}: Data`;

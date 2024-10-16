@@ -56,6 +56,7 @@
         "@helios-lang/ledger-babbage": "link:../helios/ledger-babbage",
         "@helios-lang/ledger-conway": "link:../helios/ledger-conway",
         "@helios-lang/ledger-shelley": "link:../helios/ledger-shelley",
+        "@helios-lang/type-utils": "link:../helios/type-utils",
         "@helios-lang/tx-utils": "link:../helios/tx-utils",
         "@helios-lang/uplc": "link:../helios/uplc",
         "@hyperionbt/helios": "^0.16.3",

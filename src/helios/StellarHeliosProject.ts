@@ -9,8 +9,8 @@ import type { UplcData } from "@helios-lang/uplc";
 import {
     BundleTypeContext,
     type HeliosBundleTypeInfo,
-    type HeliosEnumInfo,
-    type HeliosTypeInfo,
+    type enumTypeDetails,
+    type typeDetails,
 } from "./BundleTypeContext.js";
 // import {CapoHeliosBundle} from "../CapoHeliosBundle.js";
 
@@ -257,6 +257,7 @@ export class StellarHeliosProject {
                 `cannot generate types for ${filename} with status ${status}`
             );
         }
+
         const typeFilename = filename.replace(
             /\.hlbundle\.js$/,
             ".hlbundle.d.ts"
