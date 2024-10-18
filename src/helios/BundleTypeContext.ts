@@ -246,6 +246,8 @@ export class BundleTypeContext {
         const varietyIndex = typeVariety === "canonical" ? 0 : 1;
         //@ts-expect-error - not every schema-type has a name
         let name = schema.name as string | undefined;
+        let nameLikeOrName = name;
+        let $nameLike = name ? `${name}Like` : undefined;
 
         // switch on each schema kind...
         switch (schema.kind) {
@@ -281,9 +283,9 @@ export class BundleTypeContext {
                 )}>`;
             case "struct":
                 if (typeVariety === "permissive") {
-                    name = `${name}Like`;
+                    nameLikeOrName = $nameLike
                 }
-                if (useTypeNamesAt) return name;
+                if (useTypeNamesAt) return nameLikeOrName;
 
                 return `{\n${schema.fieldTypes
                     .map(
@@ -297,9 +299,10 @@ export class BundleTypeContext {
                     .join("\n")}\n};\n`;
             case "enum":
                 if (typeVariety === "permissive") {
-                    name = `${name}Like`;
+                    nameLikeOrName = $nameLike
                 }
-                if (useTypeNamesAt) return name;
+                if (useTypeNamesAt) return nameLikeOrName;
+
                 const module = this.extractModuleName(schema);
                 const enumId : EnumId = {module, enumName: name!}
                 const $enumId = this.$enumId(enumId);
@@ -360,9 +363,14 @@ export class BundleTypeContext {
         //   ... as a secondary alternative for people who prefer to write out the full structure.
         //
         // The types returned by the proxy's accessors will be identical to the raw types.
-        let name = schema.name;
+        let variantName = schema.name;
         if (typeVariety === "permissive") {
-            name = `${name}Like`;
+            if (useTypeNamesAt) {
+                throw new Error("Write path not yet supported for variants");
+                return `${schema.name}Like`;
+            }
+            // variant name remains unchanged in this case
+            // variantName = `${variantName}Like`;
         }
         if (useTypeNamesAt) return schema.name;
 
@@ -407,9 +415,9 @@ export class BundleTypeContext {
         const $enumId = this.$enumId(enumId);
         //pretter-ignore
         const minimalVariantSrc =
-            `EnumVariant<${$enumId},`+(
+            `EnumVariant<${enumId.enumName}, "${variantName}",`+
             `${$nlindent}"Constr#${schema.tag}", ${quotedVariety}, ` +
-            `${fieldDefs}` )+
+            `${fieldDefs}`+
             `${$nloutdent}>`;
         return minimalVariantSrc;
     }

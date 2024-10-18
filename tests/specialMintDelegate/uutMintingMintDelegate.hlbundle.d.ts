@@ -47,22 +47,22 @@ export type DelegationDetailLike = {
 
 
 export type DelegateDatum = EnumType<{module: "uutMintingDelegate", enumName: "DelegateDatum"}, {
-        IsDelegation: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateDatum"},
+        IsDelegation: EnumVariant<DelegateDatum, "IsDelegation",
             "Constr#0", "singletonField", 
             DelegationDetail
         >,
-        ScriptReference: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateDatum"},
+        ScriptReference: EnumVariant<DelegateDatum, "ScriptReference",
             "Constr#1", "tagOnly", never
         >
     }
 >;
 
-export type DelegateDatumLike = EnumType<{module: "uutMintingDelegate", enumName: "DelegateDatumLike"}, {
-        IsDelegation: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateDatumLike"},
+export type DelegateDatumLike = EnumType<{module: "uutMintingDelegate", enumName: "DelegateDatum"}, {
+        IsDelegation: EnumVariant<DelegateDatum, "IsDelegation",
             "Constr#0", "singletonField", 
             DelegationDetailLike
         >,
-        ScriptReference: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateDatumLike"},
+        ScriptReference: EnumVariant<DelegateDatum, "ScriptReference",
             "Constr#1", "tagOnly", never
         >
     }
@@ -70,7 +70,7 @@ export type DelegateDatumLike = EnumType<{module: "uutMintingDelegate", enumName
 
 
 export type CapoLifecycleActivity = EnumType<{module: "CapoDelegateHelpers", enumName: "CapoLifecycleActivity"}, {
-        CreatingDelegate: EnumVariant<{module: "CapoDelegateHelpers", enumName: "CapoLifecycleActivity"},
+        CreatingDelegate: EnumVariant<CapoLifecycleActivity, "CreatingDelegate",
             "Constr#0", 
             "fields", {
                 seed: TxOutputId,
@@ -80,8 +80,8 @@ export type CapoLifecycleActivity = EnumType<{module: "CapoDelegateHelpers", enu
     }
 >;
 
-export type CapoLifecycleActivityLike = EnumType<{module: "CapoDelegateHelpers", enumName: "CapoLifecycleActivityLike"}, {
-        CreatingDelegate: EnumVariant<{module: "CapoDelegateHelpers", enumName: "CapoLifecycleActivityLike"},
+export type CapoLifecycleActivityLike = EnumType<{module: "CapoDelegateHelpers", enumName: "CapoLifecycleActivity"}, {
+        CreatingDelegate: EnumVariant<CapoLifecycleActivity, "CreatingDelegate",
             "Constr#0", 
             "fields", {
                 seed: TxOutputId | string,
@@ -93,34 +93,34 @@ export type CapoLifecycleActivityLike = EnumType<{module: "CapoDelegateHelpers",
 
 
 export type DelegateLifecycleActivity = EnumType<{module: "CapoDelegateHelpers", enumName: "DelegateLifecycleActivity"}, {
-        ReplacingMe: EnumVariant<{module: "CapoDelegateHelpers", enumName: "DelegateLifecycleActivity"},
+        ReplacingMe: EnumVariant<DelegateLifecycleActivity, "ReplacingMe",
             "Constr#0", 
             "fields", {
                 seed: TxOutputId,
                 purpose: string
             }
         >,
-        Retiring: EnumVariant<{module: "CapoDelegateHelpers", enumName: "DelegateLifecycleActivity"},
+        Retiring: EnumVariant<DelegateLifecycleActivity, "Retiring",
             "Constr#1", "tagOnly", never
         >,
-        ValidatingSettings: EnumVariant<{module: "CapoDelegateHelpers", enumName: "DelegateLifecycleActivity"},
+        ValidatingSettings: EnumVariant<DelegateLifecycleActivity, "ValidatingSettings",
             "Constr#2", "tagOnly", never
         >
     }
 >;
 
-export type DelegateLifecycleActivityLike = EnumType<{module: "CapoDelegateHelpers", enumName: "DelegateLifecycleActivityLike"}, {
-        ReplacingMe: EnumVariant<{module: "CapoDelegateHelpers", enumName: "DelegateLifecycleActivityLike"},
+export type DelegateLifecycleActivityLike = EnumType<{module: "CapoDelegateHelpers", enumName: "DelegateLifecycleActivity"}, {
+        ReplacingMe: EnumVariant<DelegateLifecycleActivity, "ReplacingMe",
             "Constr#0", 
             "fields", {
                 seed: TxOutputId | string,
                 purpose: string
             }
         >,
-        Retiring: EnumVariant<{module: "CapoDelegateHelpers", enumName: "DelegateLifecycleActivityLike"},
+        Retiring: EnumVariant<DelegateLifecycleActivity, "Retiring",
             "Constr#1", "tagOnly", never
         >,
-        ValidatingSettings: EnumVariant<{module: "CapoDelegateHelpers", enumName: "DelegateLifecycleActivityLike"},
+        ValidatingSettings: EnumVariant<DelegateLifecycleActivity, "ValidatingSettings",
             "Constr#2", "tagOnly", never
         >
     }
@@ -128,23 +128,23 @@ export type DelegateLifecycleActivityLike = EnumType<{module: "CapoDelegateHelpe
 
 
 export type SpendingActivity = EnumType<{module: "uutMintingDelegate", enumName: "SpendingActivity"}, {
-        _placeholder2SA: EnumVariant<{module: "uutMintingDelegate", enumName: "SpendingActivity"},
+        _placeholder2SA: EnumVariant<SpendingActivity, "_placeholder2SA",
             "Constr#0", "singletonField", 
             number[]
         >,
-        mockWorkingSpendActivity: EnumVariant<{module: "uutMintingDelegate", enumName: "SpendingActivity"},
+        mockWorkingSpendActivity: EnumVariant<SpendingActivity, "mockWorkingSpendActivity",
             "Constr#1", "singletonField", 
             number[]
         >
     }
 >;
 
-export type SpendingActivityLike = EnumType<{module: "uutMintingDelegate", enumName: "SpendingActivityLike"}, {
-        _placeholder2SA: EnumVariant<{module: "uutMintingDelegate", enumName: "SpendingActivityLike"},
+export type SpendingActivityLike = EnumType<{module: "uutMintingDelegate", enumName: "SpendingActivity"}, {
+        _placeholder2SA: EnumVariant<SpendingActivity, "_placeholder2SA",
             "Constr#0", "singletonField", 
             number[]
         >,
-        mockWorkingSpendActivity: EnumVariant<{module: "uutMintingDelegate", enumName: "SpendingActivityLike"},
+        mockWorkingSpendActivity: EnumVariant<SpendingActivity, "mockWorkingSpendActivity",
             "Constr#1", "singletonField", 
             number[]
         >
@@ -153,28 +153,28 @@ export type SpendingActivityLike = EnumType<{module: "uutMintingDelegate", enumN
 
 
 export type MintingActivity = EnumType<{module: "uutMintingDelegate", enumName: "MintingActivity"}, {
-        mintingUuts: EnumVariant<{module: "uutMintingDelegate", enumName: "MintingActivity"},
+        mintingUuts: EnumVariant<MintingActivity, "mintingUuts",
             "Constr#0", 
             "fields", {
                 seed: TxOutputId,
                 purposes: Array<string>
             }
         >,
-        mockOtherActivity: EnumVariant<{module: "uutMintingDelegate", enumName: "MintingActivity"},
+        mockOtherActivity: EnumVariant<MintingActivity, "mockOtherActivity",
             "Constr#1", "tagOnly", never
         >
     }
 >;
 
-export type MintingActivityLike = EnumType<{module: "uutMintingDelegate", enumName: "MintingActivityLike"}, {
-        mintingUuts: EnumVariant<{module: "uutMintingDelegate", enumName: "MintingActivityLike"},
+export type MintingActivityLike = EnumType<{module: "uutMintingDelegate", enumName: "MintingActivity"}, {
+        mintingUuts: EnumVariant<MintingActivity, "mintingUuts",
             "Constr#0", 
             "fields", {
                 seed: TxOutputId | string,
                 purposes: Array<string>
             }
         >,
-        mockOtherActivity: EnumVariant<{module: "uutMintingDelegate", enumName: "MintingActivityLike"},
+        mockOtherActivity: EnumVariant<MintingActivity, "mockOtherActivity",
             "Constr#1", "tagOnly", never
         >
     }
@@ -182,15 +182,15 @@ export type MintingActivityLike = EnumType<{module: "uutMintingDelegate", enumNa
 
 
 export type BurningActivity = EnumType<{module: "uutMintingDelegate", enumName: "BurningActivity"}, {
-        _placeholder2BA: EnumVariant<{module: "uutMintingDelegate", enumName: "BurningActivity"},
+        _placeholder2BA: EnumVariant<BurningActivity, "_placeholder2BA",
             "Constr#0", "singletonField", 
             number[]
         >
     }
 >;
 
-export type BurningActivityLike = EnumType<{module: "uutMintingDelegate", enumName: "BurningActivityLike"}, {
-        _placeholder2BA: EnumVariant<{module: "uutMintingDelegate", enumName: "BurningActivityLike"},
+export type BurningActivityLike = EnumType<{module: "uutMintingDelegate", enumName: "BurningActivity"}, {
+        _placeholder2BA: EnumVariant<BurningActivity, "_placeholder2BA",
             "Constr#0", "singletonField", 
             number[]
         >
@@ -199,97 +199,97 @@ export type BurningActivityLike = EnumType<{module: "uutMintingDelegate", enumNa
 
 
 export type DelegateActivity = EnumType<{module: "uutMintingDelegate", enumName: "DelegateActivity"}, {
-        CapoLifecycleActivities: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivity"},
+        CapoLifecycleActivities: EnumVariant<DelegateActivity, "CapoLifecycleActivities",
             "Constr#0", "singletonField", 
             CapoLifecycleActivity
         >,
-        DelegateLifecycleActivities: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivity"},
+        DelegateLifecycleActivities: EnumVariant<DelegateActivity, "DelegateLifecycleActivities",
             "Constr#1", "singletonField", 
             DelegateLifecycleActivity
         >,
-        SpendingActivities: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivity"},
+        SpendingActivities: EnumVariant<DelegateActivity, "SpendingActivities",
             "Constr#2", "singletonField", 
             SpendingActivity
         >,
-        MintingActivities: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivity"},
+        MintingActivities: EnumVariant<DelegateActivity, "MintingActivities",
             "Constr#3", "singletonField", 
             MintingActivity
         >,
-        BurningActivities: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivity"},
+        BurningActivities: EnumVariant<DelegateActivity, "BurningActivities",
             "Constr#4", "singletonField", 
             BurningActivity
         >,
-        CreatingDelegatedData: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivity"},
+        CreatingDelegatedData: EnumVariant<DelegateActivity, "CreatingDelegatedData",
             "Constr#5", 
             "fields", {
                 seed: TxOutputId,
                 dataType: string
             }
         >,
-        UpdatingDelegatedData: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivity"},
+        UpdatingDelegatedData: EnumVariant<DelegateActivity, "UpdatingDelegatedData",
             "Constr#6", 
             "fields", {
                 dataType: string,
                 recId: number[]
             }
         >,
-        DeletingDelegatedData: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivity"},
+        DeletingDelegatedData: EnumVariant<DelegateActivity, "DeletingDelegatedData",
             "Constr#7", 
             "fields", {
                 dataType: string,
                 recId: number[]
             }
         >,
-        MultipleDelegateActivities: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivity"},
+        MultipleDelegateActivities: EnumVariant<DelegateActivity, "MultipleDelegateActivities",
             "Constr#8", "singletonField", 
             Array<UplcData>
         >
     }
 >;
 
-export type DelegateActivityLike = EnumType<{module: "uutMintingDelegate", enumName: "DelegateActivityLike"}, {
-        CapoLifecycleActivities: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivityLike"},
+export type DelegateActivityLike = EnumType<{module: "uutMintingDelegate", enumName: "DelegateActivity"}, {
+        CapoLifecycleActivities: EnumVariant<DelegateActivity, "CapoLifecycleActivities",
             "Constr#0", "singletonField", 
             CapoLifecycleActivityLike
         >,
-        DelegateLifecycleActivities: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivityLike"},
+        DelegateLifecycleActivities: EnumVariant<DelegateActivity, "DelegateLifecycleActivities",
             "Constr#1", "singletonField", 
             DelegateLifecycleActivityLike
         >,
-        SpendingActivities: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivityLike"},
+        SpendingActivities: EnumVariant<DelegateActivity, "SpendingActivities",
             "Constr#2", "singletonField", 
             SpendingActivityLike
         >,
-        MintingActivities: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivityLike"},
+        MintingActivities: EnumVariant<DelegateActivity, "MintingActivities",
             "Constr#3", "singletonField", 
             MintingActivityLike
         >,
-        BurningActivities: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivityLike"},
+        BurningActivities: EnumVariant<DelegateActivity, "BurningActivities",
             "Constr#4", "singletonField", 
             BurningActivityLike
         >,
-        CreatingDelegatedData: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivityLike"},
+        CreatingDelegatedData: EnumVariant<DelegateActivity, "CreatingDelegatedData",
             "Constr#5", 
             "fields", {
                 seed: TxOutputId | string,
                 dataType: string
             }
         >,
-        UpdatingDelegatedData: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivityLike"},
+        UpdatingDelegatedData: EnumVariant<DelegateActivity, "UpdatingDelegatedData",
             "Constr#6", 
             "fields", {
                 dataType: string,
                 recId: number[]
             }
         >,
-        DeletingDelegatedData: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivityLike"},
+        DeletingDelegatedData: EnumVariant<DelegateActivity, "DeletingDelegatedData",
             "Constr#7", 
             "fields", {
                 dataType: string,
                 recId: number[]
             }
         >,
-        MultipleDelegateActivities: EnumVariant<{module: "uutMintingDelegate", enumName: "DelegateActivityLike"},
+        MultipleDelegateActivities: EnumVariant<DelegateActivity, "MultipleDelegateActivities",
             "Constr#8", "singletonField", 
             Array<UplcData>
         >

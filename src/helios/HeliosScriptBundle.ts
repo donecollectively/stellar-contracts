@@ -2,7 +2,11 @@ import type { UplcData } from "@helios-lang/uplc";
 import { CachedHeliosProgram } from "./CachedHeliosProgram.js";
 import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
 import type { isActivity } from "../StellarContract.js";
-import type { EnumTypeSchema, TypeSchema, VariantTypeSchema } from "@helios-lang/type-utils";
+import type {
+    EnumTypeSchema,
+    TypeSchema,
+    VariantTypeSchema,
+} from "@helios-lang/type-utils";
 import type { DataType } from "@helios-lang/compiler/src/index.js";
 
 export type HeliosBundleClass = new () => HeliosScriptBundle;
@@ -48,16 +52,15 @@ export type enumTypeDetails = {
     permissiveType: string; // minimal permissive type
 };
 
-
 export type VariantMap = {
     // Record<string, EnumVariant<any, any, any, any>>;
-    [variantName: string]: enumVariantId<any, any, any, any>;
+    [variantName: string]: singleEnumVariant<any, any, any, any, any>;
 };
 
 export type EnumId = {
-    module: string,
-    enumName: string
-}
+    module: string;
+    enumName: string;
+};
 
 /**
  * ### Don't use this type directly.
@@ -65,14 +68,11 @@ export type EnumId = {
  * This type is used as an intermediate representation of an enum,
  * for generating the types for reading and writing data conforming to the type.
  */
-export type EnumType<
-    EID extends EnumId,
-    enumVariants extends VariantMap
-> = {
+export type EnumType<EID extends EnumId, enumVariants extends VariantMap> = {
     NEVER_INSTANTIATED: "?maybe?";
     SEE_BUNDLE_CLASS: "accessor gateway there";
     kind: "enum";
-    enumId: EID,
+    enumId: EID;
     variants: {
         [k in keyof enumVariants]: enumVariants[k];
     };
@@ -88,24 +88,22 @@ type VariantVariety = "tagOnly" | "fields" | "singletonField";
  * See the mkEnum<EnumType> factory function, the ‹tbd› reader function
  * and the ‹tbd› readable type
  */
-export type enumVariantId<
-    EID extends EnumId,
+export type singleEnumVariant<
+    ET extends EnumType<any, any>,
+    VNAME extends keyof ET["variants"],
     variantConstr extends `Constr#${string}`,
     variety extends VariantVariety,
     // variantArgs must be well specified for each variant
-    variantArgs extends (
-        variety extends "singletonField"
-        ? never : any
-        // variety extends "fields"
-        // ? Record<string, any>
-        // ? any
-    ),
+    variantArgs extends variety extends "singletonField" ? never : any,
+    EID extends EnumId = ET["enumId"]
 > = {
     kind: "variant";
     enumId: EID;
-    variety: variety;
-    args: variantArgs;
+    variantName: VNAME;
+    variantKind: variety;
     constr: variantConstr;
+    data: variantArgs;
+    uplcData: UplcData;
 };
 
 // the mkEnum type becomes a smashed type of all possible variant-accessors of any signature.
@@ -119,10 +117,20 @@ export type mkEnum<
         : never
 > = {
     // prettier-ignore
-    [k in keyof VARIANTS]: VARIANTS[k] extends enumVariantId<infer ARITY, any, any, any> ?
-        ARITY extends "tagOnly" ? { [ v in k ]: VARIANTS[k] } :
-        ARITY extends "singletonField" ? { [ v in k ]: (field: VARIANTS[k]["args"]) => VARIANTS[k] } :
-        ARITY extends "fields" ? { [ v in k ]: (fields: VARIANTS[k]["args"]) => VARIANTS[k] } :
+    [k in keyof VARIANTS]: VARIANTS[k] extends singleEnumVariant<
+        ET, any, any, infer ARITY, any
+    > ?
+        ARITY extends "tagOnly" ? { 
+            [ v in k ]: VARIANTS[k] 
+        } :
+        ARITY extends "singletonField" ? { 
+            [ v in k ]: ( 
+                field: VARIANTS[k]["data"] /* inner type is proactively unwrapped by type-generator  */
+            ) => VARIANTS[k] } :
+        ARITY extends "fields" ? { 
+            [ v in k ]: (
+                fields: VARIANTS[k]["data"] /* has {field:type, ... } form */
+            ) => VARIANTS[k] } :
     never : never
 };
 
@@ -146,7 +154,7 @@ export type HeliosBundleTypeDetails = {
 export type HeliosBundleTypes = {
     datum: DataType | undefined;
     redeemer: DataType;
-}
+};
 
 export abstract class HeliosScriptBundle {
     constructor() {
@@ -174,8 +182,8 @@ export abstract class HeliosScriptBundle {
         });
     }
 
-    getTopLevelTypes() : HeliosBundleTypes {
-        const {program} = this;
+    getTopLevelTypes(): HeliosBundleTypes {
+        const { program } = this;
         const argTypes = program.entryPoint.mainArgTypes;
         const argCount = argTypes.length;
         const programName = program.name;
@@ -199,9 +207,8 @@ export abstract class HeliosScriptBundle {
         return {
             datum: datumType,
             redeemer: redeemerType,
-        }
+        };
     }
-
 }
 
 // const rawTypeProxy = new Proxy(

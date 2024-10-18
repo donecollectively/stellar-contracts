@@ -34,44 +34,44 @@ import {
 } from "src/helios/HeliosScriptBundle.ts" // todo import from @stellar-contracts
 
 export type CapoActivity = EnumType<{module: "CapoHelpers", enumName: "CapoActivity"}, {
-        usingAuthority: EnumVariant<{module: "CapoHelpers", enumName: "CapoActivity"},
+        usingAuthority: EnumVariant<CapoActivity, "usingAuthority",
             "Constr#0", "tagOnly", never
         >,
-        updatingCharter: EnumVariant<{module: "CapoHelpers", enumName: "CapoActivity"},
+        updatingCharter: EnumVariant<CapoActivity, "updatingCharter",
             "Constr#1", "tagOnly", never
         >,
-        retiringRefScript: EnumVariant<{module: "CapoHelpers", enumName: "CapoActivity"},
+        retiringRefScript: EnumVariant<CapoActivity, "retiringRefScript",
             "Constr#2", "tagOnly", never
         >,
-        addingSpendInvariant: EnumVariant<{module: "CapoHelpers", enumName: "CapoActivity"},
+        addingSpendInvariant: EnumVariant<CapoActivity, "addingSpendInvariant",
             "Constr#3", "tagOnly", never
         >,
-        spendingDelegatedDatum: EnumVariant<{module: "CapoHelpers", enumName: "CapoActivity"},
+        spendingDelegatedDatum: EnumVariant<CapoActivity, "spendingDelegatedDatum",
             "Constr#4", "tagOnly", never
         >,
-        updatingTypeMap: EnumVariant<{module: "CapoHelpers", enumName: "CapoActivity"},
+        updatingTypeMap: EnumVariant<CapoActivity, "updatingTypeMap",
             "Constr#5", "tagOnly", never
         >
     }
 >;
 
-export type CapoActivityLike = EnumType<{module: "CapoHelpers", enumName: "CapoActivityLike"}, {
-        usingAuthority: EnumVariant<{module: "CapoHelpers", enumName: "CapoActivityLike"},
+export type CapoActivityLike = EnumType<{module: "CapoHelpers", enumName: "CapoActivity"}, {
+        usingAuthority: EnumVariant<CapoActivity, "usingAuthority",
             "Constr#0", "tagOnly", never
         >,
-        updatingCharter: EnumVariant<{module: "CapoHelpers", enumName: "CapoActivityLike"},
+        updatingCharter: EnumVariant<CapoActivity, "updatingCharter",
             "Constr#1", "tagOnly", never
         >,
-        retiringRefScript: EnumVariant<{module: "CapoHelpers", enumName: "CapoActivityLike"},
+        retiringRefScript: EnumVariant<CapoActivity, "retiringRefScript",
             "Constr#2", "tagOnly", never
         >,
-        addingSpendInvariant: EnumVariant<{module: "CapoHelpers", enumName: "CapoActivityLike"},
+        addingSpendInvariant: EnumVariant<CapoActivity, "addingSpendInvariant",
             "Constr#3", "tagOnly", never
         >,
-        spendingDelegatedDatum: EnumVariant<{module: "CapoHelpers", enumName: "CapoActivityLike"},
+        spendingDelegatedDatum: EnumVariant<CapoActivity, "spendingDelegatedDatum",
             "Constr#4", "tagOnly", never
         >,
-        updatingTypeMap: EnumVariant<{module: "CapoHelpers", enumName: "CapoActivityLike"},
+        updatingTypeMap: EnumVariant<CapoActivity, "updatingTypeMap",
             "Constr#5", "tagOnly", never
         >
     }

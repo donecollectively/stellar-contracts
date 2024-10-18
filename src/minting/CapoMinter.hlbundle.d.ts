@@ -34,26 +34,26 @@ import {
 } from "src/helios/HeliosScriptBundle.ts" // todo import from @stellar-contracts
 
 export type MinterActivity = EnumType<{module: "CapoMintHelpers", enumName: "MinterActivity"}, {
-        mintingCharter: EnumVariant<{module: "CapoMintHelpers", enumName: "MinterActivity"},
+        mintingCharter: EnumVariant<MinterActivity, "mintingCharter",
             "Constr#0", "singletonField", 
             Address
         >,
-        mintWithDelegateAuthorizing: EnumVariant<{module: "CapoMintHelpers", enumName: "MinterActivity"},
+        mintWithDelegateAuthorizing: EnumVariant<MinterActivity, "mintWithDelegateAuthorizing",
             "Constr#1", "tagOnly", never
         >,
-        addingMintInvariant: EnumVariant<{module: "CapoMintHelpers", enumName: "MinterActivity"},
+        addingMintInvariant: EnumVariant<MinterActivity, "addingMintInvariant",
             "Constr#2", "singletonField", 
             TxOutputId
         >,
-        addingSpendInvariant: EnumVariant<{module: "CapoMintHelpers", enumName: "MinterActivity"},
+        addingSpendInvariant: EnumVariant<MinterActivity, "addingSpendInvariant",
             "Constr#3", "singletonField", 
             TxOutputId
         >,
-        ForcingNewMintDelegate: EnumVariant<{module: "CapoMintHelpers", enumName: "MinterActivity"},
+        ForcingNewMintDelegate: EnumVariant<MinterActivity, "ForcingNewMintDelegate",
             "Constr#4", "singletonField", 
             TxOutputId
         >,
-        CreatingNewSpendDelegate: EnumVariant<{module: "CapoMintHelpers", enumName: "MinterActivity"},
+        CreatingNewSpendDelegate: EnumVariant<MinterActivity, "CreatingNewSpendDelegate",
             "Constr#5", 
             "fields", {
                 seed: TxOutputId,
@@ -63,27 +63,27 @@ export type MinterActivity = EnumType<{module: "CapoMintHelpers", enumName: "Min
     }
 >;
 
-export type MinterActivityLike = EnumType<{module: "CapoMintHelpers", enumName: "MinterActivityLike"}, {
-        mintingCharter: EnumVariant<{module: "CapoMintHelpers", enumName: "MinterActivityLike"},
+export type MinterActivityLike = EnumType<{module: "CapoMintHelpers", enumName: "MinterActivity"}, {
+        mintingCharter: EnumVariant<MinterActivity, "mintingCharter",
             "Constr#0", "singletonField", 
             Address | string
         >,
-        mintWithDelegateAuthorizing: EnumVariant<{module: "CapoMintHelpers", enumName: "MinterActivityLike"},
+        mintWithDelegateAuthorizing: EnumVariant<MinterActivity, "mintWithDelegateAuthorizing",
             "Constr#1", "tagOnly", never
         >,
-        addingMintInvariant: EnumVariant<{module: "CapoMintHelpers", enumName: "MinterActivityLike"},
+        addingMintInvariant: EnumVariant<MinterActivity, "addingMintInvariant",
             "Constr#2", "singletonField", 
             TxOutputId | string
         >,
-        addingSpendInvariant: EnumVariant<{module: "CapoMintHelpers", enumName: "MinterActivityLike"},
+        addingSpendInvariant: EnumVariant<MinterActivity, "addingSpendInvariant",
             "Constr#3", "singletonField", 
             TxOutputId | string
         >,
-        ForcingNewMintDelegate: EnumVariant<{module: "CapoMintHelpers", enumName: "MinterActivityLike"},
+        ForcingNewMintDelegate: EnumVariant<MinterActivity, "ForcingNewMintDelegate",
             "Constr#4", "singletonField", 
             TxOutputId | string
         >,
-        CreatingNewSpendDelegate: EnumVariant<{module: "CapoMintHelpers", enumName: "MinterActivityLike"},
+        CreatingNewSpendDelegate: EnumVariant<MinterActivity, "CreatingNewSpendDelegate",
             "Constr#5", 
             "fields", {
                 seed: TxOutputId | string,
