@@ -41,7 +41,7 @@ import { DatumAdapter, type adapterParsedOnchainData } from "./DatumAdapter.js";
 import { UtxoHelper, type utxoPredicate } from "./UtxoHelper.js";
 // import { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
 // import { uplcDataSerializer } from "./delegation/jsonSerializers.js";
-import { HeliosScriptBundle } from "./helios/HeliosScriptBundle.js";
+import { HeliosScriptBundle, type HeliosBundleClass } from "./helios/HeliosScriptBundle.js";
 import type { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
 
 type NetworkName = "testnet" | "mainnet";
@@ -54,7 +54,7 @@ let configuredNetwork: NetworkName | undefined = undefined;
  */
 export type isActivity = {
     // redeemer: UplcDataValue | UplcData | T;
-    redeemer?: UplcData;
+    redeemer: UplcData;
     details?: string;
 };
 
@@ -376,6 +376,8 @@ export type NetworkContext<NWT extends Network = Network> = {
 };
 
 //!!! todo: type configuredStellarClass = class -> networkStuff -> withParams = stellar instance.
+
+export type BundleType<T extends StellarContract<any>> = ReturnType<T["scriptBundle"]>;
 
 /**
  * Basic wrapper and off-chain facade for interacting with a single Plutus contract script
@@ -1455,12 +1457,35 @@ export class StellarContract<
         return bn;
     }
 
-    _bundle: HeliosScriptBundle | undefined;
-    get bundle() {
+    _bundle: BundleType<this> | undefined;
+    get bundle() : BundleType<this> & HeliosScriptBundle {
         if (!this._bundle) {
-            this._bundle = this.scriptBundle();
+            this._bundle = this.scriptBundle() as BundleType<this> & HeliosScriptBundle;
         }
         return this._bundle;
+    }
+
+    /**
+     * Provides access to the script's activities, allowing generation of 
+     * type-safe redeemer data for each activity, accessing the specific
+     * types of data defined for the "redeemer" (or its enum variants).
+     * 
+     * Although the conventional terminology of "redeemer" is universally well-known
+     * in the Cardano developer community, we find that defining one or more **activities**, 
+     * with their associated ***redeemer data***, provides a more effective semantic model 
+     * for triggering contract behaviors.
+     */
+    get activity() : BundleType<this>["Activity"] {
+        return this.bundle.Activity
+    }
+
+    /**
+     * Redirect for intuitive developers having a 'redeemer' habit
+     * 
+     * @deprecated - We recommend using `activity` instead of `redeemer`
+     */
+    get redeemer() : BundleType<this>["Activity"] {
+        return this.activity
     }
 
     //! it requires each subclass to define a contractSource

@@ -74,7 +74,7 @@ export class ContractBasedDelegate<
         return this.configIn?.capo as unknown as Capo<any>;
     }
 
-    mkBundleWithCapo(BundleClass: CapoDelegateBundleClass) : CapoDelegateBundle {
+    mkBundleWithCapo<T extends HeliosScriptBundle>(BundleClass: new (capo: CapoHeliosBundle) => T) : T {
         const { capo } = this.configIn || this.partialConfig || {};
         if (!capo)
             throw new Error(

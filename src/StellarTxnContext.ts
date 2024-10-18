@@ -138,6 +138,12 @@ export type SubmitOptions = {
     beforeValidate?: (tx: Tx) => Promise<any> | any;
 };
 
+type MintUnsafeParams = Parameters<TxBuilder["mintUnsafe"]>;
+type MintTokensParams = [
+    MintUnsafeParams[0],
+    MintUnsafeParams[1],
+    { redeemer: MintUnsafeParams[2] }
+];
 /**
  * Transaction-building context for Stellar Contract transactions
  * @remarks
@@ -231,14 +237,14 @@ export class StellarTxnContext<S extends anyState = anyState> {
         return thisWithMoreType;
     }
 
-    mintTokens(
-        ...args: Parameters<TxBuilder["mintUnsafe"]>
-    ): StellarTxnContext<S> {
+    mintTokens(...args: MintTokensParams): StellarTxnContext<S> {
+        const [policy, tokens, r = { redeemer: undefined }] = args;
+        const { redeemer } = r;
         if (this.txb.mintUnsafe) {
-            this.txb.mintUnsafe(...args);
+            this.txb.mintUnsafe(policy, tokens, redeemer);
         } else {
             //@ts-expect-error
-            this.txb.mintTokens(...args);
+            this.txb.mintTokens(policy, tokens, redeemer);
         }
 
         return this;
@@ -763,7 +769,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 console.log(
                     "------------------- failed tx Cbor as hex -------------------\n",
                     bytesToHex(tx.toCbor()),
-                    "\n------------------^ failed tx Cbor as hex ^------------------",
+                    "\n------------------^ failed tx Cbor as hex ^------------------"
                 );
             }
 
@@ -816,7 +822,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
             });
         const { description } = addlTxInfo;
 
-        const errMsg = tx.hasValidationError && tx.hasValidationError.toString();
+        const errMsg =
+            tx.hasValidationError && tx.hasValidationError.toString();
         if (errMsg) {
             // console.log(`submit(): FAILED tx.validate(): ${errMsg}`);
             // console.profileEnd?.("tx.validate()");

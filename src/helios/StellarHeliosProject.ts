@@ -8,9 +8,6 @@ import esbuild from "rollup-plugin-esbuild";
 import type { UplcData } from "@helios-lang/uplc";
 import {
     BundleTypeContext,
-    type HeliosBundleTypeDetails,
-    type enumTypeDetails,
-    type typeDetails,
 } from "./BundleTypeContext.js";
 // import {CapoHeliosBundle} from "../CapoHeliosBundle.js";
 

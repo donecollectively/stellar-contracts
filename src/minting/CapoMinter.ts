@@ -68,7 +68,7 @@ export class CapoMinter
         return this.mkBundleWithCapo(CapoMinterBundle);
     }
 
-    mkBundleWithCapo(BundleClass: new (capo: CapoHeliosBundle) => HeliosScriptBundle) {
+    mkBundleWithCapo<T extends HeliosScriptBundle>(BundleClass: new (capo: CapoHeliosBundle) => T) : T {
         const { capo } = this.configIn || this.partialConfig || {};
         if (!capo)
             throw new Error(
@@ -229,6 +229,7 @@ export class CapoMinter
 
     @Activity.partialTxn
     async txnMintingCharter<TCX extends StellarTxnContext<anyState>>(
+        this: CapoMinter,
         tcx: TCX,
         {
             owner,
@@ -269,9 +270,10 @@ export class CapoMinter
         ).mintTokens(
             this.mintingPolicyHash!,
             values,
-            this.activityMintingCharter({
+            this.activity.MintingCharter({
+            // this.activityMintingCharter({
                 owner,
-            }).redeemer
+            })
         )  as TCX;
     }
 
@@ -292,7 +294,7 @@ export class CapoMinter
         return ( await this.attachScript(tcx) ).mintTokens(
             this.mintingPolicyHash!,
             vEntries,
-            minterActivity.redeemer
+            minterActivity
         ) as TCX
     }
 
@@ -316,7 +318,7 @@ export class CapoMinter
         return (await this.attachScript(tcx) ).mintTokens(
             this.mintingPolicyHash!,
             vEntries,
-            this.activityMintWithDelegateAuthorizing().redeemer
+            this.activityMintWithDelegateAuthorizing()
         ) as TCX;
     }
 }
