@@ -8,7 +8,7 @@ import esbuild from "rollup-plugin-esbuild";
 import type { UplcData } from "@helios-lang/uplc";
 import {
     BundleTypeContext,
-    type HeliosBundleTypeInfo,
+    type HeliosBundleTypeDetails,
     type enumTypeDetails,
     type typeDetails,
 } from "./BundleTypeContext.js";
@@ -106,7 +106,7 @@ export class StellarHeliosProject {
             : absoluteFilename;
 
         if (filename.startsWith("/")) debugger;
-        const importName = bundleClass.name;
+        const bundleClassName = bundleClass.name;
 
         // we need to do rollup on the project before we'll ever hit this path
         let bundle: HeliosScriptBundle | undefined;
@@ -116,7 +116,8 @@ export class StellarHeliosProject {
         let proto = bundleClass.prototype;
         let parentClassName = "";
         while (proto) {
-            if (!parentClassName) {
+            const thisClassName = proto.constructor.name;
+            if (!parentClassName && bundleClassName !== thisClassName) {
                 parentClassName = proto.constructor.name;
             }
             if (proto.constructor.name === "CapoHeliosBundle") {
@@ -153,7 +154,7 @@ export class StellarHeliosProject {
                 filename,
                 status: "loaded",
                 bundle: this.capoBundle,
-                bundleClassName: importName,
+                bundleClassName: bundleClassName,
                 parentClassName,
                 bundleClass,
             });
@@ -162,7 +163,7 @@ export class StellarHeliosProject {
                 filename,
                 status: "registering", // overwritten below, one way or other
                 bundleClass,
-                bundleClassName: importName,
+                bundleClassName: bundleClassName,
                 parentClassName,
             };
             // if we have the CapoBundle, we can use it to instantiate this bundle now.
@@ -225,7 +226,16 @@ export class StellarHeliosProject {
         if (this.bundleEntries.has(filename)) {
             return this.bundleEntries.get(filename)?.bundle !== undefined;
         }
-        console.log(`heliosTypeGen: no bundle yet for ${filename}`);
+        if (filename.startsWith(this.projectRoot)) {
+            const relativeFilename = path.relative(this.projectRoot, filename)
+            return this.hasBundleClass("./"+relativeFilename)
+        }
+        console.log(
+            `heliosTypeGen: no bundle yet for ${filename}\n` +
+                `${[...this.bundleEntries.keys()]
+                    .map((k) => `  - ${k}`)
+                    .join("\n")}`
+        );
     }
 
     writeMockTypes(filename: string) {
@@ -270,23 +280,15 @@ export class StellarHeliosProject {
         // how long does this take?
         const ts1 = Date.now();
         const typeContext = new BundleTypeContext(bundle);
-        const ts2 = Date.now();
-        console.log(
-            `📦 StellarHeliosProject: gathered type context for ${filename} in ${
-                ts2 - ts1
-            }ms`
-        );
         const typesSource = typeContext.generateTypesSource(
             bundleClassName,
             parentClassName
         );
-        console.log(
-            `📦 StellarHeliosProject: generated ${typeFilename} in ${
-                Date.now() - ts2
-            }ms`
-        );
-
         writeFileSync(typeFilename, typesSource);
+
+        console.log(
+            `📦 ${bundleClassName}: generated types (${Date.now() - ts1}ms)`
+        );
     }
 
     private _didCreateBackupFile = false;
