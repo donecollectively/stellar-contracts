@@ -152,6 +152,8 @@ describe("Capo", async () => {
                     "mintDelegate",
                     {
                         strategyName: "defaultV1",
+                        uutName: tcx1b.state.uuts.mintDgt.name,
+                        config: {}
                     }
                 );
 
@@ -193,6 +195,8 @@ describe("Capo", async () => {
                 // todo: Ideally, this strategy name would be a type error.
                 const problem = t.txnCreateDelegateLink(tcx1b, "noDefault", {
                     strategyName: "defaultV1",
+                    uutName: tcx1b.state.uuts.mintDgt.name,
+                    config: {},
                 });
                 expect(problem).rejects.toThrow(DelegateConfigNeeded);
                 expect(problem).rejects.toThrow(/invalid strategyName/);
@@ -228,6 +232,8 @@ describe("Capo", async () => {
                 expect(
                     t.txnCreateDelegateLink(tcx1b, "mintDelegate", {
                         strategyName: "badStratName",
+                        uutName: tcx1b.state.uuts.mintDgt.name,
+                        config: {},
                     })
                 ).rejects.toThrow(/invalid strategyName .*badStratName/);
 
@@ -281,6 +287,7 @@ describe("Capo", async () => {
                 const getDelegate = () => {
                     return t.txnCreateDelegateLink(tcx1b, "mintDelegate", {
                         strategyName: "failsWhenBad",
+                        uutName: tcx1b.state.uuts.mintDgt.name,
                         config,
                     });
                 };
@@ -379,7 +386,11 @@ describe("Capo", async () => {
                 const mintDelegateLink = await t.txnCreateDelegateLink(
                     tcx1b,
                     "mintDelegate",
-                    { strategyName: "defaultV1" }
+                    { 
+                        strategyName: "defaultV1",
+                        uutName: tcx1b.state.uuts.mintDgt.name,
+                        config: {},
+                    }
                 );
 
                 // console.log(
