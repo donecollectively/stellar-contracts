@@ -25,49 +25,52 @@ import type { Cast } from "@helios-lang/contract-utils";
 import { dataMaker, EnumType, mkEnum, readData, singleEnumVariant } from "../src/helios/HeliosScriptBundle";
 
 
+/** ------------ BEGIN hlbundle types ------------ */
 export type CapoActivity = EnumType<{module: "CapoHelpers", enumName: "CapoActivity"}, {
     usingAuthority: singleEnumVariant<CapoActivity, "usingAuthority",
-        "Constr#0", "tagOnly", never
+        "Constr#0", "tagOnly", never, "noSpecialFlags"
     >,
     updatingCharter: singleEnumVariant<CapoActivity, "updatingCharter",
-        "Constr#1", "tagOnly", never
+        "Constr#1", "tagOnly", never, "noSpecialFlags"
     >,
     retiringRefScript: singleEnumVariant<CapoActivity, "retiringRefScript",
-        "Constr#2", "tagOnly", never
+        "Constr#2", "tagOnly", never, "noSpecialFlags"
     >,
     addingSpendInvariant: singleEnumVariant<CapoActivity, "addingSpendInvariant",
-        "Constr#3", "tagOnly", never
+        "Constr#3", "tagOnly", never, "noSpecialFlags"
     >,
     spendingDelegatedDatum: singleEnumVariant<CapoActivity, "spendingDelegatedDatum",
-        "Constr#4", "tagOnly", never
+        "Constr#4", "tagOnly", never, "noSpecialFlags"
     >,
     updatingTypeMap: singleEnumVariant<CapoActivity, "updatingTypeMap",
-        "Constr#5", "tagOnly", never
+        "Constr#5", "tagOnly", never, "noSpecialFlags"
     >
 }
 >;
 
 export type CapoActivityLike = EnumType<{module: "CapoHelpers", enumName: "CapoActivity"}, {
     usingAuthority: singleEnumVariant<CapoActivity, "usingAuthority",
-        "Constr#0", "tagOnly", never
+        "Constr#0", "tagOnly", never, "noSpecialFlags"
     >,
     updatingCharter: singleEnumVariant<CapoActivity, "updatingCharter",
-        "Constr#1", "tagOnly", never
+        "Constr#1", "tagOnly", never, "noSpecialFlags"
     >,
     retiringRefScript: singleEnumVariant<CapoActivity, "retiringRefScript",
-        "Constr#2", "tagOnly", never
+        "Constr#2", "tagOnly", never, "noSpecialFlags"
     >,
     addingSpendInvariant: singleEnumVariant<CapoActivity, "addingSpendInvariant",
-        "Constr#3", "tagOnly", never
+        "Constr#3", "tagOnly", never, "noSpecialFlags"
     >,
     spendingDelegatedDatum: singleEnumVariant<CapoActivity, "spendingDelegatedDatum",
-        "Constr#4", "tagOnly", never
+        "Constr#4", "tagOnly", never, "noSpecialFlags"
     >,
     updatingTypeMap: singleEnumVariant<CapoActivity, "updatingTypeMap",
-        "Constr#5", "tagOnly", never
+        "Constr#5", "tagOnly", never, "noSpecialFlags"
     >
 }
 >;
+
+
 /** ------------- hlbundle types END ------------- */
 
 

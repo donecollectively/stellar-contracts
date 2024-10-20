@@ -65,10 +65,10 @@ export type DelegationDetailLike = {
 export type DelegateDatum = EnumType<{module: "uutMintingDelegate", enumName: "DelegateDatum"}, {
         IsDelegation: singleEnumVariant<DelegateDatum, "IsDelegation",
             "Constr#0", "singletonField", 
-            DelegationDetail
+            DelegationDetail, "noSpecialFlags"
         >,
         ScriptReference: singleEnumVariant<DelegateDatum, "ScriptReference",
-            "Constr#1", "tagOnly", never
+            "Constr#1", "tagOnly", never, "noSpecialFlags"
         >
     }
 >;
@@ -76,10 +76,10 @@ export type DelegateDatum = EnumType<{module: "uutMintingDelegate", enumName: "D
 export type DelegateDatumLike = EnumType<{module: "uutMintingDelegate", enumName: "DelegateDatum"}, {
         IsDelegation: singleEnumVariant<DelegateDatum, "IsDelegation",
             "Constr#0", "singletonField", 
-            DelegationDetailLike
+            DelegationDetailLike, "noSpecialFlags"
         >,
         ScriptReference: singleEnumVariant<DelegateDatum, "ScriptReference",
-            "Constr#1", "tagOnly", never
+            "Constr#1", "tagOnly", never, "noSpecialFlags"
         >
     }
 >;
@@ -91,7 +91,7 @@ export type CapoLifecycleActivity = EnumType<{module: "CapoDelegateHelpers", enu
             "fields", {
                 seed: TxOutputId,
                 purpose: string
-            }
+            }, "isSeededActivity"
         >
     }
 >;
@@ -102,7 +102,7 @@ export type CapoLifecycleActivityLike = EnumType<{module: "CapoDelegateHelpers",
             "fields", {
                 seed: TxOutputId | string,
                 purpose: string
-            }
+            }, "isSeededActivity"
         >
     }
 >;
@@ -114,13 +114,13 @@ export type DelegateLifecycleActivity = EnumType<{module: "CapoDelegateHelpers",
             "fields", {
                 seed: TxOutputId,
                 purpose: string
-            }
+            }, "isSeededActivity"
         >,
         Retiring: singleEnumVariant<DelegateLifecycleActivity, "Retiring",
-            "Constr#1", "tagOnly", never
+            "Constr#1", "tagOnly", never, "noSpecialFlags"
         >,
         ValidatingSettings: singleEnumVariant<DelegateLifecycleActivity, "ValidatingSettings",
-            "Constr#2", "tagOnly", never
+            "Constr#2", "tagOnly", never, "noSpecialFlags"
         >
     }
 >;
@@ -131,13 +131,13 @@ export type DelegateLifecycleActivityLike = EnumType<{module: "CapoDelegateHelpe
             "fields", {
                 seed: TxOutputId | string,
                 purpose: string
-            }
+            }, "isSeededActivity"
         >,
         Retiring: singleEnumVariant<DelegateLifecycleActivity, "Retiring",
-            "Constr#1", "tagOnly", never
+            "Constr#1", "tagOnly", never, "noSpecialFlags"
         >,
         ValidatingSettings: singleEnumVariant<DelegateLifecycleActivity, "ValidatingSettings",
-            "Constr#2", "tagOnly", never
+            "Constr#2", "tagOnly", never, "noSpecialFlags"
         >
     }
 >;
@@ -146,11 +146,11 @@ export type DelegateLifecycleActivityLike = EnumType<{module: "CapoDelegateHelpe
 export type SpendingActivity = EnumType<{module: "uutMintingDelegate", enumName: "SpendingActivity"}, {
         _placeholder2SA: singleEnumVariant<SpendingActivity, "_placeholder2SA",
             "Constr#0", "singletonField", 
-            number[]
+            number[], "noSpecialFlags"
         >,
         mockWorkingSpendActivity: singleEnumVariant<SpendingActivity, "mockWorkingSpendActivity",
             "Constr#1", "singletonField", 
-            number[]
+            number[], "noSpecialFlags"
         >
     }
 >;
@@ -158,11 +158,11 @@ export type SpendingActivity = EnumType<{module: "uutMintingDelegate", enumName:
 export type SpendingActivityLike = EnumType<{module: "uutMintingDelegate", enumName: "SpendingActivity"}, {
         _placeholder2SA: singleEnumVariant<SpendingActivity, "_placeholder2SA",
             "Constr#0", "singletonField", 
-            number[]
+            number[], "noSpecialFlags"
         >,
         mockWorkingSpendActivity: singleEnumVariant<SpendingActivity, "mockWorkingSpendActivity",
             "Constr#1", "singletonField", 
-            number[]
+            number[], "noSpecialFlags"
         >
     }
 >;
@@ -174,10 +174,10 @@ export type MintingActivity = EnumType<{module: "uutMintingDelegate", enumName: 
             "fields", {
                 seed: TxOutputId,
                 purposes: Array<string>
-            }
+            }, "isSeededActivity"
         >,
         mockOtherActivity: singleEnumVariant<MintingActivity, "mockOtherActivity",
-            "Constr#1", "tagOnly", never
+            "Constr#1", "tagOnly", never, "noSpecialFlags"
         >
     }
 >;
@@ -188,10 +188,10 @@ export type MintingActivityLike = EnumType<{module: "uutMintingDelegate", enumNa
             "fields", {
                 seed: TxOutputId | string,
                 purposes: Array<string>
-            }
+            }, "isSeededActivity"
         >,
         mockOtherActivity: singleEnumVariant<MintingActivity, "mockOtherActivity",
-            "Constr#1", "tagOnly", never
+            "Constr#1", "tagOnly", never, "noSpecialFlags"
         >
     }
 >;
@@ -200,7 +200,7 @@ export type MintingActivityLike = EnumType<{module: "uutMintingDelegate", enumNa
 export type BurningActivity = EnumType<{module: "uutMintingDelegate", enumName: "BurningActivity"}, {
         _placeholder2BA: singleEnumVariant<BurningActivity, "_placeholder2BA",
             "Constr#0", "singletonField", 
-            number[]
+            number[], "noSpecialFlags"
         >
     }
 >;
@@ -208,7 +208,7 @@ export type BurningActivity = EnumType<{module: "uutMintingDelegate", enumName: 
 export type BurningActivityLike = EnumType<{module: "uutMintingDelegate", enumName: "BurningActivity"}, {
         _placeholder2BA: singleEnumVariant<BurningActivity, "_placeholder2BA",
             "Constr#0", "singletonField", 
-            number[]
+            number[], "noSpecialFlags"
         >
     }
 >;
@@ -217,48 +217,48 @@ export type BurningActivityLike = EnumType<{module: "uutMintingDelegate", enumNa
 export type DelegateActivity = EnumType<{module: "uutMintingDelegate", enumName: "DelegateActivity"}, {
         CapoLifecycleActivities: singleEnumVariant<DelegateActivity, "CapoLifecycleActivities",
             "Constr#0", "singletonField", 
-            CapoLifecycleActivity
+            CapoLifecycleActivity, "noSpecialFlags"
         >,
         DelegateLifecycleActivities: singleEnumVariant<DelegateActivity, "DelegateLifecycleActivities",
             "Constr#1", "singletonField", 
-            DelegateLifecycleActivity
+            DelegateLifecycleActivity, "noSpecialFlags"
         >,
         SpendingActivities: singleEnumVariant<DelegateActivity, "SpendingActivities",
             "Constr#2", "singletonField", 
-            SpendingActivity
+            SpendingActivity, "noSpecialFlags"
         >,
         MintingActivities: singleEnumVariant<DelegateActivity, "MintingActivities",
             "Constr#3", "singletonField", 
-            MintingActivity
+            MintingActivity, "noSpecialFlags"
         >,
         BurningActivities: singleEnumVariant<DelegateActivity, "BurningActivities",
             "Constr#4", "singletonField", 
-            BurningActivity
+            BurningActivity, "noSpecialFlags"
         >,
         CreatingDelegatedData: singleEnumVariant<DelegateActivity, "CreatingDelegatedData",
             "Constr#5", 
             "fields", {
                 seed: TxOutputId,
                 dataType: string
-            }
+            }, "isSeededActivity"
         >,
         UpdatingDelegatedData: singleEnumVariant<DelegateActivity, "UpdatingDelegatedData",
             "Constr#6", 
             "fields", {
                 dataType: string,
                 recId: number[]
-            }
+            }, "noSpecialFlags"
         >,
         DeletingDelegatedData: singleEnumVariant<DelegateActivity, "DeletingDelegatedData",
             "Constr#7", 
             "fields", {
                 dataType: string,
                 recId: number[]
-            }
+            }, "noSpecialFlags"
         >,
         MultipleDelegateActivities: singleEnumVariant<DelegateActivity, "MultipleDelegateActivities",
             "Constr#8", "singletonField", 
-            Array<UplcData>
+            Array<UplcData>, "noSpecialFlags"
         >
     }
 >;
@@ -266,48 +266,48 @@ export type DelegateActivity = EnumType<{module: "uutMintingDelegate", enumName:
 export type DelegateActivityLike = EnumType<{module: "uutMintingDelegate", enumName: "DelegateActivity"}, {
         CapoLifecycleActivities: singleEnumVariant<DelegateActivity, "CapoLifecycleActivities",
             "Constr#0", "singletonField", 
-            CapoLifecycleActivityLike
+            CapoLifecycleActivityLike, "noSpecialFlags"
         >,
         DelegateLifecycleActivities: singleEnumVariant<DelegateActivity, "DelegateLifecycleActivities",
             "Constr#1", "singletonField", 
-            DelegateLifecycleActivityLike
+            DelegateLifecycleActivityLike, "noSpecialFlags"
         >,
         SpendingActivities: singleEnumVariant<DelegateActivity, "SpendingActivities",
             "Constr#2", "singletonField", 
-            SpendingActivityLike
+            SpendingActivityLike, "noSpecialFlags"
         >,
         MintingActivities: singleEnumVariant<DelegateActivity, "MintingActivities",
             "Constr#3", "singletonField", 
-            MintingActivityLike
+            MintingActivityLike, "noSpecialFlags"
         >,
         BurningActivities: singleEnumVariant<DelegateActivity, "BurningActivities",
             "Constr#4", "singletonField", 
-            BurningActivityLike
+            BurningActivityLike, "noSpecialFlags"
         >,
         CreatingDelegatedData: singleEnumVariant<DelegateActivity, "CreatingDelegatedData",
             "Constr#5", 
             "fields", {
                 seed: TxOutputId | string,
                 dataType: string
-            }
+            }, "isSeededActivity"
         >,
         UpdatingDelegatedData: singleEnumVariant<DelegateActivity, "UpdatingDelegatedData",
             "Constr#6", 
             "fields", {
                 dataType: string,
                 recId: number[]
-            }
+            }, "noSpecialFlags"
         >,
         DeletingDelegatedData: singleEnumVariant<DelegateActivity, "DeletingDelegatedData",
             "Constr#7", 
             "fields", {
                 dataType: string,
                 recId: number[]
-            }
+            }, "noSpecialFlags"
         >,
         MultipleDelegateActivities: singleEnumVariant<DelegateActivity, "MultipleDelegateActivities",
             "Constr#8", "singletonField", 
-            Array<UplcData>
+            Array<UplcData>, "noSpecialFlags"
         >
     }
 >;

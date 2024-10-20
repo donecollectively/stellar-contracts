@@ -8,6 +8,7 @@ import type {
     VariantTypeSchema,
 } from "@helios-lang/type-utils";
 import type { DataType } from "@helios-lang/compiler/src/index.js";
+import type { EachUnionElement } from "./typeUtils.js";
 
 export type HeliosBundleClass = new () => HeliosScriptBundle;
 
@@ -18,11 +19,17 @@ export type dataMaker<permissiveType> =
 
 export type readAnyData = readData<any> | readEnum<any>;
 
-export type readData<permissiveType> = () => any
+// a function that reads data from a UplcData object, given a specific type
+//   of that data.  This definition is (currently) abstract.
+export type readData<canonicalType> = () => any;
+// placeholder for something more specific:
+export type readSpecificData<canonicalType> = (x:any) => canonicalType;
 
 export type mkAnyActivity =
-    | mkEnum<any, any>
+    | mkActivityEnum<any, any>
     | ((...args: any) => isActivity & { redeemer: UplcData });
+
+
 
 export type AnyHeliosTypeInfo = TypeSchema | anyTypeDetails;
 export type anyTypeDetails = typeDetails | enumTypeDetails;
@@ -56,7 +63,7 @@ export type enumTypeDetails = {
 
 export type VariantMap = {
     // Record<string, EnumVariant<any, any, any, any>>;
-    [variantName: string]: singleEnumVariant<any, any, any, any, any>;
+    [variantName: string]: singleEnumVariant<any, any, any, any, any, any>;
 };
 
 export type EnumId = {
@@ -81,7 +88,7 @@ export type EnumType<EID extends EnumId, enumVariants extends VariantMap> = {
 };
 
 type VariantVariety = "tagOnly" | "fields" | "singletonField";
-
+type SpecialActivityFlags = "isSeededActivity" | "noSpecialFlags";
 /**
  * ### Don't use this type directly.
  *
@@ -97,16 +104,74 @@ export type singleEnumVariant<
     variety extends VariantVariety,
     // variantArgs must be well specified for each variant
     variantArgs extends variety extends "tagOnly" ? never : any,
+    specialFlags extends SpecialActivityFlags,
     EID extends EnumId = ET["enumId"]
 > = {
     kind: "variant";
     enumId: EID;
     variantName: VNAME;
+    // not needed in a data structure, but useful in the type params
+    // ... for signature-expansion of the mkEnum type
+    // flags: EachUnionElement<specialFlags>;
     variantKind: variety;
     constr: variantConstr;
     data: variantArgs;
     uplcData: UplcData;
 };
+
+type anySingleEnumVariant = singleEnumVariant<any, any, any, any, any, any>;
+
+type isSeeded<
+    V extends anySingleEnumVariant,
+    FLAGS extends SpecialActivityFlags = V extends singleEnumVariant<any, any, any, any, any, infer F> ? F : never
+> = FLAGS extends "isSeededActivity" ? true : false;
+
+if (false) {
+    type test = ( "x" | "y" ) extends "x" ? true : false; // false
+    type test2  = "x" extends ("x" | "y") ? true : false; // true
+    const test2Value : test2 = true
+}
+
+// special case for the singletonField variety, in which there is no record of field-names -> types
+type singletonVariantFieldAllowedInputType<
+    V extends anySingleEnumVariant,
+    forActivities extends "forActivities" | never = never
+> = true extends isSeeded<V> ? V["data"] : V["data"]
+
+type variantFieldArity<V extends anySingleEnumVariant> = V["variantKind"];
+
+type ExtractVariantSignature<
+    VARIANTS extends VariantMap,
+    singleVariantName extends keyof VARIANTS,
+    ET extends EnumType<any, any>,
+    forActivities extends "forActivities" | never = never,
+    THIS_VARIANT extends anySingleEnumVariant = VARIANTS[singleVariantName],
+    ARITY = variantFieldArity<THIS_VARIANT>
+> = 
+// VARIANTS[singleVariantName] extends singleEnumVariant<ET, any, any, any, infer ARITY, any>
+//     ? 
+ARITY extends "tagOnly"
+        ? {
+                // is a simple getter, no function call needed
+                [v in singleVariantName]: THIS_VARIANT;
+          }
+        : ARITY extends "singletonField"
+        ? {
+              // is a function call with a single arg for the field type
+              [v in singleVariantName]: (
+                // NOTE: the single inner type is proactively unwrapped 
+                //  ... by the type-generator, before this type is ever expanded  
+                  field: singletonVariantFieldAllowedInputType<VARIANTS[singleVariantName], forActivities> 
+              ) => VARIANTS[singleVariantName];
+          }
+        : ARITY extends "fields"
+        ? {
+              [v in singleVariantName]: (
+                  //  has {field:type, ... } form
+                  fields: VARIANTS[singleVariantName]["data"] // todo: expand the field types with forActivities-sensitivity
+              ) => VARIANTS[singleVariantName];
+          }
+        : never;
 
 // the mkEnum type becomes a smashed type of all possible variant-accessors of any signature.
 // this brings together all the separate constructors from individual variant object-types into a single type
@@ -119,22 +184,19 @@ export type mkEnum<
         : never
 > = {
     // prettier-ignore
-    [k in keyof VARIANTS]: VARIANTS[k] extends singleEnumVariant<
-        ET, any, any, infer ARITY, any
-    > ?
-        ARITY extends "tagOnly" ? { 
-            [ v in k ]: VARIANTS[k] 
-        } :
-        ARITY extends "singletonField" ? { 
-            [ v in k ]: ( 
-                field: VARIANTS[k]["data"] /* inner type is proactively unwrapped by type-generator  */
-            ) => VARIANTS[k] } :
-        ARITY extends "fields" ? { 
-            [ v in k ]: (
-                fields: VARIANTS[k]["data"] /* has {field:type, ... } form */
-            ) => VARIANTS[k] } :
-    never : never
+    [k in keyof VARIANTS]: ExtractVariantSignature<VARIANTS, k, ET>
 };
+
+export type mkActivityEnum<
+    ET extends EnumType<any, any>,
+    VARIANTS extends VariantMap = ET extends EnumType<any, infer VARIANTS>
+        ? VARIANTS
+        : never
+> = {
+    // prettier-ignore
+    [k in keyof VARIANTS]: ExtractVariantSignature<VARIANTS, k, ET, "forActivities">
+};
+
 
 export type readEnum<nestedType> = {
     placeholder(): "placeholder";
@@ -185,10 +247,10 @@ export abstract class HeliosScriptBundle {
     }
 
     createMkEnumProxy(): mkAnyActivity {
-        return ( () => {} )as any
+        return (() => {}) as any;
     }
     createReadEnumProxy(): readAnyData {
-        return ( () => {} ) as any
+        return (() => {}) as any;
     }
 
     getTopLevelTypes(): HeliosBundleTypes {

@@ -3,3 +3,4 @@ node_modules
 lib/
 /z/
 /zz_junk
+vite.config.js.timestamp*

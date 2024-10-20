@@ -416,11 +416,16 @@ export class BundleTypeGenerator {
                   }${$nlindent}}`;
 
         const $enumId = this.$enumId(enumId);
+        const specialFlags : string[] = [];
+        if (schema.fieldTypes[0]?.name === "seed") {
+            specialFlags.push(`"isSeededActivity"`);
+        }
+        const $specialFlags = specialFlags.join(" | ") || `"noSpecialFlags"`;
         //pretter-ignore
         const minimalVariantSrc =
             `singleEnumVariant<${enumId.enumName}, "${variantName}",`+
             `${$nlindent}"Constr#${schema.tag}", ${quotedVariety}, ` +
-            `${fieldDefs}`+
+            `${fieldDefs}, ${$specialFlags}`+
             `${$nloutdent}>`;
         return minimalVariantSrc;
     }
