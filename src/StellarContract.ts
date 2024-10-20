@@ -1466,14 +1466,41 @@ export class StellarContract<
     }
 
     /**
-     * Provides access to the script's activities, allowing generation of 
-     * type-safe redeemer data for each activity, accessing the specific
-     * types of data defined for the "redeemer" (or its enum variants).
+     * Provides access to the script's activities with type-safe structures needed by the validator script.
+     * 
+     * @remarks - the **redeemer** data (needed by the contract script) is defined as one or
+     * more activity-types (e.g. in a struct, or an enum as indicated in the type of the last argument to 
+     * the validator function).  
+     *   - See below for more about type-generation if your editor doesn't  provide auto-complete for 
+     *   the activities.
+     * 
+     * ### A terminology note: Activities and Redeemers
      * 
      * Although the conventional terminology of "redeemer" is universally well-known
      * in the Cardano developer community, we find that defining one or more **activities**, 
-     * with their associated ***redeemer data***, provides a more effective semantic model 
-     * for triggering contract behaviors.
+     * with their associated ***redeemer data***, provides an effective semantic model offering
+     * better clarity and intution.
+     * 
+     * Each type of contract activity corresponds to an enum variant in the contract script.
+     * For each of those variants, its redeemer data contextualizes the behavior of the requested
+     * transaction.  A non-enum redeemer-type implies that there is only one type of activity.  
+     * 
+     * Any data not present in the transaction inputs or outputs, but needed for 
+     * specificity of the requested activity, can only be provided through these activity details.
+     * If that material is like a "claim ticket", it would match the "redeemer" type of labeling.
+     * 
+     * Activity data can include any kinds of details needed by the validator: settings for what it 
+     * is doing, options for how it is being done, or what remaining information the validator may 
+     * need, to verify the task is being completed according to protocol.  Transactions containing
+     * a variety of inputs and output, each potential candidates for an activity, can use the activity 
+     * details to resolve ambiguity so the validator easily acts on the correct items.
+     * 
+     * ### Type generation
+     * The activity types should be available through type-safe auto-complete in your editor.  If not, 
+     * you may need to install and configure the Stellar Contracts rollup plugins for importing .hl 
+     * files and generating .d.ts for your .hlbundle.js files.  See the Stellar Contracts development 
+     * guide for additional details.
+     * 
      */
     get activity() : BundleType<this>["Activity"] {
         return this.getBundle().Activity

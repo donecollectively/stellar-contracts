@@ -20,7 +20,7 @@ export type readAnyData = readData<any> | readEnum<any>;
 
 export type readData<permissiveType> = () => any
 
-export type mkAnyRedeemer =
+export type mkAnyActivity =
     | mkEnum<any, any>
     | ((...args: any) => isActivity & { redeemer: UplcData });
 
@@ -165,7 +165,7 @@ export abstract class HeliosScriptBundle {
         this.readDatum = this.createReadEnumProxy();
     }
     // todo: refine this type
-    Activity: mkAnyRedeemer;
+    Activity: mkAnyActivity;
     mkDatum: mkAnyData;
     readDatum: readAnyData;
 
@@ -184,7 +184,7 @@ export abstract class HeliosScriptBundle {
         });
     }
 
-    createMkEnumProxy(): mkAnyRedeemer {
+    createMkEnumProxy(): mkAnyActivity {
         return ( () => {} )as any
     }
     createReadEnumProxy(): readAnyData {
