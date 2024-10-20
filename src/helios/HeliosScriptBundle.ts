@@ -16,35 +16,35 @@ export type HeliosBundleClass = new () => HeliosScriptBundle;
 // external-facing types for reading and writing data for use in contract scripts.
 // 1. create data for Datum or other non-Activity scenarios
 
-export type makesAnyData<T> = 
-    T extends EnumType<any, any> ? makesEnumData<T> :
-    dataMaker<T>;
+export type makesAnyData<T> = T extends EnumType<any, any>
+    ? makesEnumData<T>
+    : dataMaker<T>;
 
 // still drafting this...
 export type dataMaker<permissiveType> =
     | ((arg: permissiveType) => UplcData)
     | never;
 
-// 2. read data from Datum.  Can also be used for returned results 
+// 2. read data from Datum.  Can also be used for returned results
 //  ... of utility functions defined in Helios code.
-export type readsAnyData<T> =
-    T extends EnumType<any, any> ? readsUplcEnumData<T> :
-    readsUplcData<T>;
+export type readsAnyData<T> = T extends EnumType<any, any>
+    ? readsUplcEnumData<T>
+    : readsUplcData<T>;
 
 export type readsUplcEnumData<nestedType> = {
     placeholder(): "placeholder";
 };
-    
-export type readsUplcData<canonicalType> = (x : UplcData) => canonicalType;
 
-export type makesActivity<permissiveType> = (  // ... a function type
-    (arg: permissiveType) => isActivity & { redeemer: UplcData }
-);
+export type readsUplcData<canonicalType> = (x: UplcData) => canonicalType;
 
-export type makesAnyActivity<T> =
-    T extends EnumType<any, any> ? makesActivityEnum<any, any> : makesActivity<any>;
-    // | mkActivityEnum<any, any>
-    // | mkActivity<any>;
+export type makesActivity<permissiveType> = // ... a function type
+    (arg: permissiveType) => isActivity & { redeemer: UplcData };
+
+export type makesAnyActivity<T> = T extends EnumType<any, any>
+    ? makesActivityEnum<any, any>
+    : makesActivity<any>;
+// | mkActivityEnum<any, any>
+// | mkActivity<any>;
 
 export type AnyHeliosTypeInfo = TypeSchema | anyTypeDetails;
 export type anyTypeDetails = typeDetails | enumTypeDetails;
@@ -144,20 +144,29 @@ type anySingleEnumVariant = singleEnumVariant<any, any, any, any, any, any>;
 
 type isSeeded<
     V extends anySingleEnumVariant,
-    FLAGS extends SpecialActivityFlags = V extends singleEnumVariant<any, any, any, any, any, infer F> ? F : never
+    FLAGS extends SpecialActivityFlags = V extends singleEnumVariant<
+        any,
+        any,
+        any,
+        any,
+        any,
+        infer F
+    >
+        ? F
+        : never
 > = FLAGS extends "isSeededActivity" ? true : false;
 
 if (false) {
-    type test = ( "x" | "y" ) extends "x" ? true : false; // false
-    type test2  = "x" extends ("x" | "y") ? true : false; // true
-    const test2Value : test2 = true
+    type test = "x" | "y" extends "x" ? true : false; // false
+    type test2 = "x" extends "x" | "y" ? true : false; // true
+    const test2Value: test2 = true;
 }
 
 // special case for the singletonField variety, in which there is no record of field-names -> types
 type singletonVariantFieldAllowedInputType<
     V extends anySingleEnumVariant,
     forActivities extends "forActivities" | never = never
-> = true extends isSeeded<V> ? V["data"] : V["data"]
+> = true extends isSeeded<V> ? V["data"] : V["data"];
 
 type variantFieldArity<V extends anySingleEnumVariant> = V["variantKind"];
 
@@ -168,21 +177,24 @@ type ExtractVariantMakerSignature<
     forActivities extends "forActivities" | never = never,
     THIS_VARIANT extends anySingleEnumVariant = VARIANTS[singleVariantName],
     ARITY = variantFieldArity<THIS_VARIANT>
-> = 
-// VARIANTS[singleVariantName] extends singleEnumVariant<ET, any, any, any, infer ARITY, any>
-//     ? 
-ARITY extends "tagOnly"
+> =
+    // VARIANTS[singleVariantName] extends singleEnumVariant<ET, any, any, any, infer ARITY, any>
+    //     ?
+    ARITY extends "tagOnly"
         ? {
-                // is a simple getter, no function call needed
-                [v in singleVariantName]: THIS_VARIANT;
+              // is a simple getter, no function call needed
+              [v in singleVariantName]: THIS_VARIANT;
           }
         : ARITY extends "singletonField"
         ? {
               // is a function call with a single arg for the field type
               [v in singleVariantName]: (
-                // NOTE: the single inner type is proactively unwrapped 
-                //  ... by the type-generator, before this type is ever expanded  
-                  field: singletonVariantFieldAllowedInputType<VARIANTS[singleVariantName], forActivities> 
+                  // NOTE: the single inner type is proactively unwrapped
+                  //  ... by the type-generator, before this type is ever expanded
+                  field: singletonVariantFieldAllowedInputType<
+                      VARIANTS[singleVariantName],
+                      forActivities
+                  >
               ) => VARIANTS[singleVariantName];
           }
         : ARITY extends "fields"
