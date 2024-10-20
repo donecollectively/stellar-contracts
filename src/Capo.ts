@@ -947,7 +947,7 @@ export abstract class Capo<
                 true === redeemerOrRefInput ||
                 "refInput" === redeemerOrRefInput
             ) {
-                throw new Error(`use txnAddCharterRef(tcx) instead`);
+                throw new Error(`use tcxWithCharterRef(tcx) instead`);
 
                 // using reference-input has been requested
                 if (newDatum)
@@ -3122,7 +3122,7 @@ export abstract class Capo<
         console.log(options);
 
         const tcx1 =
-            tcx.state.seedUtxo === undefined ? await this.addSeedUtxo() : tcx;
+            tcx.state.seedUtxo === undefined ? await this.tcxWithSeedUtxo() : tcx;
 
         const tcx2 = await this.txnMintingUuts(
             tcx1,
@@ -3181,7 +3181,7 @@ export abstract class Capo<
      * Constructs UUTs with the indicated purposes, and adds them to the contract state.
      * This is a useful generic capability to support any application-specific purpose.
      *
-     * The provided transaction context must have a seedUtxo - use {@link Capo.addSeedUtxo | addSeedUtxo()} to add one
+     * The provided transaction context must have a seedUtxo - use {@link Capo.tcxWithSeedUtxo | tcxWithSeedUtxo()} to add one
      * from the current user's wallet. The seed utxo is consumed, so it can never be used again; its
      * value will be returned to the user wallet.  All the uuts named in the uutPurposes argument will
      * be minted from the same seedUtxo, and will share the same suffix, because it is derived from the

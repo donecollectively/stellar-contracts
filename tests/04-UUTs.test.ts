@@ -226,7 +226,7 @@ describe("Capo", async () => {
             }
         );
 
-        it("can create a UUT and send it anywhere", async (context: localTC) => {
+        fit("can create a UUT and send it anywhere", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
             const capo = await h.initialize();
@@ -236,7 +236,7 @@ describe("Capo", async () => {
             // await delay(1000);
 
             const mintDelegate = await capo.getMintDelegate();
-            const tcx1a = await capo.addSeedUtxo(h.mkTcx());
+            const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
             const purposes = ["testSomeThing"];
             const tcx1b = await capo.txnMintingUuts(tcx1a, purposes, {
                 mintDelegateActivity:

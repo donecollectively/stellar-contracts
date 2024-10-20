@@ -187,7 +187,7 @@ func getRefCharterUtxo(mph : MintingPolicyHash) -> TxInput {
             print("expected charter value");
             print(chVal.show());
             print("\n");
-            error("Missing charter in required ref_inputs (use txnAddCharterRef(tcx) in txn builder)")
+            error("Missing charter in required ref_inputs (use tcxWithCharterRef(tcx) in txn building functions)")
         }
     };
 

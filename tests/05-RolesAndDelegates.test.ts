@@ -133,9 +133,9 @@ describe("Capo", async () => {
 
                 const mintDelegate = await t.getMintDelegate();
 
-                const tcx1a = await t.addSeedUtxo(h.mkTcx());
+                const tcx1a = await t.tcxWithSeedUtxo(h.mkTcx());
                 const tcx1b = await t.txnMintingUuts(
-                    await t.addSeedUtxo(h.mkTcx()),
+                    await t.tcxWithSeedUtxo(h.mkTcx()),
                     ["mintDgt"],
                     {
                         // just give it **something**:
@@ -173,7 +173,7 @@ describe("Capo", async () => {
 
                 const mintDelegate = await t.getMintDelegate();
                 const purpose = ["x"];
-                const tcx1a = await t.addSeedUtxo(h.mkTcx());
+                const tcx1a = await t.tcxWithSeedUtxo(h.mkTcx());
 
                 const tcx1b = await t.txnMintingUuts(
                     tcx1a,
@@ -208,7 +208,7 @@ describe("Capo", async () => {
                 });
 
                 const mintDelegate = await t.getMintDelegate();
-                const tcx1a = await t.addSeedUtxo(h.mkTcx());
+                const tcx1a = await t.tcxWithSeedUtxo(h.mkTcx());
                 const purpose = ["mintDgt"];
                 const tcx1b = await t.txnMintingUuts(
                     tcx1a,
@@ -314,7 +314,7 @@ describe("Capo", async () => {
                 });
 
                 const mintDelegate = await t.getMintDelegate();
-                const tcx1a = await t.addSeedUtxo(h.mkTcx());
+                const tcx1a = await t.tcxWithSeedUtxo(h.mkTcx());
                 const purpose = ["mintDgt"];
 
                 const tcx1b = await t.txnMintingUuts(
@@ -360,7 +360,7 @@ describe("Capo", async () => {
 
                 const mintDelegate = await capo.getMintDelegate();
 
-                const tcx1a = await t.addSeedUtxo(h.mkTcx());
+                const tcx1a = await t.tcxWithSeedUtxo(h.mkTcx());
                 const purpose = ["mintDgt"];
                 const tcx1b = await t.txnMintingUuts(
                     tcx1a,
@@ -449,7 +449,7 @@ describe("Capo", async () => {
 
                 const mintDelegate = await t.getMintDelegate();
 
-                const tcx2a = await t.addSeedUtxo(h.mkTcx());
+                const tcx2a = await t.tcxWithSeedUtxo(h.mkTcx());
                 const purpose = ["anything"];
                 const tcx2b = await t.txnMintingUuts(tcx2a, purpose, {
                     mintDelegateActivity:
@@ -505,7 +505,7 @@ describe("Capo", async () => {
                     async (tcx) => tcx
                 );
 
-                const tcx1a = await t.addSeedUtxo(h.mkTcx());
+                const tcx1a = await t.tcxWithSeedUtxo(h.mkTcx());
                 const purpose = ["anything"];
                 const tcx1b = await t.txnMintingUuts(
                     tcx1a,

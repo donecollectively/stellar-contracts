@@ -189,7 +189,7 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 await h.setActor( "tom" );
                 // capo = h.strella
-                // const withSeed = await capo.addSeedUtxo(h.mkTcx());
+                // const withSeed = await capo.tcxWithSeedUtxo(h.mkTcx());
                 // console.log(" -- ⚗️🐞⚗️🐞 tom's seed won't be used by tina", dumpAny(withSeed));
                 // await h.setActor("tina");
                 // capo = h.strella;
@@ -199,7 +199,7 @@ describe("Capo", async () => {
                 //     return withSeed.getSeedUtxoDetails();
                 // })
 
-                // vi.spyOn(capo, "addSeedUtxo").mockImplementation(
+                // vi.spyOn(capo, "tcxWithSeedUtxo").mockImplementation(
                 //     //@ts-expect-error
                 //     async tcx => tcx
                 // );
