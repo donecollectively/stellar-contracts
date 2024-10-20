@@ -7,7 +7,7 @@ import type {
     HeliosBundleTypeDetails,
     HeliosBundleTypes,
     HeliosScriptBundle,
-    mkEnum,
+    makesEnumData,
     singleEnumVariant,
     typeDetails,
     variantTypeDetails,
@@ -44,6 +44,14 @@ export class BundleTypeGenerator {
         const dataTypes = (this.topLevelDataTypes =
             this.bundle.getTopLevelTypes());
         this.topLevelTypeDetails = this.gatherTopLevelTypeDetails(dataTypes);
+    }
+
+    get activityTypeDetails() : anyTypeDetails {
+        return this.topLevelTypeDetails.redeemer;
+    }
+
+    get datumTypeDetails() : Option<anyTypeDetails> {
+        return this.topLevelTypeDetails.datum;
     }
 
     // it can begin gathering the types from the bundle's main contract

@@ -22,7 +22,7 @@ import type {
     Value,
 } from "@helios-lang/ledger";
 import type { Cast } from "@helios-lang/contract-utils";
-import { dataMaker, EnumType, mkEnum, readData, singleEnumVariant } from "../src/helios/HeliosScriptBundle";
+import { dataMaker, EnumType, makesEnumData, readsUplcData, singleEnumVariant } from "../src/helios/HeliosScriptBundle";
 
 
 /** ------------ BEGIN hlbundle types ------------ */
@@ -82,6 +82,6 @@ export default class CapoBundleWithGenericUuts extends CapoHeliosBundle {
     //     ];
     // }
     declare mkDatum: dataMaker<any>;
-    declare readDatum: readData<any>;
-    declare Activity: mkEnum<CapoActivityLike>;
+    declare readDatum: readsUplcData<any>;
+    declare Activity: makesEnumData<CapoActivityLike>;
 }

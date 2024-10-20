@@ -9,31 +9,48 @@ import type {
 } from "@helios-lang/type-utils";
 import type { DataType } from "@helios-lang/compiler/src/index.js";
 import type { EachUnionElement } from "./typeUtils.js";
+import { BundleTypeGenerator } from "./BundleTypeGenerator.js";
 
 export type HeliosBundleClass = new () => HeliosScriptBundle;
 
-export type mkAnyData = dataMaker<any> | mkEnum<any, any>;
+// external-facing types for reading and writing data for use in contract scripts.
+// 1. create data for Datum or other non-Activity scenarios
+
+export type makesAnyData<T> = 
+    T extends EnumType<any, any> ? makesEnumData<T> :
+    dataMaker<T>;
+
+// still drafting this...
 export type dataMaker<permissiveType> =
     | ((arg: permissiveType) => UplcData)
     | never;
 
-export type readAnyData = readData<any> | readEnum<any>;
+// 2. read data from Datum.  Can also be used for returned results 
+//  ... of utility functions defined in Helios code.
+export type readsAnyData<T> =
+    T extends EnumType<any, any> ? readsUplcEnumData<T> :
+    readsUplcData<T>;
 
-// a function that reads data from a UplcData object, given a specific type
-//   of that data.  This definition is (currently) abstract.
-export type readData<canonicalType> = () => any;
-// placeholder for something more specific:
-export type readSpecificData<canonicalType> = (x:any) => canonicalType;
+export type readsUplcEnumData<nestedType> = {
+    placeholder(): "placeholder";
+};
+    
+export type readsUplcData<canonicalType> = (x : UplcData) => canonicalType;
 
-export type mkAnyActivity =
-    | mkActivityEnum<any, any>
-    | ((...args: any) => isActivity & { redeemer: UplcData });
+export type makesActivity<permissiveType> = (  // ... a function type
+    (arg: permissiveType) => isActivity & { redeemer: UplcData }
+);
 
-
+export type makesAnyActivity<T> =
+    T extends EnumType<any, any> ? makesActivityEnum<any, any> : makesActivity<any>;
+    // | mkActivityEnum<any, any>
+    // | mkActivity<any>;
 
 export type AnyHeliosTypeInfo = TypeSchema | anyTypeDetails;
 export type anyTypeDetails = typeDetails | enumTypeDetails;
 
+// Utility types representing runtime information retrievable through the Helios APi
+//   ... these are all ABOUT the types seen in the contract scripts, so they're a sort of meta-types
 export type typeDetails = {
     typeName?: string;
     typeSchema: TypeSchema;
@@ -61,6 +78,8 @@ export type enumTypeDetails = {
     permissiveType: string; // minimal permissive type
 };
 
+// compile-time types for representing what is known about the types in the contract scripts
+// created by the Stellar type-generator
 export type VariantMap = {
     // Record<string, EnumVariant<any, any, any, any>>;
     [variantName: string]: singleEnumVariant<any, any, any, any, any, any>;
@@ -119,6 +138,8 @@ export type singleEnumVariant<
     uplcData: UplcData;
 };
 
+// utility types for transforming an EnumType into interfaces for reading/writing data of that type
+
 type anySingleEnumVariant = singleEnumVariant<any, any, any, any, any, any>;
 
 type isSeeded<
@@ -140,7 +161,7 @@ type singletonVariantFieldAllowedInputType<
 
 type variantFieldArity<V extends anySingleEnumVariant> = V["variantKind"];
 
-type ExtractVariantSignature<
+type ExtractVariantMakerSignature<
     VARIANTS extends VariantMap,
     singleVariantName extends keyof VARIANTS,
     ET extends EnumType<any, any>,
@@ -177,29 +198,24 @@ ARITY extends "tagOnly"
 // this brings together all the separate constructors from individual variant object-types into a single type
 // due to use of 'keyof' and
 
-export type mkEnum<
+export type makesEnumData<
     ET extends EnumType<any, any>,
     VARIANTS extends VariantMap = ET extends EnumType<any, infer VARIANTS>
         ? VARIANTS
         : never
 > = {
     // prettier-ignore
-    [k in keyof VARIANTS]: ExtractVariantSignature<VARIANTS, k, ET>
+    [k in keyof VARIANTS]: ExtractVariantMakerSignature<VARIANTS, k, ET>
 };
 
-export type mkActivityEnum<
+export type makesActivityEnum<
     ET extends EnumType<any, any>,
     VARIANTS extends VariantMap = ET extends EnumType<any, infer VARIANTS>
         ? VARIANTS
         : never
 > = {
     // prettier-ignore
-    [k in keyof VARIANTS]: ExtractVariantSignature<VARIANTS, k, ET, "forActivities">
-};
-
-
-export type readEnum<nestedType> = {
-    placeholder(): "placeholder";
+    [k in keyof VARIANTS]: ExtractVariantMakerSignature<VARIANTS, k, ET, "forActivities">
 };
 
 /**
@@ -222,14 +238,17 @@ export type HeliosBundleTypes = {
 
 export abstract class HeliosScriptBundle {
     constructor() {
-        this.Activity = this.createMkEnumProxy();
-        this.mkDatum = this.createMkEnumProxy() as any;
-        this.readDatum = this.createReadEnumProxy();
+        // const typeGenerator = new BundleTypeGenerator(this);
+
+        // const {activityTypeDetails, datumTypeDetails} = typeGenerator;
+        // this.Activity = this.createMkActivityProxy(activityTypeDetails);
+        // this.mkDatum = this.createMkDataProxy(datumTypeDetails);
+        // this.readDatum = this.createReadDataProxy(datumTypeDetails);
     }
     // todo: refine this type
-    Activity: mkAnyActivity;
-    mkDatum: mkAnyData;
-    readDatum: readAnyData;
+    Activity: makesAnyActivity<any>;
+    mkDatum: Option<makesAnyData<any>>;
+    readDatum: Option<readsAnyData<any>>
 
     // addProxies<T>() {
     //     this.mkDatum = new mkDatumProxy()
@@ -246,10 +265,29 @@ export abstract class HeliosScriptBundle {
         });
     }
 
-    createMkEnumProxy(): mkAnyActivity {
+    createMkActivityProxy(
+        typeDetails: anyTypeDetails
+    ): makesAnyActivity<any> {
+
+        // throw new Error(`implement me!`)
         return (() => {}) as any;
     }
-    createReadEnumProxy(): readAnyData {
+
+    createMkDataProxy(
+        typeDetails: Option<anyTypeDetails>
+    ): Option<makesAnyData<any>> {
+        if (!typeDetails) { return undefined }
+
+        // throw new Error(`implement me!`)
+        return (() => {}) as any;
+    }
+
+    createReadDataProxy(
+        typeDetails: Option<anyTypeDetails>
+    ): Option<readsAnyData<any>> {
+        if (!typeDetails) { return undefined }
+
+        // throw new Error(`implement me!`)
         return (() => {}) as any;
     }
 
