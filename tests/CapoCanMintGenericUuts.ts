@@ -2,7 +2,7 @@ import {
     strategyValidation,
     defineRole
 } from "../src/delegation/RolesAndDelegates";
-import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateWithGenericUuts.js";
+import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/MintDelegateWithGenericUuts.js";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import CapoBundleWithGenericUuts from "./withGenericUuts.hlbundle.js";
 import { CharterDatumProps } from "../src/Capo.js";

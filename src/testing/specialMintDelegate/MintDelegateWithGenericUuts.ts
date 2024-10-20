@@ -1,7 +1,7 @@
-import { Activity, type BundleType, type hasSeed } from "../../src/StellarContract.js";
-import { type hasSeedUtxo } from "../../src/StellarTxnContext.js";
-import { HeliosScriptBundle } from "../../src/helios/HeliosScriptBundle.js";
-import { BasicMintDelegate } from "../../src/minting/BasicMintDelegate.js";
+import { Activity, type BundleType, type hasSeed } from "../../StellarContract.js";
+import { type hasSeedUtxo } from "../../StellarTxnContext.js";
+import { HeliosScriptBundle } from "../../helios/HeliosScriptBundle.js";
+import { BasicMintDelegate } from "../../minting/BasicMintDelegate.js";
 import uutMintingMintDelegateBundle from "./uutMintingMintDelegate.hlbundle.js";
 
 export class MintDelegateWithGenericUuts extends BasicMintDelegate {

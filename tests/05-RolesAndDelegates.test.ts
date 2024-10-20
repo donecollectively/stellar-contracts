@@ -27,7 +27,7 @@ import { StellarTxnContext } from "../src/StellarTxnContext";
 import { configBaseWithRev } from "../src/StellarContract";
 import { txAsString } from "../src/diagnostics";
 import { Address } from "@hyperionbt/helios";
-import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateWithGenericUuts.js";
+import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/MintDelegateWithGenericUuts.js";
 import { Capo } from "../src/Capo";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { expectTxnError } from "../src/testing/StellarTestHelper";

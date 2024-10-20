@@ -5,12 +5,12 @@
 import { StellarHeliosProject } from "./src/helios/StellarHeliosProject.ts" // todo import from @stellar-contracts
 import CapoMinterBundle from "./src/minting/CapoMinter.hlbundle.ts";
 import UnspecializedDgtBundle from "./src/delegation/UnspecializedDelegate.hlbundle.ts";
-import BundleMintDelegateWithGenericUuts from "./tests/specialMintDelegate/uutMintingMintDelegate.hlbundle.ts";
+import BundleMintDelegateWithGenericUuts from "./src/testing/specialMintDelegate/uutMintingMintDelegate.hlbundle.ts";
 import CapoBundleWithGenericUuts from "./tests/withGenericUuts.hlbundle.ts";
 
 export const project = new StellarHeliosProject();
 
 project.loadBundleWithClass("./src/minting/CapoMinter.hlbundle.ts", CapoMinterBundle);
 project.loadBundleWithClass("./src/delegation/UnspecializedDelegate.hlbundle.ts", UnspecializedDgtBundle);
-project.loadBundleWithClass("./tests/specialMintDelegate/uutMintingMintDelegate.hlbundle.ts", BundleMintDelegateWithGenericUuts);
+project.loadBundleWithClass("./src/testing/specialMintDelegate/uutMintingMintDelegate.hlbundle.ts", BundleMintDelegateWithGenericUuts);
 project.loadBundleWithClass("./tests/withGenericUuts.hlbundle.ts", CapoBundleWithGenericUuts);

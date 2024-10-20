@@ -27,8 +27,8 @@ import type {
     ByteArrayLike,
  } from "@helios-lang/codec-utils";
  import uutMintingMintDelegate from "./uutMintingMintDelegate.hl";
- import { CapoDelegateBundle } from "../../src/delegation/CapoDelegateBundle.js";
- import type { EnumType, mkEnum, readEnum, singleEnumVariant } from "../../src/helios/HeliosScriptBundle.js";
+ import { CapoDelegateBundle } from "../../delegation/CapoDelegateBundle.js";
+ import type { EnumType, mkEnum, readEnum, singleEnumVariant } from "../../helios/HeliosScriptBundle.js";
  
 /** ------------ BEGIN hlbundle types ------------ */
 export type DelegationDetail = {
