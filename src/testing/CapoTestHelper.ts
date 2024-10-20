@@ -1,11 +1,11 @@
 import { Capo } from "../Capo.js";
 import type {
-    CapoBaseConfig,
+    CapoConfig,
     CharterDatumProps,
     MinimalCharterDatumArgs,
     MinterBaseMethods,
     anyDatumArgs,
-    hasBootstrappedConfig,
+    hasBootstrappedCapoConfig,
     hasUutContext,
 } from "../Capo.js";
 
@@ -397,7 +397,7 @@ export abstract class CapoTestHelper<
         hasUutContext<
             "govAuthority" | "capoGov" | "mintDelegate" | "mintDgt" | "settings"
         > &
-            hasBootstrappedConfig<CapoBaseConfig> &
+            hasBootstrappedCapoConfig &
             hasAddlTxns<any>
     >;
 }

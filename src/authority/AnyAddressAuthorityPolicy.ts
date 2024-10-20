@@ -29,8 +29,7 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         return undefined;
     }
 
-    usesContractScript : boolean = false;
-
+    usesContractScript = false as const;
 
     getContractScriptParamsUplc() {
         return {
@@ -42,13 +41,13 @@ export class AnyAddressAuthorityPolicy extends AuthorityPolicy {
         return undefined;
     }
 
-    /**
-     * special-case activity for non-contract (no redeemer)
-     */
-    @Activity.redeemer
-    activityAuthorizing(): isActivity {
-        return { redeemer: undefined };
-    }
+    // /**
+    //  * special-case activity for non-contract (no redeemer)
+    //  */
+    // @Activity.redeemer
+    // activityAuthorizing(): isActivity {
+    //     return { redeemer: undefined };
+    // }
 
     //! impls MUST resolve the indicated token to a specific UTxO
     //  ... or throw an informative error

@@ -5,7 +5,7 @@ import type {
     hasSettingsRef,
     hasUutContext,
 } from "../Capo.js";
-import type { DelegatedDatumAdapter } from "../DelegatedDatumAdapter.js";
+import type { DelegatedDatumAdapter } from "./DelegatedDatumAdapter.js";
 import type { ReqtsMap } from "../Requirements.js";
 import type { hasSeed, isActivity } from "../StellarContract.js";
 import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
@@ -277,7 +277,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         // ... by authority of the delegated-data controller
         const spendDelegate = (await capo.getSpendDelegate(
             tcx2.state.charterDatum
-        )) as BasicMintDelegate;
+        ));
         const typeName = this.recordTypeName;
         const tcx2a = await spendDelegate.txnGrantAuthority(
             tcx2,
@@ -383,7 +383,7 @@ class SeedActivity<
 > {
     args: ARGS;
     constructor(
-        private host: ContractBasedDelegate<any>,
+        private host: ContractBasedDelegate,
         private factoryFunc,
         args: ARGS
     ) {

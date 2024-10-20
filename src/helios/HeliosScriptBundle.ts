@@ -18,6 +18,8 @@ export type dataMaker<permissiveType> =
 
 export type readAnyData = readData<any> | readEnum<any>;
 
+export type readData<permissiveType> = () => any
+
 export type mkAnyRedeemer =
     | mkEnum<any, any>
     | ((...args: any) => isActivity & { redeemer: UplcData });
@@ -94,7 +96,7 @@ export type singleEnumVariant<
     variantConstr extends `Constr#${string}`,
     variety extends VariantVariety,
     // variantArgs must be well specified for each variant
-    variantArgs extends variety extends "singletonField" ? never : any,
+    variantArgs extends variety extends "tagOnly" ? never : any,
     EID extends EnumId = ET["enumId"]
 > = {
     kind: "variant";
@@ -158,9 +160,9 @@ export type HeliosBundleTypes = {
 
 export abstract class HeliosScriptBundle {
     constructor() {
-        // this.Activity = this.createMkEnumProxy();
-        // this.mkDatum = this.createMkEnumProxy();
-        // this.readDatum = this.createReadEnumProxy();
+        this.Activity = this.createMkEnumProxy();
+        this.mkDatum = this.createMkEnumProxy() as any;
+        this.readDatum = this.createReadEnumProxy();
     }
     // todo: refine this type
     Activity: mkAnyRedeemer;
@@ -182,8 +184,16 @@ export abstract class HeliosScriptBundle {
         });
     }
 
+    createMkEnumProxy(): mkAnyRedeemer {
+        return ( () => {} )as any
+    }
+    createReadEnumProxy(): readAnyData {
+        return ( () => {} ) as any
+    }
+
     getTopLevelTypes(): HeliosBundleTypes {
-        const { program } = this;
+        const program = this.program;
+        // const { program } = this;
         const argTypes = program.entryPoint.mainArgTypes;
         const argCount = argTypes.length;
         const programName = program.name;

@@ -2,13 +2,13 @@ import { Datum } from "@hyperionbt/helios";
 import * as helios from "@hyperionbt/helios";
 
 import { Activity, datum } from "../StellarContract.js";
-import type { hasSeed, isActivity } from "../StellarContract.js";
+import type { BundleType, hasSeed, isActivity } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
 
 import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
 import MintDelegateBundle from "../delegation/UnspecializedDelegate.hlbundle.js";
-
+import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 
 /**
  * Serves a delegated minting-policy role for Capo contracts
@@ -17,7 +17,7 @@ import MintDelegateBundle from "../delegation/UnspecializedDelegate.hlbundle.js"
  * shifts detailed minting policy out of the minter and into the delegate.
  * @public
  **/
-export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig> {
+export class BasicMintDelegate extends ContractBasedDelegate {
     static currentRev = 1n;
 
     get delegateName() {
@@ -29,7 +29,7 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
     }
 
     scriptBundle() {
-        return this.mkBundleWithCapo(MintDelegateBundle);
+        return this.mkBundleWithCapo<MintDelegateBundle>(MintDelegateBundle);
     }
 
     // uses the basic delegate script, plus the isMintDelegate param
@@ -68,53 +68,6 @@ export class BasicMintDelegate extends ContractBasedDelegate<capoDelegateConfig>
         //         new helios.ByteArrayData(uutPurposeBytes)
         //     ])
         // }
-    }
-
-    /**
-     * A spend-delegate activity indicating that a delegated-data controller will be governing
-     * an update to a specific piece of delegated data.  No further redeemer details are needed here,
-     * but the data-delegate's controller-token may have additional details in ITS redeemer,
-     * which will be aligned with the one.
-     *
-     * May be present in the context of a nested MultipleDelegateActivities redeemer, in which
-     * case, multiple cases of the above scenario will be present in a single transaction.
-     */
-    @Activity.redeemer
-    activityUpdatingDelegatedData(
-        recId: string | number[]
-    ): isActivity {
-        const recIdBytes = Array.isArray(recId)
-            ? recId
-            : helios.textToBytes(recId);
-        // const Activity = this.mustGetActivity("UpdatingDelegatedData");
-        return {
-            // redeemer: new Activity(uutPurpose, recIdBytes),
-            redeemer: this.activityVariantToUplc("UpdatingDelegatedData", {
-                recId: recIdBytes,
-            }),
-        };
-    }
-
-    /**
-     * A mint-delegate activity indicating that a delegated-data controller will be governing
-     * a deletion (burning its UUT) of a specific piece of delegated data.  No further redeemer details are needed here,
-     * but the data-delegate's controller-token may have additional details in ITS redeemer,
-     * as described in {@link BasicMintDelegate.activityUpdatingDelegatedData}.  See that topic for more details
-     * including multi-activity scenarios.
-     */
-    @Activity.redeemer
-    activityDeletingDelegatedData(
-        recId: string | number[]
-    ): isActivity {
-        const recIdBytes = Array.isArray(recId)
-            ? recId
-            : helios.textToBytes(recId);
-
-            return {
-            redeemer: this.activityVariantToUplc("DeletingDelegatedData", {
-                recId: recIdBytes,
-            }),
-        };
     }
 
     /**

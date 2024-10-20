@@ -1,6 +1,6 @@
 import { ConstrData, Datum } from "@hyperionbt/helios";
 import { DatumAdapter,  type Numeric,  type adapterParsedOnchainData  } from "./DatumAdapter.js";
-import type { AnyDataTemplate } from "./DelegatedDatumAdapter.js";
+import type { AnyDataTemplate } from "./delegation/DelegatedDatumAdapter.js";
 import { type WrappedSettingsAdapterBridge, type ParsedSettings, SettingsAdapter } from "./CapoSettingsTypes.js";
 
 

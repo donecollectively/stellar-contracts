@@ -12,7 +12,7 @@ import type {
 import type { StellarTestContext } from "./StellarTestContext.js";
 import type { StellarTestHelper } from "./StellarTestHelper.js";
 import type { DefaultCapoTestHelper } from "./DefaultCapoTestHelper.js";
-import type { Capo, CapoBaseConfig } from "../Capo.js";
+import type { Capo, CapoConfig } from "../Capo.js";
 import type { NetworkSnapshot, SimpleWallet_stellar as emulatedWallet } from "./StellarNetworkEmulator.js";
 
 export type enhancedNetworkParams = NetworkParams & {

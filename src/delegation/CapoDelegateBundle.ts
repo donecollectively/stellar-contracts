@@ -3,7 +3,6 @@ import { mkHeliosModule, type HeliosModuleSrc } from "../helios/HeliosModuleSrc.
 import { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 import BasicDelegate from "./BasicDelegate.hl";
 
-
 export type CapoDelegateBundleClass = new (
     capoBundle: CapoHeliosBundle
 ) => CapoDelegateBundle;

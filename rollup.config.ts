@@ -65,7 +65,8 @@ export default [
             json(),
             resolve({
                 ...platformModulePaths("server"),
-                extensions: [".json", ".ts"],
+                exportConditions: ["dev"],
+                extensions: [".json", ".ts", ".js"],
             }),
             // sourcemaps(),
             esbuild({

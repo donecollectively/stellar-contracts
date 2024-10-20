@@ -75,7 +75,7 @@ export class CapoMinter
                 `missing capo in config or partial-config for ${this.constructor.name}`
             );
 
-        const t = new BundleClass(capo.bundle);
+        const t = new BundleClass(capo.getBundle());
         return t
     }
 
@@ -270,8 +270,8 @@ export class CapoMinter
         ).mintTokens(
             this.mintingPolicyHash!,
             values,
-            this.activity.MintingCharter({
-            // this.activityMintingCharter({
+            // this.activity.MintingCharter({
+            this.activityMintingCharter({
                 owner,
             })
         )  as TCX;

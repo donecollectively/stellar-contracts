@@ -4,7 +4,7 @@ import { DatumAdapter, type adapterParsedOnchainData } from "./DatumAdapter.js";
 import type {
     AnyDataTemplate,
     hasAnyDataTemplate,
-} from "./DelegatedDatumAdapter.js";
+} from "./delegation/DelegatedDatumAdapter.js";
 
 // an incantation so that settings adapters don't have to get the finicky details right
 

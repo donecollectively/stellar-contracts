@@ -13,6 +13,7 @@ import {
 import { Tx, TxBuilder, TxOutput, Value } from "@hyperionbt/helios";
 
 import { StellarTxnContext } from "../src/StellarTxnContext";
+import { Capo } from "../src/Capo";
 import { CapoMinter } from "../src/minting/CapoMinter";
 import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { hasAllUuts } from "../src/Capo";
@@ -156,6 +157,8 @@ describe("Capo", async () => {
                 const charter = await capo.mustFindCharterUtxo();
                 tcx1.addScriptProgram(capo.compiledScript!);
                 tcx1.addInput(charter, capo.activityUsingAuthority());
+                const datum = charter.datum
+                if (!datum) throw new Error("missing datum")
                 capo.txnKeepCharterToken(tcx1, charter.datum);
 
                 await capo.txnAddGovAuthorityTokenRef(tcx1);

@@ -10,7 +10,11 @@
             "types": "./dist/stellar-contracts.d.ts",
             "import": "./dist/stellar-contracts.mjs",
             "XXXrequire": "./dist/stellar-contracts.cjs",
-            "default": "./dist/stellar-contracts.mjs"
+            "default": "./dist/stellar-contracts.mjs",
+            "dev": {
+                "types": "./src/index.ts",
+                "import": "./src/index.js"
+            }
         },
         "./XXXXtesting": {
             "types": "./dist/testing.d.ts",
@@ -56,11 +60,11 @@
         "@helios-lang/ledger-babbage": "link:../helios/ledger-babbage",
         "@helios-lang/ledger-conway": "link:../helios/ledger-conway",
         "@helios-lang/ledger-shelley": "link:../helios/ledger-shelley",
-        "@helios-lang/type-utils": "link:../helios/type-utils",
         "@helios-lang/tx-utils": "link:../helios/tx-utils",
+        "@helios-lang/type-utils": "link:../helios/type-utils",
         "@helios-lang/uplc": "link:../helios/uplc",
         "@hyperionbt/helios": "^0.16.3",
-        "@microsoft/api-extractor": "^7.47.9",
+        "@microsoft/api-extractor": "^7.47.11",
         "@rollup/plugin-json": "^6.0.1",
         "@rollup/plugin-node-resolve": "^15.1.0",
         "@rollup/pluginutils": "^5.0.2",

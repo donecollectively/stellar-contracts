@@ -4,6 +4,7 @@
         // "module": "ESNext",
         "target": "ESNext",
         "sourceMap": true,
+        "customConditions": ["dev"],
         "moduleResolution": "nodenext",
         "importHelpers": true,
         "baseUrl": ".",
@@ -13,7 +14,9 @@
         "forceConsistentCasingInFileNames": true,
         "noEmit": true,
         "experimentalDecorators": true,
-
+        "paths": {
+            "@donecollectively/stellar-contracts": ["./src/index.ts"]
+        }
     },
     "include":[ 
         "./rollup.config.ts", 

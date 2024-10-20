@@ -7,8 +7,8 @@ import { heliosRollupLoader } from "./heliosRollupLoader.js";
 import esbuild from "rollup-plugin-esbuild";
 import type { UplcData } from "@helios-lang/uplc";
 import {
-    BundleTypeContext,
-} from "./BundleTypeContext.js";
+    BundleTypeGenerator,
+} from "./BundleTypeGenerator.js";
 // import {CapoHeliosBundle} from "../CapoHeliosBundle.js";
 
 const startTime = Date.now();
@@ -23,6 +23,7 @@ type BundleStatusEntry = {
     parentClassName?: string;
     bundleClass?: typeof HeliosScriptBundle; // or a subclass
     bundle?: Option<HeliosScriptBundle>;
+    ignoredExtension?: ".d.ts.ignored"
     // types?: Option<HeliosBundleTypeInfo>;
 };
 
@@ -123,6 +124,8 @@ export class StellarHeliosProject {
             }
             proto = Object.getPrototypeOf(proto);
         }
+
+        const ignoredExtension = filename.match(/\.ts$/) ? ".d.ts.ignored" : undefined;
         if (isCapoBundle) {
             if (this.capoBundle) {
                 throw new Error(`only one CapoBundle is currently supported`);
@@ -147,6 +150,7 @@ export class StellarHeliosProject {
                     entry.status = "loaded";
                 }
             }
+            const ignoredExtension = filename.match(/\.ts$/) ? ".d.ts.ignored" : undefined;
             this.bundleEntries.set(filename, {
                 filename,
                 status: "loaded",
@@ -154,6 +158,7 @@ export class StellarHeliosProject {
                 bundleClassName: bundleClassName,
                 parentClassName,
                 bundleClass,
+                ignoredExtension
             });
         } else {
             const bundleEntry: BundleStatusEntry = {
@@ -162,6 +167,7 @@ export class StellarHeliosProject {
                 bundleClass,
                 bundleClassName: bundleClassName,
                 parentClassName,
+                ignoredExtension
             };
             // if we have the CapoBundle, we can use it to instantiate this bundle now.
             if (this.capoBundle) {
@@ -178,7 +184,7 @@ export class StellarHeliosProject {
         // this.bundleEntries.set(filename, { filename, bundle, types, importName });
     }
 
-    registerBundle(absoluteFilename: string) {
+    registerBundle(absoluteFilename: string, ignoredExtension?: ".d.ts.ignored") {
         const filename = absoluteFilename.startsWith(this.projectRoot)
             ? "./" + path.relative(this.projectRoot, absoluteFilename)
             : absoluteFilename;
@@ -195,6 +201,7 @@ export class StellarHeliosProject {
             filename,
             status: "registering",
             bundleClassName: importName,
+            ignoredExtension
         });
         this.deferredWriteProjectFile();
     }
@@ -253,7 +260,10 @@ export class StellarHeliosProject {
         if (!bundleEntry) {
             throw new Error(`bundle not found: ${filename}`);
         }
-        const { bundle, status } = bundleEntry;
+        const bundle = bundleEntry.bundle;
+        const status = bundleEntry.status;
+        const ignoredExtension = bundleEntry.ignoredExtension;
+        // const { bundle, status, ignoredExtension } = bundleEntry;
         if (!bundle) {
             throw new Error(
                 `cannot write type info for ${filename} for newly-added bundle (check for hasBundleClass() first?)`
@@ -265,10 +275,20 @@ export class StellarHeliosProject {
             );
         }
 
-        const typeFilename = filename.replace(
+        if (ignoredExtension) {
+            if (!filename.match(/.ts$/)) {
+                throw new Error(`non-ts file shouldn't have ignoredExtension option: ${filename}`)
+            }
+        } else if (filename.match(/.ts$/)) {
+            throw new Error(`ts file should have ignoredExtension option: ${filename}`)
+        }
+        let typeFilename = filename.replace(
             /\.hlbundle\.js$/,
             ".hlbundle.d.ts"
         );
+        if (bundleEntry.ignoredExtension) {
+            typeFilename = typeFilename.replace(/.ts$/, bundleEntry.ignoredExtension);
+        }
         const { bundleClassName, parentClassName } = bundleEntry;
 
         if (!parentClassName) {
@@ -276,11 +296,16 @@ export class StellarHeliosProject {
         }
         // how long does this take?
         const ts1 = Date.now();
-        const typeContext = new BundleTypeContext(bundle);
+        const typeContext = new BundleTypeGenerator(bundle);
         const typesSource = typeContext.generateTypesSource(
             bundleClassName,
             parentClassName
         );
+        console.log({
+            filename,
+            typeFilename, 
+            ignoredExtension
+        })
         writeFileSync(typeFilename, typesSource);
 
         console.log(

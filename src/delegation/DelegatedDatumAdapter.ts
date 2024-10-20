@@ -1,7 +1,7 @@
 import * as helios from "@hyperionbt/helios";
-import { DatumAdapter  } from "./DatumAdapter.js";
-import type { StellarContract, anyDatumProps } from "./StellarContract.js";
-import type { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
+import { DatumAdapter  } from "../DatumAdapter.js";
+import type { StellarContract, anyDatumProps } from "../StellarContract.js";
+import type { ContractBasedDelegate } from "./ContractBasedDelegate.js";
 
 /**
  * @public
@@ -78,7 +78,7 @@ export abstract class DelegatedDatumAdapter<
 onChainType extends { id: string; type: string },
     // OnchainBridgeType extends hasAnyDataTemplate<any, anyDatumProps>
 > extends DatumAdapter<onChainType, any>{
-    constructor(strella: ContractBasedDelegate<any>) {
+    constructor(strella: ContractBasedDelegate) {
         super(strella)
     }
     datumName = "DelegatedData";

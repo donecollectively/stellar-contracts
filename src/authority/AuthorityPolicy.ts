@@ -10,8 +10,6 @@ import { StellarDelegate } from "../delegation/StellarDelegate.js";
  * gives useful semantics for Capo's govAuthority role
  * @public
  **/
-export abstract class AuthorityPolicy<
-    T extends capoDelegateConfig = capoDelegateConfig
-> extends StellarDelegate<T> {
-
+export abstract class AuthorityPolicy extends StellarDelegate {
+    // this class is distinct from other delegates
 }

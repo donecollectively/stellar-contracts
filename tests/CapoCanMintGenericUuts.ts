@@ -2,18 +2,20 @@ import {
     strategyValidation,
     defineRole
 } from "../src/delegation/RolesAndDelegates";
-import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateWithGenericUuts";
+import { MintDelegateWithGenericUuts } from "./specialMintDelegate/MintDelegateWithGenericUuts.js";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
-import withGenericUuts from "./withGenericUuts.hlbundle.js";
+import CapoBundleWithGenericUuts from "./withGenericUuts.hlbundle.js";
+import { CharterDatumProps } from "../src/Capo.js";
+import { BasicMintDelegate } from "../src/minting/BasicMintDelegate.js";
 
 export class CapoCanMintGenericUuts extends CapoWithoutSettings {
-
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {
-        return await super.getMintDelegate() as MintDelegateWithGenericUuts;
+        return super.getMintDelegate() as any
     }
 
     scriptBundle() {
-        return new withGenericUuts();
+
+        return new CapoBundleWithGenericUuts();
     }    
     
     initDelegateRoles() {

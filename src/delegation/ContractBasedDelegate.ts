@@ -26,12 +26,10 @@ import type {
     capoDelegateConfig,
 } from "./RolesAndDelegates.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
-import { BasicDelegate } from "./BasicDelegate.js";
 import {
     mkHeliosModule,
     type HeliosModuleSrc,
 } from "../helios/HeliosModuleSrc.js";
-import { UnspecializedDelegate } from "./UnspecializedDelegate.js";
 import { dumpAny } from "../diagnostics.js";
 import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
@@ -44,9 +42,7 @@ import type { CapoDelegateBundle, CapoDelegateBundleClass } from "./CapoDelegate
  * grants delegated authority.
  * @public
  */
-export class ContractBasedDelegate<
-    CT extends capoDelegateConfig = capoDelegateConfig
-> extends StellarDelegate<CT> {
+export class ContractBasedDelegate extends StellarDelegate {
     static currentRev = 1n;
     /**
      * Configures the matching parameter name in the on-chain script, indicating
@@ -81,7 +77,7 @@ export class ContractBasedDelegate<
                 `missing capo in config or partial-config for ${this.constructor.name}`
             );
 
-        return new BundleClass(capo.bundle);
+        return new BundleClass(capo.getBundle());
     }
 
     scriptBundle(): CapoDelegateBundle {
@@ -151,7 +147,7 @@ export class ContractBasedDelegate<
     }
     static mkDelegateWithArgs(a: capoDelegateConfig) {}
 
-    getContractScriptParamsUplc(config: CT) {
+    getContractScriptParamsUplc(config: capoDelegateConfig) {
         // //@ts-expect-error - spurious "could be instantiated with an unrelated type"
         // const params: CT = {
         //     rev: config.rev,
@@ -192,20 +188,6 @@ export class ContractBasedDelegate<
         //         }
         //     })
         // ) as UplcRecord<CT>
-    }
-
-    /**
-     * specialized delegate module for customizing policies atop the basic delegate
-     * ## REQUIRED: define it with a `get` accessor
-     * like this: `get specializedDelegateModule() { return MySpecializedDelegate; }`
-     * @remarks
-     * The basic mint delegate contains an "unspecialized" implementation of this
-     * customization, which doesn't have any special restrictions (or special capabilities)
-     * @public
-     **/
-    get specializedDelegateModule(): HeliosModuleSrc {
-        throw new Error(`redirect to bundle`);
-        return UnspecializedDelegate;
     }
 
     tcxWithCharterRef<TCX extends StellarTxnContext | hasCharterRef>(tcx: TCX) {
@@ -449,6 +431,57 @@ export class ContractBasedDelegate<
         });
     }
 
+
+    /**
+     * A spend-delegate activity indicating that a delegated-data controller will be governing
+     * an update to a specific piece of delegated data.  No further redeemer details are needed here,
+     * but the data-delegate's controller-token may have additional details in ITS redeemer,
+     * which will be aligned with the one.
+     *
+     * May be present in the context of a nested MultipleDelegateActivities redeemer, in which
+     * case, multiple cases of the above scenario will be present in a single transaction.
+     */
+    @Activity.redeemer
+    activityUpdatingDelegatedData(
+        recId: string | number[]
+    ): isActivity {
+        const recIdBytes = Array.isArray(recId)
+            ? recId
+            : textToBytes(recId);
+        // const Activity = this.mustGetActivity("UpdatingDelegatedData");
+
+        // this.activity.DeletingDelegatedData
+
+        return {
+            // redeemer: new Activity(uutPurpose, recIdBytes),
+            redeemer: this.activityVariantToUplc("UpdatingDelegatedData", {
+                recId: recIdBytes,
+            }),
+        };
+    }
+
+    /**
+     * A mint-delegate activity indicating that a delegated-data controller will be governing
+     * a deletion (burning its UUT) of a specific piece of delegated data.  No further redeemer details are needed here,
+     * but the data-delegate's controller-token may have additional details in ITS redeemer,
+     * as described in {@link BasicMintDelegate.activityUpdatingDelegatedData}.  See that topic for more details
+     * including multi-activity scenarios.
+     */
+    @Activity.redeemer
+    activityDeletingDelegatedData(
+        recId: string | number[]
+    ): isActivity {
+        const recIdBytes = Array.isArray(recId)
+            ? recId
+            : textToBytes(recId);
+
+            return {
+            redeemer: this.activityVariantToUplc("DeletingDelegatedData", {
+                recId: recIdBytes,
+            }),
+        };
+    }
+
     /**
      * creates the essential datum for a delegate UTxO
      * @remarks
@@ -592,8 +625,7 @@ export type NamedDelegateCreationOptions<
     thisType extends Capo<any>,
     DT extends StellarDelegate
 > = DelegateCreationOptions<
-    string & keyof thisType["delegateRoles"]["namedDelegate"]["variants"],
-    DT
+    string & keyof thisType["delegateRoles"]["namedDelegate"]["variants"]
 > & {
     /**
      * Optional name for the UUT; uses the delegate name if not provided.
@@ -609,8 +641,7 @@ export type NamedDelegateCreationOptions<
 
 export type DelegateCreationOptions<
     STRATEGIES extends string,
-    DT extends StellarDelegate
-> = MinimalDelegateLink<DT> & {
+> = MinimalDelegateLink & {
     /**
      * details for creating the delegate
      */

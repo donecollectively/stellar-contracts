@@ -377,7 +377,7 @@ export type NetworkContext<NWT extends Network = Network> = {
 
 //!!! todo: type configuredStellarClass = class -> networkStuff -> withParams = stellar instance.
 
-export type BundleType<T extends StellarContract<any>> = ReturnType<T["scriptBundle"]>;
+export type BundleType<T extends StellarContract<any>> = HeliosScriptBundle //; ReturnType<T["scriptBundle"]>;
 
 /**
  * Basic wrapper and off-chain facade for interacting with a single Plutus contract script
@@ -546,16 +546,16 @@ export class StellarContract<
             // this.bundle = this.loadBundle();
         }
         if (this.usesContractScript) {
-            if (!this.bundle) {
+            if (!this.getBundle()) {
                 throw new Error(
                     `${this.constructor.name}: missing required this.bundle for contract class`
                 );
-            } else if (!(this.bundle instanceof HeliosScriptBundle)) {
+            } else if (!(this.getBundle() instanceof HeliosScriptBundle)) {
                 throw new Error(
                     `${
                         this.constructor.name
                     }: this.bundle must be a HeliosScriptBundle; got ${
-                        (this.bundle as any).constructor.name
+                        (this.getBundle()).constructor.name
                     }`
                 );
             } else {
@@ -828,7 +828,7 @@ export class StellarContract<
      **/
     get onChainActivitiesType() {
         const { scriptActivitiesName: onChainActivitiesName } = this;
-        if (!this.bundle) throw new Error(`no scriptProgram`);
+        if (!this._bundle) throw new Error(`no scriptProgram`);
         const scriptNamespace = this.program.name;
         const {
             [scriptNamespace]: { [onChainActivitiesName]: ActivitiesType },
@@ -986,7 +986,7 @@ export class StellarContract<
     get program() {
         if (this._cache.program) return this._cache.program;
 
-        const program = this.bundle!.program;
+        const program = this.getBundle()!.program;
 
         return (this._cache.program = program);
     }
@@ -1458,9 +1458,9 @@ export class StellarContract<
     }
 
     _bundle: BundleType<this> | undefined;
-    get bundle() : BundleType<this> & HeliosScriptBundle {
+    getBundle<THIS extends StellarContract<any>>(this:THIS) : BundleType<THIS> & HeliosScriptBundle {
         if (!this._bundle) {
-            this._bundle = this.scriptBundle() as BundleType<this> & HeliosScriptBundle;
+            this._bundle = this.scriptBundle() as BundleType<THIS> & HeliosScriptBundle;
         }
         return this._bundle;
     }
@@ -1476,7 +1476,7 @@ export class StellarContract<
      * for triggering contract behaviors.
      */
     get activity() : BundleType<this>["Activity"] {
-        return this.bundle.Activity
+        return this.getBundle().Activity
     }
 
     /**

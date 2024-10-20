@@ -66,8 +66,8 @@ importers:
         specifier: node_modules/@helios-lang/compat
         version: link:node_modules/@helios-lang/compat
       '@microsoft/api-extractor':
-        specifier: ^7.47.9
-        version: 7.47.9(@types/node@20.16.2)
+        specifier: ^7.47.11
+        version: 7.47.11(@types/node@20.16.2)
       '@rollup/plugin-json':
         specifier: ^6.0.1
         version: 6.1.0(rollup@3.29.4)
@@ -88,7 +88,7 @@ importers:
         version: 3.29.4
       rollup-plugin-api-extractor:
         specifier: ^0.2.5
-        version: 0.2.5(@microsoft/api-extractor@7.47.9(@types/node@20.16.2))(rollup@3.29.4)(tslib@2.7.0)
+        version: 0.2.5(@microsoft/api-extractor@7.47.11(@types/node@20.16.2))(rollup@3.29.4)(tslib@2.7.0)
       rollup-plugin-esbuild:
         specifier: ^6.1.0
         version: 6.1.1(esbuild@0.19.12)(rollup@3.29.4)
@@ -542,8 +542,8 @@ packages:
   '@microsoft/api-extractor-model@7.29.8':
     resolution: {integrity: sha512-t3Z/xcO6TRbMcnKGVMs4uMzv/gd5j0NhMiJIGjD4cJMeFJ1Hf8wnLSx37vxlRlL0GWlGJhnFgxvnaL6JlS+73g==}
 
-  '@microsoft/api-extractor@7.47.9':
-    resolution: {integrity: sha512-TTq30M1rikVsO5wZVToQT/dGyJY7UXJmjiRtkHPLb74Prx3Etw8+bX7Bv7iLuby6ysb7fuu1NFWqma+csym8Jw==}
+  '@microsoft/api-extractor@7.47.11':
+    resolution: {integrity: sha512-lrudfbPub5wzBhymfFtgZKuBvXxoSIAdrvS2UbHjoMT2TjIEddq6Z13pcve7A03BAouw0x8sW8G4txdgfiSwpQ==}
     hasBin: true
 
   '@microsoft/tsdoc-config@0.17.0':
@@ -684,8 +684,8 @@ packages:
       '@types/node':
         optional: true
 
-  '@rushstack/ts-command-line@4.22.8':
-    resolution: {integrity: sha512-XbFjOoV7qZHJnSuFUHv0pKaFA4ixyCuki+xMjsMfDwfvQjs5MYG0IK5COal3tRnG7KCDe2l/G+9LrzYE/RJhgg==}
+  '@rushstack/ts-command-line@4.23.0':
+    resolution: {integrity: sha512-jYREBtsxduPV6ptNq8jOKp9+yx0ld1Tb/Tkdnlj8gTjazl1sF3DwX2VbluyYrNd0meWIL0bNeer7WDf5tKFjaQ==}
 
   '@types/argparse@1.0.38':
     resolution: {integrity: sha512-ebDJ9b0e702Yr7pWgB0jzm+CX4Srzz8RcXtLJDJB+BSccqMa36uyH/zUsSYao5+BD1ytv3k3rPYCq4mAE1hsXA==}
@@ -1548,7 +1548,7 @@ snapshots:
     transitivePeerDependencies:
       - '@types/node'
 
-  '@microsoft/api-extractor@7.47.9(@types/node@20.16.2)':
+  '@microsoft/api-extractor@7.47.11(@types/node@20.16.2)':
     dependencies:
       '@microsoft/api-extractor-model': 7.29.8(@types/node@20.16.2)
       '@microsoft/tsdoc': 0.15.0
@@ -1556,7 +1556,7 @@ snapshots:
       '@rushstack/node-core-library': 5.9.0(@types/node@20.16.2)
       '@rushstack/rig-package': 0.5.3
       '@rushstack/terminal': 0.14.2(@types/node@20.16.2)
-      '@rushstack/ts-command-line': 4.22.8(@types/node@20.16.2)
+      '@rushstack/ts-command-line': 4.23.0(@types/node@20.16.2)
       lodash: 4.17.21
       minimatch: 3.0.8
       resolve: 1.22.8
@@ -1680,7 +1680,7 @@ snapshots:
     optionalDependencies:
       '@types/node': 20.16.2
 
-  '@rushstack/ts-command-line@4.22.8(@types/node@20.16.2)':
+  '@rushstack/ts-command-line@4.23.0(@types/node@20.16.2)':
     dependencies:
       '@rushstack/terminal': 0.14.2(@types/node@20.16.2)
       '@types/argparse': 1.0.38
@@ -2067,9 +2067,9 @@ snapshots:
 
   retry@0.12.0: {}
 
-  rollup-plugin-api-extractor@0.2.5(@microsoft/api-extractor@7.47.9(@types/node@20.16.2))(rollup@3.29.4)(tslib@2.7.0):
+  rollup-plugin-api-extractor@0.2.5(@microsoft/api-extractor@7.47.11(@types/node@20.16.2))(rollup@3.29.4)(tslib@2.7.0):
     dependencies:
-      '@microsoft/api-extractor': 7.47.9(@types/node@20.16.2)
+      '@microsoft/api-extractor': 7.47.11(@types/node@20.16.2)
       rollup: 3.29.4
       tslib: 2.7.0
 

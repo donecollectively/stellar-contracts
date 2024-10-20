@@ -9,7 +9,7 @@ import {
 } from "../StellarContract.js";
 
 import { StellarDelegate } from "./StellarDelegate.js";
-import type { Capo, CapoBaseConfig } from "../Capo.js";
+import type { Capo, CapoConfig } from "../Capo.js";
 import type { ContractBasedDelegate } from "./ContractBasedDelegate.js";
 
 /**
@@ -104,7 +104,7 @@ export type capoDelegateConfig = configBaseWithRev & {
  * delegateRoles() helper.
  * @public
  **/
-export type RoleMap<KR extends Record<string, RoleInfo<any, any, any, any>>> = {
+export type RoleMap<KR extends Record<string, RoleInfo<any, any, any>>> = {
     [roleName in keyof KR]: KR[roleName];
 };
 
@@ -141,7 +141,7 @@ export function delegateRoles<const RM extends RoleMap<any>>(
 export type RoleInfo<
     Vmap extends Record<variantNames, VariantStrategy<SC>>,
     UUTP extends string,
-    SC extends StellarDelegate<capoDelegateConfig>= StellarDelegate<capoDelegateConfig>,
+    SC extends StellarDelegate = StellarDelegate ,
     variantNames extends string = string & keyof Vmap,
 > = {
     uutPurpose: UUTP;
@@ -168,12 +168,12 @@ export function defineRole<
     const UUTP extends string,
     const Vmap extends Record<string, VariantStrategy<SC>>, //& RoleInfo<SC, any, UUTP>["variants"]
     const base extends undefined | stellarSubclass<SC>,
-    SC extends StellarDelegate<capoDelegateConfig> 
+    SC extends StellarDelegate 
     // & ( 
     //     // base extends undefined ? StellarDelegate<capoDelegateConfig> :
     //      base extends stellarSubclass<infer sc> ? sc : unknown      
     // ) 
-    = StellarDelegate<capoDelegateConfig> & ( 
+    = StellarDelegate & ( 
         base extends stellarSubclass<infer sc> ? 
         sc : unknown  // NOTE: type (XX & unknown) is same as XX
     )
@@ -295,12 +295,12 @@ export type SelectedDelegate<SC extends StellarContract<any>> = {
  * @typeParam DT - a StellarContract class conforming to the `roleName`,
  *     within the scope of a Capo class's `roles()`.
  **/
-export type ConfiguredDelegate<DT extends StellarDelegate<any>> = {
+export type ConfiguredDelegate<DT extends StellarDelegate> = {
     delegateClass: stellarSubclass<DT>;
     delegate: DT;
     roleName: string;
-    fullCapoDgtConfig: Partial<CapoBaseConfig> & ConfigFor<DT>;
-} & RelativeDelegateLink<DT>;
+    fullCapoDgtConfig: Partial<CapoConfig> & capoDelegateConfig;
+} & RelativeDelegateLink;
 
 /**
  * Minimal structure for connecting a specific Capo contract to a configured StellarDelegate
@@ -315,10 +315,10 @@ export type ConfiguredDelegate<DT extends StellarDelegate<any>> = {
  * @typeParam DT - the base class, to which all role-strategy variants conform
  * @public
  **/
-export type RelativeDelegateLink<DT extends StellarDelegate<any>> = {
+export type RelativeDelegateLink = {
     uutName: string;
     strategyName: string;
-    config: Partial<ConfigFor<DT>>;
+    config: Partial<capoDelegateConfig>;
     delegateValidatorHash?: ValidatorHash;
     // reqdAddress?: Address; removed
     // addrHint?: Address[]; moved to config

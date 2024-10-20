@@ -1,3 +1,6 @@
+export { mkHeliosModule } from "./src/helios/HeliosModuleSrc.js";
+export type { HeliosModuleSrc } from "./src/helios/HeliosModuleSrc.js";
+export { heliosRollupLoader } from "./src/helios/heliosRollupLoader.js";
 export {
     mkValuesEntry,
     mkUutValuesEntries,
@@ -5,7 +8,7 @@ export {
     realDiv,
     debugMath,
     realMul,
-    toFixedReal
+    toFixedReal,
 } from "./src/utils.js";
 export {
     displayTokenName,
@@ -20,7 +23,7 @@ export {
     txInputAsString,
     lovelaceToAda,
     errorMapAsString,
-    addrAsString, 
+    addrAsString,
     byteArrayAsString,
     txidAsString,
     txOutputIdAsString,
@@ -29,14 +32,13 @@ export {
     datumExpanded,
     hexToPrintableString,
     dumpAny,
-    betterJsonSerializer
+    betterJsonSerializer,
 } from "./src/diagnostics.js";
-
 
 export { UutName, type SeedAttrs } from "./src/delegation/UutName.js";
 export {
     Capo,
-    type CapoBaseConfig,
+    type CapoConfig as CapoBaseConfig,
     type MinimalDelegateLink,
 } from "./src/Capo.js";
 
@@ -44,26 +46,21 @@ export { CapoWithoutSettings } from "./src/CapoWithoutSettings.js";
 
 export type {
     MintUutActivityArgs,
-    CharterDatumProps, 
+    CharterDatumProps,
     FoundDatumUtxo,
     FoundUut,
     uutPurposeMap,
     DelegatedDataPredicate,
     hasAllUuts,
-    hasBootstrappedConfig,
+    hasBootstrappedCapoConfig as hasBootstrappedConfig,
     hasCharterRef,
     hasSettingsRef,
     hasUutContext,
 } from "./src/Capo.js";
 
-export {
-   type utxoPredicate,
-   UtxoHelper
-} from "./src/UtxoHelper.js";
+export { type utxoPredicate, UtxoHelper } from "./src/UtxoHelper.js";
 
-export {
-    SettingsAdapter,
-} from "./src/CapoSettingsTypes.js";
+export { SettingsAdapter } from "./src/CapoSettingsTypes.js";
 export type {
     ParsedSettings,
     WrappedSettingsAdapterBridge,
@@ -131,9 +128,8 @@ export type {
     ConfigFor,
 } from "./src/StellarContract.js";
 
-
 export { DatumAdapter } from "./src/DatumAdapter.js";
-export type { 
+export type {
     BigIntRecord,
     Numeric,
     RawBytes,
@@ -145,11 +141,11 @@ export type {
     inferOffchainNumericType,
 } from "./src/DatumAdapter.js";
 
-export { 
+export {
     DelegatedDatumAdapter,
     type AnyDataTemplate,
     type hasAnyDataTemplate,
-} from "./src/DelegatedDatumAdapter.js";
+} from "./src/delegation/DelegatedDatumAdapter.js";
 
 export {
     type DgDataCreationAttrs,
@@ -157,10 +153,13 @@ export {
     type DelegatedDatumTypeName,
     type updateActivityFunc,
     type seedActivityFunc,
-    DelegatedDataContract
+    DelegatedDataContract,
 } from "./src/delegation/DelegatedDataContract.js";
 
-export { CapoMinter, type BasicMinterParams } from "./src/minting/CapoMinter.js";
+export {
+    CapoMinter,
+    type BasicMinterParams,
+} from "./src/minting/CapoMinter.js";
 
 import type { CharterDatumProps } from "./src/Capo.js";
 
@@ -169,6 +168,10 @@ import type { CharterDatumProps } from "./src/Capo.js";
  * @internal
  */
 export type DefaultCharterDatumArgs = CharterDatumProps;
+export * from "./src/helios/HeliosScriptBundle.js";
+export { CapoDelegateBundle } from "./src/delegation/CapoDelegateBundle.js";
+export { CapoHeliosBundle } from "./src/CapoHeliosBundle.js";
+export { HeliosScriptBundle } from "./src/helios/HeliosScriptBundle.js";
 
 export type {
     tokenNamesOrValuesEntry,
@@ -200,18 +203,12 @@ export type {
 //     StakeAddress,
 // } from "./src/HeliosPromotedTypes.js";
 import * as helios from "@hyperionbt/helios";
-export { 
+export {
     StellarNetworkEmulator,
-    type NetworkSnapshot
+    type NetworkSnapshot,
 } from "./src/testing/StellarNetworkEmulator.js";
 
 export { helios };
-export { mkHeliosModule } from "./src/helios/HeliosModuleSrc.js";
-export type { HeliosModuleSrc } from "./src/helios/HeliosModuleSrc.js";
-export { heliosRollupLoader } from "./src/helios/heliosRollupLoader.js";
 export * from "./src/testing/index.js";
 
 export type { TestHelperState } from "./src/testing/types.js";
-
-
-

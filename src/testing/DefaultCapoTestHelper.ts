@@ -10,10 +10,10 @@ import { CapoTestHelper } from "./CapoTestHelper.js";
 import type { ConfigFor, stellarSubclass } from "../StellarContract.js";
 import { Capo } from "../Capo.js";
 import type {
-    CapoBaseConfig,
+    CapoConfig,
     CharterDatumProps,
     MinimalCharterDatumArgs,
-    hasBootstrappedConfig,
+    hasBootstrappedCapoConfig,
     hasUutContext,
 } from "../Capo.js";
 // import { CapoMinter } from "../minting/CapoMinter.js";
@@ -22,6 +22,7 @@ import type { expect as expectType } from "vitest";
 // import type { CapoOffchainSettingsType } from "../CapoSettingsTypes.js";
 import { CapoWithoutSettings } from "../CapoWithoutSettings.js";
 import type { VariantStrategy } from "../delegation/RolesAndDelegates.js";
+import type { UutName } from "../delegation/UutName.js";
 
 declare namespace NodeJS {
     interface Global {
@@ -158,7 +159,9 @@ export class DefaultCapoTestHelper<
                 helperTxn as any, 
                 "namedDelegate", 
                 {
-                    strategyName: delegateName
+                    strategyName: delegateName,
+                    uutName: (helperTxn.state.uuts[delegateName] as UutName).name,
+                    config: {}
                 }
             );
 

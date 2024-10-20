@@ -6,6 +6,7 @@
         "module": "NodeNext",
         "declaration": true,
         // "sourceMap": true,
+        "customConditions": ["dev"],
         "declarationMap": true,
         "moduleResolution": "NodeNext",
         "importHelpers": true,
@@ -27,7 +28,11 @@
         "noImplicitAny": false,
         // "typeRoots": ["./node_modules/@types", "./src/@types"],
         "rootDir": ".",
-        "outDir": "lib"
+        "outDir": "lib",
+        "paths": {
+            "@donecollectively/stellar-contracts": ["./src/index.ts"],
+            "src/*": ["./src/*"]
+        }
     },
     "files": [ "index.ts", 
      //"src/helios/HeliosScriptBundle.js" 
@@ -38,7 +43,7 @@
         "src/**/*.ts", 
         "src/**/*.js",
         "test/**/*.ts", 
-        "test/**/*.hl", 
+        "test/**/*.hl"
     ],
     "exclude": ["**/node_modules/"]
 }

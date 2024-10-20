@@ -71,28 +71,31 @@ export function heliosRollupTypeGen(
     const isJavascript = /\.js$/;
     return {
         name: "helios-type-gen",
-        async buildStart(this: PluginContext, options: InputOptions): Promise<void> {
+        async buildStart(
+            this: PluginContext,
+            options: InputOptions
+        ): Promise<void> {
             console.log("heliosTypeGen: buildStart");
             const loading = StellarHeliosProject.loadExistingProject();
             if (loading) {
                 project = await loading;
                 // write all the types for the bundles loaded in the project
-                project.generateBundleTypes()
+                project.generateBundleTypes();
             } else {
                 project = new StellarHeliosProject();
                 // gives the rollup build a chance to gather all new bundles at once
-                project.deferredWriteProjectFile(5000)
+                project.deferredWriteProjectFile(5000);
             }
-            this.addWatchFile(project.projectFilename)
-            this.addWatchFile(project.compiledProjectFilename)
+            this.addWatchFile(project.projectFilename);
+            this.addWatchFile(project.compiledProjectFilename);
         },
         buildEnd: {
             order: "pre",
             handler(this: PluginContext, error?: Error) {
-                // write the project file after the build, skipping any 
+                // write the project file after the build, skipping any
                 // pending delay from calls to `deferredWriteProjectFile()`
                 console.log("heliosTypeGen: buildEnd");
-                return project.writeProjectFile();  
+                return project.writeProjectFile();
             },
         },
         resolveId: {
@@ -126,11 +129,11 @@ export function heliosRollupTypeGen(
                         return resolved;
                     }
                 }
-            }
+            },
         },
         load: {
             order: "pre",
-            handler: function(id: string) {
+            handler: function (id: string) {
                 // the source is a relative path name
                 // the importer is an a fully resolved id of the imported module
                 // console.log("heliosTypeGen: resolveId");
@@ -148,16 +151,29 @@ export function heliosRollupTypeGen(
                     return null;
                 }
 
-                if (id.match(/\.hlbundle\.ts$/)) {
-                    throw new Error(
-                        `${id} should be a .js file, not a .ts file (HeliosTypeGen will provide types for it)`
+                const isTypescript = id.match(/\.hlbundle\.ts$/);
+                if (isTypescript) {
+                    // throw new Error(
+                    //     `${id} should be a .js file, not a .ts file (HeliosTypeGen will provide types for it)`
+                    // );
+
+                    console.log("heliosTypeGen: found Typescript .hlbundle.ts (not .js):", id);
+                    const ignoredFile = id.replace(/.*\/(.*.hlbundle).ts/, "$1.d.ts.ignored");
+                    console.log(
+                        `Generating types in \`${ignoredFile}\` for your reference\n` +
+                            "   ... this will be ignored by Typescript, but you can copy the types from it to your .ts file\n" +
+                            "   ... to keep them synced manually with the discovered types from your Helios source\n"
                     );
+                    console.log(
+                        "To automatically use generated types, use the *.hlbundle.js file type instead of .ts\n\n"
+                    );
+                    project.registerBundle(id, ".d.ts.ignored")
                 }
                 if (project.hasBundleClass(id)) {
                     //      writing types is handled in a batch at the top
                     //      project.writeTypeInfo(id);
-                } else {
-                    project.registerBundle(id);
+                } else if (!isTypescript){
+                    project.registerBundle(id)
                 }
                 return null;
                 //     id: source,
