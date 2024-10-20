@@ -41,7 +41,10 @@ import { DatumAdapter, type adapterParsedOnchainData } from "./DatumAdapter.js";
 import { UtxoHelper, type utxoPredicate } from "./UtxoHelper.js";
 // import { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
 // import { uplcDataSerializer } from "./delegation/jsonSerializers.js";
-import { HeliosScriptBundle, type HeliosBundleClass } from "./helios/HeliosScriptBundle.js";
+import {
+    HeliosScriptBundle,
+    type HeliosBundleClass,
+} from "./helios/HeliosScriptBundle.js";
 import type { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
 
 type NetworkName = "testnet" | "mainnet";
@@ -377,7 +380,7 @@ export type NetworkContext<NWT extends Network = Network> = {
 
 //!!! todo: type configuredStellarClass = class -> networkStuff -> withParams = stellar instance.
 
-export type BundleType<T extends StellarContract<any>> = HeliosScriptBundle //; ReturnType<T["scriptBundle"]>;
+export type BundleType<T extends StellarContract<any>> = HeliosScriptBundle; //; ReturnType<T["scriptBundle"]>;
 
 /**
  * Basic wrapper and off-chain facade for interacting with a single Plutus contract script
@@ -555,7 +558,7 @@ export class StellarContract<
                     `${
                         this.constructor.name
                     }: this.bundle must be a HeliosScriptBundle; got ${
-                        (this.getBundle()).constructor.name
+                        this.getBundle().constructor.name
                     }`
                 );
             } else {
@@ -1458,61 +1461,65 @@ export class StellarContract<
     }
 
     _bundle: BundleType<this> | undefined;
-    getBundle<THIS extends StellarContract<any>>(this:THIS) : BundleType<THIS> & HeliosScriptBundle {
+    getBundle<THIS extends StellarContract<any>>(
+        this: THIS
+    ): BundleType<THIS> & HeliosScriptBundle {
         if (!this._bundle) {
-            this._bundle = this.scriptBundle() as BundleType<THIS> & HeliosScriptBundle;
+            this._bundle = this.scriptBundle() as BundleType<THIS> &
+                HeliosScriptBundle;
+            this._bundle.addTypeProxies();
         }
         return this._bundle;
     }
 
     /**
      * Provides access to the script's activities with type-safe structures needed by the validator script.
-     * 
+     *
      * @remarks - the **redeemer** data (needed by the contract script) is defined as one or
-     * more activity-types (e.g. in a struct, or an enum as indicated in the type of the last argument to 
-     * the validator function).  
-     *   - See below for more about type-generation if your editor doesn't  provide auto-complete for 
+     * more activity-types (e.g. in a struct, or an enum as indicated in the type of the last argument to
+     * the validator function).
+     *   - See below for more about type-generation if your editor doesn't  provide auto-complete for
      *   the activities.
-     * 
+     *
      * ### A terminology note: Activities and Redeemers
-     * 
+     *
      * Although the conventional terminology of "redeemer" is universally well-known
-     * in the Cardano developer community, we find that defining one or more **activities**, 
+     * in the Cardano developer community, we find that defining one or more **activities**,
      * with their associated ***redeemer data***, provides an effective semantic model offering
      * better clarity and intution.
-     * 
+     *
      * Each type of contract activity corresponds to an enum variant in the contract script.
      * For each of those variants, its redeemer data contextualizes the behavior of the requested
-     * transaction.  A non-enum redeemer-type implies that there is only one type of activity.  
-     * 
-     * Any data not present in the transaction inputs or outputs, but needed for 
+     * transaction.  A non-enum redeemer-type implies that there is only one type of activity.
+     *
+     * Any data not present in the transaction inputs or outputs, but needed for
      * specificity of the requested activity, can only be provided through these activity details.
      * If that material is like a "claim ticket", it would match the "redeemer" type of labeling.
-     * 
-     * Activity data can include any kinds of details needed by the validator: settings for what it 
-     * is doing, options for how it is being done, or what remaining information the validator may 
+     *
+     * Activity data can include any kinds of details needed by the validator: settings for what it
+     * is doing, options for how it is being done, or what remaining information the validator may
      * need, to verify the task is being completed according to protocol.  Transactions containing
-     * a variety of inputs and output, each potential candidates for an activity, can use the activity 
+     * a variety of inputs and output, each potential candidates for an activity, can use the activity
      * details to resolve ambiguity so the validator easily acts on the correct items.
-     * 
+     *
      * ### Type generation
-     * The activity types should be available through type-safe auto-complete in your editor.  If not, 
-     * you may need to install and configure the Stellar Contracts rollup plugins for importing .hl 
-     * files and generating .d.ts for your .hlbundle.js files.  See the Stellar Contracts development 
+     * The activity types should be available through type-safe auto-complete in your editor.  If not,
+     * you may need to install and configure the Stellar Contracts rollup plugins for importing .hl
+     * files and generating .d.ts for your .hlbundle.js files.  See the Stellar Contracts development
      * guide for additional details.
-     * 
+     *
      */
-    get activity() : BundleType<this>["Activity"] {
-        return this.getBundle().Activity
+    get activity(): BundleType<this>["Activity"] {
+        return this.getBundle().Activity;
     }
 
     /**
      * Redirect for intuitive developers having a 'redeemer' habit
-     * 
+     *
      * @deprecated - We recommend using `activity` instead of `redeemer`
      */
-    get redeemer() : BundleType<this>["Activity"] {
-        return this.activity
+    get redeemer(): BundleType<this>["Activity"] {
+        return this.activity;
     }
 
     //! it requires each subclass to define a contractSource
@@ -1522,7 +1529,7 @@ export class StellarContract<
                 `...each Stellar Contract must provide a scriptBundle() method. \n` +
                 `It should return an instance of a class defined in a *.hlbundle.js file.  At minimum:\n\n` +
                 `    export default class MyScriptBundle extends HeliosScriptBundle {\n\n    }\n\n` +
-                `We'll generate types for that .js file, based on the types in your Helios sources.\n`+
+                `We'll generate types for that .js file, based on the types in your Helios sources.\n` +
                 `Your scriptBundle() method can \`return new MyScriptBundle();\``
         );
     }

@@ -237,24 +237,9 @@ export type HeliosBundleTypes = {
 };
 
 export abstract class HeliosScriptBundle {
-    constructor() {
-        // const typeGenerator = new BundleTypeGenerator(this);
-
-        // const {activityTypeDetails, datumTypeDetails} = typeGenerator;
-        // this.Activity = this.createMkActivityProxy(activityTypeDetails);
-        // this.mkDatum = this.createMkDataProxy(datumTypeDetails);
-        // this.readDatum = this.createReadDataProxy(datumTypeDetails);
-    }
-    // todo: refine this type
-    Activity: makesAnyActivity<any>;
-    mkDatum: Option<makesAnyData<any>>;
-    readDatum: Option<readsAnyData<any>>
-
-    // addProxies<T>() {
-    //     this.mkDatum = new mkDatumProxy()
-    //     this.mkRedeemer = new mkRedeemerProxy()
-    //     this.readDatum = new readDatumProxy()
-    // }
+    declare Activity: makesAnyActivity<any>;
+    declare mkDatum: Option<makesAnyData<any>>;
+    declare readDatum: Option<readsAnyData<any>>;
 
     abstract get main(): HeliosModuleSrc;
     abstract get modules(): HeliosModuleSrc[];
@@ -265,10 +250,16 @@ export abstract class HeliosScriptBundle {
         });
     }
 
-    createMkActivityProxy(
-        typeDetails: anyTypeDetails
-    ): makesAnyActivity<any> {
+    addTypeProxies() {
+        const typeGenerator = new BundleTypeGenerator(this);
+        const { activityTypeDetails, datumTypeDetails } = typeGenerator;
 
+        this.Activity = this.createMkActivityProxy(activityTypeDetails);
+        this.mkDatum = this.createMkDataProxy(datumTypeDetails);
+        this.readDatum = this.createReadDataProxy(datumTypeDetails);
+    }
+
+    createMkActivityProxy(typeDetails: anyTypeDetails): makesAnyActivity<any> {
         // throw new Error(`implement me!`)
         return (() => {}) as any;
     }
@@ -276,7 +267,9 @@ export abstract class HeliosScriptBundle {
     createMkDataProxy(
         typeDetails: Option<anyTypeDetails>
     ): Option<makesAnyData<any>> {
-        if (!typeDetails) { return undefined }
+        if (!typeDetails) {
+            return undefined;
+        }
 
         // throw new Error(`implement me!`)
         return (() => {}) as any;
@@ -285,7 +278,9 @@ export abstract class HeliosScriptBundle {
     createReadDataProxy(
         typeDetails: Option<anyTypeDetails>
     ): Option<readsAnyData<any>> {
-        if (!typeDetails) { return undefined }
+        if (!typeDetails) {
+            return undefined;
+        }
 
         // throw new Error(`implement me!`)
         return (() => {}) as any;
