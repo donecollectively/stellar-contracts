@@ -28,7 +28,7 @@ import type {
  } from "@helios-lang/codec-utils";
  import uutMintingMintDelegate from "./uutMintingMintDelegate.hl";
  import { CapoDelegateBundle } from "../../delegation/CapoDelegateBundle.js";
- import type { EnumType, makesEnumData, readsUplcEnumData, singleEnumVariant } from "../../helios/HeliosScriptBundle.js";
+ import type { EnumType, expanded, makesEnumData, readsUplcEnumData, singleEnumVariant } from "../../helios/HeliosScriptBundle.js";
  
 /** ------------ BEGIN hlbundle types ------------ */
 export type DelegationDetail = {
@@ -306,6 +306,6 @@ export default class BundleMintDelegateWithGenericUuts extends CapoDelegateBundl
     declare mkDatum: makesEnumData<DelegateDatumLike>;
     declare readDatum: readsUplcEnumData<DelegateDatum>;
 
-    declare Activity: makesEnumData<DelegateActivityLike>;
+    declare Activity: makesEnumData<DelegateActivityLike, "forActivities">;
 
 }

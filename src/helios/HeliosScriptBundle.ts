@@ -10,6 +10,8 @@ import type {
 import type { DataType } from "@helios-lang/compiler/src/index.js";
 import type { EachUnionElement } from "./typeUtils.js";
 import { BundleTypeGenerator } from "./BundleTypeGenerator.js";
+import { ActivityMaker, DataMaker } from "./dataBridge/dataMakers.js";
+import { DataReader } from "./dataBridge/DataReader.js";
 
 export type HeliosBundleClass = new () => HeliosScriptBundle;
 
@@ -31,8 +33,8 @@ export type readsAnyData<T> = T extends EnumType<any, any>
     ? readsUplcEnumData<T>
     : readsUplcData<T>;
 
-export type readsUplcEnumData<nestedType> = {
-    placeholder(): "placeholder";
+export type readsUplcEnumData<T> = {
+    read(UplcData): T;
 };
 
 export type readsUplcData<canonicalType> = (x: UplcData) => canonicalType;
@@ -41,7 +43,7 @@ export type makesActivity<permissiveType> = // ... a function type
     (arg: permissiveType) => isActivity & { redeemer: UplcData };
 
 export type makesAnyActivity<T> = T extends EnumType<any, any>
-    ? makesActivityEnum<any, any>
+    ? makesEnumData<any, "forActivities", any>
     : makesActivity<any>;
 // | mkActivityEnum<any, any>
 // | mkActivity<any>;
@@ -160,9 +162,13 @@ if (false) {
     type test = "x" | "y" extends "x" ? true : false; // false
     type test2 = "x" extends "x" | "y" ? true : false; // true
     const test2Value: test2 = true;
+
+    type t = never extends "foo" ? true : false; // true
+    type t2 = "foo" extends never ? true : false; // false    
 }
 
-// special case for the singletonField variety, in which there is no record of field-names -> types
+// special case for the singletonField variety, in which 
+//   there is no structure with { fieldNames -> types }
 type singletonVariantFieldAllowedInputType<
     V extends anySingleEnumVariant,
     forActivities extends "forActivities" | never = never
@@ -170,65 +176,64 @@ type singletonVariantFieldAllowedInputType<
 
 type variantFieldArity<V extends anySingleEnumVariant> = V["variantKind"];
 
-type ExtractVariantMakerSignature<
+// type BridgedData<NAME extends string, T> = UplcData
+type EnumUplcResult<
+    V extends anySingleEnumVariant,
+    forActivities extends "forActivities" | never = never,
+    hasData = {
+        uplcData: V["uplcData"];
+        variantName: V["variantName"];
+        enumId: V["enumId"];
+    }
+> = "forActivities" extends forActivities ? { redeemer: hasData } : hasData;
+
+
+type VariantMakerSignature<
     VARIANTS extends VariantMap,
     singleVariantName extends keyof VARIANTS,
     ET extends EnumType<any, any>,
     forActivities extends "forActivities" | never = never,
     THIS_VARIANT extends anySingleEnumVariant = VARIANTS[singleVariantName],
+    // RESULT_TYPE=forActivities extends "forActivities" ? {redeemer: THIS_VARIANT} : THIS_VARIANT,
+    RESULT_TYPE = EnumUplcResult<THIS_VARIANT, forActivities>,
     ARITY = variantFieldArity<THIS_VARIANT>
-> =
-    // VARIANTS[singleVariantName] extends singleEnumVariant<ET, any, any, any, infer ARITY, any>
-    //     ?
-    ARITY extends "tagOnly"
-        ? {
-              // is a simple getter, no function call needed
-              [v in singleVariantName]: THIS_VARIANT;
-          }
-        : ARITY extends "singletonField"
-        ? {
-              // is a function call with a single arg for the field type
-              [v in singleVariantName]: (
-                  // NOTE: the single inner type is proactively unwrapped
-                  //  ... by the type-generator, before this type is ever expanded
-                  field: singletonVariantFieldAllowedInputType<
-                      VARIANTS[singleVariantName],
-                      forActivities
-                  >
-              ) => VARIANTS[singleVariantName];
-          }
-        : ARITY extends "fields"
-        ? {
-              [v in singleVariantName]: (
-                  //  has {field:type, ... } form
-                  fields: VARIANTS[singleVariantName]["data"] // todo: expand the field types with forActivities-sensitivity
-              ) => VARIANTS[singleVariantName];
-          }
-        : never;
+> = ARITY extends "tagOnly"
+    ? // is a simple getter, no function call needed
+      RESULT_TYPE
+    : ARITY extends "singletonField"
+    ? (
+          // is a function call with a single arg for the field type
+          // NOTE: the single inner type is proactively unwrapped
+          //  ... by the type-generator, before this type is ever expanded
+          field: singletonVariantFieldAllowedInputType<
+              VARIANTS[singleVariantName],
+              forActivities
+          >
+      ) => RESULT_TYPE
+    : ARITY extends "fields"
+    ? // is a function call for the permissive type in {field:type, ... } form
+      // todo: expand the field types with forActivities-sensitivity?
+      (fields: VARIANTS[singleVariantName]["data"]) => RESULT_TYPE
+    : never;
 
 // the mkEnum type becomes a smashed type of all possible variant-accessors of any signature.
 // this brings together all the separate constructors from individual variant object-types into a single type
 // due to use of 'keyof' and
 
+export type expanded<T> = {
+    [k in keyof T]: T
+}
+
 export type makesEnumData<
     ET extends EnumType<any, any>,
+    forActivities extends "forActivities" | never = never,
     VARIANTS extends VariantMap = ET extends EnumType<any, infer VARIANTS>
         ? VARIANTS
-        : never
-> = {
+        : never,
+> = expanded<{
     // prettier-ignore
-    [k in keyof VARIANTS]: ExtractVariantMakerSignature<VARIANTS, k, ET>
-};
-
-export type makesActivityEnum<
-    ET extends EnumType<any, any>,
-    VARIANTS extends VariantMap = ET extends EnumType<any, infer VARIANTS>
-        ? VARIANTS
-        : never
-> = {
-    // prettier-ignore
-    [k in keyof VARIANTS]: ExtractVariantMakerSignature<VARIANTS, k, ET, "forActivities">
-};
+    [k in keyof VARIANTS]: VariantMakerSignature<VARIANTS, k, ET, forActivities>
+}>;
 
 /**
  * General type information for the datum and redeemer types in a helios script
@@ -266,9 +271,11 @@ export abstract class HeliosScriptBundle {
         const typeGenerator = new BundleTypeGenerator(this);
         const { activityTypeDetails, datumTypeDetails } = typeGenerator;
 
-        this.Activity = this.createMkActivityProxy(activityTypeDetails);
-        this.mkDatum = this.createMkDataProxy(datumTypeDetails);
-        this.readDatum = this.createReadDataProxy(datumTypeDetails);
+        this.Activity = new ActivityMaker(activityTypeDetails);
+        if (datumTypeDetails) {
+            this.mkDatum = new DataMaker(datumTypeDetails);
+            this.readDatum = new DataReader(datumTypeDetails);
+        }
     }
 
     createMkActivityProxy(typeDetails: anyTypeDetails): makesAnyActivity<any> {
@@ -404,3 +411,8 @@ export abstract class HeliosScriptBundle {
 //     //     return new ProgramTypeProxy(this.program, this.namespace, typeName)
 //     // }
 // }
+
+// const cast = new Cast(schema, {
+//     isMainnet: this.setup.isMainnet || false,
+// });
+// return cast.toUplcData(data, path);
