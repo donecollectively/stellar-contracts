@@ -22,14 +22,20 @@ import type {
     Value,
 } from "@helios-lang/ledger";
 import type { Cast } from "@helios-lang/contract-utils";
-import type { 
-    IntLike,
-    ByteArrayLike,
- } from "@helios-lang/codec-utils";
- import uutMintingMintDelegate from "./uutMintingMintDelegate.hl";
- import { CapoDelegateBundle } from "../../delegation/CapoDelegateBundle.js";
- import type { EnumType, expanded, makesEnumData, readsUplcEnumData, singleEnumVariant } from "../../helios/HeliosScriptBundle.js";
- 
+import type { IntLike, ByteArrayLike } from "@helios-lang/codec-utils";
+import uutMintingMintDelegate from "./uutMintingMintDelegate.hl";
+import { CapoDelegateBundle } from "../../delegation/CapoDelegateBundle.js";
+import type {
+    EnumType,
+    expanded,
+    makesUplcActivityEnumData,
+    VariantMakerSignature,
+    readsUplcEnumData,
+    singleEnumVariant,
+    anySeededActivity,
+    makesUplcEnumData,
+} from "../../helios/HeliosScriptBundle.js";
+
 /** ------------ BEGIN hlbundle types ------------ */
 export type DelegationDetail = {
     capoAddr: Address
@@ -298,14 +304,86 @@ export type DelegateActivityLike = EnumType<{module: "uutMintingDelegate", enumN
 /** ------------- hlbundle types END ------------- */
 
 
+type makesDelegateDatum = makesUplcEnumData<DelegateDatumLike>
+
+/**
+ * A specialized minting delegate for testing purposes
+ */
 export default class BundleMintDelegateWithGenericUuts extends CapoDelegateBundle {
     get specializedDelegateModule() {
         return uutMintingMintDelegate;
+        // this.Activity.CreatingDelegatedData({
+
+        // })
     }
 
-    declare mkDatum: makesEnumData<DelegateDatumLike>;
+    declare mkDatum: makesDelegateDatum;;
     declare readDatum: readsUplcEnumData<DelegateDatum>;
 
-    declare Activity: makesEnumData<DelegateActivityLike, "forActivities">;
+    declare Activity: makesUplcActivityEnumData<DelegateActivityLike>;
+}
 
+if (false) {
+    // ... type tests
+
+    {
+        // seeded activity
+        type seededVariant = singleEnumVariant<
+            DelegateActivityLike,
+            "CreatingDelegatedData",
+            "Constr#5",
+            "fields",
+            {
+                seed: TxOutputId | string;
+                dataType: string;
+            },
+            "isSeededActivity"
+        >;
+        const seededActivityWorks: seededVariant extends anySeededActivity
+            ? true
+            : false = true;
+
+        type seededVariantMaker = VariantMakerSignature<seededVariant>;
+        const callVariantMaker: seededVariantMaker = (() => {}) as any;
+        // sample calls for checking different type-signatures
+        callVariantMaker(
+            {
+                txId: "" as unknown as TxId,
+                idx: "" as unknown as bigint,
+            },
+            {
+                dataType: "awesome",
+            }
+        );
+        callVariantMaker({
+            dataType: "awesome",
+            seed: "" as unknown as TxOutputId,
+        });
+    }
+    {
+        // unseeded activity
+        type unseededVariant = singleEnumVariant<
+            DelegateActivityLike,
+            "UpdatingDelegatedData",
+            "Constr#6",
+            "fields",
+            {
+                dataType: string;
+                recId: number[];
+            },
+            "noSpecialFlags"
+        >;
+
+        const unseededActivityWorks: unseededVariant extends anySeededActivity
+            ? true
+            : false = false;
+
+        type unseededVariantMaker = VariantMakerSignature<unseededVariant>; 
+        const callVariantMaker: unseededVariantMaker = (() => {}) as any;
+        // sample calls for checking different type-signatures
+        callVariantMaker({
+            dataType: "awesome",
+            recId: [],
+        });
+    }
 }

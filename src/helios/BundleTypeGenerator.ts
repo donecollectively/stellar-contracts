@@ -7,7 +7,7 @@ import type {
     HeliosBundleTypeDetails,
     HeliosBundleTypes,
     HeliosScriptBundle,
-    makesEnumData,
+    makesUplcActivityEnumData,
     singleEnumVariant,
     typeDetails,
     variantTypeDetails,
@@ -584,19 +584,23 @@ ${this.generateRedeemerApiTypes()}
             //@ts-expect-error - name already guarded above
             accessorName = `mk${typeInfo.typeSchema.name}`;
         }
+        const isActivity = "Activity" == accessorName ? "Activity" : "";
         if (typeInfo.typeSchema.kind === "enum") {
-            return `    ${accessorName}: mkEnum<${typeInfo.typeSchema.name}Like>;\n`;
+            return `    ${accessorName}: makesUplc${isActivity}EnumData<${
+                typeInfo.typeSchema.name
+            }Like>;\n`;
         }
+
         //@ts-expect-error - name not always present
         if (typeInfo.typeSchema.name) {
             //@ts-expect-error - name already guarded above
-            return `    ${accessorName}: dataMaker<${typeInfo.typeSchema.name}Like>;\n`;
+            return `    ${accessorName}: uplcDataMaker<${typeInfo.typeSchema.name}Like>;\n`;
         } else {
             console.log(
-                " ????????? is non-named dataMaker ever used?\nyes:" +
+                " ????????? is non-named uplcDataMaker ever used?\nyes:" +
                     new Error("").stack!.split("\n").splice(2).join("\n")
             );
-            return `    ${accessorName}: dataMaker<${typeInfo.permissiveType}>;\n`;
+            return `    ${accessorName}: uplcDataMaker<${typeInfo.permissiveType}>;\n`;
         }
     }
 
@@ -610,14 +614,14 @@ ${this.generateRedeemerApiTypes()}
             accessorName = `read${typeInfo.typeSchema.name}`;
         }
         if (typeInfo.typeSchema.kind === "enum") {
-            return `    ${accessorName}: readEnum<${typeInfo.typeSchema.name}>;\n`;
+            return `    ${accessorName}: readsUplcEnumData<${typeInfo.typeSchema.name}>;\n`;
         }
         //@ts-expect-error - name not always present
         if (typeInfo.typeSchema.name) {
             //@ts-expect-error - name already guarded above
-            return `    ${accessorName}: readData<${typeInfo.typeSchema.name}>;\n`;
+            return `    ${accessorName}: readsUplcData<${typeInfo.typeSchema.name}>;\n`;
         }
-        return `    ${accessorName}: readData<${typeInfo.canonicalType}>;\n`;
+        return `    ${accessorName}: readsUplcData<${typeInfo.canonicalType}>;\n`;
     }
 }
 

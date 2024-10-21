@@ -24,7 +24,7 @@ import type { Cast } from "@helios-lang/contract-utils";
 
 import UnspecializedMintDelegate from "../delegation/UnspecializedDelegate.hl"
 import { CapoDelegateBundle } from "./CapoDelegateBundle.js"
-import type { EnumType, HeliosScriptBundle, makesEnumData, singleEnumVariant } from "../helios/HeliosScriptBundle.js";
+import type { EnumType, HeliosScriptBundle, makesUplcActivityEnumData, singleEnumVariant } from "../helios/HeliosScriptBundle.js";
 import type { 
     IntLike,
     ByteArrayLike,

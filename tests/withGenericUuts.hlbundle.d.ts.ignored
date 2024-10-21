@@ -99,9 +99,9 @@ export type CapoActivityLike = EnumType<{module: "CapoHelpers", enumName: "CapoA
 export default
 class CapoBundleWithGenericUuts 
 extends CapoHeliosBundle {
-    mkDatum: dataMaker<DataLike>;
-    readDatum: readData<Data>;
+    mkDatum: uplcDataMaker<DataLike>;
+    readDatum: readsUplcData<Data>;
 
-    Activity: mkEnum<CapoActivityLike>;
+    Activity: makesUplcActivityEnumData<CapoActivityLike>;
 
 }

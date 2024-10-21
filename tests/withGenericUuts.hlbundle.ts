@@ -22,7 +22,7 @@ import type {
     Value,
 } from "@helios-lang/ledger";
 import type { Cast } from "@helios-lang/contract-utils";
-import { dataMaker, EnumType, makesEnumData, readsUplcData, singleEnumVariant } from "../src/helios/HeliosScriptBundle";
+import { uplcDataMaker, EnumType, makesUplcActivityEnumData, readsUplcData, singleEnumVariant } from "../src/helios/HeliosScriptBundle";
 
 
 /** ------------ BEGIN hlbundle types ------------ */
@@ -69,8 +69,6 @@ export type CapoActivityLike = EnumType<{module: "CapoHelpers", enumName: "CapoA
     >
 }
 >;
-
-
 /** ------------- hlbundle types END ------------- */
 
 
@@ -81,7 +79,7 @@ export default class CapoBundleWithGenericUuts extends CapoHeliosBundle {
     //         // additional custom .hl module imports here
     //     ];
     // }
-    declare mkDatum: dataMaker<any>;
+    declare mkDatum: uplcDataMaker<any>;
     declare readDatum: readsUplcData<any>;
-    declare Activity: makesEnumData<CapoActivityLike>;
+    declare Activity: makesUplcActivityEnumData<CapoActivityLike>;
 }

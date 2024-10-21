@@ -1,7 +1,7 @@
 import type { UplcData } from "@helios-lang/uplc";
 import { CachedHeliosProgram } from "./CachedHeliosProgram.js";
 import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
-import type { isActivity } from "../StellarContract.js";
+import type { hasSeed, isActivity } from "../StellarContract.js";
 import type {
     EnumTypeSchema,
     TypeSchema,
@@ -12,39 +12,44 @@ import type { EachUnionElement } from "./typeUtils.js";
 import { BundleTypeGenerator } from "./BundleTypeGenerator.js";
 import { ActivityMaker, DataMaker } from "./dataBridge/dataMakers.js";
 import { DataReader } from "./dataBridge/DataReader.js";
+import type { TxOutputId } from "@helios-lang/ledger-babbage";
+import type { hasSeedUtxo } from "../StellarTxnContext.js";
+import type { SeedAttrs } from "../delegation/UutName.js";
 
 export type HeliosBundleClass = new () => HeliosScriptBundle;
 
 // external-facing types for reading and writing data for use in contract scripts.
 // 1. create data for Datum or other non-Activity scenarios
 
-export type makesAnyData<T> = T extends EnumType<any, any>
-    ? makesEnumData<T>
-    : dataMaker<T>;
+export type makesSomeUplcData<
+    T
+> = T extends EnumType<any, any>
+    ? makesUplcEnumData<T>
+    : uplcDataMaker<T>;
 
 // still drafting this...
-export type dataMaker<permissiveType> =
+export type uplcDataMaker<permissiveType> =
     | ((arg: permissiveType) => UplcData)
     | never;
 
 // 2. read data from Datum.  Can also be used for returned results
 //  ... of utility functions defined in Helios code.
-export type readsAnyData<T> = T extends EnumType<any, any>
+export type readsSomeUplcData<T> = T extends EnumType<any, any>
     ? readsUplcEnumData<T>
     : readsUplcData<T>;
 
-export type readsUplcEnumData<T> = {
-    read(UplcData): T;
+export type readsUplcEnumData<T extends EnumType<any,any>> = {
+    read(x: UplcData): T;
 };
 
 export type readsUplcData<canonicalType> = (x: UplcData) => canonicalType;
 
-export type makesActivity<permissiveType> = // ... a function type
+export type makesUplcActivityData<permissiveType> = // ... a function type
     (arg: permissiveType) => isActivity & { redeemer: UplcData };
 
-export type makesAnyActivity<T> = T extends EnumType<any, any>
-    ? makesEnumData<any, "forActivities", any>
-    : makesActivity<any>;
+export type makesSomeActivityData<T> = T extends EnumType<any, any>
+    ? makesUplcActivityEnumData<any, any>
+    : makesUplcActivityData<any>;
 // | mkActivityEnum<any, any>
 // | mkActivity<any>;
 
@@ -158,23 +163,23 @@ type isSeeded<
         : never
 > = FLAGS extends "isSeededActivity" ? true : false;
 
+export type anySeededActivity = singleEnumVariant<
+    any,
+    any,
+    any,
+    any,
+    {seed: TxOutputId | string},
+    "isSeededActivity"
+>;
+
 if (false) {
     type test = "x" | "y" extends "x" ? true : false; // false
     type test2 = "x" extends "x" | "y" ? true : false; // true
     const test2Value: test2 = true;
 
-    type t = never extends "foo" ? true : false; // true
-    type t2 = "foo" extends never ? true : false; // false    
+    const t : never extends "foo" ? true : false = true
+    const t2 : "foo" extends never ? true : false = false
 }
-
-// special case for the singletonField variety, in which 
-//   there is no structure with { fieldNames -> types }
-type singletonVariantFieldAllowedInputType<
-    V extends anySingleEnumVariant,
-    forActivities extends "forActivities" | never = never
-> = true extends isSeeded<V> ? V["data"] : V["data"];
-
-type variantFieldArity<V extends anySingleEnumVariant> = V["variantKind"];
 
 // type BridgedData<NAME extends string, T> = UplcData
 type EnumUplcResult<
@@ -187,53 +192,87 @@ type EnumUplcResult<
     }
 > = "forActivities" extends forActivities ? { redeemer: hasData } : hasData;
 
-
-type VariantMakerSignature<
-    VARIANTS extends VariantMap,
-    singleVariantName extends keyof VARIANTS,
-    ET extends EnumType<any, any>,
+// special case for the singletonField variety, in which
+//   there is no structure with { fieldNames -> types }
+type _singletonFieldVariantCreator<
+    V extends anySingleEnumVariant,
     forActivities extends "forActivities" | never = never,
-    THIS_VARIANT extends anySingleEnumVariant = VARIANTS[singleVariantName],
+    rawArgType = V["data"],
+    RESULT_TYPE = EnumUplcResult<V, forActivities>,
+    rawFuncType = (field: rawArgType) => RESULT_TYPE
+> = 
+        // is a function call with a single arg for the field type
+        // NOTE: the single inner type is proactively unwrapped
+        //  ... by the type-generator, before this type is ever expanded
+    V extends anySeededActivity ? forActivities extends "forActivities" ? (
+        (seedOrSeedArg: hasSeed | rawArgType) => RESULT_TYPE
+) : rawFuncType : rawFuncType;
+
+type remainingFields<T> = {// same as expanded<T>
+    [k in keyof T]: T[k];
+};
+
+type _nonSeededFieldsType<V extends anySeededActivity> = remainingFields<{
+    [k in Exclude<keyof V["data"], "seed">]: V["data"][k];
+}>;
+
+type _multiFieldVariantCreator<
+    V extends anySingleEnumVariant,
+    forActivities extends "forActivities" | never = never,
+    RESULT_TYPE = EnumUplcResult<V, forActivities>,
+    seedArg = V extends anySeededActivity ?
+            ( hasSeedUtxo | SeedAttrs )
+    : "notSeeded",
+    rawFuncType = (fields: V["data"]) => RESULT_TYPE,
+    seededFuncType = (...args: [ seedArg, _nonSeededFieldsType<V>] | [V["data"]]) => RESULT_TYPE
+> = V extends anySeededActivity ? (seededFuncType ) : rawFuncType;
+
+export type VariantMakerSignature<
+    VARIANT extends anySingleEnumVariant,
+    forActivities extends "forActivities" | never = never,
     // RESULT_TYPE=forActivities extends "forActivities" ? {redeemer: THIS_VARIANT} : THIS_VARIANT,
-    RESULT_TYPE = EnumUplcResult<THIS_VARIANT, forActivities>,
-    ARITY = variantFieldArity<THIS_VARIANT>
+    RESULT_TYPE = EnumUplcResult<VARIANT, forActivities>,
+    ARITY = _variantFieldArity<VARIANT>
 > = ARITY extends "tagOnly"
     ? // is a simple getter, no function call needed
       RESULT_TYPE
     : ARITY extends "singletonField"
-    ? (
-          // is a function call with a single arg for the field type
-          // NOTE: the single inner type is proactively unwrapped
-          //  ... by the type-generator, before this type is ever expanded
-          field: singletonVariantFieldAllowedInputType<
-              VARIANTS[singleVariantName],
-              forActivities
-          >
-      ) => RESULT_TYPE
+    ? _singletonFieldVariantCreator<VARIANT, forActivities>      
     : ARITY extends "fields"
     ? // is a function call for the permissive type in {field:type, ... } form
       // todo: expand the field types with forActivities-sensitivity?
-      (fields: VARIANTS[singleVariantName]["data"]) => RESULT_TYPE
+      _multiFieldVariantCreator<VARIANT, forActivities, RESULT_TYPE>
     : never;
+
+type _variantFieldArity<V extends anySingleEnumVariant> = V["variantKind"];
 
 // the mkEnum type becomes a smashed type of all possible variant-accessors of any signature.
 // this brings together all the separate constructors from individual variant object-types into a single type
 // due to use of 'keyof' and
 
 export type expanded<T> = {
-    [k in keyof T]: T
-}
+    [k in keyof T]: T[k];
+};
 
-export type makesEnumData<
+export type makesUplcActivityEnumData<
     ET extends EnumType<any, any>,
-    forActivities extends "forActivities" | never = never,
     VARIANTS extends VariantMap = ET extends EnumType<any, infer VARIANTS>
         ? VARIANTS
-        : never,
-> = expanded<{
+        : never
+> = {
     // prettier-ignore
-    [k in keyof VARIANTS]: VariantMakerSignature<VARIANTS, k, ET, forActivities>
-}>;
+    [k in keyof VARIANTS]: VariantMakerSignature<VARIANTS[k], "forActivities">
+};
+
+export type makesUplcEnumData<
+    ET extends EnumType<any, any>,
+    VARIANTS extends VariantMap = ET extends EnumType<any, infer VARIANTS>
+        ? VARIANTS
+        : never
+> = {
+    // prettier-ignore
+    [k in keyof VARIANTS]: VariantMakerSignature<VARIANTS[k], never>
+};
 
 /**
  * General type information for the datum and redeemer types in a helios script
@@ -254,9 +293,11 @@ export type HeliosBundleTypes = {
 };
 
 export abstract class HeliosScriptBundle {
-    declare Activity: makesAnyActivity<any>;
-    declare mkDatum: Option<makesAnyData<any>>;
-    declare readDatum: Option<readsAnyData<any>>;
+    // these are the most abstract possible forms of the proxies for these 3 types
+    // specific subclasses will use some much more specific types for them instead
+    declare Activity: makesSomeActivityData<any>;
+    declare mkDatum: Option<makesSomeUplcData<any>>;
+    declare readDatum: Option<readsSomeUplcData<any>>;
 
     abstract get main(): HeliosModuleSrc;
     abstract get modules(): HeliosModuleSrc[];
@@ -278,14 +319,14 @@ export abstract class HeliosScriptBundle {
         }
     }
 
-    createMkActivityProxy(typeDetails: anyTypeDetails): makesAnyActivity<any> {
+    createMkActivityProxy(typeDetails: anyTypeDetails): makesSomeActivityData<any> {
         // throw new Error(`implement me!`)
         return (() => {}) as any;
     }
 
     createMkDataProxy(
         typeDetails: Option<anyTypeDetails>
-    ): Option<makesAnyData<any>> {
+    ): Option<makesSomeUplcData<any>> {
         if (!typeDetails) {
             return undefined;
         }
@@ -296,7 +337,7 @@ export abstract class HeliosScriptBundle {
 
     createReadDataProxy(
         typeDetails: Option<anyTypeDetails>
-    ): Option<readsAnyData<any>> {
+    ): Option<readsSomeUplcData<any>> {
         if (!typeDetails) {
             return undefined;
         }

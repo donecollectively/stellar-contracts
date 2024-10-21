@@ -1,7 +1,6 @@
 import { anyDataMaker } from "./someDataMaker.js";
 
 export class ActivityMaker extends anyDataMaker {
-
     isActivityMaker : boolean = true
 
 }

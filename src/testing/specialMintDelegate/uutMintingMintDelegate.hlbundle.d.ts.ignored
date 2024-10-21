@@ -318,9 +318,9 @@ export type DelegateActivityLike = EnumType<{module: "uutMintingDelegate", enumN
 export default
 class BundleMintDelegateWithGenericUuts 
 extends CapoDelegateBundle {
-    mkDatum: mkEnum<DelegateDatumLike>;
-    readDatum: readEnum<DelegateDatum>;
+    mkDatum: makesUplcEnumData<DelegateDatumLike>;
+    readDatum: readsUplcEnumData<DelegateDatum>;
 
-    Activity: mkEnum<DelegateActivityLike>;
+    Activity: makesUplcActivityEnumData<DelegateActivityLike>;
 
 }

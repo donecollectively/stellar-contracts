@@ -26,8 +26,7 @@ import type { Cast } from "@helios-lang/contract-utils";
 import {
     HeliosScriptBundle,
     type EnumType,
-    type makesActivityEnum,
-    type makesEnumData,
+    type makesUplcActivityEnumData,
     type singleEnumVariant,    
 } from "../helios/HeliosScriptBundle.js";
 import CapoMinter from "./CapoMinter.hl";
@@ -59,7 +58,7 @@ import { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
 //     Value,
 // } from "@helios-lang/ledger";
 // import type { Cast } from "@helios-lang/contract-utils";
-// import type {
+// import type { 
 //     IntLike,
 //     ByteArrayLike,
 //  } from "@helios-lang/codec-utils";
@@ -181,7 +180,7 @@ export type MinterActivityLike = EnumType<{module: "CapoMintHelpers", enumName: 
 export default class CapoMinterBundle extends HeliosScriptBundle {
     capoBundle: CapoHeliosBundle;
     // no datum types in this script
-    declare Activity: makesActivityEnum<MinterActivityLike>;
+    declare Activity: makesUplcActivityEnumData<MinterActivityLike>;
 
     constructor(capoBundle: CapoHeliosBundle) {
         super();
