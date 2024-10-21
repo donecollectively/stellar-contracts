@@ -34,7 +34,9 @@ import type {
     singleEnumVariant,
     anySeededActivity,
     makesUplcEnumData,
+    ActivityVariantMakerSignature,
 } from "../../helios/HeliosScriptBundle.js";
+import type { SeedAttrs } from "../../delegation/UutName.js";
 
 /** ------------ BEGIN hlbundle types ------------ */
 export type DelegationDetail = {
@@ -312,9 +314,6 @@ type makesDelegateDatum = makesUplcEnumData<DelegateDatumLike>
 export default class BundleMintDelegateWithGenericUuts extends CapoDelegateBundle {
     get specializedDelegateModule() {
         return uutMintingMintDelegate;
-        // this.Activity.CreatingDelegatedData({
-
-        // })
     }
 
     declare mkDatum: makesDelegateDatum;;
@@ -322,6 +321,8 @@ export default class BundleMintDelegateWithGenericUuts extends CapoDelegateBundl
 
     declare Activity: makesUplcActivityEnumData<DelegateActivityLike>;
 }
+
+
 
 if (false) {
     // ... type tests
@@ -343,7 +344,7 @@ if (false) {
             ? true
             : false = true;
 
-        type seededVariantMaker = VariantMakerSignature<seededVariant>;
+        type seededVariantMaker = ActivityVariantMakerSignature<seededVariant>;
         const callVariantMaker: seededVariantMaker = (() => {}) as any;
         // sample calls for checking different type-signatures
         callVariantMaker(
@@ -386,4 +387,23 @@ if (false) {
             recId: [],
         });
     }
+
+    const tester = "fake" as unknown as BundleMintDelegateWithGenericUuts; {
+        // if these don't show type errors, then they're good expressions / type tests
+        tester.Activity.CreatingDelegatedData({} as unknown as SeedAttrs, {
+            dataType: "awesome",
+        }) 
+        tester.mkDatum.IsDelegation({
+            capoAddr: "" as unknown as Address,
+            mph: "",
+            tn: [],
+        })
+        // todo: support an inline proxy for generating a nested enum:
+        //@ts-expect-error - temporarily.
+        tester.Activity.CapoLifecycleActivities.CreatingDelegate({
+
+        })
+
+    }
+
 }
