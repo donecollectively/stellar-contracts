@@ -69,10 +69,10 @@ enum CapoDatum {
         //xxx delegateLink: RelativeDelegateLink  // such link info would be unnormalized
     }
     
-    TypeMapInfo {
-        typeMapInfoFlag: String // = "{{}}" 
-        data: TypeMap
-    }
+    // TypeMapInfo {
+    //     typeMapInfoFlag: String // = "{{}}" 
+    //     data: TypeMap
+    // }
 
     // this needs to be a method on the CapoDatum enum,
     // ... because it's called by other methods here, AND

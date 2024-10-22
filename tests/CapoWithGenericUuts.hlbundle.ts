@@ -23,6 +23,7 @@ import type {
 } from "@helios-lang/ledger";
 import type { Cast } from "@helios-lang/contract-utils";
 import { uplcDataMaker, EnumType, makesUplcActivityEnumData, readsUplcData, singleEnumVariant } from "../src/helios/HeliosScriptBundle";
+import { IntLike, ByteArrayLike } from "@helios-lang/codec-utils";
 
 
 /** ------------ BEGIN hlbundle types ------------ */
@@ -52,37 +53,6 @@ export type AnyDataLike = {
 };
 
 
-export type TypeRefImportDetails = TypeRefImportDetails
-export type TypeRefImportDetailsLike = TypeRefImportDetailsLike
-
-export type TypeMapRef = {
-    importDetails: TypeRefImportDetails
-    utxoRef: Option<TxOutputId>
-    variety: string
-    ref: string
-};
-
-export type TypeMapRefLike = {
-    importDetails: TypeRefImportDetailsLike
-    utxoRef: Option<TxOutputId | string>
-    variety: string
-    ref: string
-};
-
-
-export type TypeMap = {
-    localTypes: Map<string, TypeInfo>
-    inheritFlag: string
-    inherit: Array<TypeMapRef>
-};
-
-export type TypeMapLike = {
-    localTypes: Map<string, TypeInfoLike>
-    inheritFlag: string
-    inherit: Array<TypeMapRefLike>
-};
-
-
 export type CapoDatum = EnumType<{module: "CapoHelpers", enumName: "CapoDatum"}, {
         CharterToken: singleEnumVariant<CapoDatum, "CharterToken",
             "Constr#0", 
@@ -104,13 +74,6 @@ export type CapoDatum = EnumType<{module: "CapoHelpers", enumName: "CapoDatum"},
                 data: AnyData,
                 version: bigint,
                 otherDetails: UplcData
-            }, "noSpecialFlags"
-        >,
-        TypeMapInfo: singleEnumVariant<CapoDatum, "TypeMapInfo",
-            "Constr#3", 
-            "fields", {
-                typeMapInfoFlag: string,
-                data: TypeMap
             }, "noSpecialFlags"
         >
     }
@@ -137,13 +100,6 @@ export type CapoDatumLike = EnumType<{module: "CapoHelpers", enumName: "CapoDatu
                 data: AnyDataLike,
                 version: IntLike,
                 otherDetails: UplcData
-            }, "noSpecialFlags"
-        >,
-        TypeMapInfo: singleEnumVariant<CapoDatum, "TypeMapInfo",
-            "Constr#3", 
-            "fields", {
-                typeMapInfoFlag: string,
-                data: TypeMapLike
             }, "noSpecialFlags"
         >
     }

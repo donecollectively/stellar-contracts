@@ -142,11 +142,13 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             spendingDelegatedDatum => true,  // more checks below.
             // ^ this is part one of j6bmfv
             _ => error("invalid activity on DelegatedData")
-        },
-        TypeMapInfo => activity.switch {
-            updatingTypeMap => true,
-            _ => error("invalid activity on TypeMapInfo")
         }
+        // maybe bring this back in v2
+        //, TypeMapInfo => activity.switch {
+        //     updatingTypeMap => true,
+        //     _ => error("invalid activity on TypeMapInfo")
+        // }
+
         // ❗no default case, to ensure that all variants are always covered.
         // _ => true
     };
