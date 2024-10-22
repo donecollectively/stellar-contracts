@@ -29,12 +29,12 @@ import type {
     EnumType,
     expanded,
     makesUplcActivityEnumData,
-    VariantMakerSignature,
+    EnumVariantCreator,
     readsUplcEnumData,
     singleEnumVariant,
     anySeededActivity,
     makesUplcEnumData,
-    ActivityVariantMakerSignature,
+    ActivityEnumVariantCreator,
 } from "../../helios/HeliosScriptBundle.js";
 import type { SeedAttrs } from "../../delegation/UutName.js";
 
@@ -316,7 +316,7 @@ export default class BundleMintDelegateWithGenericUuts extends CapoDelegateBundl
         return uutMintingMintDelegate;
     }
 
-    declare mkDatum: makesDelegateDatum;;
+    declare mkDatum: makesDelegateDatum;
     declare readDatum: readsUplcEnumData<DelegateDatum>;
 
     declare Activity: makesUplcActivityEnumData<DelegateActivityLike>;
@@ -344,7 +344,7 @@ if (false) {
             ? true
             : false = true;
 
-        type seededVariantMaker = ActivityVariantMakerSignature<seededVariant>;
+        type seededVariantMaker = ActivityEnumVariantCreator<seededVariant, "redeemerWrapper">;
         const callVariantMaker: seededVariantMaker = (() => {}) as any;
         // sample calls for checking different type-signatures
         callVariantMaker(
@@ -379,7 +379,7 @@ if (false) {
             ? true
             : false = false;
 
-        type unseededVariantMaker = VariantMakerSignature<unseededVariant>; 
+        type unseededVariantMaker = EnumVariantCreator<unseededVariant>; 
         const callVariantMaker: unseededVariantMaker = (() => {}) as any;
         // sample calls for checking different type-signatures
         callVariantMaker({
@@ -388,22 +388,49 @@ if (false) {
         });
     }
 
-    const tester = "fake" as unknown as BundleMintDelegateWithGenericUuts; {
+    {
+        type nestedEnumVariant = singleEnumVariant<
+            DelegateActivityLike,
+            "CapoLifecycleActivities",
+            "Constr#0",
+            "singletonField",
+            CapoLifecycleActivityLike,
+            "noSpecialFlags"
+        >;
+
+        type nestedEnum = nestedEnumVariant["data"];
+        const nestedThingIsEnum : nestedEnum extends EnumType<any, any> ? true : false = true;
+        const nestedEnumVariantIsSeeded: nestedEnumVariant["data"]["variants"]["CreatingDelegate"] extends anySeededActivity
+            ? true
+            : false = true;
+        type nestedEnumMaker = makesUplcActivityEnumData<nestedEnum>
+        const t : nestedEnumMaker = "fake" as any;
+    }
+
+
+    const integratedTest = "fake" as unknown as BundleMintDelegateWithGenericUuts; {
         // if these don't show type errors, then they're good expressions / type tests
-        tester.Activity.CreatingDelegatedData({} as unknown as SeedAttrs, {
+        integratedTest.Activity.CreatingDelegatedData({} as unknown as SeedAttrs, {
             dataType: "awesome",
-        }) 
-        tester.mkDatum.IsDelegation({
+        });
+
+        integratedTest.mkDatum.IsDelegation({
             capoAddr: "" as unknown as Address,
             mph: "",
             tn: [],
-        })
+        });
+
         // todo: support an inline proxy for generating a nested enum:
-        //@ts-expect-error - temporarily.
-        tester.Activity.CapoLifecycleActivities.CreatingDelegate({
-
-        })
-
+        integratedTest.Activity.CapoLifecycleActivities.CreatingDelegate({ 
+            seed: "" as unknown as TxOutputId, 
+            purpose: "awesome" 
+        });
+        integratedTest.Activity.CapoLifecycleActivities.CreatingDelegate({ 
+            txId: "" as unknown as TxId,
+            idx: 0n,
+        }, {
+            purpose: "awesome"
+        });
     }
 
 }

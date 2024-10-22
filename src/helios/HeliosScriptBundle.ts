@@ -166,7 +166,7 @@ type _expandInputFields<V extends anySingleEnumVariant> = {
 
 // -------------------- Non-Activity Variant Creator Types  --------------------
 
-type EnumUplcResult<
+export type EnumUplcResult<
     V extends anySingleEnumVariant,
     hasData = {
         uplcData: V["uplcData"];
@@ -182,7 +182,7 @@ export type makesUplcEnumData<
         : never
 > = {
     // prettier-ignore
-    [k in keyof VARIANTS]: VariantMakerSignature<VARIANTS[k]>
+    [k in keyof VARIANTS]: EnumVariantCreator<VARIANTS[k]>
 };
 
 type _singletonFieldVariantCreator<
@@ -199,7 +199,7 @@ type _multiFieldVariantCreator<
     rawFuncType = (fields: _expandInputFields<V>) => RESULT_TYPE
 > = rawFuncType;
 
-export type VariantMakerSignature<
+export type EnumVariantCreator<
     VARIANT extends anySingleEnumVariant,
     RESULT_TYPE = EnumUplcResult<VARIANT>,
     ARITY = _variantFieldArity<VARIANT>
@@ -237,19 +237,15 @@ type _singletonFieldActivityVariantCreator<
 type _multiFieldActivityVariantCreator<
     V extends anySingleEnumVariant,
     RESULT_TYPE = EnumUplcActivityResult<V>,
-    seedArg = V extends anySeededActivity
-        ? hasSeedUtxo | SeedAttrs
-        : "notSeeded",
     rawFuncType = (
         fields: // V["data"]
         _expandInputFields<V>
-    ) => RESULT_TYPE,
-    seededFuncType = (
-        ...args: [seedArg, _nonSeededFieldsType<V>] | [V["data"]]
     ) => RESULT_TYPE
-> = V extends anySeededActivity ? seededFuncType : rawFuncType;
+> = V extends anySeededActivity
+    ? makesMultiFieldSeededData<V, RESULT_TYPE>
+    : rawFuncType;
 
-export type ActivityVariantMakerSignature<
+export type ActivityEnumVariantCreator<
     VARIANT extends anySingleEnumVariant,
     RESULT_TYPE = EnumUplcActivityResult<VARIANT>,
     ARITY = _variantFieldArity<VARIANT>
@@ -257,20 +253,32 @@ export type ActivityVariantMakerSignature<
     ? // is a simple getter, no function call needed
       RESULT_TYPE
     : ARITY extends "singletonField"
-    ? _singletonFieldActivityVariantCreator<VARIANT>
+    ? VARIANT["data"] extends EnumType<any, any>
+        ? _noRedeemerWrappers<makesUplcActivityEnumData<VARIANT["data"]>>
+        : _singletonFieldActivityVariantCreator<VARIANT>
     : ARITY extends "fields"
     ? _multiFieldActivityVariantCreator<VARIANT, RESULT_TYPE>
     : never;
 
-export type makesUplcActivityEnumData<
-    ET extends EnumType<any, any>,
-    VARIANTS extends VariantMap = ET extends EnumType<any, infer VARIANTS>
-        ? VARIANTS
-        : never
-> = {
-    // prettier-ignore
-    [k in keyof VARIANTS]: ActivityVariantMakerSignature<VARIANTS[k]>
-};
+export type _noRedeemerWrappers<T extends makesUplcActivityEnumData<any>> = {
+    [k in keyof T]: _noRedeemerWrapper<T[k]>; 
+}
+
+export type _noRedeemerWrapper<T> = T extends (...args: infer A) => {redeemer: infer R} ? (...args: A) => R : T;
+
+export type EnumUplcActivityResult<
+    V extends anySingleEnumVariant,
+    hasData = {
+        uplcData: V["uplcData"];
+        variantName: V["variantName"];
+        enumId: V["enumId"];
+    }
+> = { redeemer: hasData };
+
+// utilities for representing an enum variant-creator having a seed, with 2 possible signatures
+type makesMultiFieldSeededData<V extends anySeededActivity, RESULT_TYPE> = (
+    ...args: [hasSeedUtxo | SeedAttrs, _nonSeededFieldsType<V>] | [V["data"]]
+) => RESULT_TYPE;
 
 type remainingFields<T> = {
     // same as expanded<T>
@@ -281,14 +289,15 @@ type _nonSeededFieldsType<V extends anySeededActivity> = remainingFields<{
     [k in Exclude<keyof V["data"], "seed">]: V["data"][k];
 }>;
 
-type EnumUplcActivityResult<
-    V extends anySingleEnumVariant,
-    hasData = {
-        uplcData: V["uplcData"];
-        variantName: V["variantName"];
-        enumId: V["enumId"];
-    }
-> = { redeemer: hasData };
+export type makesUplcActivityEnumData<
+    ET extends EnumType<any, any>,
+    VARIANTS extends VariantMap = ET extends EnumType<any, infer VARIANTS>
+        ? VARIANTS
+        : never
+> = {
+        // prettier-ignore
+        [k in keyof VARIANTS]: ActivityEnumVariantCreator<VARIANTS[k]>
+            };
 
 /**
  * General type information for the datum and redeemer types in a helios script
