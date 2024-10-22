@@ -4,7 +4,7 @@ import {
 } from "../src/delegation/RolesAndDelegates";
 import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/MintDelegateWithGenericUuts.js";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
-import CapoBundleWithGenericUuts from "./withGenericUuts.hlbundle.js";
+import CapoBundleWithGenericUuts from "./CapoWithGenericUuts.hlbundle.js";
 import { CharterDatumProps } from "../src/Capo.js";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate.js";
 

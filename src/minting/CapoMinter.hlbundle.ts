@@ -179,6 +179,7 @@ export type MinterActivityLike = EnumType<{module: "CapoMintHelpers", enumName: 
  **/
 export default class CapoMinterBundle extends HeliosScriptBundle {
     capoBundle: CapoHeliosBundle;
+    
     // no datum types in this script
     declare Activity: makesUplcActivityEnumData<MinterActivityLike>;
 

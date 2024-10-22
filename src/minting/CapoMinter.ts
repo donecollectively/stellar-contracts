@@ -75,7 +75,8 @@ export class CapoMinter
                 `missing capo in config or partial-config for ${this.constructor.name}`
             );
 
-        const t = new BundleClass(capo.getBundle());
+        const capoBundle = capo.getBundle() as CapoHeliosBundle;
+        const t = new BundleClass(capoBundle);
         return t
     }
 

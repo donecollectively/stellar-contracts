@@ -76,8 +76,8 @@ export class ContractBasedDelegate extends StellarDelegate {
             throw new Error(
                 `missing capo in config or partial-config for ${this.constructor.name}`
             );
-
-        return new BundleClass(capo.getBundle());
+        const capoBundle = capo.getBundle() as CapoHeliosBundle;
+        return new BundleClass(capoBundle);
     }
 
     scriptBundle(): CapoDelegateBundle {

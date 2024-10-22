@@ -21,9 +21,7 @@ export type HeliosBundleClass = new () => HeliosScriptBundle;
 // external-facing types for reading and writing data for use in contract scripts.
 // 1. create data for Datum or other non-Activity scenarios
 
-export type makesSomeUplcData<
-    T
-> = T extends EnumType<any, any>
+export type makesSomeUplcData<T> = T extends EnumType<any, any>
     ? makesUplcEnumData<T>
     : uplcDataMaker<T>;
 
@@ -37,7 +35,7 @@ export type readsSomeUplcData<T> = T extends EnumType<any, any>
     ? readsUplcEnumData<T>
     : readsUplcData<T>;
 
-export type readsUplcEnumData<T extends EnumType<any,any>> = {
+export type readsUplcEnumData<T extends EnumType<any, any>> = {
     read(x: UplcData): T;
 };
 
@@ -46,18 +44,16 @@ export type readsUplcData<canonicalType> = (x: UplcData) => canonicalType;
 export type makesUplcActivityData<permissiveType> = // ... a function type
     (arg: permissiveType) => isActivity & { redeemer: UplcData };
 
-
 export type makesSomeActivityData<T> = T extends EnumType<any, any>
     ? makesUplcActivityEnumData<any, any>
     : makesUplcActivityData<any>;
-
 
 export type AnyHeliosTypeInfo = TypeSchema | anyTypeDetails;
 export type anyTypeDetails = typeDetails | enumTypeDetails;
 
 // creates smashed type of all possible variant-accessors of any signature.
 // this brings together all the separate entries from separate union elements into a single type
-// due to use of 'keyof' 
+// due to use of 'keyof'
 export type expanded<T> = {
     [k in keyof T]: T[k];
 };
@@ -160,13 +156,13 @@ if (false) {
     type test2 = "x" extends "x" | "y" ? true : false; // true
     const test2Value: test2 = true;
 
-    const t : never extends "foo" ? true : false = true
-    const t2 : "foo" extends never ? true : false = false
+    const t: never extends "foo" ? true : false = true;
+    const t2: "foo" extends never ? true : false = false;
 }
 
 type _expandInputFields<V extends anySingleEnumVariant> = {
     [k in keyof V["data"]]: V["data"][k];
-}
+};
 
 // -------------------- Non-Activity Variant Creator Types  --------------------
 
@@ -177,7 +173,7 @@ type EnumUplcResult<
         variantName: V["variantName"];
         enumId: V["enumId"];
     }
-> =  hasData;
+> = hasData;
 
 export type makesUplcEnumData<
     ET extends EnumType<any, any>,
@@ -200,7 +196,7 @@ type _singletonFieldVariantCreator<
 type _multiFieldVariantCreator<
     V extends anySingleEnumVariant,
     RESULT_TYPE = EnumUplcResult<V>,
-    rawFuncType = (fields: _expandInputFields<V>) => RESULT_TYPE,
+    rawFuncType = (fields: _expandInputFields<V>) => RESULT_TYPE
 > = rawFuncType;
 
 export type VariantMakerSignature<
@@ -211,13 +207,12 @@ export type VariantMakerSignature<
     ? // is a simple getter, no function call needed
       RESULT_TYPE
     : ARITY extends "singletonField"
-    ? _singletonFieldVariantCreator<VARIANT>      
+    ? _singletonFieldVariantCreator<VARIANT>
     : ARITY extends "fields"
     ? _multiFieldVariantCreator<VARIANT, RESULT_TYPE>
     : never;
 
 type _variantFieldArity<V extends anySingleEnumVariant> = V["variantKind"];
-
 
 // -------------------- Activity Variant Creator Types --------------------
 
@@ -226,7 +221,7 @@ export type anySeededActivity = singleEnumVariant<
     any,
     any,
     any,
-    {seed: TxOutputId | string},
+    { seed: TxOutputId | string },
     "isSeededActivity"
 >;
 
@@ -235,21 +230,23 @@ type _singletonFieldActivityVariantCreator<
     rawArgType = V["data"],
     RESULT_TYPE = EnumUplcActivityResult<V>,
     rawFuncType = (field: rawArgType) => RESULT_TYPE
-> = V extends anySeededActivity ? (
-    (seedOrSeedArg: hasSeed | rawArgType) => RESULT_TYPE
-) : rawFuncType;
+> = V extends anySeededActivity
+    ? (seedOrSeedArg: hasSeed | rawArgType) => RESULT_TYPE
+    : rawFuncType;
 
 type _multiFieldActivityVariantCreator<
     V extends anySingleEnumVariant,
     RESULT_TYPE = EnumUplcActivityResult<V>,
-    seedArg = V extends anySeededActivity ?
-            ( hasSeedUtxo | SeedAttrs )
-    : "notSeeded",
-    rawFuncType = (fields: 
-        // V["data"]
+    seedArg = V extends anySeededActivity
+        ? hasSeedUtxo | SeedAttrs
+        : "notSeeded",
+    rawFuncType = (
+        fields: // V["data"]
         _expandInputFields<V>
     ) => RESULT_TYPE,
-    seededFuncType = (...args: [ seedArg, _nonSeededFieldsType<V>] | [V["data"]]) => RESULT_TYPE
+    seededFuncType = (
+        ...args: [seedArg, _nonSeededFieldsType<V>] | [V["data"]]
+    ) => RESULT_TYPE
 > = V extends anySeededActivity ? seededFuncType : rawFuncType;
 
 export type ActivityVariantMakerSignature<
@@ -260,7 +257,7 @@ export type ActivityVariantMakerSignature<
     ? // is a simple getter, no function call needed
       RESULT_TYPE
     : ARITY extends "singletonField"
-    ? _singletonFieldActivityVariantCreator<VARIANT>      
+    ? _singletonFieldActivityVariantCreator<VARIANT>
     : ARITY extends "fields"
     ? _multiFieldActivityVariantCreator<VARIANT, RESULT_TYPE>
     : never;
@@ -275,7 +272,8 @@ export type makesUplcActivityEnumData<
     [k in keyof VARIANTS]: ActivityVariantMakerSignature<VARIANTS[k]>
 };
 
-type remainingFields<T> = {// same as expanded<T>
+type remainingFields<T> = {
+    // same as expanded<T>
     [k in keyof T]: T[k];
 };
 
@@ -290,9 +288,7 @@ type EnumUplcActivityResult<
         variantName: V["variantName"];
         enumId: V["enumId"];
     }
-> = { redeemer: hasData } 
-
-
+> = { redeemer: hasData };
 
 /**
  * General type information for the datum and redeemer types in a helios script
@@ -308,7 +304,7 @@ export type HeliosBundleTypeDetails = {
 };
 
 export type HeliosBundleTypes = {
-    datum: DataType | undefined;
+    datum: Option<DataType>;
     redeemer: DataType;
 };
 
@@ -318,6 +314,24 @@ export abstract class HeliosScriptBundle {
     declare Activity: makesSomeActivityData<any>;
     declare mkDatum: Option<makesSomeUplcData<any>>;
     declare readDatum: Option<readsSomeUplcData<any>>;
+
+    /**
+     * optional attribute explicitly naming a type for the datum
+     * @remarks
+     * This can be used if needed for a contract whose entry point uses an abstract
+     * type for the datum; the type-bridge & type-gen system will use this data type
+     * instead of inferrring the type from the entry point.
+     */
+    datumTypeName?: string;
+
+    /**
+     * optional attribute explicitly naming a type for the redeemer
+     * @remarks
+     * This can be used if needed for a contract whose entry point uses an abstract
+     * type for the redeemer; the type-bridge & type-gen system will use this data type
+     * instead of inferring the type from the entry point.
+     */
+    redeemerTypeName?: string;
 
     abstract get main(): HeliosModuleSrc;
     abstract get modules(): HeliosModuleSrc[];
@@ -339,7 +353,9 @@ export abstract class HeliosScriptBundle {
         }
     }
 
-    createMkActivityProxy(typeDetails: anyTypeDetails): makesSomeActivityData<any> {
+    createMkActivityProxy(
+        typeDetails: anyTypeDetails
+    ): makesSomeActivityData<any> {
         // throw new Error(`implement me!`)
         return (() => {}) as any;
     }
@@ -366,32 +382,64 @@ export abstract class HeliosScriptBundle {
         return (() => {}) as any;
     }
 
-    getTopLevelTypes(): HeliosBundleTypes {
+    locateDatumType(): Option<DataType> {
+        let datumType: DataType | undefined;
+        // let datumTypeName: string | undefined;
+
         const program = this.program;
-        // const { program } = this;
+        const programName = program.name;
         const argTypes = program.entryPoint.mainArgTypes;
         const argCount = argTypes.length;
-        const programName = program.name;
-        // const mainModuleTypes = program.entryPoint.userTypes[programName];
-
-        let datumType: DataType | undefined;
-        let redeemerType: DataType;
-        let redeemerTypeName: string = "";
-        let datumTypeName: string = "";
         if (argCount === 2) {
             datumType = argTypes[0];
-            datumTypeName = argTypes[0].name;
-            redeemerType = argTypes[1];
-        } else {
-            // no datum-type for minter
-            // datumType = program.entryPoint.mainArgTypes[0]
-            redeemerType = argTypes[0];
-            redeemerTypeName = argTypes[0].name;
+            // datumTypeName = argTypes[0].name;
         }
 
+        if (this.datumTypeName) {
+            datumType =
+                program.entryPoint.userTypes[programName][this.datumTypeName];
+            if (!datumType) {
+                throw new Error(
+                    `${this.constructor.name}.datumTypeName=\`${this.datumTypeName}\` not found in userTypes of script program ${programName}`
+                );
+            }
+        }
+
+        return datumType;
+    }
+
+    locateRedeemerType(): DataType {
+        const program = this.program;
+        const argTypes = program.entryPoint.mainArgTypes;
+        const argCount = argTypes.length;
+
+        let redeemerType: DataType;
+        if (argCount === 2) {
+            redeemerType = argTypes[1];
+        } else {
+            redeemerType = argTypes[0];
+        }
+
+        if (this.redeemerTypeName) {
+            const programName = program.name;
+            redeemerType =
+                program.entryPoint.userTypes[programName][
+                    this.redeemerTypeName
+                ];
+            if (!redeemerType) {
+                throw new Error(
+                    `${this.constructor.name}.redeemerTypeName=\`${this.redeemerTypeName}\` not found in userTypes of script program ${programName}`
+                );
+            }
+        }
+
+        return redeemerType;
+    }
+
+    getTopLevelTypes(): HeliosBundleTypes {
         return {
-            datum: datumType,
-            redeemer: redeemerType,
+            datum: this.locateDatumType(),
+            redeemer: this.locateRedeemerType(),
         };
     }
 }

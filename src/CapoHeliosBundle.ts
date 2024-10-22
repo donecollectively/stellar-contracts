@@ -14,6 +14,7 @@ export type CapoHeliosBundleClass = new () => CapoHeliosBundle;
 
 export class CapoHeliosBundle extends HeliosScriptBundle {
     main = mainContract;
+    datumTypeName = "CapoDatum"
 
     get modules() {
         return [

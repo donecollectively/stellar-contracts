@@ -32,10 +32,7 @@ import type { EnumMemberType } from "@helios-lang/compiler/src/typecheck/common.
 export class BundleTypeGenerator {
     bundle: HeliosScriptBundle;
     topLevelTypeDetails: HeliosBundleTypeDetails;
-    topLevelDataTypes: {
-        redeemer: DataType;
-        datum?: DataType;
-    };
+    topLevelDataTypes: HeliosBundleTypes;
     namedTypes: Record<string, anyTypeDetails> = {};
 
     constructor(bundle: HeliosScriptBundle) {
@@ -46,11 +43,11 @@ export class BundleTypeGenerator {
         this.topLevelTypeDetails = this.gatherTopLevelTypeDetails(dataTypes);
     }
 
-    get activityTypeDetails() : anyTypeDetails {
+    get activityTypeDetails(): anyTypeDetails {
         return this.topLevelTypeDetails.redeemer;
     }
 
-    get datumTypeDetails() : Option<anyTypeDetails> {
+    get datumTypeDetails(): Option<anyTypeDetails> {
         return this.topLevelTypeDetails.datum;
     }
 
@@ -243,8 +240,18 @@ export class BundleTypeGenerator {
             variantName: schema.name,
             typeSchema: schema,
             dataType: variantDataType,
-            canonicalType: this.mkMinimalType("canonical", schema, undefined, enumId.enumName),
-            permissiveType: this.mkMinimalType("permissive", schema, undefined, enumId.enumName),
+            canonicalType: this.mkMinimalType(
+                "canonical",
+                schema,
+                undefined,
+                enumId.enumName
+            ),
+            permissiveType: this.mkMinimalType(
+                "permissive",
+                schema,
+                undefined,
+                enumId.enumName
+            ),
         };
     }
 
@@ -294,7 +301,7 @@ export class BundleTypeGenerator {
                 )}>`;
             case "struct":
                 if (typeVariety === "permissive") {
-                    nameLikeOrName = $nameLike
+                    nameLikeOrName = $nameLike;
                 }
                 if (useTypeNamesAt) return nameLikeOrName;
 
@@ -310,34 +317,38 @@ export class BundleTypeGenerator {
                     .join("\n")}\n};\n`;
             case "enum":
                 if (typeVariety === "permissive") {
-                    nameLikeOrName = $nameLike
+                    nameLikeOrName = $nameLike;
                 }
                 if (useTypeNamesAt) return nameLikeOrName;
 
                 const module = this.extractModuleName(schema);
-                const enumId : EnumId = {module, enumName: name!}
+                const enumId: EnumId = { module, enumName: name! };
                 const $enumId = this.$enumId(enumId);
                 return `EnumType<${$enumId}, {\n${schema.variantTypes
                     .map((variant) => {
-                        return `        ${variant.name}: ${this.mkMinimalVariantType(
-                            variant, 
-                            enumId, 
-                            typeVariety,
+                        return `        ${
+                            variant.name
+                        }: ${this.mkMinimalVariantType(
+                            variant,
+                            enumId,
+                            typeVariety
                             // "nestedField"
                         )}`;
                     })
                     .join(",\n")}\n    }\n>;\n`;
             case "variant":
                 if (!parentName) {
-                    debugger
-                    throw new Error(
-                        "Variant types need a parent type-name"
-                    );
+                    debugger;
+                    throw new Error("Variant types need a parent type-name");
                 }
-                return this.mkMinimalVariantType(schema, {
-                    enumName: parentName,
-                    module: this.extractModuleName(schema),
-                }, typeVariety );
+                return this.mkMinimalVariantType(
+                    schema,
+                    {
+                        enumName: parentName,
+                        module: this.extractModuleName(schema),
+                    },
+                    typeVariety
+                );
             default:
                 //@ts-expect-error - when all cases are covered, schema is ‹never›
                 throw new Error(`Unsupported schema kind: ${schema.kind}`);
@@ -424,16 +435,16 @@ export class BundleTypeGenerator {
                   }${$nlindent}}`;
 
         const $enumId = this.$enumId(enumId);
-        const specialFlags : string[] = [];
+        const specialFlags: string[] = [];
         if (schema.fieldTypes[0]?.name === "seed") {
             specialFlags.push(`"isSeededActivity"`);
         }
         const $specialFlags = specialFlags.join(" | ") || `"noSpecialFlags"`;
         //pretter-ignore
         const minimalVariantSrc =
-            `singleEnumVariant<${enumId.enumName}, "${variantName}",`+
+            `singleEnumVariant<${enumId.enumName}, "${variantName}",` +
             `${$nlindent}"Constr#${schema.tag}", ${quotedVariety}, ` +
-            `${fieldDefs}, ${$specialFlags}`+
+            `${fieldDefs}, ${$specialFlags}` +
             `${$nloutdent}>`;
         return minimalVariantSrc;
     }
@@ -586,9 +597,7 @@ ${this.generateRedeemerApiTypes()}
         }
         const isActivity = "Activity" == accessorName ? "Activity" : "";
         if (typeInfo.typeSchema.kind === "enum") {
-            return `    ${accessorName}: makesUplc${isActivity}EnumData<${
-                typeInfo.typeSchema.name
-            }Like>;\n`;
+            return `    ${accessorName}: makesUplc${isActivity}EnumData<${typeInfo.typeSchema.name}Like>;\n`;
         }
 
         //@ts-expect-error - name not always present
