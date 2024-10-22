@@ -6,11 +6,11 @@ import { StellarHeliosProject } from "./src/helios/StellarHeliosProject.ts" // t
 import CapoMinterBundle from "./src/minting/CapoMinter.hlbundle.ts";
 import UnspecializedDgtBundle from "./src/delegation/UnspecializedDelegate.hlbundle.ts";
 import BundleMintDelegateWithGenericUuts from "./src/testing/specialMintDelegate/uutMintingMintDelegate.hlbundle.ts";
-import CapoBundleWithGenericUuts from "./tests/withGenericUuts.hlbundle.ts";
+import CapoBundleWithGenericUuts from "./tests/CapoWithGenericUuts.hlbundle.ts";
 
 export const project = new StellarHeliosProject();
 
 project.loadBundleWithClass("./src/minting/CapoMinter.hlbundle.ts", CapoMinterBundle);
 project.loadBundleWithClass("./src/delegation/UnspecializedDelegate.hlbundle.ts", UnspecializedDgtBundle);
 project.loadBundleWithClass("./src/testing/specialMintDelegate/uutMintingMintDelegate.hlbundle.ts", BundleMintDelegateWithGenericUuts);
-project.loadBundleWithClass("./tests/withGenericUuts.hlbundle.ts", CapoBundleWithGenericUuts);
+project.loadBundleWithClass("./tests/CapoWithGenericUuts.hlbundle.ts", CapoBundleWithGenericUuts);
