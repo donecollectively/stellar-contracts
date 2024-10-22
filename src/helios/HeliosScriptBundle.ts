@@ -207,7 +207,9 @@ export type EnumVariantCreator<
     ? // is a simple getter, no function call needed
       RESULT_TYPE
     : ARITY extends "singletonField"
-    ? _singletonFieldVariantCreator<VARIANT>
+    ? VARIANT["data"] extends EnumType<any, any>
+    ? makesUplcEnumData<VARIANT["data"]>
+    : _singletonFieldVariantCreator<VARIANT>
     : ARITY extends "fields"
     ? _multiFieldVariantCreator<VARIANT, RESULT_TYPE>
     : never;

@@ -1,4 +1,3 @@
-
 import type { UplcData } from "@helios-lang/uplc";
 import type {
     Address,
@@ -37,6 +36,7 @@ import type {
     ActivityEnumVariantCreator,
 } from "../../helios/HeliosScriptBundle.js";
 import type { SeedAttrs } from "../../delegation/UutName.js";
+import { textToBytes } from "@hyperionbt/helios";
 
 /** ------------ BEGIN hlbundle types ------------ */
 export type DelegationDetail = {
@@ -52,6 +52,66 @@ export type DelegationDetailLike = {
 };
 
 
+export type FooStruct = {
+    a: bigint
+    b: Map<string, number[]>
+    c: Array<boolean>
+    d: Option<UplcData>
+};
+
+export type FooStructLike = {
+    a: IntLike
+    b: Map<string, number[]>
+    c: Array<boolean>
+    d: Option<UplcData>
+};
+
+
+export type SomeEnum = EnumType<{module: "uutMintingDelegate", enumName: "SomeEnum"}, {
+        w: singleEnumVariant<SomeEnum, "w",
+            "Constr#0", "singletonField", 
+            bigint, "noSpecialFlags"
+        >,
+        x: singleEnumVariant<SomeEnum, "x",
+            "Constr#1", "singletonField", 
+            FooStruct, "noSpecialFlags"
+        >,
+        y: singleEnumVariant<SomeEnum, "y",
+            "Constr#2", 
+            "fields", {
+                m: FooStruct,
+                n: bigint
+            }, "noSpecialFlags"
+        >,
+        z: singleEnumVariant<SomeEnum, "z",
+            "Constr#3", "tagOnly", never, "noSpecialFlags"
+        >
+    }
+>;
+
+export type SomeEnumLike = EnumType<{module: "uutMintingDelegate", enumName: "SomeEnum"}, {
+        w: singleEnumVariant<SomeEnum, "w",
+            "Constr#0", "singletonField", 
+            IntLike, "noSpecialFlags"
+        >,
+        x: singleEnumVariant<SomeEnum, "x",
+            "Constr#1", "singletonField", 
+            FooStructLike, "noSpecialFlags"
+        >,
+        y: singleEnumVariant<SomeEnum, "y",
+            "Constr#2", 
+            "fields", {
+                m: FooStructLike,
+                n: IntLike
+            }, "noSpecialFlags"
+        >,
+        z: singleEnumVariant<SomeEnum, "z",
+            "Constr#3", "tagOnly", never, "noSpecialFlags"
+        >
+    }
+>;
+
+
 export type DelegateDatum = EnumType<{module: "uutMintingDelegate", enumName: "DelegateDatum"}, {
         IsDelegation: singleEnumVariant<DelegateDatum, "IsDelegation",
             "Constr#0", "singletonField", 
@@ -59,6 +119,10 @@ export type DelegateDatum = EnumType<{module: "uutMintingDelegate", enumName: "D
         >,
         ScriptReference: singleEnumVariant<DelegateDatum, "ScriptReference",
             "Constr#1", "tagOnly", never, "noSpecialFlags"
+        >,
+        HasNestedEnum: singleEnumVariant<DelegateDatum, "HasNestedEnum",
+            "Constr#2", "singletonField", 
+            SomeEnum, "noSpecialFlags"
         >
     }
 >;
@@ -70,6 +134,10 @@ export type DelegateDatumLike = EnumType<{module: "uutMintingDelegate", enumName
         >,
         ScriptReference: singleEnumVariant<DelegateDatum, "ScriptReference",
             "Constr#1", "tagOnly", never, "noSpecialFlags"
+        >,
+        HasNestedEnum: singleEnumVariant<DelegateDatum, "HasNestedEnum",
+            "Constr#2", "singletonField", 
+            SomeEnumLike, "noSpecialFlags"
         >
     }
 >;
@@ -306,7 +374,7 @@ export type DelegateActivityLike = EnumType<{module: "uutMintingDelegate", enumN
 /** ------------- hlbundle types END ------------- */
 
 
-type makesDelegateDatum = makesUplcEnumData<DelegateDatumLike>
+type makesDelegateDatum = makesUplcEnumData<DelegateDatumLike>;
 
 /**
  * A specialized minting delegate for testing purposes
@@ -322,10 +390,108 @@ export default class BundleMintDelegateWithGenericUuts extends CapoDelegateBundl
     declare Activity: makesUplcActivityEnumData<DelegateActivityLike>;
 }
 
+if (false) {
+    // ... type tests for Datum and Datum variants
+    {
+        type delegateDatumVariant = singleEnumVariant<
+            DelegateDatum,
+            "IsDelegation",
+            "Constr#0",
+            "singletonField",
+            DelegationDetailLike,
+            "noSpecialFlags"
+        >;
+        const delegateDatumNOTSeeded: delegateDatumVariant extends anySeededActivity
+            ? false // seeded
+            : true = true; // not seeded
 
+        type delegateDatumVariantMaker =
+            EnumVariantCreator<delegateDatumVariant>;
+        const callVariantMaker: delegateDatumVariantMaker = (() => {}) as any;
+        // sample calls for checking different type-signatures
+        callVariantMaker({
+            capoAddr: { fake: true } as unknown as Address,
+            mph: { fake: true } as unknown as MintingPolicyHash,
+            tn: textToBytes("tokenName1234"),
+        });
+        callVariantMaker({
+            capoAddr: "fakeAddressAsString",
+            mph: "fakeMphAsString",
+            tn: textToBytes("tokenName1234"),
+        });
+
+        // negative case:
+        callVariantMaker({
+            capoAddr: "fakeAddress",
+            mph: "fakeMph",
+            //@ts-expect-error - string not OK here (NOTE: OK to make this more permissive later)
+            tn: "badTokenName",
+        });
+    }
+
+    {
+        type nestedEnumVariant = singleEnumVariant<
+            DelegateDatumLike,
+            "HasNestedEnum",
+            "Constr#2",
+            "singletonField",
+            SomeEnumLike,
+            "noSpecialFlags"
+        >;
+
+        type hasTestNestedEnum = nestedEnumVariant["data"];
+        const nestedThingIsEnum: hasTestNestedEnum extends EnumType<any, any>
+            ? true
+            : false = true;
+        const nestedEnumVariantNOTSeeded: nestedEnumVariant["data"]["variants"]["y"] extends anySeededActivity
+            ? false
+            : true = true;
+
+        type nestedEnumMaker = makesUplcActivityEnumData<hasTestNestedEnum>;
+        const t: nestedEnumMaker = "fake" as any;
+        const minimal = { n: 1n, m: {
+            a: 1, 
+            b: new Map(), 
+            c: [], 
+            d: null
+        } };
+        t.y({...minimal});
+
+        t.y({
+            m: {a: 1, b: new Map([ 
+                // ["hey look ma", "no hands" ],
+                ["hello", textToBytes("world") ] 
+            ]), c: [true, false],  d: undefined },
+            n: 42n,
+        }) // should work
+
+        t.y({
+            m: {
+                a: 1, 
+                //@ts-expect-error - wrong type in map entry
+                b: new Map([ 
+                    ["hey look ma", "no hands" ],
+            ]), 
+            c: [] 
+        },
+            n: 42n,
+        }) // should work
+
+        const withoutOption = {
+            m: {
+                a: minimal.m.a,
+                b: minimal.m.b,
+                c: minimal.m.c,
+            },
+            n: 42n,
+        }
+        //@ts-expect-error - property d is missing - is an optional value, but has to be there - with null | undefined!
+        t.y({...withoutOption})
+    }
+}
 
 if (false) {
-    // ... type tests
+    // ... type tests for Activities and Activity variants
 
     {
         // seeded activity
@@ -344,7 +510,10 @@ if (false) {
             ? true
             : false = true;
 
-        type seededVariantMaker = ActivityEnumVariantCreator<seededVariant, "redeemerWrapper">;
+        type seededVariantMaker = ActivityEnumVariantCreator<
+            seededVariant,
+            "redeemerWrapper"
+        >;
         const callVariantMaker: seededVariantMaker = (() => {}) as any;
         // sample calls for checking different type-signatures
         callVariantMaker(
@@ -379,7 +548,7 @@ if (false) {
             ? true
             : false = false;
 
-        type unseededVariantMaker = EnumVariantCreator<unseededVariant>; 
+        type unseededVariantMaker = EnumVariantCreator<unseededVariant>;
         const callVariantMaker: unseededVariantMaker = (() => {}) as any;
         // sample calls for checking different type-signatures
         callVariantMaker({
@@ -399,20 +568,26 @@ if (false) {
         >;
 
         type nestedEnum = nestedEnumVariant["data"];
-        const nestedThingIsEnum : nestedEnum extends EnumType<any, any> ? true : false = true;
+        const nestedThingIsEnum: nestedEnum extends EnumType<any, any>
+            ? true
+            : false = true;
         const nestedEnumVariantIsSeeded: nestedEnumVariant["data"]["variants"]["CreatingDelegate"] extends anySeededActivity
             ? true
             : false = true;
-        type nestedEnumMaker = makesUplcActivityEnumData<nestedEnum>
-        const t : nestedEnumMaker = "fake" as any;
+        type nestedEnumMaker = makesUplcActivityEnumData<nestedEnum>;
+        const t: nestedEnumMaker = "fake" as any;
     }
 
-
-    const integratedTest = "fake" as unknown as BundleMintDelegateWithGenericUuts; {
+    const integratedTest =
+        "fake" as unknown as BundleMintDelegateWithGenericUuts;
+    {
         // if these don't show type errors, then they're good expressions / type tests
-        integratedTest.Activity.CreatingDelegatedData({} as unknown as SeedAttrs, {
-            dataType: "awesome",
-        });
+        integratedTest.Activity.CreatingDelegatedData(
+            {} as unknown as SeedAttrs,
+            {
+                dataType: "awesome",
+            }
+        );
 
         integratedTest.mkDatum.IsDelegation({
             capoAddr: "" as unknown as Address,
@@ -421,16 +596,18 @@ if (false) {
         });
 
         // todo: support an inline proxy for generating a nested enum:
-        integratedTest.Activity.CapoLifecycleActivities.CreatingDelegate({ 
-            seed: "" as unknown as TxOutputId, 
-            purpose: "awesome" 
+        integratedTest.Activity.CapoLifecycleActivities.CreatingDelegate({
+            seed: "" as unknown as TxOutputId,
+            purpose: "awesome",
         });
-        integratedTest.Activity.CapoLifecycleActivities.CreatingDelegate({ 
-            txId: "" as unknown as TxId,
-            idx: 0n,
-        }, {
-            purpose: "awesome"
-        });
+        integratedTest.Activity.CapoLifecycleActivities.CreatingDelegate(
+            {
+                txId: "" as unknown as TxId,
+                idx: 0n,
+            },
+            {
+                purpose: "awesome",
+            }
+        );
     }
-
 }

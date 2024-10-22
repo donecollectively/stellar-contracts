@@ -58,20 +58,6 @@ import {
 //     capoSettings
 // } from CustomCapoSettings
 
-enum DelegateDatum {
-    IsDelegation {
-        dd: DelegationDetail
-    }
-    ScriptReference
-
-    // func validateSettings(_self, _settings: capoSettings) -> Bool{
-    //     assert(false, "not valid (stubbed)");
-    //     // settings.serialize() != self.serialize() &&
-    //     true
-    // }
-}
-
-
 struct FooStruct {
     a: Int
     b: Map[String]ByteArray
@@ -89,6 +75,22 @@ enum SomeEnum {
     }
     z 
 }
+
+enum DelegateDatum {
+    IsDelegation {
+        dd: DelegationDetail
+    }
+    ScriptReference
+    HasNestedEnum {
+        nested: SomeEnum
+    }
+    // func validateSettings(_self, _settings: capoSettings) -> Bool{
+    //     assert(false, "not valid (stubbed)");
+    //     // settings.serialize() != self.serialize() &&
+    //     true
+    // }
+}
+
 
 enum MintingActivity {
     // application can replace the placeholder, which is only here to 

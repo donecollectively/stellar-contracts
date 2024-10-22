@@ -62,6 +62,66 @@ export type DelegationDetailLike = {
 };
 
 
+export type FooStruct = {
+    a: bigint
+    b: Map<string, number[]>
+    c: Array<boolean>
+    d: Option<UplcData>
+};
+
+export type FooStructLike = {
+    a: IntLike
+    b: Map<string, number[]>
+    c: Array<boolean>
+    d: Option<UplcData>
+};
+
+
+export type SomeEnum = EnumType<{module: "uutMintingDelegate", enumName: "SomeEnum"}, {
+        w: singleEnumVariant<SomeEnum, "w",
+            "Constr#0", "singletonField", 
+            bigint, "noSpecialFlags"
+        >,
+        x: singleEnumVariant<SomeEnum, "x",
+            "Constr#1", "singletonField", 
+            FooStruct, "noSpecialFlags"
+        >,
+        y: singleEnumVariant<SomeEnum, "y",
+            "Constr#2", 
+            "fields", {
+                m: FooStruct,
+                n: bigint
+            }, "noSpecialFlags"
+        >,
+        z: singleEnumVariant<SomeEnum, "z",
+            "Constr#3", "tagOnly", never, "noSpecialFlags"
+        >
+    }
+>;
+
+export type SomeEnumLike = EnumType<{module: "uutMintingDelegate", enumName: "SomeEnum"}, {
+        w: singleEnumVariant<SomeEnum, "w",
+            "Constr#0", "singletonField", 
+            IntLike, "noSpecialFlags"
+        >,
+        x: singleEnumVariant<SomeEnum, "x",
+            "Constr#1", "singletonField", 
+            FooStructLike, "noSpecialFlags"
+        >,
+        y: singleEnumVariant<SomeEnum, "y",
+            "Constr#2", 
+            "fields", {
+                m: FooStructLike,
+                n: IntLike
+            }, "noSpecialFlags"
+        >,
+        z: singleEnumVariant<SomeEnum, "z",
+            "Constr#3", "tagOnly", never, "noSpecialFlags"
+        >
+    }
+>;
+
+
 export type DelegateDatum = EnumType<{module: "uutMintingDelegate", enumName: "DelegateDatum"}, {
         IsDelegation: singleEnumVariant<DelegateDatum, "IsDelegation",
             "Constr#0", "singletonField", 
@@ -69,6 +129,10 @@ export type DelegateDatum = EnumType<{module: "uutMintingDelegate", enumName: "D
         >,
         ScriptReference: singleEnumVariant<DelegateDatum, "ScriptReference",
             "Constr#1", "tagOnly", never, "noSpecialFlags"
+        >,
+        HasNestedEnum: singleEnumVariant<DelegateDatum, "HasNestedEnum",
+            "Constr#2", "singletonField", 
+            SomeEnum, "noSpecialFlags"
         >
     }
 >;
@@ -80,6 +144,10 @@ export type DelegateDatumLike = EnumType<{module: "uutMintingDelegate", enumName
         >,
         ScriptReference: singleEnumVariant<DelegateDatum, "ScriptReference",
             "Constr#1", "tagOnly", never, "noSpecialFlags"
+        >,
+        HasNestedEnum: singleEnumVariant<DelegateDatum, "HasNestedEnum",
+            "Constr#2", "singletonField", 
+            SomeEnumLike, "noSpecialFlags"
         >
     }
 >;
