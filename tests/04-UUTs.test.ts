@@ -226,7 +226,7 @@ describe("Capo", async () => {
             }
         );
 
-        fit("can create a UUT and send it anywhere", async (context: localTC) => {
+        it("can create a UUT and send it anywhere", async (context: localTC) => {
             // prettier-ignore
             const {h, h: { network, actors, delay, state }} = context;
             const capo = await h.initialize();
@@ -240,6 +240,7 @@ describe("Capo", async () => {
             const purposes = ["testSomeThing"];
             const tcx1b = await capo.txnMintingUuts(tcx1a, purposes, {
                 mintDelegateActivity:
+                // mintDelegate.activity.mintingUuts(
                     mintDelegate.activityMintingUutsAppSpecific(
                         tcx1a,
                         purposes

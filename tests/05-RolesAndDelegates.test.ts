@@ -195,7 +195,7 @@ describe("Capo", async () => {
                 // todo: Ideally, this strategy name would be a type error.
                 const problem = t.txnCreateDelegateLink(tcx1b, "noDefault", {
                     strategyName: "defaultV1",
-                    uutName: tcx1b.state.uuts.mintDgt.name,
+                    uutName: tcx1b.state.uuts.noDefault.name,
                     config: {},
                 });
                 expect(problem).rejects.toThrow(DelegateConfigNeeded);
