@@ -79,7 +79,8 @@ const rawDataMakerProxy = new Proxy(
                             return cast.toUplcData({[typeName]: {}});
                         }
                         if (variant.fieldTypes.length === 1) {
-                            
+                            // todo
+                        }
                         if (variant.accessor === "singletonField") {
                             const nestedType = variant.nestedType;
                             if (nestedType.kind === "enum") {
