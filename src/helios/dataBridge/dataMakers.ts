@@ -1,11 +1,11 @@
-import { anyDataMaker } from "./someDataMaker.js";
+import { someDataMaker } from "./someDataMaker.js";
 
-export class ActivityMaker extends anyDataMaker {
-    isActivityMaker : boolean = true
-
+export class ActivityMaker extends someDataMaker {
+    usesRedeemerWrapper : boolean = true
+    usesSeedSemantics: boolean = true
 }
 
-export class DataMaker extends anyDataMaker {
+export class DataMaker extends someDataMaker {
 
 }
 

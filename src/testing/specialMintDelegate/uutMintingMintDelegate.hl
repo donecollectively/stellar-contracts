@@ -58,7 +58,8 @@ import {
 //     capoSettings
 // } from CustomCapoSettings
 
-struct FooStruct {
+// Helios data structures
+struct SampleStruct {
     a: Int
     b: Map[String]ByteArray
     c: []Bool
@@ -66,14 +67,19 @@ struct FooStruct {
 }
 
 enum SomeEnum {
-    w { m: Int }
-    x { m: FooStruct }
-    y { 
-        m: FooStruct
+    justATag 
+    justAnInt { m: Int }
+    oneNestedStruct { m: SampleStruct }
+    hasNestedFields { 
+        m: SampleStruct
         n: Int 
-        // m: SomeEnum // todo: recursive types
+        // m: SomeEnum 
     }
-    z 
+    hasRecursiveFields {
+        // todo: support recursive types
+        // m: SomeEnum
+        // n: Int
+    }
 }
 
 enum DelegateDatum {
@@ -81,9 +87,24 @@ enum DelegateDatum {
         dd: DelegationDetail
     }
     ScriptReference
+    SingleDataElement {
+        aString: String
+    }
+    SingleNestedStruct {
+        aStruct: SampleStruct
+    }
     HasNestedEnum {
         nested: SomeEnum
     }
+    MultiFieldVariant {
+        field1: Int
+        field2: String
+    }
+    MultiFieldNestedThings {
+        nestedStruct: SampleStruct
+        nestedEnumMaybe: Option[SomeEnum]
+    }
+
     // func validateSettings(_self, _settings: capoSettings) -> Bool{
     //     assert(false, "not valid (stubbed)");
     //     // settings.serialize() != self.serialize() &&

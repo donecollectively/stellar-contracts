@@ -380,7 +380,7 @@ export type NetworkContext<NWT extends Network = Network> = {
 
 //!!! todo: type configuredStellarClass = class -> networkStuff -> withParams = stellar instance.
 
-export type BundleType<T extends StellarContract<any>> = HeliosScriptBundle; //; ReturnType<T["scriptBundle"]>;
+export type BundleType<T extends StellarContract<any>> = ReturnType<T["scriptBundle"]>;
 
 /**
  * Basic wrapper and off-chain facade for interacting with a single Plutus contract script
@@ -1511,6 +1511,29 @@ export class StellarContract<
      */
     get activity(): BundleType<this>["Activity"] {
         return this.getBundle().Activity;
+    }
+
+    get mkDatum(): BundleType<this>["mkDatum"] {
+        const mkDatum = this.getBundle().mkDatum;
+        if (!mkDatum) {
+            throw new Error(
+                `${this.constructor.name}: this contract script doesn't use datum`
+            )
+        }
+        // pre-fetch the type info
+        mkDatum.getTypeSchema()
+
+        return mkDatum;
+    }
+
+    get newReadDatum(): BundleType<this>["readDatum"] {
+        const readDatum = this.getBundle().readDatum;
+        if (!readDatum) {
+            throw new Error(
+                `${this.constructor.name}: this contract script doesn't use datum`
+            )
+        }
+        return readDatum
     }
 
     /**

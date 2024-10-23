@@ -155,17 +155,16 @@ export class BundleTypeGenerator {
                 );
                 break;
             case "list":
-                console.log("how to register a list's member DataType?");
                 this.gatherTypeDetails((dataType as any).types[0]);
-                debugger;
                 // this.gatherTypeDetails(type.itemType);
                 break;
             case "map":
-                console.log("how to register a map's member DataTypes?");
-                debugger;
-                // this.gatherTypeDetails(type.keyType);
-                // this.gatherTypeDetails(type.valueType);
-                break;
+                console.log("Is there any need to register a map's member DataTypes?");
+                console.log(" a Map's members must be registered to find data type not used elsewhere");
+
+                // this.gatherTypeDetails((dataType as any).types[0]);
+                // this.gatherTypeDetails((dataType as any).types[1]);
+
             case "option":
                 // console.log("how to register an Option's nested DataType?");
                 this.gatherTypeDetails((dataType as any).types[0]);

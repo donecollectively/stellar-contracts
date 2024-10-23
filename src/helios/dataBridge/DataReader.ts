@@ -1,5 +1,6 @@
 import type { TypeSchema } from "@helios-lang/type-utils";
 import type { anyTypeDetails } from "../HeliosScriptBundle.js";
+import { Cast } from "@helios-lang/contract-utils";
 
 // reads the same type of data used
 // for writing 
@@ -25,6 +26,7 @@ dataReaderProxy.prototype = rawDataReaderProxy;
 
 export class DataReader extends (dataReaderProxy as any) {
     schema?: TypeSchema;
+    cast?: Cast<any, any>;
     constructor(public typeDetails: anyTypeDetails) {
         super();
         this.schema = undefined;
@@ -37,6 +39,7 @@ export class DataReader extends (dataReaderProxy as any) {
     getTypeSchema() {
         if (!this.schema) {
             this.schema = this.typeDetails.dataType.toSchema();
+            this.cast = new Cast(this.schema, { isMainnet: true });
         }
         return this.schema;
     }

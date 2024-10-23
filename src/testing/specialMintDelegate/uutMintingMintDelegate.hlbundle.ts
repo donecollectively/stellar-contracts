@@ -52,14 +52,14 @@ export type DelegationDetailLike = {
 };
 
 
-export type FooStruct = {
+export type SampleStruct = {
     a: bigint
     b: Map<string, number[]>
     c: Array<boolean>
     d: Option<UplcData>
 };
 
-export type FooStructLike = {
+export type SampleStructLike = {
     a: IntLike
     b: Map<string, number[]>
     c: Array<boolean>
@@ -68,45 +68,51 @@ export type FooStructLike = {
 
 
 export type SomeEnum = EnumType<{module: "uutMintingDelegate", enumName: "SomeEnum"}, {
-        w: singleEnumVariant<SomeEnum, "w",
-            "Constr#0", "singletonField", 
+        justATag: singleEnumVariant<SomeEnum, "justATag",
+            "Constr#0", "tagOnly", never, "noSpecialFlags"
+        >,
+        justAnInt: singleEnumVariant<SomeEnum, "justAnInt",
+            "Constr#1", "singletonField", 
             bigint, "noSpecialFlags"
         >,
-        x: singleEnumVariant<SomeEnum, "x",
-            "Constr#1", "singletonField", 
-            FooStruct, "noSpecialFlags"
+        oneNestedStruct: singleEnumVariant<SomeEnum, "oneNestedStruct",
+            "Constr#2", "singletonField", 
+            SampleStruct, "noSpecialFlags"
         >,
-        y: singleEnumVariant<SomeEnum, "y",
-            "Constr#2", 
+        hasNestedFields: singleEnumVariant<SomeEnum, "hasNestedFields",
+            "Constr#3", 
             "fields", {
-                m: FooStruct,
+                m: SampleStruct,
                 n: bigint
             }, "noSpecialFlags"
         >,
-        z: singleEnumVariant<SomeEnum, "z",
-            "Constr#3", "tagOnly", never, "noSpecialFlags"
+        hasRecursiveFields: singleEnumVariant<SomeEnum, "hasRecursiveFields",
+            "Constr#4", "tagOnly", never, "noSpecialFlags"
         >
     }
 >;
 
 export type SomeEnumLike = EnumType<{module: "uutMintingDelegate", enumName: "SomeEnum"}, {
-        w: singleEnumVariant<SomeEnum, "w",
-            "Constr#0", "singletonField", 
+        justATag: singleEnumVariant<SomeEnum, "justATag",
+            "Constr#0", "tagOnly", never, "noSpecialFlags"
+        >,
+        justAnInt: singleEnumVariant<SomeEnum, "justAnInt",
+            "Constr#1", "singletonField", 
             IntLike, "noSpecialFlags"
         >,
-        x: singleEnumVariant<SomeEnum, "x",
-            "Constr#1", "singletonField", 
-            FooStructLike, "noSpecialFlags"
+        oneNestedStruct: singleEnumVariant<SomeEnum, "oneNestedStruct",
+            "Constr#2", "singletonField", 
+            SampleStructLike, "noSpecialFlags"
         >,
-        y: singleEnumVariant<SomeEnum, "y",
-            "Constr#2", 
+        hasNestedFields: singleEnumVariant<SomeEnum, "hasNestedFields",
+            "Constr#3", 
             "fields", {
-                m: FooStructLike,
+                m: SampleStructLike,
                 n: IntLike
             }, "noSpecialFlags"
         >,
-        z: singleEnumVariant<SomeEnum, "z",
-            "Constr#3", "tagOnly", never, "noSpecialFlags"
+        hasRecursiveFields: singleEnumVariant<SomeEnum, "hasRecursiveFields",
+            "Constr#4", "tagOnly", never, "noSpecialFlags"
         >
     }
 >;
@@ -120,9 +126,31 @@ export type DelegateDatum = EnumType<{module: "uutMintingDelegate", enumName: "D
         ScriptReference: singleEnumVariant<DelegateDatum, "ScriptReference",
             "Constr#1", "tagOnly", never, "noSpecialFlags"
         >,
-        HasNestedEnum: singleEnumVariant<DelegateDatum, "HasNestedEnum",
+        SingleDataElement: singleEnumVariant<DelegateDatum, "SingleDataElement",
             "Constr#2", "singletonField", 
+            string, "noSpecialFlags"
+        >,
+        SingleNestedStruct: singleEnumVariant<DelegateDatum, "SingleNestedStruct",
+            "Constr#3", "singletonField", 
+            SampleStruct, "noSpecialFlags"
+        >,
+        HasNestedEnum: singleEnumVariant<DelegateDatum, "HasNestedEnum",
+            "Constr#4", "singletonField", 
             SomeEnum, "noSpecialFlags"
+        >,
+        MultiFieldVariant: singleEnumVariant<DelegateDatum, "MultiFieldVariant",
+            "Constr#5", 
+            "fields", {
+                field1: bigint,
+                field2: string
+            }, "noSpecialFlags"
+        >,
+        MultiFieldNestedThings: singleEnumVariant<DelegateDatum, "MultiFieldNestedThings",
+            "Constr#6", 
+            "fields", {
+                nestedStruct: SampleStruct,
+                nestedEnumMaybe: Option<SomeEnum>
+            }, "noSpecialFlags"
         >
     }
 >;
@@ -135,9 +163,31 @@ export type DelegateDatumLike = EnumType<{module: "uutMintingDelegate", enumName
         ScriptReference: singleEnumVariant<DelegateDatum, "ScriptReference",
             "Constr#1", "tagOnly", never, "noSpecialFlags"
         >,
-        HasNestedEnum: singleEnumVariant<DelegateDatum, "HasNestedEnum",
+        SingleDataElement: singleEnumVariant<DelegateDatum, "SingleDataElement",
             "Constr#2", "singletonField", 
+            string, "noSpecialFlags"
+        >,
+        SingleNestedStruct: singleEnumVariant<DelegateDatum, "SingleNestedStruct",
+            "Constr#3", "singletonField", 
+            SampleStructLike, "noSpecialFlags"
+        >,
+        HasNestedEnum: singleEnumVariant<DelegateDatum, "HasNestedEnum",
+            "Constr#4", "singletonField", 
             SomeEnumLike, "noSpecialFlags"
+        >,
+        MultiFieldVariant: singleEnumVariant<DelegateDatum, "MultiFieldVariant",
+            "Constr#5", 
+            "fields", {
+                field1: IntLike,
+                field2: string
+            }, "noSpecialFlags"
+        >,
+        MultiFieldNestedThings: singleEnumVariant<DelegateDatum, "MultiFieldNestedThings",
+            "Constr#6", 
+            "fields", {
+                nestedStruct: SampleStructLike,
+                nestedEnumMaybe: Option<SomeEnumLike>
+            }, "noSpecialFlags"
         >
     }
 >;
@@ -373,7 +423,6 @@ export type DelegateActivityLike = EnumType<{module: "uutMintingDelegate", enumN
 
 /** ------------- hlbundle types END ------------- */
 
-
 type makesDelegateDatum = makesUplcEnumData<DelegateDatumLike>;
 
 /**
@@ -443,7 +492,7 @@ if (false) {
         const nestedThingIsEnum: hasTestNestedEnum extends EnumType<any, any>
             ? true
             : false = true;
-        const nestedEnumVariantNOTSeeded: nestedEnumVariant["data"]["variants"]["y"] extends anySeededActivity
+        const nestedEnumVariantNOTSeeded: nestedEnumVariant["data"]["variants"]["hasNestedFields"] extends anySeededActivity
             ? false
             : true = true;
 
@@ -455,9 +504,9 @@ if (false) {
             c: [], 
             d: null
         } };
-        t.y({...minimal});
+        t.hasNestedFields({...minimal});
 
-        t.y({
+        t.hasNestedFields({
             m: {a: 1, b: new Map([ 
                 // ["hey look ma", "no hands" ],
                 ["hello", textToBytes("world") ] 
@@ -465,7 +514,7 @@ if (false) {
             n: 42n,
         }) // should work
 
-        t.y({
+        t.hasNestedFields({
             m: {
                 a: 1, 
                 //@ts-expect-error - wrong type in map entry
@@ -486,7 +535,7 @@ if (false) {
             n: 42n,
         }
         //@ts-expect-error - property d is missing - is an optional value, but has to be there - with null | undefined!
-        t.y({...withoutOption})
+        t.hasNestedFields({...withoutOption})
     }
 }
 

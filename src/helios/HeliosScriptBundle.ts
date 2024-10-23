@@ -15,6 +15,7 @@ import { DataReader } from "./dataBridge/DataReader.js";
 import type { TxOutputId } from "@helios-lang/ledger-babbage";
 import type { hasSeedUtxo } from "../StellarTxnContext.js";
 import type { SeedAttrs } from "../delegation/UutName.js";
+import { someDataMaker } from "./dataBridge/someDataMaker.js";
 
 export type HeliosBundleClass = new () => HeliosScriptBundle;
 
@@ -26,8 +27,10 @@ export type makesSomeUplcData<T> = T extends EnumType<any, any>
     : uplcDataMaker<T>;
 
 export type uplcDataMaker<permissiveType> =
-    | ((arg: permissiveType) => UplcData)
-    | never;
+    // can be called
+    (
+        (arg: permissiveType) => UplcData
+    ) & someDataMaker
 
 // 2. read data from Datum.  Can also be used for returned results
 //  ... of utility functions defined in Helios code.
@@ -180,7 +183,7 @@ export type makesUplcEnumData<
     VARIANTS extends VariantMap = ET extends EnumType<any, infer VARIANTS>
         ? VARIANTS
         : never
-> = {
+> = someDataMaker &{
     // prettier-ignore
     [k in keyof VARIANTS]: EnumVariantCreator<VARIANTS[k]>
 };
@@ -364,34 +367,6 @@ export abstract class HeliosScriptBundle {
         }
     }
 
-    createMkActivityProxy(
-        typeDetails: anyTypeDetails
-    ): makesSomeActivityData<any> {
-        // throw new Error(`implement me!`)
-        return (() => {}) as any;
-    }
-
-    createMkDataProxy(
-        typeDetails: Option<anyTypeDetails>
-    ): Option<makesSomeUplcData<any>> {
-        if (!typeDetails) {
-            return undefined;
-        }
-
-        // throw new Error(`implement me!`)
-        return (() => {}) as any;
-    }
-
-    createReadDataProxy(
-        typeDetails: Option<anyTypeDetails>
-    ): Option<readsSomeUplcData<any>> {
-        if (!typeDetails) {
-            return undefined;
-        }
-
-        // throw new Error(`implement me!`)
-        return (() => {}) as any;
-    }
 
     locateDatumType(): Option<DataType> {
         let datumType: DataType | undefined;
