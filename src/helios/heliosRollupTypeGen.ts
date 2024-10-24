@@ -259,8 +259,14 @@ export function heliosRollupTypeGen(
                             `only one Capo bundle is allowed in a project`
                         )
                     } else if (state.hasOtherBundles) {
-                        if (JSON.stringify(state.capoBundle.modules) !== JSON.stringify(SomeBundleClass.prototype.modules) ) {
-                            console.log("other bundles already loaded: ", [...state.project.bundleEntries.values()])
+                        const digestExisting = shortHash(JSON.stringify(state.capoBundle.modules));
+                        const digestNew = shortHash(JSON.stringify(SomeBundleClass.prototype.modules));
+
+                        if (digestExisting !== digestNew) {
+                            console.log("Late-arriving Capo.  Project has these bundles already loaded: ", [...state.project.bundleEntries.values()].map(x => x.filename))
+                            console.log(`existing = ${digestExisting}`, state.capoBundle.modules.map(x => (JSON.stringify({name: x.name, content: shortHash(x.content)}))))
+                            console.log(`late arrival: ${digestNew}`, SomeBundleClass.prototype.modules.map( x => (JSON.stringify({name: x.name, content: shortHash(x.content)}))))
+                            console.log(" ^^^ from", id)
                             throw new Error(
                                 `Capo bundle must be the first bundle loaded in a project`
                             )
@@ -325,7 +331,7 @@ export function heliosRollupTypeGen(
             },
         },
     };
-
+    
     async function rollupSingleBundleToBundleClass(inputFile: string) {
         // writes the output file next to the input file as *.hlbundle.compiled.mjs
         const outputFile = inputFile.replace(
@@ -344,6 +350,20 @@ export function heliosRollupTypeGen(
             input: inputFile,
             external(id) {
                 return !/^[./]/.test(id);
+            },
+            onwarn( warning, warn ) {
+                if (warning.code === 'UNUSED_EXTERNAL_IMPORT') return;
+                if (warning.code === 'CIRCULAR_DEPENDENCY') {
+                    if (warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramFs.ts -> src/helios/CachedHeliosProgram.ts") {
+                        return
+                        // console.log("   --- suppressed circular dependency warning");
+                    }
+                    if (warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramWeb.ts -> src/helios/CachedHeliosProgram.ts") {
+                        return
+                    }
+                }
+
+                warn(warning);
             },
             plugins: [
                 heliosRollupLoader({
@@ -414,6 +434,20 @@ export function heliosRollupTypeGen(
             external(id) {
                 return !/^[./]/.test(id);
             },
+            onwarn( warning, warn ) {
+                if (warning.code === 'UNUSED_EXTERNAL_IMPORT') return;
+                if (warning.code === 'CIRCULAR_DEPENDENCY') {
+                    if (warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramFs.ts -> src/helios/CachedHeliosProgram.ts") {
+                        return
+                        // console.log("   --- suppressed circular dependency warning");
+                    }
+                    if (warning.message == "Circular dependency: src/helios/CachedHeliosProgram.ts -> src/helios/CachedHeliosProgramWeb.ts -> src/helios/CachedHeliosProgram.ts") {
+                        return
+                    }
+                }
+
+                warn(warning);
+            },
             plugins: [
                 heliosRollupLoader({
                     project: "stellar-contracts",
@@ -462,3 +496,6 @@ export function heliosRollupTypeGen(
 }
 
 
+function shortHash(str: string) {
+    return bytesToHex(blake2b(textToBytes(str)).slice(0, 5));
+}

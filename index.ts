@@ -170,7 +170,7 @@ import type { CharterDatumProps } from "./src/Capo.js";
  * @internal
  */
 export type DefaultCharterDatumArgs = CharterDatumProps;
-export * from "./src/helios/HeliosScriptBundle.js";
+export * from "./src/helios/index.js";
 export { CapoDelegateBundle } from "./src/delegation/CapoDelegateBundle.js";
 export { HeliosScriptBundle } from "./src/helios/HeliosScriptBundle.js";
 
@@ -204,6 +204,7 @@ export type {
 //     StakeAddress,
 // } from "./src/HeliosPromotedTypes.js";
 import * as helios from "@hyperionbt/helios";
+
 export {
     StellarNetworkEmulator,
     type NetworkSnapshot,

@@ -279,8 +279,21 @@ export class StellarHeliosProject {
                   oneFilename
               )
             : mkDataGenerator.generateMkDataBridge();
+            this.writeIfUnchanged( mkDataFn, mkDataSource);
         // console.log(`NOT writing mkData bridge to ${mkDataFn}:${mkDataSource}`);
         writeFileSync(mkDataFn, mkDataSource);
+    }
+
+    writeIfUnchanged(filename: string, source: string) {
+        if( existsSync( filename ) ) {
+            const existingSource = readFileSync(filename, "utf-8");
+            if (existingSource === source) {
+                // console.log(`   -- unchanged: ${filename}`);
+                return;
+            }
+        }
+        writeFileSync(filename, source);
+        return source
     }
 
     normalizeFilePath(filename: string) {
@@ -344,16 +357,16 @@ export class StellarHeliosProject {
             bundleClassName,
             parentClassName
         );
-        console.log({
-            filename,
-            typeFilename,
-            ignoredExtension,
-        });
-        writeFileSync(typeFilename, typesSource);
-
-        console.log(
-            `📦 ${bundleClassName}: generated types (${Date.now() - ts1}ms)`
-        );
+        // console.log({
+        //     filename,
+        //     typeFilename,
+        //     ignoredExtension,
+        // });
+        if (this.writeIfUnchanged(typeFilename, typesSource)) {
+            console.log(
+                `📦 ${bundleClassName}: generated types (${Date.now() - ts1}ms)`
+            );
+        }
     }
 
     static findProjectRoot() {

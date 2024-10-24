@@ -50,7 +50,10 @@ export class mkDataBridgeGenerator {
                 throw new Error("inputFile is required for stellar-contracts project");
             }
             // compute relative path from inputFile to src/helios/dataBridge/someDataMaker.js
-            const relativePath = path.relative(path.dirname(inputFile), path.join("src/helios/dataBridge/someDataMaker.js"));
+            let relativePath = path.relative(path.dirname(inputFile), path.join("src/helios/dataBridge/someDataMaker.js"));
+            if (relativePath[0] !== ".") {
+                relativePath = `./${relativePath}`;
+            }
             imports = `
                 import { someDataMaker } from "${relativePath}"
             `.split("\n").map(line => line.trim()).join("\n");

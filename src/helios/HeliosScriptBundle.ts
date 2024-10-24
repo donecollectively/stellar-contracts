@@ -326,7 +326,7 @@ export abstract class HeliosScriptBundle {
     // these are the most abstract possible forms of the proxies for these 3 types
     // specific subclasses will use some much more specific types for them instead
     declare Activity: makesSomeActivityData<any>;
-    declare mkDatum: Option<makesSomeUplcData<any>>;
+    // declare mkDatum: Option<makesSomeUplcData<any>>;
     declare readDatum: Option<readsSomeUplcData<any>>;
 
     static isCapoBundle = false;
@@ -365,9 +365,8 @@ export abstract class HeliosScriptBundle {
         const typeGenerator = new BundleTypeGenerator(this);
         const { activityTypeDetails, datumTypeDetails } = typeGenerator;
 
-        this.Activity = new ActivityMaker(activityTypeDetails);
-        if (datumTypeDetails) {
-            this.mkDatum = new DataMaker(datumTypeDetails);
+        this.Activity = new ActivityMaker(this);
+        if (datumTypeDetails) {                    
             this.readDatum = new DataReader(datumTypeDetails);
         }
     }

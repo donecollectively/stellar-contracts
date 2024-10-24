@@ -128,9 +128,8 @@ const rawDataMakerProxy = new Proxy(
 function dataMakerProxyBase() {}
 dataMakerProxyBase.prototype = rawDataMakerProxy
 
-export class someDataMaker extends (dataMakerProxyBase as any) {
-    constructor(public __typeDetails: anyTypeDetails) {
-        super()
+export class someDataMaker { // extends (dataMakerProxyBase as any) {
+    constructor(public bundle: HeliosScriptBundle) {
         // these start undefined, but are always forced into existence immediately
         // via getTypeSchema().  Any exceptions means this protocol wasn't followed 
         // correctly.
