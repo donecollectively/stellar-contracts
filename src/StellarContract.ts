@@ -553,7 +553,7 @@ export class StellarContract<
                 throw new Error(
                     `${this.constructor.name}: missing required this.bundle for contract class`
                 );
-            } else if (!(this.getBundle() instanceof HeliosScriptBundle)) {
+            } else if (!(this.getBundle().isHeliosScriptBundle())) {
                 throw new Error(
                     `${
                         this.constructor.name

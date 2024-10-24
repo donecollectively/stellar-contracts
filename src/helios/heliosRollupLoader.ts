@@ -53,15 +53,16 @@ export function heliosRollupLoader(
     }
     return {
         name: "helios",
-        resolveId,
+        resolveId, // the resolver hook from above
+
         load(id) : LoadResult{
             if (filter(id)) {
                 const relPath = path.relative(".", id);
 
                 const content = readFileSync(relPath, "utf-8");
-                console.warn(
-                    `heliosLoader: ${relPath}`
-                );
+                // console.warn(
+                //     `heliosLoader: ${relPath}`
+                // );
 
                 // helios.Program.new(content) // fails unless it can resolve deps
 

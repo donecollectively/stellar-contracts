@@ -329,6 +329,7 @@ export abstract class HeliosScriptBundle {
     declare mkDatum: Option<makesSomeUplcData<any>>;
     declare readDatum: Option<readsSomeUplcData<any>>;
 
+    static isCapoBundle = false;
     /**
      * optional attribute explicitly naming a type for the datum
      * @remarks
@@ -354,6 +355,10 @@ export abstract class HeliosScriptBundle {
         return CachedHeliosProgram.forCurrentPlatform(this.main, {
             moduleSources: this.modules,
         });
+    }
+
+    isHeliosScriptBundle() {
+        return true
     }
 
     addTypeProxies() {

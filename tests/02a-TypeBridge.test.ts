@@ -15,6 +15,7 @@ import {
     StellarTestContext,
     addTestContext,
 } from "../src/testing/index.js";
+import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts.js";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper.js";
 import { BundleType, ConfigFor } from "../src/StellarContract.js";
 import { dumpAny } from "../src/diagnostics.js";
@@ -24,7 +25,6 @@ import { Capo } from "../src/Capo.js";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings.js";
 import { TestHelperState } from "../src/testing/types.js";
 // import { RoleDefs } from "../src/RolesAndDelegates";
-import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts.js";
 import { expectTxnError } from "../src/testing/StellarTestHelper.js";
 import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/MintDelegateWithGenericUuts.js";
 

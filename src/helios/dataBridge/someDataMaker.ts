@@ -81,23 +81,23 @@ const rawDataMakerProxy = new Proxy(
                         if (variant.fieldTypes.length === 1) {
                             // todo
                         }
-                        if (variant.accessor === "singletonField") {
-                            const nestedType = variant.nestedType;
-                            if (nestedType.kind === "enum") {
-                                return new Proxy({}, {
-                                    get(_, nestedTypeName: string | Symbol) {
-                                        const nestedVariant = nestedType.variants[nestedTypeName as keyof typeof nestedType.variants];
-                                        if (!nestedVariant) throw new Error(`dataMaker ${THIS.constructor.name}: GET: ${nestedTypeName} not found in ${nestedType.kind}`);
-                                        return (...args: any[]) => cast.toUplcData({[typeName]: { [nestedTypeName]: args[0] }});
-                                    }
-                                });
-                            } else {
-                                return (value: any) => cast.toUplcData({[typeName]: { [variant.name]: value }});
-                            }
-                        }
-                        if (variant.accessor === "fields") {
-                            return (...args: any[]) => cast.toUplcData({[typeName]: { ...args }});
-                        }
+                        // if (variant.accessor === "singletonField") {
+                        //     const nestedType = variant.nestedType;
+                        //     if (nestedType.kind === "enum") {
+                        //         return new Proxy({}, {
+                        //             get(_, nestedTypeName: string | Symbol) {
+                        //                 const nestedVariant = nestedType.variants[nestedTypeName as keyof typeof nestedType.variants];
+                        //                 if (!nestedVariant) throw new Error(`dataMaker ${THIS.constructor.name}: GET: ${nestedTypeName} not found in ${nestedType.kind}`);
+                        //                 return (...args: any[]) => cast.toUplcData({[typeName]: { [nestedTypeName]: args[0] }});
+                        //             }
+                        //         });
+                        //     } else {
+                        //         return (value: any) => cast.toUplcData({[typeName]: { [variant.name]: value }});
+                        //     }
+                        // }
+                        // if (variant.accessor === "fields") {
+                        //     return (...args: any[]) => cast.toUplcData({[typeName]: { ...args }});
+                        // }
                     }
                     throw new Error(`dataMaker ${THIS.constructor.name}: GET: ${typeName} not found in ${schema.kind}`);
             }
@@ -120,7 +120,7 @@ const rawDataMakerProxy = new Proxy(
             if (THIS.isStruct) {
                 throw new Error(`dataMaker ${THIS.constructor.name} APPLY invalid on struct ${THIS.__typeName}`)
             }
-            return THIS.toUplc(...args)
+            return THIS.toUplc(args[0])
         }
     }
 )

@@ -156,6 +156,8 @@ export {
     DelegatedDataContract,
 } from "./src/delegation/DelegatedDataContract.js";
 
+export { CapoHeliosBundle } from "./src/CapoHeliosBundle.js";
+
 export {
     CapoMinter,
     type BasicMinterParams,
@@ -170,7 +172,6 @@ import type { CharterDatumProps } from "./src/Capo.js";
 export type DefaultCharterDatumArgs = CharterDatumProps;
 export * from "./src/helios/HeliosScriptBundle.js";
 export { CapoDelegateBundle } from "./src/delegation/CapoDelegateBundle.js";
-export { CapoHeliosBundle } from "./src/CapoHeliosBundle.js";
 export { HeliosScriptBundle } from "./src/helios/HeliosScriptBundle.js";
 
 export type {

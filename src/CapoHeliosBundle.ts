@@ -16,6 +16,8 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
     main = mainContract;
     datumTypeName = "CapoDatum"
 
+    static isCapoBundle = true;
+
     get modules() {
         return [
             CapoMintHelpers,

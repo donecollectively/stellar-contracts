@@ -55,6 +55,7 @@ func getCharterOutput(tx: Tx) -> TxOutput {
         AssetClass::new(mph, "charter".encode_utf8()), 
         1
     );
+
     tx.outputs.find_safe(
         (txo : TxOutput) -> Bool {
             txo.value >= charterTokenValue

@@ -22,9 +22,10 @@ import type { HeliosModuleSrc } from "../helios/HeliosModuleSrc.js";
 import { mkValuesEntry } from "../utils.js";
 
 import type { BasicMintDelegate } from "./BasicMintDelegate.js";
+// imports the Capo bundle before anything, so the minter bundle can use it
+import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 import CapoMinterBundle from "./CapoMinter.hlbundle.js";
 import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
-import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 import type { HeliosBundleClass, HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 
 type MintCharterActivityArgs<T = {}> = T & {
