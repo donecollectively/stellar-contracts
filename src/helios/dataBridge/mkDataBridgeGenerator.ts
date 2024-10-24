@@ -95,26 +95,65 @@ export default class mkDatumBridge${this.bundle.program.name} extends someDataMa
         return this.gatherNonEnumDatumAccessors(datumTypeName);
     }
 
+    // gatherEnumDatumAccessors(datumTypeName: string) {
+    //     // Implementation for generating datum accessors goes here
+    //     const $indent = " ".repeat(8);
+    //     return `
+    // get ${datumTypeName}() {
+    //     return this.datum
+    // }
+    // datum : makesUplcEnumData<${datumTypeName}Like> = {\n${
+    //     this.generateEnumVariantAccessor(datumTypeName, 
+    // }
+    // }
+
+    //     `;
+    // }
+
+    // generateNonEnumDatumAccessors(datumTypeName: string) {
+    //     // Implementation for generating datum accessors goes here
+    //     throw new Error("Not yet implemented");
+    // }
+
+    generateDatumAccessors() {
+        return this.gatherDatumAccessors();
+    }
+
     gatherEnumDatumAccessors(datumTypeName: string) {
-        // Implementation for generating datum accessors goes here
-        const $indent = " ".repeat(8);
-        return `
-    get ${datumTypeName}() {
-        return this.datum
-    }
-    datum : makesUplcEnumData<${datumTypeName}Like> = {\n${
-        this.generateEnumVariantAccessor(datumTypeName, 
-    }
+        const enumDetails = this.datumTypeDetails as enumTypeDetails;
+        const accessors = Object.keys(enumDetails.variants).map(variantName => {
+            const variantDetails = enumDetails.variants[variantName];
+            const fieldCount = variantDetails.fieldCount;
+            if (fieldCount === 0) {
+                return `get ${variantName}() {
+                    return this.toUplcData({ ${variantName}: {} });
+                }`;
+            } else if (fieldCount === 1) {
+                const fieldName = Object.keys(variantDetails.fields)[0];
+                return `${variantName}(value: ${variantDetails.fields[fieldName].canonicalType}) {
+                    return this.toUplcData({ ${variantName}: { ${fieldName}: value } });
+                }`;
+            } else {
+                const fields = Object.keys(variantDetails.fields).map(fieldName => {
+                    return `${fieldName}: ${variantDetails.fields[fieldName].canonicalType}`;
+                }).join(", ");
+                return `${variantName}(fields: { ${fields} }) {
+                    return this.toUplcData({ ${variantName}: fields });
+                }`;
+            }
+        }).join("\n\n");
+        return accessors;
     }
 
-        `;
+    gatherNonEnumDatumAccessors(datumTypeName: string) {
+        const details = this.datumTypeDetails as typeDetails;
+        const fields = Object.keys(details.fields).map(fieldName => {
+            return `${fieldName}: ${details.fields[fieldName].canonicalType}`;
+        }).join(", ");
+        return `get ${datumTypeName}() {
+            return this.toUplcData({ ${datumTypeName}: { ${fields} } });
+        }`;
     }
-
-    generateNonEnumDatumAccessors(datumTypeName: string) {
-        // Implementation for generating datum accessors goes here
-        throw new Error("Not yet implemented");
-    }
-     
 
 }
 
