@@ -145,12 +145,12 @@ export class someDataMaker { // extends (dataMakerProxyBase as any) {
     //     throw new Error(`each dataMaker makes its own datum`)
     // }
 
-    getSeed(arg: hasSeed | TxOutputId ): TxOutputId | undefined {
+    getSeed(arg: hasSeed | TxOutputId ): TxOutputId {
         if (arg instanceof TxOutputId) return arg;
-
-        const seedInfo : SeedAttrs = ("txId" in arg && "idx" in arg) ? arg
+        
+        const seedInfo : SeedAttrs | undefined = ("txId" in arg && "idx" in arg) ? arg
         : arg instanceof StellarTxnContext ? arg.getSeedUtxoDetails() : undefined;
-        if (!seedInfo) return undefined
+        if (!seedInfo) throw new Error(`can't get seed from ${arg}`);
 
         return new TxOutputId(seedInfo.txId, seedInfo.idx);
     }

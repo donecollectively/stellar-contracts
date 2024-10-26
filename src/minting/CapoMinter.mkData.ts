@@ -28,10 +28,11 @@ import type {
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
+import { EnumTypeSchema } from "@helios-lang/type-utils";
 
 import {
-    MinterActivity$CreatingNewSpendDelegate,
-    MinterActivity
+    MinterActivity$CreatingNewSpendDelegate, MinterActivity$CreatingNewSpendDelegateLike,
+    MinterActivity, MinterActivityLike
 } from "./CapoMinter.hlbundle.js"
 import { someDataMaker } from "../helios/dataBridge/someDataMaker.js"
 import { tagOnly } from "../helios/HeliosScriptBundle.js"
@@ -63,7 +64,7 @@ class MinterActivityHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            mintingCharter: { owner: value } 
-        });
+        }); /*SingleField*/
     }
 
     get mintWithDelegateAuthorizing() {
@@ -74,21 +75,21 @@ class MinterActivityHelper extends someDataMaker {
        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         return this.enumCast.toUplcData({ 
            addingMintInvariant: { seed: seedTxOutputId } 
-        });
+        });  /*SingleField/seeded*/
     }
 
     addingSpendInvariant(value: hasSeed | TxOutputId | string) {
        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         return this.enumCast.toUplcData({ 
            addingSpendInvariant: { seed: seedTxOutputId } 
-        });
+        });  /*SingleField/seeded*/
     }
 
     ForcingNewMintDelegate(value: hasSeed | TxOutputId | string) {
        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         return this.enumCast.toUplcData({ 
            ForcingNewMintDelegate: { seed: seedTxOutputId } 
-        });
+        });  /*SingleField/seeded*/
     }
 
     /**
@@ -101,25 +102,19 @@ class MinterActivityHelper extends someDataMaker {
     /**
     * generates UplcData with raw seed details included in fields.
     */
-    CreatingNewSpendDelegate(fields: {
-        seed: TxOutputId | string,
-        replacingUut: Option<number[]> 
-    } ) : UplcData
+    CreatingNewSpendDelegate(fields: MinterActivity$CreatingNewSpendDelegateLike): UplcData
     CreatingNewSpendDelegate(
-        seedOrUf: hasSeed | { 
-            seed: TxOutputId | string,
-            replacingUut: Option<number[]>
-        }, 
+        seedOrUf: hasSeed | MinterActivity$CreatingNewSpendDelegateLike, 
         filteredFields?: { 
             replacingUut: Option<number[]>
     }) : UplcData {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
             return this.enumCast.toUplcData({
-               CreatingNewSpendDelegate: { seed: seedTxOutputId, ...filteredFields } 
+                CreatingNewSpendDelegate: { seed: seedTxOutputId, ...filteredFields } 
             });
         } else {
-            const fields = seedOrUf; 
+            const fields = seedOrUf as MinterActivity$CreatingNewSpendDelegateLike; 
             return this.enumCast.toUplcData({
                 CreatingNewSpendDelegate: fields 
             });
@@ -129,3 +124,102 @@ class MinterActivityHelper extends someDataMaker {
 }
 
 
+export const MinterActivitySchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "MinterActivity",
+  "id": "__module__CapoMintHelpers__MinterActivity[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__CapoMintHelpers__MinterActivity[]__mintingCharter",
+      "name": "mintingCharter",
+      "fieldTypes": [
+        {
+          "name": "owner",
+          "type": {
+            "kind": "internal",
+            "name": "Address"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 1,
+      "id": "__module__CapoMintHelpers__MinterActivity[]__mintWithDelegateAuthorizing",
+      "name": "mintWithDelegateAuthorizing",
+      "fieldTypes": []
+    },
+    {
+      "kind": "variant",
+      "tag": 2,
+      "id": "__module__CapoMintHelpers__MinterActivity[]__addingMintInvariant",
+      "name": "addingMintInvariant",
+      "fieldTypes": [
+        {
+          "name": "seed",
+          "type": {
+            "kind": "internal",
+            "name": "TxOutputId"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 3,
+      "id": "__module__CapoMintHelpers__MinterActivity[]__addingSpendInvariant",
+      "name": "addingSpendInvariant",
+      "fieldTypes": [
+        {
+          "name": "seed",
+          "type": {
+            "kind": "internal",
+            "name": "TxOutputId"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 4,
+      "id": "__module__CapoMintHelpers__MinterActivity[]__ForcingNewMintDelegate",
+      "name": "ForcingNewMintDelegate",
+      "fieldTypes": [
+        {
+          "name": "seed",
+          "type": {
+            "kind": "internal",
+            "name": "TxOutputId"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 5,
+      "id": "__module__CapoMintHelpers__MinterActivity[]__CreatingNewSpendDelegate",
+      "name": "CreatingNewSpendDelegate",
+      "fieldTypes": [
+        {
+          "name": "seed",
+          "type": {
+            "kind": "internal",
+            "name": "TxOutputId"
+          }
+        },
+        {
+          "name": "replacingUut",
+          "type": {
+            "kind": "option",
+            "someType": {
+              "kind": "internal",
+              "name": "ByteArray"
+            }
+          }
+        }
+      ]
+    }
+  ]
+};

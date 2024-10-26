@@ -104,9 +104,11 @@ export type enumTypeDetails<T=undefined> = {
     enumName: string;
     typeSchema: EnumTypeSchema; // for consistency
     dataType: DataType;
-    variants: Record<string, variantTypeDetails<T>>;
+    
     canonicalType: string; // minimal canonical type
     permissiveType: string; // minimal permissive type
+
+    variants: Record<string, variantTypeDetails<T>>;
     canonicalMetaType: string; // minimal canonical meta-type (EnumType<...>) string
     permissiveMetaType: string; // minimal permissive meta-type (EnumType<...>) string
 
@@ -383,13 +385,13 @@ export abstract class HeliosScriptBundle {
     }
 
     addTypeProxies() {
-        const typeGenerator = new BundleTypeGenerator(this);
-        const { activityTypeDetails, datumTypeDetails } = typeGenerator;
+        // const typeGenerator = new BundleTypeGenerator(this);
+        // const { activityTypeDetails, datumTypeDetails } = typeGenerator;
 
-        this.Activity = new ActivityMaker(this);
-        if (datumTypeDetails) {                    
-            this.readDatum = new DataReader(datumTypeDetails);
-        }
+        // this.Activity = new ActivityMaker(this);
+        // if (datumTypeDetails) {                    
+        //     this.readDatum = new DataReader(datumTypeDetails);
+        // }
     }
 
 

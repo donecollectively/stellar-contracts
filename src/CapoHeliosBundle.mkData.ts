@@ -28,14 +28,15 @@ import type {
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
+import { EnumTypeSchema } from "@helios-lang/type-utils";
 
 import {
-    RelativeDelegateLink,
-    CapoDatum$CharterToken,
-    AnyData,
-    CapoDatum$DelegatedData,
-    CapoDatum,
-    CapoActivity
+    RelativeDelegateLink, RelativeDelegateLinkLike,
+    CapoDatum$CharterToken, CapoDatum$CharterTokenLike,
+    AnyData, AnyDataLike,
+    CapoDatum$DelegatedData, CapoDatum$DelegatedDataLike,
+    CapoDatum, CapoDatumLike,
+    CapoActivity, CapoActivityLike
 } from "./CapoHeliosBundle.hlbundle.js"
 import { someDataMaker } from "./helios/dataBridge/someDataMaker.js"
 import { tagOnly } from "./helios/HeliosScriptBundle.js"
@@ -168,3 +169,388 @@ class CapoActivityHelper extends someDataMaker {
 }
 
 
+export const CapoDatumSchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "CapoDatum",
+  "id": "__module__CapoHelpers__CapoDatum[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__CapoHelpers__CapoDatum[]__CharterToken",
+      "name": "CharterToken",
+      "fieldTypes": [
+        {
+          "name": "spendDelegateLink",
+          "type": {
+            "kind": "struct",
+            "format": "list",
+            "id": "__module__CapoDelegateHelpers__RelativeDelegateLink[]",
+            "name": "RelativeDelegateLink",
+            "fieldTypes": [
+              {
+                "name": "uutName",
+                "type": {
+                  "kind": "internal",
+                  "name": "String"
+                }
+              },
+              {
+                "name": "strategyName",
+                "type": {
+                  "kind": "internal",
+                  "name": "String"
+                }
+              },
+              {
+                "name": "delegateValidatorHash",
+                "type": {
+                  "kind": "option",
+                  "someType": {
+                    "kind": "internal",
+                    "name": "ValidatorHash"
+                  }
+                }
+              },
+              {
+                "name": "config",
+                "type": {
+                  "kind": "internal",
+                  "name": "ByteArray"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "spendInvariants",
+          "type": {
+            "kind": "list",
+            "itemType": {
+              "kind": "struct",
+              "format": "list",
+              "id": "__module__CapoDelegateHelpers__RelativeDelegateLink[]",
+              "name": "RelativeDelegateLink",
+              "fieldTypes": [
+                {
+                  "name": "uutName",
+                  "type": {
+                    "kind": "internal",
+                    "name": "String"
+                  }
+                },
+                {
+                  "name": "strategyName",
+                  "type": {
+                    "kind": "internal",
+                    "name": "String"
+                  }
+                },
+                {
+                  "name": "delegateValidatorHash",
+                  "type": {
+                    "kind": "option",
+                    "someType": {
+                      "kind": "internal",
+                      "name": "ValidatorHash"
+                    }
+                  }
+                },
+                {
+                  "name": "config",
+                  "type": {
+                    "kind": "internal",
+                    "name": "ByteArray"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "namedDelegates",
+          "type": {
+            "kind": "map",
+            "keyType": {
+              "kind": "internal",
+              "name": "String"
+            },
+            "valueType": {
+              "kind": "struct",
+              "format": "list",
+              "id": "__module__CapoDelegateHelpers__RelativeDelegateLink[]",
+              "name": "RelativeDelegateLink",
+              "fieldTypes": [
+                {
+                  "name": "uutName",
+                  "type": {
+                    "kind": "internal",
+                    "name": "String"
+                  }
+                },
+                {
+                  "name": "strategyName",
+                  "type": {
+                    "kind": "internal",
+                    "name": "String"
+                  }
+                },
+                {
+                  "name": "delegateValidatorHash",
+                  "type": {
+                    "kind": "option",
+                    "someType": {
+                      "kind": "internal",
+                      "name": "ValidatorHash"
+                    }
+                  }
+                },
+                {
+                  "name": "config",
+                  "type": {
+                    "kind": "internal",
+                    "name": "ByteArray"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "mintDelegateLink",
+          "type": {
+            "kind": "struct",
+            "format": "list",
+            "id": "__module__CapoDelegateHelpers__RelativeDelegateLink[]",
+            "name": "RelativeDelegateLink",
+            "fieldTypes": [
+              {
+                "name": "uutName",
+                "type": {
+                  "kind": "internal",
+                  "name": "String"
+                }
+              },
+              {
+                "name": "strategyName",
+                "type": {
+                  "kind": "internal",
+                  "name": "String"
+                }
+              },
+              {
+                "name": "delegateValidatorHash",
+                "type": {
+                  "kind": "option",
+                  "someType": {
+                    "kind": "internal",
+                    "name": "ValidatorHash"
+                  }
+                }
+              },
+              {
+                "name": "config",
+                "type": {
+                  "kind": "internal",
+                  "name": "ByteArray"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "mintInvariants",
+          "type": {
+            "kind": "list",
+            "itemType": {
+              "kind": "struct",
+              "format": "list",
+              "id": "__module__CapoDelegateHelpers__RelativeDelegateLink[]",
+              "name": "RelativeDelegateLink",
+              "fieldTypes": [
+                {
+                  "name": "uutName",
+                  "type": {
+                    "kind": "internal",
+                    "name": "String"
+                  }
+                },
+                {
+                  "name": "strategyName",
+                  "type": {
+                    "kind": "internal",
+                    "name": "String"
+                  }
+                },
+                {
+                  "name": "delegateValidatorHash",
+                  "type": {
+                    "kind": "option",
+                    "someType": {
+                      "kind": "internal",
+                      "name": "ValidatorHash"
+                    }
+                  }
+                },
+                {
+                  "name": "config",
+                  "type": {
+                    "kind": "internal",
+                    "name": "ByteArray"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "govAuthorityLink",
+          "type": {
+            "kind": "struct",
+            "format": "list",
+            "id": "__module__CapoDelegateHelpers__RelativeDelegateLink[]",
+            "name": "RelativeDelegateLink",
+            "fieldTypes": [
+              {
+                "name": "uutName",
+                "type": {
+                  "kind": "internal",
+                  "name": "String"
+                }
+              },
+              {
+                "name": "strategyName",
+                "type": {
+                  "kind": "internal",
+                  "name": "String"
+                }
+              },
+              {
+                "name": "delegateValidatorHash",
+                "type": {
+                  "kind": "option",
+                  "someType": {
+                    "kind": "internal",
+                    "name": "ValidatorHash"
+                  }
+                }
+              },
+              {
+                "name": "config",
+                "type": {
+                  "kind": "internal",
+                  "name": "ByteArray"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 1,
+      "id": "__module__CapoHelpers__CapoDatum[]__ScriptReference",
+      "name": "ScriptReference",
+      "fieldTypes": []
+    },
+    {
+      "kind": "variant",
+      "tag": 2,
+      "id": "__module__CapoHelpers__CapoDatum[]__DelegatedData",
+      "name": "DelegatedData",
+      "fieldTypes": [
+        {
+          "name": "data",
+          "type": {
+            "kind": "struct",
+            "format": "map",
+            "id": "__module__StellarHeliosHelpers__AnyData[]",
+            "name": "AnyData",
+            "fieldTypes": [
+              {
+                "name": "id",
+                "type": {
+                  "kind": "internal",
+                  "name": "ByteArray"
+                },
+                "key": "@id"
+              },
+              {
+                "name": "type",
+                "type": {
+                  "kind": "internal",
+                  "name": "String"
+                },
+                "key": "tpe"
+              }
+            ]
+          }
+        },
+        {
+          "name": "version",
+          "type": {
+            "kind": "internal",
+            "name": "Int"
+          }
+        },
+        {
+          "name": "otherDetails",
+          "type": {
+            "kind": "internal",
+            "name": "Data"
+          }
+        }
+      ]
+    }
+  ]
+};
+export const CapoActivitySchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "CapoActivity",
+  "id": "__module__CapoHelpers__CapoActivity[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__CapoHelpers__CapoActivity[]__usingAuthority",
+      "name": "usingAuthority",
+      "fieldTypes": []
+    },
+    {
+      "kind": "variant",
+      "tag": 1,
+      "id": "__module__CapoHelpers__CapoActivity[]__updatingCharter",
+      "name": "updatingCharter",
+      "fieldTypes": []
+    },
+    {
+      "kind": "variant",
+      "tag": 2,
+      "id": "__module__CapoHelpers__CapoActivity[]__retiringRefScript",
+      "name": "retiringRefScript",
+      "fieldTypes": []
+    },
+    {
+      "kind": "variant",
+      "tag": 3,
+      "id": "__module__CapoHelpers__CapoActivity[]__addingSpendInvariant",
+      "name": "addingSpendInvariant",
+      "fieldTypes": []
+    },
+    {
+      "kind": "variant",
+      "tag": 4,
+      "id": "__module__CapoHelpers__CapoActivity[]__spendingDelegatedDatum",
+      "name": "spendingDelegatedDatum",
+      "fieldTypes": []
+    },
+    {
+      "kind": "variant",
+      "tag": 5,
+      "id": "__module__CapoHelpers__CapoActivity[]__updatingTypeMap",
+      "name": "updatingTypeMap",
+      "fieldTypes": []
+    }
+  ]
+};

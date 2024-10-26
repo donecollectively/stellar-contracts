@@ -79,11 +79,15 @@ export class mkDataBridgeGenerator implements TypeGenHooks<dataBridgeTypeInfo> {
             this.typeBundle = new BundleTypes(bundle, this);
         }
     }
+    enumSchemas: Record<string, TypeSchema> = {};
 
     // satisfies TypeGenHooks<dataBridgeTypeInfo> for creating more details for an enum type
     getMoreEnumInfo?(typeDetails: enumTypeDetails): dataBridgeTypeInfo {
         const enumName = typeDetails.enumName;
         const helperClassName = `${enumName}Helper`;
+
+        this.enumSchemas[enumName] = typeDetails.typeSchema;
+
         return {
             accessorCode: `get ${enumName}() {
                 return new ${helperClassName}();
@@ -172,9 +176,10 @@ import type {
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
+import { EnumTypeSchema } from "@helios-lang/type-utils";
 
 import {\n${Object.entries(this.typeBundle.namedTypes)
-            .map(([typeName, _]) => `    ${typeName}`)
+            .map(([typeName, _]) => `    ${typeName}, ${typeName}Like`)
             .join(",\n")}
 } from "${relativeTypeFile}"\n`;
 
@@ -221,6 +226,7 @@ export default class mkDatumBridge${
 }
 
 ${this.includeEnumHelperClasses()}
+${this.includeEnumSchemas()}
 `;
     }
 
@@ -398,6 +404,7 @@ ${this.includeEnumHelperClasses()}
                     .map((x) => mkFieldType(x, indent))
                     .join(",\n");
             }
+            const {permissiveTypeName} = variantDetails;
 
             return (
                 `    /**\n` +
@@ -410,10 +417,9 @@ ${this.includeEnumHelperClasses()}
                 `    /**\n` +
                 `    * generates UplcData with raw seed details included in fields.\n` +
                 `    */\n` +
-                `    ${variantName}(fields: {\n${unfilteredFields()} \n` +
-                `    } ) : UplcData\n` +
+                `    ${variantName}(fields: ${permissiveTypeName}): UplcData\n` +
                 `    ${variantName}(\n` +
-                `        seedOrUf: hasSeed | { \n${unfilteredFields(3)}\n        }, \n` +
+                `        seedOrUf: hasSeed | ${permissiveTypeName}, \n` +
                 `        filteredFields?: { \n${filteredFields(3)}\n`+
                 `    }) : UplcData {\n` +
                 `        if (filteredFields) {\n` +
@@ -422,7 +428,7 @@ ${this.includeEnumHelperClasses()}
                 `                ${variantName}: { seed: seedTxOutputId, ...filteredFields } \n` +
                 `            });\n` +
                 `        } else {\n` +
-                `            const fields = seedOrUf; \n` +
+                `            const fields = seedOrUf as ${permissiveTypeName}; \n` +
                 `            return this.enumCast.toUplcData({\n` +
                 `                ${variantName}: fields \n` +
                 `            });\n` +
@@ -452,7 +458,7 @@ ${this.includeEnumHelperClasses()}
                 `       const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);\n` +
                 `        return this.enumCast.toUplcData({ \n` +
                 `           ${variantName}: { ${fieldName}: seedTxOutputId } \n` +
-                `        });\n` +
+                `        });  /*SingleField/seeded*/\n` +
                 `    }`
             );
         }
@@ -462,10 +468,24 @@ ${this.includeEnumHelperClasses()}
             `    ) {\n` +
             `        return this.enumCast.toUplcData({ \n` +
             `           ${variantName}: { ${fieldName}: value } \n` +
-            `        });\n` +
+            `        }); /*SingleField*/\n` +
             `    }`
         );
     }
+
+    includeEnumSchemas() {
+        const schemas = Object.entries(this.enumSchemas)
+            .map(([name, schema]) => {
+                return `export const ${name}Schema : EnumTypeSchema = ${JSON.stringify(
+                    schema,
+                    null,
+                    2
+                )};`;
+            })
+            .join("\n");
+        return schemas;
+    }
+
     // gatherNonEnumDatumAccessors(datumTypeName: string) {
     //     const details = this.datumTypeDetails as typeDetails;
     //     const fields = Object.keys(details.fields).map(fieldName => {

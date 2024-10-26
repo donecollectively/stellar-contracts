@@ -28,23 +28,24 @@ import type {
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
+import { EnumTypeSchema } from "@helios-lang/type-utils";
 
 import {
-    AnyData,
-    DelegationDetail,
-    DelegateDatum$Cip68RefToken,
-    DelegateDatum,
-    CapoLifecycleActivity$CreatingDelegate,
-    CapoLifecycleActivity,
-    DelegateLifecycleActivity$ReplacingMe,
-    DelegateLifecycleActivity,
-    SpendingActivity,
-    MintingActivity,
-    BurningActivity,
-    DelegateActivity$CreatingDelegatedData,
-    DelegateActivity$UpdatingDelegatedData,
-    DelegateActivity$DeletingDelegatedData,
-    DelegateActivity
+    AnyData, AnyDataLike,
+    DelegationDetail, DelegationDetailLike,
+    DelegateDatum$Cip68RefToken, DelegateDatum$Cip68RefTokenLike,
+    DelegateDatum, DelegateDatumLike,
+    CapoLifecycleActivity$CreatingDelegate, CapoLifecycleActivity$CreatingDelegateLike,
+    CapoLifecycleActivity, CapoLifecycleActivityLike,
+    DelegateLifecycleActivity$ReplacingMe, DelegateLifecycleActivity$ReplacingMeLike,
+    DelegateLifecycleActivity, DelegateLifecycleActivityLike,
+    SpendingActivity, SpendingActivityLike,
+    MintingActivity, MintingActivityLike,
+    BurningActivity, BurningActivityLike,
+    DelegateActivity$CreatingDelegatedData, DelegateActivity$CreatingDelegatedDataLike,
+    DelegateActivity$UpdatingDelegatedData, DelegateActivity$UpdatingDelegatedDataLike,
+    DelegateActivity$DeletingDelegatedData, DelegateActivity$DeletingDelegatedDataLike,
+    DelegateActivity, DelegateActivityLike
 } from "./UnspecializedDelegate.hlbundle.js"
 import { someDataMaker } from "../helios/dataBridge/someDataMaker.js"
 import { tagOnly } from "../helios/HeliosScriptBundle.js"
@@ -97,7 +98,7 @@ class DelegateDatumHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            IsDelegation: { dd: value } 
-        });
+        }); /*SingleField*/
     }
 
     get ScriptReference() {
@@ -123,25 +124,19 @@ class CapoLifecycleActivityHelper extends someDataMaker {
     /**
     * generates UplcData with raw seed details included in fields.
     */
-    CreatingDelegate(fields: {
-        seed: TxOutputId | string,
-        purpose: string 
-    } ) : UplcData
+    CreatingDelegate(fields: CapoLifecycleActivity$CreatingDelegateLike): UplcData
     CreatingDelegate(
-        seedOrUf: hasSeed | { 
-            seed: TxOutputId | string,
-            purpose: string
-        }, 
+        seedOrUf: hasSeed | CapoLifecycleActivity$CreatingDelegateLike, 
         filteredFields?: { 
             purpose: string
     }) : UplcData {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
             return this.enumCast.toUplcData({
-               CreatingDelegate: { seed: seedTxOutputId, ...filteredFields } 
+                CreatingDelegate: { seed: seedTxOutputId, ...filteredFields } 
             });
         } else {
-            const fields = seedOrUf; 
+            const fields = seedOrUf as CapoLifecycleActivity$CreatingDelegateLike; 
             return this.enumCast.toUplcData({
                 CreatingDelegate: fields 
             });
@@ -172,25 +167,19 @@ class DelegateLifecycleActivityHelper extends someDataMaker {
     /**
     * generates UplcData with raw seed details included in fields.
     */
-    ReplacingMe(fields: {
-        seed: TxOutputId | string,
-        purpose: string 
-    } ) : UplcData
+    ReplacingMe(fields: DelegateLifecycleActivity$ReplacingMeLike): UplcData
     ReplacingMe(
-        seedOrUf: hasSeed | { 
-            seed: TxOutputId | string,
-            purpose: string
-        }, 
+        seedOrUf: hasSeed | DelegateLifecycleActivity$ReplacingMeLike, 
         filteredFields?: { 
             purpose: string
     }) : UplcData {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
             return this.enumCast.toUplcData({
-               ReplacingMe: { seed: seedTxOutputId, ...filteredFields } 
+                ReplacingMe: { seed: seedTxOutputId, ...filteredFields } 
             });
         } else {
-            const fields = seedOrUf; 
+            const fields = seedOrUf as DelegateLifecycleActivity$ReplacingMeLike; 
             return this.enumCast.toUplcData({
                 ReplacingMe: fields 
             });
@@ -220,7 +209,7 @@ class SpendingActivityHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            _placeholder1SA: { recId: value } 
-        });
+        }); /*SingleField*/
     }
 }
 
@@ -236,7 +225,7 @@ class MintingActivityHelper extends someDataMaker {
        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         return this.enumCast.toUplcData({ 
            _placeholder1MA: { seed: seedTxOutputId } 
-        });
+        });  /*SingleField/seeded*/
     }
 }
 
@@ -253,7 +242,7 @@ class BurningActivityHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            _placeholder1BA: { recId: value } 
-        });
+        }); /*SingleField*/
     }
 }
 
@@ -287,7 +276,7 @@ class DelegateActivityHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            CapoLifecycleActivities: { activity: value } 
-        });
+        }); /*SingleField*/
     }
 
     DelegateLifecycleActivities(
@@ -298,7 +287,7 @@ class DelegateActivityHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            DelegateLifecycleActivities: { activity: value } 
-        });
+        }); /*SingleField*/
     }
 
     SpendingActivities(
@@ -307,7 +296,7 @@ class DelegateActivityHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            SpendingActivities: { activity: value } 
-        });
+        }); /*SingleField*/
     }
 
     MintingActivities(
@@ -316,7 +305,7 @@ class DelegateActivityHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            MintingActivities: { activity: value } 
-        });
+        }); /*SingleField*/
     }
 
     BurningActivities(
@@ -325,7 +314,7 @@ class DelegateActivityHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            BurningActivities: { activity: value } 
-        });
+        }); /*SingleField*/
     }
 
     /**
@@ -338,25 +327,19 @@ class DelegateActivityHelper extends someDataMaker {
     /**
     * generates UplcData with raw seed details included in fields.
     */
-    CreatingDelegatedData(fields: {
-        seed: TxOutputId | string,
-        dataType: string 
-    } ) : UplcData
+    CreatingDelegatedData(fields: DelegateActivity$CreatingDelegatedDataLike): UplcData
     CreatingDelegatedData(
-        seedOrUf: hasSeed | { 
-            seed: TxOutputId | string,
-            dataType: string
-        }, 
+        seedOrUf: hasSeed | DelegateActivity$CreatingDelegatedDataLike, 
         filteredFields?: { 
             dataType: string
     }) : UplcData {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
             return this.enumCast.toUplcData({
-               CreatingDelegatedData: { seed: seedTxOutputId, ...filteredFields } 
+                CreatingDelegatedData: { seed: seedTxOutputId, ...filteredFields } 
             });
         } else {
-            const fields = seedOrUf; 
+            const fields = seedOrUf as DelegateActivity$CreatingDelegatedDataLike; 
             return this.enumCast.toUplcData({
                 CreatingDelegatedData: fields 
             });
@@ -387,8 +370,561 @@ class DelegateActivityHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            MultipleDelegateActivities: { activities: value } 
-        });
+        }); /*SingleField*/
     }
 }
 
 
+export const DelegateDatumSchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "DelegateDatum",
+  "id": "__module__unspecializedDelegate__DelegateDatum[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__unspecializedDelegate__DelegateDatum[]__Cip68RefToken",
+      "name": "Cip68RefToken",
+      "fieldTypes": [
+        {
+          "name": "cip68meta",
+          "type": {
+            "kind": "struct",
+            "format": "map",
+            "id": "__module__StellarHeliosHelpers__AnyData[]",
+            "name": "AnyData",
+            "fieldTypes": [
+              {
+                "name": "id",
+                "type": {
+                  "kind": "internal",
+                  "name": "ByteArray"
+                },
+                "key": "@id"
+              },
+              {
+                "name": "type",
+                "type": {
+                  "kind": "internal",
+                  "name": "String"
+                },
+                "key": "tpe"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cip68version",
+          "type": {
+            "kind": "internal",
+            "name": "Int"
+          }
+        },
+        {
+          "name": "dd",
+          "type": {
+            "kind": "option",
+            "someType": {
+              "kind": "struct",
+              "format": "list",
+              "id": "__module__CapoDelegateHelpers__DelegationDetail[]",
+              "name": "DelegationDetail",
+              "fieldTypes": [
+                {
+                  "name": "capoAddr",
+                  "type": {
+                    "kind": "internal",
+                    "name": "Address"
+                  }
+                },
+                {
+                  "name": "mph",
+                  "type": {
+                    "kind": "internal",
+                    "name": "MintingPolicyHash"
+                  }
+                },
+                {
+                  "name": "tn",
+                  "type": {
+                    "kind": "internal",
+                    "name": "ByteArray"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 1,
+      "id": "__module__unspecializedDelegate__DelegateDatum[]__IsDelegation",
+      "name": "IsDelegation",
+      "fieldTypes": [
+        {
+          "name": "dd",
+          "type": {
+            "kind": "struct",
+            "format": "list",
+            "id": "__module__CapoDelegateHelpers__DelegationDetail[]",
+            "name": "DelegationDetail",
+            "fieldTypes": [
+              {
+                "name": "capoAddr",
+                "type": {
+                  "kind": "internal",
+                  "name": "Address"
+                }
+              },
+              {
+                "name": "mph",
+                "type": {
+                  "kind": "internal",
+                  "name": "MintingPolicyHash"
+                }
+              },
+              {
+                "name": "tn",
+                "type": {
+                  "kind": "internal",
+                  "name": "ByteArray"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 2,
+      "id": "__module__unspecializedDelegate__DelegateDatum[]__ScriptReference",
+      "name": "ScriptReference",
+      "fieldTypes": []
+    }
+  ]
+};
+export const CapoLifecycleActivitySchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "CapoLifecycleActivity",
+  "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__CreatingDelegate",
+      "name": "CreatingDelegate",
+      "fieldTypes": [
+        {
+          "name": "seed",
+          "type": {
+            "kind": "internal",
+            "name": "TxOutputId"
+          }
+        },
+        {
+          "name": "purpose",
+          "type": {
+            "kind": "internal",
+            "name": "String"
+          }
+        }
+      ]
+    }
+  ]
+};
+export const DelegateLifecycleActivitySchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "DelegateLifecycleActivity",
+  "id": "__module__CapoDelegateHelpers__DelegateLifecycleActivity[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__CapoDelegateHelpers__DelegateLifecycleActivity[]__ReplacingMe",
+      "name": "ReplacingMe",
+      "fieldTypes": [
+        {
+          "name": "seed",
+          "type": {
+            "kind": "internal",
+            "name": "TxOutputId"
+          }
+        },
+        {
+          "name": "purpose",
+          "type": {
+            "kind": "internal",
+            "name": "String"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 1,
+      "id": "__module__CapoDelegateHelpers__DelegateLifecycleActivity[]__Retiring",
+      "name": "Retiring",
+      "fieldTypes": []
+    },
+    {
+      "kind": "variant",
+      "tag": 2,
+      "id": "__module__CapoDelegateHelpers__DelegateLifecycleActivity[]__ValidatingSettings",
+      "name": "ValidatingSettings",
+      "fieldTypes": []
+    }
+  ]
+};
+export const SpendingActivitySchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "SpendingActivity",
+  "id": "__module__unspecializedDelegate__SpendingActivity[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__unspecializedDelegate__SpendingActivity[]___placeholder1SA",
+      "name": "_placeholder1SA",
+      "fieldTypes": [
+        {
+          "name": "recId",
+          "type": {
+            "kind": "internal",
+            "name": "ByteArray"
+          }
+        }
+      ]
+    }
+  ]
+};
+export const MintingActivitySchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "MintingActivity",
+  "id": "__module__unspecializedDelegate__MintingActivity[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__unspecializedDelegate__MintingActivity[]___placeholder1MA",
+      "name": "_placeholder1MA",
+      "fieldTypes": [
+        {
+          "name": "seed",
+          "type": {
+            "kind": "internal",
+            "name": "TxOutputId"
+          }
+        }
+      ]
+    }
+  ]
+};
+export const BurningActivitySchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "BurningActivity",
+  "id": "__module__unspecializedDelegate__BurningActivity[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__unspecializedDelegate__BurningActivity[]___placeholder1BA",
+      "name": "_placeholder1BA",
+      "fieldTypes": [
+        {
+          "name": "recId",
+          "type": {
+            "kind": "internal",
+            "name": "ByteArray"
+          }
+        }
+      ]
+    }
+  ]
+};
+export const DelegateActivitySchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "DelegateActivity",
+  "id": "__module__unspecializedDelegate__DelegateActivity[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__unspecializedDelegate__DelegateActivity[]__CapoLifecycleActivities",
+      "name": "CapoLifecycleActivities",
+      "fieldTypes": [
+        {
+          "name": "activity",
+          "type": {
+            "kind": "enum",
+            "name": "CapoLifecycleActivity",
+            "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]",
+            "variantTypes": [
+              {
+                "kind": "variant",
+                "tag": 0,
+                "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__CreatingDelegate",
+                "name": "CreatingDelegate",
+                "fieldTypes": [
+                  {
+                    "name": "seed",
+                    "type": {
+                      "kind": "internal",
+                      "name": "TxOutputId"
+                    }
+                  },
+                  {
+                    "name": "purpose",
+                    "type": {
+                      "kind": "internal",
+                      "name": "String"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 1,
+      "id": "__module__unspecializedDelegate__DelegateActivity[]__DelegateLifecycleActivities",
+      "name": "DelegateLifecycleActivities",
+      "fieldTypes": [
+        {
+          "name": "activity",
+          "type": {
+            "kind": "enum",
+            "name": "DelegateLifecycleActivity",
+            "id": "__module__CapoDelegateHelpers__DelegateLifecycleActivity[]",
+            "variantTypes": [
+              {
+                "kind": "variant",
+                "tag": 0,
+                "id": "__module__CapoDelegateHelpers__DelegateLifecycleActivity[]__ReplacingMe",
+                "name": "ReplacingMe",
+                "fieldTypes": [
+                  {
+                    "name": "seed",
+                    "type": {
+                      "kind": "internal",
+                      "name": "TxOutputId"
+                    }
+                  },
+                  {
+                    "name": "purpose",
+                    "type": {
+                      "kind": "internal",
+                      "name": "String"
+                    }
+                  }
+                ]
+              },
+              {
+                "kind": "variant",
+                "tag": 1,
+                "id": "__module__CapoDelegateHelpers__DelegateLifecycleActivity[]__Retiring",
+                "name": "Retiring",
+                "fieldTypes": []
+              },
+              {
+                "kind": "variant",
+                "tag": 2,
+                "id": "__module__CapoDelegateHelpers__DelegateLifecycleActivity[]__ValidatingSettings",
+                "name": "ValidatingSettings",
+                "fieldTypes": []
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 2,
+      "id": "__module__unspecializedDelegate__DelegateActivity[]__SpendingActivities",
+      "name": "SpendingActivities",
+      "fieldTypes": [
+        {
+          "name": "activity",
+          "type": {
+            "kind": "enum",
+            "name": "SpendingActivity",
+            "id": "__module__unspecializedDelegate__SpendingActivity[]",
+            "variantTypes": [
+              {
+                "kind": "variant",
+                "tag": 0,
+                "id": "__module__unspecializedDelegate__SpendingActivity[]___placeholder1SA",
+                "name": "_placeholder1SA",
+                "fieldTypes": [
+                  {
+                    "name": "recId",
+                    "type": {
+                      "kind": "internal",
+                      "name": "ByteArray"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 3,
+      "id": "__module__unspecializedDelegate__DelegateActivity[]__MintingActivities",
+      "name": "MintingActivities",
+      "fieldTypes": [
+        {
+          "name": "activity",
+          "type": {
+            "kind": "enum",
+            "name": "MintingActivity",
+            "id": "__module__unspecializedDelegate__MintingActivity[]",
+            "variantTypes": [
+              {
+                "kind": "variant",
+                "tag": 0,
+                "id": "__module__unspecializedDelegate__MintingActivity[]___placeholder1MA",
+                "name": "_placeholder1MA",
+                "fieldTypes": [
+                  {
+                    "name": "seed",
+                    "type": {
+                      "kind": "internal",
+                      "name": "TxOutputId"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 4,
+      "id": "__module__unspecializedDelegate__DelegateActivity[]__BurningActivities",
+      "name": "BurningActivities",
+      "fieldTypes": [
+        {
+          "name": "activity",
+          "type": {
+            "kind": "enum",
+            "name": "BurningActivity",
+            "id": "__module__unspecializedDelegate__BurningActivity[]",
+            "variantTypes": [
+              {
+                "kind": "variant",
+                "tag": 0,
+                "id": "__module__unspecializedDelegate__BurningActivity[]___placeholder1BA",
+                "name": "_placeholder1BA",
+                "fieldTypes": [
+                  {
+                    "name": "recId",
+                    "type": {
+                      "kind": "internal",
+                      "name": "ByteArray"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 5,
+      "id": "__module__unspecializedDelegate__DelegateActivity[]__CreatingDelegatedData",
+      "name": "CreatingDelegatedData",
+      "fieldTypes": [
+        {
+          "name": "seed",
+          "type": {
+            "kind": "internal",
+            "name": "TxOutputId"
+          }
+        },
+        {
+          "name": "dataType",
+          "type": {
+            "kind": "internal",
+            "name": "String"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 6,
+      "id": "__module__unspecializedDelegate__DelegateActivity[]__UpdatingDelegatedData",
+      "name": "UpdatingDelegatedData",
+      "fieldTypes": [
+        {
+          "name": "dataType",
+          "type": {
+            "kind": "internal",
+            "name": "String"
+          }
+        },
+        {
+          "name": "recId",
+          "type": {
+            "kind": "internal",
+            "name": "ByteArray"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 7,
+      "id": "__module__unspecializedDelegate__DelegateActivity[]__DeletingDelegatedData",
+      "name": "DeletingDelegatedData",
+      "fieldTypes": [
+        {
+          "name": "dataType",
+          "type": {
+            "kind": "internal",
+            "name": "String"
+          }
+        },
+        {
+          "name": "recId",
+          "type": {
+            "kind": "internal",
+            "name": "ByteArray"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 8,
+      "id": "__module__unspecializedDelegate__DelegateActivity[]__MultipleDelegateActivities",
+      "name": "MultipleDelegateActivities",
+      "fieldTypes": [
+        {
+          "name": "activities",
+          "type": {
+            "kind": "list",
+            "itemType": {
+              "kind": "internal",
+              "name": "Data"
+            }
+          }
+        }
+      ]
+    }
+  ]
+};

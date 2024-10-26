@@ -262,7 +262,7 @@ class CapoLifecycleActivityHelper extends someDataMaker {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
             return this.enumCast.toUplcData({
-               CreatingDelegate: { seed: seedTxOutputId, ...filteredFields } 
+                CreatingDelegate: { seed: seedTxOutputId, ...filteredFields } 
             });
         } else {
             const fields = seedOrUf; 
@@ -311,7 +311,7 @@ class DelegateLifecycleActivityHelper extends someDataMaker {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
             return this.enumCast.toUplcData({
-               ReplacingMe: { seed: seedTxOutputId, ...filteredFields } 
+                ReplacingMe: { seed: seedTxOutputId, ...filteredFields } 
             });
         } else {
             const fields = seedOrUf; 
@@ -393,7 +393,7 @@ class MintingActivityHelper extends someDataMaker {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
             return this.enumCast.toUplcData({
-               mintingUuts: { seed: seedTxOutputId, ...filteredFields } 
+                mintingUuts: { seed: seedTxOutputId, ...filteredFields } 
             });
         } else {
             const fields = seedOrUf; 
@@ -524,7 +524,7 @@ class DelegateActivityHelper extends someDataMaker {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
             return this.enumCast.toUplcData({
-               CreatingDelegatedData: { seed: seedTxOutputId, ...filteredFields } 
+                CreatingDelegatedData: { seed: seedTxOutputId, ...filteredFields } 
             });
         } else {
             const fields = seedOrUf; 
@@ -561,5 +561,6 @@ class DelegateActivityHelper extends someDataMaker {
         });
     }
 }
+
 
 
