@@ -1,4 +1,4 @@
-export { BundleTypeGenerator } from "./BundleTypeGenerator.js";
+export { BundleTypeGenerator } from "./dataBridge/BundleTypeGenerator.js";
 export { mkDataBridgeGenerator } from "./dataBridge/mkDataBridgeGenerator.js";
 export { StellarHeliosProject } from "./StellarHeliosProject.js";
 export * from "./HeliosScriptBundle.js";

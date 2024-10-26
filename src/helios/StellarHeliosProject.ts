@@ -6,7 +6,7 @@ import * as rollup from "rollup";
 import { heliosRollupLoader } from "./heliosRollupLoader.js";
 import esbuild from "rollup-plugin-esbuild";
 import type { UplcData } from "@helios-lang/uplc";
-import { BundleTypeGenerator } from "./BundleTypeGenerator.js";
+import { BundleTypeGenerator } from "./dataBridge/BundleTypeGenerator.js";
 import { mkDataBridgeGenerator } from "./dataBridge/mkDataBridgeGenerator.js";
 // import {CapoHeliosBundle} from "../CapoHeliosBundle.js";
 
@@ -22,7 +22,6 @@ type BundleStatusEntry = {
     parentClassName?: string;
     bundleClass?: typeof HeliosScriptBundle; // or a subclass
     bundle?: Option<HeliosScriptBundle>;
-    ignoredExtension?: ".d.ts.ignored";
     // types?: Option<HeliosBundleTypeInfo>;
 };
 
@@ -58,6 +57,7 @@ export class StellarHeliosProject {
         return `${root}/hlproject.compiled.mjs`;
     }
     _isSC: boolean | undefined;
+
     isStellarContracts() {
         if (this._isSC == undefined) {
             const packageJsonPath = path.join(this.projectRoot, "package.json");
@@ -110,9 +110,6 @@ export class StellarHeliosProject {
             proto = Object.getPrototypeOf(proto);
         }
 
-        const ignoredExtension = filename.match(/\.ts$/)
-            ? ".d.ts.ignored"
-            : undefined;
         if (isCapoBundle && !harmlessSecondCapo) {
             if (this.capoBundle) {
                 throw new Error(`only one CapoBundle is currently supported`);
@@ -138,17 +135,13 @@ export class StellarHeliosProject {
                 //     entry.status = "loaded";
                 // }
             }
-            const ignoredExtension = filename.match(/\.ts$/)
-                ? ".d.ts.ignored"
-                : undefined;
             this.bundleEntries.set(filename, {
                 filename,
                 status: "loaded",
                 bundle: this.capoBundle,
                 bundleClassName: bundleClassName,
                 parentClassName,
-                bundleClass,
-                ignoredExtension,
+                bundleClass
             });
         } else if (isCapoBundle && harmlessSecondCapo) {
             this.bundleEntries.set(filename, {
@@ -158,7 +151,6 @@ export class StellarHeliosProject {
                 bundleClassName: bundleClassName,
                 parentClassName,
                 bundleClass,
-                ignoredExtension,
             });
         } else {
             const bundleEntry: BundleStatusEntry = {
@@ -167,7 +159,6 @@ export class StellarHeliosProject {
                 bundleClass,
                 bundleClassName: bundleClassName,
                 parentClassName,
-                ignoredExtension,
             };
             // if we have the CapoBundle, we can use it to instantiate this bundle now.
             if (this.capoBundle) {
@@ -271,11 +262,12 @@ export class StellarHeliosProject {
                 `cannot generate mkData bridge for ${fn} with status ${status}`
             );
         }
-        const mkDataGenerator = new mkDataBridgeGenerator(bundle);
+        const mkDataGenerator = mkDataBridgeGenerator.create(bundle);
+        if (this.isStellarContracts()) mkDataGenerator._isInStellarContractsLib(true)
         const mkDataSource = this.isStellarContracts()
             ? mkDataGenerator.generateMkDataBridge(
                 fn,
-                  "stellar-contracts", oneFilename
+                  "stellar-contracts"
               )
             : mkDataGenerator.generateMkDataBridge(fn);
             this.writeIfUnchanged( mkDataFn, mkDataSource);
@@ -309,8 +301,7 @@ export class StellarHeliosProject {
         const fn = this.normalizeFilePath(filename);
         const bundle = bundleEntry.bundle;
         const status = bundleEntry.status;
-        const ignoredExtension = bundleEntry.ignoredExtension;
-        // const { bundle, status, ignoredExtension } = bundleEntry;
+
         if (!bundle) {
             console.warn(
                 `not writing type info for ${filename} for newly-added bundle (check for hasBundleClass() first?)`
@@ -323,44 +314,31 @@ export class StellarHeliosProject {
             );
         }
 
-        if (ignoredExtension) {
-            if (!filename.match(/.ts$/)) {
-                throw new Error(
-                    `non-ts file shouldn't have ignoredExtension option: ${filename}`
-                );
-            }
-        } else if (filename.match(/.ts$/)) {
-            throw new Error(
-                `ts file should have ignoredExtension option: ${filename}`
-            );
-        }
         let typeFilename = filename.replace(
-            /\.hlbundle\.js$/,
-            ".hlbundle.d.ts"
+            /(\.hlbundle)?\.[jt]s$/,
+            ".typeInfo.ts"
         );
-        if (bundleEntry.ignoredExtension) {
-            typeFilename = typeFilename.replace(
-                /.ts$/,
-                bundleEntry.ignoredExtension
-            );
-        }
         const { bundleClassName, parentClassName } = bundleEntry;
 
         if (!parentClassName) {
             throw new Error(`no parent class name for ${filename}`);
         }
-        // how long does this take?
+
         const ts1 = Date.now();
-        const typeContext = new BundleTypeGenerator(bundle);
+        const typeContext = BundleTypeGenerator.create(bundle);
+        if (this.isStellarContracts()) typeContext._isInStellarContractsLib(true)
+
         const typesSource = typeContext.createAllTypesSource(
             bundleClassName,
-            parentClassName
+            parentClassName,
+            typeFilename
         );
-        // console.log({
+        // console.log("not writing type info yet:", {
         //     filename,
         //     typeFilename,
-        //     ignoredExtension,
         // });
+        // return
+
         if (this.writeIfUnchanged(typeFilename, typesSource)) {
             console.log(
                 `📦 ${bundleClassName}: generated types (${Date.now() - ts1}ms)`

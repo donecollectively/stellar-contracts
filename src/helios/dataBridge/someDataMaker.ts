@@ -141,6 +141,7 @@ export class someDataMaker { // extends (dataMakerProxyBase as any) {
     }
     __schema : TypeSchema 
     __cast: Cast<any,any>
+    declare  datum: someDataMaker
     // get datum() {
     //     throw new Error(`each dataMaker makes its own datum`)
     // }

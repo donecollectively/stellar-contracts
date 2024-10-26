@@ -100,10 +100,6 @@ export function heliosRollupTypeGen(
         ): Promise<void> {
             console.log("heliosTypeGen: buildStart");
 
-            // find the package.json file from the current project
-            const projectRoot = process.cwd();
-            const packageJsonPath = path.join(projectRoot, "package.json");
-
             if (isStellarContracts) {
                 this.warn("building in stellar-contracts project");
                 const existingBuildFile = `${projectRoot}/dist/stellar-contracts.mjs`;
@@ -215,39 +211,6 @@ export function heliosRollupTypeGen(
                     }
 
                     return null;
-                }
-
-                const isTypescript = id.match(/\.hlbundle\.ts$/);
-                let useExtension = ""
-                if (isTypescript) {
-                    // throw new Error(
-                    //     `${id} should be a .js file, not a .ts file (HeliosTypeGen will provide types for it)`
-                    // );
-
-                    console.log(
-                        "heliosTypeGen: found Typescript .hlbundle.ts (not .js):",
-                        id
-                    );
-                    const ignoredFile = id.replace(
-                        /.*\/(.*.hlbundle).ts/,
-                        "$1.d.ts.ignored"
-                    );
-                    console.log(
-                        `Generating types in \`${ignoredFile}\` for your reference\n` +
-                            "   ... this will be ignored by Typescript, but you can copy the types from it to your .ts file\n" +
-                            "   ... to keep them synced manually with the discovered types from your Helios source\n"
-                    );
-                    console.log(
-                        "To automatically use generated types, use the *.hlbundle.js file type instead of .ts\n\n"
-                    );
-                    useExtension = ".d.ts.ignored";
-                    // project.registerBundle(id, ".d.ts.ignored");
-                }
-                if (project.hasBundleClass(id)) {
-                    //      writing types is handled in a batch at the top
-                    //      project.writeTypeInfo(id);
-                } else if (!isTypescript) {
-                    // project.registerBundle(id);
                 }
 
                 const SomeBundleClass = await rollupSingleBundleToBundleClass(id);
@@ -393,6 +356,7 @@ export function heliosRollupTypeGen(
         }
         const compiled = result.output[0].code;
         const buildTime = Date.now() - buildStartTime;
+
         let needsWrite = true
         // if the file is not changed, skip write of the compiled file
         if (existsSync(outputFile)) {
@@ -465,6 +429,8 @@ export function heliosRollupTypeGen(
         const compiled = result.output[0].code;
         const buildTime = Date.now() - buildStartTime;
         console.log(`📦 CapoHeliosBundle: generated bundle (${buildTime}ms): ${outputFile}`);
+
+        throw new Error(`unused?`)
         let needsWrite = true;
         // if the file is not changed, skip write of the compiled file
         if (existsSync(outputFile)) {

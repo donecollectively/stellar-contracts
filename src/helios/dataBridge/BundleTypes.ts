@@ -13,7 +13,7 @@ import type {
     TypeVariety,
     VariantFlavor,
     variantTypeDetails,
-} from "./HeliosScriptBundle.js";
+} from "../HeliosScriptBundle.js";
 import type {
     EnumTypeSchema,
     VariantTypeSchema,

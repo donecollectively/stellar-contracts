@@ -9,7 +9,7 @@ import type {
 } from "@helios-lang/type-utils";
 import type { DataType } from "@helios-lang/compiler/src/index.js";
 import type { EachUnionElement } from "./typeUtils.js";
-import { BundleTypeGenerator } from "./BundleTypeGenerator.js";
+import { BundleTypeGenerator } from "./dataBridge/BundleTypeGenerator.js";
 import { ActivityMaker, DataMaker } from "./dataBridge/dataMakers.js";
 import { DataReader } from "./dataBridge/DataReader.js";
 import type { TxOutputId } from "@helios-lang/ledger-babbage";
