@@ -275,10 +275,10 @@ export class StellarHeliosProject {
         const mkDataGenerator = new mkDataBridgeGenerator(bundle);
         const mkDataSource = this.isStellarContracts()
             ? mkDataGenerator.generateMkDataBridge(
-                  "stellar-contracts",
-                  oneFilename
+                fn,
+                  "stellar-contracts", oneFilename
               )
-            : mkDataGenerator.generateMkDataBridge();
+            : mkDataGenerator.generateMkDataBridge(fn);
             this.writeIfUnchanged( mkDataFn, mkDataSource);
         // console.log(`NOT writing mkData bridge to ${mkDataFn}:${mkDataSource}`);
         writeFileSync(mkDataFn, mkDataSource);

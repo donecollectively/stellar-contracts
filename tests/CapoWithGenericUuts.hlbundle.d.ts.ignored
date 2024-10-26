@@ -44,134 +44,132 @@
 // import type {
 //     HeliosScriptBundle,
 //     mkEnum,
-//     type EnumType,
-//     type singleEnumVariant,
+//     type EnumTypeMeta,
+//     type singleEnumVariantMeta,
+//     type tagOnly
 // } from "@donecollectively/stellar-contracts"
 
 /** ------------ BEGIN hlbundle types ------------ */
 export type RelativeDelegateLink = {
-    uutName: string
-    strategyName: string
-    delegateValidatorHash: Option<ValidatorHash>
-    config: number[]
-};
+    uutName: /*minStructField*/ string
+    strategyName: /*minStructField*/ string
+    delegateValidatorHash: /*minStructField*/ Option<ValidatorHash>
+    config: /*minStructField*/ number[]
+}
 
 export type RelativeDelegateLinkLike = {
-    uutName: string
-    strategyName: string
-    delegateValidatorHash: Option<ValidatorHash | string | number[]>
-    config: number[]
-};
+    uutName: /*minStructField*/ string
+    strategyName: /*minStructField*/ string
+    delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
+    config: /*minStructField*/ number[]
+}
+
+
+export type CapoDatum$CharterToken = {
+    spendDelegateLink: RelativeDelegateLink  /*minVariantField*/ ,
+    spendInvariants: Array<RelativeDelegateLink>  /*minVariantField*/ ,
+    namedDelegates: Map<string, RelativeDelegateLink>  /*minVariantField*/ ,
+    mintDelegateLink: RelativeDelegateLink  /*minVariantField*/ ,
+    mintInvariants: Array<RelativeDelegateLink>  /*minVariantField*/ ,
+    govAuthorityLink: RelativeDelegateLink  /*minVariantField*/ 
+}
+
+export type CapoDatum$CharterTokenLike = {
+    spendDelegateLink: RelativeDelegateLinkLike  /*minVariantField*/ ,
+    spendInvariants: Array<RelativeDelegateLinkLike>  /*minVariantField*/ ,
+    namedDelegates: Map<string, RelativeDelegateLinkLike>  /*minVariantField*/ ,
+    mintDelegateLink: RelativeDelegateLinkLike  /*minVariantField*/ ,
+    mintInvariants: Array<RelativeDelegateLinkLike>  /*minVariantField*/ ,
+    govAuthorityLink: RelativeDelegateLinkLike  /*minVariantField*/ 
+}
 
 
 export type AnyData = {
-    id: number[]
-    type: string
-};
+    id: /*minStructField*/ number[]
+    type: /*minStructField*/ string
+}
 
 export type AnyDataLike = {
-    id: number[]
-    type: string
-};
+    id: /*minStructField*/ number[]
+    type: /*minStructField*/ string
+}
 
 
-export type CapoDatum = EnumType<{module: "CapoHelpers", enumName: "CapoDatum"}, {
-        CharterToken: singleEnumVariant<CapoDatum, "CharterToken",
+export type CapoDatum$DelegatedData = {
+    data: AnyData  /*minVariantField*/ ,
+    version: bigint  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+export type CapoDatum$DelegatedDataLike = {
+    data: AnyDataLike  /*minVariantField*/ ,
+    version: IntLike  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+
+export type CapoDatumMeta = EnumTypeMeta<
+    {module: "CapoHelpers", enumName: "CapoDatum"}, {
+        CharterToken: singleEnumVariantMeta<CapoDatumMeta, "CharterToken",
             "Constr#0", 
-            "fields", {
-                spendDelegateLink: RelativeDelegateLink,
-                spendInvariants: Array<RelativeDelegateLink>,
-                namedDelegates: Map<string, RelativeDelegateLink>,
-                mintDelegateLink: RelativeDelegateLink,
-                mintInvariants: Array<RelativeDelegateLink>,
-                govAuthorityLink: RelativeDelegateLink
-            }, "noSpecialFlags"
+            "fields", CapoDatum$CharterToken, "noSpecialFlags"
         >,
-        ScriptReference: singleEnumVariant<CapoDatum, "ScriptReference",
-            "Constr#1", "tagOnly", never, "noSpecialFlags"
+        ScriptReference: singleEnumVariantMeta<CapoDatumMeta, "ScriptReference",
+            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
         >,
-        DelegatedData: singleEnumVariant<CapoDatum, "DelegatedData",
+        DelegatedData: singleEnumVariantMeta<CapoDatumMeta, "DelegatedData",
             "Constr#2", 
-            "fields", {
-                data: AnyData,
-                version: bigint,
-                otherDetails: UplcData
-            }, "noSpecialFlags"
+            "fields", CapoDatum$DelegatedData, "noSpecialFlags"
         >
     }
 >;
 
-export type CapoDatumLike = EnumType<{module: "CapoHelpers", enumName: "CapoDatum"}, {
-        CharterToken: singleEnumVariant<CapoDatum, "CharterToken",
-            "Constr#0", 
-            "fields", {
-                spendDelegateLink: RelativeDelegateLinkLike,
-                spendInvariants: Array<RelativeDelegateLinkLike>,
-                namedDelegates: Map<string, RelativeDelegateLinkLike>,
-                mintDelegateLink: RelativeDelegateLinkLike,
-                mintInvariants: Array<RelativeDelegateLinkLike>,
-                govAuthorityLink: RelativeDelegateLinkLike
-            }, "noSpecialFlags"
+export type CapoDatum = 
+        | { CharterToken: /*minEnumVariant*/ CapoDatum$CharterToken }
+        | { ScriptReference: /*minEnumVariant*/ tagOnly }
+        | { DelegatedData: /*minEnumVariant*/ CapoDatum$DelegatedData }
+export type CapoDatumLike = 
+        | { CharterToken: /*minEnumVariant*/ CapoDatum$CharterTokenLike }
+        | { ScriptReference: /*minEnumVariant*/ tagOnly }
+        | { DelegatedData: /*minEnumVariant*/ CapoDatum$DelegatedDataLike }
+
+export type CapoActivityMeta = EnumTypeMeta<
+    {module: "CapoHelpers", enumName: "CapoActivity"}, {
+        usingAuthority: singleEnumVariantMeta<CapoActivityMeta, "usingAuthority",
+            "Constr#0", "tagOnly", tagOnly, "noSpecialFlags"
         >,
-        ScriptReference: singleEnumVariant<CapoDatum, "ScriptReference",
-            "Constr#1", "tagOnly", never, "noSpecialFlags"
+        updatingCharter: singleEnumVariantMeta<CapoActivityMeta, "updatingCharter",
+            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
         >,
-        DelegatedData: singleEnumVariant<CapoDatum, "DelegatedData",
-            "Constr#2", 
-            "fields", {
-                data: AnyDataLike,
-                version: IntLike,
-                otherDetails: UplcData
-            }, "noSpecialFlags"
+        retiringRefScript: singleEnumVariantMeta<CapoActivityMeta, "retiringRefScript",
+            "Constr#2", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        addingSpendInvariant: singleEnumVariantMeta<CapoActivityMeta, "addingSpendInvariant",
+            "Constr#3", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        spendingDelegatedDatum: singleEnumVariantMeta<CapoActivityMeta, "spendingDelegatedDatum",
+            "Constr#4", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        updatingTypeMap: singleEnumVariantMeta<CapoActivityMeta, "updatingTypeMap",
+            "Constr#5", "tagOnly", tagOnly, "noSpecialFlags"
         >
     }
 >;
 
-
-export type CapoActivity = EnumType<{module: "CapoHelpers", enumName: "CapoActivity"}, {
-        usingAuthority: singleEnumVariant<CapoActivity, "usingAuthority",
-            "Constr#0", "tagOnly", never, "noSpecialFlags"
-        >,
-        updatingCharter: singleEnumVariant<CapoActivity, "updatingCharter",
-            "Constr#1", "tagOnly", never, "noSpecialFlags"
-        >,
-        retiringRefScript: singleEnumVariant<CapoActivity, "retiringRefScript",
-            "Constr#2", "tagOnly", never, "noSpecialFlags"
-        >,
-        addingSpendInvariant: singleEnumVariant<CapoActivity, "addingSpendInvariant",
-            "Constr#3", "tagOnly", never, "noSpecialFlags"
-        >,
-        spendingDelegatedDatum: singleEnumVariant<CapoActivity, "spendingDelegatedDatum",
-            "Constr#4", "tagOnly", never, "noSpecialFlags"
-        >,
-        updatingTypeMap: singleEnumVariant<CapoActivity, "updatingTypeMap",
-            "Constr#5", "tagOnly", never, "noSpecialFlags"
-        >
-    }
->;
-
-export type CapoActivityLike = EnumType<{module: "CapoHelpers", enumName: "CapoActivity"}, {
-        usingAuthority: singleEnumVariant<CapoActivity, "usingAuthority",
-            "Constr#0", "tagOnly", never, "noSpecialFlags"
-        >,
-        updatingCharter: singleEnumVariant<CapoActivity, "updatingCharter",
-            "Constr#1", "tagOnly", never, "noSpecialFlags"
-        >,
-        retiringRefScript: singleEnumVariant<CapoActivity, "retiringRefScript",
-            "Constr#2", "tagOnly", never, "noSpecialFlags"
-        >,
-        addingSpendInvariant: singleEnumVariant<CapoActivity, "addingSpendInvariant",
-            "Constr#3", "tagOnly", never, "noSpecialFlags"
-        >,
-        spendingDelegatedDatum: singleEnumVariant<CapoActivity, "spendingDelegatedDatum",
-            "Constr#4", "tagOnly", never, "noSpecialFlags"
-        >,
-        updatingTypeMap: singleEnumVariant<CapoActivity, "updatingTypeMap",
-            "Constr#5", "tagOnly", never, "noSpecialFlags"
-        >
-    }
->;
-
+export type CapoActivity = 
+        | { usingAuthority: /*minEnumVariant*/ tagOnly }
+        | { updatingCharter: /*minEnumVariant*/ tagOnly }
+        | { retiringRefScript: /*minEnumVariant*/ tagOnly }
+        | { addingSpendInvariant: /*minEnumVariant*/ tagOnly }
+        | { spendingDelegatedDatum: /*minEnumVariant*/ tagOnly }
+        | { updatingTypeMap: /*minEnumVariant*/ tagOnly }
+export type CapoActivityLike = 
+        | { usingAuthority: /*minEnumVariant*/ tagOnly }
+        | { updatingCharter: /*minEnumVariant*/ tagOnly }
+        | { retiringRefScript: /*minEnumVariant*/ tagOnly }
+        | { addingSpendInvariant: /*minEnumVariant*/ tagOnly }
+        | { spendingDelegatedDatum: /*minEnumVariant*/ tagOnly }
+        | { updatingTypeMap: /*minEnumVariant*/ tagOnly }
 
 /** ------------- hlbundle types END ------------- */
 

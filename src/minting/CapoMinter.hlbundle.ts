@@ -25,9 +25,9 @@ import type { Cast } from "@helios-lang/contract-utils";
 
 import {
     HeliosScriptBundle,
-    type EnumType,
+    type EnumTypeMeta,
     type makesUplcActivityEnumData,
-    type singleEnumVariant,    
+    type singleEnumVariantMeta,    
 } from "../helios/HeliosScriptBundle.js";
 import CapoMinter from "./CapoMinter.hl";
 import { CapoHeliosBundle } from "../CapoHeliosBundle.js";
@@ -112,27 +112,27 @@ import { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
 // } from "@donecollectively/stellar-contracts"
 
 /** ------------ BEGIN hlbundle types ------------ */
-export type MinterActivity = EnumType<{module: "CapoMintHelpers", enumName: "MinterActivity"}, {
-    mintingCharter: singleEnumVariant<MinterActivity, "mintingCharter",
+export type MinterActivity = EnumTypeMeta<{module: "CapoMintHelpers", enumName: "MinterActivity"}, {
+    mintingCharter: singleEnumVariantMeta<MinterActivity, "mintingCharter",
         "Constr#0", "singletonField", 
         Address, "noSpecialFlags"
     >,
-    mintWithDelegateAuthorizing: singleEnumVariant<MinterActivity, "mintWithDelegateAuthorizing",
+    mintWithDelegateAuthorizing: singleEnumVariantMeta<MinterActivity, "mintWithDelegateAuthorizing",
         "Constr#1", "tagOnly", never, "noSpecialFlags"
     >,
-    addingMintInvariant: singleEnumVariant<MinterActivity, "addingMintInvariant",
+    addingMintInvariant: singleEnumVariantMeta<MinterActivity, "addingMintInvariant",
         "Constr#2", "singletonField", 
         TxOutputId, "isSeededActivity"
     >,
-    addingSpendInvariant: singleEnumVariant<MinterActivity, "addingSpendInvariant",
+    addingSpendInvariant: singleEnumVariantMeta<MinterActivity, "addingSpendInvariant",
         "Constr#3", "singletonField", 
         TxOutputId, "isSeededActivity"
     >,
-    ForcingNewMintDelegate: singleEnumVariant<MinterActivity, "ForcingNewMintDelegate",
+    ForcingNewMintDelegate: singleEnumVariantMeta<MinterActivity, "ForcingNewMintDelegate",
         "Constr#4", "singletonField", 
         TxOutputId, "isSeededActivity"
     >,
-    CreatingNewSpendDelegate: singleEnumVariant<MinterActivity, "CreatingNewSpendDelegate",
+    CreatingNewSpendDelegate: singleEnumVariantMeta<MinterActivity, "CreatingNewSpendDelegate",
         "Constr#5", 
         "fields", {
             seed: TxOutputId,
@@ -142,27 +142,27 @@ export type MinterActivity = EnumType<{module: "CapoMintHelpers", enumName: "Min
 }
 >;
 
-export type MinterActivityLike = EnumType<{module: "CapoMintHelpers", enumName: "MinterActivity"}, {
-    mintingCharter: singleEnumVariant<MinterActivity, "mintingCharter",
+export type MinterActivityLike = EnumTypeMeta<{module: "CapoMintHelpers", enumName: "MinterActivity"}, {
+    mintingCharter: singleEnumVariantMeta<MinterActivity, "mintingCharter",
         "Constr#0", "singletonField", 
         Address | string, "noSpecialFlags"
     >,
-    mintWithDelegateAuthorizing: singleEnumVariant<MinterActivity, "mintWithDelegateAuthorizing",
+    mintWithDelegateAuthorizing: singleEnumVariantMeta<MinterActivity, "mintWithDelegateAuthorizing",
         "Constr#1", "tagOnly", never, "noSpecialFlags"
     >,
-    addingMintInvariant: singleEnumVariant<MinterActivity, "addingMintInvariant",
+    addingMintInvariant: singleEnumVariantMeta<MinterActivity, "addingMintInvariant",
         "Constr#2", "singletonField", 
         TxOutputId | string, "isSeededActivity"
     >,
-    addingSpendInvariant: singleEnumVariant<MinterActivity, "addingSpendInvariant",
+    addingSpendInvariant: singleEnumVariantMeta<MinterActivity, "addingSpendInvariant",
         "Constr#3", "singletonField", 
         TxOutputId | string, "isSeededActivity"
     >,
-    ForcingNewMintDelegate: singleEnumVariant<MinterActivity, "ForcingNewMintDelegate",
+    ForcingNewMintDelegate: singleEnumVariantMeta<MinterActivity, "ForcingNewMintDelegate",
         "Constr#4", "singletonField", 
         TxOutputId | string, "isSeededActivity"
     >,
-    CreatingNewSpendDelegate: singleEnumVariant<MinterActivity, "CreatingNewSpendDelegate",
+    CreatingNewSpendDelegate: singleEnumVariantMeta<MinterActivity, "CreatingNewSpendDelegate",
         "Constr#5", 
         "fields", {
             seed: TxOutputId | string,

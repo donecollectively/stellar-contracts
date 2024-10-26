@@ -19,12 +19,20 @@ import { someDataMaker } from "./dataBridge/someDataMaker.js";
 
 export type HeliosBundleClass = new () => HeliosScriptBundle;
 
+
+export type TypeVariety = "canonical" | "permissive";
+export type VariantFlavor = "tagOnly" | "fields" | "singletonField";
+export type SpecialActivityFlags = "isSeededActivity" | "noSpecialFlags";
+
+export type tagOnly=Record<string, never>
+
 // external-facing types for reading and writing data for use in contract scripts.
 // 1. create data for Datum or other non-Activity scenarios
 
-export type makesSomeUplcData<T> = T extends EnumType<any, any>
+export type makesSomeUplcData<T> = T extends EnumTypeMeta<any, any>
     ? makesUplcEnumData<T>
     : uplcDataMaker<T>;
+
 
 export type uplcDataMaker<permissiveType> =
     // can be called
@@ -34,11 +42,11 @@ export type uplcDataMaker<permissiveType> =
 
 // 2. read data from Datum.  Can also be used for returned results
 //  ... of utility functions defined in Helios code.
-export type readsSomeUplcData<T> = T extends EnumType<any, any>
+export type readsSomeUplcData<T> = T extends EnumTypeMeta<any, any>
     ? readsUplcEnumData<T>
     : readsUplcData<T>;
 
-export type readsUplcEnumData<T extends EnumType<any, any>> = {
+export type readsUplcEnumData<T extends EnumTypeMeta<any, any>> = {
     read(x: UplcData): T;
 };
 
@@ -47,12 +55,12 @@ export type readsUplcData<canonicalType> = (x: UplcData) => canonicalType;
 export type makesUplcActivityData<permissiveType> = // ... a function type
     (arg: permissiveType) => isActivity & { redeemer: UplcData };
 
-export type makesSomeActivityData<T> = T extends EnumType<any, any>
+export type makesSomeActivityData<T> = T extends EnumTypeMeta<any, any>
     ? makesUplcActivityEnumData<any, any>
     : makesUplcActivityData<any>;
 
-export type AnyHeliosTypeInfo = TypeSchema | anyTypeDetails;
-export type anyTypeDetails = typeDetails | enumTypeDetails;
+// export type AnyHeliosTypeInfo = TypeSchema | anyTypeDetails;
+export type anyTypeDetails<T=undefined> = typeDetails<T> | enumTypeDetails<T>;
 
 // creates smashed type of all possible variant-accessors of any signature.
 // this brings together all the separate entries from separate union elements into a single type
@@ -62,39 +70,54 @@ export type expanded<T> = {
 };
 
 // Utility types representing runtime information retrievable through the Helios APi
-//   ... these are all ABOUT the types seen in the contract scripts, so they're a sort of meta-types
-export type typeDetails = {
+//   ... these are all ABOUT the types seen in the contract scripts
+export type typeDetails<T=undefined> = {
     typeName?: string;
     typeSchema: TypeSchema;
     dataType: DataType;
-    canonicalType: string; // minimal canonical type
-    permissiveType?: string; // minimal permissive type
+
+    canonicalType: string; // minimal canonical type (name if avaiable, or inline type as string)
+    permissiveType?: string; // minimal permissive type (name if available, or inline type as string)
+
+    moreInfo: T
 };
 
-export type variantTypeDetails = {
-    variantName: string; // ??????????????????????
+export type variantTypeDetails<T=undefined> = {
+    variantName: string; 
     fieldCount: number;
-    fields: Record<string, anyTypeDetails>;
+    fields: Record<string, anyTypeDetails<T>>;
     typeSchema: VariantTypeSchema; // for consistency
     dataType: DataType;
     canonicalType: string; // minimal canonical type
     permissiveType: string; // minimal permissive type
+
+    canonicalTypeName: string; // type name, always available
+    permissiveTypeName: string; // typ name, always available
+
+    canonicalMetaType: string; // minimal canonical meta-type (singleEnumVariant<...>) string
+    permissiveMetaType: string; // minimal permissive meta-type (singleEnumVariant<...>) string
+
+    moreInfo: T;
 };
 
-export type enumTypeDetails = {
+export type enumTypeDetails<T=undefined> = {
     enumName: string;
     typeSchema: EnumTypeSchema; // for consistency
     dataType: DataType;
-    variants: Record<string, variantTypeDetails>;
+    variants: Record<string, variantTypeDetails<T>>;
     canonicalType: string; // minimal canonical type
     permissiveType: string; // minimal permissive type
+    canonicalMetaType: string; // minimal canonical meta-type (EnumType<...>) string
+    permissiveMetaType: string; // minimal permissive meta-type (EnumType<...>) string
+
+    moreInfo: T;
 };
 
 // compile-time types for representing what is known about the types in the contract scripts
 // created by the Stellar type-generator
 export type VariantMap = {
     // Record<string, EnumVariant<any, any, any, any>>;
-    [variantName: string]: singleEnumVariant<any, any, any, any, any, any>;
+    [variantName: string]: singleEnumVariantMeta<any, any, any, any, any, any>;
 };
 
 export type EnumId = {
@@ -108,7 +131,7 @@ export type EnumId = {
  * This type is used as an intermediate representation of an enum,
  * for generating the types for reading and writing data conforming to the type.
  */
-export type EnumType<EID extends EnumId, enumVariants extends VariantMap> = {
+export type EnumTypeMeta<EID extends EnumId, enumVariants extends VariantMap> = {
     NEVER_INSTANTIATED: "?maybe?";
     SEE_BUNDLE_CLASS: "accessor gateway there";
     kind: "enum";
@@ -118,8 +141,6 @@ export type EnumType<EID extends EnumId, enumVariants extends VariantMap> = {
     };
 };
 
-type VariantVariety = "tagOnly" | "fields" | "singletonField";
-type SpecialActivityFlags = "isSeededActivity" | "noSpecialFlags";
 /**
  * ### Don't use this type directly.
  *
@@ -128,13 +149,13 @@ type SpecialActivityFlags = "isSeededActivity" | "noSpecialFlags";
  * See the mkEnum<EnumType> factory function, the ‹tbd› reader function
  * and the ‹tbd› readable type
  */
-export type singleEnumVariant<
-    ET extends EnumType<any, any>,
+export type singleEnumVariantMeta<
+    ET extends EnumTypeMeta<any, any>,
     VNAME extends keyof ET["variants"],
     variantConstr extends `Constr#${string}`,
-    variety extends VariantVariety,
+    FLAVOR extends VariantFlavor,
     // variantArgs must be well specified for each variant
-    variantArgs extends variety extends "tagOnly" ? never : any,
+    variantArgs extends (FLAVOR extends "tagOnly" ? tagOnly : any),
     specialFlags extends SpecialActivityFlags,
     EID extends EnumId = ET["enumId"]
 > = {
@@ -144,7 +165,7 @@ export type singleEnumVariant<
     // not needed in a data structure, but useful in the type params
     // ... for signature-expansion of the mkEnum type
     // flags: EachUnionElement<specialFlags>;
-    variantKind: variety;
+    variantKind: FLAVOR;
     constr: variantConstr;
     data: variantArgs;
     uplcData: UplcData;
@@ -152,7 +173,7 @@ export type singleEnumVariant<
 
 // utility types for transforming an EnumType into interfaces for reading/writing data of that type
 
-type anySingleEnumVariant = singleEnumVariant<any, any, any, any, any, any>;
+type anySingleEnumVariantMeta = singleEnumVariantMeta<any, any, any, any, any, any>;
 
 if (false) {
     type test = "x" | "y" extends "x" ? true : false; // false
@@ -163,14 +184,14 @@ if (false) {
     const t2: "foo" extends never ? true : false = false;
 }
 
-type _expandInputFields<V extends anySingleEnumVariant> = {
+type _expandInputFields<V extends anySingleEnumVariantMeta> = {
     [k in keyof V["data"]]: V["data"][k];
 };
 
 // -------------------- Non-Activity Variant Creator Types  --------------------
 
 export type EnumUplcResult<
-    V extends anySingleEnumVariant,
+    V extends anySingleEnumVariantMeta,
     hasData = {
         uplcData: V["uplcData"];
         variantName: V["variantName"];
@@ -179,8 +200,8 @@ export type EnumUplcResult<
 > = hasData;
 
 export type makesUplcEnumData<
-    ET extends EnumType<any, any>,
-    VARIANTS extends VariantMap = ET extends EnumType<any, infer VARIANTS>
+    ET extends EnumTypeMeta<any, any>,
+    VARIANTS extends VariantMap = ET extends EnumTypeMeta<any, infer VARIANTS>
         ? VARIANTS
         : never
 > = someDataMaker &{
@@ -189,7 +210,7 @@ export type makesUplcEnumData<
 };
 
 type _singletonFieldVariantCreator<
-    V extends anySingleEnumVariant,
+    V extends anySingleEnumVariantMeta,
     rawArgType = V["data"],
     RESULT_TYPE = EnumUplcResult<V>,
     //rawArgType
@@ -197,31 +218,31 @@ type _singletonFieldVariantCreator<
 > = rawFuncType;
 
 type _multiFieldVariantCreator<
-    V extends anySingleEnumVariant,
+    V extends anySingleEnumVariantMeta,
     RESULT_TYPE = EnumUplcResult<V>,
     rawFuncType = (fields: _expandInputFields<V>) => RESULT_TYPE
 > = rawFuncType;
 
 export type EnumVariantCreator<
-    VARIANT extends anySingleEnumVariant,
+    VARIANT extends anySingleEnumVariantMeta,
     RESULT_TYPE = EnumUplcResult<VARIANT>,
     ARITY = _variantFieldArity<VARIANT>
 > = ARITY extends "tagOnly"
     ? // is a simple getter, no function call needed
       RESULT_TYPE
     : ARITY extends "singletonField"
-    ? VARIANT["data"] extends EnumType<any, any>
+    ? VARIANT["data"] extends EnumTypeMeta<any, any>
     ? makesUplcEnumData<VARIANT["data"]>
     : _singletonFieldVariantCreator<VARIANT>
     : ARITY extends "fields"
     ? _multiFieldVariantCreator<VARIANT, RESULT_TYPE>
     : never;
 
-type _variantFieldArity<V extends anySingleEnumVariant> = V["variantKind"];
+type _variantFieldArity<V extends anySingleEnumVariantMeta> = V["variantKind"];
 
 // -------------------- Activity Variant Creator Types --------------------
 
-export type anySeededActivity = singleEnumVariant<
+export type anySeededActivity = singleEnumVariantMeta<
     any,
     any,
     any,
@@ -231,7 +252,7 @@ export type anySeededActivity = singleEnumVariant<
 >;
 
 type _singletonFieldActivityVariantCreator<
-    V extends anySingleEnumVariant,
+    V extends anySingleEnumVariantMeta,
     rawArgType = V["data"],
     RESULT_TYPE = EnumUplcActivityResult<V>,
     rawFuncType = (field: rawArgType) => RESULT_TYPE
@@ -240,7 +261,7 @@ type _singletonFieldActivityVariantCreator<
     : rawFuncType;
 
 type _multiFieldActivityVariantCreator<
-    V extends anySingleEnumVariant,
+    V extends anySingleEnumVariantMeta,
     RESULT_TYPE = EnumUplcActivityResult<V>,
     rawFuncType = (
         fields: // V["data"]
@@ -251,14 +272,14 @@ type _multiFieldActivityVariantCreator<
     : rawFuncType;
 
 export type ActivityEnumVariantCreator<
-    VARIANT extends anySingleEnumVariant,
+    VARIANT extends anySingleEnumVariantMeta,
     RESULT_TYPE = EnumUplcActivityResult<VARIANT>,
     ARITY = _variantFieldArity<VARIANT>
 > = ARITY extends "tagOnly"
     ? // is a simple getter, no function call needed
       RESULT_TYPE
     : ARITY extends "singletonField"
-    ? VARIANT["data"] extends EnumType<any, any>
+    ? VARIANT["data"] extends EnumTypeMeta<any, any>
         ? _noRedeemerWrappers<makesUplcActivityEnumData<VARIANT["data"]>>
         : _singletonFieldActivityVariantCreator<VARIANT>
     : ARITY extends "fields"
@@ -272,7 +293,7 @@ export type _noRedeemerWrappers<T extends makesUplcActivityEnumData<any>> = {
 export type _noRedeemerWrapper<T> = T extends (...args: infer A) => {redeemer: infer R} ? (...args: A) => R : T;
 
 export type EnumUplcActivityResult<
-    V extends anySingleEnumVariant,
+    V extends anySingleEnumVariantMeta,
     hasData = {
         uplcData: V["uplcData"];
         variantName: V["variantName"];
@@ -295,8 +316,8 @@ type _nonSeededFieldsType<V extends anySeededActivity> = remainingFields<{
 }>;
 
 export type makesUplcActivityEnumData<
-    ET extends EnumType<any, any>,
-    VARIANTS extends VariantMap = ET extends EnumType<any, infer VARIANTS>
+    ET extends EnumTypeMeta<any, any>,
+    VARIANTS extends VariantMap = ET extends EnumTypeMeta<any, infer VARIANTS>
         ? VARIANTS
         : never
 > = {
@@ -312,9 +333,9 @@ export type makesUplcActivityEnumData<
  * in creating ergonomic branded types for reading, detecting, and writing
  * each variant.
  */
-export type HeliosBundleTypeDetails = {
-    datum: Option<typeDetails | enumTypeDetails>;
-    redeemer: typeDetails | enumTypeDetails;
+export type HeliosBundleTypeDetails<T=undefined> = {
+    datum: Option<typeDetails<T> | enumTypeDetails<T>>;
+    redeemer: typeDetails<T> | enumTypeDetails<T>;
 };
 
 export type HeliosBundleTypes = {

@@ -1,47 +1,121 @@
 import path from "path";
-import { BundleTypes } from "../BundleTypes.js";
-import type { anyTypeDetails, EnumId, enumTypeDetails, HeliosScriptBundle, typeDetails, variantTypeDetails } from "../HeliosScriptBundle.js";
+import { BundleTypes, type TypeGenHooks } from "../BundleTypes.js";
+import type {
+    anyTypeDetails,
+    EnumId,
+    enumTypeDetails,
+    HeliosScriptBundle,
+    typeDetails,
+    variantTypeDetails,
+} from "../HeliosScriptBundle.js";
 import type { DataType } from "@helios-lang/compiler/src/index.js";
-import type { EnumTypeSchema, TypeSchema, VariantTypeSchema } from "@helios-lang/type-utils";
+import type {
+    EnumTypeSchema,
+    TypeSchema,
+    VariantTypeSchema,
+} from "@helios-lang/type-utils";
 import type { EnumMemberType } from "@helios-lang/compiler/src/typecheck/common.js";
-import { genTypes } from "@helios-lang/contract-utils";
+import { Cast, genTypes } from "@helios-lang/contract-utils";
+
+type dataBridgeTypeInfo = {
+    accessorCode: string;
+    castCode?: string;
+    helperClassName?: string;
+};
+
+type fullDetails = anyTypeDetails<dataBridgeTypeInfo>;
+type fullEnumTypeDetails = enumTypeDetails<dataBridgeTypeInfo>;
+type fullVariantTypeDetails = variantTypeDetails<dataBridgeTypeInfo>;
+type fullTypeDetails = typeDetails<dataBridgeTypeInfo>;
 
 /**
  * Gathers any number of types expressible for an on-chain Helios script,
- * and generates a class that  includes accessors for generating typed data
+ * and does code generation for a class, including accessors for generating typed data
  * by converting expected data structures using the Cast class.
  *
- * Each struct type is directly exposed as its name.
- * 
- * Each enum type is exposed as its name, with nested accessors for each enum variant.
- *  - the accessors for each variant depend on the number of fields in the variant.
- *  - if the variant has no fields, the accessor directly returns <cast>.toUplcData({ variantName: {} })
- *  - if the variant has a single field, the accessor is a function that takes the field value (with a strong type) and returns <cast>.toUplcData({ variantName: { fieldName: value } })
- *  - if the variant has multiple fields, the accessor is a function that takes a strongly-typed object having the fields and returns <cast>.toUplcData({ variantName: { ...fields } })
- * 
- * While gathering types, all the known type names are registered in a context object.
- * 
- * As each type is encountered (as a **nested field** within a datum or redeemer), any named types encountered
- * are added to the context, with any recursive expansions generated and added to the context, depth-first,
- * ... then the named type is used for the **nested field** where it was encountered.
+ * The class is a sublcass of someDataMaker, which provides some basics for working
+ * with UPLC data, given the type-metadata.
+ *
+ * Uses the BundleTypes class as a helper, in which the bridge-generator is a
+ * "collaborator" in that class.  Thus, the data-bridge has access to the same
+ * key events in the schema-finding process, and can tap into all the essential
+ * logic for finding types.
+ *
+ * This strategy is also used for generating the data-reader class.
+ *
+ * When generating methods in the new class, the following rules apply:
+ *
+ * 1.  Each struct type is directly exposed as its name, making <bridge>.<struct name>
+ *      available for generating any data expected to match that form.
+ *
+ * 2.  Each enum type is exposed as its name, with nested accessors for each enum variant,
+ *       ... with the accessors for each variant depend on the number of fields in the variant.
+ *
+ *     - if the variant has no fields, the accessor directly returns <cast>.toUplcData({ variantName: {} })
+ *
+ *     - if the variant has a single field, the accessor is a function that takes the field value
+ *        (with a strong type) and returns <cast>.toUplcData({ variantName: { fieldName: value } }
+ *
+ *     - if the variant has multiple fields, the accessor is a function that takes a strongly-typed
+ *       object having the fields and returns <cast>.toUplcData({ variantName: { ...fields } })
+ *
+ * While gathering types, all the known type names are registered in a local namespace,
+ * with function implementations gathered for each type.
+ *
+ * As each type is encountered (as a **nested field** within a datum or redeemer), any named
+ * types encountered are added to the context, with any recursive expansions generated and
+ * added to the context, depth-first... then the named type is used for the **nested field**
+ * where it was encountered.
  */
-export class mkDataBridgeGenerator {
+export class mkDataBridgeGenerator implements TypeGenHooks<dataBridgeTypeInfo> {
     bundle: HeliosScriptBundle;
-    typeBundle: BundleTypes
+    typeBundle: BundleTypes;
 
     constructor(bundle: HeliosScriptBundle, typeBundle?: BundleTypes) {
         this.bundle = bundle;
         if (typeBundle) {
-            this. typeBundle = typeBundle;
+            this.typeBundle = typeBundle;
         } else {
-            this.typeBundle = new BundleTypes(bundle);
+            this.typeBundle = new BundleTypes(bundle, this);
         }
+    }
+
+    // satisfies TypeGenHooks<dataBridgeTypeInfo> for creating more details for an enum type
+    getMoreEnumInfo?(typeDetails: enumTypeDetails): dataBridgeTypeInfo {
+        const enumName = typeDetails.enumName;
+        const helperClassName = `${enumName}Helper`;
+        return {
+            accessorCode: `get ${enumName}() {
+                return new ${helperClassName}();
+            }`,
+            helperClassName,
+        };
+    }
+
+    getMoreStructInfo?(details: typeDetails): dataBridgeTypeInfo {
+        const structName = details.typeName;
+        const castMemberName = `__${structName}Cast`;
+        return {
+            castCode: `
+                 ${castMemberName}: Cast<${structName}Like, ${structName}> = new Cast<${structName}Like, ${structName}>(this.schema.${structName}, { isMainnet: true });
+            `,
+            accessorCode: `${structName}(fields: ${structName}Like}) {
+                return this.${castMemberName}.toUplcData(fields);
+            }`,
+        };
+    }
+
+    getMoreVariantInfo?(details: variantTypeDetails): dataBridgeTypeInfo {
+        return {} as any;
+    }
+    getMoreTypeInfo?(details: typeDetails): dataBridgeTypeInfo {
+        return {} as any;
     }
 
     get namedTypes() {
         return this.typeBundle.namedTypes;
     }
-    
+
     get topLevelTypeDetails() {
         return this.typeBundle.topLevelTypeDetails;
     }
@@ -54,46 +128,130 @@ export class mkDataBridgeGenerator {
         return this.typeBundle.datumTypeDetails;
     }
 
-    generateMkDataBridge(projectName?: string, inputFile?: string) {
+    // creates a class providing an interface for creating each type of data relevent
+    // for a contract script, with an 'activity' accessor for creating redeemer data,
+    // a 'datum' accessor well-typed on-chain datum, and any utility functions defined
+    // in on-chain scripts.
+    // Any of these that are enums will have their own helper classes for creating
+    //  the enum's specific variants.
+    generateMkDataBridge(
+        inputFile: string,
+        projectName?: string,
+        absoluteInputFile?: string
+    ) {
+        const typeFile = inputFile.replace(/\.mkData.ts$/, ".hlbundle.js");
+        let relativeTypeFile = path.relative(path.dirname(inputFile), typeFile);
+        if (relativeTypeFile[0] !== ".") {
+            relativeTypeFile = `./${relativeTypeFile}`;
+        }
         let imports = `
-            import { someDataMaker } from "@donecollectively/stellar-contracts"
-        `.split("\n").map(line => line.trim()).join("\n");
+import { Cast } from "@helios-lang/contract-utils"
+import type { UplcData } from "@helios-lang/uplc";
+import type { 
+    IntLike,
+    ByteArrayLike,
+ } from "@helios-lang/codec-utils";
+import type {
+    Address,
+    AssetClass,
+    DatumHash,
+    MintingPolicyHash,
+    PubKey,
+    PubKeyHash,
+    ScriptHash,
+    SpendingCredential,
+    StakingCredential,
+    StakingHash,
+    StakingValidatorHash,
+    TimeRange,
+    TxId,
+    TxInput,
+    TxOutput,
+    TxOutputId,
+    TxOutputDatum,
+    ValidatorHash,
+    Value,
+} from "@helios-lang/ledger";
+
+import {\n${Object.entries(this.typeBundle.namedTypes)
+            .map(([typeName, _]) => `    ${typeName}`)
+            .join(",\n")}
+} from "${relativeTypeFile}"\n`;
+
         if ("stellar-contracts" == projectName) {
-            if (!inputFile) {
-                throw new Error("inputFile is required for stellar-contracts project");
+            if (!absoluteInputFile) {
+                throw new Error(
+                    "absoluteInputFile is required for stellar-contracts project"
+                );
             }
-            // compute relative path from inputFile to src/helios/dataBridge/someDataMaker.js
-            let relativePath = path.relative(path.dirname(inputFile), path.join("src/helios/dataBridge/someDataMaker.js"));
-            if (relativePath[0] !== ".") {
-                relativePath = `./${relativePath}`;
-            }
-            imports = `
-                import { someDataMaker } from "${relativePath}"
-            `.split("\n").map(line => line.trim()).join("\n");
+
+            // let relativePathScriptBundle = path.relative(
+            //     path.dirname(inputFile),
+            //     path.join("src/helios/HeliosScriptBundle.js")
+            // );
+
+            imports =
+                imports +
+                `import { someDataMaker } from "${this.mkRelativeImport(
+                    inputFile,
+                    "src/helios/dataBridge/someDataMaker.js"
+                )}"\n` +
+                `import { tagOnly } from "${this.mkRelativeImport(
+                    inputFile,
+                    "src/helios/HeliosScriptBundle.js"
+                )}"\n` +
+                `import {hasSeed} from "${this.mkRelativeImport(
+                    inputFile,
+                    "src/StellarContract.js"
+                )}"\n`;
+        } else {
+            imports =
+                imports +
+                `import { someDataMaker, tagOnly, hasSeed } from "@donecollectively/stellar-contracts"\n`;
         }
         return `// generated by Stellar Contracts mkDataBridgeGenerator
-// based on types defined in ${this.bundle.program.name} (${this.bundle.main.name})
+// based on types defined in ${this.bundle.program.name} (${
+            this.bundle.main.name
+        })
 ${imports}
-export default class mkDatumBridge${this.bundle.program.name} extends someDataMaker {
-    ${this.generateDatumAccessors()}
+export default class mkDatumBridge${
+            this.bundle.program.name
+        } extends someDataMaker {
+    ${this.includeDatumAccessors()}
 }
+
+${this.includeEnumHelperClasses()}
 `;
+    }
+
+    /**
+     * compute relative path from inputFile to importFile
+     */
+    private mkRelativeImport(inputFile: string, importFile: string) {
+        let relativePath = path.relative(
+            path.dirname(inputFile),
+            path.join(importFile)
+        );
+        if (relativePath[0] !== ".") {
+            relativePath = `./${relativePath}`;
+        }
+        return relativePath;
     }
 
     get datumTypeName() {
         return this.bundle.datumTypeName;
     }
 
-    gatherDatumAccessors() {
-        const {datumTypeName} = this
-        if (!datumTypeName) {
-            return '';
-        }
-        if (this.datumTypeDetails?.typeSchema?.kind === "enum") {
-            return this.gatherEnumDatumAccessors(datumTypeName);
-        }
-        return this.gatherNonEnumDatumAccessors(datumTypeName);
-    }
+    // gatherDatumAccessors() {
+    //     const {datumTypeName} = this
+    //     if (!datumTypeName) {
+    //         return '';
+    //     }
+    //     if (this.datumTypeDetails?.typeSchema?.kind === "enum") {
+    //         return this.gatherEnumDatumAccessors(datumTypeName);
+    //     }
+    //     return this.gatherNonEnumDatumAccessors(datumTypeName);
+    // }
 
     // gatherEnumDatumAccessors(datumTypeName: string) {
     //     // Implementation for generating datum accessors goes here
@@ -103,7 +261,7 @@ export default class mkDatumBridge${this.bundle.program.name} extends someDataMa
     //     return this.datum
     // }
     // datum : makesUplcEnumData<${datumTypeName}Like> = {\n${
-    //     this.generateEnumVariantAccessor(datumTypeName, 
+    //     this.generateEnumVariantAccessor(datumTypeName,
     // }
     // }
 
@@ -115,439 +273,206 @@ export default class mkDatumBridge${this.bundle.program.name} extends someDataMa
     //     throw new Error("Not yet implemented");
     // }
 
-    generateDatumAccessors() {
-        return this.gatherDatumAccessors();
+    includeDatumAccessors() {
+        const details = this.datumTypeDetails;
+        if (!details) return ``; // no datum type defined for this bundle
+
+        if (details.typeSchema.kind === "enum") {
+            //@ts-expect-error - todo: use type-branding & type-inspection function to mke this safer
+            const d: fullEnumTypeDetails = details as fullEnumTypeDetails;
+            const {
+                moreInfo: { helperClassName },
+            } = d;
+            return `
+    datum: ${helperClassName} = new ${helperClassName}(this.bundle)   // datumAccessor
+    ${details.typeSchema.name}: ${helperClassName} = this.datum;\n\n`;
+            // ----
+        }
+
+        if (details.typeSchema.kind === "variant") {
+            throw new Error(`Yup, need the type-name here`);
+        }
+
+        const typeName = details.canonicalType; // ??? name?
+        const permissiveTypeName = details.permissiveType; // !!! name?
+        const castDef = `
+    __datumCast = new Cast<
+        ${typeName}, ${permissiveTypeName}
+    >(${details.typeSchema}}, { isMainnet: true }); // datumAccessorCast\n`;
+        const datumAccessor = `
+    datum(x: ${permissiveTypeName}) {
+        return this.__datumCast.toUplcData(x);
+    }\n`;
+
+        if (details.typeSchema.kind === "struct") {
+            return (
+                castDef +
+                datumAccessor +
+                `
+    ${details.typeSchema.name}(fields: ${permissiveTypeName}) {
+        return this.__datumCast.toUplcData(fields);
+    }\n\n`
+            );
+        }
+
+        // if it's not an enum or struct, there's no name to expose separately;
+        // just the accessor is enough, with it supporting cast object.
+        // todo: use a branded structure for the result??
+        return castDef + datumAccessor;
     }
 
-    gatherEnumDatumAccessors(datumTypeName: string) {
-        const enumDetails = this.datumTypeDetails as enumTypeDetails;
-        const accessors = Object.keys(enumDetails.variants).map(variantName => {
-            const variantDetails = enumDetails.variants[variantName];
-            const fieldCount = variantDetails.fieldCount;
-            if (fieldCount === 0) {
-                return `get ${variantName}() {
-                    return this.toUplcData({ ${variantName}: {} });
-                }`;
-            } else if (fieldCount === 1) {
-                const fieldName = Object.keys(variantDetails.fields)[0];
-                return `${variantName}(value: ${variantDetails.fields[fieldName].canonicalType}) {
-                    return this.toUplcData({ ${variantName}: { ${fieldName}: value } });
-                }`;
-            } else {
-                const fields = Object.keys(variantDetails.fields).map(fieldName => {
-                    return `${fieldName}: ${variantDetails.fields[fieldName].canonicalType}`;
-                }).join(", ");
-                return `${variantName}(fields: { ${fields} }) {
-                    return this.toUplcData({ ${variantName}: fields });
-                }`;
+    // iterate all the named types, generating helper classes for each enum
+    includeEnumHelperClasses() {
+        const classSources = [] as string[];
+        for (const [name, typeDetails] of Object.entries(
+            this.typeBundle.namedTypes
+        )) {
+            if (typeDetails.typeSchema.kind === "enum") {
+                const enumDetails =
+                    typeDetails as unknown as fullEnumTypeDetails;
+                classSources.push(this.mkEnumHelperClass(enumDetails));
             }
-        }).join("\n\n");
+        }
+        return classSources.join("\n");
+    }
+
+    mkEnumHelperClass(typeDetails: fullEnumTypeDetails) {
+        return (
+            `class ${typeDetails.moreInfo.helperClassName} extends someDataMaker {\n` +
+            `    enumCast = new Cast<\n` +
+            `       ${typeDetails.canonicalType}, \n` +
+            `       ${typeDetails.permissiveType}\n` +
+            `   >(${typeDetails.enumName}Schema, { isMainnet: true });\n` +
+            this.mkEnumDatumAccessors(typeDetails) +
+            `\n}\n\n`
+        );
+    }
+
+    mkEnumDatumAccessors(enumDetails: fullEnumTypeDetails) {
+        const accessors = Object.keys(enumDetails.variants)
+            .map((variantName) => {
+                const variantDetails = enumDetails.variants[variantName];
+                const fieldCount = variantDetails.fieldCount;
+                if (fieldCount === 0) {
+                    return (
+                        `    get ${variantName}() {\n` +
+                        `        return this.enumCast.toUplcData({ ${variantName}: {} });\n` +
+                        `    }`
+                    );
+                } else if (fieldCount === 1) {
+                    return this.mkSIngleFieldVariantAccessor(
+                        variantDetails,
+                        variantName
+                    );
+                } else {
+                    return this.mkMultiFieldVariantAccessor(
+                        variantDetails,
+                        variantName
+                    );
+                }
+            })
+            .join("\n\n");
         return accessors;
     }
 
-    gatherNonEnumDatumAccessors(datumTypeName: string) {
-        const details = this.datumTypeDetails as typeDetails;
-        const fields = Object.keys(details.fields).map(fieldName => {
-            return `${fieldName}: ${details.fields[fieldName].canonicalType}`;
-        }).join(", ");
-        return `get ${datumTypeName}() {
-            return this.toUplcData({ ${datumTypeName}: { ${fields} } });
-        }`;
-    }
-
-}
-
-// the remainder of this file contains reference material for Copilot
-// ... to use for inspiration
-class TypeGenerator {
-    
-    gatherTypeDetails(
-        type: DataType,
-        useTypeNamesAt?: "nestedField"
-    ): anyTypeDetails {
-        const schema = type.toSchema();
-        if (schema.kind === "enum") {
-            return this.gatherEnumDetails(type as any, useTypeNamesAt);
-        } else {
-            return this.gatherNonEnumDetails(type, useTypeNamesAt);
-        }
-    }
-
-    gatherEnumDetails(
-        enumType: { toSchema(): EnumTypeSchema } & DataType,
-        useTypeNamesAt?: "nestedField"
-    ): enumTypeDetails {
-        // gathers names for any nested types, then generates minimal types
-        // based on having those names registered in the context.
-        const schema = enumType.toSchema();
-        const enumName = schema.name;
-        const module = this.extractModuleName(schema);
-        // at type-gen time, we don't need this to be a fully-typed VariantMap.
-        //  ... a lookup record is fine.
-        const variants: Record<string, variantTypeDetails> = {};
-        for (const member of schema.variantTypes) {
-            const memberType =
-                enumType.typeMembers[member.name].asEnumMemberType;
-            if (!memberType) {
-                throw new Error(
-                    `Enum member type for ${member.name} not found`
-                );
-            }
-            variants[member.name] = this.gatherVariantDetails(
-                memberType as any,
-                { module, enumName }
-            );
-        }
-
-        const details = {
-            enumName: schema.name,
-            dataType: enumType,
-            typeSchema: schema,
-            variants,
-            canonicalType: this.mkMinimalType(
-                "canonical",
-                schema,
-                useTypeNamesAt
-            ),
-            permissiveType: this.mkMinimalType(
-                "permissive",
-                schema,
-                useTypeNamesAt
-            ),
-        };
-        this.namedTypes[schema.name] = details;
-        return details;
-    }
-
-    private extractModuleName(schema: EnumTypeSchema | VariantTypeSchema) {
-        return schema.id.replace(/__module__(\w+)?__.*$/, "$1");
-    }
-
-    gatherNonEnumDetails(
-        dataType: DataType,
-        useTypeNamesAt?: "nestedField"
-    ): typeDetails {
-        // gathers names for any nested types, then generates minimal types
-        // based on having those names registered in the context.
-        let typeName: string | undefined = undefined;
-        const schema = dataType.toSchema();
-        if (schema.kind === "enum") {
-            throw new Error(
-                "must not call gatherNonEnumTypeInfo with an enum schema"
-            );
-        }
-        if ("internal" != schema.kind && "name" in schema) {
-            typeName = schema.name;
-        }
-
-        // gather nested types where applicable, so they are added to the context.
-        switch (schema.kind) {
-            case "internal":
-                break;
-            case "reference":
-            case "tuple":
-                console.log(
-                    "Not registering nested types for (as-yet unsupported)",
-                    schema.kind
-                );
-                break;
-            case "list":
-                this.gatherTypeDetails((dataType as any).types[0]);
-                // this.gatherTypeDetails(type.itemType);
-                break;
-            case "map":
-                console.log("Is there any need to register a map's member DataTypes?");
-                console.log(" a Map's members must be registered to find data type not used elsewhere");
-
-                // this.gatherTypeDetails((dataType as any).types[0]);
-                // this.gatherTypeDetails((dataType as any).types[1]);
-
-            case "option":
-                // console.log("how to register an Option's nested DataType?");
-                this.gatherTypeDetails((dataType as any).types[0]);
-                break;
-            case "struct":
-                for (const field of dataType.fieldNames) {
-                    this.gatherTypeDetails(
-                        dataType.instanceMembers[field].asDataType!,
-                        "nestedField"
-                    );
-                }
-                break;
-            case "variant":
-                console.log("How to register a variant's member DataTypes?");
-                debugger;
-                break;
-            default:
-                //@ts-expect-error - when all cases are covered, schema is ‹never›
-                throw new Error(`Unsupported schema kind: ${schema.kind}`);
-        }
-
-        const details = {
-            typeSchema: schema,
-            typeName,
-            dataType,
-            canonicalType: this.mkMinimalType(
-                "canonical",
-                schema,
-                useTypeNamesAt
-            ),
-            permissiveType: this.mkMinimalType(
-                "permissive",
-                schema,
-                useTypeNamesAt
-            ),
-        };
-        // if (schema.kind !== "internal") debugger
-        if (typeName) {
-            this.namedTypes[typeName] = details;
-        }
-        return details;
-    }
-
-    gatherVariantDetails(
-        variantDataType: { toSchema(): VariantTypeSchema } & EnumMemberType,
-        enumId: EnumId
-    ): variantTypeDetails {
-        if (!variantDataType.toSchema) debugger;
-        const schema = variantDataType.toSchema();
-
-        // console.log("Enum-variant name: " + schema.name);
-        if (schema.kind !== "variant") {
-            throw new Error(
-                "Must not call gatherVariantTypeInfo with a non-variant schema"
-            );
-        }
-        const fieldCount = schema.fieldTypes.length;
-        const fields = {};
-
-        // uses dataType.fieldNames and dataType.instanceMembers to gather the fields
-        for (const fieldName of variantDataType.fieldNames) {
-            const fieldMember = variantDataType.instanceMembers[fieldName];
-            if (!fieldMember) {
-                throw new Error(`Field member ${fieldName} not found`);
-            }
-            fields[fieldName] = this.gatherTypeDetails(fieldMember.asDataType!);
-        }
-
-        return {
-            fields,
-            fieldCount: fieldCount,
-            variantName: schema.name,
-            typeSchema: schema,
-            dataType: variantDataType,
-            canonicalType: this.mkMinimalType(
-                "canonical",
-                schema,
-                undefined,
-                enumId.enumName
-            ),
-            permissiveType: this.mkMinimalType(
-                "permissive",
-                schema,
-                undefined,
-                enumId.enumName
-            ),
-        };
-    }
-
-    mkMinimalType(
-        typeVariety: "canonical" | "permissive",
-        schema: TypeSchema,
-        useTypeNamesAt?: "nestedField",
-        parentName?: string
+    private mkMultiFieldVariantAccessor(
+        variantDetails: variantTypeDetails<dataBridgeTypeInfo>,
+        variantName: string
     ) {
-        const varietyIndex = typeVariety === "canonical" ? 0 : 1;
-        //@ts-expect-error - not every schema-type has a name
-        let name = schema.name as string | undefined;
-        let nameLikeOrName = name;
-        let $nameLike = name ? `${name}Like` : undefined;
-
-        // switch on each schema kind...
-        switch (schema.kind) {
-            case "internal":
-                // use genType directly to return the indicated type
-                return genTypes(schema)[varietyIndex];
-            case "reference":
-                throw new Error("References are not yet supported");
-            case "tuple":
-                throw new Error("Tuples are not yet supported");
-            case "list":
-                return `Array<${this.mkMinimalType(
-                    typeVariety,
-                    schema.itemType,
-                    useTypeNamesAt
-                )}>`;
-            case "map":
-                // todo: support string keys with simpler Record<string, ...> type
-                return `Map<${this.mkMinimalType(
-                    typeVariety,
-                    schema.keyType,
-                    useTypeNamesAt
-                )}, ${this.mkMinimalType(
-                    typeVariety,
-                    schema.valueType,
-                    useTypeNamesAt
-                )}>`;
-            case "option":
-                return `Option<${this.mkMinimalType(
-                    typeVariety,
-                    schema.someType,
-                    useTypeNamesAt
-                )}>`;
-            case "struct":
-                if (typeVariety === "permissive") {
-                    nameLikeOrName = $nameLike;
-                }
-                if (useTypeNamesAt) return nameLikeOrName;
-
-                return `{\n${schema.fieldTypes
-                    .map(
-                        (field) =>
-                            `    ${field.name}: ${this.mkMinimalType(
-                                typeVariety,
-                                field.type,
-                                "nestedField"
-                            )}`
-                    )
-                    .join("\n")}\n};\n`;
-            case "enum":
-                if (typeVariety === "permissive") {
-                    nameLikeOrName = $nameLike;
-                }
-                if (useTypeNamesAt) return nameLikeOrName;
-
-                const module = this.extractModuleName(schema);
-                const enumId: EnumId = { module, enumName: name! };
-                const $enumId = this.$enumId(enumId);
-                return `EnumType<${$enumId}, {\n${schema.variantTypes
-                    .map((variant) => {
-                        return `        ${
-                            variant.name
-                        }: ${this.mkMinimalVariantType(
-                            variant,
-                            enumId,
-                            typeVariety
-                            // "nestedField"
-                        )}`;
-                    })
-                    .join(",\n")}\n    }\n>;\n`;
-            case "variant":
-                if (!parentName) {
-                    debugger;
-                    throw new Error("Variant types need a parent type-name");
-                }
-                return this.mkMinimalVariantType(
-                    schema,
-                    {
-                        enumName: parentName,
-                        module: this.extractModuleName(schema),
-                    },
-                    typeVariety
-                );
-            default:
-                //@ts-expect-error - when all cases are covered, schema is ‹never›
-                throw new Error(`Unsupported schema kind: ${schema.kind}`);
+        function mkFieldType(fieldName: string, indent = 2): string {
+            return (
+                `    `.repeat(indent) +
+                `${fieldName}: ${variantDetails.fields[fieldName].permissiveType}`.trimEnd()
+            );
         }
-    }
-
-    mkMinimalVariantType(
-        schema: VariantTypeSchema,
-        enumId: EnumId,
-        typeVariety: "canonical" | "permissive",
-        useTypeNamesAt?: "nestedField"
-    ) {
-        // When writing an enum variant with 0 fields, the typescript api for generating
-        //   ... that enum variant data should require only the variant name,
-        //   ... IF it is accessed via that type's named proxy (e.g. mkDatum.variantName
-        //   ... or  `{ ..., someNestedField: /*proxy*/ SomeEnumType.variantName }`).  If not
-        //   ... using the proxy type, then raw `{ ... someNestedField: { variantName: {} } }`
-        //   ... form will be needed.
-        //
-        // When writing a single-field variant, the raw form needed will look like
-        //   ... `{ variantName: { singleFIeldName: ‹nestedFieldData› } }` or,
-        //   ... `{ ..., someNestedField: { variantName: { singleFieldName: ‹nestedFieldData› } } }`
-        //   ... while the proxy- provided interface can be used like
-        //   ... `mkDatum.variantName({...nestedFieldData})`
-        //   ...  or `{ ..., someNestedField: /*proxy*/ SomeEnumType.variantName(‹nestedFieldData›) }`
-        //
-        // When an enum variant has multiple fields, we use the variant like a struct,
-        //   ... with each named field being represented in the the type-proxy:
-        //   ... `mkDatum.variantName({ field1: ‹fieldData›, field2: ... })`
-        //   ... or `{ ..., someNestedField: /*proxy*/ SomeEnumType.variantName({ field1: ‹fieldData›, field2: ... }) }`
-        //
-        // In all these cases, the types for any datum/redeemer enum (or enum nested-field)
-        //   ... should ideally indicate the EnumTypeProxy's aggregate named type, with the raw type
-        //   ... as a secondary alternative for people who prefer to write out the full structure.
-        //
-        // The types returned by the proxy's accessors will be identical to the raw types.
-        let variantName = schema.name;
-        if (typeVariety === "permissive") {
-            if (useTypeNamesAt) {
-                throw new Error("Write path not yet supported for variants");
-                return `${schema.name}Like`;
+        function unfilteredFields(indent = 2) {
+            return Object.keys(variantDetails.fields)
+                .map((x) => mkFieldType(x, indent))
+                .join(",\n");
+        }
+        if ("seed" == Object.keys(variantDetails.fields)[0]) {
+            // && isSeededActivity
+            function filteredFields(indent = 2) {
+                return Object.keys(variantDetails.fields)
+                    .filter((fieldName) => fieldName !== "seed")
+                    .map((x) => mkFieldType(x, indent))
+                    .join(",\n");
             }
-            // variant name remains unchanged in this case
-            // variantName = `${variantName}Like`;
-        }
-        if (useTypeNamesAt) return schema.name;
 
-        const fieldCount = schema.fieldTypes.length;
-        const variety =
-            fieldCount === 0
-                ? "tagOnly"
-                : fieldCount === 1
-                ? "singletonField"
-                : "fields";
-        const $nlindent = "\n" + " ".repeat(12);
-        const $nlindentMore = "\n" + " ".repeat(16);
-        const $nloutdent = "\n" + " ".repeat(8);
-        let quotedVariety =
-            "fields" === variety ? `${$nlindent}"${variety}"` : `"${variety}"`;
-        const fieldDefs =
-            "tagOnly" == variety
-                ? "never"
-                : "singletonField" == variety
-                ? $nlindent +
-                  this.mkMinimalType(
-                      typeVariety,
-                      schema.fieldTypes[0].type,
-                      "nestedField"
-                  )
-                : `{${
-                      //pretter-ignore
-                      schema.fieldTypes
-                          .map(
-                              (field) =>
-                                  `${$nlindentMore}${
-                                      field.name
-                                  }: ${this.mkMinimalType(
-                                      typeVariety,
-                                      field.type,
-                                      "nestedField"
-                                  )}`
-                          )
-                          .join(",")
-                  }${$nlindent}}`;
-
-        const $enumId = this.$enumId(enumId);
-        const specialFlags: string[] = [];
-        if (schema.fieldTypes[0]?.name === "seed") {
-            specialFlags.push(`"isSeededActivity"`);
+            return (
+                `    /**\n` +
+                `     * generates UplcData, given a transaction-context with a seed utxo and other field details\n` +
+                `     * @remarks\n` +
+                `     * See the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass.` +
+                `     */\n` +
+                `    ${variantName}(value: hasSeed, fields: { \n${filteredFields(2)} \n` +
+                `    } ) : UplcData\n` +
+                `    /**\n` +
+                `    * generates UplcData with raw seed details included in fields.\n` +
+                `    */\n` +
+                `    ${variantName}(fields: {\n${unfilteredFields()} \n` +
+                `    } ) : UplcData\n` +
+                `    ${variantName}(\n` +
+                `        seedOrUf: hasSeed | { \n${unfilteredFields(3)}\n        }, \n` +
+                `        filteredFields?: { \n${filteredFields(3)}\n`+
+                `    }) : UplcData {\n` +
+                `        if (filteredFields) {\n` +
+                `            const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);\n` +
+                `            return this.enumCast.toUplcData({\n` +
+                `                ${variantName}: { seed: seedTxOutputId, ...filteredFields } \n` +
+                `            });\n` +
+                `        } else {\n` +
+                `            const fields = seedOrUf; \n` +
+                `            return this.enumCast.toUplcData({\n` +
+                `                ${variantName}: fields \n` +
+                `            });\n` +
+                `        }\n` +
+                `    }\n`
+            );
         }
-        const $specialFlags = specialFlags.join(" | ") || `"noSpecialFlags"`;
-        //pretter-ignore
-        const minimalVariantSrc =
-            `singleEnumVariant<${enumId.enumName}, "${variantName}",` +
-            `${$nlindent}"Constr#${schema.tag}", ${quotedVariety}, ` +
-            `${fieldDefs}, ${$specialFlags}` +
-            `${$nloutdent}>`;
-        return minimalVariantSrc;
+        return (
+            `    ${variantName}(fields: { \n${unfilteredFields()}\n` +
+            `    }) {\n` +
+            `        return this.enumCast.toUplcData({\n` +
+            `            ${variantName}: fields \n` +
+            `        });\n` +
+            `    }`
+        );
     }
 
-    private $enumId(enumId: EnumId) {
-        return `{module: "${enumId.module}", enumName: "${enumId.enumName}"}`;
+    private mkSIngleFieldVariantAccessor(
+        variantDetails: variantTypeDetails<dataBridgeTypeInfo>,
+        variantName: string
+    ) {
+        const fieldName = Object.keys(variantDetails.fields)[0];
+        if ("seed" == fieldName) {
+            // && isSeededActivity
+            return (
+                `    ${variantName}(value: hasSeed | ${variantDetails.fields[fieldName].permissiveType}) {\n` +
+                `       const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);\n` +
+                `        return this.enumCast.toUplcData({ \n` +
+                `           ${variantName}: { ${fieldName}: seedTxOutputId } \n` +
+                `        });\n` +
+                `    }`
+            );
+        }
+        return (
+            `    ${variantName}(\n` +
+            `        value: ${variantDetails.fields[fieldName].permissiveType}\n` +
+            `    ) {\n` +
+            `        return this.enumCast.toUplcData({ \n` +
+            `           ${variantName}: { ${fieldName}: value } \n` +
+            `        });\n` +
+            `    }`
+        );
     }
-
-
+    // gatherNonEnumDatumAccessors(datumTypeName: string) {
+    //     const details = this.datumTypeDetails as typeDetails;
+    //     const fields = Object.keys(details.fields).map(fieldName => {
+    //         return `${fieldName}: ${details.fields[fieldName].canonicalTypeName}`;
+    //     }).join(", ");
+    //     return `get ${datumTypeName}() {
+    //         return this.toUplcData({ ${datumTypeName}: { ${fields} } });
+    //     }`;
+    // }
 }

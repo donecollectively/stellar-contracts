@@ -25,405 +25,466 @@ import type { IntLike, ByteArrayLike } from "@helios-lang/codec-utils";
 import uutMintingMintDelegate from "./uutMintingMintDelegate.hl";
 import { CapoDelegateBundle } from "../../delegation/CapoDelegateBundle.js";
 import type {
-    EnumType,
+    EnumTypeMeta as EnumTypeMeta,
     expanded,
     makesUplcActivityEnumData,
     EnumVariantCreator,
     readsUplcEnumData,
-    singleEnumVariant,
+    singleEnumVariantMeta as singleEnumVariantMeta,
     anySeededActivity,
     makesUplcEnumData,
     ActivityEnumVariantCreator,
+    tagOnly,
 } from "../../helios/HeliosScriptBundle.js";
 import type { SeedAttrs } from "../../delegation/UutName.js";
 import { textToBytes } from "@hyperionbt/helios";
 
+/** ------------ BEGIN hlbundle imports --------- */
+/** if you want to maintain these in a .ts file, you can use the following imports there */
+// import type { UplcData } from "@helios-lang/uplc";
+// import type {
+//     Address,
+//     AssetClass,
+//     DatumHash,
+//     MintingPolicyHash,
+//     PubKey,
+//     PubKeyHash,
+//     ScriptHash,
+//     SpendingCredential,
+//     StakingCredential,
+//     StakingHash,
+//     StakingValidatorHash,
+//     TimeRange,
+//     TxId,
+//     TxInput,
+//     TxOutput,
+//     TxOutputId,
+//     TxOutputDatum,
+//     ValidatorHash,
+//     Value,
+// } from "@helios-lang/ledger";
+// import type { Cast } from "@helios-lang/contract-utils";
+// import type { 
+//     IntLike,
+//     ByteArrayLike,
+//  } from "@helios-lang/codec-utils";
+
+// import type {CapoHeliosBundle} from "@donecollectively/stellar-contracts"
+// import type {CapoDelegateBundle} from "@donecollectively/stellar-contracts"
+// import type {
+//     HeliosScriptBundle,
+//     mkEnum,
+//     type EnumType,
+//     type singleEnumVariant,
+//     type tagOnly
+// } from "@donecollectively/stellar-contracts"
+
+/** ------------ BEGIN hlbundle imports --------- */
+/** if you want to maintain these in a .ts file, you can use the following imports there */
+// import type { UplcData } from "@helios-lang/uplc";
+// import type {
+//     Address,
+//     AssetClass,
+//     DatumHash,
+//     MintingPolicyHash,
+//     PubKey,
+//     PubKeyHash,
+//     ScriptHash,
+//     SpendingCredential,
+//     StakingCredential,
+//     StakingHash,
+//     StakingValidatorHash,
+//     TimeRange,
+//     TxId,
+//     TxInput,
+//     TxOutput,
+//     TxOutputId,
+//     TxOutputDatum,
+//     ValidatorHash,
+//     Value,
+// } from "@helios-lang/ledger";
+// import type { Cast } from "@helios-lang/contract-utils";
+// import type { 
+//     IntLike,
+//     ByteArrayLike,
+//  } from "@helios-lang/codec-utils";
+
+// import type {CapoHeliosBundle} from "@donecollectively/stellar-contracts"
+// import type {CapoDelegateBundle} from "@donecollectively/stellar-contracts"
+// import type {
+//     HeliosScriptBundle,
+//     mkEnum,
+//     type EnumType,
+//     type singleEnumVariant,
+//     type tagOnly
+// } from "@donecollectively/stellar-contracts"
+
 /** ------------ BEGIN hlbundle types ------------ */
 export type DelegationDetail = {
-    capoAddr: Address
-    mph: MintingPolicyHash
-    tn: number[]
-};
+    capoAddr: /*minStructField*/ Address
+    mph: /*minStructField*/ MintingPolicyHash
+    tn: /*minStructField*/ number[]
+}
 
 export type DelegationDetailLike = {
-    capoAddr: Address | string
-    mph: MintingPolicyHash | string | number[]
-    tn: number[]
-};
+    capoAddr: /*minStructField*/ Address | string
+    mph: /*minStructField*/ MintingPolicyHash | string | number[]
+    tn: /*minStructField*/ number[]
+}
 
 
 export type SampleStruct = {
-    a: bigint
-    b: Map<string, number[]>
-    c: Array<boolean>
-    d: Option<UplcData>
-};
+    a: /*minStructField*/ bigint
+    b: /*minStructField*/ Map<string, number[]>
+    c: /*minStructField*/ Array<boolean>
+    d: /*minStructField*/ Option<UplcData>
+}
 
 export type SampleStructLike = {
-    a: IntLike
-    b: Map<string, number[]>
-    c: Array<boolean>
-    d: Option<UplcData>
-};
+    a: /*minStructField*/ IntLike
+    b: /*minStructField*/ Map<string, number[]>
+    c: /*minStructField*/ Array<boolean>
+    d: /*minStructField*/ Option<UplcData>
+}
 
 
-export type SomeEnum = EnumType<{module: "uutMintingDelegate", enumName: "SomeEnum"}, {
-        justATag: singleEnumVariant<SomeEnum, "justATag",
-            "Constr#0", "tagOnly", never, "noSpecialFlags"
+export type SomeEnum$hasNestedFields = {
+    m: SampleStruct  /*minVariantField*/ ,
+    n: bigint  /*minVariantField*/ 
+     }
+
+export type SomeEnum$hasNestedFieldsLike = {
+    m: SampleStructLike  /*minVariantField*/ ,
+    n: IntLike  /*minVariantField*/ 
+     }
+
+
+export type SomeEnum$hasRecursiveFields = {
+    placeholder: bigint  /*minVariantField*/ ,
+    ph2: string  /*minVariantField*/ 
+     }
+
+export type SomeEnum$hasRecursiveFieldsLike = {
+    placeholder: IntLike  /*minVariantField*/ ,
+    ph2: string  /*minVariantField*/ 
+     }
+
+
+export type SomeEnumMeta = EnumTypeMeta<
+    {module: "uutMintingDelegate", enumName: "SomeEnum"}, {
+        justATag: singleEnumVariantMeta<SomeEnumMeta, "justATag",
+            "Constr#0", "tagOnly", tagOnly, "noSpecialFlags"
         >,
-        justAnInt: singleEnumVariant<SomeEnum, "justAnInt",
-            "Constr#1", "singletonField", 
-            bigint, "noSpecialFlags"
+        justAnInt: singleEnumVariantMeta<SomeEnumMeta, "justAnInt",
+            "Constr#1", "singletonField", bigint /*singleVariantField*/ , "noSpecialFlags"
         >,
-        oneNestedStruct: singleEnumVariant<SomeEnum, "oneNestedStruct",
-            "Constr#2", "singletonField", 
-            SampleStruct, "noSpecialFlags"
+        oneNestedStruct: singleEnumVariantMeta<SomeEnumMeta, "oneNestedStruct",
+            "Constr#2", "singletonField", SampleStruct /*singleVariantField*/ , "noSpecialFlags"
         >,
-        hasNestedFields: singleEnumVariant<SomeEnum, "hasNestedFields",
+        hasNestedFields: singleEnumVariantMeta<SomeEnumMeta, "hasNestedFields",
             "Constr#3", 
-            "fields", {
-                m: SampleStruct,
-                n: bigint
-            }, "noSpecialFlags"
+            "fields", SomeEnum$hasNestedFields, "noSpecialFlags"
         >,
-        hasRecursiveFields: singleEnumVariant<SomeEnum, "hasRecursiveFields",
-            "Constr#4", "tagOnly", never, "noSpecialFlags"
+        hasRecursiveFields: singleEnumVariantMeta<SomeEnumMeta, "hasRecursiveFields",
+            "Constr#4", 
+            "fields", SomeEnum$hasRecursiveFields, "noSpecialFlags"
         >
     }
 >;
 
-export type SomeEnumLike = EnumType<{module: "uutMintingDelegate", enumName: "SomeEnum"}, {
-        justATag: singleEnumVariant<SomeEnum, "justATag",
-            "Constr#0", "tagOnly", never, "noSpecialFlags"
-        >,
-        justAnInt: singleEnumVariant<SomeEnum, "justAnInt",
-            "Constr#1", "singletonField", 
-            IntLike, "noSpecialFlags"
-        >,
-        oneNestedStruct: singleEnumVariant<SomeEnum, "oneNestedStruct",
-            "Constr#2", "singletonField", 
-            SampleStructLike, "noSpecialFlags"
-        >,
-        hasNestedFields: singleEnumVariant<SomeEnum, "hasNestedFields",
-            "Constr#3", 
-            "fields", {
-                m: SampleStructLike,
-                n: IntLike
-            }, "noSpecialFlags"
-        >,
-        hasRecursiveFields: singleEnumVariant<SomeEnum, "hasRecursiveFields",
-            "Constr#4", "tagOnly", never, "noSpecialFlags"
-        >
-    }
->;
+export type SomeEnum = 
+        | { justATag: /*minEnumVariant*/ tagOnly }
+        | { justAnInt: /*minEnumVariant*/ bigint /*singleVariantField*/  }
+        | { oneNestedStruct: /*minEnumVariant*/ SampleStruct /*singleVariantField*/  }
+        | { hasNestedFields: /*minEnumVariant*/ SomeEnum$hasNestedFields }
+        | { hasRecursiveFields: /*minEnumVariant*/ SomeEnum$hasRecursiveFields }
+export type SomeEnumLike = 
+        | { justATag: /*minEnumVariant*/ tagOnly }
+        | { justAnInt: /*minEnumVariant*/ IntLike /*singleVariantField*/  }
+        | { oneNestedStruct: /*minEnumVariant*/ SampleStructLike /*singleVariantField*/  }
+        | { hasNestedFields: /*minEnumVariant*/ SomeEnum$hasNestedFieldsLike }
+        | { hasRecursiveFields: /*minEnumVariant*/ SomeEnum$hasRecursiveFieldsLike }
+
+export type DelegateDatum$MultiFieldVariant = {
+    field1: bigint  /*minVariantField*/ ,
+    field2: string  /*minVariantField*/ 
+     }
+
+export type DelegateDatum$MultiFieldVariantLike = {
+    field1: IntLike  /*minVariantField*/ ,
+    field2: string  /*minVariantField*/ 
+     }
 
 
-export type DelegateDatum = EnumType<{module: "uutMintingDelegate", enumName: "DelegateDatum"}, {
-        IsDelegation: singleEnumVariant<DelegateDatum, "IsDelegation",
-            "Constr#0", "singletonField", 
-            DelegationDetail, "noSpecialFlags"
+export type DelegateDatum$MultiFieldNestedThings = {
+    nestedStruct: SampleStruct  /*minVariantField*/ ,
+    nestedEnumMaybe: Option<SomeEnum>  /*minVariantField*/ 
+     }
+
+export type DelegateDatum$MultiFieldNestedThingsLike = {
+    nestedStruct: SampleStructLike  /*minVariantField*/ ,
+    nestedEnumMaybe: Option<SomeEnumLike>  /*minVariantField*/ 
+     }
+
+
+export type DelegateDatumMeta = EnumTypeMeta<
+    {module: "uutMintingDelegate", enumName: "DelegateDatum"}, {
+        IsDelegation: singleEnumVariantMeta<DelegateDatumMeta, "IsDelegation",
+            "Constr#0", "singletonField", DelegationDetail /*singleVariantField*/ , "noSpecialFlags"
         >,
-        ScriptReference: singleEnumVariant<DelegateDatum, "ScriptReference",
-            "Constr#1", "tagOnly", never, "noSpecialFlags"
+        ScriptReference: singleEnumVariantMeta<DelegateDatumMeta, "ScriptReference",
+            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
         >,
-        SingleDataElement: singleEnumVariant<DelegateDatum, "SingleDataElement",
-            "Constr#2", "singletonField", 
-            string, "noSpecialFlags"
+        SingleDataElement: singleEnumVariantMeta<DelegateDatumMeta, "SingleDataElement",
+            "Constr#2", "singletonField", string /*singleVariantField*/ , "noSpecialFlags"
         >,
-        SingleNestedStruct: singleEnumVariant<DelegateDatum, "SingleNestedStruct",
-            "Constr#3", "singletonField", 
-            SampleStruct, "noSpecialFlags"
+        SingleNestedStruct: singleEnumVariantMeta<DelegateDatumMeta, "SingleNestedStruct",
+            "Constr#3", "singletonField", SampleStruct /*singleVariantField*/ , "noSpecialFlags"
         >,
-        HasNestedEnum: singleEnumVariant<DelegateDatum, "HasNestedEnum",
-            "Constr#4", "singletonField", 
-            SomeEnum, "noSpecialFlags"
+        HasNestedEnum: singleEnumVariantMeta<DelegateDatumMeta, "HasNestedEnum",
+            "Constr#4", "singletonField", SomeEnum /*singleVariantField*/ , "noSpecialFlags"
         >,
-        MultiFieldVariant: singleEnumVariant<DelegateDatum, "MultiFieldVariant",
+        MultiFieldVariant: singleEnumVariantMeta<DelegateDatumMeta, "MultiFieldVariant",
             "Constr#5", 
-            "fields", {
-                field1: bigint,
-                field2: string
-            }, "noSpecialFlags"
+            "fields", DelegateDatum$MultiFieldVariant, "noSpecialFlags"
         >,
-        MultiFieldNestedThings: singleEnumVariant<DelegateDatum, "MultiFieldNestedThings",
+        MultiFieldNestedThings: singleEnumVariantMeta<DelegateDatumMeta, "MultiFieldNestedThings",
             "Constr#6", 
-            "fields", {
-                nestedStruct: SampleStruct,
-                nestedEnumMaybe: Option<SomeEnum>
-            }, "noSpecialFlags"
+            "fields", DelegateDatum$MultiFieldNestedThings, "noSpecialFlags"
         >
     }
 >;
 
-export type DelegateDatumLike = EnumType<{module: "uutMintingDelegate", enumName: "DelegateDatum"}, {
-        IsDelegation: singleEnumVariant<DelegateDatum, "IsDelegation",
-            "Constr#0", "singletonField", 
-            DelegationDetailLike, "noSpecialFlags"
+export type DelegateDatum = 
+        | { IsDelegation: /*minEnumVariant*/ DelegationDetail /*singleVariantField*/  }
+        | { ScriptReference: /*minEnumVariant*/ tagOnly }
+        | { SingleDataElement: /*minEnumVariant*/ string /*singleVariantField*/  }
+        | { SingleNestedStruct: /*minEnumVariant*/ SampleStruct /*singleVariantField*/  }
+        | { HasNestedEnum: /*minEnumVariant*/ SomeEnum /*singleVariantField*/  }
+        | { MultiFieldVariant: /*minEnumVariant*/ DelegateDatum$MultiFieldVariant }
+        | { MultiFieldNestedThings: /*minEnumVariant*/ DelegateDatum$MultiFieldNestedThings }
+export type DelegateDatumLike = 
+        | { IsDelegation: /*minEnumVariant*/ DelegationDetailLike /*singleVariantField*/  }
+        | { ScriptReference: /*minEnumVariant*/ tagOnly }
+        | { SingleDataElement: /*minEnumVariant*/ string /*singleVariantField*/  }
+        | { SingleNestedStruct: /*minEnumVariant*/ SampleStructLike /*singleVariantField*/  }
+        | { HasNestedEnum: /*minEnumVariant*/ SomeEnumLike /*singleVariantField*/  }
+        | { MultiFieldVariant: /*minEnumVariant*/ DelegateDatum$MultiFieldVariantLike }
+        | { MultiFieldNestedThings: /*minEnumVariant*/ DelegateDatum$MultiFieldNestedThingsLike }
+
+export type CapoLifecycleActivity$CreatingDelegate = {
+    seed: TxOutputId  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ 
+     }
+
+export type CapoLifecycleActivity$CreatingDelegateLike = {
+    seed: TxOutputId | string  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ 
+     }
+
+
+export type CapoLifecycleActivityMeta = EnumTypeMeta<
+    {module: "CapoDelegateHelpers", enumName: "CapoLifecycleActivity"}, {
+        CreatingDelegate: singleEnumVariantMeta<CapoLifecycleActivityMeta, "CreatingDelegate",
+            "Constr#0", 
+            "fields", CapoLifecycleActivity$CreatingDelegate, "isSeededActivity"
+        >
+    }
+>;
+
+export type CapoLifecycleActivity = 
+        | { CreatingDelegate: /*minEnumVariant*/ CapoLifecycleActivity$CreatingDelegate }
+export type CapoLifecycleActivityLike = 
+        | { CreatingDelegate: /*minEnumVariant*/ CapoLifecycleActivity$CreatingDelegateLike }
+
+export type DelegateLifecycleActivity$ReplacingMe = {
+    seed: TxOutputId  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ 
+     }
+
+export type DelegateLifecycleActivity$ReplacingMeLike = {
+    seed: TxOutputId | string  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ 
+     }
+
+
+export type DelegateLifecycleActivityMeta = EnumTypeMeta<
+    {module: "CapoDelegateHelpers", enumName: "DelegateLifecycleActivity"}, {
+        ReplacingMe: singleEnumVariantMeta<DelegateLifecycleActivityMeta, "ReplacingMe",
+            "Constr#0", 
+            "fields", DelegateLifecycleActivity$ReplacingMe, "isSeededActivity"
         >,
-        ScriptReference: singleEnumVariant<DelegateDatum, "ScriptReference",
-            "Constr#1", "tagOnly", never, "noSpecialFlags"
+        Retiring: singleEnumVariantMeta<DelegateLifecycleActivityMeta, "Retiring",
+            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
         >,
-        SingleDataElement: singleEnumVariant<DelegateDatum, "SingleDataElement",
-            "Constr#2", "singletonField", 
-            string, "noSpecialFlags"
+        ValidatingSettings: singleEnumVariantMeta<DelegateLifecycleActivityMeta, "ValidatingSettings",
+            "Constr#2", "tagOnly", tagOnly, "noSpecialFlags"
+        >
+    }
+>;
+
+export type DelegateLifecycleActivity = 
+        | { ReplacingMe: /*minEnumVariant*/ DelegateLifecycleActivity$ReplacingMe }
+        | { Retiring: /*minEnumVariant*/ tagOnly }
+        | { ValidatingSettings: /*minEnumVariant*/ tagOnly }
+export type DelegateLifecycleActivityLike = 
+        | { ReplacingMe: /*minEnumVariant*/ DelegateLifecycleActivity$ReplacingMeLike }
+        | { Retiring: /*minEnumVariant*/ tagOnly }
+        | { ValidatingSettings: /*minEnumVariant*/ tagOnly }
+
+export type SpendingActivityMeta = EnumTypeMeta<
+    {module: "uutMintingDelegate", enumName: "SpendingActivity"}, {
+        _placeholder2SA: singleEnumVariantMeta<SpendingActivityMeta, "_placeholder2SA",
+            "Constr#0", "singletonField", number[] /*singleVariantField*/ , "noSpecialFlags"
         >,
-        SingleNestedStruct: singleEnumVariant<DelegateDatum, "SingleNestedStruct",
-            "Constr#3", "singletonField", 
-            SampleStructLike, "noSpecialFlags"
+        mockWorkingSpendActivity: singleEnumVariantMeta<SpendingActivityMeta, "mockWorkingSpendActivity",
+            "Constr#1", "singletonField", number[] /*singleVariantField*/ , "noSpecialFlags"
+        >
+    }
+>;
+
+export type SpendingActivity = 
+        | { _placeholder2SA: /*minEnumVariant*/ number[] /*singleVariantField*/  }
+        | { mockWorkingSpendActivity: /*minEnumVariant*/ number[] /*singleVariantField*/  }
+export type SpendingActivityLike = 
+        | { _placeholder2SA: /*minEnumVariant*/ number[] /*singleVariantField*/  }
+        | { mockWorkingSpendActivity: /*minEnumVariant*/ number[] /*singleVariantField*/  }
+
+export type MintingActivity$mintingUuts = {
+    seed: TxOutputId  /*minVariantField*/ ,
+    purposes: Array<string>  /*minVariantField*/ 
+     }
+
+export type MintingActivity$mintingUutsLike = {
+    seed: TxOutputId | string  /*minVariantField*/ ,
+    purposes: Array<string>  /*minVariantField*/ 
+     }
+
+
+export type MintingActivityMeta = EnumTypeMeta<
+    {module: "uutMintingDelegate", enumName: "MintingActivity"}, {
+        mintingUuts: singleEnumVariantMeta<MintingActivityMeta, "mintingUuts",
+            "Constr#0", 
+            "fields", MintingActivity$mintingUuts, "isSeededActivity"
         >,
-        HasNestedEnum: singleEnumVariant<DelegateDatum, "HasNestedEnum",
-            "Constr#4", "singletonField", 
-            SomeEnumLike, "noSpecialFlags"
+        mockOtherActivity: singleEnumVariantMeta<MintingActivityMeta, "mockOtherActivity",
+            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
+        >
+    }
+>;
+
+export type MintingActivity = 
+        | { mintingUuts: /*minEnumVariant*/ MintingActivity$mintingUuts }
+        | { mockOtherActivity: /*minEnumVariant*/ tagOnly }
+export type MintingActivityLike = 
+        | { mintingUuts: /*minEnumVariant*/ MintingActivity$mintingUutsLike }
+        | { mockOtherActivity: /*minEnumVariant*/ tagOnly }
+
+export type BurningActivityMeta = EnumTypeMeta<
+    {module: "uutMintingDelegate", enumName: "BurningActivity"}, {
+        _placeholder2BA: singleEnumVariantMeta<BurningActivityMeta, "_placeholder2BA",
+            "Constr#0", "singletonField", number[] /*singleVariantField*/ , "noSpecialFlags"
+        >
+    }
+>;
+
+export type BurningActivity = 
+        | { _placeholder2BA: /*minEnumVariant*/ number[] /*singleVariantField*/  }
+export type BurningActivityLike = 
+        | { _placeholder2BA: /*minEnumVariant*/ number[] /*singleVariantField*/  }
+
+export type DelegateActivity$CreatingDelegatedData = {
+    seed: TxOutputId  /*minVariantField*/ ,
+    dataType: string  /*minVariantField*/ 
+     }
+
+export type DelegateActivity$CreatingDelegatedDataLike = {
+    seed: TxOutputId | string  /*minVariantField*/ ,
+    dataType: string  /*minVariantField*/ 
+     }
+
+
+export type DelegateActivity$UpdatingDelegatedData = {
+    dataType: string  /*minVariantField*/ ,
+    recId: number[]  /*minVariantField*/ 
+     }
+
+export type DelegateActivity$UpdatingDelegatedDataLike = {
+    dataType: string  /*minVariantField*/ ,
+    recId: number[]  /*minVariantField*/ 
+     }
+
+
+export type DelegateActivity$DeletingDelegatedData = {
+    dataType: string  /*minVariantField*/ ,
+    recId: number[]  /*minVariantField*/ 
+     }
+
+export type DelegateActivity$DeletingDelegatedDataLike = {
+    dataType: string  /*minVariantField*/ ,
+    recId: number[]  /*minVariantField*/ 
+     }
+
+
+export type DelegateActivityMeta = EnumTypeMeta<
+    {module: "uutMintingDelegate", enumName: "DelegateActivity"}, {
+        CapoLifecycleActivities: singleEnumVariantMeta<DelegateActivityMeta, "CapoLifecycleActivities",
+            "Constr#0", "singletonField", CapoLifecycleActivity /*singleVariantField*/ , "noSpecialFlags"
         >,
-        MultiFieldVariant: singleEnumVariant<DelegateDatum, "MultiFieldVariant",
+        DelegateLifecycleActivities: singleEnumVariantMeta<DelegateActivityMeta, "DelegateLifecycleActivities",
+            "Constr#1", "singletonField", DelegateLifecycleActivity /*singleVariantField*/ , "noSpecialFlags"
+        >,
+        SpendingActivities: singleEnumVariantMeta<DelegateActivityMeta, "SpendingActivities",
+            "Constr#2", "singletonField", SpendingActivity /*singleVariantField*/ , "noSpecialFlags"
+        >,
+        MintingActivities: singleEnumVariantMeta<DelegateActivityMeta, "MintingActivities",
+            "Constr#3", "singletonField", MintingActivity /*singleVariantField*/ , "noSpecialFlags"
+        >,
+        BurningActivities: singleEnumVariantMeta<DelegateActivityMeta, "BurningActivities",
+            "Constr#4", "singletonField", BurningActivity /*singleVariantField*/ , "noSpecialFlags"
+        >,
+        CreatingDelegatedData: singleEnumVariantMeta<DelegateActivityMeta, "CreatingDelegatedData",
             "Constr#5", 
-            "fields", {
-                field1: IntLike,
-                field2: string
-            }, "noSpecialFlags"
+            "fields", DelegateActivity$CreatingDelegatedData, "isSeededActivity"
         >,
-        MultiFieldNestedThings: singleEnumVariant<DelegateDatum, "MultiFieldNestedThings",
+        UpdatingDelegatedData: singleEnumVariantMeta<DelegateActivityMeta, "UpdatingDelegatedData",
             "Constr#6", 
-            "fields", {
-                nestedStruct: SampleStructLike,
-                nestedEnumMaybe: Option<SomeEnumLike>
-            }, "noSpecialFlags"
-        >
-    }
->;
-
-
-export type CapoLifecycleActivity = EnumType<{module: "CapoDelegateHelpers", enumName: "CapoLifecycleActivity"}, {
-        CreatingDelegate: singleEnumVariant<CapoLifecycleActivity, "CreatingDelegate",
-            "Constr#0", 
-            "fields", {
-                seed: TxOutputId,
-                purpose: string
-            }, "isSeededActivity"
-        >
-    }
->;
-
-export type CapoLifecycleActivityLike = EnumType<{module: "CapoDelegateHelpers", enumName: "CapoLifecycleActivity"}, {
-        CreatingDelegate: singleEnumVariant<CapoLifecycleActivity, "CreatingDelegate",
-            "Constr#0", 
-            "fields", {
-                seed: TxOutputId | string,
-                purpose: string
-            }, "isSeededActivity"
-        >
-    }
->;
-
-
-export type DelegateLifecycleActivity = EnumType<{module: "CapoDelegateHelpers", enumName: "DelegateLifecycleActivity"}, {
-        ReplacingMe: singleEnumVariant<DelegateLifecycleActivity, "ReplacingMe",
-            "Constr#0", 
-            "fields", {
-                seed: TxOutputId,
-                purpose: string
-            }, "isSeededActivity"
+            "fields", DelegateActivity$UpdatingDelegatedData, "noSpecialFlags"
         >,
-        Retiring: singleEnumVariant<DelegateLifecycleActivity, "Retiring",
-            "Constr#1", "tagOnly", never, "noSpecialFlags"
-        >,
-        ValidatingSettings: singleEnumVariant<DelegateLifecycleActivity, "ValidatingSettings",
-            "Constr#2", "tagOnly", never, "noSpecialFlags"
-        >
-    }
->;
-
-export type DelegateLifecycleActivityLike = EnumType<{module: "CapoDelegateHelpers", enumName: "DelegateLifecycleActivity"}, {
-        ReplacingMe: singleEnumVariant<DelegateLifecycleActivity, "ReplacingMe",
-            "Constr#0", 
-            "fields", {
-                seed: TxOutputId | string,
-                purpose: string
-            }, "isSeededActivity"
-        >,
-        Retiring: singleEnumVariant<DelegateLifecycleActivity, "Retiring",
-            "Constr#1", "tagOnly", never, "noSpecialFlags"
-        >,
-        ValidatingSettings: singleEnumVariant<DelegateLifecycleActivity, "ValidatingSettings",
-            "Constr#2", "tagOnly", never, "noSpecialFlags"
-        >
-    }
->;
-
-
-export type SpendingActivity = EnumType<{module: "uutMintingDelegate", enumName: "SpendingActivity"}, {
-        _placeholder2SA: singleEnumVariant<SpendingActivity, "_placeholder2SA",
-            "Constr#0", "singletonField", 
-            number[], "noSpecialFlags"
-        >,
-        mockWorkingSpendActivity: singleEnumVariant<SpendingActivity, "mockWorkingSpendActivity",
-            "Constr#1", "singletonField", 
-            number[], "noSpecialFlags"
-        >
-    }
->;
-
-export type SpendingActivityLike = EnumType<{module: "uutMintingDelegate", enumName: "SpendingActivity"}, {
-        _placeholder2SA: singleEnumVariant<SpendingActivity, "_placeholder2SA",
-            "Constr#0", "singletonField", 
-            number[], "noSpecialFlags"
-        >,
-        mockWorkingSpendActivity: singleEnumVariant<SpendingActivity, "mockWorkingSpendActivity",
-            "Constr#1", "singletonField", 
-            number[], "noSpecialFlags"
-        >
-    }
->;
-
-
-export type MintingActivity = EnumType<{module: "uutMintingDelegate", enumName: "MintingActivity"}, {
-        mintingUuts: singleEnumVariant<MintingActivity, "mintingUuts",
-            "Constr#0", 
-            "fields", {
-                seed: TxOutputId,
-                purposes: Array<string>
-            }, "isSeededActivity"
-        >,
-        mockOtherActivity: singleEnumVariant<MintingActivity, "mockOtherActivity",
-            "Constr#1", "tagOnly", never, "noSpecialFlags"
-        >
-    }
->;
-
-export type MintingActivityLike = EnumType<{module: "uutMintingDelegate", enumName: "MintingActivity"}, {
-        mintingUuts: singleEnumVariant<MintingActivity, "mintingUuts",
-            "Constr#0", 
-            "fields", {
-                seed: TxOutputId | string,
-                purposes: Array<string>
-            }, "isSeededActivity"
-        >,
-        mockOtherActivity: singleEnumVariant<MintingActivity, "mockOtherActivity",
-            "Constr#1", "tagOnly", never, "noSpecialFlags"
-        >
-    }
->;
-
-
-export type BurningActivity = EnumType<{module: "uutMintingDelegate", enumName: "BurningActivity"}, {
-        _placeholder2BA: singleEnumVariant<BurningActivity, "_placeholder2BA",
-            "Constr#0", "singletonField", 
-            number[], "noSpecialFlags"
-        >
-    }
->;
-
-export type BurningActivityLike = EnumType<{module: "uutMintingDelegate", enumName: "BurningActivity"}, {
-        _placeholder2BA: singleEnumVariant<BurningActivity, "_placeholder2BA",
-            "Constr#0", "singletonField", 
-            number[], "noSpecialFlags"
-        >
-    }
->;
-
-
-export type DelegateActivity = EnumType<{module: "uutMintingDelegate", enumName: "DelegateActivity"}, {
-        CapoLifecycleActivities: singleEnumVariant<DelegateActivity, "CapoLifecycleActivities",
-            "Constr#0", "singletonField", 
-            CapoLifecycleActivity, "noSpecialFlags"
-        >,
-        DelegateLifecycleActivities: singleEnumVariant<DelegateActivity, "DelegateLifecycleActivities",
-            "Constr#1", "singletonField", 
-            DelegateLifecycleActivity, "noSpecialFlags"
-        >,
-        SpendingActivities: singleEnumVariant<DelegateActivity, "SpendingActivities",
-            "Constr#2", "singletonField", 
-            SpendingActivity, "noSpecialFlags"
-        >,
-        MintingActivities: singleEnumVariant<DelegateActivity, "MintingActivities",
-            "Constr#3", "singletonField", 
-            MintingActivity, "noSpecialFlags"
-        >,
-        BurningActivities: singleEnumVariant<DelegateActivity, "BurningActivities",
-            "Constr#4", "singletonField", 
-            BurningActivity, "noSpecialFlags"
-        >,
-        CreatingDelegatedData: singleEnumVariant<DelegateActivity, "CreatingDelegatedData",
-            "Constr#5", 
-            "fields", {
-                seed: TxOutputId,
-                dataType: string
-            }, "isSeededActivity"
-        >,
-        UpdatingDelegatedData: singleEnumVariant<DelegateActivity, "UpdatingDelegatedData",
-            "Constr#6", 
-            "fields", {
-                dataType: string,
-                recId: number[]
-            }, "noSpecialFlags"
-        >,
-        DeletingDelegatedData: singleEnumVariant<DelegateActivity, "DeletingDelegatedData",
+        DeletingDelegatedData: singleEnumVariantMeta<DelegateActivityMeta, "DeletingDelegatedData",
             "Constr#7", 
-            "fields", {
-                dataType: string,
-                recId: number[]
-            }, "noSpecialFlags"
+            "fields", DelegateActivity$DeletingDelegatedData, "noSpecialFlags"
         >,
-        MultipleDelegateActivities: singleEnumVariant<DelegateActivity, "MultipleDelegateActivities",
-            "Constr#8", "singletonField", 
-            Array<UplcData>, "noSpecialFlags"
+        MultipleDelegateActivities: singleEnumVariantMeta<DelegateActivityMeta, "MultipleDelegateActivities",
+            "Constr#8", "singletonField", Array<UplcData> /*singleVariantField*/ , "noSpecialFlags"
         >
     }
 >;
 
-export type DelegateActivityLike = EnumType<{module: "uutMintingDelegate", enumName: "DelegateActivity"}, {
-        CapoLifecycleActivities: singleEnumVariant<DelegateActivity, "CapoLifecycleActivities",
-            "Constr#0", "singletonField", 
-            CapoLifecycleActivityLike, "noSpecialFlags"
-        >,
-        DelegateLifecycleActivities: singleEnumVariant<DelegateActivity, "DelegateLifecycleActivities",
-            "Constr#1", "singletonField", 
-            DelegateLifecycleActivityLike, "noSpecialFlags"
-        >,
-        SpendingActivities: singleEnumVariant<DelegateActivity, "SpendingActivities",
-            "Constr#2", "singletonField", 
-            SpendingActivityLike, "noSpecialFlags"
-        >,
-        MintingActivities: singleEnumVariant<DelegateActivity, "MintingActivities",
-            "Constr#3", "singletonField", 
-            MintingActivityLike, "noSpecialFlags"
-        >,
-        BurningActivities: singleEnumVariant<DelegateActivity, "BurningActivities",
-            "Constr#4", "singletonField", 
-            BurningActivityLike, "noSpecialFlags"
-        >,
-        CreatingDelegatedData: singleEnumVariant<DelegateActivity, "CreatingDelegatedData",
-            "Constr#5", 
-            "fields", {
-                seed: TxOutputId | string,
-                dataType: string
-            }, "isSeededActivity"
-        >,
-        UpdatingDelegatedData: singleEnumVariant<DelegateActivity, "UpdatingDelegatedData",
-            "Constr#6", 
-            "fields", {
-                dataType: string,
-                recId: number[]
-            }, "noSpecialFlags"
-        >,
-        DeletingDelegatedData: singleEnumVariant<DelegateActivity, "DeletingDelegatedData",
-            "Constr#7", 
-            "fields", {
-                dataType: string,
-                recId: number[]
-            }, "noSpecialFlags"
-        >,
-        MultipleDelegateActivities: singleEnumVariant<DelegateActivity, "MultipleDelegateActivities",
-            "Constr#8", "singletonField", 
-            Array<UplcData>, "noSpecialFlags"
-        >
-    }
->;
-
+export type DelegateActivity = 
+        | { CapoLifecycleActivities: /*minEnumVariant*/ CapoLifecycleActivity /*singleVariantField*/  }
+        | { DelegateLifecycleActivities: /*minEnumVariant*/ DelegateLifecycleActivity /*singleVariantField*/  }
+        | { SpendingActivities: /*minEnumVariant*/ SpendingActivity /*singleVariantField*/  }
+        | { MintingActivities: /*minEnumVariant*/ MintingActivity /*singleVariantField*/  }
+        | { BurningActivities: /*minEnumVariant*/ BurningActivity /*singleVariantField*/  }
+        | { CreatingDelegatedData: /*minEnumVariant*/ DelegateActivity$CreatingDelegatedData }
+        | { UpdatingDelegatedData: /*minEnumVariant*/ DelegateActivity$UpdatingDelegatedData }
+        | { DeletingDelegatedData: /*minEnumVariant*/ DelegateActivity$DeletingDelegatedData }
+        | { MultipleDelegateActivities: /*minEnumVariant*/ Array<UplcData> /*singleVariantField*/  }
+export type DelegateActivityLike = 
+        | { CapoLifecycleActivities: /*minEnumVariant*/ CapoLifecycleActivityLike /*singleVariantField*/  }
+        | { DelegateLifecycleActivities: /*minEnumVariant*/ DelegateLifecycleActivityLike /*singleVariantField*/  }
+        | { SpendingActivities: /*minEnumVariant*/ SpendingActivityLike /*singleVariantField*/  }
+        | { MintingActivities: /*minEnumVariant*/ MintingActivityLike /*singleVariantField*/  }
+        | { BurningActivities: /*minEnumVariant*/ BurningActivityLike /*singleVariantField*/  }
+        | { CreatingDelegatedData: /*minEnumVariant*/ DelegateActivity$CreatingDelegatedDataLike }
+        | { UpdatingDelegatedData: /*minEnumVariant*/ DelegateActivity$UpdatingDelegatedDataLike }
+        | { DeletingDelegatedData: /*minEnumVariant*/ DelegateActivity$DeletingDelegatedDataLike }
+        | { MultipleDelegateActivities: /*minEnumVariant*/ Array<UplcData> /*singleVariantField*/  }
 
 /** ------------- hlbundle types END ------------- */
 
-type makesDelegateDatum = makesUplcEnumData<DelegateDatumLike>;
+type makesDelegateDatum = makesUplcEnumData<DelegateDatumMeta>;
 
 /**
  * A specialized minting delegate for testing purposes
@@ -434,16 +495,16 @@ export default class BundleMintDelegateWithGenericUuts extends CapoDelegateBundl
     }
 
     declare mkDatum: makesDelegateDatum;
-    declare readDatum: readsUplcEnumData<DelegateDatum>;
+    declare readDatum: readsUplcEnumData<DelegateDatumMeta>;
 
-    declare Activity: makesUplcActivityEnumData<DelegateActivityLike>;
+    declare Activity: makesUplcActivityEnumData<DelegateActivityMeta>;
 }
 
 if (false) {
     // ... type tests for Datum and Datum variants
     {
-        type delegateDatumVariant = singleEnumVariant<
-            DelegateDatum,
+        type delegateDatumVariant = singleEnumVariantMeta<
+        DelegateDatumMeta,
             "IsDelegation",
             "Constr#0",
             "singletonField",
@@ -479,17 +540,17 @@ if (false) {
     }
 
     {
-        type nestedEnumVariant = singleEnumVariant<
-            DelegateDatumLike,
+        type nestedEnumVariant = singleEnumVariantMeta<
+            DelegateDatumMeta,
             "HasNestedEnum",
             "Constr#2",
             "singletonField",
-            SomeEnumLike,
+            SomeEnumMeta,
             "noSpecialFlags"
         >;
 
         type hasTestNestedEnum = nestedEnumVariant["data"];
-        const nestedThingIsEnum: hasTestNestedEnum extends EnumType<any, any>
+        const nestedThingIsEnum: hasTestNestedEnum extends EnumTypeMeta<any, any>
             ? true
             : false = true;
         const nestedEnumVariantNOTSeeded: nestedEnumVariant["data"]["variants"]["hasNestedFields"] extends anySeededActivity
@@ -544,8 +605,8 @@ if (false) {
 
     {
         // seeded activity
-        type seededVariant = singleEnumVariant<
-            DelegateActivityLike,
+        type seededVariant = singleEnumVariantMeta<
+            DelegateActivityMeta,
             "CreatingDelegatedData",
             "Constr#5",
             "fields",
@@ -581,8 +642,8 @@ if (false) {
     }
     {
         // unseeded activity
-        type unseededVariant = singleEnumVariant<
-            DelegateActivityLike,
+        type unseededVariant = singleEnumVariantMeta<
+            DelegateActivityMeta,
             "UpdatingDelegatedData",
             "Constr#6",
             "fields",
@@ -607,17 +668,17 @@ if (false) {
     }
 
     {
-        type nestedEnumVariant = singleEnumVariant<
-            DelegateActivityLike,
+        type nestedEnumVariant = singleEnumVariantMeta<
+            DelegateActivityMeta,
             "CapoLifecycleActivities",
             "Constr#0",
             "singletonField",
-            CapoLifecycleActivityLike,
+            CapoLifecycleActivity,
             "noSpecialFlags"
         >;
 
         type nestedEnum = nestedEnumVariant["data"];
-        const nestedThingIsEnum: nestedEnum extends EnumType<any, any>
+        const nestedThingIsEnum: nestedEnum extends EnumTypeMeta<any, any>
             ? true
             : false = true;
         const nestedEnumVariantIsSeeded: nestedEnumVariant["data"]["variants"]["CreatingDelegate"] extends anySeededActivity

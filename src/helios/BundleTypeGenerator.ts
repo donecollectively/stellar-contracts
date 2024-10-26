@@ -2,13 +2,13 @@ import { genTypes, type TypeSchema } from "@helios-lang/contract-utils";
 import type {
     anyTypeDetails,
     EnumId,
-    EnumType,
+    EnumTypeMeta,
     enumTypeDetails,
     HeliosBundleTypeDetails,
     HeliosBundleTypes,
     HeliosScriptBundle,
     makesUplcActivityEnumData,
-    singleEnumVariant,
+    singleEnumVariantMeta,
     typeDetails,
     variantTypeDetails,
 } from "./HeliosScriptBundle.js";
@@ -106,8 +106,9 @@ export class BundleTypeGenerator {
 // import type {
 //     HeliosScriptBundle,
 //     mkEnum,
-//     type EnumType,
-//     type singleEnumVariant,
+//     type EnumTypeMeta,
+//     type singleEnumVariantMeta,
+//     type tagOnly
 // } from "@donecollectively/stellar-contracts"
 
 /** ------------ BEGIN hlbundle types ------------ */
@@ -144,8 +145,10 @@ ${this.generateRedeemerApiTypes()}
 
     generateEnumTypeSource(name: string, typeInfo: enumTypeDetails) {
         return (
+            `export type ${name}Meta = ${typeInfo.canonicalMetaType}\n`+
             `export type ${name} = ${typeInfo.canonicalType}\n` +
-            `export type ${name}Like = ${typeInfo.permissiveType}\n`
+            `export type ${name}Like = ${typeInfo.permissiveType}\n`+
+            ""
         );
     }
 

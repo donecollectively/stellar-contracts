@@ -44,71 +44,61 @@
 // import type {
 //     HeliosScriptBundle,
 //     mkEnum,
-//     type EnumType,
-//     type singleEnumVariant,
+//     type EnumTypeMeta,
+//     type singleEnumVariantMeta,
+//     type tagOnly
 // } from "@donecollectively/stellar-contracts"
 
 /** ------------ BEGIN hlbundle types ------------ */
-export type MinterActivity = EnumType<{module: "CapoMintHelpers", enumName: "MinterActivity"}, {
-        mintingCharter: singleEnumVariant<MinterActivity, "mintingCharter",
-            "Constr#0", "singletonField", 
-            Address, "noSpecialFlags"
+export type MinterActivity$CreatingNewSpendDelegate = {
+    seed: TxOutputId  /*minVariantField*/ ,
+    replacingUut: Option<number[]>  /*minVariantField*/ 
+}
+
+export type MinterActivity$CreatingNewSpendDelegateLike = {
+    seed: TxOutputId | string  /*minVariantField*/ ,
+    replacingUut: Option<number[]>  /*minVariantField*/ 
+}
+
+
+export type MinterActivityMeta = EnumTypeMeta<
+    {module: "CapoMintHelpers", enumName: "MinterActivity"}, {
+        mintingCharter: singleEnumVariantMeta<MinterActivityMeta, "mintingCharter",
+            "Constr#0", "singletonField", Address /*singleVariantField*/ , "noSpecialFlags"
         >,
-        mintWithDelegateAuthorizing: singleEnumVariant<MinterActivity, "mintWithDelegateAuthorizing",
-            "Constr#1", "tagOnly", never, "noSpecialFlags"
+        mintWithDelegateAuthorizing: singleEnumVariantMeta<MinterActivityMeta, "mintWithDelegateAuthorizing",
+            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
         >,
-        addingMintInvariant: singleEnumVariant<MinterActivity, "addingMintInvariant",
-            "Constr#2", "singletonField", 
-            TxOutputId, "isSeededActivity"
+        addingMintInvariant: singleEnumVariantMeta<MinterActivityMeta, "addingMintInvariant",
+            "Constr#2", "singletonField", TxOutputId /*singleVariantField*/ , "isSeededActivity"
         >,
-        addingSpendInvariant: singleEnumVariant<MinterActivity, "addingSpendInvariant",
-            "Constr#3", "singletonField", 
-            TxOutputId, "isSeededActivity"
+        addingSpendInvariant: singleEnumVariantMeta<MinterActivityMeta, "addingSpendInvariant",
+            "Constr#3", "singletonField", TxOutputId /*singleVariantField*/ , "isSeededActivity"
         >,
-        ForcingNewMintDelegate: singleEnumVariant<MinterActivity, "ForcingNewMintDelegate",
-            "Constr#4", "singletonField", 
-            TxOutputId, "isSeededActivity"
+        ForcingNewMintDelegate: singleEnumVariantMeta<MinterActivityMeta, "ForcingNewMintDelegate",
+            "Constr#4", "singletonField", TxOutputId /*singleVariantField*/ , "isSeededActivity"
         >,
-        CreatingNewSpendDelegate: singleEnumVariant<MinterActivity, "CreatingNewSpendDelegate",
+        CreatingNewSpendDelegate: singleEnumVariantMeta<MinterActivityMeta, "CreatingNewSpendDelegate",
             "Constr#5", 
-            "fields", {
-                seed: TxOutputId,
-                replacingUut: Option<number[]>
-            }, "isSeededActivity"
+            "fields", MinterActivity$CreatingNewSpendDelegate, "isSeededActivity"
         >
     }
 >;
 
-export type MinterActivityLike = EnumType<{module: "CapoMintHelpers", enumName: "MinterActivity"}, {
-        mintingCharter: singleEnumVariant<MinterActivity, "mintingCharter",
-            "Constr#0", "singletonField", 
-            Address | string, "noSpecialFlags"
-        >,
-        mintWithDelegateAuthorizing: singleEnumVariant<MinterActivity, "mintWithDelegateAuthorizing",
-            "Constr#1", "tagOnly", never, "noSpecialFlags"
-        >,
-        addingMintInvariant: singleEnumVariant<MinterActivity, "addingMintInvariant",
-            "Constr#2", "singletonField", 
-            TxOutputId | string, "isSeededActivity"
-        >,
-        addingSpendInvariant: singleEnumVariant<MinterActivity, "addingSpendInvariant",
-            "Constr#3", "singletonField", 
-            TxOutputId | string, "isSeededActivity"
-        >,
-        ForcingNewMintDelegate: singleEnumVariant<MinterActivity, "ForcingNewMintDelegate",
-            "Constr#4", "singletonField", 
-            TxOutputId | string, "isSeededActivity"
-        >,
-        CreatingNewSpendDelegate: singleEnumVariant<MinterActivity, "CreatingNewSpendDelegate",
-            "Constr#5", 
-            "fields", {
-                seed: TxOutputId | string,
-                replacingUut: Option<number[]>
-            }, "isSeededActivity"
-        >
-    }
->;
-
+export type MinterActivity = 
+        | { mintingCharter: /*minEnumVariant*/ Address /*singleVariantField*/  }
+        | { mintWithDelegateAuthorizing: /*minEnumVariant*/ tagOnly }
+        | { addingMintInvariant: /*minEnumVariant*/ TxOutputId /*singleVariantField*/  }
+        | { addingSpendInvariant: /*minEnumVariant*/ TxOutputId /*singleVariantField*/  }
+        | { ForcingNewMintDelegate: /*minEnumVariant*/ TxOutputId /*singleVariantField*/  }
+        | { CreatingNewSpendDelegate: /*minEnumVariant*/ MinterActivity$CreatingNewSpendDelegate }
+export type MinterActivityLike = 
+        | { mintingCharter: /*minEnumVariant*/ Address | string /*singleVariantField*/  }
+        | { mintWithDelegateAuthorizing: /*minEnumVariant*/ tagOnly }
+        | { addingMintInvariant: /*minEnumVariant*/ TxOutputId | string /*singleVariantField*/  }
+        | { addingSpendInvariant: /*minEnumVariant*/ TxOutputId | string /*singleVariantField*/  }
+        | { ForcingNewMintDelegate: /*minEnumVariant*/ TxOutputId | string /*singleVariantField*/  }
+        | { CreatingNewSpendDelegate: /*minEnumVariant*/ MinterActivity$CreatingNewSpendDelegateLike }
 
 /** ------------- hlbundle types END ------------- */
 

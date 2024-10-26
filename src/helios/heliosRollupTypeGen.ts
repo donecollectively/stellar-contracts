@@ -387,7 +387,6 @@ export function heliosRollupTypeGen(
             throw error;
         });
 
-        debugger
         const result = await bundle.generate({ format: "es" });
         if (result.output.length > 1) {
             throw new Error(`unexpected: bundle should have one output`);

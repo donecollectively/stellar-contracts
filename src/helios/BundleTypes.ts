@@ -2,14 +2,16 @@ import { genTypes, type TypeSchema } from "@helios-lang/contract-utils";
 import type {
     anyTypeDetails,
     EnumId,
-    EnumType,
+    EnumTypeMeta,
     enumTypeDetails,
     HeliosBundleTypeDetails,
     HeliosBundleTypes,
     HeliosScriptBundle,
     makesUplcActivityEnumData,
-    singleEnumVariant,
+    singleEnumVariantMeta,
     typeDetails,
+    TypeVariety,
+    VariantFlavor,
     variantTypeDetails,
 } from "./HeliosScriptBundle.js";
 import type {
@@ -18,6 +20,14 @@ import type {
 } from "@helios-lang/type-utils";
 import type { DataType } from "@helios-lang/compiler/src/index.js";
 import type { EnumMemberType } from "@helios-lang/compiler/src/typecheck/common.js";
+
+export interface TypeGenHooks<T> {
+    registerNamedType?(details: anyTypeDetails): void;
+    getMoreEnumInfo?(details: enumTypeDetails): T;
+    getMoreStructInfo?(details: typeDetails): T;
+    getMoreVariantInfo?(details: variantTypeDetails): T;
+    getMoreTypeInfo?(details: typeDetails): T;
+}
 
 /**
  * Gathers any number of types expressible for an on-chain Helios script,
@@ -29,14 +39,15 @@ import type { EnumMemberType } from "@helios-lang/compiler/src/typecheck/common.
  * are added to the context, with any recursive expansions generated and added to the context, depth-first,
  * ... then the named type is used for the **nested field** where it was encountered.
  */
-export class BundleTypes {
-    bundle: HeliosScriptBundle;
+export class BundleTypes implements TypeGenHooks<undefined> {
     topLevelTypeDetails: HeliosBundleTypeDetails;
     topLevelDataTypes: HeliosBundleTypes;
     namedTypes: Record<string, anyTypeDetails> = {};
 
-    constructor(bundle: HeliosScriptBundle) {
-        this.bundle = bundle;
+    constructor(
+        public bundle: HeliosScriptBundle,
+        public collaborator?: TypeGenHooks<any>
+    ) {
         this.namedTypes = {};
         const dataTypes = (this.topLevelDataTypes =
             this.bundle.getTopLevelTypes());
@@ -76,50 +87,22 @@ export class BundleTypes {
         }
     }
 
-    gatherEnumDetails(
-        enumType: { toSchema(): EnumTypeSchema } & DataType,
-        useTypeNamesAt?: "nestedField"
-    ): enumTypeDetails {
-        // gathers names for any nested types, then generates minimal types
-        // based on having those names registered in the context.
-        const schema = enumType.toSchema();
-        const enumName = schema.name;
-        const module = this.extractModuleName(schema);
-        // at type-gen time, we don't need this to be a fully-typed VariantMap.
-        //  ... a lookup record is fine.
-        const variants: Record<string, variantTypeDetails> = {};
-        for (const member of schema.variantTypes) {
-            const memberType =
-                enumType.typeMembers[member.name].asEnumMemberType;
-            if (!memberType) {
-                throw new Error(
-                    `Enum member type for ${member.name} not found`
-                );
-            }
-            variants[member.name] = this.gatherVariantDetails(
-                memberType as any,
-                { module, enumName }
-            );
+    /**
+     * type-gen interface: registers a named type in the context,
+     *   ... with any
+     */
+    registerNamedType(details: anyTypeDetails) {
+        const {
+            //@ts-expect-error - some schemas don't have a name, but anything here does.
+            typeSchema: { name },
+            //@ts-expect-error - some details have this, others don't
+            canonicalTypeName,
+        } = details;
+        if (canonicalTypeName) {
+            this.namedTypes[canonicalTypeName] = details;
+        } else {
+            this.namedTypes[name] = details;
         }
-
-        const details = {
-            enumName: schema.name,
-            dataType: enumType,
-            typeSchema: schema,
-            variants,
-            canonicalType: this.mkMinimalType(
-                "canonical",
-                schema,
-                useTypeNamesAt
-            ),
-            permissiveType: this.mkMinimalType(
-                "permissive",
-                schema,
-                useTypeNamesAt
-            ),
-        };
-        this.namedTypes[schema.name] = details;
-        return details;
     }
 
     private extractModuleName(schema: EnumTypeSchema | VariantTypeSchema) {
@@ -146,6 +129,7 @@ export class BundleTypes {
         // gather nested types where applicable, so they are added to the context.
         switch (schema.kind) {
             case "internal":
+                // built-in data types don't need to be registered in the type context
                 break;
             case "reference":
             case "tuple":
@@ -159,11 +143,15 @@ export class BundleTypes {
                 // this.gatherTypeDetails(type.itemType);
                 break;
             case "map":
-                console.log("Is there any need to register a map's member DataTypes?");
-                console.log(" a Map's members must be registered to find data type not used elsewhere");
+                console.log(
+                    "Is there any need to register a map's member DataTypes?"
+                );
+                console.log(
+                    " a Map's members must be registered to find data type not used elsewhere"
+                );
 
-                // this.gatherTypeDetails((dataType as any).types[0]);
-                // this.gatherTypeDetails((dataType as any).types[1]);
+            // this.gatherTypeDetails((dataType as any).types[0]);
+            // this.gatherTypeDetails((dataType as any).types[1]);
 
             case "option":
                 // console.log("how to register an Option's nested DataType?");
@@ -186,7 +174,7 @@ export class BundleTypes {
                 throw new Error(`Unsupported schema kind: ${schema.kind}`);
         }
 
-        const details = {
+        const details: typeDetails<any> = {
             typeSchema: schema,
             typeName,
             dataType,
@@ -200,11 +188,78 @@ export class BundleTypes {
                 schema,
                 useTypeNamesAt
             ),
+            moreInfo: undefined,
         };
         // if (schema.kind !== "internal") debugger
+        if (schema.kind === "variant") debugger
         if (typeName) {
-            this.namedTypes[typeName] = details;
+            this.registerNamedType(details);
+            const moreInfo =
+                schema.kind == "struct"
+                    ? this.collaborator?.getMoreStructInfo?.(details)
+                    : this.collaborator?.getMoreTypeInfo?.(details);
+            if (moreInfo) details.moreInfo = moreInfo;
+            this.collaborator?.registerNamedType?.(details);
         }
+        return details;
+    }
+
+    gatherEnumDetails(
+        enumType: { toSchema(): EnumTypeSchema } & DataType,
+        useTypeNamesAt?: "nestedField"
+    ): enumTypeDetails {
+        // gathers names for any nested types, then generates minimal types
+        // based on having those names registered in the context.
+        const schema = enumType.toSchema();
+        const enumName = schema.name;
+        const module = this.extractModuleName(schema);
+        // at type-gen time, we don't need this to be a fully-typed VariantMap.
+        //  ... a lookup record is fine.
+        const variants: Record<string, variantTypeDetails> = {};
+        for (const member of schema.variantTypes) {
+            const memberType =
+                enumType.typeMembers[member.name].asEnumMemberType;
+            if (!memberType) {
+                throw new Error(
+                    `Enum member type for ${member.name} not found`
+                );
+            }
+            variants[member.name] = this.gatherVariantDetails(
+                memberType as any,
+                { module, enumName }
+            );
+        }
+
+        if (useTypeNamesAt) {
+            throw new Error("surprise!");
+        }
+        const details: enumTypeDetails<any> = {
+            enumName: schema.name,
+            dataType: enumType,
+            typeSchema: schema,
+            variants,
+            canonicalMetaType: this.mkMinimalEnumMetaType("canonical", schema),
+            permissiveMetaType: this.mkMinimalEnumMetaType(
+                "permissive",
+                schema
+            ),
+            canonicalType: this.mkMinimalType(
+                "canonical",
+                schema,
+                useTypeNamesAt
+            ),
+            permissiveType: this.mkMinimalType(
+                "permissive",
+                schema,
+                useTypeNamesAt
+            ),
+            moreInfo: undefined,
+        };
+        this.registerNamedType(details);
+        const moreInfo = this.collaborator?.getMoreEnumInfo?.(details);
+        if (moreInfo) details.moreInfo = moreInfo;
+        this.collaborator?.registerNamedType?.(details);
+
         return details;
     }
 
@@ -233,12 +288,17 @@ export class BundleTypes {
             fields[fieldName] = this.gatherTypeDetails(fieldMember.asDataType!);
         }
 
-        return {
+        const variantName = schema.name;
+        const canonicalTypeName = `${enumId.enumName}$${variantName}`;
+        const permissiveTypeName = `${enumId.enumName}$${variantName}Like`;
+        const details: variantTypeDetails<any> = {
             fields,
             fieldCount: fieldCount,
-            variantName: schema.name,
+            variantName: variantName,
             typeSchema: schema,
             dataType: variantDataType,
+            canonicalTypeName,
+            permissiveTypeName,
             canonicalType: this.mkMinimalType(
                 "canonical",
                 schema,
@@ -251,7 +311,31 @@ export class BundleTypes {
                 undefined,
                 enumId.enumName
             ),
+            canonicalMetaType: this.mkMinimalVariantMetaType(
+                "canonical",
+                schema,
+                enumId
+            ), //, "nestedField"),
+            permissiveMetaType: this.mkMinimalVariantMetaType(
+                "permissive",
+                schema,
+                enumId
+            ), //, "nestedField"),
+            moreInfo: undefined,
         };
+        const moreInfo = this.collaborator?.getMoreVariantInfo?.(details);
+
+        if (fieldCount > 1) {
+            // DelegateActivity$SpendingActivities
+            debugger;
+            this.registerNamedType(details);
+            debugger;
+            this.collaborator?.registerNamedType?.(details);
+        }
+
+        // the enum itself is registered, and we don't need the variants registered separately.
+        // this.collaborator?.registerNamedType?.(details);
+        return details;
     }
 
     mkMinimalType(
@@ -259,7 +343,7 @@ export class BundleTypes {
         schema: TypeSchema,
         useTypeNamesAt?: "nestedField",
         parentName?: string
-    ) {
+    ): string {
         const varietyIndex = typeVariety === "canonical" ? 0 : 1;
         //@ts-expect-error - not every schema-type has a name
         let name = schema.name as string | undefined;
@@ -302,63 +386,104 @@ export class BundleTypes {
                 if (typeVariety === "permissive") {
                     nameLikeOrName = $nameLike;
                 }
-                if (useTypeNamesAt) return nameLikeOrName;
+                if (useTypeNamesAt) return nameLikeOrName as string;
 
                 return `{\n${schema.fieldTypes
                     .map(
                         (field) =>
-                            `    ${field.name}: ${this.mkMinimalType(
+                            `    ${
+                                field.name
+                            }: /*minStructField*/ ${this.mkMinimalType(
                                 typeVariety,
                                 field.type,
                                 "nestedField"
                             )}`
                     )
-                    .join("\n")}\n};\n`;
+                    .join("\n")}\n}\n`;
             case "enum":
                 if (typeVariety === "permissive") {
                     nameLikeOrName = $nameLike;
                 }
-                if (useTypeNamesAt) return nameLikeOrName;
+                if (useTypeNamesAt) return nameLikeOrName as string;
 
                 const module = this.extractModuleName(schema);
                 const enumId: EnumId = { module, enumName: name! };
-                const $enumId = this.$enumId(enumId);
-                return `EnumType<${$enumId}, {\n${schema.variantTypes
+
+                return schema.variantTypes
                     .map((variant) => {
-                        return `        ${
+                        return `\n        | { ${
                             variant.name
-                        }: ${this.mkMinimalVariantType(
+                        }: /*minEnumVariant*/ ${this.mkMinimalType(
+                            typeVariety,
                             variant,
-                            enumId,
-                            typeVariety
-                            // "nestedField"
-                        )}`;
+                            "nestedField",
+                            enumId.enumName
+                        )} }`;
                     })
-                    .join(",\n")}\n    }\n>;\n`;
+                    .join("");
+
             case "variant":
                 if (!parentName) {
                     debugger;
                     throw new Error("Variant types need a parent type-name");
                 }
-                return this.mkMinimalVariantType(
+
+                const variantInfo = this.mkMinimalVariantType(
                     schema,
-                    {
-                        enumName: parentName,
-                        module: this.extractModuleName(schema),
-                    },
                     typeVariety
                 );
+                if (variantInfo === "tagOnly") return variantInfo;
+                if (Array.isArray(variantInfo)) {
+                    if (typeVariety === "permissive") {
+                        nameLikeOrName = `${parentName}$${$nameLike}`;
+                    } else {
+                        nameLikeOrName = `${parentName}$${name}`;
+                    }
+                    if (useTypeNamesAt) return nameLikeOrName;
+
+                    return `{${
+                        variantInfo.join(`,`)}\n`+
+                    `}\n`;
+
+                } else {
+                    // variant only has one field
+                    return `${variantInfo} /*singleVariantField*/ `;
+                }
             default:
                 //@ts-expect-error - when all cases are covered, schema is ‹never›
                 throw new Error(`Unsupported schema kind: ${schema.kind}`);
         }
     }
 
-    mkMinimalVariantType(
-        schema: VariantTypeSchema,
-        enumId: EnumId,
+    mkMinimalEnumMetaType(
         typeVariety: "canonical" | "permissive",
-        useTypeNamesAt?: "nestedField"
+        schema: EnumTypeSchema
+    ) {
+        const name = schema.name;
+
+        const module = this.extractModuleName(schema);
+        const enumId: EnumId = { module, enumName: name! };
+        const $enumId = `{module: "${enumId.module}", enumName: "${enumId.enumName}"}`;
+
+        return `EnumTypeMeta<\n    ${$enumId}, {\n${schema.variantTypes
+            .map((variantSchema) => {
+                return `        ${
+                    variantSchema.name
+                }: ${this.mkMinimalVariantMetaType(
+                    typeVariety,
+                    variantSchema,
+                    enumId
+                    // "nestedField"
+                )}`;
+            })
+            .join(",\n")}\n    }\n>;\n`;
+    }
+
+    mkMinimalVariantMetaType(
+        typeVariety: "canonical" | "permissive",
+        schema: VariantTypeSchema,
+        enumId: EnumId
+        // useTypeNamesAt?: "nestedField"
     ) {
         // When writing an enum variant with 0 fields, the typescript api for generating
         //   ... that enum variant data should require only the variant name,
@@ -370,7 +495,7 @@ export class BundleTypes {
         // When writing a single-field variant, the raw form needed will look like
         //   ... `{ variantName: { singleFIeldName: ‹nestedFieldData› } }` or,
         //   ... `{ ..., someNestedField: { variantName: { singleFieldName: ‹nestedFieldData› } } }`
-        //   ... while the proxy- provided interface can be used like
+        //   ... while the interface can be used like
         //   ... `mkDatum.variantName({...nestedFieldData})`
         //   ...  or `{ ..., someNestedField: /*proxy*/ SomeEnumType.variantName(‹nestedFieldData›) }`
         //
@@ -385,55 +510,32 @@ export class BundleTypes {
         //
         // The types returned by the proxy's accessors will be identical to the raw types.
         let variantName = schema.name;
-        if (typeVariety === "permissive") {
-            if (useTypeNamesAt) {
-                throw new Error("Write path not yet supported for variants");
-                return `${schema.name}Like`;
-            }
-            // variant name remains unchanged in this case
-            // variantName = `${variantName}Like`;
-        }
-        if (useTypeNamesAt) return schema.name;
+        // if (typeVariety === "permissive") {
+        //     if (useTypeNamesAt) {
+        //         // throw new Error("Write path not yet supported for variants");
+        //         return `${variantName}Like /*writePath*/`;
+        //     }
+        //     // variant name remains unchanged in this case
+        //     // variantName = `${variantName}Like`;
+        // }
+        // if (useTypeNamesAt) return `${variantName}`;
 
-        const fieldCount = schema.fieldTypes.length;
-        const variety =
-            fieldCount === 0
-                ? "tagOnly"
-                : fieldCount === 1
-                ? "singletonField"
-                : "fields";
+        const variantFlavor = this.variantFlavor(schema);
         const $nlindent = "\n" + " ".repeat(12);
-        const $nlindentMore = "\n" + " ".repeat(16);
         const $nloutdent = "\n" + " ".repeat(8);
-        let quotedVariety =
-            "fields" === variety ? `${$nlindent}"${variety}"` : `"${variety}"`;
-        const fieldDefs =
-            "tagOnly" == variety
-                ? "never"
-                : "singletonField" == variety
-                ? $nlindent +
-                  this.mkMinimalType(
-                      typeVariety,
-                      schema.fieldTypes[0].type,
-                      "nestedField"
-                  )
-                : `{${
-                      //pretter-ignore
-                      schema.fieldTypes
-                          .map(
-                              (field) =>
-                                  `${$nlindentMore}${
-                                      field.name
-                                  }: ${this.mkMinimalType(
-                                      typeVariety,
-                                      field.type,
-                                      "nestedField"
-                                  )}`
-                          )
-                          .join(",")
-                  }${$nlindent}}`;
+        let quotedFlavor =
+            "fields" === variantFlavor
+                ? `${$nlindent}"${variantFlavor}"`
+                : `"${variantFlavor}"`;
 
-        const $enumId = this.$enumId(enumId);
+        const fieldDefs = this.mkMinimalType(
+            typeVariety,
+            schema,
+            "nestedField",
+            enumId.enumName
+        );
+        // this.mkMinimalVariantType(schema, typeVariety);
+
         const specialFlags: string[] = [];
         if (schema.fieldTypes[0]?.name === "seed") {
             specialFlags.push(`"isSeededActivity"`);
@@ -441,16 +543,59 @@ export class BundleTypes {
         const $specialFlags = specialFlags.join(" | ") || `"noSpecialFlags"`;
         //pretter-ignore
         const minimalVariantSrc =
-            `singleEnumVariant<${enumId.enumName}, "${variantName}",` +
-            `${$nlindent}"Constr#${schema.tag}", ${quotedVariety}, ` +
+            `singleEnumVariantMeta<${enumId.enumName}Meta, "${variantName}",` +
+            `${$nlindent}"Constr#${schema.tag}", ${quotedFlavor}, ` +
             `${fieldDefs}, ${$specialFlags}` +
             `${$nloutdent}>`;
         return minimalVariantSrc;
     }
 
-    private $enumId(enumId: EnumId) {
-        return `{module: "${enumId.module}", enumName: "${enumId.enumName}"}`;
+    variantFlavor(schema: VariantTypeSchema): VariantFlavor {
+        switch (schema.fieldTypes.length) {
+            case 0:
+                return "tagOnly";
+            case 1:
+                return "singletonField";
+            default:
+                return "fields";
+        }
     }
 
-}
+    private mkMinimalVariantType(
+        schema: VariantTypeSchema,
+        typeVariety: TypeVariety
+    ): string | string[] {
+        const $nlindent = "\n" + " ".repeat(4);
+        // const $nlindentMore = "\n" + " ".repeat(16);
 
+        const variantFlavor = this.variantFlavor(schema);
+        switch (variantFlavor) {
+            case "tagOnly":
+                return "tagOnly";
+            case "singletonField":
+                return (
+                    this.mkMinimalType(
+                        typeVariety,
+                        schema.fieldTypes[0].type,
+                        "nestedField"
+                    )
+                );
+            case "fields":
+                //pretter-ignore
+                return schema.fieldTypes.map(
+                    (field) =>
+                        `${$nlindent}${
+                            field.name
+                        }: ${this.mkMinimalType(
+                            typeVariety,
+                            field.type,
+                            "nestedField"
+                        )}  /*minVariantField*/ `
+                );
+            default:
+                throw new Error(
+                    `Incomplete switch or invalid variant flavor: ${variantFlavor}`
+                );
+        }
+    }
+}

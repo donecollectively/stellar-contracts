@@ -78,7 +78,8 @@ enum SomeEnum {
     hasRecursiveFields {
         // todo: support recursive types
         // m: SomeEnum
-        // n: Int
+        placeholder: Int
+        ph2: String
     }
 }
 
