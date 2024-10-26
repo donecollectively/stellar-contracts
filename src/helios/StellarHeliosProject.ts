@@ -171,7 +171,6 @@ export class StellarHeliosProject {
             };
             // if we have the CapoBundle, we can use it to instantiate this bundle now.
             if (this.capoBundle) {
-                debugger;
                 bundle = new (bundleClass as any)(this.capoBundle);
                 bundleEntry.bundle = bundle;
                 bundleEntry.status = "loaded";
@@ -301,7 +300,7 @@ export class StellarHeliosProject {
             ? path.relative(this.projectRoot, filename)
             : filename;
 
-        if (filename.startsWith("/")) debugger;
+        if (fn.startsWith("/")) debugger;
         // console.log("normalizedFilePath: ", fn);
         return fn;
     }

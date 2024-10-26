@@ -52,23 +52,22 @@ import { tagOnly } from "../helios/HeliosScriptBundle.js"
 import {hasSeed} from "../StellarContract.js"
 
 export default class mkDatumBridgeBasicDelegate extends someDataMaker {
-    
     datum: DelegateDatumHelper = new DelegateDatumHelper(this.bundle)   // datumAccessor
     DelegateDatum: DelegateDatumHelper = this.datum;
 
+    // include accessors for activity types
 
+    // include accessors for other enums (other than datum/activity)
+
+    // include accessors for any other structs (other than datum/activity)
+
+    // TODO: include any utility functions defined in the contract
 }
 
 class DelegateDatumHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { Cip68RefToken: /*minEnumVariant*/ DelegateDatum$Cip68RefToken }
-        | { IsDelegation: /*minEnumVariant*/ DelegationDetail /*singleVariantField*/  }
-        | { ScriptReference: /*minEnumVariant*/ tagOnly }, 
-       
-        | { Cip68RefToken: /*minEnumVariant*/ DelegateDatum$Cip68RefTokenLike }
-        | { IsDelegation: /*minEnumVariant*/ DelegationDetailLike /*singleVariantField*/  }
-        | { ScriptReference: /*minEnumVariant*/ tagOnly }
+       DelegateDatum,
+       DelegateDatumLike
    >(DelegateDatumSchema, { isMainnet: true });
     Cip68RefToken(fields: { 
         cip68meta: {
@@ -109,10 +108,8 @@ class DelegateDatumHelper extends someDataMaker {
 
 class CapoLifecycleActivityHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { CreatingDelegate: /*minEnumVariant*/ CapoLifecycleActivity$CreatingDelegate }, 
-       
-        | { CreatingDelegate: /*minEnumVariant*/ CapoLifecycleActivity$CreatingDelegateLike }
+       CapoLifecycleActivity,
+       CapoLifecycleActivityLike
    >(CapoLifecycleActivitySchema, { isMainnet: true });
     /**
      * generates UplcData, given a transaction-context with a seed utxo and other field details
@@ -148,14 +145,8 @@ class CapoLifecycleActivityHelper extends someDataMaker {
 
 class DelegateLifecycleActivityHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { ReplacingMe: /*minEnumVariant*/ DelegateLifecycleActivity$ReplacingMe }
-        | { Retiring: /*minEnumVariant*/ tagOnly }
-        | { ValidatingSettings: /*minEnumVariant*/ tagOnly }, 
-       
-        | { ReplacingMe: /*minEnumVariant*/ DelegateLifecycleActivity$ReplacingMeLike }
-        | { Retiring: /*minEnumVariant*/ tagOnly }
-        | { ValidatingSettings: /*minEnumVariant*/ tagOnly }
+       DelegateLifecycleActivity,
+       DelegateLifecycleActivityLike
    >(DelegateLifecycleActivitySchema, { isMainnet: true });
     /**
      * generates UplcData, given a transaction-context with a seed utxo and other field details
@@ -199,10 +190,8 @@ class DelegateLifecycleActivityHelper extends someDataMaker {
 
 class SpendingActivityHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { _placeholder1SA: /*minEnumVariant*/ number[] /*singleVariantField*/  }, 
-       
-        | { _placeholder1SA: /*minEnumVariant*/ number[] /*singleVariantField*/  }
+       SpendingActivity,
+       SpendingActivityLike
    >(SpendingActivitySchema, { isMainnet: true });
     _placeholder1SA(
         value: number[]
@@ -216,10 +205,8 @@ class SpendingActivityHelper extends someDataMaker {
 
 class MintingActivityHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { _placeholder1MA: /*minEnumVariant*/ TxOutputId /*singleVariantField*/  }, 
-       
-        | { _placeholder1MA: /*minEnumVariant*/ TxOutputId | string /*singleVariantField*/  }
+       MintingActivity,
+       MintingActivityLike
    >(MintingActivitySchema, { isMainnet: true });
     _placeholder1MA(value: hasSeed | TxOutputId | string) {
        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
@@ -232,10 +219,8 @@ class MintingActivityHelper extends someDataMaker {
 
 class BurningActivityHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { _placeholder1BA: /*minEnumVariant*/ number[] /*singleVariantField*/  }, 
-       
-        | { _placeholder1BA: /*minEnumVariant*/ number[] /*singleVariantField*/  }
+       BurningActivity,
+       BurningActivityLike
    >(BurningActivitySchema, { isMainnet: true });
     _placeholder1BA(
         value: number[]
@@ -249,30 +234,11 @@ class BurningActivityHelper extends someDataMaker {
 
 class DelegateActivityHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { CapoLifecycleActivities: /*minEnumVariant*/ CapoLifecycleActivity /*singleVariantField*/  }
-        | { DelegateLifecycleActivities: /*minEnumVariant*/ DelegateLifecycleActivity /*singleVariantField*/  }
-        | { SpendingActivities: /*minEnumVariant*/ SpendingActivity /*singleVariantField*/  }
-        | { MintingActivities: /*minEnumVariant*/ MintingActivity /*singleVariantField*/  }
-        | { BurningActivities: /*minEnumVariant*/ BurningActivity /*singleVariantField*/  }
-        | { CreatingDelegatedData: /*minEnumVariant*/ DelegateActivity$CreatingDelegatedData }
-        | { UpdatingDelegatedData: /*minEnumVariant*/ DelegateActivity$UpdatingDelegatedData }
-        | { DeletingDelegatedData: /*minEnumVariant*/ DelegateActivity$DeletingDelegatedData }
-        | { MultipleDelegateActivities: /*minEnumVariant*/ Array<UplcData> /*singleVariantField*/  }, 
-       
-        | { CapoLifecycleActivities: /*minEnumVariant*/ CapoLifecycleActivityLike /*singleVariantField*/  }
-        | { DelegateLifecycleActivities: /*minEnumVariant*/ DelegateLifecycleActivityLike /*singleVariantField*/  }
-        | { SpendingActivities: /*minEnumVariant*/ SpendingActivityLike /*singleVariantField*/  }
-        | { MintingActivities: /*minEnumVariant*/ MintingActivityLike /*singleVariantField*/  }
-        | { BurningActivities: /*minEnumVariant*/ BurningActivityLike /*singleVariantField*/  }
-        | { CreatingDelegatedData: /*minEnumVariant*/ DelegateActivity$CreatingDelegatedDataLike }
-        | { UpdatingDelegatedData: /*minEnumVariant*/ DelegateActivity$UpdatingDelegatedDataLike }
-        | { DeletingDelegatedData: /*minEnumVariant*/ DelegateActivity$DeletingDelegatedDataLike }
-        | { MultipleDelegateActivities: /*minEnumVariant*/ Array<UplcData> /*singleVariantField*/  }
+       DelegateActivity,
+       DelegateActivityLike
    >(DelegateActivitySchema, { isMainnet: true });
     CapoLifecycleActivities(
-        value: 
-        | { CreatingDelegate: /*minEnumVariant*/ CapoLifecycleActivity$CreatingDelegateLike }
+        value: CapoLifecycleActivityLike
     ) {
         return this.enumCast.toUplcData({ 
            CapoLifecycleActivities: { activity: value } 
@@ -280,10 +246,7 @@ class DelegateActivityHelper extends someDataMaker {
     }
 
     DelegateLifecycleActivities(
-        value: 
-        | { ReplacingMe: /*minEnumVariant*/ DelegateLifecycleActivity$ReplacingMeLike }
-        | { Retiring: /*minEnumVariant*/ tagOnly }
-        | { ValidatingSettings: /*minEnumVariant*/ tagOnly }
+        value: DelegateLifecycleActivityLike
     ) {
         return this.enumCast.toUplcData({ 
            DelegateLifecycleActivities: { activity: value } 
@@ -291,8 +254,7 @@ class DelegateActivityHelper extends someDataMaker {
     }
 
     SpendingActivities(
-        value: 
-        | { _placeholder1SA: /*minEnumVariant*/ number[] /*singleVariantField*/  }
+        value: SpendingActivityLike
     ) {
         return this.enumCast.toUplcData({ 
            SpendingActivities: { activity: value } 
@@ -300,8 +262,7 @@ class DelegateActivityHelper extends someDataMaker {
     }
 
     MintingActivities(
-        value: 
-        | { _placeholder1MA: /*minEnumVariant*/ TxOutputId | string /*singleVariantField*/  }
+        value: MintingActivityLike
     ) {
         return this.enumCast.toUplcData({ 
            MintingActivities: { activity: value } 
@@ -309,8 +270,7 @@ class DelegateActivityHelper extends someDataMaker {
     }
 
     BurningActivities(
-        value: 
-        | { _placeholder1BA: /*minEnumVariant*/ number[] /*singleVariantField*/  }
+        value: BurningActivityLike
     ) {
         return this.enumCast.toUplcData({ 
            BurningActivities: { activity: value } 

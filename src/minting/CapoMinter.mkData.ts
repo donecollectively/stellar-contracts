@@ -39,25 +39,20 @@ import { tagOnly } from "../helios/HeliosScriptBundle.js"
 import {hasSeed} from "../StellarContract.js"
 
 export default class mkDatumBridgeCapoMinter extends someDataMaker {
-    
+
+    // include accessors for activity types
+
+    // include accessors for other enums (other than datum/activity)
+
+    // include accessors for any other structs (other than datum/activity)
+
+    // TODO: include any utility functions defined in the contract
 }
 
 class MinterActivityHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { mintingCharter: /*minEnumVariant*/ Address /*singleVariantField*/  }
-        | { mintWithDelegateAuthorizing: /*minEnumVariant*/ tagOnly }
-        | { addingMintInvariant: /*minEnumVariant*/ TxOutputId /*singleVariantField*/  }
-        | { addingSpendInvariant: /*minEnumVariant*/ TxOutputId /*singleVariantField*/  }
-        | { ForcingNewMintDelegate: /*minEnumVariant*/ TxOutputId /*singleVariantField*/  }
-        | { CreatingNewSpendDelegate: /*minEnumVariant*/ MinterActivity$CreatingNewSpendDelegate }, 
-       
-        | { mintingCharter: /*minEnumVariant*/ Address | string /*singleVariantField*/  }
-        | { mintWithDelegateAuthorizing: /*minEnumVariant*/ tagOnly }
-        | { addingMintInvariant: /*minEnumVariant*/ TxOutputId | string /*singleVariantField*/  }
-        | { addingSpendInvariant: /*minEnumVariant*/ TxOutputId | string /*singleVariantField*/  }
-        | { ForcingNewMintDelegate: /*minEnumVariant*/ TxOutputId | string /*singleVariantField*/  }
-        | { CreatingNewSpendDelegate: /*minEnumVariant*/ MinterActivity$CreatingNewSpendDelegateLike }
+       MinterActivity,
+       MinterActivityLike
    >(MinterActivitySchema, { isMainnet: true });
     mintingCharter(
         value: Address | string

@@ -28,55 +28,51 @@ import type {
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
+import { EnumTypeSchema } from "@helios-lang/type-utils";
 
 import {
-    DelegationDetail,
-    SampleStruct,
-    SomeEnum$hasNestedFields,
-    SomeEnum$hasRecursiveFields,
-    SomeEnum,
-    DelegateDatum$MultiFieldVariant,
-    DelegateDatum$MultiFieldNestedThings,
-    DelegateDatum,
-    CapoLifecycleActivity$CreatingDelegate,
-    CapoLifecycleActivity,
-    DelegateLifecycleActivity$ReplacingMe,
-    DelegateLifecycleActivity,
-    SpendingActivity,
-    MintingActivity$mintingUuts,
-    MintingActivity,
-    BurningActivity,
-    DelegateActivity$CreatingDelegatedData,
-    DelegateActivity$UpdatingDelegatedData,
-    DelegateActivity$DeletingDelegatedData,
-    DelegateActivity
+    DelegationDetail, DelegationDetailLike,
+    SampleStruct, SampleStructLike,
+    SomeEnum$hasNestedFields, SomeEnum$hasNestedFieldsLike,
+    SomeEnum$hasRecursiveFields, SomeEnum$hasRecursiveFieldsLike,
+    SomeEnum, SomeEnumLike,
+    DelegateDatum$MultiFieldVariant, DelegateDatum$MultiFieldVariantLike,
+    DelegateDatum$MultiFieldNestedThings, DelegateDatum$MultiFieldNestedThingsLike,
+    DelegateDatum, DelegateDatumLike,
+    CapoLifecycleActivity$CreatingDelegate, CapoLifecycleActivity$CreatingDelegateLike,
+    CapoLifecycleActivity, CapoLifecycleActivityLike,
+    DelegateLifecycleActivity$ReplacingMe, DelegateLifecycleActivity$ReplacingMeLike,
+    DelegateLifecycleActivity, DelegateLifecycleActivityLike,
+    SpendingActivity, SpendingActivityLike,
+    MintingActivity$mintingUuts, MintingActivity$mintingUutsLike,
+    MintingActivity, MintingActivityLike,
+    BurningActivity, BurningActivityLike,
+    DelegateActivity$CreatingDelegatedData, DelegateActivity$CreatingDelegatedDataLike,
+    DelegateActivity$UpdatingDelegatedData, DelegateActivity$UpdatingDelegatedDataLike,
+    DelegateActivity$DeletingDelegatedData, DelegateActivity$DeletingDelegatedDataLike,
+    DelegateActivity, DelegateActivityLike
 } from "./uutMintingMintDelegate.hlbundle.js"
 import { someDataMaker } from "../../helios/dataBridge/someDataMaker.js"
 import { tagOnly } from "../../helios/HeliosScriptBundle.js"
 import {hasSeed} from "../../StellarContract.js"
 
 export default class mkDatumBridgeBasicDelegate extends someDataMaker {
-    
     datum: DelegateDatumHelper = new DelegateDatumHelper(this.bundle)   // datumAccessor
     DelegateDatum: DelegateDatumHelper = this.datum;
 
+    // include accessors for activity types
 
+    // include accessors for other enums (other than datum/activity)
+
+    // include accessors for any other structs (other than datum/activity)
+
+    // TODO: include any utility functions defined in the contract
 }
 
 class SomeEnumHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { justATag: /*minEnumVariant*/ tagOnly }
-        | { justAnInt: /*minEnumVariant*/ bigint /*singleVariantField*/  }
-        | { oneNestedStruct: /*minEnumVariant*/ SampleStruct /*singleVariantField*/  }
-        | { hasNestedFields: /*minEnumVariant*/ SomeEnum$hasNestedFields }
-        | { hasRecursiveFields: /*minEnumVariant*/ SomeEnum$hasRecursiveFields }, 
-       
-        | { justATag: /*minEnumVariant*/ tagOnly }
-        | { justAnInt: /*minEnumVariant*/ IntLike /*singleVariantField*/  }
-        | { oneNestedStruct: /*minEnumVariant*/ SampleStructLike /*singleVariantField*/  }
-        | { hasNestedFields: /*minEnumVariant*/ SomeEnum$hasNestedFieldsLike }
-        | { hasRecursiveFields: /*minEnumVariant*/ SomeEnum$hasRecursiveFieldsLike }
+       SomeEnum,
+       SomeEnumLike
    >(SomeEnumSchema, { isMainnet: true });
     get justATag() {
         return this.enumCast.toUplcData({ justATag: {} });
@@ -87,7 +83,7 @@ class SomeEnumHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            justAnInt: { m: value } 
-        });
+        }); /*SingleField*/
     }
 
     oneNestedStruct(
@@ -101,7 +97,7 @@ class SomeEnumHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            oneNestedStruct: { m: value } 
-        });
+        }); /*SingleField*/
     }
 
     hasNestedFields(fields: { 
@@ -131,22 +127,8 @@ class SomeEnumHelper extends someDataMaker {
 
 class DelegateDatumHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { IsDelegation: /*minEnumVariant*/ DelegationDetail /*singleVariantField*/  }
-        | { ScriptReference: /*minEnumVariant*/ tagOnly }
-        | { SingleDataElement: /*minEnumVariant*/ string /*singleVariantField*/  }
-        | { SingleNestedStruct: /*minEnumVariant*/ SampleStruct /*singleVariantField*/  }
-        | { HasNestedEnum: /*minEnumVariant*/ SomeEnum /*singleVariantField*/  }
-        | { MultiFieldVariant: /*minEnumVariant*/ DelegateDatum$MultiFieldVariant }
-        | { MultiFieldNestedThings: /*minEnumVariant*/ DelegateDatum$MultiFieldNestedThings }, 
-       
-        | { IsDelegation: /*minEnumVariant*/ DelegationDetailLike /*singleVariantField*/  }
-        | { ScriptReference: /*minEnumVariant*/ tagOnly }
-        | { SingleDataElement: /*minEnumVariant*/ string /*singleVariantField*/  }
-        | { SingleNestedStruct: /*minEnumVariant*/ SampleStructLike /*singleVariantField*/  }
-        | { HasNestedEnum: /*minEnumVariant*/ SomeEnumLike /*singleVariantField*/  }
-        | { MultiFieldVariant: /*minEnumVariant*/ DelegateDatum$MultiFieldVariantLike }
-        | { MultiFieldNestedThings: /*minEnumVariant*/ DelegateDatum$MultiFieldNestedThingsLike }
+       DelegateDatum,
+       DelegateDatumLike
    >(DelegateDatumSchema, { isMainnet: true });
     IsDelegation(
         value: {
@@ -158,7 +140,7 @@ class DelegateDatumHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            IsDelegation: { dd: value } 
-        });
+        }); /*SingleField*/
     }
 
     get ScriptReference() {
@@ -170,7 +152,7 @@ class DelegateDatumHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            SingleDataElement: { aString: value } 
-        });
+        }); /*SingleField*/
     }
 
     SingleNestedStruct(
@@ -184,20 +166,15 @@ class DelegateDatumHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            SingleNestedStruct: { aStruct: value } 
-        });
+        }); /*SingleField*/
     }
 
     HasNestedEnum(
-        value: 
-        | { justATag: /*minEnumVariant*/ tagOnly }
-        | { justAnInt: /*minEnumVariant*/ IntLike /*singleVariantField*/  }
-        | { oneNestedStruct: /*minEnumVariant*/ SampleStructLike /*singleVariantField*/  }
-        | { hasNestedFields: /*minEnumVariant*/ SomeEnum$hasNestedFieldsLike }
-        | { hasRecursiveFields: /*minEnumVariant*/ SomeEnum$hasRecursiveFieldsLike }
+        value: SomeEnumLike
     ) {
         return this.enumCast.toUplcData({ 
            HasNestedEnum: { nested: value } 
-        });
+        }); /*SingleField*/
     }
 
     MultiFieldVariant(fields: { 
@@ -218,8 +195,8 @@ class DelegateDatumHelper extends someDataMaker {
 },
         nestedEnumMaybe: Option<
         | { justATag: /*minEnumVariant*/ tagOnly }
-        | { justAnInt: /*minEnumVariant*/ IntLike /*singleVariantField*/  }
-        | { oneNestedStruct: /*minEnumVariant*/ SampleStructLike /*singleVariantField*/  }
+        | { justAnInt: /*minEnumVariant*/ { m: IntLike /*singleVariantField*/ }  }
+        | { oneNestedStruct: /*minEnumVariant*/ { m: SampleStructLike /*singleVariantField*/ }  }
         | { hasNestedFields: /*minEnumVariant*/ SomeEnum$hasNestedFieldsLike }
         | { hasRecursiveFields: /*minEnumVariant*/ SomeEnum$hasRecursiveFieldsLike }>
     }) {
@@ -232,10 +209,8 @@ class DelegateDatumHelper extends someDataMaker {
 
 class CapoLifecycleActivityHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { CreatingDelegate: /*minEnumVariant*/ CapoLifecycleActivity$CreatingDelegate }, 
-       
-        | { CreatingDelegate: /*minEnumVariant*/ CapoLifecycleActivity$CreatingDelegateLike }
+       CapoLifecycleActivity,
+       CapoLifecycleActivityLike
    >(CapoLifecycleActivitySchema, { isMainnet: true });
     /**
      * generates UplcData, given a transaction-context with a seed utxo and other field details
@@ -247,15 +222,9 @@ class CapoLifecycleActivityHelper extends someDataMaker {
     /**
     * generates UplcData with raw seed details included in fields.
     */
-    CreatingDelegate(fields: {
-        seed: TxOutputId | string,
-        purpose: string 
-    } ) : UplcData
+    CreatingDelegate(fields: CapoLifecycleActivity$CreatingDelegateLike): UplcData
     CreatingDelegate(
-        seedOrUf: hasSeed | { 
-            seed: TxOutputId | string,
-            purpose: string
-        }, 
+        seedOrUf: hasSeed | CapoLifecycleActivity$CreatingDelegateLike, 
         filteredFields?: { 
             purpose: string
     }) : UplcData {
@@ -265,7 +234,7 @@ class CapoLifecycleActivityHelper extends someDataMaker {
                 CreatingDelegate: { seed: seedTxOutputId, ...filteredFields } 
             });
         } else {
-            const fields = seedOrUf; 
+            const fields = seedOrUf as CapoLifecycleActivity$CreatingDelegateLike; 
             return this.enumCast.toUplcData({
                 CreatingDelegate: fields 
             });
@@ -277,14 +246,8 @@ class CapoLifecycleActivityHelper extends someDataMaker {
 
 class DelegateLifecycleActivityHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { ReplacingMe: /*minEnumVariant*/ DelegateLifecycleActivity$ReplacingMe }
-        | { Retiring: /*minEnumVariant*/ tagOnly }
-        | { ValidatingSettings: /*minEnumVariant*/ tagOnly }, 
-       
-        | { ReplacingMe: /*minEnumVariant*/ DelegateLifecycleActivity$ReplacingMeLike }
-        | { Retiring: /*minEnumVariant*/ tagOnly }
-        | { ValidatingSettings: /*minEnumVariant*/ tagOnly }
+       DelegateLifecycleActivity,
+       DelegateLifecycleActivityLike
    >(DelegateLifecycleActivitySchema, { isMainnet: true });
     /**
      * generates UplcData, given a transaction-context with a seed utxo and other field details
@@ -296,15 +259,9 @@ class DelegateLifecycleActivityHelper extends someDataMaker {
     /**
     * generates UplcData with raw seed details included in fields.
     */
-    ReplacingMe(fields: {
-        seed: TxOutputId | string,
-        purpose: string 
-    } ) : UplcData
+    ReplacingMe(fields: DelegateLifecycleActivity$ReplacingMeLike): UplcData
     ReplacingMe(
-        seedOrUf: hasSeed | { 
-            seed: TxOutputId | string,
-            purpose: string
-        }, 
+        seedOrUf: hasSeed | DelegateLifecycleActivity$ReplacingMeLike, 
         filteredFields?: { 
             purpose: string
     }) : UplcData {
@@ -314,7 +271,7 @@ class DelegateLifecycleActivityHelper extends someDataMaker {
                 ReplacingMe: { seed: seedTxOutputId, ...filteredFields } 
             });
         } else {
-            const fields = seedOrUf; 
+            const fields = seedOrUf as DelegateLifecycleActivity$ReplacingMeLike; 
             return this.enumCast.toUplcData({
                 ReplacingMe: fields 
             });
@@ -334,19 +291,15 @@ class DelegateLifecycleActivityHelper extends someDataMaker {
 
 class SpendingActivityHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { _placeholder2SA: /*minEnumVariant*/ number[] /*singleVariantField*/  }
-        | { mockWorkingSpendActivity: /*minEnumVariant*/ number[] /*singleVariantField*/  }, 
-       
-        | { _placeholder2SA: /*minEnumVariant*/ number[] /*singleVariantField*/  }
-        | { mockWorkingSpendActivity: /*minEnumVariant*/ number[] /*singleVariantField*/  }
+       SpendingActivity,
+       SpendingActivityLike
    >(SpendingActivitySchema, { isMainnet: true });
     _placeholder2SA(
         value: number[]
     ) {
         return this.enumCast.toUplcData({ 
            _placeholder2SA: { id: value } 
-        });
+        }); /*SingleField*/
     }
 
     mockWorkingSpendActivity(
@@ -354,19 +307,15 @@ class SpendingActivityHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            mockWorkingSpendActivity: { id: value } 
-        });
+        }); /*SingleField*/
     }
 }
 
 
 class MintingActivityHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { mintingUuts: /*minEnumVariant*/ MintingActivity$mintingUuts }
-        | { mockOtherActivity: /*minEnumVariant*/ tagOnly }, 
-       
-        | { mintingUuts: /*minEnumVariant*/ MintingActivity$mintingUutsLike }
-        | { mockOtherActivity: /*minEnumVariant*/ tagOnly }
+       MintingActivity,
+       MintingActivityLike
    >(MintingActivitySchema, { isMainnet: true });
     /**
      * generates UplcData, given a transaction-context with a seed utxo and other field details
@@ -378,15 +327,9 @@ class MintingActivityHelper extends someDataMaker {
     /**
     * generates UplcData with raw seed details included in fields.
     */
-    mintingUuts(fields: {
-        seed: TxOutputId | string,
-        purposes: Array<string> 
-    } ) : UplcData
+    mintingUuts(fields: MintingActivity$mintingUutsLike): UplcData
     mintingUuts(
-        seedOrUf: hasSeed | { 
-            seed: TxOutputId | string,
-            purposes: Array<string>
-        }, 
+        seedOrUf: hasSeed | MintingActivity$mintingUutsLike, 
         filteredFields?: { 
             purposes: Array<string>
     }) : UplcData {
@@ -396,7 +339,7 @@ class MintingActivityHelper extends someDataMaker {
                 mintingUuts: { seed: seedTxOutputId, ...filteredFields } 
             });
         } else {
-            const fields = seedOrUf; 
+            const fields = seedOrUf as MintingActivity$mintingUutsLike; 
             return this.enumCast.toUplcData({
                 mintingUuts: fields 
             });
@@ -412,91 +355,62 @@ class MintingActivityHelper extends someDataMaker {
 
 class BurningActivityHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { _placeholder2BA: /*minEnumVariant*/ number[] /*singleVariantField*/  }, 
-       
-        | { _placeholder2BA: /*minEnumVariant*/ number[] /*singleVariantField*/  }
+       BurningActivity,
+       BurningActivityLike
    >(BurningActivitySchema, { isMainnet: true });
     _placeholder2BA(
         value: number[]
     ) {
         return this.enumCast.toUplcData({ 
            _placeholder2BA: { recId: value } 
-        });
+        }); /*SingleField*/
     }
 }
 
 
 class DelegateActivityHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { CapoLifecycleActivities: /*minEnumVariant*/ CapoLifecycleActivity /*singleVariantField*/  }
-        | { DelegateLifecycleActivities: /*minEnumVariant*/ DelegateLifecycleActivity /*singleVariantField*/  }
-        | { SpendingActivities: /*minEnumVariant*/ SpendingActivity /*singleVariantField*/  }
-        | { MintingActivities: /*minEnumVariant*/ MintingActivity /*singleVariantField*/  }
-        | { BurningActivities: /*minEnumVariant*/ BurningActivity /*singleVariantField*/  }
-        | { CreatingDelegatedData: /*minEnumVariant*/ DelegateActivity$CreatingDelegatedData }
-        | { UpdatingDelegatedData: /*minEnumVariant*/ DelegateActivity$UpdatingDelegatedData }
-        | { DeletingDelegatedData: /*minEnumVariant*/ DelegateActivity$DeletingDelegatedData }
-        | { MultipleDelegateActivities: /*minEnumVariant*/ Array<UplcData> /*singleVariantField*/  }, 
-       
-        | { CapoLifecycleActivities: /*minEnumVariant*/ CapoLifecycleActivityLike /*singleVariantField*/  }
-        | { DelegateLifecycleActivities: /*minEnumVariant*/ DelegateLifecycleActivityLike /*singleVariantField*/  }
-        | { SpendingActivities: /*minEnumVariant*/ SpendingActivityLike /*singleVariantField*/  }
-        | { MintingActivities: /*minEnumVariant*/ MintingActivityLike /*singleVariantField*/  }
-        | { BurningActivities: /*minEnumVariant*/ BurningActivityLike /*singleVariantField*/  }
-        | { CreatingDelegatedData: /*minEnumVariant*/ DelegateActivity$CreatingDelegatedDataLike }
-        | { UpdatingDelegatedData: /*minEnumVariant*/ DelegateActivity$UpdatingDelegatedDataLike }
-        | { DeletingDelegatedData: /*minEnumVariant*/ DelegateActivity$DeletingDelegatedDataLike }
-        | { MultipleDelegateActivities: /*minEnumVariant*/ Array<UplcData> /*singleVariantField*/  }
+       DelegateActivity,
+       DelegateActivityLike
    >(DelegateActivitySchema, { isMainnet: true });
     CapoLifecycleActivities(
-        value: 
-        | { CreatingDelegate: /*minEnumVariant*/ CapoLifecycleActivity$CreatingDelegateLike }
+        value: CapoLifecycleActivityLike
     ) {
         return this.enumCast.toUplcData({ 
            CapoLifecycleActivities: { activity: value } 
-        });
+        }); /*SingleField*/
     }
 
     DelegateLifecycleActivities(
-        value: 
-        | { ReplacingMe: /*minEnumVariant*/ DelegateLifecycleActivity$ReplacingMeLike }
-        | { Retiring: /*minEnumVariant*/ tagOnly }
-        | { ValidatingSettings: /*minEnumVariant*/ tagOnly }
+        value: DelegateLifecycleActivityLike
     ) {
         return this.enumCast.toUplcData({ 
            DelegateLifecycleActivities: { activity: value } 
-        });
+        }); /*SingleField*/
     }
 
     SpendingActivities(
-        value: 
-        | { _placeholder2SA: /*minEnumVariant*/ number[] /*singleVariantField*/  }
-        | { mockWorkingSpendActivity: /*minEnumVariant*/ number[] /*singleVariantField*/  }
+        value: SpendingActivityLike
     ) {
         return this.enumCast.toUplcData({ 
            SpendingActivities: { activity: value } 
-        });
+        }); /*SingleField*/
     }
 
     MintingActivities(
-        value: 
-        | { mintingUuts: /*minEnumVariant*/ MintingActivity$mintingUutsLike }
-        | { mockOtherActivity: /*minEnumVariant*/ tagOnly }
+        value: MintingActivityLike
     ) {
         return this.enumCast.toUplcData({ 
            MintingActivities: { activity: value } 
-        });
+        }); /*SingleField*/
     }
 
     BurningActivities(
-        value: 
-        | { _placeholder2BA: /*minEnumVariant*/ number[] /*singleVariantField*/  }
+        value: BurningActivityLike
     ) {
         return this.enumCast.toUplcData({ 
            BurningActivities: { activity: value } 
-        });
+        }); /*SingleField*/
     }
 
     /**
@@ -509,15 +423,9 @@ class DelegateActivityHelper extends someDataMaker {
     /**
     * generates UplcData with raw seed details included in fields.
     */
-    CreatingDelegatedData(fields: {
-        seed: TxOutputId | string,
-        dataType: string 
-    } ) : UplcData
+    CreatingDelegatedData(fields: DelegateActivity$CreatingDelegatedDataLike): UplcData
     CreatingDelegatedData(
-        seedOrUf: hasSeed | { 
-            seed: TxOutputId | string,
-            dataType: string
-        }, 
+        seedOrUf: hasSeed | DelegateActivity$CreatingDelegatedDataLike, 
         filteredFields?: { 
             dataType: string
     }) : UplcData {
@@ -527,7 +435,7 @@ class DelegateActivityHelper extends someDataMaker {
                 CreatingDelegatedData: { seed: seedTxOutputId, ...filteredFields } 
             });
         } else {
-            const fields = seedOrUf; 
+            const fields = seedOrUf as DelegateActivity$CreatingDelegatedDataLike; 
             return this.enumCast.toUplcData({
                 CreatingDelegatedData: fields 
             });
@@ -558,9 +466,1256 @@ class DelegateActivityHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            MultipleDelegateActivities: { activities: value } 
-        });
+        }); /*SingleField*/
     }
 }
 
 
-
+export const SomeEnumSchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "SomeEnum",
+  "id": "__module__uutMintingDelegate__SomeEnum[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__uutMintingDelegate__SomeEnum[]__justATag",
+      "name": "justATag",
+      "fieldTypes": []
+    },
+    {
+      "kind": "variant",
+      "tag": 1,
+      "id": "__module__uutMintingDelegate__SomeEnum[]__justAnInt",
+      "name": "justAnInt",
+      "fieldTypes": [
+        {
+          "name": "m",
+          "type": {
+            "kind": "internal",
+            "name": "Int"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 2,
+      "id": "__module__uutMintingDelegate__SomeEnum[]__oneNestedStruct",
+      "name": "oneNestedStruct",
+      "fieldTypes": [
+        {
+          "name": "m",
+          "type": {
+            "kind": "struct",
+            "format": "list",
+            "id": "__module__uutMintingDelegate__SampleStruct[]",
+            "name": "SampleStruct",
+            "fieldTypes": [
+              {
+                "name": "a",
+                "type": {
+                  "kind": "internal",
+                  "name": "Int"
+                }
+              },
+              {
+                "name": "b",
+                "type": {
+                  "kind": "map",
+                  "keyType": {
+                    "kind": "internal",
+                    "name": "String"
+                  },
+                  "valueType": {
+                    "kind": "internal",
+                    "name": "ByteArray"
+                  }
+                }
+              },
+              {
+                "name": "c",
+                "type": {
+                  "kind": "list",
+                  "itemType": {
+                    "kind": "internal",
+                    "name": "Bool"
+                  }
+                }
+              },
+              {
+                "name": "d",
+                "type": {
+                  "kind": "option",
+                  "someType": {
+                    "kind": "internal",
+                    "name": "Data"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 3,
+      "id": "__module__uutMintingDelegate__SomeEnum[]__hasNestedFields",
+      "name": "hasNestedFields",
+      "fieldTypes": [
+        {
+          "name": "m",
+          "type": {
+            "kind": "struct",
+            "format": "list",
+            "id": "__module__uutMintingDelegate__SampleStruct[]",
+            "name": "SampleStruct",
+            "fieldTypes": [
+              {
+                "name": "a",
+                "type": {
+                  "kind": "internal",
+                  "name": "Int"
+                }
+              },
+              {
+                "name": "b",
+                "type": {
+                  "kind": "map",
+                  "keyType": {
+                    "kind": "internal",
+                    "name": "String"
+                  },
+                  "valueType": {
+                    "kind": "internal",
+                    "name": "ByteArray"
+                  }
+                }
+              },
+              {
+                "name": "c",
+                "type": {
+                  "kind": "list",
+                  "itemType": {
+                    "kind": "internal",
+                    "name": "Bool"
+                  }
+                }
+              },
+              {
+                "name": "d",
+                "type": {
+                  "kind": "option",
+                  "someType": {
+                    "kind": "internal",
+                    "name": "Data"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "n",
+          "type": {
+            "kind": "internal",
+            "name": "Int"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 4,
+      "id": "__module__uutMintingDelegate__SomeEnum[]__hasRecursiveFields",
+      "name": "hasRecursiveFields",
+      "fieldTypes": [
+        {
+          "name": "placeholder",
+          "type": {
+            "kind": "internal",
+            "name": "Int"
+          }
+        },
+        {
+          "name": "ph2",
+          "type": {
+            "kind": "internal",
+            "name": "String"
+          }
+        }
+      ]
+    }
+  ]
+};
+export const DelegateDatumSchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "DelegateDatum",
+  "id": "__module__uutMintingDelegate__DelegateDatum[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__uutMintingDelegate__DelegateDatum[]__IsDelegation",
+      "name": "IsDelegation",
+      "fieldTypes": [
+        {
+          "name": "dd",
+          "type": {
+            "kind": "struct",
+            "format": "list",
+            "id": "__module__CapoDelegateHelpers__DelegationDetail[]",
+            "name": "DelegationDetail",
+            "fieldTypes": [
+              {
+                "name": "capoAddr",
+                "type": {
+                  "kind": "internal",
+                  "name": "Address"
+                }
+              },
+              {
+                "name": "mph",
+                "type": {
+                  "kind": "internal",
+                  "name": "MintingPolicyHash"
+                }
+              },
+              {
+                "name": "tn",
+                "type": {
+                  "kind": "internal",
+                  "name": "ByteArray"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 1,
+      "id": "__module__uutMintingDelegate__DelegateDatum[]__ScriptReference",
+      "name": "ScriptReference",
+      "fieldTypes": []
+    },
+    {
+      "kind": "variant",
+      "tag": 2,
+      "id": "__module__uutMintingDelegate__DelegateDatum[]__SingleDataElement",
+      "name": "SingleDataElement",
+      "fieldTypes": [
+        {
+          "name": "aString",
+          "type": {
+            "kind": "internal",
+            "name": "String"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 3,
+      "id": "__module__uutMintingDelegate__DelegateDatum[]__SingleNestedStruct",
+      "name": "SingleNestedStruct",
+      "fieldTypes": [
+        {
+          "name": "aStruct",
+          "type": {
+            "kind": "struct",
+            "format": "list",
+            "id": "__module__uutMintingDelegate__SampleStruct[]",
+            "name": "SampleStruct",
+            "fieldTypes": [
+              {
+                "name": "a",
+                "type": {
+                  "kind": "internal",
+                  "name": "Int"
+                }
+              },
+              {
+                "name": "b",
+                "type": {
+                  "kind": "map",
+                  "keyType": {
+                    "kind": "internal",
+                    "name": "String"
+                  },
+                  "valueType": {
+                    "kind": "internal",
+                    "name": "ByteArray"
+                  }
+                }
+              },
+              {
+                "name": "c",
+                "type": {
+                  "kind": "list",
+                  "itemType": {
+                    "kind": "internal",
+                    "name": "Bool"
+                  }
+                }
+              },
+              {
+                "name": "d",
+                "type": {
+                  "kind": "option",
+                  "someType": {
+                    "kind": "internal",
+                    "name": "Data"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 4,
+      "id": "__module__uutMintingDelegate__DelegateDatum[]__HasNestedEnum",
+      "name": "HasNestedEnum",
+      "fieldTypes": [
+        {
+          "name": "nested",
+          "type": {
+            "kind": "enum",
+            "name": "SomeEnum",
+            "id": "__module__uutMintingDelegate__SomeEnum[]",
+            "variantTypes": [
+              {
+                "kind": "variant",
+                "tag": 0,
+                "id": "__module__uutMintingDelegate__SomeEnum[]__justATag",
+                "name": "justATag",
+                "fieldTypes": []
+              },
+              {
+                "kind": "variant",
+                "tag": 1,
+                "id": "__module__uutMintingDelegate__SomeEnum[]__justAnInt",
+                "name": "justAnInt",
+                "fieldTypes": [
+                  {
+                    "name": "m",
+                    "type": {
+                      "kind": "internal",
+                      "name": "Int"
+                    }
+                  }
+                ]
+              },
+              {
+                "kind": "variant",
+                "tag": 2,
+                "id": "__module__uutMintingDelegate__SomeEnum[]__oneNestedStruct",
+                "name": "oneNestedStruct",
+                "fieldTypes": [
+                  {
+                    "name": "m",
+                    "type": {
+                      "kind": "struct",
+                      "format": "list",
+                      "id": "__module__uutMintingDelegate__SampleStruct[]",
+                      "name": "SampleStruct",
+                      "fieldTypes": [
+                        {
+                          "name": "a",
+                          "type": {
+                            "kind": "internal",
+                            "name": "Int"
+                          }
+                        },
+                        {
+                          "name": "b",
+                          "type": {
+                            "kind": "map",
+                            "keyType": {
+                              "kind": "internal",
+                              "name": "String"
+                            },
+                            "valueType": {
+                              "kind": "internal",
+                              "name": "ByteArray"
+                            }
+                          }
+                        },
+                        {
+                          "name": "c",
+                          "type": {
+                            "kind": "list",
+                            "itemType": {
+                              "kind": "internal",
+                              "name": "Bool"
+                            }
+                          }
+                        },
+                        {
+                          "name": "d",
+                          "type": {
+                            "kind": "option",
+                            "someType": {
+                              "kind": "internal",
+                              "name": "Data"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "kind": "variant",
+                "tag": 3,
+                "id": "__module__uutMintingDelegate__SomeEnum[]__hasNestedFields",
+                "name": "hasNestedFields",
+                "fieldTypes": [
+                  {
+                    "name": "m",
+                    "type": {
+                      "kind": "struct",
+                      "format": "list",
+                      "id": "__module__uutMintingDelegate__SampleStruct[]",
+                      "name": "SampleStruct",
+                      "fieldTypes": [
+                        {
+                          "name": "a",
+                          "type": {
+                            "kind": "internal",
+                            "name": "Int"
+                          }
+                        },
+                        {
+                          "name": "b",
+                          "type": {
+                            "kind": "map",
+                            "keyType": {
+                              "kind": "internal",
+                              "name": "String"
+                            },
+                            "valueType": {
+                              "kind": "internal",
+                              "name": "ByteArray"
+                            }
+                          }
+                        },
+                        {
+                          "name": "c",
+                          "type": {
+                            "kind": "list",
+                            "itemType": {
+                              "kind": "internal",
+                              "name": "Bool"
+                            }
+                          }
+                        },
+                        {
+                          "name": "d",
+                          "type": {
+                            "kind": "option",
+                            "someType": {
+                              "kind": "internal",
+                              "name": "Data"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "n",
+                    "type": {
+                      "kind": "internal",
+                      "name": "Int"
+                    }
+                  }
+                ]
+              },
+              {
+                "kind": "variant",
+                "tag": 4,
+                "id": "__module__uutMintingDelegate__SomeEnum[]__hasRecursiveFields",
+                "name": "hasRecursiveFields",
+                "fieldTypes": [
+                  {
+                    "name": "placeholder",
+                    "type": {
+                      "kind": "internal",
+                      "name": "Int"
+                    }
+                  },
+                  {
+                    "name": "ph2",
+                    "type": {
+                      "kind": "internal",
+                      "name": "String"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 5,
+      "id": "__module__uutMintingDelegate__DelegateDatum[]__MultiFieldVariant",
+      "name": "MultiFieldVariant",
+      "fieldTypes": [
+        {
+          "name": "field1",
+          "type": {
+            "kind": "internal",
+            "name": "Int"
+          }
+        },
+        {
+          "name": "field2",
+          "type": {
+            "kind": "internal",
+            "name": "String"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 6,
+      "id": "__module__uutMintingDelegate__DelegateDatum[]__MultiFieldNestedThings",
+      "name": "MultiFieldNestedThings",
+      "fieldTypes": [
+        {
+          "name": "nestedStruct",
+          "type": {
+            "kind": "struct",
+            "format": "list",
+            "id": "__module__uutMintingDelegate__SampleStruct[]",
+            "name": "SampleStruct",
+            "fieldTypes": [
+              {
+                "name": "a",
+                "type": {
+                  "kind": "internal",
+                  "name": "Int"
+                }
+              },
+              {
+                "name": "b",
+                "type": {
+                  "kind": "map",
+                  "keyType": {
+                    "kind": "internal",
+                    "name": "String"
+                  },
+                  "valueType": {
+                    "kind": "internal",
+                    "name": "ByteArray"
+                  }
+                }
+              },
+              {
+                "name": "c",
+                "type": {
+                  "kind": "list",
+                  "itemType": {
+                    "kind": "internal",
+                    "name": "Bool"
+                  }
+                }
+              },
+              {
+                "name": "d",
+                "type": {
+                  "kind": "option",
+                  "someType": {
+                    "kind": "internal",
+                    "name": "Data"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "nestedEnumMaybe",
+          "type": {
+            "kind": "option",
+            "someType": {
+              "kind": "enum",
+              "name": "SomeEnum",
+              "id": "__module__uutMintingDelegate__SomeEnum[]",
+              "variantTypes": [
+                {
+                  "kind": "variant",
+                  "tag": 0,
+                  "id": "__module__uutMintingDelegate__SomeEnum[]__justATag",
+                  "name": "justATag",
+                  "fieldTypes": []
+                },
+                {
+                  "kind": "variant",
+                  "tag": 1,
+                  "id": "__module__uutMintingDelegate__SomeEnum[]__justAnInt",
+                  "name": "justAnInt",
+                  "fieldTypes": [
+                    {
+                      "name": "m",
+                      "type": {
+                        "kind": "internal",
+                        "name": "Int"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "kind": "variant",
+                  "tag": 2,
+                  "id": "__module__uutMintingDelegate__SomeEnum[]__oneNestedStruct",
+                  "name": "oneNestedStruct",
+                  "fieldTypes": [
+                    {
+                      "name": "m",
+                      "type": {
+                        "kind": "struct",
+                        "format": "list",
+                        "id": "__module__uutMintingDelegate__SampleStruct[]",
+                        "name": "SampleStruct",
+                        "fieldTypes": [
+                          {
+                            "name": "a",
+                            "type": {
+                              "kind": "internal",
+                              "name": "Int"
+                            }
+                          },
+                          {
+                            "name": "b",
+                            "type": {
+                              "kind": "map",
+                              "keyType": {
+                                "kind": "internal",
+                                "name": "String"
+                              },
+                              "valueType": {
+                                "kind": "internal",
+                                "name": "ByteArray"
+                              }
+                            }
+                          },
+                          {
+                            "name": "c",
+                            "type": {
+                              "kind": "list",
+                              "itemType": {
+                                "kind": "internal",
+                                "name": "Bool"
+                              }
+                            }
+                          },
+                          {
+                            "name": "d",
+                            "type": {
+                              "kind": "option",
+                              "someType": {
+                                "kind": "internal",
+                                "name": "Data"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "kind": "variant",
+                  "tag": 3,
+                  "id": "__module__uutMintingDelegate__SomeEnum[]__hasNestedFields",
+                  "name": "hasNestedFields",
+                  "fieldTypes": [
+                    {
+                      "name": "m",
+                      "type": {
+                        "kind": "struct",
+                        "format": "list",
+                        "id": "__module__uutMintingDelegate__SampleStruct[]",
+                        "name": "SampleStruct",
+                        "fieldTypes": [
+                          {
+                            "name": "a",
+                            "type": {
+                              "kind": "internal",
+                              "name": "Int"
+                            }
+                          },
+                          {
+                            "name": "b",
+                            "type": {
+                              "kind": "map",
+                              "keyType": {
+                                "kind": "internal",
+                                "name": "String"
+                              },
+                              "valueType": {
+                                "kind": "internal",
+                                "name": "ByteArray"
+                              }
+                            }
+                          },
+                          {
+                            "name": "c",
+                            "type": {
+                              "kind": "list",
+                              "itemType": {
+                                "kind": "internal",
+                                "name": "Bool"
+                              }
+                            }
+                          },
+                          {
+                            "name": "d",
+                            "type": {
+                              "kind": "option",
+                              "someType": {
+                                "kind": "internal",
+                                "name": "Data"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "name": "n",
+                      "type": {
+                        "kind": "internal",
+                        "name": "Int"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "kind": "variant",
+                  "tag": 4,
+                  "id": "__module__uutMintingDelegate__SomeEnum[]__hasRecursiveFields",
+                  "name": "hasRecursiveFields",
+                  "fieldTypes": [
+                    {
+                      "name": "placeholder",
+                      "type": {
+                        "kind": "internal",
+                        "name": "Int"
+                      }
+                    },
+                    {
+                      "name": "ph2",
+                      "type": {
+                        "kind": "internal",
+                        "name": "String"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+};
+export const CapoLifecycleActivitySchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "CapoLifecycleActivity",
+  "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__CreatingDelegate",
+      "name": "CreatingDelegate",
+      "fieldTypes": [
+        {
+          "name": "seed",
+          "type": {
+            "kind": "internal",
+            "name": "TxOutputId"
+          }
+        },
+        {
+          "name": "purpose",
+          "type": {
+            "kind": "internal",
+            "name": "String"
+          }
+        }
+      ]
+    }
+  ]
+};
+export const DelegateLifecycleActivitySchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "DelegateLifecycleActivity",
+  "id": "__module__CapoDelegateHelpers__DelegateLifecycleActivity[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__CapoDelegateHelpers__DelegateLifecycleActivity[]__ReplacingMe",
+      "name": "ReplacingMe",
+      "fieldTypes": [
+        {
+          "name": "seed",
+          "type": {
+            "kind": "internal",
+            "name": "TxOutputId"
+          }
+        },
+        {
+          "name": "purpose",
+          "type": {
+            "kind": "internal",
+            "name": "String"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 1,
+      "id": "__module__CapoDelegateHelpers__DelegateLifecycleActivity[]__Retiring",
+      "name": "Retiring",
+      "fieldTypes": []
+    },
+    {
+      "kind": "variant",
+      "tag": 2,
+      "id": "__module__CapoDelegateHelpers__DelegateLifecycleActivity[]__ValidatingSettings",
+      "name": "ValidatingSettings",
+      "fieldTypes": []
+    }
+  ]
+};
+export const SpendingActivitySchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "SpendingActivity",
+  "id": "__module__uutMintingDelegate__SpendingActivity[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__uutMintingDelegate__SpendingActivity[]___placeholder2SA",
+      "name": "_placeholder2SA",
+      "fieldTypes": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "internal",
+            "name": "ByteArray"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 1,
+      "id": "__module__uutMintingDelegate__SpendingActivity[]__mockWorkingSpendActivity",
+      "name": "mockWorkingSpendActivity",
+      "fieldTypes": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "internal",
+            "name": "ByteArray"
+          }
+        }
+      ]
+    }
+  ]
+};
+export const MintingActivitySchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "MintingActivity",
+  "id": "__module__uutMintingDelegate__MintingActivity[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__uutMintingDelegate__MintingActivity[]__mintingUuts",
+      "name": "mintingUuts",
+      "fieldTypes": [
+        {
+          "name": "seed",
+          "type": {
+            "kind": "internal",
+            "name": "TxOutputId"
+          }
+        },
+        {
+          "name": "purposes",
+          "type": {
+            "kind": "list",
+            "itemType": {
+              "kind": "internal",
+              "name": "String"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 1,
+      "id": "__module__uutMintingDelegate__MintingActivity[]__mockOtherActivity",
+      "name": "mockOtherActivity",
+      "fieldTypes": []
+    }
+  ]
+};
+export const BurningActivitySchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "BurningActivity",
+  "id": "__module__uutMintingDelegate__BurningActivity[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__uutMintingDelegate__BurningActivity[]___placeholder2BA",
+      "name": "_placeholder2BA",
+      "fieldTypes": [
+        {
+          "name": "recId",
+          "type": {
+            "kind": "internal",
+            "name": "ByteArray"
+          }
+        }
+      ]
+    }
+  ]
+};
+export const DelegateActivitySchema : EnumTypeSchema = {
+  "kind": "enum",
+  "name": "DelegateActivity",
+  "id": "__module__uutMintingDelegate__DelegateActivity[]",
+  "variantTypes": [
+    {
+      "kind": "variant",
+      "tag": 0,
+      "id": "__module__uutMintingDelegate__DelegateActivity[]__CapoLifecycleActivities",
+      "name": "CapoLifecycleActivities",
+      "fieldTypes": [
+        {
+          "name": "activity",
+          "type": {
+            "kind": "enum",
+            "name": "CapoLifecycleActivity",
+            "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]",
+            "variantTypes": [
+              {
+                "kind": "variant",
+                "tag": 0,
+                "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__CreatingDelegate",
+                "name": "CreatingDelegate",
+                "fieldTypes": [
+                  {
+                    "name": "seed",
+                    "type": {
+                      "kind": "internal",
+                      "name": "TxOutputId"
+                    }
+                  },
+                  {
+                    "name": "purpose",
+                    "type": {
+                      "kind": "internal",
+                      "name": "String"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 1,
+      "id": "__module__uutMintingDelegate__DelegateActivity[]__DelegateLifecycleActivities",
+      "name": "DelegateLifecycleActivities",
+      "fieldTypes": [
+        {
+          "name": "activity",
+          "type": {
+            "kind": "enum",
+            "name": "DelegateLifecycleActivity",
+            "id": "__module__CapoDelegateHelpers__DelegateLifecycleActivity[]",
+            "variantTypes": [
+              {
+                "kind": "variant",
+                "tag": 0,
+                "id": "__module__CapoDelegateHelpers__DelegateLifecycleActivity[]__ReplacingMe",
+                "name": "ReplacingMe",
+                "fieldTypes": [
+                  {
+                    "name": "seed",
+                    "type": {
+                      "kind": "internal",
+                      "name": "TxOutputId"
+                    }
+                  },
+                  {
+                    "name": "purpose",
+                    "type": {
+                      "kind": "internal",
+                      "name": "String"
+                    }
+                  }
+                ]
+              },
+              {
+                "kind": "variant",
+                "tag": 1,
+                "id": "__module__CapoDelegateHelpers__DelegateLifecycleActivity[]__Retiring",
+                "name": "Retiring",
+                "fieldTypes": []
+              },
+              {
+                "kind": "variant",
+                "tag": 2,
+                "id": "__module__CapoDelegateHelpers__DelegateLifecycleActivity[]__ValidatingSettings",
+                "name": "ValidatingSettings",
+                "fieldTypes": []
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 2,
+      "id": "__module__uutMintingDelegate__DelegateActivity[]__SpendingActivities",
+      "name": "SpendingActivities",
+      "fieldTypes": [
+        {
+          "name": "activity",
+          "type": {
+            "kind": "enum",
+            "name": "SpendingActivity",
+            "id": "__module__uutMintingDelegate__SpendingActivity[]",
+            "variantTypes": [
+              {
+                "kind": "variant",
+                "tag": 0,
+                "id": "__module__uutMintingDelegate__SpendingActivity[]___placeholder2SA",
+                "name": "_placeholder2SA",
+                "fieldTypes": [
+                  {
+                    "name": "id",
+                    "type": {
+                      "kind": "internal",
+                      "name": "ByteArray"
+                    }
+                  }
+                ]
+              },
+              {
+                "kind": "variant",
+                "tag": 1,
+                "id": "__module__uutMintingDelegate__SpendingActivity[]__mockWorkingSpendActivity",
+                "name": "mockWorkingSpendActivity",
+                "fieldTypes": [
+                  {
+                    "name": "id",
+                    "type": {
+                      "kind": "internal",
+                      "name": "ByteArray"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 3,
+      "id": "__module__uutMintingDelegate__DelegateActivity[]__MintingActivities",
+      "name": "MintingActivities",
+      "fieldTypes": [
+        {
+          "name": "activity",
+          "type": {
+            "kind": "enum",
+            "name": "MintingActivity",
+            "id": "__module__uutMintingDelegate__MintingActivity[]",
+            "variantTypes": [
+              {
+                "kind": "variant",
+                "tag": 0,
+                "id": "__module__uutMintingDelegate__MintingActivity[]__mintingUuts",
+                "name": "mintingUuts",
+                "fieldTypes": [
+                  {
+                    "name": "seed",
+                    "type": {
+                      "kind": "internal",
+                      "name": "TxOutputId"
+                    }
+                  },
+                  {
+                    "name": "purposes",
+                    "type": {
+                      "kind": "list",
+                      "itemType": {
+                        "kind": "internal",
+                        "name": "String"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "kind": "variant",
+                "tag": 1,
+                "id": "__module__uutMintingDelegate__MintingActivity[]__mockOtherActivity",
+                "name": "mockOtherActivity",
+                "fieldTypes": []
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 4,
+      "id": "__module__uutMintingDelegate__DelegateActivity[]__BurningActivities",
+      "name": "BurningActivities",
+      "fieldTypes": [
+        {
+          "name": "activity",
+          "type": {
+            "kind": "enum",
+            "name": "BurningActivity",
+            "id": "__module__uutMintingDelegate__BurningActivity[]",
+            "variantTypes": [
+              {
+                "kind": "variant",
+                "tag": 0,
+                "id": "__module__uutMintingDelegate__BurningActivity[]___placeholder2BA",
+                "name": "_placeholder2BA",
+                "fieldTypes": [
+                  {
+                    "name": "recId",
+                    "type": {
+                      "kind": "internal",
+                      "name": "ByteArray"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 5,
+      "id": "__module__uutMintingDelegate__DelegateActivity[]__CreatingDelegatedData",
+      "name": "CreatingDelegatedData",
+      "fieldTypes": [
+        {
+          "name": "seed",
+          "type": {
+            "kind": "internal",
+            "name": "TxOutputId"
+          }
+        },
+        {
+          "name": "dataType",
+          "type": {
+            "kind": "internal",
+            "name": "String"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 6,
+      "id": "__module__uutMintingDelegate__DelegateActivity[]__UpdatingDelegatedData",
+      "name": "UpdatingDelegatedData",
+      "fieldTypes": [
+        {
+          "name": "dataType",
+          "type": {
+            "kind": "internal",
+            "name": "String"
+          }
+        },
+        {
+          "name": "recId",
+          "type": {
+            "kind": "internal",
+            "name": "ByteArray"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 7,
+      "id": "__module__uutMintingDelegate__DelegateActivity[]__DeletingDelegatedData",
+      "name": "DeletingDelegatedData",
+      "fieldTypes": [
+        {
+          "name": "dataType",
+          "type": {
+            "kind": "internal",
+            "name": "String"
+          }
+        },
+        {
+          "name": "recId",
+          "type": {
+            "kind": "internal",
+            "name": "ByteArray"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "tag": 8,
+      "id": "__module__uutMintingDelegate__DelegateActivity[]__MultipleDelegateActivities",
+      "name": "MultipleDelegateActivities",
+      "fieldTypes": [
+        {
+          "name": "activities",
+          "type": {
+            "kind": "list",
+            "itemType": {
+              "kind": "internal",
+              "name": "Data"
+            }
+          }
+        }
+      ]
+    }
+  ]
+};

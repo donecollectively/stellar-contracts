@@ -105,6 +105,9 @@ export type enumTypeDetails<T=undefined> = {
     typeSchema: EnumTypeSchema; // for consistency
     dataType: DataType;
     
+    canonicalTypeName: string; // type name for this enum
+    permissiveTypeName: string; // type name for this enum (loose/enumLike form)
+
     canonicalType: string; // minimal canonical type
     permissiveType: string; // minimal permissive type
 

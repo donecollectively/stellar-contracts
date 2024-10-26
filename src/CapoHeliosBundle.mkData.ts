@@ -43,23 +43,22 @@ import { tagOnly } from "./helios/HeliosScriptBundle.js"
 import {hasSeed} from "./StellarContract.js"
 
 export default class mkDatumBridgeCapo extends someDataMaker {
-    
     datum: CapoDatumHelper = new CapoDatumHelper(this.bundle)   // datumAccessor
     CapoDatum: CapoDatumHelper = this.datum;
 
+    // include accessors for activity types
 
+    // include accessors for other enums (other than datum/activity)
+
+    // include accessors for any other structs (other than datum/activity)
+
+    // TODO: include any utility functions defined in the contract
 }
 
 class CapoDatumHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { CharterToken: /*minEnumVariant*/ CapoDatum$CharterToken }
-        | { ScriptReference: /*minEnumVariant*/ tagOnly }
-        | { DelegatedData: /*minEnumVariant*/ CapoDatum$DelegatedData }, 
-       
-        | { CharterToken: /*minEnumVariant*/ CapoDatum$CharterTokenLike }
-        | { ScriptReference: /*minEnumVariant*/ tagOnly }
-        | { DelegatedData: /*minEnumVariant*/ CapoDatum$DelegatedDataLike }
+       CapoDatum,
+       CapoDatumLike
    >(CapoDatumSchema, { isMainnet: true });
     CharterToken(fields: { 
         spendDelegateLink: {
@@ -128,20 +127,8 @@ class CapoDatumHelper extends someDataMaker {
 
 class CapoActivityHelper extends someDataMaker {
     enumCast = new Cast<
-       
-        | { usingAuthority: /*minEnumVariant*/ tagOnly }
-        | { updatingCharter: /*minEnumVariant*/ tagOnly }
-        | { retiringRefScript: /*minEnumVariant*/ tagOnly }
-        | { addingSpendInvariant: /*minEnumVariant*/ tagOnly }
-        | { spendingDelegatedDatum: /*minEnumVariant*/ tagOnly }
-        | { updatingTypeMap: /*minEnumVariant*/ tagOnly }, 
-       
-        | { usingAuthority: /*minEnumVariant*/ tagOnly }
-        | { updatingCharter: /*minEnumVariant*/ tagOnly }
-        | { retiringRefScript: /*minEnumVariant*/ tagOnly }
-        | { addingSpendInvariant: /*minEnumVariant*/ tagOnly }
-        | { spendingDelegatedDatum: /*minEnumVariant*/ tagOnly }
-        | { updatingTypeMap: /*minEnumVariant*/ tagOnly }
+       CapoActivity,
+       CapoActivityLike
    >(CapoActivitySchema, { isMainnet: true });
     get usingAuthority() {
         return this.enumCast.toUplcData({ usingAuthority: {} });

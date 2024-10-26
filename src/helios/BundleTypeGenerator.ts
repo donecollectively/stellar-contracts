@@ -146,7 +146,40 @@ ${this.generateRedeemerApiTypes()}
     generateEnumTypeSource(name: string, typeInfo: enumTypeDetails) {
         return (
             `export type ${name}Meta = ${typeInfo.canonicalMetaType}\n`+
+            `\n/**\n`+
+            ` * ${name} enum variants\n`+
+            ` * \n`+
+            ` * @remarks - expresses the essential raw data structures\n`+
+            ` * supporting the **${
+                    Object.keys(typeInfo.variants).length
+            } variant(s)** of the ${name} enum type\n`+
+            ` * \n`+
+            ` * - **Note**: Stellar Contracts provides a higher-level \`${name}Helper\` class\n`+
+            ` *     for generating UPLC data for this enum type\n`+
+            ` */\n`+
             `export type ${name} = ${typeInfo.canonicalType}\n` +
+            // `// factory signatures for this Enum: \n` +
+            // `// makesUplcEnumData<${name}Like>;\n` +
+            // `// ^^ calling such a factory makes a EnumUplcResult\n` +
+            // `// makesUplcActivityEnumData<${name}Like>; // if activity!\n` +
+            // `// ^^ calling such a factory makes a EnumUplcResult\n` +
+            // `// reader signature for this Enum: \n` +
+            // `// readsUplcEnumData<${name}>;\n` +
+            `\n/**\n`+
+            ` * ${name} enum variants (permissive)\n`+
+            ` * \n`+
+            ` * @remarks - expresses the allowable data structures\n`+
+            ` * for creating any of the **${
+                    Object.keys(typeInfo.variants).length
+            } variant(s)** of the ${name} enum type\n`+
+            ` * \n`+
+            ` * - **Note**: Stellar Contracts provides a higher-level \`${name}Helper\` class\n`+
+            ` *     for generating UPLC data for this enum type\n`+
+            ` *\n`+
+            ` * ### Permissive Type\n`+
+            ` * This is a permissive type that allows additional input data types, which are \n`+
+            ` * converted by convention to the canonical types used in the on-chain context.\n`+
+            ` */\n`+
             `export type ${name}Like = ${typeInfo.permissiveType}\n`+
             ""
         );

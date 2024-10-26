@@ -222,7 +222,14 @@ ${imports}
 export default class mkDatumBridge${
             this.bundle.program.name
         } extends someDataMaker {
-    ${this.includeDatumAccessors()}
+${this.includeDatumAccessors()}
+    // include accessors for activity types
+
+    // include accessors for other enums (other than datum/activity)
+
+    // include accessors for any other structs (other than datum/activity)
+
+    // TODO: include any utility functions defined in the contract
 }
 
 ${this.includeEnumHelperClasses()}
@@ -289,9 +296,9 @@ ${this.includeEnumSchemas()}
             const {
                 moreInfo: { helperClassName },
             } = d;
-            return `
-    datum: ${helperClassName} = new ${helperClassName}(this.bundle)   // datumAccessor
-    ${details.typeSchema.name}: ${helperClassName} = this.datum;\n\n`;
+            return "" +
+            `    datum: ${helperClassName} = new ${helperClassName}(this.bundle)   // datumAccessor\n`+
+            `    ${details.typeSchema.name}: ${helperClassName} = this.datum;\n`;
             // ----
         }
 
@@ -301,12 +308,10 @@ ${this.includeEnumSchemas()}
 
         const typeName = details.canonicalType; // ??? name?
         const permissiveTypeName = details.permissiveType; // !!! name?
-        const castDef = `
-    __datumCast = new Cast<
+        const castDef = `    __datumCast = new Cast<
         ${typeName}, ${permissiveTypeName}
     >(${details.typeSchema}}, { isMainnet: true }); // datumAccessorCast\n`;
-        const datumAccessor = `
-    datum(x: ${permissiveTypeName}) {
+        const datumAccessor = `    datum(x: ${permissiveTypeName}) {
         return this.__datumCast.toUplcData(x);
     }\n`;
 
@@ -314,10 +319,9 @@ ${this.includeEnumSchemas()}
             return (
                 castDef +
                 datumAccessor +
-                `
-    ${details.typeSchema.name}(fields: ${permissiveTypeName}) {
-        return this.__datumCast.toUplcData(fields);
-    }\n\n`
+                `    ${details.typeSchema.name}(fields: ${permissiveTypeName}) {\n`+
+                `        return this.__datumCast.toUplcData(fields);\n`+
+                `    }\n`
             );
         }
 
@@ -345,9 +349,11 @@ ${this.includeEnumSchemas()}
     mkEnumHelperClass(typeDetails: fullEnumTypeDetails) {
         return (
             `class ${typeDetails.moreInfo.helperClassName} extends someDataMaker {\n` +
+        // todo: this needs to reflect the actual structure for nested enums, not our facade
+        // for them.  Our interface for each of these variants is separate from what the Cast utility requires.
             `    enumCast = new Cast<\n` +
-            `       ${typeDetails.canonicalType}, \n` +
-            `       ${typeDetails.permissiveType}\n` +
+            `       ${typeDetails.canonicalTypeName},\n` +
+            `       ${typeDetails.permissiveTypeName}\n` +
             `   >(${typeDetails.enumName}Schema, { isMainnet: true });\n` +
             this.mkEnumDatumAccessors(typeDetails) +
             `\n}\n\n`
@@ -386,9 +392,14 @@ ${this.includeEnumSchemas()}
         variantName: string
     ) {
         function mkFieldType(fieldName: string, indent = 2): string {
+            const oneField = variantDetails.fields[fieldName];
+            let thatType = oneField.permissiveType;
+            if ("permissiveTypeName" in oneField) {
+                thatType = oneField.permissiveTypeName;
+            }
             return (
                 `    `.repeat(indent) +
-                `${fieldName}: ${variantDetails.fields[fieldName].permissiveType}`.trimEnd()
+                `${fieldName}: ${thatType}`.trimEnd()
             );
         }
         function unfilteredFields(indent = 2) {
@@ -451,10 +462,11 @@ ${this.includeEnumSchemas()}
         variantName: string
     ) {
         const fieldName = Object.keys(variantDetails.fields)[0];
+        const oneField = variantDetails.fields[fieldName];
         if ("seed" == fieldName) {
             // && isSeededActivity
             return (
-                `    ${variantName}(value: hasSeed | ${variantDetails.fields[fieldName].permissiveType}) {\n` +
+                `    ${variantName}(value: hasSeed | ${oneField.permissiveType}) {\n` +
                 `       const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);\n` +
                 `        return this.enumCast.toUplcData({ \n` +
                 `           ${variantName}: { ${fieldName}: seedTxOutputId } \n` +
@@ -462,9 +474,13 @@ ${this.includeEnumSchemas()}
                 `    }`
             );
         }
+        let thatType = oneField.permissiveType
+        if ("permissiveTypeName" in oneField) {
+            thatType = oneField.permissiveTypeName;
+        }
         return (
             `    ${variantName}(\n` +
-            `        value: ${variantDetails.fields[fieldName].permissiveType}\n` +
+            `        value: ${thatType}\n` +
             `    ) {\n` +
             `        return this.enumCast.toUplcData({ \n` +
             `           ${variantName}: { ${fieldName}: value } \n` +

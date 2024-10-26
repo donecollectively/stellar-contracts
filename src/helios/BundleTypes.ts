@@ -238,6 +238,8 @@ export class BundleTypes implements TypeGenHooks<undefined> {
             dataType: enumType,
             typeSchema: schema,
             variants,
+            canonicalTypeName: `${enumName}`,
+            permissiveTypeName: `${enumName}Like`,
             canonicalMetaType: this.mkMinimalEnumMetaType("canonical", schema),
             permissiveMetaType: this.mkMinimalEnumMetaType(
                 "permissive",
@@ -255,6 +257,7 @@ export class BundleTypes implements TypeGenHooks<undefined> {
             ),
             moreInfo: undefined,
         };
+
         this.registerNamedType(details);
         const moreInfo = this.collaborator?.getMoreEnumInfo?.(details);
         if (moreInfo) details.moreInfo = moreInfo;
@@ -289,8 +292,8 @@ export class BundleTypes implements TypeGenHooks<undefined> {
         }
 
         const variantName = schema.name;
-        const canonicalTypeName = `${enumId.enumName}$${variantName}`;
-        const permissiveTypeName = `${enumId.enumName}$${variantName}Like`;
+        const canonicalTypeName = fieldCount > 0 ? `${enumId.enumName}$${variantName}` : "tagOnly";
+        const permissiveTypeName = fieldCount > 0 ? `${enumId.enumName}$${variantName}Like` : "tagOnly";
         const details: variantTypeDetails<any> = {
             fields,
             fieldCount: fieldCount,
@@ -323,13 +326,17 @@ export class BundleTypes implements TypeGenHooks<undefined> {
             ), //, "nestedField"),
             moreInfo: undefined,
         };
-        const moreInfo = this.collaborator?.getMoreVariantInfo?.(details);
+        if (this.collaborator) {
+            const moreInfo = this.collaborator.getMoreVariantInfo?.(details);
+            details.moreInfo = moreInfo
+        }
+        if (fieldCount==1) {
+            // debugger
+        }
 
+        // don't register named types for tagOnly variants; worthless indirection
         if (fieldCount > 1) {
-            // DelegateActivity$SpendingActivities
-            debugger;
             this.registerNamedType(details);
-            debugger;
             this.collaborator?.registerNamedType?.(details);
         }
 
@@ -447,7 +454,8 @@ export class BundleTypes implements TypeGenHooks<undefined> {
 
                 } else {
                     // variant only has one field
-                    return `${variantInfo} /*singleVariantField*/ `;
+                    
+                    return `{ ${schema.fieldTypes[0].name}: ${variantInfo} /*singleVariantField*/ } `;
                 }
             default:
                 //@ts-expect-error - when all cases are covered, schema is ‹never›

@@ -124,10 +124,34 @@ export type CapoDatumMeta = EnumTypeMeta<
     }
 >;
 
+
+/**
+ * CapoDatum enum variants
+ * 
+ * @remarks - expresses the essential raw data structures
+ * supporting the **3 variant(s)** of the CapoDatum enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `CapoDatumHelper` class
+ *     for generating UPLC data for this enum type
+ */
 export type CapoDatum = 
         | { CharterToken: /*minEnumVariant*/ CapoDatum$CharterToken }
         | { ScriptReference: /*minEnumVariant*/ tagOnly }
         | { DelegatedData: /*minEnumVariant*/ CapoDatum$DelegatedData }
+
+/**
+ * CapoDatum enum variants (permissive)
+ * 
+ * @remarks - expresses the allowable data structures
+ * for creating any of the **3 variant(s)** of the CapoDatum enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `CapoDatumHelper` class
+ *     for generating UPLC data for this enum type
+ *
+ * ### Permissive Type
+ * This is a permissive type that allows additional input data types, which are 
+ * converted by convention to the canonical types used in the on-chain context.
+ */
 export type CapoDatumLike = 
         | { CharterToken: /*minEnumVariant*/ CapoDatum$CharterTokenLike }
         | { ScriptReference: /*minEnumVariant*/ tagOnly }
@@ -156,6 +180,16 @@ export type CapoActivityMeta = EnumTypeMeta<
     }
 >;
 
+
+/**
+ * CapoActivity enum variants
+ * 
+ * @remarks - expresses the essential raw data structures
+ * supporting the **6 variant(s)** of the CapoActivity enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `CapoActivityHelper` class
+ *     for generating UPLC data for this enum type
+ */
 export type CapoActivity = 
         | { usingAuthority: /*minEnumVariant*/ tagOnly }
         | { updatingCharter: /*minEnumVariant*/ tagOnly }
@@ -163,6 +197,20 @@ export type CapoActivity =
         | { addingSpendInvariant: /*minEnumVariant*/ tagOnly }
         | { spendingDelegatedDatum: /*minEnumVariant*/ tagOnly }
         | { updatingTypeMap: /*minEnumVariant*/ tagOnly }
+
+/**
+ * CapoActivity enum variants (permissive)
+ * 
+ * @remarks - expresses the allowable data structures
+ * for creating any of the **6 variant(s)** of the CapoActivity enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `CapoActivityHelper` class
+ *     for generating UPLC data for this enum type
+ *
+ * ### Permissive Type
+ * This is a permissive type that allows additional input data types, which are 
+ * converted by convention to the canonical types used in the on-chain context.
+ */
 export type CapoActivityLike = 
         | { usingAuthority: /*minEnumVariant*/ tagOnly }
         | { updatingCharter: /*minEnumVariant*/ tagOnly }
