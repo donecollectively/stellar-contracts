@@ -34,6 +34,12 @@ import type {
 } from "@helios-lang/ledger";
 import type { EnumTypeSchema } from "@helios-lang/type-utils";
 
+
+import { someDataMaker } from "../helios/dataBridge/someDataMaker.js"
+import type { tagOnly } from "../helios/HeliosScriptBundle.js"
+import type {hasSeed} from "../StellarContract.js"
+
+
 import type {
     AnyData, AnyDataLike,
     DelegationDetail, DelegationDetailLike,
@@ -52,11 +58,7 @@ import type {
     DelegateActivity, DelegateActivityLike
 } from "./UnspecializedDelegate.typeInfo.js"
 
-import { someDataMaker } from "../helios/dataBridge/someDataMaker.js"
-import type { tagOnly } from "../helios/HeliosScriptBundle.js"
-import type {hasSeed} from "../StellarContract.js"
-
-export default class mkDatumBridgeBasicDelegate extends someDataMaker {
+export default class mkDataBridgeBasicDelegate extends someDataMaker {
     datum: DelegateDatumHelper = new DelegateDatumHelper(this.bundle)   // datumAccessor
     DelegateDatum: DelegateDatumHelper = this.datum;
 
@@ -74,23 +76,12 @@ class DelegateDatumHelper extends someDataMaker {
        DelegateDatum,
        DelegateDatumLike
    >(DelegateDatumSchema, { isMainnet: true });
-    Cip68RefToken(fields: { 
-        cip68meta: {
-    id: /*minStructField*/ number[]
-    type: /*minStructField*/ string
-},
-        cip68version: IntLike,
-        dd: Option<{
-    capoAddr: /*minStructField*/ Address | string
-    mph: /*minStructField*/ MintingPolicyHash | string | number[]
-    tn: /*minStructField*/ number[]
-}
->
-    }) {
+
+    Cip68RefToken(fields: DelegateDatum$Cip68RefTokenLike) {
         return this.enumCast.toUplcData({
             Cip68RefToken: fields 
         });
-    }
+    } /*multiFieldVariant enum accessor*/
 
     IsDelegation(
         value: {
@@ -102,12 +93,12 @@ class DelegateDatumHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            IsDelegation: { dd: value } 
-        }); /*SingleField*/
+        }); /*SingleField enum variant*/
     }
 
     get ScriptReference() {
         return this.enumCast.toUplcData({ ScriptReference: {} });
-    }
+    } /* tagOnly variant accessor */
 }
 
 
@@ -116,6 +107,7 @@ class CapoLifecycleActivityHelper extends someDataMaker {
        CapoLifecycleActivity,
        CapoLifecycleActivityLike
    >(CapoLifecycleActivitySchema, { isMainnet: true });
+
     /**
      * generates UplcData, given a transaction-context with a seed utxo and other field details
      * @remarks
@@ -143,7 +135,7 @@ class CapoLifecycleActivityHelper extends someDataMaker {
                 CreatingDelegate: fields 
             });
         }
-    }
+    } /*multiFieldVariant/seeded enum accessor*/ 
 
 }
 
@@ -153,6 +145,7 @@ class DelegateLifecycleActivityHelper extends someDataMaker {
        DelegateLifecycleActivity,
        DelegateLifecycleActivityLike
    >(DelegateLifecycleActivitySchema, { isMainnet: true });
+
     /**
      * generates UplcData, given a transaction-context with a seed utxo and other field details
      * @remarks
@@ -180,16 +173,16 @@ class DelegateLifecycleActivityHelper extends someDataMaker {
                 ReplacingMe: fields 
             });
         }
-    }
+    } /*multiFieldVariant/seeded enum accessor*/ 
 
 
     get Retiring() {
         return this.enumCast.toUplcData({ Retiring: {} });
-    }
+    } /* tagOnly variant accessor */
 
     get ValidatingSettings() {
         return this.enumCast.toUplcData({ ValidatingSettings: {} });
-    }
+    } /* tagOnly variant accessor */
 }
 
 
@@ -198,12 +191,13 @@ class SpendingActivityHelper extends someDataMaker {
        SpendingActivity,
        SpendingActivityLike
    >(SpendingActivitySchema, { isMainnet: true });
+
     _placeholder1SA(
         value: number[]
     ) {
         return this.enumCast.toUplcData({ 
            _placeholder1SA: { recId: value } 
-        }); /*SingleField*/
+        }); /*SingleField enum variant*/
     }
 }
 
@@ -213,11 +207,12 @@ class MintingActivityHelper extends someDataMaker {
        MintingActivity,
        MintingActivityLike
    >(MintingActivitySchema, { isMainnet: true });
+
     _placeholder1MA(value: hasSeed | TxOutputId | string) {
        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         return this.enumCast.toUplcData({ 
            _placeholder1MA: { seed: seedTxOutputId } 
-        });  /*SingleField/seeded*/
+        });  /*SingleField/seeded enum variant*/
     }
 }
 
@@ -227,12 +222,13 @@ class BurningActivityHelper extends someDataMaker {
        BurningActivity,
        BurningActivityLike
    >(BurningActivitySchema, { isMainnet: true });
+
     _placeholder1BA(
         value: number[]
     ) {
         return this.enumCast.toUplcData({ 
            _placeholder1BA: { recId: value } 
-        }); /*SingleField*/
+        }); /*SingleField enum variant*/
     }
 }
 
@@ -242,12 +238,13 @@ class DelegateActivityHelper extends someDataMaker {
        DelegateActivity,
        DelegateActivityLike
    >(DelegateActivitySchema, { isMainnet: true });
+
     CapoLifecycleActivities(
         value: CapoLifecycleActivityLike
     ) {
         return this.enumCast.toUplcData({ 
            CapoLifecycleActivities: { activity: value } 
-        }); /*SingleField*/
+        }); /*SingleField enum variant*/
     }
 
     DelegateLifecycleActivities(
@@ -255,7 +252,7 @@ class DelegateActivityHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            DelegateLifecycleActivities: { activity: value } 
-        }); /*SingleField*/
+        }); /*SingleField enum variant*/
     }
 
     SpendingActivities(
@@ -263,7 +260,7 @@ class DelegateActivityHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            SpendingActivities: { activity: value } 
-        }); /*SingleField*/
+        }); /*SingleField enum variant*/
     }
 
     MintingActivities(
@@ -271,7 +268,7 @@ class DelegateActivityHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            MintingActivities: { activity: value } 
-        }); /*SingleField*/
+        }); /*SingleField enum variant*/
     }
 
     BurningActivities(
@@ -279,7 +276,7 @@ class DelegateActivityHelper extends someDataMaker {
     ) {
         return this.enumCast.toUplcData({ 
            BurningActivities: { activity: value } 
-        }); /*SingleField*/
+        }); /*SingleField enum variant*/
     }
 
     /**
@@ -309,33 +306,27 @@ class DelegateActivityHelper extends someDataMaker {
                 CreatingDelegatedData: fields 
             });
         }
-    }
+    } /*multiFieldVariant/seeded enum accessor*/ 
 
 
-    UpdatingDelegatedData(fields: { 
-        dataType: string,
-        recId: number[]
-    }) {
+    UpdatingDelegatedData(fields: DelegateActivity$UpdatingDelegatedDataLike) {
         return this.enumCast.toUplcData({
             UpdatingDelegatedData: fields 
         });
-    }
+    } /*multiFieldVariant enum accessor*/
 
-    DeletingDelegatedData(fields: { 
-        dataType: string,
-        recId: number[]
-    }) {
+    DeletingDelegatedData(fields: DelegateActivity$DeletingDelegatedDataLike) {
         return this.enumCast.toUplcData({
             DeletingDelegatedData: fields 
         });
-    }
+    } /*multiFieldVariant enum accessor*/
 
     MultipleDelegateActivities(
         value: Array<UplcData>
     ) {
         return this.enumCast.toUplcData({ 
            MultipleDelegateActivities: { activities: value } 
-        }); /*SingleField*/
+        }); /*SingleField enum variant*/
     }
 }
 

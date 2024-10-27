@@ -195,14 +195,6 @@ type _expandInputFields<V extends anySingleEnumVariantMeta> = {
 
 // -------------------- Non-Activity Variant Creator Types  --------------------
 
-export type EnumUplcResult<
-    V extends anySingleEnumVariantMeta,
-    hasData = {
-        uplcData: V["uplcData"];
-        variantName: V["variantName"];
-        enumId: V["enumId"];
-    }
-> = hasData;
 
 export type makesUplcEnumData<
     ET extends EnumTypeMeta<any, any>,

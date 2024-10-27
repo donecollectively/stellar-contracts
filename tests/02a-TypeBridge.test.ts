@@ -17,7 +17,7 @@ import {
 } from "../src/testing/index.js";
 import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts.js";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper.js";
-import { BundleType, ConfigFor } from "../src/StellarContract.js";
+import { mkDataBridgeType, ConfigFor } from "../src/StellarContract.js";
 import { dumpAny } from "../src/diagnostics.js";
 import { DelegationDetail } from "../src/delegation/RolesAndDelegates.js";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate.js";
@@ -49,8 +49,8 @@ describe("Type Bridge", async () => {
     let capo: CapoCanMintGenericUuts;
     let mintDelegate: MintDelegateWithGenericUuts;
     let mkDatum: MintDelegateWithGenericUuts["mkDatum"];
-    let bridgeFrom: MintDelegateWithGenericUuts["bridgeFrom"];
-    let bridgeTo: MintDelegateWithGenericUuts["bridgeTo"];
+    // let bridgeFrom: MintDelegateWithGenericUuts["bridgeFrom"];
+    // let bridgeTo: MintDelegateWithGenericUuts["bridgeTo"];
     let readDatum: MintDelegateWithGenericUuts["newReadDatum"];
     let activity: MintDelegateWithGenericUuts["activity"];
     beforeEach<localTC>(async (context) => {
@@ -69,9 +69,9 @@ describe("Type Bridge", async () => {
         capo = h.strella!;
         mintDelegate = await capo.getMintDelegate();
         mkDatum = mintDelegate.mkDatum;
-        bridgeFrom = mintDelegate.bridgeFrom;
-        bridgeTo = mintDelegate.bridgeTo;
-        readDatum = mintDelegate.newReadDatum;
+        // bridgeFrom = mintDelegate.bridgeFrom;
+        // bridgeTo = mintDelegate.bridgeTo;
+        // readDatum = mintDelegate.newReadDatum;
         activity = mintDelegate.activity;
     });
 
@@ -146,14 +146,14 @@ describe("Type Bridge", async () => {
         });
 
         describe("when a datum variant has only a tag", () => {
-            fit("creates a valid datum using the tag", async () => {
+            it("creates a valid datum using the tag", async () => {
                 const { mkDatum } = mintDelegate;
                 const datum = mkDatum.ScriptReference;
-                expect(datum.variantName).toBe("ScriptReference");
-                expect(datum.enumId.enumName).toBe("DelegateDatum");
-                expect(datum.type).toBe("DelegateDatum");
-                expect(datum.constrIndex).toBe(1);
-                const result = readDatum(datum.uplcData);
+                expect(datum.rawData.ScriptReference).toEqual({});
+                //@ts-expect-error tags aren't on every UplcData
+                expect(datum.tag).toBe(1);
+                expect(datum.dataPath).toBe("CapoHelpers::CapoDatum.ScriptReference");
+                // const result = readDatum(datum.uplcData);
                 expect(result.variant).toBe("ScriptReference");
             });
         });
@@ -196,7 +196,6 @@ describe("Type Bridge", async () => {
                 describe("... L2: with a single nested field", () => {
                     it("creates a valid datum using a chain of nested enum variant names", async () => {
                         const { mkDatum } = mintDelegate;
-                        type t = BundleType<typeof mintDelegate>;
                         const datum = mkDatum.HasNestedEnum.justAnInt(42);
                         expect(datum.type).toBe("SampleDatum");
                         expect(datum.data).toEqual({

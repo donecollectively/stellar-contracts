@@ -34,6 +34,12 @@ import type {
 } from "@helios-lang/ledger";
 import type { EnumTypeSchema } from "@helios-lang/type-utils";
 
+
+import { someDataMaker } from "../src/helios/dataBridge/someDataMaker.js"
+import type { tagOnly } from "../src/helios/HeliosScriptBundle.js"
+import type {hasSeed} from "../src/StellarContract.js"
+
+
 import type {
     RelativeDelegateLink, RelativeDelegateLinkLike,
     CapoDatum$CharterToken, CapoDatum$CharterTokenLike,
@@ -43,11 +49,7 @@ import type {
     CapoActivity, CapoActivityLike
 } from "./CapoWithGenericUuts.typeInfo.js"
 
-import { someDataMaker } from "../src/helios/dataBridge/someDataMaker.js"
-import type { tagOnly } from "../src/helios/HeliosScriptBundle.js"
-import type {hasSeed} from "../src/StellarContract.js"
-
-export default class mkDatumBridgeCapo extends someDataMaker {
+export default class mkDataBridgeCapo extends someDataMaker {
     datum: CapoDatumHelper = new CapoDatumHelper(this.bundle)   // datumAccessor
     CapoDatum: CapoDatumHelper = this.datum;
 
@@ -65,68 +67,22 @@ class CapoDatumHelper extends someDataMaker {
        CapoDatum,
        CapoDatumLike
    >(CapoDatumSchema, { isMainnet: true });
-    CharterToken(fields: { 
-        spendDelegateLink: {
-    uutName: /*minStructField*/ string
-    strategyName: /*minStructField*/ string
-    delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
-    config: /*minStructField*/ number[]
-},
-        spendInvariants: Array<{
-    uutName: /*minStructField*/ string
-    strategyName: /*minStructField*/ string
-    delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
-    config: /*minStructField*/ number[]
-}
->,
-        namedDelegates: Map<string, {
-    uutName: /*minStructField*/ string
-    strategyName: /*minStructField*/ string
-    delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
-    config: /*minStructField*/ number[]
-}
->,
-        mintDelegateLink: {
-    uutName: /*minStructField*/ string
-    strategyName: /*minStructField*/ string
-    delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
-    config: /*minStructField*/ number[]
-},
-        mintInvariants: Array<{
-    uutName: /*minStructField*/ string
-    strategyName: /*minStructField*/ string
-    delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
-    config: /*minStructField*/ number[]
-}
->,
-        govAuthorityLink: {
-    uutName: /*minStructField*/ string
-    strategyName: /*minStructField*/ string
-    delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
-    config: /*minStructField*/ number[]
-}
-    }) {
+
+    CharterToken(fields: CapoDatum$CharterTokenLike) {
         return this.enumCast.toUplcData({
             CharterToken: fields 
         });
-    }
+    } /*multiFieldVariant enum accessor*/
 
     get ScriptReference() {
         return this.enumCast.toUplcData({ ScriptReference: {} });
-    }
+    } /* tagOnly variant accessor */
 
-    DelegatedData(fields: { 
-        data: {
-    id: /*minStructField*/ number[]
-    type: /*minStructField*/ string
-},
-        version: IntLike,
-        otherDetails: UplcData
-    }) {
+    DelegatedData(fields: CapoDatum$DelegatedDataLike) {
         return this.enumCast.toUplcData({
             DelegatedData: fields 
         });
-    }
+    } /*multiFieldVariant enum accessor*/
 }
 
 
@@ -135,29 +91,30 @@ class CapoActivityHelper extends someDataMaker {
        CapoActivity,
        CapoActivityLike
    >(CapoActivitySchema, { isMainnet: true });
+
     get usingAuthority() {
         return this.enumCast.toUplcData({ usingAuthority: {} });
-    }
+    } /* tagOnly variant accessor */
 
     get updatingCharter() {
         return this.enumCast.toUplcData({ updatingCharter: {} });
-    }
+    } /* tagOnly variant accessor */
 
     get retiringRefScript() {
         return this.enumCast.toUplcData({ retiringRefScript: {} });
-    }
+    } /* tagOnly variant accessor */
 
     get addingSpendInvariant() {
         return this.enumCast.toUplcData({ addingSpendInvariant: {} });
-    }
+    } /* tagOnly variant accessor */
 
     get spendingDelegatedDatum() {
         return this.enumCast.toUplcData({ spendingDelegatedDatum: {} });
-    }
+    } /* tagOnly variant accessor */
 
     get updatingTypeMap() {
         return this.enumCast.toUplcData({ updatingTypeMap: {} });
-    }
+    } /* tagOnly variant accessor */
 }
 
 

@@ -116,11 +116,6 @@ export class mkDataBridgeGenerator
     // Any of these that are enums will have their own helper classes for creating
     //  the enum's specific variants.
     generateMkDataBridge(inputFile: string, projectName?: string) {
-        const typeFile = inputFile.replace(/\.mkData.ts$/, ".typeInfo.js");
-        let relativeTypeFile = path.relative(path.dirname(inputFile), typeFile);
-        if (relativeTypeFile[0] !== ".") {
-            relativeTypeFile = `./${relativeTypeFile}`;
-        }
         let imports = `
 import { Cast } from "@helios-lang/contract-utils"
 import type { UplcData } from "@helios-lang/uplc";
@@ -151,10 +146,7 @@ import type {
 } from "@helios-lang/ledger";
 import type { EnumTypeSchema } from "@helios-lang/type-utils";
 
-import type {\n${Object.entries(this.typeBundle.namedTypes)
-            .map(([typeName, _]) => `    ${typeName}, ${typeName}Like`)
-            .join(",\n")}
-} from "${relativeTypeFile}"\n`;
+`;
         let scImports = `import { someDataMaker, type tagOnly, type hasSeed } from "@donecollectively/stellar-contracts"\n`;
         if (this._isSC) {
             scImports =
@@ -181,7 +173,8 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
 // NOTE: this file is auto-generated; do not edit directly
 ${imports}
 ${scImports}
-export default class mkDatumBridge${
+${this.includeScriptNamedTypes(inputFile)}
+export default class mkDataBridge${
             this.bundle.program.name
         } extends someDataMaker {
 ${this.includeDatumAccessors()}
@@ -229,6 +222,22 @@ ${this.includeEnumSchemas()}
     //     // Implementation for generating datum accessors goes here
     //     throw new Error("Not yet implemented");
     // }
+
+    includeScriptNamedTypes(inputFile: string) {
+        const typeFile = inputFile.replace(/\.mkData.ts$/, ".typeInfo.js");
+        let relativeTypeFile = path.relative(path.dirname(inputFile), typeFile);
+        if (relativeTypeFile[0] !== ".") {
+            relativeTypeFile = `./${relativeTypeFile}`;
+        }
+
+        return `
+import type {\n${Object.entries(this.typeBundle.namedTypes)
+            .map(([typeName, typeDetails]) => {
+                return `    ${typeName}, ${typeName}Like`;
+            })
+            .join(",\n")}
+} from "${relativeTypeFile}"\n`;
+    }
 
     includeDatumAccessors() {
         const details = this.datumTypeDetails;
@@ -293,6 +302,8 @@ ${this.includeEnumSchemas()}
     }
 
     mkEnumHelperClass(typeDetails: fullEnumTypeDetails) {
+        const enumName = typeDetails.enumName;
+
         return (
             `class ${typeDetails.moreInfo.helperClassName} extends someDataMaker {\n` +
             // todo: this needs to reflect the actual structure for nested enums, not our facade
@@ -300,10 +311,12 @@ ${this.includeEnumSchemas()}
             `    enumCast = new Cast<\n` +
             `       ${typeDetails.canonicalTypeName},\n` +
             `       ${typeDetails.permissiveTypeName}\n` +
-            `   >(${typeDetails.enumName}Schema, { isMainnet: true });\n` +
+            `   >(${enumName}Schema, { isMainnet: true });\n` +
+            `\n`+
             this.mkEnumDatumAccessors(typeDetails) +
             `\n}\n\n`
         );
+
     }
 
     mkEnumDatumAccessors(enumDetails: fullEnumTypeDetails) {
@@ -315,7 +328,7 @@ ${this.includeEnumSchemas()}
                     return (
                         `    get ${variantName}() {\n` +
                         `        return this.enumCast.toUplcData({ ${variantName}: {} });\n` +
-                        `    }`
+                        `    } /* tagOnly variant accessor */`
                     );
                 } else if (fieldCount === 1) {
                     return this.mkSIngleFieldVariantAccessor(
@@ -352,6 +365,7 @@ ${this.includeEnumSchemas()}
                 .map((x) => mkFieldType(x, indent))
                 .join(",\n");
         }
+        const { permissiveTypeName } = variantDetails;
         if ("seed" == Object.keys(variantDetails.fields)[0]) {
             // && isSeededActivity
             function filteredFields(indent = 2) {
@@ -360,7 +374,6 @@ ${this.includeEnumSchemas()}
                     .map((x) => mkFieldType(x, indent))
                     .join(",\n");
             }
-            const { permissiveTypeName } = variantDetails;
 
             return (
                 `    /**\n` +
@@ -391,16 +404,15 @@ ${this.includeEnumSchemas()}
                 `                ${variantName}: fields \n` +
                 `            });\n` +
                 `        }\n` +
-                `    }\n`
+                `    } /*multiFieldVariant/seeded enum accessor*/ \n`
             );
         }
         return (
-            `    ${variantName}(fields: { \n${unfilteredFields()}\n` +
-            `    }) {\n` +
+            `    ${variantName}(fields: ${permissiveTypeName}) {\n` +
             `        return this.enumCast.toUplcData({\n` +
             `            ${variantName}: fields \n` +
             `        });\n` +
-            `    }`
+            `    } /*multiFieldVariant enum accessor*/`
         );
     }
 
@@ -417,7 +429,7 @@ ${this.includeEnumSchemas()}
                 `       const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);\n` +
                 `        return this.enumCast.toUplcData({ \n` +
                 `           ${variantName}: { ${fieldName}: seedTxOutputId } \n` +
-                `        });  /*SingleField/seeded*/\n` +
+                `        });  /*SingleField/seeded enum variant*/\n` +
                 `    }`
             );
         }
@@ -431,7 +443,7 @@ ${this.includeEnumSchemas()}
             `    ) {\n` +
             `        return this.enumCast.toUplcData({ \n` +
             `           ${variantName}: { ${fieldName}: value } \n` +
-            `        }); /*SingleField*/\n` +
+            `        }); /*SingleField enum variant*/\n` +
             `    }`
         );
     }

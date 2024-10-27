@@ -34,16 +34,18 @@ import type {
 } from "@helios-lang/ledger";
 import type { EnumTypeSchema } from "@helios-lang/type-utils";
 
-import type {
-    MinterActivity$CreatingNewSpendDelegate, MinterActivity$CreatingNewSpendDelegateLike,
-    MinterActivity, MinterActivityLike
-} from "./CapoMinter.typeInfo.js"
 
 import { someDataMaker } from "../helios/dataBridge/someDataMaker.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type {hasSeed} from "../StellarContract.js"
 
-export default class mkDatumBridgeCapoMinter extends someDataMaker {
+
+import type {
+    MinterActivity$CreatingNewSpendDelegate, MinterActivity$CreatingNewSpendDelegateLike,
+    MinterActivity, MinterActivityLike
+} from "./CapoMinter.typeInfo.js"
+
+export default class mkDataBridgeCapoMinter extends someDataMaker {
 
     // include accessors for activity types
 
@@ -59,37 +61,38 @@ class MinterActivityHelper extends someDataMaker {
        MinterActivity,
        MinterActivityLike
    >(MinterActivitySchema, { isMainnet: true });
+
     mintingCharter(
         value: Address | string
     ) {
         return this.enumCast.toUplcData({ 
            mintingCharter: { owner: value } 
-        }); /*SingleField*/
+        }); /*SingleField enum variant*/
     }
 
     get mintWithDelegateAuthorizing() {
         return this.enumCast.toUplcData({ mintWithDelegateAuthorizing: {} });
-    }
+    } /* tagOnly variant accessor */
 
     addingMintInvariant(value: hasSeed | TxOutputId | string) {
        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         return this.enumCast.toUplcData({ 
            addingMintInvariant: { seed: seedTxOutputId } 
-        });  /*SingleField/seeded*/
+        });  /*SingleField/seeded enum variant*/
     }
 
     addingSpendInvariant(value: hasSeed | TxOutputId | string) {
        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         return this.enumCast.toUplcData({ 
            addingSpendInvariant: { seed: seedTxOutputId } 
-        });  /*SingleField/seeded*/
+        });  /*SingleField/seeded enum variant*/
     }
 
     ForcingNewMintDelegate(value: hasSeed | TxOutputId | string) {
        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         return this.enumCast.toUplcData({ 
            ForcingNewMintDelegate: { seed: seedTxOutputId } 
-        });  /*SingleField/seeded*/
+        });  /*SingleField/seeded enum variant*/
     }
 
     /**
@@ -119,7 +122,7 @@ class MinterActivityHelper extends someDataMaker {
                 CreatingNewSpendDelegate: fields 
             });
         }
-    }
+    } /*multiFieldVariant/seeded enum accessor*/ 
 
 }
 

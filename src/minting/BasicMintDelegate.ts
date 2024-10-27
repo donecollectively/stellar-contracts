@@ -2,7 +2,7 @@ import { Datum } from "@hyperionbt/helios";
 import * as helios from "@hyperionbt/helios";
 
 import { Activity, datum } from "../StellarContract.js";
-import type { BundleType, hasSeed, isActivity } from "../StellarContract.js";
+import type { mkDataBridgeType, hasSeed, isActivity } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
 
