@@ -50,7 +50,7 @@ import type {
 } from "./CapoHeliosBundle.typeInfo.js"
 
 export default class mkDataBridgeCapo extends someDataMaker {
-    datum: CapoDatumHelper = new CapoDatumHelper(this.bundle)   // datumAccessor
+    datum: CapoDatumHelper = new CapoDatumHelper(this.bundle)   // datumAccessor/enum 
     CapoDatum: CapoDatumHelper = this.datum;
 
     // include accessors for activity types

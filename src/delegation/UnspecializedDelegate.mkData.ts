@@ -59,7 +59,7 @@ import type {
 } from "./UnspecializedDelegate.typeInfo.js"
 
 export default class mkDataBridgeBasicDelegate extends someDataMaker {
-    datum: DelegateDatumHelper = new DelegateDatumHelper(this.bundle)   // datumAccessor
+    datum: DelegateDatumHelper = new DelegateDatumHelper(this.bundle)   // datumAccessor/enum 
     DelegateDatum: DelegateDatumHelper = this.datum;
 
     // include accessors for activity types
@@ -84,12 +84,7 @@ class DelegateDatumHelper extends someDataMaker {
     } /*multiFieldVariant enum accessor*/
 
     IsDelegation(
-        value: {
-    capoAddr: /*minStructField*/ Address | string
-    mph: /*minStructField*/ MintingPolicyHash | string | number[]
-    tn: /*minStructField*/ number[]
-}
-
+        value: DelegationDetailLike
     ) {
         return this.enumCast.toUplcData({ 
            IsDelegation: { dd: value } 

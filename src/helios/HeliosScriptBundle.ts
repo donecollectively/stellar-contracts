@@ -76,6 +76,9 @@ export type typeDetails<T=undefined> = {
     typeSchema: TypeSchema;
     dataType: DataType;
 
+    canonicalTypeName? : string; // type name
+    permissiveTypeName? : string; // type name
+
     canonicalType: string; // minimal canonical type (name if avaiable, or inline type as string)
     permissiveType?: string; // minimal permissive type (name if available, or inline type as string)
 

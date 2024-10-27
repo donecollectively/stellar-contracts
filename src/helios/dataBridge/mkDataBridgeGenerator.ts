@@ -224,6 +224,7 @@ ${this.includeEnumSchemas()}
     // }
 
     includeScriptNamedTypes(inputFile: string) {
+        // if (inputFile.match(/StructDatum/)) debugger;
         const typeFile = inputFile.replace(/\.mkData.ts$/, ".typeInfo.js");
         let relativeTypeFile = path.relative(path.dirname(inputFile), typeFile);
         if (relativeTypeFile[0] !== ".") {
@@ -251,22 +252,31 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
             } = d;
             return (
                 "" +
-                `    datum: ${helperClassName} = new ${helperClassName}(this.bundle)   // datumAccessor\n` +
+                `    datum: ${helperClassName} = new ${helperClassName}(this.bundle)   // datumAccessor/enum \n` +
                 `    ${details.typeSchema.name}: ${helperClassName} = this.datum;\n`
             );
             // ----
         }
 
         if (details.typeSchema.kind === "variant") {
-            throw new Error(`Yup, need the type-name here`);
+            throw new Error(`Datum as specific enum-variant not yet supported`);
         }
 
-        const typeName = details.canonicalType; // ??? name?
-        const permissiveTypeName = details.permissiveType; // !!! name?
+        const typeName =
+            ("canonicalTypeName" in details ? details.canonicalTypeName : "") ||
+            details.canonicalType;
+        const permissiveTypeName =
+            ("permissiveTypeName" in details
+                ? details.permissiveTypeName
+                : "") || details.permissiveType;
         const castDef = `    __datumCast = new Cast<
         ${typeName}, ${permissiveTypeName}
-    >(${details.typeSchema}}, { isMainnet: true }); // datumAccessorCast\n`;
-        const datumAccessor = `    datum(x: ${permissiveTypeName}) {
+    >(${typeName}Schema}, { isMainnet: true }); // datumAccessorCast\n`;
+        const datumAccessor = `
+    /**
+     * generates UplcData for the datum type (${typeName}) for the ${this.bundle.program.name} script
+     */
+    datum(x: ${permissiveTypeName}) {
         return this.__datumCast.toUplcData(x);
     }\n`;
 
@@ -274,15 +284,21 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
             return (
                 castDef +
                 datumAccessor +
+                `
+    /**
+     * generates UplcData for the datum type (${typeName}) for the ${this.bundle.program.name} script
+     * @remarks - same as {@link datum}
+     */
+`+
                 `    ${details.typeSchema.name}(fields: ${permissiveTypeName}) {\n` +
                 `        return this.__datumCast.toUplcData(fields);\n` +
-                `    }\n`
+                `    } // datumAccessor/byName \n`
             );
         }
 
         // if it's not an enum or struct, there's no name to expose separately;
         // just the accessor is enough, with it supporting cast object.
-        // todo: use a branded structure for the result??
+
         return castDef + datumAccessor;
     }
 
@@ -312,11 +328,10 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
             `       ${typeDetails.canonicalTypeName},\n` +
             `       ${typeDetails.permissiveTypeName}\n` +
             `   >(${enumName}Schema, { isMainnet: true });\n` +
-            `\n`+
+            `\n` +
             this.mkEnumDatumAccessors(typeDetails) +
             `\n}\n\n`
         );
-
     }
 
     mkEnumDatumAccessors(enumDetails: fullEnumTypeDetails) {

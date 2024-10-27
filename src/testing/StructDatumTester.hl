@@ -1,0 +1,22 @@
+spending StructDatumTester
+
+struct struct3 {
+    thirdLevelF1: Int
+}
+
+struct OtherStruct {
+    secondLevelF1: Int
+    secondLevelF2: struct3
+}
+
+struct DatumStruct {
+    field1: Int
+    field2: String
+    field3: Map[String]OtherStruct
+}
+
+func main(d: DatumStruct, r: Int) -> Bool {
+    assert (r > d.field1, "redeemer int must be greater than field1");
+
+    true
+}

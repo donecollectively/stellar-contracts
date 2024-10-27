@@ -83,7 +83,7 @@ export class BundleTypes implements TypeGenHooks<undefined> {
         if (schema.kind === "enum") {
             return this.gatherEnumDetails(type as any, useTypeNamesAt);
         } else {
-            return this.gatherNonEnumDetails(type, useTypeNamesAt);
+            return this.gatherOtherTypeDetails(type, useTypeNamesAt);
         }
     }
 
@@ -95,7 +95,6 @@ export class BundleTypes implements TypeGenHooks<undefined> {
         const {
             //@ts-expect-error - some schemas don't have a name, but anything here does.
             typeSchema: { name },
-            //@ts-expect-error - some details have this, others don't
             canonicalTypeName,
         } = details;
         if (canonicalTypeName) {
@@ -109,7 +108,7 @@ export class BundleTypes implements TypeGenHooks<undefined> {
         return schema.id.replace(/__module__(\w+)?__.*$/, "$1");
     }
 
-    gatherNonEnumDetails(
+    gatherOtherTypeDetails(
         dataType: DataType,
         useTypeNamesAt?: "nestedField"
     ): typeDetails {
@@ -143,16 +142,8 @@ export class BundleTypes implements TypeGenHooks<undefined> {
                 // this.gatherTypeDetails(type.itemType);
                 break;
             case "map":
-                console.log(
-                    "Is there any need to register a map's member DataTypes?"
-                );
-                console.log(
-                    " a Map's members must be registered to find data type not used elsewhere"
-                );
-
-            // this.gatherTypeDetails((dataType as any).types[0]);
-            // this.gatherTypeDetails((dataType as any).types[1]);
-
+                this.gatherTypeDetails((dataType as any).types[0]);
+                this.gatherTypeDetails((dataType as any).types[1]);
             case "option":
                 // console.log("how to register an Option's nested DataType?");
                 this.gatherTypeDetails((dataType as any).types[0]);
@@ -181,18 +172,18 @@ export class BundleTypes implements TypeGenHooks<undefined> {
             canonicalType: this.mkMinimalType(
                 "canonical",
                 schema,
-                useTypeNamesAt
             ),
             permissiveType: this.mkMinimalType(
                 "permissive",
                 schema,
-                useTypeNamesAt
             ),
             moreInfo: undefined,
         };
         // if (schema.kind !== "internal") debugger
-        if (schema.kind === "variant") debugger
+        // if (schema.kind === "struct") debugger
         if (typeName) {
+            details.canonicalTypeName = typeName;
+            details.permissiveTypeName = `${typeName}Like`;
             this.registerNamedType(details);
             const moreInfo =
                 schema.kind == "struct"
