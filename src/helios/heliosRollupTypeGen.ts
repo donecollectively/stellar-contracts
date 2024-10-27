@@ -215,7 +215,7 @@ export function heliosRollupTypeGen(
 
                 const SomeBundleClass = await rollupSingleBundleToBundleClass(id);
                 let bundle;
-                let isHarmlessCapoOverlap = false
+                let replacedCapo = false
                 if (SomeBundleClass.isCapoBundle) {
                     if (state.hasExplicitCapoBundle) {
                         throw new Error(
@@ -226,30 +226,24 @@ export function heliosRollupTypeGen(
                         const digestNew = shortHash(JSON.stringify(SomeBundleClass.prototype.modules));
 
                         if (digestExisting !== digestNew) {
-                            console.log("Late-arriving Capo.  Project has these bundles already loaded: ", [...state.project.bundleEntries.values()].map(x => x.filename))
                             console.log(`existing = ${digestExisting}`, state.capoBundle.modules.map(x => (JSON.stringify({name: x.name, content: shortHash(x.content)}))))
                             console.log(`late arrival: ${digestNew}`, SomeBundleClass.prototype.modules.map( x => (JSON.stringify({name: x.name, content: shortHash(x.content)}))))
-                            console.log(" ^^^ from", id)
-                            throw new Error(
-                                `Capo bundle must be the first bundle loaded in a project`
-                            )
+                            console.log("  ^^^^ from", id)
+                            console.log("  ---- Late-arriving Capo.  Reinitializing project with updated dependencies...");
+                            const ts1 = Date.now();
+                            state.project = state.project.replaceWithNewCapo(id, SomeBundleClass);
+                            console.log("  ---- Reinitialized project in", Date.now() - ts1, "ms");
+                            replacedCapo = true;
                         } else {
-                            // possibly just start a new project when this happens
-                            console.log("Warning: new capo bundle has the same modules as the existing one.  Try to load it first if you have any problems with its content being available to your other bundles");
-                            isHarmlessCapoOverlap = true;
+                            console.log("  ---- warning: second capo discovered, though its modules aren't different from default. Ignoring.")
                         }
-                    } else {
-                        state.hasExplicitCapoBundle = true;
                     }
+                    state.hasExplicitCapoBundle = true;
                     bundle =  new SomeBundleClass();
-                    // just-in-time load of custom capo bundle to project
-                    if (isHarmlessCapoOverlap) {
-                        state.project.loadBundleWithClass(id, SomeBundleClass, isHarmlessCapoOverlap);
-                        state.project.generateBundleTypes(id);
-                    } else {                        
-                        state.project.loadBundleWithClass(id, SomeBundleClass);
-                        state.project.generateBundleTypes(id);
-                        state.capoBundle = bundle;
+                    state.capoBundle = bundle;
+                    if (!replacedCapo) {
+                        // state.project.loadBundleWithClass(id, SomeBundleClass);
+                        // state.project.generateBundleTypes(id);
                     }
                     this.warn(` 👁️ checking (Capo) helios bundle ${SomeBundleClass.name}`)
                     if (bundle.loadSources) {

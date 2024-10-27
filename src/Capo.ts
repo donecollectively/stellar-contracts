@@ -534,7 +534,7 @@ export abstract class Capo<
                 `    export default class MyCapoBundle extends CapoHeliosBundle {\n` +
                 `       // get modules() {  // optional\n` +
                 `       //     return [\n` +
-                `       //         ...super.modules(),\n` +
+                `       //         ...super.modules,\n` +
                 `       //         // additional custom .hl module imports here\n` +
                 `       //     ];\n` +
                 `       // }\n` +

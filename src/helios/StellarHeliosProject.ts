@@ -53,10 +53,8 @@ export class StellarHeliosProject {
         this.bundleEntries = new Map();
         this.projectRoot = StellarHeliosProject.findProjectRoot();
     }
-    static compiledProjectFilename(root: string) {
-        return `${root}/hlproject.compiled.mjs`;
-    }
-    _isSC: boolean | undefined;
+
+    _isSC: boolean | undefined;    
 
     isStellarContracts() {
         if (this._isSC == undefined) {
@@ -74,8 +72,17 @@ export class StellarHeliosProject {
         return this._isSC;
     }
 
-    get compiledProjectFilename() {
-        return StellarHeliosProject.compiledProjectFilename(this.projectRoot);
+    replaceWithNewCapo(absoluteFilename: string, newCapoClass: typeof HeliosScriptBundle) {
+        const replacement = new StellarHeliosProject();
+        replacement.loadBundleWithClass(absoluteFilename, newCapoClass);
+        replacement.generateBundleTypes(absoluteFilename);
+        for (const [filename, entry] of this.bundleEntries.entries()) {
+            if (!entry.bundleClass?.isCapoBundle) {
+                replacement.loadBundleWithClass(filename, entry.bundleClass!);
+                replacement.generateBundleTypes( filename );
+            }
+        }
+        return replacement
     }
 
     // call from code-generated hlproject.mjs with instantiated bundle
@@ -181,6 +188,7 @@ export class StellarHeliosProject {
     }
 
     private getImportNameFromHlBundle(filename: string) {
+        throw new Error(`unused?`)
         const fileContent = readFileSync(filename, "utf-8");
         const importNameMatch = fileContent.match(
             /export\s+default\s+(?:class|function)\s+([a-zA-Z0-9_]+)/
