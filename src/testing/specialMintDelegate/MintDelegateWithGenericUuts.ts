@@ -1,12 +1,12 @@
-import { Activity, type mkDataBridgeType, type hasSeed } from "../../StellarContract.js";
+import { Activity, type dataBridgeType, type hasSeed } from "../../StellarContract.js";
 import { type hasSeedUtxo } from "../../StellarTxnContext.js";
 import { HeliosScriptBundle } from "../../helios/HeliosScriptBundle.js";
 import { BasicMintDelegate } from "../../minting/BasicMintDelegate.js";
 import uutMintingMintDelegateBundle from "./uutMintingMintDelegate.hlbundle.js";
-import mkDataBridge from "./uutMintingMintDelegate.mkData.js"
+import DataBridge from "./uutMintingMintDelegate.bridge.js"
 
 export class MintDelegateWithGenericUuts extends BasicMintDelegate {
-    mkDataClass = mkDataBridge;
+    dataBridgeClass = DataBridge;
     get delegateName() { return "uutMintingDelegate" }
 
     scriptBundle() {

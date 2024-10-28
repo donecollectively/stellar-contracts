@@ -25,13 +25,11 @@ export type VariantFlavor = "tagOnly" | "fields" | "singletonField";
 export type SpecialActivityFlags = "isSeededActivity" | "noSpecialFlags";
 
 export type tagOnly=Record<string, never>
+export const tagOnly: tagOnly = Object.freeze({})
 
 // external-facing types for reading and writing data for use in contract scripts.
 // 1. create data for Datum or other non-Activity scenarios
 
-export type makesSomeUplcData<T> = T extends EnumTypeMeta<any, any>
-    ? makesUplcEnumData<T>
-    : uplcDataMaker<T>;
 
 
 export type uplcDataMaker<permissiveType> =
@@ -199,44 +197,6 @@ type _expandInputFields<V extends anySingleEnumVariantMeta> = {
 // -------------------- Non-Activity Variant Creator Types  --------------------
 
 
-export type makesUplcEnumData<
-    ET extends EnumTypeMeta<any, any>,
-    VARIANTS extends VariantMap = ET extends EnumTypeMeta<any, infer VARIANTS>
-        ? VARIANTS
-        : never
-> = someDataMaker &{
-    // prettier-ignore
-    [k in keyof VARIANTS]: EnumVariantCreator<VARIANTS[k]>
-};
-
-type _singletonFieldVariantCreator<
-    V extends anySingleEnumVariantMeta,
-    rawArgType = V["data"],
-    RESULT_TYPE = EnumUplcResult<V>,
-    //rawArgType
-    rawFuncType = (field: V["data"]) => RESULT_TYPE
-> = rawFuncType;
-
-type _multiFieldVariantCreator<
-    V extends anySingleEnumVariantMeta,
-    RESULT_TYPE = EnumUplcResult<V>,
-    rawFuncType = (fields: _expandInputFields<V>) => RESULT_TYPE
-> = rawFuncType;
-
-export type EnumVariantCreator<
-    VARIANT extends anySingleEnumVariantMeta,
-    RESULT_TYPE = EnumUplcResult<VARIANT>,
-    ARITY = _variantFieldArity<VARIANT>
-> = ARITY extends "tagOnly"
-    ? // is a simple getter, no function call needed
-      RESULT_TYPE
-    : ARITY extends "singletonField"
-    ? VARIANT["data"] extends EnumTypeMeta<any, any>
-    ? makesUplcEnumData<VARIANT["data"]>
-    : _singletonFieldVariantCreator<VARIANT>
-    : ARITY extends "fields"
-    ? _multiFieldVariantCreator<VARIANT, RESULT_TYPE>
-    : never;
 
 type _variantFieldArity<V extends anySingleEnumVariantMeta> = V["variantKind"];
 

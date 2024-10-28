@@ -355,7 +355,7 @@ import { TxOutputDatum } from "@helios-lang/ledger-babbage";
 import type { tokenPredicate } from "./UtxoHelper.js";
 import type { HeliosScriptBundle } from "./helios/HeliosScriptBundle.js";
 import BasicDelegateScript from "./delegation/BasicDelegate.hl";
-import mkDataBridgeCapo from "./CapoHeliosBundle.mkData.js";
+import CapoDataBridge from "./CapoHeliosBundle.bridge.js";
 
 /**
  * Schema for Charter Datum, which allows state to be stored in the Leader contract
@@ -516,7 +516,7 @@ export abstract class Capo<
     // implements hasSettingsType<SELF>
     //, hasRoleMap<SELF>
     static currentRev: bigint = 1n;
-    mkDataClass = mkDataBridgeCapo
+    dataBridgeClass = CapoDataBridge
     verifyConfigs(): Promise<any> {
         return this.verifyCoreDelegates();
     }

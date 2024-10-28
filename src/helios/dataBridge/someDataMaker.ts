@@ -6,8 +6,6 @@ import type {
     EnumTypeMeta,
     makesUplcActivityEnumData,
     EnumUplcActivityResult,
-    EnumUplcResult,
-    EnumVariantCreator,
     HeliosBundleClass,
     HeliosBundleTypeDetails,
     HeliosBundleTypes,
@@ -17,8 +15,6 @@ import type {
     enumTypeDetails,
     makesSomeActivityData,
     makesUplcActivityData,
-    makesSomeUplcData,
-    makesUplcEnumData,
     readsSomeUplcData,
     readsUplcData,
     readsUplcEnumData,
@@ -32,6 +28,7 @@ import type { hasSeed } from "../../StellarContract.js"
 import { TxOutputId } from "@helios-lang/ledger-babbage"
 import { StellarTxnContext } from "../../StellarTxnContext.js"
 import type { SeedAttrs } from "../../delegation/UutName.js"
+import type { UplcData } from "@helios-lang/uplc"
 
 // const rawDataMakerProxy = new Proxy(
 //     {},
@@ -141,10 +138,13 @@ export class someDataMaker { // extends (dataMakerProxyBase as any) {
     }
     __schema : TypeSchema 
     __cast: Cast<any,any>
-    declare  datum: someDataMaker
-    // get datum() {
-    //     throw new Error(`each dataMaker makes its own datum`)
-    // }
+    // 
+    // declare activity: someDataMaker | ((...args:any) => UplcData)
+
+    // declare  datum: someDataMaker | ((...args:any) => UplcData)
+    // // get datum() {
+    // //     throw new Error(`each dataMaker makes its own datum`)
+    // // }
 
     getSeed(arg: hasSeed | TxOutputId ): TxOutputId {
         if (arg instanceof TxOutputId) return arg;

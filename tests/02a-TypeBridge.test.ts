@@ -17,7 +17,7 @@ import {
 } from "../src/testing/index.js";
 import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts.js";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper.js";
-import { mkDataBridgeType, ConfigFor } from "../src/StellarContract.js";
+import { dataBridgeType, ConfigFor } from "../src/StellarContract.js";
 import { dumpAny } from "../src/diagnostics.js";
 import { DelegationDetail } from "../src/delegation/RolesAndDelegates.js";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate.js";
@@ -27,6 +27,7 @@ import { TestHelperState } from "../src/testing/types.js";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 import { expectTxnError } from "../src/testing/StellarTestHelper.js";
 import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/MintDelegateWithGenericUuts.js";
+import { tagOnly } from "../src/helios/HeliosScriptBundle.js";
 
 type localTC = StellarTestContext<
     DefaultCapoTestHelper<CapoCanMintGenericUuts>
@@ -152,9 +153,9 @@ describe("Type Bridge", async () => {
                 expect(datum.rawData.ScriptReference).toEqual({});
                 //@ts-expect-error tags aren't on every UplcData
                 expect(datum.tag).toBe(1);
-                expect(datum.dataPath).toBe("CapoHelpers::CapoDatum.ScriptReference");
+                expect(datum.dataPath).toEqual("uutMintingDelegate::DelegateDatum.ScriptReference");
                 // const result = readDatum(datum.uplcData);
-                expect(result.variant).toBe("ScriptReference");
+                // expect(result.variant).toBe("ScriptReference");
             });
         });
 
@@ -187,27 +188,38 @@ describe("Type Bridge", async () => {
                 describe("... L2: with just a tag", () => {
                     it("creates a valid datum using the tag", async () => {
                         const { mkDatum } = mintDelegate;
-                        const datum = mkDatum.HasNestedEnum.justATag;
-                        expect(datum.type).toBe("SampleDatum");
-                        expect(datum.data).toEqual({});
+                        const datum = mkDatum.HasNestedEnum({justATag: tagOnly})
+                        const backToJS = mintDelegate.readDatum(datum);
+                        expect(backToJS.type).toBe("SampleDatum");
+                        expect(backToJS.data).toEqual({});
                     });
                 })
 
                 describe("... L2: with a single nested field", () => {
                     it("creates a valid datum using a chain of nested enum variant names", async () => {
                         const { mkDatum } = mintDelegate;
-                        const datum = mkDatum.HasNestedEnum.justAnInt(42);
-                        expect(datum.type).toBe("SampleDatum");
-                        expect(datum.data).toEqual({
-                            nested: { someField: 1n },
+                        // todo: support special-case accessor for nested enums, where the inner
+                        //   item is a proxy for generating both levels of ConstrData with the same
+                        //   single-field and seed semanatics as are used for the first level.
+                        // const datum = mkDatum.HasNestedEnum.justAnInt(42);
+                        const datum = mkDatum.HasNestedEnum({justAnInt: {m:42}})
+
+                        debugger
+                        expect(datum.dataPath).toBe("uutMintingDelegate::DelegateDatum.HasNestedEnum");
+                        const result = await mintDelegate.newReadDatum(
+                            datum
+                        );
+                        expect(result).toEqual({
+                            HasNestedEnum: { nested: { justAnInt: {m: 42n} } },
                         });
-                        const result = mintDelegate.readDatum(
-                            datum.uplcData
+                        const result2 = mintDelegate.offchain.DelegateDatum(
+                            datum
                         ) as any;
-                        const result2 = mintDelegate.bridgeFrom.DelegateDatum(
-                            datum.uplcData
+                        expect(result2).toEqual(result);
+                        const result3 = mintDelegate.read.DelegateDatum(
+                            datum
                         ) as any;
-                        expect(result).toEqual(result2);
+                        expect(result3).toEqual(result);
                     });
                 });
                 describe("... L2: with a single-field nested struct" , () => {

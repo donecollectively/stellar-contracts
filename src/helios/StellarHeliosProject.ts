@@ -187,26 +187,6 @@ export class StellarHeliosProject {
         // this.bundleEntries.set(filename, { filename, bundle, types, importName });
     }
 
-    private getImportNameFromHlBundle(filename: string) {
-        throw new Error(`unused?`)
-        const fileContent = readFileSync(filename, "utf-8");
-        const importNameMatch = fileContent.match(
-            /export\s+default\s+(?:class|function)\s+([a-zA-Z0-9_]+)/
-        );
-        if (!importNameMatch) {
-            throw new Error(
-                `could not extract **default export** name from ${filename}\n` +
-                    `  expected: export default class ...`
-            );
-        }
-        const importName = importNameMatch[1];
-        if (!importName.match(/^[a-zA-Z0-9_]+$/)) {
-            throw new Error(
-                `invalid import name from ${filename}: ${importName}`
-            );
-        }
-        return importName;
-    }
 
     hasBundleClass(filename: string) {
         if (this.bundleEntries.has(filename)) {
@@ -233,8 +213,8 @@ export class StellarHeliosProject {
 
         this.writeTypeInfo(oneFile, bundleEntry);
 
-        this.writeMkDataBridge(
-            oneFile.replace(/(\.hlbundle)?\.[tj]s$/, ".mkData.ts"),
+        this.writeDataBridgeCode(
+            oneFile.replace(/(\.hlbundle)?\.[tj]s$/, ".bridge.ts"),
             bundleEntry
         );
 
@@ -252,35 +232,35 @@ export class StellarHeliosProject {
         // }
     }
 
-    // uses the mkDataBridgeGenerator class to generate a *.mkData.ts file
-    writeMkDataBridge(oneFilename: string, bundleEntry: BundleStatusEntry) {
+    // uses the dataBridgeGenerator class to generate a *.bridge.ts file
+    writeDataBridgeCode(oneFilename: string, bundleEntry: BundleStatusEntry) {
         const fn = this.normalizeFilePath(oneFilename);
-        const mkDataFn = fn.replace(/\.hlbundle\.[jt]s$/, ".mkData.ts");
+        const dataBridgeFn = fn.replace(/\.hlbundle\.[jt]s$/, ".bridge.ts");
 
         const bundle = bundleEntry.bundle;
         const status = bundleEntry.status;
         if (!bundle) {
             console.warn(
-                `not writing mkData bridge for ${fn} for newly-added bundle (check for hasBundleClass() first?)`
+                `not writing data bridge for ${fn} for newly-added bundle (check for hasBundleClass() first?)`
             );
             return;
         }
         if (status !== "loaded") {
             throw new Error(
-                `cannot generate mkData bridge for ${fn} with status ${status}`
+                `cannot generate data bridge for ${fn} with status ${status}`
             );
         }
-        const mkDataGenerator = mkDataBridgeGenerator.create(bundle);
-        if (this.isStellarContracts()) mkDataGenerator._isInStellarContractsLib(true)
-        const mkDataSource = this.isStellarContracts()
-            ? mkDataGenerator.generateMkDataBridge(
+        const bridgeGenerator = dataBridgeGenerator.create(bundle);
+        if (this.isStellarContracts()) bridgeGenerator._isInStellarContractsLib(true)
+        const bridgeSourceCode = this.isStellarContracts()
+            ? bridgeGenerator.generateDataBridge(
                 fn,
                   "stellar-contracts"
               )
-            : mkDataGenerator.generateMkDataBridge(fn);
-            this.writeIfUnchanged( mkDataFn, mkDataSource);
-        // console.log(`NOT writing mkData bridge to ${mkDataFn}:${mkDataSource}`);
-        writeFileSync(mkDataFn, mkDataSource);
+            : bridgeGenerator.generateDataBridge(fn);
+            this.writeIfUnchanged( dataBridgeFn, bridgeSourceCode);
+        // console.log(`NOT writing data bridge code to ${dataBridgeFn}:${bridgeSourceCode}`);
+        writeFileSync(dataBridgeFn, bridgeSourceCode);
     }
 
     writeIfUnchanged(filename: string, source: string) {

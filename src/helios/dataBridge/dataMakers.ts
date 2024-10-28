@@ -6,6 +6,5 @@ export class ActivityMaker extends someDataMaker {
 }
 
 export class DataMaker extends someDataMaker {
-
 }
 
