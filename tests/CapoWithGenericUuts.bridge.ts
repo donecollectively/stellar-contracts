@@ -39,6 +39,8 @@ import { someDataMaker } from "../src/helios/dataBridge/someDataMaker.js"
 import type { tagOnly } from "../src/helios/HeliosScriptBundle.js"
 import type {hasSeed} from "../src/StellarContract.js"
 
+// todo: namespacing for all the good stuff here
+// namespace CapoDataBridge {
 
 import type {
     RelativeDelegateLink, RelativeDelegateLinkLike,
@@ -49,11 +51,33 @@ import type {
     CapoActivity, CapoActivityLike
 } from "./CapoWithGenericUuts.typeInfo.js"
 
+
+/**
+ * data bridge for Capo script (defined in CapoBundleWithGenericUuts)}
+ * main: src/DefaultCapo.hl, project: stellar-contracts
+ * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
+ */
 export default class CapoDataBridge extends someDataMaker {
+    // for datum:
     datum: CapoDatumHelper = new CapoDatumHelper(this.bundle)   // datumAccessor/enum 
     CapoDatum: CapoDatumHelper = this.datum;
+    readDatum = (d: UplcData) => {
+        return this.datum.enumCast.fromUplcData(d);
+    }
 
-    // include accessors for activity types
+
+// for activity types:
+
+    __activityCast = new Cast<
+        CapoActivity, CapoActivityLike
+    >(CapoActivitySchema, { isMainnet: true }); // activityAccessorCast
+
+    /**
+     * generates UplcData for the activity type (CapoActivity) for the Capo script
+     */
+    activity : CapoActivityHelper= new CapoActivityHelper(this.bundle); // activityAccessor/enum
+    CapoActivity: CapoActivityHelper = this.activity;
+
 
     // include accessors for other enums (other than datum/activity)
 
@@ -647,3 +671,4 @@ export const CapoActivitySchema : EnumTypeSchema = {
         }
     ]
 };
+// }

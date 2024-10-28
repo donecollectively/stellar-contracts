@@ -48,6 +48,7 @@ import {
 import type { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
 import type { DataMaker } from "./helios/dataBridge/dataMakers.js";
 import type { someDataMaker } from "./helios/dataBridge/someDataMaker.js";
+import type { dataBridgeType, findActivityType, findDatumType } from "./helios/dataBridge/BridgeTypeUtils.js";
 
 type NetworkName = "testnet" | "mainnet";
 let configuredNetwork: NetworkName | undefined = undefined;
@@ -379,30 +380,6 @@ export type ActorContext<WTP extends Wallet = Wallet> = {
 export type NetworkContext<NWT extends Network = Network> = {
     network: NWT;
 };
-
-//!!! todo: type configuredStellarClass = class -> networkStuff -> withParams = stellar instance.
-
-export type dataBridgeType<
-    T extends {dataBridgeClass: Option<typeof DataMaker>},
-    bridgeClassMaybe = T["dataBridgeClass"] 
-> = bridgeClassMaybe extends typeof DataMaker ? InstanceType<bridgeClassMaybe> : never;
-type findDatumType<
-    T extends {dataBridgeClass: any},
-    BC extends dataBridgeType<T> = dataBridgeType<T>,
-    DT = BC extends { datum: infer D } ? D : 
-        BC extends DataMaker ? BC : "NO DATUM DETECTED"
-> = DT 
-type findReadDatumType<
-    T extends DataMaker | never
-> = T extends DataMaker ?
-    T extends { readDatum : infer D } ? D : "can't infer required readDatum"
-    : never;
-
-type findActivityType<
-    T extends DataMaker | never
-> = T extends DataMaker ?
-    T extends { activity : infer A } ? A : "can't infer required activity"
-    : never;
 
 /**
  * Basic wrapper and off-chain facade for interacting with a single Plutus contract script
@@ -1533,7 +1510,7 @@ export class StellarContract<
      * guide for additional details.
      *
      */
-    get activity(): findActivityType<dataBridgeType<this>> {
+    get activity(): findActivityType<this> {
         const bridge = this.onchain;
         // each specific bridge has to have an activity type, but this code can't
         // introspect that type.  It could be a getter OR a method, and Typescript can only
@@ -1552,7 +1529,7 @@ export class StellarContract<
      *
      * @deprecated - We recommend using `activity` instead of `redeemer`
      */
-    get redeemer(): findActivityType<dataBridgeType<this>> {
+    get redeemer(): findActivityType<this> {
         return this.activity;
     }
 

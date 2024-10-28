@@ -39,6 +39,8 @@ import { someDataMaker } from "../helios/dataBridge/someDataMaker.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type {hasSeed} from "../StellarContract.js"
 
+// todo: namespacing for all the good stuff here
+// namespace StructDatumTesterDataBridge {
 
 import type {
     struct3, struct3Like,
@@ -46,10 +48,22 @@ import type {
     DatumStruct, DatumStructLike
 } from "./StructDatumTester.typeInfo.js"
 
+
+/**
+ * data bridge for StructDatumTester script (defined in StructDatumTester)}
+ * main: src/testing/StructDatumTester.hl, project: stellar-contracts
+ * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
+ */
 export default class StructDatumTesterDataBridge extends someDataMaker {
+    // for datum:
     __datumCast = new Cast<
         DatumStruct, DatumStructLike
     >(DatumStructSchema, { isMainnet: true }); // datumAccessorCast
+
+        /**
+         * reads UplcData for the datum type (DatumStruct) for the StructDatumTester script
+         */
+        readDatum(d: UplcData) { return this.__datumCast.fromUplcData(d); }
 
     /**
      * generates UplcData for the datum type (DatumStruct) for the StructDatumTester script
@@ -66,7 +80,21 @@ export default class StructDatumTesterDataBridge extends someDataMaker {
         return this.__datumCast.toUplcData(fields);
     } // datumAccessor/byName 
 
-    // include accessors for activity types
+
+// for activity types:
+
+    __activityCast = new Cast<
+        bigint, IntLike
+    >(undefinedSchema, { isMainnet: true }); // activityAccessorCast
+            
+    /**
+     * generates UplcData for the activity type (undefined) for the StructDatumTester script
+     * @remarks - same as {@link activity}
+     */
+    undefined(activity: IntLike) {
+        return this.__activityCast.toUplcData(activity);
+    }
+
 
     // include accessors for other enums (other than datum/activity)
 
@@ -191,3 +219,4 @@ export const DatumStructSchema : StructTypeSchema = {
         }
     ]
 };
+// }

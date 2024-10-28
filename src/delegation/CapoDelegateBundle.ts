@@ -22,6 +22,11 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
         return BasicDelegate;
     }
 
+    get moduleName() {
+        const specialDgt = this.specializedDelegateModule;
+        return specialDgt.moduleName
+    }
+
     get modules() {
         const specialDgt = this.specializedDelegateModule;
         const delegateWrapper = this.mkDelegateWrapper(specialDgt.moduleName);

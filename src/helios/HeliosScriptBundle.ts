@@ -331,6 +331,14 @@ export abstract class HeliosScriptBundle {
 
     abstract get main(): HeliosModuleSrc;
     abstract get modules(): HeliosModuleSrc[];
+    
+    get bridgeClassName() {
+        return `${this.moduleName}DataBridge`
+    }
+
+    get moduleName() {
+        return this.program.name
+    }
 
     get program(): CachedHeliosProgram {
         return CachedHeliosProgram.forCurrentPlatform(this.main, {

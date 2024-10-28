@@ -119,6 +119,8 @@ export class dataBridgeGenerator
     // Any of these that are enums will have their own helper classes for creating
     //  the enum's specific variants.
     generateDataBridge(inputFile: string, projectName?: string) {
+        const { bridgeClassName } = this.bundle;
+
         let imports = `
 import { Cast } from "@helios-lang/contract-utils"
 import type { UplcData } from "@helios-lang/uplc";
@@ -176,12 +178,25 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 // NOTE: this file is auto-generated; do not edit directly
 ${imports}
 ${scImports}
+// todo: namespacing for all the good stuff here
+// namespace ${bridgeClassName} {
 ${this.includeScriptNamedTypes(inputFile)}
-export default class ${
-            this.bundle.program.name
-        }DataBridge extends someDataMaker {
+
+/**
+ * data bridge for ${this.bundle.program.name} script (defined in ${
+            this.bundle.constructor.name
+        })}
+ * main: ${this.bundle.main.name}, project: ${
+            this.bundle.main.project || "‹local proj›"
+        }
+ * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
+ */
+export default class ${bridgeClassName} extends someDataMaker {
+    // for datum:
 ${this.includeDatumAccessors()}
-    // include accessors for activity types
+
+// for activity types:
+${this.includeActivityCreator()}
 
     // include accessors for other enums (other than datum/activity)
 
@@ -192,6 +207,7 @@ ${this.includeDatumAccessors()}
 
 ${this.includeEnumHelperClasses()}
 ${this.includeNamedSchemas()}
+// }
 `;
     }
 
@@ -243,6 +259,57 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
 } from "${relativeTypeFile}"\n`;
     }
 
+    includeActivityCreator() {
+        // like datumAccessors, but without a need for reading
+        const activityDetails = this.activityTypeDetails;
+        if (!activityDetails) {
+            throw new Error(
+                `${this.bundle.constructor.name}: missing required activity type`
+            );
+        }
+        const activityName = activityDetails.enumName!;
+        const canonicalType =
+            activityDetails.canonicalTypeName! || activityDetails.canonicalType;
+        const permissiveType =
+            activityDetails.permissiveTypeName! ||
+            activityDetails.permissiveType;
+        const activityTypeName = activityDetails.canonicalTypeName!;
+        const castDef = `
+    __activityCast = new Cast<
+        ${canonicalType}, ${permissiveType}
+    >(${activityName}Schema, { isMainnet: true }); // activityAccessorCast`;
+
+    // `    datum: ${helperClassName} = new ${helperClassName}(this.bundle)   // datumAccessor/enum \n` +
+    // `    ${details.typeSchema.name}: ${helperClassName} = this.datum;\n` +
+
+        if (activityDetails.typeSchema.kind === "enum") {
+            const helperClassName = `${activityName}Helper`;
+            return `${castDef}
+
+    /**
+     * generates UplcData for the activity type (${activityTypeName}) for the ${this.bundle.program.name} script
+     */
+    activity : ${helperClassName}= new ${helperClassName}(this.bundle); // activityAccessor/enum
+    ${activityName}: ${helperClassName} = this.activity;\n`
+        } else if (activityDetails.typeSchema.kind === "struct") {
+            return `${castDef}
+
+    ${activityTypeName}(fields: ${activityTypeName}Like) {
+        return this.__activityCast.toUplcData(fields);
+    }\n\n`;
+        } else {
+            return `${castDef}
+            
+    /**
+     * generates UplcData for the activity type (${activityTypeName}) for the ${this.bundle.program.name} script
+     * @remarks - same as {@link activity}
+     */
+    ${activityTypeName}(activity: ${permissiveType}) {
+        return this.__activityCast.toUplcData(activity);
+    }\n`;
+        }
+    }
+
     includeDatumAccessors() {
         const details = this.datumTypeDetails;
         if (!details) return ``; // no datum type defined for this bundle
@@ -256,7 +323,10 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
             return (
                 "" +
                 `    datum: ${helperClassName} = new ${helperClassName}(this.bundle)   // datumAccessor/enum \n` +
-                `    ${details.typeSchema.name}: ${helperClassName} = this.datum;\n`
+                `    ${details.typeSchema.name}: ${helperClassName} = this.datum;\n` +
+                `    readDatum = (d: UplcData) => {\n` +
+                `        return this.datum.enumCast.fromUplcData(d);\n` +
+                `    }\n`
             );
             // ----
         }
@@ -283,16 +353,23 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
         return this.__datumCast.toUplcData(x);
     }\n`;
 
+        const readDatum = `
+        /**
+         * reads UplcData for the datum type (${typeName}) for the ${this.bundle.program.name} script
+         */
+        readDatum(d: UplcData) { return this.__datumCast.fromUplcData(d); }\n`;
+
         if (details.typeSchema.kind === "struct") {
             return (
                 castDef +
+                readDatum +
                 datumAccessor +
                 `
     /**
      * generates UplcData for the datum type (${typeName}) for the ${this.bundle.program.name} script
      * @remarks - same as {@link datum}
      */
-`+
+` +
                 `    ${details.typeSchema.name}(fields: ${permissiveTypeName}) {\n` +
                 `        return this.__datumCast.toUplcData(fields);\n` +
                 `    } // datumAccessor/byName \n`
@@ -300,9 +377,9 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
         }
 
         // if it's not an enum or struct, there's no name to expose separately;
-        // just the accessor is enough, with it supporting cast object.
+        // just the accessor+readDatum is enough, with it supporting cast object.
 
-        return castDef + datumAccessor;
+        return castDef + readDatum + datumAccessor;
     }
 
     // iterate all the named types, generating helper classes for each enum
@@ -341,13 +418,17 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
     }
 
     getEnumPathExpr(variantDetails: variantTypeDetails<any>) {
-        const {parentType} = variantDetails.dataType.asEnumMemberType!;
-        const enumName = variantDetails.dataType.asEnumMemberType?.parentType.name
+        const { parentType } = variantDetails.dataType.asEnumMemberType!;
+        const enumName =
+            variantDetails.dataType.asEnumMemberType?.parentType.name;
         // parentType.path looks like __module__SomeModule__EnumName[]
-        const [_1, _module, moduleName, _enumPlusBracket] = parentType.path.split("__");
+        const [_1, _module, moduleName, _enumPlusBracket] =
+            parentType.path.split("__");
         //result should be SomeModule::EnumName.variantName
 
-        return JSON.stringify(`${moduleName}::${enumName}.${variantDetails.variantName}`);
+        return JSON.stringify(
+            `${moduleName}::${enumName}.${variantDetails.variantName}`
+        );
     }
 
     mkEnumDatumAccessors(enumDetails: fullEnumTypeDetails) {
@@ -355,17 +436,16 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
             .map((variantName) => {
                 const variantDetails = enumDetails.variants[variantName];
                 const fieldCount = variantDetails.fieldCount;
-                
+
                 if (fieldCount === 0) {
-                    debugger
                     const enumPathExpr = this.getEnumPathExpr(variantDetails);
                     return (
                         `/**\n` +
                         ` * (property getter): UplcData for ${enumPathExpr}\n` +
-                        ` */\n` +                        
+                        ` */\n` +
                         `    get ${variantName}() {\n` +
                         `        const uplc = this.enumCast.toUplcData({ ${variantName}: {} });\n` +
-                        `       uplc.dataPath = ${enumPathExpr};\n`+
+                        `       uplc.dataPath = ${enumPathExpr};\n` +
                         `       return uplc;\n` +
                         `    } /* tagOnly variant accessor */`
                     );
@@ -428,7 +508,9 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
                 `    /**\n` +
                 `    * generates UplcData for ${enumPathExpr} with raw seed details included in fields.\n` +
                 `    */\n` +
-                `    ${variantName}(fields: ${permissiveTypeName} | {\n${unfilteredFields(3)}\n    } ): UplcData\n` +
+                `    ${variantName}(fields: ${permissiveTypeName} | {\n${unfilteredFields(
+                    3
+                )}\n    } ): UplcData\n` +
                 `    ${variantName}(\n` +
                 `        seedOrUf: hasSeed | ${permissiveTypeName}, \n` +
                 `        filteredFields?: { \n${filteredFields(3)}\n` +
@@ -438,29 +520,29 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
                 `            const uplc = this.enumCast.toUplcData({\n` +
                 `                ${variantName}: { seed: seedTxOutputId, ...filteredFields } \n` +
                 `            }, ${enumPathExpr});\n` +
-                `           uplc.dataPath = ${enumPathExpr};\n`+
+                `           uplc.dataPath = ${enumPathExpr};\n` +
                 `           return uplc;\n` +
                 `        } else {\n` +
                 `            const fields = seedOrUf as ${permissiveTypeName}; \n` +
                 `           const uplc = this.enumCast.toUplcData({\n` +
                 `                ${variantName}: fields \n` +
                 `            });\n` +
-                `           uplc.dataPath = ${enumPathExpr};\n`+
+                `           uplc.dataPath = ${enumPathExpr};\n` +
                 `           return uplc;\n` +
-                    `        }\n` +
+                `        }\n` +
                 `    } /*multiFieldVariant/seeded enum accessor*/ \n`
             );
         }
         return (
             `    /**\n` +
             `     * generates UplcData for ${enumPathExpr}\n` +
-            `     * @remarks - ${permissiveTypeName} is the same as the expanded field-types.`+
+            `     * @remarks - ${permissiveTypeName} is the same as the expanded field-types.` +
             `     */\n` +
             `    ${variantName}(fields: ${permissiveTypeName} | { \n${unfilteredFields()} } ) {\n` +
             `        const uplc = this.enumCast.toUplcData({\n` +
             `            ${variantName}: fields \n` +
             `        });\n` +
-            `       uplc.dataPath = ${enumPathExpr};\n`+
+            `       uplc.dataPath = ${enumPathExpr};\n` +
             `       return uplc;\n` +
             `    } /*multiFieldVariant enum accessor*/`
         );
@@ -472,7 +554,8 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
     ) {
         const fieldName = Object.keys(variantDetails.fields)[0];
         const oneField = variantDetails.fields[fieldName];
-        const enumName = variantDetails.dataType.asEnumMemberType?.parentType.name
+        const enumName =
+            variantDetails.dataType.asEnumMemberType?.parentType.name;
         const enumPathExpr = this.getEnumPathExpr(variantDetails);
 
         if ("seed" == fieldName) {
@@ -483,7 +566,7 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
                 `        const uplc = this.enumCast.toUplcData({ \n` +
                 `           ${variantName}: { ${fieldName}: seedTxOutputId } \n` +
                 `        },);  /*SingleField/seeded enum variant*/\n` +
-                `       uplc.dataPath = ${enumPathExpr};\n`+
+                `       uplc.dataPath = ${enumPathExpr};\n` +
                 `       return uplc;\n` +
                 `    }`
             );
@@ -499,7 +582,7 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
             `        const uplc = this.enumCast.toUplcData({ \n` +
             `           ${variantName}: { ${fieldName}: value } \n` +
             `        }); /*SingleField enum variant*/\n` +
-            `       uplc.dataPath = ${enumPathExpr};\n`+
+            `       uplc.dataPath = ${enumPathExpr};\n` +
             `       return uplc;\n` +
             `    }`
         );
@@ -508,8 +591,10 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
     includeNamedSchemas() {
         const schemas = Object.entries(this.namedSchemas)
             .map(([name, schema]) => {
-                debugger
-                const type = schema.kind === "enum" ? "EnumTypeSchema" : "StructTypeSchema"
+                const type =
+                    schema.kind === "enum"
+                        ? "EnumTypeSchema"
+                        : "StructTypeSchema";
                 return `export const ${name}Schema : ${type} = ${JSON.stringify(
                     schema,
                     null,

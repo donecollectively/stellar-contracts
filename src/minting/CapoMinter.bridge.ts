@@ -39,15 +39,36 @@ import { someDataMaker } from "../helios/dataBridge/someDataMaker.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type {hasSeed} from "../StellarContract.js"
 
+// todo: namespacing for all the good stuff here
+// namespace CapoMinterDataBridge {
 
 import type {
     MinterActivity$CreatingNewSpendDelegate, MinterActivity$CreatingNewSpendDelegateLike,
     MinterActivity, MinterActivityLike
 } from "./CapoMinter.typeInfo.js"
 
-export default class CapoMinterDataBridge extends someDataMaker {
 
-    // include accessors for activity types
+/**
+ * data bridge for CapoMinter script (defined in CapoMinterBundle)}
+ * main: src/minting/CapoMinter.hl, project: stellar-contracts
+ * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
+ */
+export default class CapoMinterDataBridge extends someDataMaker {
+    // for datum:
+
+
+// for activity types:
+
+    __activityCast = new Cast<
+        MinterActivity, MinterActivityLike
+    >(MinterActivitySchema, { isMainnet: true }); // activityAccessorCast
+
+    /**
+     * generates UplcData for the activity type (MinterActivity) for the CapoMinter script
+     */
+    activity : MinterActivityHelper= new MinterActivityHelper(this.bundle); // activityAccessor/enum
+    MinterActivity: MinterActivityHelper = this.activity;
+
 
     // include accessors for other enums (other than datum/activity)
 
@@ -249,3 +270,4 @@ export const MinterActivitySchema : EnumTypeSchema = {
         }
     ]
 };
+// }

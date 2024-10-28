@@ -27,6 +27,7 @@ import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 import CapoMinterBundle from "./CapoMinter.hlbundle.js";
 import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
 import type { HeliosBundleClass, HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
+import CapoMinterDataBridge from "./CapoMinter.bridge.js";
 
 type MintCharterActivityArgs<T = {}> = T & {
     owner: Address;
@@ -68,6 +69,7 @@ export class CapoMinter
     scriptBundle() {
         return this.mkBundleWithCapo(CapoMinterBundle);
     }
+    dataBridgeClass = CapoMinterDataBridge;
 
     mkBundleWithCapo<T extends HeliosScriptBundle>(BundleClass: new (capo: CapoHeliosBundle) => T) : T {
         const { capo } = this.configIn || this.partialConfig || {};

@@ -235,7 +235,11 @@ export function heliosRollupTypeGen(
                             console.log("  ---- Reinitialized project in", Date.now() - ts1, "ms");
                             replacedCapo = true;
                         } else {
-                            console.log("  ---- warning: second capo discovered, though its modules aren't different from default. Ignoring.")
+                            console.log("  ---- warning: second capo discovered, though its modules aren't different from default. Generatings its types, but otherwise, Ignoring.")
+                            // make a new project, add the new Capo bundle to it, generate types.
+                            const newProject = new StellarHeliosProject();
+                            newProject.loadBundleWithClass(id, SomeBundleClass);
+                            newProject.generateBundleTypes(id);
                         }
                     }
                     state.hasExplicitCapoBundle = true;

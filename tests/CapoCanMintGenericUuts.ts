@@ -14,9 +14,8 @@ export class CapoCanMintGenericUuts extends CapoWithoutSettings {
     }
 
     scriptBundle() {
-
         return new CapoBundleWithGenericUuts();
-    }    
+    }
     
     initDelegateRoles() {
         const inherited = super.initDelegateRoles();

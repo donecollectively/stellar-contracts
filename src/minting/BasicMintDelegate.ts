@@ -2,13 +2,13 @@ import { Datum } from "@hyperionbt/helios";
 import * as helios from "@hyperionbt/helios";
 
 import { Activity, datum } from "../StellarContract.js";
-import type { dataBridgeType, hasSeed, isActivity } from "../StellarContract.js";
+import type { hasSeed, isActivity } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
 
 import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
 import MintDelegateBundle from "../delegation/UnspecializedDelegate.hlbundle.js";
-import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
+import dataBridgeClass from "../delegation/UnspecializedDelegate.bridge.js";
 
 /**
  * Serves a delegated minting-policy role for Capo contracts
@@ -19,6 +19,7 @@ import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
  **/
 export class BasicMintDelegate extends ContractBasedDelegate {
     static currentRev = 1n;
+    dataBridgeClass : typeof dataBridgeClass  = dataBridgeClass
 
     get delegateName() {
         return "mintDelegate";

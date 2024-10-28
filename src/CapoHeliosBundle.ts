@@ -16,6 +16,9 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
     main = mainContract;
     datumTypeName = "CapoDatum"
 
+    get bridgeClassName(): string {
+        return "CapoDataBridge";
+    }
     static isCapoBundle = true;
 
     get modules() {

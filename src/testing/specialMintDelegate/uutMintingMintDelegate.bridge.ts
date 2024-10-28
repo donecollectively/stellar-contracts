@@ -39,6 +39,8 @@ import { someDataMaker } from "../../helios/dataBridge/someDataMaker.js"
 import type { tagOnly } from "../../helios/HeliosScriptBundle.js"
 import type {hasSeed} from "../../StellarContract.js"
 
+// todo: namespacing for all the good stuff here
+// namespace uutMintingDelegateDataBridge {
 
 import type {
     DelegationDetail, DelegationDetailLike,
@@ -63,11 +65,33 @@ import type {
     DelegateActivity, DelegateActivityLike
 } from "./uutMintingMintDelegate.typeInfo.js"
 
-export default class BasicDelegateDataBridge extends someDataMaker {
+
+/**
+ * data bridge for BasicDelegate script (defined in BundleMintDelegateWithGenericUuts)}
+ * main: src/delegation/BasicDelegate.hl, project: stellar-contracts
+ * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
+ */
+export default class uutMintingDelegateDataBridge extends someDataMaker {
+    // for datum:
     datum: DelegateDatumHelper = new DelegateDatumHelper(this.bundle)   // datumAccessor/enum 
     DelegateDatum: DelegateDatumHelper = this.datum;
+    readDatum = (d: UplcData) => {
+        return this.datum.enumCast.fromUplcData(d);
+    }
 
-    // include accessors for activity types
+
+// for activity types:
+
+    __activityCast = new Cast<
+        DelegateActivity, DelegateActivityLike
+    >(DelegateActivitySchema, { isMainnet: true }); // activityAccessorCast
+
+    /**
+     * generates UplcData for the activity type (DelegateActivity) for the BasicDelegate script
+     */
+    activity : DelegateActivityHelper= new DelegateActivityHelper(this.bundle); // activityAccessor/enum
+    DelegateActivity: DelegateActivityHelper = this.activity;
+
 
     // include accessors for other enums (other than datum/activity)
 
@@ -1925,3 +1949,4 @@ export const DelegateActivitySchema : EnumTypeSchema = {
         }
     ]
 };
+// }

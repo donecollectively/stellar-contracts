@@ -7,7 +7,7 @@ import { heliosRollupLoader } from "./heliosRollupLoader.js";
 import esbuild from "rollup-plugin-esbuild";
 import type { UplcData } from "@helios-lang/uplc";
 import { BundleTypeGenerator } from "./dataBridge/BundleTypeGenerator.js";
-import { mkDataBridgeGenerator } from "./dataBridge/mkDataBridgeGenerator.js";
+import { dataBridgeGenerator } from "./dataBridge/dataBridgeGenerator.js";
 // import {CapoHeliosBundle} from "../CapoHeliosBundle.js";
 
 const startTime = Date.now();
