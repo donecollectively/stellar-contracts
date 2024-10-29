@@ -58,7 +58,11 @@ import type {
     DelegateActivity$UpdatingDelegatedData, DelegateActivity$UpdatingDelegatedDataLike,
     DelegateActivity$DeletingDelegatedData, DelegateActivity$DeletingDelegatedDataLike,
     DelegateActivity, DelegateActivityLike
-} from "./UnspecializedDelegate.typeInfo.js"
+} from "./UnspecializedDelegate.typeInfo.js";
+
+export type * as types from "./UnspecializedDelegate.typeInfo.js";
+import type * as types from "./UnspecializedDelegate.typeInfo.js";
+
 
 
 /**
@@ -66,7 +70,7 @@ import type {
  * main: src/delegation/BasicDelegate.hl, project: stellar-contracts
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
-export default class UnspecializedDelegateBridge extends someDataMaker {
+export class UnspecializedDelegateBridge extends someDataMaker {
     // for datum:
     datum: DelegateDatumHelper = new DelegateDatumHelper(this.bundle)   // datumAccessor/enum 
     DelegateDatum: DelegateDatumHelper = this.datum;
@@ -94,6 +98,7 @@ export default class UnspecializedDelegateBridge extends someDataMaker {
 
     // TODO: include any utility functions defined in the contract
 }
+export default UnspecializedDelegateBridge;
 
 /**
  * Helper class for generating UplcData for variants of the DelegateDatum enum type.

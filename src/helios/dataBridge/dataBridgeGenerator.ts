@@ -191,7 +191,7 @@ ${this.includeScriptNamedTypes(inputFile)}
         }
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
-export default class ${bridgeClassName} extends someDataMaker {
+export class ${bridgeClassName} extends someDataMaker {
     // for datum:
 ${this.includeDatumAccessors()}
 
@@ -204,6 +204,7 @@ ${this.includeActivityCreator()}
 
     // TODO: include any utility functions defined in the contract
 }
+export default ${bridgeClassName};
 
 ${this.includeEnumHelperClasses()}
 ${this.includeNamedSchemas()}
@@ -256,7 +257,11 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
                 return `    ${typeName}, ${typeName}Like`;
             })
             .join(",\n")}
-} from "${relativeTypeFile}"\n`;
+} from "${relativeTypeFile}";
+
+export type * as types from "${relativeTypeFile}";
+import type * as types from "${relativeTypeFile}";\n\n`
+
     }
 
     includeActivityCreator() {

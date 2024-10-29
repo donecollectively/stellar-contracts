@@ -46,7 +46,11 @@ import type {
     struct3, struct3Like,
     OtherStruct, OtherStructLike,
     DatumStruct, DatumStructLike
-} from "./StructDatumTester.typeInfo.js"
+} from "./StructDatumTester.typeInfo.js";
+
+export type * as types from "./StructDatumTester.typeInfo.js";
+import type * as types from "./StructDatumTester.typeInfo.js";
+
 
 
 /**
@@ -54,7 +58,7 @@ import type {
  * main: src/testing/StructDatumTester.hl, project: stellar-contracts
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
-export default class StructDatumTesterDataBridge extends someDataMaker {
+export class StructDatumTesterDataBridge extends someDataMaker {
     // for datum:
     __datumCast = new Cast<
         DatumStruct, DatumStructLike
@@ -102,6 +106,7 @@ export default class StructDatumTesterDataBridge extends someDataMaker {
 
     // TODO: include any utility functions defined in the contract
 }
+export default StructDatumTesterDataBridge;
 
 
 export const struct3Schema : StructTypeSchema = {

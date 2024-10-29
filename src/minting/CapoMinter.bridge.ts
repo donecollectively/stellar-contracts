@@ -45,7 +45,11 @@ import type {hasSeed} from "../StellarContract.js"
 import type {
     MinterActivity$CreatingNewSpendDelegate, MinterActivity$CreatingNewSpendDelegateLike,
     MinterActivity, MinterActivityLike
-} from "./CapoMinter.typeInfo.js"
+} from "./CapoMinter.typeInfo.js";
+
+export type * as types from "./CapoMinter.typeInfo.js";
+import type * as types from "./CapoMinter.typeInfo.js";
+
 
 
 /**
@@ -53,7 +57,7 @@ import type {
  * main: src/minting/CapoMinter.hl, project: stellar-contracts
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
-export default class CapoMinterDataBridge extends someDataMaker {
+export class CapoMinterDataBridge extends someDataMaker {
     // for datum:
 
 
@@ -76,6 +80,7 @@ export default class CapoMinterDataBridge extends someDataMaker {
 
     // TODO: include any utility functions defined in the contract
 }
+export default CapoMinterDataBridge;
 
 /**
  * Helper class for generating UplcData for variants of the MinterActivity enum type.

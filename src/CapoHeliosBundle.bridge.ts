@@ -49,7 +49,11 @@ import type {
     CapoDatum$DelegatedData, CapoDatum$DelegatedDataLike,
     CapoDatum, CapoDatumLike,
     CapoActivity, CapoActivityLike
-} from "./CapoHeliosBundle.typeInfo.js"
+} from "./CapoHeliosBundle.typeInfo.js";
+
+export type * as types from "./CapoHeliosBundle.typeInfo.js";
+import type * as types from "./CapoHeliosBundle.typeInfo.js";
+
 
 
 /**
@@ -57,7 +61,7 @@ import type {
  * main: src/DefaultCapo.hl, project: stellar-contracts
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
-export default class CapoDataBridge extends someDataMaker {
+export class CapoDataBridge extends someDataMaker {
     // for datum:
     datum: CapoDatumHelper = new CapoDatumHelper(this.bundle)   // datumAccessor/enum 
     CapoDatum: CapoDatumHelper = this.datum;
@@ -85,6 +89,7 @@ export default class CapoDataBridge extends someDataMaker {
 
     // TODO: include any utility functions defined in the contract
 }
+export default CapoDataBridge;
 
 /**
  * Helper class for generating UplcData for variants of the CapoDatum enum type.
