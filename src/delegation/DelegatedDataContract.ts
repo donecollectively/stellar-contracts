@@ -11,7 +11,6 @@ import type { hasSeed, isActivity } from "../StellarContract.js";
 import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { ContractBasedDelegate } from "./ContractBasedDelegate.js";
 import type { UutName } from "./UutName.js";
-import type { BasicMintDelegate } from "../minting/BasicMintDelegate.js";
 import { betterJsonSerializer, dumpAny } from "../diagnostics.js";
 
 

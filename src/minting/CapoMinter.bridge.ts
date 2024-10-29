@@ -80,7 +80,7 @@ export default class CapoMinterDataBridge extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the MinterActivity enum type.
  */
-class MinterActivityHelper extends someDataMaker {
+export class MinterActivityHelper extends someDataMaker {
     enumCast = new Cast<
        MinterActivity,
        MinterActivityLike

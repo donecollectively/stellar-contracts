@@ -98,7 +98,7 @@ export default class UnspecializedDelegateBridge extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the DelegateDatum enum type.
  */
-class DelegateDatumHelper extends someDataMaker {
+export class DelegateDatumHelper extends someDataMaker {
     enumCast = new Cast<
        DelegateDatum,
        DelegateDatumLike
@@ -147,7 +147,7 @@ class DelegateDatumHelper extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the CapoLifecycleActivity enum type.
  */
-class CapoLifecycleActivityHelper extends someDataMaker {
+export class CapoLifecycleActivityHelper extends someDataMaker {
     enumCast = new Cast<
        CapoLifecycleActivity,
        CapoLifecycleActivityLike
@@ -195,7 +195,7 @@ class CapoLifecycleActivityHelper extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the DelegateLifecycleActivity enum type.
  */
-class DelegateLifecycleActivityHelper extends someDataMaker {
+export class DelegateLifecycleActivityHelper extends someDataMaker {
     enumCast = new Cast<
        DelegateLifecycleActivity,
        DelegateLifecycleActivityLike
@@ -261,7 +261,7 @@ class DelegateLifecycleActivityHelper extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the SpendingActivity enum type.
  */
-class SpendingActivityHelper extends someDataMaker {
+export class SpendingActivityHelper extends someDataMaker {
     enumCast = new Cast<
        SpendingActivity,
        SpendingActivityLike
@@ -282,7 +282,7 @@ class SpendingActivityHelper extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the MintingActivity enum type.
  */
-class MintingActivityHelper extends someDataMaker {
+export class MintingActivityHelper extends someDataMaker {
     enumCast = new Cast<
        MintingActivity,
        MintingActivityLike
@@ -302,7 +302,7 @@ class MintingActivityHelper extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the BurningActivity enum type.
  */
-class BurningActivityHelper extends someDataMaker {
+export class BurningActivityHelper extends someDataMaker {
     enumCast = new Cast<
        BurningActivity,
        BurningActivityLike
@@ -323,7 +323,7 @@ class BurningActivityHelper extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the DelegateActivity enum type.
  */
-class DelegateActivityHelper extends someDataMaker {
+export class DelegateActivityHelper extends someDataMaker {
     enumCast = new Cast<
        DelegateActivity,
        DelegateActivityLike

@@ -404,7 +404,7 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
             `/**\n` +
             ` * Helper class for generating UplcData for variants of the ${enumName} enum type.\n` +
             ` */\n` +
-            `class ${typeDetails.moreInfo.helperClassName} extends someDataMaker {\n` +
+            `export class ${typeDetails.moreInfo.helperClassName} extends someDataMaker {\n` +
             // todo: this needs to reflect the actual structure for nested enums, not our facade
             // for them.  Our interface for each of these variants is separate from what the Cast utility requires.
             `    enumCast = new Cast<\n` +

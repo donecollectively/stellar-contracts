@@ -89,7 +89,7 @@ export default class CapoDataBridge extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the CapoDatum enum type.
  */
-class CapoDatumHelper extends someDataMaker {
+export class CapoDatumHelper extends someDataMaker {
     enumCast = new Cast<
        CapoDatum,
        CapoDatumLike
@@ -158,7 +158,7 @@ class CapoDatumHelper extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the CapoActivity enum type.
  */
-class CapoActivityHelper extends someDataMaker {
+export class CapoActivityHelper extends someDataMaker {
     enumCast = new Cast<
        CapoActivity,
        CapoActivityLike

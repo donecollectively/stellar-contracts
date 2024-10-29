@@ -48,7 +48,7 @@ import {
 import type { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
 import type { DataMaker } from "./helios/dataBridge/dataMakers.js";
 import type { someDataMaker } from "./helios/dataBridge/someDataMaker.js";
-import type { dataBridgeType, findActivityType, findDatumType } from "./helios/dataBridge/BridgeTypeUtils.js";
+import type { dataBridgeType, findActivityType, findDatumType, findReadDatumType } from "./helios/dataBridge/BridgeTypeUtils.js";
 
 type NetworkName = "testnet" | "mainnet";
 let configuredNetwork: NetworkName | undefined = undefined;
@@ -1609,7 +1609,7 @@ export class StellarContract<
         return this._dataBridge;
     }
 
-    get newReadDatum(): findReadDatumType<dataBridgeType<this>> {
+    get newReadDatum(): findReadDatumType<this> {
         const bridge = this.onchain;
         //@ts-expect-error probing for presence
         const {readDatum} = bridge;
