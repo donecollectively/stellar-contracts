@@ -1,7 +1,7 @@
-import { Activity, type dataBridgeType, type hasSeed } from "../../StellarContract.js";
+import { Activity, type hasSeed } from "../../StellarContract.js";
 import { type hasSeedUtxo } from "../../StellarTxnContext.js";
-import { HeliosScriptBundle } from "../../helios/HeliosScriptBundle.js";
 import { BasicMintDelegate } from "../../minting/BasicMintDelegate.js";
+
 import uutMintingMintDelegateBundle from "./uutMintingMintDelegate.hlbundle.js";
 import DataBridge from "./uutMintingMintDelegate.bridge.js"
 

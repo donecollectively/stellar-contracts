@@ -272,17 +272,35 @@ import type * as types from "${relativeTypeFile}";\n\n`
                 `${this.bundle.constructor.name}: missing required activity type`
             );
         }
-        const activityName = activityDetails.enumName!;
+
+        let schemaName = ""
+        let activityName
+        switch( activityDetails.typeSchema.kind ) {
+            case "enum":
+                activityName = activityDetails.typeSchema.name;
+                schemaName = `${activityName}Schema`;
+                break;
+            case "variant":
+                activityName = activityDetails.typeSchema.name;
+                schemaName = `${activityName}Schema`;
+                break;
+            case "struct":
+                activityName = activityDetails.typeSchema.name;
+                schemaName = `${activityName}Schema`;
+                break;
+            default:
+                schemaName = JSON.stringify(activityDetails.typeSchema)
+        }
         const canonicalType =
-            activityDetails.canonicalTypeName! || activityDetails.canonicalType;
+        activityDetails.canonicalTypeName! || activityDetails.canonicalType;
         const permissiveType =
-            activityDetails.permissiveTypeName! ||
-            activityDetails.permissiveType;
+        activityDetails.permissiveTypeName! ||
+        activityDetails.permissiveType;
         const activityTypeName = activityDetails.canonicalTypeName!;
         const castDef = `
     __activityCast = new Cast<
         ${canonicalType}, ${permissiveType}
-    >(${activityName}Schema, { isMainnet: true }); // activityAccessorCast`;
+    >(${schemaName}, { isMainnet: true }); // activityAccessorCast`;
 
     // `    datum: ${helperClassName} = new ${helperClassName}(this.bundle)   // datumAccessor/enum \n` +
     // `    ${details.typeSchema.name}: ${helperClassName} = this.datum;\n` +

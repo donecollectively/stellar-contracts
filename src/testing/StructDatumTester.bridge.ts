@@ -89,7 +89,7 @@ export class StructDatumTesterDataBridge extends someDataMaker {
 
     __activityCast = new Cast<
         bigint, IntLike
-    >(undefinedSchema, { isMainnet: true }); // activityAccessorCast
+    >({"kind":"internal","name":"Int"}, { isMainnet: true }); // activityAccessorCast
             
     /**
      * generates UplcData for the activity type (undefined) for the StructDatumTester script

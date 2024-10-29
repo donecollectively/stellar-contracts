@@ -10,6 +10,8 @@ import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
 import MintDelegateBundle from "../delegation/UnspecializedDelegate.hlbundle.js";
 import dataBridgeClass from "../delegation/UnspecializedDelegate.bridge.js";
 import type { DataMaker } from "../helios/dataBridge/dataMakers.js";
+import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
+import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
 
 /**
  * Serves a delegated minting-policy role for Capo contracts
@@ -31,7 +33,7 @@ export class BasicMintDelegate extends ContractBasedDelegate {
     }
 
     scriptBundle() {
-        return this.mkBundleWithCapo<MintDelegateBundle>(MintDelegateBundle);
+        return this.mkBundleWithCapo<MintDelegateBundle>(MintDelegateBundle) as CapoDelegateBundle
     }
 
     // uses the basic delegate script, plus the isMintDelegate param
