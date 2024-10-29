@@ -5,10 +5,11 @@ import { Activity, datum } from "../StellarContract.js";
 import type { hasSeed, isActivity } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
-
+ 
 import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
 import MintDelegateBundle from "../delegation/UnspecializedDelegate.hlbundle.js";
 import dataBridgeClass from "../delegation/UnspecializedDelegate.bridge.js";
+import type { DataMaker } from "../helios/dataBridge/dataMakers.js";
 
 /**
  * Serves a delegated minting-policy role for Capo contracts
@@ -19,7 +20,7 @@ import dataBridgeClass from "../delegation/UnspecializedDelegate.bridge.js";
  **/
 export class BasicMintDelegate extends ContractBasedDelegate {
     static currentRev = 1n;
-    dataBridgeClass : typeof dataBridgeClass  = dataBridgeClass
+    // declare dataBridgeClass : typeof DataMaker // dataBridgeClass  = dataBridgeClass
 
     get delegateName() {
         return "mintDelegate";
