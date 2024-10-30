@@ -10,12 +10,12 @@ import type {
 import type { DataType } from "@helios-lang/compiler/src/index.js";
 import type { EachUnionElement } from "./typeUtils.js";
 import { BundleTypeGenerator } from "./dataBridge/BundleTypeGenerator.js";
-import { EnumMaker, DataMaker } from "./dataBridge/dataMakers.js";
+import { EnumBridge } from "./dataBridge/EnumBridge.js";
+import { DataBridge } from "./dataBridge/DataBridge.js";
 import { DataReader } from "./dataBridge/DataReader.js";
 import type { TxOutputId } from "@helios-lang/ledger-babbage";
 import type { hasSeedUtxo } from "../StellarTxnContext.js";
 import type { SeedAttrs } from "../delegation/UutName.js";
-import { someDataMaker } from "./dataBridge/someDataMaker.js";
 
 export type HeliosBundleClass = new () => HeliosScriptBundle;
 
@@ -32,11 +32,11 @@ export const tagOnly: tagOnly = Object.freeze({})
 
 
 
-export type uplcDataMaker<permissiveType> =
+export type uplcDataBridge<permissiveType> =
     // can be called
     (
         (arg: permissiveType) => UplcData
-    ) & someDataMaker
+    ) & DataBridge
 
 // 2. read data from Datum.  Can also be used for returned results
 //  ... of utility functions defined in Helios code.

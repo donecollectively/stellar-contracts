@@ -1,6 +1,6 @@
 import type { UplcData } from "@helios-lang/uplc";
 import type { isActivity } from "../../StellarContract.js";
-import { someDataMaker, type DataMakerOptions } from "./someDataMaker.js";
+import { DataBridge, type DataBridgeOptions } from "./DataBridge.js";
 import type { HeliosScriptBundle } from "../HeliosScriptBundle.js";
 
 const JustAnEnum = Symbol("JustAnEnum");
@@ -14,13 +14,13 @@ export type NotNested = typeof NotNested;
  * EnumMaker provides a way to create UplcData for enums.  It optionally includes an activity wrapper { redeemer: UplcData }
  * ... and honors a nested context to inject (instead of UPLC-ing) typed, nested data into a parent context for uplc formatting.
  */
-export class EnumMaker<
+export class EnumBridge<
     TYPE extends isActivity | JustAnEnum = JustAnEnum,
     // NESTED extends Nested | NotNested = NotNested,
     uplcReturnType = //extends (isActivity extends TYPE ? { redeemer: UplcData } : UplcData) =
     isActivity extends TYPE ? { redeemer: UplcData } : UplcData
-> extends someDataMaker {
-    constructor(bundle: HeliosScriptBundle, options : DataMakerOptions) {
+> extends DataBridge {
+    constructor(bundle: HeliosScriptBundle, options : DataBridgeOptions) {
         super(bundle, options);
     }   
     // the uplcReturnType provides type clues, mainly for editor support
@@ -44,7 +44,4 @@ export class EnumMaker<
 
 }
 
-export class DataMaker extends someDataMaker {
-
-}
 

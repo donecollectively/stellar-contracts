@@ -46,8 +46,7 @@ import {
     type HeliosBundleClass,
 } from "./helios/HeliosScriptBundle.js";
 import type { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
-import type { DataMaker } from "./helios/dataBridge/dataMakers.js";
-import type { someDataMaker } from "./helios/dataBridge/someDataMaker.js";
+import type { DataBridge } from "./helios/dataBridge/DataBridge.js";
 import type { dataBridgeType, findActivityType, findDatumType, findReadDatumType } from "./helios/dataBridge/BridgeTypeUtils.js";
 
 type NetworkName = "testnet" | "mainnet";
@@ -433,7 +432,7 @@ export class StellarContract<
      * note that ***mint delegates*** do in fact have datum types. If you are defining
      * a custom delegate of that kind, you will need to define this attribute.
      */
-    dataBridgeClass: Option<typeof DataMaker> = null;
+    dataBridgeClass: Option<typeof DataBridge> = null;
 
     get isConnected() {
         return !!this.wallet;
@@ -1539,7 +1538,7 @@ export class StellarContract<
      * @remarks
      *
      */
-    _dataBridge?: Option<someDataMaker>; // Option<BundleType<this>["mkDatum"]>
+    _dataBridge?: Option<DataBridge>; // Option<BundleType<this>["mkDatum"]>
 
     get mkDatum() : findDatumType<this> {
         //@ts-expect-error probing for presence
@@ -1607,6 +1606,11 @@ export class StellarContract<
         //@ts-expect-error the type shoudl be fine, given the above logic.  The type is for the interface,
         // and it's not worth hoop-jumping to make TS perfectly happy with how the sausage is made.
         return this._dataBridge;
+    }
+
+    get offchain() {
+        // ensures the dataBridge is initialized by accessing the 'onchain' getter
+        // accesses its data-reader.
     }
 
     get newReadDatum(): findReadDatumType<this> {

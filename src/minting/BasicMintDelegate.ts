@@ -9,7 +9,7 @@ import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
 import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
 import MintDelegateBundle from "../delegation/UnspecializedDelegate.hlbundle.js";
 import dataBridgeClass from "../delegation/UnspecializedDelegate.bridge.js";
-import type { DataMaker } from "../helios/dataBridge/dataMakers.js";
+import type { DataBridge } from "src/helios/dataBridge/DataBridge.js";
 import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
 

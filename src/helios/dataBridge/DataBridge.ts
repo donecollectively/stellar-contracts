@@ -20,7 +20,7 @@ import type {
     readsUplcEnumData,
     singleEnumVariantMeta,
     typeDetails,
-    uplcDataMaker,
+    uplcDataBridge,
     variantTypeDetails
 } from "../HeliosScriptBundle.js"
 import { Cast } from "@helios-lang/contract-utils"
@@ -50,7 +50,7 @@ import type { UplcData } from "@helios-lang/uplc"
 //         // if it is an activity, wrap it in a {redeemer: } object
 //         // ... to satisfy the isActivity type
 
-//         get(_, typeName : string | Symbol, THIS : someDataMaker) {
+//         get(_, typeName : string | Symbol, THIS : DataBridge) {
 //             // throw new Error(`dataMaker ${DMP.constructor.name}: GET: ${typeName}`)
 //             const {__typeDetails: typeDetails, __schema: schema, __cast: cast} = THIS;
 //             // const {dataType} = typeDetails;
@@ -58,7 +58,7 @@ import type { UplcData } from "@helios-lang/uplc"
 //                 // if the symbol is a node-inspector symbol, show the type-details
 //                 if (typeName == Symbol.for("nodejs.util.inspect.custom")) {
 //                     debugger
-//                     return undefined // {someDataMakerProxy:{typeDetails}}
+//                     return undefined // {DataBridgeProxy:{typeDetails}}
 //                 }
 //                 if (typeName == Symbol.for("toString")) {
 //                     return () => `dataMaker ${THIS.constructor.name} for ${THIS.name}`;
@@ -106,7 +106,7 @@ import type { UplcData } from "@helios-lang/uplc"
 
 //         },
 //         apply(_, 
-//             THIS : someDataMaker, 
+//             THIS : DataBridge, 
 //             args : any
 //         ) {
 //             debugger
@@ -128,18 +128,18 @@ import type { UplcData } from "@helios-lang/uplc"
 // function dataMakerProxyBase() {}
 // dataMakerProxyBase.prototype = rawDataMakerProxy
 
-export type DataMakerOptions = {
+export type DataBridgeOptions = {
     isActivity?: boolean;
     isNested?: boolean;
 };
 
-export class someDataMaker { // extends (dataMakerProxyBase as any) {
+export class DataBridge { // extends (dataMakerProxyBase as any) {
     protected __schema : TypeSchema 
     protected __cast: Cast<any,any>
     protected isActivity: boolean;
     protected isNested: boolean;
 
-    constructor(protected bundle: HeliosScriptBundle, options: DataMakerOptions = {}) {
+    constructor(protected bundle: HeliosScriptBundle, options: DataBridgeOptions = {}) {
         // these start undefined, but are always forced into existence immediately
         // via getTypeSchema().  Any exceptions means this protocol wasn't followed 
         // correctly.
@@ -152,11 +152,11 @@ export class someDataMaker { // extends (dataMakerProxyBase as any) {
 
     }
     // 
-    // declare activity: someDataMaker | ((...args:any) => UplcData)
+    // declare activity: DataBridge | ((...args:any) => UplcData)
 
-    // declare  datum: someDataMaker | ((...args:any) => UplcData)
+    // declare  datum: DataBridge | ((...args:any) => UplcData)
     // // get datum() {
-    // //     throw new Error(`each dataMaker makes its own datum`)
+    // //     throw new Error(`each dataBridge makes its own datum`)
     // // }
 
     protected getSeed(arg: hasSeed | TxOutputId ): TxOutputId {
@@ -204,4 +204,5 @@ export class someDataMaker { // extends (dataMakerProxyBase as any) {
     //     // return name
     // }
 }
+
 

@@ -35,11 +35,11 @@ import type {
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
-import { someDataMaker } from "./helios/dataBridge/someDataMaker.js"
+import { DataBridge } from "./helios/dataBridge/DataBridge.js"
 import { 
-    EnumMaker,
+    EnumBridge,
     type JustAnEnum,
-} from "./helios/dataBridge/dataMakers.js"
+} from "./helios/dataBridge/EnumBridge.js"
 import type { tagOnly } from "./helios/HeliosScriptBundle.js"
 import type {hasSeed, isActivity} from "./StellarContract.js"
 
@@ -70,7 +70,7 @@ import type * as types from "./CapoHeliosBundle.typeInfo.js";
  * main: src/DefaultCapo.hl, project: stellar-contracts
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
-export class CapoDataBridge extends someDataMaker {
+export class CapoDataBridge extends DataBridge {
     // for datum:
     datum: CapoDatumHelper = new CapoDatumHelper(this.bundle, {})   // datumAccessor/enum 
     CapoDatum: CapoDatumHelper = this.datum;
@@ -106,7 +106,7 @@ export default CapoDataBridge;
 /**
  * Helper class for generating UplcData for variants of the CapoDatum enum type.
  */
-export class CapoDatumHelper extends EnumMaker<JustAnEnum> {
+export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
     protected __cast = new Cast<
        CapoDatum,
        CapoDatumLike
@@ -173,7 +173,7 @@ export class CapoDatumHelper extends EnumMaker<JustAnEnum> {
 /**
  * Helper class for generating UplcData for variants of the CapoActivity enum type.
  */
-export class CapoActivityHelper extends EnumMaker<isActivity> {
+export class CapoActivityHelper extends EnumBridge<isActivity> {
     protected __cast = new Cast<
        CapoActivity,
        CapoActivityLike

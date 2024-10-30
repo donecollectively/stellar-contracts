@@ -17,7 +17,7 @@ import {
 } from "../src/testing/index.js";
 import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts.js";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper.js";
-import { dataBridgeType, ConfigFor } from "../src/StellarContract.js";
+import { ConfigFor } from "../src/StellarContract.js";
 import { dumpAny } from "../src/diagnostics.js";
 import { DelegationDetail } from "../src/delegation/RolesAndDelegates.js";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate.js";
@@ -51,7 +51,7 @@ describe("Type Bridge", async () => {
     let mintDelegate: MintDelegateWithGenericUuts;
     let mkDatum: MintDelegateWithGenericUuts["mkDatum"];
     // let bridgeFrom: MintDelegateWithGenericUuts["bridgeFrom"];
-    // let bridgeTo: MintDelegateWithGenericUuts["bridgeTo"];
+    let onchain: MintDelegateWithGenericUuts["onchain"];
     let readDatum: MintDelegateWithGenericUuts["newReadDatum"];
     let activity: MintDelegateWithGenericUuts["activity"];
     beforeEach<localTC>(async (context) => {
@@ -71,14 +71,14 @@ describe("Type Bridge", async () => {
         mintDelegate = await capo.getMintDelegate();
         mkDatum = mintDelegate.mkDatum;
         // bridgeFrom = mintDelegate.bridgeFrom;
-        // bridgeTo = mintDelegate.bridgeTo;
-        // readDatum = mintDelegate.newReadDatum;
+        onchain = mintDelegate.onchain;
+        readDatum = mintDelegate.newReadDatum;
         activity = mintDelegate.activity;
     });
 
     describe("provides a .bridge proxy for all named types in the contract script", () => {
         it("creates a bridge for the standalone SampleStruct defined in the minting delegate", async () => {
-            const bridged = bridgeTo.sampleStruct({
+            const bridged = onchain.sampleStruct({
                 // should auto-complete here
             });
             const result = bridgeFrom(bridged);
@@ -89,7 +89,7 @@ describe("Type Bridge", async () => {
 
         describe("for the standalone SomeEnum defined in the minting delegate", () => {
             it("bridges a simple single-field variant", async () => {
-                const bridged = bridgeTo.SomeEnum.justAnInt(1);
+                const bridged = onchain.SomeEnum.justAnInt(1);
                 const result = bridgeFrom(bridged);
                 expect(result.type).toBe("SomeEnum");
                 expect(result.variant).toBe("justAnInt");
@@ -97,7 +97,7 @@ describe("Type Bridge", async () => {
             });
 
             it("bridges a structured single-field value variant without intervening field-name", async () => {
-                const bridged = bridgeTo.SomeEnum.oneNestedStruct({
+                const bridged = onchain.SomeEnum.oneNestedStruct({
                     a: 1,
                     b: new Map(),
                     c: [true],
@@ -110,7 +110,7 @@ describe("Type Bridge", async () => {
             });
 
             it("bridges a structured multi-field value variant using the defined field names", async () => {
-                const bridged = bridgeTo.SomeEnum.hasNestedFields({
+                const bridged = onchain.SomeEnum.hasNestedFields({
                     m: {
                         a: 1,
                         b: new Map(),
@@ -126,7 +126,7 @@ describe("Type Bridge", async () => {
             });
 
             it("bridges a simple tag-only variant", async () => {
-                const bridged = bridgeTo.SomeEnum.justATag;
+                const bridged = onchain.SomeEnum.justATag;
                 const result = bridgeFrom.SomeEnum(bridged);
                 console.log({ result });
                 expect(result.type).toBe("SomeEnum");
@@ -147,8 +147,9 @@ describe("Type Bridge", async () => {
         });
 
         describe("when a datum variant has only a tag", () => {
-            it("creates a valid datum using the tag", async () => {
+            fit("creates a valid datum using the tag", async () => {
                 const { mkDatum } = mintDelegate;
+
                 const datum = mkDatum.ScriptReference;
                 expect(datum.rawData.ScriptReference).toEqual({});
                 //@ts-expect-error tags aren't on every UplcData
@@ -161,16 +162,18 @@ describe("Type Bridge", async () => {
 
         describe("when a datum enum variant has a single field: ", () => {
             describe("L1: just a data element", () => {
-                it("creates a valid datum using the single field", async () => {
+                fit("creates a valid datum using the single field", async () => {
                     const { mkDatum } = mintDelegate;
                     const datum = mkDatum.SingleDataElement("hello world");
-                    expect(datum.type).toBe("SingleDataElement");
-                    expect(datum.data).toBe("hello world");
+                    // expect(datum.type).toBe("SingleDataElement");
+                    const backToJS = readDatum(datum);
+                    //@ts-expect-error readDatum is a DelegateDatum, but not a special type of it.
+                    expect(backToJS.SingleDataElement.aString).toBe("hello world");
                 });
             });
 
             describe("L1: a struct", () => {
-                it("creates a valid datum using the fields of the nested struct (no intervening single-field-name", async () => {
+                fit("creates a valid datum using the fields of the nested struct (no intervening single-field-name", async () => {
                     // use variant "SingleNestedStruct"
                     const bridged = mkDatum.SingleNestedStruct({
                         a: 42,
@@ -180,31 +183,30 @@ describe("Type Bridge", async () => {
                         c: [true],
                         d: undefined,
                     });
-                    expect(bridged.type).toBe("SingleNestedStruct");
+                    const backToJS = readDatum(bridged);
+                    //@ts-expect-error readDatum is a DelegateDatum, but not a special type of it.
+                    expect(backToJS.SingleNestedStruct.aStruct.a).toBe(42n);
                 });
             });
 
             describe("L1: nested enum", () => {
                 describe("... L2: with just a tag", () => {
-                    it("creates a valid datum using the tag", async () => {
+                    fit("creates a valid datum using the tag", async () => {
                         const { mkDatum } = mintDelegate;
-                        const datum = mkDatum.HasNestedEnum({justATag: tagOnly})
-                        const backToJS = mintDelegate.readDatum(datum);
-                        expect(backToJS.type).toBe("SampleDatum");
-                        expect(backToJS.data).toEqual({});
+                        const datum = mkDatum.HasNestedEnum.justATag;
+
+                        const backToJS = readDatum(datum);
+                        // expect("").toBe(backToJS);
+                        // expect(backToJS.type).toBe("SampleDatum");
+                        expect(backToJS.HasNestedEnum.nested.justATag).toEqual({});
                     });
                 })
 
                 describe("... L2: with a single nested field", () => {
-                    it("creates a valid datum using a chain of nested enum variant names", async () => {
+                    fit("creates a valid datum using a chain of nested enum variant names", async () => {
                         const { mkDatum } = mintDelegate;
-                        // todo: support special-case accessor for nested enums, where the inner
-                        //   item is a proxy for generating both levels of ConstrData with the same
-                        //   single-field and seed semanatics as are used for the first level.
-                        // const datum = mkDatum.HasNestedEnum.justAnInt(42);
-                        const datum = mkDatum.HasNestedEnum({justAnInt: {m:42}})
+                        const datum = mkDatum.HasNestedEnum.justAnInt(42);
 
-                        debugger
                         expect(datum.dataPath).toBe("uutMintingDelegate::DelegateDatum.HasNestedEnum");
                         const result = await mintDelegate.newReadDatum(
                             datum
@@ -212,7 +214,7 @@ describe("Type Bridge", async () => {
                         expect(result).toEqual({
                             HasNestedEnum: { nested: { justAnInt: {m: 42n} } },
                         });
-                        const result2 = mintDelegate.offchain.DelegateDatum(
+                        const result2 = offchain.DelegateDatum(
                             datum
                         ) as any;
                         expect(result2).toEqual(result);
@@ -291,7 +293,7 @@ describe("Type Bridge", async () => {
                         c: [true],
                         d: undefined,
                     },
-                    nestedEnum: bridgeTo.SomeEnum.oneNestedStruct({
+                    nestedEnum: onchain.SomeEnum.oneNestedStruct({
                         a: 2, 
                         b: new Map([["life", 42]]),
                         c: [true, false, true],

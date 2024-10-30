@@ -35,11 +35,11 @@ import type {
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
-import { someDataMaker } from "../helios/dataBridge/someDataMaker.js"
+import { DataBridge } from "../helios/dataBridge/DataBridge.js"
 import { 
-    EnumMaker,
+    EnumBridge,
     type JustAnEnum,
-} from "../helios/dataBridge/dataMakers.js"
+} from "../helios/dataBridge/EnumBridge.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type {hasSeed, isActivity} from "../StellarContract.js"
 
@@ -66,7 +66,7 @@ import type * as types from "./CapoMinter.typeInfo.js";
  * main: src/minting/CapoMinter.hl, project: stellar-contracts
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
-export class CapoMinterDataBridge extends someDataMaker {
+export class CapoMinterDataBridge extends DataBridge {
     // for datum:
 
 
@@ -95,7 +95,7 @@ export default CapoMinterDataBridge;
 /**
  * Helper class for generating UplcData for variants of the MinterActivity enum type.
  */
-export class MinterActivityHelper extends EnumMaker<isActivity> {
+export class MinterActivityHelper extends EnumBridge<isActivity> {
     protected __cast = new Cast<
        MinterActivity,
        MinterActivityLike

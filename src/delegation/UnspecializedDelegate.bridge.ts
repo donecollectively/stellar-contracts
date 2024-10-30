@@ -35,11 +35,11 @@ import type {
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
-import { someDataMaker } from "../helios/dataBridge/someDataMaker.js"
+import { DataBridge } from "../helios/dataBridge/DataBridge.js"
 import { 
-    EnumMaker,
+    EnumBridge,
     type JustAnEnum,
-} from "../helios/dataBridge/dataMakers.js"
+} from "../helios/dataBridge/EnumBridge.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type {hasSeed, isActivity} from "../StellarContract.js"
 
@@ -79,7 +79,7 @@ import type * as types from "./UnspecializedDelegate.typeInfo.js";
  * main: src/delegation/BasicDelegate.hl, project: stellar-contracts
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
-export class UnspecializedDelegateBridge extends someDataMaker {
+export class UnspecializedDelegateBridge extends DataBridge {
     // for datum:
     datum: DelegateDatumHelper = new DelegateDatumHelper(this.bundle, {})   // datumAccessor/enum 
     DelegateDatum: DelegateDatumHelper = this.datum;
@@ -115,7 +115,7 @@ export default UnspecializedDelegateBridge;
 /**
  * Helper class for generating UplcData for variants of the DelegateDatum enum type.
  */
-export class DelegateDatumHelper extends EnumMaker<JustAnEnum> {
+export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     protected __cast = new Cast<
        DelegateDatum,
        DelegateDatumLike
@@ -162,7 +162,7 @@ export class DelegateDatumHelper extends EnumMaker<JustAnEnum> {
 /**
  * Helper class for generating UplcData for variants of the CapoLifecycleActivity enum type.
  */
-export class CapoLifecycleActivityHelper extends EnumMaker<JustAnEnum> {
+export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     protected __cast = new Cast<
        CapoLifecycleActivity,
        CapoLifecycleActivityLike
@@ -208,7 +208,7 @@ export class CapoLifecycleActivityHelper extends EnumMaker<JustAnEnum> {
 /**
  * Helper class for generating UplcData for variants of the DelegateLifecycleActivity enum type.
  */
-export class DelegateLifecycleActivityHelper extends EnumMaker<JustAnEnum> {
+export class DelegateLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     protected __cast = new Cast<
        DelegateLifecycleActivity,
        DelegateLifecycleActivityLike
@@ -272,7 +272,7 @@ export class DelegateLifecycleActivityHelper extends EnumMaker<JustAnEnum> {
 /**
  * Helper class for generating UplcData for variants of the SpendingActivity enum type.
  */
-export class SpendingActivityHelper extends EnumMaker<JustAnEnum> {
+export class SpendingActivityHelper extends EnumBridge<JustAnEnum> {
     protected __cast = new Cast<
        SpendingActivity,
        SpendingActivityLike
@@ -292,7 +292,7 @@ export class SpendingActivityHelper extends EnumMaker<JustAnEnum> {
 /**
  * Helper class for generating UplcData for variants of the MintingActivity enum type.
  */
-export class MintingActivityHelper extends EnumMaker<JustAnEnum> {
+export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
     protected __cast = new Cast<
        MintingActivity,
        MintingActivityLike
@@ -311,7 +311,7 @@ export class MintingActivityHelper extends EnumMaker<JustAnEnum> {
 /**
  * Helper class for generating UplcData for variants of the BurningActivity enum type.
  */
-export class BurningActivityHelper extends EnumMaker<JustAnEnum> {
+export class BurningActivityHelper extends EnumBridge<JustAnEnum> {
     protected __cast = new Cast<
        BurningActivity,
        BurningActivityLike
@@ -331,7 +331,7 @@ export class BurningActivityHelper extends EnumMaker<JustAnEnum> {
 /**
  * Helper class for generating UplcData for variants of the CapoLifecycleActivity enum type.
  */
-export class CapoLifecycleActivityHelperNested extends EnumMaker<isActivity> {
+export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     protected __cast = new Cast<
        CapoLifecycleActivity,
        CapoLifecycleActivityLike
@@ -377,7 +377,7 @@ export class CapoLifecycleActivityHelperNested extends EnumMaker<isActivity> {
 /**
  * Helper class for generating UplcData for variants of the DelegateLifecycleActivity enum type.
  */
-export class DelegateLifecycleActivityHelperNested extends EnumMaker<isActivity> {
+export class DelegateLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     protected __cast = new Cast<
        DelegateLifecycleActivity,
        DelegateLifecycleActivityLike
@@ -441,7 +441,7 @@ export class DelegateLifecycleActivityHelperNested extends EnumMaker<isActivity>
 /**
  * Helper class for generating UplcData for variants of the SpendingActivity enum type.
  */
-export class SpendingActivityHelperNested extends EnumMaker<isActivity> {
+export class SpendingActivityHelperNested extends EnumBridge<isActivity> {
     protected __cast = new Cast<
        SpendingActivity,
        SpendingActivityLike
@@ -461,7 +461,7 @@ export class SpendingActivityHelperNested extends EnumMaker<isActivity> {
 /**
  * Helper class for generating UplcData for variants of the MintingActivity enum type.
  */
-export class MintingActivityHelperNested extends EnumMaker<isActivity> {
+export class MintingActivityHelperNested extends EnumBridge<isActivity> {
     protected __cast = new Cast<
        MintingActivity,
        MintingActivityLike
@@ -480,7 +480,7 @@ export class MintingActivityHelperNested extends EnumMaker<isActivity> {
 /**
  * Helper class for generating UplcData for variants of the BurningActivity enum type.
  */
-export class BurningActivityHelperNested extends EnumMaker<isActivity> {
+export class BurningActivityHelperNested extends EnumBridge<isActivity> {
     protected __cast = new Cast<
        BurningActivity,
        BurningActivityLike
@@ -500,7 +500,7 @@ export class BurningActivityHelperNested extends EnumMaker<isActivity> {
 /**
  * Helper class for generating UplcData for variants of the DelegateActivity enum type.
  */
-export class DelegateActivityHelper extends EnumMaker<isActivity> {
+export class DelegateActivityHelper extends EnumBridge<isActivity> {
     protected __cast = new Cast<
        DelegateActivity,
        DelegateActivityLike

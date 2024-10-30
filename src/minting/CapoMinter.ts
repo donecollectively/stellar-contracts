@@ -28,7 +28,7 @@ import CapoMinterBundle from "./CapoMinter.hlbundle.js";
 import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
 import type { HeliosBundleClass, HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 import CapoMinterDataBridge from "./CapoMinter.bridge.js";
-import type { DataMaker } from "../helios/dataBridge/dataMakers.js";
+import type { DataBridge } from "src/helios/dataBridge/DataBridge.js";
 
 type MintCharterActivityArgs<T = {}> = T & {
     owner: Address;

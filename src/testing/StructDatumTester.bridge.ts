@@ -35,11 +35,11 @@ import type {
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
-import { someDataMaker } from "../helios/dataBridge/someDataMaker.js"
+import { DataBridge } from "../helios/dataBridge/DataBridge.js"
 import { 
-    EnumMaker,
+    EnumBridge,
     type JustAnEnum,
-} from "../helios/dataBridge/dataMakers.js"
+} from "../helios/dataBridge/EnumBridge.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type {hasSeed, isActivity} from "../StellarContract.js"
 
@@ -67,7 +67,7 @@ import type * as types from "./StructDatumTester.typeInfo.js";
  * main: src/testing/StructDatumTester.hl, project: stellar-contracts
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
-export class StructDatumTesterDataBridge extends someDataMaker {
+export class StructDatumTesterDataBridge extends DataBridge {
     // for datum:
     __datumCast = new Cast<
         DatumStruct, DatumStructLike

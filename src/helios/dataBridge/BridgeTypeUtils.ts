@@ -15,15 +15,15 @@ import type {
     DelegateDatum as MDWGU_DelegateDatum,
     DelegateActivity as MDWGU_DelegateActivity,
 } from "../../testing/specialMintDelegate/uutMintingMintDelegate.typeInfo.js";
-import { DataMaker } from "./dataMakers.js";
+import { DataBridge } from "./DataBridge.js";
 import type { CapoDatum } from "../../CapoHeliosBundle.typeInfo.js";
 import CapoMinterDataBridge, { MinterActivityHelper } from "../../minting/CapoMinter.bridge.js";
 
-type canHaveDataBridge = { dataBridgeClass: Option<typeof DataMaker> };
+type canHaveDataBridge = { dataBridgeClass: Option<typeof DataBridge> };
 export type dataBridgeType<
     T extends canHaveDataBridge,
     bridgeClassMaybe = T["dataBridgeClass"]
-> = bridgeClassMaybe extends typeof DataMaker
+> = bridgeClassMaybe extends typeof DataBridge
     ? InstanceType<bridgeClassMaybe>
     : never;
 
@@ -39,7 +39,7 @@ export type findDatumType<
     BC extends dataBridgeType<T> = dataBridgeType<T>,
     DT = BC extends { datum: infer D }
         ? D
-        : BC extends DataMaker
+        : BC extends DataBridge
         ? BC
         : "NO DATUM DETECTED"
 > = DT;
@@ -58,7 +58,7 @@ export type findActivityType<
     T extends canHaveDataBridge,
     BI extends bridgeInspector<T> = bridgeInspector<T>,
 > =
-    IF<BI["isAbstractBridgeType"], DataMaker, BI["activityHelper"]>;
+    IF<BI["isAbstractBridgeType"], DataBridge, BI["activityHelper"]>;
 
 type definesBridgeClass<T> = T extends { dataBridgeClass: infer DBC }
     ? DBC extends abstract new (...args: any) => any
@@ -191,7 +191,7 @@ type bridgeInspector<
     // isDataMaker = bridgeType extends DataMaker ? true : false,
     readsDatumUplcAs = bridgeType extends { readDatum: readsUplcTo<infer RD> } ? RD : never,
     hasMkDatum = bridgeType extends { mkDatum: infer MkD } ? MkD : never,
-    activityHelper = IF<isSCBaseClass, DataMaker, bridgeType extends { activity: infer A } ? A :  never>
+    activityHelper = IF<isSCBaseClass, DataBridge, bridgeType extends { activity: infer A } ? A :  never>
 > = {
     inspected: SC;
     thatDefinedBridgeType: thatDefinedBridgeType;
@@ -214,13 +214,13 @@ type bridgeInspector<
     hasMkDatum: hasMkDatum;
     activityHelper: activityHelper;
 };
-const t: DataMaker extends never ? true : false = false;
-const t2: never extends DataMaker ? true : false = true;
+const t: DataBridge extends never ? true : false = false;
+const t2: never extends DataBridge ? true : false = true;
 
 const testing = false;
 if (testing) {
-    type GenericDataMaker = typeof DataMaker;
-    const GenericDataMaker: GenericDataMaker = DataMaker;
+    type GenericDataMaker = typeof DataBridge;
+    const GenericDataMaker: GenericDataMaker = DataBridge;
     // for testing NeverEntries
     const IS_A_NEVER = {IS_A_NEVER: true as const};
 
@@ -251,11 +251,11 @@ if (testing) {
         };
         type NonNeverEntries = BridgeNonNeverEntries<BISC>;
         const nonNeverEntries: NonNeverEntries = {
-            bridgeClass: DataMaker,
-            abstractBridgeType: {} as DataMaker,
-            activityHelper: {} as DataMaker,
+            bridgeClass: DataBridge,
+            abstractBridgeType: {} as DataBridge,
+            activityHelper: {} as DataBridge,
             inspected: {} as StellarContract<any>,
-            thatDefinedBridgeType: DataMaker,
+            thatDefinedBridgeType: DataBridge,
             //x@ts-expect-error DataMaker should go away here, replaced with never (above)
             // usesOtherBridge: DataMaker,
         }
@@ -389,9 +389,9 @@ if (testing) {
         const nonNeverEntries: NonNeverEntries = {
             inspected: {} as BasicMintDelegate,
             thatDefinedBridgeType: GenericDataMaker,
-            bridgeClass: DataMaker, // dataBridgeError("BasicMintDelegate"),
-            usesMintDgtBridge: DataMaker, // dataBridgeError("BasicMintDelegate"),
-            abstractBridgeType: "" as unknown as DataMaker,
+            bridgeClass: DataBridge, // dataBridgeError("BasicMintDelegate"),
+            usesMintDgtBridge: DataBridge, // dataBridgeError("BasicMintDelegate"),
+            abstractBridgeType: "" as unknown as DataBridge,
         };
     }
 
@@ -402,7 +402,7 @@ if (testing) {
             something = "hi";
         }
         //@ts-expect-error
-        const incompleteBridge: BI_IMD["bridgeClass"] = DataMaker;
+        const incompleteBridge: BI_IMD["bridgeClass"] = DataBridge;
         const bridgeClassError: BI_IMD["bridgeClass"] =
             dataBridgeError("BasicMintDelegate");
 
@@ -435,7 +435,7 @@ if (testing) {
             thatDefinedBridgeType: GenericDataMaker,
             bridgeClass: dataBridgeError("BasicMintDelegate"),
             usesMintDgtBridge: dataBridgeError("BasicMintDelegate"),
-            abstractBridgeType: "" as unknown as DataMaker,
+            abstractBridgeType: "" as unknown as DataBridge,
         };
     }
 

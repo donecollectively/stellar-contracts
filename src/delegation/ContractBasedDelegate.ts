@@ -34,7 +34,7 @@ import { dumpAny } from "../diagnostics.js";
 import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 import type { CapoDelegateBundle, CapoDelegateBundleClass } from "./CapoDelegateBundle.js";
-import type { DataMaker } from "../helios/dataBridge/dataMakers.js";
+import type { DataBridge } from "src/helios/dataBridge/DataBridge.js";
 
 
 /**
@@ -47,7 +47,7 @@ export class ContractBasedDelegate extends StellarDelegate {
     /**
      * Each contract-based delegate must define its own dataBridgeClass
      */
-    declare dataBridgeClass : typeof DataMaker;
+    declare dataBridgeClass : typeof DataBridge;
     static currentRev = 1n;
 
     /**

@@ -34,7 +34,7 @@ type fullTypeDetails = typeDetails<dataBridgeTypeInfo>;
  * and does code generation for a class, including accessors for generating typed data
  * by converting expected data structures using the Cast class.
  *
- * The class is a sublcass of someDataMaker, which provides some basics for working
+ * The class is a sublcass of DataBridge, which provides some basics for working
  * with UPLC data, given the type-metadata.
  *
  * Uses the BundleTypes class as a helper, in which the bridge-generator is a
@@ -155,23 +155,23 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
         let scImports = `import {
     type tagOnly, 
     type hasSeed, 
-    someDataMaker, 
-    EnumMaker,
+    DataBridge, 
+    EnumBrdige,
     type JustAnEnum,
     type isActivity
 } from "@donecollectively/stellar-contracts"\n`;
         if (this._isSC) {
             scImports =
-                `import { someDataMaker } from "${this.mkRelativeImport(
+                `import { DataBridge } from "${this.mkRelativeImport(
                     inputFile,
-                    "src/helios/dataBridge/someDataMaker.js"
+                    "src/helios/dataBridge/DataBridge.js"
                 )}"\n` +
                 `import { 
-    EnumMaker,
+    EnumBridge,
     type JustAnEnum,
 } from "${this.mkRelativeImport(
                     inputFile,
-                    "src/helios/dataBridge/dataMakers.js"
+                    "src/helios/dataBridge/EnumBridge.js"
                 )}"\n` +
                 `import type { tagOnly } from "${this.mkRelativeImport(
                     inputFile,
@@ -210,7 +210,7 @@ ${this.includeScriptNamedTypes(inputFile)}
         }
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
-export class ${bridgeClassName} extends someDataMaker {
+export class ${bridgeClassName} extends DataBridge {
     // for datum:
 ${this.includeDatumAccessors()}
 
@@ -467,8 +467,8 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const enumName = typeDetails.enumName;
         // const maybeNested = isNested ? ", Nested" : "";
         const parentClass = isActivity
-            ? `EnumMaker<isActivity>` // ${maybeNested}>`
-            : `EnumMaker<JustAnEnum>`; //${maybeNested}>`;
+            ? `EnumBridge<isActivity>` // ${maybeNested}>`
+            : `EnumBridge<JustAnEnum>`; //${maybeNested}>`;
 
         const helperClassName = isNested
             ? this.nestedHelperClassName(typeDetails, isActivity)
