@@ -38,8 +38,6 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 import { someDataMaker } from "../helios/dataBridge/someDataMaker.js"
 import { 
     EnumMaker,
-    type Nested,
-    type EnumMakerOptions,
     type JustAnEnum,
 } from "../helios/dataBridge/dataMakers.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
@@ -57,6 +55,11 @@ export type * as types from "./CapoMinter.typeInfo.js";
 import type * as types from "./CapoMinter.typeInfo.js";
 
 
+
+//Note about @ts-expect-error drilling through protected accessors: This 
+//   allows the interface for the nested accessor to show only the public details,
+//   while allowing us to collaborate between these two closely-related classes.
+//   Like "friends" in C++.
 
 /**
  * data bridge for CapoMinter script (defined in CapoMinterBundle)}
@@ -88,11 +91,12 @@ export class CapoMinterDataBridge extends someDataMaker {
 }
 export default CapoMinterDataBridge;
 
+
 /**
  * Helper class for generating UplcData for variants of the MinterActivity enum type.
  */
 export class MinterActivityHelper extends EnumMaker<isActivity> {
-    __cast = new Cast<
+    protected __cast = new Cast<
        MinterActivity,
        MinterActivityLike
    >(MinterActivitySchema, { isMainnet: true });

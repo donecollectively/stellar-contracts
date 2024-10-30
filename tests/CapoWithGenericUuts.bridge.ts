@@ -38,8 +38,6 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 import { someDataMaker } from "../src/helios/dataBridge/someDataMaker.js"
 import { 
     EnumMaker,
-    type Nested,
-    type EnumMakerOptions,
     type JustAnEnum,
 } from "../src/helios/dataBridge/dataMakers.js"
 import type { tagOnly } from "../src/helios/HeliosScriptBundle.js"
@@ -62,6 +60,11 @@ import type * as types from "./CapoWithGenericUuts.typeInfo.js";
 
 
 
+//Note about @ts-expect-error drilling through protected accessors: This 
+//   allows the interface for the nested accessor to show only the public details,
+//   while allowing us to collaborate between these two closely-related classes.
+//   Like "friends" in C++.
+
 /**
  * data bridge for Capo script (defined in CapoBundleWithGenericUuts)}
  * main: src/DefaultCapo.hl, project: stellar-contracts
@@ -72,6 +75,8 @@ export class CapoDataBridge extends someDataMaker {
     datum: CapoDatumHelper = new CapoDatumHelper(this.bundle, {})   // datumAccessor/enum 
     CapoDatum: CapoDatumHelper = this.datum;
     readDatum = (d: UplcData) => {
+        //@ts-expect-error drilling through the protected accessor.
+        //   ... see more comments about that above
         return this.datum.__cast.fromUplcData(d);
     }
 
@@ -97,11 +102,12 @@ export class CapoDataBridge extends someDataMaker {
 }
 export default CapoDataBridge;
 
+
 /**
  * Helper class for generating UplcData for variants of the CapoDatum enum type.
  */
 export class CapoDatumHelper extends EnumMaker<JustAnEnum> {
-    __cast = new Cast<
+    protected __cast = new Cast<
        CapoDatum,
        CapoDatumLike
    >(CapoDatumSchema, { isMainnet: true });
@@ -168,7 +174,7 @@ export class CapoDatumHelper extends EnumMaker<JustAnEnum> {
  * Helper class for generating UplcData for variants of the CapoActivity enum type.
  */
 export class CapoActivityHelper extends EnumMaker<isActivity> {
-    __cast = new Cast<
+    protected __cast = new Cast<
        CapoActivity,
        CapoActivityLike
    >(CapoActivitySchema, { isMainnet: true });

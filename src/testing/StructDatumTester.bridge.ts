@@ -38,8 +38,6 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 import { someDataMaker } from "../helios/dataBridge/someDataMaker.js"
 import { 
     EnumMaker,
-    type Nested,
-    type EnumMakerOptions,
     type JustAnEnum,
 } from "../helios/dataBridge/dataMakers.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
@@ -58,6 +56,11 @@ export type * as types from "./StructDatumTester.typeInfo.js";
 import type * as types from "./StructDatumTester.typeInfo.js";
 
 
+
+//Note about @ts-expect-error drilling through protected accessors: This 
+//   allows the interface for the nested accessor to show only the public details,
+//   while allowing us to collaborate between these two closely-related classes.
+//   Like "friends" in C++.
 
 /**
  * data bridge for StructDatumTester script (defined in StructDatumTester)}
@@ -113,6 +116,7 @@ export class StructDatumTesterDataBridge extends someDataMaker {
     // TODO: include any utility functions defined in the contract
 }
 export default StructDatumTesterDataBridge;
+
 
 
 export const struct3Schema : StructTypeSchema = {

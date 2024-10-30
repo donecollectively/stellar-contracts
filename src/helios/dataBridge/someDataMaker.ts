@@ -128,16 +128,29 @@ import type { UplcData } from "@helios-lang/uplc"
 // function dataMakerProxyBase() {}
 // dataMakerProxyBase.prototype = rawDataMakerProxy
 
+export type DataMakerOptions = {
+    isActivity?: boolean;
+    isNested?: boolean;
+};
+
 export class someDataMaker { // extends (dataMakerProxyBase as any) {
-    constructor(public bundle: HeliosScriptBundle) {
+    protected __schema : TypeSchema 
+    protected __cast: Cast<any,any>
+    protected isActivity: boolean;
+    protected isNested: boolean;
+
+    constructor(protected bundle: HeliosScriptBundle, options: DataMakerOptions = {}) {
         // these start undefined, but are always forced into existence immediately
         // via getTypeSchema().  Any exceptions means this protocol wasn't followed 
         // correctly.
         this.__schema = undefined as any
         this.__cast = undefined as any
+
+        const { isActivity, isNested } = options
+        this.isActivity = isActivity || false;
+        this.isNested = isNested || false;
+
     }
-    __schema : TypeSchema 
-    __cast: Cast<any,any>
     // 
     // declare activity: someDataMaker | ((...args:any) => UplcData)
 
@@ -146,7 +159,7 @@ export class someDataMaker { // extends (dataMakerProxyBase as any) {
     // //     throw new Error(`each dataMaker makes its own datum`)
     // // }
 
-    getSeed(arg: hasSeed | TxOutputId ): TxOutputId {
+    protected getSeed(arg: hasSeed | TxOutputId ): TxOutputId {
         if (arg instanceof TxOutputId) return arg;
         
         const seedInfo : SeedAttrs | undefined = ("txId" in arg && "idx" in arg) ? arg
@@ -156,31 +169,39 @@ export class someDataMaker { // extends (dataMakerProxyBase as any) {
         return new TxOutputId(seedInfo.txId, seedInfo.idx);
     }
 
-    get isEnum() {
+    protected redirectTo?: (value: any) => void;
+    protected mkDataVia(redirectionCallback: (value: any) => void) {
+        if (!this.isNested) {
+            throw new Error(`dataMaker ${this.constructor.name}: redirectTo is only valid for nested enums`)
+        }
+        this.redirectTo = redirectionCallback;        
+    }
+
+    protected get isEnum() {
         return "enum" === this.__schema!.kind
     }
-    getTypeSchema() {
+    protected getTypeSchema() {
         if (!this.__schema) {
             this.__schema = "placeholder" as any // this.__typeDetails.dataType.toSchema() 
             this.__cast = new Cast(this.__schema, {isMainnet: true})
         }
         return this.__schema
     }
-    usesRedeemerWrapper : boolean = false
+    // usesRedeemerWrapper : boolean = false
 
-    toUplc(x: any) {
-        return this.__cast.toUplcData(x)
-    }
+    // toUplc(x: any) {
+    //     return this.__cast.toUplcData(x)
+    // }
 
-    get __typeName() : string {
-        return "someTypeName" // this.__typeDetails.dataType.name
+    // get __typeName() : string {
+    //     return "someTypeName" // this.__typeDetails.dataType.name
 
-        // //@ts-expect-error not all schemas have names
-        // const {name=""} = this.__schema!
-        // if (!name) {
-        //     throw new Error(`can't get typeName for unnamed type: ${this.__schema!.kind}`)
-        // }
-        // return name
-    }
+    //     // //@ts-expect-error not all schemas have names
+    //     // const {name=""} = this.__schema!
+    //     // if (!name) {
+    //     //     throw new Error(`can't get typeName for unnamed type: ${this.__schema!.kind}`)
+    //     // }
+    //     // return name
+    // }
 }
 

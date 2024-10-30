@@ -38,8 +38,6 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 import { someDataMaker } from "../../helios/dataBridge/someDataMaker.js"
 import { 
     EnumMaker,
-    type Nested,
-    type EnumMakerOptions,
     type JustAnEnum,
 } from "../../helios/dataBridge/dataMakers.js"
 import type { tagOnly } from "../../helios/HeliosScriptBundle.js"
@@ -76,6 +74,11 @@ import type * as types from "./uutMintingMintDelegate.typeInfo.js";
 
 
 
+//Note about @ts-expect-error drilling through protected accessors: This 
+//   allows the interface for the nested accessor to show only the public details,
+//   while allowing us to collaborate between these two closely-related classes.
+//   Like "friends" in C++.
+
 /**
  * data bridge for BasicDelegate script (defined in BundleMintDelegateWithGenericUuts)}
  * main: src/delegation/BasicDelegate.hl, project: stellar-contracts
@@ -86,6 +89,8 @@ export class uutMintingDelegateDataBridge extends someDataMaker {
     datum: DelegateDatumHelper = new DelegateDatumHelper(this.bundle, {})   // datumAccessor/enum 
     DelegateDatum: DelegateDatumHelper = this.datum;
     readDatum = (d: UplcData) => {
+        //@ts-expect-error drilling through the protected accessor.
+        //   ... see more comments about that above
         return this.datum.__cast.fromUplcData(d);
     }
 
@@ -111,11 +116,12 @@ export class uutMintingDelegateDataBridge extends someDataMaker {
 }
 export default uutMintingDelegateDataBridge;
 
+
 /**
  * Helper class for generating UplcData for variants of the SomeEnum enum type.
  */
 export class SomeEnumHelper extends EnumMaker<JustAnEnum> {
-    __cast = new Cast<
+    protected __cast = new Cast<
        SomeEnum,
        SomeEnumLike
    >(SomeEnumSchema, { isMainnet: true });
@@ -177,7 +183,7 @@ export class SomeEnumHelper extends EnumMaker<JustAnEnum> {
  * Helper class for generating UplcData for variants of the SomeEnum enum type.
  */
 export class SomeEnumHelperNested extends EnumMaker<JustAnEnum> {
-    __cast = new Cast<
+    protected __cast = new Cast<
        SomeEnum,
        SomeEnumLike
    >(SomeEnumSchema, { isMainnet: true });
@@ -239,7 +245,7 @@ export class SomeEnumHelperNested extends EnumMaker<JustAnEnum> {
  * Helper class for generating UplcData for variants of the DelegateDatum enum type.
  */
 export class DelegateDatumHelper extends EnumMaker<JustAnEnum> {
-    __cast = new Cast<
+    protected __cast = new Cast<
        DelegateDatum,
        DelegateDatumLike
    >(DelegateDatumSchema, { isMainnet: true });
@@ -284,6 +290,7 @@ export class DelegateDatumHelper extends EnumMaker<JustAnEnum> {
         const nestedAccessor = new SomeEnumHelperNested(this.bundle,
             {isNested: true, isActivity: false 
         });
+        //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia((nested: SomeEnumLike) => {
            return  this.mkUplcData({ HasNestedEnum: { nested: nested } }, 
             "uutMintingDelegate::DelegateDatum.HasNestedEnum");
@@ -326,7 +333,7 @@ export class DelegateDatumHelper extends EnumMaker<JustAnEnum> {
  * Helper class for generating UplcData for variants of the CapoLifecycleActivity enum type.
  */
 export class CapoLifecycleActivityHelper extends EnumMaker<JustAnEnum> {
-    __cast = new Cast<
+    protected __cast = new Cast<
        CapoLifecycleActivity,
        CapoLifecycleActivityLike
    >(CapoLifecycleActivitySchema, { isMainnet: true });
@@ -372,7 +379,7 @@ export class CapoLifecycleActivityHelper extends EnumMaker<JustAnEnum> {
  * Helper class for generating UplcData for variants of the DelegateLifecycleActivity enum type.
  */
 export class DelegateLifecycleActivityHelper extends EnumMaker<JustAnEnum> {
-    __cast = new Cast<
+    protected __cast = new Cast<
        DelegateLifecycleActivity,
        DelegateLifecycleActivityLike
    >(DelegateLifecycleActivitySchema, { isMainnet: true });
@@ -436,7 +443,7 @@ export class DelegateLifecycleActivityHelper extends EnumMaker<JustAnEnum> {
  * Helper class for generating UplcData for variants of the SpendingActivity enum type.
  */
 export class SpendingActivityHelper extends EnumMaker<JustAnEnum> {
-    __cast = new Cast<
+    protected __cast = new Cast<
        SpendingActivity,
        SpendingActivityLike
    >(SpendingActivitySchema, { isMainnet: true });
@@ -465,7 +472,7 @@ export class SpendingActivityHelper extends EnumMaker<JustAnEnum> {
  * Helper class for generating UplcData for variants of the MintingActivity enum type.
  */
 export class MintingActivityHelper extends EnumMaker<JustAnEnum> {
-    __cast = new Cast<
+    protected __cast = new Cast<
        MintingActivity,
        MintingActivityLike
    >(MintingActivitySchema, { isMainnet: true });
@@ -520,7 +527,7 @@ export class MintingActivityHelper extends EnumMaker<JustAnEnum> {
  * Helper class for generating UplcData for variants of the BurningActivity enum type.
  */
 export class BurningActivityHelper extends EnumMaker<JustAnEnum> {
-    __cast = new Cast<
+    protected __cast = new Cast<
        BurningActivity,
        BurningActivityLike
    >(BurningActivitySchema, { isMainnet: true });
@@ -540,7 +547,7 @@ export class BurningActivityHelper extends EnumMaker<JustAnEnum> {
  * Helper class for generating UplcData for variants of the CapoLifecycleActivity enum type.
  */
 export class CapoLifecycleActivityHelperNested extends EnumMaker<isActivity> {
-    __cast = new Cast<
+    protected __cast = new Cast<
        CapoLifecycleActivity,
        CapoLifecycleActivityLike
    >(CapoLifecycleActivitySchema, { isMainnet: true });
@@ -586,7 +593,7 @@ export class CapoLifecycleActivityHelperNested extends EnumMaker<isActivity> {
  * Helper class for generating UplcData for variants of the DelegateLifecycleActivity enum type.
  */
 export class DelegateLifecycleActivityHelperNested extends EnumMaker<isActivity> {
-    __cast = new Cast<
+    protected __cast = new Cast<
        DelegateLifecycleActivity,
        DelegateLifecycleActivityLike
    >(DelegateLifecycleActivitySchema, { isMainnet: true });
@@ -650,7 +657,7 @@ export class DelegateLifecycleActivityHelperNested extends EnumMaker<isActivity>
  * Helper class for generating UplcData for variants of the SpendingActivity enum type.
  */
 export class SpendingActivityHelperNested extends EnumMaker<isActivity> {
-    __cast = new Cast<
+    protected __cast = new Cast<
        SpendingActivity,
        SpendingActivityLike
    >(SpendingActivitySchema, { isMainnet: true });
@@ -679,7 +686,7 @@ export class SpendingActivityHelperNested extends EnumMaker<isActivity> {
  * Helper class for generating UplcData for variants of the MintingActivity enum type.
  */
 export class MintingActivityHelperNested extends EnumMaker<isActivity> {
-    __cast = new Cast<
+    protected __cast = new Cast<
        MintingActivity,
        MintingActivityLike
    >(MintingActivitySchema, { isMainnet: true });
@@ -734,7 +741,7 @@ export class MintingActivityHelperNested extends EnumMaker<isActivity> {
  * Helper class for generating UplcData for variants of the BurningActivity enum type.
  */
 export class BurningActivityHelperNested extends EnumMaker<isActivity> {
-    __cast = new Cast<
+    protected __cast = new Cast<
        BurningActivity,
        BurningActivityLike
    >(BurningActivitySchema, { isMainnet: true });
@@ -754,7 +761,7 @@ export class BurningActivityHelperNested extends EnumMaker<isActivity> {
  * Helper class for generating UplcData for variants of the DelegateActivity enum type.
  */
 export class DelegateActivityHelper extends EnumMaker<isActivity> {
-    __cast = new Cast<
+    protected __cast = new Cast<
        DelegateActivity,
        DelegateActivityLike
    >(DelegateActivitySchema, { isMainnet: true });
@@ -763,6 +770,7 @@ export class DelegateActivityHelper extends EnumMaker<isActivity> {
         const nestedAccessor = new CapoLifecycleActivityHelperNested(this.bundle,
             {isNested: true, isActivity: true 
         });
+        //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia((nested: CapoLifecycleActivityLike) => {
            return  this.mkUplcData({ CapoLifecycleActivities: { activity: nested } }, 
             "uutMintingDelegate::DelegateActivity.CapoLifecycleActivities");
@@ -774,6 +782,7 @@ export class DelegateActivityHelper extends EnumMaker<isActivity> {
         const nestedAccessor = new DelegateLifecycleActivityHelperNested(this.bundle,
             {isNested: true, isActivity: true 
         });
+        //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia((nested: DelegateLifecycleActivityLike) => {
            return  this.mkUplcData({ DelegateLifecycleActivities: { activity: nested } }, 
             "uutMintingDelegate::DelegateActivity.DelegateLifecycleActivities");
@@ -785,6 +794,7 @@ export class DelegateActivityHelper extends EnumMaker<isActivity> {
         const nestedAccessor = new SpendingActivityHelperNested(this.bundle,
             {isNested: true, isActivity: true 
         });
+        //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia((nested: SpendingActivityLike) => {
            return  this.mkUplcData({ SpendingActivities: { activity: nested } }, 
             "uutMintingDelegate::DelegateActivity.SpendingActivities");
@@ -796,6 +806,7 @@ export class DelegateActivityHelper extends EnumMaker<isActivity> {
         const nestedAccessor = new MintingActivityHelperNested(this.bundle,
             {isNested: true, isActivity: true 
         });
+        //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia((nested: MintingActivityLike) => {
            return  this.mkUplcData({ MintingActivities: { activity: nested } }, 
             "uutMintingDelegate::DelegateActivity.MintingActivities");
@@ -807,6 +818,7 @@ export class DelegateActivityHelper extends EnumMaker<isActivity> {
         const nestedAccessor = new BurningActivityHelperNested(this.bundle,
             {isNested: true, isActivity: true 
         });
+        //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia((nested: BurningActivityLike) => {
            return  this.mkUplcData({ BurningActivities: { activity: nested } }, 
             "uutMintingDelegate::DelegateActivity.BurningActivities");

@@ -157,8 +157,6 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
     type hasSeed, 
     someDataMaker, 
     EnumMaker,
-    type Nested,
-    type EnumMakerOptions,
     type JustAnEnum,
     type isActivity
 } from "@donecollectively/stellar-contracts"\n`;
@@ -170,8 +168,6 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
                 )}"\n` +
                 `import { 
     EnumMaker,
-    type Nested,
-    type EnumMakerOptions,
     type JustAnEnum,
 } from "${this.mkRelativeImport(
                     inputFile,
@@ -200,6 +196,11 @@ ${scImports}
 // namespace ${bridgeClassName} {
 ${this.includeScriptNamedTypes(inputFile)}
 
+//Note about @ts-expect-error drilling through protected accessors: This 
+//   allows the interface for the nested accessor to show only the public details,
+//   while allowing us to collaborate between these two closely-related classes.
+//   Like "friends" in C++.
+
 /**
  * data bridge for ${this.bundle.program.name} script (defined in ${
             this.bundle.constructor.name
@@ -223,6 +224,7 @@ ${this.includeActivityCreator()}
     // TODO: include any utility functions defined in the contract
 }
 export default ${bridgeClassName};
+
 
 ${this.includeEnumHelperClasses()}
 ${this.includeNamedSchemas()}
@@ -365,6 +367,8 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `    datum: ${helperClassName} = new ${helperClassName}(this.bundle, {})   // datumAccessor/enum \n` +
                 `    ${details.typeSchema.name}: ${helperClassName} = this.datum;\n` +
                 `    readDatum = (d: UplcData) => {\n` +
+                `        //@ts-expect-error drilling through the protected accessor.\n`+
+                `        //   ... see more comments about that above\n` +
                 `        return this.datum.__cast.fromUplcData(d);\n` +
                 `    }\n`
             );
@@ -475,7 +479,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             ` * Helper class for generating UplcData for variants of the ${enumName} enum type.\n` +
             ` */\n` +
             `export class ${helperClassName} extends ${parentClass} {\n` +
-            `    __cast = new Cast<\n` +
+            `    protected __cast = new Cast<\n` +
             `       ${typeDetails.canonicalTypeName},\n` +
             `       ${typeDetails.permissiveTypeName}\n` +
             `   >(${enumName}Schema, { isMainnet: true });\n` +
@@ -521,7 +525,8 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 isActivity ? "true" : "false"
             } 
         });\n` +
-            `        nestedAccessor.mkDataVia((nested: ${nestedEnumName}Like) => {\n` +
+        `        //@ts-expect-error drilling through the protected accessor.  See more comments about that above\n`+
+        `        nestedAccessor.mkDataVia((nested: ${nestedEnumName}Like) => {\n` +
             `           return  this.mkUplcData({ ${variantName}: { ${fieldName}: nested } }, 
             ${enumPathExpr});\n` +
             `        });\n` +
