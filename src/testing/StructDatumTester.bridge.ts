@@ -68,7 +68,6 @@ import type * as types from "./StructDatumTester.typeInfo.js";
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
 export class StructDatumTesterDataBridge extends DataBridge {
-    // for datum:
     __datumCast = new Cast<
         DatumStruct, DatumStructLike
     >(DatumStructSchema, { isMainnet: true }); // datumAccessorCast
@@ -93,12 +92,6 @@ export class StructDatumTesterDataBridge extends DataBridge {
         return this.__datumCast.toUplcData(fields);
     } // datumAccessor/byName 
 
-
-// for activity types:
-
-    __activityCast = new Cast<
-        bigint, IntLike
-    >({"kind":"internal","name":"Int"}, { isMainnet: true }); // activityAccessorCast
             
     /**
      * generates UplcData for the activity type (undefined) for the StructDatumTester script

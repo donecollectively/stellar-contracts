@@ -211,10 +211,7 @@ ${this.includeScriptNamedTypes(inputFile)}
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
 export class ${bridgeClassName} extends DataBridge {
-    // for datum:
 ${this.includeDatumAccessors()}
-
-// for activity types:
 ${this.includeActivityCreator()}
 ${this.includeDataReader()}
 ${this.includeTypeAccessors()}
@@ -234,9 +231,10 @@ ${this.includeNamedSchemas()}
     includeTypeAccessors() {
         return (
             `    types = {\n` +
-            this.includeEnumTypeAccessors() + `\n\n`+
+            this.includeEnumTypeAccessors() +
+            `\n\n` +
             this.includeStructTypeAccessors() +
-            `    }    \n\n`+
+            `    }    \n\n` +
             this.includeCastMemberInitializers()
         );
     }
@@ -247,15 +245,6 @@ ${this.includeNamedSchemas()}
         return ``;
     }
     includeEnumTypeAccessors() {
-        // follows the same pattern as the activity-creator above,
-        // but without the {isActivity: true} flag or {redeemer} wrapper
-
-        // omits the Activity enum, since it is already handled above
-        //@ts-expect-error - it's fine for this to be not present for non-named activitiy/datum type
-        const activityName = this.activityTypeDetails?.typeSchema.name;
-        //@ts-expect-error - it's fine for this to be not present for non-named activitiy/datum type
-        const datumName = this.datumTypeDetails?.typeSchema.name;
-
         const accessors = Object.keys(this.typeBundle.namedTypes)
             .filter((typeName) => {
                 const typeDetails = this.typeBundle.namedTypes[typeName];
@@ -266,11 +255,6 @@ ${this.includeNamedSchemas()}
                     typeName
                 ] as unknown as fullEnumTypeDetails;
                 const helperClassName = typeDetails.moreInfo.helperClassName;
-
-                // const isActivity = activityName === typeName;
-                // if (isActivity) return ``; // skip the activity type
-                // const isDatum = datumName === typeName;
-                // if (isDatum) return ``; // skip the datum type
 
                 return `        ${typeName}: new ${helperClassName}(this.bundle),`;
             })
@@ -284,11 +268,6 @@ ${this.includeNamedSchemas()}
     // gathers Cast initializers to include in the bridge class
 
     includeStructTypeAccessors() {
-        //@ts-expect-error - it's fine for this to be not present for non-named activitiy/datum type
-        const activityName = this.activityTypeDetails?.typeSchema.name;
-        //@ts-expect-error - it's fine for this to be not present for non-named activitiy/datum type
-        const datumName = this.datumTypeDetails?.typeSchema.name;
-
         const accessors = Object.keys(this.typeBundle.namedTypes)
             .filter((typeName) => {
                 const typeDetails = this.typeBundle.namedTypes[typeName];
@@ -298,11 +277,6 @@ ${this.includeNamedSchemas()}
                 const typeDetails = this.typeBundle.namedTypes[
                     typeName
                 ] as unknown as fullTypeDetails;
-
-                // const isActivity = activityName === typeName;
-                // if (isActivity) return ``; // skip the activity type
-                // const isDatum = datumName === typeName;
-                // if (isDatum) return ``; // skip the datum type
 
                 const {
                     canonicalTypeName,
@@ -328,37 +302,6 @@ ${this.includeNamedSchemas()}
         // TODO: include any utility functions defined in the contract
         return ``;
     }
-
-    // gatherDatumAccessors() {
-    //     const {datumTypeName} = this
-    //     if (!datumTypeName) {
-    //         return '';
-    //     }
-    //     if (this.datumTypeDetails?.typeSchema?.kind === "enum") {
-    //         return this.gatherEnumDatumAccessors(datumTypeName);
-    //     }
-    //     return this.gatherNonEnumDatumAccessors(datumTypeName);
-    // }
-
-    // gatherEnumDatumAccessors(datumTypeName: string) {
-    //     // Implementation for generating datum accessors goes here
-    //     const $indent = " ".repeat(8);
-    //     return `
-    // get ${datumTypeName}() {
-    //     return this.datum
-    // }
-    // datum : makesUplcEnumData<${datumTypeName}Like> = {\n${
-    //     this.generateEnumVariantAccessor(datumTypeName,
-    // }
-    // }
-
-    //     `;
-    // }
-
-    // generateNonEnumDatumAccessors(datumTypeName: string) {
-    //     // Implementation for generating datum accessors goes here
-    //     throw new Error("Not yet implemented");
-    // }
 
     includeScriptNamedTypes(inputFile: string) {
         // if (inputFile.match(/StructDatum/)) debugger;
@@ -418,13 +361,10 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         ${canonicalType}, ${permissiveType}
     >(${schemaName}, { isMainnet: true }); // activityAccessorCast`;
 
-        // `    datum: ${helperClassName} = new ${helperClassName}(this.bundle)   // datumAccessor/enum \n` +
-        // `    ${details.typeSchema.name}: ${helperClassName} = this.datum;\n` +
 
         if (activityDetails.typeSchema.kind === "enum") {
             const helperClassName = `${activityName}Helper`;
-            return `${castDef}
-
+            return `
     /**
      * generates UplcData for the activity type (${activityTypeName}) for the ${this.bundle.program.name} script
      */
@@ -619,11 +559,14 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         // }, Nested\n        >`;
 
         return (
+            `    /**\n` +
+            `     * access to different variants of the nested ${nestedEnumName} type needed for ${enumName} ${variantName}.\n` +
+            `     */\n` +
             `    get ${variantName}() {\n` +
             `        const nestedAccessor = new ${nestedHelperClassName}(this.bundle,
             {isNested: true, isActivity: ${isActivity ? "true" : "false"} 
         });\n` +
-            `        //@ts-expect-error drilling through the protected accessor.  See more comments about that above\n` +
+            `        ${'//'}@ts-expect-error drilling through the protected accessor.  See more comments about that above\n` +
             `        nestedAccessor.mkDataVia((nested: ${nestedEnumName}Like) => {\n` +
             `           return  this.mkUplcData({ ${variantName}: { ${fieldName}: nested } }, 
             ${enumPathExpr});\n` +
@@ -662,6 +605,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                     return (
                         `/**\n` +
                         ` * (property getter): UplcData for ${enumPathExpr}\n` +
+                        ` * @remarks - tagOnly variant accessor returns an empty constrData#${variantDetails.typeSchema.tag}\n` +
                         ` */\n` +
                         `    get ${variantName}() {\n` +
                         `        const uplc = this.mkUplcData({ ${variantName}: {} }, \n` +
@@ -730,17 +674,21 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `    /**\n` +
                 `     * generates ${
                     isActivity ? "isActivity/redeemer wrapper with" : ""
-                } UplcData for ${enumPathExpr}, given a transaction-context with a seed utxo and other field details\n` +
+                } UplcData for ${enumPathExpr}, \n`+
+                `     * given a transaction-context with a seed utxo and other field details\n` +
                 `     * @remarks\n` +
-                `     * See the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass.` +
+                `     * See the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass.\n` +
                 `     */\n` +
                 `    ${variantName}(value: hasSeed, fields: { \n${filteredFields(
                     2
                 )} \n` +
                 `    } ) : ${returnType}\n` +
                 `    /**\n` +
-                `    * generates UplcData for ${enumPathExpr} with raw seed details included in fields.\n` +
-                `    */\n` +
+                `     * generates ${
+                    isActivity ? "isActivity/redeemer wrapper with" : ""
+                } UplcData for ${enumPathExpr} \n`+
+                `     * with raw seed details included in fields.\n` +
+                `     */\n` +
                 `    ${variantName}(fields: ${permissiveTypeName} | {\n${unfilteredFields(
                     3
                 )}\n    } ): ${returnType}\n` +
@@ -769,7 +717,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `     * generates ${
                 isActivity ? "isActivity/redeemer wrapper with" : ""
             } UplcData for ${enumPathExpr}\n` +
-            `     * @remarks - ${permissiveTypeName} is the same as the expanded field-types.` +
+            `     * @remarks - ${permissiveTypeName} is the same as the expanded field-types.\n` +
             `     */\n` +
             `    ${variantName}(fields: ${permissiveTypeName} | { \n${unfilteredFields()} } ) : ${returnType} {\n` +
             `        const uplc = this.mkUplcData({\n` +
@@ -808,6 +756,14 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         if ("seed" == fieldName) {
             // && isSeededActivity
             return (
+                `    /**\n` +
+                `    * generates ${
+                    isActivity ? "isActivity/redeemer wrapper with" : ""
+                } UplcData for ${enumPathExpr}, \n`+
+                `    * given a transaction-context with a seed utxo and other field details\n` +
+                `    * @remarks - to get a transaction context having the seed needed for this argment, \n` +
+                `    * see the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass.` +
+                `    */\n` +
                 `    ${variantName}(value: hasSeed | ${oneField.permissiveType}) : ${returnType} {\n` +
                 `        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);\n` +
                 `        const uplc = this.mkUplcData({ \n` +
@@ -817,13 +773,20 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `    }`
             );
         }
-        let thatType = oneField.permissiveType;
+        let thatType = oneField.permissiveType || "";
+        let expandedTypeNote = ""
         if ("permissiveTypeName" in oneField) {
-            thatType = oneField.permissiveTypeName;
+            thatType = `${oneField.permissiveTypeName} | ${oneField.permissiveType}`;
+            expandedTypeNote = `     * @remarks - ${oneField.permissiveTypeName} is the same as the expanded field-type.\n`;
         }
         return (
+            `    /**\n` +
+            `     * generates ${
+                isActivity ? "isActivity/redeemer wrapper with" : ""
+            } UplcData for ${enumPathExpr}\n${expandedTypeNote}` +
+            `     */\n` +
             `    ${variantName}(\n` +
-            `        ${fieldName}: ${thatType}\n` +
+            `        ${fieldName}: ${thatType.trimEnd()}\n` +
             `    ) : ${returnType} {\n` +
             `        const uplc = this.mkUplcData({ \n` +
             `           ${variantName}: { ${fieldName}: ${fieldName} } \n` +

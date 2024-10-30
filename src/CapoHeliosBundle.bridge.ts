@@ -71,7 +71,6 @@ import type * as types from "./CapoHeliosBundle.typeInfo.js";
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
 export class CapoDataBridge extends DataBridge {
-    // for datum:
     datum: CapoDatumHelper = new CapoDatumHelper(this.bundle, {})   // datumAccessor/enum 
     CapoDatum: CapoDatumHelper = this.datum;
     readDatum = (d: UplcData) => {
@@ -80,12 +79,6 @@ export class CapoDataBridge extends DataBridge {
         return this.datum.__cast.fromUplcData(d);
     }
 
-
-// for activity types:
-
-    __activityCast = new Cast<
-        CapoActivity, CapoActivityLike
-    >(CapoActivitySchema, { isMainnet: true }); // activityAccessorCast
 
     /**
      * generates UplcData for the activity type (CapoActivity) for the Capo script
@@ -138,7 +131,8 @@ export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
 
     /**
      * generates  UplcData for "CapoHelpers::CapoDatum.CharterToken"
-     * @remarks - CapoDatum$CharterTokenLike is the same as the expanded field-types.     */
+     * @remarks - CapoDatum$CharterTokenLike is the same as the expanded field-types.
+     */
     CharterToken(fields: CapoDatum$CharterTokenLike | { 
         spendDelegateLink: RelativeDelegateLinkLike,
         spendInvariants: Array<{
@@ -172,6 +166,7 @@ export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
 
 /**
  * (property getter): UplcData for "CapoHelpers::CapoDatum.ScriptReference"
+ * @remarks - tagOnly variant accessor returns an empty constrData#1
  */
     get ScriptReference() {
         const uplc = this.mkUplcData({ ScriptReference: {} }, 
@@ -181,7 +176,8 @@ export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
 
     /**
      * generates  UplcData for "CapoHelpers::CapoDatum.DelegatedData"
-     * @remarks - CapoDatum$DelegatedDataLike is the same as the expanded field-types.     */
+     * @remarks - CapoDatum$DelegatedDataLike is the same as the expanded field-types.
+     */
     DelegatedData(fields: CapoDatum$DelegatedDataLike | { 
         data: AnyDataLike,
         version: IntLike,
@@ -205,6 +201,7 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
 
 /**
  * (property getter): UplcData for "CapoHelpers::CapoActivity.usingAuthority"
+ * @remarks - tagOnly variant accessor returns an empty constrData#0
  */
     get usingAuthority() {
         const uplc = this.mkUplcData({ usingAuthority: {} }, 
@@ -214,6 +211,7 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
 
 /**
  * (property getter): UplcData for "CapoHelpers::CapoActivity.updatingCharter"
+ * @remarks - tagOnly variant accessor returns an empty constrData#1
  */
     get updatingCharter() {
         const uplc = this.mkUplcData({ updatingCharter: {} }, 
@@ -223,6 +221,7 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
 
 /**
  * (property getter): UplcData for "CapoHelpers::CapoActivity.retiringRefScript"
+ * @remarks - tagOnly variant accessor returns an empty constrData#2
  */
     get retiringRefScript() {
         const uplc = this.mkUplcData({ retiringRefScript: {} }, 
@@ -232,6 +231,7 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
 
 /**
  * (property getter): UplcData for "CapoHelpers::CapoActivity.addingSpendInvariant"
+ * @remarks - tagOnly variant accessor returns an empty constrData#3
  */
     get addingSpendInvariant() {
         const uplc = this.mkUplcData({ addingSpendInvariant: {} }, 
@@ -241,6 +241,7 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
 
 /**
  * (property getter): UplcData for "CapoHelpers::CapoActivity.spendingDelegatedDatum"
+ * @remarks - tagOnly variant accessor returns an empty constrData#4
  */
     get spendingDelegatedDatum() {
         const uplc = this.mkUplcData({ spendingDelegatedDatum: {} }, 
@@ -250,6 +251,7 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
 
 /**
  * (property getter): UplcData for "CapoHelpers::CapoActivity.updatingTypeMap"
+ * @remarks - tagOnly variant accessor returns an empty constrData#5
  */
     get updatingTypeMap() {
         const uplc = this.mkUplcData({ updatingTypeMap: {} }, 

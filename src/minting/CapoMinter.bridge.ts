@@ -67,14 +67,7 @@ import type * as types from "./CapoMinter.typeInfo.js";
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
 export class CapoMinterDataBridge extends DataBridge {
-    // for datum:
 
-
-// for activity types:
-
-    __activityCast = new Cast<
-        MinterActivity, MinterActivityLike
-    >(MinterActivitySchema, { isMainnet: true }); // activityAccessorCast
 
     /**
      * generates UplcData for the activity type (MinterActivity) for the CapoMinter script
@@ -103,6 +96,9 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
        MinterActivityLike
    >(MinterActivitySchema, { isMainnet: true });
 
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for "CapoMintHelpers::MinterActivity.mintingCharter"
+     */
     mintingCharter(
         owner: Address | string
     ) : isActivity {
@@ -114,6 +110,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
 
 /**
  * (property getter): UplcData for "CapoMintHelpers::MinterActivity.mintWithDelegateAuthorizing"
+ * @remarks - tagOnly variant accessor returns an empty constrData#1
  */
     get mintWithDelegateAuthorizing() {
         const uplc = this.mkUplcData({ mintWithDelegateAuthorizing: {} }, 
@@ -121,6 +118,11 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
        return uplc;
     } /* tagOnly variant accessor */
 
+    /**
+    * generates isActivity/redeemer wrapper with UplcData for "CapoMintHelpers::MinterActivity.addingMintInvariant", 
+    * given a transaction-context with a seed utxo and other field details
+    * @remarks - to get a transaction context having the seed needed for this argment, 
+    * see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.    */
     addingMintInvariant(value: hasSeed | TxOutputId | string) : isActivity {
         const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         const uplc = this.mkUplcData({ 
@@ -129,6 +131,11 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
        return uplc;
     }
 
+    /**
+    * generates isActivity/redeemer wrapper with UplcData for "CapoMintHelpers::MinterActivity.addingSpendInvariant", 
+    * given a transaction-context with a seed utxo and other field details
+    * @remarks - to get a transaction context having the seed needed for this argment, 
+    * see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.    */
     addingSpendInvariant(value: hasSeed | TxOutputId | string) : isActivity {
         const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         const uplc = this.mkUplcData({ 
@@ -137,6 +144,11 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
        return uplc;
     }
 
+    /**
+    * generates isActivity/redeemer wrapper with UplcData for "CapoMintHelpers::MinterActivity.ForcingNewMintDelegate", 
+    * given a transaction-context with a seed utxo and other field details
+    * @remarks - to get a transaction context having the seed needed for this argment, 
+    * see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.    */
     ForcingNewMintDelegate(value: hasSeed | TxOutputId | string) : isActivity {
         const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         const uplc = this.mkUplcData({ 
@@ -146,14 +158,16 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     }
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate", given a transaction-context with a seed utxo and other field details
+     * generates isActivity/redeemer wrapper with UplcData for "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate", 
+     * given a transaction-context with a seed utxo and other field details
      * @remarks
-     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.     */
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
+     */
     CreatingNewSpendDelegate(value: hasSeed, fields: { 
         replacingUut: Option<number[]> 
     } ) : isActivity
     /**
-    * generates UplcData for "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate" with raw seed details included in fields.
+    * generates isActivity/redeemer wrapper with UplcData for "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate" with raw seed details included in fields.
     */
     CreatingNewSpendDelegate(fields: MinterActivity$CreatingNewSpendDelegateLike | {
             seed: TxOutputId | string,
