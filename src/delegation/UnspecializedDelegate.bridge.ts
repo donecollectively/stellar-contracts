@@ -134,10 +134,10 @@ export class DelegateDatumHelper extends EnumMaker<JustAnEnum> {
     } /*multiFieldVariant enum accessor*/
 
     IsDelegation(
-        value: DelegationDetailLike
+        dd: DelegationDetailLike
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           IsDelegation: { dd: value } 
+           IsDelegation: { dd: dd } 
         }, "unspecializedDelegate::DelegateDatum.IsDelegation"); /*SingleField enum variant*/
        return uplc;
     }
@@ -273,10 +273,10 @@ export class SpendingActivityHelper extends EnumMaker<JustAnEnum> {
    >(SpendingActivitySchema, { isMainnet: true });
 
     _placeholder1SA(
-        value: number[]
+        recId: number[]
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           _placeholder1SA: { recId: value } 
+           _placeholder1SA: { recId: recId } 
         }, "unspecializedDelegate::SpendingActivity._placeholder1SA"); /*SingleField enum variant*/
        return uplc;
     }
@@ -312,10 +312,10 @@ export class BurningActivityHelper extends EnumMaker<JustAnEnum> {
    >(BurningActivitySchema, { isMainnet: true });
 
     _placeholder1BA(
-        value: number[]
+        recId: number[]
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           _placeholder1BA: { recId: value } 
+           _placeholder1BA: { recId: recId } 
         }, "unspecializedDelegate::BurningActivity._placeholder1BA"); /*SingleField enum variant*/
        return uplc;
     }
@@ -442,10 +442,10 @@ export class SpendingActivityHelperNested extends EnumMaker<isActivity> {
    >(SpendingActivitySchema, { isMainnet: true });
 
     _placeholder1SA(
-        value: number[]
+        recId: number[]
     ) : isActivity {
         const uplc = this.mkUplcData({ 
-           _placeholder1SA: { recId: value } 
+           _placeholder1SA: { recId: recId } 
         }, "unspecializedDelegate::SpendingActivity._placeholder1SA"); /*SingleField enum variant*/
        return uplc;
     }
@@ -481,10 +481,10 @@ export class BurningActivityHelperNested extends EnumMaker<isActivity> {
    >(BurningActivitySchema, { isMainnet: true });
 
     _placeholder1BA(
-        value: number[]
+        recId: number[]
     ) : isActivity {
         const uplc = this.mkUplcData({ 
-           _placeholder1BA: { recId: value } 
+           _placeholder1BA: { recId: recId } 
         }, "unspecializedDelegate::BurningActivity._placeholder1BA"); /*SingleField enum variant*/
        return uplc;
     }
@@ -615,10 +615,10 @@ export class DelegateActivityHelper extends EnumMaker<isActivity> {
     } /*multiFieldVariant enum accessor*/
 
     MultipleDelegateActivities(
-        value: Array<UplcData>
+        activities: Array<UplcData>
     ) : isActivity {
         const uplc = this.mkUplcData({ 
-           MultipleDelegateActivities: { activities: value } 
+           MultipleDelegateActivities: { activities: activities } 
         }, "unspecializedDelegate::DelegateActivity.MultipleDelegateActivities"); /*SingleField enum variant*/
        return uplc;
     }

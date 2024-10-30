@@ -98,10 +98,10 @@ export class MinterActivityHelper extends EnumMaker<isActivity> {
    >(MinterActivitySchema, { isMainnet: true });
 
     mintingCharter(
-        value: Address | string
+        owner: Address | string
     ) : isActivity {
         const uplc = this.mkUplcData({ 
-           mintingCharter: { owner: value } 
+           mintingCharter: { owner: owner } 
         }, "CapoMintHelpers::MinterActivity.mintingCharter"); /*SingleField enum variant*/
        return uplc;
     }

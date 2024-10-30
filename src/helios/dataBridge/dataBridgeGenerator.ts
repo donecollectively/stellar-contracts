@@ -711,10 +711,10 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         }
         return (
             `    ${variantName}(\n` +
-            `        value: ${thatType}\n` +
+            `        ${fieldName}: ${thatType}\n` +
             `    ) : ${returnType} {\n` +
             `        const uplc = this.mkUplcData({ \n` +
-            `           ${variantName}: { ${fieldName}: value } \n` +
+            `           ${variantName}: { ${fieldName}: ${fieldName} } \n` +
             `        }, ${enumPathExpr}); /*SingleField enum variant*/\n` +
             `       return uplc;\n` +
             `    }`

@@ -130,19 +130,19 @@ export class SomeEnumHelper extends EnumMaker<JustAnEnum> {
     } /* tagOnly variant accessor */
 
     justAnInt(
-        value: IntLike
+        m: IntLike
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           justAnInt: { m: value } 
+           justAnInt: { m: m } 
         }, "uutMintingDelegate::SomeEnum.justAnInt"); /*SingleField enum variant*/
        return uplc;
     }
 
     oneNestedStruct(
-        value: SampleStructLike
+        m: SampleStructLike
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           oneNestedStruct: { m: value } 
+           oneNestedStruct: { m: m } 
         }, "uutMintingDelegate::SomeEnum.oneNestedStruct"); /*SingleField enum variant*/
        return uplc;
     }
@@ -192,19 +192,19 @@ export class SomeEnumHelperNested extends EnumMaker<JustAnEnum> {
     } /* tagOnly variant accessor */
 
     justAnInt(
-        value: IntLike
+        m: IntLike
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           justAnInt: { m: value } 
+           justAnInt: { m: m } 
         }, "uutMintingDelegate::SomeEnum.justAnInt"); /*SingleField enum variant*/
        return uplc;
     }
 
     oneNestedStruct(
-        value: SampleStructLike
+        m: SampleStructLike
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           oneNestedStruct: { m: value } 
+           oneNestedStruct: { m: m } 
         }, "uutMintingDelegate::SomeEnum.oneNestedStruct"); /*SingleField enum variant*/
        return uplc;
     }
@@ -245,10 +245,10 @@ export class DelegateDatumHelper extends EnumMaker<JustAnEnum> {
    >(DelegateDatumSchema, { isMainnet: true });
 
     IsDelegation(
-        value: DelegationDetailLike
+        dd: DelegationDetailLike
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           IsDelegation: { dd: value } 
+           IsDelegation: { dd: dd } 
         }, "uutMintingDelegate::DelegateDatum.IsDelegation"); /*SingleField enum variant*/
        return uplc;
     }
@@ -263,19 +263,19 @@ export class DelegateDatumHelper extends EnumMaker<JustAnEnum> {
     } /* tagOnly variant accessor */
 
     SingleDataElement(
-        value: string
+        aString: string
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           SingleDataElement: { aString: value } 
+           SingleDataElement: { aString: aString } 
         }, "uutMintingDelegate::DelegateDatum.SingleDataElement"); /*SingleField enum variant*/
        return uplc;
     }
 
     SingleNestedStruct(
-        value: SampleStructLike
+        aStruct: SampleStructLike
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           SingleNestedStruct: { aStruct: value } 
+           SingleNestedStruct: { aStruct: aStruct } 
         }, "uutMintingDelegate::DelegateDatum.SingleNestedStruct"); /*SingleField enum variant*/
        return uplc;
     }
@@ -442,19 +442,19 @@ export class SpendingActivityHelper extends EnumMaker<JustAnEnum> {
    >(SpendingActivitySchema, { isMainnet: true });
 
     _placeholder2SA(
-        value: number[]
+        id: number[]
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           _placeholder2SA: { id: value } 
+           _placeholder2SA: { id: id } 
         }, "uutMintingDelegate::SpendingActivity._placeholder2SA"); /*SingleField enum variant*/
        return uplc;
     }
 
     mockWorkingSpendActivity(
-        value: number[]
+        id: number[]
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           mockWorkingSpendActivity: { id: value } 
+           mockWorkingSpendActivity: { id: id } 
         }, "uutMintingDelegate::SpendingActivity.mockWorkingSpendActivity"); /*SingleField enum variant*/
        return uplc;
     }
@@ -526,10 +526,10 @@ export class BurningActivityHelper extends EnumMaker<JustAnEnum> {
    >(BurningActivitySchema, { isMainnet: true });
 
     _placeholder2BA(
-        value: number[]
+        recId: number[]
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           _placeholder2BA: { recId: value } 
+           _placeholder2BA: { recId: recId } 
         }, "uutMintingDelegate::BurningActivity._placeholder2BA"); /*SingleField enum variant*/
        return uplc;
     }
@@ -656,19 +656,19 @@ export class SpendingActivityHelperNested extends EnumMaker<isActivity> {
    >(SpendingActivitySchema, { isMainnet: true });
 
     _placeholder2SA(
-        value: number[]
+        id: number[]
     ) : isActivity {
         const uplc = this.mkUplcData({ 
-           _placeholder2SA: { id: value } 
+           _placeholder2SA: { id: id } 
         }, "uutMintingDelegate::SpendingActivity._placeholder2SA"); /*SingleField enum variant*/
        return uplc;
     }
 
     mockWorkingSpendActivity(
-        value: number[]
+        id: number[]
     ) : isActivity {
         const uplc = this.mkUplcData({ 
-           mockWorkingSpendActivity: { id: value } 
+           mockWorkingSpendActivity: { id: id } 
         }, "uutMintingDelegate::SpendingActivity.mockWorkingSpendActivity"); /*SingleField enum variant*/
        return uplc;
     }
@@ -740,10 +740,10 @@ export class BurningActivityHelperNested extends EnumMaker<isActivity> {
    >(BurningActivitySchema, { isMainnet: true });
 
     _placeholder2BA(
-        value: number[]
+        recId: number[]
     ) : isActivity {
         const uplc = this.mkUplcData({ 
-           _placeholder2BA: { recId: value } 
+           _placeholder2BA: { recId: recId } 
         }, "uutMintingDelegate::BurningActivity._placeholder2BA"); /*SingleField enum variant*/
        return uplc;
     }
@@ -874,10 +874,10 @@ export class DelegateActivityHelper extends EnumMaker<isActivity> {
     } /*multiFieldVariant enum accessor*/
 
     MultipleDelegateActivities(
-        value: Array<UplcData>
+        activities: Array<UplcData>
     ) : isActivity {
         const uplc = this.mkUplcData({ 
-           MultipleDelegateActivities: { activities: value } 
+           MultipleDelegateActivities: { activities: activities } 
         }, "uutMintingDelegate::DelegateActivity.MultipleDelegateActivities"); /*SingleField enum variant*/
        return uplc;
     }
