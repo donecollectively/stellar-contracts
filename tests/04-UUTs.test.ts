@@ -240,11 +240,7 @@ describe("Capo", async () => {
             const purposes = ["testSomeThing"];
             const tcx1b = await capo.txnMintingUuts(tcx1a, purposes, {
                 mintDelegateActivity:
-                // mintDelegate.activity.mintingUuts(
-                    mintDelegate.activityMintingUutsAppSpecific(
-                        tcx1a,
-                        purposes
-                    ),
+                    mintDelegate.activity.MintingActivities.mintingUuts(tcx1a, {purposes})
             });
 
             const uutVal = capo.uutsValue(tcx1b.state.uuts!);

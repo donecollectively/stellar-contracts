@@ -152,18 +152,36 @@ import type {
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 `;
-        let scImports = `import { someDataMaker, type tagOnly, type hasSeed } from "@donecollectively/stellar-contracts"\n`;
+        let scImports = `import {
+    type tagOnly, 
+    type hasSeed, 
+    someDataMaker, 
+    EnumMaker,
+    type Nested,
+    type EnumMakerOptions,
+    type JustAnEnum,
+    type isActivity
+} from "@donecollectively/stellar-contracts"\n`;
         if (this._isSC) {
             scImports =
                 `import { someDataMaker } from "${this.mkRelativeImport(
                     inputFile,
                     "src/helios/dataBridge/someDataMaker.js"
                 )}"\n` +
+                `import { 
+    EnumMaker,
+    type Nested,
+    type EnumMakerOptions,
+    type JustAnEnum,
+} from "${this.mkRelativeImport(
+                    inputFile,
+                    "src/helios/dataBridge/dataMakers.js"
+                )}"\n` +
                 `import type { tagOnly } from "${this.mkRelativeImport(
                     inputFile,
                     "src/helios/HeliosScriptBundle.js"
                 )}"\n` +
-                `import type {hasSeed} from "${this.mkRelativeImport(
+                `import type {hasSeed, isActivity} from "${this.mkRelativeImport(
                     inputFile,
                     "src/StellarContract.js"
                 )}"\n`;
@@ -260,8 +278,7 @@ import type {\n${Object.entries(this.typeBundle.namedTypes)
 } from "${relativeTypeFile}";
 
 export type * as types from "${relativeTypeFile}";
-import type * as types from "${relativeTypeFile}";\n\n`
-
+import type * as types from "${relativeTypeFile}";\n\n`;
     }
 
     includeActivityCreator() {
@@ -273,9 +290,9 @@ import type * as types from "${relativeTypeFile}";\n\n`
             );
         }
 
-        let schemaName = ""
-        let activityName
-        switch( activityDetails.typeSchema.kind ) {
+        let schemaName = "";
+        let activityName;
+        switch (activityDetails.typeSchema.kind) {
             case "enum":
                 activityName = activityDetails.typeSchema.name;
                 schemaName = `${activityName}Schema`;
@@ -289,21 +306,21 @@ import type * as types from "${relativeTypeFile}";\n\n`
                 schemaName = `${activityName}Schema`;
                 break;
             default:
-                schemaName = JSON.stringify(activityDetails.typeSchema)
+                schemaName = JSON.stringify(activityDetails.typeSchema);
         }
         const canonicalType =
-        activityDetails.canonicalTypeName! || activityDetails.canonicalType;
+            activityDetails.canonicalTypeName! || activityDetails.canonicalType;
         const permissiveType =
-        activityDetails.permissiveTypeName! ||
-        activityDetails.permissiveType;
+            activityDetails.permissiveTypeName! ||
+            activityDetails.permissiveType;
         const activityTypeName = activityDetails.canonicalTypeName!;
         const castDef = `
     __activityCast = new Cast<
         ${canonicalType}, ${permissiveType}
     >(${schemaName}, { isMainnet: true }); // activityAccessorCast`;
 
-    // `    datum: ${helperClassName} = new ${helperClassName}(this.bundle)   // datumAccessor/enum \n` +
-    // `    ${details.typeSchema.name}: ${helperClassName} = this.datum;\n` +
+        // `    datum: ${helperClassName} = new ${helperClassName}(this.bundle)   // datumAccessor/enum \n` +
+        // `    ${details.typeSchema.name}: ${helperClassName} = this.datum;\n` +
 
         if (activityDetails.typeSchema.kind === "enum") {
             const helperClassName = `${activityName}Helper`;
@@ -312,8 +329,8 @@ import type * as types from "${relativeTypeFile}";\n\n`
     /**
      * generates UplcData for the activity type (${activityTypeName}) for the ${this.bundle.program.name} script
      */
-    activity : ${helperClassName}= new ${helperClassName}(this.bundle); // activityAccessor/enum
-    ${activityName}: ${helperClassName} = this.activity;\n`
+    activity : ${helperClassName}= new ${helperClassName}(this.bundle, {isActivity: true}); // activityAccessor/enum
+        ${activityName}: ${helperClassName} = this.activity;\n`;
         } else if (activityDetails.typeSchema.kind === "struct") {
             return `${castDef}
 
@@ -345,10 +362,10 @@ import type * as types from "${relativeTypeFile}";\n\n`
             } = d;
             return (
                 "" +
-                `    datum: ${helperClassName} = new ${helperClassName}(this.bundle)   // datumAccessor/enum \n` +
+                `    datum: ${helperClassName} = new ${helperClassName}(this.bundle, {})   // datumAccessor/enum \n` +
                 `    ${details.typeSchema.name}: ${helperClassName} = this.datum;\n` +
                 `    readDatum = (d: UplcData) => {\n` +
-                `        return this.datum.enumCast.fromUplcData(d);\n` +
+                `        return this.datum.__cast.fromUplcData(d);\n` +
                 `    }\n`
             );
             // ----
@@ -405,6 +422,8 @@ import type * as types from "${relativeTypeFile}";\n\n`
         return castDef + readDatum + datumAccessor;
     }
 
+    helperClasses: Record<string, string> = {};
+
     // iterate all the named types, generating helper classes for each enum
     includeEnumHelperClasses() {
         const classSources = [] as string[];
@@ -414,33 +433,104 @@ import type * as types from "${relativeTypeFile}";\n\n`
             if (typeDetails.typeSchema.kind === "enum") {
                 const enumDetails =
                     typeDetails as unknown as fullEnumTypeDetails;
-                classSources.push(this.mkEnumHelperClass(enumDetails));
+                this.helperClasses[name] = this.mkEnumHelperClass(enumDetails);
             }
         }
-        return classSources.join("\n");
+        return Object.values(this.helperClasses).join("\n");
     }
 
-    mkEnumHelperClass(typeDetails: fullEnumTypeDetails) {
+    get redeemerTypeName() {
+        return this.activityTypeDetails.dataType.name;
+    }
+
+    nestedHelperClassName(
+        typeDetails: fullEnumTypeDetails,
+        isActivity: boolean
+    ) {
+        let helperClassName = typeDetails.moreInfo.helperClassName;
+        if (isActivity && !helperClassName?.match(/Activit/)) {
+            helperClassName = `Activity${helperClassName}`;
+        }
+
+        return `${helperClassName}Nested`;
+    }
+
+    mkEnumHelperClass(
+        typeDetails: fullEnumTypeDetails,
+        isActivity = this.redeemerTypeName === typeDetails.enumName,
+        isNested?: "isNested"
+    ) {
         const enumName = typeDetails.enumName;
+        // const maybeNested = isNested ? ", Nested" : "";
+        const parentClass = isActivity
+            ? `EnumMaker<isActivity>` // ${maybeNested}>`
+            : `EnumMaker<JustAnEnum>`; //${maybeNested}>`;
+
+        const helperClassName = isNested
+            ? this.nestedHelperClassName(typeDetails, isActivity)
+            : typeDetails.moreInfo.helperClassName;
 
         return (
             `/**\n` +
             ` * Helper class for generating UplcData for variants of the ${enumName} enum type.\n` +
             ` */\n` +
-            `export class ${typeDetails.moreInfo.helperClassName} extends someDataMaker {\n` +
-            // todo: this needs to reflect the actual structure for nested enums, not our facade
-            // for them.  Our interface for each of these variants is separate from what the Cast utility requires.
-            `    enumCast = new Cast<\n` +
+            `export class ${helperClassName} extends ${parentClass} {\n` +
+            `    __cast = new Cast<\n` +
             `       ${typeDetails.canonicalTypeName},\n` +
             `       ${typeDetails.permissiveTypeName}\n` +
             `   >(${enumName}Schema, { isMainnet: true });\n` +
             `\n` +
-            this.mkEnumDatumAccessors(typeDetails) +
+            this.mkEnumDatumAccessors(typeDetails, isActivity, isNested) +
             `\n}\n\n`
         );
     }
 
-    getEnumPathExpr(variantDetails: variantTypeDetails<any>) {
+    mkNestedEnumAccessor(
+        enumTypeDetails: fullEnumTypeDetails,
+        variantDetails: variantTypeDetails<dataBridgeTypeInfo>,
+        variantName: string,
+        fieldName: string,
+        oneField: anyTypeDetails<dataBridgeTypeInfo>
+    ) {
+        const enumName = enumTypeDetails.enumName;
+        debugger;
+        const isActivity = this.redeemerTypeName === enumName;
+
+        const enumPathExpr = this.getEnumPathExpr(variantDetails);
+        const nestedEnumDetails = oneField.typeSchema as EnumTypeSchema;
+        const nestedEnumName = nestedEnumDetails.name;
+
+        const nestedEnumField : fullEnumTypeDetails = oneField as any;
+        const nestedHelperClassName = this.nestedHelperClassName(nestedEnumField, isActivity);
+
+        const nestedHelper = this.mkEnumHelperClass(
+            nestedEnumField,
+            isActivity,
+            "isNested"
+        );
+        this.helperClasses[`${nestedEnumName}Nested`] = nestedHelper; // registers the nested helper class
+
+        // const nestedHelperTypeParams = `<\n        ${
+        //     isActivity ? "isActivity" : "JustAnEnum"
+        // }, Nested\n        >`;
+
+        return (
+            `    get ${variantName}() {\n` +
+            `        const nestedAccessor = new ${nestedHelperClassName}(this.bundle,
+            {isNested: true, isActivity: ${
+                isActivity ? "true" : "false"
+            } 
+        });\n` +
+            `        nestedAccessor.mkDataVia((nested: ${nestedEnumName}Like) => {\n` +
+            `           return  this.mkUplcData({ ${variantName}: { ${fieldName}: nested } }, 
+            ${enumPathExpr});\n` +
+            `        });\n` +
+            `        return nestedAccessor;\n` +
+            `    } /* nested enum accessor */`
+        );
+    }
+
+    getEnumPathExpr(variantDetails: variantTypeDetails<any>, quoted = true) {
         const { parentType } = variantDetails.dataType.asEnumMemberType!;
         const enumName =
             variantDetails.dataType.asEnumMemberType?.parentType.name;
@@ -454,7 +544,7 @@ import type * as types from "${relativeTypeFile}";\n\n`
         );
     }
 
-    mkEnumDatumAccessors(enumDetails: fullEnumTypeDetails) {
+    mkEnumDatumAccessors(enumDetails: fullEnumTypeDetails, isActivity? : boolean, isNested? : "isNested") {
         const accessors = Object.keys(enumDetails.variants)
             .map((variantName) => {
                 const variantDetails = enumDetails.variants[variantName];
@@ -467,20 +557,25 @@ import type * as types from "${relativeTypeFile}";\n\n`
                         ` * (property getter): UplcData for ${enumPathExpr}\n` +
                         ` */\n` +
                         `    get ${variantName}() {\n` +
-                        `        const uplc = this.enumCast.toUplcData({ ${variantName}: {} });\n` +
-                        `       uplc.dataPath = ${enumPathExpr};\n` +
+                        `        const uplc = this.mkUplcData({ ${variantName}: {} }, \n` +
+                        `            ${enumPathExpr});\n` +
                         `       return uplc;\n` +
                         `    } /* tagOnly variant accessor */`
                     );
                 } else if (fieldCount === 1) {
                     return this.mkSIngleFieldVariantAccessor(
+                        enumDetails,
                         variantDetails,
-                        variantName
+                        variantName,
+                        isActivity, isNested
                     );
                 } else {
                     return this.mkMultiFieldVariantAccessor(
+                        enumDetails,
                         variantDetails,
-                        variantName
+                        variantName,
+                        isActivity, isNested
+
                     );
                 }
             })
@@ -489,8 +584,11 @@ import type * as types from "${relativeTypeFile}";\n\n`
     }
 
     private mkMultiFieldVariantAccessor(
+        enumTypeDetails: fullEnumTypeDetails,
         variantDetails: variantTypeDetails<dataBridgeTypeInfo>,
-        variantName: string
+        variantName: string,
+        isActivity: boolean = this.redeemerTypeName === enumTypeDetails.enumName,
+        isNested?: "isNested"
     ) {
         function mkFieldType(fieldName: string, indent = 2): string {
             const oneField = variantDetails.fields[fieldName];
@@ -509,6 +607,7 @@ import type * as types from "${relativeTypeFile}";\n\n`
         }
         const { permissiveTypeName } = variantDetails;
         const enumPathExpr = this.getEnumPathExpr(variantDetails);
+        const returnType = isActivity ? "isActivity" : "UplcData";
         if ("seed" == Object.keys(variantDetails.fields)[0]) {
             // && isSeededActivity
             function filteredFields(indent = 2) {
@@ -520,37 +619,37 @@ import type * as types from "${relativeTypeFile}";\n\n`
 
             return (
                 `    /**\n` +
-                `     * generates UplcData for ${enumPathExpr}, given a transaction-context with a seed utxo and other field details\n` +
+                `     * generates ${
+                    isActivity ? "isActivity/redeemer wrapper with" : ""
+                } UplcData for ${enumPathExpr}, given a transaction-context with a seed utxo and other field details\n` +
                 `     * @remarks\n` +
                 `     * See the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass.` +
                 `     */\n` +
                 `    ${variantName}(value: hasSeed, fields: { \n${filteredFields(
                     2
                 )} \n` +
-                `    } ) : UplcData\n` +
+                `    } ) : ${returnType}\n` +
                 `    /**\n` +
                 `    * generates UplcData for ${enumPathExpr} with raw seed details included in fields.\n` +
                 `    */\n` +
                 `    ${variantName}(fields: ${permissiveTypeName} | {\n${unfilteredFields(
                     3
-                )}\n    } ): UplcData\n` +
+                )}\n    } ): ${returnType}\n` +
                 `    ${variantName}(\n` +
                 `        seedOrUf: hasSeed | ${permissiveTypeName}, \n` +
                 `        filteredFields?: { \n${filteredFields(3)}\n` +
-                `    }) : UplcData {\n` +
+                `    }) : ${returnType} {\n` +
                 `        if (filteredFields) {\n` +
                 `            const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);\n` +
-                `            const uplc = this.enumCast.toUplcData({\n` +
+                `            const uplc = this.mkUplcData({\n` +
                 `                ${variantName}: { seed: seedTxOutputId, ...filteredFields } \n` +
                 `            }, ${enumPathExpr});\n` +
-                `           uplc.dataPath = ${enumPathExpr};\n` +
                 `           return uplc;\n` +
                 `        } else {\n` +
                 `            const fields = seedOrUf as ${permissiveTypeName}; \n` +
-                `           const uplc = this.enumCast.toUplcData({\n` +
+                `           const uplc = this.mkUplcData({\n` +
                 `                ${variantName}: fields \n` +
-                `            });\n` +
-                `           uplc.dataPath = ${enumPathExpr};\n` +
+                `            }, ${enumPathExpr});\n` +
                 `           return uplc;\n` +
                 `        }\n` +
                 `    } /*multiFieldVariant/seeded enum accessor*/ \n`
@@ -558,22 +657,24 @@ import type * as types from "${relativeTypeFile}";\n\n`
         }
         return (
             `    /**\n` +
-            `     * generates UplcData for ${enumPathExpr}\n` +
+            `     * generates ${isActivity ? "isActivity/redeemer wrapper with" : ""} UplcData for ${enumPathExpr}\n` +
             `     * @remarks - ${permissiveTypeName} is the same as the expanded field-types.` +
             `     */\n` +
-            `    ${variantName}(fields: ${permissiveTypeName} | { \n${unfilteredFields()} } ) {\n` +
-            `        const uplc = this.enumCast.toUplcData({\n` +
+            `    ${variantName}(fields: ${permissiveTypeName} | { \n${unfilteredFields()} } ) : ${returnType} {\n` +
+            `        const uplc = this.mkUplcData({\n` +
             `            ${variantName}: fields \n` +
-            `        });\n` +
-            `       uplc.dataPath = ${enumPathExpr};\n` +
+            `        }, ${enumPathExpr});\n` +
             `       return uplc;\n` +
             `    } /*multiFieldVariant enum accessor*/`
         );
     }
 
     private mkSIngleFieldVariantAccessor(
+        enumTypeDetails: fullEnumTypeDetails,
         variantDetails: variantTypeDetails<dataBridgeTypeInfo>,
-        variantName: string
+        variantName: string,
+        isActivity: boolean = this.redeemerTypeName === enumTypeDetails.enumName,
+        isNested?: "isNested"
     ) {
         const fieldName = Object.keys(variantDetails.fields)[0];
         const oneField = variantDetails.fields[fieldName];
@@ -581,15 +682,25 @@ import type * as types from "${relativeTypeFile}";\n\n`
             variantDetails.dataType.asEnumMemberType?.parentType.name;
         const enumPathExpr = this.getEnumPathExpr(variantDetails);
 
+        const returnType = isActivity ? "isActivity" : "UplcData";
+
+        if ("enum" == oneField.typeSchema.kind) {
+            return this.mkNestedEnumAccessor(
+                enumTypeDetails,
+                variantDetails,
+                variantName,
+                fieldName,
+                oneField
+            );
+        }
         if ("seed" == fieldName) {
             // && isSeededActivity
             return (
-                `    ${variantName}(value: hasSeed | ${oneField.permissiveType}) {\n` +
+                `    ${variantName}(value: hasSeed | ${oneField.permissiveType}) : ${returnType} {\n` +
                 `        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);\n` +
-                `        const uplc = this.enumCast.toUplcData({ \n` +
+                `        const uplc = this.mkUplcData({ \n` +
                 `           ${variantName}: { ${fieldName}: seedTxOutputId } \n` +
-                `        },);  /*SingleField/seeded enum variant*/\n` +
-                `       uplc.dataPath = ${enumPathExpr};\n` +
+                `        },${enumPathExpr});  /*SingleField/seeded enum variant*/\n` +
                 `       return uplc;\n` +
                 `    }`
             );
@@ -601,11 +712,10 @@ import type * as types from "${relativeTypeFile}";\n\n`
         return (
             `    ${variantName}(\n` +
             `        value: ${thatType}\n` +
-            `    ) {\n` +
-            `        const uplc = this.enumCast.toUplcData({ \n` +
+            `    ) : ${returnType} {\n` +
+            `        const uplc = this.mkUplcData({ \n` +
             `           ${variantName}: { ${fieldName}: value } \n` +
-            `        }); /*SingleField enum variant*/\n` +
-            `       uplc.dataPath = ${enumPathExpr};\n` +
+            `        }, ${enumPathExpr}); /*SingleField enum variant*/\n` +
             `       return uplc;\n` +
             `    }`
         );

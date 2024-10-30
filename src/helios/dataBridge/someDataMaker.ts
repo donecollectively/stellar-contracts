@@ -167,7 +167,6 @@ export class someDataMaker { // extends (dataMakerProxyBase as any) {
         return this.__schema
     }
     usesRedeemerWrapper : boolean = false
-    usesSeedSemantics: boolean = false
 
     toUplc(x: any) {
         return this.__cast.toUplcData(x)
@@ -183,11 +182,5 @@ export class someDataMaker { // extends (dataMakerProxyBase as any) {
         // }
         // return name
     }
-}
-
-
-export class NestedActivityMaker extends someDataMaker {
-    usesRedeemerWrapper : boolean = true
-    usesSeedSemantics: boolean = true
 }
 

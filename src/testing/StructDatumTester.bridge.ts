@@ -36,8 +36,14 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
 import { someDataMaker } from "../helios/dataBridge/someDataMaker.js"
+import { 
+    EnumMaker,
+    type Nested,
+    type EnumMakerOptions,
+    type JustAnEnum,
+} from "../helios/dataBridge/dataMakers.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
-import type {hasSeed} from "../StellarContract.js"
+import type {hasSeed, isActivity} from "../StellarContract.js"
 
 // todo: namespacing for all the good stuff here
 // namespace StructDatumTesterDataBridge {

@@ -36,8 +36,14 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
 import { someDataMaker } from "../../helios/dataBridge/someDataMaker.js"
+import { 
+    EnumMaker,
+    type Nested,
+    type EnumMakerOptions,
+    type JustAnEnum,
+} from "../../helios/dataBridge/dataMakers.js"
 import type { tagOnly } from "../../helios/HeliosScriptBundle.js"
-import type {hasSeed} from "../../StellarContract.js"
+import type {hasSeed, isActivity} from "../../StellarContract.js"
 
 // todo: namespacing for all the good stuff here
 // namespace uutMintingDelegateDataBridge {
@@ -77,10 +83,10 @@ import type * as types from "./uutMintingMintDelegate.typeInfo.js";
  */
 export class uutMintingDelegateDataBridge extends someDataMaker {
     // for datum:
-    datum: DelegateDatumHelper = new DelegateDatumHelper(this.bundle)   // datumAccessor/enum 
+    datum: DelegateDatumHelper = new DelegateDatumHelper(this.bundle, {})   // datumAccessor/enum 
     DelegateDatum: DelegateDatumHelper = this.datum;
     readDatum = (d: UplcData) => {
-        return this.datum.enumCast.fromUplcData(d);
+        return this.datum.__cast.fromUplcData(d);
     }
 
 
@@ -93,8 +99,8 @@ export class uutMintingDelegateDataBridge extends someDataMaker {
     /**
      * generates UplcData for the activity type (DelegateActivity) for the BasicDelegate script
      */
-    activity : DelegateActivityHelper= new DelegateActivityHelper(this.bundle); // activityAccessor/enum
-    DelegateActivity: DelegateActivityHelper = this.activity;
+    activity : DelegateActivityHelper= new DelegateActivityHelper(this.bundle, {isActivity: true}); // activityAccessor/enum
+        DelegateActivity: DelegateActivityHelper = this.activity;
 
 
     // include accessors for other enums (other than datum/activity)
@@ -108,8 +114,8 @@ export default uutMintingDelegateDataBridge;
 /**
  * Helper class for generating UplcData for variants of the SomeEnum enum type.
  */
-export class SomeEnumHelper extends someDataMaker {
-    enumCast = new Cast<
+export class SomeEnumHelper extends EnumMaker<JustAnEnum> {
+    __cast = new Cast<
        SomeEnum,
        SomeEnumLike
    >(SomeEnumSchema, { isMainnet: true });
@@ -118,54 +124,112 @@ export class SomeEnumHelper extends someDataMaker {
  * (property getter): UplcData for "uutMintingDelegate::SomeEnum.justATag"
  */
     get justATag() {
-        const uplc = this.enumCast.toUplcData({ justATag: {} });
-       uplc.dataPath = "uutMintingDelegate::SomeEnum.justATag";
+        const uplc = this.mkUplcData({ justATag: {} }, 
+            "uutMintingDelegate::SomeEnum.justATag");
        return uplc;
     } /* tagOnly variant accessor */
 
     justAnInt(
         value: IntLike
-    ) {
-        const uplc = this.enumCast.toUplcData({ 
+    ) : UplcData {
+        const uplc = this.mkUplcData({ 
            justAnInt: { m: value } 
-        }); /*SingleField enum variant*/
-       uplc.dataPath = "uutMintingDelegate::SomeEnum.justAnInt";
+        }, "uutMintingDelegate::SomeEnum.justAnInt"); /*SingleField enum variant*/
        return uplc;
     }
 
     oneNestedStruct(
         value: SampleStructLike
-    ) {
-        const uplc = this.enumCast.toUplcData({ 
+    ) : UplcData {
+        const uplc = this.mkUplcData({ 
            oneNestedStruct: { m: value } 
-        }); /*SingleField enum variant*/
-       uplc.dataPath = "uutMintingDelegate::SomeEnum.oneNestedStruct";
+        }, "uutMintingDelegate::SomeEnum.oneNestedStruct"); /*SingleField enum variant*/
        return uplc;
     }
 
     /**
-     * generates UplcData for "uutMintingDelegate::SomeEnum.hasNestedFields"
+     * generates  UplcData for "uutMintingDelegate::SomeEnum.hasNestedFields"
      * @remarks - SomeEnum$hasNestedFieldsLike is the same as the expanded field-types.     */
     hasNestedFields(fields: SomeEnum$hasNestedFieldsLike | { 
         m: SampleStructLike,
-        n: IntLike } ) {
-        const uplc = this.enumCast.toUplcData({
+        n: IntLike } ) : UplcData {
+        const uplc = this.mkUplcData({
             hasNestedFields: fields 
-        });
-       uplc.dataPath = "uutMintingDelegate::SomeEnum.hasNestedFields";
+        }, "uutMintingDelegate::SomeEnum.hasNestedFields");
        return uplc;
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates UplcData for "uutMintingDelegate::SomeEnum.hasRecursiveFields"
+     * generates  UplcData for "uutMintingDelegate::SomeEnum.hasRecursiveFields"
      * @remarks - SomeEnum$hasRecursiveFieldsLike is the same as the expanded field-types.     */
     hasRecursiveFields(fields: SomeEnum$hasRecursiveFieldsLike | { 
         placeholder: IntLike,
-        ph2: string } ) {
-        const uplc = this.enumCast.toUplcData({
+        ph2: string } ) : UplcData {
+        const uplc = this.mkUplcData({
             hasRecursiveFields: fields 
-        });
-       uplc.dataPath = "uutMintingDelegate::SomeEnum.hasRecursiveFields";
+        }, "uutMintingDelegate::SomeEnum.hasRecursiveFields");
+       return uplc;
+    } /*multiFieldVariant enum accessor*/
+}
+
+
+/**
+ * Helper class for generating UplcData for variants of the SomeEnum enum type.
+ */
+export class SomeEnumHelperNested extends EnumMaker<JustAnEnum> {
+    __cast = new Cast<
+       SomeEnum,
+       SomeEnumLike
+   >(SomeEnumSchema, { isMainnet: true });
+
+/**
+ * (property getter): UplcData for "uutMintingDelegate::SomeEnum.justATag"
+ */
+    get justATag() {
+        const uplc = this.mkUplcData({ justATag: {} }, 
+            "uutMintingDelegate::SomeEnum.justATag");
+       return uplc;
+    } /* tagOnly variant accessor */
+
+    justAnInt(
+        value: IntLike
+    ) : UplcData {
+        const uplc = this.mkUplcData({ 
+           justAnInt: { m: value } 
+        }, "uutMintingDelegate::SomeEnum.justAnInt"); /*SingleField enum variant*/
+       return uplc;
+    }
+
+    oneNestedStruct(
+        value: SampleStructLike
+    ) : UplcData {
+        const uplc = this.mkUplcData({ 
+           oneNestedStruct: { m: value } 
+        }, "uutMintingDelegate::SomeEnum.oneNestedStruct"); /*SingleField enum variant*/
+       return uplc;
+    }
+
+    /**
+     * generates  UplcData for "uutMintingDelegate::SomeEnum.hasNestedFields"
+     * @remarks - SomeEnum$hasNestedFieldsLike is the same as the expanded field-types.     */
+    hasNestedFields(fields: SomeEnum$hasNestedFieldsLike | { 
+        m: SampleStructLike,
+        n: IntLike } ) : UplcData {
+        const uplc = this.mkUplcData({
+            hasNestedFields: fields 
+        }, "uutMintingDelegate::SomeEnum.hasNestedFields");
+       return uplc;
+    } /*multiFieldVariant enum accessor*/
+
+    /**
+     * generates  UplcData for "uutMintingDelegate::SomeEnum.hasRecursiveFields"
+     * @remarks - SomeEnum$hasRecursiveFieldsLike is the same as the expanded field-types.     */
+    hasRecursiveFields(fields: SomeEnum$hasRecursiveFieldsLike | { 
+        placeholder: IntLike,
+        ph2: string } ) : UplcData {
+        const uplc = this.mkUplcData({
+            hasRecursiveFields: fields 
+        }, "uutMintingDelegate::SomeEnum.hasRecursiveFields");
        return uplc;
     } /*multiFieldVariant enum accessor*/
 }
@@ -174,19 +238,18 @@ export class SomeEnumHelper extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the DelegateDatum enum type.
  */
-export class DelegateDatumHelper extends someDataMaker {
-    enumCast = new Cast<
+export class DelegateDatumHelper extends EnumMaker<JustAnEnum> {
+    __cast = new Cast<
        DelegateDatum,
        DelegateDatumLike
    >(DelegateDatumSchema, { isMainnet: true });
 
     IsDelegation(
         value: DelegationDetailLike
-    ) {
-        const uplc = this.enumCast.toUplcData({ 
+    ) : UplcData {
+        const uplc = this.mkUplcData({ 
            IsDelegation: { dd: value } 
-        }); /*SingleField enum variant*/
-       uplc.dataPath = "uutMintingDelegate::DelegateDatum.IsDelegation";
+        }, "uutMintingDelegate::DelegateDatum.IsDelegation"); /*SingleField enum variant*/
        return uplc;
     }
 
@@ -194,56 +257,54 @@ export class DelegateDatumHelper extends someDataMaker {
  * (property getter): UplcData for "uutMintingDelegate::DelegateDatum.ScriptReference"
  */
     get ScriptReference() {
-        const uplc = this.enumCast.toUplcData({ ScriptReference: {} });
-       uplc.dataPath = "uutMintingDelegate::DelegateDatum.ScriptReference";
+        const uplc = this.mkUplcData({ ScriptReference: {} }, 
+            "uutMintingDelegate::DelegateDatum.ScriptReference");
        return uplc;
     } /* tagOnly variant accessor */
 
     SingleDataElement(
         value: string
-    ) {
-        const uplc = this.enumCast.toUplcData({ 
+    ) : UplcData {
+        const uplc = this.mkUplcData({ 
            SingleDataElement: { aString: value } 
-        }); /*SingleField enum variant*/
-       uplc.dataPath = "uutMintingDelegate::DelegateDatum.SingleDataElement";
+        }, "uutMintingDelegate::DelegateDatum.SingleDataElement"); /*SingleField enum variant*/
        return uplc;
     }
 
     SingleNestedStruct(
         value: SampleStructLike
-    ) {
-        const uplc = this.enumCast.toUplcData({ 
+    ) : UplcData {
+        const uplc = this.mkUplcData({ 
            SingleNestedStruct: { aStruct: value } 
-        }); /*SingleField enum variant*/
-       uplc.dataPath = "uutMintingDelegate::DelegateDatum.SingleNestedStruct";
+        }, "uutMintingDelegate::DelegateDatum.SingleNestedStruct"); /*SingleField enum variant*/
        return uplc;
     }
 
-    HasNestedEnum(
-        value: SomeEnumLike
-    ) {
-        const uplc = this.enumCast.toUplcData({ 
-           HasNestedEnum: { nested: value } 
-        }); /*SingleField enum variant*/
-       uplc.dataPath = "uutMintingDelegate::DelegateDatum.HasNestedEnum";
-       return uplc;
-    }
+    get HasNestedEnum() {
+        const nestedAccessor = new SomeEnumHelperNested(this.bundle,
+            {isNested: true, isActivity: false 
+        });
+        nestedAccessor.mkDataVia((nested: SomeEnumLike) => {
+           return  this.mkUplcData({ HasNestedEnum: { nested: nested } }, 
+            "uutMintingDelegate::DelegateDatum.HasNestedEnum");
+        });
+        return nestedAccessor;
+    } /* nested enum accessor */
 
     /**
-     * generates UplcData for "uutMintingDelegate::DelegateDatum.MultiFieldVariant"
+     * generates  UplcData for "uutMintingDelegate::DelegateDatum.MultiFieldVariant"
      * @remarks - DelegateDatum$MultiFieldVariantLike is the same as the expanded field-types.     */
     MultiFieldVariant(fields: DelegateDatum$MultiFieldVariantLike | { 
         field1: IntLike,
-        field2: string } ) {
-        const uplc = this.enumCast.toUplcData({
+        field2: string } ) : UplcData {
+        const uplc = this.mkUplcData({
             MultiFieldVariant: fields 
-        });
-       uplc.dataPath = "uutMintingDelegate::DelegateDatum.MultiFieldVariant";
+        }, "uutMintingDelegate::DelegateDatum.MultiFieldVariant");
        return uplc;
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates UplcData for "uutMintingDelegate::DelegateDatum.MultiFieldNestedThings"
+     * generates  UplcData for "uutMintingDelegate::DelegateDatum.MultiFieldNestedThings"
      * @remarks - DelegateDatum$MultiFieldNestedThingsLike is the same as the expanded field-types.     */
     MultiFieldNestedThings(fields: DelegateDatum$MultiFieldNestedThingsLike | { 
         nestedStruct: SampleStructLike,
@@ -252,11 +313,10 @@ export class DelegateDatumHelper extends someDataMaker {
         | { justAnInt: /*minEnumVariant*/ { m: IntLike /*singleVariantField*/ }  }
         | { oneNestedStruct: /*minEnumVariant*/ { m: SampleStructLike /*singleVariantField*/ }  }
         | { hasNestedFields: /*minEnumVariant*/ SomeEnum$hasNestedFieldsLike }
-        | { hasRecursiveFields: /*minEnumVariant*/ SomeEnum$hasRecursiveFieldsLike }> } ) {
-        const uplc = this.enumCast.toUplcData({
+        | { hasRecursiveFields: /*minEnumVariant*/ SomeEnum$hasRecursiveFieldsLike }> } ) : UplcData {
+        const uplc = this.mkUplcData({
             MultiFieldNestedThings: fields 
-        });
-       uplc.dataPath = "uutMintingDelegate::DelegateDatum.MultiFieldNestedThings";
+        }, "uutMintingDelegate::DelegateDatum.MultiFieldNestedThings");
        return uplc;
     } /*multiFieldVariant enum accessor*/
 }
@@ -265,14 +325,14 @@ export class DelegateDatumHelper extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the CapoLifecycleActivity enum type.
  */
-export class CapoLifecycleActivityHelper extends someDataMaker {
-    enumCast = new Cast<
+export class CapoLifecycleActivityHelper extends EnumMaker<JustAnEnum> {
+    __cast = new Cast<
        CapoLifecycleActivity,
        CapoLifecycleActivityLike
    >(CapoLifecycleActivitySchema, { isMainnet: true });
 
     /**
-     * generates UplcData for "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate", given a transaction-context with a seed utxo and other field details
+     * generates  UplcData for "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate", given a transaction-context with a seed utxo and other field details
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.     */
     CreatingDelegate(value: hasSeed, fields: { 
@@ -292,17 +352,15 @@ export class CapoLifecycleActivityHelper extends someDataMaker {
     }) : UplcData {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
-            const uplc = this.enumCast.toUplcData({
+            const uplc = this.mkUplcData({
                 CreatingDelegate: { seed: seedTxOutputId, ...filteredFields } 
             }, "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate");
-           uplc.dataPath = "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate";
            return uplc;
         } else {
             const fields = seedOrUf as CapoLifecycleActivity$CreatingDelegateLike; 
-           const uplc = this.enumCast.toUplcData({
+           const uplc = this.mkUplcData({
                 CreatingDelegate: fields 
-            });
-           uplc.dataPath = "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate";
+            }, "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate");
            return uplc;
         }
     } /*multiFieldVariant/seeded enum accessor*/ 
@@ -313,14 +371,14 @@ export class CapoLifecycleActivityHelper extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the DelegateLifecycleActivity enum type.
  */
-export class DelegateLifecycleActivityHelper extends someDataMaker {
-    enumCast = new Cast<
+export class DelegateLifecycleActivityHelper extends EnumMaker<JustAnEnum> {
+    __cast = new Cast<
        DelegateLifecycleActivity,
        DelegateLifecycleActivityLike
    >(DelegateLifecycleActivitySchema, { isMainnet: true });
 
     /**
-     * generates UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe", given a transaction-context with a seed utxo and other field details
+     * generates  UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe", given a transaction-context with a seed utxo and other field details
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.     */
     ReplacingMe(value: hasSeed, fields: { 
@@ -340,17 +398,15 @@ export class DelegateLifecycleActivityHelper extends someDataMaker {
     }) : UplcData {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
-            const uplc = this.enumCast.toUplcData({
+            const uplc = this.mkUplcData({
                 ReplacingMe: { seed: seedTxOutputId, ...filteredFields } 
             }, "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe");
-           uplc.dataPath = "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe";
            return uplc;
         } else {
             const fields = seedOrUf as DelegateLifecycleActivity$ReplacingMeLike; 
-           const uplc = this.enumCast.toUplcData({
+           const uplc = this.mkUplcData({
                 ReplacingMe: fields 
-            });
-           uplc.dataPath = "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe";
+            }, "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe");
            return uplc;
         }
     } /*multiFieldVariant/seeded enum accessor*/ 
@@ -360,8 +416,8 @@ export class DelegateLifecycleActivityHelper extends someDataMaker {
  * (property getter): UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.Retiring"
  */
     get Retiring() {
-        const uplc = this.enumCast.toUplcData({ Retiring: {} });
-       uplc.dataPath = "CapoDelegateHelpers::DelegateLifecycleActivity.Retiring";
+        const uplc = this.mkUplcData({ Retiring: {} }, 
+            "CapoDelegateHelpers::DelegateLifecycleActivity.Retiring");
        return uplc;
     } /* tagOnly variant accessor */
 
@@ -369,8 +425,8 @@ export class DelegateLifecycleActivityHelper extends someDataMaker {
  * (property getter): UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.ValidatingSettings"
  */
     get ValidatingSettings() {
-        const uplc = this.enumCast.toUplcData({ ValidatingSettings: {} });
-       uplc.dataPath = "CapoDelegateHelpers::DelegateLifecycleActivity.ValidatingSettings";
+        const uplc = this.mkUplcData({ ValidatingSettings: {} }, 
+            "CapoDelegateHelpers::DelegateLifecycleActivity.ValidatingSettings");
        return uplc;
     } /* tagOnly variant accessor */
 }
@@ -379,29 +435,27 @@ export class DelegateLifecycleActivityHelper extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the SpendingActivity enum type.
  */
-export class SpendingActivityHelper extends someDataMaker {
-    enumCast = new Cast<
+export class SpendingActivityHelper extends EnumMaker<JustAnEnum> {
+    __cast = new Cast<
        SpendingActivity,
        SpendingActivityLike
    >(SpendingActivitySchema, { isMainnet: true });
 
     _placeholder2SA(
         value: number[]
-    ) {
-        const uplc = this.enumCast.toUplcData({ 
+    ) : UplcData {
+        const uplc = this.mkUplcData({ 
            _placeholder2SA: { id: value } 
-        }); /*SingleField enum variant*/
-       uplc.dataPath = "uutMintingDelegate::SpendingActivity._placeholder2SA";
+        }, "uutMintingDelegate::SpendingActivity._placeholder2SA"); /*SingleField enum variant*/
        return uplc;
     }
 
     mockWorkingSpendActivity(
         value: number[]
-    ) {
-        const uplc = this.enumCast.toUplcData({ 
+    ) : UplcData {
+        const uplc = this.mkUplcData({ 
            mockWorkingSpendActivity: { id: value } 
-        }); /*SingleField enum variant*/
-       uplc.dataPath = "uutMintingDelegate::SpendingActivity.mockWorkingSpendActivity";
+        }, "uutMintingDelegate::SpendingActivity.mockWorkingSpendActivity"); /*SingleField enum variant*/
        return uplc;
     }
 }
@@ -410,14 +464,14 @@ export class SpendingActivityHelper extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the MintingActivity enum type.
  */
-export class MintingActivityHelper extends someDataMaker {
-    enumCast = new Cast<
+export class MintingActivityHelper extends EnumMaker<JustAnEnum> {
+    __cast = new Cast<
        MintingActivity,
        MintingActivityLike
    >(MintingActivitySchema, { isMainnet: true });
 
     /**
-     * generates UplcData for "uutMintingDelegate::MintingActivity.mintingUuts", given a transaction-context with a seed utxo and other field details
+     * generates  UplcData for "uutMintingDelegate::MintingActivity.mintingUuts", given a transaction-context with a seed utxo and other field details
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.     */
     mintingUuts(value: hasSeed, fields: { 
@@ -437,17 +491,15 @@ export class MintingActivityHelper extends someDataMaker {
     }) : UplcData {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
-            const uplc = this.enumCast.toUplcData({
+            const uplc = this.mkUplcData({
                 mintingUuts: { seed: seedTxOutputId, ...filteredFields } 
             }, "uutMintingDelegate::MintingActivity.mintingUuts");
-           uplc.dataPath = "uutMintingDelegate::MintingActivity.mintingUuts";
            return uplc;
         } else {
             const fields = seedOrUf as MintingActivity$mintingUutsLike; 
-           const uplc = this.enumCast.toUplcData({
+           const uplc = this.mkUplcData({
                 mintingUuts: fields 
-            });
-           uplc.dataPath = "uutMintingDelegate::MintingActivity.mintingUuts";
+            }, "uutMintingDelegate::MintingActivity.mintingUuts");
            return uplc;
         }
     } /*multiFieldVariant/seeded enum accessor*/ 
@@ -457,8 +509,8 @@ export class MintingActivityHelper extends someDataMaker {
  * (property getter): UplcData for "uutMintingDelegate::MintingActivity.mockOtherActivity"
  */
     get mockOtherActivity() {
-        const uplc = this.enumCast.toUplcData({ mockOtherActivity: {} });
-       uplc.dataPath = "uutMintingDelegate::MintingActivity.mockOtherActivity";
+        const uplc = this.mkUplcData({ mockOtherActivity: {} }, 
+            "uutMintingDelegate::MintingActivity.mockOtherActivity");
        return uplc;
     } /* tagOnly variant accessor */
 }
@@ -467,19 +519,232 @@ export class MintingActivityHelper extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the BurningActivity enum type.
  */
-export class BurningActivityHelper extends someDataMaker {
-    enumCast = new Cast<
+export class BurningActivityHelper extends EnumMaker<JustAnEnum> {
+    __cast = new Cast<
        BurningActivity,
        BurningActivityLike
    >(BurningActivitySchema, { isMainnet: true });
 
     _placeholder2BA(
         value: number[]
-    ) {
-        const uplc = this.enumCast.toUplcData({ 
+    ) : UplcData {
+        const uplc = this.mkUplcData({ 
            _placeholder2BA: { recId: value } 
-        }); /*SingleField enum variant*/
-       uplc.dataPath = "uutMintingDelegate::BurningActivity._placeholder2BA";
+        }, "uutMintingDelegate::BurningActivity._placeholder2BA"); /*SingleField enum variant*/
+       return uplc;
+    }
+}
+
+
+/**
+ * Helper class for generating UplcData for variants of the CapoLifecycleActivity enum type.
+ */
+export class CapoLifecycleActivityHelperNested extends EnumMaker<isActivity> {
+    __cast = new Cast<
+       CapoLifecycleActivity,
+       CapoLifecycleActivityLike
+   >(CapoLifecycleActivitySchema, { isMainnet: true });
+
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate", given a transaction-context with a seed utxo and other field details
+     * @remarks
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.     */
+    CreatingDelegate(value: hasSeed, fields: { 
+        purpose: string 
+    } ) : isActivity
+    /**
+    * generates UplcData for "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate" with raw seed details included in fields.
+    */
+    CreatingDelegate(fields: CapoLifecycleActivity$CreatingDelegateLike | {
+            seed: TxOutputId | string,
+            purpose: string
+    } ): isActivity
+    CreatingDelegate(
+        seedOrUf: hasSeed | CapoLifecycleActivity$CreatingDelegateLike, 
+        filteredFields?: { 
+            purpose: string
+    }) : isActivity {
+        if (filteredFields) {
+            const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
+            const uplc = this.mkUplcData({
+                CreatingDelegate: { seed: seedTxOutputId, ...filteredFields } 
+            }, "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate");
+           return uplc;
+        } else {
+            const fields = seedOrUf as CapoLifecycleActivity$CreatingDelegateLike; 
+           const uplc = this.mkUplcData({
+                CreatingDelegate: fields 
+            }, "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate");
+           return uplc;
+        }
+    } /*multiFieldVariant/seeded enum accessor*/ 
+
+}
+
+
+/**
+ * Helper class for generating UplcData for variants of the DelegateLifecycleActivity enum type.
+ */
+export class DelegateLifecycleActivityHelperNested extends EnumMaker<isActivity> {
+    __cast = new Cast<
+       DelegateLifecycleActivity,
+       DelegateLifecycleActivityLike
+   >(DelegateLifecycleActivitySchema, { isMainnet: true });
+
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe", given a transaction-context with a seed utxo and other field details
+     * @remarks
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.     */
+    ReplacingMe(value: hasSeed, fields: { 
+        purpose: string 
+    } ) : isActivity
+    /**
+    * generates UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe" with raw seed details included in fields.
+    */
+    ReplacingMe(fields: DelegateLifecycleActivity$ReplacingMeLike | {
+            seed: TxOutputId | string,
+            purpose: string
+    } ): isActivity
+    ReplacingMe(
+        seedOrUf: hasSeed | DelegateLifecycleActivity$ReplacingMeLike, 
+        filteredFields?: { 
+            purpose: string
+    }) : isActivity {
+        if (filteredFields) {
+            const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
+            const uplc = this.mkUplcData({
+                ReplacingMe: { seed: seedTxOutputId, ...filteredFields } 
+            }, "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe");
+           return uplc;
+        } else {
+            const fields = seedOrUf as DelegateLifecycleActivity$ReplacingMeLike; 
+           const uplc = this.mkUplcData({
+                ReplacingMe: fields 
+            }, "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe");
+           return uplc;
+        }
+    } /*multiFieldVariant/seeded enum accessor*/ 
+
+
+/**
+ * (property getter): UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.Retiring"
+ */
+    get Retiring() {
+        const uplc = this.mkUplcData({ Retiring: {} }, 
+            "CapoDelegateHelpers::DelegateLifecycleActivity.Retiring");
+       return uplc;
+    } /* tagOnly variant accessor */
+
+/**
+ * (property getter): UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.ValidatingSettings"
+ */
+    get ValidatingSettings() {
+        const uplc = this.mkUplcData({ ValidatingSettings: {} }, 
+            "CapoDelegateHelpers::DelegateLifecycleActivity.ValidatingSettings");
+       return uplc;
+    } /* tagOnly variant accessor */
+}
+
+
+/**
+ * Helper class for generating UplcData for variants of the SpendingActivity enum type.
+ */
+export class SpendingActivityHelperNested extends EnumMaker<isActivity> {
+    __cast = new Cast<
+       SpendingActivity,
+       SpendingActivityLike
+   >(SpendingActivitySchema, { isMainnet: true });
+
+    _placeholder2SA(
+        value: number[]
+    ) : isActivity {
+        const uplc = this.mkUplcData({ 
+           _placeholder2SA: { id: value } 
+        }, "uutMintingDelegate::SpendingActivity._placeholder2SA"); /*SingleField enum variant*/
+       return uplc;
+    }
+
+    mockWorkingSpendActivity(
+        value: number[]
+    ) : isActivity {
+        const uplc = this.mkUplcData({ 
+           mockWorkingSpendActivity: { id: value } 
+        }, "uutMintingDelegate::SpendingActivity.mockWorkingSpendActivity"); /*SingleField enum variant*/
+       return uplc;
+    }
+}
+
+
+/**
+ * Helper class for generating UplcData for variants of the MintingActivity enum type.
+ */
+export class MintingActivityHelperNested extends EnumMaker<isActivity> {
+    __cast = new Cast<
+       MintingActivity,
+       MintingActivityLike
+   >(MintingActivitySchema, { isMainnet: true });
+
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for "uutMintingDelegate::MintingActivity.mintingUuts", given a transaction-context with a seed utxo and other field details
+     * @remarks
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.     */
+    mintingUuts(value: hasSeed, fields: { 
+        purposes: Array<string> 
+    } ) : isActivity
+    /**
+    * generates UplcData for "uutMintingDelegate::MintingActivity.mintingUuts" with raw seed details included in fields.
+    */
+    mintingUuts(fields: MintingActivity$mintingUutsLike | {
+            seed: TxOutputId | string,
+            purposes: Array<string>
+    } ): isActivity
+    mintingUuts(
+        seedOrUf: hasSeed | MintingActivity$mintingUutsLike, 
+        filteredFields?: { 
+            purposes: Array<string>
+    }) : isActivity {
+        if (filteredFields) {
+            const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
+            const uplc = this.mkUplcData({
+                mintingUuts: { seed: seedTxOutputId, ...filteredFields } 
+            }, "uutMintingDelegate::MintingActivity.mintingUuts");
+           return uplc;
+        } else {
+            const fields = seedOrUf as MintingActivity$mintingUutsLike; 
+           const uplc = this.mkUplcData({
+                mintingUuts: fields 
+            }, "uutMintingDelegate::MintingActivity.mintingUuts");
+           return uplc;
+        }
+    } /*multiFieldVariant/seeded enum accessor*/ 
+
+
+/**
+ * (property getter): UplcData for "uutMintingDelegate::MintingActivity.mockOtherActivity"
+ */
+    get mockOtherActivity() {
+        const uplc = this.mkUplcData({ mockOtherActivity: {} }, 
+            "uutMintingDelegate::MintingActivity.mockOtherActivity");
+       return uplc;
+    } /* tagOnly variant accessor */
+}
+
+
+/**
+ * Helper class for generating UplcData for variants of the BurningActivity enum type.
+ */
+export class BurningActivityHelperNested extends EnumMaker<isActivity> {
+    __cast = new Cast<
+       BurningActivity,
+       BurningActivityLike
+   >(BurningActivitySchema, { isMainnet: true });
+
+    _placeholder2BA(
+        value: number[]
+    ) : isActivity {
+        const uplc = this.mkUplcData({ 
+           _placeholder2BA: { recId: value } 
+        }, "uutMintingDelegate::BurningActivity._placeholder2BA"); /*SingleField enum variant*/
        return uplc;
     }
 }
@@ -488,132 +753,132 @@ export class BurningActivityHelper extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the DelegateActivity enum type.
  */
-export class DelegateActivityHelper extends someDataMaker {
-    enumCast = new Cast<
+export class DelegateActivityHelper extends EnumMaker<isActivity> {
+    __cast = new Cast<
        DelegateActivity,
        DelegateActivityLike
    >(DelegateActivitySchema, { isMainnet: true });
 
-    CapoLifecycleActivities(
-        value: CapoLifecycleActivityLike
-    ) {
-        const uplc = this.enumCast.toUplcData({ 
-           CapoLifecycleActivities: { activity: value } 
-        }); /*SingleField enum variant*/
-       uplc.dataPath = "uutMintingDelegate::DelegateActivity.CapoLifecycleActivities";
-       return uplc;
-    }
+    get CapoLifecycleActivities() {
+        const nestedAccessor = new CapoLifecycleActivityHelperNested(this.bundle,
+            {isNested: true, isActivity: true 
+        });
+        nestedAccessor.mkDataVia((nested: CapoLifecycleActivityLike) => {
+           return  this.mkUplcData({ CapoLifecycleActivities: { activity: nested } }, 
+            "uutMintingDelegate::DelegateActivity.CapoLifecycleActivities");
+        });
+        return nestedAccessor;
+    } /* nested enum accessor */
 
-    DelegateLifecycleActivities(
-        value: DelegateLifecycleActivityLike
-    ) {
-        const uplc = this.enumCast.toUplcData({ 
-           DelegateLifecycleActivities: { activity: value } 
-        }); /*SingleField enum variant*/
-       uplc.dataPath = "uutMintingDelegate::DelegateActivity.DelegateLifecycleActivities";
-       return uplc;
-    }
+    get DelegateLifecycleActivities() {
+        const nestedAccessor = new DelegateLifecycleActivityHelperNested(this.bundle,
+            {isNested: true, isActivity: true 
+        });
+        nestedAccessor.mkDataVia((nested: DelegateLifecycleActivityLike) => {
+           return  this.mkUplcData({ DelegateLifecycleActivities: { activity: nested } }, 
+            "uutMintingDelegate::DelegateActivity.DelegateLifecycleActivities");
+        });
+        return nestedAccessor;
+    } /* nested enum accessor */
 
-    SpendingActivities(
-        value: SpendingActivityLike
-    ) {
-        const uplc = this.enumCast.toUplcData({ 
-           SpendingActivities: { activity: value } 
-        }); /*SingleField enum variant*/
-       uplc.dataPath = "uutMintingDelegate::DelegateActivity.SpendingActivities";
-       return uplc;
-    }
+    get SpendingActivities() {
+        const nestedAccessor = new SpendingActivityHelperNested(this.bundle,
+            {isNested: true, isActivity: true 
+        });
+        nestedAccessor.mkDataVia((nested: SpendingActivityLike) => {
+           return  this.mkUplcData({ SpendingActivities: { activity: nested } }, 
+            "uutMintingDelegate::DelegateActivity.SpendingActivities");
+        });
+        return nestedAccessor;
+    } /* nested enum accessor */
 
-    MintingActivities(
-        value: MintingActivityLike
-    ) {
-        const uplc = this.enumCast.toUplcData({ 
-           MintingActivities: { activity: value } 
-        }); /*SingleField enum variant*/
-       uplc.dataPath = "uutMintingDelegate::DelegateActivity.MintingActivities";
-       return uplc;
-    }
+    get MintingActivities() {
+        const nestedAccessor = new MintingActivityHelperNested(this.bundle,
+            {isNested: true, isActivity: true 
+        });
+        nestedAccessor.mkDataVia((nested: MintingActivityLike) => {
+           return  this.mkUplcData({ MintingActivities: { activity: nested } }, 
+            "uutMintingDelegate::DelegateActivity.MintingActivities");
+        });
+        return nestedAccessor;
+    } /* nested enum accessor */
 
-    BurningActivities(
-        value: BurningActivityLike
-    ) {
-        const uplc = this.enumCast.toUplcData({ 
-           BurningActivities: { activity: value } 
-        }); /*SingleField enum variant*/
-       uplc.dataPath = "uutMintingDelegate::DelegateActivity.BurningActivities";
-       return uplc;
-    }
+    get BurningActivities() {
+        const nestedAccessor = new BurningActivityHelperNested(this.bundle,
+            {isNested: true, isActivity: true 
+        });
+        nestedAccessor.mkDataVia((nested: BurningActivityLike) => {
+           return  this.mkUplcData({ BurningActivities: { activity: nested } }, 
+            "uutMintingDelegate::DelegateActivity.BurningActivities");
+        });
+        return nestedAccessor;
+    } /* nested enum accessor */
 
     /**
-     * generates UplcData for "uutMintingDelegate::DelegateActivity.CreatingDelegatedData", given a transaction-context with a seed utxo and other field details
+     * generates isActivity/redeemer wrapper with UplcData for "uutMintingDelegate::DelegateActivity.CreatingDelegatedData", given a transaction-context with a seed utxo and other field details
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.     */
     CreatingDelegatedData(value: hasSeed, fields: { 
         dataType: string 
-    } ) : UplcData
+    } ) : isActivity
     /**
     * generates UplcData for "uutMintingDelegate::DelegateActivity.CreatingDelegatedData" with raw seed details included in fields.
     */
     CreatingDelegatedData(fields: DelegateActivity$CreatingDelegatedDataLike | {
             seed: TxOutputId | string,
             dataType: string
-    } ): UplcData
+    } ): isActivity
     CreatingDelegatedData(
         seedOrUf: hasSeed | DelegateActivity$CreatingDelegatedDataLike, 
         filteredFields?: { 
             dataType: string
-    }) : UplcData {
+    }) : isActivity {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
-            const uplc = this.enumCast.toUplcData({
+            const uplc = this.mkUplcData({
                 CreatingDelegatedData: { seed: seedTxOutputId, ...filteredFields } 
             }, "uutMintingDelegate::DelegateActivity.CreatingDelegatedData");
-           uplc.dataPath = "uutMintingDelegate::DelegateActivity.CreatingDelegatedData";
            return uplc;
         } else {
             const fields = seedOrUf as DelegateActivity$CreatingDelegatedDataLike; 
-           const uplc = this.enumCast.toUplcData({
+           const uplc = this.mkUplcData({
                 CreatingDelegatedData: fields 
-            });
-           uplc.dataPath = "uutMintingDelegate::DelegateActivity.CreatingDelegatedData";
+            }, "uutMintingDelegate::DelegateActivity.CreatingDelegatedData");
            return uplc;
         }
     } /*multiFieldVariant/seeded enum accessor*/ 
 
 
     /**
-     * generates UplcData for "uutMintingDelegate::DelegateActivity.UpdatingDelegatedData"
+     * generates isActivity/redeemer wrapper with UplcData for "uutMintingDelegate::DelegateActivity.UpdatingDelegatedData"
      * @remarks - DelegateActivity$UpdatingDelegatedDataLike is the same as the expanded field-types.     */
     UpdatingDelegatedData(fields: DelegateActivity$UpdatingDelegatedDataLike | { 
         dataType: string,
-        recId: number[] } ) {
-        const uplc = this.enumCast.toUplcData({
+        recId: number[] } ) : isActivity {
+        const uplc = this.mkUplcData({
             UpdatingDelegatedData: fields 
-        });
-       uplc.dataPath = "uutMintingDelegate::DelegateActivity.UpdatingDelegatedData";
+        }, "uutMintingDelegate::DelegateActivity.UpdatingDelegatedData");
        return uplc;
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates UplcData for "uutMintingDelegate::DelegateActivity.DeletingDelegatedData"
+     * generates isActivity/redeemer wrapper with UplcData for "uutMintingDelegate::DelegateActivity.DeletingDelegatedData"
      * @remarks - DelegateActivity$DeletingDelegatedDataLike is the same as the expanded field-types.     */
     DeletingDelegatedData(fields: DelegateActivity$DeletingDelegatedDataLike | { 
         dataType: string,
-        recId: number[] } ) {
-        const uplc = this.enumCast.toUplcData({
+        recId: number[] } ) : isActivity {
+        const uplc = this.mkUplcData({
             DeletingDelegatedData: fields 
-        });
-       uplc.dataPath = "uutMintingDelegate::DelegateActivity.DeletingDelegatedData";
+        }, "uutMintingDelegate::DelegateActivity.DeletingDelegatedData");
        return uplc;
     } /*multiFieldVariant enum accessor*/
 
     MultipleDelegateActivities(
         value: Array<UplcData>
-    ) {
-        const uplc = this.enumCast.toUplcData({ 
+    ) : isActivity {
+        const uplc = this.mkUplcData({ 
            MultipleDelegateActivities: { activities: value } 
-        }); /*SingleField enum variant*/
-       uplc.dataPath = "uutMintingDelegate::DelegateActivity.MultipleDelegateActivities";
+        }, "uutMintingDelegate::DelegateActivity.MultipleDelegateActivities"); /*SingleField enum variant*/
        return uplc;
     }
 }

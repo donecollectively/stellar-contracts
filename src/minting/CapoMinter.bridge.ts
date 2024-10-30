@@ -36,8 +36,14 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
 import { someDataMaker } from "../helios/dataBridge/someDataMaker.js"
+import { 
+    EnumMaker,
+    type Nested,
+    type EnumMakerOptions,
+    type JustAnEnum,
+} from "../helios/dataBridge/dataMakers.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
-import type {hasSeed} from "../StellarContract.js"
+import type {hasSeed, isActivity} from "../StellarContract.js"
 
 // todo: namespacing for all the good stuff here
 // namespace CapoMinterDataBridge {
@@ -70,8 +76,8 @@ export class CapoMinterDataBridge extends someDataMaker {
     /**
      * generates UplcData for the activity type (MinterActivity) for the CapoMinter script
      */
-    activity : MinterActivityHelper= new MinterActivityHelper(this.bundle); // activityAccessor/enum
-    MinterActivity: MinterActivityHelper = this.activity;
+    activity : MinterActivityHelper= new MinterActivityHelper(this.bundle, {isActivity: true}); // activityAccessor/enum
+        MinterActivity: MinterActivityHelper = this.activity;
 
 
     // include accessors for other enums (other than datum/activity)
@@ -85,19 +91,18 @@ export default CapoMinterDataBridge;
 /**
  * Helper class for generating UplcData for variants of the MinterActivity enum type.
  */
-export class MinterActivityHelper extends someDataMaker {
-    enumCast = new Cast<
+export class MinterActivityHelper extends EnumMaker<isActivity> {
+    __cast = new Cast<
        MinterActivity,
        MinterActivityLike
    >(MinterActivitySchema, { isMainnet: true });
 
     mintingCharter(
         value: Address | string
-    ) {
-        const uplc = this.enumCast.toUplcData({ 
+    ) : isActivity {
+        const uplc = this.mkUplcData({ 
            mintingCharter: { owner: value } 
-        }); /*SingleField enum variant*/
-       uplc.dataPath = "CapoMintHelpers::MinterActivity.mintingCharter";
+        }, "CapoMintHelpers::MinterActivity.mintingCharter"); /*SingleField enum variant*/
        return uplc;
     }
 
@@ -105,70 +110,65 @@ export class MinterActivityHelper extends someDataMaker {
  * (property getter): UplcData for "CapoMintHelpers::MinterActivity.mintWithDelegateAuthorizing"
  */
     get mintWithDelegateAuthorizing() {
-        const uplc = this.enumCast.toUplcData({ mintWithDelegateAuthorizing: {} });
-       uplc.dataPath = "CapoMintHelpers::MinterActivity.mintWithDelegateAuthorizing";
+        const uplc = this.mkUplcData({ mintWithDelegateAuthorizing: {} }, 
+            "CapoMintHelpers::MinterActivity.mintWithDelegateAuthorizing");
        return uplc;
     } /* tagOnly variant accessor */
 
-    addingMintInvariant(value: hasSeed | TxOutputId | string) {
+    addingMintInvariant(value: hasSeed | TxOutputId | string) : isActivity {
         const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
-        const uplc = this.enumCast.toUplcData({ 
+        const uplc = this.mkUplcData({ 
            addingMintInvariant: { seed: seedTxOutputId } 
-        },);  /*SingleField/seeded enum variant*/
-       uplc.dataPath = "CapoMintHelpers::MinterActivity.addingMintInvariant";
+        },"CapoMintHelpers::MinterActivity.addingMintInvariant");  /*SingleField/seeded enum variant*/
        return uplc;
     }
 
-    addingSpendInvariant(value: hasSeed | TxOutputId | string) {
+    addingSpendInvariant(value: hasSeed | TxOutputId | string) : isActivity {
         const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
-        const uplc = this.enumCast.toUplcData({ 
+        const uplc = this.mkUplcData({ 
            addingSpendInvariant: { seed: seedTxOutputId } 
-        },);  /*SingleField/seeded enum variant*/
-       uplc.dataPath = "CapoMintHelpers::MinterActivity.addingSpendInvariant";
+        },"CapoMintHelpers::MinterActivity.addingSpendInvariant");  /*SingleField/seeded enum variant*/
        return uplc;
     }
 
-    ForcingNewMintDelegate(value: hasSeed | TxOutputId | string) {
+    ForcingNewMintDelegate(value: hasSeed | TxOutputId | string) : isActivity {
         const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
-        const uplc = this.enumCast.toUplcData({ 
+        const uplc = this.mkUplcData({ 
            ForcingNewMintDelegate: { seed: seedTxOutputId } 
-        },);  /*SingleField/seeded enum variant*/
-       uplc.dataPath = "CapoMintHelpers::MinterActivity.ForcingNewMintDelegate";
+        },"CapoMintHelpers::MinterActivity.ForcingNewMintDelegate");  /*SingleField/seeded enum variant*/
        return uplc;
     }
 
     /**
-     * generates UplcData for "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate", given a transaction-context with a seed utxo and other field details
+     * generates isActivity/redeemer wrapper with UplcData for "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate", given a transaction-context with a seed utxo and other field details
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.     */
     CreatingNewSpendDelegate(value: hasSeed, fields: { 
         replacingUut: Option<number[]> 
-    } ) : UplcData
+    } ) : isActivity
     /**
     * generates UplcData for "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate" with raw seed details included in fields.
     */
     CreatingNewSpendDelegate(fields: MinterActivity$CreatingNewSpendDelegateLike | {
             seed: TxOutputId | string,
             replacingUut: Option<number[]>
-    } ): UplcData
+    } ): isActivity
     CreatingNewSpendDelegate(
         seedOrUf: hasSeed | MinterActivity$CreatingNewSpendDelegateLike, 
         filteredFields?: { 
             replacingUut: Option<number[]>
-    }) : UplcData {
+    }) : isActivity {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
-            const uplc = this.enumCast.toUplcData({
+            const uplc = this.mkUplcData({
                 CreatingNewSpendDelegate: { seed: seedTxOutputId, ...filteredFields } 
             }, "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate");
-           uplc.dataPath = "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate";
            return uplc;
         } else {
             const fields = seedOrUf as MinterActivity$CreatingNewSpendDelegateLike; 
-           const uplc = this.enumCast.toUplcData({
+           const uplc = this.mkUplcData({
                 CreatingNewSpendDelegate: fields 
-            });
-           uplc.dataPath = "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate";
+            }, "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate");
            return uplc;
         }
     } /*multiFieldVariant/seeded enum accessor*/ 

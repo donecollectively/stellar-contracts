@@ -36,8 +36,14 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
 import { someDataMaker } from "./helios/dataBridge/someDataMaker.js"
+import { 
+    EnumMaker,
+    type Nested,
+    type EnumMakerOptions,
+    type JustAnEnum,
+} from "./helios/dataBridge/dataMakers.js"
 import type { tagOnly } from "./helios/HeliosScriptBundle.js"
-import type {hasSeed} from "./StellarContract.js"
+import type {hasSeed, isActivity} from "./StellarContract.js"
 
 // todo: namespacing for all the good stuff here
 // namespace CapoDataBridge {
@@ -63,10 +69,10 @@ import type * as types from "./CapoHeliosBundle.typeInfo.js";
  */
 export class CapoDataBridge extends someDataMaker {
     // for datum:
-    datum: CapoDatumHelper = new CapoDatumHelper(this.bundle)   // datumAccessor/enum 
+    datum: CapoDatumHelper = new CapoDatumHelper(this.bundle, {})   // datumAccessor/enum 
     CapoDatum: CapoDatumHelper = this.datum;
     readDatum = (d: UplcData) => {
-        return this.datum.enumCast.fromUplcData(d);
+        return this.datum.__cast.fromUplcData(d);
     }
 
 
@@ -79,8 +85,8 @@ export class CapoDataBridge extends someDataMaker {
     /**
      * generates UplcData for the activity type (CapoActivity) for the Capo script
      */
-    activity : CapoActivityHelper= new CapoActivityHelper(this.bundle); // activityAccessor/enum
-    CapoActivity: CapoActivityHelper = this.activity;
+    activity : CapoActivityHelper= new CapoActivityHelper(this.bundle, {isActivity: true}); // activityAccessor/enum
+        CapoActivity: CapoActivityHelper = this.activity;
 
 
     // include accessors for other enums (other than datum/activity)
@@ -94,14 +100,14 @@ export default CapoDataBridge;
 /**
  * Helper class for generating UplcData for variants of the CapoDatum enum type.
  */
-export class CapoDatumHelper extends someDataMaker {
-    enumCast = new Cast<
+export class CapoDatumHelper extends EnumMaker<JustAnEnum> {
+    __cast = new Cast<
        CapoDatum,
        CapoDatumLike
    >(CapoDatumSchema, { isMainnet: true });
 
     /**
-     * generates UplcData for "CapoHelpers::CapoDatum.CharterToken"
+     * generates  UplcData for "CapoHelpers::CapoDatum.CharterToken"
      * @remarks - CapoDatum$CharterTokenLike is the same as the expanded field-types.     */
     CharterToken(fields: CapoDatum$CharterTokenLike | { 
         spendDelegateLink: RelativeDelegateLinkLike,
@@ -127,11 +133,10 @@ export class CapoDatumHelper extends someDataMaker {
     config: /*minStructField*/ number[]
 }
 >,
-        govAuthorityLink: RelativeDelegateLinkLike } ) {
-        const uplc = this.enumCast.toUplcData({
+        govAuthorityLink: RelativeDelegateLinkLike } ) : UplcData {
+        const uplc = this.mkUplcData({
             CharterToken: fields 
-        });
-       uplc.dataPath = "CapoHelpers::CapoDatum.CharterToken";
+        }, "CapoHelpers::CapoDatum.CharterToken");
        return uplc;
     } /*multiFieldVariant enum accessor*/
 
@@ -139,22 +144,21 @@ export class CapoDatumHelper extends someDataMaker {
  * (property getter): UplcData for "CapoHelpers::CapoDatum.ScriptReference"
  */
     get ScriptReference() {
-        const uplc = this.enumCast.toUplcData({ ScriptReference: {} });
-       uplc.dataPath = "CapoHelpers::CapoDatum.ScriptReference";
+        const uplc = this.mkUplcData({ ScriptReference: {} }, 
+            "CapoHelpers::CapoDatum.ScriptReference");
        return uplc;
     } /* tagOnly variant accessor */
 
     /**
-     * generates UplcData for "CapoHelpers::CapoDatum.DelegatedData"
+     * generates  UplcData for "CapoHelpers::CapoDatum.DelegatedData"
      * @remarks - CapoDatum$DelegatedDataLike is the same as the expanded field-types.     */
     DelegatedData(fields: CapoDatum$DelegatedDataLike | { 
         data: AnyDataLike,
         version: IntLike,
-        otherDetails: UplcData } ) {
-        const uplc = this.enumCast.toUplcData({
+        otherDetails: UplcData } ) : UplcData {
+        const uplc = this.mkUplcData({
             DelegatedData: fields 
-        });
-       uplc.dataPath = "CapoHelpers::CapoDatum.DelegatedData";
+        }, "CapoHelpers::CapoDatum.DelegatedData");
        return uplc;
     } /*multiFieldVariant enum accessor*/
 }
@@ -163,8 +167,8 @@ export class CapoDatumHelper extends someDataMaker {
 /**
  * Helper class for generating UplcData for variants of the CapoActivity enum type.
  */
-export class CapoActivityHelper extends someDataMaker {
-    enumCast = new Cast<
+export class CapoActivityHelper extends EnumMaker<isActivity> {
+    __cast = new Cast<
        CapoActivity,
        CapoActivityLike
    >(CapoActivitySchema, { isMainnet: true });
@@ -173,8 +177,8 @@ export class CapoActivityHelper extends someDataMaker {
  * (property getter): UplcData for "CapoHelpers::CapoActivity.usingAuthority"
  */
     get usingAuthority() {
-        const uplc = this.enumCast.toUplcData({ usingAuthority: {} });
-       uplc.dataPath = "CapoHelpers::CapoActivity.usingAuthority";
+        const uplc = this.mkUplcData({ usingAuthority: {} }, 
+            "CapoHelpers::CapoActivity.usingAuthority");
        return uplc;
     } /* tagOnly variant accessor */
 
@@ -182,8 +186,8 @@ export class CapoActivityHelper extends someDataMaker {
  * (property getter): UplcData for "CapoHelpers::CapoActivity.updatingCharter"
  */
     get updatingCharter() {
-        const uplc = this.enumCast.toUplcData({ updatingCharter: {} });
-       uplc.dataPath = "CapoHelpers::CapoActivity.updatingCharter";
+        const uplc = this.mkUplcData({ updatingCharter: {} }, 
+            "CapoHelpers::CapoActivity.updatingCharter");
        return uplc;
     } /* tagOnly variant accessor */
 
@@ -191,8 +195,8 @@ export class CapoActivityHelper extends someDataMaker {
  * (property getter): UplcData for "CapoHelpers::CapoActivity.retiringRefScript"
  */
     get retiringRefScript() {
-        const uplc = this.enumCast.toUplcData({ retiringRefScript: {} });
-       uplc.dataPath = "CapoHelpers::CapoActivity.retiringRefScript";
+        const uplc = this.mkUplcData({ retiringRefScript: {} }, 
+            "CapoHelpers::CapoActivity.retiringRefScript");
        return uplc;
     } /* tagOnly variant accessor */
 
@@ -200,8 +204,8 @@ export class CapoActivityHelper extends someDataMaker {
  * (property getter): UplcData for "CapoHelpers::CapoActivity.addingSpendInvariant"
  */
     get addingSpendInvariant() {
-        const uplc = this.enumCast.toUplcData({ addingSpendInvariant: {} });
-       uplc.dataPath = "CapoHelpers::CapoActivity.addingSpendInvariant";
+        const uplc = this.mkUplcData({ addingSpendInvariant: {} }, 
+            "CapoHelpers::CapoActivity.addingSpendInvariant");
        return uplc;
     } /* tagOnly variant accessor */
 
@@ -209,8 +213,8 @@ export class CapoActivityHelper extends someDataMaker {
  * (property getter): UplcData for "CapoHelpers::CapoActivity.spendingDelegatedDatum"
  */
     get spendingDelegatedDatum() {
-        const uplc = this.enumCast.toUplcData({ spendingDelegatedDatum: {} });
-       uplc.dataPath = "CapoHelpers::CapoActivity.spendingDelegatedDatum";
+        const uplc = this.mkUplcData({ spendingDelegatedDatum: {} }, 
+            "CapoHelpers::CapoActivity.spendingDelegatedDatum");
        return uplc;
     } /* tagOnly variant accessor */
 
@@ -218,8 +222,8 @@ export class CapoActivityHelper extends someDataMaker {
  * (property getter): UplcData for "CapoHelpers::CapoActivity.updatingTypeMap"
  */
     get updatingTypeMap() {
-        const uplc = this.enumCast.toUplcData({ updatingTypeMap: {} });
-       uplc.dataPath = "CapoHelpers::CapoActivity.updatingTypeMap";
+        const uplc = this.mkUplcData({ updatingTypeMap: {} }, 
+            "CapoHelpers::CapoActivity.updatingTypeMap");
        return uplc;
     } /* tagOnly variant accessor */
 }
