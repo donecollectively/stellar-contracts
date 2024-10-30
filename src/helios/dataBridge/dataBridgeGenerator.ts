@@ -216,12 +216,9 @@ ${this.includeDatumAccessors()}
 
 // for activity types:
 ${this.includeActivityCreator()}
-
-    // include accessors for other enums (other than datum/activity)
-
-    // include accessors for any other structs (other than datum/activity)
-
-    // TODO: include any utility functions defined in the contract
+${this.includeDataReader()}
+${this.includeTypeAccessors()}
+${this.includeUtilityFunctions()}
 }
 export default ${bridgeClassName};
 
@@ -230,6 +227,106 @@ ${this.includeEnumHelperClasses()}
 ${this.includeNamedSchemas()}
 // }
 `;
+    }
+
+    additionalCastMemberDefs: Record<string, string> = {};
+
+    includeTypeAccessors() {
+        return (
+            `    types = {\n` +
+            this.includeEnumTypeAccessors() + `\n\n`+
+            this.includeStructTypeAccessors() +
+            `    }    \n\n`+
+            this.includeCastMemberInitializers()
+        );
+    }
+    includeCastMemberInitializers() {
+        return Object.values(this.additionalCastMemberDefs).join("");
+    }
+    includeDataReader() {
+        return ``;
+    }
+    includeEnumTypeAccessors() {
+        // follows the same pattern as the activity-creator above,
+        // but without the {isActivity: true} flag or {redeemer} wrapper
+
+        // omits the Activity enum, since it is already handled above
+        //@ts-expect-error - it's fine for this to be not present for non-named activitiy/datum type
+        const activityName = this.activityTypeDetails?.typeSchema.name;
+        //@ts-expect-error - it's fine for this to be not present for non-named activitiy/datum type
+        const datumName = this.datumTypeDetails?.typeSchema.name;
+
+        const accessors = Object.keys(this.typeBundle.namedTypes)
+            .filter((typeName) => {
+                const typeDetails = this.typeBundle.namedTypes[typeName];
+                return typeDetails.typeSchema.kind === "enum";
+            })
+            .map((typeName) => {
+                const typeDetails = this.typeBundle.namedTypes[
+                    typeName
+                ] as unknown as fullEnumTypeDetails;
+                const helperClassName = typeDetails.moreInfo.helperClassName;
+
+                // const isActivity = activityName === typeName;
+                // if (isActivity) return ``; // skip the activity type
+                // const isDatum = datumName === typeName;
+                // if (isDatum) return ``; // skip the datum type
+
+                return `        ${typeName}: new ${helperClassName}(this.bundle),`;
+            })
+            .join("\n");
+
+        return accessors;
+    }
+
+    // emits accessors for all the struct types defined in the bundle
+    // for inclusion in the bridge's 'types' namespace
+    // gathers Cast initializers to include in the bridge class
+
+    includeStructTypeAccessors() {
+        //@ts-expect-error - it's fine for this to be not present for non-named activitiy/datum type
+        const activityName = this.activityTypeDetails?.typeSchema.name;
+        //@ts-expect-error - it's fine for this to be not present for non-named activitiy/datum type
+        const datumName = this.datumTypeDetails?.typeSchema.name;
+
+        const accessors = Object.keys(this.typeBundle.namedTypes)
+            .filter((typeName) => {
+                const typeDetails = this.typeBundle.namedTypes[typeName];
+                return typeDetails.typeSchema.kind === "struct";
+            })
+            .map((typeName) => {
+                const typeDetails = this.typeBundle.namedTypes[
+                    typeName
+                ] as unknown as fullTypeDetails;
+
+                // const isActivity = activityName === typeName;
+                // if (isActivity) return ``; // skip the activity type
+                // const isDatum = datumName === typeName;
+                // if (isDatum) return ``; // skip the datum type
+
+                const {
+                    canonicalTypeName,
+                    permissiveType,
+                    permissiveTypeName,
+                } = typeDetails;
+                const castMemberName = `__${typeName}Cast`;
+                this.additionalCastMemberDefs[
+                    castMemberName
+                ] = `    ${castMemberName} = new Cast<
+                ${canonicalTypeName}, ${permissiveTypeName}
+            >(${typeName}Schema, { isMainnet: true });\n`;
+
+                return `        ${typeName}: (fields: ${permissiveTypeName} | ${permissiveType}) => {
+        return this.${castMemberName}.toUplcData(fields);
+    },`;
+            })
+            .join("\n");
+
+        return accessors;
+    }
+    includeUtilityFunctions() {
+        // TODO: include any utility functions defined in the contract
+        return ``;
     }
 
     // gatherDatumAccessors() {
@@ -367,7 +464,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `    datum: ${helperClassName} = new ${helperClassName}(this.bundle, {})   // datumAccessor/enum \n` +
                 `    ${details.typeSchema.name}: ${helperClassName} = this.datum;\n` +
                 `    readDatum = (d: UplcData) => {\n` +
-                `        //@ts-expect-error drilling through the protected accessor.\n`+
+                `        //@ts-expect-error drilling through the protected accessor.\n` +
                 `        //   ... see more comments about that above\n` +
                 `        return this.datum.__cast.fromUplcData(d);\n` +
                 `    }\n`
@@ -504,8 +601,11 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const nestedEnumDetails = oneField.typeSchema as EnumTypeSchema;
         const nestedEnumName = nestedEnumDetails.name;
 
-        const nestedEnumField : fullEnumTypeDetails = oneField as any;
-        const nestedHelperClassName = this.nestedHelperClassName(nestedEnumField, isActivity);
+        const nestedEnumField: fullEnumTypeDetails = oneField as any;
+        const nestedHelperClassName = this.nestedHelperClassName(
+            nestedEnumField,
+            isActivity
+        );
 
         const nestedHelper = this.mkEnumHelperClass(
             nestedEnumField,
@@ -521,12 +621,10 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         return (
             `    get ${variantName}() {\n` +
             `        const nestedAccessor = new ${nestedHelperClassName}(this.bundle,
-            {isNested: true, isActivity: ${
-                isActivity ? "true" : "false"
-            } 
+            {isNested: true, isActivity: ${isActivity ? "true" : "false"} 
         });\n` +
-        `        //@ts-expect-error drilling through the protected accessor.  See more comments about that above\n`+
-        `        nestedAccessor.mkDataVia((nested: ${nestedEnumName}Like) => {\n` +
+            `        //@ts-expect-error drilling through the protected accessor.  See more comments about that above\n` +
+            `        nestedAccessor.mkDataVia((nested: ${nestedEnumName}Like) => {\n` +
             `           return  this.mkUplcData({ ${variantName}: { ${fieldName}: nested } }, 
             ${enumPathExpr});\n` +
             `        });\n` +
@@ -549,7 +647,11 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         );
     }
 
-    mkEnumDatumAccessors(enumDetails: fullEnumTypeDetails, isActivity? : boolean, isNested? : "isNested") {
+    mkEnumDatumAccessors(
+        enumDetails: fullEnumTypeDetails,
+        isActivity?: boolean,
+        isNested?: "isNested"
+    ) {
         const accessors = Object.keys(enumDetails.variants)
             .map((variantName) => {
                 const variantDetails = enumDetails.variants[variantName];
@@ -572,15 +674,16 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                         enumDetails,
                         variantDetails,
                         variantName,
-                        isActivity, isNested
+                        isActivity,
+                        isNested
                     );
                 } else {
                     return this.mkMultiFieldVariantAccessor(
                         enumDetails,
                         variantDetails,
                         variantName,
-                        isActivity, isNested
-
+                        isActivity,
+                        isNested
                     );
                 }
             })
@@ -592,7 +695,8 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         enumTypeDetails: fullEnumTypeDetails,
         variantDetails: variantTypeDetails<dataBridgeTypeInfo>,
         variantName: string,
-        isActivity: boolean = this.redeemerTypeName === enumTypeDetails.enumName,
+        isActivity: boolean = this.redeemerTypeName ===
+            enumTypeDetails.enumName,
         isNested?: "isNested"
     ) {
         function mkFieldType(fieldName: string, indent = 2): string {
@@ -662,7 +766,9 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         }
         return (
             `    /**\n` +
-            `     * generates ${isActivity ? "isActivity/redeemer wrapper with" : ""} UplcData for ${enumPathExpr}\n` +
+            `     * generates ${
+                isActivity ? "isActivity/redeemer wrapper with" : ""
+            } UplcData for ${enumPathExpr}\n` +
             `     * @remarks - ${permissiveTypeName} is the same as the expanded field-types.` +
             `     */\n` +
             `    ${variantName}(fields: ${permissiveTypeName} | { \n${unfilteredFields()} } ) : ${returnType} {\n` +
@@ -678,7 +784,8 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         enumTypeDetails: fullEnumTypeDetails,
         variantDetails: variantTypeDetails<dataBridgeTypeInfo>,
         variantName: string,
-        isActivity: boolean = this.redeemerTypeName === enumTypeDetails.enumName,
+        isActivity: boolean = this.redeemerTypeName ===
+            enumTypeDetails.enumName,
         isNested?: "isNested"
     ) {
         const fieldName = Object.keys(variantDetails.fields)[0];

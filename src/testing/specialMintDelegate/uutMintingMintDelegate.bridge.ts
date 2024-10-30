@@ -108,11 +108,42 @@ export class uutMintingDelegateDataBridge extends DataBridge {
         DelegateActivity: DelegateActivityHelper = this.activity;
 
 
-    // include accessors for other enums (other than datum/activity)
+    types = {
+        SomeEnum: new SomeEnumHelper(this.bundle),
+        DelegateDatum: new DelegateDatumHelper(this.bundle),
+        CapoLifecycleActivity: new CapoLifecycleActivityHelper(this.bundle),
+        DelegateLifecycleActivity: new DelegateLifecycleActivityHelper(this.bundle),
+        SpendingActivity: new SpendingActivityHelper(this.bundle),
+        MintingActivity: new MintingActivityHelper(this.bundle),
+        BurningActivity: new BurningActivityHelper(this.bundle),
+        DelegateActivity: new DelegateActivityHelper(this.bundle),
 
-    // include accessors for any other structs (other than datum/activity)
+        DelegationDetail: (fields: DelegationDetailLike | {
+    capoAddr: /*minStructField*/ Address | string
+    mph: /*minStructField*/ MintingPolicyHash | string | number[]
+    tn: /*minStructField*/ number[]
+}
+) => {
+        return this.__DelegationDetailCast.toUplcData(fields);
+    },
+        SampleStruct: (fields: SampleStructLike | {
+    a: /*minStructField*/ IntLike
+    b: /*minStructField*/ Map<string, number[]>
+    c: /*minStructField*/ Array<boolean>
+    d: /*minStructField*/ Option<UplcData>
+}
+) => {
+        return this.__SampleStructCast.toUplcData(fields);
+    },    }    
 
-    // TODO: include any utility functions defined in the contract
+    __DelegationDetailCast = new Cast<
+                DelegationDetail, DelegationDetailLike
+            >(DelegationDetailSchema, { isMainnet: true });
+    __SampleStructCast = new Cast<
+                SampleStruct, SampleStructLike
+            >(SampleStructSchema, { isMainnet: true });
+
+
 }
 export default uutMintingDelegateDataBridge;
 

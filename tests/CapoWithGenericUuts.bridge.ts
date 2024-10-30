@@ -94,11 +94,35 @@ export class CapoDataBridge extends DataBridge {
         CapoActivity: CapoActivityHelper = this.activity;
 
 
-    // include accessors for other enums (other than datum/activity)
+    types = {
+        CapoDatum: new CapoDatumHelper(this.bundle),
+        CapoActivity: new CapoActivityHelper(this.bundle),
 
-    // include accessors for any other structs (other than datum/activity)
+        RelativeDelegateLink: (fields: RelativeDelegateLinkLike | {
+    uutName: /*minStructField*/ string
+    strategyName: /*minStructField*/ string
+    delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
+    config: /*minStructField*/ number[]
+}
+) => {
+        return this.__RelativeDelegateLinkCast.toUplcData(fields);
+    },
+        AnyData: (fields: AnyDataLike | {
+    id: /*minStructField*/ number[]
+    type: /*minStructField*/ string
+}
+) => {
+        return this.__AnyDataCast.toUplcData(fields);
+    },    }    
 
-    // TODO: include any utility functions defined in the contract
+    __RelativeDelegateLinkCast = new Cast<
+                RelativeDelegateLink, RelativeDelegateLinkLike
+            >(RelativeDelegateLinkSchema, { isMainnet: true });
+    __AnyDataCast = new Cast<
+                AnyData, AnyDataLike
+            >(AnyDataSchema, { isMainnet: true });
+
+
 }
 export default CapoDataBridge;
 

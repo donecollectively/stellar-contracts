@@ -103,11 +103,39 @@ export class UnspecializedDelegateBridge extends DataBridge {
         DelegateActivity: DelegateActivityHelper = this.activity;
 
 
-    // include accessors for other enums (other than datum/activity)
+    types = {
+        DelegateDatum: new DelegateDatumHelper(this.bundle),
+        CapoLifecycleActivity: new CapoLifecycleActivityHelper(this.bundle),
+        DelegateLifecycleActivity: new DelegateLifecycleActivityHelper(this.bundle),
+        SpendingActivity: new SpendingActivityHelper(this.bundle),
+        MintingActivity: new MintingActivityHelper(this.bundle),
+        BurningActivity: new BurningActivityHelper(this.bundle),
+        DelegateActivity: new DelegateActivityHelper(this.bundle),
 
-    // include accessors for any other structs (other than datum/activity)
+        AnyData: (fields: AnyDataLike | {
+    id: /*minStructField*/ number[]
+    type: /*minStructField*/ string
+}
+) => {
+        return this.__AnyDataCast.toUplcData(fields);
+    },
+        DelegationDetail: (fields: DelegationDetailLike | {
+    capoAddr: /*minStructField*/ Address | string
+    mph: /*minStructField*/ MintingPolicyHash | string | number[]
+    tn: /*minStructField*/ number[]
+}
+) => {
+        return this.__DelegationDetailCast.toUplcData(fields);
+    },    }    
 
-    // TODO: include any utility functions defined in the contract
+    __AnyDataCast = new Cast<
+                AnyData, AnyDataLike
+            >(AnyDataSchema, { isMainnet: true });
+    __DelegationDetailCast = new Cast<
+                DelegationDetail, DelegationDetailLike
+            >(DelegationDetailSchema, { isMainnet: true });
+
+
 }
 export default UnspecializedDelegateBridge;
 

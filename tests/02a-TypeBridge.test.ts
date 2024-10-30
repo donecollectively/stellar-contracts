@@ -78,18 +78,17 @@ describe("Type Bridge", async () => {
 
     describe("provides a .bridge proxy for all named types in the contract script", () => {
         it("creates a bridge for the standalone SampleStruct defined in the minting delegate", async () => {
-            const bridged = onchain.sampleStruct({
-                // should auto-complete here
-            });
-            const result = bridgeFrom(bridged);
-            expect(result.type).toBe("SampleStruct");
+            const bridged = onchain.types.SampleStruct({a: 1, b: new Map(), c: [true], d: undefined});
+            const result = onchain.reader.SampleStruct(bridged);
+            expect(result.a).toBe(1n);
+            expect(result.c).toBe([true]);
 
             expect(result.data).toEqual(bridged.rawData); // or at least be similar...
         });
 
         describe("for the standalone SomeEnum defined in the minting delegate", () => {
             it("bridges a simple single-field variant", async () => {
-                const bridged = onchain.SomeEnum.justAnInt(1);
+                const bridged = onchain.types.SomeEnum.justAnInt(1);
                 const result = bridgeFrom(bridged);
                 expect(result.type).toBe("SomeEnum");
                 expect(result.variant).toBe("justAnInt");
@@ -151,6 +150,7 @@ describe("Type Bridge", async () => {
                 const { mkDatum } = mintDelegate;
 
                 const datum = mkDatum.ScriptReference;
+                
                 expect(datum.rawData.ScriptReference).toEqual({});
                 //@ts-expect-error tags aren't on every UplcData
                 expect(datum.tag).toBe(1);

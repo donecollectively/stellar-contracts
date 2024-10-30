@@ -109,11 +109,42 @@ export class StructDatumTesterDataBridge extends DataBridge {
     }
 
 
-    // include accessors for other enums (other than datum/activity)
+    types = {
 
-    // include accessors for any other structs (other than datum/activity)
 
-    // TODO: include any utility functions defined in the contract
+        struct3: (fields: struct3Like | {
+    thirdLevelF1: /*minStructField*/ IntLike
+}
+) => {
+        return this.__struct3Cast.toUplcData(fields);
+    },
+        OtherStruct: (fields: OtherStructLike | {
+    secondLevelF1: /*minStructField*/ IntLike
+    secondLevelF2: /*minStructField*/ struct3Like
+}
+) => {
+        return this.__OtherStructCast.toUplcData(fields);
+    },
+        DatumStruct: (fields: DatumStructLike | {
+    field1: /*minStructField*/ IntLike
+    field2: /*minStructField*/ string
+    field3: /*minStructField*/ Map<string, OtherStructLike>
+}
+) => {
+        return this.__DatumStructCast.toUplcData(fields);
+    },    }    
+
+    __struct3Cast = new Cast<
+                struct3, struct3Like
+            >(struct3Schema, { isMainnet: true });
+    __OtherStructCast = new Cast<
+                OtherStruct, OtherStructLike
+            >(OtherStructSchema, { isMainnet: true });
+    __DatumStructCast = new Cast<
+                DatumStruct, DatumStructLike
+            >(DatumStructSchema, { isMainnet: true });
+
+
 }
 export default StructDatumTesterDataBridge;
 

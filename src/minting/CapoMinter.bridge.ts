@@ -83,11 +83,13 @@ export class CapoMinterDataBridge extends DataBridge {
         MinterActivity: MinterActivityHelper = this.activity;
 
 
-    // include accessors for other enums (other than datum/activity)
+    types = {
+        MinterActivity: new MinterActivityHelper(this.bundle),
 
-    // include accessors for any other structs (other than datum/activity)
+    }    
 
-    // TODO: include any utility functions defined in the contract
+
+
 }
 export default CapoMinterDataBridge;
 

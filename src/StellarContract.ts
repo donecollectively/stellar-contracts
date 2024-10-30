@@ -1611,6 +1611,7 @@ export class StellarContract<
     get offchain() {
         // ensures the dataBridge is initialized by accessing the 'onchain' getter
         // accesses its data-reader.
+        return this.onchain.reader 
     }
 
     get newReadDatum(): findReadDatumType<this> {
