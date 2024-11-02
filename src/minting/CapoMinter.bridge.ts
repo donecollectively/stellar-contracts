@@ -71,8 +71,8 @@ import type * as types from "./CapoMinter.typeInfo.js";
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
 export class CapoMinterDataBridge extends ContractDataBridge {
-    static isAbstract = false;
-    isAbstract = false;
+    static isAbstract = false as const;
+    isAbstract = false as const;
 datum=null // no datum type defined for this bundle (minter / rewards script)
 
 

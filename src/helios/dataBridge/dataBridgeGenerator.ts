@@ -224,8 +224,8 @@ ${this.includeScriptNamedTypes(inputFile)}
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
 export class ${bridgeClassName} extends ContractDataBridge {
-    static isAbstract = false;
-    isAbstract = false;
+    static isAbstract = false as const;
+    isAbstract = false as const;
 ${this.includeDatumAccessors()}
 ${this.includeActivityCreator()}
 ${this.includeDataReaderHelper()}
@@ -614,7 +614,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             datumAccessorVarietyAnnotation +
             typeNameAccessor +
             `\n\n    readDatum : (d: UplcData) => IntersectedEnum<${typeName}> = (d) =>  {\n` +
-            `        ${"//"}@ts-expect-error drilling through the protected accessor.\n` +
+            `        ${"//XXX"}@ts-expect-error drilling through the protected accessor.\n` +
             `        //   ... see more comments about that above\n` +
             `        //return this.datum.__cast.fromUplcData(d);\n` +
             `        return this.reader.${typeName}(d)\n` +

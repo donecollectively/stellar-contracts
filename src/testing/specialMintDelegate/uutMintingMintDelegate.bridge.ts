@@ -89,8 +89,8 @@ import type * as types from "./uutMintingMintDelegate.typeInfo.js";
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
 export class uutMintingDelegateDataBridge extends ContractDataBridge {
-    static isAbstract = false;
-    isAbstract = false;
+    static isAbstract = false as const;
+    isAbstract = false as const;
     /**
      * Helper class for generating UplcData for the datum type ***
      * for this contract script. 
@@ -104,7 +104,7 @@ export class uutMintingDelegateDataBridge extends ContractDataBridge {
     DelegateDatum: DelegateDatumHelper = this.datum;
 
     readDatum : (d: UplcData) => IntersectedEnum<DelegateDatum> = (d) =>  {
-        //@ts-expect-error drilling through the protected accessor.
+        //XXX@ts-expect-error drilling through the protected accessor.
         //   ... see more comments about that above
         //return this.datum.__cast.fromUplcData(d);
         return this.reader.DelegateDatum(d)

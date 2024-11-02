@@ -229,8 +229,8 @@ export class DataBridge extends (dataBridgeProxyBase as any) {
 }
 
 export class ContractDataBridge {
-    static isAbstract=true
-    isAbstract = true
+    static isAbstract : (true | false) = true as const
+    isAbstract : (true | false) = true as const
     declare types: Record<string, DataBridge | ((x: any) => UplcData)>
     declare reader: Option<DataBridgeReader>;
     declare datum: Option<DataBridge>;
@@ -246,8 +246,8 @@ export class ContractDataBridge {
 }
 
 export class ContractDataBridgeWithEnumDatum extends ContractDataBridge {    
-    static isAbstract=true
-    isAbstract = true
+    static isAbstract : (true | false) = true as const
+    isAbstract : (true | false) = true as const
     declare datum: EnumBridge;
     constructor(public bundle: HeliosScriptBundle) {
         super(bundle);
@@ -255,8 +255,8 @@ export class ContractDataBridgeWithEnumDatum extends ContractDataBridge {
 }
 
 export class ContractDataBridgeWithOtherDatum extends ContractDataBridge {
-    static isAbstract=true
-    isAbstract = true
+    static isAbstract : (true | false) = true as const
+    isAbstract : (true | false) = true as const
     // declare datum: (any) => UplcData;
     constructor(public bundle: HeliosScriptBundle) {
         super(bundle);
