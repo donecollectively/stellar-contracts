@@ -457,10 +457,42 @@ export class StellarContract<
     dataBridgeClass: Option<typeof ContractDataBridge> = null;
     // dataBridgeClass : Option<typeof ContractDataBridgeWithEnumDatum | typeof ContractDataBridgeWithOtherDatum> = null
 
+    /**
+     * The `onchain` object provides access to all bridging capabilities for this contract script.
+     * @remarks
+     * Its nested attributes include:
+     *  - `types` - a collection of all the on-chain types defined in the script, with data-creation helpers for each
+     *  - `activity` - a creation helper for the activities/redeemers defined in the script
+     * 
+     * Scripts that use datum types (not including minters) will also have:
+     *  - `datum` - a data-creation helper for the datum type of the script
+     *  - `readDatum` - a data-reading helper for the datum type of the script
+     * 
+     * ### Low-level type access
+     * For low-level access (it's likely you don't need to use this) for on-chain types, the `reader` attribute (aka `offchain`) exists: .
+     *  - `reader` - a collection of data-reading helpers for the on-chain types, given UPLC data known to be of that type
+     */
     get onchain() : possiblyAbstractContractBridgeType<this> {
         return this.getOnchainBridge()
     }
 
+    /**
+     * The `offchain` object provides access to readers for the on-chain types of this contract script.
+     * @remarks
+     * Its nested attributes include all the on-chain types defined in the script, with data-reading helpers for each.
+     * This is useful for reading on-chain data in off-chain code.
+     * 
+     * ### Warning: low-level typed-data access!
+     * 
+     * Note that these readers will work properly with UPLC data known to be of the correct type.  If you 
+     * encounter errors related to these results, it's likely you are using the wrong reader for the data you
+     * have in hand.
+     * 
+     * For the typical use-case of reading the datum type from a UTxO held in the contract, this is not a problem,
+     * and note that the `readDatum` helper provides a shortcut for this most-common use-case.
+     * 
+     * If you're not sure what you're doing, it's likely that this is not the right tool for your job. 
+     */
     get offchain() : possiblyAbstractContractBridgeType<this>["reader"] {
         // ensures the dataBridge is initialized by accessing the 'onchain' getter
         // accesses its data-reader.
@@ -473,6 +505,18 @@ export class StellarContract<
         return this.getOnchainBridge().reader 
     }
 
+    /**
+     * Converts UPLC from an on-chain datum object to a typed off-chain datum object.
+     * 
+     * Given a **utxo with a datum of the contract's datum type**, this method will convert the UPLC datum
+     * to a typed off-chain datum object.
+     * 
+     * ### Standard WARNING
+     * 
+     * If the datum's structure is not of the expected type, this method MAY throw an error, or it might
+     * return data that can cause problems somewhere else in your code.  That won't happen if you're
+     * following the guidance above.
+     */
     get newReadDatum(): findReadDatumType<this> {
         const bridge = this.getOnchainBridge();
         //@ts-expect-error probing for presence

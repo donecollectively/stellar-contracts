@@ -70,44 +70,58 @@ import type * as types from "./CapoHeliosBundle.typeInfo.js";
 //   Like "friends" in C++.
 
 /**
- * data bridge for Capo script (defined in CapoHeliosBundle)}
- * main: src/DefaultCapo.hl, project: stellar-contracts
+ * data bridge for **Capo** script (defined in class ***CapoHeliosBundle***)}
+ * main: **src/DefaultCapo.hl**, project: **stellar-contracts**
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
 export class CapoDataBridge extends ContractDataBridge {
     static isAbstract = false;
     isAbstract = false;
     /**
-     * Helper class for generating UplcData for the datum type 
+     * Helper class for generating UplcData for the datum type ***
      * for this contract script. 
      */
     datum: CapoDatumHelper
      = new CapoDatumHelper(this.bundle, {})   // datumAccessor/enum
 
     /**
-     * this is the specific type of datum for the Capo script
+     * this is the specific type of datum for the `Capo` script
      */
     CapoDatum: CapoDatumHelper = this.datum;
 
-    readDatum = (d: UplcData) => {
+    readDatum : (d: UplcData) => IntersectedEnum<CapoDatum> = (d) =>  {
         //@ts-expect-error drilling through the protected accessor.
         //   ... see more comments about that above
-        return this.datum.__cast.fromUplcData(d);
+        //return this.datum.__cast.fromUplcData(d);
+        return this.reader.CapoDatum(d)
     }
 
 
     /**
-     * generates UplcData for the activity type (CapoActivity) for the Capo script
+     * generates UplcData for the activity type (***CapoActivity***) for the `Capo` script
      */
     activity : CapoActivityHelper= new CapoActivityHelper(this.bundle, {isActivity: true}); // activityAccessor/enum
         CapoActivity: CapoActivityHelper = this.activity;
 
     reader = new CapoDataBridgeReader(this);
 
+    /**
+     * accessors for all the types defined in the `Capo` script
+     * @remarks - these accessors are used to generate UplcData for each type
+     */
     types = {
+      /**
+       * generates UplcData for the enum type ***CapoDatum*** for the `Capo` script
+       */
         CapoDatum: new CapoDatumHelper(this.bundle),
+      /**
+       * generates UplcData for the enum type ***CapoActivity*** for the `Capo` script
+       */
         CapoActivity: new CapoActivityHelper(this.bundle),
 
+      /**
+       * generates UplcData for the enum type ***RelativeDelegateLink*** for the `Capo` script
+       */
         RelativeDelegateLink: (fields: RelativeDelegateLinkLike | {
     uutName: /*minStructField*/ string
     strategyName: /*minStructField*/ string
@@ -117,6 +131,9 @@ export class CapoDataBridge extends ContractDataBridge {
 ) => {
         return this.__RelativeDelegateLinkCast.toUplcData(fields);
     },
+      /**
+       * generates UplcData for the enum type ***AnyData*** for the `Capo` script
+       */
         AnyData: (fields: AnyDataLike | {
     id: /*minStructField*/ number[]
     type: /*minStructField*/ string
@@ -136,16 +153,22 @@ export class CapoDataBridge extends ContractDataBridge {
 }
 export default CapoDataBridge;
 
-  class CapoDataBridgeReader extends DataBridgeReader {
+class CapoDataBridgeReader extends DataBridgeReader {
     constructor(public bridge: CapoDataBridge) {
         super();
     }
     /**
-        * reads UplcData known to fit the CapoDatum enum type,
+        * reads UplcData *known to fit the **CapoDatum*** enum type,
         * for the Capo script.
-        * #### WARNING
-        * reading non-matching data will not give you a valid result.  It may 
-        * throw an error, or it may throw no error, but return a value that
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     CapoDatum(d : UplcData) { 
@@ -157,11 +180,17 @@ export default CapoDataBridge;
     } /* enumReader helper */
 
     /**
-        * reads UplcData known to fit the CapoActivity enum type,
+        * reads UplcData *known to fit the **CapoActivity*** enum type,
         * for the Capo script.
-        * #### WARNING
-        * reading non-matching data will not give you a valid result.  It may 
-        * throw an error, or it may throw no error, but return a value that
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     CapoActivity(d : UplcData) { 
@@ -173,11 +202,17 @@ export default CapoDataBridge;
     } /* enumReader helper */
 
     /**
-        * reads UplcData known to fit the RelativeDelegateLink struct type,
+        * reads UplcData *known to fit the **RelativeDelegateLink*** struct type,
         * for the Capo script.
-        * #### WARNING
-        * reading non-matching data will not give you a valid result.  It may
-        * throw an error, or it may throw no error, but return a value that
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the struct type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     RelativeDelegateLink(d: UplcData) {
@@ -187,11 +222,17 @@ export default CapoDataBridge;
     } /* structReader helper */
 
     /**
-        * reads UplcData known to fit the AnyData struct type,
+        * reads UplcData *known to fit the **AnyData*** struct type,
         * for the Capo script.
-        * #### WARNING
-        * reading non-matching data will not give you a valid result.  It may
-        * throw an error, or it may throw no error, but return a value that
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the struct type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     AnyData(d: UplcData) {
@@ -203,7 +244,7 @@ export default CapoDataBridge;
 }
 
 /**
- * Helper class for generating UplcData for the RelativeDelegateLink struct type.
+ * Helper class for generating UplcData for the ***RelativeDelegateLink*** struct type.
  */
 export class RelativeDelegateLinkHelper extends DataBridge {
     isCallable = true
@@ -212,8 +253,12 @@ export class RelativeDelegateLinkHelper extends DataBridge {
         RelativeDelegateLinkLike
     >(RelativeDelegateLinkSchema, { isMainnet: true });
 
-    // this uplc-generating capability is provided by a proxy in the inheritance chain
-    // see the callableDataBridge type on the 'datum' property in the contract bridge
+    // You might expect a function as follows, but no.  However, a similar uplc-generating capability
+    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.
+    // see the callableDataBridge type on the 'datum' property in the contract bridge.
+    //
+    //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
+    //
     // RelativeDelegateLink(fields: RelativeDelegateLinkLike) {
     //    return this.__cast.toUplcData(fields);
     //}
@@ -221,7 +266,7 @@ export class RelativeDelegateLinkHelper extends DataBridge {
 
 
 /**
- * Helper class for generating UplcData for the AnyData struct type.
+ * Helper class for generating UplcData for the ***AnyData*** struct type.
  */
 export class AnyDataHelper extends DataBridge {
     isCallable = true
@@ -230,8 +275,12 @@ export class AnyDataHelper extends DataBridge {
         AnyDataLike
     >(AnyDataSchema, { isMainnet: true });
 
-    // this uplc-generating capability is provided by a proxy in the inheritance chain
-    // see the callableDataBridge type on the 'datum' property in the contract bridge
+    // You might expect a function as follows, but no.  However, a similar uplc-generating capability
+    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.
+    // see the callableDataBridge type on the 'datum' property in the contract bridge.
+    //
+    //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
+    //
     // AnyData(fields: AnyDataLike) {
     //    return this.__cast.toUplcData(fields);
     //}
@@ -239,7 +288,7 @@ export class AnyDataHelper extends DataBridge {
 
 
 /**
- * Helper class for generating UplcData for variants of the CapoDatum enum type.
+ * Helper class for generating UplcData for variants of the ***CapoDatum*** enum type.
  */
 export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
     protected __cast = new Cast<
@@ -248,8 +297,8 @@ export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
    >(CapoDatumSchema, { isMainnet: true });
 
     /**
-     * generates  UplcData for "CapoHelpers::CapoDatum.CharterToken"
-     * @remarks - CapoDatum$CharterTokenLike is the same as the expanded field-types.
+     * generates  UplcData for ***"CapoHelpers::CapoDatum.CharterToken"***
+     * @remarks - ***CapoDatum$CharterTokenLike*** is the same as the expanded field-types.
      */
     CharterToken(fields: CapoDatum$CharterTokenLike | { 
         spendDelegateLink: RelativeDelegateLinkLike,
@@ -283,8 +332,8 @@ export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
     } /*multiFieldVariant enum accessor*/
 
 /**
- * (property getter): UplcData for "CapoHelpers::CapoDatum.ScriptReference"
- * @remarks - tagOnly variant accessor returns an empty constrData#1
+ * (property getter): UplcData for ***"CapoHelpers::CapoDatum.ScriptReference"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
  */
     get ScriptReference() {
         const uplc = this.mkUplcData({ ScriptReference: {} }, 
@@ -293,8 +342,8 @@ export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
     } /* tagOnly variant accessor */
 
     /**
-     * generates  UplcData for "CapoHelpers::CapoDatum.DelegatedData"
-     * @remarks - CapoDatum$DelegatedDataLike is the same as the expanded field-types.
+     * generates  UplcData for ***"CapoHelpers::CapoDatum.DelegatedData"***
+     * @remarks - ***CapoDatum$DelegatedDataLike*** is the same as the expanded field-types.
      */
     DelegatedData(fields: CapoDatum$DelegatedDataLike | { 
         data: AnyDataLike,
@@ -309,7 +358,7 @@ export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
 
 
 /**
- * Helper class for generating UplcData for variants of the CapoActivity enum type.
+ * Helper class for generating UplcData for variants of the ***CapoActivity*** enum type.
  */
 export class CapoActivityHelper extends EnumBridge<isActivity> {
     protected __cast = new Cast<
@@ -318,8 +367,8 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
    >(CapoActivitySchema, { isMainnet: true });
 
 /**
- * (property getter): UplcData for "CapoHelpers::CapoActivity.usingAuthority"
- * @remarks - tagOnly variant accessor returns an empty constrData#0
+ * (property getter): UplcData for ***"CapoHelpers::CapoActivity.usingAuthority"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#0***
  */
     get usingAuthority() {
         const uplc = this.mkUplcData({ usingAuthority: {} }, 
@@ -328,8 +377,8 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
     } /* tagOnly variant accessor */
 
 /**
- * (property getter): UplcData for "CapoHelpers::CapoActivity.updatingCharter"
- * @remarks - tagOnly variant accessor returns an empty constrData#1
+ * (property getter): UplcData for ***"CapoHelpers::CapoActivity.updatingCharter"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
  */
     get updatingCharter() {
         const uplc = this.mkUplcData({ updatingCharter: {} }, 
@@ -338,8 +387,8 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
     } /* tagOnly variant accessor */
 
 /**
- * (property getter): UplcData for "CapoHelpers::CapoActivity.retiringRefScript"
- * @remarks - tagOnly variant accessor returns an empty constrData#2
+ * (property getter): UplcData for ***"CapoHelpers::CapoActivity.retiringRefScript"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#2***
  */
     get retiringRefScript() {
         const uplc = this.mkUplcData({ retiringRefScript: {} }, 
@@ -348,8 +397,8 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
     } /* tagOnly variant accessor */
 
 /**
- * (property getter): UplcData for "CapoHelpers::CapoActivity.addingSpendInvariant"
- * @remarks - tagOnly variant accessor returns an empty constrData#3
+ * (property getter): UplcData for ***"CapoHelpers::CapoActivity.addingSpendInvariant"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
  */
     get addingSpendInvariant() {
         const uplc = this.mkUplcData({ addingSpendInvariant: {} }, 
@@ -358,8 +407,8 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
     } /* tagOnly variant accessor */
 
 /**
- * (property getter): UplcData for "CapoHelpers::CapoActivity.spendingDelegatedDatum"
- * @remarks - tagOnly variant accessor returns an empty constrData#4
+ * (property getter): UplcData for ***"CapoHelpers::CapoActivity.spendingDelegatedDatum"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#4***
  */
     get spendingDelegatedDatum() {
         const uplc = this.mkUplcData({ spendingDelegatedDatum: {} }, 
@@ -368,8 +417,8 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
     } /* tagOnly variant accessor */
 
 /**
- * (property getter): UplcData for "CapoHelpers::CapoActivity.updatingTypeMap"
- * @remarks - tagOnly variant accessor returns an empty constrData#5
+ * (property getter): UplcData for ***"CapoHelpers::CapoActivity.updatingTypeMap"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#5***
  */
     get updatingTypeMap() {
         const uplc = this.mkUplcData({ updatingTypeMap: {} }, 

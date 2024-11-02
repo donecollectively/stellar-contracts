@@ -84,50 +84,82 @@ import type * as types from "./uutMintingMintDelegate.typeInfo.js";
 //   Like "friends" in C++.
 
 /**
- * data bridge for BasicDelegate script (defined in BundleMintDelegateWithGenericUuts)}
- * main: src/delegation/BasicDelegate.hl, project: stellar-contracts
+ * data bridge for **BasicDelegate** script (defined in class ***BundleMintDelegateWithGenericUuts***)}
+ * main: **src/delegation/BasicDelegate.hl**, project: **stellar-contracts**
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
 export class uutMintingDelegateDataBridge extends ContractDataBridge {
     static isAbstract = false;
     isAbstract = false;
     /**
-     * Helper class for generating UplcData for the datum type 
+     * Helper class for generating UplcData for the datum type ***
      * for this contract script. 
      */
     datum: DelegateDatumHelper
      = new DelegateDatumHelper(this.bundle, {})   // datumAccessor/enum
 
     /**
-     * this is the specific type of datum for the BasicDelegate script
+     * this is the specific type of datum for the `BasicDelegate` script
      */
     DelegateDatum: DelegateDatumHelper = this.datum;
 
-    readDatum = (d: UplcData) => {
+    readDatum : (d: UplcData) => IntersectedEnum<DelegateDatum> = (d) =>  {
         //@ts-expect-error drilling through the protected accessor.
         //   ... see more comments about that above
-        return this.datum.__cast.fromUplcData(d);
+        //return this.datum.__cast.fromUplcData(d);
+        return this.reader.DelegateDatum(d)
     }
 
 
     /**
-     * generates UplcData for the activity type (DelegateActivity) for the BasicDelegate script
+     * generates UplcData for the activity type (***DelegateActivity***) for the `BasicDelegate` script
      */
     activity : DelegateActivityHelper= new DelegateActivityHelper(this.bundle, {isActivity: true}); // activityAccessor/enum
         DelegateActivity: DelegateActivityHelper = this.activity;
 
     reader = new uutMintingDelegateDataBridgeReader(this);
 
+    /**
+     * accessors for all the types defined in the `BasicDelegate` script
+     * @remarks - these accessors are used to generate UplcData for each type
+     */
     types = {
+      /**
+       * generates UplcData for the enum type ***SomeEnum*** for the `BasicDelegate` script
+       */
         SomeEnum: new SomeEnumHelper(this.bundle),
+      /**
+       * generates UplcData for the enum type ***DelegateDatum*** for the `BasicDelegate` script
+       */
         DelegateDatum: new DelegateDatumHelper(this.bundle),
+      /**
+       * generates UplcData for the enum type ***CapoLifecycleActivity*** for the `BasicDelegate` script
+       */
         CapoLifecycleActivity: new CapoLifecycleActivityHelper(this.bundle),
+      /**
+       * generates UplcData for the enum type ***DelegateLifecycleActivity*** for the `BasicDelegate` script
+       */
         DelegateLifecycleActivity: new DelegateLifecycleActivityHelper(this.bundle),
+      /**
+       * generates UplcData for the enum type ***SpendingActivity*** for the `BasicDelegate` script
+       */
         SpendingActivity: new SpendingActivityHelper(this.bundle),
+      /**
+       * generates UplcData for the enum type ***MintingActivity*** for the `BasicDelegate` script
+       */
         MintingActivity: new MintingActivityHelper(this.bundle),
+      /**
+       * generates UplcData for the enum type ***BurningActivity*** for the `BasicDelegate` script
+       */
         BurningActivity: new BurningActivityHelper(this.bundle),
+      /**
+       * generates UplcData for the enum type ***DelegateActivity*** for the `BasicDelegate` script
+       */
         DelegateActivity: new DelegateActivityHelper(this.bundle),
 
+      /**
+       * generates UplcData for the enum type ***DelegationDetail*** for the `BasicDelegate` script
+       */
         DelegationDetail: (fields: DelegationDetailLike | {
     capoAddr: /*minStructField*/ Address | string
     mph: /*minStructField*/ MintingPolicyHash | string | number[]
@@ -136,6 +168,9 @@ export class uutMintingDelegateDataBridge extends ContractDataBridge {
 ) => {
         return this.__DelegationDetailCast.toUplcData(fields);
     },
+      /**
+       * generates UplcData for the enum type ***SampleStruct*** for the `BasicDelegate` script
+       */
         SampleStruct: (fields: SampleStructLike | {
     a: /*minStructField*/ IntLike
     b: /*minStructField*/ Map<string, number[]>
@@ -157,16 +192,22 @@ export class uutMintingDelegateDataBridge extends ContractDataBridge {
 }
 export default uutMintingDelegateDataBridge;
 
-  class uutMintingDelegateDataBridgeReader extends DataBridgeReader {
+class uutMintingDelegateDataBridgeReader extends DataBridgeReader {
     constructor(public bridge: uutMintingDelegateDataBridge) {
         super();
     }
     /**
-        * reads UplcData known to fit the SomeEnum enum type,
+        * reads UplcData *known to fit the **SomeEnum*** enum type,
         * for the BasicDelegate script.
-        * #### WARNING
-        * reading non-matching data will not give you a valid result.  It may 
-        * throw an error, or it may throw no error, but return a value that
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     SomeEnum(d : UplcData) { 
@@ -178,11 +219,17 @@ export default uutMintingDelegateDataBridge;
     } /* enumReader helper */
 
     /**
-        * reads UplcData known to fit the DelegateDatum enum type,
+        * reads UplcData *known to fit the **DelegateDatum*** enum type,
         * for the BasicDelegate script.
-        * #### WARNING
-        * reading non-matching data will not give you a valid result.  It may 
-        * throw an error, or it may throw no error, but return a value that
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     DelegateDatum(d : UplcData) { 
@@ -194,11 +241,17 @@ export default uutMintingDelegateDataBridge;
     } /* enumReader helper */
 
     /**
-        * reads UplcData known to fit the CapoLifecycleActivity enum type,
+        * reads UplcData *known to fit the **CapoLifecycleActivity*** enum type,
         * for the BasicDelegate script.
-        * #### WARNING
-        * reading non-matching data will not give you a valid result.  It may 
-        * throw an error, or it may throw no error, but return a value that
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     CapoLifecycleActivity(d : UplcData) { 
@@ -210,11 +263,17 @@ export default uutMintingDelegateDataBridge;
     } /* enumReader helper */
 
     /**
-        * reads UplcData known to fit the DelegateLifecycleActivity enum type,
+        * reads UplcData *known to fit the **DelegateLifecycleActivity*** enum type,
         * for the BasicDelegate script.
-        * #### WARNING
-        * reading non-matching data will not give you a valid result.  It may 
-        * throw an error, or it may throw no error, but return a value that
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     DelegateLifecycleActivity(d : UplcData) { 
@@ -226,11 +285,17 @@ export default uutMintingDelegateDataBridge;
     } /* enumReader helper */
 
     /**
-        * reads UplcData known to fit the SpendingActivity enum type,
+        * reads UplcData *known to fit the **SpendingActivity*** enum type,
         * for the BasicDelegate script.
-        * #### WARNING
-        * reading non-matching data will not give you a valid result.  It may 
-        * throw an error, or it may throw no error, but return a value that
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     SpendingActivity(d : UplcData) { 
@@ -242,11 +307,17 @@ export default uutMintingDelegateDataBridge;
     } /* enumReader helper */
 
     /**
-        * reads UplcData known to fit the MintingActivity enum type,
+        * reads UplcData *known to fit the **MintingActivity*** enum type,
         * for the BasicDelegate script.
-        * #### WARNING
-        * reading non-matching data will not give you a valid result.  It may 
-        * throw an error, or it may throw no error, but return a value that
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     MintingActivity(d : UplcData) { 
@@ -258,11 +329,17 @@ export default uutMintingDelegateDataBridge;
     } /* enumReader helper */
 
     /**
-        * reads UplcData known to fit the BurningActivity enum type,
+        * reads UplcData *known to fit the **BurningActivity*** enum type,
         * for the BasicDelegate script.
-        * #### WARNING
-        * reading non-matching data will not give you a valid result.  It may 
-        * throw an error, or it may throw no error, but return a value that
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     BurningActivity(d : UplcData) { 
@@ -274,11 +351,17 @@ export default uutMintingDelegateDataBridge;
     } /* enumReader helper */
 
     /**
-        * reads UplcData known to fit the DelegateActivity enum type,
+        * reads UplcData *known to fit the **DelegateActivity*** enum type,
         * for the BasicDelegate script.
-        * #### WARNING
-        * reading non-matching data will not give you a valid result.  It may 
-        * throw an error, or it may throw no error, but return a value that
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     DelegateActivity(d : UplcData) { 
@@ -290,11 +373,17 @@ export default uutMintingDelegateDataBridge;
     } /* enumReader helper */
 
     /**
-        * reads UplcData known to fit the DelegationDetail struct type,
+        * reads UplcData *known to fit the **DelegationDetail*** struct type,
         * for the BasicDelegate script.
-        * #### WARNING
-        * reading non-matching data will not give you a valid result.  It may
-        * throw an error, or it may throw no error, but return a value that
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the struct type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     DelegationDetail(d: UplcData) {
@@ -304,11 +393,17 @@ export default uutMintingDelegateDataBridge;
     } /* structReader helper */
 
     /**
-        * reads UplcData known to fit the SampleStruct struct type,
+        * reads UplcData *known to fit the **SampleStruct*** struct type,
         * for the BasicDelegate script.
-        * #### WARNING
-        * reading non-matching data will not give you a valid result.  It may
-        * throw an error, or it may throw no error, but return a value that
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the struct type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     SampleStruct(d: UplcData) {
@@ -320,7 +415,7 @@ export default uutMintingDelegateDataBridge;
 }
 
 /**
- * Helper class for generating UplcData for the DelegationDetail struct type.
+ * Helper class for generating UplcData for the ***DelegationDetail*** struct type.
  */
 export class DelegationDetailHelper extends DataBridge {
     isCallable = true
@@ -329,8 +424,12 @@ export class DelegationDetailHelper extends DataBridge {
         DelegationDetailLike
     >(DelegationDetailSchema, { isMainnet: true });
 
-    // this uplc-generating capability is provided by a proxy in the inheritance chain
-    // see the callableDataBridge type on the 'datum' property in the contract bridge
+    // You might expect a function as follows, but no.  However, a similar uplc-generating capability
+    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.
+    // see the callableDataBridge type on the 'datum' property in the contract bridge.
+    //
+    //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
+    //
     // DelegationDetail(fields: DelegationDetailLike) {
     //    return this.__cast.toUplcData(fields);
     //}
@@ -338,7 +437,7 @@ export class DelegationDetailHelper extends DataBridge {
 
 
 /**
- * Helper class for generating UplcData for the SampleStruct struct type.
+ * Helper class for generating UplcData for the ***SampleStruct*** struct type.
  */
 export class SampleStructHelper extends DataBridge {
     isCallable = true
@@ -347,8 +446,12 @@ export class SampleStructHelper extends DataBridge {
         SampleStructLike
     >(SampleStructSchema, { isMainnet: true });
 
-    // this uplc-generating capability is provided by a proxy in the inheritance chain
-    // see the callableDataBridge type on the 'datum' property in the contract bridge
+    // You might expect a function as follows, but no.  However, a similar uplc-generating capability
+    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.
+    // see the callableDataBridge type on the 'datum' property in the contract bridge.
+    //
+    //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
+    //
     // SampleStruct(fields: SampleStructLike) {
     //    return this.__cast.toUplcData(fields);
     //}
@@ -356,7 +459,7 @@ export class SampleStructHelper extends DataBridge {
 
 
 /**
- * Helper class for generating UplcData for variants of the SomeEnum enum type.
+ * Helper class for generating UplcData for variants of the ***SomeEnum*** enum type.
  */
 export class SomeEnumHelper extends EnumBridge<JustAnEnum> {
     protected __cast = new Cast<
@@ -365,8 +468,8 @@ export class SomeEnumHelper extends EnumBridge<JustAnEnum> {
    >(SomeEnumSchema, { isMainnet: true });
 
 /**
- * (property getter): UplcData for "uutMintingDelegate::SomeEnum.justATag"
- * @remarks - tagOnly variant accessor returns an empty constrData#0
+ * (property getter): UplcData for ***"uutMintingDelegate::SomeEnum.justATag"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#0***
  */
     get justATag() {
         const uplc = this.mkUplcData({ justATag: {} }, 
@@ -375,7 +478,7 @@ export class SomeEnumHelper extends EnumBridge<JustAnEnum> {
     } /* tagOnly variant accessor */
 
     /**
-     * generates  UplcData for "uutMintingDelegate::SomeEnum.justAnInt"
+     * generates  UplcData for ***"uutMintingDelegate::SomeEnum.justAnInt"***
      */
     justAnInt(
         m: IntLike
@@ -387,8 +490,8 @@ export class SomeEnumHelper extends EnumBridge<JustAnEnum> {
     }
 
     /**
-     * generates  UplcData for "uutMintingDelegate::SomeEnum.oneNestedStruct"
-     * @remarks - SampleStructLike is the same as the expanded field-type.
+     * generates  UplcData for ***"uutMintingDelegate::SomeEnum.oneNestedStruct"***
+     * @remarks - ***SampleStructLike*** is the same as the expanded field-type.
      */
     oneNestedStruct(
         m: SampleStructLike | {
@@ -405,8 +508,8 @@ export class SomeEnumHelper extends EnumBridge<JustAnEnum> {
     }
 
     /**
-     * generates  UplcData for "uutMintingDelegate::SomeEnum.hasNestedFields"
-     * @remarks - SomeEnum$hasNestedFieldsLike is the same as the expanded field-types.
+     * generates  UplcData for ***"uutMintingDelegate::SomeEnum.hasNestedFields"***
+     * @remarks - ***SomeEnum$hasNestedFieldsLike*** is the same as the expanded field-types.
      */
     hasNestedFields(fields: SomeEnum$hasNestedFieldsLike | { 
         m: SampleStructLike,
@@ -418,8 +521,8 @@ export class SomeEnumHelper extends EnumBridge<JustAnEnum> {
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates  UplcData for "uutMintingDelegate::SomeEnum.hasRecursiveFields"
-     * @remarks - SomeEnum$hasRecursiveFieldsLike is the same as the expanded field-types.
+     * generates  UplcData for ***"uutMintingDelegate::SomeEnum.hasRecursiveFields"***
+     * @remarks - ***SomeEnum$hasRecursiveFieldsLike*** is the same as the expanded field-types.
      */
     hasRecursiveFields(fields: SomeEnum$hasRecursiveFieldsLike | { 
         placeholder: IntLike,
@@ -433,7 +536,7 @@ export class SomeEnumHelper extends EnumBridge<JustAnEnum> {
 
 
 /**
- * Helper class for generating UplcData for variants of the SomeEnum enum type.
+ * Helper class for generating UplcData for variants of the ***SomeEnum*** enum type.
  */
 export class SomeEnumHelperNested extends EnumBridge<JustAnEnum> {
     protected __cast = new Cast<
@@ -442,8 +545,8 @@ export class SomeEnumHelperNested extends EnumBridge<JustAnEnum> {
    >(SomeEnumSchema, { isMainnet: true });
 
 /**
- * (property getter): UplcData for "uutMintingDelegate::SomeEnum.justATag"
- * @remarks - tagOnly variant accessor returns an empty constrData#0
+ * (property getter): UplcData for ***"uutMintingDelegate::SomeEnum.justATag"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#0***
  */
     get justATag() {
         const uplc = this.mkUplcData({ justATag: {} }, 
@@ -452,7 +555,7 @@ export class SomeEnumHelperNested extends EnumBridge<JustAnEnum> {
     } /* tagOnly variant accessor */
 
     /**
-     * generates  UplcData for "uutMintingDelegate::SomeEnum.justAnInt"
+     * generates  UplcData for ***"uutMintingDelegate::SomeEnum.justAnInt"***
      */
     justAnInt(
         m: IntLike
@@ -464,8 +567,8 @@ export class SomeEnumHelperNested extends EnumBridge<JustAnEnum> {
     }
 
     /**
-     * generates  UplcData for "uutMintingDelegate::SomeEnum.oneNestedStruct"
-     * @remarks - SampleStructLike is the same as the expanded field-type.
+     * generates  UplcData for ***"uutMintingDelegate::SomeEnum.oneNestedStruct"***
+     * @remarks - ***SampleStructLike*** is the same as the expanded field-type.
      */
     oneNestedStruct(
         m: SampleStructLike | {
@@ -482,8 +585,8 @@ export class SomeEnumHelperNested extends EnumBridge<JustAnEnum> {
     }
 
     /**
-     * generates  UplcData for "uutMintingDelegate::SomeEnum.hasNestedFields"
-     * @remarks - SomeEnum$hasNestedFieldsLike is the same as the expanded field-types.
+     * generates  UplcData for ***"uutMintingDelegate::SomeEnum.hasNestedFields"***
+     * @remarks - ***SomeEnum$hasNestedFieldsLike*** is the same as the expanded field-types.
      */
     hasNestedFields(fields: SomeEnum$hasNestedFieldsLike | { 
         m: SampleStructLike,
@@ -495,8 +598,8 @@ export class SomeEnumHelperNested extends EnumBridge<JustAnEnum> {
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates  UplcData for "uutMintingDelegate::SomeEnum.hasRecursiveFields"
-     * @remarks - SomeEnum$hasRecursiveFieldsLike is the same as the expanded field-types.
+     * generates  UplcData for ***"uutMintingDelegate::SomeEnum.hasRecursiveFields"***
+     * @remarks - ***SomeEnum$hasRecursiveFieldsLike*** is the same as the expanded field-types.
      */
     hasRecursiveFields(fields: SomeEnum$hasRecursiveFieldsLike | { 
         placeholder: IntLike,
@@ -510,7 +613,7 @@ export class SomeEnumHelperNested extends EnumBridge<JustAnEnum> {
 
 
 /**
- * Helper class for generating UplcData for variants of the DelegateDatum enum type.
+ * Helper class for generating UplcData for variants of the ***DelegateDatum*** enum type.
  */
 export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     protected __cast = new Cast<
@@ -519,8 +622,8 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
    >(DelegateDatumSchema, { isMainnet: true });
 
     /**
-     * generates  UplcData for "uutMintingDelegate::DelegateDatum.IsDelegation"
-     * @remarks - DelegationDetailLike is the same as the expanded field-type.
+     * generates  UplcData for ***"uutMintingDelegate::DelegateDatum.IsDelegation"***
+     * @remarks - ***DelegationDetailLike*** is the same as the expanded field-type.
      */
     IsDelegation(
         dd: DelegationDetailLike | {
@@ -536,8 +639,8 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     }
 
 /**
- * (property getter): UplcData for "uutMintingDelegate::DelegateDatum.ScriptReference"
- * @remarks - tagOnly variant accessor returns an empty constrData#1
+ * (property getter): UplcData for ***"uutMintingDelegate::DelegateDatum.ScriptReference"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
  */
     get ScriptReference() {
         const uplc = this.mkUplcData({ ScriptReference: {} }, 
@@ -546,7 +649,7 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     } /* tagOnly variant accessor */
 
     /**
-     * generates  UplcData for "uutMintingDelegate::DelegateDatum.SingleDataElement"
+     * generates  UplcData for ***"uutMintingDelegate::DelegateDatum.SingleDataElement"***
      */
     SingleDataElement(
         aString: string
@@ -558,8 +661,8 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     }
 
     /**
-     * generates  UplcData for "uutMintingDelegate::DelegateDatum.SingleNestedStruct"
-     * @remarks - SampleStructLike is the same as the expanded field-type.
+     * generates  UplcData for ***"uutMintingDelegate::DelegateDatum.SingleNestedStruct"***
+     * @remarks - ***SampleStructLike*** is the same as the expanded field-type.
      */
     SingleNestedStruct(
         aStruct: SampleStructLike | {
@@ -576,7 +679,7 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     }
 
     /**
-     * access to different variants of the nested SomeEnum type needed for DelegateDatum HasNestedEnum.
+     * access to different variants of the ***nested SomeEnum*** type needed for ***DelegateDatum:HasNestedEnum***.
      */
     get HasNestedEnum() {
         const nestedAccessor = new SomeEnumHelperNested(this.bundle,
@@ -591,8 +694,8 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     } /* nested enum accessor */
 
     /**
-     * generates  UplcData for "uutMintingDelegate::DelegateDatum.MultiFieldVariant"
-     * @remarks - DelegateDatum$MultiFieldVariantLike is the same as the expanded field-types.
+     * generates  UplcData for ***"uutMintingDelegate::DelegateDatum.MultiFieldVariant"***
+     * @remarks - ***DelegateDatum$MultiFieldVariantLike*** is the same as the expanded field-types.
      */
     MultiFieldVariant(fields: DelegateDatum$MultiFieldVariantLike | { 
         field1: IntLike,
@@ -604,8 +707,8 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates  UplcData for "uutMintingDelegate::DelegateDatum.MultiFieldNestedThings"
-     * @remarks - DelegateDatum$MultiFieldNestedThingsLike is the same as the expanded field-types.
+     * generates  UplcData for ***"uutMintingDelegate::DelegateDatum.MultiFieldNestedThings"***
+     * @remarks - ***DelegateDatum$MultiFieldNestedThingsLike*** is the same as the expanded field-types.
      */
     MultiFieldNestedThings(fields: DelegateDatum$MultiFieldNestedThingsLike | { 
         nestedStruct: SampleStructLike,
@@ -624,7 +727,7 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
 
 
 /**
- * Helper class for generating UplcData for variants of the CapoLifecycleActivity enum type.
+ * Helper class for generating UplcData for variants of the ***CapoLifecycleActivity*** enum type.
  */
 export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     protected __cast = new Cast<
@@ -633,16 +736,17 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
    >(CapoLifecycleActivitySchema, { isMainnet: true });
 
     /**
-     * generates  UplcData for "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate", 
-     * given a transaction-context with a seed utxo and other field details
+     * generates  UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate"***, 
+     * given a transaction-context ***with a seed utxo*** and other field details
      * @remarks
-     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
+     * to create a context satisfying `hasSeed`.
      */
     CreatingDelegate(value: hasSeed, fields: { 
         purpose: string 
     } ) : UplcData
     /**
-     * generates  UplcData for "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate" 
+     * generates  UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate"*** 
      * with raw seed details included in fields.
      */
     CreatingDelegate(fields: CapoLifecycleActivity$CreatingDelegateLike | {
@@ -673,7 +777,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
 
 
 /**
- * Helper class for generating UplcData for variants of the DelegateLifecycleActivity enum type.
+ * Helper class for generating UplcData for variants of the ***DelegateLifecycleActivity*** enum type.
  */
 export class DelegateLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     protected __cast = new Cast<
@@ -682,16 +786,17 @@ export class DelegateLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
    >(DelegateLifecycleActivitySchema, { isMainnet: true });
 
     /**
-     * generates  UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe", 
-     * given a transaction-context with a seed utxo and other field details
+     * generates  UplcData for ***"CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe"***, 
+     * given a transaction-context ***with a seed utxo*** and other field details
      * @remarks
-     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
+     * to create a context satisfying `hasSeed`.
      */
     ReplacingMe(value: hasSeed, fields: { 
         purpose: string 
     } ) : UplcData
     /**
-     * generates  UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe" 
+     * generates  UplcData for ***"CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe"*** 
      * with raw seed details included in fields.
      */
     ReplacingMe(fields: DelegateLifecycleActivity$ReplacingMeLike | {
@@ -720,8 +825,8 @@ export class DelegateLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
 
 
 /**
- * (property getter): UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.Retiring"
- * @remarks - tagOnly variant accessor returns an empty constrData#1
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateLifecycleActivity.Retiring"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
  */
     get Retiring() {
         const uplc = this.mkUplcData({ Retiring: {} }, 
@@ -730,8 +835,8 @@ export class DelegateLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     } /* tagOnly variant accessor */
 
 /**
- * (property getter): UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.ValidatingSettings"
- * @remarks - tagOnly variant accessor returns an empty constrData#2
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateLifecycleActivity.ValidatingSettings"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#2***
  */
     get ValidatingSettings() {
         const uplc = this.mkUplcData({ ValidatingSettings: {} }, 
@@ -742,7 +847,7 @@ export class DelegateLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
 
 
 /**
- * Helper class for generating UplcData for variants of the SpendingActivity enum type.
+ * Helper class for generating UplcData for variants of the ***SpendingActivity*** enum type.
  */
 export class SpendingActivityHelper extends EnumBridge<JustAnEnum> {
     protected __cast = new Cast<
@@ -751,7 +856,7 @@ export class SpendingActivityHelper extends EnumBridge<JustAnEnum> {
    >(SpendingActivitySchema, { isMainnet: true });
 
     /**
-     * generates  UplcData for "uutMintingDelegate::SpendingActivity._placeholder2SA"
+     * generates  UplcData for ***"uutMintingDelegate::SpendingActivity._placeholder2SA"***
      */
     _placeholder2SA(
         id: number[]
@@ -763,7 +868,7 @@ export class SpendingActivityHelper extends EnumBridge<JustAnEnum> {
     }
 
     /**
-     * generates  UplcData for "uutMintingDelegate::SpendingActivity.mockWorkingSpendActivity"
+     * generates  UplcData for ***"uutMintingDelegate::SpendingActivity.mockWorkingSpendActivity"***
      */
     mockWorkingSpendActivity(
         id: number[]
@@ -777,7 +882,7 @@ export class SpendingActivityHelper extends EnumBridge<JustAnEnum> {
 
 
 /**
- * Helper class for generating UplcData for variants of the MintingActivity enum type.
+ * Helper class for generating UplcData for variants of the ***MintingActivity*** enum type.
  */
 export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
     protected __cast = new Cast<
@@ -786,16 +891,17 @@ export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
    >(MintingActivitySchema, { isMainnet: true });
 
     /**
-     * generates  UplcData for "uutMintingDelegate::MintingActivity.mintingUuts", 
-     * given a transaction-context with a seed utxo and other field details
+     * generates  UplcData for ***"uutMintingDelegate::MintingActivity.mintingUuts"***, 
+     * given a transaction-context ***with a seed utxo*** and other field details
      * @remarks
-     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
+     * to create a context satisfying `hasSeed`.
      */
     mintingUuts(value: hasSeed, fields: { 
         purposes: Array<string> 
     } ) : UplcData
     /**
-     * generates  UplcData for "uutMintingDelegate::MintingActivity.mintingUuts" 
+     * generates  UplcData for ***"uutMintingDelegate::MintingActivity.mintingUuts"*** 
      * with raw seed details included in fields.
      */
     mintingUuts(fields: MintingActivity$mintingUutsLike | {
@@ -824,8 +930,8 @@ export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
 
 
 /**
- * (property getter): UplcData for "uutMintingDelegate::MintingActivity.mockOtherActivity"
- * @remarks - tagOnly variant accessor returns an empty constrData#1
+ * (property getter): UplcData for ***"uutMintingDelegate::MintingActivity.mockOtherActivity"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
  */
     get mockOtherActivity() {
         const uplc = this.mkUplcData({ mockOtherActivity: {} }, 
@@ -836,7 +942,7 @@ export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
 
 
 /**
- * Helper class for generating UplcData for variants of the BurningActivity enum type.
+ * Helper class for generating UplcData for variants of the ***BurningActivity*** enum type.
  */
 export class BurningActivityHelper extends EnumBridge<JustAnEnum> {
     protected __cast = new Cast<
@@ -845,7 +951,7 @@ export class BurningActivityHelper extends EnumBridge<JustAnEnum> {
    >(BurningActivitySchema, { isMainnet: true });
 
     /**
-     * generates  UplcData for "uutMintingDelegate::BurningActivity._placeholder2BA"
+     * generates  UplcData for ***"uutMintingDelegate::BurningActivity._placeholder2BA"***
      */
     _placeholder2BA(
         recId: number[]
@@ -859,7 +965,7 @@ export class BurningActivityHelper extends EnumBridge<JustAnEnum> {
 
 
 /**
- * Helper class for generating UplcData for variants of the CapoLifecycleActivity enum type.
+ * Helper class for generating UplcData for variants of the ***CapoLifecycleActivity*** enum type.
  */
 export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     protected __cast = new Cast<
@@ -868,16 +974,17 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
    >(CapoLifecycleActivitySchema, { isMainnet: true });
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate", 
-     * given a transaction-context with a seed utxo and other field details
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate"***, 
+     * given a transaction-context ***with a seed utxo*** and other field details
      * @remarks
-     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
+     * to create a context satisfying `hasSeed`.
      */
     CreatingDelegate(value: hasSeed, fields: { 
         purpose: string 
     } ) : isActivity
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate" 
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate"*** 
      * with raw seed details included in fields.
      */
     CreatingDelegate(fields: CapoLifecycleActivity$CreatingDelegateLike | {
@@ -908,7 +1015,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
 
 
 /**
- * Helper class for generating UplcData for variants of the DelegateLifecycleActivity enum type.
+ * Helper class for generating UplcData for variants of the ***DelegateLifecycleActivity*** enum type.
  */
 export class DelegateLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     protected __cast = new Cast<
@@ -917,16 +1024,17 @@ export class DelegateLifecycleActivityHelperNested extends EnumBridge<isActivity
    >(DelegateLifecycleActivitySchema, { isMainnet: true });
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe", 
-     * given a transaction-context with a seed utxo and other field details
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe"***, 
+     * given a transaction-context ***with a seed utxo*** and other field details
      * @remarks
-     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
+     * to create a context satisfying `hasSeed`.
      */
     ReplacingMe(value: hasSeed, fields: { 
         purpose: string 
     } ) : isActivity
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe" 
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe"*** 
      * with raw seed details included in fields.
      */
     ReplacingMe(fields: DelegateLifecycleActivity$ReplacingMeLike | {
@@ -955,8 +1063,8 @@ export class DelegateLifecycleActivityHelperNested extends EnumBridge<isActivity
 
 
 /**
- * (property getter): UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.Retiring"
- * @remarks - tagOnly variant accessor returns an empty constrData#1
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateLifecycleActivity.Retiring"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
  */
     get Retiring() {
         const uplc = this.mkUplcData({ Retiring: {} }, 
@@ -965,8 +1073,8 @@ export class DelegateLifecycleActivityHelperNested extends EnumBridge<isActivity
     } /* tagOnly variant accessor */
 
 /**
- * (property getter): UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.ValidatingSettings"
- * @remarks - tagOnly variant accessor returns an empty constrData#2
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateLifecycleActivity.ValidatingSettings"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#2***
  */
     get ValidatingSettings() {
         const uplc = this.mkUplcData({ ValidatingSettings: {} }, 
@@ -977,7 +1085,7 @@ export class DelegateLifecycleActivityHelperNested extends EnumBridge<isActivity
 
 
 /**
- * Helper class for generating UplcData for variants of the SpendingActivity enum type.
+ * Helper class for generating UplcData for variants of the ***SpendingActivity*** enum type.
  */
 export class SpendingActivityHelperNested extends EnumBridge<isActivity> {
     protected __cast = new Cast<
@@ -986,7 +1094,7 @@ export class SpendingActivityHelperNested extends EnumBridge<isActivity> {
    >(SpendingActivitySchema, { isMainnet: true });
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "uutMintingDelegate::SpendingActivity._placeholder2SA"
+     * generates isActivity/redeemer wrapper with UplcData for ***"uutMintingDelegate::SpendingActivity._placeholder2SA"***
      */
     _placeholder2SA(
         id: number[]
@@ -998,7 +1106,7 @@ export class SpendingActivityHelperNested extends EnumBridge<isActivity> {
     }
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "uutMintingDelegate::SpendingActivity.mockWorkingSpendActivity"
+     * generates isActivity/redeemer wrapper with UplcData for ***"uutMintingDelegate::SpendingActivity.mockWorkingSpendActivity"***
      */
     mockWorkingSpendActivity(
         id: number[]
@@ -1012,7 +1120,7 @@ export class SpendingActivityHelperNested extends EnumBridge<isActivity> {
 
 
 /**
- * Helper class for generating UplcData for variants of the MintingActivity enum type.
+ * Helper class for generating UplcData for variants of the ***MintingActivity*** enum type.
  */
 export class MintingActivityHelperNested extends EnumBridge<isActivity> {
     protected __cast = new Cast<
@@ -1021,16 +1129,17 @@ export class MintingActivityHelperNested extends EnumBridge<isActivity> {
    >(MintingActivitySchema, { isMainnet: true });
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "uutMintingDelegate::MintingActivity.mintingUuts", 
-     * given a transaction-context with a seed utxo and other field details
+     * generates isActivity/redeemer wrapper with UplcData for ***"uutMintingDelegate::MintingActivity.mintingUuts"***, 
+     * given a transaction-context ***with a seed utxo*** and other field details
      * @remarks
-     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
+     * to create a context satisfying `hasSeed`.
      */
     mintingUuts(value: hasSeed, fields: { 
         purposes: Array<string> 
     } ) : isActivity
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "uutMintingDelegate::MintingActivity.mintingUuts" 
+     * generates isActivity/redeemer wrapper with UplcData for ***"uutMintingDelegate::MintingActivity.mintingUuts"*** 
      * with raw seed details included in fields.
      */
     mintingUuts(fields: MintingActivity$mintingUutsLike | {
@@ -1059,8 +1168,8 @@ export class MintingActivityHelperNested extends EnumBridge<isActivity> {
 
 
 /**
- * (property getter): UplcData for "uutMintingDelegate::MintingActivity.mockOtherActivity"
- * @remarks - tagOnly variant accessor returns an empty constrData#1
+ * (property getter): UplcData for ***"uutMintingDelegate::MintingActivity.mockOtherActivity"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
  */
     get mockOtherActivity() {
         const uplc = this.mkUplcData({ mockOtherActivity: {} }, 
@@ -1071,7 +1180,7 @@ export class MintingActivityHelperNested extends EnumBridge<isActivity> {
 
 
 /**
- * Helper class for generating UplcData for variants of the BurningActivity enum type.
+ * Helper class for generating UplcData for variants of the ***BurningActivity*** enum type.
  */
 export class BurningActivityHelperNested extends EnumBridge<isActivity> {
     protected __cast = new Cast<
@@ -1080,7 +1189,7 @@ export class BurningActivityHelperNested extends EnumBridge<isActivity> {
    >(BurningActivitySchema, { isMainnet: true });
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "uutMintingDelegate::BurningActivity._placeholder2BA"
+     * generates isActivity/redeemer wrapper with UplcData for ***"uutMintingDelegate::BurningActivity._placeholder2BA"***
      */
     _placeholder2BA(
         recId: number[]
@@ -1094,7 +1203,7 @@ export class BurningActivityHelperNested extends EnumBridge<isActivity> {
 
 
 /**
- * Helper class for generating UplcData for variants of the DelegateActivity enum type.
+ * Helper class for generating UplcData for variants of the ***DelegateActivity*** enum type.
  */
 export class DelegateActivityHelper extends EnumBridge<isActivity> {
     protected __cast = new Cast<
@@ -1103,7 +1212,7 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
    >(DelegateActivitySchema, { isMainnet: true });
 
     /**
-     * access to different variants of the nested CapoLifecycleActivity type needed for DelegateActivity CapoLifecycleActivities.
+     * access to different variants of the ***nested CapoLifecycleActivity*** type needed for ***DelegateActivity:CapoLifecycleActivities***.
      */
     get CapoLifecycleActivities() {
         const nestedAccessor = new CapoLifecycleActivityHelperNested(this.bundle,
@@ -1118,7 +1227,7 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
     } /* nested enum accessor */
 
     /**
-     * access to different variants of the nested DelegateLifecycleActivity type needed for DelegateActivity DelegateLifecycleActivities.
+     * access to different variants of the ***nested DelegateLifecycleActivity*** type needed for ***DelegateActivity:DelegateLifecycleActivities***.
      */
     get DelegateLifecycleActivities() {
         const nestedAccessor = new DelegateLifecycleActivityHelperNested(this.bundle,
@@ -1133,7 +1242,7 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
     } /* nested enum accessor */
 
     /**
-     * access to different variants of the nested SpendingActivity type needed for DelegateActivity SpendingActivities.
+     * access to different variants of the ***nested SpendingActivity*** type needed for ***DelegateActivity:SpendingActivities***.
      */
     get SpendingActivities() {
         const nestedAccessor = new SpendingActivityHelperNested(this.bundle,
@@ -1148,7 +1257,7 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
     } /* nested enum accessor */
 
     /**
-     * access to different variants of the nested MintingActivity type needed for DelegateActivity MintingActivities.
+     * access to different variants of the ***nested MintingActivity*** type needed for ***DelegateActivity:MintingActivities***.
      */
     get MintingActivities() {
         const nestedAccessor = new MintingActivityHelperNested(this.bundle,
@@ -1163,7 +1272,7 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
     } /* nested enum accessor */
 
     /**
-     * access to different variants of the nested BurningActivity type needed for DelegateActivity BurningActivities.
+     * access to different variants of the ***nested BurningActivity*** type needed for ***DelegateActivity:BurningActivities***.
      */
     get BurningActivities() {
         const nestedAccessor = new BurningActivityHelperNested(this.bundle,
@@ -1178,16 +1287,17 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
     } /* nested enum accessor */
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "uutMintingDelegate::DelegateActivity.CreatingDelegatedData", 
-     * given a transaction-context with a seed utxo and other field details
+     * generates isActivity/redeemer wrapper with UplcData for ***"uutMintingDelegate::DelegateActivity.CreatingDelegatedData"***, 
+     * given a transaction-context ***with a seed utxo*** and other field details
      * @remarks
-     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
+     * to create a context satisfying `hasSeed`.
      */
     CreatingDelegatedData(value: hasSeed, fields: { 
         dataType: string 
     } ) : isActivity
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "uutMintingDelegate::DelegateActivity.CreatingDelegatedData" 
+     * generates isActivity/redeemer wrapper with UplcData for ***"uutMintingDelegate::DelegateActivity.CreatingDelegatedData"*** 
      * with raw seed details included in fields.
      */
     CreatingDelegatedData(fields: DelegateActivity$CreatingDelegatedDataLike | {
@@ -1216,8 +1326,8 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
 
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "uutMintingDelegate::DelegateActivity.UpdatingDelegatedData"
-     * @remarks - DelegateActivity$UpdatingDelegatedDataLike is the same as the expanded field-types.
+     * generates isActivity/redeemer wrapper with UplcData for ***"uutMintingDelegate::DelegateActivity.UpdatingDelegatedData"***
+     * @remarks - ***DelegateActivity$UpdatingDelegatedDataLike*** is the same as the expanded field-types.
      */
     UpdatingDelegatedData(fields: DelegateActivity$UpdatingDelegatedDataLike | { 
         dataType: string,
@@ -1229,8 +1339,8 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "uutMintingDelegate::DelegateActivity.DeletingDelegatedData"
-     * @remarks - DelegateActivity$DeletingDelegatedDataLike is the same as the expanded field-types.
+     * generates isActivity/redeemer wrapper with UplcData for ***"uutMintingDelegate::DelegateActivity.DeletingDelegatedData"***
+     * @remarks - ***DelegateActivity$DeletingDelegatedDataLike*** is the same as the expanded field-types.
      */
     DeletingDelegatedData(fields: DelegateActivity$DeletingDelegatedDataLike | { 
         dataType: string,
@@ -1242,7 +1352,7 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "uutMintingDelegate::DelegateActivity.MultipleDelegateActivities"
+     * generates isActivity/redeemer wrapper with UplcData for ***"uutMintingDelegate::DelegateActivity.MultipleDelegateActivities"***
      */
     MultipleDelegateActivities(
         activities: Array<UplcData>

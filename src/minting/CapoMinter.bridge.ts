@@ -66,8 +66,8 @@ import type * as types from "./CapoMinter.typeInfo.js";
 //   Like "friends" in C++.
 
 /**
- * data bridge for CapoMinter script (defined in CapoMinterBundle)}
- * main: src/minting/CapoMinter.hl, project: stellar-contracts
+ * data bridge for **CapoMinter** script (defined in class ***CapoMinterBundle***)}
+ * main: **src/minting/CapoMinter.hl**, project: **stellar-contracts**
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
 export class CapoMinterDataBridge extends ContractDataBridge {
@@ -77,14 +77,21 @@ datum=null // no datum type defined for this bundle (minter / rewards script)
 
 
     /**
-     * generates UplcData for the activity type (MinterActivity) for the CapoMinter script
+     * generates UplcData for the activity type (***MinterActivity***) for the `CapoMinter` script
      */
     activity : MinterActivityHelper= new MinterActivityHelper(this.bundle, {isActivity: true}); // activityAccessor/enum
         MinterActivity: MinterActivityHelper = this.activity;
 
     reader = new CapoMinterDataBridgeReader(this);
 
+    /**
+     * accessors for all the types defined in the `CapoMinter` script
+     * @remarks - these accessors are used to generate UplcData for each type
+     */
     types = {
+      /**
+       * generates UplcData for the enum type ***MinterActivity*** for the `CapoMinter` script
+       */
         MinterActivity: new MinterActivityHelper(this.bundle),
 
     }    
@@ -94,16 +101,22 @@ datum=null // no datum type defined for this bundle (minter / rewards script)
 }
 export default CapoMinterDataBridge;
 
-  class CapoMinterDataBridgeReader extends DataBridgeReader {
+class CapoMinterDataBridgeReader extends DataBridgeReader {
     constructor(public bridge: CapoMinterDataBridge) {
         super();
     }
     /**
-        * reads UplcData known to fit the MinterActivity enum type,
+        * reads UplcData *known to fit the **MinterActivity*** enum type,
         * for the CapoMinter script.
-        * #### WARNING
-        * reading non-matching data will not give you a valid result.  It may 
-        * throw an error, or it may throw no error, but return a value that
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     MinterActivity(d : UplcData) { 
@@ -118,7 +131,7 @@ export default CapoMinterDataBridge;
 }
 
 /**
- * Helper class for generating UplcData for variants of the MinterActivity enum type.
+ * Helper class for generating UplcData for variants of the ***MinterActivity*** enum type.
  */
 export class MinterActivityHelper extends EnumBridge<isActivity> {
     protected __cast = new Cast<
@@ -127,7 +140,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
    >(MinterActivitySchema, { isMainnet: true });
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "CapoMintHelpers::MinterActivity.mintingCharter"
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.mintingCharter"***
      */
     mintingCharter(
         owner: Address | string
@@ -139,8 +152,8 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     }
 
 /**
- * (property getter): UplcData for "CapoMintHelpers::MinterActivity.mintWithDelegateAuthorizing"
- * @remarks - tagOnly variant accessor returns an empty constrData#1
+ * (property getter): UplcData for ***"CapoMintHelpers::MinterActivity.mintWithDelegateAuthorizing"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
  */
     get mintWithDelegateAuthorizing() {
         const uplc = this.mkUplcData({ mintWithDelegateAuthorizing: {} }, 
@@ -149,8 +162,8 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     } /* tagOnly variant accessor */
 
     /**
-    * generates isActivity/redeemer wrapper with UplcData for "CapoMintHelpers::MinterActivity.addingMintInvariant", 
-    * given a transaction-context with a seed utxo and other field details
+    * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.addingMintInvariant"***, 
+    * given a transaction-context with a ***seed utxo*** and other field details
     * @remarks - to get a transaction context having the seed needed for this argment, 
     * see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.    */
     addingMintInvariant(value: hasSeed | TxOutputId | string) : isActivity {
@@ -162,8 +175,8 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     }
 
     /**
-    * generates isActivity/redeemer wrapper with UplcData for "CapoMintHelpers::MinterActivity.addingSpendInvariant", 
-    * given a transaction-context with a seed utxo and other field details
+    * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.addingSpendInvariant"***, 
+    * given a transaction-context with a ***seed utxo*** and other field details
     * @remarks - to get a transaction context having the seed needed for this argment, 
     * see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.    */
     addingSpendInvariant(value: hasSeed | TxOutputId | string) : isActivity {
@@ -175,8 +188,8 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     }
 
     /**
-    * generates isActivity/redeemer wrapper with UplcData for "CapoMintHelpers::MinterActivity.ForcingNewMintDelegate", 
-    * given a transaction-context with a seed utxo and other field details
+    * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.ForcingNewMintDelegate"***, 
+    * given a transaction-context with a ***seed utxo*** and other field details
     * @remarks - to get a transaction context having the seed needed for this argment, 
     * see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.    */
     ForcingNewMintDelegate(value: hasSeed | TxOutputId | string) : isActivity {
@@ -188,16 +201,17 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     }
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate", 
-     * given a transaction-context with a seed utxo and other field details
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate"***, 
+     * given a transaction-context ***with a seed utxo*** and other field details
      * @remarks
-     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
+     * to create a context satisfying `hasSeed`.
      */
     CreatingNewSpendDelegate(value: hasSeed, fields: { 
         replacingUut: Option<number[]> 
     } ) : isActivity
     /**
-     * generates isActivity/redeemer wrapper with UplcData for "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate" 
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate"*** 
      * with raw seed details included in fields.
      */
     CreatingNewSpendDelegate(fields: MinterActivity$CreatingNewSpendDelegateLike | {

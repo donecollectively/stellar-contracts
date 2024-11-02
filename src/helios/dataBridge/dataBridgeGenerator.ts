@@ -215,12 +215,12 @@ ${this.includeScriptNamedTypes(inputFile)}
 //   Like "friends" in C++.
 
 /**
- * data bridge for ${this.bundle.program.name} script (defined in ${
-            this.bundle.constructor.name
-        })}
- * main: ${this.bundle.main.name}, project: ${
+ * data bridge for **${
+     this.bundle.program.name
+ }** script (defined in class ***${this.bundle.constructor.name}***)}
+ * main: **${this.bundle.main.name}**, project: **${
             this.bundle.main.project || "‹local proj›"
-        }
+        }**
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
 export class ${bridgeClassName} extends ContractDataBridge {
@@ -252,7 +252,7 @@ ${this.includeNamedSchemas()}
     }
 
     generateDataReaderClass(className: string) {
-        return `  class ${className} extends DataBridgeReader {
+        return `class ${className} extends DataBridgeReader {
     constructor(public bridge: ${this.bundle.bridgeClassName}) {
         super();
     }
@@ -274,11 +274,17 @@ ${this.includeStructReaders()}
                 const helperClassName = typeDetails.moreInfo.helperClassName;
 
                 return `    /**
-        * reads UplcData known to fit the ${typeName} enum type,
+        * reads UplcData *known to fit the **${typeName}*** enum type,
         * for the ${this.bundle.program.name} script.
-        * #### WARNING
-        * reading non-matching data will not give you a valid result.  It may 
-        * throw an error, or it may throw no error, but return a value that
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     ${typeName}(d : UplcData) { 
@@ -302,11 +308,17 @@ ${this.includeStructReaders()}
                 const typeDetails = this.typeBundle.namedTypes[typeName];
                 const castMemberName = `__${typeName}Cast`;
                 return `    /**
-        * reads UplcData known to fit the ${typeName} struct type,
+        * reads UplcData *known to fit the **${typeName}*** struct type,
         * for the ${this.bundle.program.name} script.
-        * #### WARNING
-        * reading non-matching data will not give you a valid result.  It may
-        * throw an error, or it may throw no error, but return a value that
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the struct type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
         * causes some error later on in your code, when you try to use it.
         */
     ${typeName}(d: UplcData) {
@@ -322,6 +334,10 @@ ${this.includeStructReaders()}
 
     includeTypeAccessors() {
         return (
+            `    /**\n` +
+            `     * accessors for all the types defined in the \`${this.bundle.program.name}\` script\n` +
+            `     * @remarks - these accessors are used to generate UplcData for each type\n` +
+            `     */\n` +
             `    types = {\n` +
             this.includeEnumTypeAccessors() +
             `\n\n` +
@@ -343,7 +359,12 @@ ${this.includeStructReaders()}
                 ] as unknown as fullEnumTypeDetails;
                 const helperClassName = typeDetails.moreInfo.helperClassName;
 
-                return `        ${typeName}: new ${helperClassName}(this.bundle),`;
+                return (
+                    `      /**\n` +
+                    `       * generates UplcData for the enum type ***${typeName}*** for the \`${this.bundle.program.name}\` script\n` +
+                    `       */\n` +
+                    `        ${typeName}: new ${helperClassName}(this.bundle),`
+                );
             })
             .join("\n");
 
@@ -376,10 +397,14 @@ ${this.includeStructReaders()}
                 ] = `    protected ${castMemberName} = new Cast<
                 ${canonicalTypeName}, ${permissiveTypeName}
             >(${typeName}Schema, { isMainnet: true });\n`;
-
-                return `        ${typeName}: (fields: ${permissiveTypeName} | ${permissiveType}) => {
+                return (
+                    `      /**\n` +
+                    `       * generates UplcData for the enum type ***${typeName}*** for the \`${this.bundle.program.name}\` script\n` +
+                    `       */\n` +
+                    `        ${typeName}: (fields: ${permissiveTypeName} | ${permissiveType}) => {
         return this.${castMemberName}.toUplcData(fields);
-    },`;
+    },`
+                );
             })
             .join("\n");
 
@@ -452,7 +477,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             const helperClassName = `${activityName}Helper`;
             return `
     /**
-     * generates UplcData for the activity type (${activityTypeName}) for the ${this.bundle.program.name} script
+     * generates UplcData for the activity type (***${activityTypeName}***) for the \`${this.bundle.program.name}\` script
      */
     activity : ${helperClassName}= new ${helperClassName}(this.bundle, {isActivity: true}); // activityAccessor/enum
         ${activityName}: ${helperClassName} = this.activity;\n`;
@@ -466,7 +491,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             return `${castDef}
             
     /**
-     * generates UplcData for the activity type (${activityTypeName}) for the ${this.bundle.program.name} script
+     * generates UplcData for the activity type (***${activityTypeName}***) for the \`${this.bundle.program.name}\` script
      * @remarks - same as {@link activity}
      */
     ${activityTypeName}(activity: ${permissiveType}) {
@@ -525,7 +550,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             helperClassType = hCN;
             typeNameAccessor =
                 `\n    /**\n` +
-                `     * this is the specific type of datum for the ${this.bundle.program.name} script\n` +
+                `     * this is the specific type of datum for the \`${this.bundle.program.name}\` script\n` +
                 `     */\n` +
                 `    ${details.typeSchema.name}: ${helperClassType} = this.datum;`;
             datumAccessorVarietyAnnotation = ` // datumAccessor/enum\n`;
@@ -553,7 +578,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
 
             typeNameAccessor =
                 `\n\n    /**\n` +
-                `     * this is the specific type of datum for the ${this.bundle.program.name} script\n` +
+                `     * this is the specific type of datum for the \`${this.bundle.program.name}\` script\n` +
                 `     * normally, we suggest accessing the \`datum\` property instead.\n` +
                 `     */\n` +
                 `    ${details.typeSchema.name}: ${helperClassType} = this.datum;`;
@@ -580,18 +605,19 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         return (
             "" +
             `    /**\n` +
-            `     * Helper class for generating UplcData for the datum type ${
-                datumTypeName ? `(${datumTypeName})` : ""
+            `     * Helper class for generating UplcData for the datum type ***${
+                datumTypeName ? `(${datumTypeName})***` : ""
             }\n` +
             `     * for this contract script. ${moreTypeGuidance}\n` +
             `     */\n` +
             `    datum: ${helperClassType}\n     = new ${helperClassName}(this.bundle, {}) ${helperClassTypeCast} ` +
             datumAccessorVarietyAnnotation +
             typeNameAccessor +
-            `\n\n    readDatum = (d: UplcData) => {\n` +
+            `\n\n    readDatum : (d: UplcData) => IntersectedEnum<${typeName}> = (d) =>  {\n` +
             `        ${"//"}@ts-expect-error drilling through the protected accessor.\n` +
             `        //   ... see more comments about that above\n` +
-            `        return this.datum.__cast.fromUplcData(d);\n` +
+            `        //return this.datum.__cast.fromUplcData(d);\n` +
+            `        return this.reader.${typeName}(d)\n` +
             `    }\n`
         );
         // ----
@@ -704,7 +730,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const structName = typeDetails.typeName!;
         return (
             `/**\n` +
-            ` * Helper class for generating UplcData for the ${structName} struct type.\n` +
+            ` * Helper class for generating UplcData for the ***${structName}*** struct type.\n` +
             ` */\n` +
             `export class ${structName}Helper extends DataBridge {\n` +
             `    isCallable = true\n` +
@@ -713,8 +739,12 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `        ${typeDetails.permissiveTypeName}\n` +
             `    >(${structName}Schema, { isMainnet: true });\n` +
             `\n` +
-            `    // this uplc-generating capability is provided by a proxy in the inheritance chain\n` +
-            `    // see the callableDataBridge type on the 'datum' property in the contract bridge\n` +
+            `    // You might expect a function as follows, but no.  However, a similar uplc-generating capability\n` +
+            `    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.\n` +
+            `    // see the callableDataBridge type on the 'datum' property in the contract bridge.\n` +
+            `    //\n` +
+            `    //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! \n` +
+            `    //\n` +
             `    // ${structName}(fields: ${typeDetails.permissiveTypeName}) {\n` +
             `    //    return this.__cast.toUplcData(fields);\n` +
             `    //}\n` +
@@ -739,7 +769,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
 
         return (
             `/**\n` +
-            ` * Helper class for generating UplcData for variants of the ${enumName} enum type.\n` +
+            ` * Helper class for generating UplcData for variants of the ***${enumName}*** enum type.\n` +
             ` */\n` +
             `export class ${helperClassName} extends ${parentClass} {\n` +
             `    protected __cast = new Cast<\n` +
@@ -785,7 +815,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
 
         return (
             `    /**\n` +
-            `     * access to different variants of the nested ${nestedEnumName} type needed for ${enumName} ${variantName}.\n` +
+            `     * access to different variants of the ***nested ${nestedEnumName}*** type needed for ***${enumName}:${variantName}***.\n` +
             `     */\n` +
             `    get ${variantName}() {\n` +
             `        const nestedAccessor = new ${nestedHelperClassName}(this.bundle,
@@ -829,8 +859,8 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                     const enumPathExpr = this.getEnumPathExpr(variantDetails);
                     return (
                         `/**\n` +
-                        ` * (property getter): UplcData for ${enumPathExpr}\n` +
-                        ` * @remarks - tagOnly variant accessor returns an empty constrData#${variantDetails.typeSchema.tag}\n` +
+                        ` * (property getter): UplcData for ***${enumPathExpr}***\n` +
+                        ` * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#${variantDetails.typeSchema.tag}***\n` +
                         ` */\n` +
                         `    get ${variantName}() {\n` +
                         `        const uplc = this.mkUplcData({ ${variantName}: {} }, \n` +
@@ -899,10 +929,11 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `    /**\n` +
                 `     * generates ${
                     isActivity ? "isActivity/redeemer wrapper with" : ""
-                } UplcData for ${enumPathExpr}, \n` +
-                `     * given a transaction-context with a seed utxo and other field details\n` +
+                } UplcData for ***${enumPathExpr}***, \n` +
+                `     * given a transaction-context ***with a seed utxo*** and other field details\n` +
                 `     * @remarks\n` +
-                `     * See the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass.\n` +
+                `     * See the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass \n` +
+                `     * to create a context satisfying \`hasSeed\`.\n` +
                 `     */\n` +
                 `    ${variantName}(value: hasSeed, fields: { \n${filteredFields(
                     2
@@ -911,7 +942,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `    /**\n` +
                 `     * generates ${
                     isActivity ? "isActivity/redeemer wrapper with" : ""
-                } UplcData for ${enumPathExpr} \n` +
+                } UplcData for ***${enumPathExpr}*** \n` +
                 `     * with raw seed details included in fields.\n` +
                 `     */\n` +
                 `    ${variantName}(fields: ${permissiveTypeName} | {\n${unfilteredFields(
@@ -941,8 +972,8 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `    /**\n` +
             `     * generates ${
                 isActivity ? "isActivity/redeemer wrapper with" : ""
-            } UplcData for ${enumPathExpr}\n` +
-            `     * @remarks - ${permissiveTypeName} is the same as the expanded field-types.\n` +
+            } UplcData for ***${enumPathExpr}***\n` +
+            `     * @remarks - ***${permissiveTypeName}*** is the same as the expanded field-types.\n` +
             `     */\n` +
             `    ${variantName}(fields: ${permissiveTypeName} | { \n${unfilteredFields()} } ) : ${returnType} {\n` +
             `        const uplc = this.mkUplcData({\n` +
@@ -984,8 +1015,8 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `    /**\n` +
                 `    * generates ${
                     isActivity ? "isActivity/redeemer wrapper with" : ""
-                } UplcData for ${enumPathExpr}, \n` +
-                `    * given a transaction-context with a seed utxo and other field details\n` +
+                } UplcData for ***${enumPathExpr}***, \n` +
+                `    * given a transaction-context with a ***seed utxo*** and other field details\n` +
                 `    * @remarks - to get a transaction context having the seed needed for this argment, \n` +
                 `    * see the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass.` +
                 `    */\n` +
@@ -1002,13 +1033,13 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         let expandedTypeNote = "";
         if ("permissiveTypeName" in oneField) {
             thatType = `${oneField.permissiveTypeName} | ${oneField.permissiveType}`;
-            expandedTypeNote = `     * @remarks - ${oneField.permissiveTypeName} is the same as the expanded field-type.\n`;
+            expandedTypeNote = `     * @remarks - ***${oneField.permissiveTypeName}*** is the same as the expanded field-type.\n`;
         }
         return (
             `    /**\n` +
             `     * generates ${
                 isActivity ? "isActivity/redeemer wrapper with" : ""
-            } UplcData for ${enumPathExpr}\n${expandedTypeNote}` +
+            } UplcData for ***${enumPathExpr}***\n${expandedTypeNote}` +
             `     */\n` +
             `    ${variantName}(\n` +
             `        ${fieldName}: ${thatType.trimEnd()}\n` +
