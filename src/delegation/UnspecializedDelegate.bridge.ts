@@ -6,7 +6,7 @@
 // NOTE: this file is auto-generated; do not edit directly
 
 import { Cast } from "@helios-lang/contract-utils"
-import type { UplcData } from "@helios-lang/uplc";
+import type { UplcData, ConstrData } from "@helios-lang/uplc";
 import type { 
     IntLike,
     ByteArrayLike,
@@ -35,16 +35,20 @@ import type {
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
-import { DataBridge } from "../helios/dataBridge/DataBridge.js"
+import { 
+    DataBridge, 
+    ContractDataBridge, 
+    DataBridgeReader,
+    type callWith,
+} from "../helios/dataBridge/DataBridge.js"
 import { 
     EnumBridge,
     type JustAnEnum,
 } from "../helios/dataBridge/EnumBridge.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
+import type { IntersectedEnum } from "../helios/typeUtils.js"
 import type {hasSeed, isActivity} from "../StellarContract.js"
 
-// todo: namespacing for all the good stuff here
-// namespace UnspecializedDelegateBridge {
 
 import type {
     AnyData, AnyDataLike,
@@ -79,9 +83,21 @@ import type * as types from "./UnspecializedDelegate.typeInfo.js";
  * main: src/delegation/BasicDelegate.hl, project: stellar-contracts
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
-export class UnspecializedDelegateBridge extends DataBridge {
-    datum: DelegateDatumHelper = new DelegateDatumHelper(this.bundle, {})   // datumAccessor/enum 
+export class UnspecializedDelegateBridge extends ContractDataBridge {
+    static isAbstract = false;
+    isAbstract = false;
+    /**
+     * Helper class for generating UplcData for the datum type 
+     * for this contract script. 
+     */
+    datum: DelegateDatumHelper
+     = new DelegateDatumHelper(this.bundle, {})   // datumAccessor/enum
+
+    /**
+     * this is the specific type of datum for the BasicDelegate script
+     */
     DelegateDatum: DelegateDatumHelper = this.datum;
+
     readDatum = (d: UplcData) => {
         //@ts-expect-error drilling through the protected accessor.
         //   ... see more comments about that above
@@ -95,6 +111,7 @@ export class UnspecializedDelegateBridge extends DataBridge {
     activity : DelegateActivityHelper= new DelegateActivityHelper(this.bundle, {isActivity: true}); // activityAccessor/enum
         DelegateActivity: DelegateActivityHelper = this.activity;
 
+    reader = new UnspecializedDelegateBridgeReader(this);
 
     types = {
         DelegateDatum: new DelegateDatumHelper(this.bundle),
@@ -121,16 +138,197 @@ export class UnspecializedDelegateBridge extends DataBridge {
         return this.__DelegationDetailCast.toUplcData(fields);
     },    }    
 
-    __AnyDataCast = new Cast<
+    protected __AnyDataCast = new Cast<
                 AnyData, AnyDataLike
             >(AnyDataSchema, { isMainnet: true });
-    __DelegationDetailCast = new Cast<
+    protected __DelegationDetailCast = new Cast<
                 DelegationDetail, DelegationDetailLike
             >(DelegationDetailSchema, { isMainnet: true });
 
 
 }
 export default UnspecializedDelegateBridge;
+
+  class UnspecializedDelegateBridgeReader extends DataBridgeReader {
+    constructor(public bridge: UnspecializedDelegateBridge) {
+        super();
+    }
+    /**
+        * reads UplcData known to fit the DelegateDatum enum type,
+        * for the BasicDelegate script.
+        * #### WARNING
+        * reading non-matching data will not give you a valid result.  It may 
+        * throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    DelegateDatum(d : UplcData) { 
+        const typeHelper = this.bridge.types.DelegateDatum;
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = typeHelper.__cast;
+
+        return cast.fromUplcData(d) as IntersectedEnum<DelegateDatum>;        
+    } /* enumReader helper */
+
+    /**
+        * reads UplcData known to fit the CapoLifecycleActivity enum type,
+        * for the BasicDelegate script.
+        * #### WARNING
+        * reading non-matching data will not give you a valid result.  It may 
+        * throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    CapoLifecycleActivity(d : UplcData) { 
+        const typeHelper = this.bridge.types.CapoLifecycleActivity;
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = typeHelper.__cast;
+
+        return cast.fromUplcData(d) as IntersectedEnum<CapoLifecycleActivity>;        
+    } /* enumReader helper */
+
+    /**
+        * reads UplcData known to fit the DelegateLifecycleActivity enum type,
+        * for the BasicDelegate script.
+        * #### WARNING
+        * reading non-matching data will not give you a valid result.  It may 
+        * throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    DelegateLifecycleActivity(d : UplcData) { 
+        const typeHelper = this.bridge.types.DelegateLifecycleActivity;
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = typeHelper.__cast;
+
+        return cast.fromUplcData(d) as IntersectedEnum<DelegateLifecycleActivity>;        
+    } /* enumReader helper */
+
+    /**
+        * reads UplcData known to fit the SpendingActivity enum type,
+        * for the BasicDelegate script.
+        * #### WARNING
+        * reading non-matching data will not give you a valid result.  It may 
+        * throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    SpendingActivity(d : UplcData) { 
+        const typeHelper = this.bridge.types.SpendingActivity;
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = typeHelper.__cast;
+
+        return cast.fromUplcData(d) as IntersectedEnum<SpendingActivity>;        
+    } /* enumReader helper */
+
+    /**
+        * reads UplcData known to fit the MintingActivity enum type,
+        * for the BasicDelegate script.
+        * #### WARNING
+        * reading non-matching data will not give you a valid result.  It may 
+        * throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    MintingActivity(d : UplcData) { 
+        const typeHelper = this.bridge.types.MintingActivity;
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = typeHelper.__cast;
+
+        return cast.fromUplcData(d) as IntersectedEnum<MintingActivity>;        
+    } /* enumReader helper */
+
+    /**
+        * reads UplcData known to fit the BurningActivity enum type,
+        * for the BasicDelegate script.
+        * #### WARNING
+        * reading non-matching data will not give you a valid result.  It may 
+        * throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    BurningActivity(d : UplcData) { 
+        const typeHelper = this.bridge.types.BurningActivity;
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = typeHelper.__cast;
+
+        return cast.fromUplcData(d) as IntersectedEnum<BurningActivity>;        
+    } /* enumReader helper */
+
+    /**
+        * reads UplcData known to fit the DelegateActivity enum type,
+        * for the BasicDelegate script.
+        * #### WARNING
+        * reading non-matching data will not give you a valid result.  It may 
+        * throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    DelegateActivity(d : UplcData) { 
+        const typeHelper = this.bridge.types.DelegateActivity;
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = typeHelper.__cast;
+
+        return cast.fromUplcData(d) as IntersectedEnum<DelegateActivity>;        
+    } /* enumReader helper */
+
+    /**
+        * reads UplcData known to fit the AnyData struct type,
+        * for the BasicDelegate script.
+        * #### WARNING
+        * reading non-matching data will not give you a valid result.  It may
+        * throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    AnyData(d: UplcData) {
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = this.bridge.__AnyDataCast;
+        return cast.fromUplcData(d);        
+    } /* structReader helper */
+
+    /**
+        * reads UplcData known to fit the DelegationDetail struct type,
+        * for the BasicDelegate script.
+        * #### WARNING
+        * reading non-matching data will not give you a valid result.  It may
+        * throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    DelegationDetail(d: UplcData) {
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = this.bridge.__DelegationDetailCast;
+        return cast.fromUplcData(d);        
+    } /* structReader helper */
+
+}
+
+/**
+ * Helper class for generating UplcData for the AnyData struct type.
+ */
+export class AnyDataHelper extends DataBridge {
+    isCallable = true
+    protected __cast = new Cast<
+        AnyData,
+        AnyDataLike
+    >(AnyDataSchema, { isMainnet: true });
+
+    // this uplc-generating capability is provided by a proxy in the inheritance chain
+    // see the callableDataBridge type on the 'datum' property in the contract bridge
+    // AnyData(fields: AnyDataLike) {
+    //    return this.__cast.toUplcData(fields);
+    //}
+} //mkStructHelperClass 
+
+
+/**
+ * Helper class for generating UplcData for the DelegationDetail struct type.
+ */
+export class DelegationDetailHelper extends DataBridge {
+    isCallable = true
+    protected __cast = new Cast<
+        DelegationDetail,
+        DelegationDetailLike
+    >(DelegationDetailSchema, { isMainnet: true });
+
+    // this uplc-generating capability is provided by a proxy in the inheritance chain
+    // see the callableDataBridge type on the 'datum' property in the contract bridge
+    // DelegationDetail(fields: DelegationDetailLike) {
+    //    return this.__cast.toUplcData(fields);
+    //}
+} //mkStructHelperClass 
 
 
 /**
@@ -209,8 +407,9 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
         purpose: string 
     } ) : UplcData
     /**
-    * generates  UplcData for "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate" with raw seed details included in fields.
-    */
+     * generates  UplcData for "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate" 
+     * with raw seed details included in fields.
+     */
     CreatingDelegate(fields: CapoLifecycleActivity$CreatingDelegateLike | {
             seed: TxOutputId | string,
             purpose: string
@@ -257,8 +456,9 @@ export class DelegateLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
         purpose: string 
     } ) : UplcData
     /**
-    * generates  UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe" with raw seed details included in fields.
-    */
+     * generates  UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe" 
+     * with raw seed details included in fields.
+     */
     ReplacingMe(fields: DelegateLifecycleActivity$ReplacingMeLike | {
             seed: TxOutputId | string,
             purpose: string
@@ -395,8 +595,9 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
         purpose: string 
     } ) : isActivity
     /**
-    * generates isActivity/redeemer wrapper with UplcData for "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate" with raw seed details included in fields.
-    */
+     * generates isActivity/redeemer wrapper with UplcData for "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate" 
+     * with raw seed details included in fields.
+     */
     CreatingDelegate(fields: CapoLifecycleActivity$CreatingDelegateLike | {
             seed: TxOutputId | string,
             purpose: string
@@ -443,8 +644,9 @@ export class DelegateLifecycleActivityHelperNested extends EnumBridge<isActivity
         purpose: string 
     } ) : isActivity
     /**
-    * generates isActivity/redeemer wrapper with UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe" with raw seed details included in fields.
-    */
+     * generates isActivity/redeemer wrapper with UplcData for "CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe" 
+     * with raw seed details included in fields.
+     */
     ReplacingMe(fields: DelegateLifecycleActivity$ReplacingMeLike | {
             seed: TxOutputId | string,
             purpose: string
@@ -656,8 +858,9 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
         dataType: string 
     } ) : isActivity
     /**
-    * generates isActivity/redeemer wrapper with UplcData for "unspecializedDelegate::DelegateActivity.CreatingDelegatedData" with raw seed details included in fields.
-    */
+     * generates isActivity/redeemer wrapper with UplcData for "unspecializedDelegate::DelegateActivity.CreatingDelegatedData" 
+     * with raw seed details included in fields.
+     */
     CreatingDelegatedData(fields: DelegateActivity$CreatingDelegatedDataLike | {
             seed: TxOutputId | string,
             dataType: string

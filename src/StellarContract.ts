@@ -46,8 +46,8 @@ import {
     type HeliosBundleClass,
 } from "./helios/HeliosScriptBundle.js";
 import type { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
-import type { DataBridge } from "./helios/dataBridge/DataBridge.js";
-import type { dataBridgeType, findActivityType, findDatumType, findReadDatumType } from "./helios/dataBridge/BridgeTypeUtils.js";
+import { DataBridge, ContractDataBridge, DataBridgeReader, ContractDataBridgeWithOtherDatum, ContractDataBridgeWithEnumDatum } from "./helios/dataBridge/DataBridge.js";
+import type { mustFindConcreteContractBridgeType, findActivityType, findDatumType, findReadDatumType, possiblyAbstractContractBridgeType } from "./helios/dataBridge/BridgeTypeUtils.js";
 
 type NetworkName = "testnet" | "mainnet";
 let configuredNetwork: NetworkName | undefined = undefined;
@@ -422,6 +422,28 @@ export class StellarContract<
         );
     }
 
+    /** each StellarContracts subclass needs to provide a scriptBundle class.
+     * @remarks
+     * Your script bundle MUST be defined in a separate file using a convention of 
+     * `‹scriptName›.hlbundle.ts`, and exported as a default class.  It should inherit 
+     * from HeliosScriptBundle or one of its subclasses.  Stellar contracts processes 
+     * this file, analyzes the on-chain types defined in your Helios sources, and generates 
+     * Typescript types and a data-bridging class for your script.  
+     * 
+     * Once the data-bridge class is generated, you should import it into your contract
+     * module and assign it to your `dataBridgeClass` attribute.
+     */
+    scriptBundle(): HeliosScriptBundle {
+        throw new Error(
+            `${this.constructor.name}: missing required implementation of scriptBundle()\n` +
+                `...each Stellar Contract must provide a scriptBundle() method. \n` +
+                `It should return an instance of a class defined in a *.hlbundle.js file.  At minimum:\n\n` +
+                `    export default class MyScriptBundle extends HeliosScriptBundle {\n\n    }\n\n` +
+                `We'll generate types for that .js file, based on the types in your Helios sources.\n` +
+                `Your scriptBundle() method can \`return new MyScriptBundle();\``
+        );
+    }
+
     /**
      * the dataBridgeClass attribute MUST be defined for any bundle having a datum type
      *  - this is the bridge class for converting from off-chain data types to on-chain data
@@ -432,11 +454,193 @@ export class StellarContract<
      * note that ***mint delegates*** do in fact have datum types. If you are defining
      * a custom delegate of that kind, you will need to define this attribute.
      */
-    dataBridgeClass: Option<typeof DataBridge> = null;
+    dataBridgeClass: Option<typeof ContractDataBridge> = null;
+    // dataBridgeClass : Option<typeof ContractDataBridgeWithEnumDatum | typeof ContractDataBridgeWithOtherDatum> = null
+
+    get onchain() : possiblyAbstractContractBridgeType<this> {
+        return this.getOnchainBridge()
+    }
+
+    get offchain() : possiblyAbstractContractBridgeType<this>["reader"] {
+        // ensures the dataBridge is initialized by accessing the 'onchain' getter
+        // accesses its data-reader.
+        return this.getOnchainBridge().reader 
+    }
+
+    get reader() : possiblyAbstractContractBridgeType<this>["reader"] {
+        // ensures the dataBridge is initialized by accessing the 'onchain' getter
+        // accesses its data-reader.
+        return this.getOnchainBridge().reader 
+    }
+
+    get newReadDatum(): findReadDatumType<this> {
+        const bridge = this.getOnchainBridge();
+        //@ts-expect-error probing for presence
+        const {readDatum} = bridge;
+        if (!readDatum) {
+            throw new Error(
+                `${(this as any).constructor.name}: this contract script doesn't use datum`
+            );
+        }
+
+        return readDatum;
+    }
+
+    _bundle: HeliosScriptBundle | undefined;
+    getBundle(): HeliosScriptBundle {
+        if (!this._bundle) {
+            this._bundle = this.scriptBundle() 
+        }
+        return this._bundle;
+    }
+
+    /**
+     * Provides access to the script's activities with type-safe structures needed by the validator script.
+     *
+     * @remarks - the **redeemer** data (needed by the contract script) is defined as one or
+     * more activity-types (e.g. in a struct, or an enum as indicated in the type of the last argument to
+     * the validator function).
+     *   - See below for more about type-generation if your editor doesn't  provide auto-complete for
+     *   the activities.
+     *
+     * ### A terminology note: Activities and Redeemers
+     *
+     * Although the conventional terminology of "redeemer" is universally well-known
+     * in the Cardano developer community, we find that defining one or more **activities**,
+     * with their associated ***redeemer data***, provides an effective semantic model offering
+     * better clarity and intution.
+     *
+     * Each type of contract activity corresponds to an enum variant in the contract script.
+     * For each of those variants, its redeemer data contextualizes the behavior of the requested
+     * transaction.  A non-enum redeemer-type implies that there is only one type of activity.
+     *
+     * Any data not present in the transaction inputs or outputs, but needed for
+     * specificity of the requested activity, can only be provided through these activity details.
+     * If that material is like a "claim ticket", it would match the "redeemer" type of labeling.
+     *
+     * Activity data can include any kinds of details needed by the validator: settings for what it
+     * is doing, options for how it is being done, or what remaining information the validator may
+     * need, to verify the task is being completed according to protocol.  Transactions containing
+     * a variety of inputs and output, each potential candidates for an activity, can use the activity
+     * details to resolve ambiguity so the validator easily acts on the correct items.
+     *
+     * ### Type generation
+     * The activity types should be available through type-safe auto-complete in your editor.  If not,
+     * you may need to install and configure the Stellar Contracts rollup plugins for importing .hl
+     * files and generating .d.ts for your .hlbundle.js files.  See the Stellar Contracts development
+     * guide for additional details.
+     *
+     */
+    get activity(): findActivityType<this> {
+        const bridge = this.onchain;
+        // each specific bridge has to have an activity type, but this code can't
+        // introspect that type.  It could be a getter OR a method, and Typescript can only
+        // be told it is one, or the other, concretely.  
+        // findActivityType() does probe for the specific type for specific contracts,
+        // at the **interface** level, but this code has no visibility of that.
+
+        //x@ts-expect-error accessing it in this way
+        const { activity } = bridge
+
+        return activity as any
+    }
+
+    /**
+     * Redirect for intuitive developers having a 'redeemer' habit
+     *
+     * @deprecated - We recommend using `activity` instead of `redeemer`
+     */
+    get redeemer(): findActivityType<this> {
+        return this.activity;
+    }
+
+    /**
+     * Provides access to the script's defined on-chain types, using a fluent
+     * API for type-safe generation of data conforming to on-chain data formats & types.
+     * @remarks
+     *
+     */
+    _dataBridge?: Option<ContractDataBridge>; // Option<BundleType<this>["mkDatum"]>
+    get mkDatum() : findDatumType<this> {
+        //x@ts-expect-error probing for presence
+        if (!this.onchain?.datum) throw new Error(`${this.constructor.name}: no datum is used on this type of script`);
+
+        //@ts-expect-error probing for presence
+        return this.onchain.datum;
+    }
+
+    getOnchainBridge(): possiblyAbstractContractBridgeType<this> {
+        if ("undefined" == typeof this._dataBridge) {
+            const { dataBridgeClass } = this;
+            if (!dataBridgeClass) {
+                if (this.usesContractScript) {
+                    throw new Error(
+                        `${this.constructor.name} MUST define dataBridgeClass = dataBridge‹YourScriptName›\n` +
+                            `  ... this dataBridge class is generated by heliosRollupTypeGen \n` +
+                            `  ... and imported (\`import dataBridge‹something› from "./‹yourScriptName›.bridge.js"\`)\n` +
+                            `      This critical class converts between off-chain and on-chain typed data`
+                    );
+                } else {
+                    console.log(`${this.constructor.name} dataBridgeClass = NONE`);
+                    this._dataBridge = null;
+                    //@ts-expect-error setting to degenerate type
+                    return null
+                }
+            }
+            const datumType = this.getBundle().locateDatumType();
+            try {
+                this._dataBridge = new dataBridgeClass(
+                    this.getBundle()
+                ) as any;
+            } catch (e) {
+                console.error(e);
+                debugger;
+            }
+            if (datumType) {
+                console.log(
+                    `${this.constructor.name} dataBridgeClass = `,
+                    dataBridgeClass.name
+                );
+                //@ts-expect-error probing for presence
+                if (!this._dataBridge.datum) {
+                    console.warn(
+                        `${this.constructor.name}: dataBridgeClass must define a datum accessor.  This is likely a code-generation problem.`
+                    );
+                }
+            }
+            //@ts-expect-error probing for presence
+            if (!this._dataBridge.activity) {
+                console.warn(
+                    `${this.constructor.name}: dataBridgeClass must define an activity accessor.  This is likely a code-generation problem.`
+                );
+            }
+            // if the code above did its job right, the dataBridge matches the expected type.
+            // ... cast it, rather than jumping through hoops to make TS happy
+            return (this._dataBridge as any);
+        }
+        
+        if (!this._dataBridge) {
+            throw new Error(
+                `${this.constructor.name}: this contract script doesn't have a dataBridgeClass defined`
+            );
+        }
+        //@ts-expect-error the type shoudl be fine, given the above logic.  The type is for the interface,
+        // and it's not worth hoop-jumping to make TS perfectly happy with how the sausage is made.
+        return this._dataBridge;
+    }
+
+    ADA(n: bigint | number): bigint {
+        const bn =
+            "number" == typeof n
+                ? BigInt(Math.round(1_000_000 * n))
+                : ((BigInt(1_000_000) * n) as bigint);
+        return bn;
+    }
 
     get isConnected() {
         return !!this.wallet;
     }
+
     /**
      * returns the wallet connection used by the current actor
      * @remarks
@@ -1454,189 +1658,6 @@ export class StellarContract<
     ) {
         console.warn("deprecated: use tcx.submit() instead");
         return tcx.submit({ signers, addlTxInfo });
-    }
-
-    ADA(n: bigint | number): bigint {
-        const bn =
-            "number" == typeof n
-                ? BigInt(Math.round(1_000_000 * n))
-                : ((BigInt(1_000_000) * n) as bigint);
-        return bn;
-    }
-
-    _bundle: HeliosScriptBundle | undefined;
-    getBundle(): HeliosScriptBundle {
-        if (!this._bundle) {
-            this._bundle = this.scriptBundle() 
-        }
-        return this._bundle;
-    }
-
-    /**
-     * Provides access to the script's activities with type-safe structures needed by the validator script.
-     *
-     * @remarks - the **redeemer** data (needed by the contract script) is defined as one or
-     * more activity-types (e.g. in a struct, or an enum as indicated in the type of the last argument to
-     * the validator function).
-     *   - See below for more about type-generation if your editor doesn't  provide auto-complete for
-     *   the activities.
-     *
-     * ### A terminology note: Activities and Redeemers
-     *
-     * Although the conventional terminology of "redeemer" is universally well-known
-     * in the Cardano developer community, we find that defining one or more **activities**,
-     * with their associated ***redeemer data***, provides an effective semantic model offering
-     * better clarity and intution.
-     *
-     * Each type of contract activity corresponds to an enum variant in the contract script.
-     * For each of those variants, its redeemer data contextualizes the behavior of the requested
-     * transaction.  A non-enum redeemer-type implies that there is only one type of activity.
-     *
-     * Any data not present in the transaction inputs or outputs, but needed for
-     * specificity of the requested activity, can only be provided through these activity details.
-     * If that material is like a "claim ticket", it would match the "redeemer" type of labeling.
-     *
-     * Activity data can include any kinds of details needed by the validator: settings for what it
-     * is doing, options for how it is being done, or what remaining information the validator may
-     * need, to verify the task is being completed according to protocol.  Transactions containing
-     * a variety of inputs and output, each potential candidates for an activity, can use the activity
-     * details to resolve ambiguity so the validator easily acts on the correct items.
-     *
-     * ### Type generation
-     * The activity types should be available through type-safe auto-complete in your editor.  If not,
-     * you may need to install and configure the Stellar Contracts rollup plugins for importing .hl
-     * files and generating .d.ts for your .hlbundle.js files.  See the Stellar Contracts development
-     * guide for additional details.
-     *
-     */
-    get activity(): findActivityType<this> {
-        const bridge = this.onchain;
-        // each specific bridge has to have an activity type, but this code can't
-        // introspect that type.  It could be a getter OR a method, and Typescript can only
-        // be told it is one, or the other, concretely.  
-        // findActivityType() does probe for the specific type for specific contracts,
-        // at the **interface** level, but this code has no visibility of that.
-
-        //@ts-expect-error accessing it in this way
-        const { activity } = bridge
-
-        return activity;
-    }
-
-    /**
-     * Redirect for intuitive developers having a 'redeemer' habit
-     *
-     * @deprecated - We recommend using `activity` instead of `redeemer`
-     */
-    get redeemer(): findActivityType<this> {
-        return this.activity;
-    }
-
-    /**
-     * Provides access to the script's defined on-chain types, using a fluent
-     * API for type-safe generation of data conforming to on-chain data formats & types.
-     * @remarks
-     *
-     */
-    _dataBridge?: Option<DataBridge>; // Option<BundleType<this>["mkDatum"]>
-
-    get mkDatum() : findDatumType<this> {
-        //@ts-expect-error probing for presence
-        if (!this.onchain?.datum) throw new Error(`${this.constructor.name}: no datum is used on this type of script`);
-
-        //@ts-expect-error probing for presence
-        return this.onchain.datum;
-    }
-
-    get onchain(): dataBridgeType<this> {
-        if ("undefined" == typeof this._dataBridge) {
-            const { dataBridgeClass } = this;
-            if (!dataBridgeClass) {
-                if (this.usesContractScript) {
-                    throw new Error(
-                        `${this.constructor.name} MUST define dataBridgeClass = dataBridge‹YourScriptName›\n` +
-                            `  ... this dataBridge class is generated by heliosRollupTypeGen \n` +
-                            `  ... and imported (\`import dataBridge‹something› from "./‹yourScriptName›.bridge.js"\`)\n` +
-                            `      This critical class converts between off-chain and on-chain typed data`
-                    );
-                } else {
-                    console.log(`${this.constructor.name} dataBridgeClass = NONE`);
-                    this._dataBridge = null;
-                    //@ts-expect-error setting to degenerate type
-                    return null
-                }
-            }
-            const datumType = this.getBundle().locateDatumType();
-            try {
-                this._dataBridge = new dataBridgeClass(
-                    this.getBundle()
-                ) as any;
-            } catch (e) {
-                console.error(e);
-                debugger;
-            }
-            if (datumType) {
-                console.log(
-                    `${this.constructor.name} dataBridgeClass = `,
-                    dataBridgeClass.name
-                );
-                //@ts-expect-error probing for presence
-                if (!this._dataBridge.datum) {
-                    console.warn(
-                        `${this.constructor.name}: dataBridgeClass must define a datum accessor.  This is likely a code-generation problem.`
-                    );
-                }
-            }
-            //@ts-expect-error probing for presence
-            if (!this._dataBridge.activity) {
-                console.warn(
-                    `${this.constructor.name}: dataBridgeClass must define an activity accessor.  This is likely a code-generation problem.`
-                );
-            }
-            // if the code above did its job right, the dataBridge matches the expected type.
-            // ... cast it, rather than jumping through hoops to make TS happy
-            return (this._dataBridge as any);
-        }
-        
-        if (!this._dataBridge) {
-            throw new Error(
-                `${this.constructor.name}: this contract script doesn't have a dataBridgeClass defined`
-            );
-        }
-        //@ts-expect-error the type shoudl be fine, given the above logic.  The type is for the interface,
-        // and it's not worth hoop-jumping to make TS perfectly happy with how the sausage is made.
-        return this._dataBridge;
-    }
-
-    get offchain() {
-        // ensures the dataBridge is initialized by accessing the 'onchain' getter
-        // accesses its data-reader.
-        return this.onchain.reader 
-    }
-
-    get newReadDatum(): findReadDatumType<this> {
-        const bridge = this.onchain;
-        //@ts-expect-error probing for presence
-        const {readDatum} = bridge;
-        if (!readDatum) {
-            throw new Error(
-                `${(this as any).constructor.name}: this contract script doesn't use datum`
-            );
-        }
-
-        return readDatum;
-    }
-
-    //! it requires each subclass to define a contractSource
-    scriptBundle(): HeliosScriptBundle {
-        throw new Error(
-            `${this.constructor.name}: missing required implementation of scriptBundle()\n` +
-                `...each Stellar Contract must provide a scriptBundle() method. \n` +
-                `It should return an instance of a class defined in a *.hlbundle.js file.  At minimum:\n\n` +
-                `    export default class MyScriptBundle extends HeliosScriptBundle {\n\n    }\n\n` +
-                `We'll generate types for that .js file, based on the types in your Helios sources.\n` +
-                `Your scriptBundle() method can \`return new MyScriptBundle();\``
-        );
     }
 
     //!!! todo: implement more and/or test me:

@@ -6,7 +6,7 @@
 // NOTE: this file is auto-generated; do not edit directly
 
 import { Cast } from "@helios-lang/contract-utils"
-import type { UplcData } from "@helios-lang/uplc";
+import type { UplcData, ConstrData } from "@helios-lang/uplc";
 import type { 
     IntLike,
     ByteArrayLike,
@@ -35,16 +35,20 @@ import type {
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
-import { DataBridge } from "../helios/dataBridge/DataBridge.js"
+import { 
+    DataBridge, 
+    ContractDataBridge, 
+    DataBridgeReader,
+    type callWith,
+} from "../helios/dataBridge/DataBridge.js"
 import { 
     EnumBridge,
     type JustAnEnum,
 } from "../helios/dataBridge/EnumBridge.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
+import type { IntersectedEnum } from "../helios/typeUtils.js"
 import type {hasSeed, isActivity} from "../StellarContract.js"
 
-// todo: namespacing for all the good stuff here
-// namespace CapoMinterDataBridge {
 
 import type {
     MinterActivity$CreatingNewSpendDelegate, MinterActivity$CreatingNewSpendDelegateLike,
@@ -66,7 +70,10 @@ import type * as types from "./CapoMinter.typeInfo.js";
  * main: src/minting/CapoMinter.hl, project: stellar-contracts
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
-export class CapoMinterDataBridge extends DataBridge {
+export class CapoMinterDataBridge extends ContractDataBridge {
+    static isAbstract = false;
+    isAbstract = false;
+datum=null // no datum type defined for this bundle (minter / rewards script)
 
 
     /**
@@ -75,6 +82,7 @@ export class CapoMinterDataBridge extends DataBridge {
     activity : MinterActivityHelper= new MinterActivityHelper(this.bundle, {isActivity: true}); // activityAccessor/enum
         MinterActivity: MinterActivityHelper = this.activity;
 
+    reader = new CapoMinterDataBridgeReader(this);
 
     types = {
         MinterActivity: new MinterActivityHelper(this.bundle),
@@ -86,6 +94,28 @@ export class CapoMinterDataBridge extends DataBridge {
 }
 export default CapoMinterDataBridge;
 
+  class CapoMinterDataBridgeReader extends DataBridgeReader {
+    constructor(public bridge: CapoMinterDataBridge) {
+        super();
+    }
+    /**
+        * reads UplcData known to fit the MinterActivity enum type,
+        * for the CapoMinter script.
+        * #### WARNING
+        * reading non-matching data will not give you a valid result.  It may 
+        * throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    MinterActivity(d : UplcData) { 
+        const typeHelper = this.bridge.types.MinterActivity;
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = typeHelper.__cast;
+
+        return cast.fromUplcData(d) as IntersectedEnum<MinterActivity>;        
+    } /* enumReader helper */
+
+
+}
 
 /**
  * Helper class for generating UplcData for variants of the MinterActivity enum type.
@@ -167,8 +197,9 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
         replacingUut: Option<number[]> 
     } ) : isActivity
     /**
-    * generates isActivity/redeemer wrapper with UplcData for "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate" with raw seed details included in fields.
-    */
+     * generates isActivity/redeemer wrapper with UplcData for "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate" 
+     * with raw seed details included in fields.
+     */
     CreatingNewSpendDelegate(fields: MinterActivity$CreatingNewSpendDelegateLike | {
             seed: TxOutputId | string,
             replacingUut: Option<number[]>

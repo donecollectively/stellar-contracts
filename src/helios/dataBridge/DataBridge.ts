@@ -29,6 +29,7 @@ import { TxOutputId } from "@helios-lang/ledger-babbage"
 import { StellarTxnContext } from "../../StellarTxnContext.js"
 import type { SeedAttrs } from "../../delegation/UutName.js"
 import type { UplcData } from "@helios-lang/uplc"
+import type { EnumBridge } from "./EnumBridge.js"
 
 // const rawDataMakerProxy = new Proxy(
 //     {},
@@ -125,21 +126,43 @@ import type { UplcData } from "@helios-lang/uplc"
 //     }
 // )
 
-// function dataMakerProxyBase() {}
-// dataMakerProxyBase.prototype = rawDataMakerProxy
+const rawDataBridgeProxy = new Proxy({}, {
+    apply(_, THIS: DataBridge, [x]: any[]) {
+        // typescript protects against this code-path being allowed by types, but
+        // this serves javascript-based callers and other run-time scenarios where the type-checking
+        // may not be enforced (SWC and vitest, notably)
+        if (!THIS.isCallable) throw new Error(`dataBridge ${THIS.constructor.name} is not callable`)
+
+        //@ts-expect-error drilling through the 'protected' attribute - TS can't know about
+        //  the relationship between this object and the DataBridge class
+        return THIS.__cast.toUplcData(x);
+    }
+})
+
+function dataBridgeProxyBase() {}
+dataBridgeProxyBase.prototype = rawDataBridgeProxy
 
 export type DataBridgeOptions = {
     isActivity?: boolean;
     isNested?: boolean;
 };
+export type callWith<ARGS, T extends DataBridge> 
+    = T & ( 
+        (x: ARGS) => ReturnType<T["_cast"]["toUplcData"]> 
+    )
 
-export class DataBridge { // extends (dataMakerProxyBase as any) {
+export class DataBridge extends (dataBridgeProxyBase as any) {
     protected __schema : TypeSchema 
     protected __cast: Cast<any,any>
     protected isActivity: boolean;
     protected isNested: boolean;
+    isCallable = false
+
+    readData: this["__cast"]["fromUplcData"] = 
+        (x: any) => this.__cast.fromUplcData(x) 
 
     constructor(protected bundle: HeliosScriptBundle, options: DataBridgeOptions = {}) {
+        super()
         // these start undefined, but are always forced into existence immediately
         // via getTypeSchema().  Any exceptions means this protocol wasn't followed 
         // correctly.
@@ -149,8 +172,8 @@ export class DataBridge { // extends (dataMakerProxyBase as any) {
         const { isActivity, isNested } = options
         this.isActivity = isActivity || false;
         this.isNested = isNested || false;
-
     }
+    
     // 
     // declare activity: DataBridge | ((...args:any) => UplcData)
 
@@ -205,4 +228,41 @@ export class DataBridge { // extends (dataMakerProxyBase as any) {
     // }
 }
 
+export class ContractDataBridge {
+    static isAbstract=true
+    isAbstract = true
+    declare types: Record<string, DataBridge | ((x: any) => UplcData)>
+    declare reader: Option<DataBridgeReader>;
+    declare datum: Option<DataBridge>;
+    declare activity: DataBridge;
+    constructor(public bundle: HeliosScriptBundle) {
+        this.bundle = bundle;
+    }
+    readData(x: any) {
+        if (!this.datum) throw new Error(`no datum on this dataBridge`)
+
+        return this.datum.readData(x)
+    }
+}
+
+export class ContractDataBridgeWithEnumDatum extends ContractDataBridge {    
+    static isAbstract=true
+    isAbstract = true
+    declare datum: EnumBridge;
+    constructor(public bundle: HeliosScriptBundle) {
+        super(bundle);
+    }
+}
+
+export class ContractDataBridgeWithOtherDatum extends ContractDataBridge {
+    static isAbstract=true
+    isAbstract = true
+    // declare datum: (any) => UplcData;
+    constructor(public bundle: HeliosScriptBundle) {
+        super(bundle);
+    }
+}
+
+export class DataBridgeReader {
+}
 

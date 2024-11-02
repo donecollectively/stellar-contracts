@@ -51,3 +51,19 @@ const testAll : TEST_ALL = ["a", "b", "c"];
 export type ReverseTuple<T extends any[]> = T extends [infer A, ...infer B] ? [...ReverseTuple<B>, A] : []
 type TEST_REVERSE /* ["c", "b", "a"] */ = ReverseTuple<TEST_ALL>;
 const testReverse : TEST_REVERSE = ["c", "b", "a"];
+
+type unionObjectsTester = {
+    a: number
+} | {b: string} | {c: boolean};
+// constructs a { a? : number, b? : string, c? : boolean } type
+// ... by using the ExtractLastOfUnion and ExtractRestOfUnion types to find
+// each element of the union, then interseting them
+type intersectedElements<T extends any[]> = T extends [infer A, ...infer B] ? A & intersectedElements<B> : {}
+type intersectedElementTypes = intersectedElements<EachUnionElement<unionObjectsTester>>;
+type merged = { [key in keyof intersectedElementTypes]: intersectedElementTypes[key] }
+
+export type IntersectedEnum<
+    T,
+    intersected = intersectedElements<EachUnionElement<T>>,
+    merged={ [key in keyof intersected]: Option<intersected[key]> }
+> = merged;

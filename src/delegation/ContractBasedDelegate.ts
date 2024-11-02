@@ -34,7 +34,7 @@ import { dumpAny } from "../diagnostics.js";
 import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 import type { CapoDelegateBundle, CapoDelegateBundleClass } from "./CapoDelegateBundle.js";
-import type { DataBridge } from "src/helios/dataBridge/DataBridge.js";
+import type { ContractDataBridge, ContractDataBridgeWithEnumDatum, ContractDataBridgeWithOtherDatum, DataBridge } from "src/helios/dataBridge/DataBridge.js";
 
 
 /**
@@ -45,9 +45,10 @@ import type { DataBridge } from "src/helios/dataBridge/DataBridge.js";
  */
 export class ContractBasedDelegate extends StellarDelegate {
     /**
-     * Each contract-based delegate must define its own dataBridgeClass
+     * Each contract-based delegate must define its own dataBridgeClass, but they all
+     * use the same essential template for the outer layer of their activity & datum interface.
      */
-    declare dataBridgeClass : typeof DataBridge;
+    declare dataBridgeClass : typeof ContractDataBridgeWithEnumDatum;
     static currentRev = 1n;
 
     /**

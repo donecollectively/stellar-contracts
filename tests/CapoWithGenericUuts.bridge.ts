@@ -6,7 +6,7 @@
 // NOTE: this file is auto-generated; do not edit directly
 
 import { Cast } from "@helios-lang/contract-utils"
-import type { UplcData } from "@helios-lang/uplc";
+import type { UplcData, ConstrData } from "@helios-lang/uplc";
 import type { 
     IntLike,
     ByteArrayLike,
@@ -35,16 +35,20 @@ import type {
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
-import { DataBridge } from "../src/helios/dataBridge/DataBridge.js"
+import { 
+    DataBridge, 
+    ContractDataBridge, 
+    DataBridgeReader,
+    type callWith,
+} from "../src/helios/dataBridge/DataBridge.js"
 import { 
     EnumBridge,
     type JustAnEnum,
 } from "../src/helios/dataBridge/EnumBridge.js"
 import type { tagOnly } from "../src/helios/HeliosScriptBundle.js"
+import type { IntersectedEnum } from "../src/helios/typeUtils.js"
 import type {hasSeed, isActivity} from "../src/StellarContract.js"
 
-// todo: namespacing for all the good stuff here
-// namespace CapoDataBridge {
 
 import type {
     RelativeDelegateLink, RelativeDelegateLinkLike,
@@ -70,9 +74,21 @@ import type * as types from "./CapoWithGenericUuts.typeInfo.js";
  * main: src/DefaultCapo.hl, project: stellar-contracts
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
-export class CapoDataBridge extends DataBridge {
-    datum: CapoDatumHelper = new CapoDatumHelper(this.bundle, {})   // datumAccessor/enum 
+export class CapoDataBridge extends ContractDataBridge {
+    static isAbstract = false;
+    isAbstract = false;
+    /**
+     * Helper class for generating UplcData for the datum type 
+     * for this contract script. 
+     */
+    datum: CapoDatumHelper
+     = new CapoDatumHelper(this.bundle, {})   // datumAccessor/enum
+
+    /**
+     * this is the specific type of datum for the Capo script
+     */
     CapoDatum: CapoDatumHelper = this.datum;
+
     readDatum = (d: UplcData) => {
         //@ts-expect-error drilling through the protected accessor.
         //   ... see more comments about that above
@@ -86,6 +102,7 @@ export class CapoDataBridge extends DataBridge {
     activity : CapoActivityHelper= new CapoActivityHelper(this.bundle, {isActivity: true}); // activityAccessor/enum
         CapoActivity: CapoActivityHelper = this.activity;
 
+    reader = new CapoDataBridgeReader(this);
 
     types = {
         CapoDatum: new CapoDatumHelper(this.bundle),
@@ -108,16 +125,117 @@ export class CapoDataBridge extends DataBridge {
         return this.__AnyDataCast.toUplcData(fields);
     },    }    
 
-    __RelativeDelegateLinkCast = new Cast<
+    protected __RelativeDelegateLinkCast = new Cast<
                 RelativeDelegateLink, RelativeDelegateLinkLike
             >(RelativeDelegateLinkSchema, { isMainnet: true });
-    __AnyDataCast = new Cast<
+    protected __AnyDataCast = new Cast<
                 AnyData, AnyDataLike
             >(AnyDataSchema, { isMainnet: true });
 
 
 }
 export default CapoDataBridge;
+
+  class CapoDataBridgeReader extends DataBridgeReader {
+    constructor(public bridge: CapoDataBridge) {
+        super();
+    }
+    /**
+        * reads UplcData known to fit the CapoDatum enum type,
+        * for the Capo script.
+        * #### WARNING
+        * reading non-matching data will not give you a valid result.  It may 
+        * throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    CapoDatum(d : UplcData) { 
+        const typeHelper = this.bridge.types.CapoDatum;
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = typeHelper.__cast;
+
+        return cast.fromUplcData(d) as IntersectedEnum<CapoDatum>;        
+    } /* enumReader helper */
+
+    /**
+        * reads UplcData known to fit the CapoActivity enum type,
+        * for the Capo script.
+        * #### WARNING
+        * reading non-matching data will not give you a valid result.  It may 
+        * throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    CapoActivity(d : UplcData) { 
+        const typeHelper = this.bridge.types.CapoActivity;
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = typeHelper.__cast;
+
+        return cast.fromUplcData(d) as IntersectedEnum<CapoActivity>;        
+    } /* enumReader helper */
+
+    /**
+        * reads UplcData known to fit the RelativeDelegateLink struct type,
+        * for the Capo script.
+        * #### WARNING
+        * reading non-matching data will not give you a valid result.  It may
+        * throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    RelativeDelegateLink(d: UplcData) {
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = this.bridge.__RelativeDelegateLinkCast;
+        return cast.fromUplcData(d);        
+    } /* structReader helper */
+
+    /**
+        * reads UplcData known to fit the AnyData struct type,
+        * for the Capo script.
+        * #### WARNING
+        * reading non-matching data will not give you a valid result.  It may
+        * throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    AnyData(d: UplcData) {
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = this.bridge.__AnyDataCast;
+        return cast.fromUplcData(d);        
+    } /* structReader helper */
+
+}
+
+/**
+ * Helper class for generating UplcData for the RelativeDelegateLink struct type.
+ */
+export class RelativeDelegateLinkHelper extends DataBridge {
+    isCallable = true
+    protected __cast = new Cast<
+        RelativeDelegateLink,
+        RelativeDelegateLinkLike
+    >(RelativeDelegateLinkSchema, { isMainnet: true });
+
+    // this uplc-generating capability is provided by a proxy in the inheritance chain
+    // see the callableDataBridge type on the 'datum' property in the contract bridge
+    // RelativeDelegateLink(fields: RelativeDelegateLinkLike) {
+    //    return this.__cast.toUplcData(fields);
+    //}
+} //mkStructHelperClass 
+
+
+/**
+ * Helper class for generating UplcData for the AnyData struct type.
+ */
+export class AnyDataHelper extends DataBridge {
+    isCallable = true
+    protected __cast = new Cast<
+        AnyData,
+        AnyDataLike
+    >(AnyDataSchema, { isMainnet: true });
+
+    // this uplc-generating capability is provided by a proxy in the inheritance chain
+    // see the callableDataBridge type on the 'datum' property in the contract bridge
+    // AnyData(fields: AnyDataLike) {
+    //    return this.__cast.toUplcData(fields);
+    //}
+} //mkStructHelperClass 
 
 
 /**

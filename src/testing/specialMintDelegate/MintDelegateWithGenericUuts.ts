@@ -3,10 +3,10 @@ import { type hasSeedUtxo } from "../../StellarTxnContext.js";
 import { BasicMintDelegate } from "../../minting/BasicMintDelegate.js";
 
 import uutMintingMintDelegateBundle from "./uutMintingMintDelegate.hlbundle.js";
-import DataBridge from "./uutMintingMintDelegate.bridge.js"
+import ummdDataBridge from "./uutMintingMintDelegate.bridge.js"
 
 export class MintDelegateWithGenericUuts extends BasicMintDelegate {
-    dataBridgeClass = DataBridge;
+    dataBridgeClass = ummdDataBridge;
     get delegateName() { return "uutMintingDelegate" }
 
     scriptBundle() {

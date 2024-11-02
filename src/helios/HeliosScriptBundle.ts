@@ -67,6 +67,8 @@ export type expanded<T> = {
     [k in keyof T]: T[k];
 };
 
+
+
 // Utility types representing runtime information retrievable through the Helios APi
 //   ... these are all ABOUT the types seen in the contract scripts
 export type typeDetails<T=undefined> = {
@@ -304,12 +306,6 @@ export type HeliosBundleTypes = {
 };
 
 export abstract class HeliosScriptBundle {
-    // these are the most abstract possible forms of the proxies for these 3 types
-    // specific subclasses will use some much more specific types for them instead
-    declare Activity: makesSomeActivityData<any>;
-    // declare mkDatum: Option<makesSomeUplcData<any>>;
-    declare readDatum: Option<readsSomeUplcData<any>>;
-
     static isCapoBundle = false;
     /**
      * optional attribute explicitly naming a type for the datum

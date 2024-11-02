@@ -9,7 +9,7 @@ import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
 import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
 import MintDelegateBundle from "../delegation/UnspecializedDelegate.hlbundle.js";
 import dataBridgeClass from "../delegation/UnspecializedDelegate.bridge.js";
-import type { DataBridge } from "src/helios/dataBridge/DataBridge.js";
+import type { ContractDataBridgeWithEnumDatum, DataBridge } from "src/helios/dataBridge/DataBridge.js";
 import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
 
@@ -22,7 +22,7 @@ import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
  **/
 export class BasicMintDelegate extends ContractBasedDelegate {
     static currentRev = 1n;
-    // declare dataBridgeClass : typeof DataMaker // dataBridgeClass  = dataBridgeClass
+    declare dataBridgeClass : typeof ContractDataBridgeWithEnumDatum // dataBridgeClass  = dataBridgeClass
 
     get delegateName() {
         return "mintDelegate";

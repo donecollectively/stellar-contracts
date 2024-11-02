@@ -6,7 +6,7 @@
 // NOTE: this file is auto-generated; do not edit directly
 
 import { Cast } from "@helios-lang/contract-utils"
-import type { UplcData } from "@helios-lang/uplc";
+import type { UplcData, ConstrData } from "@helios-lang/uplc";
 import type { 
     IntLike,
     ByteArrayLike,
@@ -35,16 +35,20 @@ import type {
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
-import { DataBridge } from "../helios/dataBridge/DataBridge.js"
+import { 
+    DataBridge, 
+    ContractDataBridge, 
+    DataBridgeReader,
+    type callWith,
+} from "../helios/dataBridge/DataBridge.js"
 import { 
     EnumBridge,
     type JustAnEnum,
 } from "../helios/dataBridge/EnumBridge.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
+import type { IntersectedEnum } from "../helios/typeUtils.js"
 import type {hasSeed, isActivity} from "../StellarContract.js"
 
-// todo: namespacing for all the good stuff here
-// namespace StructDatumTesterDataBridge {
 
 import type {
     struct3, struct3Like,
@@ -67,31 +71,49 @@ import type * as types from "./StructDatumTester.typeInfo.js";
  * main: src/testing/StructDatumTester.hl, project: stellar-contracts
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
-export class StructDatumTesterDataBridge extends DataBridge {
-    __datumCast = new Cast<
-        DatumStruct, DatumStructLike
-    >(DatumStructSchema, { isMainnet: true }); // datumAccessorCast
+export class StructDatumTesterDataBridge extends ContractDataBridge {
+    static isAbstract = false;
+    isAbstract = false;
+    /**
+     * Helper class for generating UplcData for the datum type 
+     * for this contract script. 
+     * 
+     * This accessor object is callable with the indicated argument-type
+     * @example - contract.mkDatum(arg: /* ... see the indicated callWith args \*\/)
+    *
+    * DatumStructLike is the same as the expanded type details given
 
-        /**
-         * reads UplcData for the datum type (DatumStruct) for the StructDatumTester script
-         */
-        readDatum(d: UplcData) { return this.__datumCast.fromUplcData(d); }
+     */
+    datum: callWith<DatumStructLike | {
+    field1: /*minStructField*/ IntLike
+    field2: /*minStructField*/ string
+    field3: /*minStructField*/ Map<string, OtherStructLike>
+}
+, DatumStructHelper>
+     = new DatumStructHelper(this.bundle, {}) as any  // datumAccessor/struct
+
 
     /**
-     * generates UplcData for the datum type (DatumStruct) for the StructDatumTester script
+     * this is the specific type of datum for the StructDatumTester script
+     * normally, we suggest accessing the `datum` property instead.
      */
-    datum(x: DatumStructLike) {
-        return this.__datumCast.toUplcData(x);
+    DatumStruct: callWith<DatumStructLike | {
+    field1: /*minStructField*/ IntLike
+    field2: /*minStructField*/ string
+    field3: /*minStructField*/ Map<string, OtherStructLike>
+}
+, DatumStructHelper> = this.datum;
+
+    readDatum = (d: UplcData) => {
+        //@ts-expect-error drilling through the protected accessor.
+        //   ... see more comments about that above
+        return this.datum.__cast.fromUplcData(d);
     }
 
-    /**
-     * generates UplcData for the datum type (DatumStruct) for the StructDatumTester script
-     * @remarks - same as {@link datum}
-     */
-    DatumStruct(fields: DatumStructLike) {
-        return this.__datumCast.toUplcData(fields);
-    } // datumAccessor/byName 
 
+    __activityCast = new Cast<
+        bigint, IntLike
+    >({"kind":"internal","name":"Int"}, { isMainnet: true }); // activityAccessorCast
             
     /**
      * generates UplcData for the activity type (undefined) for the StructDatumTester script
@@ -101,6 +123,7 @@ export class StructDatumTesterDataBridge extends DataBridge {
         return this.__activityCast.toUplcData(activity);
     }
 
+    reader = new StructDatumTesterDataBridgeReader(this);
 
     types = {
 
@@ -127,13 +150,13 @@ export class StructDatumTesterDataBridge extends DataBridge {
         return this.__DatumStructCast.toUplcData(fields);
     },    }    
 
-    __struct3Cast = new Cast<
+    protected __struct3Cast = new Cast<
                 struct3, struct3Like
             >(struct3Schema, { isMainnet: true });
-    __OtherStructCast = new Cast<
+    protected __OtherStructCast = new Cast<
                 OtherStruct, OtherStructLike
             >(OtherStructSchema, { isMainnet: true });
-    __DatumStructCast = new Cast<
+    protected __DatumStructCast = new Cast<
                 DatumStruct, DatumStructLike
             >(DatumStructSchema, { isMainnet: true });
 
@@ -141,6 +164,107 @@ export class StructDatumTesterDataBridge extends DataBridge {
 }
 export default StructDatumTesterDataBridge;
 
+  class StructDatumTesterDataBridgeReader extends DataBridgeReader {
+    constructor(public bridge: StructDatumTesterDataBridge) {
+        super();
+    }
+
+    /**
+        * reads UplcData known to fit the struct3 struct type,
+        * for the StructDatumTester script.
+        * #### WARNING
+        * reading non-matching data will not give you a valid result.  It may
+        * throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    struct3(d: UplcData) {
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = this.bridge.__struct3Cast;
+        return cast.fromUplcData(d);        
+    } /* structReader helper */
+
+    /**
+        * reads UplcData known to fit the OtherStruct struct type,
+        * for the StructDatumTester script.
+        * #### WARNING
+        * reading non-matching data will not give you a valid result.  It may
+        * throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    OtherStruct(d: UplcData) {
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = this.bridge.__OtherStructCast;
+        return cast.fromUplcData(d);        
+    } /* structReader helper */
+
+    /**
+        * reads UplcData known to fit the DatumStruct struct type,
+        * for the StructDatumTester script.
+        * #### WARNING
+        * reading non-matching data will not give you a valid result.  It may
+        * throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    DatumStruct(d: UplcData) {
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = this.bridge.__DatumStructCast;
+        return cast.fromUplcData(d);        
+    } /* structReader helper */
+
+}
+
+/**
+ * Helper class for generating UplcData for the struct3 struct type.
+ */
+export class struct3Helper extends DataBridge {
+    isCallable = true
+    protected __cast = new Cast<
+        struct3,
+        struct3Like
+    >(struct3Schema, { isMainnet: true });
+
+    // this uplc-generating capability is provided by a proxy in the inheritance chain
+    // see the callableDataBridge type on the 'datum' property in the contract bridge
+    // struct3(fields: struct3Like) {
+    //    return this.__cast.toUplcData(fields);
+    //}
+} //mkStructHelperClass 
+
+
+/**
+ * Helper class for generating UplcData for the OtherStruct struct type.
+ */
+export class OtherStructHelper extends DataBridge {
+    isCallable = true
+    protected __cast = new Cast<
+        OtherStruct,
+        OtherStructLike
+    >(OtherStructSchema, { isMainnet: true });
+
+    // this uplc-generating capability is provided by a proxy in the inheritance chain
+    // see the callableDataBridge type on the 'datum' property in the contract bridge
+    // OtherStruct(fields: OtherStructLike) {
+    //    return this.__cast.toUplcData(fields);
+    //}
+} //mkStructHelperClass 
+
+
+/**
+ * Helper class for generating UplcData for the DatumStruct struct type.
+ */
+export class DatumStructHelper extends DataBridge {
+    isCallable = true
+    protected __cast = new Cast<
+        DatumStruct,
+        DatumStructLike
+    >(DatumStructSchema, { isMainnet: true });
+
+    // this uplc-generating capability is provided by a proxy in the inheritance chain
+    // see the callableDataBridge type on the 'datum' property in the contract bridge
+    // DatumStruct(fields: DatumStructLike) {
+    //    return this.__cast.toUplcData(fields);
+    //}
+} //mkStructHelperClass 
 
 
 export const struct3Schema : StructTypeSchema = {
