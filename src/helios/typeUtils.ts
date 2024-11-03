@@ -65,5 +65,5 @@ type merged = { [key in keyof intersectedElementTypes]: intersectedElementTypes[
 export type IntersectedEnum<
     T,
     intersected = intersectedElements<EachUnionElement<T>>,
-    merged={ [key in keyof intersected]: Option<intersected[key]> }
-> = merged;
+    merged={ [key in keyof intersected]: intersected[key] }
+> = Partial<merged>;

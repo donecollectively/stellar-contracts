@@ -159,7 +159,7 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
     type hasSeed, 
     ContractDataBridge,
     DataBridge, 
-    DataBridgeReader ,
+    DataBridgeReaderClass ,
     EnumBridge,
     type JustAnEnum,
     type isActivity,
@@ -171,7 +171,7 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
                 `import { 
     DataBridge, 
     ContractDataBridge, 
-    DataBridgeReader,
+    DataBridgeReaderClass,
     type callWith,
 } from "${this.mkRelativeImport(
                     inputFile,
@@ -252,7 +252,7 @@ ${this.includeNamedSchemas()}
     }
 
     generateDataReaderClass(className: string) {
-        return `class ${className} extends DataBridgeReader {
+        return `class ${className} extends DataBridgeReaderClass {
     constructor(public bridge: ${this.bundle.bridgeClassName}) {
         super();
     }
@@ -272,8 +272,9 @@ ${this.includeStructReaders()}
                     typeName
                 ] as unknown as fullEnumTypeDetails;
                 const helperClassName = typeDetails.moreInfo.helperClassName;
+                const isDatum = this.datumTypeName === typeName;
 
-                return `    /**
+                const generateFunc = `    /**
         * reads UplcData *known to fit the **${typeName}*** enum type,
         * for the ${this.bundle.program.name} script.
         * ### Standard WARNING
@@ -294,6 +295,14 @@ ${this.includeStructReaders()}
 
         return cast.fromUplcData(d) as IntersectedEnum<${typeName}>;        
     } /* enumReader helper */\n`;
+
+                if (isDatum) {
+                    return (
+                        `datum = (d: UplcData) => { return this.${typeName}(d) }\n` +
+                        generateFunc
+                    );
+                }
+                return generateFunc;
             })
             .join("\n");
     }
@@ -307,7 +316,8 @@ ${this.includeStructReaders()}
             .map((typeName) => {
                 const typeDetails = this.typeBundle.namedTypes[typeName];
                 const castMemberName = `__${typeName}Cast`;
-                return `    /**
+                const isDatum = this.datumTypeName === typeName;
+                const func = `    /**
         * reads UplcData *known to fit the **${typeName}*** struct type,
         * for the ${this.bundle.program.name} script.
         * ### Standard WARNING
@@ -326,6 +336,13 @@ ${this.includeStructReaders()}
         const cast = this.bridge.${castMemberName};
         return cast.fromUplcData(d);        
     } /* structReader helper */\n`;
+                if (isDatum) {
+                    return (
+                        `datum = (d: UplcData) => { return this.${typeName}(d) }\n` +
+                        func
+                    );
+                }
+                return func;
             })
             .join("\n");
     }

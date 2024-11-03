@@ -38,7 +38,7 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 import { 
     DataBridge, 
     ContractDataBridge, 
-    DataBridgeReader,
+    DataBridgeReaderClass,
     type callWith,
 } from "../../helios/dataBridge/DataBridge.js"
 import { 
@@ -192,7 +192,7 @@ export class uutMintingDelegateDataBridge extends ContractDataBridge {
 }
 export default uutMintingDelegateDataBridge;
 
-class uutMintingDelegateDataBridgeReader extends DataBridgeReader {
+class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
     constructor(public bridge: uutMintingDelegateDataBridge) {
         super();
     }

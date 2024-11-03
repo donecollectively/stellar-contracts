@@ -38,7 +38,7 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 import { 
     DataBridge, 
     ContractDataBridge, 
-    DataBridgeReader,
+    DataBridgeReaderClass,
     type callWith,
 } from "../helios/dataBridge/DataBridge.js"
 import { 
@@ -101,7 +101,7 @@ datum=null // no datum type defined for this bundle (minter / rewards script)
 }
 export default CapoMinterDataBridge;
 
-class CapoMinterDataBridgeReader extends DataBridgeReader {
+class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
     constructor(public bridge: CapoMinterDataBridge) {
         super();
     }

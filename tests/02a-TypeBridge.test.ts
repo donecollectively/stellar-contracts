@@ -188,7 +188,9 @@ describe("Type Bridge", async () => {
                     "uutMintingDelegate::DelegateDatum.ScriptReference"
                 );
                 const result = offchain.DelegateDatum(datum);
+                const result2 = readDatum(datum)
                 expect(result).toEqual({ ScriptReference: {} });
+                expect(result2).toEqual({ ScriptReference: {} });
                 // expect(result.variant).toBe("ScriptReference");
             });
         });
@@ -233,7 +235,7 @@ describe("Type Bridge", async () => {
                         // expect(backToJS.type).toBe("SampleDatum");
                         type t = typeof backToJS;
                         //x@ts-expect-error on the assumption of the enum variant
-                        expect(backToJS.HasNestedEnum.nested.justATag).toEqual(
+                        expect(backToJS.HasNestedEnum!.nested.justATag).toEqual(
                             {}
                         );
                     });

@@ -30,6 +30,7 @@ import { StellarTxnContext } from "../../StellarTxnContext.js"
 import type { SeedAttrs } from "../../delegation/UutName.js"
 import type { UplcData } from "@helios-lang/uplc"
 import type { EnumBridge } from "./EnumBridge.js"
+import type { readsUplcTo } from "./BridgeTypeUtils.js"
 
 // const rawDataMakerProxy = new Proxy(
 //     {},
@@ -232,9 +233,11 @@ export class ContractDataBridge {
     static isAbstract : (true | false) = true as const
     isAbstract : (true | false) = true as const
     declare types: Record<string, DataBridge | ((x: any) => UplcData)>
-    declare reader: Option<DataBridgeReader>;
+    declare reader: Option<DataBridgeReaderClass>;
     declare datum: Option<DataBridge>;
     declare activity: DataBridge;
+    declare readDatum : Option<readsUplcData<any>>
+
     constructor(public bundle: HeliosScriptBundle) {
         this.bundle = bundle;
     }
@@ -262,7 +265,10 @@ export class ContractDataBridgeWithOtherDatum extends ContractDataBridge {
         super(bundle);
     }
 }
-
-export class DataBridgeReader {
+// type DataBridgeReader = DataBridgeReaderClass & {
+//     [key: string]: (x : UplcData) => any
+// }
+export class DataBridgeReaderClass {
+    declare datum: Option<readsUplcTo<any>>
 }
 

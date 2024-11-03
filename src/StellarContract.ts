@@ -46,7 +46,7 @@ import {
     type HeliosBundleClass,
 } from "./helios/HeliosScriptBundle.js";
 import type { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
-import { DataBridge, ContractDataBridge, DataBridgeReader, ContractDataBridgeWithOtherDatum, ContractDataBridgeWithEnumDatum } from "./helios/dataBridge/DataBridge.js";
+import { DataBridge, ContractDataBridge, DataBridgeReaderClass, ContractDataBridgeWithOtherDatum, ContractDataBridgeWithEnumDatum } from "./helios/dataBridge/DataBridge.js";
 import type { mustFindConcreteContractBridgeType, findActivityType, findDatumType, findReadDatumType, possiblyAbstractContractBridgeType } from "./helios/dataBridge/BridgeTypeUtils.js";
 
 type NetworkName = "testnet" | "mainnet";
@@ -519,7 +519,7 @@ export class StellarContract<
      */
     get newReadDatum(): findReadDatumType<this> {
         const bridge = this.getOnchainBridge();
-        //@ts-expect-error probing for presence
+        //x@ts-expect-error probing for presence
         const {readDatum} = bridge;
         if (!readDatum) {
             throw new Error(

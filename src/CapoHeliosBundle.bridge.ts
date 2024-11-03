@@ -38,7 +38,7 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 import { 
     DataBridge, 
     ContractDataBridge, 
-    DataBridgeReader,
+    DataBridgeReaderClass,
     type callWith,
 } from "./helios/dataBridge/DataBridge.js"
 import { 
@@ -153,10 +153,11 @@ export class CapoDataBridge extends ContractDataBridge {
 }
 export default CapoDataBridge;
 
-class CapoDataBridgeReader extends DataBridgeReader {
+class CapoDataBridgeReader extends DataBridgeReaderClass {
     constructor(public bridge: CapoDataBridge) {
         super();
     }
+datum = (d: UplcData) => { return this.CapoDatum(d) }
     /**
         * reads UplcData *known to fit the **CapoDatum*** enum type,
         * for the Capo script.

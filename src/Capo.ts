@@ -310,13 +310,19 @@ type PreconfiguredDelegate<T extends StellarDelegate> = Omit<
     "delegate" | "delegateValidatorHash"
 >;
 
-export interface basicRoleMap {
-    govAuthority: RoleInfo<any, any, StellarDelegate, any>;
-    mintDelegate: RoleInfo<any, any, ContractBasedDelegate, any>;
-    spendDelegate: RoleInfo<any, any, ContractBasedDelegate, any>;
-    namedDelegate: RoleInfo<any, any, StellarDelegate, any>;
-
-    [anyOtherRoleNames: string]: RoleInfo<any, any, StellarDelegate, any>;
+export type basicRoleMap <
+    anyOtherRoles extends {[k : string]: RoleInfo<any,any,ContractBasedDelegate, any>}={},
+    defaultRoles={
+        govAuthority: RoleInfo<any, "capoGov", StellarDelegate, any>;
+        mintDelegate: RoleInfo<any, "mintDgt", BasicMintDelegate, any>;
+        spendDelegate: RoleInfo<any, "spendDgt", ContractBasedDelegate, any>;
+        namedDelegate: RoleInfo<any, "namedDgt", StellarDelegate, any>;
+    },
+> = {
+    [k in 
+        keyof anyOtherRoles | keyof defaultRoles
+    ] : k extends keyof anyOtherRoles ? anyOtherRoles[k] 
+    : k extends keyof defaultRoles ? defaultRoles[k] : never
 }
 
 /**
@@ -1734,7 +1740,7 @@ export abstract class Capo<
     // myDelegateRoles extends basicRoleMap
     //        >(
     // this: THISTYPE
-    basicRoleMap; // & myDelegateRoles;
+    basicRoleMap<any>; // & myDelegateRoles;
 
     basicDelegateRoles(): basicRoleMap {
         const myRoles = delegateRoles({
@@ -1787,9 +1793,13 @@ export abstract class Capo<
                     },
                 },
             }),
-            namedDelegate: defineRole("namedDgt", ContractBasedDelegate, {
-                // no named delegates by default
-            }),
+            namedDelegate: defineRole("namedDgt", 
+                //@ts-expect-error assigning abstract class where it prefers a concrete class
+                StellarDelegate,                 
+                {
+                    // no named delegates by default
+                }
+            ),
         });
         return myRoles;
         //as ROLEMAP
@@ -2053,13 +2063,7 @@ export abstract class Capo<
     }
 
     async getGovDelegate(charterDatum?: CharterDatumProps) {
-        if (!charterDatum) {
-            charterDatum = await this.findCharterDatum();
-        }
-        return this.connectDelegateWithLink(
-            "govDelegate",
-            charterDatum.govAuthorityLink
-        );
+        throw new Error("unused")
     }
 
     /**
