@@ -47,6 +47,7 @@ import {
 } from "../helios/dataBridge/EnumBridge.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../helios/typeUtils.js"
+import { StellarCast } from "../helios/dataBridge/StellarCast.js"
 import type {hasSeed, isActivity} from "../StellarContract.js"
 
 
@@ -112,7 +113,7 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
     }
 
 
-    __activityCast = new Cast<
+    __activityCast = new StellarCast<
         bigint, IntLike
     >({"kind":"internal","name":"Int"}, { isMainnet: true }); // activityAccessorCast
             
@@ -164,13 +165,13 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
         return this.__DatumStructCast.toUplcData(fields);
     },    }    
 
-    protected __struct3Cast = new Cast<
+    protected __struct3Cast = new StellarCast<
                 struct3, struct3Like
             >(struct3Schema, { isMainnet: true });
-    protected __OtherStructCast = new Cast<
+    protected __OtherStructCast = new StellarCast<
                 OtherStruct, OtherStructLike
             >(OtherStructSchema, { isMainnet: true });
-    protected __DatumStructCast = new Cast<
+    protected __DatumStructCast = new StellarCast<
                 DatumStruct, DatumStructLike
             >(DatumStructSchema, { isMainnet: true });
 
@@ -250,7 +251,7 @@ class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
  */
 export class struct3Helper extends DataBridge {
     isCallable = true
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
         struct3,
         struct3Like
     >(struct3Schema, { isMainnet: true });
@@ -272,7 +273,7 @@ export class struct3Helper extends DataBridge {
  */
 export class OtherStructHelper extends DataBridge {
     isCallable = true
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
         OtherStruct,
         OtherStructLike
     >(OtherStructSchema, { isMainnet: true });
@@ -294,7 +295,7 @@ export class OtherStructHelper extends DataBridge {
  */
 export class DatumStructHelper extends DataBridge {
     isCallable = true
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
         DatumStruct,
         DatumStructLike
     >(DatumStructSchema, { isMainnet: true });

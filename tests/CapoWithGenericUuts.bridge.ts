@@ -47,6 +47,7 @@ import {
 } from "../src/helios/dataBridge/EnumBridge.js"
 import type { tagOnly } from "../src/helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../src/helios/typeUtils.js"
+import { StellarCast } from "../src/helios/dataBridge/StellarCast.js"
 import type {hasSeed, isActivity} from "../src/StellarContract.js"
 
 
@@ -142,10 +143,10 @@ export class CapoDataBridge extends ContractDataBridge {
         return this.__AnyDataCast.toUplcData(fields);
     },    }    
 
-    protected __RelativeDelegateLinkCast = new Cast<
+    protected __RelativeDelegateLinkCast = new StellarCast<
                 RelativeDelegateLink, RelativeDelegateLinkLike
             >(RelativeDelegateLinkSchema, { isMainnet: true });
-    protected __AnyDataCast = new Cast<
+    protected __AnyDataCast = new StellarCast<
                 AnyData, AnyDataLike
             >(AnyDataSchema, { isMainnet: true });
 
@@ -249,7 +250,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
  */
 export class RelativeDelegateLinkHelper extends DataBridge {
     isCallable = true
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
         RelativeDelegateLink,
         RelativeDelegateLinkLike
     >(RelativeDelegateLinkSchema, { isMainnet: true });
@@ -271,7 +272,7 @@ export class RelativeDelegateLinkHelper extends DataBridge {
  */
 export class AnyDataHelper extends DataBridge {
     isCallable = true
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
         AnyData,
         AnyDataLike
     >(AnyDataSchema, { isMainnet: true });
@@ -292,7 +293,7 @@ export class AnyDataHelper extends DataBridge {
  * Helper class for generating UplcData for variants of the ***CapoDatum*** enum type.
  */
 export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
        CapoDatum,
        CapoDatumLike
    >(CapoDatumSchema, { isMainnet: true });
@@ -362,7 +363,7 @@ export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
  * Helper class for generating UplcData for variants of the ***CapoActivity*** enum type.
  */
 export class CapoActivityHelper extends EnumBridge<isActivity> {
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
        CapoActivity,
        CapoActivityLike
    >(CapoActivitySchema, { isMainnet: true });

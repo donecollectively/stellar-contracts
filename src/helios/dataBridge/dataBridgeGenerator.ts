@@ -15,7 +15,7 @@ import type {
     VariantTypeSchema,
 } from "@helios-lang/type-utils";
 import type { EnumMemberType } from "@helios-lang/compiler/src/typecheck/common.js";
-import { Cast, genTypes } from "@helios-lang/contract-utils";
+import { Cast, genTypes, TypeGenerator } from "@helios-lang/contract-utils";
 import { BundleBasedGenerator } from "./BundleBasedGenerator.js";
 
 type dataBridgeTypeInfo = {
@@ -98,7 +98,11 @@ export class dataBridgeGenerator
 
         return {
             castCode: `
-                 protected ${castMemberName}: Cast<${structName}Like, ${structName}> = new Cast<${structName}Like, ${structName}>(this.schema.${structName}, { isMainnet: true });
+                 protected ${castMemberName}: StellarCast<${
+                    structName}Like, ${structName                        
+                    }> = new StellarCast<${
+                        structName}Like, ${structName
+                    }>(this.schema.${structName}, { isMainnet: true });
             `,
             accessorCode: `${structName}(fields: ${structName}Like}) {
                 return this.${castMemberName}.toUplcData(fields);
@@ -161,6 +165,7 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
     DataBridge, 
     DataBridgeReaderClass ,
     EnumBridge,
+    StellarCast,
     type JustAnEnum,
     type isActivity,
     type callWith,
@@ -191,6 +196,10 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
                 `import type { IntersectedEnum } from "${this.mkRelativeImport(
                     inputFile,
                     "src/helios/typeUtils.js"
+                )}"\n` +
+                `import { StellarCast } from "${this.mkRelativeImport(
+                    inputFile,
+                    "src/helios/dataBridge/StellarCast.js"
                 )}"\n` +
                 `import type {hasSeed, isActivity} from "${this.mkRelativeImport(
                     inputFile,
@@ -411,7 +420,7 @@ ${this.includeStructReaders()}
                 const castMemberName = `__${typeName}Cast`;
                 this.additionalCastMemberDefs[
                     castMemberName
-                ] = `    protected ${castMemberName} = new Cast<
+                ] = `    protected ${castMemberName} = new StellarCast<
                 ${canonicalTypeName}, ${permissiveTypeName}
             >(${typeName}Schema, { isMainnet: true });\n`;
                 return (
@@ -486,7 +495,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             activityDetails.permissiveType;
         const activityTypeName = activityDetails.canonicalTypeName!;
         const castDef = `
-    __activityCast = new Cast<
+    __activityCast = new StellarCast<
         ${canonicalType}, ${permissiveType}
     >(${schemaName}, { isMainnet: true }); // activityAccessorCast`;
 
@@ -654,7 +663,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             );
         }
         const { canonicalType, permissiveType, typeSchema } = details;
-        const castDef = `    protected __cast = new Cast<
+        const castDef = `    protected __cast = new StellarCast<
         ${canonicalType}, ${permissiveType}
     >(${typeSchema}, { isMainnet: true }); // datumAccessorCast\n`;
 
@@ -751,7 +760,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             ` */\n` +
             `export class ${structName}Helper extends DataBridge {\n` +
             `    isCallable = true\n` +
-            `    protected __cast = new Cast<\n` +
+            `    protected __cast = new StellarCast<\n` +
             `        ${typeDetails.canonicalTypeName},\n` +
             `        ${typeDetails.permissiveTypeName}\n` +
             `    >(${structName}Schema, { isMainnet: true });\n` +
@@ -789,7 +798,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             ` * Helper class for generating UplcData for variants of the ***${enumName}*** enum type.\n` +
             ` */\n` +
             `export class ${helperClassName} extends ${parentClass} {\n` +
-            `    protected __cast = new Cast<\n` +
+            `    protected __cast = new StellarCast<\n` +
             `       ${typeDetails.canonicalTypeName},\n` +
             `       ${typeDetails.permissiveTypeName}\n` +
             `   >(${enumName}Schema, { isMainnet: true });\n` +
@@ -830,6 +839,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         //     isActivity ? "isActivity" : "JustAnEnum"
         // }, Nested\n        >`;
 
+        const nestedFieldName = fieldName;
         return (
             `    /**\n` +
             `     * access to different variants of the ***nested ${nestedEnumName}*** type needed for ***${enumName}:${variantName}***.\n` +
@@ -839,8 +849,9 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             {isNested: true, isActivity: ${isActivity ? "true" : "false"} 
         });\n` +
             `        ${"//"}@ts-expect-error drilling through the protected accessor.  See more comments about that above\n` +
-            `        nestedAccessor.mkDataVia((nested: ${nestedEnumName}Like) => {\n` +
-            `           return  this.mkUplcData({ ${variantName}: { ${fieldName}: nested } }, 
+            `        nestedAccessor.mkDataVia(\n`+
+            `            (${nestedFieldName}: ${nestedEnumName}Like) => {\n` +
+            `                return  this.mkUplcData({ ${variantName}: ${nestedFieldName} }, 
             ${enumPathExpr});\n` +
             `        });\n` +
             `        return nestedAccessor;\n` +
@@ -1040,8 +1051,8 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `    ${variantName}(value: hasSeed | ${oneField.permissiveType}) : ${returnType} {\n` +
                 `        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);\n` +
                 `        const uplc = this.mkUplcData({ \n` +
-                `           ${variantName}: { ${fieldName}: seedTxOutputId } \n` +
-                `        },${enumPathExpr});  /*SingleField/seeded enum variant*/\n` +
+                `           ${variantName}: seedTxOutputId\n` +
+                `        },${enumPathExpr});  /*singleField/seeded enum variant*/\n` +
                 `       return uplc;\n` +
                 `    }`
             );
@@ -1052,6 +1063,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             thatType = `${oneField.permissiveTypeName} | ${oneField.permissiveType}`;
             expandedTypeNote = `     * @remarks - ***${oneField.permissiveTypeName}*** is the same as the expanded field-type.\n`;
         }
+        const argNameIsFieldName = fieldName;
         return (
             `    /**\n` +
             `     * generates ${
@@ -1059,11 +1071,11 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             } UplcData for ***${enumPathExpr}***\n${expandedTypeNote}` +
             `     */\n` +
             `    ${variantName}(\n` +
-            `        ${fieldName}: ${thatType.trimEnd()}\n` +
+            `        ${argNameIsFieldName}: ${thatType.trimEnd()}\n` +
             `    ) : ${returnType} {\n` +
             `        const uplc = this.mkUplcData({ \n` +
-            `           ${variantName}: { ${fieldName}: ${fieldName} } \n` +
-            `        }, ${enumPathExpr}); /*SingleField enum variant*/\n` +
+            `           ${variantName}: ${argNameIsFieldName}\n` +
+            `        }, ${enumPathExpr}); /*singleField enum variant*/\n` +
             `       return uplc;\n` +
             `    }`
         );

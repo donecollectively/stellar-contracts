@@ -47,6 +47,7 @@ import {
 } from "../helios/dataBridge/EnumBridge.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../helios/typeUtils.js"
+import { StellarCast } from "../helios/dataBridge/StellarCast.js"
 import type {hasSeed, isActivity} from "../StellarContract.js"
 
 
@@ -170,10 +171,10 @@ export class UnspecializedDelegateBridge extends ContractDataBridge {
         return this.__DelegationDetailCast.toUplcData(fields);
     },    }    
 
-    protected __AnyDataCast = new Cast<
+    protected __AnyDataCast = new StellarCast<
                 AnyData, AnyDataLike
             >(AnyDataSchema, { isMainnet: true });
-    protected __DelegationDetailCast = new Cast<
+    protected __DelegationDetailCast = new StellarCast<
                 DelegationDetail, DelegationDetailLike
             >(DelegationDetailSchema, { isMainnet: true });
 
@@ -386,7 +387,7 @@ class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
  */
 export class AnyDataHelper extends DataBridge {
     isCallable = true
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
         AnyData,
         AnyDataLike
     >(AnyDataSchema, { isMainnet: true });
@@ -408,7 +409,7 @@ export class AnyDataHelper extends DataBridge {
  */
 export class DelegationDetailHelper extends DataBridge {
     isCallable = true
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
         DelegationDetail,
         DelegationDetailLike
     >(DelegationDetailSchema, { isMainnet: true });
@@ -429,7 +430,7 @@ export class DelegationDetailHelper extends DataBridge {
  * Helper class for generating UplcData for variants of the ***DelegateDatum*** enum type.
  */
 export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
        DelegateDatum,
        DelegateDatumLike
    >(DelegateDatumSchema, { isMainnet: true });
@@ -465,8 +466,8 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
 }
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           IsDelegation: { dd: dd } 
-        }, "unspecializedDelegate::DelegateDatum.IsDelegation"); /*SingleField enum variant*/
+           IsDelegation: dd
+        }, "unspecializedDelegate::DelegateDatum.IsDelegation"); /*singleField enum variant*/
        return uplc;
     }
 
@@ -486,7 +487,7 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
  * Helper class for generating UplcData for variants of the ***CapoLifecycleActivity*** enum type.
  */
 export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
        CapoLifecycleActivity,
        CapoLifecycleActivityLike
    >(CapoLifecycleActivitySchema, { isMainnet: true });
@@ -536,7 +537,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
  * Helper class for generating UplcData for variants of the ***DelegateLifecycleActivity*** enum type.
  */
 export class DelegateLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
        DelegateLifecycleActivity,
        DelegateLifecycleActivityLike
    >(DelegateLifecycleActivitySchema, { isMainnet: true });
@@ -606,7 +607,7 @@ export class DelegateLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
  * Helper class for generating UplcData for variants of the ***SpendingActivity*** enum type.
  */
 export class SpendingActivityHelper extends EnumBridge<JustAnEnum> {
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
        SpendingActivity,
        SpendingActivityLike
    >(SpendingActivitySchema, { isMainnet: true });
@@ -618,8 +619,8 @@ export class SpendingActivityHelper extends EnumBridge<JustAnEnum> {
         recId: number[]
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           _placeholder1SA: { recId: recId } 
-        }, "unspecializedDelegate::SpendingActivity._placeholder1SA"); /*SingleField enum variant*/
+           _placeholder1SA: recId
+        }, "unspecializedDelegate::SpendingActivity._placeholder1SA"); /*singleField enum variant*/
        return uplc;
     }
 }
@@ -629,7 +630,7 @@ export class SpendingActivityHelper extends EnumBridge<JustAnEnum> {
  * Helper class for generating UplcData for variants of the ***MintingActivity*** enum type.
  */
 export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
        MintingActivity,
        MintingActivityLike
    >(MintingActivitySchema, { isMainnet: true });
@@ -642,8 +643,8 @@ export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
     _placeholder1MA(value: hasSeed | TxOutputId | string) : UplcData {
         const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         const uplc = this.mkUplcData({ 
-           _placeholder1MA: { seed: seedTxOutputId } 
-        },"unspecializedDelegate::MintingActivity._placeholder1MA");  /*SingleField/seeded enum variant*/
+           _placeholder1MA: seedTxOutputId
+        },"unspecializedDelegate::MintingActivity._placeholder1MA");  /*singleField/seeded enum variant*/
        return uplc;
     }
 }
@@ -653,7 +654,7 @@ export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
  * Helper class for generating UplcData for variants of the ***BurningActivity*** enum type.
  */
 export class BurningActivityHelper extends EnumBridge<JustAnEnum> {
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
        BurningActivity,
        BurningActivityLike
    >(BurningActivitySchema, { isMainnet: true });
@@ -665,8 +666,8 @@ export class BurningActivityHelper extends EnumBridge<JustAnEnum> {
         recId: number[]
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           _placeholder1BA: { recId: recId } 
-        }, "unspecializedDelegate::BurningActivity._placeholder1BA"); /*SingleField enum variant*/
+           _placeholder1BA: recId
+        }, "unspecializedDelegate::BurningActivity._placeholder1BA"); /*singleField enum variant*/
        return uplc;
     }
 }
@@ -676,7 +677,7 @@ export class BurningActivityHelper extends EnumBridge<JustAnEnum> {
  * Helper class for generating UplcData for variants of the ***CapoLifecycleActivity*** enum type.
  */
 export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
        CapoLifecycleActivity,
        CapoLifecycleActivityLike
    >(CapoLifecycleActivitySchema, { isMainnet: true });
@@ -726,7 +727,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
  * Helper class for generating UplcData for variants of the ***DelegateLifecycleActivity*** enum type.
  */
 export class DelegateLifecycleActivityHelperNested extends EnumBridge<isActivity> {
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
        DelegateLifecycleActivity,
        DelegateLifecycleActivityLike
    >(DelegateLifecycleActivitySchema, { isMainnet: true });
@@ -796,7 +797,7 @@ export class DelegateLifecycleActivityHelperNested extends EnumBridge<isActivity
  * Helper class for generating UplcData for variants of the ***SpendingActivity*** enum type.
  */
 export class SpendingActivityHelperNested extends EnumBridge<isActivity> {
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
        SpendingActivity,
        SpendingActivityLike
    >(SpendingActivitySchema, { isMainnet: true });
@@ -808,8 +809,8 @@ export class SpendingActivityHelperNested extends EnumBridge<isActivity> {
         recId: number[]
     ) : isActivity {
         const uplc = this.mkUplcData({ 
-           _placeholder1SA: { recId: recId } 
-        }, "unspecializedDelegate::SpendingActivity._placeholder1SA"); /*SingleField enum variant*/
+           _placeholder1SA: recId
+        }, "unspecializedDelegate::SpendingActivity._placeholder1SA"); /*singleField enum variant*/
        return uplc;
     }
 }
@@ -819,7 +820,7 @@ export class SpendingActivityHelperNested extends EnumBridge<isActivity> {
  * Helper class for generating UplcData for variants of the ***MintingActivity*** enum type.
  */
 export class MintingActivityHelperNested extends EnumBridge<isActivity> {
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
        MintingActivity,
        MintingActivityLike
    >(MintingActivitySchema, { isMainnet: true });
@@ -832,8 +833,8 @@ export class MintingActivityHelperNested extends EnumBridge<isActivity> {
     _placeholder1MA(value: hasSeed | TxOutputId | string) : isActivity {
         const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         const uplc = this.mkUplcData({ 
-           _placeholder1MA: { seed: seedTxOutputId } 
-        },"unspecializedDelegate::MintingActivity._placeholder1MA");  /*SingleField/seeded enum variant*/
+           _placeholder1MA: seedTxOutputId
+        },"unspecializedDelegate::MintingActivity._placeholder1MA");  /*singleField/seeded enum variant*/
        return uplc;
     }
 }
@@ -843,7 +844,7 @@ export class MintingActivityHelperNested extends EnumBridge<isActivity> {
  * Helper class for generating UplcData for variants of the ***BurningActivity*** enum type.
  */
 export class BurningActivityHelperNested extends EnumBridge<isActivity> {
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
        BurningActivity,
        BurningActivityLike
    >(BurningActivitySchema, { isMainnet: true });
@@ -855,8 +856,8 @@ export class BurningActivityHelperNested extends EnumBridge<isActivity> {
         recId: number[]
     ) : isActivity {
         const uplc = this.mkUplcData({ 
-           _placeholder1BA: { recId: recId } 
-        }, "unspecializedDelegate::BurningActivity._placeholder1BA"); /*SingleField enum variant*/
+           _placeholder1BA: recId
+        }, "unspecializedDelegate::BurningActivity._placeholder1BA"); /*singleField enum variant*/
        return uplc;
     }
 }
@@ -866,7 +867,7 @@ export class BurningActivityHelperNested extends EnumBridge<isActivity> {
  * Helper class for generating UplcData for variants of the ***DelegateActivity*** enum type.
  */
 export class DelegateActivityHelper extends EnumBridge<isActivity> {
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
        DelegateActivity,
        DelegateActivityLike
    >(DelegateActivitySchema, { isMainnet: true });
@@ -879,8 +880,9 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
             {isNested: true, isActivity: true 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
-        nestedAccessor.mkDataVia((nested: CapoLifecycleActivityLike) => {
-           return  this.mkUplcData({ CapoLifecycleActivities: { activity: nested } }, 
+        nestedAccessor.mkDataVia(
+            (activity: CapoLifecycleActivityLike) => {
+                return  this.mkUplcData({ CapoLifecycleActivities: activity }, 
             "unspecializedDelegate::DelegateActivity.CapoLifecycleActivities");
         });
         return nestedAccessor;
@@ -894,8 +896,9 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
             {isNested: true, isActivity: true 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
-        nestedAccessor.mkDataVia((nested: DelegateLifecycleActivityLike) => {
-           return  this.mkUplcData({ DelegateLifecycleActivities: { activity: nested } }, 
+        nestedAccessor.mkDataVia(
+            (activity: DelegateLifecycleActivityLike) => {
+                return  this.mkUplcData({ DelegateLifecycleActivities: activity }, 
             "unspecializedDelegate::DelegateActivity.DelegateLifecycleActivities");
         });
         return nestedAccessor;
@@ -909,8 +912,9 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
             {isNested: true, isActivity: true 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
-        nestedAccessor.mkDataVia((nested: SpendingActivityLike) => {
-           return  this.mkUplcData({ SpendingActivities: { activity: nested } }, 
+        nestedAccessor.mkDataVia(
+            (activity: SpendingActivityLike) => {
+                return  this.mkUplcData({ SpendingActivities: activity }, 
             "unspecializedDelegate::DelegateActivity.SpendingActivities");
         });
         return nestedAccessor;
@@ -924,8 +928,9 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
             {isNested: true, isActivity: true 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
-        nestedAccessor.mkDataVia((nested: MintingActivityLike) => {
-           return  this.mkUplcData({ MintingActivities: { activity: nested } }, 
+        nestedAccessor.mkDataVia(
+            (activity: MintingActivityLike) => {
+                return  this.mkUplcData({ MintingActivities: activity }, 
             "unspecializedDelegate::DelegateActivity.MintingActivities");
         });
         return nestedAccessor;
@@ -939,8 +944,9 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
             {isNested: true, isActivity: true 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
-        nestedAccessor.mkDataVia((nested: BurningActivityLike) => {
-           return  this.mkUplcData({ BurningActivities: { activity: nested } }, 
+        nestedAccessor.mkDataVia(
+            (activity: BurningActivityLike) => {
+                return  this.mkUplcData({ BurningActivities: activity }, 
             "unspecializedDelegate::DelegateActivity.BurningActivities");
         });
         return nestedAccessor;
@@ -1018,8 +1024,8 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
         activities: Array<UplcData>
     ) : isActivity {
         const uplc = this.mkUplcData({ 
-           MultipleDelegateActivities: { activities: activities } 
-        }, "unspecializedDelegate::DelegateActivity.MultipleDelegateActivities"); /*SingleField enum variant*/
+           MultipleDelegateActivities: activities
+        }, "unspecializedDelegate::DelegateActivity.MultipleDelegateActivities"); /*singleField enum variant*/
        return uplc;
     }
 }

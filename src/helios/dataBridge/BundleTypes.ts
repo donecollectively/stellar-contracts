@@ -446,7 +446,7 @@ export class BundleTypes implements TypeGenHooks<undefined> {
                 } else {
                     // variant only has one field
                     
-                    return `{ ${schema.fieldTypes[0].name}: ${variantInfo} /*singleVariantField*/ } `;
+                    return `${variantInfo} /*singleVariantField ; elided extra { ${schema.fieldTypes[0].name}: ${variantInfo}} structure*/\n  `;
                 }
             default:
                 //@ts-expect-error - when all cases are covered, schema is ‹never›

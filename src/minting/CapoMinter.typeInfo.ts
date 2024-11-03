@@ -50,19 +50,23 @@ export type MinterActivity$CreatingNewSpendDelegateLike = {
 export type MinterActivityMeta = EnumTypeMeta<
     {module: "CapoMintHelpers", enumName: "MinterActivity"}, {
         mintingCharter: singleEnumVariantMeta<MinterActivityMeta, "mintingCharter",
-            "Constr#0", "singletonField", { owner: Address /*singleVariantField*/ } , "noSpecialFlags"
+            "Constr#0", "singletonField", Address /*singleVariantField ; elided extra { owner: Address} structure*/
+  , "noSpecialFlags"
         >,
         mintWithDelegateAuthorizing: singleEnumVariantMeta<MinterActivityMeta, "mintWithDelegateAuthorizing",
             "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
         >,
         addingMintInvariant: singleEnumVariantMeta<MinterActivityMeta, "addingMintInvariant",
-            "Constr#2", "singletonField", { seed: TxOutputId /*singleVariantField*/ } , "isSeededActivity"
+            "Constr#2", "singletonField", TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
+  , "isSeededActivity"
         >,
         addingSpendInvariant: singleEnumVariantMeta<MinterActivityMeta, "addingSpendInvariant",
-            "Constr#3", "singletonField", { seed: TxOutputId /*singleVariantField*/ } , "isSeededActivity"
+            "Constr#3", "singletonField", TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
+  , "isSeededActivity"
         >,
         ForcingNewMintDelegate: singleEnumVariantMeta<MinterActivityMeta, "ForcingNewMintDelegate",
-            "Constr#4", "singletonField", { seed: TxOutputId /*singleVariantField*/ } , "isSeededActivity"
+            "Constr#4", "singletonField", TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
+  , "isSeededActivity"
         >,
         CreatingNewSpendDelegate: singleEnumVariantMeta<MinterActivityMeta, "CreatingNewSpendDelegate",
             "Constr#5", 
@@ -82,11 +86,15 @@ export type MinterActivityMeta = EnumTypeMeta<
  *     for generating UPLC data for this enum type
  */
 export type MinterActivity = 
-        | { mintingCharter: /*minEnumVariant*/ { owner: Address /*singleVariantField*/ }  }
+        | { mintingCharter: /*minEnumVariant*/ Address /*singleVariantField ; elided extra { owner: Address} structure*/
+   }
         | { mintWithDelegateAuthorizing: /*minEnumVariant*/ tagOnly }
-        | { addingMintInvariant: /*minEnumVariant*/ { seed: TxOutputId /*singleVariantField*/ }  }
-        | { addingSpendInvariant: /*minEnumVariant*/ { seed: TxOutputId /*singleVariantField*/ }  }
-        | { ForcingNewMintDelegate: /*minEnumVariant*/ { seed: TxOutputId /*singleVariantField*/ }  }
+        | { addingMintInvariant: /*minEnumVariant*/ TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
+   }
+        | { addingSpendInvariant: /*minEnumVariant*/ TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
+   }
+        | { ForcingNewMintDelegate: /*minEnumVariant*/ TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
+   }
         | { CreatingNewSpendDelegate: /*minEnumVariant*/ MinterActivity$CreatingNewSpendDelegate }
 
 /**
@@ -103,10 +111,14 @@ export type MinterActivity =
  * converted by convention to the canonical types used in the on-chain context.
  */
 export type MinterActivityLike = 
-        | { mintingCharter: /*minEnumVariant*/ { owner: Address | string /*singleVariantField*/ }  }
+        | { mintingCharter: /*minEnumVariant*/ Address | string /*singleVariantField ; elided extra { owner: Address | string} structure*/
+   }
         | { mintWithDelegateAuthorizing: /*minEnumVariant*/ tagOnly }
-        | { addingMintInvariant: /*minEnumVariant*/ { seed: TxOutputId | string /*singleVariantField*/ }  }
-        | { addingSpendInvariant: /*minEnumVariant*/ { seed: TxOutputId | string /*singleVariantField*/ }  }
-        | { ForcingNewMintDelegate: /*minEnumVariant*/ { seed: TxOutputId | string /*singleVariantField*/ }  }
+        | { addingMintInvariant: /*minEnumVariant*/ TxOutputId | string /*singleVariantField ; elided extra { seed: TxOutputId | string} structure*/
+   }
+        | { addingSpendInvariant: /*minEnumVariant*/ TxOutputId | string /*singleVariantField ; elided extra { seed: TxOutputId | string} structure*/
+   }
+        | { ForcingNewMintDelegate: /*minEnumVariant*/ TxOutputId | string /*singleVariantField ; elided extra { seed: TxOutputId | string} structure*/
+   }
         | { CreatingNewSpendDelegate: /*minEnumVariant*/ MinterActivity$CreatingNewSpendDelegateLike }
 

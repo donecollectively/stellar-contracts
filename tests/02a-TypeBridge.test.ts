@@ -100,7 +100,7 @@ describe("Type Bridge", async () => {
                 const bridged = onchain.types.SomeEnum.justAnInt(1);
                 const result = offchain.SomeEnum(bridged);
 
-                expect(result.justAnInt!).toStrictEqual({ m: 1n });
+                expect(result).toStrictEqual({ justAnInt: 1n });
             });
 
             it("bridges a structured single-field value variant without intervening field-name", async () => {
@@ -113,8 +113,8 @@ describe("Type Bridge", async () => {
                 const result = offchain.SomeEnum(bridged);
                 // expect(result.type).toBe("SomeEnum");
                 // expect(result.variant).toBe("oneNestedStruct");
-                expect(result.oneNestedStruct).toStrictEqual({
-                    m: {
+                expect(result).toStrictEqual({
+                    oneNestedStruct: {
                         a: 1n,
                         b: new Map(),
                         c: [true],
@@ -188,7 +188,7 @@ describe("Type Bridge", async () => {
                     "uutMintingDelegate::DelegateDatum.ScriptReference"
                 );
                 const result = offchain.DelegateDatum(datum);
-                const result2 = readDatum(datum)
+                const result2 = readDatum(datum);
                 expect(result).toEqual({ ScriptReference: {} });
                 expect(result2).toEqual({ ScriptReference: {} });
                 // expect(result.variant).toBe("ScriptReference");
@@ -202,15 +202,15 @@ describe("Type Bridge", async () => {
                     const datum = mkDatum.SingleDataElement("hello world");
                     // expect(datum.type).toBe("SingleDataElement");
                     const backToJS = readDatum(datum);
-                    //@ts-expect-error readDatum is a DelegateDatum, but not a special type of it.
-                    expect(backToJS.SingleDataElement.aString).toBe(
-                        "hello world"
-                    );
+
+                    expect(backToJS).toStrictEqual({
+                        SingleDataElement: "hello world",
+                    });
                 });
             });
 
             describe("L1: a struct", () => {
-                it("creates a valid datum using the fields of the nested struct (no intervening single-field-name", async () => {
+                fit("creates a valid datum using the fields of the nested struct (no intervening single-field-name", async () => {
                     // use variant "SingleNestedStruct"
                     const bridged = mkDatum.SingleNestedStruct({
                         a: 42,
@@ -219,8 +219,14 @@ describe("Type Bridge", async () => {
                         d: undefined,
                     });
                     const backToJS = readDatum(bridged);
-                    //@ts-expect-error readDatum is a DelegateDatum, but not a special type of it.
-                    expect(backToJS.SingleNestedStruct.aStruct.a).toBe(42n);
+                    expect(backToJS).toStrictEqual({
+                        SingleNestedStruct: { 
+                            a: 42n,
+                            b: new Map([["life", [42, 42, 42]]]),
+                            c: [true],
+                            d: null,
+                        },
+                    });
                 });
             });
 
@@ -231,28 +237,26 @@ describe("Type Bridge", async () => {
                         const datum = mkDatum.HasNestedEnum.justATag;
 
                         const backToJS = readDatum(datum);
-                        // expect("").toBe(backToJS);
-                        // expect(backToJS.type).toBe("SampleDatum");
-                        type t = typeof backToJS;
-                        //x@ts-expect-error on the assumption of the enum variant
-                        expect(backToJS.HasNestedEnum!.nested.justATag).toEqual(
-                            {}
-                        );
+
+                        expect(backToJS).toStrictEqual({
+                            HasNestedEnum: { justATag: {} },
+                        });
                     });
                 });
 
                 describe("... L2: with a single nested field", () => {
                     it("creates a valid datum using a chain of nested enum variant names", async () => {
                         const { mkDatum } = mintDelegate;
+                        debugger
                         const datum = mkDatum.HasNestedEnum.justAnInt(42);
 
                         expect(datum.dataPath).toBe(
                             "uutMintingDelegate::DelegateDatum.HasNestedEnum"
                         );
-                        const result = await mintDelegate.newReadDatum(datum);
-                        expect(result).toEqual({
+                        const result = readDatum(datum);
+                        expect(result).toStrictEqual({
                             HasNestedEnum: {
-                                nested: { justAnInt: { m: 42n } },
+                                justAnInt: 42n,
                             },
                         });
                         const result2 = offchain.DelegateDatum(datum) as any;
@@ -260,7 +264,7 @@ describe("Type Bridge", async () => {
                         const result3 = mintDelegate.reader.DelegateDatum(
                             datum
                         ) as any;
-                        expect(result3).toEqual(result);
+                        expect(result3).toStrictEqual(result);
                     });
                 });
                 describe("... L2: with a single-field nested struct", () => {
@@ -279,15 +283,11 @@ describe("Type Bridge", async () => {
 
                         expect(result).toStrictEqual({
                             HasNestedEnum: {
-                                nested: {
-                                    oneNestedStruct: {
-                                        m: {
-                                            a: 1n,
-                                            b: new Map(),
-                                            c: [true],
-                                            d: null,
-                                        },
-                                    },
+                                oneNestedStruct: {
+                                    a: 1n,
+                                    b: new Map(),
+                                    c: [true],
+                                    d: null,
                                 },
                             },
                         });
@@ -309,16 +309,14 @@ describe("Type Bridge", async () => {
                         // expect(datum.type).toBe("SampleDatum");
                         expect(readDatum(datum)).toEqual({
                             HasNestedEnum: {
-                                nested: {
-                                    hasNestedFields: {
-                                        m: {
-                                            a: 1n,
-                                            b: new Map(),
-                                            c: [true],
-                                            d: null,
-                                        },
-                                        n: 42n,
+                                hasNestedFields: {
+                                    m: {
+                                        a: 1n,
+                                        b: new Map(),
+                                        c: [true],
+                                        d: null,
                                     },
+                                    n: 42n,
                                 },
                             },
                         });
@@ -353,10 +351,10 @@ describe("Type Bridge", async () => {
                 expect(result.MultiFieldNestedThings).toEqual({
                     nestedStruct: {
                         // nested: {
-                            a: 1n,
-                            b: new Map(),
-                            c: [true],
-                            d: null,
+                        a: 1n,
+                        b: new Map(),
+                        c: [true],
+                        d: null,
                         // },
                     },
                     nestedEnumMaybe: null,
@@ -374,12 +372,10 @@ describe("Type Bridge", async () => {
                     },
                     nestedEnumMaybe: {
                         oneNestedStruct: {
-                            m: {
-                                a: 2,
-                                b: new Map([["life", [42, 42, 42]]]),
-                                c: [true, false, true],
-                                d: undefined,
-                            },
+                            a: 2,
+                            b: new Map([["life", [42, 42, 42]]]),
+                            c: [true, false, true],
+                            d: undefined,
                         },
                     },
                 });
@@ -389,14 +385,12 @@ describe("Type Bridge", async () => {
                     result.MultiFieldNestedThings!.nestedEnumMaybe!
                 ).toStrictEqual({
                     oneNestedStruct: {
-                        // nested: { 
-                            m: {
-                                a: 2n,
-                                b: new Map([["life", [42, 42, 42]]]),
-                                c: [true, false, true],
-                                d: null,
-                            },
-                        },
+                        // nested: {
+                        a: 2n,
+                        b: new Map([["life", [42, 42, 42]]]),
+                        c: [true, false, true],
+                        d: null,
+                    },
                     // },
                 });
             });

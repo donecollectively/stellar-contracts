@@ -47,6 +47,7 @@ import {
 } from "../helios/dataBridge/EnumBridge.js"
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../helios/typeUtils.js"
+import { StellarCast } from "../helios/dataBridge/StellarCast.js"
 import type {hasSeed, isActivity} from "../StellarContract.js"
 
 
@@ -134,7 +135,7 @@ class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
  * Helper class for generating UplcData for variants of the ***MinterActivity*** enum type.
  */
 export class MinterActivityHelper extends EnumBridge<isActivity> {
-    protected __cast = new Cast<
+    protected __cast = new StellarCast<
        MinterActivity,
        MinterActivityLike
    >(MinterActivitySchema, { isMainnet: true });
@@ -146,8 +147,8 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
         owner: Address | string
     ) : isActivity {
         const uplc = this.mkUplcData({ 
-           mintingCharter: { owner: owner } 
-        }, "CapoMintHelpers::MinterActivity.mintingCharter"); /*SingleField enum variant*/
+           mintingCharter: owner
+        }, "CapoMintHelpers::MinterActivity.mintingCharter"); /*singleField enum variant*/
        return uplc;
     }
 
@@ -169,8 +170,8 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     addingMintInvariant(value: hasSeed | TxOutputId | string) : isActivity {
         const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         const uplc = this.mkUplcData({ 
-           addingMintInvariant: { seed: seedTxOutputId } 
-        },"CapoMintHelpers::MinterActivity.addingMintInvariant");  /*SingleField/seeded enum variant*/
+           addingMintInvariant: seedTxOutputId
+        },"CapoMintHelpers::MinterActivity.addingMintInvariant");  /*singleField/seeded enum variant*/
        return uplc;
     }
 
@@ -182,8 +183,8 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     addingSpendInvariant(value: hasSeed | TxOutputId | string) : isActivity {
         const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         const uplc = this.mkUplcData({ 
-           addingSpendInvariant: { seed: seedTxOutputId } 
-        },"CapoMintHelpers::MinterActivity.addingSpendInvariant");  /*SingleField/seeded enum variant*/
+           addingSpendInvariant: seedTxOutputId
+        },"CapoMintHelpers::MinterActivity.addingSpendInvariant");  /*singleField/seeded enum variant*/
        return uplc;
     }
 
@@ -195,8 +196,8 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     ForcingNewMintDelegate(value: hasSeed | TxOutputId | string) : isActivity {
         const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         const uplc = this.mkUplcData({ 
-           ForcingNewMintDelegate: { seed: seedTxOutputId } 
-        },"CapoMintHelpers::MinterActivity.ForcingNewMintDelegate");  /*SingleField/seeded enum variant*/
+           ForcingNewMintDelegate: seedTxOutputId
+        },"CapoMintHelpers::MinterActivity.ForcingNewMintDelegate");  /*singleField/seeded enum variant*/
        return uplc;
     }
 
