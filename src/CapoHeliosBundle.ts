@@ -17,7 +17,12 @@ export class CapoHeliosBundle extends HeliosScriptBundle {
     datumTypeName = "CapoDatum"
 
     get bridgeClassName(): string {
-        return "CapoDataBridge";
+        if (this.constructor === CapoHeliosBundle) {
+            return "CapoDataBridge";
+        }
+
+        return this.constructor.name.replace("Helios", "").replace("Bundle", "") + "Bridge";
+        // throw new Error(`${this.constructor.name} must implement get bridgeClassName`);
     }
     static isCapoBundle = true;
 

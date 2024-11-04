@@ -71,11 +71,11 @@ import type * as types from "./CapoWithGenericUuts.typeInfo.js";
 //   Like "friends" in C++.
 
 /**
- * data bridge for **Capo** script (defined in class ***CapoBundleWithGenericUuts***)}
+ * GENERATED data bridge for **Capo** script (defined in class ***CapoBundleWithGenericUuts***)}
  * main: **src/DefaultCapo.hl**, project: **stellar-contracts**
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
-export class CapoDataBridge extends ContractDataBridge {
+export class CapoWithGenericUutsBridge extends ContractDataBridge {
     static isAbstract = false as const;
     isAbstract = false as const;
     /**
@@ -104,7 +104,7 @@ export class CapoDataBridge extends ContractDataBridge {
     activity : CapoActivityHelper= new CapoActivityHelper(this.bundle, {isActivity: true}); // activityAccessor/enum
         CapoActivity: CapoActivityHelper = this.activity;
 
-    reader = new CapoDataBridgeReader(this);
+    reader = new CapoWithGenericUutsBridgeReader(this);
 
     /**
      * accessors for all the types defined in the `Capo` script
@@ -152,10 +152,10 @@ export class CapoDataBridge extends ContractDataBridge {
 
 
 }
-export default CapoDataBridge;
+export default CapoWithGenericUutsBridge;
 
-class CapoDataBridgeReader extends DataBridgeReaderClass {
-    constructor(public bridge: CapoDataBridge) {
+class CapoWithGenericUutsBridgeReader extends DataBridgeReaderClass {
+    constructor(public bridge: CapoWithGenericUutsBridge) {
         super();
     }
 datum = (d: UplcData) => { return this.CapoDatum(d) }
