@@ -742,6 +742,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
             try {
                 // the transaction can fail validation without throwing an error
+                debugger;
                 tx = await this.txb.buildUnsafe({
                     changeAddress,
                     spareUtxos: spares,
@@ -759,6 +760,9 @@ export class StellarTxnContext<S extends anyState = anyState> {
                 throw e;
             }
             if (tx.hasValidationError) {
+                const e = tx.hasValidationError;
+                const scriptContext =
+                    "string" == typeof e ? undefined : e.scriptContext;
                 logger.logError(
                     `Unexpected build-phase failure: \n  ${
                         //@ts-expect-error
@@ -766,10 +770,16 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     }`
                 );
                 logger.flush();
+                const ctxCbor = scriptContext?.toCbor();
+                const cborHex = ctxCbor ? bytesToHex(ctxCbor) : "";
                 console.log(
-                    "------------------- failed tx Cbor as hex -------------------\n",
+                    cborHex
+                        ? "------------------- failed ScriptContext as cbor-hex -------------------\n" +
+                              cborHex + "\n"
+                        : "",
+                    "------------------- failed tx as cbor-hex -------------------\n"+
                     bytesToHex(tx.toCbor()),
-                    "\n------------------^ failed tx Cbor as hex ^------------------"
+                    "\n------------------^ failed tx details ^------------------"
                 );
             }
 
