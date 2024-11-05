@@ -1,115 +1,8 @@
-/** hlbundle imports */
-import type { UplcData } from "@helios-lang/uplc";
-import type {
-    Address,
-    AssetClass,
-    DatumHash,
-    MintingPolicyHash,
-    PubKey,
-    PubKeyHash,
-    ScriptHash,
-    SpendingCredential,
-    StakingCredential,
-    StakingHash,
-    StakingValidatorHash,
-    TimeRange,
-    TxId,
-    TxInput,
-    TxOutput,
-    TxOutputId,
-    TxOutputDatum,
-    ValidatorHash,
-    Value,
-} from "@helios-lang/ledger";
-import type { Cast } from "@helios-lang/contract-utils";
+import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
+import { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 
-import {
-    HeliosScriptBundle,
-    type EnumTypeMeta,
-    type makesUplcActivityEnumData,
-    type singleEnumVariantMeta,
-    type tagOnly,    
-} from "../helios/HeliosScriptBundle.js";
-import CapoMinter from "./CapoMinter.hl";
-import { CapoHeliosBundle } from "../CapoHeliosBundle.js";
-import { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
+import CapoMinterScript from "./CapoMinter.hl";
 
-/** ------------ BEGIN hlbundle types ------------ */
-export type MinterActivity$CreatingNewSpendDelegate = {
-    seed: TxOutputId  /*minVariantField*/ ,
-    replacingUut: Option<number[]>  /*minVariantField*/ 
-}
-
-export type MinterActivity$CreatingNewSpendDelegateLike = {
-    seed: TxOutputId | string  /*minVariantField*/ ,
-    replacingUut: Option<number[]>  /*minVariantField*/ 
-}
-
-
-export type MinterActivityMeta = EnumTypeMeta<
-    {module: "CapoMintHelpers", enumName: "MinterActivity"}, {
-        mintingCharter: singleEnumVariantMeta<MinterActivityMeta, "mintingCharter",
-            "Constr#0", "singletonField", { owner: Address /*singleVariantField*/ } , "noSpecialFlags"
-        >,
-        mintWithDelegateAuthorizing: singleEnumVariantMeta<MinterActivityMeta, "mintWithDelegateAuthorizing",
-            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
-        >,
-        addingMintInvariant: singleEnumVariantMeta<MinterActivityMeta, "addingMintInvariant",
-            "Constr#2", "singletonField", { seed: TxOutputId /*singleVariantField*/ } , "isSeededActivity"
-        >,
-        addingSpendInvariant: singleEnumVariantMeta<MinterActivityMeta, "addingSpendInvariant",
-            "Constr#3", "singletonField", { seed: TxOutputId /*singleVariantField*/ } , "isSeededActivity"
-        >,
-        ForcingNewMintDelegate: singleEnumVariantMeta<MinterActivityMeta, "ForcingNewMintDelegate",
-            "Constr#4", "singletonField", { seed: TxOutputId /*singleVariantField*/ } , "isSeededActivity"
-        >,
-        CreatingNewSpendDelegate: singleEnumVariantMeta<MinterActivityMeta, "CreatingNewSpendDelegate",
-            "Constr#5", 
-            "fields", MinterActivity$CreatingNewSpendDelegate, "isSeededActivity"
-        >
-    }
->;
-
-
-/**
- * MinterActivity enum variants
- * 
- * @remarks - expresses the essential raw data structures
- * supporting the **6 variant(s)** of the MinterActivity enum type
- * 
- * - **Note**: Stellar Contracts provides a higher-level `MinterActivityHelper` class
- *     for generating UPLC data for this enum type
- */
-export type MinterActivity = 
-        | { mintingCharter: /*minEnumVariant*/ { owner: Address /*singleVariantField*/ }  }
-        | { mintWithDelegateAuthorizing: /*minEnumVariant*/ tagOnly }
-        | { addingMintInvariant: /*minEnumVariant*/ { seed: TxOutputId /*singleVariantField*/ }  }
-        | { addingSpendInvariant: /*minEnumVariant*/ { seed: TxOutputId /*singleVariantField*/ }  }
-        | { ForcingNewMintDelegate: /*minEnumVariant*/ { seed: TxOutputId /*singleVariantField*/ }  }
-        | { CreatingNewSpendDelegate: /*minEnumVariant*/ MinterActivity$CreatingNewSpendDelegate }
-
-/**
- * MinterActivity enum variants (permissive)
- * 
- * @remarks - expresses the allowable data structures
- * for creating any of the **6 variant(s)** of the MinterActivity enum type
- * 
- * - **Note**: Stellar Contracts provides a higher-level `MinterActivityHelper` class
- *     for generating UPLC data for this enum type
- *
- * ### Permissive Type
- * This is a permissive type that allows additional input data types, which are 
- * converted by convention to the canonical types used in the on-chain context.
- */
-export type MinterActivityLike = 
-        | { mintingCharter: /*minEnumVariant*/ { owner: Address | string /*singleVariantField*/ }  }
-        | { mintWithDelegateAuthorizing: /*minEnumVariant*/ tagOnly }
-        | { addingMintInvariant: /*minEnumVariant*/ { seed: TxOutputId | string /*singleVariantField*/ }  }
-        | { addingSpendInvariant: /*minEnumVariant*/ { seed: TxOutputId | string /*singleVariantField*/ }  }
-        | { ForcingNewMintDelegate: /*minEnumVariant*/ { seed: TxOutputId | string /*singleVariantField*/ }  }
-        | { CreatingNewSpendDelegate: /*minEnumVariant*/ MinterActivity$CreatingNewSpendDelegateLike }
-
-/** ------------- hlbundle types END ------------- */
 /**
  * for the special Capo minter; makes the Capo's modules available
  *  to the minter for imports
@@ -126,7 +19,7 @@ export default class CapoMinterBundle extends HeliosScriptBundle {
     }
 
     get main() {
-        return CapoMinter;
+        return CapoMinterScript;
     }
 
     get modules() {
