@@ -1,5 +1,6 @@
 import { CapoHeliosBundle } from "../src/CapoHeliosBundle";
 import StructDatumTester from "../src/testing/StructDatumTester.hlbundle.js";
+import DelegatedDatumTester from "../src/testing/DelegatedDatumTester.hlbundle.js";
 
 // import StructDatumTesterScript from "../src/testing/StructDatumTester.hl";
 /**

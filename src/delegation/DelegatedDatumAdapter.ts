@@ -98,23 +98,23 @@ onChainType extends { id: string; type: string },
      * 
      * @param d - an object map of the UplcData (suitable for use in `this.toMapData({...})`) 
      */
-    DelegatedData(d: DelegatedDataAttrs<onChainType>): helios.Datum {
-        const DD = this.capo.onChainDatumType.DelegatedData;
-        const {constrIndex} = DD.prototype._enumVariantStatement;
+    // DelegatedData(d: DelegatedDataAttrs<onChainType>): helios.Datum {
+    //     const DD = this.capo.onChainDatumType.DelegatedData;
+    //     const {constrIndex} = DD.prototype._enumVariantStatement;
 
-        const CIP68version: bigint = 2n
-        const constrData = new helios.ConstrData(constrIndex, [
-            this.toMapData(
-                d
-            ),
-            this.uplcInt(CIP68version),
-            this.toMapData({})
-        ]);
-        //@ts-ignore !!!
-        return helios.Datum.inline(
-            constrData
-        )
-    }    
+    //     const CIP68version: bigint = 2n
+    //     const constrData = new helios.ConstrData(constrIndex, [
+    //         this.toMapData(
+    //             d
+    //         ),
+    //         this.uplcInt(CIP68version),
+    //         this.toMapData({})
+    //     ]);
+    //     //@ts-ignore !!!
+    //     return helios.Datum.inline(
+    //         constrData
+    //     )
+    // }    
 }
 
 type DelegatedDataAttrs<D extends AnyDataTemplate<any,any>> = {

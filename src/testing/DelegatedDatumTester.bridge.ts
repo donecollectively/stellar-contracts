@@ -53,8 +53,9 @@ import type {hasSeed, isActivity} from "../StellarContract.js"
 
 import type {
     AnyData, AnyDataLike,
-    DelegationDetail, DelegationDetailLike,
     DelegateDatum$Cip68RefToken, DelegateDatum$Cip68RefTokenLike,
+    DelegationDetail, DelegationDetailLike,
+    DgDatumTestData, DgDatumTestDataLike,
     DelegateDatum, DelegateDatumLike,
     CapoLifecycleActivity$CreatingDelegate, CapoLifecycleActivity$CreatingDelegateLike,
     CapoLifecycleActivity, CapoLifecycleActivityLike,
@@ -67,10 +68,10 @@ import type {
     DelegateActivity$UpdatingDelegatedData, DelegateActivity$UpdatingDelegatedDataLike,
     DelegateActivity$DeletingDelegatedData, DelegateActivity$DeletingDelegatedDataLike,
     DelegateActivity, DelegateActivityLike
-} from "./UnspecializedDelegate.typeInfo.js";
+} from "./DelegatedDatumTester.typeInfo.js";
 
-export type * as types from "./UnspecializedDelegate.typeInfo.js";
-import type * as types from "./UnspecializedDelegate.typeInfo.js";
+export type * as types from "./DelegatedDatumTester.typeInfo.js";
+import type * as types from "./DelegatedDatumTester.typeInfo.js";
 
 
 
@@ -80,11 +81,11 @@ import type * as types from "./UnspecializedDelegate.typeInfo.js";
 //   Like "friends" in C++.
 
 /**
- * GENERATED data bridge for **BasicDelegate** script (defined in class ***UnspecializedDgtBundle***)}
+ * GENERATED data bridge for **BasicDelegate** script (defined in class ***DelegatedDatumTesterBundle***)}
  * main: **src/delegation/BasicDelegate.hl**, project: **stellar-contracts**
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
-export class UnspecializedDelegateBridge extends ContractDataBridge {
+export class DelegateDatumTesterDataBridge extends ContractDataBridge {
     static isAbstract = false as const;
     isAbstract = false as const;
     /**
@@ -113,7 +114,7 @@ export class UnspecializedDelegateBridge extends ContractDataBridge {
     activity : DelegateActivityHelper= new DelegateActivityHelper(this.bundle, {isActivity: true}); // activityAccessor/enum
         DelegateActivity: DelegateActivityHelper = this.activity;
 
-    reader = new UnspecializedDelegateBridgeReader(this);
+    reader = new DelegateDatumTesterDataBridgeReader(this);
 
     /**
      * accessors for all the types defined in the `BasicDelegate` script
@@ -169,6 +170,18 @@ export class UnspecializedDelegateBridge extends ContractDataBridge {
 }
 ) => {
         return this.__DelegationDetailCast.toUplcData(fields);
+    },
+      /**
+       * generates UplcData for the enum type ***DgDatumTestData*** for the `BasicDelegate` script
+       */
+        DgDatumTestData: (fields: DgDatumTestDataLike | {
+    id: /*minStructField*/ number[]
+    type: /*minStructField*/ string
+    name: /*minStructField*/ string
+    number: /*minStructField*/ IntLike
+}
+) => {
+        return this.__DgDatumTestDataCast.toUplcData(fields);
     },    }    
 
     protected __AnyDataCast = new StellarCast<
@@ -177,13 +190,16 @@ export class UnspecializedDelegateBridge extends ContractDataBridge {
     protected __DelegationDetailCast = new StellarCast<
                 DelegationDetail, DelegationDetailLike
             >(DelegationDetailSchema, { isMainnet: true });
+    protected __DgDatumTestDataCast = new StellarCast<
+                DgDatumTestData, DgDatumTestDataLike
+            >(DgDatumTestDataSchema, { isMainnet: true });
 
 
 }
-export default UnspecializedDelegateBridge;
+export default DelegateDatumTesterDataBridge;
 
-class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
-    constructor(public bridge: UnspecializedDelegateBridge) {
+class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
+    constructor(public bridge: DelegateDatumTesterDataBridge) {
         super();
     }
     /**
@@ -380,6 +396,26 @@ class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
         return cast.fromUplcData(d);        
     } /* structReader helper */
 
+    /**
+        * reads UplcData *known to fit the **DgDatumTestData*** struct type,
+        * for the BasicDelegate script.
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the struct type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    DgDatumTestData(d: UplcData) {
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = this.bridge.__DgDatumTestDataCast;
+        return cast.fromUplcData(d);        
+    } /* structReader helper */
+
 }
 
 /**
@@ -427,6 +463,28 @@ export class DelegationDetailHelper extends DataBridge {
 
 
 /**
+ * Helper class for generating UplcData for the ***DgDatumTestData*** struct type.
+ */
+export class DgDatumTestDataHelper extends DataBridge {
+    isCallable = true
+    protected __cast = new StellarCast<
+        DgDatumTestData,
+        DgDatumTestDataLike
+    >(DgDatumTestDataSchema, { isMainnet: true });
+
+    // You might expect a function as follows, but no.  However, a similar uplc-generating capability
+    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.
+    // see the callableDataBridge type on the 'datum' property in the contract bridge.
+    //
+    //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
+    //
+    // DgDatumTestData(fields: DgDatumTestDataLike) {
+    //    return this.__cast.toUplcData(fields);
+    //}
+} //mkStructHelperClass 
+
+
+/**
  * Helper class for generating UplcData for variants of the ***DelegateDatum*** enum type.
  */
 export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
@@ -436,26 +494,21 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
    >(DelegateDatumSchema, { isMainnet: true });
 
     /**
-     * generates  UplcData for ***"unspecializedDelegate::DelegateDatum.Cip68RefToken"***
+     * generates  UplcData for ***"DelegateDatumTester::DelegateDatum.Cip68RefToken"***
      * @remarks - ***DelegateDatum$Cip68RefTokenLike*** is the same as the expanded field-types.
      */
     Cip68RefToken(fields: DelegateDatum$Cip68RefTokenLike | { 
-        cip68meta: AnyDataLike,
-        cip68version: IntLike,
-        dd: Option<{
-    capoAddr: /*minStructField*/ Address | string
-    mph: /*minStructField*/ MintingPolicyHash | string | number[]
-    tn: /*minStructField*/ number[]
-}
-> } ) : UplcData {
+        meta: AnyDataLike,
+        version: IntLike,
+        otherDetails: UplcData } ) : UplcData {
         const uplc = this.mkUplcData({
             Cip68RefToken: fields 
-        }, "unspecializedDelegate::DelegateDatum.Cip68RefToken");
+        }, "DelegateDatumTester::DelegateDatum.Cip68RefToken");
        return uplc;
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates  UplcData for ***"unspecializedDelegate::DelegateDatum.IsDelegation"***
+     * generates  UplcData for ***"DelegateDatumTester::DelegateDatum.IsDelegation"***
      * @remarks - ***DelegationDetailLike*** is the same as the expanded field-type.
      */
     IsDelegation(
@@ -467,33 +520,35 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     ) : UplcData {
         const uplc = this.mkUplcData({ 
            IsDelegation: dd
-        }, "unspecializedDelegate::DelegateDatum.IsDelegation"); /*singleField enum variant*/
+        }, "DelegateDatumTester::DelegateDatum.IsDelegation"); /*singleField enum variant*/
        return uplc;
     }
 
     /**
-     * generates  UplcData for ***"unspecializedDelegate::DelegateDatum.capoStoredData"***
-     * @remarks - ***AnyDataLike*** is the same as the expanded field-type.
+     * generates  UplcData for ***"DelegateDatumTester::DelegateDatum.capoStoredData"***
+     * @remarks - ***DgDatumTestDataLike*** is the same as the expanded field-type.
      */
     capoStoredData(
-        data: AnyDataLike | {
+        data: DgDatumTestDataLike | {
     id: /*minStructField*/ number[]
     type: /*minStructField*/ string
+    name: /*minStructField*/ string
+    number: /*minStructField*/ IntLike
 }
     ) : UplcData {
         const uplc = this.mkUplcData({ 
            capoStoredData: data
-        }, "unspecializedDelegate::DelegateDatum.capoStoredData"); /*singleField enum variant*/
+        }, "DelegateDatumTester::DelegateDatum.capoStoredData"); /*singleField enum variant*/
        return uplc;
     }
 
 /**
- * (property getter): UplcData for ***"unspecializedDelegate::DelegateDatum.ScriptReference"***
+ * (property getter): UplcData for ***"DelegateDatumTester::DelegateDatum.ScriptReference"***
  * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
  */
     get ScriptReference() {
         const uplc = this.mkUplcData({ ScriptReference: {} }, 
-            "unspecializedDelegate::DelegateDatum.ScriptReference");
+            "DelegateDatumTester::DelegateDatum.ScriptReference");
        return uplc;
     } /* tagOnly variant accessor */
 }
@@ -629,14 +684,14 @@ export class SpendingActivityHelper extends EnumBridge<JustAnEnum> {
    >(SpendingActivitySchema, { isMainnet: true });
 
     /**
-     * generates  UplcData for ***"unspecializedDelegate::SpendingActivity._placeholder1SA"***
+     * generates  UplcData for ***"DelegateDatumTester::SpendingActivity.UpdatingTData"***
      */
-    _placeholder1SA(
-        recId: number[]
+    UpdatingTData(
+        id: number[]
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           _placeholder1SA: recId
-        }, "unspecializedDelegate::SpendingActivity._placeholder1SA"); /*singleField enum variant*/
+           UpdatingTData: id
+        }, "DelegateDatumTester::SpendingActivity.UpdatingTData"); /*singleField enum variant*/
        return uplc;
     }
 }
@@ -652,15 +707,15 @@ export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
    >(MintingActivitySchema, { isMainnet: true });
 
     /**
-    * generates  UplcData for ***"unspecializedDelegate::MintingActivity._placeholder1MA"***, 
+    * generates  UplcData for ***"DelegateDatumTester::MintingActivity.CreatingTData"***, 
     * given a transaction-context with a ***seed utxo*** and other field details
     * @remarks - to get a transaction context having the seed needed for this argment, 
     * see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.    */
-    _placeholder1MA(value: hasSeed | TxOutputId | string) : UplcData {
+    CreatingTData(value: hasSeed | TxOutputId | string) : UplcData {
         const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         const uplc = this.mkUplcData({ 
-           _placeholder1MA: seedTxOutputId
-        },"unspecializedDelegate::MintingActivity._placeholder1MA");  /*singleField/seeded enum variant*/
+           CreatingTData: seedTxOutputId
+        },"DelegateDatumTester::MintingActivity.CreatingTData");  /*singleField/seeded enum variant*/
        return uplc;
     }
 }
@@ -676,14 +731,14 @@ export class BurningActivityHelper extends EnumBridge<JustAnEnum> {
    >(BurningActivitySchema, { isMainnet: true });
 
     /**
-     * generates  UplcData for ***"unspecializedDelegate::BurningActivity._placeholder1BA"***
+     * generates  UplcData for ***"DelegateDatumTester::BurningActivity.NOOP"***
      */
-    _placeholder1BA(
-        recId: number[]
+    NOOP(
+        noSuchActivity: boolean
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           _placeholder1BA: recId
-        }, "unspecializedDelegate::BurningActivity._placeholder1BA"); /*singleField enum variant*/
+           NOOP: noSuchActivity
+        }, "DelegateDatumTester::BurningActivity.NOOP"); /*singleField enum variant*/
        return uplc;
     }
 }
@@ -819,14 +874,14 @@ export class SpendingActivityHelperNested extends EnumBridge<isActivity> {
    >(SpendingActivitySchema, { isMainnet: true });
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for ***"unspecializedDelegate::SpendingActivity._placeholder1SA"***
+     * generates isActivity/redeemer wrapper with UplcData for ***"DelegateDatumTester::SpendingActivity.UpdatingTData"***
      */
-    _placeholder1SA(
-        recId: number[]
+    UpdatingTData(
+        id: number[]
     ) : isActivity {
         const uplc = this.mkUplcData({ 
-           _placeholder1SA: recId
-        }, "unspecializedDelegate::SpendingActivity._placeholder1SA"); /*singleField enum variant*/
+           UpdatingTData: id
+        }, "DelegateDatumTester::SpendingActivity.UpdatingTData"); /*singleField enum variant*/
        return uplc;
     }
 }
@@ -842,15 +897,15 @@ export class MintingActivityHelperNested extends EnumBridge<isActivity> {
    >(MintingActivitySchema, { isMainnet: true });
 
     /**
-    * generates isActivity/redeemer wrapper with UplcData for ***"unspecializedDelegate::MintingActivity._placeholder1MA"***, 
+    * generates isActivity/redeemer wrapper with UplcData for ***"DelegateDatumTester::MintingActivity.CreatingTData"***, 
     * given a transaction-context with a ***seed utxo*** and other field details
     * @remarks - to get a transaction context having the seed needed for this argment, 
     * see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.    */
-    _placeholder1MA(value: hasSeed | TxOutputId | string) : isActivity {
+    CreatingTData(value: hasSeed | TxOutputId | string) : isActivity {
         const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         const uplc = this.mkUplcData({ 
-           _placeholder1MA: seedTxOutputId
-        },"unspecializedDelegate::MintingActivity._placeholder1MA");  /*singleField/seeded enum variant*/
+           CreatingTData: seedTxOutputId
+        },"DelegateDatumTester::MintingActivity.CreatingTData");  /*singleField/seeded enum variant*/
        return uplc;
     }
 }
@@ -866,14 +921,14 @@ export class BurningActivityHelperNested extends EnumBridge<isActivity> {
    >(BurningActivitySchema, { isMainnet: true });
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for ***"unspecializedDelegate::BurningActivity._placeholder1BA"***
+     * generates isActivity/redeemer wrapper with UplcData for ***"DelegateDatumTester::BurningActivity.NOOP"***
      */
-    _placeholder1BA(
-        recId: number[]
+    NOOP(
+        noSuchActivity: boolean
     ) : isActivity {
         const uplc = this.mkUplcData({ 
-           _placeholder1BA: recId
-        }, "unspecializedDelegate::BurningActivity._placeholder1BA"); /*singleField enum variant*/
+           NOOP: noSuchActivity
+        }, "DelegateDatumTester::BurningActivity.NOOP"); /*singleField enum variant*/
        return uplc;
     }
 }
@@ -899,7 +954,7 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
         nestedAccessor.mkDataVia(
             (activity: CapoLifecycleActivityLike) => {
                 return  this.mkUplcData({ CapoLifecycleActivities: activity }, 
-            "unspecializedDelegate::DelegateActivity.CapoLifecycleActivities");
+            "DelegateDatumTester::DelegateActivity.CapoLifecycleActivities");
         });
         return nestedAccessor;
     } /* nested enum accessor */
@@ -915,7 +970,7 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
         nestedAccessor.mkDataVia(
             (activity: DelegateLifecycleActivityLike) => {
                 return  this.mkUplcData({ DelegateLifecycleActivities: activity }, 
-            "unspecializedDelegate::DelegateActivity.DelegateLifecycleActivities");
+            "DelegateDatumTester::DelegateActivity.DelegateLifecycleActivities");
         });
         return nestedAccessor;
     } /* nested enum accessor */
@@ -931,7 +986,7 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
         nestedAccessor.mkDataVia(
             (activity: SpendingActivityLike) => {
                 return  this.mkUplcData({ SpendingActivities: activity }, 
-            "unspecializedDelegate::DelegateActivity.SpendingActivities");
+            "DelegateDatumTester::DelegateActivity.SpendingActivities");
         });
         return nestedAccessor;
     } /* nested enum accessor */
@@ -947,7 +1002,7 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
         nestedAccessor.mkDataVia(
             (activity: MintingActivityLike) => {
                 return  this.mkUplcData({ MintingActivities: activity }, 
-            "unspecializedDelegate::DelegateActivity.MintingActivities");
+            "DelegateDatumTester::DelegateActivity.MintingActivities");
         });
         return nestedAccessor;
     } /* nested enum accessor */
@@ -963,13 +1018,13 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
         nestedAccessor.mkDataVia(
             (activity: BurningActivityLike) => {
                 return  this.mkUplcData({ BurningActivities: activity }, 
-            "unspecializedDelegate::DelegateActivity.BurningActivities");
+            "DelegateDatumTester::DelegateActivity.BurningActivities");
         });
         return nestedAccessor;
     } /* nested enum accessor */
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for ***"unspecializedDelegate::DelegateActivity.CreatingDelegatedData"***, 
+     * generates isActivity/redeemer wrapper with UplcData for ***"DelegateDatumTester::DelegateActivity.CreatingDelegatedData"***, 
      * given a transaction-context ***with a seed utxo*** and other field details
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
@@ -979,7 +1034,7 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
         dataType: string 
     } ) : isActivity
     /**
-     * generates isActivity/redeemer wrapper with UplcData for ***"unspecializedDelegate::DelegateActivity.CreatingDelegatedData"*** 
+     * generates isActivity/redeemer wrapper with UplcData for ***"DelegateDatumTester::DelegateActivity.CreatingDelegatedData"*** 
      * with raw seed details included in fields.
      */
     CreatingDelegatedData(fields: DelegateActivity$CreatingDelegatedDataLike | {
@@ -995,20 +1050,20 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
             const uplc = this.mkUplcData({
                 CreatingDelegatedData: { seed: seedTxOutputId, ...filteredFields } 
-            }, "unspecializedDelegate::DelegateActivity.CreatingDelegatedData");
+            }, "DelegateDatumTester::DelegateActivity.CreatingDelegatedData");
            return uplc;
         } else {
             const fields = seedOrUf as DelegateActivity$CreatingDelegatedDataLike; 
            const uplc = this.mkUplcData({
                 CreatingDelegatedData: fields 
-            }, "unspecializedDelegate::DelegateActivity.CreatingDelegatedData");
+            }, "DelegateDatumTester::DelegateActivity.CreatingDelegatedData");
            return uplc;
         }
     } /*multiFieldVariant/seeded enum accessor*/ 
 
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for ***"unspecializedDelegate::DelegateActivity.UpdatingDelegatedData"***
+     * generates isActivity/redeemer wrapper with UplcData for ***"DelegateDatumTester::DelegateActivity.UpdatingDelegatedData"***
      * @remarks - ***DelegateActivity$UpdatingDelegatedDataLike*** is the same as the expanded field-types.
      */
     UpdatingDelegatedData(fields: DelegateActivity$UpdatingDelegatedDataLike | { 
@@ -1016,12 +1071,12 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
         recId: number[] } ) : isActivity {
         const uplc = this.mkUplcData({
             UpdatingDelegatedData: fields 
-        }, "unspecializedDelegate::DelegateActivity.UpdatingDelegatedData");
+        }, "DelegateDatumTester::DelegateActivity.UpdatingDelegatedData");
        return uplc;
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for ***"unspecializedDelegate::DelegateActivity.DeletingDelegatedData"***
+     * generates isActivity/redeemer wrapper with UplcData for ***"DelegateDatumTester::DelegateActivity.DeletingDelegatedData"***
      * @remarks - ***DelegateActivity$DeletingDelegatedDataLike*** is the same as the expanded field-types.
      */
     DeletingDelegatedData(fields: DelegateActivity$DeletingDelegatedDataLike | { 
@@ -1029,19 +1084,19 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
         recId: number[] } ) : isActivity {
         const uplc = this.mkUplcData({
             DeletingDelegatedData: fields 
-        }, "unspecializedDelegate::DelegateActivity.DeletingDelegatedData");
+        }, "DelegateDatumTester::DelegateActivity.DeletingDelegatedData");
        return uplc;
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for ***"unspecializedDelegate::DelegateActivity.MultipleDelegateActivities"***
+     * generates isActivity/redeemer wrapper with UplcData for ***"DelegateDatumTester::DelegateActivity.MultipleDelegateActivities"***
      */
     MultipleDelegateActivities(
         activities: Array<UplcData>
     ) : isActivity {
         const uplc = this.mkUplcData({ 
            MultipleDelegateActivities: activities
-        }, "unspecializedDelegate::DelegateActivity.MultipleDelegateActivities"); /*singleField enum variant*/
+        }, "DelegateDatumTester::DelegateActivity.MultipleDelegateActivities"); /*singleField enum variant*/
        return uplc;
     }
 }
@@ -1102,19 +1157,58 @@ export const DelegationDetailSchema : StructTypeSchema = {
     ]
 };
 
+export const DgDatumTestDataSchema : StructTypeSchema = {
+    "kind": "struct",
+    "format": "map",
+    "id": "__module__DelegateDatumTester__DgDatumTestData[]",
+    "name": "DgDatumTestData",
+    "fieldTypes": [
+        {
+            "name": "id",
+            "type": {
+                "kind": "internal",
+                "name": "ByteArray"
+            },
+            "key": "@id"
+        },
+        {
+            "name": "type",
+            "type": {
+                "kind": "internal",
+                "name": "String"
+            },
+            "key": "tpe"
+        },
+        {
+            "name": "name",
+            "type": {
+                "kind": "internal",
+                "name": "String"
+            }
+        },
+        {
+            "name": "number",
+            "type": {
+                "kind": "internal",
+                "name": "Int"
+            }
+        }
+    ]
+};
+
 export const DelegateDatumSchema : EnumTypeSchema = {
     "kind": "enum",
     "name": "DelegateDatum",
-    "id": "__module__unspecializedDelegate__DelegateDatum[]",
+    "id": "__module__DelegateDatumTester__DelegateDatum[]",
     "variantTypes": [
         {
             "kind": "variant",
             "tag": 0,
-            "id": "__module__unspecializedDelegate__DelegateDatum[]__Cip68RefToken",
+            "id": "__module__DelegateDatumTester__DelegateDatum[]__Cip68RefToken",
             "name": "Cip68RefToken",
             "fieldTypes": [
                 {
-                    "name": "cip68meta",
+                    "name": "meta",
                     "type": {
                         "kind": "struct",
                         "format": "map",
@@ -1141,45 +1235,17 @@ export const DelegateDatumSchema : EnumTypeSchema = {
                     }
                 },
                 {
-                    "name": "cip68version",
+                    "name": "version",
                     "type": {
                         "kind": "internal",
                         "name": "Int"
                     }
                 },
                 {
-                    "name": "dd",
+                    "name": "otherDetails",
                     "type": {
-                        "kind": "option",
-                        "someType": {
-                            "kind": "struct",
-                            "format": "list",
-                            "id": "__module__CapoDelegateHelpers__DelegationDetail[]",
-                            "name": "DelegationDetail",
-                            "fieldTypes": [
-                                {
-                                    "name": "capoAddr",
-                                    "type": {
-                                        "kind": "internal",
-                                        "name": "Address"
-                                    }
-                                },
-                                {
-                                    "name": "mph",
-                                    "type": {
-                                        "kind": "internal",
-                                        "name": "MintingPolicyHash"
-                                    }
-                                },
-                                {
-                                    "name": "tn",
-                                    "type": {
-                                        "kind": "internal",
-                                        "name": "ByteArray"
-                                    }
-                                }
-                            ]
-                        }
+                        "kind": "internal",
+                        "name": "Data"
                     }
                 }
             ]
@@ -1187,7 +1253,7 @@ export const DelegateDatumSchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 1,
-            "id": "__module__unspecializedDelegate__DelegateDatum[]__IsDelegation",
+            "id": "__module__DelegateDatumTester__DelegateDatum[]__IsDelegation",
             "name": "IsDelegation",
             "fieldTypes": [
                 {
@@ -1227,7 +1293,7 @@ export const DelegateDatumSchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 2,
-            "id": "__module__unspecializedDelegate__DelegateDatum[]__capoStoredData",
+            "id": "__module__DelegateDatumTester__DelegateDatum[]__capoStoredData",
             "name": "capoStoredData",
             "fieldTypes": [
                 {
@@ -1235,8 +1301,8 @@ export const DelegateDatumSchema : EnumTypeSchema = {
                     "type": {
                         "kind": "struct",
                         "format": "map",
-                        "id": "__module__StellarHeliosHelpers__AnyData[]",
-                        "name": "AnyData",
+                        "id": "__module__DelegateDatumTester__DgDatumTestData[]",
+                        "name": "DgDatumTestData",
                         "fieldTypes": [
                             {
                                 "name": "id",
@@ -1253,6 +1319,20 @@ export const DelegateDatumSchema : EnumTypeSchema = {
                                     "name": "String"
                                 },
                                 "key": "tpe"
+                            },
+                            {
+                                "name": "name",
+                                "type": {
+                                    "kind": "internal",
+                                    "name": "String"
+                                }
+                            },
+                            {
+                                "name": "number",
+                                "type": {
+                                    "kind": "internal",
+                                    "name": "Int"
+                                }
                             }
                         ]
                     }
@@ -1262,7 +1342,7 @@ export const DelegateDatumSchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 3,
-            "id": "__module__unspecializedDelegate__DelegateDatum[]__ScriptReference",
+            "id": "__module__DelegateDatumTester__DelegateDatum[]__ScriptReference",
             "name": "ScriptReference",
             "fieldTypes": []
         }
@@ -1346,16 +1426,16 @@ export const DelegateLifecycleActivitySchema : EnumTypeSchema = {
 export const SpendingActivitySchema : EnumTypeSchema = {
     "kind": "enum",
     "name": "SpendingActivity",
-    "id": "__module__unspecializedDelegate__SpendingActivity[]",
+    "id": "__module__DelegateDatumTester__SpendingActivity[]",
     "variantTypes": [
         {
             "kind": "variant",
             "tag": 0,
-            "id": "__module__unspecializedDelegate__SpendingActivity[]___placeholder1SA",
-            "name": "_placeholder1SA",
+            "id": "__module__DelegateDatumTester__SpendingActivity[]__UpdatingTData",
+            "name": "UpdatingTData",
             "fieldTypes": [
                 {
-                    "name": "recId",
+                    "name": "id",
                     "type": {
                         "kind": "internal",
                         "name": "ByteArray"
@@ -1369,13 +1449,13 @@ export const SpendingActivitySchema : EnumTypeSchema = {
 export const MintingActivitySchema : EnumTypeSchema = {
     "kind": "enum",
     "name": "MintingActivity",
-    "id": "__module__unspecializedDelegate__MintingActivity[]",
+    "id": "__module__DelegateDatumTester__MintingActivity[]",
     "variantTypes": [
         {
             "kind": "variant",
             "tag": 0,
-            "id": "__module__unspecializedDelegate__MintingActivity[]___placeholder1MA",
-            "name": "_placeholder1MA",
+            "id": "__module__DelegateDatumTester__MintingActivity[]__CreatingTData",
+            "name": "CreatingTData",
             "fieldTypes": [
                 {
                     "name": "seed",
@@ -1392,19 +1472,19 @@ export const MintingActivitySchema : EnumTypeSchema = {
 export const BurningActivitySchema : EnumTypeSchema = {
     "kind": "enum",
     "name": "BurningActivity",
-    "id": "__module__unspecializedDelegate__BurningActivity[]",
+    "id": "__module__DelegateDatumTester__BurningActivity[]",
     "variantTypes": [
         {
             "kind": "variant",
             "tag": 0,
-            "id": "__module__unspecializedDelegate__BurningActivity[]___placeholder1BA",
-            "name": "_placeholder1BA",
+            "id": "__module__DelegateDatumTester__BurningActivity[]__NOOP",
+            "name": "NOOP",
             "fieldTypes": [
                 {
-                    "name": "recId",
+                    "name": "noSuchActivity",
                     "type": {
                         "kind": "internal",
-                        "name": "ByteArray"
+                        "name": "Bool"
                     }
                 }
             ]
@@ -1415,12 +1495,12 @@ export const BurningActivitySchema : EnumTypeSchema = {
 export const DelegateActivitySchema : EnumTypeSchema = {
     "kind": "enum",
     "name": "DelegateActivity",
-    "id": "__module__unspecializedDelegate__DelegateActivity[]",
+    "id": "__module__DelegateDatumTester__DelegateActivity[]",
     "variantTypes": [
         {
             "kind": "variant",
             "tag": 0,
-            "id": "__module__unspecializedDelegate__DelegateActivity[]__CapoLifecycleActivities",
+            "id": "__module__DelegateDatumTester__DelegateActivity[]__CapoLifecycleActivities",
             "name": "CapoLifecycleActivities",
             "fieldTypes": [
                 {
@@ -1460,7 +1540,7 @@ export const DelegateActivitySchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 1,
-            "id": "__module__unspecializedDelegate__DelegateActivity[]__DelegateLifecycleActivities",
+            "id": "__module__DelegateDatumTester__DelegateActivity[]__DelegateLifecycleActivities",
             "name": "DelegateLifecycleActivities",
             "fieldTypes": [
                 {
@@ -1514,7 +1594,7 @@ export const DelegateActivitySchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 2,
-            "id": "__module__unspecializedDelegate__DelegateActivity[]__SpendingActivities",
+            "id": "__module__DelegateDatumTester__DelegateActivity[]__SpendingActivities",
             "name": "SpendingActivities",
             "fieldTypes": [
                 {
@@ -1522,16 +1602,16 @@ export const DelegateActivitySchema : EnumTypeSchema = {
                     "type": {
                         "kind": "enum",
                         "name": "SpendingActivity",
-                        "id": "__module__unspecializedDelegate__SpendingActivity[]",
+                        "id": "__module__DelegateDatumTester__SpendingActivity[]",
                         "variantTypes": [
                             {
                                 "kind": "variant",
                                 "tag": 0,
-                                "id": "__module__unspecializedDelegate__SpendingActivity[]___placeholder1SA",
-                                "name": "_placeholder1SA",
+                                "id": "__module__DelegateDatumTester__SpendingActivity[]__UpdatingTData",
+                                "name": "UpdatingTData",
                                 "fieldTypes": [
                                     {
-                                        "name": "recId",
+                                        "name": "id",
                                         "type": {
                                             "kind": "internal",
                                             "name": "ByteArray"
@@ -1547,7 +1627,7 @@ export const DelegateActivitySchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 3,
-            "id": "__module__unspecializedDelegate__DelegateActivity[]__MintingActivities",
+            "id": "__module__DelegateDatumTester__DelegateActivity[]__MintingActivities",
             "name": "MintingActivities",
             "fieldTypes": [
                 {
@@ -1555,13 +1635,13 @@ export const DelegateActivitySchema : EnumTypeSchema = {
                     "type": {
                         "kind": "enum",
                         "name": "MintingActivity",
-                        "id": "__module__unspecializedDelegate__MintingActivity[]",
+                        "id": "__module__DelegateDatumTester__MintingActivity[]",
                         "variantTypes": [
                             {
                                 "kind": "variant",
                                 "tag": 0,
-                                "id": "__module__unspecializedDelegate__MintingActivity[]___placeholder1MA",
-                                "name": "_placeholder1MA",
+                                "id": "__module__DelegateDatumTester__MintingActivity[]__CreatingTData",
+                                "name": "CreatingTData",
                                 "fieldTypes": [
                                     {
                                         "name": "seed",
@@ -1580,7 +1660,7 @@ export const DelegateActivitySchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 4,
-            "id": "__module__unspecializedDelegate__DelegateActivity[]__BurningActivities",
+            "id": "__module__DelegateDatumTester__DelegateActivity[]__BurningActivities",
             "name": "BurningActivities",
             "fieldTypes": [
                 {
@@ -1588,19 +1668,19 @@ export const DelegateActivitySchema : EnumTypeSchema = {
                     "type": {
                         "kind": "enum",
                         "name": "BurningActivity",
-                        "id": "__module__unspecializedDelegate__BurningActivity[]",
+                        "id": "__module__DelegateDatumTester__BurningActivity[]",
                         "variantTypes": [
                             {
                                 "kind": "variant",
                                 "tag": 0,
-                                "id": "__module__unspecializedDelegate__BurningActivity[]___placeholder1BA",
-                                "name": "_placeholder1BA",
+                                "id": "__module__DelegateDatumTester__BurningActivity[]__NOOP",
+                                "name": "NOOP",
                                 "fieldTypes": [
                                     {
-                                        "name": "recId",
+                                        "name": "noSuchActivity",
                                         "type": {
                                             "kind": "internal",
-                                            "name": "ByteArray"
+                                            "name": "Bool"
                                         }
                                     }
                                 ]
@@ -1613,7 +1693,7 @@ export const DelegateActivitySchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 5,
-            "id": "__module__unspecializedDelegate__DelegateActivity[]__CreatingDelegatedData",
+            "id": "__module__DelegateDatumTester__DelegateActivity[]__CreatingDelegatedData",
             "name": "CreatingDelegatedData",
             "fieldTypes": [
                 {
@@ -1635,7 +1715,7 @@ export const DelegateActivitySchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 6,
-            "id": "__module__unspecializedDelegate__DelegateActivity[]__UpdatingDelegatedData",
+            "id": "__module__DelegateDatumTester__DelegateActivity[]__UpdatingDelegatedData",
             "name": "UpdatingDelegatedData",
             "fieldTypes": [
                 {
@@ -1657,7 +1737,7 @@ export const DelegateActivitySchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 7,
-            "id": "__module__unspecializedDelegate__DelegateActivity[]__DeletingDelegatedData",
+            "id": "__module__DelegateDatumTester__DelegateActivity[]__DeletingDelegatedData",
             "name": "DeletingDelegatedData",
             "fieldTypes": [
                 {
@@ -1679,7 +1759,7 @@ export const DelegateActivitySchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 8,
-            "id": "__module__unspecializedDelegate__DelegateActivity[]__MultipleDelegateActivities",
+            "id": "__module__DelegateDatumTester__DelegateActivity[]__MultipleDelegateActivities",
             "name": "MultipleDelegateActivities",
             "fieldTypes": [
                 {

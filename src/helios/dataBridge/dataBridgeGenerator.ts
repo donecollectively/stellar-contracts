@@ -46,19 +46,19 @@ type fullTypeDetails = typeDetails<dataBridgeTypeInfo>;
  *
  * When generating methods in the new class, the following rules apply:
  *
- * 1.  Each struct type is directly exposed as its name, making <bridge>.<struct name>
+ * 1.  Each struct type is directly exposed as its name, making ‹bridge›.‹struct name›
  *      available for generating any data expected to match that form.
  *
  * 2.  Each enum type is exposed as its name, with nested accessors for each enum variant,
  *       ... with the accessors for each variant depend on the number of fields in the variant.
  *
- *     - if the variant has no fields, the accessor directly returns <cast>.toUplcData({ variantName: {} })
+ *     - if the variant has no fields, the accessor directly returns <cast>.toUplcData(\{ variantName: \{\} \})
  *
  *     - if the variant has a single field, the accessor is a function that takes the field value
- *        (with a strong type) and returns <cast>.toUplcData({ variantName: { fieldName: value } }
+ *        (with a strong type) and returns ‹cast›.toUplcData(\{ variantName: \{ fieldName: value \} \}
  *
  *     - if the variant has multiple fields, the accessor is a function that takes a strongly-typed
- *       object having the fields and returns <cast>.toUplcData({ variantName: { ...fields } })
+ *       object having the fields and returns ‹cast›.toUplcData(\{ variantName: \{ ...fields \} \})
  *
  * While gathering types, all the known type names are registered in a local namespace,
  * with function implementations gathered for each type.
@@ -224,7 +224,7 @@ ${this.includeScriptNamedTypes(inputFile)}
 //   Like "friends" in C++.
 
 /**
- * data bridge for **${
+ * GENERATED data bridge for **${
      this.bundle.program.name
  }** script (defined in class ***${this.bundle.constructor.name}***)}
  * main: **${this.bundle.main.name}**, project: **${

@@ -41,6 +41,10 @@ import {
 //  //  methods defined on any of the types in this file.
 
 import {
+    AnyData
+} from StellarHeliosHelpers
+
+import {
     DelegationDetail,
     mustReturnValueToScript,
     tvAuthorityToken,
@@ -84,8 +88,12 @@ enum SomeEnum {
 }
 
 enum DelegateDatum {
+    Cip68RefToken
     IsDelegation {
         dd: DelegationDetail
+    }
+    capoStoredData {
+        data: AnyData
     }
     ScriptReference
     SingleDataElement {

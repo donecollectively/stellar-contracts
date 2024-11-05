@@ -8,6 +8,7 @@ import {
 } from ScriptContext
 
 import {
+    AnyData,
     mustFindInputRedeemer,
     mkTv,
     returnsValueToScript
@@ -280,8 +281,12 @@ struct DelegationDetail {
 // Delegates can define additional Datum in their enums,
 // but this first Datum is essential
 enum BASE_DELEGATE_Datum {
+    Cip68RefToken
     IsDelegation {
         dd: DelegationDetail
+    }
+    capoStoredData {
+        data: AnyData
     }
 }
 

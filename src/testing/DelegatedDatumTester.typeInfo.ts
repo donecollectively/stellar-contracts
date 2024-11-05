@@ -47,6 +47,19 @@ export type AnyDataLike = {
 }
 
 
+export type DelegateDatum$Cip68RefToken = {
+    meta: AnyData  /*minVariantField*/ ,
+    version: bigint  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+export type DelegateDatum$Cip68RefTokenLike = {
+    meta: AnyDataLike  /*minVariantField*/ ,
+    version: IntLike  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+
 export type DelegationDetail = {
     capoAddr: /*minStructField*/ Address
     mph: /*minStructField*/ MintingPolicyHash
@@ -60,21 +73,23 @@ export type DelegationDetailLike = {
 }
 
 
-export type DelegateDatum$Cip68RefToken = {
-    cip68meta: AnyData  /*minVariantField*/ ,
-    cip68version: bigint  /*minVariantField*/ ,
-    dd: Option<DelegationDetail>  /*minVariantField*/ 
+export type DgDatumTestData = {
+    id: /*minStructField*/ number[]
+    type: /*minStructField*/ string
+    name: /*minStructField*/ string
+    number: /*minStructField*/ bigint
 }
 
-export type DelegateDatum$Cip68RefTokenLike = {
-    cip68meta: AnyDataLike  /*minVariantField*/ ,
-    cip68version: IntLike  /*minVariantField*/ ,
-    dd: Option<DelegationDetailLike>  /*minVariantField*/ 
+export type DgDatumTestDataLike = {
+    id: /*minStructField*/ number[]
+    type: /*minStructField*/ string
+    name: /*minStructField*/ string
+    number: /*minStructField*/ IntLike
 }
 
 
 export type DelegateDatumMeta = EnumTypeMeta<
-    {module: "unspecializedDelegate", enumName: "DelegateDatum"}, {
+    {module: "DelegateDatumTester", enumName: "DelegateDatum"}, {
         Cip68RefToken: singleEnumVariantMeta<DelegateDatumMeta, "Cip68RefToken",
             "Constr#0", 
             "fields", DelegateDatum$Cip68RefToken, "noSpecialFlags"
@@ -84,7 +99,7 @@ export type DelegateDatumMeta = EnumTypeMeta<
   , "noSpecialFlags"
         >,
         capoStoredData: singleEnumVariantMeta<DelegateDatumMeta, "capoStoredData",
-            "Constr#2", "singletonField", AnyData /*singleVariantField ; elided extra { data: AnyData} structure*/
+            "Constr#2", "singletonField", DgDatumTestData /*singleVariantField ; elided extra { data: DgDatumTestData} structure*/
   , "noSpecialFlags"
         >,
         ScriptReference: singleEnumVariantMeta<DelegateDatumMeta, "ScriptReference",
@@ -107,7 +122,7 @@ export type DelegateDatum =
         | { Cip68RefToken: /*minEnumVariant*/ DelegateDatum$Cip68RefToken }
         | { IsDelegation: /*minEnumVariant*/ DelegationDetail /*singleVariantField ; elided extra { dd: DelegationDetail} structure*/
    }
-        | { capoStoredData: /*minEnumVariant*/ AnyData /*singleVariantField ; elided extra { data: AnyData} structure*/
+        | { capoStoredData: /*minEnumVariant*/ DgDatumTestData /*singleVariantField ; elided extra { data: DgDatumTestData} structure*/
    }
         | { ScriptReference: /*minEnumVariant*/ tagOnly }
 
@@ -128,7 +143,7 @@ export type DelegateDatumLike =
         | { Cip68RefToken: /*minEnumVariant*/ DelegateDatum$Cip68RefTokenLike }
         | { IsDelegation: /*minEnumVariant*/ DelegationDetailLike /*singleVariantField ; elided extra { dd: DelegationDetailLike} structure*/
    }
-        | { capoStoredData: /*minEnumVariant*/ AnyDataLike /*singleVariantField ; elided extra { data: AnyDataLike} structure*/
+        | { capoStoredData: /*minEnumVariant*/ DgDatumTestDataLike /*singleVariantField ; elided extra { data: DgDatumTestDataLike} structure*/
    }
         | { ScriptReference: /*minEnumVariant*/ tagOnly }
 
@@ -241,9 +256,9 @@ export type DelegateLifecycleActivityLike =
         | { ValidatingSettings: /*minEnumVariant*/ tagOnly }
 
 export type SpendingActivityMeta = EnumTypeMeta<
-    {module: "unspecializedDelegate", enumName: "SpendingActivity"}, {
-        _placeholder1SA: singleEnumVariantMeta<SpendingActivityMeta, "_placeholder1SA",
-            "Constr#0", "singletonField", number[] /*singleVariantField ; elided extra { recId: number[]} structure*/
+    {module: "DelegateDatumTester", enumName: "SpendingActivity"}, {
+        UpdatingTData: singleEnumVariantMeta<SpendingActivityMeta, "UpdatingTData",
+            "Constr#0", "singletonField", number[] /*singleVariantField ; elided extra { id: number[]} structure*/
   , "noSpecialFlags"
         >
     }
@@ -260,7 +275,7 @@ export type SpendingActivityMeta = EnumTypeMeta<
  *     for generating UPLC data for this enum type
  */
 export type SpendingActivity = 
-        | { _placeholder1SA: /*minEnumVariant*/ number[] /*singleVariantField ; elided extra { recId: number[]} structure*/
+        | { UpdatingTData: /*minEnumVariant*/ number[] /*singleVariantField ; elided extra { id: number[]} structure*/
    }
 
 /**
@@ -277,12 +292,12 @@ export type SpendingActivity =
  * converted by convention to the canonical types used in the on-chain context.
  */
 export type SpendingActivityLike = 
-        | { _placeholder1SA: /*minEnumVariant*/ number[] /*singleVariantField ; elided extra { recId: number[]} structure*/
+        | { UpdatingTData: /*minEnumVariant*/ number[] /*singleVariantField ; elided extra { id: number[]} structure*/
    }
 
 export type MintingActivityMeta = EnumTypeMeta<
-    {module: "unspecializedDelegate", enumName: "MintingActivity"}, {
-        _placeholder1MA: singleEnumVariantMeta<MintingActivityMeta, "_placeholder1MA",
+    {module: "DelegateDatumTester", enumName: "MintingActivity"}, {
+        CreatingTData: singleEnumVariantMeta<MintingActivityMeta, "CreatingTData",
             "Constr#0", "singletonField", TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
   , "isSeededActivity"
         >
@@ -300,7 +315,7 @@ export type MintingActivityMeta = EnumTypeMeta<
  *     for generating UPLC data for this enum type
  */
 export type MintingActivity = 
-        | { _placeholder1MA: /*minEnumVariant*/ TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
+        | { CreatingTData: /*minEnumVariant*/ TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
    }
 
 /**
@@ -317,13 +332,13 @@ export type MintingActivity =
  * converted by convention to the canonical types used in the on-chain context.
  */
 export type MintingActivityLike = 
-        | { _placeholder1MA: /*minEnumVariant*/ TxOutputId | string /*singleVariantField ; elided extra { seed: TxOutputId | string} structure*/
+        | { CreatingTData: /*minEnumVariant*/ TxOutputId | string /*singleVariantField ; elided extra { seed: TxOutputId | string} structure*/
    }
 
 export type BurningActivityMeta = EnumTypeMeta<
-    {module: "unspecializedDelegate", enumName: "BurningActivity"}, {
-        _placeholder1BA: singleEnumVariantMeta<BurningActivityMeta, "_placeholder1BA",
-            "Constr#0", "singletonField", number[] /*singleVariantField ; elided extra { recId: number[]} structure*/
+    {module: "DelegateDatumTester", enumName: "BurningActivity"}, {
+        NOOP: singleEnumVariantMeta<BurningActivityMeta, "NOOP",
+            "Constr#0", "singletonField", boolean /*singleVariantField ; elided extra { noSuchActivity: boolean} structure*/
   , "noSpecialFlags"
         >
     }
@@ -340,7 +355,7 @@ export type BurningActivityMeta = EnumTypeMeta<
  *     for generating UPLC data for this enum type
  */
 export type BurningActivity = 
-        | { _placeholder1BA: /*minEnumVariant*/ number[] /*singleVariantField ; elided extra { recId: number[]} structure*/
+        | { NOOP: /*minEnumVariant*/ boolean /*singleVariantField ; elided extra { noSuchActivity: boolean} structure*/
    }
 
 /**
@@ -357,7 +372,7 @@ export type BurningActivity =
  * converted by convention to the canonical types used in the on-chain context.
  */
 export type BurningActivityLike = 
-        | { _placeholder1BA: /*minEnumVariant*/ number[] /*singleVariantField ; elided extra { recId: number[]} structure*/
+        | { NOOP: /*minEnumVariant*/ boolean /*singleVariantField ; elided extra { noSuchActivity: boolean} structure*/
    }
 
 export type DelegateActivity$CreatingDelegatedData = {
@@ -394,7 +409,7 @@ export type DelegateActivity$DeletingDelegatedDataLike = {
 
 
 export type DelegateActivityMeta = EnumTypeMeta<
-    {module: "unspecializedDelegate", enumName: "DelegateActivity"}, {
+    {module: "DelegateDatumTester", enumName: "DelegateActivity"}, {
         CapoLifecycleActivities: singleEnumVariantMeta<DelegateActivityMeta, "CapoLifecycleActivities",
             "Constr#0", "singletonField", CapoLifecycleActivity /*singleVariantField ; elided extra { activity: CapoLifecycleActivity} structure*/
   , "noSpecialFlags"

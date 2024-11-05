@@ -67,7 +67,7 @@ import type * as types from "./CapoMinter.typeInfo.js";
 //   Like "friends" in C++.
 
 /**
- * data bridge for **CapoMinter** script (defined in class ***CapoMinterBundle***)}
+ * GENERATED data bridge for **CapoMinter** script (defined in class ***CapoMinterBundle***)}
  * main: **src/minting/CapoMinter.hl**, project: **stellar-contracts**
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */

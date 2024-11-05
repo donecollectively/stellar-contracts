@@ -53,6 +53,7 @@ import type {hasSeed, isActivity} from "../../StellarContract.js"
 
 import type {
     DelegationDetail, DelegationDetailLike,
+    AnyData, AnyDataLike,
     SampleStruct, SampleStructLike,
     SomeEnum$hasNestedFields, SomeEnum$hasNestedFieldsLike,
     SomeEnum$hasRecursiveFields, SomeEnum$hasRecursiveFieldsLike,
@@ -85,7 +86,7 @@ import type * as types from "./uutMintingMintDelegate.typeInfo.js";
 //   Like "friends" in C++.
 
 /**
- * data bridge for **BasicDelegate** script (defined in class ***BundleMintDelegateWithGenericUuts***)}
+ * GENERATED data bridge for **BasicDelegate** script (defined in class ***BundleMintDelegateWithGenericUuts***)}
  * main: **src/delegation/BasicDelegate.hl**, project: **stellar-contracts**
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
@@ -170,6 +171,16 @@ export class uutMintingDelegateDataBridge extends ContractDataBridge {
         return this.__DelegationDetailCast.toUplcData(fields);
     },
       /**
+       * generates UplcData for the enum type ***AnyData*** for the `BasicDelegate` script
+       */
+        AnyData: (fields: AnyDataLike | {
+    id: /*minStructField*/ number[]
+    type: /*minStructField*/ string
+}
+) => {
+        return this.__AnyDataCast.toUplcData(fields);
+    },
+      /**
        * generates UplcData for the enum type ***SampleStruct*** for the `BasicDelegate` script
        */
         SampleStruct: (fields: SampleStructLike | {
@@ -185,6 +196,9 @@ export class uutMintingDelegateDataBridge extends ContractDataBridge {
     protected __DelegationDetailCast = new StellarCast<
                 DelegationDetail, DelegationDetailLike
             >(DelegationDetailSchema, { isMainnet: true });
+    protected __AnyDataCast = new StellarCast<
+                AnyData, AnyDataLike
+            >(AnyDataSchema, { isMainnet: true });
     protected __SampleStructCast = new StellarCast<
                 SampleStruct, SampleStructLike
             >(SampleStructSchema, { isMainnet: true });
@@ -394,6 +408,26 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
     } /* structReader helper */
 
     /**
+        * reads UplcData *known to fit the **AnyData*** struct type,
+        * for the BasicDelegate script.
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the struct type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    AnyData(d: UplcData) {
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = this.bridge.__AnyDataCast;
+        return cast.fromUplcData(d);        
+    } /* structReader helper */
+
+    /**
         * reads UplcData *known to fit the **SampleStruct*** struct type,
         * for the BasicDelegate script.
         * ### Standard WARNING
@@ -432,6 +466,28 @@ export class DelegationDetailHelper extends DataBridge {
     //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
     //
     // DelegationDetail(fields: DelegationDetailLike) {
+    //    return this.__cast.toUplcData(fields);
+    //}
+} //mkStructHelperClass 
+
+
+/**
+ * Helper class for generating UplcData for the ***AnyData*** struct type.
+ */
+export class AnyDataHelper extends DataBridge {
+    isCallable = true
+    protected __cast = new StellarCast<
+        AnyData,
+        AnyDataLike
+    >(AnyDataSchema, { isMainnet: true });
+
+    // You might expect a function as follows, but no.  However, a similar uplc-generating capability
+    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.
+    // see the callableDataBridge type on the 'datum' property in the contract bridge.
+    //
+    //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
+    //
+    // AnyData(fields: AnyDataLike) {
     //    return this.__cast.toUplcData(fields);
     //}
 } //mkStructHelperClass 
@@ -622,6 +678,16 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
        DelegateDatumLike
    >(DelegateDatumSchema, { isMainnet: true });
 
+/**
+ * (property getter): UplcData for ***"uutMintingDelegate::DelegateDatum.Cip68RefToken"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#0***
+ */
+    get Cip68RefToken() {
+        const uplc = this.mkUplcData({ Cip68RefToken: {} }, 
+            "uutMintingDelegate::DelegateDatum.Cip68RefToken");
+       return uplc;
+    } /* tagOnly variant accessor */
+
     /**
      * generates  UplcData for ***"uutMintingDelegate::DelegateDatum.IsDelegation"***
      * @remarks - ***DelegationDetailLike*** is the same as the expanded field-type.
@@ -639,9 +705,25 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
        return uplc;
     }
 
+    /**
+     * generates  UplcData for ***"uutMintingDelegate::DelegateDatum.capoStoredData"***
+     * @remarks - ***AnyDataLike*** is the same as the expanded field-type.
+     */
+    capoStoredData(
+        data: AnyDataLike | {
+    id: /*minStructField*/ number[]
+    type: /*minStructField*/ string
+}
+    ) : UplcData {
+        const uplc = this.mkUplcData({ 
+           capoStoredData: data
+        }, "uutMintingDelegate::DelegateDatum.capoStoredData"); /*singleField enum variant*/
+       return uplc;
+    }
+
 /**
  * (property getter): UplcData for ***"uutMintingDelegate::DelegateDatum.ScriptReference"***
- * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
  */
     get ScriptReference() {
         const uplc = this.mkUplcData({ ScriptReference: {} }, 
@@ -1404,6 +1486,31 @@ export const DelegationDetailSchema : StructTypeSchema = {
     ]
 };
 
+export const AnyDataSchema : StructTypeSchema = {
+    "kind": "struct",
+    "format": "map",
+    "id": "__module__StellarHeliosHelpers__AnyData[]",
+    "name": "AnyData",
+    "fieldTypes": [
+        {
+            "name": "id",
+            "type": {
+                "kind": "internal",
+                "name": "ByteArray"
+            },
+            "key": "@id"
+        },
+        {
+            "name": "type",
+            "type": {
+                "kind": "internal",
+                "name": "String"
+            },
+            "key": "tpe"
+        }
+    ]
+};
+
 export const SampleStructSchema : StructTypeSchema = {
     "kind": "struct",
     "format": "list",
@@ -1641,6 +1748,13 @@ export const DelegateDatumSchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 0,
+            "id": "__module__uutMintingDelegate__DelegateDatum[]__Cip68RefToken",
+            "name": "Cip68RefToken",
+            "fieldTypes": []
+        },
+        {
+            "kind": "variant",
+            "tag": 1,
             "id": "__module__uutMintingDelegate__DelegateDatum[]__IsDelegation",
             "name": "IsDelegation",
             "fieldTypes": [
@@ -1680,14 +1794,49 @@ export const DelegateDatumSchema : EnumTypeSchema = {
         },
         {
             "kind": "variant",
-            "tag": 1,
+            "tag": 2,
+            "id": "__module__uutMintingDelegate__DelegateDatum[]__capoStoredData",
+            "name": "capoStoredData",
+            "fieldTypes": [
+                {
+                    "name": "data",
+                    "type": {
+                        "kind": "struct",
+                        "format": "map",
+                        "id": "__module__StellarHeliosHelpers__AnyData[]",
+                        "name": "AnyData",
+                        "fieldTypes": [
+                            {
+                                "name": "id",
+                                "type": {
+                                    "kind": "internal",
+                                    "name": "ByteArray"
+                                },
+                                "key": "@id"
+                            },
+                            {
+                                "name": "type",
+                                "type": {
+                                    "kind": "internal",
+                                    "name": "String"
+                                },
+                                "key": "tpe"
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "kind": "variant",
+            "tag": 3,
             "id": "__module__uutMintingDelegate__DelegateDatum[]__ScriptReference",
             "name": "ScriptReference",
             "fieldTypes": []
         },
         {
             "kind": "variant",
-            "tag": 2,
+            "tag": 4,
             "id": "__module__uutMintingDelegate__DelegateDatum[]__SingleDataElement",
             "name": "SingleDataElement",
             "fieldTypes": [
@@ -1702,7 +1851,7 @@ export const DelegateDatumSchema : EnumTypeSchema = {
         },
         {
             "kind": "variant",
-            "tag": 3,
+            "tag": 5,
             "id": "__module__uutMintingDelegate__DelegateDatum[]__SingleNestedStruct",
             "name": "SingleNestedStruct",
             "fieldTypes": [
@@ -1762,7 +1911,7 @@ export const DelegateDatumSchema : EnumTypeSchema = {
         },
         {
             "kind": "variant",
-            "tag": 4,
+            "tag": 6,
             "id": "__module__uutMintingDelegate__DelegateDatum[]__HasNestedEnum",
             "name": "HasNestedEnum",
             "fieldTypes": [
@@ -1951,7 +2100,7 @@ export const DelegateDatumSchema : EnumTypeSchema = {
         },
         {
             "kind": "variant",
-            "tag": 5,
+            "tag": 7,
             "id": "__module__uutMintingDelegate__DelegateDatum[]__MultiFieldVariant",
             "name": "MultiFieldVariant",
             "fieldTypes": [
@@ -1973,7 +2122,7 @@ export const DelegateDatumSchema : EnumTypeSchema = {
         },
         {
             "kind": "variant",
-            "tag": 6,
+            "tag": 8,
             "id": "__module__uutMintingDelegate__DelegateDatum[]__MultiFieldNestedThings",
             "name": "MultiFieldNestedThings",
             "fieldTypes": [

@@ -67,6 +67,9 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
         // ... governing the minting of application-specific tokens (including UUTs, fungible tokens, 
         // ... or other sorts of tokens under our minting policy).
         //! Ditto, for our spendDgt-* token, for governing the spend of any utxos in the Capo address.
+        capoStoredData => error("Data Delegates must never store the capoStoredData variant in the script; used only for data-structuring capo-stored utxo datum"),
+        // todo: ensure that the utxo-creation path also does not store IsDelegatedData variants in the script
+
         //! This code path is also used for other authority-bearing tokens in other specialized delegates,
         //  ... such as named delegates that the mintDgt- or spendDgt- policies defer to.
         //  ... each of those cases has separate execution through this base logic, with specialization 

@@ -159,6 +159,8 @@ export class DataBridge extends (dataBridgeProxyBase as any) {
     protected isNested: boolean;
     isCallable = false
 
+    mkData: this["__cast"]["toUplcData"] = 
+        (x: any) => this.__cast.toUplcData(x) 
     readData: this["__cast"]["fromUplcData"] = 
         (x: any) => this.__cast.fromUplcData(x) 
 

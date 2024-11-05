@@ -49,6 +49,17 @@ export type DelegationDetailLike = {
 }
 
 
+export type AnyData = {
+    id: /*minStructField*/ number[]
+    type: /*minStructField*/ string
+}
+
+export type AnyDataLike = {
+    id: /*minStructField*/ number[]
+    type: /*minStructField*/ string
+}
+
+
 export type SampleStruct = {
     a: /*minStructField*/ bigint
     b: /*minStructField*/ Map<string, number[]>
@@ -175,31 +186,38 @@ export type DelegateDatum$MultiFieldNestedThingsLike = {
 
 export type DelegateDatumMeta = EnumTypeMeta<
     {module: "uutMintingDelegate", enumName: "DelegateDatum"}, {
+        Cip68RefToken: singleEnumVariantMeta<DelegateDatumMeta, "Cip68RefToken",
+            "Constr#0", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
         IsDelegation: singleEnumVariantMeta<DelegateDatumMeta, "IsDelegation",
-            "Constr#0", "singletonField", DelegationDetail /*singleVariantField ; elided extra { dd: DelegationDetail} structure*/
+            "Constr#1", "singletonField", DelegationDetail /*singleVariantField ; elided extra { dd: DelegationDetail} structure*/
+  , "noSpecialFlags"
+        >,
+        capoStoredData: singleEnumVariantMeta<DelegateDatumMeta, "capoStoredData",
+            "Constr#2", "singletonField", AnyData /*singleVariantField ; elided extra { data: AnyData} structure*/
   , "noSpecialFlags"
         >,
         ScriptReference: singleEnumVariantMeta<DelegateDatumMeta, "ScriptReference",
-            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
+            "Constr#3", "tagOnly", tagOnly, "noSpecialFlags"
         >,
         SingleDataElement: singleEnumVariantMeta<DelegateDatumMeta, "SingleDataElement",
-            "Constr#2", "singletonField", string /*singleVariantField ; elided extra { aString: string} structure*/
+            "Constr#4", "singletonField", string /*singleVariantField ; elided extra { aString: string} structure*/
   , "noSpecialFlags"
         >,
         SingleNestedStruct: singleEnumVariantMeta<DelegateDatumMeta, "SingleNestedStruct",
-            "Constr#3", "singletonField", SampleStruct /*singleVariantField ; elided extra { aStruct: SampleStruct} structure*/
+            "Constr#5", "singletonField", SampleStruct /*singleVariantField ; elided extra { aStruct: SampleStruct} structure*/
   , "noSpecialFlags"
         >,
         HasNestedEnum: singleEnumVariantMeta<DelegateDatumMeta, "HasNestedEnum",
-            "Constr#4", "singletonField", SomeEnum /*singleVariantField ; elided extra { nested: SomeEnum} structure*/
+            "Constr#6", "singletonField", SomeEnum /*singleVariantField ; elided extra { nested: SomeEnum} structure*/
   , "noSpecialFlags"
         >,
         MultiFieldVariant: singleEnumVariantMeta<DelegateDatumMeta, "MultiFieldVariant",
-            "Constr#5", 
+            "Constr#7", 
             "fields", DelegateDatum$MultiFieldVariant, "noSpecialFlags"
         >,
         MultiFieldNestedThings: singleEnumVariantMeta<DelegateDatumMeta, "MultiFieldNestedThings",
-            "Constr#6", 
+            "Constr#8", 
             "fields", DelegateDatum$MultiFieldNestedThings, "noSpecialFlags"
         >
     }
@@ -210,13 +228,16 @@ export type DelegateDatumMeta = EnumTypeMeta<
  * DelegateDatum enum variants
  * 
  * @remarks - expresses the essential raw data structures
- * supporting the **7 variant(s)** of the DelegateDatum enum type
+ * supporting the **9 variant(s)** of the DelegateDatum enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `DelegateDatumHelper` class
  *     for generating UPLC data for this enum type
  */
 export type DelegateDatum = 
+        | { Cip68RefToken: /*minEnumVariant*/ tagOnly }
         | { IsDelegation: /*minEnumVariant*/ DelegationDetail /*singleVariantField ; elided extra { dd: DelegationDetail} structure*/
+   }
+        | { capoStoredData: /*minEnumVariant*/ AnyData /*singleVariantField ; elided extra { data: AnyData} structure*/
    }
         | { ScriptReference: /*minEnumVariant*/ tagOnly }
         | { SingleDataElement: /*minEnumVariant*/ string /*singleVariantField ; elided extra { aString: string} structure*/
@@ -232,7 +253,7 @@ export type DelegateDatum =
  * DelegateDatum enum variants (permissive)
  * 
  * @remarks - expresses the allowable data structures
- * for creating any of the **7 variant(s)** of the DelegateDatum enum type
+ * for creating any of the **9 variant(s)** of the DelegateDatum enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `DelegateDatumHelper` class
  *     for generating UPLC data for this enum type
@@ -242,7 +263,10 @@ export type DelegateDatum =
  * converted by convention to the canonical types used in the on-chain context.
  */
 export type DelegateDatumLike = 
+        | { Cip68RefToken: /*minEnumVariant*/ tagOnly }
         | { IsDelegation: /*minEnumVariant*/ DelegationDetailLike /*singleVariantField ; elided extra { dd: DelegationDetailLike} structure*/
+   }
+        | { capoStoredData: /*minEnumVariant*/ AnyDataLike /*singleVariantField ; elided extra { data: AnyDataLike} structure*/
    }
         | { ScriptReference: /*minEnumVariant*/ tagOnly }
         | { SingleDataElement: /*minEnumVariant*/ string /*singleVariantField ; elided extra { aString: string} structure*/

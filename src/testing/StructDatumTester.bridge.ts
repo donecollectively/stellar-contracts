@@ -68,7 +68,7 @@ import type * as types from "./StructDatumTester.typeInfo.js";
 //   Like "friends" in C++.
 
 /**
- * data bridge for **StructDatumTester** script (defined in class ***StructDatumTester***)}
+ * GENERATED data bridge for **StructDatumTester** script (defined in class ***StructDatumTester***)}
  * main: **src/testing/StructDatumTester.hl**, project: **stellar-contracts**
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */

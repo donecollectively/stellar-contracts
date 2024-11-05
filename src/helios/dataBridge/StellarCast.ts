@@ -36,14 +36,6 @@ export class StellarCast<ErgoCanonical, ErgoPermissive> extends Cast<ErgoCanonic
             tag, schema, fieldData, defs, dataPath
         )
     }
-
-    /**
-     * @param {VariantTypeSchema} variantSchema
-     * @param {UplcData[]} fields
-     * @param {UplcToSchemaContext} context
-     * @param {EnumTypeSchema} enumSchema
-     * @returns {Record<string, any>}
-     */
  
     readEnumUplcData(
         variantSchema: VariantTypeSchema,
