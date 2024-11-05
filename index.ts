@@ -157,6 +157,23 @@ export {
 } from "./src/delegation/DelegatedDataContract.js";
 
 export { CapoHeliosBundle } from "./src/CapoHeliosBundle.js";
+export { 
+    ContractDataBridge, 
+    DataBridge,
+    DataBridgeReaderClass,
+    ContractDataBridgeWithEnumDatum,
+    ContractDataBridgeWithOtherDatum,
+    type DataBridgeOptions,
+    type callWith
+} from "./src/helios/dataBridge/DataBridge.js";
+export type { IntersectedEnum } from "./src/helios/typeUtils.js";
+export { 
+    EnumBridge,
+    type JustAnEnum,
+    type Nested,
+    type NotNested
+} from "./src/helios/dataBridge/EnumBridge.js";
+export { StellarCast } from "./src/helios/dataBridge/StellarCast.js";
 
 export {
     CapoMinter,
