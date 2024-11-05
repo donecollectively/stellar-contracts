@@ -544,8 +544,8 @@ export class StellarContract<
      * @remarks - the **redeemer** data (needed by the contract script) is defined as one or
      * more activity-types (e.g. in a struct, or an enum as indicated in the type of the last argument to
      * the validator function).
-     *   - See below for more about type-generation if your editor doesn't  provide auto-complete for
-     *   the activities.
+     *   - See below for more about ***setup & type-generation*** if your editor doesn't  provide auto-complete for
+     *    the activities.
      *
      * ### A terminology note: Activities and Redeemers
      *
@@ -568,7 +568,25 @@ export class StellarContract<
      * a variety of inputs and output, each potential candidates for an activity, can use the activity
      * details to resolve ambiguity so the validator easily acts on the correct items.
      *
-     * ### Type generation
+     * ### Setup and Type generation
+     * #### Step 1: create your script **`.hlbundle.ts`**
+     * With a defined script bundle, `import YourScriptNameBundle from "./YourBundleName.hlbundle.js"`
+     * to your StellarContracts class module, and define a `scriptBundle() { return this.mkBundleWithCapo(BundleClass) }` or
+     * similar method in that class.
+     * 
+     * This results in a generated **`.typeInfo.ts`** and **`.bridge.ts`** with complete
+     * typescript bindings for your on-chain script (trouble? check Plugin setup below).
+     * 
+     * #### Step 2: Import the generated bridge class
+     * Using the generated .bridge file:
+     * > `import YourScriptNameDataBridge from "./YourBundleName.bridge.js"` 
+     * 
+     * ... and set the `dataBridgeClass` property in your class:
+     * 
+     * >    `dataBridgeClass = YourScriptNameDataBridge`
+     * 
+     * ### Plugin Setup
+     * 
      * The activity types should be available through type-safe auto-complete in your editor.  If not,
      * you may need to install and configure the Stellar Contracts rollup plugins for importing .hl
      * files and generating .d.ts for your .hlbundle.js files.  See the Stellar Contracts development
