@@ -218,10 +218,9 @@ export function heliosRollupTypeGen(
                 let replacedCapo = false
                 if (SomeBundleClass.isCapoBundle) {
                     if (state.hasExplicitCapoBundle) {
-                        throw new Error(
-                            `only one Capo bundle is allowed in a project`
-                        )
-                    } else if (state.hasOtherBundles) {
+                        console.warn(`${SomeBundleClass.name}: replacing ${state.capoBundle.constructor.name}`);
+                    } 
+                    if (state.hasOtherBundles) {
                         const digestExisting = shortHash(JSON.stringify(state.capoBundle.modules));
                         const digestNew = shortHash(JSON.stringify(SomeBundleClass.prototype.modules));
 
