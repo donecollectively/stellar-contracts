@@ -13,15 +13,16 @@ import {
     mkUutTnFactory,
     requiresMintDelegateApproval,
     validateUutMinting, 
-    mintsUutForCharterUsingRedeemerIndex,
     MinterActivity
 } from CapoMintHelpers
 
 import {
     CapoDatum,
     CapoActivity,
-    getRefCharterUtxo
+    getRefCharterUtxo,
+    mkCapoCtx
 } from CapoHelpers
+
 import {
     DgTknDisposition as DgTkn
 } from CapoDelegateHelpers
@@ -40,22 +41,6 @@ const rev : Int = 1
 func hasContractSeedUtxo(tx: Tx) -> Bool {
     hasSeedUtxo(tx, TxOutputId::new(seedTxn, seedIndex))
 }
-
-// this is a simple example showing how a tagged struct
-//   ... can be cast from a generic Map[String]Data
-// struct Foo {
-//     // the "meaning" field can be an Int, and this makes it "just work" as a Real.
-//     m: Real "meaning"
-//     // the struct can have the "happy" field, and we don't have to interpret it!
-//     // h: Int "happy"
-//     func info(self) ->() {
-//         print(
-//             // "happy? "+self.h.show()+
-//             "; the answer is " + self.m.show()
-//         )
-//     }
-// }
-
 
 func main(r : MinterActivity) -> Bool {
     mph: MintingPolicyHash = get_current_minting_policy_hash();
@@ -81,6 +66,8 @@ func main(r : MinterActivity) -> Bool {
                 mintDgtTnBase, 
                 spendDgtTnBase
             };
+            // settingsDgtTnBase: String = "settingsDgt"
+            // if (charter.withSettings) purposes = purposes + []String{ settingsDgtTnBase, "settings" }
 
             assert(value_minted >= charterVal,
                 "charter token not minted");
@@ -110,12 +97,12 @@ func main(r : MinterActivity) -> Bool {
             CharterToken{
                 spendDgt, 
                 spendInvariants,
-                // _settingsUut,
                 namedDelegates,
                 mintDgt, 
                 mintInvariants, 
-                authDgt
-                // _typeMapUut
+                authDgt,
+                manifest,
+                pendingDelegates
             } = charterDatum;
             // settings are not essential to a Capo.
             // ... some Capos could use settings, and it would be
@@ -125,20 +112,55 @@ func main(r : MinterActivity) -> Bool {
             // but much less than the special status they had when Settings
             // were a separate datum type.
 
-            // foundSettings : outputAndDatum[CapoDatum::SettingsData] = 
-            //     charterDatum.mustFindSettingsOutput(mph: mph, inAddr: charter.owner);
-            // assert(foundSettings == foundSettings, "no way");
-
             // once we have burned down the test backlog a bit, we can add these in:
             assert(mintInvariants.length == 0, "no mint invariants allowed at charter creation");
             assert(spendInvariants.length == 0, "no spend invariants allowed at charter creation");
-            assert(namedDelegates.length ==0, "no named delegates allowed at charter creation");
-            
+            assert(manifest.length == 0, "no UUTs allowed at charter creation");
+            assert(pendingDelegates.length == 0, "no pending delegates allowed at charter creation");
+
             print("  -- checking for required delegates\n");
             hasGoodDelegates : Bool = true &&
                 authDgt.hasValidOutput(mph, true, DgTkn::Created) &&
                 mintDgt.hasValidOutput(mph, true, DgTkn::Created) &&
-                spendDgt.hasValidOutput(mph, true, DgTkn::Created);
+                spendDgt.hasValidOutput(mph, true, DgTkn::Created) &&
+                true;
+
+                // if (charter.withSettings) {
+                //     REQT("when 'withSettings' is true, there must be a settings-policy delegate created");
+                //     assert(namedDelegates.length == 1, "only settingsDgt allowed at charter creation");
+                    
+                //     settingsDgt = namedDelegates.get_safe("settingsPolicy").switch {
+                //         None => error("missing required named delegate 'settingsPolicy'"),
+                //         Some{dgt} => dgt
+                //     };
+                //     settingsDgt.hasValidOutput(mph, true, DgTkn::Created)
+
+                //     REQT("with settings, there must be a settings datum stored in the Capo");
+                //     cctx = mkCapoCtx(mph).nowMinting(charter.owner, charterOutput);
+                //     foundSettingsOutput : TxOutput = cctx.delegatedOutputData(
+                //         mkUutName(settingsTnBase)
+                //     );
+                
+                //     // tx.outputs.find_safe( (output: TxOutput) -> Bool {
+                //     //     output.address == charter.owner &&
+                //     //         output.value.contains(mkTv(mph, mkUutName(settingsTnBase))
+                //     // }).switch {
+                //     //     None => error("missing required settings data"),
+                //     //     Some{output} => output
+                //     // };
+                                    
+                //     outputAndDatum[CapoDatum::DelegatedData] = 
+                //         charterDatum.mustFindSettingsOutput(mph: mph, inAddr: charter.owner);
+                //     assert(foundSettings == foundSettings, "no way");
+
+                //     true
+                // } else { 
+                //     assert(namedDelegates.length == 0, "no named delegates allowed at charter creation");
+                //     true
+                //  };
+
+            assert(namedDelegates.length == 0, "no named delegates allowed at charter creation");
+
 
             print("\n  -- hasSeed: " + hasSeed.show());
             print("\n  -- mintsUuts: " + mintsUuts.show());
@@ -152,74 +174,123 @@ func main(r : MinterActivity) -> Bool {
             requiresMintDelegateApproval(mph)
             // -------------------------  ^^^ deferring to the Capo's current minting delegate --------------------
         },
-
-        addingMintInvariant{seed} => {
-            addMintInvariant : Int = 3;
-
-            // XXXXXXXXXXXXXXXXXXX should be failing
-            print("checking for addingMintInvariant\n");
-                                    //!todo change this one
-            mintsUutForCharterUsingRedeemerIndex(
-                charterRedeemerIndex: addMintInvariant,
-                mph: mph, 
-                purpose: "mintInvar", 
-                seed: seed
-            )
-        },
-
-        addingSpendInvariant{seed} => {
-            addSpendInvariant : Int = 4;
-            // XXXXXXXXXXXXXXXXXXX should be failing
-                        //!todo change this one
-                        print("checking for addingSpendInvariant\n");
-            mintsUutForCharterUsingRedeemerIndex(
-                charterRedeemerIndex: addSpendInvariant,
-                mph: mph, 
-                purpose: "spendInvar", 
-                seed: seed
-            )
-        },
-
-        ForcingNewMintDelegate{seed} => {
-            updatingCharter : Int = 1; // general update to charter
-            print("checking for ForcingNewMintDelegate\n");
-                                    //!todo change this one
-            mintsUutForCharterUsingRedeemerIndex(
-                charterRedeemerIndex: updatingCharter,
-                mph: mph, 
-                purpose: "mintDgt",
-                seed: seed, 
-                needsMintDelegateApproval: false
-            )
-        },
-
-        CreatingNewSpendDelegate{seed, replaceExisting} => {
-            print("checking for CreatingNewSpendDelegate\n");
-
-            otherMintedValue : Value = replaceExisting.switch {
-                Some{oldTokenName} => {
-                    BURNED: Int = -1;
-                    Value::new(
-                        AssetClass::new(mph, oldTokenName), 
-                        BURNED
-                    )
+        _ => {
+            cctx = mkCapoCtx(mph).withCharterInput();
+            r.switch {
+                mintingCharter => error("unreachable"),
+                mintWithDelegateAuthorizing => error("unreachable"),
+                addingMintInvariant{_seed} => {
+                    print("checking for addingMintInvariant\n");
+                    assert(false, "should be handled by the mintDelegate!");
+                    false
                 },
-                None => Value::ZERO
-            };
 
-            updatingCharter : Int = 1; // general update to charter
+                addingSpendInvariant{_seed} => {
+                    print("checking for addingSpendInvariant\n");
+                    assert(false, "should be handled by the mintDelegate!");
+                    false
+                },
 
-                        //!todo change this one
-            mintsUutForCharterUsingRedeemerIndex(
-                charterRedeemerIndex: updatingCharter,
-                mph: mph,
-                purpose: "spendDgt",
-                seed: seed,
-                needsMintDelegateApproval: false,
-                otherMintedValue: otherMintedValue
-            )
-        }        
-        // _ => true
+                forcingNewMintDelegate{seed} => {
+                    print("checking for forcingNewMintDelegate\n");
+                    badCharterActivity = "when forcingNewMintDelegate, capo charter must be spent with its capoLifecycleActivity.forcingNewMintDelegate activity";
+                    cctx.getCharterRedeemer().switch {
+                        capoLifecycleActivity{activity} => activity.switch {
+                            forcingNewMintDelegate{seedToCapo, purpose} => {
+                                print("WARNING: capo lifecycle activity is forcing a new mint-delegate with its Escape-hatch activity");
+                                print("NOTE: the normal lifecycle is to use minter:mintWithDelegateAuthorizing, \n"+
+                                    "  ... which defers to the Capo's current minting delegate and allows \n"+
+                                    "  ... queuePendingDgtChange(role: MintDgt) to queue the new mint delegate for installation"
+                                );
+                                assert(seed == seedToCapo, "seed mismatch:"+
+                                    "\n  - Capo activity seed: "+seedToCapo.show()+
+                                    "\n  - Minter seed: "+seed.show()
+                                );
+                                assert("mintDgt" == purpose, "wrong Capo purpose '"+purpose+"'; should be 'mintDgt'");
+
+                                validateUutMinting(
+                                    mph: mph,
+                                    seed: seed,
+                                    purposes: []String{purpose}
+                                )
+                            }, 
+                            _ => error(badCharterActivity)
+                            
+                            // queuePendingDgtChange{capoActivitySeed, purpose, role, name} => {
+                            //     assert(purpose == "mintDgt", "wrong purpose");
+                            //     role.switch {
+                            //         MintDgt => {
+                            //             print("ok: capo lifecycle activity is adding a (pending) mint-delegate");
+                            //             true
+                            //         }, 
+                            //         _ => error("wrong role in capo lifecycle activity")
+                            //     }
+                            // }
+                        },
+                        _ => error(badCharterActivity)
+                    }
+                },
+
+                forcingNewSpendDelegate{seed, replaceExisting} => {
+                    print("checking for forcingNewSpendDelegate\n");
+
+                    otherMintedValue : Value = replaceExisting.switch {
+                        Some{oldTokenName} => {
+                            BURNED: Int = -1;
+                            Value::new(
+                                AssetClass::new(mph, oldTokenName), 
+                                BURNED
+                            )
+                        },
+                        None => Value::ZERO
+                    };
+
+                    badCharterActivity = "when forcingNewSpendDelegate, capo charter must be spent with its capoLifecycleActivity.forcingNewSpendDelegate activity";
+
+                    cctx.getCharterRedeemer().switch {
+                        capoLifecycleActivity{activity} => activity.switch {
+                            forcingNewSpendDelegate{seedToCapo, purpose} => {
+                                print("WARNING: capo lifecycle activity is forcing a spend-delegate with its Escape-hatch activity");
+                                print("NOTE: the normal lifecycle is to use minter:mintWithDelegateAuthorizing, \n"+
+                                    "  ... which defers to the Capo's current minting delegate and allows \n"+
+                                    "  ... queuePendingDgtChange(role: SpendDgt) to queue the new spend delegate for installation"
+                                );
+
+                                assert(seed == seedToCapo, "seed mismatch: "
+                                    + "\n  - Capo activity seed: " + seedToCapo.show()
+                                    + "\n  - Minter seed: " + seed.show()
+                                );
+                                assert("spendDgt" == purpose, "wrong Capo purpose '"+purpose+"'; should be 'spendDgt'");
+
+                                validateUutMinting(
+                                    mph: mph,
+                                    seed: seed,
+                                    purposes: []String{ purpose },
+                                    otherMintedValue: otherMintedValue
+                                )
+                            },
+                            // queuePendingDgtChange{capoActivitySeed, purpose, role, name} => {
+                            //     assert(!replaceExisting, "queuePendingDgtChange can't use replaceExisting option");
+
+                            //     assert(purpose == "spendDgt", "wrong purpose");
+                            //     role.switch {
+                            //         SpendDgt => {
+                            //             print("ok: capo lifecycle activity is adding a (pending) spend-delegate");
+                            //             true
+                            //         }, 
+                            //         _ => error("wrong role in capo lifecycle activity")
+                            //     }
+                            // },
+                            _ => error(badCharterActivity)
+                        },
+                        _ => error(
+                            badCharterActivity
+                        )
+                    }
+                }        
+            }
+            // _ => true // don't catch other variants, for complete coverage above.
+        }
     };
 
     // print("defaultMinter: minting value: " + value_minted.show());

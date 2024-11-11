@@ -1,4 +1,4 @@
-module CapoHelpers
+module CapoHelpers 
 
 import {
     mkTv,
@@ -18,8 +18,96 @@ import {
 import { 
     RelativeDelegateLink,
     AbstractDelegateActivitiesEnum,
-    DgTknDisposition as DgTkn
+    CapoLifecycleActivity,
+    DgTknDisposition as DgTkn,
+    DelegateRole,
+    PendingDelegateChange
 } from CapoDelegateHelpers
+
+enum UtxoSource {
+    RefInput
+    Input
+
+}
+
+enum dgd_DataSrc {
+    Unk
+    Input { utxo: TxInput }
+    Output { txo: TxOutput }
+    Both {
+        utxo: TxInput
+        txo: TxOutput
+    }
+}
+
+enum ManifestEntryType {
+    // the name (entry's key) is simply a reference to a specific token 
+    // (typically a specific kind of dgData record 
+    //  ...using application-specific convention)
+    NamedTokenRef 
+    // the referenced token controls a specific type of dgData record,
+    // ... indicated by the entry's key.  With refCount, it inventories multiple 
+    // ... thread tokens, each held by the delegate contract, for parallelism.
+    DgDataPolicy {
+        policyLink: RelativeDelegateLink
+        refCount: Int
+    }
+    // the referenced token inventories thread-tokens for a specific delegate role
+    //  ... the key is expected to match that delegate role (
+    //    mintDgt, spendDgt, mintInvar, spendInvar,
+    //    govDgt, or ‹name› of otherNamedDelegate)
+    // the first thread doesn't ever require a manifest entry,
+    // ... and the first forked thread makes an entry with refCount = 2
+    DelegateThreads {
+        role: DelegateRole 
+        refCount: Int
+    }
+    // the referenced token is a merkle-root of a membership-proof-tree
+    MerkleMembership 
+    // the referenced token is a merkle-root of a state-root-tree
+    MerkleStateRoot    
+}
+
+/*
+ * The UtxoManifest is a data structure that references a set of UUTs
+ * that are important to the operation of a Capo (and its family of contract 
+ * scripts).  It is used to maintain positive control over these operational
+ * UUTs, inventorying them and giving every transaction a way to easily
+ * reference their data for validation, operation, and reporting.
+ *
+ * A prime use-case for the capo's Manifest is for storing protocol-settings 
+ * data ("settings").  Any application will need its own defined data structures
+ * for settings, but the "settings" key is reserved for this general purpose.
+ * The protocol ensures that every collaborating script ("delegate") has a
+ * chance to validate any new settings before the (updated settings or the 
+ * delegate, during installation) are activated.
+ *
+ * An additional case for manifest entries is for UUTs used as "thread tokens",
+ * where multiple separate contract utxos are used to manage independent
+ * threads of parallel operation for a single contract.  This provides a scalability
+ * mechanism.
+ */
+struct CapoManifestEntry {
+    // key: String // redundant / same as its map-key
+    entryType: ManifestEntryType "tpe"
+    tokenName: ByteArray "tn"
+    mph: Option[MintingPolicyHash] // default = Capo's MPH
+    
+    func validate(self) -> Bool {
+        // 3 bytes plus encoding overhead
+        print("foo".serialize().length.show() + "<-- 3 chars has this serialized length");
+        // assert(self.key.serialize().length > 5, "key too short");
+        // assert("settings" == self.key, "manifest only supports 'settings' for now");
+
+        assert(self.tokenName.length > 0, "no token name");
+        // assert(self.refCount == 1, "only one ref allowed for now");
+        // assert(!self.isThreadToken, "thread tokens not yet supported");
+        self.mph.switch {
+            Some => error("custom mph not yet supported"),
+            _ => true
+        }
+    }
+}
 
 func mkTokenShow(mph: MintingPolicyHash) -> (Value) -> String {
     (v: Value) -> String {
@@ -44,15 +132,29 @@ func mkTokenShow(mph: MintingPolicyHash) -> (Value) -> String {
     }
 }
 
+/**************************************************************
+      ************************************************************
+      ************************************************************
+      *******************                      *******************
+      *******************                      *******************
+      *******************        CapoDatum     *******************
+      *******************                      *******************
+      *******************                      *******************
+      ************************************************************
+      ************************************************************
+      ************************************************************
+*/      
+
 enum CapoDatum {
     CharterToken {
         spendDelegateLink: RelativeDelegateLink
         spendInvariants: []RelativeDelegateLink
-        // settingsUut: ByteArray          // UUT-name links to SettingsData
-        namedDelegates: Map[String]RelativeDelegateLink
+        otherNamedDelegates: Map[String]RelativeDelegateLink
         mintDelegateLink: RelativeDelegateLink
         mintInvariants: []RelativeDelegateLink
         govAuthorityLink: RelativeDelegateLink
+        manifest: Map[String]CapoManifestEntry
+        pendingDgtChanges: []PendingDelegateChange
         // typeMapUut: Option[ByteArray]   // optional reference to a UUT having TypeMapInfo datum
     }
     ScriptReference
@@ -62,25 +164,20 @@ enum CapoDatum {
     // SettingsData {
     //     data:  Map[String]Data
     // }
+
+    // same variant-index as delegate's capoStoredData:
     DelegatedData {  // the Capo redirects control of these to the spend delegate
         data: AnyData // the spend delegate may redirect control further, depending on what it sees in there
         version: Int // for CIP-68 compatibility
         otherDetails: Data // abstract additional info
-        //xxx delegateLink: RelativeDelegateLink  // such link info would be unnormalized
     }
-    
-    // TypeMapInfo {
-    //     typeMapInfoFlag: String // = "{{}}" 
-    //     data: TypeMap
-    // }
 
-    // this needs to be a method on the CapoDatum enum,
-    // ... because it's called by other methods here, AND
-    // ... it depends on the CapoDatum's own enum variants.
     func hasCharterRefInput(
         self,
         mph : MintingPolicyHash
     ) -> Option[CapoDatum::CharterToken] {
+        assert(false, "deprecated use of hasCharterRefInput(); use CapoCtx instead.");
+
         assert( // avoid "unused variable self" error
             true || ( /* never executed */
                 self.serialize() != mph.serialize()
@@ -101,6 +198,49 @@ enum CapoDatum {
                 }
             },
             None => Option[CapoDatum::CharterToken]::None
+        }
+    }
+
+    func countUpdatedThings(self, oldDatum: CapoDatum) -> Int {
+        self.switch {
+            CharterToken{ 
+                nextSpendDelegate, 
+                nextSpendInvariants, 
+                nextNamedDelegates, 
+                nextMintDelegate, 
+                nextMintInvariants, 
+                nextGovDelegate, 
+                nextManifest,
+                _nextPendingDgtChanges
+            } => {
+                CharterToken {
+                    oldSpendDelegate,
+                    oldSpendInvariants,
+                    oldNamedDelegates,
+                    oldMintDelegate,
+                    oldMintInvariants,
+                    oldGovDelegate,
+                    oldManifest,
+                    _oldPendingDgtChanges
+                } = oldDatum;
+                unchangedSpendDgt : Bool = ( nextSpendDelegate.serialize() == oldSpendDelegate.serialize() );
+                unchangedSpendInvariants : Bool = ( nextSpendInvariants == oldSpendInvariants );
+                unchangedNamedDelegate : Bool = ( nextNamedDelegates.serialize() == oldNamedDelegates.serialize() );
+
+                unchangedMintDgt : Bool = ( nextMintDelegate.serialize() == oldMintDelegate.serialize() );    
+                unchangedMintInvariants : Bool =  ( nextMintInvariants == oldMintInvariants );
+                unchangedGovDelegate : Bool = ( nextGovDelegate.serialize() == oldGovDelegate.serialize() );
+                unchangedManifest : Bool = ( nextManifest.serialize() == oldManifest.serialize() );
+    
+                if ((unchangedSpendDgt).trace("\n -- spendDgt changed? ") ) { 1 } else { 0 } +
+                if ((unchangedSpendInvariants).trace("\n -- spendInvs changed? ") ) { 1 } else { 0 } +
+                if (unchangedNamedDelegate.trace("\n -- namedDgt changed? ") ) { 1 } else { 0 }+
+                if ((unchangedMintDgt).trace("\n -- mintDgt changed? ") ) { 1 } else { 0 } +
+                if ((unchangedMintInvariants).trace("\n -- mintInvs changed? ") ) { 1 } else { 0 } +
+                if ((unchangedGovDelegate).trace("\n -- govDgt changed? ")) { 1 } else { 0 } +
+                if ((unchangedManifest).trace("\n -- manifest changed? ") ) { 1 } else { 0 }
+            },
+            _ => error("only CharterToken datum can count updated things")
         }
     }
 
@@ -165,15 +305,49 @@ enum CapoDatum {
     // }
 }
 
+enum cctx_CharterInputType {
+    Unk
+    RefInput { 
+        datum: CapoDatum::CharterToken
+        utxo: TxInput
+    }
+    Input { 
+        datum: CapoDatum::CharterToken 
+        utxo: TxInput 
+    }
+    // Minting {
+    //     datum: CapoDatum::CharterToken
+    //     address: Address
+    // }
+}    
+
+/**************************************************************
+      ************************************************************
+      ************************************************************
+      *******************                      *******************
+      *******************                      *******************
+      *******************      CapoActivity    *******************
+      *******************                      *******************
+      *******************                      *******************
+      ************************************************************
+      ************************************************************
+      ************************************************************
+*/      
+
 enum CapoActivity {
-    usingAuthority // variant 0
-    updatingCharter // variant 1
+    capoLifecycleActivity { // variant 0 mostly delegated to spendDgt
+        activity: CapoLifecycleActivity
+    }
+    usingAuthority // variant 1
     retiringRefScript // variant 2
     addingSpendInvariant // variant 3
     spendingDelegatedDatum // variant 4
-    // updatingSettings // variant 5
-    // retiringSettings // variant 6
-    updatingTypeMap // variant 7
+
+    // // possibly move this into CapoLifecycleActivity:
+    // updatingManifest { // variant 5 always delegated to spendDgt
+    //     activity: ManifestActivity
+    // }
+    updatingCharter // deprecated variant 6
 }
 
 func getRefCharterUtxo(mph : MintingPolicyHash) -> TxInput {
@@ -203,8 +377,12 @@ func getRefCharterDatum(mph : MintingPolicyHash) -> CapoDatum::CharterToken {
     ctd
 }
 
-//! retrieves a required Charter atum for the indicated policy - 
+//! retrieves a required Capo Charter datum for the indicated minting-policy - 
 // ... either from the txn's reference inputs  or inputs.
+// prefer mkCapoCtx.needsCharter() for "get from anywhere" semantics
+// and cctx.getCharterDatum() to get the datum
+//  (... or mkCapoCtx.withCharterRef() to require unchanged charter)
+//  (... or mkCapoCtx.withCharterInput() to require the charter to be spent & maybe updated)
 func getTxCharterDatum(
     mph : MintingPolicyHash,
     refInputs : []TxInput = tx.ref_inputs
@@ -233,8 +411,32 @@ func mustHaveGovAuthority(
     charterDatum.govAuthorityLink.hasValidOutput(mph)
 }
 
+/**************************************************************
+      ************************************************************
+      ************************************************************
+      *******************                      *******************
+      *******************                      *******************
+      *******************     DelegateInput    *******************
+      *******************                      *******************
+      *******************                      *******************
+      ************************************************************
+      ************************************************************
+      ************************************************************
+*/
+
+/**
+ * A high-level helper for delegates, enabling various kinds of
+ * validation and delegation-related operations.  Although this
+ * is defined as related to an "Input", this object provides a gateway
+ * for any script to involve that delegate policy in the abstract, by
+ * virtue of having included that input in the transaction.
+ * Callers should expect that the other policy will
+ * do its responsibilities and may use this object to enforce that
+ * the other policy is **triggered** in expected ways.
+ */
 struct DelegateInput {
     link: RelativeDelegateLink
+    role: DelegateRole
     input: Option[TxInput]
     mph: MintingPolicyHash
 
@@ -265,11 +467,11 @@ struct DelegateInput {
         AbstractDelegateActivitiesEnum::from_data(
             self.genericDelegateActivityAsData()
         )
-    }
+    }    
 
     /**
      * Throws an error message including the delegation token id,
-    * if the assertion is false.
+     * if the assertion is false.
      */
      func assert(self, assertionOk : Bool, msg: String) -> () {
         assert(true || /* never executed */ self.serialize() == self.serialize(), msg);
@@ -277,6 +479,7 @@ struct DelegateInput {
             self.error(msg)
         }
      }
+
     /**
      * Throws an error message including the delegation token id.
      */     
@@ -311,8 +514,36 @@ struct DelegateInput {
             }
         }
     }
-    func withSeededMintingActivity(self, seed: TxOutputId) -> DelegateInput {
+
+    func updatingManifest(self) -> DelegateInput {
+        self.role.switch {
+            SpendDgt => {
+                print("checking presence of SpendDgt: updatingManifest activity");
+                self.genericDelegateActivity().switch {                    
+                    CapoLifecycleActivities{cla} => cla.switch {
+                        updatingManifest => self,
+                        _ => {
+                            self.error("not using required updatingManifest activity");
+                            error("") // unreachable
+                        }
+                    },
+                    _ => {
+                        self.error("updatingManifest: only valid for CapoLifecycleActivities");
+                        error("unreachable")
+                    }
+                }
+            },
+            _ => {
+                self.error("updatingManifest: only valid for SpendDgt");
+                error("unreachable")
+            }
+        }
+    }
+
+    func withUniqueSeededMintingActivity(self, seed: TxOutputId) -> DelegateInput {
         // tnFactory : (String) -> String = mkUutTnFactory(seed);
+
+        REQT("ensures the delegate is unchanged; callers don't need to");
         self.genericDelegateActivity().switch {
             MintingActivities{ma} => {
                 ma.switch {
@@ -325,7 +556,7 @@ struct DelegateInput {
                     },
                     _ => error("no way")
                 };
-                self
+                self.delegateUnchanged()
             },
             MultipleDelegateActivities{activities} => {
                 // can do one or more minting activities, but each one needs to be bound to a separate seed
@@ -349,7 +580,8 @@ struct DelegateInput {
                 self.assert(foundWithThisSeed.length > 0, "no minting activity found for seed!");
                 REQT("only one of a multi-activity for a given seed is allowed");
                 self.assert(foundWithThisSeed.length == 1, "multiple minting activities found for seed");
-                self
+
+                self.delegateUnchanged()
             },
             _ => {
                 self.error("non-mint activity!");
@@ -358,12 +590,21 @@ struct DelegateInput {
         }
     }
 
-    func withDDSpendingActivity(self, recId: ByteArray) -> DelegateInput {
-        REQT("withDDSpendingActivity: checks presence of delegated-data controller's spending activity for recId");
+    func withUniqueDDSpendingActivity(self, recId: ByteArray) -> DelegateInput {
+        self.role.switch {
+            DgDataPolicy => print("ok, checking spending activity for a DgData Policy"),
+            _ => error("withUniqueDDSpendingActivity: only valid for DgDataPolicy")
+        };
+
+        REQT("withUniqueDDSpendingActivity: checks presence of delegated-data controller's spending activity for recId");
         strId : String = recId.decode_utf8();
         print("    -- recId: ");
         print(strId);
         print("\n");
+
+        TODO("TEST THIS v");
+        REQT("spendDgt must be acting on the matching record-id");
+        REQT("ensures the delegate is unchanged; callers don't need to");
 
         self.genericDelegateActivity().switch {
             SpendingActivities{sa} => {
@@ -384,7 +625,7 @@ struct DelegateInput {
                     },
                     _ => error("no way")
                 };
-                self
+                self.delegateUnchanged()
             },
             MultipleDelegateActivities{activities} => {
                 print( "    -- multiple activities found\n" );
@@ -446,7 +687,7 @@ struct DelegateInput {
                     (actsOnThisRecord.length == 1).trace("exactly one activity? ")
                     , "multiple spending activities found for recId: "+strId
                 );
-                self
+                self.delegateUnchanged()
             },
             _ => {
                 self.error("non-spend activity!");
@@ -454,7 +695,6 @@ struct DelegateInput {
             }
         }
     }
-
 
     func requiresValidOutput(self, createdOrReturned : DgTkn=DgTkn::Returned) -> Bool {
         // TODO - would want this to be able to call our assert/error methods
@@ -478,12 +718,13 @@ struct DelegateInput {
     }
 
     func delegateUnchanged(self) -> DelegateInput {
-        DelegateInput{link, input, mph} = self;
+        DelegateInput{link, _role, input, mph} = self;
+
         RelativeDelegateLink{
             uut,
-             _ /* strategy */,
+            //  _ /* strategy */,
             validatorHash,
-            _ /* configJson */
+            _configJson
         } = link;
         targetValue : Value = mkTv(mph, uut);
         returnedUnchanged : Bool = validatorHash.switch {
@@ -499,7 +740,10 @@ struct DelegateInput {
                 tx.outputs.find_safe((o : TxOutput) -> Bool {
                     o.datum.serialize() == input.unwrap().datum.serialize()
                 }).switch {
-                    Some => true, 
+                    Some => {
+                        print(" -- good, the dgTkn is unchanged: "+uut);
+                        true
+                    }, 
                     None => {
                         self.error("dgt modified");
                         error("")
@@ -536,27 +780,20 @@ struct DelegateInput {
 //     }
 // }
 
-enum cctx_CharterInputType {
-    Unk
-    Ref { 
-        datum: CapoDatum::CharterToken
-        utxo: TxInput
-    }
-    Input { 
-        datum: CapoDatum::CharterToken 
-        utxo: TxInput 
-    }
-}    
 
-enum dgd_DataSrc {
-    Unk
-    Input { utxo: TxInput }
-    Output { txo: TxOutput }
-    Both {
-        utxo: TxInput
-        txo: TxOutput
-    }
-}
+/**************************************************************
+      ************************************************************
+      ************************************************************
+      *******************                      *******************
+      *******************                      *******************
+      *******************     DgDataDetails    *******************
+      *******************                      *******************
+      *******************                      *******************
+      ************************************************************
+      ************************************************************
+      ************************************************************
+*/      
+
 
 struct DgDataDetails {
     dataSrc: dgd_DataSrc
@@ -585,7 +822,7 @@ struct DgDataDetails {
             type: "",
             mph: mph
         }
-    }
+    } 
 
     func uutValue(self) -> Value {
         Value::new(
@@ -752,6 +989,19 @@ struct DgDataDetails {
     // }
 }
 
+/**************************************************************
+      ************************************************************
+      ************************************************************
+      *******************                      *******************
+      *******************                      *******************
+      *******************        CapoCtx       *******************
+      *******************                      *******************
+      *******************                      *******************
+      ************************************************************
+      ************************************************************
+      ************************************************************
+*/      
+
 struct CapoCtx {
     mph: MintingPolicyHash
     charter: cctx_CharterInputType
@@ -801,27 +1051,28 @@ struct CapoCtx {
         e : String = "requires charter as input";
         self.charter.switch {
             Unk => error(e),
-            Ref => error(e),
+            RefInput => error(e),
             Input{_, utxo} => {
                 activity : CapoActivity = CapoActivity::from_data(
                     mustFindInputRedeemer(utxo)
                 );
+                // error-factory:
                 wrongActivity = () -> CapoActivity { 
                     if (true) { error("non-CharterToken activity") } else { 
                         // unreachable
                         CapoActivity::usingAuthority
                     } 
                 };
+                // returns any activity valid for the CharterToken utxo:
                 activity.switch {
                     retiringRefScript => wrongActivity(),
                     // updatingSettings => wrongActivity(),
-                    // retiringSettings => wrongActivity(),
-                    updatingTypeMap => wrongActivity(),
+                    // retiringSettings => wrongActivity(),                    
                     spendingDelegatedDatum => wrongActivity(),
-
                     usingAuthority => activity,
-                    updatingCharter => activity,
-                    addingSpendInvariant => activity
+                    updatingCharter => activity, //todo: make this obsolete
+                    addingSpendInvariant => activity,
+                    capoLifecycleActivity => activity
 
                     // _ => // leaving other potential variants out to generate compile errors if they're added
                 }
@@ -829,8 +1080,101 @@ struct CapoCtx {
         }
     }
 
+    func findManifestEntry(self, key: String) -> Option[CapoManifestEntry] {
+        print("    -- looking for capo's manifest entry: "+key);
+        charterDatum : CapoDatum::CharterToken = self.getCharterDatum();
+        charterDatum.manifest.get_safe(key)
+    }
+
+    func mustFindManifestEntry(self, key: String) -> CapoManifestEntry {
+        self.findManifestEntry(key).switch {
+            Some{entry} => entry,
+            None => error("missing required manifest entry: " + key)
+        }
+    }
+
+    func findManifestTokenName(self, key: String, required: Bool = true) -> Option[ByteArray] {
+        oe = self.findManifestEntry(key);
+        oe.switch {
+            None => {
+                assert(!required, "missing required manifest entry: " + key);
+                Option[ByteArray]::None
+            }, 
+            Some{e} => Option[ByteArray]::Some{e.tokenName}
+        }
+    }
+
+    func getSettingsId(self, required : Bool = true) -> Option[ByteArray] {
+        self.findManifestTokenName("currentSettings", required)
+    }
+    //TODO getManifestDatum[ProtocolSettings]("settings")
+
+    func getManifestedDatum[DATUM_TYPE](
+        self, 
+        key: String, 
+        which : UtxoSource = UtxoSource::RefInput
+    ) -> DATUM_TYPE {
+        DATUM_TYPE::from_data(
+            self.getManifestedDatumRaw(key, which)
+        )
+    }
+
+    func getManifestedDatumRaw(self, key: String, which : UtxoSource) -> Data {
+        manifestEntry : CapoManifestEntry = self.mustFindManifestEntry(key);
+        tokenName : ByteArray = manifestEntry.tokenName;
+        manifestValue : Value = mkTv(mph: self.mph, tnBytes: tokenName);
+        print("  -- seeking input dgData utxo: "+ tokenName.decode_utf8()+"\n");
+
+        inputs: []TxInput = which.switch {
+            RefInput => tx.ref_inputs,
+            Input => tx.inputs
+        };
+        utxo : TxInput = inputs.find_safe((txin : TxInput) -> Bool {
+            txin.value.contains(manifestValue)
+        }).switch{
+            Some{txin} => {
+                print ("  ✅ ➡️  📀💁 found ^ input dgData utxo" );
+                txin
+            },
+            None => {                
+                error(
+                    "_❌ ➡️ 📀💁💣💥💣💥💣💥  missing expected '"+key+"' entry in the capo manifest ^^^ in "+
+                    which.switch{RefInput => "ref_inputs", Input => "inputs"}+
+                    "\n   -- this really shouldn't happen unless the tx-builder is doing a very wrong thing"
+                    // lifecycle management should always ensure a good linkage between
+                    // the capo's manifest entry and the matching utxo having that uut.
+                )
+            }
+        };
+
+        utxo.datum.inline
+    }
+
+    func getNextManifestDatum[DATUM_TYPE](self, key: String) -> DATUM_TYPE {
+        DATUM_TYPE::from_data(
+            self.getNextManifestedDatumRaw(key)
+        )
+    }
+
+    func getNextManifestedDatumRaw(self, key: String) -> Data {
+        charterDatum : CapoDatum::CharterToken = self.getCharterDatum();
+        manifestEntry : CapoManifestEntry = charterDatum.manifest.get_safe(key).switch{
+            Some{entry} => entry,
+            None => error("missing required manifest entry: " + key)
+        };
+        manifestValue : Value = mkTv(mph: self.mph, tnBytes: manifestEntry.tokenName);
+        utxo : TxOutput = tx.outputs.find_safe((txo : TxOutput) -> Bool {
+            txo.value.contains(manifestValue)
+        }).switch{
+            Some{txo} => txo,
+            None => error("missing required '"+key+"' manifest entry in outputs")
+        };
+
+        utxo.datum.inline
+    }
+
     // func getRefSettingsUtxo(self) -> TxInput {
-    //     charterDatum : CapoDatum::CharterToken = self.resolveCharterDatum();
+    //     charterDatum : CapoDatum::CharterToken = self.getCharterDatum();
     //     settingsValue : Value = mkTv(mph: self.mph, tnBytes: charterDatum.settingsUut);
     //     hasSettings = (txin : TxInput) -> Bool { txin.value.contains(settingsValue) };
 
@@ -844,10 +1188,12 @@ struct CapoCtx {
     //     settingsUtxo
     // }
 
-    func requiresGovAuthority(self) -> Bool {
-        self.resolveCharterDatum().govAuthorityLink.hasValidOutput(
-            mph: self.mph
-        )
+    func requiresGovAuthority(self) -> CapoCtx {
+        assert(self.getCharterDatum().govAuthorityLink.hasValidOutput(
+            mph: self.mph  
+        ) /*always true*/, "no way"); 
+
+        self
     }
 
     // func getSettings[SettingsTYPE](self) -> SettingsTYPE {
@@ -857,16 +1203,33 @@ struct CapoCtx {
     // }
 
     func requiresNamedDelegateInput(self, dgtName: String) -> DelegateInput {
-        self.resolveCharterDatum().namedDelegates.get_safe(dgtName).switch{
+        self.getCharterDatum().otherNamedDelegates.get_safe(dgtName).switch{
             None => error("missing required delegate with name: " + dgtName),
 
             Some{dgtLink} => {
-                self.requiresDelegateInput(dgtLink)
+                self.requiresDelegateInput(dgtLink, DelegateRole::OtherNamedDgt)
             }
         }
     }
 
-    func actingAsMintDgt(self, required: Bool = true) -> Bool {
+    func requiresDgDataPolicyInput(self, typeName: String, required: Bool = true) -> DelegateInput {
+        self.getCharterDatum().manifest.get_safe(typeName).switch{
+            None => error("missing required data policy with type: " + typeName),
+            Some{entry} => {
+                dgtLink = entry.entryType.switch {
+                    DgDataPolicy{policyLink, _refCount} => policyLink,
+                    _ => error("manifest entry is not a data policy: "+typeName)
+                };
+                self.requiresDelegateInput(
+                    dgtLink, 
+                    DelegateRole::DgDataPolicy, 
+                    required
+                )
+            }
+        }
+    }
+
+    func nowActingAsMintDgt(self, required: Bool = true) -> Bool {
         input : TxInput = get_current_input();
         isMintDgt : Bool = (
             self.requiresMintDelegateInput(required: required).input.switch {
@@ -881,7 +1244,7 @@ struct CapoCtx {
         isMintDgt
     }
 
-    func actingAsSpendDgt(self, required: Bool = true) -> Bool {
+    func nowActingAsSpendDgt(self, required: Bool = true) -> Bool {
         input : TxInput = get_current_input();
         isSpendDgt : Bool = (
             self.requiresSpendDelegateInput(required: required).input.switch {
@@ -897,36 +1260,65 @@ struct CapoCtx {
     }
 
     func requiresMintDelegateInput(self, required: Bool = true) -> DelegateInput {
-        dgtLink : RelativeDelegateLink = self.resolveCharterDatum().mintDelegateLink;
-        self.requiresDelegateInput(dgtLink: dgtLink, required: required)
+        dgtLink : RelativeDelegateLink = self.getCharterDatum().mintDelegateLink;
+        self.requiresDelegateInput(
+            dgtLink: dgtLink, 
+            role: DelegateRole::MintDgt,
+            required: required
+        )
     }
 
     func requiresSpendDelegateInput(self, required: Bool = true) -> DelegateInput {
-        dgtLink : RelativeDelegateLink = self.resolveCharterDatum().spendDelegateLink;
-        self.requiresDelegateInput(dgtLink: dgtLink, required: required)
+        dgtLink : RelativeDelegateLink = self.getCharterDatum().spendDelegateLink;
+        self.requiresDelegateInput(
+            dgtLink: dgtLink, 
+            role: DelegateRole::SpendDgt,
+            required: required
+        )
     }
 
     // internal / low-level function
-    func resolveCharterDatum(self) -> CapoDatum::CharterToken {
+    func getCharterDatum(self) -> CapoDatum::CharterToken {
         self.charter.switch {
-            Ref{datum, _} => datum,
+            RefInput{datum, _} => datum,
             Input{datum, _} => datum,
-            _ => error("CapoCtx.resolveCharterDatum(): unknown charter strategy; use result of withCharterInput(), withCharterRef(), or needsCharter() to resolve charter datum first")
+            _ => error("CapoCtx.getCharterDatum(): unknown charter strategy; use result of withCharterInput(), withCharterRef(), or needsCharter() to resolve charter datum first")
         }
     }
 
+    // func getNextCharterDatum(self) -> CapoDatum::CharterToken {
+    //     self.charter.switch {
+    //         Input => {
+    //             charterDatum : CapoDatum::CharterToken = CapoDatum::from_data(
+    //                 tx.outputs.find( (txo: TxOutput) => {
+    //                     txo.address == self.resolveCharterUtxo().address &&
+    //                     txo.value.contains(mkTv(self.mph, "charter"))
+    //                 }).datum.inline
+    //             );
+    //             charterDatum
+    //         },
+    //         _ => error("CapoCtx.getNextCharterDatum(): invalid except with charter strategy Input")
+    //     }
+    // }
+
     func resolveCharterUtxo(self) -> TxInput {
         self.charter.switch {
-            Ref{_, utxo} => utxo,
+            RefInput{_, utxo} => utxo,
             Input{_, utxo} => utxo,
+            // Minting => error("can't get utxo during minting; be satisfied with the .address()!"),
             _ => error("CapoCtx.resolveCharterUtxo(): unknown charter strategy; use result of withCharterInput(), withCharterRef(), or needsCharter() to resolve charter utxo first")
         }
     }
 
     // internal / low-level function
-    func requiresDelegateInput(self, dgtLink: RelativeDelegateLink, required: Bool = true) -> DelegateInput {
+    func requiresDelegateInput(self, 
+        dgtLink: RelativeDelegateLink, 
+        role: DelegateRole,
+        required: Bool = true
+    ) -> DelegateInput {
         DelegateInput{
             dgtLink,
+            role,
             dgtLink.hasDelegateInput(
                 inputs: tx.inputs, 
                 mph: self.mph,
@@ -938,8 +1330,8 @@ struct CapoCtx {
 
     func address(self) -> Address {
         addr : Address = self.resolveCharterUtxo().address;
-        // print("Capo addr: " + addr.show());
-        addr
+                // print("Capo addr: " + addr.show());
+        addr    
     }
 
     func delegatedDataTxInput(self, 
@@ -1165,14 +1557,12 @@ struct CapoCtx {
                 error("output not delegated data")
             }
         }
-    }
+    }        
 
     func delegatedTxOutput(self, 
         recId: ByteArray
     ) -> TxOutput {
-        print("  -- seeking delegated-data output for ");
-        print(recId.decode_utf8());
-        print("\n");
+        print("  -- seeking delegated-data output for "+recId.decode_utf8()+"\n");
         result : TxOutput = self.internalHasDelegatedDataOutput(
             mkTv(mph: self.mph, tnBytes: recId)
         );
@@ -1206,12 +1596,60 @@ struct CapoCtx {
             }
         }
     }
+
+
+    // func XXXmustFindDelegatedDatum[T](self, mph: MintingPolicyHash, tnBytes: ByteArray, inAddr: Address) -> outputAndDatum[T] {
+    //     notFound = Option[outputAndDatum[T]]::None;
+    //     idTokenValue = mkTv(mph: mph, tnBytes: tnBytes);
+    //     print( " ⬅️ 🔎 finding DelegatedData output: "+ tnbBytes.decode_utf8() + "\n");
+
+    //     foundDelegatedData: []outputAndDatum[T] = 
+    //         tx.outputs.map_option[
+    //             outputAndDatum[T]
+    //         ](
+    //             (output: TxOutput) -> Option[outputAndDatum[T]] {
+    //                 if ( output.address != inAddr ) {
+    //                     notFound
+    //                 } else if (!output.value.contains(idTokenValue)) {
+    //                     notFound
+    //                 } else {
+    //                     rawDatum : Data = output.datum.inline;
+    //                     CapoDatum::from_data(
+    //                         rawDatum
+    //                     ).switch {
+    //                         dd: DelegatedData => {
+    //                             Option[
+    //                                 outputAndDatum[T]
+    //                             ]::Some{
+    //                                 outputAndDatum[T] {
+    //                                     output, dd, rawDatum
+    //                                 }
+    //                             }
+    //                         },
+    //                         _ => {
+    //                             notFound
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         );
+    //     assert(foundDelegatedData.length < 2, "too many delegated data outputs") ;
+    //     assert(foundDelegatedData.length == 1, "no delegated data output");
+    //     assert(idTokenValue.contains(foundDelegatedData.value.get_assets()), 
+    //         "excess value in delegated-data output: "+(settingsOutput.value - settingsVal).show()
+    //     );
+
+    //     print("\n ⬅️ ✅ found DelegatedData\n");
+    //     foundDelegatedData.head
+    // }
+
+
     
     // doesn't care where the charter info comes from - refinput or input, both OK
     func needsCharter(self) -> CapoCtx {
         charter : cctx_CharterInputType = self.charter;
         charter.switch {
-            Ref => self,
+            RefInput => self,
             Input => self,
             Unk => {
                 CapoCtx{mph, _} = self;
@@ -1230,7 +1668,7 @@ struct CapoCtx {
                         datum : CapoDatum::CharterToken = CapoDatum::CharterToken::from_data( 
                             charterUtxo.datum.inline
                         );
-                        CapoCtx{mph, cctx_CharterInputType::Ref{datum, charterUtxo}}
+                        CapoCtx{mph, cctx_CharterInputType::RefInput{datum, charterUtxo}}
                     }
                 }
                 // _ => self
@@ -1243,7 +1681,7 @@ struct CapoCtx {
 
         charter.switch {
             Input => self,
-            Ref => error("CapoCtx.withCharterInput(): charter is from ref!"),
+            RefInput => error("CapoCtx.withCharterInput(): charter is from ref!"),
             Unk => {
                 CapoCtx{mph, _} = self;
 
@@ -1265,10 +1703,23 @@ struct CapoCtx {
         }
     }
 
+    // func nowMinting(self, address: Address, output: TxOutput) -> Bool {
+    //     self.charter.switch {
+    //         Input => error("CapoCtx.nowMinting(): charter is from inputs!"),
+    //         RefInput => error("CapoCtx.nowMinting(): charter is from ref!"),
+    //         Unk => {
+    //             CapoCtx{mph, _} = self;
+    //             datum: CapoDatum::CharterToken = CapoDatum::CharterToken::from_data( 
+    //                 output.datum.inline
+    //             );
+    //             CapoCtx{mph, cctx_CharterInputType::Minting{datum, address}}
+    //     }
+    // }
+
     func withCharterRef(self) -> CapoCtx {
         charter : cctx_CharterInputType = self.charter;
         charter.switch {
-            Ref => self,
+            RefInput => self,
             Input => error("CapoCtx.withCharterRef(): charter is from inputs!"),
             Unk => {
                 CapoCtx{mph, _} = self;
@@ -1277,12 +1728,155 @@ struct CapoCtx {
                     utxo.datum.inline 
                 );
             
-                CapoCtx{mph, cctx_CharterInputType::Ref{datum, utxo}}
+                CapoCtx{mph, cctx_CharterInputType::RefInput{datum, utxo}}
 
-                // self.copy(charter: cctx_CharterInputType::Ref{datum})
+                // self.copy(charter: cctx_CharterInputType::RefInput{datum})
             }
         }
     }
+
+    func allDelegatesAreValidatingSettings(self) -> Bool {
+        charterDatum = self.getCharterDatum();
+        mph = self.mph;
+        // REQT( "gov authority must be present to update settings");
+        // hasGovAuthority : Bool = mustHaveGovAuthority(
+        //     mph: mph,
+        //     charterDatum: charterDatum // already resolved
+        // );
+
+        CapoDatum::CharterToken{
+            spendDelegate,
+            spendInvariants,
+            otherNamedDelegates,
+            mintDelegate,
+            mintInvariants,
+            govDelegate,
+            manifest,
+            _pendingDelegates
+        } = charterDatum;
+
+        // REQT("the current Settings must be spent and updated");
+        // settingsDgtLink : RelativeDelegateLink = manifest.get_safe("settings").switch {
+        //     None => error("'settings' delegate must be present to do updatingSettings activity"),
+        //     Some{dgt} => dgt.dgDataPolicy.unwrap()
+        // };
+        
+        // //!!! note, this is a hard-coded version of requiring the settings policy script:
+        // settingsDgtInput = settingsDgtLink.hasDelegateInput(
+        //     inputs: tx.inputs,
+        //     mph: mph
+        // ).unwrap();
+        // settingsDelegateIsValid : Bool = AbstractDelegateActivitiesEnum::from_data( 
+        //     mustFindInputRedeemer(settingsDgtInput)
+        // ).switch {
+        //     SpendingActivities => true,
+        //     _ => error(
+        //         "settings delegate must be updating the settings with its SpendingActivities variant"
+        //     )
+        // };
+        // _nextSettings : Data = self.getNextManifestedDatumRaw("settings");
+        // isUpdatingSettings : Bool = true;
+        
+        inputs: []TxInput = tx.inputs;
+        //!!! actually requiring delegates' SettingsValidation starts here.
+        REQT("spend delegate must validate settings ... wait - thats myself.  Call validate directly?");
+
+        spendDelegateIsValidating : Bool = 
+            spendDelegate.validatesUpdatedSettings(
+                inputs: inputs,
+                mph: mph,
+                inputRequired: true
+            ).unwrap();
+
+        REQT("mint delegate must validate settings");
+        mintDelegateIsValidating : Bool = 
+            mintDelegate.validatesUpdatedSettings(
+                inputs: inputs,
+                mph: mph,
+                inputRequired: true
+            ).unwrap();
+
+        // govAuthority is checking the settings
+        REQT( "govDelegate MAY contribute to settings validation");
+        govDelegateMaybeValidating : Bool = 
+            govDelegate.validatesUpdatedSettings(
+                inputs: inputs,
+                mph: mph,
+                inputRequired: false
+            ).switch{
+                Some => true,
+                None => {
+                    print("  -- govAuthority isn't a script-based validator; doesn't validate new settings\n");
+                    true
+                }
+            };
+        checkOneInvariant : (RelativeDelegateLink) -> Bool = 
+        (oneDgt: RelativeDelegateLink) -> Bool {
+            REQT( "invariant must validate settings");
+            oneDgt.validatesUpdatedSettings(
+                inputs: inputs,
+                mph: mph,
+                inputRequired: true
+            ).unwrap()
+        };
+        // spendInvariants are checking the settings
+        REQT( "spend invariants must validate settings");
+        spendInvariantsAreValidating : Bool = spendInvariants.all( 
+            checkOneInvariant
+        );
+        // mintInvariants are checking the settings
+        REQT( "mint invariants must validate settings");
+        mintInvariantsAreValidating : Bool = mintInvariants.all( 
+            checkOneInvariant
+        );
+        REQT("dgDataControllers must validate settings");
+        // dgDataControllers are checking the settings
+
+        dgDataPoliciesAreValidating :Bool = manifest.all( 
+            (key: String, entry: CapoManifestEntry) -> Bool {
+                entry.entryType.switch{
+                    DgDataPolicy{policyLink, _refCount} => {
+                        policyLink.validatesUpdatedSettings(
+                            inputs: inputs,
+                            mph: mph,
+                            inputRequired: true
+                        ).unwrap()
+                    },
+                    _ => {
+                        print("  -- ignoring manifest entry (not a data policy): " + key);
+                        true
+                    }
+                }
+            }
+        );
+
+        // namedDelegates are checking the settings
+        REQT( "named delegates must validate settings");        
+        namedDelegatesAreValidating : Bool = otherNamedDelegates.fold( 
+            REQT( "  - each other-named-delegate must validate settings");
+            (ok: Bool, key: String, dgt: RelativeDelegateLink) -> Bool {
+                print("  - other-named-delegate: " + key);
+                print("\n");
+                ok && dgt.validatesUpdatedSettings(
+                    inputs: inputs,
+                    mph: mph,
+                    inputRequired: true
+                ).unwrap()
+            }, true
+        );
+
+        // hasGovAuthority &&
+        // settingsDelegateIsValid &&
+        // isUpdatingSettings &&
+        dgDataPoliciesAreValidating &&
+        spendDelegateIsValidating &&
+        mintDelegateIsValidating &&
+        govDelegateMaybeValidating &&
+        spendInvariantsAreValidating &&
+        mintInvariantsAreValidating &&
+        namedDelegatesAreValidating 
+    }
+
 }
 
 func mkCapoCtx(mph: MintingPolicyHash) -> CapoCtx {

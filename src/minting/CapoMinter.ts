@@ -181,7 +181,7 @@ export class CapoMinter
                 "THIS IS NOT THE RECOMMENDED PATH - prefer using the existing mint delegate's ReplacingMe activity'"
         );
         const seed = this.getSeed(seedFrom);
-        return this.activityRedeemer("ForcingNewMintDelegate", {seed});
+        return this.activityRedeemer("forcingNewMintDelegate", {seed});
     }
 
     /**
@@ -191,7 +191,7 @@ export class CapoMinter
      * Creates a new UUT to replace the Capo's spend delegate.  The mint delegate
      * is bypassed in this operation.  There is always some existing spend delegate
      * when this is called, and it's normally burned in the process, when replacingUut is
-     * provided.  If replacingUut is not provided, the existing spend delegate is left in plac,e
+     * provided.  If replacingUut is not provided, the existing spend delegate is left in place,
      * although it won't be useful because the new spend delegate will have been installed.
      *
      * @param seedFrom - either a transaction-context with seedUtxo, or `{seedTxn, seedIndex}`
@@ -199,12 +199,12 @@ export class CapoMinter
      * @public
      **/
     @Activity.redeemer
-    activityCreatingNewSpendDelegate(
+    activityForcingNewSpendDelegate(
         seedFrom: hasSeed,
         replacingUut?: number[]
     ): isActivity {
         const seed = this.getSeed(seedFrom);        
-        return this.activityRedeemer("CreatingNewSpendDelegate", {
+        return this.activityRedeemer("forcingNewSpendDelegate", {
             seed, replacingUut
         });
     }

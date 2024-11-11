@@ -1,6 +1,6 @@
 module CustomCapoSettings
 
-struct capoSettings {
+struct ProtocolSettings {
     meaning: Int
     badSpenderSetting: Int "badSettingToSpendDelegate" 
     badMinterSetting : Int "badSettingToMintDelegate"

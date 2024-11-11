@@ -9,10 +9,16 @@ struct OtherStruct {
     secondLevelF2: struct3
 }
 
+enum SomeKindaEnum {
+    case1
+    case2 { f1: Int }
+}
+
 struct DatumStruct {
     field1: Int
     field2: String
     field3: Map[String]OtherStruct
+    field4: SomeKindaEnum
 }
 
 func main(d: DatumStruct, r: Int) -> Bool {

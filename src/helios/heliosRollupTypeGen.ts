@@ -104,16 +104,20 @@ export function heliosRollupTypeGen(
                 this.warn("building in stellar-contracts project");
                 const existingBuildFile = `${projectRoot}/dist/stellar-contracts.mjs`;
                 let CapoBundleClass;
-                if (existsSync(existingBuildFile)) {
-                    await import(existingBuildFile).then((module) => {
-                        const {CapoHeliosBundle} = module
-                        CapoBundleClass = CapoHeliosBundle;
-                    }).catch( (e: any) => {
-                        this.warn("couldn't import existing stellar-contracts build: " + e.message)
-                    })
-                } else {
-                    this.warn(`no existing stellar-contracts build in ${existingBuildFile}`);
-                }
+                // if the build is present, that doesn't mean it's not obsolete,
+                // so instead of using it, we will make a minimal build of the
+                // CapoHeliosBundle, knowing it will always be up-to-date.
+
+                // if (existsSync(existingBuildFile)) {
+                //     await import(existingBuildFile).then((module) => {
+                //         const {CapoHeliosBundle} = module
+                //         CapoBundleClass = CapoHeliosBundle;
+                //     }).catch( (e: any) => {
+                //         this.warn("couldn't import existing stellar-contracts build: " + e.message)
+                //     })
+                // } else {
+                //     this.warn(`no existing stellar-contracts build in ${existingBuildFile}`);
+                // }
                 
                 if (CapoBundleClass) {
                     // this is the implicit Capo bundle
@@ -129,16 +133,22 @@ export function heliosRollupTypeGen(
                     console.log("making minimal rollup of CapoHeliosBundle");
                     const CapoBundleClass = await makeCapoHeliosBundle();
                     state.capoBundle = new CapoBundleClass();
-                    state.capoBundle.program.entryPoint.mainArgTypes;
+                    // load the program
+                    const program = state.capoBundle.program;
+                    // 
+                    program.entryPoint.mainArgTypes;
                     console.log("Ok loaded minimal CapoHeliosBundle rollup");
                 }
             } else {
                 //!!! verify this works
-                import("@donecollectively/stellar-contracts").then(({CapoHeliosBundle}) => {
+                const ourProject = "@donecollectively/stellar-contracts"
+                import(ourProject).then(({CapoHeliosBundle}) => {
+                    console.log("finished loading CapoHeliosBundle");
                     state.capoBundle = new CapoHeliosBundle();
                 }).catch((e) => {
                     throw new Error(`couldn't import CapoHeliosBundle: ${e.message}`);
                 })
+                console.log("finished initializing CapoHeliosBundle");
             }
         
             state.project = new StellarHeliosProject();
@@ -279,8 +289,12 @@ export function heliosRollupTypeGen(
                             console.error(e);
                             throw new Error(`Error in Helios script (see above)`);
                         }
-                        console.error(`Error generating types for ${id}`, e);
-                        throw new Error(`type-generation error`);
+                        console.error(`Error generating types for ${id}:\n`, e);
+                        return new Promise((resolve, reject) => {
+                            setTimeout(() => {
+                                reject(new Error(`type-generation error (see above)`));
+                            }, 5000)
+                        })
                     }
                     this.warn("ok")
                 }
@@ -425,9 +439,7 @@ export function heliosRollupTypeGen(
         const result = await bundle.generate({ format: "es" });
         const compiled = result.output[0].code;
         const buildTime = Date.now() - buildStartTime;
-        console.log(`📦 CapoHeliosBundle: generated bundle (${buildTime}ms): ${outputFile}`);
-
-        throw new Error(`unused?`)
+        console.log(`📦 CapoHeliosBundle: generated temporary bundle (${buildTime}ms): ${outputFile}`);
         let needsWrite = true;
         // if the file is not changed, skip write of the compiled file
         if (existsSync(outputFile)) {
@@ -450,8 +462,10 @@ export function heliosRollupTypeGen(
             );
         }
 
+        console.log("importing CapoHeliosBundle");
+        debugger
         return import(outputFile).then((mod) => {
-            console.log("CapoHeliosBundle loaded", mod.CapoHeliosBundle);
+            console.log("CapoHeliosBundle loaded", outputFile);
             return mod.CapoHeliosBundle;
         })
     }

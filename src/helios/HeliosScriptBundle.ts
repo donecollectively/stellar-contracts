@@ -337,9 +337,135 @@ export abstract class HeliosScriptBundle {
     }
 
     get program(): CachedHeliosProgram {
-        return CachedHeliosProgram.forCurrentPlatform(this.main, {
-            moduleSources: this.modules,
-        });
+        try {
+            return CachedHeliosProgram.forCurrentPlatform(this.main, {
+                moduleSources: this.modules,
+            });
+        } catch (e: any) {
+            // !!! probably this stuff needs to move to compileWithScriptParams()
+            if (e.message.match(/invalid parameter name/)) {
+                throw new Error(
+                    e.message +
+                        `\n   ... this typically occurs when your StellarContract class (${this.constructor.name})` +
+                        "\n   ... can be missing a getContractScriptParamsUplc() method " +
+                        "\n   ... to map from the configured settings to contract parameters"
+                );
+            }
+            const [unsetConst, constName] =
+                e.message.match(/used unset const '(.*?)'/) || [];
+            if (unsetConst) {
+                console.log(e.message);
+                throw new Error(
+                    `${this.constructor.name}: missing required script param '${constName}' in static getDefaultParams() or getContractScriptParams()`
+                );
+            }
+            if (!e.site) {
+                console.error(
+                    `unexpected error while compiling helios program (or its imported module) \n` +
+                        `> ${e.message}\n` +
+                        `Suggested: connect with debugger (we provided a debugging point already)\n` +
+                        `  ... and use 'break on caught exceptions' to analyze the error \n` +
+                        `This likely indicates a problem in Helios' error reporting - \n` +
+                        `   ... please provide a minimal reproducer as an issue report for repair!\n\n` +
+                        e.stack.split("\n").slice(1).join("\n")
+                );
+                try {
+                    debugger;
+                    // debugger'ing?  YOU ARE AWESOME!
+                    //  reminder: ensure "pause on caught exceptions" is enabled
+                    //  before playing this next line to dig deeper into the error.
+
+                    const try2 = CachedHeliosProgram.forCurrentPlatform(this.main, {
+                        moduleSources: this.modules,
+                    });
+        
+                    // const script2 = new Program(codeModule, {
+                    //     moduleSources: modules,
+                    //     isTestnet: this.setup.isTest,
+                    // });
+                    // console.log({ params });
+                    // if (params) {
+                    //     for (const [p, v] of Object.entries(params || {})) {
+                    //         script2.changeParam(p, v);
+                    //     }
+                    //     script2.compile();
+                    // }
+                    console.warn("NOTE: no error thrown on second attempt");
+                } catch (sameError) {
+                    // entirely expected it would throw the same error
+                    // throw sameError;
+                }
+                // throw e;
+            }
+            debugger;
+            if (!e.site) {
+                console.warn(
+                    "error thrown from helios doesn't have source site info; rethrowing it"
+                );
+                throw e;
+            }
+            const moduleName2 = e.site.file; // moduleName? & filename ? :pray:
+            const errorModule = [
+                this.main,
+                 ...this.modules
+            ].find((m) => m.name == moduleName2);
+
+            // const errorModule = [codeModule, ...modules].find(
+            //     (m) => (m as any).name == moduleName
+            // );
+
+            const {
+                project,
+                moduleName,
+                name: srcFilename = "‹unknown path to module›",
+                moreInfo,
+            } = errorModule || {};
+            let errorInfo: string = "";
+            try {
+                statSync(srcFilename).isFile();
+            } catch (e) {
+                const indent = " ".repeat(6);
+                errorInfo = project
+                    ? `\n${indent}Error found in project ${project}:${srcFilename}\n` +
+                      `${indent}- in module ${moduleName}:\n${moreInfo}\n` +
+                      `${indent}  ... this can be caused by not providing correct types in a module specialization,\n` +
+                      `${indent}  ... or if your module definition doesn't include a correct path to your helios file\n`
+                    : `\n${indent}WARNING: the error was found in a Helios file that couldn't be resolved in your project\n` +
+                      `${indent}  ... this can be caused if your module definition doesn't include a correct path to your helios file\n` +
+                      `${indent}  ... (possibly in mkHeliosModule(heliosCode, \n${indent}    "${srcFilename}"\n${indent})\n`;
+            }
+
+            const { startLine, startColumn } = e.site;
+            const t = new Error(errorInfo);
+            const modifiedStack = t.stack!.split("\n").slice(1).join("\n");
+            debugger
+            const additionalErrors = (e.otherErrors || [])
+                .slice(1)
+                .map((oe) => `       |         ⚠️  also: ${
+                    // (oe.message as string).replace(e.site.file, "")}`);
+                    oe.site.file == e.site.file ?
+                        oe.site.toString().replace(e.site.file+":", "at ") + ": "+ oe.originalMessage
+                    : oe.site.toString() + " - " + oe.originalMessage
+                }`);
+            const addlErrorText = additionalErrors.length
+                ? ["", ...additionalErrors, "       v"].join("\n")
+                : "";
+            t.message = `${e.kind}: ${this.constructor.name}\n${
+                e.site.toString() 
+            } - ${
+                e.originalMessage
+            }${addlErrorText
+            }\n${errorInfo}`;
+
+            t.stack =
+                `${this.constructor.name}: ${
+                    e.message
+                }\n    at ${moduleName2} (${srcFilename}:${1 + startLine}:${
+                    1 + startColumn
+                })\n` + modifiedStack;
+
+            throw t;
+        }
     }
 
     isHeliosScriptBundle() {

@@ -55,7 +55,7 @@ export class CapoWithoutSettings extends Capo<CapoWithoutSettings> {
         return new MyCapoBundle();
     }
     
-    initDelegatedDatumAdapters(): Promise<Record<string, DelegatedDatumAdapter<any>>> {
+    initDelegatedDatumWrappers(): Promise<Record<string, DelegatedDatumAdapter<any>>> {
         return {} as any
     }
 

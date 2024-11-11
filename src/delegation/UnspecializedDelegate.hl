@@ -47,7 +47,6 @@ import {
 import {
     DelegationDetail,
     mustReturnValueToScript,
-    tvAuthorityToken,
     DelegateLifecycleActivity,
     CapoLifecycleActivity,
     unmodifiedDelegation
@@ -59,8 +58,8 @@ import {
 } from CapoMintHelpers
 
 // import {
-//     capoSettings
-// } from CustomCapoSettings
+//     ProtocolSettings
+// } from ProtocolSettings
 
 enum DelegateDatum {
     // we only have to use this if we decide Constr#0 is essential for practical CIP-68 compat
@@ -97,12 +96,14 @@ enum DelegateDatum {
     IsDelegation {
         dd: DelegationDetail
     }
+    // same variant-index as Capo's DelegatedData
     capoStoredData {
         data: AnyData
     }
     ScriptReference
 
-    // func validateSettings(self, settings: capoSettings) -> Bool{
+    // func validateSettings(self, settings: ProtocolSettings) -> Bool{
+    // ... get the settings object from the contract manifest via cctx
     //     assert(false, "not valid (stubbed)");
     //     settings.serialize() != self.serialize() &&
     //     true
@@ -185,8 +186,8 @@ enum DelegateActivity {
     }
 
     MultipleDelegateActivities {
+        activities: []Data // actually a []DelegateActivity
         // todo: change this back when the recursive enum's `__is_valid_data not found` error is resolved
-        activities: []Data // actually a DelegateActivity
     }
 
     // this function gives a general-purpose implementation of checking for 
@@ -201,7 +202,7 @@ enum DelegateActivity {
     //     //!!! replace with an activity using the same seed-txn pattern:
     //     // MintingActivities::SomethingMintingUuts{seed, purposes} = self;
     //     DelegateDatum::IsDelegation{dd} = mdd;
-    //     returnsAuthzToken : Bool = mustReturnValueToScript(tvAuthorityToken(dd));
+    //     returnsAuthzToken : Bool = mustReturnValueToScript(dd.tvAuthorityToken());
 
     //     o : []TxOutput = get_cont_outputs();
     //     if (o.length != 1) { error("single utxo only") };
@@ -241,7 +242,10 @@ enum DelegateActivity {
             //  ... you can add more constraints here if needed
             DelegateLifecycleActivities => true,
             CapoLifecycleActivities{CLA} => {
-                // CapoLifecycleActivites are only relevant for MINTING delegates.
+                // CapoLifecycleActivites.queuePendingDgtChange is only relevant for the MINT delegate.
+                // CapoLifecycleActivites.{removing, committing}PendingDgtChange(s) are served by the SPEND delegate
+                // Capo
+                // CapoLifecycleActivites.{forcing}* are ONLY ever served by the Capo itself as an escape-hatch
                 //  assert(isMintingDelegate, "unreachable"); // TODO access this const defined in the main script
 
                 // They're normally rejected in this unspecialized (minting) delegate:
@@ -268,8 +272,11 @@ enum DelegateActivity {
                                 )
                             }
                         }
+                    },
+                    _ => {
+                        print("mint/spend delegates have an option to validate other lifecycle activities here?");
+                        false
                     }
-                    //  _ => false
                  }
             },
             MintingActivities => {

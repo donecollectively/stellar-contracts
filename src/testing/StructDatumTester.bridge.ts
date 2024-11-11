@@ -28,10 +28,10 @@ import type {
     TxInput,
     TxOutput,
     TxOutputId,
-    TxOutputDatum,
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
+ import { TxOutputDatum } from "@helios-lang/ledger";
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
@@ -54,6 +54,7 @@ import type {hasSeed, isActivity} from "../StellarContract.js"
 import type {
     struct3, struct3Like,
     OtherStruct, OtherStructLike,
+    SomeKindaEnum, SomeKindaEnumLike,
     DatumStruct, DatumStructLike
 } from "./StructDatumTester.typeInfo.js";
 
@@ -76,7 +77,7 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
     static isAbstract = false as const;
     isAbstract = false as const;
     /**
-     * Helper class for generating UplcData for the datum type ***
+     * Helper class for generating TxOutputDatum for the ***datum type ***
      * for this contract script. 
      * 
      * This accessor object is callable with the indicated argument-type
@@ -89,6 +90,7 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
     field1: /*minStructField*/ IntLike
     field2: /*minStructField*/ string
     field3: /*minStructField*/ Map<string, OtherStructLike>
+    field4: /*minStructField*/ SomeKindaEnumLike
 }
 , DatumStructHelper>
      = new DatumStructHelper(this.bundle, {}) as any  // datumAccessor/struct
@@ -102,6 +104,7 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
     field1: /*minStructField*/ IntLike
     field2: /*minStructField*/ string
     field3: /*minStructField*/ Map<string, OtherStructLike>
+    field4: /*minStructField*/ SomeKindaEnumLike
 }
 , DatumStructHelper> = this.datum;
 
@@ -132,7 +135,10 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
      * @remarks - these accessors are used to generate UplcData for each type
      */
     types = {
-
+      /**
+       * generates UplcData for the enum type ***SomeKindaEnum*** for the `StructDatumTester` script
+       */
+        SomeKindaEnum: new SomeKindaEnumHelper(this.bundle),
 
       /**
        * generates UplcData for the enum type ***struct3*** for the `StructDatumTester` script
@@ -160,6 +166,7 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
     field1: /*minStructField*/ IntLike
     field2: /*minStructField*/ string
     field3: /*minStructField*/ Map<string, OtherStructLike>
+    field4: /*minStructField*/ SomeKindaEnumLike
 }
 ) => {
         return this.__DatumStructCast.toUplcData(fields);
@@ -183,6 +190,27 @@ class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
     constructor(public bridge: StructDatumTesterDataBridge) {
         super();
     }
+    /**
+        * reads UplcData *known to fit the **SomeKindaEnum*** enum type,
+        * for the StructDatumTester script.
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    SomeKindaEnum(d : UplcData) { 
+        const typeHelper = this.bridge.types.SomeKindaEnum;
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = typeHelper.__cast;
+
+        return cast.fromUplcData(d) as IntersectedEnum<SomeKindaEnum>;        
+    } /* enumReader helper */
 
     /**
         * reads UplcData *known to fit the **struct3*** struct type,
@@ -291,6 +319,40 @@ export class OtherStructHelper extends DataBridge {
 
 
 /**
+ * Helper class for generating UplcData for variants of the ***SomeKindaEnum*** enum type.
+ */
+export class SomeKindaEnumHelper extends EnumBridge<JustAnEnum> {
+    /*mkEnumHelperClass*/
+    protected __cast = new StellarCast<
+       SomeKindaEnum,
+       SomeKindaEnumLike
+   >(SomeKindaEnumSchema, { isMainnet: true });
+
+/**
+ * (property getter): UplcData for ***"StructDatumTester::SomeKindaEnum.case1"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#0***
+ */
+    get case1() {
+        const uplc = this.mkUplcData({ case1: {} }, 
+            "StructDatumTester::SomeKindaEnum.case1");
+        return uplc;
+    } /* tagOnly variant accessor */
+
+    /**
+     * generates  UplcData for ***"StructDatumTester::SomeKindaEnum.case2"***
+     */
+    case2(
+        f1: IntLike
+    ) : UplcData {
+        const uplc = this.mkUplcData({ 
+           case2: f1
+        }, "StructDatumTester::SomeKindaEnum.case2"); /*singleField enum variant*/
+       return uplc;
+    }
+}/*mkEnumHelperClass*/
+
+
+/**
  * Helper class for generating UplcData for the ***DatumStruct*** struct type.
  */
 export class DatumStructHelper extends DataBridge {
@@ -362,6 +424,36 @@ export const OtherStructSchema : StructTypeSchema = {
     ]
 };
 
+export const SomeKindaEnumSchema : EnumTypeSchema = {
+    "kind": "enum",
+    "name": "SomeKindaEnum",
+    "id": "__module__StructDatumTester__SomeKindaEnum[]",
+    "variantTypes": [
+        {
+            "kind": "variant",
+            "tag": 0,
+            "id": "__module__StructDatumTester__SomeKindaEnum[]__case1",
+            "name": "case1",
+            "fieldTypes": []
+        },
+        {
+            "kind": "variant",
+            "tag": 1,
+            "id": "__module__StructDatumTester__SomeKindaEnum[]__case2",
+            "name": "case2",
+            "fieldTypes": [
+                {
+                    "name": "f1",
+                    "type": {
+                        "kind": "internal",
+                        "name": "Int"
+                    }
+                }
+            ]
+        }
+    ]
+};
+
 export const DatumStructSchema : StructTypeSchema = {
     "kind": "struct",
     "format": "list",
@@ -423,6 +515,38 @@ export const DatumStructSchema : StructTypeSchema = {
                         }
                     ]
                 }
+            }
+        },
+        {
+            "name": "field4",
+            "type": {
+                "kind": "enum",
+                "name": "SomeKindaEnum",
+                "id": "__module__StructDatumTester__SomeKindaEnum[]",
+                "variantTypes": [
+                    {
+                        "kind": "variant",
+                        "tag": 0,
+                        "id": "__module__StructDatumTester__SomeKindaEnum[]__case1",
+                        "name": "case1",
+                        "fieldTypes": []
+                    },
+                    {
+                        "kind": "variant",
+                        "tag": 1,
+                        "id": "__module__StructDatumTester__SomeKindaEnum[]__case2",
+                        "name": "case2",
+                        "fieldTypes": [
+                            {
+                                "name": "f1",
+                                "type": {
+                                    "kind": "internal",
+                                    "name": "Int"
+                                }
+                            }
+                        ]
+                    }
+                ]
             }
         }
     ]

@@ -97,10 +97,12 @@ export class BundleTypes implements TypeGenHooks<undefined> {
             typeSchema: { name },
             canonicalTypeName,
         } = details;
-        if (canonicalTypeName) {
-            this.namedTypes[canonicalTypeName] = details;
+        const useTypeName = canonicalTypeName || name;
+        if (!this.namedTypes[useTypeName]) {
+            this.namedTypes[useTypeName] = details;
         } else {
-            this.namedTypes[name] = details;
+            // console.log("No need to re-register type:", useTypeName, "(right?)");
+            // right!
         }
     }
 
@@ -222,8 +224,13 @@ export class BundleTypes implements TypeGenHooks<undefined> {
         }
 
         if (useTypeNamesAt) {
-            throw new Error("surprise!");
+            // this happens when the enum is a nested field of a struct or variant
+
+            // console.log("enum", enumName, "is used as a nested field, and that's okay!");
+            // it's fine to have this useTypeNames hint coming in, but we don't want
+            // to use the type-name when registering the enum itself; see "XXX" comments below.
         }
+
         const details: enumTypeDetails<any> = {
             enumName: schema.name,
             dataType: enumType,
@@ -239,16 +246,17 @@ export class BundleTypes implements TypeGenHooks<undefined> {
             canonicalType: this.mkMinimalType(
                 "canonical",
                 schema,
-                useTypeNamesAt
+                // XXX here, we always want to register the true type of the enum, not the type-name 
+                // XXX useTypeNamesAt
             ),
             permissiveType: this.mkMinimalType(
                 "permissive",
                 schema,
-                useTypeNamesAt
+                // XXX here, we always want to register the true type of the enum, not the type-name 
+                // XXX useTypeNamesAt
             ),
             moreInfo: undefined,
         };
-
         this.registerNamedType(details);
         const moreInfo = this.collaborator?.getMoreEnumInfo?.(details);
         if (moreInfo) details.moreInfo = moreInfo;

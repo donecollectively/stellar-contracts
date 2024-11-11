@@ -49,7 +49,6 @@ import {
 import {
     DelegationDetail,
     mustReturnValueToScript,
-    tvAuthorityToken,
     DelegateLifecycleActivity,
     CapoLifecycleActivity,
     unmodifiedDelegation
@@ -63,8 +62,8 @@ import {
 } from CapoMintHelpers
 
 // import {
-//     capoSettings
-// } from CustomCapoSettings
+//     ProtocolSettings
+// } from ProtocolSettings
 
 import {
     CapoCtx,
@@ -103,6 +102,7 @@ enum DelegateDatum {
     IsDelegation {
         dd: DelegationDetail
     }
+    // same variant-index as Capo's DelegatedData
     capoStoredData {
         data: DgDatumTestData
     }
@@ -201,10 +201,7 @@ enum DelegateActivity {
                     mkTn : (String) -> String = mkUutTnFactory(seed);
 
                     cctx : CapoCtx = mkCapoCtx(priorMddd.dd.mph).withCharterRef();
-                    // settings : capoSettings = cctx.getSettings[capoSettings]();
-                    // settings: capoSettings = capoSettings::from_data(
-                    //     cctx.getRefSettingsUtxo().datum.inline
-                    // );
+                    // settings : ProtocolSettings = cctx.getManifestDatum[ProtocolSettings]("settings");
                     tokenName = mkTn("tdata");
                     depositedValue: Value = mkTv(priorMddd.dd.mph, tokenName);
 
@@ -240,9 +237,7 @@ enum DelegateActivity {
                 VSA.switch {                    
                     UpdatingTData{recId} => {
                         hasDD : (TxInput) -> Bool = cctx.mkDelegatedDataPredicate("tdata", recId);
-                        // settings: capoSettings = capoSettings::from_data(
-                        //     cctx.getRefSettingsUtxo().datum.inline
-                        // );
+                        // settings: ProtocolSettings = cctx.getManifestDatum[ProtocolSettings]("settings");
                         _hasDDOutput : (TxOutput) -> Bool = cctx.mkDelegatedDataOutputPredicate("tdata", recId);
     
                         tx.inputs.filter(hasDD).for_each( (_utxo : TxInput) -> () {

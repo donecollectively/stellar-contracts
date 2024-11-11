@@ -28,10 +28,10 @@ import type {
     TxInput,
     TxOutput,
     TxOutputId,
-    TxOutputDatum,
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
+ import { TxOutputDatum } from "@helios-lang/ledger";
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
@@ -53,10 +53,29 @@ import type {hasSeed, isActivity} from "./StellarContract.js"
 
 import type {
     RelativeDelegateLink, RelativeDelegateLinkLike,
+    ManifestEntryType$DgDataPolicy, ManifestEntryType$DgDataPolicyLike,
+    DelegateRole, DelegateRoleLike,
+    ManifestEntryType$DelegateThreads, ManifestEntryType$DelegateThreadsLike,
+    ManifestEntryType, ManifestEntryTypeLike,
+    CapoManifestEntry, CapoManifestEntryLike,
+    PendingDelegateAction$Add, PendingDelegateAction$AddLike,
+    PendingDelegateAction$Replace, PendingDelegateAction$ReplaceLike,
+    PendingDelegateAction, PendingDelegateActionLike,
+    PendingDelegateChange, PendingDelegateChangeLike,
     CapoDatum$CharterToken, CapoDatum$CharterTokenLike,
     AnyData, AnyDataLike,
     CapoDatum$DelegatedData, CapoDatum$DelegatedDataLike,
     CapoDatum, CapoDatumLike,
+    CapoLifecycleActivity$CreatingDelegate, CapoLifecycleActivity$CreatingDelegateLike,
+    CapoLifecycleActivity$queuePendingDgtChange, CapoLifecycleActivity$queuePendingDgtChangeLike,
+    CapoLifecycleActivity$removePendingDgtChange, CapoLifecycleActivity$removePendingDgtChangeLike,
+    CapoLifecycleActivity$forcingNewSpendDelegate, CapoLifecycleActivity$forcingNewSpendDelegateLike,
+    CapoLifecycleActivity$forcingNewMintDelegate, CapoLifecycleActivity$forcingNewMintDelegateLike,
+    ManifestActivity$updatingEntry, ManifestActivity$updatingEntryLike,
+    ManifestActivity$addingEntry, ManifestActivity$addingEntryLike,
+    ManifestActivity$forkingThreadToken, ManifestActivity$forkingThreadTokenLike,
+    ManifestActivity, ManifestActivityLike,
+    CapoLifecycleActivity, CapoLifecycleActivityLike,
     CapoActivity, CapoActivityLike
 } from "./CapoHeliosBundle.typeInfo.js";
 
@@ -79,7 +98,7 @@ export class CapoDataBridge extends ContractDataBridge {
     static isAbstract = false as const;
     isAbstract = false as const;
     /**
-     * Helper class for generating UplcData for the datum type ***
+     * Helper class for generating TxOutputDatum for the ***datum type (CapoDatum)***
      * for this contract script. 
      */
     datum: CapoDatumHelper
@@ -112,9 +131,29 @@ export class CapoDataBridge extends ContractDataBridge {
      */
     types = {
       /**
+       * generates UplcData for the enum type ***DelegateRole*** for the `Capo` script
+       */
+        DelegateRole: new DelegateRoleHelper(this.bundle),
+      /**
+       * generates UplcData for the enum type ***ManifestEntryType*** for the `Capo` script
+       */
+        ManifestEntryType: new ManifestEntryTypeHelper(this.bundle),
+      /**
+       * generates UplcData for the enum type ***PendingDelegateAction*** for the `Capo` script
+       */
+        PendingDelegateAction: new PendingDelegateActionHelper(this.bundle),
+      /**
        * generates UplcData for the enum type ***CapoDatum*** for the `Capo` script
        */
         CapoDatum: new CapoDatumHelper(this.bundle),
+      /**
+       * generates UplcData for the enum type ***ManifestActivity*** for the `Capo` script
+       */
+        ManifestActivity: new ManifestActivityHelper(this.bundle),
+      /**
+       * generates UplcData for the enum type ***CapoLifecycleActivity*** for the `Capo` script
+       */
+        CapoLifecycleActivity: new CapoLifecycleActivityHelper(this.bundle),
       /**
        * generates UplcData for the enum type ***CapoActivity*** for the `Capo` script
        */
@@ -125,12 +164,33 @@ export class CapoDataBridge extends ContractDataBridge {
        */
         RelativeDelegateLink: (fields: RelativeDelegateLinkLike | {
     uutName: /*minStructField*/ string
-    strategyName: /*minStructField*/ string
     delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
     config: /*minStructField*/ number[]
 }
 ) => {
         return this.__RelativeDelegateLinkCast.toUplcData(fields);
+    },
+      /**
+       * generates UplcData for the enum type ***CapoManifestEntry*** for the `Capo` script
+       */
+        CapoManifestEntry: (fields: CapoManifestEntryLike | {
+    entryType: /*minStructField*/ ManifestEntryTypeLike
+    tokenName: /*minStructField*/ number[]
+    mph: /*minStructField*/ Option<MintingPolicyHash | string | number[]>
+}
+) => {
+        return this.__CapoManifestEntryCast.toUplcData(fields);
+    },
+      /**
+       * generates UplcData for the enum type ***PendingDelegateChange*** for the `Capo` script
+       */
+        PendingDelegateChange: (fields: PendingDelegateChangeLike | {
+    action: /*minStructField*/ PendingDelegateActionLike
+    role: /*minStructField*/ DelegateRoleLike
+    name: /*minStructField*/ Option<string>
+}
+) => {
+        return this.__PendingDelegateChangeCast.toUplcData(fields);
     },
       /**
        * generates UplcData for the enum type ***AnyData*** for the `Capo` script
@@ -146,6 +206,12 @@ export class CapoDataBridge extends ContractDataBridge {
     protected __RelativeDelegateLinkCast = new StellarCast<
                 RelativeDelegateLink, RelativeDelegateLinkLike
             >(RelativeDelegateLinkSchema, { isMainnet: true });
+    protected __CapoManifestEntryCast = new StellarCast<
+                CapoManifestEntry, CapoManifestEntryLike
+            >(CapoManifestEntrySchema, { isMainnet: true });
+    protected __PendingDelegateChangeCast = new StellarCast<
+                PendingDelegateChange, PendingDelegateChangeLike
+            >(PendingDelegateChangeSchema, { isMainnet: true });
     protected __AnyDataCast = new StellarCast<
                 AnyData, AnyDataLike
             >(AnyDataSchema, { isMainnet: true });
@@ -158,6 +224,72 @@ class CapoDataBridgeReader extends DataBridgeReaderClass {
     constructor(public bridge: CapoDataBridge) {
         super();
     }
+    /**
+        * reads UplcData *known to fit the **DelegateRole*** enum type,
+        * for the Capo script.
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    DelegateRole(d : UplcData) { 
+        const typeHelper = this.bridge.types.DelegateRole;
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = typeHelper.__cast;
+
+        return cast.fromUplcData(d) as IntersectedEnum<DelegateRole>;        
+    } /* enumReader helper */
+
+    /**
+        * reads UplcData *known to fit the **ManifestEntryType*** enum type,
+        * for the Capo script.
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    ManifestEntryType(d : UplcData) { 
+        const typeHelper = this.bridge.types.ManifestEntryType;
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = typeHelper.__cast;
+
+        return cast.fromUplcData(d) as IntersectedEnum<ManifestEntryType>;        
+    } /* enumReader helper */
+
+    /**
+        * reads UplcData *known to fit the **PendingDelegateAction*** enum type,
+        * for the Capo script.
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    PendingDelegateAction(d : UplcData) { 
+        const typeHelper = this.bridge.types.PendingDelegateAction;
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = typeHelper.__cast;
+
+        return cast.fromUplcData(d) as IntersectedEnum<PendingDelegateAction>;        
+    } /* enumReader helper */
+
 datum = (d: UplcData) => { return this.CapoDatum(d) }
     /**
         * reads UplcData *known to fit the **CapoDatum*** enum type,
@@ -179,6 +311,50 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
         const cast = typeHelper.__cast;
 
         return cast.fromUplcData(d) as IntersectedEnum<CapoDatum>;        
+    } /* enumReader helper */
+
+    /**
+        * reads UplcData *known to fit the **ManifestActivity*** enum type,
+        * for the Capo script.
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    ManifestActivity(d : UplcData) { 
+        const typeHelper = this.bridge.types.ManifestActivity;
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = typeHelper.__cast;
+
+        return cast.fromUplcData(d) as IntersectedEnum<ManifestActivity>;        
+    } /* enumReader helper */
+
+    /**
+        * reads UplcData *known to fit the **CapoLifecycleActivity*** enum type,
+        * for the Capo script.
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the enum type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    CapoLifecycleActivity(d : UplcData) { 
+        const typeHelper = this.bridge.types.CapoLifecycleActivity;
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = typeHelper.__cast;
+
+        return cast.fromUplcData(d) as IntersectedEnum<CapoLifecycleActivity>;        
     } /* enumReader helper */
 
     /**
@@ -220,6 +396,46 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
     RelativeDelegateLink(d: UplcData) {
         //@ts-expect-error drilling through the protected accessor.
         const cast = this.bridge.__RelativeDelegateLinkCast;
+        return cast.fromUplcData(d);        
+    } /* structReader helper */
+
+    /**
+        * reads UplcData *known to fit the **CapoManifestEntry*** struct type,
+        * for the Capo script.
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the struct type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    CapoManifestEntry(d: UplcData) {
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = this.bridge.__CapoManifestEntryCast;
+        return cast.fromUplcData(d);        
+    } /* structReader helper */
+
+    /**
+        * reads UplcData *known to fit the **PendingDelegateChange*** struct type,
+        * for the Capo script.
+        * ### Standard WARNING
+        * 
+        * This is a low-level data-reader for use in ***advanced development scenarios***.
+        * 
+        * Used correctly with data that matches the struct type, this reader
+        * returns strongly-typed data - your code using these types will be safe.
+        * 
+        * On the other hand, reading non-matching data will not give you a valid result.  
+        * It may throw an error, or it may throw no error, but return a value that
+        * causes some error later on in your code, when you try to use it.
+        */
+    PendingDelegateChange(d: UplcData) {
+        //@ts-expect-error drilling through the protected accessor.
+        const cast = this.bridge.__PendingDelegateChangeCast;
         return cast.fromUplcData(d);        
     } /* structReader helper */
 
@@ -268,6 +484,283 @@ export class RelativeDelegateLinkHelper extends DataBridge {
 
 
 /**
+ * Helper class for generating UplcData for variants of the ***DelegateRole*** enum type.
+ */
+export class DelegateRoleHelper extends EnumBridge<JustAnEnum> {
+    /*mkEnumHelperClass*/
+    protected __cast = new StellarCast<
+       DelegateRole,
+       DelegateRoleLike
+   >(DelegateRoleSchema, { isMainnet: true });
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.MintDgt"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#0***
+ */
+    get MintDgt() {
+        const uplc = this.mkUplcData({ MintDgt: {} }, 
+            "CapoDelegateHelpers::DelegateRole.MintDgt");
+        return uplc;
+    } /* tagOnly variant accessor */
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.SpendDgt"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
+ */
+    get SpendDgt() {
+        const uplc = this.mkUplcData({ SpendDgt: {} }, 
+            "CapoDelegateHelpers::DelegateRole.SpendDgt");
+        return uplc;
+    } /* tagOnly variant accessor */
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.MintInvariant"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#2***
+ */
+    get MintInvariant() {
+        const uplc = this.mkUplcData({ MintInvariant: {} }, 
+            "CapoDelegateHelpers::DelegateRole.MintInvariant");
+        return uplc;
+    } /* tagOnly variant accessor */
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.SpendInvariant"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
+ */
+    get SpendInvariant() {
+        const uplc = this.mkUplcData({ SpendInvariant: {} }, 
+            "CapoDelegateHelpers::DelegateRole.SpendInvariant");
+        return uplc;
+    } /* tagOnly variant accessor */
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.DgDataPolicy"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#4***
+ */
+    get DgDataPolicy() {
+        const uplc = this.mkUplcData({ DgDataPolicy: {} }, 
+            "CapoDelegateHelpers::DelegateRole.DgDataPolicy");
+        return uplc;
+    } /* tagOnly variant accessor */
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.OtherNamedDgt"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#5***
+ */
+    get OtherNamedDgt() {
+        const uplc = this.mkUplcData({ OtherNamedDgt: {} }, 
+            "CapoDelegateHelpers::DelegateRole.OtherNamedDgt");
+        return uplc;
+    } /* tagOnly variant accessor */
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.BothMintAndSpendDgt"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#6***
+ */
+    get BothMintAndSpendDgt() {
+        const uplc = this.mkUplcData({ BothMintAndSpendDgt: {} }, 
+            "CapoDelegateHelpers::DelegateRole.BothMintAndSpendDgt");
+        return uplc;
+    } /* tagOnly variant accessor */
+}/*mkEnumHelperClass*/
+
+
+/**
+ * Helper class for generating UplcData for variants of the ***ManifestEntryType*** enum type.
+ */
+export class ManifestEntryTypeHelper extends EnumBridge<JustAnEnum> {
+    /*mkEnumHelperClass*/
+    protected __cast = new StellarCast<
+       ManifestEntryType,
+       ManifestEntryTypeLike
+   >(ManifestEntryTypeSchema, { isMainnet: true });
+
+/**
+ * (property getter): UplcData for ***"CapoHelpers::ManifestEntryType.NamedTokenRef"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#0***
+ */
+    get NamedTokenRef() {
+        const uplc = this.mkUplcData({ NamedTokenRef: {} }, 
+            "CapoHelpers::ManifestEntryType.NamedTokenRef");
+        return uplc;
+    } /* tagOnly variant accessor */
+
+    /**
+     * generates  UplcData for ***"CapoHelpers::ManifestEntryType.DgDataPolicy"***
+     * @remarks - ***ManifestEntryType$DgDataPolicyLike*** is the same as the expanded field-types.
+     */
+    DgDataPolicy(fields: ManifestEntryType$DgDataPolicyLike | { 
+        policyLink: RelativeDelegateLinkLike,
+        refCount: IntLike } ) : UplcData {
+        const uplc = this.mkUplcData({
+            DgDataPolicy: fields 
+        }, "CapoHelpers::ManifestEntryType.DgDataPolicy");
+       return uplc;
+    } /*multiFieldVariant enum accessor*/
+
+    /**
+     * generates  UplcData for ***"CapoHelpers::ManifestEntryType.DelegateThreads"***
+     * @remarks - ***ManifestEntryType$DelegateThreadsLike*** is the same as the expanded field-types.
+     */
+    DelegateThreads(fields: ManifestEntryType$DelegateThreadsLike | { 
+        role: DelegateRoleLike,
+        refCount: IntLike } ) : UplcData {
+        const uplc = this.mkUplcData({
+            DelegateThreads: fields 
+        }, "CapoHelpers::ManifestEntryType.DelegateThreads");
+       return uplc;
+    } /*multiFieldVariant enum accessor*/
+
+/**
+ * (property getter): UplcData for ***"CapoHelpers::ManifestEntryType.MerkleMembership"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
+ */
+    get MerkleMembership() {
+        const uplc = this.mkUplcData({ MerkleMembership: {} }, 
+            "CapoHelpers::ManifestEntryType.MerkleMembership");
+        return uplc;
+    } /* tagOnly variant accessor */
+
+/**
+ * (property getter): UplcData for ***"CapoHelpers::ManifestEntryType.MerkleStateRoot"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#4***
+ */
+    get MerkleStateRoot() {
+        const uplc = this.mkUplcData({ MerkleStateRoot: {} }, 
+            "CapoHelpers::ManifestEntryType.MerkleStateRoot");
+        return uplc;
+    } /* tagOnly variant accessor */
+}/*mkEnumHelperClass*/
+
+
+/**
+ * Helper class for generating UplcData for the ***CapoManifestEntry*** struct type.
+ */
+export class CapoManifestEntryHelper extends DataBridge {
+    isCallable = true
+    protected __cast = new StellarCast<
+        CapoManifestEntry,
+        CapoManifestEntryLike
+    >(CapoManifestEntrySchema, { isMainnet: true });
+
+    // You might expect a function as follows, but no.  However, a similar uplc-generating capability
+    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.
+    // see the callableDataBridge type on the 'datum' property in the contract bridge.
+    //
+    //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
+    //
+    // CapoManifestEntry(fields: CapoManifestEntryLike) {
+    //    return this.__cast.toUplcData(fields);
+    //}
+} //mkStructHelperClass 
+
+
+/**
+ * Helper class for generating UplcData for variants of the ***PendingDelegateAction*** enum type.
+ */
+export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
+    /*mkEnumHelperClass*/
+    protected __cast = new StellarCast<
+       PendingDelegateAction,
+       PendingDelegateActionLike
+   >(PendingDelegateActionSchema, { isMainnet: true });
+
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Add"***, 
+     * given a transaction-context ***with a seed utxo*** and other field details
+     * @remarks
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
+     * to create a context satisfying `hasSeed`.
+     */
+    Add(value: hasSeed, fields: { 
+        purpose: string,
+        delegateValidatorHash: Option<ValidatorHash | string | number[]>,
+        config: number[] 
+    } ) : UplcData
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Add"*** 
+     * with raw seed details included in fields.
+     */
+    Add(fields: PendingDelegateAction$AddLike | {
+            seed: TxOutputId | string,
+            purpose: string,
+            delegateValidatorHash: Option<ValidatorHash | string | number[]>,
+            config: number[]
+    } ): UplcData
+    Add(
+        seedOrUf: hasSeed | PendingDelegateAction$AddLike, 
+        filteredFields?: { 
+            purpose: string,
+            delegateValidatorHash: Option<ValidatorHash | string | number[]>,
+            config: number[]
+    }) : UplcData {
+        if (filteredFields) {
+            const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
+            const uplc = this.mkUplcData({
+                Add: { seed: seedTxOutputId, ...filteredFields } 
+            }, "CapoDelegateHelpers::PendingDelegateAction.Add");
+           return uplc;
+        } else {
+            const fields = seedOrUf as PendingDelegateAction$AddLike; 
+           const uplc = this.mkUplcData({
+                Add: fields 
+            }, "CapoDelegateHelpers::PendingDelegateAction.Add");
+           return uplc;
+        }
+    } /*multiFieldVariant/seeded enum accessor*/ 
+
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Remove"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
+ */
+    get Remove() {
+        const uplc = this.mkUplcData({ Remove: {} }, 
+            "CapoDelegateHelpers::PendingDelegateAction.Remove");
+        return uplc;
+    } /* tagOnly variant accessor */
+
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Replace"***
+     * @remarks - ***PendingDelegateAction$ReplaceLike*** is the same as the expanded field-types.
+     */
+    Replace(fields: PendingDelegateAction$ReplaceLike | { 
+        replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]},
+        seed: TxOutputId | string,
+        purpose: string,
+        delegateValidatorHash: Option<ValidatorHash | string | number[]>,
+        config: number[] } ) : UplcData {
+        const uplc = this.mkUplcData({
+            Replace: fields 
+        }, "CapoDelegateHelpers::PendingDelegateAction.Replace");
+       return uplc;
+    } /*multiFieldVariant enum accessor*/
+}/*mkEnumHelperClass*/
+
+
+/**
+ * Helper class for generating UplcData for the ***PendingDelegateChange*** struct type.
+ */
+export class PendingDelegateChangeHelper extends DataBridge {
+    isCallable = true
+    protected __cast = new StellarCast<
+        PendingDelegateChange,
+        PendingDelegateChangeLike
+    >(PendingDelegateChangeSchema, { isMainnet: true });
+
+    // You might expect a function as follows, but no.  However, a similar uplc-generating capability
+    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.
+    // see the callableDataBridge type on the 'datum' property in the contract bridge.
+    //
+    //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
+    //
+    // PendingDelegateChange(fields: PendingDelegateChangeLike) {
+    //    return this.__cast.toUplcData(fields);
+    //}
+} //mkStructHelperClass 
+
+
+/**
  * Helper class for generating UplcData for the ***AnyData*** struct type.
  */
 export class AnyDataHelper extends DataBridge {
@@ -293,6 +786,7 @@ export class AnyDataHelper extends DataBridge {
  * Helper class for generating UplcData for variants of the ***CapoDatum*** enum type.
  */
 export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
+    /*mkEnumHelperClass*/
     protected __cast = new StellarCast<
        CapoDatum,
        CapoDatumLike
@@ -306,14 +800,12 @@ export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
         spendDelegateLink: RelativeDelegateLinkLike,
         spendInvariants: Array<{
     uutName: /*minStructField*/ string
-    strategyName: /*minStructField*/ string
     delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
     config: /*minStructField*/ number[]
 }
 >,
-        namedDelegates: Map<string, {
+        otherNamedDelegates: Map<string, {
     uutName: /*minStructField*/ string
-    strategyName: /*minStructField*/ string
     delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
     config: /*minStructField*/ number[]
 }
@@ -321,16 +813,27 @@ export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
         mintDelegateLink: RelativeDelegateLinkLike,
         mintInvariants: Array<{
     uutName: /*minStructField*/ string
-    strategyName: /*minStructField*/ string
     delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
     config: /*minStructField*/ number[]
 }
 >,
-        govAuthorityLink: RelativeDelegateLinkLike } ) : UplcData {
+        govAuthorityLink: RelativeDelegateLinkLike,
+        manifest: Map<string, {
+    entryType: /*minStructField*/ ManifestEntryTypeLike
+    tokenName: /*minStructField*/ number[]
+    mph: /*minStructField*/ Option<MintingPolicyHash | string | number[]>
+}
+>,
+        pendingDgtChanges: Array<{
+    action: /*minStructField*/ PendingDelegateActionLike
+    role: /*minStructField*/ DelegateRoleLike
+    name: /*minStructField*/ Option<string>
+}
+> } ) : TxOutputDatum<"Inline"> {
         const uplc = this.mkUplcData({
             CharterToken: fields 
         }, "CapoHelpers::CapoDatum.CharterToken");
-       return uplc;
+        return TxOutputDatum.Inline(uplc);
     } /*multiFieldVariant enum accessor*/
 
 /**
@@ -340,7 +843,7 @@ export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
     get ScriptReference() {
         const uplc = this.mkUplcData({ ScriptReference: {} }, 
             "CapoHelpers::CapoDatum.ScriptReference");
-       return uplc;
+        return TxOutputDatum.Inline(uplc);
     } /* tagOnly variant accessor */
 
     /**
@@ -350,42 +853,539 @@ export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
     DelegatedData(fields: CapoDatum$DelegatedDataLike | { 
         data: AnyDataLike,
         version: IntLike,
-        otherDetails: UplcData } ) : UplcData {
+        otherDetails: UplcData } ) : TxOutputDatum<"Inline"> {
         const uplc = this.mkUplcData({
             DelegatedData: fields 
         }, "CapoHelpers::CapoDatum.DelegatedData");
+        return TxOutputDatum.Inline(uplc);
+    } /*multiFieldVariant enum accessor*/
+}/*mkEnumHelperClass*/
+
+
+/**
+ * Helper class for generating UplcData for variants of the ***ManifestActivity*** enum type.
+ */
+export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
+    /*mkEnumHelperClass*/
+    protected __cast = new StellarCast<
+       ManifestActivity,
+       ManifestActivityLike
+   >(ManifestActivitySchema, { isMainnet: true });
+
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.retiringEntry"***
+     */
+    retiringEntry(
+        key: string
+    ) : UplcData {
+        const uplc = this.mkUplcData({ 
+           retiringEntry: key
+        }, "CapoDelegateHelpers::ManifestActivity.retiringEntry"); /*singleField enum variant*/
+       return uplc;
+    }
+
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.updatingEntry"***
+     * @remarks - ***ManifestActivity$updatingEntryLike*** is the same as the expanded field-types.
+     */
+    updatingEntry(fields: ManifestActivity$updatingEntryLike | { 
+        key: string,
+        tokenName: number[] } ) : UplcData {
+        const uplc = this.mkUplcData({
+            updatingEntry: fields 
+        }, "CapoDelegateHelpers::ManifestActivity.updatingEntry");
        return uplc;
     } /*multiFieldVariant enum accessor*/
-}
+
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.addingEntry"***
+     * @remarks - ***ManifestActivity$addingEntryLike*** is the same as the expanded field-types.
+     */
+    addingEntry(fields: ManifestActivity$addingEntryLike | { 
+        key: string,
+        tokenName: number[] } ) : UplcData {
+        const uplc = this.mkUplcData({
+            addingEntry: fields 
+        }, "CapoDelegateHelpers::ManifestActivity.addingEntry");
+       return uplc;
+    } /*multiFieldVariant enum accessor*/
+
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.forkingThreadToken"***
+     * @remarks - ***ManifestActivity$forkingThreadTokenLike*** is the same as the expanded field-types.
+     */
+    forkingThreadToken(fields: ManifestActivity$forkingThreadTokenLike | { 
+        key: string,
+        newThreadCount: IntLike } ) : UplcData {
+        const uplc = this.mkUplcData({
+            forkingThreadToken: fields 
+        }, "CapoDelegateHelpers::ManifestActivity.forkingThreadToken");
+       return uplc;
+    } /*multiFieldVariant enum accessor*/
+}/*mkEnumHelperClass*/
+
+
+/**
+ * Helper class for generating UplcData for variants of the ***ManifestActivity*** enum type.
+ */
+export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
+    /*mkEnumHelperClass*/
+    protected __cast = new StellarCast<
+       ManifestActivity,
+       ManifestActivityLike
+   >(ManifestActivitySchema, { isMainnet: true });
+
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.retiringEntry"***
+     */
+    retiringEntry(
+        key: string
+    ) : UplcData {
+        const uplc = this.mkUplcData({ 
+           retiringEntry: key
+        }, "CapoDelegateHelpers::ManifestActivity.retiringEntry"); /*singleField enum variant*/
+       return uplc;
+    }
+
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.updatingEntry"***
+     * @remarks - ***ManifestActivity$updatingEntryLike*** is the same as the expanded field-types.
+     */
+    updatingEntry(fields: ManifestActivity$updatingEntryLike | { 
+        key: string,
+        tokenName: number[] } ) : UplcData {
+        const uplc = this.mkUplcData({
+            updatingEntry: fields 
+        }, "CapoDelegateHelpers::ManifestActivity.updatingEntry");
+       return uplc;
+    } /*multiFieldVariant enum accessor*/
+
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.addingEntry"***
+     * @remarks - ***ManifestActivity$addingEntryLike*** is the same as the expanded field-types.
+     */
+    addingEntry(fields: ManifestActivity$addingEntryLike | { 
+        key: string,
+        tokenName: number[] } ) : UplcData {
+        const uplc = this.mkUplcData({
+            addingEntry: fields 
+        }, "CapoDelegateHelpers::ManifestActivity.addingEntry");
+       return uplc;
+    } /*multiFieldVariant enum accessor*/
+
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.forkingThreadToken"***
+     * @remarks - ***ManifestActivity$forkingThreadTokenLike*** is the same as the expanded field-types.
+     */
+    forkingThreadToken(fields: ManifestActivity$forkingThreadTokenLike | { 
+        key: string,
+        newThreadCount: IntLike } ) : UplcData {
+        const uplc = this.mkUplcData({
+            forkingThreadToken: fields 
+        }, "CapoDelegateHelpers::ManifestActivity.forkingThreadToken");
+       return uplc;
+    } /*multiFieldVariant enum accessor*/
+}/*mkEnumHelperClass*/
+
+
+/**
+ * Helper class for generating UplcData for variants of the ***CapoLifecycleActivity*** enum type.
+ */
+export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
+    /*mkEnumHelperClass*/
+    protected __cast = new StellarCast<
+       CapoLifecycleActivity,
+       CapoLifecycleActivityLike
+   >(CapoLifecycleActivitySchema, { isMainnet: true });
+
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate"***, 
+     * given a transaction-context ***with a seed utxo*** and other field details
+     * @remarks
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
+     * to create a context satisfying `hasSeed`.
+     */
+    CreatingDelegate(value: hasSeed, fields: { 
+        purpose: string 
+    } ) : UplcData
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate"*** 
+     * with raw seed details included in fields.
+     */
+    CreatingDelegate(fields: CapoLifecycleActivity$CreatingDelegateLike | {
+            seed: TxOutputId | string,
+            purpose: string
+    } ): UplcData
+    CreatingDelegate(
+        seedOrUf: hasSeed | CapoLifecycleActivity$CreatingDelegateLike, 
+        filteredFields?: { 
+            purpose: string
+    }) : UplcData {
+        if (filteredFields) {
+            const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
+            const uplc = this.mkUplcData({
+                CreatingDelegate: { seed: seedTxOutputId, ...filteredFields } 
+            }, "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate");
+           return uplc;
+        } else {
+            const fields = seedOrUf as CapoLifecycleActivity$CreatingDelegateLike; 
+           const uplc = this.mkUplcData({
+                CreatingDelegate: fields 
+            }, "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate");
+           return uplc;
+        }
+    } /*multiFieldVariant/seeded enum accessor*/ 
+
+
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange"***
+     * @remarks - ***CapoLifecycleActivity$queuePendingDgtChangeLike*** is the same as the expanded field-types.
+     */
+    queuePendingDgtChange(fields: CapoLifecycleActivity$queuePendingDgtChangeLike | { 
+        action: PendingDelegateActionLike,
+        role: DelegateRoleLike,
+        name: Option<string> } ) : UplcData {
+        const uplc = this.mkUplcData({
+            queuePendingDgtChange: fields 
+        }, "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
+       return uplc;
+    } /*multiFieldVariant enum accessor*/
+
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.removePendingDgtChange"***
+     * @remarks - ***CapoLifecycleActivity$removePendingDgtChangeLike*** is the same as the expanded field-types.
+     */
+    removePendingDgtChange(fields: CapoLifecycleActivity$removePendingDgtChangeLike | { 
+        role: DelegateRoleLike,
+        name: Option<string> } ) : UplcData {
+        const uplc = this.mkUplcData({
+            removePendingDgtChange: fields 
+        }, "CapoDelegateHelpers::CapoLifecycleActivity.removePendingDgtChange");
+       return uplc;
+    } /*multiFieldVariant enum accessor*/
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.commitPendingDgtChanges"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
+ */
+    get commitPendingDgtChanges() {
+        const uplc = this.mkUplcData({ commitPendingDgtChanges: {} }, 
+            "CapoDelegateHelpers::CapoLifecycleActivity.commitPendingDgtChanges");
+        return uplc;
+    } /* tagOnly variant accessor */
+
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.forcingNewSpendDelegate"***, 
+     * given a transaction-context ***with a seed utxo*** and other field details
+     * @remarks
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
+     * to create a context satisfying `hasSeed`.
+     */
+    forcingNewSpendDelegate(value: hasSeed, fields: { 
+        purpose: string 
+    } ) : UplcData
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.forcingNewSpendDelegate"*** 
+     * with raw seed details included in fields.
+     */
+    forcingNewSpendDelegate(fields: CapoLifecycleActivity$forcingNewSpendDelegateLike | {
+            seed: TxOutputId | string,
+            purpose: string
+    } ): UplcData
+    forcingNewSpendDelegate(
+        seedOrUf: hasSeed | CapoLifecycleActivity$forcingNewSpendDelegateLike, 
+        filteredFields?: { 
+            purpose: string
+    }) : UplcData {
+        if (filteredFields) {
+            const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
+            const uplc = this.mkUplcData({
+                forcingNewSpendDelegate: { seed: seedTxOutputId, ...filteredFields } 
+            }, "CapoDelegateHelpers::CapoLifecycleActivity.forcingNewSpendDelegate");
+           return uplc;
+        } else {
+            const fields = seedOrUf as CapoLifecycleActivity$forcingNewSpendDelegateLike; 
+           const uplc = this.mkUplcData({
+                forcingNewSpendDelegate: fields 
+            }, "CapoDelegateHelpers::CapoLifecycleActivity.forcingNewSpendDelegate");
+           return uplc;
+        }
+    } /*multiFieldVariant/seeded enum accessor*/ 
+
+
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.forcingNewMintDelegate"***, 
+     * given a transaction-context ***with a seed utxo*** and other field details
+     * @remarks
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
+     * to create a context satisfying `hasSeed`.
+     */
+    forcingNewMintDelegate(value: hasSeed, fields: { 
+        purpose: string 
+    } ) : UplcData
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.forcingNewMintDelegate"*** 
+     * with raw seed details included in fields.
+     */
+    forcingNewMintDelegate(fields: CapoLifecycleActivity$forcingNewMintDelegateLike | {
+            seed: TxOutputId | string,
+            purpose: string
+    } ): UplcData
+    forcingNewMintDelegate(
+        seedOrUf: hasSeed | CapoLifecycleActivity$forcingNewMintDelegateLike, 
+        filteredFields?: { 
+            purpose: string
+    }) : UplcData {
+        if (filteredFields) {
+            const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
+            const uplc = this.mkUplcData({
+                forcingNewMintDelegate: { seed: seedTxOutputId, ...filteredFields } 
+            }, "CapoDelegateHelpers::CapoLifecycleActivity.forcingNewMintDelegate");
+           return uplc;
+        } else {
+            const fields = seedOrUf as CapoLifecycleActivity$forcingNewMintDelegateLike; 
+           const uplc = this.mkUplcData({
+                forcingNewMintDelegate: fields 
+            }, "CapoDelegateHelpers::CapoLifecycleActivity.forcingNewMintDelegate");
+           return uplc;
+        }
+    } /*multiFieldVariant/seeded enum accessor*/ 
+
+
+    /**
+     * access to different variants of the ***nested ManifestActivity*** type needed for ***CapoLifecycleActivity:updatingManifest***.
+     */
+    get updatingManifest() {
+        const nestedAccessor = new ManifestActivityHelperNested(this.bundle,
+            {isNested: true, isActivity: false 
+        });
+        //@ts-expect-error drilling through the protected accessor.  See more comments about that above
+        nestedAccessor.mkDataVia(
+            (activity: ManifestActivityLike) => {
+                return  this.mkUplcData({ updatingManifest: activity }, 
+            "CapoDelegateHelpers::CapoLifecycleActivity.updatingManifest");
+        });
+        return nestedAccessor;
+    } /* nested enum accessor */
+}/*mkEnumHelperClass*/
+
+
+/**
+ * Helper class for generating UplcData for variants of the ***CapoLifecycleActivity*** enum type.
+ */
+export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
+    /*mkEnumHelperClass*/
+    protected __cast = new StellarCast<
+       CapoLifecycleActivity,
+       CapoLifecycleActivityLike
+   >(CapoLifecycleActivitySchema, { isMainnet: true });
+
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate"***, 
+     * given a transaction-context ***with a seed utxo*** and other field details
+     * @remarks
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
+     * to create a context satisfying `hasSeed`.
+     */
+    CreatingDelegate(value: hasSeed, fields: { 
+        purpose: string 
+    } ) : isActivity
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate"*** 
+     * with raw seed details included in fields.
+     */
+    CreatingDelegate(fields: CapoLifecycleActivity$CreatingDelegateLike | {
+            seed: TxOutputId | string,
+            purpose: string
+    } ): isActivity
+    CreatingDelegate(
+        seedOrUf: hasSeed | CapoLifecycleActivity$CreatingDelegateLike, 
+        filteredFields?: { 
+            purpose: string
+    }) : isActivity {
+        if (filteredFields) {
+            const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
+            const uplc = this.mkUplcData({
+                CreatingDelegate: { seed: seedTxOutputId, ...filteredFields } 
+            }, "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate");
+           return uplc;
+        } else {
+            const fields = seedOrUf as CapoLifecycleActivity$CreatingDelegateLike; 
+           const uplc = this.mkUplcData({
+                CreatingDelegate: fields 
+            }, "CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate");
+           return uplc;
+        }
+    } /*multiFieldVariant/seeded enum accessor*/ 
+
+
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange"***
+     * @remarks - ***CapoLifecycleActivity$queuePendingDgtChangeLike*** is the same as the expanded field-types.
+     */
+    queuePendingDgtChange(fields: CapoLifecycleActivity$queuePendingDgtChangeLike | { 
+        action: PendingDelegateActionLike,
+        role: DelegateRoleLike,
+        name: Option<string> } ) : isActivity {
+        const uplc = this.mkUplcData({
+            queuePendingDgtChange: fields 
+        }, "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
+       return uplc;
+    } /*multiFieldVariant enum accessor*/
+
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.removePendingDgtChange"***
+     * @remarks - ***CapoLifecycleActivity$removePendingDgtChangeLike*** is the same as the expanded field-types.
+     */
+    removePendingDgtChange(fields: CapoLifecycleActivity$removePendingDgtChangeLike | { 
+        role: DelegateRoleLike,
+        name: Option<string> } ) : isActivity {
+        const uplc = this.mkUplcData({
+            removePendingDgtChange: fields 
+        }, "CapoDelegateHelpers::CapoLifecycleActivity.removePendingDgtChange");
+       return uplc;
+    } /*multiFieldVariant enum accessor*/
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.commitPendingDgtChanges"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
+ */
+    get commitPendingDgtChanges() {
+        const uplc = this.mkUplcData({ commitPendingDgtChanges: {} }, 
+            "CapoDelegateHelpers::CapoLifecycleActivity.commitPendingDgtChanges");
+        return uplc;
+    } /* tagOnly variant accessor */
+
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.forcingNewSpendDelegate"***, 
+     * given a transaction-context ***with a seed utxo*** and other field details
+     * @remarks
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
+     * to create a context satisfying `hasSeed`.
+     */
+    forcingNewSpendDelegate(value: hasSeed, fields: { 
+        purpose: string 
+    } ) : isActivity
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.forcingNewSpendDelegate"*** 
+     * with raw seed details included in fields.
+     */
+    forcingNewSpendDelegate(fields: CapoLifecycleActivity$forcingNewSpendDelegateLike | {
+            seed: TxOutputId | string,
+            purpose: string
+    } ): isActivity
+    forcingNewSpendDelegate(
+        seedOrUf: hasSeed | CapoLifecycleActivity$forcingNewSpendDelegateLike, 
+        filteredFields?: { 
+            purpose: string
+    }) : isActivity {
+        if (filteredFields) {
+            const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
+            const uplc = this.mkUplcData({
+                forcingNewSpendDelegate: { seed: seedTxOutputId, ...filteredFields } 
+            }, "CapoDelegateHelpers::CapoLifecycleActivity.forcingNewSpendDelegate");
+           return uplc;
+        } else {
+            const fields = seedOrUf as CapoLifecycleActivity$forcingNewSpendDelegateLike; 
+           const uplc = this.mkUplcData({
+                forcingNewSpendDelegate: fields 
+            }, "CapoDelegateHelpers::CapoLifecycleActivity.forcingNewSpendDelegate");
+           return uplc;
+        }
+    } /*multiFieldVariant/seeded enum accessor*/ 
+
+
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.forcingNewMintDelegate"***, 
+     * given a transaction-context ***with a seed utxo*** and other field details
+     * @remarks
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
+     * to create a context satisfying `hasSeed`.
+     */
+    forcingNewMintDelegate(value: hasSeed, fields: { 
+        purpose: string 
+    } ) : isActivity
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.forcingNewMintDelegate"*** 
+     * with raw seed details included in fields.
+     */
+    forcingNewMintDelegate(fields: CapoLifecycleActivity$forcingNewMintDelegateLike | {
+            seed: TxOutputId | string,
+            purpose: string
+    } ): isActivity
+    forcingNewMintDelegate(
+        seedOrUf: hasSeed | CapoLifecycleActivity$forcingNewMintDelegateLike, 
+        filteredFields?: { 
+            purpose: string
+    }) : isActivity {
+        if (filteredFields) {
+            const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
+            const uplc = this.mkUplcData({
+                forcingNewMintDelegate: { seed: seedTxOutputId, ...filteredFields } 
+            }, "CapoDelegateHelpers::CapoLifecycleActivity.forcingNewMintDelegate");
+           return uplc;
+        } else {
+            const fields = seedOrUf as CapoLifecycleActivity$forcingNewMintDelegateLike; 
+           const uplc = this.mkUplcData({
+                forcingNewMintDelegate: fields 
+            }, "CapoDelegateHelpers::CapoLifecycleActivity.forcingNewMintDelegate");
+           return uplc;
+        }
+    } /*multiFieldVariant/seeded enum accessor*/ 
+
+
+    /**
+     * access to different variants of the ***nested ManifestActivity*** type needed for ***CapoLifecycleActivity:updatingManifest***.
+     */
+    get updatingManifest() {
+        const nestedAccessor = new ManifestActivityHelperNested(this.bundle,
+            {isNested: true, isActivity: false 
+        });
+        //@ts-expect-error drilling through the protected accessor.  See more comments about that above
+        nestedAccessor.mkDataVia(
+            (activity: ManifestActivityLike) => {
+                return  this.mkUplcData({ updatingManifest: activity }, 
+            "CapoDelegateHelpers::CapoLifecycleActivity.updatingManifest");
+        });
+        return nestedAccessor;
+    } /* nested enum accessor */
+}/*mkEnumHelperClass*/
 
 
 /**
  * Helper class for generating UplcData for variants of the ***CapoActivity*** enum type.
  */
 export class CapoActivityHelper extends EnumBridge<isActivity> {
+    /*mkEnumHelperClass*/
     protected __cast = new StellarCast<
        CapoActivity,
        CapoActivityLike
    >(CapoActivitySchema, { isMainnet: true });
 
+    /**
+     * access to different variants of the ***nested CapoLifecycleActivity*** type needed for ***CapoActivity:capoLifecycleActivity***.
+     */
+    get capoLifecycleActivity() {
+        const nestedAccessor = new CapoLifecycleActivityHelperNested(this.bundle,
+            {isNested: true, isActivity: true 
+        });
+        //@ts-expect-error drilling through the protected accessor.  See more comments about that above
+        nestedAccessor.mkDataVia(
+            (activity: CapoLifecycleActivityLike) => {
+                return  this.mkUplcData({ capoLifecycleActivity: activity }, 
+            "CapoHelpers::CapoActivity.capoLifecycleActivity");
+        });
+        return nestedAccessor;
+    } /* nested enum accessor */
+
 /**
  * (property getter): UplcData for ***"CapoHelpers::CapoActivity.usingAuthority"***
- * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#0***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
  */
     get usingAuthority() {
         const uplc = this.mkUplcData({ usingAuthority: {} }, 
             "CapoHelpers::CapoActivity.usingAuthority");
-       return uplc;
-    } /* tagOnly variant accessor */
-
-/**
- * (property getter): UplcData for ***"CapoHelpers::CapoActivity.updatingCharter"***
- * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
- */
-    get updatingCharter() {
-        const uplc = this.mkUplcData({ updatingCharter: {} }, 
-            "CapoHelpers::CapoActivity.updatingCharter");
-       return uplc;
+        return uplc;
     } /* tagOnly variant accessor */
 
 /**
@@ -395,7 +1395,7 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
     get retiringRefScript() {
         const uplc = this.mkUplcData({ retiringRefScript: {} }, 
             "CapoHelpers::CapoActivity.retiringRefScript");
-       return uplc;
+        return uplc;
     } /* tagOnly variant accessor */
 
 /**
@@ -405,7 +1405,7 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
     get addingSpendInvariant() {
         const uplc = this.mkUplcData({ addingSpendInvariant: {} }, 
             "CapoHelpers::CapoActivity.addingSpendInvariant");
-       return uplc;
+        return uplc;
     } /* tagOnly variant accessor */
 
 /**
@@ -415,19 +1415,19 @@ export class CapoActivityHelper extends EnumBridge<isActivity> {
     get spendingDelegatedDatum() {
         const uplc = this.mkUplcData({ spendingDelegatedDatum: {} }, 
             "CapoHelpers::CapoActivity.spendingDelegatedDatum");
-       return uplc;
+        return uplc;
     } /* tagOnly variant accessor */
 
 /**
- * (property getter): UplcData for ***"CapoHelpers::CapoActivity.updatingTypeMap"***
+ * (property getter): UplcData for ***"CapoHelpers::CapoActivity.updatingCharter"***
  * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#5***
  */
-    get updatingTypeMap() {
-        const uplc = this.mkUplcData({ updatingTypeMap: {} }, 
-            "CapoHelpers::CapoActivity.updatingTypeMap");
-       return uplc;
+    get updatingCharter() {
+        const uplc = this.mkUplcData({ updatingCharter: {} }, 
+            "CapoHelpers::CapoActivity.updatingCharter");
+        return uplc;
     } /* tagOnly variant accessor */
-}
+}/*mkEnumHelperClass*/
 
 
 export const RelativeDelegateLinkSchema : StructTypeSchema = {
@@ -438,13 +1438,6 @@ export const RelativeDelegateLinkSchema : StructTypeSchema = {
     "fieldTypes": [
         {
             "name": "uutName",
-            "type": {
-                "kind": "internal",
-                "name": "String"
-            }
-        },
-        {
-            "name": "strategyName",
             "type": {
                 "kind": "internal",
                 "name": "String"
@@ -465,6 +1458,677 @@ export const RelativeDelegateLinkSchema : StructTypeSchema = {
             "type": {
                 "kind": "internal",
                 "name": "ByteArray"
+            }
+        }
+    ]
+};
+
+export const DelegateRoleSchema : EnumTypeSchema = {
+    "kind": "enum",
+    "name": "DelegateRole",
+    "id": "__module__CapoDelegateHelpers__DelegateRole[]",
+    "variantTypes": [
+        {
+            "kind": "variant",
+            "tag": 0,
+            "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintDgt",
+            "name": "MintDgt",
+            "fieldTypes": []
+        },
+        {
+            "kind": "variant",
+            "tag": 1,
+            "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendDgt",
+            "name": "SpendDgt",
+            "fieldTypes": []
+        },
+        {
+            "kind": "variant",
+            "tag": 2,
+            "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintInvariant",
+            "name": "MintInvariant",
+            "fieldTypes": []
+        },
+        {
+            "kind": "variant",
+            "tag": 3,
+            "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendInvariant",
+            "name": "SpendInvariant",
+            "fieldTypes": []
+        },
+        {
+            "kind": "variant",
+            "tag": 4,
+            "id": "__module__CapoDelegateHelpers__DelegateRole[]__DgDataPolicy",
+            "name": "DgDataPolicy",
+            "fieldTypes": []
+        },
+        {
+            "kind": "variant",
+            "tag": 5,
+            "id": "__module__CapoDelegateHelpers__DelegateRole[]__OtherNamedDgt",
+            "name": "OtherNamedDgt",
+            "fieldTypes": []
+        },
+        {
+            "kind": "variant",
+            "tag": 6,
+            "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
+            "name": "BothMintAndSpendDgt",
+            "fieldTypes": []
+        }
+    ]
+};
+
+export const ManifestEntryTypeSchema : EnumTypeSchema = {
+    "kind": "enum",
+    "name": "ManifestEntryType",
+    "id": "__module__CapoHelpers__ManifestEntryType[]",
+    "variantTypes": [
+        {
+            "kind": "variant",
+            "tag": 0,
+            "id": "__module__CapoHelpers__ManifestEntryType[]__NamedTokenRef",
+            "name": "NamedTokenRef",
+            "fieldTypes": []
+        },
+        {
+            "kind": "variant",
+            "tag": 1,
+            "id": "__module__CapoHelpers__ManifestEntryType[]__DgDataPolicy",
+            "name": "DgDataPolicy",
+            "fieldTypes": [
+                {
+                    "name": "policyLink",
+                    "type": {
+                        "kind": "struct",
+                        "format": "list",
+                        "id": "__module__CapoDelegateHelpers__RelativeDelegateLink[]",
+                        "name": "RelativeDelegateLink",
+                        "fieldTypes": [
+                            {
+                                "name": "uutName",
+                                "type": {
+                                    "kind": "internal",
+                                    "name": "String"
+                                }
+                            },
+                            {
+                                "name": "delegateValidatorHash",
+                                "type": {
+                                    "kind": "option",
+                                    "someType": {
+                                        "kind": "internal",
+                                        "name": "ValidatorHash"
+                                    }
+                                }
+                            },
+                            {
+                                "name": "config",
+                                "type": {
+                                    "kind": "internal",
+                                    "name": "ByteArray"
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "refCount",
+                    "type": {
+                        "kind": "internal",
+                        "name": "Int"
+                    }
+                }
+            ]
+        },
+        {
+            "kind": "variant",
+            "tag": 2,
+            "id": "__module__CapoHelpers__ManifestEntryType[]__DelegateThreads",
+            "name": "DelegateThreads",
+            "fieldTypes": [
+                {
+                    "name": "role",
+                    "type": {
+                        "kind": "enum",
+                        "name": "DelegateRole",
+                        "id": "__module__CapoDelegateHelpers__DelegateRole[]",
+                        "variantTypes": [
+                            {
+                                "kind": "variant",
+                                "tag": 0,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintDgt",
+                                "name": "MintDgt",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 1,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendDgt",
+                                "name": "SpendDgt",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 2,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintInvariant",
+                                "name": "MintInvariant",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 3,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendInvariant",
+                                "name": "SpendInvariant",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 4,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__DgDataPolicy",
+                                "name": "DgDataPolicy",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 5,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__OtherNamedDgt",
+                                "name": "OtherNamedDgt",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 6,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
+                                "name": "BothMintAndSpendDgt",
+                                "fieldTypes": []
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "refCount",
+                    "type": {
+                        "kind": "internal",
+                        "name": "Int"
+                    }
+                }
+            ]
+        },
+        {
+            "kind": "variant",
+            "tag": 3,
+            "id": "__module__CapoHelpers__ManifestEntryType[]__MerkleMembership",
+            "name": "MerkleMembership",
+            "fieldTypes": []
+        },
+        {
+            "kind": "variant",
+            "tag": 4,
+            "id": "__module__CapoHelpers__ManifestEntryType[]__MerkleStateRoot",
+            "name": "MerkleStateRoot",
+            "fieldTypes": []
+        }
+    ]
+};
+
+export const CapoManifestEntrySchema : StructTypeSchema = {
+    "kind": "struct",
+    "format": "list",
+    "id": "__module__CapoHelpers__CapoManifestEntry[]",
+    "name": "CapoManifestEntry",
+    "fieldTypes": [
+        {
+            "name": "entryType",
+            "type": {
+                "kind": "enum",
+                "name": "ManifestEntryType",
+                "id": "__module__CapoHelpers__ManifestEntryType[]",
+                "variantTypes": [
+                    {
+                        "kind": "variant",
+                        "tag": 0,
+                        "id": "__module__CapoHelpers__ManifestEntryType[]__NamedTokenRef",
+                        "name": "NamedTokenRef",
+                        "fieldTypes": []
+                    },
+                    {
+                        "kind": "variant",
+                        "tag": 1,
+                        "id": "__module__CapoHelpers__ManifestEntryType[]__DgDataPolicy",
+                        "name": "DgDataPolicy",
+                        "fieldTypes": [
+                            {
+                                "name": "policyLink",
+                                "type": {
+                                    "kind": "struct",
+                                    "format": "list",
+                                    "id": "__module__CapoDelegateHelpers__RelativeDelegateLink[]",
+                                    "name": "RelativeDelegateLink",
+                                    "fieldTypes": [
+                                        {
+                                            "name": "uutName",
+                                            "type": {
+                                                "kind": "internal",
+                                                "name": "String"
+                                            }
+                                        },
+                                        {
+                                            "name": "delegateValidatorHash",
+                                            "type": {
+                                                "kind": "option",
+                                                "someType": {
+                                                    "kind": "internal",
+                                                    "name": "ValidatorHash"
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "name": "config",
+                                            "type": {
+                                                "kind": "internal",
+                                                "name": "ByteArray"
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "name": "refCount",
+                                "type": {
+                                    "kind": "internal",
+                                    "name": "Int"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "kind": "variant",
+                        "tag": 2,
+                        "id": "__module__CapoHelpers__ManifestEntryType[]__DelegateThreads",
+                        "name": "DelegateThreads",
+                        "fieldTypes": [
+                            {
+                                "name": "role",
+                                "type": {
+                                    "kind": "enum",
+                                    "name": "DelegateRole",
+                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]",
+                                    "variantTypes": [
+                                        {
+                                            "kind": "variant",
+                                            "tag": 0,
+                                            "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintDgt",
+                                            "name": "MintDgt",
+                                            "fieldTypes": []
+                                        },
+                                        {
+                                            "kind": "variant",
+                                            "tag": 1,
+                                            "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendDgt",
+                                            "name": "SpendDgt",
+                                            "fieldTypes": []
+                                        },
+                                        {
+                                            "kind": "variant",
+                                            "tag": 2,
+                                            "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintInvariant",
+                                            "name": "MintInvariant",
+                                            "fieldTypes": []
+                                        },
+                                        {
+                                            "kind": "variant",
+                                            "tag": 3,
+                                            "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendInvariant",
+                                            "name": "SpendInvariant",
+                                            "fieldTypes": []
+                                        },
+                                        {
+                                            "kind": "variant",
+                                            "tag": 4,
+                                            "id": "__module__CapoDelegateHelpers__DelegateRole[]__DgDataPolicy",
+                                            "name": "DgDataPolicy",
+                                            "fieldTypes": []
+                                        },
+                                        {
+                                            "kind": "variant",
+                                            "tag": 5,
+                                            "id": "__module__CapoDelegateHelpers__DelegateRole[]__OtherNamedDgt",
+                                            "name": "OtherNamedDgt",
+                                            "fieldTypes": []
+                                        },
+                                        {
+                                            "kind": "variant",
+                                            "tag": 6,
+                                            "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
+                                            "name": "BothMintAndSpendDgt",
+                                            "fieldTypes": []
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "name": "refCount",
+                                "type": {
+                                    "kind": "internal",
+                                    "name": "Int"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "kind": "variant",
+                        "tag": 3,
+                        "id": "__module__CapoHelpers__ManifestEntryType[]__MerkleMembership",
+                        "name": "MerkleMembership",
+                        "fieldTypes": []
+                    },
+                    {
+                        "kind": "variant",
+                        "tag": 4,
+                        "id": "__module__CapoHelpers__ManifestEntryType[]__MerkleStateRoot",
+                        "name": "MerkleStateRoot",
+                        "fieldTypes": []
+                    }
+                ]
+            }
+        },
+        {
+            "name": "tokenName",
+            "type": {
+                "kind": "internal",
+                "name": "ByteArray"
+            }
+        },
+        {
+            "name": "mph",
+            "type": {
+                "kind": "option",
+                "someType": {
+                    "kind": "internal",
+                    "name": "MintingPolicyHash"
+                }
+            }
+        }
+    ]
+};
+
+export const PendingDelegateActionSchema : EnumTypeSchema = {
+    "kind": "enum",
+    "name": "PendingDelegateAction",
+    "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]",
+    "variantTypes": [
+        {
+            "kind": "variant",
+            "tag": 0,
+            "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Add",
+            "name": "Add",
+            "fieldTypes": [
+                {
+                    "name": "seed",
+                    "type": {
+                        "kind": "internal",
+                        "name": "TxOutputId"
+                    }
+                },
+                {
+                    "name": "purpose",
+                    "type": {
+                        "kind": "internal",
+                        "name": "String"
+                    }
+                },
+                {
+                    "name": "delegateValidatorHash",
+                    "type": {
+                        "kind": "option",
+                        "someType": {
+                            "kind": "internal",
+                            "name": "ValidatorHash"
+                        }
+                    }
+                },
+                {
+                    "name": "config",
+                    "type": {
+                        "kind": "internal",
+                        "name": "ByteArray"
+                    }
+                }
+            ]
+        },
+        {
+            "kind": "variant",
+            "tag": 1,
+            "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Remove",
+            "name": "Remove",
+            "fieldTypes": []
+        },
+        {
+            "kind": "variant",
+            "tag": 2,
+            "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Replace",
+            "name": "Replace",
+            "fieldTypes": [
+                {
+                    "name": "replacesDgt",
+                    "type": {
+                        "kind": "internal",
+                        "name": "AssetClass"
+                    }
+                },
+                {
+                    "name": "seed",
+                    "type": {
+                        "kind": "internal",
+                        "name": "TxOutputId"
+                    }
+                },
+                {
+                    "name": "purpose",
+                    "type": {
+                        "kind": "internal",
+                        "name": "String"
+                    }
+                },
+                {
+                    "name": "delegateValidatorHash",
+                    "type": {
+                        "kind": "option",
+                        "someType": {
+                            "kind": "internal",
+                            "name": "ValidatorHash"
+                        }
+                    }
+                },
+                {
+                    "name": "config",
+                    "type": {
+                        "kind": "internal",
+                        "name": "ByteArray"
+                    }
+                }
+            ]
+        }
+    ]
+};
+
+export const PendingDelegateChangeSchema : StructTypeSchema = {
+    "kind": "struct",
+    "format": "list",
+    "id": "__module__CapoDelegateHelpers__PendingDelegateChange[]",
+    "name": "PendingDelegateChange",
+    "fieldTypes": [
+        {
+            "name": "action",
+            "type": {
+                "kind": "enum",
+                "name": "PendingDelegateAction",
+                "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]",
+                "variantTypes": [
+                    {
+                        "kind": "variant",
+                        "tag": 0,
+                        "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Add",
+                        "name": "Add",
+                        "fieldTypes": [
+                            {
+                                "name": "seed",
+                                "type": {
+                                    "kind": "internal",
+                                    "name": "TxOutputId"
+                                }
+                            },
+                            {
+                                "name": "purpose",
+                                "type": {
+                                    "kind": "internal",
+                                    "name": "String"
+                                }
+                            },
+                            {
+                                "name": "delegateValidatorHash",
+                                "type": {
+                                    "kind": "option",
+                                    "someType": {
+                                        "kind": "internal",
+                                        "name": "ValidatorHash"
+                                    }
+                                }
+                            },
+                            {
+                                "name": "config",
+                                "type": {
+                                    "kind": "internal",
+                                    "name": "ByteArray"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "kind": "variant",
+                        "tag": 1,
+                        "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Remove",
+                        "name": "Remove",
+                        "fieldTypes": []
+                    },
+                    {
+                        "kind": "variant",
+                        "tag": 2,
+                        "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Replace",
+                        "name": "Replace",
+                        "fieldTypes": [
+                            {
+                                "name": "replacesDgt",
+                                "type": {
+                                    "kind": "internal",
+                                    "name": "AssetClass"
+                                }
+                            },
+                            {
+                                "name": "seed",
+                                "type": {
+                                    "kind": "internal",
+                                    "name": "TxOutputId"
+                                }
+                            },
+                            {
+                                "name": "purpose",
+                                "type": {
+                                    "kind": "internal",
+                                    "name": "String"
+                                }
+                            },
+                            {
+                                "name": "delegateValidatorHash",
+                                "type": {
+                                    "kind": "option",
+                                    "someType": {
+                                        "kind": "internal",
+                                        "name": "ValidatorHash"
+                                    }
+                                }
+                            },
+                            {
+                                "name": "config",
+                                "type": {
+                                    "kind": "internal",
+                                    "name": "ByteArray"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "name": "role",
+            "type": {
+                "kind": "enum",
+                "name": "DelegateRole",
+                "id": "__module__CapoDelegateHelpers__DelegateRole[]",
+                "variantTypes": [
+                    {
+                        "kind": "variant",
+                        "tag": 0,
+                        "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintDgt",
+                        "name": "MintDgt",
+                        "fieldTypes": []
+                    },
+                    {
+                        "kind": "variant",
+                        "tag": 1,
+                        "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendDgt",
+                        "name": "SpendDgt",
+                        "fieldTypes": []
+                    },
+                    {
+                        "kind": "variant",
+                        "tag": 2,
+                        "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintInvariant",
+                        "name": "MintInvariant",
+                        "fieldTypes": []
+                    },
+                    {
+                        "kind": "variant",
+                        "tag": 3,
+                        "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendInvariant",
+                        "name": "SpendInvariant",
+                        "fieldTypes": []
+                    },
+                    {
+                        "kind": "variant",
+                        "tag": 4,
+                        "id": "__module__CapoDelegateHelpers__DelegateRole[]__DgDataPolicy",
+                        "name": "DgDataPolicy",
+                        "fieldTypes": []
+                    },
+                    {
+                        "kind": "variant",
+                        "tag": 5,
+                        "id": "__module__CapoDelegateHelpers__DelegateRole[]__OtherNamedDgt",
+                        "name": "OtherNamedDgt",
+                        "fieldTypes": []
+                    },
+                    {
+                        "kind": "variant",
+                        "tag": 6,
+                        "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
+                        "name": "BothMintAndSpendDgt",
+                        "fieldTypes": []
+                    }
+                ]
+            }
+        },
+        {
+            "name": "name",
+            "type": {
+                "kind": "option",
+                "someType": {
+                    "kind": "internal",
+                    "name": "String"
+                }
             }
         }
     ]
@@ -522,13 +2186,6 @@ export const CapoDatumSchema : EnumTypeSchema = {
                                 }
                             },
                             {
-                                "name": "strategyName",
-                                "type": {
-                                    "kind": "internal",
-                                    "name": "String"
-                                }
-                            },
-                            {
                                 "name": "delegateValidatorHash",
                                 "type": {
                                     "kind": "option",
@@ -566,13 +2223,6 @@ export const CapoDatumSchema : EnumTypeSchema = {
                                     }
                                 },
                                 {
-                                    "name": "strategyName",
-                                    "type": {
-                                        "kind": "internal",
-                                        "name": "String"
-                                    }
-                                },
-                                {
                                     "name": "delegateValidatorHash",
                                     "type": {
                                         "kind": "option",
@@ -594,7 +2244,7 @@ export const CapoDatumSchema : EnumTypeSchema = {
                     }
                 },
                 {
-                    "name": "namedDelegates",
+                    "name": "otherNamedDelegates",
                     "type": {
                         "kind": "map",
                         "keyType": {
@@ -609,13 +2259,6 @@ export const CapoDatumSchema : EnumTypeSchema = {
                             "fieldTypes": [
                                 {
                                     "name": "uutName",
-                                    "type": {
-                                        "kind": "internal",
-                                        "name": "String"
-                                    }
-                                },
-                                {
-                                    "name": "strategyName",
                                     "type": {
                                         "kind": "internal",
                                         "name": "String"
@@ -652,13 +2295,6 @@ export const CapoDatumSchema : EnumTypeSchema = {
                         "fieldTypes": [
                             {
                                 "name": "uutName",
-                                "type": {
-                                    "kind": "internal",
-                                    "name": "String"
-                                }
-                            },
-                            {
-                                "name": "strategyName",
                                 "type": {
                                     "kind": "internal",
                                     "name": "String"
@@ -702,13 +2338,6 @@ export const CapoDatumSchema : EnumTypeSchema = {
                                     }
                                 },
                                 {
-                                    "name": "strategyName",
-                                    "type": {
-                                        "kind": "internal",
-                                        "name": "String"
-                                    }
-                                },
-                                {
                                     "name": "delegateValidatorHash",
                                     "type": {
                                         "kind": "option",
@@ -745,13 +2374,6 @@ export const CapoDatumSchema : EnumTypeSchema = {
                                 }
                             },
                             {
-                                "name": "strategyName",
-                                "type": {
-                                    "kind": "internal",
-                                    "name": "String"
-                                }
-                            },
-                            {
                                 "name": "delegateValidatorHash",
                                 "type": {
                                     "kind": "option",
@@ -769,6 +2391,381 @@ export const CapoDatumSchema : EnumTypeSchema = {
                                 }
                             }
                         ]
+                    }
+                },
+                {
+                    "name": "manifest",
+                    "type": {
+                        "kind": "map",
+                        "keyType": {
+                            "kind": "internal",
+                            "name": "String"
+                        },
+                        "valueType": {
+                            "kind": "struct",
+                            "format": "list",
+                            "id": "__module__CapoHelpers__CapoManifestEntry[]",
+                            "name": "CapoManifestEntry",
+                            "fieldTypes": [
+                                {
+                                    "name": "entryType",
+                                    "type": {
+                                        "kind": "enum",
+                                        "name": "ManifestEntryType",
+                                        "id": "__module__CapoHelpers__ManifestEntryType[]",
+                                        "variantTypes": [
+                                            {
+                                                "kind": "variant",
+                                                "tag": 0,
+                                                "id": "__module__CapoHelpers__ManifestEntryType[]__NamedTokenRef",
+                                                "name": "NamedTokenRef",
+                                                "fieldTypes": []
+                                            },
+                                            {
+                                                "kind": "variant",
+                                                "tag": 1,
+                                                "id": "__module__CapoHelpers__ManifestEntryType[]__DgDataPolicy",
+                                                "name": "DgDataPolicy",
+                                                "fieldTypes": [
+                                                    {
+                                                        "name": "policyLink",
+                                                        "type": {
+                                                            "kind": "struct",
+                                                            "format": "list",
+                                                            "id": "__module__CapoDelegateHelpers__RelativeDelegateLink[]",
+                                                            "name": "RelativeDelegateLink",
+                                                            "fieldTypes": [
+                                                                {
+                                                                    "name": "uutName",
+                                                                    "type": {
+                                                                        "kind": "internal",
+                                                                        "name": "String"
+                                                                    }
+                                                                },
+                                                                {
+                                                                    "name": "delegateValidatorHash",
+                                                                    "type": {
+                                                                        "kind": "option",
+                                                                        "someType": {
+                                                                            "kind": "internal",
+                                                                            "name": "ValidatorHash"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                {
+                                                                    "name": "config",
+                                                                    "type": {
+                                                                        "kind": "internal",
+                                                                        "name": "ByteArray"
+                                                                    }
+                                                                }
+                                                            ]
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "refCount",
+                                                        "type": {
+                                                            "kind": "internal",
+                                                            "name": "Int"
+                                                        }
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "kind": "variant",
+                                                "tag": 2,
+                                                "id": "__module__CapoHelpers__ManifestEntryType[]__DelegateThreads",
+                                                "name": "DelegateThreads",
+                                                "fieldTypes": [
+                                                    {
+                                                        "name": "role",
+                                                        "type": {
+                                                            "kind": "enum",
+                                                            "name": "DelegateRole",
+                                                            "id": "__module__CapoDelegateHelpers__DelegateRole[]",
+                                                            "variantTypes": [
+                                                                {
+                                                                    "kind": "variant",
+                                                                    "tag": 0,
+                                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintDgt",
+                                                                    "name": "MintDgt",
+                                                                    "fieldTypes": []
+                                                                },
+                                                                {
+                                                                    "kind": "variant",
+                                                                    "tag": 1,
+                                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendDgt",
+                                                                    "name": "SpendDgt",
+                                                                    "fieldTypes": []
+                                                                },
+                                                                {
+                                                                    "kind": "variant",
+                                                                    "tag": 2,
+                                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintInvariant",
+                                                                    "name": "MintInvariant",
+                                                                    "fieldTypes": []
+                                                                },
+                                                                {
+                                                                    "kind": "variant",
+                                                                    "tag": 3,
+                                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendInvariant",
+                                                                    "name": "SpendInvariant",
+                                                                    "fieldTypes": []
+                                                                },
+                                                                {
+                                                                    "kind": "variant",
+                                                                    "tag": 4,
+                                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__DgDataPolicy",
+                                                                    "name": "DgDataPolicy",
+                                                                    "fieldTypes": []
+                                                                },
+                                                                {
+                                                                    "kind": "variant",
+                                                                    "tag": 5,
+                                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__OtherNamedDgt",
+                                                                    "name": "OtherNamedDgt",
+                                                                    "fieldTypes": []
+                                                                },
+                                                                {
+                                                                    "kind": "variant",
+                                                                    "tag": 6,
+                                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
+                                                                    "name": "BothMintAndSpendDgt",
+                                                                    "fieldTypes": []
+                                                                }
+                                                            ]
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "refCount",
+                                                        "type": {
+                                                            "kind": "internal",
+                                                            "name": "Int"
+                                                        }
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "kind": "variant",
+                                                "tag": 3,
+                                                "id": "__module__CapoHelpers__ManifestEntryType[]__MerkleMembership",
+                                                "name": "MerkleMembership",
+                                                "fieldTypes": []
+                                            },
+                                            {
+                                                "kind": "variant",
+                                                "tag": 4,
+                                                "id": "__module__CapoHelpers__ManifestEntryType[]__MerkleStateRoot",
+                                                "name": "MerkleStateRoot",
+                                                "fieldTypes": []
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "name": "tokenName",
+                                    "type": {
+                                        "kind": "internal",
+                                        "name": "ByteArray"
+                                    }
+                                },
+                                {
+                                    "name": "mph",
+                                    "type": {
+                                        "kind": "option",
+                                        "someType": {
+                                            "kind": "internal",
+                                            "name": "MintingPolicyHash"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "pendingDgtChanges",
+                    "type": {
+                        "kind": "list",
+                        "itemType": {
+                            "kind": "struct",
+                            "format": "list",
+                            "id": "__module__CapoDelegateHelpers__PendingDelegateChange[]",
+                            "name": "PendingDelegateChange",
+                            "fieldTypes": [
+                                {
+                                    "name": "action",
+                                    "type": {
+                                        "kind": "enum",
+                                        "name": "PendingDelegateAction",
+                                        "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]",
+                                        "variantTypes": [
+                                            {
+                                                "kind": "variant",
+                                                "tag": 0,
+                                                "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Add",
+                                                "name": "Add",
+                                                "fieldTypes": [
+                                                    {
+                                                        "name": "seed",
+                                                        "type": {
+                                                            "kind": "internal",
+                                                            "name": "TxOutputId"
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "purpose",
+                                                        "type": {
+                                                            "kind": "internal",
+                                                            "name": "String"
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "delegateValidatorHash",
+                                                        "type": {
+                                                            "kind": "option",
+                                                            "someType": {
+                                                                "kind": "internal",
+                                                                "name": "ValidatorHash"
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "config",
+                                                        "type": {
+                                                            "kind": "internal",
+                                                            "name": "ByteArray"
+                                                        }
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "kind": "variant",
+                                                "tag": 1,
+                                                "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Remove",
+                                                "name": "Remove",
+                                                "fieldTypes": []
+                                            },
+                                            {
+                                                "kind": "variant",
+                                                "tag": 2,
+                                                "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Replace",
+                                                "name": "Replace",
+                                                "fieldTypes": [
+                                                    {
+                                                        "name": "replacesDgt",
+                                                        "type": {
+                                                            "kind": "internal",
+                                                            "name": "AssetClass"
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "seed",
+                                                        "type": {
+                                                            "kind": "internal",
+                                                            "name": "TxOutputId"
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "purpose",
+                                                        "type": {
+                                                            "kind": "internal",
+                                                            "name": "String"
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "delegateValidatorHash",
+                                                        "type": {
+                                                            "kind": "option",
+                                                            "someType": {
+                                                                "kind": "internal",
+                                                                "name": "ValidatorHash"
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "config",
+                                                        "type": {
+                                                            "kind": "internal",
+                                                            "name": "ByteArray"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "name": "role",
+                                    "type": {
+                                        "kind": "enum",
+                                        "name": "DelegateRole",
+                                        "id": "__module__CapoDelegateHelpers__DelegateRole[]",
+                                        "variantTypes": [
+                                            {
+                                                "kind": "variant",
+                                                "tag": 0,
+                                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintDgt",
+                                                "name": "MintDgt",
+                                                "fieldTypes": []
+                                            },
+                                            {
+                                                "kind": "variant",
+                                                "tag": 1,
+                                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendDgt",
+                                                "name": "SpendDgt",
+                                                "fieldTypes": []
+                                            },
+                                            {
+                                                "kind": "variant",
+                                                "tag": 2,
+                                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintInvariant",
+                                                "name": "MintInvariant",
+                                                "fieldTypes": []
+                                            },
+                                            {
+                                                "kind": "variant",
+                                                "tag": 3,
+                                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendInvariant",
+                                                "name": "SpendInvariant",
+                                                "fieldTypes": []
+                                            },
+                                            {
+                                                "kind": "variant",
+                                                "tag": 4,
+                                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__DgDataPolicy",
+                                                "name": "DgDataPolicy",
+                                                "fieldTypes": []
+                                            },
+                                            {
+                                                "kind": "variant",
+                                                "tag": 5,
+                                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__OtherNamedDgt",
+                                                "name": "OtherNamedDgt",
+                                                "fieldTypes": []
+                                            },
+                                            {
+                                                "kind": "variant",
+                                                "tag": 6,
+                                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
+                                                "name": "BothMintAndSpendDgt",
+                                                "fieldTypes": []
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "name": "name",
+                                    "type": {
+                                        "kind": "option",
+                                        "someType": {
+                                            "kind": "internal",
+                                            "name": "String"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
                     }
                 }
             ]
@@ -832,6 +2829,531 @@ export const CapoDatumSchema : EnumTypeSchema = {
     ]
 };
 
+export const ManifestActivitySchema : EnumTypeSchema = {
+    "kind": "enum",
+    "name": "ManifestActivity",
+    "id": "__module__CapoDelegateHelpers__ManifestActivity[]",
+    "variantTypes": [
+        {
+            "kind": "variant",
+            "tag": 0,
+            "id": "__module__CapoDelegateHelpers__ManifestActivity[]__retiringEntry",
+            "name": "retiringEntry",
+            "fieldTypes": [
+                {
+                    "name": "key",
+                    "type": {
+                        "kind": "internal",
+                        "name": "String"
+                    }
+                }
+            ]
+        },
+        {
+            "kind": "variant",
+            "tag": 1,
+            "id": "__module__CapoDelegateHelpers__ManifestActivity[]__updatingEntry",
+            "name": "updatingEntry",
+            "fieldTypes": [
+                {
+                    "name": "key",
+                    "type": {
+                        "kind": "internal",
+                        "name": "String"
+                    }
+                },
+                {
+                    "name": "tokenName",
+                    "type": {
+                        "kind": "internal",
+                        "name": "ByteArray"
+                    }
+                }
+            ]
+        },
+        {
+            "kind": "variant",
+            "tag": 2,
+            "id": "__module__CapoDelegateHelpers__ManifestActivity[]__addingEntry",
+            "name": "addingEntry",
+            "fieldTypes": [
+                {
+                    "name": "key",
+                    "type": {
+                        "kind": "internal",
+                        "name": "String"
+                    }
+                },
+                {
+                    "name": "tokenName",
+                    "type": {
+                        "kind": "internal",
+                        "name": "ByteArray"
+                    }
+                }
+            ]
+        },
+        {
+            "kind": "variant",
+            "tag": 3,
+            "id": "__module__CapoDelegateHelpers__ManifestActivity[]__forkingThreadToken",
+            "name": "forkingThreadToken",
+            "fieldTypes": [
+                {
+                    "name": "key",
+                    "type": {
+                        "kind": "internal",
+                        "name": "String"
+                    }
+                },
+                {
+                    "name": "newThreadCount",
+                    "type": {
+                        "kind": "internal",
+                        "name": "Int"
+                    }
+                }
+            ]
+        }
+    ]
+};
+
+export const CapoLifecycleActivitySchema : EnumTypeSchema = {
+    "kind": "enum",
+    "name": "CapoLifecycleActivity",
+    "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]",
+    "variantTypes": [
+        {
+            "kind": "variant",
+            "tag": 0,
+            "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__CreatingDelegate",
+            "name": "CreatingDelegate",
+            "fieldTypes": [
+                {
+                    "name": "seed",
+                    "type": {
+                        "kind": "internal",
+                        "name": "TxOutputId"
+                    }
+                },
+                {
+                    "name": "purpose",
+                    "type": {
+                        "kind": "internal",
+                        "name": "String"
+                    }
+                }
+            ]
+        },
+        {
+            "kind": "variant",
+            "tag": 1,
+            "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__queuePendingDgtChange",
+            "name": "queuePendingDgtChange",
+            "fieldTypes": [
+                {
+                    "name": "action",
+                    "type": {
+                        "kind": "enum",
+                        "name": "PendingDelegateAction",
+                        "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]",
+                        "variantTypes": [
+                            {
+                                "kind": "variant",
+                                "tag": 0,
+                                "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Add",
+                                "name": "Add",
+                                "fieldTypes": [
+                                    {
+                                        "name": "seed",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "TxOutputId"
+                                        }
+                                    },
+                                    {
+                                        "name": "purpose",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "String"
+                                        }
+                                    },
+                                    {
+                                        "name": "delegateValidatorHash",
+                                        "type": {
+                                            "kind": "option",
+                                            "someType": {
+                                                "kind": "internal",
+                                                "name": "ValidatorHash"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "name": "config",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "ByteArray"
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 1,
+                                "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Remove",
+                                "name": "Remove",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 2,
+                                "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Replace",
+                                "name": "Replace",
+                                "fieldTypes": [
+                                    {
+                                        "name": "replacesDgt",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "AssetClass"
+                                        }
+                                    },
+                                    {
+                                        "name": "seed",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "TxOutputId"
+                                        }
+                                    },
+                                    {
+                                        "name": "purpose",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "String"
+                                        }
+                                    },
+                                    {
+                                        "name": "delegateValidatorHash",
+                                        "type": {
+                                            "kind": "option",
+                                            "someType": {
+                                                "kind": "internal",
+                                                "name": "ValidatorHash"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "name": "config",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "ByteArray"
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "role",
+                    "type": {
+                        "kind": "enum",
+                        "name": "DelegateRole",
+                        "id": "__module__CapoDelegateHelpers__DelegateRole[]",
+                        "variantTypes": [
+                            {
+                                "kind": "variant",
+                                "tag": 0,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintDgt",
+                                "name": "MintDgt",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 1,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendDgt",
+                                "name": "SpendDgt",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 2,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintInvariant",
+                                "name": "MintInvariant",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 3,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendInvariant",
+                                "name": "SpendInvariant",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 4,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__DgDataPolicy",
+                                "name": "DgDataPolicy",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 5,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__OtherNamedDgt",
+                                "name": "OtherNamedDgt",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 6,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
+                                "name": "BothMintAndSpendDgt",
+                                "fieldTypes": []
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "name",
+                    "type": {
+                        "kind": "option",
+                        "someType": {
+                            "kind": "internal",
+                            "name": "String"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "kind": "variant",
+            "tag": 2,
+            "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__removePendingDgtChange",
+            "name": "removePendingDgtChange",
+            "fieldTypes": [
+                {
+                    "name": "role",
+                    "type": {
+                        "kind": "enum",
+                        "name": "DelegateRole",
+                        "id": "__module__CapoDelegateHelpers__DelegateRole[]",
+                        "variantTypes": [
+                            {
+                                "kind": "variant",
+                                "tag": 0,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintDgt",
+                                "name": "MintDgt",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 1,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendDgt",
+                                "name": "SpendDgt",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 2,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintInvariant",
+                                "name": "MintInvariant",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 3,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendInvariant",
+                                "name": "SpendInvariant",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 4,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__DgDataPolicy",
+                                "name": "DgDataPolicy",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 5,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__OtherNamedDgt",
+                                "name": "OtherNamedDgt",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 6,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
+                                "name": "BothMintAndSpendDgt",
+                                "fieldTypes": []
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "name",
+                    "type": {
+                        "kind": "option",
+                        "someType": {
+                            "kind": "internal",
+                            "name": "String"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "kind": "variant",
+            "tag": 3,
+            "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__commitPendingDgtChanges",
+            "name": "commitPendingDgtChanges",
+            "fieldTypes": []
+        },
+        {
+            "kind": "variant",
+            "tag": 4,
+            "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__forcingNewSpendDelegate",
+            "name": "forcingNewSpendDelegate",
+            "fieldTypes": [
+                {
+                    "name": "seed",
+                    "type": {
+                        "kind": "internal",
+                        "name": "TxOutputId"
+                    }
+                },
+                {
+                    "name": "purpose",
+                    "type": {
+                        "kind": "internal",
+                        "name": "String"
+                    }
+                }
+            ]
+        },
+        {
+            "kind": "variant",
+            "tag": 5,
+            "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__forcingNewMintDelegate",
+            "name": "forcingNewMintDelegate",
+            "fieldTypes": [
+                {
+                    "name": "seed",
+                    "type": {
+                        "kind": "internal",
+                        "name": "TxOutputId"
+                    }
+                },
+                {
+                    "name": "purpose",
+                    "type": {
+                        "kind": "internal",
+                        "name": "String"
+                    }
+                }
+            ]
+        },
+        {
+            "kind": "variant",
+            "tag": 6,
+            "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__updatingManifest",
+            "name": "updatingManifest",
+            "fieldTypes": [
+                {
+                    "name": "activity",
+                    "type": {
+                        "kind": "enum",
+                        "name": "ManifestActivity",
+                        "id": "__module__CapoDelegateHelpers__ManifestActivity[]",
+                        "variantTypes": [
+                            {
+                                "kind": "variant",
+                                "tag": 0,
+                                "id": "__module__CapoDelegateHelpers__ManifestActivity[]__retiringEntry",
+                                "name": "retiringEntry",
+                                "fieldTypes": [
+                                    {
+                                        "name": "key",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "String"
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 1,
+                                "id": "__module__CapoDelegateHelpers__ManifestActivity[]__updatingEntry",
+                                "name": "updatingEntry",
+                                "fieldTypes": [
+                                    {
+                                        "name": "key",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "String"
+                                        }
+                                    },
+                                    {
+                                        "name": "tokenName",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "ByteArray"
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 2,
+                                "id": "__module__CapoDelegateHelpers__ManifestActivity[]__addingEntry",
+                                "name": "addingEntry",
+                                "fieldTypes": [
+                                    {
+                                        "name": "key",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "String"
+                                        }
+                                    },
+                                    {
+                                        "name": "tokenName",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "ByteArray"
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 3,
+                                "id": "__module__CapoDelegateHelpers__ManifestActivity[]__forkingThreadToken",
+                                "name": "forkingThreadToken",
+                                "fieldTypes": [
+                                    {
+                                        "name": "key",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "String"
+                                        }
+                                    },
+                                    {
+                                        "name": "newThreadCount",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "Int"
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    ]
+};
+
 export const CapoActivitySchema : EnumTypeSchema = {
     "kind": "enum",
     "name": "CapoActivity",
@@ -840,15 +3362,454 @@ export const CapoActivitySchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 0,
-            "id": "__module__CapoHelpers__CapoActivity[]__usingAuthority",
-            "name": "usingAuthority",
-            "fieldTypes": []
+            "id": "__module__CapoHelpers__CapoActivity[]__capoLifecycleActivity",
+            "name": "capoLifecycleActivity",
+            "fieldTypes": [
+                {
+                    "name": "activity",
+                    "type": {
+                        "kind": "enum",
+                        "name": "CapoLifecycleActivity",
+                        "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]",
+                        "variantTypes": [
+                            {
+                                "kind": "variant",
+                                "tag": 0,
+                                "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__CreatingDelegate",
+                                "name": "CreatingDelegate",
+                                "fieldTypes": [
+                                    {
+                                        "name": "seed",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "TxOutputId"
+                                        }
+                                    },
+                                    {
+                                        "name": "purpose",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "String"
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 1,
+                                "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__queuePendingDgtChange",
+                                "name": "queuePendingDgtChange",
+                                "fieldTypes": [
+                                    {
+                                        "name": "action",
+                                        "type": {
+                                            "kind": "enum",
+                                            "name": "PendingDelegateAction",
+                                            "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]",
+                                            "variantTypes": [
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 0,
+                                                    "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Add",
+                                                    "name": "Add",
+                                                    "fieldTypes": [
+                                                        {
+                                                            "name": "seed",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "TxOutputId"
+                                                            }
+                                                        },
+                                                        {
+                                                            "name": "purpose",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "String"
+                                                            }
+                                                        },
+                                                        {
+                                                            "name": "delegateValidatorHash",
+                                                            "type": {
+                                                                "kind": "option",
+                                                                "someType": {
+                                                                    "kind": "internal",
+                                                                    "name": "ValidatorHash"
+                                                                }
+                                                            }
+                                                        },
+                                                        {
+                                                            "name": "config",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "ByteArray"
+                                                            }
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 1,
+                                                    "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Remove",
+                                                    "name": "Remove",
+                                                    "fieldTypes": []
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 2,
+                                                    "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Replace",
+                                                    "name": "Replace",
+                                                    "fieldTypes": [
+                                                        {
+                                                            "name": "replacesDgt",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "AssetClass"
+                                                            }
+                                                        },
+                                                        {
+                                                            "name": "seed",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "TxOutputId"
+                                                            }
+                                                        },
+                                                        {
+                                                            "name": "purpose",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "String"
+                                                            }
+                                                        },
+                                                        {
+                                                            "name": "delegateValidatorHash",
+                                                            "type": {
+                                                                "kind": "option",
+                                                                "someType": {
+                                                                    "kind": "internal",
+                                                                    "name": "ValidatorHash"
+                                                                }
+                                                            }
+                                                        },
+                                                        {
+                                                            "name": "config",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "ByteArray"
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "role",
+                                        "type": {
+                                            "kind": "enum",
+                                            "name": "DelegateRole",
+                                            "id": "__module__CapoDelegateHelpers__DelegateRole[]",
+                                            "variantTypes": [
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 0,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintDgt",
+                                                    "name": "MintDgt",
+                                                    "fieldTypes": []
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 1,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendDgt",
+                                                    "name": "SpendDgt",
+                                                    "fieldTypes": []
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 2,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintInvariant",
+                                                    "name": "MintInvariant",
+                                                    "fieldTypes": []
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 3,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendInvariant",
+                                                    "name": "SpendInvariant",
+                                                    "fieldTypes": []
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 4,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__DgDataPolicy",
+                                                    "name": "DgDataPolicy",
+                                                    "fieldTypes": []
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 5,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__OtherNamedDgt",
+                                                    "name": "OtherNamedDgt",
+                                                    "fieldTypes": []
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 6,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
+                                                    "name": "BothMintAndSpendDgt",
+                                                    "fieldTypes": []
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "name",
+                                        "type": {
+                                            "kind": "option",
+                                            "someType": {
+                                                "kind": "internal",
+                                                "name": "String"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 2,
+                                "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__removePendingDgtChange",
+                                "name": "removePendingDgtChange",
+                                "fieldTypes": [
+                                    {
+                                        "name": "role",
+                                        "type": {
+                                            "kind": "enum",
+                                            "name": "DelegateRole",
+                                            "id": "__module__CapoDelegateHelpers__DelegateRole[]",
+                                            "variantTypes": [
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 0,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintDgt",
+                                                    "name": "MintDgt",
+                                                    "fieldTypes": []
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 1,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendDgt",
+                                                    "name": "SpendDgt",
+                                                    "fieldTypes": []
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 2,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintInvariant",
+                                                    "name": "MintInvariant",
+                                                    "fieldTypes": []
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 3,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendInvariant",
+                                                    "name": "SpendInvariant",
+                                                    "fieldTypes": []
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 4,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__DgDataPolicy",
+                                                    "name": "DgDataPolicy",
+                                                    "fieldTypes": []
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 5,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__OtherNamedDgt",
+                                                    "name": "OtherNamedDgt",
+                                                    "fieldTypes": []
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 6,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
+                                                    "name": "BothMintAndSpendDgt",
+                                                    "fieldTypes": []
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "name",
+                                        "type": {
+                                            "kind": "option",
+                                            "someType": {
+                                                "kind": "internal",
+                                                "name": "String"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 3,
+                                "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__commitPendingDgtChanges",
+                                "name": "commitPendingDgtChanges",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 4,
+                                "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__forcingNewSpendDelegate",
+                                "name": "forcingNewSpendDelegate",
+                                "fieldTypes": [
+                                    {
+                                        "name": "seed",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "TxOutputId"
+                                        }
+                                    },
+                                    {
+                                        "name": "purpose",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "String"
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 5,
+                                "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__forcingNewMintDelegate",
+                                "name": "forcingNewMintDelegate",
+                                "fieldTypes": [
+                                    {
+                                        "name": "seed",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "TxOutputId"
+                                        }
+                                    },
+                                    {
+                                        "name": "purpose",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "String"
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 6,
+                                "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__updatingManifest",
+                                "name": "updatingManifest",
+                                "fieldTypes": [
+                                    {
+                                        "name": "activity",
+                                        "type": {
+                                            "kind": "enum",
+                                            "name": "ManifestActivity",
+                                            "id": "__module__CapoDelegateHelpers__ManifestActivity[]",
+                                            "variantTypes": [
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 0,
+                                                    "id": "__module__CapoDelegateHelpers__ManifestActivity[]__retiringEntry",
+                                                    "name": "retiringEntry",
+                                                    "fieldTypes": [
+                                                        {
+                                                            "name": "key",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "String"
+                                                            }
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 1,
+                                                    "id": "__module__CapoDelegateHelpers__ManifestActivity[]__updatingEntry",
+                                                    "name": "updatingEntry",
+                                                    "fieldTypes": [
+                                                        {
+                                                            "name": "key",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "String"
+                                                            }
+                                                        },
+                                                        {
+                                                            "name": "tokenName",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "ByteArray"
+                                                            }
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 2,
+                                                    "id": "__module__CapoDelegateHelpers__ManifestActivity[]__addingEntry",
+                                                    "name": "addingEntry",
+                                                    "fieldTypes": [
+                                                        {
+                                                            "name": "key",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "String"
+                                                            }
+                                                        },
+                                                        {
+                                                            "name": "tokenName",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "ByteArray"
+                                                            }
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 3,
+                                                    "id": "__module__CapoDelegateHelpers__ManifestActivity[]__forkingThreadToken",
+                                                    "name": "forkingThreadToken",
+                                                    "fieldTypes": [
+                                                        {
+                                                            "name": "key",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "String"
+                                                            }
+                                                        },
+                                                        {
+                                                            "name": "newThreadCount",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "Int"
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            ]
         },
         {
             "kind": "variant",
             "tag": 1,
-            "id": "__module__CapoHelpers__CapoActivity[]__updatingCharter",
-            "name": "updatingCharter",
+            "id": "__module__CapoHelpers__CapoActivity[]__usingAuthority",
+            "name": "usingAuthority",
             "fieldTypes": []
         },
         {
@@ -875,8 +3836,8 @@ export const CapoActivitySchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 5,
-            "id": "__module__CapoHelpers__CapoActivity[]__updatingTypeMap",
-            "name": "updatingTypeMap",
+            "id": "__module__CapoHelpers__CapoActivity[]__updatingCharter",
+            "name": "updatingCharter",
             "fieldTypes": []
         }
     ]

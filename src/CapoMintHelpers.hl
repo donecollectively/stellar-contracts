@@ -154,11 +154,20 @@ func requiresMintDelegateApproval(
     mintDgtActivity.switch {
         CapoLifecycleActivities{CLA} => CLA.switch {
             CreatingDelegate => {
+                assert(false, "obsolete generic creatingDelegate? (use queuePendingDgtChange and committingPendingDgtChanges in sequence)");
                 print("  -- minter wants mintDgt + CapoLifecycle (delegate-creation)\n");
 
                 mintDgtInput.requiresValidOutput() && 
                 true
-            }
+            },
+            queuePendingDgtChange => {
+                print("  -- ok: mintDgt using CapoLifecycle.queuePendingDgtChange)\n");
+                mintDgtInput.requiresValidOutput() && 
+                true
+            },
+            forcingNewSpendDelegate => error("invalid forcingNewSpendDelegate activity on mintDgt (escape-hatch reserved for Minter/Capo pair)"),
+            forcingNewMintDelegate => error("invalid forcingNewMintDelegate activity on mintDgt (escape-hatch reserved for Minter/Capo pair)"),
+            _ => error("mint dgt can only approve CapoLifecycleActivities.queuePendingDgtChange or non-CLA activities")
             // _ => error("no")// ---- left as a compile-time error if any further variants are added 
         },
         SpendingActivities => error("DelegateInput::SpendingActivity can't mint!"),
@@ -230,17 +239,6 @@ func requiresMintDelegateApproval(
             )
         }
     }
-
-    // CapoDatum::CharterToken {
-    //     /*spendDgt*/ _,  
-    //     /* spendInvariants */ _,
-    //     /* settings */ _,
-    //     /* namedDelegates */ _,
-    //     mintDgt, 
-    //     /* mintInvariants */ _, 
-    //     /* govAuthority */ _
-    // } = getRefCharterDatum(mph);
-
 
 
     // requiresDelegateAuthorizingMint(
@@ -323,12 +321,12 @@ func validateUutMinting(
         CapoDatum::CharterToken {
             _spendDgt,
             _spendInvariants,
-            // _settings,
             _namedDelegates,
             mintDgt, 
             _mintInvariants, 
-            _govAuthority
-            /* _typeInfo */ 
+            _govAuthority,
+            _manifest,
+            _pendingDelegates
         } = getTxCharterDatum(mph);
 
         if (needsMintDelegateApproval) {
@@ -426,91 +424,31 @@ func validateUutMinting(
     delegateApproval && expectationsMet     
 }
 
-func mintsUutForCharterUsingRedeemerIndex(
-    mph: MintingPolicyHash,
-    purpose: String,
-    seed: TxOutputId,
-    charterRedeemerIndex: Int,
-    otherMintedValue: Value = Value::new(AssetClass::ADA, 0),
-    needsMintDelegateApproval: Bool = true,
-    extraMintDelegateRedeemerCheck: Bool = true
-) -> Bool {
-            // only has to check that a) it's minting all-and-only the expected uut,
-            // and b) the contract charter is BEING SPENT WITH THE ACTIVITY at the indicated index.
-            // ------> The charter-spend policy for that activity checks all the other necessaries
-            //     given that activity.
-
-            // NOT needed; the charter-spend policy ensures the expected 
-            //   ... delegate output is created when adding a spend invariant.
-            // hasRightDestination : Bool = output.value == value_minted &&
-            //     output.address == charterUtxo.address;
-
-    chVal : Value = tvCharter(mph);
-    REQT("ensures granted authority, implied by requiring the charter to be spent with the indicated minting activity");
-    hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
-    print("  --- finding required charter input\n");
-    charterInput : TxInput = tx.inputs.find(hasCharter);
-    print ("  <-- found charter input\n");
-    charterRedeemer : Data  = mustFindInputRedeemer(charterInput);
-    // print("defaultMinter @A");
-
-    charterRedeemer.switch{
-        ConstrData{index, _fields} => {
-//            /* avoids unused-variable warning: */ _fields == _fields && 
-
-            if (index == charterRedeemerIndex) { 
-                // ok, good charter-redeemer as expected; print("ok here");
-                // the charter update itself will check that there's a valid delegate output for the new delegate
-                true 
-            } else {  
-                error("wrong charter Activity for adding spend invariant; expected redeemer #"+ 
-                    charterRedeemerIndex.show()+
-                     ", got "+index.show()
-                )
-            }
-        },
-        _ => error("incontheeivable!")
-    } &&
-    validateUutMinting(
-        mph: mph,
-        seed: seed,
-        purposes: []String{purpose}, 
-        mkTokenName: mkUutTnFactory(seed),
-        otherMintedValue: otherMintedValue,
-        needsMintDelegateApproval: needsMintDelegateApproval,
-        extraMintDelegateRedeemerCheck: extraMintDelegateRedeemerCheck
-    ) && if (/* more debug info? */ true) {
-        print ("  -- CMH: mint UUT ");
-        print(purpose);
-        print(" w/ charter redeemer #");
-        print(charterRedeemerIndex.show());
-        print("\n");
-        true
-    } else { true } 
-}
-
 enum MinterActivity { 
     mintingCharter //0
-     {
+    {
         owner: Address
+        //xxx withSettings: Bool
         // we don't have a responsiblity to enforce delivery to the right location
         // govAuthority: RelativeDelegateLink   // not needed 
     }
     mintWithDelegateAuthorizing // 1 - delegate is handling all mints
 
+    // obsoleted by Capo lifecycle activity (queuePendingDgtChange with role=MintInvariant)
     addingMintInvariant { //2 
         seed: TxOutputId
     }
 
+    // obsoleted by Capo lifecycle activity (queuePendingDgtChange with role=SpendInvariant)
     addingSpendInvariant { //3
         seed: TxOutputId
     }
 
-    ForcingNewMintDelegate { //4
+    forcingNewMintDelegate { //4
         seed: TxOutputId
     }
 
-    CreatingNewSpendDelegate { //5
+    forcingNewSpendDelegate { //5
         seed: TxOutputId
         replacingUut: Option[ByteArray]
     }

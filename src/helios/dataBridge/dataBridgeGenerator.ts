@@ -151,10 +151,10 @@ import type {
     TxInput,
     TxOutput,
     TxOutputId,
-    TxOutputDatum,
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
+ import { TxOutputDatum } from "@helios-lang/ledger";
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 `;
@@ -550,7 +550,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         let typeNameAccessor = "";
         let helperClassName = "";
         let helperClassType = "";
-        let datumTypeName = "";
+        let datumTypeName = this.datumTypeName;
         const typeName =
             ("canonicalTypeName" in details ? details.canonicalTypeName : "") ||
             details.canonicalType;
@@ -631,9 +631,9 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         return (
             "" +
             `    /**\n` +
-            `     * Helper class for generating UplcData for the datum type ***${
-                datumTypeName ? `(${datumTypeName})***` : ""
-            }\n` +
+            `     * Helper class for generating TxOutputDatum for the ***datum type ${
+                datumTypeName ? `(${datumTypeName})` : ""
+            }***\n` +
             `     * for this contract script. ${moreTypeGuidance}\n` +
             `     */\n` +
             `    datum: ${helperClassType}\n     = new ${helperClassName}(this.bundle, {}) ${helperClassTypeCast} ` +
@@ -785,6 +785,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
     ) {
         const enumName = typeDetails.enumName;
         // const maybeNested = isNested ? ", Nested" : "";
+        const isDatum = this.datumTypeName === enumName;
         const parentClass = isActivity
             ? `EnumBridge<isActivity>` // ${maybeNested}>`
             : `EnumBridge<JustAnEnum>`; //${maybeNested}>`;
@@ -798,13 +799,19 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             ` * Helper class for generating UplcData for variants of the ***${enumName}*** enum type.\n` +
             ` */\n` +
             `export class ${helperClassName} extends ${parentClass} {\n` +
+            `    /*mkEnumHelperClass*/\n` +
             `    protected __cast = new StellarCast<\n` +
             `       ${typeDetails.canonicalTypeName},\n` +
             `       ${typeDetails.permissiveTypeName}\n` +
             `   >(${enumName}Schema, { isMainnet: true });\n` +
             `\n` +
-            this.mkEnumDatumAccessors(typeDetails, isActivity, isNested) +
-            `\n}\n\n`
+            this.mkEnumDatumAccessors(
+                typeDetails,
+                isDatum,
+                isActivity,
+                isNested
+            ) +
+            `\n}/*mkEnumHelperClass*/\n\n`
         );
     }
 
@@ -849,7 +856,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             {isNested: true, isActivity: ${isActivity ? "true" : "false"} 
         });\n` +
             `        ${"//"}@ts-expect-error drilling through the protected accessor.  See more comments about that above\n` +
-            `        nestedAccessor.mkDataVia(\n`+
+            `        nestedAccessor.mkDataVia(\n` +
             `            (${nestedFieldName}: ${nestedEnumName}Like) => {\n` +
             `                return  this.mkUplcData({ ${variantName}: ${nestedFieldName} }, 
             ${enumPathExpr});\n` +
@@ -875,7 +882,8 @@ import type * as types from "${relativeTypeFile}";\n\n`;
 
     mkEnumDatumAccessors(
         enumDetails: fullEnumTypeDetails,
-        isActivity?: boolean,
+        isDatum: boolean,
+        isActivity: boolean,
         isNested?: "isNested"
     ) {
         const accessors = Object.keys(enumDetails.variants)
@@ -885,22 +893,23 @@ import type * as types from "${relativeTypeFile}";\n\n`;
 
                 if (fieldCount === 0) {
                     const enumPathExpr = this.getEnumPathExpr(variantDetails);
-                    return (
-                        `/**\n` +
+                    return `/**\n` +
                         ` * (property getter): UplcData for ***${enumPathExpr}***\n` +
                         ` * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#${variantDetails.typeSchema.tag}***\n` +
                         ` */\n` +
                         `    get ${variantName}() {\n` +
                         `        const uplc = this.mkUplcData({ ${variantName}: {} }, \n` +
                         `            ${enumPathExpr});\n` +
-                        `       return uplc;\n` +
-                        `    } /* tagOnly variant accessor */`
-                    );
+                        (isDatum
+                        ? `        return TxOutputDatum.Inline(uplc);\n`
+                        : `        return uplc;\n`) +
+                              `    } /* tagOnly variant accessor */`;
                 } else if (fieldCount === 1) {
                     return this.mkSIngleFieldVariantAccessor(
                         enumDetails,
                         variantDetails,
                         variantName,
+                        isDatum,
                         isActivity,
                         isNested
                     );
@@ -909,6 +918,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                         enumDetails,
                         variantDetails,
                         variantName,
+                        isDatum,
                         isActivity,
                         isNested
                     );
@@ -922,6 +932,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         enumTypeDetails: fullEnumTypeDetails,
         variantDetails: variantTypeDetails<dataBridgeTypeInfo>,
         variantName: string,
+        isDatum: boolean = this.datumTypeName === enumTypeDetails.enumName,
         isActivity: boolean = this.redeemerTypeName ===
             enumTypeDetails.enumName,
         isNested?: "isNested"
@@ -943,8 +954,12 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         }
         const { permissiveTypeName } = variantDetails;
         const enumPathExpr = this.getEnumPathExpr(variantDetails);
-        const returnType = isActivity ? "isActivity" : "UplcData";
-        if ("seed" == Object.keys(variantDetails.fields)[0]) {
+        const returnType = isActivity
+            ? "isActivity"
+            : isDatum
+            ? `TxOutputDatum<"Inline">`
+            : "UplcData";
+        if ("seed" == Object.keys(variantDetails.fields)[0] && !isDatum) {
             // && isSeededActivity
             function filteredFields(indent = 2) {
                 return Object.keys(variantDetails.fields)
@@ -1007,7 +1022,9 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `        const uplc = this.mkUplcData({\n` +
             `            ${variantName}: fields \n` +
             `        }, ${enumPathExpr});\n` +
-            `       return uplc;\n` +
+            (isDatum
+                ? `        return TxOutputDatum.Inline(uplc);\n`
+                : `       return uplc;\n`) +
             `    } /*multiFieldVariant enum accessor*/`
         );
     }
@@ -1016,6 +1033,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         enumTypeDetails: fullEnumTypeDetails,
         variantDetails: variantTypeDetails<dataBridgeTypeInfo>,
         variantName: string,
+        isDatum: boolean = this.datumTypeName === enumTypeDetails.enumName,
         isActivity: boolean = this.redeemerTypeName ===
             enumTypeDetails.enumName,
         isNested?: "isNested"
@@ -1037,7 +1055,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 oneField
             );
         }
-        if ("seed" == fieldName) {
+        if ("seed" == fieldName && !isDatum) {
             // && isSeededActivity
             return (
                 `    /**\n` +
@@ -1064,8 +1082,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             expandedTypeNote = `     * @remarks - ***${oneField.permissiveTypeName}*** is the same as the expanded field-type.\n`;
         }
         const argNameIsFieldName = fieldName;
-        return (
-            `    /**\n` +
+        return `    /**\n` +
             `     * generates ${
                 isActivity ? "isActivity/redeemer wrapper with" : ""
             } UplcData for ***${enumPathExpr}***\n${expandedTypeNote}` +
@@ -1076,9 +1093,10 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `        const uplc = this.mkUplcData({ \n` +
             `           ${variantName}: ${argNameIsFieldName}\n` +
             `        }, ${enumPathExpr}); /*singleField enum variant*/\n` +
-            `       return uplc;\n` +
-            `    }`
-        );
+            (isDatum
+            ? `        return TxOutputDatum.Inline(uplc);\n`
+            : `       return uplc;\n`)+
+            `    }`;
     }
 
     includeNamedSchemas() {

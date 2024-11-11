@@ -38,35 +38,292 @@ import {HeliosScriptBundle, type tagOnly, type EnumTypeMeta, type singleEnumVari
 
 export type RelativeDelegateLink = {
     uutName: /*minStructField*/ string
-    strategyName: /*minStructField*/ string
     delegateValidatorHash: /*minStructField*/ Option<ValidatorHash>
     config: /*minStructField*/ number[]
 }
 
 export type RelativeDelegateLinkLike = {
     uutName: /*minStructField*/ string
-    strategyName: /*minStructField*/ string
     delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
     config: /*minStructField*/ number[]
+}
+
+
+export type ManifestEntryType$DgDataPolicy = {
+    policyLink: RelativeDelegateLink  /*minVariantField*/ ,
+    refCount: bigint  /*minVariantField*/ 
+}
+
+export type ManifestEntryType$DgDataPolicyLike = {
+    policyLink: RelativeDelegateLinkLike  /*minVariantField*/ ,
+    refCount: IntLike  /*minVariantField*/ 
+}
+
+
+export type DelegateRoleMeta = EnumTypeMeta<
+    {module: "CapoDelegateHelpers", enumName: "DelegateRole"}, {
+        MintDgt: singleEnumVariantMeta<DelegateRoleMeta, "MintDgt",
+            "Constr#0", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        SpendDgt: singleEnumVariantMeta<DelegateRoleMeta, "SpendDgt",
+            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        MintInvariant: singleEnumVariantMeta<DelegateRoleMeta, "MintInvariant",
+            "Constr#2", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        SpendInvariant: singleEnumVariantMeta<DelegateRoleMeta, "SpendInvariant",
+            "Constr#3", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        DgDataPolicy: singleEnumVariantMeta<DelegateRoleMeta, "DgDataPolicy",
+            "Constr#4", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        OtherNamedDgt: singleEnumVariantMeta<DelegateRoleMeta, "OtherNamedDgt",
+            "Constr#5", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        BothMintAndSpendDgt: singleEnumVariantMeta<DelegateRoleMeta, "BothMintAndSpendDgt",
+            "Constr#6", "tagOnly", tagOnly, "noSpecialFlags"
+        >
+    }
+>;
+
+
+/**
+ * DelegateRole enum variants
+ * 
+ * @remarks - expresses the essential raw data structures
+ * supporting the **7 variant(s)** of the DelegateRole enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `DelegateRoleHelper` class
+ *     for generating UPLC data for this enum type
+ */
+export type DelegateRole = 
+        | { MintDgt: /*minEnumVariant*/ tagOnly }
+        | { SpendDgt: /*minEnumVariant*/ tagOnly }
+        | { MintInvariant: /*minEnumVariant*/ tagOnly }
+        | { SpendInvariant: /*minEnumVariant*/ tagOnly }
+        | { DgDataPolicy: /*minEnumVariant*/ tagOnly }
+        | { OtherNamedDgt: /*minEnumVariant*/ tagOnly }
+        | { BothMintAndSpendDgt: /*minEnumVariant*/ tagOnly }
+
+/**
+ * DelegateRole enum variants (permissive)
+ * 
+ * @remarks - expresses the allowable data structures
+ * for creating any of the **7 variant(s)** of the DelegateRole enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `DelegateRoleHelper` class
+ *     for generating UPLC data for this enum type
+ *
+ * ### Permissive Type
+ * This is a permissive type that allows additional input data types, which are 
+ * converted by convention to the canonical types used in the on-chain context.
+ */
+export type DelegateRoleLike = 
+        | { MintDgt: /*minEnumVariant*/ tagOnly }
+        | { SpendDgt: /*minEnumVariant*/ tagOnly }
+        | { MintInvariant: /*minEnumVariant*/ tagOnly }
+        | { SpendInvariant: /*minEnumVariant*/ tagOnly }
+        | { DgDataPolicy: /*minEnumVariant*/ tagOnly }
+        | { OtherNamedDgt: /*minEnumVariant*/ tagOnly }
+        | { BothMintAndSpendDgt: /*minEnumVariant*/ tagOnly }
+
+export type ManifestEntryType$DelegateThreads = {
+    role: DelegateRole  /*minVariantField*/ ,
+    refCount: bigint  /*minVariantField*/ 
+}
+
+export type ManifestEntryType$DelegateThreadsLike = {
+    role: DelegateRoleLike  /*minVariantField*/ ,
+    refCount: IntLike  /*minVariantField*/ 
+}
+
+
+export type ManifestEntryTypeMeta = EnumTypeMeta<
+    {module: "CapoHelpers", enumName: "ManifestEntryType"}, {
+        NamedTokenRef: singleEnumVariantMeta<ManifestEntryTypeMeta, "NamedTokenRef",
+            "Constr#0", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        DgDataPolicy: singleEnumVariantMeta<ManifestEntryTypeMeta, "DgDataPolicy",
+            "Constr#1", 
+            "fields", ManifestEntryType$DgDataPolicy, "noSpecialFlags"
+        >,
+        DelegateThreads: singleEnumVariantMeta<ManifestEntryTypeMeta, "DelegateThreads",
+            "Constr#2", 
+            "fields", ManifestEntryType$DelegateThreads, "noSpecialFlags"
+        >,
+        MerkleMembership: singleEnumVariantMeta<ManifestEntryTypeMeta, "MerkleMembership",
+            "Constr#3", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        MerkleStateRoot: singleEnumVariantMeta<ManifestEntryTypeMeta, "MerkleStateRoot",
+            "Constr#4", "tagOnly", tagOnly, "noSpecialFlags"
+        >
+    }
+>;
+
+
+/**
+ * ManifestEntryType enum variants
+ * 
+ * @remarks - expresses the essential raw data structures
+ * supporting the **5 variant(s)** of the ManifestEntryType enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `ManifestEntryTypeHelper` class
+ *     for generating UPLC data for this enum type
+ */
+export type ManifestEntryType = 
+        | { NamedTokenRef: /*minEnumVariant*/ tagOnly }
+        | { DgDataPolicy: /*minEnumVariant*/ ManifestEntryType$DgDataPolicy }
+        | { DelegateThreads: /*minEnumVariant*/ ManifestEntryType$DelegateThreads }
+        | { MerkleMembership: /*minEnumVariant*/ tagOnly }
+        | { MerkleStateRoot: /*minEnumVariant*/ tagOnly }
+
+/**
+ * ManifestEntryType enum variants (permissive)
+ * 
+ * @remarks - expresses the allowable data structures
+ * for creating any of the **5 variant(s)** of the ManifestEntryType enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `ManifestEntryTypeHelper` class
+ *     for generating UPLC data for this enum type
+ *
+ * ### Permissive Type
+ * This is a permissive type that allows additional input data types, which are 
+ * converted by convention to the canonical types used in the on-chain context.
+ */
+export type ManifestEntryTypeLike = 
+        | { NamedTokenRef: /*minEnumVariant*/ tagOnly }
+        | { DgDataPolicy: /*minEnumVariant*/ ManifestEntryType$DgDataPolicyLike }
+        | { DelegateThreads: /*minEnumVariant*/ ManifestEntryType$DelegateThreadsLike }
+        | { MerkleMembership: /*minEnumVariant*/ tagOnly }
+        | { MerkleStateRoot: /*minEnumVariant*/ tagOnly }
+
+export type CapoManifestEntry = {
+    entryType: /*minStructField*/ ManifestEntryType
+    tokenName: /*minStructField*/ number[]
+    mph: /*minStructField*/ Option<MintingPolicyHash>
+}
+
+export type CapoManifestEntryLike = {
+    entryType: /*minStructField*/ ManifestEntryTypeLike
+    tokenName: /*minStructField*/ number[]
+    mph: /*minStructField*/ Option<MintingPolicyHash | string | number[]>
+}
+
+
+export type PendingDelegateAction$Add = {
+    seed: TxOutputId  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ ,
+    delegateValidatorHash: Option<ValidatorHash>  /*minVariantField*/ ,
+    config: number[]  /*minVariantField*/ 
+}
+
+export type PendingDelegateAction$AddLike = {
+    seed: TxOutputId | string  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ ,
+    delegateValidatorHash: Option<ValidatorHash | string | number[]>  /*minVariantField*/ ,
+    config: number[]  /*minVariantField*/ 
+}
+
+
+export type PendingDelegateAction$Replace = {
+    replacesDgt: AssetClass  /*minVariantField*/ ,
+    seed: TxOutputId  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ ,
+    delegateValidatorHash: Option<ValidatorHash>  /*minVariantField*/ ,
+    config: number[]  /*minVariantField*/ 
+}
+
+export type PendingDelegateAction$ReplaceLike = {
+    replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}  /*minVariantField*/ ,
+    seed: TxOutputId | string  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ ,
+    delegateValidatorHash: Option<ValidatorHash | string | number[]>  /*minVariantField*/ ,
+    config: number[]  /*minVariantField*/ 
+}
+
+
+export type PendingDelegateActionMeta = EnumTypeMeta<
+    {module: "CapoDelegateHelpers", enumName: "PendingDelegateAction"}, {
+        Add: singleEnumVariantMeta<PendingDelegateActionMeta, "Add",
+            "Constr#0", 
+            "fields", PendingDelegateAction$Add, "isSeededActivity"
+        >,
+        Remove: singleEnumVariantMeta<PendingDelegateActionMeta, "Remove",
+            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        Replace: singleEnumVariantMeta<PendingDelegateActionMeta, "Replace",
+            "Constr#2", 
+            "fields", PendingDelegateAction$Replace, "noSpecialFlags"
+        >
+    }
+>;
+
+
+/**
+ * PendingDelegateAction enum variants
+ * 
+ * @remarks - expresses the essential raw data structures
+ * supporting the **3 variant(s)** of the PendingDelegateAction enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `PendingDelegateActionHelper` class
+ *     for generating UPLC data for this enum type
+ */
+export type PendingDelegateAction = 
+        | { Add: /*minEnumVariant*/ PendingDelegateAction$Add }
+        | { Remove: /*minEnumVariant*/ tagOnly }
+        | { Replace: /*minEnumVariant*/ PendingDelegateAction$Replace }
+
+/**
+ * PendingDelegateAction enum variants (permissive)
+ * 
+ * @remarks - expresses the allowable data structures
+ * for creating any of the **3 variant(s)** of the PendingDelegateAction enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `PendingDelegateActionHelper` class
+ *     for generating UPLC data for this enum type
+ *
+ * ### Permissive Type
+ * This is a permissive type that allows additional input data types, which are 
+ * converted by convention to the canonical types used in the on-chain context.
+ */
+export type PendingDelegateActionLike = 
+        | { Add: /*minEnumVariant*/ PendingDelegateAction$AddLike }
+        | { Remove: /*minEnumVariant*/ tagOnly }
+        | { Replace: /*minEnumVariant*/ PendingDelegateAction$ReplaceLike }
+
+export type PendingDelegateChange = {
+    action: /*minStructField*/ PendingDelegateAction
+    role: /*minStructField*/ DelegateRole
+    name: /*minStructField*/ Option<string>
+}
+
+export type PendingDelegateChangeLike = {
+    action: /*minStructField*/ PendingDelegateActionLike
+    role: /*minStructField*/ DelegateRoleLike
+    name: /*minStructField*/ Option<string>
 }
 
 
 export type CapoDatum$CharterToken = {
     spendDelegateLink: RelativeDelegateLink  /*minVariantField*/ ,
     spendInvariants: Array<RelativeDelegateLink>  /*minVariantField*/ ,
-    namedDelegates: Map<string, RelativeDelegateLink>  /*minVariantField*/ ,
+    otherNamedDelegates: Map<string, RelativeDelegateLink>  /*minVariantField*/ ,
     mintDelegateLink: RelativeDelegateLink  /*minVariantField*/ ,
     mintInvariants: Array<RelativeDelegateLink>  /*minVariantField*/ ,
-    govAuthorityLink: RelativeDelegateLink  /*minVariantField*/ 
+    govAuthorityLink: RelativeDelegateLink  /*minVariantField*/ ,
+    manifest: Map<string, CapoManifestEntry>  /*minVariantField*/ ,
+    pendingDgtChanges: Array<PendingDelegateChange>  /*minVariantField*/ 
 }
 
 export type CapoDatum$CharterTokenLike = {
     spendDelegateLink: RelativeDelegateLinkLike  /*minVariantField*/ ,
     spendInvariants: Array<RelativeDelegateLinkLike>  /*minVariantField*/ ,
-    namedDelegates: Map<string, RelativeDelegateLinkLike>  /*minVariantField*/ ,
+    otherNamedDelegates: Map<string, RelativeDelegateLinkLike>  /*minVariantField*/ ,
     mintDelegateLink: RelativeDelegateLinkLike  /*minVariantField*/ ,
     mintInvariants: Array<RelativeDelegateLinkLike>  /*minVariantField*/ ,
-    govAuthorityLink: RelativeDelegateLinkLike  /*minVariantField*/ 
+    govAuthorityLink: RelativeDelegateLinkLike  /*minVariantField*/ ,
+    manifest: Map<string, CapoManifestEntryLike>  /*minVariantField*/ ,
+    pendingDgtChanges: Array<PendingDelegateChangeLike>  /*minVariantField*/ 
 }
 
 
@@ -143,12 +400,236 @@ export type CapoDatumLike =
         | { ScriptReference: /*minEnumVariant*/ tagOnly }
         | { DelegatedData: /*minEnumVariant*/ CapoDatum$DelegatedDataLike }
 
+export type CapoLifecycleActivity$CreatingDelegate = {
+    seed: TxOutputId  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ 
+}
+
+export type CapoLifecycleActivity$CreatingDelegateLike = {
+    seed: TxOutputId | string  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ 
+}
+
+
+export type CapoLifecycleActivity$queuePendingDgtChange = {
+    action: PendingDelegateAction  /*minVariantField*/ ,
+    role: DelegateRole  /*minVariantField*/ ,
+    name: Option<string>  /*minVariantField*/ 
+}
+
+export type CapoLifecycleActivity$queuePendingDgtChangeLike = {
+    action: PendingDelegateActionLike  /*minVariantField*/ ,
+    role: DelegateRoleLike  /*minVariantField*/ ,
+    name: Option<string>  /*minVariantField*/ 
+}
+
+
+export type CapoLifecycleActivity$removePendingDgtChange = {
+    role: DelegateRole  /*minVariantField*/ ,
+    name: Option<string>  /*minVariantField*/ 
+}
+
+export type CapoLifecycleActivity$removePendingDgtChangeLike = {
+    role: DelegateRoleLike  /*minVariantField*/ ,
+    name: Option<string>  /*minVariantField*/ 
+}
+
+
+export type CapoLifecycleActivity$forcingNewSpendDelegate = {
+    seed: TxOutputId  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ 
+}
+
+export type CapoLifecycleActivity$forcingNewSpendDelegateLike = {
+    seed: TxOutputId | string  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ 
+}
+
+
+export type CapoLifecycleActivity$forcingNewMintDelegate = {
+    seed: TxOutputId  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ 
+}
+
+export type CapoLifecycleActivity$forcingNewMintDelegateLike = {
+    seed: TxOutputId | string  /*minVariantField*/ ,
+    purpose: string  /*minVariantField*/ 
+}
+
+
+export type ManifestActivity$updatingEntry = {
+    key: string  /*minVariantField*/ ,
+    tokenName: number[]  /*minVariantField*/ 
+}
+
+export type ManifestActivity$updatingEntryLike = {
+    key: string  /*minVariantField*/ ,
+    tokenName: number[]  /*minVariantField*/ 
+}
+
+
+export type ManifestActivity$addingEntry = {
+    key: string  /*minVariantField*/ ,
+    tokenName: number[]  /*minVariantField*/ 
+}
+
+export type ManifestActivity$addingEntryLike = {
+    key: string  /*minVariantField*/ ,
+    tokenName: number[]  /*minVariantField*/ 
+}
+
+
+export type ManifestActivity$forkingThreadToken = {
+    key: string  /*minVariantField*/ ,
+    newThreadCount: bigint  /*minVariantField*/ 
+}
+
+export type ManifestActivity$forkingThreadTokenLike = {
+    key: string  /*minVariantField*/ ,
+    newThreadCount: IntLike  /*minVariantField*/ 
+}
+
+
+export type ManifestActivityMeta = EnumTypeMeta<
+    {module: "CapoDelegateHelpers", enumName: "ManifestActivity"}, {
+        retiringEntry: singleEnumVariantMeta<ManifestActivityMeta, "retiringEntry",
+            "Constr#0", "singletonField", string /*singleVariantField ; elided extra { key: string} structure*/
+  , "noSpecialFlags"
+        >,
+        updatingEntry: singleEnumVariantMeta<ManifestActivityMeta, "updatingEntry",
+            "Constr#1", 
+            "fields", ManifestActivity$updatingEntry, "noSpecialFlags"
+        >,
+        addingEntry: singleEnumVariantMeta<ManifestActivityMeta, "addingEntry",
+            "Constr#2", 
+            "fields", ManifestActivity$addingEntry, "noSpecialFlags"
+        >,
+        forkingThreadToken: singleEnumVariantMeta<ManifestActivityMeta, "forkingThreadToken",
+            "Constr#3", 
+            "fields", ManifestActivity$forkingThreadToken, "noSpecialFlags"
+        >
+    }
+>;
+
+
+/**
+ * ManifestActivity enum variants
+ * 
+ * @remarks - expresses the essential raw data structures
+ * supporting the **4 variant(s)** of the ManifestActivity enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `ManifestActivityHelper` class
+ *     for generating UPLC data for this enum type
+ */
+export type ManifestActivity = 
+        | { retiringEntry: /*minEnumVariant*/ string /*singleVariantField ; elided extra { key: string} structure*/
+   }
+        | { updatingEntry: /*minEnumVariant*/ ManifestActivity$updatingEntry }
+        | { addingEntry: /*minEnumVariant*/ ManifestActivity$addingEntry }
+        | { forkingThreadToken: /*minEnumVariant*/ ManifestActivity$forkingThreadToken }
+
+/**
+ * ManifestActivity enum variants (permissive)
+ * 
+ * @remarks - expresses the allowable data structures
+ * for creating any of the **4 variant(s)** of the ManifestActivity enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `ManifestActivityHelper` class
+ *     for generating UPLC data for this enum type
+ *
+ * ### Permissive Type
+ * This is a permissive type that allows additional input data types, which are 
+ * converted by convention to the canonical types used in the on-chain context.
+ */
+export type ManifestActivityLike = 
+        | { retiringEntry: /*minEnumVariant*/ string /*singleVariantField ; elided extra { key: string} structure*/
+   }
+        | { updatingEntry: /*minEnumVariant*/ ManifestActivity$updatingEntryLike }
+        | { addingEntry: /*minEnumVariant*/ ManifestActivity$addingEntryLike }
+        | { forkingThreadToken: /*minEnumVariant*/ ManifestActivity$forkingThreadTokenLike }
+
+export type CapoLifecycleActivityMeta = EnumTypeMeta<
+    {module: "CapoDelegateHelpers", enumName: "CapoLifecycleActivity"}, {
+        CreatingDelegate: singleEnumVariantMeta<CapoLifecycleActivityMeta, "CreatingDelegate",
+            "Constr#0", 
+            "fields", CapoLifecycleActivity$CreatingDelegate, "isSeededActivity"
+        >,
+        queuePendingDgtChange: singleEnumVariantMeta<CapoLifecycleActivityMeta, "queuePendingDgtChange",
+            "Constr#1", 
+            "fields", CapoLifecycleActivity$queuePendingDgtChange, "noSpecialFlags"
+        >,
+        removePendingDgtChange: singleEnumVariantMeta<CapoLifecycleActivityMeta, "removePendingDgtChange",
+            "Constr#2", 
+            "fields", CapoLifecycleActivity$removePendingDgtChange, "noSpecialFlags"
+        >,
+        commitPendingDgtChanges: singleEnumVariantMeta<CapoLifecycleActivityMeta, "commitPendingDgtChanges",
+            "Constr#3", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        forcingNewSpendDelegate: singleEnumVariantMeta<CapoLifecycleActivityMeta, "forcingNewSpendDelegate",
+            "Constr#4", 
+            "fields", CapoLifecycleActivity$forcingNewSpendDelegate, "isSeededActivity"
+        >,
+        forcingNewMintDelegate: singleEnumVariantMeta<CapoLifecycleActivityMeta, "forcingNewMintDelegate",
+            "Constr#5", 
+            "fields", CapoLifecycleActivity$forcingNewMintDelegate, "isSeededActivity"
+        >,
+        updatingManifest: singleEnumVariantMeta<CapoLifecycleActivityMeta, "updatingManifest",
+            "Constr#6", "singletonField", ManifestActivity /*singleVariantField ; elided extra { activity: ManifestActivity} structure*/
+  , "noSpecialFlags"
+        >
+    }
+>;
+
+
+/**
+ * CapoLifecycleActivity enum variants
+ * 
+ * @remarks - expresses the essential raw data structures
+ * supporting the **7 variant(s)** of the CapoLifecycleActivity enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `CapoLifecycleActivityHelper` class
+ *     for generating UPLC data for this enum type
+ */
+export type CapoLifecycleActivity = 
+        | { CreatingDelegate: /*minEnumVariant*/ CapoLifecycleActivity$CreatingDelegate }
+        | { queuePendingDgtChange: /*minEnumVariant*/ CapoLifecycleActivity$queuePendingDgtChange }
+        | { removePendingDgtChange: /*minEnumVariant*/ CapoLifecycleActivity$removePendingDgtChange }
+        | { commitPendingDgtChanges: /*minEnumVariant*/ tagOnly }
+        | { forcingNewSpendDelegate: /*minEnumVariant*/ CapoLifecycleActivity$forcingNewSpendDelegate }
+        | { forcingNewMintDelegate: /*minEnumVariant*/ CapoLifecycleActivity$forcingNewMintDelegate }
+        | { updatingManifest: /*minEnumVariant*/ ManifestActivity /*singleVariantField ; elided extra { activity: ManifestActivity} structure*/
+   }
+
+/**
+ * CapoLifecycleActivity enum variants (permissive)
+ * 
+ * @remarks - expresses the allowable data structures
+ * for creating any of the **7 variant(s)** of the CapoLifecycleActivity enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `CapoLifecycleActivityHelper` class
+ *     for generating UPLC data for this enum type
+ *
+ * ### Permissive Type
+ * This is a permissive type that allows additional input data types, which are 
+ * converted by convention to the canonical types used in the on-chain context.
+ */
+export type CapoLifecycleActivityLike = 
+        | { CreatingDelegate: /*minEnumVariant*/ CapoLifecycleActivity$CreatingDelegateLike }
+        | { queuePendingDgtChange: /*minEnumVariant*/ CapoLifecycleActivity$queuePendingDgtChangeLike }
+        | { removePendingDgtChange: /*minEnumVariant*/ CapoLifecycleActivity$removePendingDgtChangeLike }
+        | { commitPendingDgtChanges: /*minEnumVariant*/ tagOnly }
+        | { forcingNewSpendDelegate: /*minEnumVariant*/ CapoLifecycleActivity$forcingNewSpendDelegateLike }
+        | { forcingNewMintDelegate: /*minEnumVariant*/ CapoLifecycleActivity$forcingNewMintDelegateLike }
+        | { updatingManifest: /*minEnumVariant*/ ManifestActivityLike /*singleVariantField ; elided extra { activity: ManifestActivityLike} structure*/
+   }
+
 export type CapoActivityMeta = EnumTypeMeta<
     {module: "CapoHelpers", enumName: "CapoActivity"}, {
-        usingAuthority: singleEnumVariantMeta<CapoActivityMeta, "usingAuthority",
-            "Constr#0", "tagOnly", tagOnly, "noSpecialFlags"
+        capoLifecycleActivity: singleEnumVariantMeta<CapoActivityMeta, "capoLifecycleActivity",
+            "Constr#0", "singletonField", CapoLifecycleActivity /*singleVariantField ; elided extra { activity: CapoLifecycleActivity} structure*/
+  , "noSpecialFlags"
         >,
-        updatingCharter: singleEnumVariantMeta<CapoActivityMeta, "updatingCharter",
+        usingAuthority: singleEnumVariantMeta<CapoActivityMeta, "usingAuthority",
             "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
         >,
         retiringRefScript: singleEnumVariantMeta<CapoActivityMeta, "retiringRefScript",
@@ -160,7 +641,7 @@ export type CapoActivityMeta = EnumTypeMeta<
         spendingDelegatedDatum: singleEnumVariantMeta<CapoActivityMeta, "spendingDelegatedDatum",
             "Constr#4", "tagOnly", tagOnly, "noSpecialFlags"
         >,
-        updatingTypeMap: singleEnumVariantMeta<CapoActivityMeta, "updatingTypeMap",
+        updatingCharter: singleEnumVariantMeta<CapoActivityMeta, "updatingCharter",
             "Constr#5", "tagOnly", tagOnly, "noSpecialFlags"
         >
     }
@@ -177,12 +658,13 @@ export type CapoActivityMeta = EnumTypeMeta<
  *     for generating UPLC data for this enum type
  */
 export type CapoActivity = 
+        | { capoLifecycleActivity: /*minEnumVariant*/ CapoLifecycleActivity /*singleVariantField ; elided extra { activity: CapoLifecycleActivity} structure*/
+   }
         | { usingAuthority: /*minEnumVariant*/ tagOnly }
-        | { updatingCharter: /*minEnumVariant*/ tagOnly }
         | { retiringRefScript: /*minEnumVariant*/ tagOnly }
         | { addingSpendInvariant: /*minEnumVariant*/ tagOnly }
         | { spendingDelegatedDatum: /*minEnumVariant*/ tagOnly }
-        | { updatingTypeMap: /*minEnumVariant*/ tagOnly }
+        | { updatingCharter: /*minEnumVariant*/ tagOnly }
 
 /**
  * CapoActivity enum variants (permissive)
@@ -198,10 +680,11 @@ export type CapoActivity =
  * converted by convention to the canonical types used in the on-chain context.
  */
 export type CapoActivityLike = 
+        | { capoLifecycleActivity: /*minEnumVariant*/ CapoLifecycleActivityLike /*singleVariantField ; elided extra { activity: CapoLifecycleActivityLike} structure*/
+   }
         | { usingAuthority: /*minEnumVariant*/ tagOnly }
-        | { updatingCharter: /*minEnumVariant*/ tagOnly }
         | { retiringRefScript: /*minEnumVariant*/ tagOnly }
         | { addingSpendInvariant: /*minEnumVariant*/ tagOnly }
         | { spendingDelegatedDatum: /*minEnumVariant*/ tagOnly }
-        | { updatingTypeMap: /*minEnumVariant*/ tagOnly }
+        | { updatingCharter: /*minEnumVariant*/ tagOnly }
 

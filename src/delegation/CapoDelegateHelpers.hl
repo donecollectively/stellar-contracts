@@ -36,15 +36,88 @@ enum DelegateLifecycleActivity {
     ValidatingSettings
 }
 
+enum DelegateRole {
+    MintDgt
+    SpendDgt
+    MintInvariant
+    SpendInvariant
+    DgDataPolicy
+    OtherNamedDgt
+    BothMintAndSpendDgt
+}
+
+enum ManifestActivity {
+    retiringEntry {
+        key: String
+    }
+    updatingEntry {
+        key: String  // must already exist
+        tokenName: ByteArray  // must reference or input new & old
+    }
+    addingEntry {
+        key: String  // must not exist
+        tokenName: ByteArray // must reference or input new & old
+    }
+    forkingThreadToken {
+        key: String // must mint new & create a clone of the existing token
+        newThreadCount: Int
+    }
+}
+
+enum PendingDelegateAction {
+    Add {
+        seed: TxOutputId
+        purpose: String
+        delegateValidatorHash: Option[ValidatorHash]
+        config: ByteArray
+    }
+    Remove
+    Replace {
+        replacesDgt: AssetClass
+
+        seed: TxOutputId
+        purpose: String
+        delegateValidatorHash: Option[ValidatorHash]
+        config: ByteArray
+    }
+}
+
 // use this activity at Redeemer #1 CapoLifecycleActivities
 enum CapoLifecycleActivity {
     CreatingDelegate {
         seed: TxOutputId
         purpose: String
     }
-    // ActivatingDelegate {
-    //     uutName: String
-    // }
+    queuePendingDgtChange {
+        // seed: TxOutputId
+        // purpose: String
+        action: PendingDelegateAction
+
+        role: DelegateRole
+        name: Option[String]
+    }
+    removePendingDgtChange {
+        role: DelegateRole
+        name: Option[String]
+    }
+    commitPendingDgtChanges
+    forcingNewSpendDelegate {
+        seed: TxOutputId
+        purpose: String
+    }
+    forcingNewMintDelegate {
+        seed: TxOutputId
+        purpose: String
+    }
+        // manifest-updating activities, ALWAYS at Enum position 5
+    // this is not application-specific.  It's placed into the delegation
+    // layer so that a spend-delegate's manifest-updating logic can be
+    // upgraded while leaving the Capo unchanged.
+    updatingManifest {
+        activity: ManifestActivity
+    }
+
+    
 }
 
 // use this enum to match any redeemer if you don't care about what other
@@ -89,7 +162,7 @@ enum AbstractDelegateActivitiesEnum {
         recId: ByteArray
     }
     MultipleDelegateActivities {
-        activities: []Data
+        activities: []Data // actually a []DelegateActivitiesEnum
     }
 }
 enum DgTknDisposition {
@@ -101,7 +174,9 @@ enum DgTknDisposition {
 //   about the connection to a delegate.  
 struct RelativeDelegateLink {
     uutName: String // TODO: use ByteArray instead.
-    strategyName: String
+    // !!! removed strategyName
+    // strategyName: String
+
     // delegate links without a validator hash are "arms-length" delegates,
     // which means they won't be checked for possible auto-upgrades 
     //  ... to new versions of their code.
@@ -119,7 +194,15 @@ struct RelativeDelegateLink {
         )
     }
 
+    func tvAuthorityToken(self, mph: MintingPolicyHash) -> Value {
+        mkTv(mph, self.uutName)
+    }
+    func acAuthorityToken(self, mph: MintingPolicyHash) -> AssetClass {
+        AssetClass::new(mph, self.uutName.encode_utf8())
+    }
+
     func getTv(self, mph: MintingPolicyHash) -> Value {
+        assert(false, "deprecated getTv(); use RDL.tvAuthorityToken instead");
         mkTv(mph, self.uutName)
     }
     
@@ -128,11 +211,11 @@ struct RelativeDelegateLink {
         mph: MintingPolicyHash,
         inputRequired: Bool
     ) -> Option[Bool] {
-        self.hasDelegateInput(
+        self.hasDelegateInput( // fails if req'd input missing
             inputs: inputs,
             mph: mph,
             required: inputRequired
-        ).switch {
+        ).switch {            
             None => Option[Bool]::None, // clean "not found but the caller indicated that's ok"
             Some{spendDelegateInput} => {
                 spendDelegateIsValid : Bool = AbstractDelegateActivitiesEnum::from_data( 
@@ -148,7 +231,7 @@ struct RelativeDelegateLink {
                 };
 
                 assert(spendDelegateIsValid, "no way"); // it threw any error already
-                Option[Bool]::Some{spendDelegateIsValid}        
+                Option[Bool]::Some{spendDelegateIsValid}
             }
         }
     }
@@ -203,16 +286,16 @@ struct RelativeDelegateLink {
         createdOrReturned: DgTknDisposition = DgTknDisposition::Returned
     ) -> Bool {
         RelativeDelegateLink{
-            uut, strategy,
+            uut,  // strategy,
             validatorHash, 
             _ /* configJson */
         } = self;
-        if (strategy.encode_utf8().length < 4) {
-            error("strategy too short")
-            // error("strategy must be at least 4 bytes, got: '"+strategy +
-            //     "' = "+ strategy.encode_utf8().length.show()
-            // )
-        } else { assert(true, "no") };
+        // if (strategy.encode_utf8().length < 4) {
+        //     error("strategy too short")
+        //     // error("strategy must be at least 4 bytes, got: '"+strategy +
+        //     //     "' = "+ strategy.encode_utf8().length.show()
+        //     // )
+        // } else { assert(true, "no") };
     
         v : Value = mkTv(mph, uut);
         cOrR : String = createdOrReturned.switch{
@@ -270,12 +353,48 @@ struct RelativeDelegateLink {
     // config: Data
 }
 
+
+struct PendingDelegateChange {
+    action: PendingDelegateAction
+    role: DelegateRole
+    name: Option[String] // only valid for named delegates and dgDataPolicy
+
+    func isValid(self) -> Bool {
+        self.role.switch {
+            BothMintAndSpendDgt => error(
+                "DelegateRole::BothMintAndSpendDgt not applicable in a PendingDelegateChange struct"
+            ),
+            DgDataPolicy => self.name.switch {
+                Some => true,
+                None => false
+            },
+            OtherNamedDgt => self.name.switch {
+                Some => true,
+                None => false
+            },
+            _ => self.name.switch {
+                Some => false,
+                None => true
+            }
+        }
+    }
+}
+
 // data stored in isDelegate Datum (in the delegate's script)
 // ... links back to the capo info
 struct DelegationDetail {
     capoAddr: Address
     mph: MintingPolicyHash
     tn: ByteArray
+
+    func acAuthorityToken(self) -> AssetClass {
+        AssetClass::new(self.mph, self.tn)
+    }
+    func tvAuthorityToken(self) -> Value {
+        Value::new(
+            AssetClass::new(self.mph, self.tn), 1
+        )
+    }
 }
 
 // Delegates can define additional Datum in their enums,
@@ -285,6 +404,7 @@ enum BASE_DELEGATE_Datum {
     IsDelegation {
         dd: DelegationDetail
     }
+    // same variant-index as Capo's DelegatedData
     capoStoredData {
         data: AnyData
     }
@@ -325,22 +445,6 @@ func unmodifiedDelegation(oldDD : ByteArray) -> Bool {
     // ddNew == dd 
 }
 
-/**
- * returns the AssetClass for the authority token found in the given DelegationDetail struct
- */
-func acAuthorityToken(dd: DelegationDetail) -> AssetClass {
-    AssetClass::new(dd.mph, dd.tn)
-}
-
-/**
- * returns a Value for the authority-token found in the given DelegationDetail struct
- */
- func tvAuthorityToken(dd: DelegationDetail) -> Value {
-    Value::new(
-        acAuthorityToken(dd), 1
-    )
-}
-
 func requiresNoDelegateInput(
     delegateLink: RelativeDelegateLink, 
     mph: MintingPolicyHash
@@ -377,3 +481,52 @@ struct delegateLink_hasValidOutput_asMethod {
 // }
 // :ladybug emoji: "🐞xy"
 
+// !!! this could be really nice but it's difficult to use it in practice.
+// type-aliasing would be amazing.
+enum SomeDelegateDatum[T] {
+    Cip68RefToken {  
+        // NOTE: this datum contains reference details for a user-facing token minted according to the cip-68 standard 
+        //  - the asset name (in the Value of this UTXO) MUST be:  #000643b0 + tokenName
+        //     - this asset name can serve user-side tokens using the CIP-68 "222", "333" or other token types.
+        //     - the user-side asset name with its (222/333/etc) CIP-67 prefix and 
+        //       ... its remaining tokenName will be matched to this asset name (#000643b0 +tokenName)
+        //       ... to locate this reference datum; this datum content will be interpreted
+        //       ... according to the semantics implied by the user-side asset-name prefix.
+        //
+        //  - The attached 'meta' field in this Datum variant contains the relevant data, depending on the token type
+        //    - for "222" tokens, the meta field should contain the following fields:
+        //        - "name" : String
+        //        - "description" : String 
+        //        - "files" :   // {mediaType, src (url), name?, ... otherFields)
+        //        - "image": String  // image url: https://, ar://, ipfs:// or data:// (RFC2397 data)
+        //    - for "333" tokens, the meta field should contain the following fields:
+        //        - "name" : String
+        //        - "description" : String 
+        //        - "ticker" : String
+
+        //        - "url": String  // project URL
+        //        - "logo": String  // image url: https://, ar://, ipfs:// or data:// (RFC2397 data)
+        //                    - it must have a mime type `image/png`, `image/jpeg` or `image/svg+xml`
+        //        - "decimals" : Int
+
+        meta: AnyData
+        version: Int
+        otherDetails: Data // can be Unit () or anything else
+    }
+
+    IsDelegation {
+        dd: DelegationDetail
+    }
+    // same variant-index as Capo's DelegatedData
+    capoStoredData {
+        data: T
+    }
+    ScriptReference
+
+    // func validateSettings(self, _settings: ProtocolSettings) -> Bool{
+    //   ... get the settings from the manifest via ccts
+    //     assert(false, "not valid (stubbed)");
+    //     // settings.serialize() != self.serialize() &&
+    //     true
+    // }    
+}

@@ -28,10 +28,10 @@ import type {
     TxInput,
     TxOutput,
     TxOutputId,
-    TxOutputDatum,
     ValidatorHash,
     Value,
 } from "@helios-lang/ledger";
+ import { TxOutputDatum } from "@helios-lang/ledger";
 import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 
@@ -52,7 +52,7 @@ import type {hasSeed, isActivity} from "../StellarContract.js"
 
 
 import type {
-    MinterActivity$CreatingNewSpendDelegate, MinterActivity$CreatingNewSpendDelegateLike,
+    MinterActivity$forcingNewSpendDelegate, MinterActivity$forcingNewSpendDelegateLike,
     MinterActivity, MinterActivityLike
 } from "./CapoMinter.typeInfo.js";
 
@@ -135,6 +135,7 @@ class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
  * Helper class for generating UplcData for variants of the ***MinterActivity*** enum type.
  */
 export class MinterActivityHelper extends EnumBridge<isActivity> {
+    /*mkEnumHelperClass*/
     protected __cast = new StellarCast<
        MinterActivity,
        MinterActivityLike
@@ -159,7 +160,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     get mintWithDelegateAuthorizing() {
         const uplc = this.mkUplcData({ mintWithDelegateAuthorizing: {} }, 
             "CapoMintHelpers::MinterActivity.mintWithDelegateAuthorizing");
-       return uplc;
+        return uplc;
     } /* tagOnly variant accessor */
 
     /**
@@ -189,57 +190,57 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     }
 
     /**
-    * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.ForcingNewMintDelegate"***, 
+    * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.forcingNewMintDelegate"***, 
     * given a transaction-context with a ***seed utxo*** and other field details
     * @remarks - to get a transaction context having the seed needed for this argment, 
     * see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.    */
-    ForcingNewMintDelegate(value: hasSeed | TxOutputId | string) : isActivity {
+    forcingNewMintDelegate(value: hasSeed | TxOutputId | string) : isActivity {
         const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
         const uplc = this.mkUplcData({ 
-           ForcingNewMintDelegate: seedTxOutputId
-        },"CapoMintHelpers::MinterActivity.ForcingNewMintDelegate");  /*singleField/seeded enum variant*/
+           forcingNewMintDelegate: seedTxOutputId
+        },"CapoMintHelpers::MinterActivity.forcingNewMintDelegate");  /*singleField/seeded enum variant*/
        return uplc;
     }
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate"***, 
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.forcingNewSpendDelegate"***, 
      * given a transaction-context ***with a seed utxo*** and other field details
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
      * to create a context satisfying `hasSeed`.
      */
-    CreatingNewSpendDelegate(value: hasSeed, fields: { 
+    forcingNewSpendDelegate(value: hasSeed, fields: { 
         replacingUut: Option<number[]> 
     } ) : isActivity
     /**
-     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate"*** 
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.forcingNewSpendDelegate"*** 
      * with raw seed details included in fields.
      */
-    CreatingNewSpendDelegate(fields: MinterActivity$CreatingNewSpendDelegateLike | {
+    forcingNewSpendDelegate(fields: MinterActivity$forcingNewSpendDelegateLike | {
             seed: TxOutputId | string,
             replacingUut: Option<number[]>
     } ): isActivity
-    CreatingNewSpendDelegate(
-        seedOrUf: hasSeed | MinterActivity$CreatingNewSpendDelegateLike, 
+    forcingNewSpendDelegate(
+        seedOrUf: hasSeed | MinterActivity$forcingNewSpendDelegateLike, 
         filteredFields?: { 
             replacingUut: Option<number[]>
     }) : isActivity {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
             const uplc = this.mkUplcData({
-                CreatingNewSpendDelegate: { seed: seedTxOutputId, ...filteredFields } 
-            }, "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate");
+                forcingNewSpendDelegate: { seed: seedTxOutputId, ...filteredFields } 
+            }, "CapoMintHelpers::MinterActivity.forcingNewSpendDelegate");
            return uplc;
         } else {
-            const fields = seedOrUf as MinterActivity$CreatingNewSpendDelegateLike; 
+            const fields = seedOrUf as MinterActivity$forcingNewSpendDelegateLike; 
            const uplc = this.mkUplcData({
-                CreatingNewSpendDelegate: fields 
-            }, "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate");
+                forcingNewSpendDelegate: fields 
+            }, "CapoMintHelpers::MinterActivity.forcingNewSpendDelegate");
            return uplc;
         }
     } /*multiFieldVariant/seeded enum accessor*/ 
 
-}
+}/*mkEnumHelperClass*/
 
 
 export const MinterActivitySchema : EnumTypeSchema = {
@@ -302,8 +303,8 @@ export const MinterActivitySchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 4,
-            "id": "__module__CapoMintHelpers__MinterActivity[]__ForcingNewMintDelegate",
-            "name": "ForcingNewMintDelegate",
+            "id": "__module__CapoMintHelpers__MinterActivity[]__forcingNewMintDelegate",
+            "name": "forcingNewMintDelegate",
             "fieldTypes": [
                 {
                     "name": "seed",
@@ -317,8 +318,8 @@ export const MinterActivitySchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 5,
-            "id": "__module__CapoMintHelpers__MinterActivity[]__CreatingNewSpendDelegate",
-            "name": "CreatingNewSpendDelegate",
+            "id": "__module__CapoMintHelpers__MinterActivity[]__forcingNewSpendDelegate",
+            "name": "forcingNewSpendDelegate",
             "fieldTypes": [
                 {
                     "name": "seed",

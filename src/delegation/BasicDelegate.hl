@@ -5,6 +5,7 @@ const instance : ByteArray = #67656e6572616c // -> "general"
 const delegateName : String // = "💩  noName Delegate : ( "
 const isMintDelegate : Bool = false
 const isSpendDelegate : Bool = false
+const isDgDataPolicy : Bool = false
 
 import {
     tx, 
@@ -13,16 +14,18 @@ import {
 } from ScriptContext
 
 import {
+    DelegateRole,
     DelegationDetail,
-    acAuthorityToken,
-    tvAuthorityToken
-    // unmodifiedDelegation,
-    // mustReturnValueToScript
+    DgTknDisposition as DgTkn,
+    ManifestActivity,
+    PendingDelegateChange,
+    PendingDelegateAction,
+    RelativeDelegateLink
 } from CapoDelegateHelpers
 
 // import {
-//     capoSettings
-// } from CustomCapoSettings
+//     ProtocolSettings
+// } from ProtocolSettings
 
 import {
     getTxCharterDatum,
@@ -35,8 +38,7 @@ import {
 
 import {
     mkUutTnFactory,
-    validateUutMinting,
-    mintsUutForCharterUsingRedeemerIndex
+    validateUutMinting
 } from CapoMintHelpers
 
 import {
@@ -83,86 +85,125 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
 
             activity.switch {
                 MultipleDelegateActivities{activities} => {
-                    activities.map(DelegateActivity::from_data).all( (a : DelegateActivity) -> Bool {
-                        cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
-                        // Context: the Capo ensures that each spent UTxO is addressed by EXACTLY ONE SpendDgt activity.
-                        //   ... when we hit this path as a SpendDelegate, we ensure that each of the activities is separately validated.
-                        //   ... this should give us 1:1 coverage
-                        a.switch {
-                            // in the Mint and Spend delegates, these nested activities are expected re-delegate to delegated-data controllers,
-                            // which will use Mint/Spend/Burn activities on the data-controller tokens.
-                            CreatingDelegatedData/*{TxOutputId{seedTxn, seedIdx}, dataTypePurpose} */=> {
-                                assert(isMintDelegate,
-                                    "CreatingDelegatedData only ok in mintDgt"
-                                    // " ... use MintingActivities in a delegated-data controller"
-                                );
-                                cctx.actingAsMintDgt() &&
-                                main(mdd, a)
-                            },
-                            UpdatingDelegatedData{/*typeName*/ _, recId} => {
-                                assert(isSpendDelegate,
+                    // NOTE: the Capo ensures that each SPENT UTxO is addressed by EXACTLY ONE SpendDgt activity.
+                    // When executed in a mint/spend delegate, the policy below ensures 
+                    // ... that each requested activity is matched by a UTxO in the transaction, 
+                    // ... guaranteeing 1:1 coverage of activities & UTxOs.
+
+                    // Those are executed in parts (one set of activities applicable to mintDgt-* token,
+                    //   ... and the other governed by a spendDgt-* token.  It is common that the exact
+                    //   ... same contract script executes both, unless it has a special need to
+                    //   ... separate the code for those two; regardless, each is enforced in
+                    //   ... a separate execution (different utxos, different activity/redeemer each).
+
+                    // For now, only *DelegatedData activities are valid in mint/spend multi-activities.
+
+                    // Special: DeletingDelegatedDatum requires a Spend validation as well as a Burn validation,
+                    //   ... so it will be present in both the mintDgt and spendDgt multi-activities.
+
+                    cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
+
+                    activities.all( (rawActivity: Data) -> Bool {
+                        a : DelegateActivity = DelegateActivity::from_data(rawActivity);
+
+                        if (cctx.nowActingAsMintDgt(required: false)) {
+                            // probably can't fail here:
+                            assert(isMintDelegate, "ack! non-MintDelegate can't act as mintDgt");
+                            print("  -- mintDgt checking multi-activity");
+                            REQT("in the mint delegate, only {Create,Delete}DelegatedData activities are valid in multi-activities");
+                            a.switch {
+                                // in the Mint and Spend delegates, these nested activities are expected to re-delegate 
+                                // to delegated-data controllers, which will use Mint/Spend/Burn activities on the data-controller tokens.
+                                CreatingDelegatedData/*{TxOutputId{seedTxn, seedIdx}, dataTypePurpose} */=> {
+                                    // Note: CreatingDelegatedData activity doesn't involve the Capo at all!
+                                    // Instead, the minter creates a UUT for the data, on authority of the mintDgt;
+                                    // ... and the mintDgt requires the presence of the corresponding dgDataPolicy (with its MintingActivity);
+                                    // ... then the dgDataPolicy checks the validity of the new data, and requires that
+                                    // ... the new data is created as a DelegatedData record in the Capo address.
+
+                                    // assert(isMintDelegate && cctx.nowActingAsMintDgt(),
+                                    //     "CreatingDelegatedData only ok in mintDgt"
+                                    //     // " ... use MintingActivities in a delegated-data controller"
+                                    // );
+                                    // recursion checks for the needed input/output and DgDataController MintingActivity                                
+                                    main(mdd, a)
+                                },
+                                DeletingDelegatedData => {
+                                    // assert(isMintDelegate, "DeletingDelegatedData only ok in mintDgt" ); // " ... use BurningActivities in a delegated-data controller"
+                                    // cctx.nowActingAsMintDgt() &&
+    
+                                    // recursion checks for the needed input/burn                                
+                                    main(mdd, a)
+                                },
+                                UpdatingDelegatedData => error(
                                     "UpdatingDelegatedData only ok at level-1 spendDgt"
-                                    // " ... use one of the SpendingActivities for a delegated-data controller"
-                                );
-                                inputDD : TxInput = cctx.delegatedDataTxInput(recIdBytes: recId);
-                                assert(inputDD == inputDD, "no way");
-            
-                                cctx.actingAsSpendDgt() &&
-                                main(mdd, a)
-                            },
-                            DeletingDelegatedData => {
-                                assert(isMintDelegate, "DeletingDelegatedData only ok in mintDgt" ); // " ... use BurningActivities in a delegated-data controller"
-                                cctx.actingAsMintDgt() &&
-                                main(mdd, a)
-                            },
-                            // in the delegated-data controllers, we have to support these multi-activities.                            
-                            SpendingActivities => {
-                                assert(!cctx.actingAsMintDgt(required: false), "inconcthieeeevable! mintDgt can't do SpendingActivities!" );
-                                assert(!isSpendDelegate, "multi:Spend: only dgData activities ok in spendDgt"); // " - use UpdatingDelegatedData for such cases"
-                                assert(!cctx.actingAsSpendDgt(required: false), "inconcthieeeevable! already failed above");
-                                    // "a SpendDelegate with a multi-activity only supports delegated-data activities at this time.  \n"+
-                                    // "  - use a delegated data controller and trigger SpendDelegate's generic UpdatingDelegatedData activity in the multi-activities struct"
-
-                                // okay, now we're probably in a delegated-data controller, or some special case of re-delegation
-
+                                ),
+                                DelegateLifecycleActivities => error("multi:DelegateLifecycleActivities not ok"),
+                                CapoLifecycleActivities => error("multi:CapoLifecycleActivities not ok"),
+                                MultipleDelegateActivities => error("multi:multi: nesting not ok"),
+    
+                                _ => error("multi:non-minting activities are invalid for mintDgt")
+                            }
+                        } else if (cctx.nowActingAsSpendDgt(required: false)) {
+                            // probably can't fail here:
+                            assert(isSpendDelegate, "ack! non-SpendDelegate can't act as spendDgt");
+                            print("  -- spendDgt checking multi-activity");
+                            REQT("in the spend delegate, only {Updating,Deleting}DelegatedData activities are valid in multi-activities");
+                            a.switch {
+                                // in the Mint and Spend delegates, these nested activities are expected re-delegate to delegated-data controllers,
+                                // which will use Mint/Spend/Burn activities on the data-controller tokens.
+                                UpdatingDelegatedData{_typeName, _recId} => {
+                                    assert(isSpendDelegate && cctx.nowActingAsSpendDgt(),
+                                        "UpdatingDelegatedData only ok at level-1 spendDgt"
+                                        // " ... a delegated-data-controller will use one of its SpendingActivities to govern capoStoredData's spend"
+                                    );
+                                    // the recursion always checks for the input-datum, so we
+                                    // don't need to check it here.
+                                    // _inputDD = cctx.delegatedDataTxInput(recIdBytes: recId);
+                                    main(mdd, a)
+                                },
+                                CreatingDelegatedData => error(
+                                    "CreatingDelegatedData only ok in mintDgt"
+                                ),
+                                DeletingDelegatedData => {
+                                    error("TODO: validate spending the datum for burn")
+                                },
+                                DelegateLifecycleActivities => error("multi:DelegateLifecycleActivities not ok"),
+                                CapoLifecycleActivities => error("multi:CapoLifecycleActivities not ok"),
+                                MultipleDelegateActivities => error("multi:multi: nesting not ok"),
+                                _ => error("multi: non-spending activities are invalid for spendDgt")
+                            }
+                        } else {
+                            assert(!isMintDelegate && !isSpendDelegate, "ack! delegated-data policy can't be a mint/spend delegate");
+                            TODO("assert isDgDataPolicy"); // assert(isDgDataPolicy, "invalid use of multiActivity by non-DgDataPolicy");
+                            print("  -- dgDataPolicy checking multi-activity");
+                            // WHEN this code is supporting a DgDataPolicy (with its own specializedDelegate module),
+                            //   the multi-activity expects Minting/Spending/Burning activities, not *DelegatedData activities.
+                            REQT("in DgDataPolicy, only Minting/Burning/Spending activities are valid");
+                            a.switch {
+                                UpdatingDelegatedData => error(
+                                    "UpdatingDelegatedData only ok at level-1 spendDgt (use a SpendingActivity in dgDataPolicy)"
+                                ),
+                                CreatingDelegatedData => error(
+                                    "CreatingDelegatedData only ok in mintDgt (use a MintingActivity in dgDataPolicy)"
+                                ),
+                                DeletingDelegatedData => error(
+                                    "DeletingDelegatedData only ok at mint/spend dgt (use BurningActivity in dgDataPolicy)"
+                                ),
+                                // in the delegated-data controllers, we have to support these multi-activities.
                                 // this will pass through the individual activity to be individually validated by the specialized delegate 
                                 // module that governs the data-controller's UUT, in its additionalDelegateValidation() function.
-                                main(mdd, a)
-                            },
-                            MintingActivities => {
-                                assert(!cctx.actingAsMintDgt(required: false),
-                                    "multi:Minting: only dgData activities ok in mintDgt"
-                                    // "  - use a delegated data controller and trigger MintDelegate's generic CreatingDelegatedData activity in the multi-activities struct"
-                                );
-                                assert(!isSpendDelegate && !isMintDelegate,
-                                    "multi:Minting: only dgData activities ok in spendDgt" // - use CreatingDelegatedData for such cases"
-                                );
-                                assert(!cctx.actingAsSpendDgt(required: false),
-                                    "inconcthieeeevable! spend delegate can't do MintingActivities!"
-                                );
-                                // okay, now we're probably in a delegated-data controller, or some special case of re-delegation
-
-                                // this will pass through the individual activity to be individually validated by the specialized delegate 
-                                // module that governs the data-controller's UUT, in its additionalDelegateValidation() function.
-                                main(mdd, a)
-                            },
-                            BurningActivities => {
-                                assert(false, "multi:BurningActivities not yet supported");
-                                assert( !isSpendDelegate && !isMintDelegate,                                   
-                                    "multi:BurningActivities: only dgData activities ok in mint/spend Dgt " // " - use DeletingDelegatedData for such cases"
-                                );
-                                // assert(!cctx.actingAsMintDgt(required: false), //     "a MintDelegate with a multi-activity only supports delegated-data activities at this time.  \n"+ //     "  - use a delegated data controller and trigger MintDelegate's generic DeletingDelegatedData activity in the multi-activities struct"
-                                // okay, now we're probably in a delegated-data controller, or some special case of re-delegation
-
-                                // this will pass through the individual activity, to be individually validated by the specialized delegate
-                                //  module that governs the data-controller's UUT, in its additionalDelegateValidation() function
-                                result : Bool = main(mdd, a);
-                                // when we're confident in our good treatment of real use-cases for this,  we can remove the errors and return results
-                                result
-                            },
-                            DelegateLifecycleActivities => error("multi:DelegateLifecycleActivities not ok"),
-                            CapoLifecycleActivities => error("multi:CapoLifecycleActivities not ok"),
-                            MultipleDelegateActivities => error("multi:multi: nesting not ok")
+                                SpendingActivities => main(mdd, a),
+                                MintingActivities => main(mdd, a),
+                                BurningActivities => {
+                                    assert(false, "TODO: support multi:BurningActivities for dgDataPolicy or other delegate") ;
+                                    main(mdd, a)
+                                },
+                                DelegateLifecycleActivities => error("multi:DelegateLifecycleActivities not ok"),
+                                CapoLifecycleActivities => error("multi:CapoLifecycleActivities not ok"),
+                                MultipleDelegateActivities => error("multi:multi: nesting not ok")
+                                // _ => error("multi: invalid other activity for non-mint/spend delegate")
+                            }
                         }
                     })
                 },
@@ -174,8 +215,8 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         // should burn the old UUT, mint the new UUT, and update the Charter
                         // with the new mint authority
 
-                        //xxx -   tx.minted.get_safe( acAuthorityToken(dd) ) == 0 &&
-                        //xxx -   !returnsValueToScript( tvAuthorityToken(dd))
+                        //xxx -   tx.minted.get_safe( dd.acAuthorityToken() ) == 0 &&
+                        //xxx -   !returnsValueToScript( dd.tvAuthorityToken())
 
                         BURNED: Int = -1;
                         otherMintedValue: Value = Value::new(
@@ -217,25 +258,23 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     //
                     // Retiring is not suitable for authorizing token-burning.
                     Retiring => {
-                        tx.minted.get(acAuthorityToken(dd)) == -1
+                        tx.minted.get(dd.acAuthorityToken()) == -1
                     },
 
                     ValidatingSettings => {
-                        //!!! todo: verify if any cost diff between this vs direct-field-access.
-                        // CapoDatum::CharterToken {
-                        //     /*spendDgt*/ _,  
-                        //     /* spendInvariants */ _,
-                        //     settingsUut,
-                        //     /* namedDelegates */ _,
-                        //     /* mintDgt */ _, 
-                        //     /* mintInvariants */ _, 
-                        //     /* govAuthority */ _
-                        // } = getTxCharterDatum(dd.mph);
                         _charter : CapoDatum::CharterToken = getTxCharterDatum(dd.mph);
-                        // foundSettings : outputAndDatum[CapoDatum::SettingsData] = 
-                        //     charter.mustFindSettingsOutput(dd.mph, dd.capoAddr);
 
-                        // customSettings = fromCip68Wrapper[capoSettings](foundSettings.rawData);
+                        // each application-specific delegate must validate the settings
+                        // for itself?
+                        // OR: import the settings type, and trigger the validation here
+                        // ... so delegate authors can have fewer hoops to jump through
+                        TODO("import settings from delegate and validate them");
+
+                        // foundSettings : ProtocolSettings = cctx.getManifestedDatum[ProtocolSettings]("settings");
+
+                        //xxx foundSettings : outputAndDatum[CapoDatum::SettingsData] = 
+                        //xxx     charter.mustFindSettingsOutput(dd.mph, dd.capoAddr);
+                        //xxx customSettings = fromCip68Wrapper[ProtocolSettings](foundSettings.rawData);
 
                         // print("\n" + delegateName + ": delegate TRYING TO VALIDATE SETTINGS\n");
                         // validated : Bool = customSettings.validate();
@@ -255,36 +294,297 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         );
                         false
                     }
-
                 },
                 CapoLifecycleActivities{CLA} => {
-                    assert(isMintDelegate, 
-                        "CapoLifecycleActivities can't be triggered on non-minting delegate "+ delegateName
-                    );
+                    cctx = mkCapoCtx(dd.mph).
+                        withCharterInput().
+                        requiresGovAuthority();                    
+
+                    wantsRole : DelegateRole = CLA.switch {
+                        forcingNewSpendDelegate => error("the forcingNewSpendDelegate escape-hatch activity is always handled directly by the Capo"),
+                        forcingNewMintDelegate => error("the forcingNewMintDelegate escape-hatch activity is always handled directly by the Capo"),
+                        removePendingDgtChange => DelegateRole::SpendDgt,
+                        commitPendingDgtChanges => DelegateRole::BothMintAndSpendDgt,
+                        updatingManifest => DelegateRole::SpendDgt,
+
+                        CreatingDelegate => error("obsolete use of CLA::CreatingDelegate?"),
+
+                        queuePendingDgtChange => DelegateRole::BothMintAndSpendDgt
+                        // we want explicit handling of each case; don't use a default match here.
+                        // _ => error("DO NOT CATCH DEFAULT CASE HERE")
+                    };
+                    wantsRole.switch {
+                        SpendDgt => {
+                            assert(isSpendDelegate && cctx.nowActingAsSpendDgt(), 
+                                "this Capo lifecycle activity is only valid on spend delegate, not "+ delegateName
+                            )                            
+                        },
+                        MintDgt => {
+                            assert(isMintDelegate && cctx.nowActingAsMintDgt(),
+                                "this Capo lifecycle activity is only valid on mint delegate, not "+ delegateName
+                        )},
+                        _ => error("no way") // unreachable
+                    };
+
+                    // the Capo policy already requires that this activity is identical
+                    // to the capo's own triggered lifecycle activity, given that the
+                    // capoLifecycleActivity is what's involved on that end.  We
+                    // ensure that is true here:
+                    REQT("cross-checks that the Capo's CharterToken is activity-matched with delegate's activity");
+                    cctx.getCharterRedeemer().switch {
+                        capoLifecycleActivity => print("ok, matched with charterToken activity capoLifecycleActivity\n"),
+                        _ => error("this activity must match the capo's own charterToken activity")
+                    };
+
                     CLA.switch {
                         // the mint delegate is validating a mint that CREATES A NEW DELEGATE
                         // FOR APPLICATION-SPECIFIC PURPOSES. This can affect the structure of the Capo
                         // it defers to the specialized minting delegate, if any; the unspecialized mint delegate
                         // rejects all delegate-creation.
-                        CreatingDelegate{seed ,purpose} => {
+                        CreatingDelegate{seed, purpose} => {
                             print("🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞 !!!!!!!!!!!!!!!!!!! todo: fix this\n");
-                            TODO("it should output the new delegate token to the Capo as a PendingDelegate datum");
+                            assert(false, "obsolete CLA::CreatingDelegate?");
+                            TODO("XXX it should output the new delegate token to the Capo as a PendingDelegate datum");
                             REQT("validates creation of UUT for the new delegate, aligned to the purpose indicated");
-                                // true || 
-                                validateUutMinting(
-                                    mph: dd.mph,
-                                    seed: seed,
-                                    purposes: []String{purpose},
-                                    // otherMintedValue: ()
-                                    mkTokenName: mkUutTnFactory(seed),
-                                    // WE ARE the mint delegate.
-                                    needsMintDelegateApproval: false 
-                                )
+
+                            validateUutMinting(
+                                mph: dd.mph,
+                                seed: seed,
+                                purposes: []String{purpose},
+                                // otherMintedValue: ()
+                                mkTokenName: mkUutTnFactory(seed),
+                                // WE ARE the mint delegate.
+                                needsMintDelegateApproval: false 
+                            )
+                        },
+                        queuePendingDgtChange{action, role, name} => {
+                            print("  -- addingPendingDgt");
+                            charterDatum : CapoDatum::CharterToken = cctx.getCharterDatum();
+                            action.switch {
+                                // when it's a Remove action, it's only valid in the spend-delegate.
+                                Remove => {
+                                    assert(cctx.nowActingAsSpendDgt(), "<----- that can fail, this can't")
+                                }, 
+                                // when it's an Add action or Replace action,
+                                // it's only valid in the mint-delegate 
+                                _ => {
+                                    assert(cctx.nowActingAsMintDgt(), "<----- that can fail, this can't");
+                                    REQT("validates creation of UUT for the new delegate, aligned to the purpose indicated")
+                                }
+                            };
+
+                            REQT("the new pending-delegate action is added on the front of the existing list of pending actions");
+                            oldPendingChanges = charterDatum.pendingDgtChanges;
+
+                            expectedChanges = oldPendingChanges.prepend(
+                                PendingDelegateChange{
+                                    action: action,
+                                    role: role,
+                                    name: name
+                                }
+                            );
+
+                            assert(
+                                charterDatum.pendingDgtChanges == expectedChanges, 
+                                "invalid update of pendingDgtChanges; should prepend the new action to the existing list."
+                            );
+
+                            hasNewPendingEntry : Bool = false; // finish me
+                            // cctx.mustOutputPendingDelegate(
+                            //     seed: seed,
+                            //     role: role,
+                            //     name: name
+                            // );
+
+                            passedAdditionalVerification : Bool = action.switch {
+                                Remove => {
+                                    role.switch {
+                                        MintDgt => error("cannot Remove role: MintDgt"),
+                                        SpendDgt => error("cannot Remove role: SpendDgt"),
+                                        MintInvariant => error("cannot Remove role: MintInvariant"),
+                                        SpendInvariant => error("cannot Remove role: SpendInvariant"),
+                                        DgDataPolicy => {
+                                            assert(false, "todo")
+                                        },
+                                        OtherNamedDgt => {
+                                            assert(false, "todo")
+                                        },
+                                        BothMintAndSpendDgt => error(
+                                            "DelegateRole::BothMintAndSpend not applicable in queuePendingDgtChange activity"
+                                        )
+                                    };
+                                    REQT("doesn't allow a Remove to duplicate an Add or Replace or Remove entry");
+                                    TODO("^^^");
+
+                                    TODO("what else should be checked here?");
+                                    false
+                                },
+                                Replace{acExistingDgt, seed, purpose, dvho, config} => {
+                                    REQT("invariants cannot be replaced");
+
+                                    assert(cctx.nowActingAsMintDgt(), "<----- that can fail, this can't");
+                                    mkSome = (ac: AssetClass) -> Option[AssetClass] { Option[AssetClass]::Some{ac} };
+                                    // None = Option[AssetClass]::None;
+                                    replacesDgTkn : Option[AssetClass] = role.switch {
+                                        MintDgt => mkSome(charterDatum.mintDelegateLink.acAuthorityToken(dd.mph)),
+                                        SpendDgt => mkSome(charterDatum.spendDelegateLink.acAuthorityToken(dd.mph)),
+                                        MintInvariant => error("cannot Replace role: MintInvariant"),
+                                        SpendInvariant => error("cannot Replace role: SpendInvariant"),
+                                        DgDataPolicy => {
+                                            error("todo")
+                                        },
+                                        OtherNamedDgt => {
+                                            error("todo")
+                                        },
+                                        BothMintAndSpendDgt => error(
+                                            "DelegateRole::BothMintAndSpend not applicable in queuePendingDgtChange activity"
+                                        )
+                                    };
+                                    REQT("the PendingDelegateAction's role + replacesDgt must match the existing delegate's authority token");
+                                    assert(
+                                        acExistingDgt == replacesDgTkn.unwrap(),
+                                        "the current "+role.switch{
+                                            MintDgt => "mint", SpendDgt => "spend", _ => "‹incontheeiieivable›"
+                                        }+" delegate's authority token doesn't match "+acExistingDgt.show()
+                                    );
+
+                                    mkTokenName = mkUutTnFactory(seed);
+                                    tn = mkTokenName(purpose);
+
+                                    REQT("ensures that the indicated uut is being minted in the current transaction");
+                                    mintsDgToken = validateUutMinting(
+                                        mph: dd.mph,
+                                        seed: seed,
+                                        purposes: []String{purpose},
+                                        // otherMintedValue: ()
+                                        mkTokenName: mkTokenName,
+                                        // WE ARE the mint delegate.
+                                        needsMintDelegateApproval: false 
+                                    ); // ^^ failed already if it was going to fail, but returns true if it does return
+
+                                    REQT("the new delegate is created with the indicated authority token");
+                                    delegate = RelativeDelegateLink{
+                                        uutName: tn,
+                                        delegateValidatorHash: dvho,
+                                        config: config
+                                    };
+
+                                    delegateTakesOwnership = delegate.hasValidOutput(
+                                        mph: dd.mph, 
+                                        required: true,
+                                        createdOrReturned: DgTkn::Created
+                                    );
+                                    isNotADuplicate = false;
+                                    REQT("doesn't allow a Replace to duplicate an Add or Replace or Remove entry");
+                                    TODO("^^^");
+
+                                    mintsDgToken && delegateTakesOwnership && isNotADuplicate
+                                },                                
+                                Add{seed, purpose, dvho, config} => {
+                                    mkTokenName = mkUutTnFactory(seed);
+                                    tn = mkTokenName(purpose);
+
+                                    REQT("ensures that the indicated uut is being minted in the current transaction");
+                                    mintsDgTkn = validateUutMinting(
+                                        mph: dd.mph,
+                                        seed: seed,
+                                        purposes: []String{purpose},
+                                        // otherMintedValue: ()
+                                        mkTokenName: mkTokenName,
+                                        // WE ARE the mint delegate.
+                                        needsMintDelegateApproval: false 
+                                    );  // ^^ failed already if it was going to fail, but returns true if it does return
+
+                                    REQT("the new delegate is created with the indicated authority token");
+                                    delegate = RelativeDelegateLink{
+                                        uutName: tn,
+                                        delegateValidatorHash: dvho,
+                                        config: config
+                                    };
+                                    delegateTakesOwnership = delegate.hasValidOutput(
+                                        mph: dd.mph, 
+                                        required: true,
+                                        createdOrReturned: DgTkn::Created
+                                    );
+
+                                    isNotADuplicate = false;
+                                    REQT("doesn't allow an Add to duplicate a Replace or Add or Remove entry");                                    
+                                    TODO("^^^");
+
+                                    mintsDgTkn && delegateTakesOwnership && isNotADuplicate
+                                }
+                            };
+                                                    
+                            hasNewPendingEntry && passedAdditionalVerification
+                        },
+                        removePendingDgtChange{_role, _name} => {
+                            // this code-path is only found in the spend-delegate
+                            TODO("implement removePendDgt");
+                            REQT("allows the removal of a pending delegate change that can't be completed");
+                            assert(false, "not yet implemented");
+                            false
+                        },
+                        commitPendingDgtChanges => {
+                            // this code-path has one leg in the spend-delegate
+                            // and one leg in the mint-delegate
+                            REQT("invariants cannot be replaced");
+
+                            if (cctx.nowActingAsSpendDgt(required: false)) {
+                                REQT("when committing pending delegates, the spendDgt validates that all the pending delegates are installed");
+                                assert(false, "not yet implemented");
+                                false
+                            } else if (cctx.nowActingAsMintDgt(required: false)) {
+                                REQT("when committing pending delegates, the mintDgt validates that all the removed dgTkns are burned");
+                                false
+                                // this code-path is only found in the mint-delegate
+                            } else {
+                                false
                             }
-                        } && if (true) { 
-                            print("BasicDelegate harness deferring to specialization for CapoLifecycleActivities\n");
+                        },
+                        updatingManifest{manifestActivity} => {
+                            REQT("doesn't allow updating anything except the manifest");
+                            manifestActivity.switch{
+                                retiringEntry{_key} => {
+                                    REQT("doesn't remove a dgDataPolicy entry from the manifest (use queuePendingDgtChange instead)");
+                                    REQT("removes the indicated key from the manifest");
+                                    REQT("delegates MUST be allowed to validate that this doesn't drop something they need");
+                                    assert(false, "TODO: support retirement where possible")
+                                },
+                                updatingEntry{_key, _tokenName} => {
+                                    REQT("the indicated token MUST be referenced in the transaction");
+                                    REQT("delegates MUST be allowed to validate that the manifest is acceptable for their needs");
+                                    assert(false, "TODO: support updatingEntry where possible")
+                                },
+                                addingEntry{_key, _tokenName} => {
+                                    REQT("the indicated token MUST be referenced in the transaction");
+                                    REQT("delegates MUST be allowed to validate that the manifest is acceptable for their needs");
+                                    assert(false, "TODO: support addingEntry where possible")
+                                },
+                                forkingThreadToken{_key, _newThreadCount} => {
+                                    assert(cctx.nowActingAsMintDgt(), "<----- that can fail, this can't");                                    
+                                    REQT("the indicated token MUST be referenced in the transaction");
+                                    REQT("validates that another copy of the token name is minted");
+                                    REQT("when the key is a DgDataPolicy, the existing manifest entry is updated");
+                                    REQT("for mint/spend delegates and otherNamedDelegates, a new manifest entry is created with refCount=1+newThreadCount, if it doesn't exist");
+                                    REQT("when the manifest already has the entry, the refCount is incremented by newThreadCount");
+
+                                    assert(false, "TODO: support forkingThreadToken where possible")
+                                }
+                            };
                             true
-                        } else { false }
+                        },
+                        forcingNewMintDelegate => {
+                            REQT("a forced delegate change is an escape-hatch only involving the minter and the Capo");
+                            error("the mint/spend delegate never is involved when the minter is instructed to force a new delegate")
+                        },
+                        forcingNewSpendDelegate => {
+                            REQT("a forced delegate change is an escape-hatch only involving the minter and the Capo");
+                            error("the mint/spend delegate never is involved when the spender is instructed to force a new delegate")
+                        }
+                    } && if (true) { 
+                        print("BasicDelegate harness deferring to specialization for CapoLifecycleActivities\n");
+                        true
+                    } else { false }
                 },
 
                 // NOTE: this is a mint delegate activity on the mintDgt-* token,
@@ -300,6 +600,8 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                 // ... while processing different tokens for each zone of authority/responsibility.
                 CreatingDelegatedData{seed, dataTypePurpose} => {
                     cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
+                    assert(isMintDelegate && cctx.nowActingAsMintDgt(), "<---- fails in there, not here");
+
                     tnFactory : (String) -> String = mkUutTnFactory(seed);
                     newDataId : ByteArray = tnFactory(dataTypePurpose).encode_utf8();
                     // as a mint delegate, we should see to it that any minting does play by the rules
@@ -309,14 +611,40 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     // xxx WE are the mint delegate : ) -  cctx.requiresMintDelegateInput().requiresValidOutput() 
                     // this needs to be done by the speciization for now
                     // && cctx.requiresDelegatedDataController(dataTypePurpose).requiresDataMinting()                    
-                    TODO("make a generic data-controller re-delegation convention");
-                    TODO("the mint-delegate specialization MUST re-delegate authority to the right data-controller");
+
+                    // dgDataPolicy = cctx.findManifestEntry(dataTypePurpose).switch {
+                    //     None => error(
+                    //         "can't create delegatedData without a matching '"+
+                    //         dataTypePurpose+"' dgDataPolicy entry in the capo manifest"),
+                    //     Some{mEntry} => {
+                    //         mEntry.entryType.switch {
+                    //             DgDataPolicy{policyLink, _refCount} => policyLink,
+                    //             _ => error(
+                    //                 "can't create delegatedData type '"+
+                    //                 dataTypePurpose+
+                    //                 "'; its Capo manifest entry is not a DgDataPolicy"
+                    //             )
+                    //         }
+                    //     }
+                    // };
+                    assert(cctx.
+                        requiresDgDataPolicyInput(dataTypePurpose).
+                        withUniqueSeededMintingActivity(seed).
+                        orFail(), 
+                        "^^^ those can fail, this assert won't."
+                    );
+
+                    assert(false, "^^^ does it implement the generic data-controller re-delegation convention? ^^");
+
+                    // no longer TODO :party: // TODO("the mint-delegate specialization MUST re-delegate authority to the right data-controller");
                     TODO("it must check that the data-controller has exactly one minting activity for the indicated recId");
                     print("    -- e.g. using CapoCtx: cctx\n      .requiresNamedDelegateInput(delegateName)\n      .withSeededMintingActivity(seed)\n");
 
+                    //!!! if the thing being created is a Settings record,
+                    //  make sure the capo CharterDatum is also being updated
+                    //  with a new manifest entry (settings -> this record-id)
+
                     true
-                    && isMintDelegate 
-                    && cctx.actingAsMintDgt()
                     && validateUutMinting(
                         mph: dd.mph,
                         seed: seed,
@@ -337,7 +665,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                 // ... its mintDgt- token, under separate utxo cover).
                 // Once the specialized spend delegate includes the delegated-data controller UUT through the re-delegation pattern,
                 // ... the spend delegate's specialized module picks up the thread of enforcement via its
-                // ... additionalDelegateValidation(), by handling the SpendingActivities variant indicated in the *Ctrl-* token's activity/redeemer.
+                // ... additionalDelegateValidation(), by handling the SpendingActivities variant indicated in the *Pol-* token's activity/redeemer.
                 // That controller activity may alternatively be a MultiActivity, one of whose nested activities provides 
                 // ... the needed SpendingActivities variant.
                 // It can be tricky to recognize that this code module serves the spend delegate and the mint delegate,
@@ -347,12 +675,19 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                 // ... while processing different tokens for each zone of authority/responsibility.
                 UpdatingDelegatedData{dDataType, recId} => {
                     cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
-                    TODO("Basic delegate: implement typeMap-based redelegation");
-                    TODO("for now, the application-level Spend Delegate MUST enforce correct data-controller delegation");
-                    // check data controller's SpendingActivities
-                    // the Capo enforces that delegatedData utxo is ALWAYS spent with its generic `spendingDelegatedDatum` activity
+                    assert(cctx.nowActingAsSpendDgt(), "<---- fails in there, not here");
+                    REQT("EXPECTS j6bmfv: all and ONLY DelegatedData datums must be spent with the Capo's spendingDelegatedData activity");
 
-                    // todo validate this path in multi-activity
+                    REQT("implements a generic data-controller re-delegation convention based on the capo's manifest (those with type= DgDataPolicy)");
+
+                    REQT("ensures the data-controller is invoked with ONE spending activity for the indicated recId");
+                    assert( cctx.
+                        requiresDgDataPolicyInput(dDataType).
+                        withUniqueDDSpendingActivity(recId).
+                        orFail(),
+                         "^^^ those can fail, this assert won't."
+                    );
+
                     inputDD : TxInput = cctx.delegatedDataTxInput(recIdBytes: recId);
                     assert(inputDD == inputDD, "no way");
                     // ^^ same as vv
@@ -362,15 +697,49 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     // ddInputs : []TxInput = ctx.tx.inputs.filter(hasDDofType);
                     // assert(ddInputs.length == 1, "extra DD input(s)");
 
+
+                    if ("settings" == dDataType) {
+                        curSettingsId = cctx.getSettingsId(required: true).unwrap();
+                        REQT(
+                            "when updating the current Capo settings, the delegates must all "+
+                            "have a chance to ensure the settings are valid for their needs"
+                        );
+                        if (curSettingsId == recId) {
+                            assert(
+                                // fails if the delegates aren't all validating settings:
+                                cctx.allDelegatesAreValidatingSettings(),
+                                // can't fail:
+                                "no way"
+                            )
+                        } else {
+                            print("  -- NOTE: updating "+ recId.decode_utf8()
+                            +", which isn't currentSettings="+curSettingsId.decode_utf8())
+                        }
+                    };
+
                     cctx.mustOutputDelegatedData(recId, dDataType)
                     && true
                 },
-                DeletingDelegatedData => { // {dataType, recId} => {
-                    TODO("Basic delegate: implement typeMap-based redelegation");
-                    TODO("for now, the application-level Mint Delegate MUST enforce correct data-controller delegation");
-                    // check data controller's BurningActivities
 
-                    assert(false, "not supported yet");
+                DeletingDelegatedData {_dataType, recId} => {
+                    cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
+
+                    REQT("this code is triggered by both the mintDgt and spendDgt, with each doing their parts of the job");
+                    REQT("the spendDgt allows the spending of the utxo");
+                    REQT("the mintDgt requires the burning of its UUT");
+                    REQT("it must not delete a record that's still referenced by the Capo manifest");
+                    REQT("a matching manifest entry has to be changed or removed prior to deletion");
+
+                    _inputDD : TxInput = cctx.delegatedDataTxInput(recIdBytes: recId);
+                    // the mintDelegate should be triggered with 
+                    TODO("verify the input was found ^");
+
+                    assert(false, "Delete not supported yet");
+
+                    TODO("implement the generic data-controller re-delegation convention here");
+                    TODO("ensure that the right delegate is consulted with its BurningActivities.*");
+
+                    cctx.nowActingAsMintDgt() &&
                     false
                 },
                 // We made these explicit so they're functionally required of every specialized delegate.
@@ -380,9 +749,9 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                 // Each of these indicates plural "activities", but they're actually each an individual, discrete, single activity
                 // ... with an Enum allowing ONE of various possible specialization-specific activities at that spot.
                 // ... MultipleActivities would be used to express "it does multiple separate activities on different utxos")
-                SpendingActivities => true,
-                MintingActivities => true,
-                BurningActivities => true
+                SpendingActivities => true, // handled by the specialized delegate
+                MintingActivities => true,  // handled by the specialized delegate
+                BurningActivities => true // handled by the specialized delegate
             } && if (activity.additionalDelegateValidation(isD)) {
                 print ("delegate: "+ delegateName + ": additionalDelegateValidation ok!\n");
                 true

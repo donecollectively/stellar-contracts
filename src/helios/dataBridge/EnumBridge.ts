@@ -10,12 +10,15 @@ export type Nested = typeof Nested;5
 const NotNested = Symbol("NotNested");
 export type NotNested = typeof NotNested;
 
+const isDatum = Symbol("isDatum");
+export type isDatum = typeof isDatum;
+
 /**
  * EnumMaker provides a way to create UplcData for enums.  It optionally includes an activity wrapper { redeemer: UplcData }
  * ... and honors a nested context to inject (instead of UPLC-ing) typed, nested data into a parent context for uplc formatting.
  */
 export class EnumBridge<
-    TYPE extends isActivity | JustAnEnum = JustAnEnum,
+    TYPE extends isActivity | isDatum | JustAnEnum = JustAnEnum,
     // NESTED extends Nested | NotNested = NotNested,
     uplcReturnType = //extends (isActivity extends TYPE ? { redeemer: UplcData } : UplcData) =
     isActivity extends TYPE ? { redeemer: UplcData } : UplcData

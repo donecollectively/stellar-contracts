@@ -32,8 +32,11 @@ func REQT(reqt: String) -> () {
     // red exclamation mark
     print("❗ "+ reqt + "\n")
 }
-func bREQT(reqt: String) -> Bool {
+func bREQT(reqt: String, assertion : Bool=true) -> Bool {
     REQT(reqt);
+    if (!assertion) {
+        print("  ❌❌ ^ failed: " + reqt + "\n")
+    };
     true
 }
 

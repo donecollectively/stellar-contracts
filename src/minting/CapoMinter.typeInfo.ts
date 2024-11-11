@@ -36,12 +36,12 @@ import type {
 import {HeliosScriptBundle, type tagOnly, type EnumTypeMeta, type singleEnumVariantMeta} from "../helios/HeliosScriptBundle.js"
         
 
-export type MinterActivity$CreatingNewSpendDelegate = {
+export type MinterActivity$forcingNewSpendDelegate = {
     seed: TxOutputId  /*minVariantField*/ ,
     replacingUut: Option<number[]>  /*minVariantField*/ 
 }
 
-export type MinterActivity$CreatingNewSpendDelegateLike = {
+export type MinterActivity$forcingNewSpendDelegateLike = {
     seed: TxOutputId | string  /*minVariantField*/ ,
     replacingUut: Option<number[]>  /*minVariantField*/ 
 }
@@ -64,13 +64,13 @@ export type MinterActivityMeta = EnumTypeMeta<
             "Constr#3", "singletonField", TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
   , "isSeededActivity"
         >,
-        ForcingNewMintDelegate: singleEnumVariantMeta<MinterActivityMeta, "ForcingNewMintDelegate",
+        forcingNewMintDelegate: singleEnumVariantMeta<MinterActivityMeta, "forcingNewMintDelegate",
             "Constr#4", "singletonField", TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
   , "isSeededActivity"
         >,
-        CreatingNewSpendDelegate: singleEnumVariantMeta<MinterActivityMeta, "CreatingNewSpendDelegate",
+        forcingNewSpendDelegate: singleEnumVariantMeta<MinterActivityMeta, "forcingNewSpendDelegate",
             "Constr#5", 
-            "fields", MinterActivity$CreatingNewSpendDelegate, "isSeededActivity"
+            "fields", MinterActivity$forcingNewSpendDelegate, "isSeededActivity"
         >
     }
 >;
@@ -93,9 +93,9 @@ export type MinterActivity =
    }
         | { addingSpendInvariant: /*minEnumVariant*/ TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
    }
-        | { ForcingNewMintDelegate: /*minEnumVariant*/ TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
+        | { forcingNewMintDelegate: /*minEnumVariant*/ TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
    }
-        | { CreatingNewSpendDelegate: /*minEnumVariant*/ MinterActivity$CreatingNewSpendDelegate }
+        | { forcingNewSpendDelegate: /*minEnumVariant*/ MinterActivity$forcingNewSpendDelegate }
 
 /**
  * MinterActivity enum variants (permissive)
@@ -118,7 +118,7 @@ export type MinterActivityLike =
    }
         | { addingSpendInvariant: /*minEnumVariant*/ TxOutputId | string /*singleVariantField ; elided extra { seed: TxOutputId | string} structure*/
    }
-        | { ForcingNewMintDelegate: /*minEnumVariant*/ TxOutputId | string /*singleVariantField ; elided extra { seed: TxOutputId | string} structure*/
+        | { forcingNewMintDelegate: /*minEnumVariant*/ TxOutputId | string /*singleVariantField ; elided extra { seed: TxOutputId | string} structure*/
    }
-        | { CreatingNewSpendDelegate: /*minEnumVariant*/ MinterActivity$CreatingNewSpendDelegateLike }
+        | { forcingNewSpendDelegate: /*minEnumVariant*/ MinterActivity$forcingNewSpendDelegateLike }
 

@@ -56,16 +56,63 @@ export type OtherStructLike = {
 }
 
 
+export type SomeKindaEnumMeta = EnumTypeMeta<
+    {module: "StructDatumTester", enumName: "SomeKindaEnum"}, {
+        case1: singleEnumVariantMeta<SomeKindaEnumMeta, "case1",
+            "Constr#0", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        case2: singleEnumVariantMeta<SomeKindaEnumMeta, "case2",
+            "Constr#1", "singletonField", bigint /*singleVariantField ; elided extra { f1: bigint} structure*/
+  , "noSpecialFlags"
+        >
+    }
+>;
+
+
+/**
+ * SomeKindaEnum enum variants
+ * 
+ * @remarks - expresses the essential raw data structures
+ * supporting the **2 variant(s)** of the SomeKindaEnum enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `SomeKindaEnumHelper` class
+ *     for generating UPLC data for this enum type
+ */
+export type SomeKindaEnum = 
+        | { case1: /*minEnumVariant*/ tagOnly }
+        | { case2: /*minEnumVariant*/ bigint /*singleVariantField ; elided extra { f1: bigint} structure*/
+   }
+
+/**
+ * SomeKindaEnum enum variants (permissive)
+ * 
+ * @remarks - expresses the allowable data structures
+ * for creating any of the **2 variant(s)** of the SomeKindaEnum enum type
+ * 
+ * - **Note**: Stellar Contracts provides a higher-level `SomeKindaEnumHelper` class
+ *     for generating UPLC data for this enum type
+ *
+ * ### Permissive Type
+ * This is a permissive type that allows additional input data types, which are 
+ * converted by convention to the canonical types used in the on-chain context.
+ */
+export type SomeKindaEnumLike = 
+        | { case1: /*minEnumVariant*/ tagOnly }
+        | { case2: /*minEnumVariant*/ IntLike /*singleVariantField ; elided extra { f1: IntLike} structure*/
+   }
+
 export type DatumStruct = {
     field1: /*minStructField*/ bigint
     field2: /*minStructField*/ string
     field3: /*minStructField*/ Map<string, OtherStruct>
+    field4: /*minStructField*/ SomeKindaEnum
 }
 
 export type DatumStructLike = {
     field1: /*minStructField*/ IntLike
     field2: /*minStructField*/ string
     field3: /*minStructField*/ Map<string, OtherStructLike>
+    field4: /*minStructField*/ SomeKindaEnumLike
 }
 
 

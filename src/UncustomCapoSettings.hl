@@ -1,6 +1,10 @@
 module CustomCapoSettings
 
-struct capoSettings {
+
+// DEMONSTRATION of defining custom protocol settings.
+// this is not actually used in the library; just an example.
+
+struct ProtocolSettings {
     meaning: Int  "meaning"
     happy: Int  "happy"
     func validate(self) -> Bool {

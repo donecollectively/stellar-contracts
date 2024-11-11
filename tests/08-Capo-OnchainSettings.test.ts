@@ -26,7 +26,7 @@ import { ADA, StellarTestContext, addTestContext } from "../src/testing";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 import { dumpAny } from "../src/diagnostics";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate";
-import { TestBadSettings } from "./TestBadSettings";
+import { TestBadSettings } from "./TestBadSettings.hl";
 import {
     CapoOffchainSettingsType,
     SettingsAdapter,
@@ -43,7 +43,7 @@ import {
     AnyDataTemplate,
     DelegatedDatumAdapter,
     hasAnyDataTemplate,
-} from "../src/DelegatedDatumAdapter";
+} from "../src/delegation/DelegatedDatumAdapter";
 import { expectTxnError } from "../src/testing/StellarTestHelper";
 // import { RoleDefs } from "../src/RolesAndDelegates";
 

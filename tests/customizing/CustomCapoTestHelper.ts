@@ -21,7 +21,7 @@ export class CustomCapoTestHelper extends DefaultCapoTestHelper<CustomTreasury> 
         return {
             ...super.mkDefaultCharterArgs(),
             govAuthorityLink: {
-                strategyName: "multisig",
+                // strategyName: "multisig",
                 config: {
                     addrHint: [tina.address, tom.address, tracy.address],
                 }
@@ -39,7 +39,7 @@ export class CustomCapoTestHelper extends DefaultCapoTestHelper<CustomTreasury> 
         await this.mintCharterToken();
 
         const treasury = this.strella!;
-        const tcx: StellarTxnContext = new StellarTxnContext(this.currentActor);
+        const tcx: StellarTxnContext = this.mkTcx()
         return treasury.txnAddGovAuthority(tcx)
         // return treasury.txnAddCharterWithAuthority(tcx);
     }
@@ -54,7 +54,7 @@ export class CustomCapoTestHelper extends DefaultCapoTestHelper<CustomTreasury> 
 
         const tcx = await treasury.mkTxnUpdateCharter(args);
         return treasury.submit(tcx, { signers }).then(() => {
-            this.network.tick(1n);
+            this.network.tick(1);
             return tcx;
         });
     }
