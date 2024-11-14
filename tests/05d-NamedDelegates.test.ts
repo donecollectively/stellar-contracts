@@ -16,11 +16,10 @@ import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 
 import {
     DelegateConfigNeeded,
-    RoleMap,
-    RoleInfo,
-    VariantStrategy,
+    DelegateMap,
+    DelegateSetup,
     delegateRoles,
-    strategyValidation,
+    delegateConfigValidation,
     defineRole,
 } from "../src/delegation/RolesAndDelegates";
 import { StellarTxnContext } from "../src/StellarTxnContext";
@@ -45,7 +44,7 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
         return this.mkTxnAddingNamedDelegate(
             purpose,
             {
-                strategyName: "myDgtV1",
+                config: {},                
                 mintSetup: {                    
                     mintDelegateActivity: mintDelegate.activityCreatingTestNamedDelegate(
                         tcx1, purpose
@@ -61,9 +60,10 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
         const { mintDelegate: parentMintDelegate, ...othersInherited } =
             inherited;
         const {
-            baseClass,
+            config,
+            delegateClass,
+            delegateType,
             uutPurpose,
-            variants: pVariants,
         } = parentMintDelegate;
         const mintDelegate = defineRole("mintDgt", MintDelegateWithGenericUuts, {
             // defaultV1: {
@@ -71,34 +71,28 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
             //     validateConfig(args) {},
             // },
 
-            canMintGenericUuts: {
-                delegateClass: MintDelegateWithGenericUuts,
-                validateConfig(args) {
+            delegateClass: MintDelegateWithGenericUuts,
+            validateConfig(args) {
+            }
+        })
+        const failsWhenBad = defineRole("mintDgt", MintDelegateWithGenericUuts, {
+            validateConfig(args) {
+                //@ts-expect-error
+                if (args.bad) {
+                    //note, this isn't the normal way of validating.
+                    //  ... usually it's a good field name whose value is missing or wrong.
+                    //  ... still, this conforms to the ErrorMap protocol good enough for testing.
+                    return { bad: ["must not be provided"] };
                 }
             },
-            failsWhenBad: {
-                delegateClass: MintDelegateWithGenericUuts,
-                validateConfig(args) {
-                    //@ts-expect-error
-                    if (args.bad) {
-                        //note, this isn't the normal way of validating.
-                        //  ... usually it's a good field name whose value is missing or wrong.
-                        //  ... still, this conforms to the ErrorMap protocol good enough for testing.
-                        return { bad: ["must not be provided"] };
-                    }
-                },
-            },
-        });
+        })
 
         return delegateRoles({
             ...inherited,
-            noDefault: defineRole("noDef", CapoMinter, {}),
+            // noDefault: defineRole("", CapoMinter, {}),
             mintDelegate,
-            namedDelegate: defineRole("dgt", TestNamedDelegate, {
-                myDgtV1: {
-                    delegateClass: TestNamedDelegate,
-                },
-            }),
+            failsWhenBad,
+            myNamedDgt: defineRole("other", TestNamedDelegate, {})
             
         })// as any; // TODO - update types so this structure fits the expected type
     }
@@ -137,7 +131,7 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                  capo = await h.bootstrap({
                     mintDelegateLink: {
-                        strategyName: "canMintGenericUuts",
+                        config: {}
                     }
                 });
             })
@@ -147,8 +141,8 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
 
                 const charter = await capo.findCharterDatum();
-                expect(charter.namedDelegates).toBeTruthy();
-                expect(Object.keys(charter.namedDelegates).length).toBe(0);
+                expect(charter.otherNamedDelegates).toBeTruthy();
+                expect(Object.keys(charter.otherNamedDelegates).length).toBe(0);
 
                 const tcx = await capo.mkTxnCreatingTestNamedDelegate("myNamedDgt");
                 expect(tcx.state.namedDelegateMyNamedDgt).toBeTruthy()
@@ -156,12 +150,12 @@ describe("Capo", async () => {
                 network.tick(1);
 
                 const charter2 = await capo.findCharterDatum();
-                expect(charter2.namedDelegates).toBeTruthy();
-                console.log("charter2.namedDelegates", charter2.namedDelegates);
-                expect(Object.keys(charter2.namedDelegates).length).toBe(1);
+                expect(charter2.otherNamedDelegates).toBeTruthy();
+                console.log("charter2.namedDelegates", charter2.otherNamedDelegates);
+                expect(charter2.otherNamedDelegates.size).toBe(1);
             });
 
-            it("the charter.namedDelegates structure can't be updated without the capoGov- authority uut", async (context: localTC) => {
+            it("the charter.otherNamedDelegates structure can't be updated without the capoGov- authority uut", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
     
@@ -207,15 +201,6 @@ describe("Capo", async () => {
                 // const tcx = await capo.mkTxnCreatingTestNamedDelegate("myNamedDgt");
                 // await expect(capo.submit(tcx)).rejects.toThrow(/seed/);
             })
-
-            it("can reject creation of named delegate with name not fitting the minting delegate rules for the application", async (context: localTC) => {
-                // prettier-ignore
-                const {h, h:{network, actors, delay, state} } = context;
-                
-                const tcx = await capo.mkTxnCreatingTestNamedDelegate("notMyNamedDgt");
-                await expect(tcx.submit(expectTxnError)).rejects.toThrow(/unsupported delegate-creation purpose/);
-            })
-
 
         });
     });

@@ -33,15 +33,21 @@ import type {
  } from "@helios-lang/codec-utils";
 
 
-import {HeliosScriptBundle, type tagOnly, type EnumTypeMeta, type singleEnumVariantMeta} from "../helios/HeliosScriptBundle.js"
-        
+import {HeliosScriptBundle, type tagOnly, type EnumTypeMeta, 
+    type singleEnumVariantMeta
+} from "../helios/HeliosScriptBundle.js"
 
-export type MinterActivity$forcingNewSpendDelegate = {
+import type { IntersectedEnum } from "../helios/typeUtils.js"
+                
+
+
+export type MinterActivity$CreatingNewSpendDelegate = {
     seed: TxOutputId  /*minVariantField*/ ,
     replacingUut: Option<number[]>  /*minVariantField*/ 
 }
 
-export type MinterActivity$forcingNewSpendDelegateLike = {
+export type MinterActivity$Ergo$CreatingNewSpendDelegate = MinterActivity$CreatingNewSpendDelegate/*ergo like-canonical-this-variant*/
+export type MinterActivity$CreatingNewSpendDelegateLike = {
     seed: TxOutputId | string  /*minVariantField*/ ,
     replacingUut: Option<number[]>  /*minVariantField*/ 
 }
@@ -50,27 +56,27 @@ export type MinterActivity$forcingNewSpendDelegateLike = {
 export type MinterActivityMeta = EnumTypeMeta<
     {module: "CapoMintHelpers", enumName: "MinterActivity"}, {
         mintingCharter: singleEnumVariantMeta<MinterActivityMeta, "mintingCharter",
-            "Constr#0", "singletonField", Address /*singleVariantField ; elided extra { owner: Address} structure*/
-  , "noSpecialFlags"
+            "Constr#0", "singletonField", /* implied wrapper { owner: ... } for singleVariantField */ 
+			Address   , "noSpecialFlags"
         >,
         mintWithDelegateAuthorizing: singleEnumVariantMeta<MinterActivityMeta, "mintWithDelegateAuthorizing",
             "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
         >,
         addingMintInvariant: singleEnumVariantMeta<MinterActivityMeta, "addingMintInvariant",
-            "Constr#2", "singletonField", TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
-  , "isSeededActivity"
+            "Constr#2", "singletonField", /* implied wrapper { seed: ... } for singleVariantField */ 
+			TxOutputId   , "isSeededActivity"
         >,
         addingSpendInvariant: singleEnumVariantMeta<MinterActivityMeta, "addingSpendInvariant",
-            "Constr#3", "singletonField", TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
-  , "isSeededActivity"
+            "Constr#3", "singletonField", /* implied wrapper { seed: ... } for singleVariantField */ 
+			TxOutputId   , "isSeededActivity"
         >,
         forcingNewMintDelegate: singleEnumVariantMeta<MinterActivityMeta, "forcingNewMintDelegate",
-            "Constr#4", "singletonField", TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
-  , "isSeededActivity"
+            "Constr#4", "singletonField", /* implied wrapper { seed: ... } for singleVariantField */ 
+			TxOutputId   , "isSeededActivity"
         >,
-        forcingNewSpendDelegate: singleEnumVariantMeta<MinterActivityMeta, "forcingNewSpendDelegate",
+        CreatingNewSpendDelegate: singleEnumVariantMeta<MinterActivityMeta, "CreatingNewSpendDelegate",
             "Constr#5", 
-            "fields", MinterActivity$forcingNewSpendDelegate, "isSeededActivity"
+            "fields", MinterActivity$CreatingNewSpendDelegate, "isSeededActivity"
         >
     }
 >;
@@ -86,21 +92,34 @@ export type MinterActivityMeta = EnumTypeMeta<
  *     for generating UPLC data for this enum type
  */
 export type MinterActivity = 
-        | { mintingCharter: /*minEnumVariant*/ Address /*singleVariantField ; elided extra { owner: Address} structure*/
-   }
-        | { mintWithDelegateAuthorizing: /*minEnumVariant*/ tagOnly }
-        | { addingMintInvariant: /*minEnumVariant*/ TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
-   }
-        | { addingSpendInvariant: /*minEnumVariant*/ TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
-   }
-        | { forcingNewMintDelegate: /*minEnumVariant*/ TxOutputId /*singleVariantField ; elided extra { seed: TxOutputId} structure*/
-   }
-        | { forcingNewSpendDelegate: /*minEnumVariant*/ MinterActivity$forcingNewSpendDelegate }
+        | { mintingCharter: /* implied wrapper { owner: ... } for singleVariantField */ 
+			Address    /*minEnumVariant*/ }
+        | { mintWithDelegateAuthorizing: tagOnly /*minEnumVariant*/ }
+        | { addingMintInvariant: /* implied wrapper { seed: ... } for singleVariantField */ 
+			TxOutputId    /*minEnumVariant*/ }
+        | { addingSpendInvariant: /* implied wrapper { seed: ... } for singleVariantField */ 
+			TxOutputId    /*minEnumVariant*/ }
+        | { forcingNewMintDelegate: /* implied wrapper { seed: ... } for singleVariantField */ 
+			TxOutputId    /*minEnumVariant*/ }
+        | { CreatingNewSpendDelegate: MinterActivity$CreatingNewSpendDelegate /*minEnumVariant*/ }
+
+export type ErgoMinterActivity = IntersectedEnum<
+        | { mintingCharter: /* implied wrapper { owner: ... } for singleVariantField */ 
+			Address    /*minEnumVariant*/ }
+        | { mintWithDelegateAuthorizing: tagOnly /*minEnumVariant*/ }
+        | { addingMintInvariant: /* implied wrapper { seed: ... } for singleVariantField */ 
+			TxOutputId    /*minEnumVariant*/ }
+        | { addingSpendInvariant: /* implied wrapper { seed: ... } for singleVariantField */ 
+			TxOutputId    /*minEnumVariant*/ }
+        | { forcingNewMintDelegate: /* implied wrapper { seed: ... } for singleVariantField */ 
+			TxOutputId    /*minEnumVariant*/ }
+        | { CreatingNewSpendDelegate: MinterActivity$Ergo$CreatingNewSpendDelegate /*minEnumVariant*/ }
+>
 
 /**
  * MinterActivity enum variants (permissive)
  * 
- * @remarks - expresses the allowable data structures
+ * @remarks - expresses the allowable data structure
  * for creating any of the **6 variant(s)** of the MinterActivity enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `MinterActivityHelper` class
@@ -110,15 +129,16 @@ export type MinterActivity =
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
  */
-export type MinterActivityLike = 
-        | { mintingCharter: /*minEnumVariant*/ Address | string /*singleVariantField ; elided extra { owner: Address | string} structure*/
-   }
-        | { mintWithDelegateAuthorizing: /*minEnumVariant*/ tagOnly }
-        | { addingMintInvariant: /*minEnumVariant*/ TxOutputId | string /*singleVariantField ; elided extra { seed: TxOutputId | string} structure*/
-   }
-        | { addingSpendInvariant: /*minEnumVariant*/ TxOutputId | string /*singleVariantField ; elided extra { seed: TxOutputId | string} structure*/
-   }
-        | { forcingNewMintDelegate: /*minEnumVariant*/ TxOutputId | string /*singleVariantField ; elided extra { seed: TxOutputId | string} structure*/
-   }
-        | { forcingNewSpendDelegate: /*minEnumVariant*/ MinterActivity$forcingNewSpendDelegateLike }
+export type MinterActivityLike = IntersectedEnum<
+        | { mintingCharter: /* implied wrapper { owner: ... } for singleVariantField */ 
+			Address | string    /*minEnumVariant*/ }
+        | { mintWithDelegateAuthorizing: tagOnly /*minEnumVariant*/ }
+        | { addingMintInvariant: /* implied wrapper { seed: ... } for singleVariantField */ 
+			TxOutputId | string    /*minEnumVariant*/ }
+        | { addingSpendInvariant: /* implied wrapper { seed: ... } for singleVariantField */ 
+			TxOutputId | string    /*minEnumVariant*/ }
+        | { forcingNewMintDelegate: /* implied wrapper { seed: ... } for singleVariantField */ 
+			TxOutputId | string    /*minEnumVariant*/ }
+        | { CreatingNewSpendDelegate: MinterActivity$CreatingNewSpendDelegateLike /*minEnumVariant*/ }
+>
 

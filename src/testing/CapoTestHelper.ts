@@ -1,7 +1,7 @@
 import { Capo } from "../Capo.js";
 import type {
     CapoConfig,
-    CharterDatumProps,
+    CharterDataLike,
     MinimalCharterDatumArgs,
     MinterBaseMethods,
     anyDatumArgs,
@@ -29,6 +29,9 @@ export const SNAP_BOOTSTRAP = "bootstrapped";
 export abstract class CapoTestHelper<
     SC extends Capo<any>
 > extends StellarTestHelper<SC> {
+    get capo() {
+        return this.strella
+    }
     async initialize({
         randomSeed = 42,
     }: { randomSeed?: number } = {},
@@ -95,7 +98,7 @@ export abstract class CapoTestHelper<
                 `  -- ⏱️ initialized Capo: ${ts2-ts1}ms`
             );                
             console.log("checking delegate scripts...");
-            return this.checkNamedDelegateScripts(args).then(() => {
+            return this.checkDelegateScripts(args).then(() => {
                 const ts3 = Date.now();
                 console.log(
                     `  -- ⏱️ checked delegate scripts: ${ts3-ts2}ms`
@@ -120,7 +123,7 @@ export abstract class CapoTestHelper<
         return strella;
     }
 
-    async checkNamedDelegateScripts(args: Partial<MinimalCharterDatumArgs>={}): Promise<void> {
+    async checkDelegateScripts(args: Partial<MinimalCharterDatumArgs>={}): Promise<void> {
         throw new Error(`doesn't fail, because it's implemented by DefaultCapoTestHelper`);
     }
 
@@ -395,7 +398,7 @@ export abstract class CapoTestHelper<
         submitOptions?: SubmitOptions
     ): Promise<
         hasUutContext<
-            "govAuthority" | "capoGov" | "mintDelegate" | "mintDgt" | "settings"
+            "govAuthority" | "capoGov" | "mintDelegate" | "mintDgt" 
         > &
             hasBootstrappedCapoConfig &
             hasAddlTxns<any>

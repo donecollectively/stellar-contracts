@@ -91,6 +91,7 @@ enum DelegateDatum {
     IsDelegation {
         dd: DelegationDetail
     }
+    TagOnlyDatum
     // same variant-index as Capo's DelegatedData
     capoStoredData {
         data: AnyData

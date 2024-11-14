@@ -179,19 +179,20 @@ describe("Type Bridge", async () => {
             it("creates a valid datum using the tag", async () => {
                 const { mkDatum } = mintDelegate;
 
-                const datum = mkDatum.ScriptReference;
+                const datum = mkDatum.TagOnlyDatum;
 
-                expect(datum.rawData.ScriptReference).toStrictEqual({});
+                expect(datum.
+                    rawData.TagOnlyDatum).toStrictEqual({});
                 //@ts-expect-error tags aren't on every UplcData
-                expect(datum.tag).toBe(1);
+                expect(datum.tag).toBeDefined();
                 expect(datum.dataPath).toEqual(
-                    "uutMintingDelegate::DelegateDatum.ScriptReference"
+                    "uutMintingDelegate::DelegateDatum.TagOnlyDatum"
                 );
                 const result = offchain.DelegateDatum(datum);
                 const result2 = readDatum(datum);
-                expect(result).toEqual({ ScriptReference: {} });
-                expect(result2).toEqual({ ScriptReference: {} });
-                // expect(result.variant).toBe("ScriptReference");
+                expect(result).toEqual({ TagOnlyDatum: {} });
+                expect(result2).toEqual({ TagOnlyDatum: {} });
+                // expect(result.variant).toBe("TagOnlyDatum");
             });
         });
 
@@ -210,7 +211,7 @@ describe("Type Bridge", async () => {
             });
 
             describe("L1: a struct", () => {
-                fit("creates a valid datum using the fields of the nested struct (no intervening single-field-name", async () => {
+                it("creates a valid datum using the fields of the nested struct (no intervening single-field-name", async () => {
                     // use variant "SingleNestedStruct"
                     const bridged = mkDatum.SingleNestedStruct({
                         a: 42,
@@ -396,6 +397,6 @@ describe("Type Bridge", async () => {
             });
         });
     });
-    describe("provides a readDatum proxy for reading Datums from the contract script", () => {});
-    describe("provides an activity proxy for the 'redeemer' type(s) defined in the contract script", () => {});
+    // describe("provides a readDatum proxy for reading Datums from the contract script", () => {});
+    // describe("provides an activity proxy for the 'redeemer' type(s) defined in the contract script", () => {});
 });

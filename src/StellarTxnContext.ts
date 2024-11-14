@@ -742,7 +742,6 @@ export class StellarTxnContext<S extends anyState = anyState> {
 
             try {
                 // the transaction can fail validation without throwing an error
-                debugger;
                 tx = await this.txb.buildUnsafe({
                     changeAddress,
                     spareUtxos: spares,

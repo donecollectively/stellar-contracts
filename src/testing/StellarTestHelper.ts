@@ -237,7 +237,7 @@ export abstract class StellarTestHelper<SC extends StellarContract<any>> {
         if (preProdParams.isFixedUp) return preProdParams;
         
         const txSize = preProdParams.maxTxSize;
-        const maxTxSize = Math.floor(txSize * 2);
+        const maxTxSize = Math.floor(txSize * 3);
         console.log("test env: 🔧🔧🔧 fixup max tx size", txSize, " -> 🔧", maxTxSize)
         preProdParams.maxTxSize = maxTxSize;
 

@@ -41,7 +41,7 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                  capo = await h.bootstrap({
                     mintDelegateLink: {
-                        strategyName: "canMintGenericUuts",
+                        config: {}
                     }
                 });
             })

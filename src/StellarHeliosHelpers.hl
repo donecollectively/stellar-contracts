@@ -30,12 +30,12 @@ func TODO(task: String) -> () {
 
 func REQT(reqt: String) -> () {
     // red exclamation mark
-    print("❗ "+ reqt + "\n")
+    print("❗ "+ reqt)
 }
 func bREQT(reqt: String, assertion : Bool=true) -> Bool {
     REQT(reqt);
     if (!assertion) {
-        print("  ❌❌ ^ failed: " + reqt + "\n")
+        print("  ❌❌ ^ failed: " + reqt)
     };
     true
 }

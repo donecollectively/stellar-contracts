@@ -305,11 +305,11 @@ struct RelativeDelegateLink {
         print(" ⬅️ 🔎 💁 expect dgTkn "+ cOrR + ": "+ uut);
         hasDelegate : Bool = validatorHash.switch{
             Some{vh} => {
-                print( " sent to validator: "+vh.show()+"\n");
+                print( "  ... sent to validator: "+vh.show()+"\n");
                 tx.value_locked_by(vh).contains(v)
             },
             None => {
-                print(" (to anywhere)\n");
+                print("   (to anywhere)\n");
 
                 tx.outputs.find_safe((o : TxOutput) -> Bool {
                     o.value.contains(v)

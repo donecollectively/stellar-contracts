@@ -20,7 +20,7 @@ import type { SeedAttrs } from "../delegation/UutName.js";
 export type HeliosBundleClass = new () => HeliosScriptBundle;
 
 
-export type TypeVariety = "canonical" | "permissive";
+export type TypeVariety = "canonical" | "permissive" | "ergonomic";
 export type VariantFlavor = "tagOnly" | "fields" | "singletonField";
 export type SpecialActivityFlags = "isSeededActivity" | "noSpecialFlags";
 
@@ -76,12 +76,13 @@ export type typeDetails<T=undefined> = {
     typeSchema: TypeSchema;
     dataType: DataType;
 
-    canonicalTypeName? : string; // type name
-    permissiveTypeName? : string; // type name
+    canonicalTypeName? : string; // type name (strict)
+    ergoCanonicalTypeName?: string; // canonical type for ergonomic use
+    permissiveTypeName? : string; // type name (permissive)
 
     canonicalType: string; // minimal canonical type (name if avaiable, or inline type as string)
+    ergoCanonicalType: string; // minimal canonical type (name if avaiable, or inline type as string)
     permissiveType?: string; // minimal permissive type (name if available, or inline type as string)
-
     moreInfo: T
 };
 
@@ -92,9 +93,11 @@ export type variantTypeDetails<T=undefined> = {
     typeSchema: VariantTypeSchema; // for consistency
     dataType: DataType;
     canonicalType: string; // minimal canonical type
+    ergoCanonicalType: string; // minimal canonical type
     permissiveType: string; // minimal permissive type
-
+    
     canonicalTypeName: string; // type name, always available
+    ergoCanonicalTypeName: string; // canonical type for ergonomic use
     permissiveTypeName: string; // typ name, always available
 
     canonicalMetaType: string; // minimal canonical meta-type (singleEnumVariant<...>) string
@@ -109,9 +112,11 @@ export type enumTypeDetails<T=undefined> = {
     dataType: DataType;
     
     canonicalTypeName: string; // type name for this enum
+    ergoCanonicalTypeName: string; // type name for this enum (strict/enumLike form)
     permissiveTypeName: string; // type name for this enum (loose/enumLike form)
 
     canonicalType: string; // minimal canonical type
+    ergoCanonicalType: string;
     permissiveType: string; // minimal permissive type
 
     variants: Record<string, variantTypeDetails<T>>;

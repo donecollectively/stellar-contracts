@@ -33,13 +33,19 @@ import type {
  } from "@helios-lang/codec-utils";
 
 
-import {HeliosScriptBundle, type tagOnly, type EnumTypeMeta, type singleEnumVariantMeta} from "../helios/HeliosScriptBundle.js"
-        
+import {HeliosScriptBundle, type tagOnly, type EnumTypeMeta, 
+    type singleEnumVariantMeta
+} from "../helios/HeliosScriptBundle.js"
+
+import type { IntersectedEnum } from "../helios/typeUtils.js"
+                
+
 
 export type struct3 = {
     thirdLevelF1: /*minStructField*/ bigint
 }
 
+export type Ergostruct3 = struct3/*like canon-other*/
 export type struct3Like = {
     thirdLevelF1: /*minStructField*/ IntLike
 }
@@ -48,6 +54,11 @@ export type struct3Like = {
 export type OtherStruct = {
     secondLevelF1: /*minStructField*/ bigint
     secondLevelF2: /*minStructField*/ struct3
+}
+
+export type ErgoOtherStruct = {
+    secondLevelF1: /*minStructField*/ bigint
+    secondLevelF2: /*minStructField*/ Ergostruct3
 }
 
 export type OtherStructLike = {
@@ -62,8 +73,8 @@ export type SomeKindaEnumMeta = EnumTypeMeta<
             "Constr#0", "tagOnly", tagOnly, "noSpecialFlags"
         >,
         case2: singleEnumVariantMeta<SomeKindaEnumMeta, "case2",
-            "Constr#1", "singletonField", bigint /*singleVariantField ; elided extra { f1: bigint} structure*/
-  , "noSpecialFlags"
+            "Constr#1", "singletonField", /* implied wrapper { f1: ... } for singleVariantField */ 
+			bigint   , "noSpecialFlags"
         >
     }
 >;
@@ -79,14 +90,16 @@ export type SomeKindaEnumMeta = EnumTypeMeta<
  *     for generating UPLC data for this enum type
  */
 export type SomeKindaEnum = 
-        | { case1: /*minEnumVariant*/ tagOnly }
-        | { case2: /*minEnumVariant*/ bigint /*singleVariantField ; elided extra { f1: bigint} structure*/
-   }
+        | { case1: tagOnly /*minEnumVariant*/ }
+        | { case2: /* implied wrapper { f1: ... } for singleVariantField */ 
+			bigint    /*minEnumVariant*/ }
+
+export type ErgoSomeKindaEnum = IntersectedEnum<SomeKindaEnum/*like canon enum*/>
 
 /**
  * SomeKindaEnum enum variants (permissive)
  * 
- * @remarks - expresses the allowable data structures
+ * @remarks - expresses the allowable data structure
  * for creating any of the **2 variant(s)** of the SomeKindaEnum enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `SomeKindaEnumHelper` class
@@ -96,16 +109,24 @@ export type SomeKindaEnum =
  * This is a permissive type that allows additional input data types, which are 
  * converted by convention to the canonical types used in the on-chain context.
  */
-export type SomeKindaEnumLike = 
-        | { case1: /*minEnumVariant*/ tagOnly }
-        | { case2: /*minEnumVariant*/ IntLike /*singleVariantField ; elided extra { f1: IntLike} structure*/
-   }
+export type SomeKindaEnumLike = IntersectedEnum<
+        | { case1: tagOnly /*minEnumVariant*/ }
+        | { case2: /* implied wrapper { f1: ... } for singleVariantField */ 
+			IntLike    /*minEnumVariant*/ }
+>
 
 export type DatumStruct = {
     field1: /*minStructField*/ bigint
     field2: /*minStructField*/ string
     field3: /*minStructField*/ Map<string, OtherStruct>
     field4: /*minStructField*/ SomeKindaEnum
+}
+
+export type ErgoDatumStruct = {
+    field1: /*minStructField*/ bigint
+    field2: /*minStructField*/ string
+    field3: /*minStructField*/ Map<string, ErgoOtherStruct>
+    field4: /*minStructField*/ ErgoSomeKindaEnum
 }
 
 export type DatumStructLike = {

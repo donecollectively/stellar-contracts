@@ -1,4 +1,3 @@
-
 import { StellarTxnContext, type SubmitOptions } from "../StellarTxnContext.js";
 import { ADA } from "./types.js";
 import type {
@@ -11,7 +10,7 @@ import type { ConfigFor, stellarSubclass } from "../StellarContract.js";
 import { Capo } from "../Capo.js";
 import type {
     CapoConfig,
-    CharterDatumProps,
+    CharterDataLike,
     MinimalCharterDatumArgs,
     hasBootstrappedCapoConfig,
     hasUutContext,
@@ -21,8 +20,12 @@ import type {
 import type { expect as expectType } from "vitest";
 // import type { CapoOffchainSettingsType } from "../CapoSettingsTypes.js";
 import { CapoWithoutSettings } from "../CapoWithoutSettings.js";
-import type { VariantStrategy } from "../delegation/RolesAndDelegates.js";
+import type {
+    DelegateConfigDetails,
+    DelegateSetup,
+} from "../delegation/RolesAndDelegates.js";
 import type { UutName } from "../delegation/UutName.js";
+import type { Address } from "@helios-lang/ledger-babbage";
 
 declare namespace NodeJS {
     interface Global {
@@ -56,7 +59,7 @@ declare const expect: typeof expectType;
 export class DefaultCapoTestHelper<
     //@xxxts-expect-error spurious fail  type; it tries to strongly match the generic abstract type
     //    from (abstract) Capo, instead of paying attention to the clearly-matching concrete version in DefaultCapo
-    CAPO extends Capo<any> = CapoWithoutSettings, //prettier-ignore
+    CAPO extends Capo<any> = CapoWithoutSettings //prettier-ignore
     //@xxxts-ignore because of a mismatch between the Capo's abstract mkTxnMintCharterToken's defined constraints
     //    ... vs the only concrete impl in DefaultCapo, with types that are actually nicely matchy.
     //    vscode is okay with it, but api-extractor is not :/
@@ -104,7 +107,7 @@ export class DefaultCapoTestHelper<
     }
 
     setDefaultActor() {
-        return this.setActor("tina")
+        return this.setActor("tina");
     }
 
     async mkCharterSpendTx(): Promise<StellarTxnContext> {
@@ -127,46 +130,72 @@ export class DefaultCapoTestHelper<
 
     // accesses the delegate roles, iterates the namedDelegate entries,
     // and uses txnCreateConfiguredDelegate() to trigger compilation of the script for each one
-    async checkNamedDelegateScripts(args: Partial<MinimalCharterDatumArgs> = {}) {
-        const { strella : capo } = this;
-        const {delegateRoles} = capo;
-        const { namedDelegate: {
-            variants: delegates,
-            uutPurpose: roleName
-        } } = delegateRoles;
+    async checkDelegateScripts(args: Partial<MinimalCharterDatumArgs> = {}) {
+        const { strella: capo } = this;
+        const { delegateRoles } = capo;
+        // const { namedDelegate: {
+        //     selected,
+        //     uutPurpose: roleName
+        // } } = delegateRoles;
         const goodArgs = {
-            ... this.mkDefaultCharterArgs(),
-            ... args
-        } as MinimalCharterDatumArgs
-        
-        let helperTxn = await capo.mkTxnMintCharterToken(goodArgs, undefined, "DRY_RUN");
+            ...this.mkDefaultCharterArgs(),
+            ...args,
+        } as MinimalCharterDatumArgs;
+
+        let helperTxn = await capo.mkTxnMintCharterToken(
+            goodArgs,
+            undefined,
+            "DRY_RUN"
+        );
         // emoji ladybug: "🐞"
         console.log("  🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞 ");
 
-        for (const [delegateName, delegate] of Object.entries(delegates) as [ string, VariantStrategy<any>][]) {
-            console.log(`  -- checking named-delegate script: ${delegateName}`);
+        for (const dgtLabel of Object.keys(delegateRoles)) {
+            const dgtSetup = delegateRoles[dgtLabel] as DelegateSetup<
+                any,
+                any,
+                any
+            >;
+
+            const { config, delegateClass, delegateType, uutPurpose } =
+                dgtSetup;
+
+            console.log(
+                `  -- checking delegate script: ${dgtLabel} (${delegateType}`
+            );
+            // }
+
+            // for (const [delegateName, delegate] of Object.entries(delegates) as [ string, DelegateConfigDetails<any>][]) {
+            //     console.log(`  -- checking named-delegate script: ${delegateName}`);
 
             helperTxn = await capo.txnWillMintUuts(
                 helperTxn,
-                [delegateName],
+                [uutPurpose],
                 { usingSeedUtxo: helperTxn.state.seedUtxo },
                 {
-                    namedDelegate: delegateName,
+                    // namedDelegate: uutPurpose,
+                    [dgtLabel]: uutPurpose,
                 }
             );
 
-            const newLink = await capo.txnCreateDelegateLink(
-                helperTxn as any, 
-                "namedDelegate", 
+            const addr = this.wallet.address;
+            const newLink = await capo.txnCreateOffchainDelegateLink(
+                helperTxn as any,
+                dgtLabel,
                 {
-                    strategyName: delegateName,
-                    uutName: (helperTxn.state.uuts[delegateName] as UutName).name,
-                    config: {}
+                    // strategyName: delegateName,
+                    uutName: (helperTxn.state.uuts[uutPurpose] as UutName).name,
+                    
+                    config: {
+                        // rev: 1n,
+                        addrHint: [addr as any as Address]
+                    },
                 }
             );
-
-            // await capo.txnCreateConfiguredDelegate(helperTxn, delegate, );
         }
+        //     // await capo.txnCreateConfiguredDelegate(helperTxn, delegate, );
+        // } else {
+        // }
     }
 
     mkDefaultCharterArgs(): MinimalCharterDatumArgs {
@@ -174,19 +203,22 @@ export class DefaultCapoTestHelper<
         console.log("test helper charter -> actor addr", addr.toBech32());
         return {
             govAuthorityLink: {
-                strategyName: "address",
                 config: {
+                    //this.capo.stringifyDgtConfig({
                     addrHint: [addr],
                 },
             },
             mintDelegateLink: {
-                strategyName: "defaultV1",
+                config: {},
             },
             spendDelegateLink: {
-                strategyName: "defaultV1",
+                config: {},
             },
             mintInvariants: [],
             spendInvariants: [],
+            otherNamedDelegates: new Map(),
+            manifest: new Map(),
+            rev: 1n,
         };
     }
 
@@ -207,9 +239,9 @@ export class DefaultCapoTestHelper<
         if (!this.strella) await this.initialize();
         const capo = await this.strella!;
         const goodArgs = {
-            ... this.mkDefaultCharterArgs(),
-            ... (args || {})
-        } as MinimalCharterDatumArgs
+            ...this.mkDefaultCharterArgs(),
+            ...(args || {}),
+        } as MinimalCharterDatumArgs;
         // debugger
 
         const tcx = await capo.mkTxnMintCharterToken(goodArgs);
@@ -222,7 +254,7 @@ export class DefaultCapoTestHelper<
 
         expect(capo.network).toBe(this.network);
 
-        await tcx.submit(submitOptions)
+        await tcx.submit(submitOptions);
         console.log(
             `----- charter token minted at slot ${this.network.currentSlot}`
         );
@@ -241,7 +273,7 @@ export class DefaultCapoTestHelper<
     }
 
     async updateCharter(
-        args: CharterDatumProps,
+        args: CharterDataLike,
         submitSettings: SubmitOptions = {}
     ): Promise<StellarTxnContext> {
         await this.mintCharterToken();
@@ -250,13 +282,15 @@ export class DefaultCapoTestHelper<
         const { signers } = this.state;
 
         const tcx = await treasury.mkTxnUpdateCharter(args);
-        return tcx.submit({ 
-            signers ,
-            ...submitSettings,
-        }).then(() => {
-            this.network.tick(1);
-            return tcx;
-        });
+        return tcx
+            .submit({
+                signers,
+                ...submitSettings,
+            })
+            .then(() => {
+                this.network.tick(1);
+                return tcx;
+            });
     }
 
     // async updateSettings(args: CapoOffchainSettingsType<CAPO>, submitSettings: SubmitOptions={}) {

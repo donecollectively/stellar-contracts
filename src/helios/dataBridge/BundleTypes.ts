@@ -167,24 +167,30 @@ export class BundleTypes implements TypeGenHooks<undefined> {
                 throw new Error(`Unsupported schema kind: ${schema.kind}`);
         }
 
+        const canonType = this.mkMinimalType("canonical", schema);
+        const ergoType = this.mkMinimalType("ergonomic", schema);
         const details: typeDetails<any> = {
             typeSchema: schema,
             typeName,
             dataType,
-            canonicalType: this.mkMinimalType(
-                "canonical",
-                schema,
-            ),
-            permissiveType: this.mkMinimalType(
-                "permissive",
-                schema,
-            ),
+            canonicalType: canonType,
+            ergoCanonicalType:
+                ergoType == canonType
+                    ? typeName
+                        ? `${typeName}/*like canon-other*/`
+                        : ergoType
+                    : ergoType,
+            permissiveType: this.mkMinimalType("permissive", schema),
             moreInfo: undefined,
         };
         // if (schema.kind !== "internal") debugger
         // if (schema.kind === "struct") debugger
+        if (schema.kind == "variant") {
+            throw new Error(`yikes`);
+        }
         if (typeName) {
             details.canonicalTypeName = typeName;
+            details.ergoCanonicalTypeName = `Ergo${typeName}`;
             details.permissiveTypeName = `${typeName}Like`;
             this.registerNamedType(details);
             const moreInfo =
@@ -225,34 +231,35 @@ export class BundleTypes implements TypeGenHooks<undefined> {
 
         if (useTypeNamesAt) {
             // this happens when the enum is a nested field of a struct or variant
-
             // console.log("enum", enumName, "is used as a nested field, and that's okay!");
             // it's fine to have this useTypeNames hint coming in, but we don't want
             // to use the type-name when registering the enum itself; see "XXX" comments below.
         }
 
+        const canonType = this.mkMinimalType("canonical", schema);
+        const ergoType = this.mkMinimalType("ergonomic", schema);
         const details: enumTypeDetails<any> = {
             enumName: schema.name,
             dataType: enumType,
             typeSchema: schema,
             variants,
             canonicalTypeName: `${enumName}`,
+            ergoCanonicalTypeName: `Ergo${enumName}`,
             permissiveTypeName: `${enumName}Like`,
             canonicalMetaType: this.mkMinimalEnumMetaType("canonical", schema),
             permissiveMetaType: this.mkMinimalEnumMetaType(
                 "permissive",
                 schema
             ),
-            canonicalType: this.mkMinimalType(
-                "canonical",
-                schema,
-                // XXX here, we always want to register the true type of the enum, not the type-name 
-                // XXX useTypeNamesAt
-            ),
+            canonicalType: canonType,
+            ergoCanonicalType:
+                ergoType == canonType
+                    ? `${enumName}/*like canon enum*/`
+                    : ergoType,
             permissiveType: this.mkMinimalType(
                 "permissive",
-                schema,
-                // XXX here, we always want to register the true type of the enum, not the type-name 
+                schema
+                // XXX here, we always want to register the true type of the enum, not the type-name
                 // XXX useTypeNamesAt
             ),
             moreInfo: undefined,
@@ -291,8 +298,24 @@ export class BundleTypes implements TypeGenHooks<undefined> {
         }
 
         const variantName = schema.name;
-        const canonicalTypeName = fieldCount > 0 ? `${enumId.enumName}$${variantName}` : "tagOnly";
-        const permissiveTypeName = fieldCount > 0 ? `${enumId.enumName}$${variantName}Like` : "tagOnly";
+        const canonicalTypeName =
+            fieldCount > 0 ? `${enumId.enumName}$${variantName}` : "tagOnly";
+        const permissiveTypeName =
+            fieldCount > 0
+                ? `${enumId.enumName}$${variantName}Like`
+                : "tagOnly";
+        const canonType = this.mkMinimalType(
+            "canonical",
+            schema,
+            undefined,
+            enumId.enumName
+        );
+        const ergoType = this.mkMinimalType(
+            "ergonomic",
+            schema,
+            undefined,
+            enumId.enumName
+        );
         const details: variantTypeDetails<any> = {
             fields,
             fieldCount: fieldCount,
@@ -300,13 +323,13 @@ export class BundleTypes implements TypeGenHooks<undefined> {
             typeSchema: schema,
             dataType: variantDataType,
             canonicalTypeName,
+            ergoCanonicalTypeName: `${enumId.enumName}$Ergo$${variantName}`,
             permissiveTypeName,
-            canonicalType: this.mkMinimalType(
-                "canonical",
-                schema,
-                undefined,
-                enumId.enumName
-            ),
+            canonicalType: canonType,
+            ergoCanonicalType:
+                ergoType == canonType
+                    ? `${enumId.enumName}$${variantName}/*ergo like-canonical-this-variant*/`
+                    : ergoType,
             permissiveType: this.mkMinimalType(
                 "permissive",
                 schema,
@@ -327,9 +350,9 @@ export class BundleTypes implements TypeGenHooks<undefined> {
         };
         if (this.collaborator) {
             const moreInfo = this.collaborator.getMoreVariantInfo?.(details);
-            details.moreInfo = moreInfo
+            details.moreInfo = moreInfo;
         }
-        if (fieldCount==1) {
+        if (fieldCount == 1) {
             // debugger
         }
 
@@ -345,12 +368,13 @@ export class BundleTypes implements TypeGenHooks<undefined> {
     }
 
     mkMinimalType(
-        typeVariety: "canonical" | "permissive",
+        typeVariety: TypeVariety,
         schema: TypeSchema,
         useTypeNamesAt?: "nestedField",
         parentName?: string
     ): string {
-        const varietyIndex = typeVariety === "canonical" ? 0 : 1;
+        // uses the canonical underlying type for "ergonomic" versions of internal types
+        const varietyIndex = typeVariety === "permissive" ? 1 : 0;
         //@ts-expect-error - not every schema-type has a name
         let name = schema.name as string | undefined;
         let nameLikeOrName = name;
@@ -369,18 +393,18 @@ export class BundleTypes implements TypeGenHooks<undefined> {
                 return `Array<${this.mkMinimalType(
                     typeVariety,
                     schema.itemType,
-                    useTypeNamesAt
+                    "nestedField"
                 )}>`;
             case "map":
                 // todo: support string keys with simpler Record<string, ...> type
                 return `Map<${this.mkMinimalType(
                     typeVariety,
                     schema.keyType,
-                    useTypeNamesAt
+                    "nestedField"
                 )}, ${this.mkMinimalType(
                     typeVariety,
                     schema.valueType,
-                    useTypeNamesAt
+                    "nestedField"
                 )}>`;
             case "option":
                 return `Option<${this.mkMinimalType(
@@ -391,6 +415,8 @@ export class BundleTypes implements TypeGenHooks<undefined> {
             case "struct":
                 if (typeVariety === "permissive") {
                     nameLikeOrName = $nameLike;
+                } else if (typeVariety === "ergonomic") {
+                    nameLikeOrName = `Ergo${name}`;
                 }
                 if (useTypeNamesAt) return nameLikeOrName as string;
 
@@ -408,7 +434,9 @@ export class BundleTypes implements TypeGenHooks<undefined> {
                     .join("\n")}\n}\n`;
             case "enum":
                 if (typeVariety === "permissive") {
-                    nameLikeOrName = $nameLike;
+                    nameLikeOrName = $nameLike; // `IntersectedEnum<${$nameLike}>`;
+                } else if (typeVariety === "ergonomic") {
+                    nameLikeOrName = `Ergo${name}`;
                 }
                 if (useTypeNamesAt) return nameLikeOrName as string;
 
@@ -419,14 +447,14 @@ export class BundleTypes implements TypeGenHooks<undefined> {
                     .map((variant) => {
                         return `\n        | { ${
                             variant.name
-                        }: /*minEnumVariant*/ ${this.mkMinimalType(
+                        }: ${this.mkMinimalType(
                             typeVariety,
                             variant,
                             "nestedField",
                             enumId.enumName
-                        )} }`;
+                        )} /*minEnumVariant*/ }`;
                     })
-                    .join("");
+                    .join("") + "\n";
 
             case "variant":
                 if (!parentName) {
@@ -440,21 +468,32 @@ export class BundleTypes implements TypeGenHooks<undefined> {
                 );
                 if (variantInfo === "tagOnly") return variantInfo;
                 if (Array.isArray(variantInfo)) {
+                    const fullVariantName = `${parentName}$${name}`;
                     if (typeVariety === "permissive") {
                         nameLikeOrName = `${parentName}$${$nameLike}`;
+                    } else if (typeVariety === "ergonomic") {
+                        // todo maybe; it will tend to shrink the type output size
+                        //  -- the issue is, the type info isn't necessarily available yet
+                        //  -- might need to use a two-pass process, gathering type info first
+
+                        // const thisType = this.namedTypes[fullVariantName];
+                        // if (!thisType) {
+                        //     debugger
+                        //     throw new Error(`No named type found for ${fullVariantName}`);
+                        // }
+                        // nameLikeOrName = thisType.canonicalType == thisType.ergoCanonicalType ?
+                        //     `${parentName}$${name} /*same as $Ergo$ variant*/` :
+                        nameLikeOrName = `${parentName}$Ergo$${name}`;
                     } else {
-                        nameLikeOrName = `${parentName}$${name}`;
+                        nameLikeOrName = fullVariantName;
                     }
                     if (useTypeNamesAt) return nameLikeOrName;
 
-                    return `{${
-                        variantInfo.join(`,`)}\n`+
-                    `}\n`;
-
+                    return `{${variantInfo.join(`,`)}\n` + `}\n`;
                 } else {
                     // variant only has one field
-                    
-                    return `${variantInfo} /*singleVariantField ; elided extra { ${schema.fieldTypes[0].name}: ${variantInfo}} structure*/\n  `;
+
+                    return `/* implied wrapper { ${schema.fieldTypes[0].name}: ... } for singleVariantField */ \n\t\t\t${variantInfo}   `;
                 }
             default:
                 //@ts-expect-error - when all cases are covered, schema is ‹never›
@@ -462,10 +501,7 @@ export class BundleTypes implements TypeGenHooks<undefined> {
         }
     }
 
-    mkMinimalEnumMetaType(
-        typeVariety: "canonical" | "permissive",
-        schema: EnumTypeSchema
-    ) {
+    mkMinimalEnumMetaType(typeVariety: TypeVariety, schema: EnumTypeSchema) {
         const name = schema.name;
 
         const module = this.extractModuleName(schema);
@@ -487,7 +523,7 @@ export class BundleTypes implements TypeGenHooks<undefined> {
     }
 
     mkMinimalVariantMetaType(
-        typeVariety: "canonical" | "permissive",
+        typeVariety: TypeVariety,
         schema: VariantTypeSchema,
         enumId: EnumId
         // useTypeNamesAt?: "nestedField"
@@ -580,20 +616,16 @@ export class BundleTypes implements TypeGenHooks<undefined> {
             case "tagOnly":
                 return "tagOnly";
             case "singletonField":
-                return (
-                    this.mkMinimalType(
-                        typeVariety,
-                        schema.fieldTypes[0].type,
-                        "nestedField"
-                    )
+                return this.mkMinimalType(
+                    typeVariety,
+                    schema.fieldTypes[0].type,
+                    "nestedField"
                 );
             case "fields":
                 //pretter-ignore
                 return schema.fieldTypes.map(
                     (field) =>
-                        `${$nlindent}${
-                            field.name
-                        }: ${this.mkMinimalType(
+                        `${$nlindent}${field.name}: ${this.mkMinimalType(
                             typeVariety,
                             field.type,
                             "nestedField"

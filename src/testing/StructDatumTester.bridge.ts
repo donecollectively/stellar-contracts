@@ -52,10 +52,10 @@ import type {hasSeed, isActivity} from "../StellarContract.js"
 
 
 import type {
-    struct3, struct3Like,
-    OtherStruct, OtherStructLike,
-    SomeKindaEnum, SomeKindaEnumLike,
-    DatumStruct, DatumStructLike
+    struct3, Ergostruct3, struct3Like,
+    OtherStruct, ErgoOtherStruct, OtherStructLike,
+    SomeKindaEnum, ErgoSomeKindaEnum, SomeKindaEnumLike,
+    DatumStruct, ErgoDatumStruct, DatumStructLike
 } from "./StructDatumTester.typeInfo.js";
 
 export type * as types from "./StructDatumTester.typeInfo.js";
@@ -108,25 +108,19 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
 }
 , DatumStructHelper> = this.datum;
 
-    readDatum : (d: UplcData) => IntersectedEnum<DatumStruct> = (d) =>  {
-        //XXX@ts-expect-error drilling through the protected accessor.
-        //   ... see more comments about that above
-        //return this.datum.__cast.fromUplcData(d);
+    readDatum : (d: UplcData) => ErgoDatumStruct = (d) =>  {
         return this.reader.DatumStruct(d)
     }
 
-
-    __activityCast = new StellarCast<
-        bigint, IntLike
-    >({"kind":"internal","name":"Int"}, { isMainnet: true }); // activityAccessorCast
-            
     /**
-     * generates UplcData for the activity type (***undefined***) for the `StructDatumTester` script
-     * @remarks - same as {@link activity}
+     * Helper class for generating TxOutputDatum for the ***activity type ***
+     * ("redeemer" type) for this `StructDatumTester` contract script. 
+     * 
+     * This accessor object is callable with the indicated argument-type
+     * @example - contract.mkDatum(arg: /* ... see the indicated callWith args \*\/)\n
      */
-    undefined(activity: IntLike) {
-        return this.__activityCast.toUplcData(activity);
-    }
+    activity: callWith<IntLike, OtherActivityTypeHelper>
+     = new OtherActivityTypeHelper(this.bundle, {}) as any  // activityAccessor/other
 
     reader = new StructDatumTesterDataBridgeReader(this);
 
@@ -186,6 +180,15 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
 }
 export default StructDatumTesterDataBridge;
 
+class OtherActivityTypeHelper extends DataBridge {
+    isCallable = true
+        protected __cast = new StellarCast<
+        bigint, IntLike
+    >({"kind":"internal","name":"Int"}, { isMainnet: true }); // datumAccessorCast
+
+    
+    } // mkOtherDatumHelperClass
+    
 class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
     constructor(public bridge: StructDatumTesterDataBridge) {
         super();
@@ -209,7 +212,7 @@ class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<SomeKindaEnum>;        
+        return cast.fromUplcData(d) as ErgoSomeKindaEnum;        
     } /* enumReader helper */
 
     /**
@@ -219,7 +222,7 @@ class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
-        * Used correctly with data that matches the struct type, this reader
+        * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
         * 
         * On the other hand, reading non-matching data will not give you a valid result.  
@@ -229,7 +232,7 @@ class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
     struct3(d: UplcData) {
         //@ts-expect-error drilling through the protected accessor.
         const cast = this.bridge.__struct3Cast;
-        return cast.fromUplcData(d);        
+        return cast.fromUplcData(d) //??? as Ergostruct3;
     } /* structReader helper */
 
     /**
@@ -239,7 +242,7 @@ class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
-        * Used correctly with data that matches the struct type, this reader
+        * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
         * 
         * On the other hand, reading non-matching data will not give you a valid result.  
@@ -249,7 +252,7 @@ class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
     OtherStruct(d: UplcData) {
         //@ts-expect-error drilling through the protected accessor.
         const cast = this.bridge.__OtherStructCast;
-        return cast.fromUplcData(d);        
+        return cast.fromUplcData(d) //??? as ErgoOtherStruct;
     } /* structReader helper */
 
     /**
@@ -259,7 +262,7 @@ class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
-        * Used correctly with data that matches the struct type, this reader
+        * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
         * 
         * On the other hand, reading non-matching data will not give you a valid result.  
@@ -269,13 +272,13 @@ class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
     DatumStruct(d: UplcData) {
         //@ts-expect-error drilling through the protected accessor.
         const cast = this.bridge.__DatumStructCast;
-        return cast.fromUplcData(d);        
+        return cast.fromUplcData(d) //??? as ErgoDatumStruct;
     } /* structReader helper */
 
 }
 
 /**
- * Helper class for generating UplcData for the ***struct3*** struct type.
+ * Helper class for generating UplcData for the struct ***struct3*** type.
  */
 export class struct3Helper extends DataBridge {
     isCallable = true
@@ -297,7 +300,7 @@ export class struct3Helper extends DataBridge {
 
 
 /**
- * Helper class for generating UplcData for the ***OtherStruct*** struct type.
+ * Helper class for generating UplcData for the struct ***OtherStruct*** type.
  */
 export class OtherStructHelper extends DataBridge {
     isCallable = true
@@ -353,7 +356,7 @@ export class SomeKindaEnumHelper extends EnumBridge<JustAnEnum> {
 
 
 /**
- * Helper class for generating UplcData for the ***DatumStruct*** struct type.
+ * Helper class for generating UplcData for the struct ***DatumStruct*** type.
  */
 export class DatumStructHelper extends DataBridge {
     isCallable = true

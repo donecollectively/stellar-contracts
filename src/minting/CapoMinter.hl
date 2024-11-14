@@ -24,21 +24,27 @@ import {
 } from CapoHelpers
 
 import {
-    DgTknDisposition as DgTkn
+    DgTknDisposition as DgTkn,
+    RelativeDelegateLink
 } from CapoDelegateHelpers
 
 import {
     mustFindInputRedeemer,
+    REQT,
+    TODO,
     mkTv,
     outputAndDatum,
     tvCharter
 } from StellarHeliosHelpers
 
+// seed parameters provide uniqueness for the script validator hash:
 const seedTxn : TxId = TxId::new(#1234)
 const seedIndex : Int = 42
 const rev : Int = 1
 
 func hasContractSeedUtxo(tx: Tx) -> Bool {
+    REQT("verifies that the provided seed utxo is being spent, providing uniqueness assurances for the minting-script's seed parameters");
+
     hasSeedUtxo(tx, TxOutputId::new(seedTxn, seedIndex))
 }
 
@@ -46,8 +52,7 @@ func main(r : MinterActivity) -> Bool {
     mph: MintingPolicyHash = get_current_minting_policy_hash();
     value_minted: Value = tx.minted;
     assert(true || (/* never evaluated */ rev.serialize() == rev.serialize()), "no");
-    print(" 🚥❓ Capo minter: ");
-    print( get_current_minting_policy_hash().show());
+    print(" 🚥❓ Capo minter: policy id" + get_current_minting_policy_hash().show());
     print("\n");
 
     ok : Bool = r.switch {
@@ -69,15 +74,18 @@ func main(r : MinterActivity) -> Bool {
             // settingsDgtTnBase: String = "settingsDgt"
             // if (charter.withSettings) purposes = purposes + []String{ settingsDgtTnBase, "settings" }
 
+            print("  -- creating Capo charter");
+            REQT("must mint the charter token");
             assert(value_minted >= charterVal,
                 "charter token not minted");
-            print("  -- creating charter");
 
-            hasSeed: Bool = hasContractSeedUtxo(tx);
+
+                hasSeed: Bool = hasContractSeedUtxo(tx);
             minterSeed: TxOutputId = TxOutputId::new(seedTxn, seedIndex);
             mkUutName: (String) -> String = mkUutTnFactory(
                 minterSeed  
             );
+            REQT("must mint uuts for mintDgt, spendDgt, and govAuth using the same seed");
             mintsUuts: Bool = validateUutMinting(
                 mph: mph,
                 seed: minterSeed,
@@ -85,6 +93,7 @@ func main(r : MinterActivity) -> Bool {
                 mkTokenName: mkUutName,
                 bootstrapCharter: charterVal
             );
+            REQT("must deposit the charter token to the new Capo address");
             charterOutput: TxOutput = tx.outputs.find( (output: TxOutput) -> Bool {
                 output.address == charter.owner &&
                     output.value.contains(charterVal)
@@ -93,8 +102,8 @@ func main(r : MinterActivity) -> Bool {
 
             // print("defaultMinter @C");
             charterData : Data = charterOutput.datum.inline;
-            charterDatum = CapoDatum::CharterToken::from_data(charterData);
-            CharterToken{
+            charterDatum = CapoDatum::CharterData::from_data(charterData);
+            CharterData{
                 spendDgt, 
                 spendInvariants,
                 namedDelegates,
@@ -112,12 +121,14 @@ func main(r : MinterActivity) -> Bool {
             // but much less than the special status they had when Settings
             // were a separate datum type.
 
+            REQT("the new charter must not have any mint invariants, spend invariants, manifest entry or pending-delegate-actions");
             // once we have burned down the test backlog a bit, we can add these in:
             assert(mintInvariants.length == 0, "no mint invariants allowed at charter creation");
             assert(spendInvariants.length == 0, "no spend invariants allowed at charter creation");
             assert(manifest.length == 0, "no UUTs allowed at charter creation");
             assert(pendingDelegates.length == 0, "no pending delegates allowed at charter creation");
 
+            REQT("the new charter must have mintDgt, spendDgt, and authDgt tokens, each deposited to their separate script addresses");
             print("  -- checking for required delegates\n");
             hasGoodDelegates : Bool = true &&
                 authDgt.hasValidOutput(mph, true, DgTkn::Created) &&
@@ -194,6 +205,7 @@ func main(r : MinterActivity) -> Bool {
                 forcingNewMintDelegate{seed} => {
                     print("checking for forcingNewMintDelegate\n");
                     badCharterActivity = "when forcingNewMintDelegate, capo charter must be spent with its capoLifecycleActivity.forcingNewMintDelegate activity";
+                    REQT("Ensures the Capo charter is also forcingNewMintDelegate");
                     cctx.getCharterRedeemer().switch {
                         capoLifecycleActivity{activity} => activity.switch {
                             forcingNewMintDelegate{seedToCapo, purpose} => {
@@ -202,16 +214,18 @@ func main(r : MinterActivity) -> Bool {
                                     "  ... which defers to the Capo's current minting delegate and allows \n"+
                                     "  ... queuePendingDgtChange(role: MintDgt) to queue the new mint delegate for installation"
                                 );
+                                REQT("Ensures the new mintDgt-* uut is minted with a seed");
                                 assert(seed == seedToCapo, "seed mismatch:"+
                                     "\n  - Capo activity seed: "+seedToCapo.show()+
                                     "\n  - Minter seed: "+seed.show()
                                 );
                                 assert("mintDgt" == purpose, "wrong Capo purpose '"+purpose+"'; should be 'mintDgt'");
-
                                 validateUutMinting(
                                     mph: mph,
                                     seed: seed,
-                                    purposes: []String{purpose}
+                                    purposes: []String{purpose},
+                                    // forcing the new dgt; don't involve the current mintDgt
+                                    needsMintDelegateApproval: false 
                                 )
                             }, 
                             _ => error(badCharterActivity)
@@ -231,8 +245,13 @@ func main(r : MinterActivity) -> Bool {
                     }
                 },
 
-                forcingNewSpendDelegate{seed, replaceExisting} => {
-                    print("checking for forcingNewSpendDelegate\n");
+                CreatingNewSpendDelegate{seed, replaceExisting} => {
+                    print("checking for CreatingNewSpendDelegate\n");
+
+                    needsCapoForcedInstall = replaceExisting.switch {
+                        Some => false,
+                        None => true
+                    };
 
                     otherMintedValue : Value = replaceExisting.switch {
                         Some{oldTokenName} => {
@@ -244,31 +263,24 @@ func main(r : MinterActivity) -> Bool {
                         },
                         None => Value::ZERO
                     };
+                    mkTokenName = mkUutTnFactory(seed);
+                    spendDgtTn = mkTokenName("spendDgt");
 
-                    badCharterActivity = "when forcingNewSpendDelegate, capo charter must be spent with its capoLifecycleActivity.forcingNewSpendDelegate activity";
-
-                    cctx.getCharterRedeemer().switch {
-                        capoLifecycleActivity{activity} => activity.switch {
-                            forcingNewSpendDelegate{seedToCapo, purpose} => {
-                                print("WARNING: capo lifecycle activity is forcing a spend-delegate with its Escape-hatch activity");
-                                print("NOTE: the normal lifecycle is to use minter:mintWithDelegateAuthorizing, \n"+
-                                    "  ... which defers to the Capo's current minting delegate and allows \n"+
-                                    "  ... queuePendingDgtChange(role: SpendDgt) to queue the new spend delegate for installation"
-                                );
-
-                                assert(seed == seedToCapo, "seed mismatch: "
-                                    + "\n  - Capo activity seed: " + seedToCapo.show()
-                                    + "\n  - Minter seed: " + seed.show()
-                                );
-                                assert("spendDgt" == purpose, "wrong Capo purpose '"+purpose+"'; should be 'spendDgt'");
-
-                                validateUutMinting(
-                                    mph: mph,
-                                    seed: seed,
-                                    purposes: []String{ purpose },
-                                    otherMintedValue: otherMintedValue
-                                )
+                    hasCapoApproval = if (!needsCapoForcedInstall) {
+                        cctx.getCharterRedeemer().switch {
+                            updatingCharter => {
+                                TODO("the minter should see that the new spend delegate is QUEUED for installation by the Capo");
+                                TODO("this essential logic vvvv will move to the installation moment");
+                                REQT("the updated charter must reference the new spend delegate");
+                                RelativeDelegateLink{uutName, _dvh, _config} = cctx.getNextCharterData().spendDelegateLink;
+                                print("expected uutName: "+uutName);
+                                print("spendDgtTn in charter: "+spendDgtTn);
+                                assert(uutName == spendDgtTn, "new spend delegate not referenced in updated charter");
+                                
+                                REQT("EXPECTS the Capo to validate that only the one thing is updated, and that the new UUT is deposited where it's expected");
+                                true
                             },
+                            // capoLifecycleActivity{activity} => activity.switch {                                
                             // queuePendingDgtChange{capoActivitySeed, purpose, role, name} => {
                             //     assert(!replaceExisting, "queuePendingDgtChange can't use replaceExisting option");
 
@@ -281,12 +293,46 @@ func main(r : MinterActivity) -> Bool {
                             //         _ => error("wrong role in capo lifecycle activity")
                             //     }
                             // },
+                            _ => error("capo charter must be spent with its updatingCharter activity")
+                        }
+                    } else {
+                        REQT("When the old dgTkn isn't replaced, it ensures the Capo charter is also forcingNewSpendDelegate");
+                        badCharterActivity = "when forcingNewSpendDelegate, capo charter must be spent with its capoLifecycleActivity.forcingNewSpendDelegate activity";
+                        cctx.getCharterRedeemer().switch {
+                            capoLifecycleActivity{activity} => activity.switch {
+                                forcingNewSpendDelegate{seedToCapo, purpose} => {
+                                    print("WARNING: capo lifecycle activity is forcing a spend-delegate with its Escape-hatch activity");
+                                    print("NOTE: the normal lifecycle is to use minter:mintWithDelegateAuthorizing, \n"+
+                                        "  ... which defers to the Capo's current minting delegate and allows \n"+
+                                        "  ... queuePendingDgtChange(role: SpendDgt) to queue the new spend delegate for installation"
+                                    );
+
+                                    REQT("Ensures the Capo activity's seed matches the minter's seed");
+                                    assert(seed == seedToCapo, "seed mismatch: "
+                                        + "\n  - Capo activity seed: " + seedToCapo.show()
+                                        + "\n  - Minter seed: " + seed.show()
+                                    );
+                                    assert("spendDgt" == purpose, "wrong Capo purpose '"+purpose+"'; should be 'spendDgt'");
+                                    true
+                                },
+                                _ => error(badCharterActivity)
+                            },
                             _ => error(badCharterActivity)
-                        },
-                        _ => error(
-                            badCharterActivity
-                        )
-                    }
+                        }
+                    };
+
+                    REQT("Ensures the new spendDgt-* uut is uniquely minted using the seed");
+                    didMintUuts = validateUutMinting(
+                        mph: mph,
+                        seed: seed,
+                        purposes: []String{ "spendDgt" },
+                        mkTokenName: mkTokenName,
+                        otherMintedValue: otherMintedValue,
+                        // forcing the new dgt; don't involve the current mintDgt
+                        needsMintDelegateApproval: false 
+                    );
+
+                    didMintUuts && hasCapoApproval
                 }        
             }
             // _ => true // don't catch other variants, for complete coverage above.

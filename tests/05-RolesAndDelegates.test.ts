@@ -16,21 +16,18 @@ import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper";
 
 import {
     DelegateConfigNeeded,
-    RoleMap,
-    RoleInfo,
-    VariantStrategy,
     delegateRoles,
-    strategyValidation,
     defineRole,
 } from "../src/delegation/RolesAndDelegates";
 import { StellarTxnContext } from "../src/StellarTxnContext";
 import { configBaseWithRev } from "../src/StellarContract";
 import { txAsString } from "../src/diagnostics";
-import { Address } from "@hyperionbt/helios";
+import { Address, ValidatorHash } from "@hyperionbt/helios";
 import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/MintDelegateWithGenericUuts.js";
 import { Capo } from "../src/Capo";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { expectTxnError } from "../src/testing/StellarTestHelper";
+import { isValidUtf8 } from "@helios-lang/codec-utils";
 
 class DelegationTestCapo extends CapoWithoutSettings {
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {
@@ -41,25 +38,19 @@ class DelegationTestCapo extends CapoWithoutSettings {
         const inherited = super.initDelegateRoles();
         const { mintDelegate: parentMintDelegate, ...othersInherited } =
             inherited;
-        const {
-            baseClass,
-            uutPurpose,
-            variants: pVariants,
-        } = parentMintDelegate;
-        const mintDelegate = defineRole("mintDgt", BasicMintDelegate, {
-            ... parentMintDelegate.variants,
-            // defaultV1: parentMintDelegate.variants.defaultV1,
-            // {
-            //     delegateClass: BasicMintDelegate,
-            //     validateConfig(args) {},
-            // },
-            canMintGenericUuts: {
-                delegateClass: MintDelegateWithGenericUuts,
-                validateConfig(args) {
-                }
-            },
-            failsWhenBad: {
-                delegateClass: MintDelegateWithGenericUuts,
+        const { uutPurpose, config, delegateClass, delegateType } =
+            parentMintDelegate;
+        const mintDelegate = defineRole(
+            "mintDgt",
+            MintDelegateWithGenericUuts,
+            {
+                validateConfig(args) {},
+            }
+        );
+        const failsWhenBad = defineRole(
+            "mintDgt",
+            MintDelegateWithGenericUuts,
+            {
                 validateConfig(args) {
                     //@ts-expect-error
                     if (args.bad) {
@@ -69,13 +60,14 @@ class DelegationTestCapo extends CapoWithoutSettings {
                         return { bad: ["must not be provided"] };
                     }
                 },
-            },
-        });
+            }
+        );
 
         return delegateRoles({
             ...inherited,
-            noDefault: defineRole("noDef", CapoMinter, {}),
+            // noDefault: defineRole("noDef", CapoMinter, {}),
             mintDelegate,
+            failsWhenBad,
         });
     }
 }
@@ -100,7 +92,7 @@ describe("Capo", async () => {
     });
 
     describe("Roles and delegates", () => {
-        describe("supports well-typed role declarations and strategy-adding", async () => {
+        describe("supports well-typed role declarations", async () => {
             it("has defined roles", async (context: localTC) => {
                 const {
                     h,
@@ -114,21 +106,19 @@ describe("Capo", async () => {
 
                 const t = await h.initialize();
                 expect(t.delegateRoles).toBeTruthy();
-                expect(t.delegateRoles.mintDelegate.variants).toBeTruthy();
-                expect(
-                    t.delegateRoles.mintDelegate.variants.failsWhenBad
-                ).toBeTruthy();
+                expect(t.delegateRoles.mintDelegate).toBeTruthy();
+                expect(t.delegateRoles.failsWhenBad).toBeTruthy();
             });
         });
 
-        describe("supports just-in-time strategy-selection using txnCreateDelegateLink()", () => {
+        describe("supports just-in-time configuration using txnCreateDelegateLink()", () => {
             it("txnCreateDelegateLink(tcx, role, delegationSettings) configures a new delegate", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap({
                     mintDelegateLink: {
-                        strategyName: "canMintGenericUuts",
-                    }
+                        config: {},
+                    },
                 });
 
                 const mintDelegate = await t.getMintDelegate();
@@ -147,17 +137,15 @@ describe("Capo", async () => {
                     },
                     { mintDelegate: "mintDgt" }
                 );
-                const mintDelegateLink = t.txnCreateDelegateLink(
+                const mintDelegateLink = t.txnCreateOffchainDelegateLink(
                     tcx1b,
                     "mintDelegate",
                     {
-                        strategyName: "defaultV1",
                         uutName: tcx1b.state.uuts.mintDgt.name,
-                        config: {}
+                        config: {},
                     }
                 );
 
-                expect((await mintDelegateLink).strategyName).toBeTruthy();
                 expect((await mintDelegateLink).uutName).toBeTruthy();
                 expect((await mintDelegateLink).config).toBeTruthy();
             });
@@ -169,8 +157,8 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap({
                     mintDelegateLink: {
-                        strategyName: "canMintGenericUuts",
-                    }
+                        config: {},
+                    },
                 });
 
                 const mintDelegate = await t.getMintDelegate();
@@ -189,26 +177,28 @@ describe("Capo", async () => {
                                 purpose
                             ),
                     },
-                    { noDefault: "x" }
+                    { 
+                        noDefault: "x",
+                        badName: "x"
+                    }
                 );
 
                 // todo: Ideally, this strategy name would be a type error.
-                const problem = t.txnCreateDelegateLink(tcx1b, "noDefault", {
-                    strategyName: "defaultV1",
+                const problem = t.txnCreateOffchainDelegateLink(tcx1b, "badName", {
                     uutName: tcx1b.state.uuts.noDefault.name,
                     config: {},
                 });
                 expect(problem).rejects.toThrow(DelegateConfigNeeded);
-                expect(problem).rejects.toThrow(/invalid strategyName/);
+                expect(problem).rejects.toThrow(/invalid dgt role requested/);
             });
 
-            it("If the strategy-configuration doesn't match available variants, the DelegateConfigNeeded error offers suggested strategy-names", async (context: localTC) => {
+            it("If the selected delegate role doesn't match a role in the delegate-map, the DelegateConfigNeeded error offers suggested role-names", async (context: localTC) => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap({
                     mintDelegateLink: {
-                        strategyName: "canMintGenericUuts",
-                    }
+                        config: {},
+                    },
                 });
 
                 const mintDelegate = await t.getMintDelegate();
@@ -226,34 +216,34 @@ describe("Capo", async () => {
                                 purpose
                             ),
                     },
-                    { mintDelegate: "mintDgt" }
+                    {
+                        failsWhenBad: "mintDgt",
+                        "invalid-role": "mintDgt",
+                    }
                 );
+                debugger;
 
-                expect(
-                    t.txnCreateDelegateLink(tcx1b, "mintDelegate", {
-                        strategyName: "badStratName",
-                        uutName: tcx1b.state.uuts.mintDgt.name,
+                const problem = t
+                    .txnCreateOffchainDelegateLink(tcx1b, "invalid-role", {
                         config: {},
                     })
-                ).rejects.toThrow(/invalid strategyName .*badStratName/);
-
-                const problem = t.txnCreateDelegateLink(tcx1b, "mintDelegate", {
-                    strategyName: "badStratName",
-                    //@ts-expect-error
-                    config: { bad: true },
-                });
+                    .then(() => {
+                        return "should not have resolved";
+                    });
                 expect(problem).rejects.toThrow(DelegateConfigNeeded);
+                expect(problem).rejects.toThrow(/invalid dgt role requested/);
 
                 try {
                     await problem;
                 } catch (e) {
+                    debugger;
                     expect(
-                        Array.isArray(e.availableStrategies),
-                        "error.availableStrategies should be an array"
+                        Array.isArray(e.availableDgtNames),
+                        "error.availableDgtNames should be an array"
                     ).toBeTruthy();
                     debugger;
-                    expect(e.availableStrategies).toContain("defaultV1");
-                    expect(e.availableStrategies).toContain("failsWhenBad");
+                    expect(e.availableDgtNames).toContain("mintDelegate");
+                    expect(e.availableDgtNames).toContain("failsWhenBad");
                 }
             });
 
@@ -262,8 +252,8 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap({
                     mintDelegateLink: {
-                        strategyName: "canMintGenericUuts",
-                    }
+                        config: {},
+                    },
                 });
 
                 const mintDelegate = await t.getMintDelegate();
@@ -281,34 +271,46 @@ describe("Capo", async () => {
                                 purpose
                             ),
                     },
-                    { mintDelegate: "mintDgt" }
+                    { 
+                        mintDelegate: "mintDgt",
+                        failsWhenBad: "mintDgt",
+                    }
                 );
-                let config: configBaseWithRev & Record<string,any> = { rev: 1n };
+                let config: configBaseWithRev & Record<string, any> = {
+                    rev: 1n,
+                };
+                let dgtRole = "mintDelegate";
                 const getDelegate = () => {
-                    return t.txnCreateDelegateLink(tcx1b, "mintDelegate", {
-                        strategyName: "failsWhenBad",
+                    return t.txnCreateOffchainDelegateLink(tcx1b, dgtRole, {
                         uutName: tcx1b.state.uuts.mintDgt.name,
                         config,
-                    });
+                    }).then(() => {
+                        return "getDelegate did resolve"
+                    })
                 };
                 await expect(getDelegate()).resolves.toBeTruthy();
                 console.log("---------------------------------");
-                config = { rev: 1n, badSomeUnplannedWay: true };
-                debugger
-                const p1 = getDelegate();
-                await expect(p1).rejects.toThrow(/invalid param/);
-                // await expect(p1).rejects.toThrow(DelegateConfigNeeded);
 
+                dgtRole = "failsWhenBad";
                 config = { rev: 1n, bad: true };
                 const p2 = getDelegate();
+
                 await expect(p2).rejects.toThrow(/validation errors/);
                 await expect(p2).rejects.toThrow(DelegateConfigNeeded);
+                console.log("---------------------------------");
 
                 try {
                     await getDelegate();
                 } catch (e) {
                     expect(e.errors.bad[0]).toMatch(/must not/);
                 }
+                console.log("---------------------------------");
+
+                // the params-setting function now only warns on unknown parameter-names:
+                // dgtRole = "failsWhenBad";
+                // config = { rev: 1n, badSomeUnplannedWay: true };
+                // const p1 = getDelegate();
+                // await expect(p1).rejects.toThrow(/invalid param/);
             });
 
             it("txnCreateDelegateSettings(tcx, role, delegationSettings) returns the delegate link plus a concrete delegate instance", async (context: localTC) => {
@@ -316,8 +318,8 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap({
                     mintDelegateLink: {
-                        strategyName: "canMintGenericUuts",
-                    }
+                        config: {},
+                    },
                 });
 
                 const mintDelegate = await t.getMintDelegate();
@@ -341,13 +343,16 @@ describe("Capo", async () => {
 
                 const { delegate, delegateValidatorHash } =
                     await t.txnCreateConfiguredDelegate(tcx1b, "mintDelegate", {
-                        strategyName: "defaultV1",
+                        config: {},
                     });
                 expect(delegate).toBeTruthy();
                 expect(delegateValidatorHash).toBeTruthy();
                 expect(
                     delegate.address.isEqual(
-                        Address.fromHash(false, delegateValidatorHash!)
+                        Address.fromHash(
+                            false,
+                            ValidatorHash.new(delegateValidatorHash!)
+                        )
                     ),
                     "addresses should have matched"
                 ).toBeTruthy();
@@ -360,8 +365,8 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap({
                     mintDelegateLink: {
-                        strategyName: "canMintGenericUuts",
-                    }
+                        config: {},
+                    },
                 });
                 const capo = h.strella;
 
@@ -383,11 +388,10 @@ describe("Capo", async () => {
                     },
                     { mintDelegate: "mintDgt" }
                 );
-                const mintDelegateLink = await t.txnCreateDelegateLink(
+                const mintDelegateLink = await t.txnCreateOffchainDelegateLink(
                     tcx1b,
                     "mintDelegate",
-                    { 
-                        strategyName: "defaultV1",
+                    {
                         uutName: tcx1b.state.uuts.mintDgt.name,
                         config: {},
                     }
@@ -397,10 +401,10 @@ describe("Capo", async () => {
                 //     " delegateTxn :::::::::::: ",
                 //     txAsString(tcx1b.tx, t.networkParams)
                 // );
-                
-                const createdDelegate = await t.connectDelegateWithLink(
+
+                const createdDelegate = await t.connectDelegateWithOnchainRDLink(
                     "mintDelegate",
-                    mintDelegateLink
+                    t.mkOnchainRelativeDelegateLink(mintDelegateLink)
                 );
 
                 expect(createdDelegate.address.toBech32()).toBeTruthy();
@@ -454,8 +458,8 @@ describe("Capo", async () => {
                 // initial mint-delegate creation creates an on-chain reference script:
                 const t = await h.bootstrap({
                     mintDelegateLink: {
-                        strategyName: "canMintGenericUuts",
-                    }
+                        config: {},
+                    },
                 });
 
                 const mintDelegate = await t.getMintDelegate();
@@ -484,7 +488,7 @@ describe("Capo", async () => {
                 expect(
                     tcx2b.txRefInputs.find(
                         (i) =>
-                            i.output.refScript?.toString() == 
+                            i.output.refScript?.toString() ==
                             mintDelegate.compiledScript.toString()
                     )
                 ).toBeTruthy();
@@ -507,8 +511,8 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const t = await h.bootstrap({
                     mintDelegateLink: {
-                        strategyName: "canMintGenericUuts",
-                    }                
+                        config: {},
+                    },
                 });
 
                 const mintDelegate = await t.getMintDelegate();
@@ -518,17 +522,13 @@ describe("Capo", async () => {
 
                 const tcx1a = await t.tcxWithSeedUtxo(h.mkTcx());
                 const purpose = ["anything"];
-                const tcx1b = await t.txnMintingUuts(
-                    tcx1a,
-                    purpose, 
-                    {
-                        mintDelegateActivity:
-                            mintDelegate.activityMintingUutsAppSpecific(
-                                tcx1a,
-                                purpose
-                            ),
-                    }
-                );
+                const tcx1b = await t.txnMintingUuts(tcx1a, purpose, {
+                    mintDelegateActivity:
+                        mintDelegate.activityMintingUutsAppSpecific(
+                            tcx1a,
+                            purpose
+                        ),
+                });
                 await expect(tcx1b.submit(expectTxnError)).rejects.toThrow(
                     /missing .*mintDgt/
                 );
@@ -539,8 +539,8 @@ describe("Capo", async () => {
                 const {h, h:{network, actors, delay, state} } = context;
                 const capo = await h.bootstrap({
                     mintDelegateLink: {
-                        strategyName: "canMintGenericUuts",
-                    }
+                        config: {},
+                    },
                 });
 
                 const mintDelegate = await capo.getMintDelegate();
@@ -549,7 +549,7 @@ describe("Capo", async () => {
                     .mockImplementation((...args) => {
                         // const [dd, s] = args;
                         const { capoAddr, mph, tn } = mintDelegate.configIn!;
-                        const tn2 = [ ...  tn ]
+                        const tn2 = [...tn];
                         // replace the start of the token name
                         // with bytes spelling "BOGUS!".
                         tn2[0] = 66; // "B"
@@ -567,17 +567,13 @@ describe("Capo", async () => {
                     });
                 const tcx1a = await capo.tcxWithSeedUtxo(h.mkTcx());
                 const purpose = ["anything"];
-                const tcx1b = await capo.txnMintingUuts(
-                    tcx1a,
-                    purpose, 
-                    {
-                        mintDelegateActivity:
-                            mintDelegate.activityMintingUutsAppSpecific(
-                                tcx1a,
-                                purpose
-                            ),
-                    }
-                );
+                const tcx1b = await capo.txnMintingUuts(tcx1a, purpose, {
+                    mintDelegateActivity:
+                        mintDelegate.activityMintingUutsAppSpecific(
+                            tcx1a,
+                            purpose
+                        ),
+                });
                 expect(spy).toHaveBeenCalled();
                 console.log(
                     "------ submitting bogus txn with modified delegate datum"

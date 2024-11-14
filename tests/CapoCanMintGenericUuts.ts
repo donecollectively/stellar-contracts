@@ -5,7 +5,6 @@ import {
 import CapoBundleWithGenericUuts from "./CapoWithGenericUuts.hlbundle.js";
 import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/MintDelegateWithGenericUuts.js";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
-import { CharterDatumProps } from "../src/Capo.js";
 import { BasicMintDelegate } from "../src/minting/BasicMintDelegate.js";
 
 export class CapoCanMintGenericUuts extends CapoWithoutSettings {
@@ -22,12 +21,9 @@ export class CapoCanMintGenericUuts extends CapoWithoutSettings {
         return {
             ...inherited,
             mintDelegate: defineRole("mintDgt", MintDelegateWithGenericUuts, {
-                defaultV1: {
-                    delegateClass: MintDelegateWithGenericUuts,
-                    partialConfig: {},
-                    validateConfig(args): strategyValidation {
-                        return undefined;
-                    },
+                partialConfig: {},
+                validateConfig(args): strategyValidation {
+                    return undefined;
                 },
             })
         };

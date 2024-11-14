@@ -203,10 +203,12 @@ describe("Capo Minter", async () => {
             
             // this test doesn't run a txn successfully, because there are no 
             // delegated-data controllers in the current test setup
-            // ... however, the failure message indicates that the test is
-            // ... unwrapping the MultipleDelegateActivities and trying to
-            // ... mint the new delegated data record.
-            await expect(tcx1.submit({expectError: true})).rejects.toThrow(
+            // ... however, the failure message indicates that the script
+            // ... unwrapping the MultipleDelegateActivities, trying to
+            // ... mint the new delegated data record, and failing to make 
+            // ... an expected output
+            const submitting = tcx1.submit({ expectError: true });
+            await expect(submitting).rejects.toThrow(
                 /no .* delegated-data out/
             );
         });

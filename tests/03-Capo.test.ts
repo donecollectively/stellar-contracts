@@ -164,7 +164,7 @@ describe("Capo", async () => {
                 const { mintDgt } = tcx.state.uuts;
 
                 const datum = await capo.findCharterDatum();
-                const mintDelegate = await capo.connectDelegateWithLink(
+                const mintDelegate = await capo.connectDelegateWithOnchainRDLink(
                     "mintDelegate",
                     datum.mintDelegateLink
                 );

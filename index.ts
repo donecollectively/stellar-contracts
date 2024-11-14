@@ -46,7 +46,7 @@ export { CapoWithoutSettings } from "./src/CapoWithoutSettings.js";
 
 export type {
     MintUutActivityArgs,
-    CharterDatumProps,
+    CharterDataLike,
     FoundDatumUtxo,
     FoundUut,
     uutPurposeMap,
@@ -76,14 +76,15 @@ export {
 } from "./src/delegation/RolesAndDelegates.js";
 
 export type {
-    RoleMap,
-    RoleInfo,
-    strategyValidation,
+    DelegateMap,
+    DelegateSetup,
+    delegateConfigValidation,
+    delegateConfigValidation as strategyValidation,
     capoDelegateConfig,
     ErrorMap,
     ConfiguredDelegate,
-    RelativeDelegateLink,
-    VariantStrategy,
+    OffchainPartialDelegateLink,
+    DelegateConfigDetails
 } from "./src/delegation/RolesAndDelegates.js";
 
 export type { SeedTxnScriptParams } from "./src/SeedTxnScriptParams.js";
@@ -180,13 +181,13 @@ export {
     type BasicMinterParams,
 } from "./src/minting/CapoMinter.js";
 
-import type { CharterDatumProps } from "./src/Capo.js";
+import type { CharterDataLike } from "./src/Capo.js";
 
 /**
  * @deprecated - use CharterDatumProps instead
  * @internal
  */
-export type DefaultCharterDatumArgs = CharterDatumProps;
+export type DefaultCharterDatumArgs = CharterDataLike;
 export * from "./src/helios/index.js";
 export { CapoDelegateBundle } from "./src/delegation/CapoDelegateBundle.js";
 export { HeliosScriptBundle } from "./src/helios/HeliosScriptBundle.js";

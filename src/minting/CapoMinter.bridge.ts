@@ -52,8 +52,8 @@ import type {hasSeed, isActivity} from "../StellarContract.js"
 
 
 import type {
-    MinterActivity$forcingNewSpendDelegate, MinterActivity$forcingNewSpendDelegateLike,
-    MinterActivity, MinterActivityLike
+    MinterActivity$CreatingNewSpendDelegate, MinterActivity$Ergo$CreatingNewSpendDelegate, MinterActivity$CreatingNewSpendDelegateLike,
+    MinterActivity, ErgoMinterActivity, MinterActivityLike
 } from "./CapoMinter.typeInfo.js";
 
 export type * as types from "./CapoMinter.typeInfo.js";
@@ -125,7 +125,7 @@ class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<MinterActivity>;        
+        return cast.fromUplcData(d) as ErgoMinterActivity;        
     } /* enumReader helper */
 
 
@@ -203,39 +203,39 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     }
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.forcingNewSpendDelegate"***, 
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate"***, 
      * given a transaction-context ***with a seed utxo*** and other field details
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
      * to create a context satisfying `hasSeed`.
      */
-    forcingNewSpendDelegate(value: hasSeed, fields: { 
+    CreatingNewSpendDelegate(value: hasSeed, fields: { 
         replacingUut: Option<number[]> 
     } ) : isActivity
     /**
-     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.forcingNewSpendDelegate"*** 
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate"*** 
      * with raw seed details included in fields.
      */
-    forcingNewSpendDelegate(fields: MinterActivity$forcingNewSpendDelegateLike | {
+    CreatingNewSpendDelegate(fields: MinterActivity$CreatingNewSpendDelegateLike | {
             seed: TxOutputId | string,
             replacingUut: Option<number[]>
     } ): isActivity
-    forcingNewSpendDelegate(
-        seedOrUf: hasSeed | MinterActivity$forcingNewSpendDelegateLike, 
+    CreatingNewSpendDelegate(
+        seedOrUf: hasSeed | MinterActivity$CreatingNewSpendDelegateLike, 
         filteredFields?: { 
             replacingUut: Option<number[]>
     }) : isActivity {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
             const uplc = this.mkUplcData({
-                forcingNewSpendDelegate: { seed: seedTxOutputId, ...filteredFields } 
-            }, "CapoMintHelpers::MinterActivity.forcingNewSpendDelegate");
+                CreatingNewSpendDelegate: { seed: seedTxOutputId, ...filteredFields } 
+            }, "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate");
            return uplc;
         } else {
-            const fields = seedOrUf as MinterActivity$forcingNewSpendDelegateLike; 
+            const fields = seedOrUf as MinterActivity$CreatingNewSpendDelegateLike; 
            const uplc = this.mkUplcData({
-                forcingNewSpendDelegate: fields 
-            }, "CapoMintHelpers::MinterActivity.forcingNewSpendDelegate");
+                CreatingNewSpendDelegate: fields 
+            }, "CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate");
            return uplc;
         }
     } /*multiFieldVariant/seeded enum accessor*/ 
@@ -318,8 +318,8 @@ export const MinterActivitySchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 5,
-            "id": "__module__CapoMintHelpers__MinterActivity[]__forcingNewSpendDelegate",
-            "name": "forcingNewSpendDelegate",
+            "id": "__module__CapoMintHelpers__MinterActivity[]__CreatingNewSpendDelegate",
+            "name": "CreatingNewSpendDelegate",
             "fieldTypes": [
                 {
                     "name": "seed",

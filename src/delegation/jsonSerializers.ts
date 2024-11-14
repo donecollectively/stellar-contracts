@@ -21,13 +21,13 @@ export function delegateLinkSerializer(key: string, value: any) {
     return value; // return everything else unchanged
 }
 
-// this is NOT a jsonifier, but it emits nice-looking info onscreen.
+// this is NOT a jsonifier, but it emits nice-looking info onscreen when used with JSON.stringify (in arg2)
 export function uplcDataSerializer(key: string, value: any, depth=0) {
     if (typeof value === "bigint") {
         return `big‹${value.toString()}n›`;
     } else if ("bytes" == key && Array.isArray(value)) {
         // return `‹bytes‹${value.length}›=${bytesToHex(value)}›`;
-        return `${abbreviatedDetailBytes(`bytes‹${value.length}›`, value, 12)}`
+        return `${abbreviatedDetailBytes(`bytes‹${value.length}›`, value, 40)}`
     } else if (value instanceof Address) {
         return `‹${abbrevAddress(value)}›`;
     } else if (value instanceof ScriptHash) {
@@ -45,7 +45,7 @@ export function uplcDataSerializer(key: string, value: any, depth=0) {
         return "[]";
     } else if (Array.isArray(value) && value.every((v) => typeof v === "number")) {
         // return `bytes‹${value.length}›=${abbreviatedDetail(bytesToHex(value),14)}`;
-        return `${abbreviatedDetailBytes(`bytes‹${value.length}›`, value, 12)}`
+        return `${abbreviatedDetailBytes(`bytes‹${value.length}›`, value, 40)}`
     // } else if (value.toString) {
     //     return value.toString();
     } else if ("string" == typeof value) {

@@ -138,6 +138,12 @@ export type findDatumType<
 //     T extends { datum : infer D } ? D : "can't infer required datum!?!"
 //     : never;
 
+export type mustFindDatumType<
+    T extends canHaveDataBridge,
+    CBT extends someContractBridgeType = mustFindConcreteContractBridgeType<T>
+> = CBT["datum"];
+
+
 const x: never extends any ? true : false = true;
 const x2: any extends never ? true : false = true; // or false!!
 
@@ -153,6 +159,17 @@ export type debugDatumType<
 //     TypeError<"NO 'datum' in bridgeType for contractClass", {contractClass:T}>
 // )
 // : TypeError<"NO 'dataBridgeClass' in contractClass", {contractClass: T}>;
+
+export type mustFindReadDatumType<
+    T extends canHaveDataBridge,
+    CBT extends someContractBridgeType = mustFindConcreteContractBridgeType<T>
+    // BI extends bridgeInspector<T> = bridgeInspector<T>
+> =
+    null extends CBT["datum"]
+        ? /**??? */ never
+        : null extends CBT["readDatum"]
+        ? never
+        : CBT["readDatum"];
 
 export type findReadDatumType<
     T extends canHaveDataBridge,
@@ -171,6 +188,7 @@ export type findReadDatumType<
     // : never
     // CBT["datum"]["readData"]
 >;
+
 
 export type findActivityTypeOld<
     T extends canHaveDataBridge,
@@ -214,6 +232,12 @@ export type findActivityType<
     activityHelper, // CBT extends { activity: infer A } ? CBT["activity"] : never, //    activityHelper,
     CANNOT_ERROR /* suppresses unreachable error alternative, given good Bool input to IF */
 >;
+
+export type mustFindActivityType<
+    T extends canHaveDataBridge,
+    CBT extends someContractBridgeType = mustFindConcreteContractBridgeType<T>
+> = CBT["activity"];
+    
 
 {
     // high-level checks

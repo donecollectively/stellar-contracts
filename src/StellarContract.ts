@@ -534,6 +534,7 @@ export class StellarContract<
     getBundle(): HeliosScriptBundle {
         if (!this._bundle) {
             this._bundle = this.scriptBundle() 
+            this._bundle.checkDevReload()
         }
         return this._bundle;
     }
@@ -593,28 +594,28 @@ export class StellarContract<
      * guide for additional details.
      *
      */
-    get activity(): findActivityType<this> {
-        const bridge = this.onchain;
-        // each specific bridge has to have an activity type, but this code can't
-        // introspect that type.  It could be a getter OR a method, and Typescript can only
-        // be told it is one, or the other, concretely.  
-        // findActivityType() does probe for the specific type for specific contracts,
-        // at the **interface** level, but this code has no visibility of that.
+    // get activity(): findActivityType<this> {
+    //     const bridge = this.onchain;
+    //     // each specific bridge has to have an activity type, but this code can't
+    //     // introspect that type.  It could be a getter OR a method, and Typescript can only
+    //     // be told it is one, or the other, concretely.  
+    //     // findActivityType() does probe for the specific type for specific contracts,
+    //     // at the **interface** level, but this code has no visibility of that.
 
-        //x@ts-expect-error accessing it in this way
-        const { activity } = bridge
+    //     //x@ts-expect-error accessing it in this way
+    //     const { activity } = bridge
 
-        return activity as any
-    }
+    //     return activity as any
+    // }
 
-    /**
-     * Redirect for intuitive developers having a 'redeemer' habit
-     *
-     * @deprecated - We recommend using `activity` instead of `redeemer`
-     */
-    get redeemer(): findActivityType<this> {
-        return this.activity;
-    }
+    // /**
+    //  * Redirect for intuitive developers having a 'redeemer' habit
+    //  *
+    //  * @deprecated - We recommend using `activity` instead of `redeemer`
+    //  */
+    // get redeemer(): findActivityType<this> {
+    //     return this.activity;
+    // }
 
     /**
      * Provides access to the script's defined on-chain types, using a fluent
@@ -623,13 +624,13 @@ export class StellarContract<
      *
      */
     _dataBridge?: Option<ContractDataBridge>; // Option<BundleType<this>["mkDatum"]>
-    get mkDatum() : findDatumType<this> {
-        //x@ts-expect-error probing for presence
-        if (!this.onchain?.datum) throw new Error(`${this.constructor.name}: no datum is used on this type of script`);
+    // get mkDatum() : findDatumType<this> {
+    //     //x@ts-expect-error probing for presence
+    //     if (!this.onchain?.datum) throw new Error(`${this.constructor.name}: no datum is used on this type of script`);
 
-        //@ts-expect-error probing for presence
-        return this.onchain.datum;
-    }
+    //     //@ts-expect-error probing for presence
+    //     return this.onchain.datum;
+    // }
 
     getOnchainBridge(): possiblyAbstractContractBridgeType<this> {
         if ("undefined" == typeof this._dataBridge) {
@@ -1224,7 +1225,6 @@ export class StellarContract<
                 // console.log("  -- param", fullName);
                 const thatType = paramTypes[fullName];
                 if (!thatType) {
-                    debugger;
                     // group the params by namespace to produce a list of:
                     //   "namespace::{ ... paramNames ... }"
                     //   "namespace2::{ ... paramNames ... }"
@@ -1237,22 +1237,39 @@ export class StellarContract<
                         },
                         {} as Record<string, string[]>
                     );
+                    // if (Array.isArray(data)) {
+                    //     // probably it's wrong to categorically reject arrays,
+                    //     // but if you have this problem, please let us know and we'll help you resolve it.
+                    //     throw new Error(
+                    //         `invalid script-parameter '${paramName}' in namespace '${namespace}' \n` +
+                    //             `  ... expected single value, got array`
+                    //     );
+                    // }
+
                     // throw an error showing all the namespaces and all the short params in each
                     const availableScriptParams = Object.entries(
                         availableParams
                     )
                         .map(([ns, names]) => `  ${ns}::{${names.join(", ")}}`)
                         .join("\n");
-                    console.log("availableScriptParams", availableScriptParams);
+                    // console.log("availableScriptParams", availableScriptParams);
+                    if (paramName == "0") {
+                        throw new Error(`numeric param name is probably wrong`);                        
+                    }
+                    if (paramName="addrHint") {
+                        // silently ignore this one
+                        return undefined
+                    } 
                     throw new Error(
-                        `invalid parameter name ${paramName} in namespace '${namespace}' \n`
+                        `invalid script-parameter '${paramName}' in namespace '${namespace}' \n` +
+                            `  ... expected one of: ${availableScriptParams}`
                     );
                 }
                 return [
                     fullName,
                     this.typeToUplc(thatType, data, `params[${fullName}]`),
                 ];
-            })
+            }).filter((x) => !!x)
         ) as UplcRecord<ConfigType>;
     }
 

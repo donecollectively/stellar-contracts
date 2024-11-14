@@ -29,6 +29,7 @@ import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
 import type { HeliosBundleClass, HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 import CapoMinterDataBridge from "./CapoMinter.bridge.js";
 import type { DataBridge } from "src/helios/dataBridge/DataBridge.js";
+import type { mustFindActivityType, mustFindConcreteContractBridgeType } from "../helios/dataBridge/BridgeTypeUtils.js";
 
 type MintCharterActivityArgs<T = {}> = T & {
     owner: Address;
@@ -74,6 +75,26 @@ export class CapoMinter
      * the data bridge for this minter is fixed to one particular type
      */
     dataBridgeClass : typeof CapoMinterDataBridge = CapoMinterDataBridge;
+    get onchain(): mustFindConcreteContractBridgeType<this> {
+        return this.getOnchainBridge() as any;
+    }
+
+    // get offchain(): mustFindConcreteContractBridgeType<this>["reader"] {
+    //     return super.offchain as any;
+    // }
+
+    // get reader(): mustFindConcreteContractBridgeType<this>["reader"] {
+    //     return super.offchain as any;
+    // }
+
+    get activity(): mustFindActivityType<CapoMinter> {
+        const bridge = this.onchain;
+        return bridge.activity as any;
+    }
+
+    // get mkDatum(): mustFindDatumType<Capo<any>> {
+    //     return this.onchain.datum;
+    // }
 
     mkBundleWithCapo<T extends HeliosScriptBundle>(BundleClass: new (capo: CapoHeliosBundle) => T) : T {
         const { capo } = this.configIn || this.partialConfig || {};

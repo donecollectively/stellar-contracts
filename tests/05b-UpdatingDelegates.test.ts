@@ -56,7 +56,7 @@ describe("Capo", async () => {
 
             const tcx = await capo.mkTxnUpdatingMintDelegate(
                 {
-                    strategyName: "defaultV1",
+                    config: {}
                 },
             );
             await tcx.submit()
@@ -84,7 +84,8 @@ describe("Capo", async () => {
             );
             const tcx1 = await capo.mkTxnUpdatingMintDelegate(
                 {
-                    strategyName: "defaultV1",
+                    
+                    config: {},
                 },
             );
             expect(addedGovToken).toHaveBeenCalledTimes(1);
@@ -95,7 +96,7 @@ describe("Capo", async () => {
             console.log(" ------- case 2: forced replacement of mint delegate");
             const tcx2 = await capo.mkTxnUpdatingMintDelegate(
                 {
-                    strategyName: "defaultV1",
+                    config: {},
                     forcedUpdate: true,
                 },
             );
@@ -116,7 +117,7 @@ describe("Capo", async () => {
 
             const tcx = await capo.mkTxnUpdatingMintDelegate(
                 {
-                    strategyName: "defaultV1",
+                    config: {},
                     forcedUpdate: true,
                 },
             );
@@ -126,12 +127,13 @@ describe("Capo", async () => {
             expect(updatedDatum.mintDelegateLink.uutName).not.toEqual(
                 originalDatum.mintDelegateLink.uutName
             );
-
+            console.log("   ---- check for the old delegate-token's presence")
             const stillExists = await oldMintDelegate.mustFindMyUtxo(
                 "old delegate UUT",
                 oldPredicate
             );
             expect(stillExists).toBeTruthy();
+            console.log("   ---- check for the new delegate-token's presence")
             const newDelegate = await capo.getMintDelegate();
             const newPredicate = newDelegate.mkAuthorityTokenPredicate();
             const newExists = await newDelegate.mustFindMyUtxo(
@@ -139,7 +141,9 @@ describe("Capo", async () => {
                 newPredicate
             );
             expect(newExists).toBeTruthy();
-            expect(stillExists.id.isEqual(newExists.id)).toBeFalsy();
+            console.log("-- the new dgTkn is different from the old one, right?!?")
+            expect(stillExists.id.toString()).not.toEqual(newExists.id.toString())
+            // .isEqual(newExists.id)).toBeFalsy();
         });
 
         it("normally requires the existing minting delegate to be involved in the replacement", async (context: localTC) => {
@@ -158,9 +162,14 @@ describe("Capo", async () => {
             const didntBurnBecauseMocked = vi
                 .spyOn(capo, "mkValuesBurningDelegateUut")
                 .mockImplementation(() => []);
+
+            // auditors, please note that this test doesn't change the script address,
+            //  ... but it doesn't matter because the lifeycle activity is swapping out the
+            //  ... authority-token for it, and it fails because...
+            //  ... the **existing** authority token isn't involved properly.
             const tcx2 = await capo.mkTxnUpdatingMintDelegate({
-                strategyName: "defaultV1",
-        });
+                config: {},
+            });
             expect(didGrantMockedAuthority).toHaveBeenCalledTimes(1);
             expect(didntBurnBecauseMocked).toHaveBeenCalledTimes(1);
 
@@ -181,7 +190,7 @@ describe("Capo", async () => {
                 " ------- case 1: with mint delegate involved in the replacement"
             );
             const tcx = await capo.mkTxnUpdatingMintDelegate({
-                strategyName: "defaultV1",
+                config: {},
             });
             await tcx.submit();
             network.tick(1);
@@ -189,7 +198,7 @@ describe("Capo", async () => {
             console.log(" ------- case 1a: replacing second delegate to see that it's involved in the upgrade ");
             const tcx2 = (await capo.mkTxnUpdatingMintDelegate(
                 {
-                    strategyName: "defaultV1",
+                    config: {},
                 },
             )).withName("trial txn; uses 2nd mintDgt?");
 
@@ -213,7 +222,7 @@ describe("Capo", async () => {
 
             const tcx3 = await capo.mkTxnUpdatingMintDelegate(
                 {
-                    strategyName: "defaultV1",
+                    config: {},
                     forcedUpdate: true,
                 },
             );
@@ -238,7 +247,7 @@ describe("Capo", async () => {
             const newestPredicate = (
                 await capo.getMintDelegate()
             ).mkAuthorityTokenPredicate();
-            console.log(" -- -hi")
+
             expect(tcx3b.outputs.find(newestPredicate)).toBeTruthy();
         });
 
@@ -259,10 +268,12 @@ describe("Capo", async () => {
             );
             const tcx = await capo.mkTxnUpdatingMintDelegate(
                 {
-                    strategyName: "defaultV1",
+                    config: {},
                     forcedUpdate: true,
                 },
             );
+            // auditors: note that the updated mint delegate gets the same address
+            // ... as the old one, but the authority token is different.
 
             await tcx.submit();
             network.tick(1);
@@ -274,9 +285,14 @@ describe("Capo", async () => {
                 return oldCharterDatum;
             })
             console.log( " ------ 🐞⚗️🐞⚗️ - use the old mint delegate in a new txn")
+
+            // auditors: the test transaction fails when trying to use the old dgTkn,
+            // ... even though it comes from the same address as the new one.
+            // we see that the minter itself barfs on the old dgTkn because it's not
+            // ... what's newly registered in the charter settings.
             const tcx2 = await capo.mkTxnUpdatingMintDelegate(
                 {
-                    strategyName: "defaultV1",
+                    config: {},
                 },
             );
             expect(fakeDelegate).toHaveBeenCalled();
@@ -300,7 +316,7 @@ describe("Capo", async () => {
 
             const tcx = await capo.mkTxnUpdatingSpendDelegate(
                 {
-                    strategyName: "defaultV1",
+                    config: {},
                 },
             );
             await tcx.submit();
@@ -328,7 +344,7 @@ describe("Capo", async () => {
             );
             const tcx1 = await capo.mkTxnUpdatingSpendDelegate(
                 {
-                    strategyName: "defaultV1",
+                    config: {},
                 },
             );
             expect(addedGovToken).toHaveBeenCalledTimes(1);
@@ -341,7 +357,7 @@ describe("Capo", async () => {
             );
             const tcx2 = await capo.mkTxnUpdatingSpendDelegate(
                 {
-                    strategyName: "defaultV1",
+                    config: {},
                     forcedUpdate: true,
                 },
             );
@@ -362,7 +378,7 @@ describe("Capo", async () => {
 
             const tcx = await capo.mkTxnUpdatingSpendDelegate(
                 {
-                    strategyName: "defaultV1",
+                    config: {},
                     forcedUpdate: true,
                 },
             );
@@ -406,7 +422,7 @@ describe("Capo", async () => {
                 .spyOn(capo, "mkValuesBurningDelegateUut")
                 .mockImplementation(() => []);
             const tcx2 = await capo.mkTxnUpdatingSpendDelegate({
-                strategyName: "defaultV1",
+                config: {},
             });
             expect(didGrantMockedAuthority).toHaveBeenCalledTimes(1);
             expect(didntBurnBecauseMocked).toHaveBeenCalledTimes(1);
@@ -435,7 +451,7 @@ describe("Capo", async () => {
                     " ------- case 1: with spend delegate involved in the replacement"
                 );
                 const tcx = await capo.mkTxnUpdatingSpendDelegate({
-                    strategyName: "defaultV1",
+                    config: {},
                 });
                 await tcx.submit();
                 network.tick(1);

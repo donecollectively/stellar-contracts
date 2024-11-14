@@ -46,25 +46,34 @@ import type {
     type EnumTypeMeta,
     type singleEnumVariantMeta,
     type tagOnly
+    type IntersectedEnum
 } from "@donecollectively/stellar-contracts"
 `;
 
         if (this._isSC) {
             stellarImports = `
-import {HeliosScriptBundle, type tagOnly, type EnumTypeMeta, type singleEnumVariantMeta} from "${this.mkRelativeImport(
+import {HeliosScriptBundle, type tagOnly, type EnumTypeMeta, 
+    type singleEnumVariantMeta
+} from "${this.mkRelativeImport(
                 inputFile,
                 "src/helios/HeliosScriptBundle.js"
             )}"
-        `
-// import type {CapoHeliosBundle} from "${this.mkRelativeImport(
-//                 inputFile,
-//                 "src/CapoHeliosBundle.js"
-//             )}"
-// import type {CapoDelegateBundle} from "${this.mkRelativeImport(
-//                 inputFile,
-//                 "src/delegation/CapoDelegateBundle.js"
-//             )}"
-// `;
+
+import type { IntersectedEnum } from "${this.mkRelativeImport(
+                inputFile,
+                "src/helios/typeUtils.js"
+            )}"
+                
+`;
+            // import type {CapoHeliosBundle} from "${this.mkRelativeImport(
+            //                 inputFile,
+            //                 "src/CapoHeliosBundle.js"
+            //             )}"
+            // import type {CapoDelegateBundle} from "${this.mkRelativeImport(
+            //                 inputFile,
+            //                 "src/delegation/CapoDelegateBundle.js"
+            //             )}"
+            // `;
         }
         return (
             "" +
@@ -106,13 +115,13 @@ ${stellarImports}
 
 ${this.generateNamedDependencyTypes()}
 `
-// export default
-// class ${className} 
-// extends ${parentClassName} {
-// ${this.generateDatumApiTypes()}
-// ${this.generateRedeemerApiTypes()}
-// }
-// `
+            // export default
+            // class ${className}
+            // extends ${parentClassName} {
+            // ${this.generateDatumApiTypes()}
+            // ${this.generateRedeemerApiTypes()}
+            // }
+            // `
         );
     }
 
@@ -149,6 +158,7 @@ ${this.generateNamedDependencyTypes()}
             ` *     for generating UPLC data for this enum type\n` +
             ` */\n` +
             `export type ${name} = ${typeInfo.canonicalType}\n` +
+            `export type ${typeInfo.ergoCanonicalTypeName} = IntersectedEnum<${typeInfo.ergoCanonicalType}>\n` +
             // `// factory signatures for this Enum: \n` +
             // `// makesUplcEnumData<${name}Like>;\n` +
             // `// ^^ calling such a factory makes a EnumUplcResult\n` +
@@ -159,7 +169,7 @@ ${this.generateNamedDependencyTypes()}
             `\n/**\n` +
             ` * ${name} enum variants (permissive)\n` +
             ` * \n` +
-            ` * @remarks - expresses the allowable data structures\n` +
+            ` * @remarks - expresses the allowable data structure\n` +
             ` * for creating any of the **${
                 Object.keys(typeInfo.variants).length
             } variant(s)** of the ${name} enum type\n` +
@@ -171,15 +181,18 @@ ${this.generateNamedDependencyTypes()}
             ` * This is a permissive type that allows additional input data types, which are \n` +
             ` * converted by convention to the canonical types used in the on-chain context.\n` +
             ` */\n` +
-            `export type ${name}Like = ${typeInfo.permissiveType}\n` +
+            `export type ${name}Like = IntersectedEnum<${typeInfo.permissiveType}>\n` +
             ""
         );
     }
 
     generateOtherNamedTypeSource(name: string, typeInfo: typeDetails) {
+        if (!typeInfo.ergoCanonicalTypeName) throw new Error("missing ergoCanonicalTypeName");
+        if (!typeInfo.permissiveTypeName) throw new Error("missing permissiveTypeName");
         return (
-            `export type ${name} = ${typeInfo.canonicalType}\n` +
-            `export type ${name}Like = ${typeInfo.permissiveType}\n`
+            `export type ${typeInfo.canonicalTypeName || name} = ${typeInfo.canonicalType}\n` +
+            `export type ${typeInfo.ergoCanonicalTypeName} = ${typeInfo.ergoCanonicalType}\n` +
+            `export type ${typeInfo.permissiveTypeName} = ${typeInfo.permissiveType}\n`
         );
     }
 

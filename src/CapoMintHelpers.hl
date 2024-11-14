@@ -154,8 +154,8 @@ func requiresMintDelegateApproval(
     mintDgtActivity.switch {
         CapoLifecycleActivities{CLA} => CLA.switch {
             CreatingDelegate => {
-                assert(false, "obsolete generic creatingDelegate? (use queuePendingDgtChange and committingPendingDgtChanges in sequence)");
-                print("  -- minter wants mintDgt + CapoLifecycle (delegate-creation)\n");
+                TODO( "make this obsolete: generic creatingDelegate (use queuePendingDgtChange and committingPendingDgtChanges in sequence)");
+                // print("  -- minter wants mintDgt + CapoLifecycle (delegate-creation)\n");
 
                 mintDgtInput.requiresValidOutput() && 
                 true
@@ -318,7 +318,7 @@ func validateUutMinting(
         true 
     } else {
         // not bootstrapping; must honor the mintDelegate's authority
-        CapoDatum::CharterToken {
+        CapoDatum::CharterData {
             _spendDgt,
             _spendInvariants,
             _namedDelegates,
@@ -448,8 +448,9 @@ enum MinterActivity {
         seed: TxOutputId
     }
 
-    forcingNewSpendDelegate { //5
+    CreatingNewSpendDelegate { //5
         seed: TxOutputId
+        // when not forcing the new delegate, the old UUT will be replaced:
         replacingUut: Option[ByteArray]
     }
 

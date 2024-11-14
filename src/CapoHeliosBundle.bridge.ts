@@ -52,31 +52,31 @@ import type {hasSeed, isActivity} from "./StellarContract.js"
 
 
 import type {
-    RelativeDelegateLink, RelativeDelegateLinkLike,
-    ManifestEntryType$DgDataPolicy, ManifestEntryType$DgDataPolicyLike,
-    DelegateRole, DelegateRoleLike,
-    ManifestEntryType$DelegateThreads, ManifestEntryType$DelegateThreadsLike,
-    ManifestEntryType, ManifestEntryTypeLike,
-    CapoManifestEntry, CapoManifestEntryLike,
-    PendingDelegateAction$Add, PendingDelegateAction$AddLike,
-    PendingDelegateAction$Replace, PendingDelegateAction$ReplaceLike,
-    PendingDelegateAction, PendingDelegateActionLike,
-    PendingDelegateChange, PendingDelegateChangeLike,
-    CapoDatum$CharterToken, CapoDatum$CharterTokenLike,
-    AnyData, AnyDataLike,
-    CapoDatum$DelegatedData, CapoDatum$DelegatedDataLike,
-    CapoDatum, CapoDatumLike,
-    CapoLifecycleActivity$CreatingDelegate, CapoLifecycleActivity$CreatingDelegateLike,
-    CapoLifecycleActivity$queuePendingDgtChange, CapoLifecycleActivity$queuePendingDgtChangeLike,
-    CapoLifecycleActivity$removePendingDgtChange, CapoLifecycleActivity$removePendingDgtChangeLike,
-    CapoLifecycleActivity$forcingNewSpendDelegate, CapoLifecycleActivity$forcingNewSpendDelegateLike,
-    CapoLifecycleActivity$forcingNewMintDelegate, CapoLifecycleActivity$forcingNewMintDelegateLike,
-    ManifestActivity$updatingEntry, ManifestActivity$updatingEntryLike,
-    ManifestActivity$addingEntry, ManifestActivity$addingEntryLike,
-    ManifestActivity$forkingThreadToken, ManifestActivity$forkingThreadTokenLike,
-    ManifestActivity, ManifestActivityLike,
-    CapoLifecycleActivity, CapoLifecycleActivityLike,
-    CapoActivity, CapoActivityLike
+    RelativeDelegateLink, ErgoRelativeDelegateLink, RelativeDelegateLinkLike,
+    ManifestEntryType$DgDataPolicy, ManifestEntryType$Ergo$DgDataPolicy, ManifestEntryType$DgDataPolicyLike,
+    DelegateRole, ErgoDelegateRole, DelegateRoleLike,
+    ManifestEntryType$DelegateThreads, ManifestEntryType$Ergo$DelegateThreads, ManifestEntryType$DelegateThreadsLike,
+    ManifestEntryType, ErgoManifestEntryType, ManifestEntryTypeLike,
+    CapoManifestEntry, ErgoCapoManifestEntry, CapoManifestEntryLike,
+    PendingDelegateAction$Add, PendingDelegateAction$Ergo$Add, PendingDelegateAction$AddLike,
+    PendingDelegateAction$Replace, PendingDelegateAction$Ergo$Replace, PendingDelegateAction$ReplaceLike,
+    PendingDelegateAction, ErgoPendingDelegateAction, PendingDelegateActionLike,
+    PendingDelegateChange, ErgoPendingDelegateChange, PendingDelegateChangeLike,
+    CapoDatum$CharterData, CapoDatum$Ergo$CharterData, CapoDatum$CharterDataLike,
+    AnyData, ErgoAnyData, AnyDataLike,
+    CapoDatum$DelegatedData, CapoDatum$Ergo$DelegatedData, CapoDatum$DelegatedDataLike,
+    CapoDatum, ErgoCapoDatum, CapoDatumLike,
+    CapoLifecycleActivity$CreatingDelegate, CapoLifecycleActivity$Ergo$CreatingDelegate, CapoLifecycleActivity$CreatingDelegateLike,
+    CapoLifecycleActivity$queuePendingDgtChange, CapoLifecycleActivity$Ergo$queuePendingDgtChange, CapoLifecycleActivity$queuePendingDgtChangeLike,
+    CapoLifecycleActivity$removePendingDgtChange, CapoLifecycleActivity$Ergo$removePendingDgtChange, CapoLifecycleActivity$removePendingDgtChangeLike,
+    CapoLifecycleActivity$forcingNewSpendDelegate, CapoLifecycleActivity$Ergo$forcingNewSpendDelegate, CapoLifecycleActivity$forcingNewSpendDelegateLike,
+    CapoLifecycleActivity$forcingNewMintDelegate, CapoLifecycleActivity$Ergo$forcingNewMintDelegate, CapoLifecycleActivity$forcingNewMintDelegateLike,
+    ManifestActivity$updatingEntry, ManifestActivity$Ergo$updatingEntry, ManifestActivity$updatingEntryLike,
+    ManifestActivity$addingEntry, ManifestActivity$Ergo$addingEntry, ManifestActivity$addingEntryLike,
+    ManifestActivity$forkingThreadToken, ManifestActivity$Ergo$forkingThreadToken, ManifestActivity$forkingThreadTokenLike,
+    ManifestActivity, ErgoManifestActivity, ManifestActivityLike,
+    CapoLifecycleActivity, ErgoCapoLifecycleActivity, CapoLifecycleActivityLike,
+    CapoActivity, ErgoCapoActivity, CapoActivityLike
 } from "./CapoHeliosBundle.typeInfo.js";
 
 export type * as types from "./CapoHeliosBundle.typeInfo.js";
@@ -109,10 +109,7 @@ export class CapoDataBridge extends ContractDataBridge {
      */
     CapoDatum: CapoDatumHelper = this.datum;
 
-    readDatum : (d: UplcData) => IntersectedEnum<CapoDatum> = (d) =>  {
-        //XXX@ts-expect-error drilling through the protected accessor.
-        //   ... see more comments about that above
-        //return this.datum.__cast.fromUplcData(d);
+    readDatum : (d: UplcData) => ErgoCapoDatum = (d) =>  {
         return this.reader.CapoDatum(d)
     }
 
@@ -243,7 +240,7 @@ class CapoDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<DelegateRole>;        
+        return cast.fromUplcData(d) as ErgoDelegateRole;        
     } /* enumReader helper */
 
     /**
@@ -265,7 +262,7 @@ class CapoDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<ManifestEntryType>;        
+        return cast.fromUplcData(d) as ErgoManifestEntryType;        
     } /* enumReader helper */
 
     /**
@@ -287,7 +284,7 @@ class CapoDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<PendingDelegateAction>;        
+        return cast.fromUplcData(d) as ErgoPendingDelegateAction;        
     } /* enumReader helper */
 
 datum = (d: UplcData) => { return this.CapoDatum(d) }
@@ -310,7 +307,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<CapoDatum>;        
+        return cast.fromUplcData(d) as ErgoCapoDatum;        
     } /* enumReader helper */
 
     /**
@@ -332,7 +329,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<ManifestActivity>;        
+        return cast.fromUplcData(d) as ErgoManifestActivity;        
     } /* enumReader helper */
 
     /**
@@ -354,7 +351,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<CapoLifecycleActivity>;        
+        return cast.fromUplcData(d) as ErgoCapoLifecycleActivity;        
     } /* enumReader helper */
 
     /**
@@ -376,7 +373,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<CapoActivity>;        
+        return cast.fromUplcData(d) as ErgoCapoActivity;        
     } /* enumReader helper */
 
     /**
@@ -386,7 +383,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
-        * Used correctly with data that matches the struct type, this reader
+        * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
         * 
         * On the other hand, reading non-matching data will not give you a valid result.  
@@ -396,7 +393,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
     RelativeDelegateLink(d: UplcData) {
         //@ts-expect-error drilling through the protected accessor.
         const cast = this.bridge.__RelativeDelegateLinkCast;
-        return cast.fromUplcData(d);        
+        return cast.fromUplcData(d) //??? as ErgoRelativeDelegateLink;
     } /* structReader helper */
 
     /**
@@ -406,7 +403,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
-        * Used correctly with data that matches the struct type, this reader
+        * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
         * 
         * On the other hand, reading non-matching data will not give you a valid result.  
@@ -416,7 +413,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
     CapoManifestEntry(d: UplcData) {
         //@ts-expect-error drilling through the protected accessor.
         const cast = this.bridge.__CapoManifestEntryCast;
-        return cast.fromUplcData(d);        
+        return cast.fromUplcData(d) //??? as ErgoCapoManifestEntry;
     } /* structReader helper */
 
     /**
@@ -426,7 +423,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
-        * Used correctly with data that matches the struct type, this reader
+        * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
         * 
         * On the other hand, reading non-matching data will not give you a valid result.  
@@ -436,7 +433,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
     PendingDelegateChange(d: UplcData) {
         //@ts-expect-error drilling through the protected accessor.
         const cast = this.bridge.__PendingDelegateChangeCast;
-        return cast.fromUplcData(d);        
+        return cast.fromUplcData(d) //??? as ErgoPendingDelegateChange;
     } /* structReader helper */
 
     /**
@@ -446,7 +443,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
-        * Used correctly with data that matches the struct type, this reader
+        * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
         * 
         * On the other hand, reading non-matching data will not give you a valid result.  
@@ -456,13 +453,13 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
     AnyData(d: UplcData) {
         //@ts-expect-error drilling through the protected accessor.
         const cast = this.bridge.__AnyDataCast;
-        return cast.fromUplcData(d);        
+        return cast.fromUplcData(d) //??? as ErgoAnyData;
     } /* structReader helper */
 
 }
 
 /**
- * Helper class for generating UplcData for the ***RelativeDelegateLink*** struct type.
+ * Helper class for generating UplcData for the struct ***RelativeDelegateLink*** type.
  */
 export class RelativeDelegateLinkHelper extends DataBridge {
     isCallable = true
@@ -634,7 +631,7 @@ export class ManifestEntryTypeHelper extends EnumBridge<JustAnEnum> {
 
 
 /**
- * Helper class for generating UplcData for the ***CapoManifestEntry*** struct type.
+ * Helper class for generating UplcData for the struct ***CapoManifestEntry*** type.
  */
 export class CapoManifestEntryHelper extends DataBridge {
     isCallable = true
@@ -739,7 +736,7 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
 
 
 /**
- * Helper class for generating UplcData for the ***PendingDelegateChange*** struct type.
+ * Helper class for generating UplcData for the struct ***PendingDelegateChange*** type.
  */
 export class PendingDelegateChangeHelper extends DataBridge {
     isCallable = true
@@ -761,7 +758,7 @@ export class PendingDelegateChangeHelper extends DataBridge {
 
 
 /**
- * Helper class for generating UplcData for the ***AnyData*** struct type.
+ * Helper class for generating UplcData for the struct ***AnyData*** type.
  */
 export class AnyDataHelper extends DataBridge {
     isCallable = true
@@ -793,51 +790,26 @@ export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
    >(CapoDatumSchema, { isMainnet: true });
 
     /**
-     * generates  UplcData for ***"CapoHelpers::CapoDatum.CharterToken"***
-     * @remarks - ***CapoDatum$CharterTokenLike*** is the same as the expanded field-types.
+     * generates  TxOutputDatum for ***"CapoHelpers::CapoDatum.CharterData"***
+     * @remarks - ***CapoDatum$CharterDataLike*** is the same as the expanded field-types.
      */
-    CharterToken(fields: CapoDatum$CharterTokenLike | { 
+    CharterData(fields: CapoDatum$CharterDataLike | { 
         spendDelegateLink: RelativeDelegateLinkLike,
-        spendInvariants: Array<{
-    uutName: /*minStructField*/ string
-    delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
-    config: /*minStructField*/ number[]
-}
->,
-        otherNamedDelegates: Map<string, {
-    uutName: /*minStructField*/ string
-    delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
-    config: /*minStructField*/ number[]
-}
->,
+        spendInvariants: Array<RelativeDelegateLinkLike>,
+        otherNamedDelegates: Map<string, RelativeDelegateLinkLike>,
         mintDelegateLink: RelativeDelegateLinkLike,
-        mintInvariants: Array<{
-    uutName: /*minStructField*/ string
-    delegateValidatorHash: /*minStructField*/ Option<ValidatorHash | string | number[]>
-    config: /*minStructField*/ number[]
-}
->,
+        mintInvariants: Array<RelativeDelegateLinkLike>,
         govAuthorityLink: RelativeDelegateLinkLike,
-        manifest: Map<string, {
-    entryType: /*minStructField*/ ManifestEntryTypeLike
-    tokenName: /*minStructField*/ number[]
-    mph: /*minStructField*/ Option<MintingPolicyHash | string | number[]>
-}
->,
-        pendingDgtChanges: Array<{
-    action: /*minStructField*/ PendingDelegateActionLike
-    role: /*minStructField*/ DelegateRoleLike
-    name: /*minStructField*/ Option<string>
-}
-> } ) : TxOutputDatum<"Inline"> {
+        manifest: Map<string, CapoManifestEntryLike>,
+        pendingDgtChanges: Array<PendingDelegateChangeLike> } ) : TxOutputDatum<"Inline"> {
         const uplc = this.mkUplcData({
-            CharterToken: fields 
-        }, "CapoHelpers::CapoDatum.CharterToken");
+            CharterData: fields 
+        }, "CapoHelpers::CapoDatum.CharterData");
         return TxOutputDatum.Inline(uplc);
     } /*multiFieldVariant enum accessor*/
 
 /**
- * (property getter): UplcData for ***"CapoHelpers::CapoDatum.ScriptReference"***
+ * (property getter): TxOutputDatum for ***"CapoHelpers::CapoDatum.ScriptReference"***
  * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
  */
     get ScriptReference() {
@@ -847,7 +819,7 @@ export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
     } /* tagOnly variant accessor */
 
     /**
-     * generates  UplcData for ***"CapoHelpers::CapoDatum.DelegatedData"***
+     * generates  TxOutputDatum for ***"CapoHelpers::CapoDatum.DelegatedData"***
      * @remarks - ***CapoDatum$DelegatedDataLike*** is the same as the expanded field-types.
      */
     DelegatedData(fields: CapoDatum$DelegatedDataLike | { 
@@ -1675,7 +1647,7 @@ export const ManifestEntryTypeSchema : EnumTypeSchema = {
 
 export const CapoManifestEntrySchema : StructTypeSchema = {
     "kind": "struct",
-    "format": "list",
+    "format": "map",
     "id": "__module__CapoHelpers__CapoManifestEntry[]",
     "name": "CapoManifestEntry",
     "fieldTypes": [
@@ -1832,14 +1804,16 @@ export const CapoManifestEntrySchema : StructTypeSchema = {
                         "fieldTypes": []
                     }
                 ]
-            }
+            },
+            "key": "tpe"
         },
         {
             "name": "tokenName",
             "type": {
                 "kind": "internal",
                 "name": "ByteArray"
-            }
+            },
+            "key": "tn"
         },
         {
             "name": "mph",
@@ -2167,8 +2141,8 @@ export const CapoDatumSchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 0,
-            "id": "__module__CapoHelpers__CapoDatum[]__CharterToken",
-            "name": "CharterToken",
+            "id": "__module__CapoHelpers__CapoDatum[]__CharterData",
+            "name": "CharterData",
             "fieldTypes": [
                 {
                     "name": "spendDelegateLink",
@@ -2403,7 +2377,7 @@ export const CapoDatumSchema : EnumTypeSchema = {
                         },
                         "valueType": {
                             "kind": "struct",
-                            "format": "list",
+                            "format": "map",
                             "id": "__module__CapoHelpers__CapoManifestEntry[]",
                             "name": "CapoManifestEntry",
                             "fieldTypes": [
@@ -2560,14 +2534,16 @@ export const CapoDatumSchema : EnumTypeSchema = {
                                                 "fieldTypes": []
                                             }
                                         ]
-                                    }
+                                    },
+                                    "key": "tpe"
                                 },
                                 {
                                     "name": "tokenName",
                                     "type": {
                                         "kind": "internal",
                                         "name": "ByteArray"
-                                    }
+                                    },
+                                    "key": "tn"
                                 },
                                 {
                                     "name": "mph",

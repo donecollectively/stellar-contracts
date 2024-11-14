@@ -35,6 +35,7 @@ import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 import type { CapoDelegateBundle, CapoDelegateBundleClass } from "./CapoDelegateBundle.js";
 import type { ContractDataBridge, ContractDataBridgeWithEnumDatum, ContractDataBridgeWithOtherDatum, DataBridge } from "src/helios/dataBridge/DataBridge.js";
+import type { mustFindActivityType, mustFindConcreteContractBridgeType, mustFindDatumType, mustFindReadDatumType } from "../helios/dataBridge/BridgeTypeUtils.js";
 
 
 /**
@@ -71,6 +72,45 @@ export class ContractBasedDelegate extends StellarDelegate {
         throw new Error(
             `${this.constructor.name}: missing required get delegateName() : string`
         );
+    }
+
+    // dataBridgeClass = CapoDataBridge;
+
+    get onchain(): mustFindConcreteContractBridgeType<this> {
+        return this.getOnchainBridge() as any;
+    }
+
+    get offchain(): mustFindConcreteContractBridgeType<this>["reader"] {
+        return super.offchain as any;
+    }
+
+    get reader(): mustFindConcreteContractBridgeType<this>["reader"] {
+        return super.offchain as any;
+    }
+
+    get activity(): mustFindActivityType<this> {
+        const bridge = this.onchain;
+        return bridge.activity as any;
+    }
+
+    get mkDatum(): mustFindDatumType<this> {
+        return this.onchain.datum;
+    }
+
+    get newReadDatum(): mustFindReadDatumType<this> {
+        // & ( (d: UplcData) => CapoDatumLike ) {
+        const bridge = this.getOnchainBridge();
+        //x@ts-expect-error probing for presence
+        const { readDatum } = bridge;
+        if (!readDatum) {
+            throw new Error(
+                `${
+                    (this as any).constructor.name
+                }: this contract script doesn't use datum`
+            );
+        }
+
+        return readDatum as any
     }
 
     get capo(): Capo<any> {
@@ -161,7 +201,8 @@ export class ContractBasedDelegate extends StellarDelegate {
         //     delegateName: this.delegateName,
         // };
 
-        const { capoAddr, mph, tn, capo, ...otherConfig } = config;
+        const { 
+            capoAddr, mph, tn, capo, ...otherConfig } = config;
 
         return this.paramsToUplc({
             ...otherConfig,
@@ -631,9 +672,7 @@ export class ContractBasedDelegate extends StellarDelegate {
 export type NamedDelegateCreationOptions<
     thisType extends Capo<any>,
     DT extends StellarDelegate
-> = DelegateCreationOptions<
-    string & keyof thisType["delegateRoles"]["namedDelegate"]["variants"]
-> & {
+> = DelegateCreationOptions & {
     /**
      * Optional name for the UUT; uses the delegate name if not provided.
      **/
@@ -646,14 +685,12 @@ export type NamedDelegateCreationOptions<
 //     forcedUpdate?: true;
 // };
 
-export type DelegateCreationOptions<
-    STRATEGIES extends string,
-> = MinimalDelegateLink & {
+export type DelegateCreationOptions = MinimalDelegateLink & {
     /**
      * details for creating the delegate
      */
     mintSetup: NormalDelegateSetup | DelegateSetupWithoutMintDelegate;
-    strategyName: string & STRATEGIES;
+    // strategyName: string & STRATEGIES;
     /**
      * Installs the named delegate without burning the existing UUT for this delegate.
      * That UUT may become lost and inaccessible, along with any of its minUtxo.

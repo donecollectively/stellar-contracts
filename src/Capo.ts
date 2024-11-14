@@ -14,7 +14,11 @@ import {
     bytesToHex,
     textToBytes,
 } from "@hyperionbt/helios";
-import { equalsBytes } from "@helios-lang/codec-utils";
+import {
+    equalsBytes,
+    type ByteArrayLike,
+    type IntLike,
+} from "@helios-lang/codec-utils";
 
 import type { HeliosModuleSrc } from "./helios/HeliosModuleSrc.js";
 import { CapoHeliosBundle } from "./CapoHeliosBundle.js";
@@ -51,18 +55,19 @@ import {
     delegateRoles,
     defineRole,
 } from "./delegation/RolesAndDelegates.js";
-import { delegateLinkSerializer } from "./delegation/jsonSerializers.js";
+import { delegateLinkSerializer, uplcDataSerializer } from "./delegation/jsonSerializers.js";
 
 import { UutName } from "./delegation/UutName.js";
 import type {
     ConfiguredDelegate,
     ErrorMap,
-    VariantStrategy,
-    RelativeDelegateLink,
-    RoleInfo,
+    DelegateConfigDetails,
+    OffchainPartialDelegateLink,
+    DelegateSetup,
     DelegationDetail,
-    strategyValidation,
+    delegateConfigValidation,
     capoDelegateConfig,
+    SelectedDelegate,
 } from "./delegation/RolesAndDelegates.js";
 
 import type { SeedTxnScriptParams } from "./SeedTxnScriptParams.js";
@@ -113,10 +118,12 @@ import { type NamedDelegateCreationOptions } from "./delegation/ContractBasedDel
  *
  * @public
  **/
-export type MinimalDelegateLink = Required<
-    Pick<RelativeDelegateLink, "strategyName">
-> &
-    Partial<Omit<RelativeDelegateLink, "uutName">>;
+export type MinimalDelegateLink = Partial<OffchainPartialDelegateLink>;
+//     Omit<RelativeDelegateLinkLike, "uutName">
+// >;
+
+        // const spendDelegate = await this.txnCreateOffchainDelegateLink(
+        //     spendDelegateLink: this.mkOnchainRelativeDelegateLink(govAuthority),
 
 /**
  * Delegate updates can, in an "escape hatch" scenario, be forced by sole authority
@@ -124,7 +131,10 @@ export type MinimalDelegateLink = Required<
  * mint/spend delegate's involvement, a forced update can be used to bypass that route.
  * This provides that signal.
  */
-export type MinimalDelegateUpdateLink = MinimalDelegateLink & {
+export type MinimalDelegateUpdateLink = Omit<
+    OffchainPartialDelegateLink,
+    "uutName"
+> & {
     forcedUpdate?: true;
 };
 
@@ -310,20 +320,25 @@ type PreconfiguredDelegate<T extends StellarDelegate> = Omit<
     "delegate" | "delegateValidatorHash"
 >;
 
-export type basicRoleMap <
-    anyOtherRoles extends {[k : string]: RoleInfo<any,any,ContractBasedDelegate, any>}={},
-    defaultRoles={
-        govAuthority: RoleInfo<any, "capoGov", StellarDelegate, any>;
-        mintDelegate: RoleInfo<any, "mintDgt", BasicMintDelegate, any>;
-        spendDelegate: RoleInfo<any, "spendDgt", ContractBasedDelegate, any>;
-        namedDelegate: RoleInfo<any, "namedDgt", StellarDelegate, any>;
-    },
+export type basicDelegateMap<
+    anyOtherRoles extends {
+        [k: string]: DelegateSetup<any, StellarDelegate, any>;
+    } = {},
+    defaultRoles = {
+        govAuthority: DelegateSetup<"authority", StellarDelegate, any>;
+        mintDelegate: DelegateSetup<"mintDgt", BasicMintDelegate, any>;
+        spendDelegate: DelegateSetup<"spendDgt", ContractBasedDelegate, any>;
+        // namedDelegate: RoleInfo<any, "namedDgt", StellarDelegate>;
+    }
 > = {
-    [k in 
-        keyof anyOtherRoles | keyof defaultRoles
-    ] : k extends keyof anyOtherRoles ? anyOtherRoles[k] 
-    : k extends keyof defaultRoles ? defaultRoles[k] : never
-}
+    [k in
+        | keyof anyOtherRoles
+        | keyof defaultRoles]: k extends keyof anyOtherRoles
+        ? anyOtherRoles[k]
+        : k extends keyof defaultRoles
+        ? defaultRoles[k]
+        : never;
+};
 
 /**
  * @public
@@ -331,7 +346,7 @@ export type basicRoleMap <
 export type hasCharterRef = StellarTxnContext<
     anyState & {
         charterRef: TxInput;
-        charterDatum: CharterDatumProps;
+        charterDatum: CharterData;
     }
 >;
 
@@ -361,23 +376,47 @@ import { TxOutputDatum } from "@helios-lang/ledger-babbage";
 import type { tokenPredicate } from "./UtxoHelper.js";
 import type { HeliosScriptBundle } from "./helios/HeliosScriptBundle.js";
 import BasicDelegateScript from "./delegation/BasicDelegate.hl";
-import CapoDataBridge from "./CapoHeliosBundle.bridge.js";
+import CapoDataBridge, {
+    type types as CapoTypes,
+} from "./CapoHeliosBundle.bridge.js";
+import type {
+    findActivityType,
+    mustFindActivityType,
+    mustFindConcreteContractBridgeType,
+    mustFindDatumType,
+    mustFindReadDatumType,
+} from "./helios/dataBridge/BridgeTypeUtils.js";
+import type {
+    CapoDatum$CharterDataLike,
+    CapoDatum$Ergo$CharterData,
+    CapoDatumLike,
+    ErgoCapoDatum,
+    ErgoRelativeDelegateLink,
+    RelativeDelegateLinkLike,
+    RelativeDelegateLink,
+    ManifestEntryType$DgDataPolicyLike,
+} from "./CapoHeliosBundle.typeInfo.js";
+import type { IntersectedEnum } from "./helios/typeUtils.js";
+
+export type CapoDatum = ErgoCapoDatum;
+export type CharterData = CapoDatum$Ergo$CharterData;
+export type CharterDataLike = CapoDatum$CharterDataLike;
 
 /**
- * Schema for Charter Datum, which allows state to be stored in the Leader contract
- * together with it's primary or "charter" utxo.
+ * Schema for initial setup of Charter Datum - state stored in the Leader contract
+ * together with its primary or "charter" utxo.  Converted from this convenient form
+ * to the on-chain form during mkTxnMintCharterToken().
  * @public
  **/
-export interface CharterDatumProps extends configBaseWithRev {
-    spendDelegateLink: RelativeDelegateLink;
-    spendInvariants: RelativeDelegateLink[];
-    namedDelegates:
-        | Map<string, RelativeDelegateLink>
-        | Record<string, RelativeDelegateLink>;
-    // settingsUut: UutName | number[];
-    mintDelegateLink: RelativeDelegateLink;
-    mintInvariants: RelativeDelegateLink[];
-    govAuthorityLink: RelativeDelegateLink;
+export interface MinimalCharterDatumArgs extends configBaseWithRev {
+    spendDelegateLink: OffchainPartialDelegateLink;
+    spendInvariants: OffchainPartialDelegateLink[];
+    otherNamedDelegates: Map<string, OffchainPartialDelegateLink>;
+    // | Record<string, OffchainPartialDelegateLink>;
+    mintDelegateLink: OffchainPartialDelegateLink;
+    mintInvariants: OffchainPartialDelegateLink[];
+    govAuthorityLink: OffchainPartialDelegateLink;
+    manifest: Map<string, OffchainPartialDelegateLink>;
     // typeMapUut: UutName | number[];
 }
 
@@ -389,7 +428,7 @@ export interface CharterDatumProps extends configBaseWithRev {
  *
  * @public
  **/
-export type MinimalCharterDatumArgs = {
+export type newMinimalCharterDatumArgs_maybeUnneeded = {
     // RemainingMinimalCharterDatumArgs<DAT> & {
     govAuthorityLink: MinimalDelegateLink;
     mintDelegateLink: MinimalDelegateLink;
@@ -399,7 +438,7 @@ export type MinimalCharterDatumArgs = {
 };
 
 export type RemainingMinimalCharterDatumArgs = Omit<
-    CharterDatumProps,
+    CharterDataLike,
     "govAuthorityLink" | "mintDelegateLink" | "spendDelegateLink"
 >;
 
@@ -422,11 +461,11 @@ export type hasNamedDelegate<
 > = StellarTxnContext<
     anyState & {
         [k in `namedDelegate${Capitalize<N>}`]: ConfiguredDelegate<DT> &
-            RelativeDelegateLink;
+            ErgoRelativeDelegateLink;
     }
 >;
 
-export type hasRoleMap<
+export type hasDelegateMap<
     C extends Capo<any>,
     SpecificCapo = C extends Capo<infer S>
         ? S extends unknown
@@ -434,13 +473,13 @@ export type hasRoleMap<
             : S
         : never
 > = {
-    initDelegateRoles(): basicRoleMap;
+    initDelegateRoles(): basicDelegateMap<any>;
     _delegateRoles: SpecificCapo extends never
         ? null
-        : basicRoleMap & ReturnType<C["initDelegateRoles"]>;
+        : basicDelegateMap & ReturnType<C["initDelegateRoles"]>;
     get delegateRoles(): SpecificCapo extends never
         ? null
-        : basicRoleMap & ReturnType<C["initDelegateRoles"]>;
+        : basicDelegateMap<any> & ReturnType<C["initDelegateRoles"]>;
 };
 
 /**
@@ -522,7 +561,45 @@ export abstract class Capo<
     // implements hasSettingsType<SELF>
     //, hasRoleMap<SELF>
     static currentRev: bigint = 1n;
-    dataBridgeClass = CapoDataBridge
+    dataBridgeClass = CapoDataBridge;
+
+    get onchain(): mustFindConcreteContractBridgeType<this> {
+        return this.getOnchainBridge() as any;
+    }
+
+    get offchain(): mustFindConcreteContractBridgeType<this>["reader"] {
+        return super.offchain as any;
+    }
+
+    get reader(): mustFindConcreteContractBridgeType<this>["reader"] {
+        return super.offchain as any;
+    }
+
+    get activity(): mustFindActivityType<Capo<any>> {
+        const bridge = this.onchain;
+        return bridge.activity as any;
+    }
+
+    get mkDatum(): mustFindDatumType<Capo<any>> {
+        return this.onchain.datum;
+    }
+
+    get newReadDatum(): mustFindReadDatumType<Capo<any>> {
+        // & ( (d: UplcData) => CapoDatumLike ) {
+        const bridge = this.getOnchainBridge();
+        //x@ts-expect-error probing for presence
+        const { readDatum } = bridge;
+        if (!readDatum) {
+            throw new Error(
+                `${
+                    (this as any).constructor.name
+                }: this contract script doesn't use datum`
+            );
+        }
+
+        return readDatum as (x: UplcData) => CapoDatumLike as any;
+    }
+
     verifyConfigs(): Promise<any> {
         return this.verifyCoreDelegates();
     }
@@ -564,7 +641,7 @@ export abstract class Capo<
             | "spendDelegate"]: ConfiguredDelegate<any>;
     };
 
-    abstract initDelegatedDatumAdapters(): Promise<
+    abstract initDelegatedDatumWrappers(): Promise<
         Record<string, DelegatedDatumAdapter<any>>
     >;
 
@@ -649,14 +726,16 @@ export abstract class Capo<
             scriptActivitiesName: onChainActivitiesName,
         } = this;
 
-        const { CharterToken } = this.onChainDatumType.typeMembers;
+        const { CharterData } = this.onChainDatumType.typeMembers;
 
-        const updatingCharter = this.mustGetActivity("updatingCharter");
-        const usingAuthority = this.mustGetActivity("usingAuthority");
+        const updatingCharter = this.activity.updatingCharter;
+        // this.mustGetActivity("updatingCharter");
+        const usingAuthority = this.activity.usingAuthority;
+        // this.mustGetActivity("usingAuthority");
 
-        if (!CharterToken)
+        if (!CharterData)
             throw new Error(
-                `datum type ${onChainDatumName} must have a 'CharterToken' variant`
+                `datum type ${onChainDatumName} must have a 'CharterData' variant`
             );
         if (!updatingCharter)
             throw new Error(
@@ -691,7 +770,7 @@ export abstract class Capo<
 
         //@ts-expect-error - trust the subclass's initDelegatedDatumAdapters() to be type-matchy
         //   ... based on other abstract methods defined below
-        this.datumAdapters = await this.initDelegatedDatumAdapters();
+        this.datumAdapters = await this.initDelegatedDatumWrappers();
 
         return this;
     }
@@ -924,10 +1003,14 @@ export abstract class Capo<
         return tcx2.addRefInput(ctUtxo);
     }
 
+    /**
+     * finds and spends the Capo's charter utxo, typically for updating
+     * its CharterData datum.
+     */
     async txnMustUseCharterUtxo<TCX extends StellarTxnContext>(
         tcx: TCX,
         redeemer: isActivity,
-        newDatum?: InlineDatum
+        newCharterData?: CharterDataLike
     ): Promise<TCX>;
 
     /**
@@ -942,7 +1025,7 @@ export abstract class Capo<
     async txnMustUseCharterUtxo<TCX extends StellarTxnContext>(
         tcx: TCX,
         redeemerOrRefInput: isActivity | "refInput" | true,
-        newDatum?: InlineDatum
+        newCharterData?: CharterData
     ): Promise<TCX> {
         return this.mustFindCharterUtxo().then(async (ctUtxo: TxInput) => {
             // await this.txnAddCharterAuthz(
@@ -957,7 +1040,7 @@ export abstract class Capo<
                 throw new Error(`use tcxWithCharterRef(tcx) instead`);
 
                 // using reference-input has been requested
-                if (newDatum)
+                if (newCharterData)
                     throw new Error(
                         `when using reference input for charter, arg3 must be omitted`
                     );
@@ -970,7 +1053,9 @@ export abstract class Capo<
                 this.compiledScript
             );
             tcx2.addInput(ctUtxo, redeemer);
-            const datum = newDatum || (ctUtxo.output.datum as InlineDatum);
+            const datum = newCharterData
+                ? this.mkDatum.CharterData(newCharterData)
+                : (ctUtxo.output.datum as InlineDatum);
 
             return this.txnKeepCharterToken(tcx2, datum);
         });
@@ -980,7 +1065,7 @@ export abstract class Capo<
     async txnUpdateCharterUtxo(
         tcx: StellarTxnContext,
         redeemer: isActivity,
-        newDatum: InlineDatum
+        newDatum: CharterDataLike
     ): Promise<StellarTxnContext | never> {
         // this helper function is very simple.  Why have it?
         //   -> its 3rd arg is required,
@@ -1092,9 +1177,16 @@ export abstract class Capo<
         }
     }
 
-    offchainLink<T extends MinimalDelegateLink | RelativeDelegateLink>(
-        link: T
-    ): T {
+    /**
+     * parses details in a delegate-link
+     * @deprecated - use an adapter for CharterDatum instead?
+     */
+    offchainLink<
+        T extends
+            | MinimalDelegateLink
+            | OffchainPartialDelegateLink
+            | RelativeDelegateLinkLike
+    >(link: T): T {
         if ("string" == typeof link.config) {
             throw new Error(`wrong type`);
         }
@@ -1105,14 +1197,39 @@ export abstract class Capo<
             };
         }
         const { config } = link;
-        //@ts-expect-error on these type proble
+        //@ts-expect-error on this unknown prop
         if (config.rev) config.rev = BigInt(config.rev);
         // console.log(" config = ", config );
         // debugger
         return link;
     }
 
-    parseDelegateLinksInCharter(charterDatum: CharterDatumProps) {
+    parseDgtConfig(
+        inLink: // | MinimalDelegateLink
+        ErgoRelativeDelegateLink | RelativeDelegateLinkLike
+    ): Partial<capoDelegateConfig> {
+        if ("string" == typeof inLink.config) {
+            throw new Error(`wrong type`);
+        }
+        if (!Array.isArray(inLink.config)) {
+            throw new Error(`expected serialized JSON as bytearray`);
+        }
+        const config = JSON.parse(bytesToText(inLink.config));
+        if (config.rev) config.rev = BigInt(config.rev);
+
+        console.log("    ---- parsed config from RelDgtLink = ", config);
+        // debugger
+        return config;
+    }
+
+    serializeDgtConfig(config: Partial<capoDelegateConfig>): number[] {
+        return textToBytes(JSON.stringify(config, delegateLinkSerializer));
+    }
+
+    /**
+     * @deprecated - use the bridge type directly, and parseDgtConfig iff we ever need that.
+     */
+    parseDelegateLinksInCharter(charterDatum: CharterData) {
         // spendDelegateLink: RelativeDelegateLink<ContractBasedDelegate<capoDelegateConfig>>;
         // spendInvariants: RelativeDelegateLink<ContractBasedDelegate<capoDelegateConfig>>[];
         // namedDelegates: Record<string, RelativeDelegateLink<StellarDelegate<capoDelegateConfig>>>;
@@ -1120,29 +1237,46 @@ export abstract class Capo<
         // mintInvariants: RelativeDelegateLink<ContractBasedDelegate<capoDelegateConfig>>[];
         // govAuthorityLink: RelativeDelegateLink<AuthorityPolicy>;
 
-        const { namedDelegates: nDgts } = charterDatum;
+        const { otherNamedDelegates: nDgts, manifest } = charterDatum;
         const namedDgtEntries =
             nDgts instanceof Map ? [...nDgts.entries()] : Object.entries(nDgts);
 
-        const withParsedOffchainLinks: CharterDatumProps = {
-            ...charterDatum,
-            spendDelegateLink: this.offchainLink(
-                charterDatum.spendDelegateLink
-            ),
-            spendInvariants: charterDatum.spendInvariants.map(
-                this.offchainLink
-            ),
-            mintDelegateLink: this.offchainLink(charterDatum.mintDelegateLink),
-            mintInvariants: charterDatum.mintInvariants.map(this.offchainLink),
-            govAuthorityLink: this.offchainLink(charterDatum.govAuthorityLink),
-            namedDelegates: Object.fromEntries(
-                namedDgtEntries.map(([k, v]) => [k, this.offchainLink(v)])
-            ),
-        };
-        return withParsedOffchainLinks;
+        // const withParsedOffchainLinks: CharterDataLike = {
+        //     ...charterDatum,
+        //     spendDelegateLink: this.offchainLink(
+        //         charterDatum.spendDelegateLink
+        //     ),
+        //     spendInvariants: charterDatum.spendInvariants.map(
+        //         this.offchainLink
+        //     ),
+        //     mintDelegateLink: this.offchainLink(charterDatum.mintDelegateLink),
+        //     mintInvariants: charterDatum.mintInvariants.map(this.offchainLink),
+        //     govAuthorityLink: this.offchainLink(charterDatum.govAuthorityLink),
+        //     otherNamedDelegates: new Map(
+        //         namedDgtEntries.map(([k, v]) => [k, this.offchainLink(v)])
+        //     ),
+        //     manifest: new Map(
+        //         [...manifest.entries()].map(([k, v]) => {
+        //             if (v.DgDataPolicy) {
+        //                 const { policyLink, refCount } = v.DgDataPolicy;
+        //                 return [
+        //                     k,
+        //                     {
+        //                         DgDataPolicy: {
+        //                             policyLink: this.offchainLink(policyLink),
+        //                             refCount,
+        //                         },
+        //                     },
+        //                 ];
+        //             }
+        //             return [k, v]
+        //         })
+        //     ),
+        // };
+        // return withParsedOffchainLinks;
     }
 
-    async findCharterDatum(currentCharterUtxo?: TxInput) {
+    async findCharterDatum(currentCharterUtxo?: TxInput): Promise<CharterData> {
         // const ts1 = Date.now();
         // if (globalThis.__profile__) {
         //     debugger
@@ -1152,17 +1286,17 @@ export abstract class Capo<
             currentCharterUtxo = await this.mustFindCharterUtxo();
         }
         // console.log(" -- charter utxo ❌❌❌❌❌❌❌❌❌❌", dumpAny(currentCharterUtxo));
-        const charterDatum = await this.readDatum<CharterDatumProps>(
-            "CharterToken",
-            currentCharterUtxo.output.datum as InlineDatum
-        );
-        if (!charterDatum) throw Error(`invalid charter UTxO datum`);
+        const charterData = this.newReadDatum(
+            currentCharterUtxo.output.datum!.data
+        ).CharterData!;
+        if (!charterData) throw Error(`invalid charter UTxO datum`);
+        return charterData;
         // if (globalThis.__profile__) {
         //     console.profileEnd("findCharterDatum")
         // }
         // const ts2 = Date.now();
         // console.log(`  ⏱️ findCharterDatum took ${ts2 - ts1}ms`);
-        return this.parseDelegateLinksInCharter(charterDatum);
+        // return this.parseDelegateLinksInCharter(charterDatum);
     }
 
     // async findSettingsUtxo(
@@ -1294,9 +1428,10 @@ export abstract class Capo<
     /**
      * Creates a new delegate link, given a delegation role and and strategy-selection details
      * @param tcx - A transaction-context having state.uuts[roleName] matching the roleName
-     * @param roleName - the role of the delegate, matched with the `delegateRoles()` of `this`
-     * @param delegateInfo - partial detail of the delegation, with `strategyName` and any other
-     *     details required by the particular role.  Its delegate type must be matchy with the type indicated by the `roleName`.
+     * @param roleLabel - the role of the delegate, matched with the `delegateRoles()` of `this`
+     * @param delegateInfo - partial detail of the delegation with any
+     *     details required by the particular role.  Its delegate type may be a subclass of the type
+     *     indicated by the `roleName`.
      * @remarks
      *
      * Combines partal and implied configuration settings, validating the resulting configuration.
@@ -1305,13 +1440,13 @@ export abstract class Capo<
      * the indicated `roleName`.  Use {@link Capo.txnWillMintUuts|txnWillMintUuts()} or {@link Capo.txnMintingUuts|txnMintingUuts()} to construct
      * a transaction having that and a compliant txn-type.
      *
-     * The resulting "relative" delegate link can be used directly in a Datum field of type RelativeDelegateLink
-     * or can be stored off-chain in any way suitable for your dApp.
-     * 
+     * The resulting delegate-linking details can be used with this.mkRelativeDelegateLink() to
+     * encode it as an on-chain RelativeLinkLink in the Capo's charter.
+     *
      * The delegate-link is by default a contract-based delegate.  If that's not what you want,
-     * you can the type-parameters to override it to a more general StellarDelegate type (NOTE: if you 
+     * you can the type-parameters to override it to a more general StellarDelegate type (NOTE: if you
      * find you're needing to specify a more specific contract-based delegate type, please let us know, as
-     * our expectation is that the general type for a contract-based delegate should already provide all the 
+     * our expectation is that the general type for a contract-based delegate should already provide all the
      * necessary type information for all kinds of contract-based delegate subclasses).
      *
      * To get a full DelegateSettings object, use txnCreateDelegateSettings() instead.
@@ -1328,39 +1463,74 @@ export abstract class Capo<
      *   ... and automatically applies a `uut` setting.
      *   ... The later properties in this sequence take precedence.
      **/
-    async txnCreateDelegateLink<
-        RN extends string & keyof this["delegateRoles"],
-        DT extends StellarDelegate = ContractBasedDelegate,
+    async txnCreateOffchainDelegateLink<
+        RoLabel extends string & keyof this["delegateRoles"],
+        DT extends StellarDelegate = ContractBasedDelegate
     >(
-        tcx: hasUutContext<RN>,
-        roleName: RN,
-        delegateInfo: RelativeDelegateLink
-    ): Promise<ConfiguredDelegate<DT> & RelativeDelegateLink> {
+        tcx: hasUutContext<RoLabel>,
+        roleLabel: RoLabel,
+        delegateInfo: OffchainPartialDelegateLink
+    ): Promise<ConfiguredDelegate<DT> & Required<OffchainPartialDelegateLink>> {
         const configured = await this.txnCreateConfiguredDelegate(
             tcx,
-            roleName,
+            roleLabel,
             delegateInfo
         );
         await configured.delegate.txnReceiveAuthorityToken(
             tcx,
-            this.uh.mkMinTv(this.mph, tcx.state.uuts[roleName])
+            this.uh.mkMinTv(this.mph, tcx.state.uuts[roleLabel])
         );
 
-        const delegateLink = this.relativeLink(configured);
+        const delegateLink = this.extractDelegateLinkDetails(configured);
         const cacheKey = JSON.stringify(
             delegateLink,
             delegateLinkSerializer
             // 4 // indent 4 spaces
         );
-        this.#_delegateCache[roleName] = this.#_delegateCache[roleName] || {};
-        this.#_delegateCache[roleName][cacheKey] = configured;
+        console.log("offchainDgtLink cache key", roleLabel, cacheKey);
+        this.#_delegateCache[roleLabel] = this.#_delegateCache[roleLabel] || {};
+        this.#_delegateCache[roleLabel][cacheKey] = configured;
         //@ts-expect-error "could be instantiated with a different type" - TS2352
-        return configured as ConfiguredDelegate<DT> & RelativeDelegateLink;
+        return configured as ConfiguredDelegate<DT>;
     }
 
-    // this is just type sugar - a configured delegate already has all the relative-delegate link properties.
-    relativeLink<
-        CT extends ConfiguredDelegate<DT> | RelativeDelegateLink,
+    /**
+     * extracts the key details for creating an on-chain delegate link, given a setup-phase
+     * configuration for that delegate.
+     */
+    mkOnchainRelativeDelegateLink<CT extends ConfiguredDelegate<any>>(
+        configured: CT
+    ): RelativeDelegateLinkLike {
+        const {
+            uutName,
+            // strategyName,
+            delegateValidatorHash,
+            config = {},
+        } = configured;
+        if (!uutName) {
+            throw new Error(`missing required uutName for delegate link`);
+        }
+        console.warn(
+            "  -- mkOnchainRelativeDelegateLink: encoding with JSON-ified config",
+            config
+        );
+        return {
+            uutName,
+            // strategyName,
+            delegateValidatorHash,
+            config: this.serializeDgtConfig(config),
+        };
+    }
+
+    /**
+     * extracts the key details of a delegate link, given a delegate configuration.
+     * @remarks
+     * This is valid only during the setup phase of creating a delegate, and does not encode the config entry.
+     *
+     * use mkRelativeDelegateLink() to encode the config entry, and use this.parseDgtConfig() to decode it.
+     */
+    extractDelegateLinkDetails<
+        CT extends ConfiguredDelegate<DT> | OffchainPartialDelegateLink,
         DT extends StellarDelegate | never = CT extends ConfiguredDelegate<
             infer D
         >
@@ -1369,23 +1539,47 @@ export abstract class Capo<
     >(
         configured: CT
     ): CT extends ConfiguredDelegate<any>
-        ? CT & RelativeDelegateLink
-        : RelativeDelegateLink {
+        ? CT & OffchainPartialDelegateLink
+        : OffchainPartialDelegateLink {
         const {
             uutName,
-            strategyName,
+            // strategyName,
             delegateValidatorHash,
             config = {},
-        }: RelativeDelegateLink & CT = configured;
+        } = configured;
 
         return {
             uutName,
-            strategyName,
+            // strategyName,
             delegateValidatorHash,
-            config,
+            config: config,
         } as any;
         // note, the output type is simply based on the input type
     }
+
+    // mkDelegateLink(
+    //     dl: OffchainPartialDelegateLink
+    // ) {
+    //     const { RelativeDelegateLink: hlRelativeDelegateLink } =
+    //         this.onChainTypes;
+
+    //     let {
+    //         uutName,
+    //         // strategyName,
+    //         delegateValidatorHash,
+    //         config,
+    //         // reqdAddress: canRequireAddr,
+    //         // addrHint = [],
+    //     } = dl;
+
+    //     const delegateLink : RelativeDelegateLinkLike ={
+    //         // this.typeToUplc(hlRelativeDelegateLink, {
+    //         uutName,
+    //         // strategyName,
+    //         delegateValidatorHash,
+    //         config: textToBytes(JSON.stringify(config, delegateLinkSerializer)), //, 4)
+    //     };
+    // }
 
     /**
      * Generates and returns a complete set of delegate settings, given a delegation role and strategy-selection details.
@@ -1394,79 +1588,94 @@ export abstract class Capo<
      * Maps the indicated delegation role to specific UUT details from the provided transaction-context
      * to provide the resulting settings.  The transaction context isn't modified.
      *
-     * Behaves exactly like (and provides the core implementation of) {@link Capo.txnCreateDelegateLink | txnCreateDelegateLink()},
+     * Behaves exactly like (and provides the core implementation of) {@link Capo.txnCreateOffchainDelegateLink | txnCreateDelegateLink()},
      * returning additional `roleName` and `delegateClass`, to conform with the DelegateSettings type.
-     * 
+     *
      * ### Overriding the Delegate Type
      * The configuration is typed for a contract-based delegate by default.  If you need a more general
      * StellarDelegate type (for AuthorityPolicy, for example), you can override the type-parameters (if you are finding
      * that you need to specify a more specific contract-based delegate type, please let us know, as our expectation is that
      * the general type for a contract-based delegate should already provide all the necessary type information for all kinds of
      * contract-based delegate subclasses).
-     * 
+     *
      * See txnCreateDelegateLink for further details.
      * @public
      **/
     async txnCreateConfiguredDelegate<
         RN extends string & keyof this["delegateRoles"],
-        DT extends StellarDelegate = ContractBasedDelegate,
+        DT extends StellarDelegate = ContractBasedDelegate
     >(
         tcx: hasUutContext<RN>,
         roleName: RN,
-        delegateInfo: MinimalDelegateLink
+        delegateInfo: OffchainPartialDelegateLink
     ): Promise<ConfiguredDelegate<DT>> {
-        const { strategyName, config: explicitConfig = {} } = delegateInfo;
+        const {
+            // strategyName,
+            config: explicitConfig = {},
+        } = delegateInfo;
 
         const { delegateRoles } = this;
         const uut = tcx.state.uuts[roleName];
+        if (!uut) {
+            console.warn(
+                `missing required UUT for role '${roleName}' in transaction context:`,
+                tcx.state.uuts
+            );
+            throw new Error(
+                `missing required UUT for role '${roleName}' (see logged details)`
+            );
+        }
         const impliedDelegationDetails = this.mkImpliedDelegationDetails(uut);
 
-        const foundStrategies = // ... as RoleInfo<DT, any, any, RN>;
+        const selectedDgt =
             delegateRoles[roleName] as this["delegateRoles"][RN] //prettier-ignore
-        if (!foundStrategies) {
-            throw new Error(`no delegateRoles entry for role '${roleName}'`);
-        }
-        const selectedStrategy = foundStrategies.variants[
-            strategyName
-        ] as VariantStrategy<StellarDelegate>;
-        if (!selectedStrategy) {
-            let msg = `invalid strategyName '${strategyName}' for role '${roleName}'`;
-            if (strategyName == "default") {
-                msg = `no selected or default delegate for role '${roleName}'.  Specify strategyName`;
-            }
+        // if (!foundStrategies) {
+        //     throw new Error(`no delegateRoles entry for role '${roleName}'`);
+        // }
+        // const selectedStrategy = foundStrategies.variants[
+        //     strategyName
+        // ] as DelegateSelection<StellarDelegate>;
+        if (!selectedDgt) {
+            let msg = `invalid dgt role requested: '${roleName}'`;
+            // if (strategyName == "default") {
+            //     msg = `no selected or default delegate for role '${roleName}'.  Specify strategyName`;
+            // }
+            debugger;
             const e = new DelegateConfigNeeded(msg, {
                 errorRole: roleName,
-                availableStrategies: Object.keys(foundStrategies.variants),
+                availableDgtNames: Object.keys(delegateRoles),
             });
             throw e;
         }
-        const { delegateClass, validateConfig } = selectedStrategy;
+        const {
+            delegateClass,
+            config: { validateConfig, partialConfig: paramsFromRole = {} },
+        } = selectedDgt;
         const { defaultParams: defaultParamsFromDelegateClass } = delegateClass;
 
-        const scriptParamsFromStrategyVariant =
-            selectedStrategy.partialConfig || {};
-
-        const configForLink = {
+        const configForOnchainRelativeDelegateLink = {
             ...defaultParamsFromDelegateClass,
-            ...(scriptParamsFromStrategyVariant || {}),
+            ...(paramsFromRole || {}),
             ...explicitConfig,
         };
         const fullCapoDgtConfig: ConfigFor<StellarDelegate> = {
-            ...configForLink,
+            ...configForOnchainRelativeDelegateLink,
             ...impliedDelegationDetails,
             capo: this,
-        } as unknown as ConfigFor<StellarDelegate>;
+        } /*as unknown*/ as ConfigFor<StellarDelegate>;
 
         //! it validates the net configuration so it can return a working config.
         const errors: ErrorMap | undefined =
             (validateConfig && validateConfig(fullCapoDgtConfig)) || undefined;
         if (errors) {
             throw new DelegateConfigNeeded(
-                `validation errors in delegateInfo.config for ${roleName} '${strategyName}':\n` +
+                `validation errors in delegateInfo.config for ${roleName}:\n` +
                     errorMapAsString(errors),
                 { errors }
             );
         }
+
+        // console.log({fullCapoDgtConfig});
 
         const delegateSettings: PreconfiguredDelegate<DT> = {
             ...delegateInfo,
@@ -1476,10 +1685,9 @@ export abstract class Capo<
             delegateClass: delegateClass as DT,
             uutName: uut.name,
             fullCapoDgtConfig,
-            config: configForLink,
+            config: configForOnchainRelativeDelegateLink,
         };
-        let delegate: DT =
-            await this.mustGetDelegate<DT>(delegateSettings);
+        let delegate: DT = await this.mustGetDelegate<DT>(delegateSettings);
 
         // const reqdAddress = delegate.delegateReqdAddress();
         // if (reqdAddress) {
@@ -1491,9 +1699,16 @@ export abstract class Capo<
         //     }
         // }
 
+        const { uutName } = delegateSettings;
+        if (!uutName) {
+            throw new Error(`missing required uutName in delegateSettings`);
+        }
         const { delegateValidatorHash } = delegate;
-        const pcd: ConfiguredDelegate<DT> = {
+        const pcd: ConfiguredDelegate<DT> & { uutName: string } = {
             ...delegateSettings,
+            config: configForOnchainRelativeDelegateLink,
+            uutName,
+
             delegateValidatorHash,
             delegate,
         };
@@ -1511,71 +1726,86 @@ export abstract class Capo<
     #_delegateCache: {
         [roleName: string]: {
             [delegateLink: string]: {
-                strategyName: string;
+                // strategyName: string;
                 delegate: StellarDelegate;
             };
         };
     } = {};
 
     // get connectDelegate()
-    async connectDelegateWithLink<
+    async connectDelegateWithOnchainRDLink<
         RN extends string & keyof this["delegateRoles"],
-        DT extends StellarDelegate = StellarDelegate
+        DT extends StellarDelegate = ContractBasedDelegate // StellarDelegate
     >(
-        roleName: RN,
-        delegateLink: RelativeDelegateLink
+        roleLabel: RN,
+        //!!! OK: using Ergo because the links are from charterData
+        delegateLink: RelativeDelegateLinkLike // | OffchainRelativeDelegateLink |
     ): Promise<DT> {
-        const cache = this.#_delegateCache;
 
+        const role = this.delegateRoles[roleLabel] as DelegateSetup<
+            any,
+            DT,
+            any
+        >;
+
+        //!!! work on type-safety with roleName + available roles
+        const onchainDgtLink = this.reader.RelativeDelegateLink(
+            this.onchain.types.RelativeDelegateLink(delegateLink)
+        )
+        const selectedDgt = role.delegateClass;
+
+        const cache = this.#_delegateCache;
         const cacheKey = JSON.stringify(
-            this.relativeLink(delegateLink),
+            onchainDgtLink,
+            // this.parseDgtConfig(delegateLink),
             delegateLinkSerializer
         );
 
-        if (!cache[roleName]) cache[roleName] = {};
-        const roleCache = cache[roleName];
+        if (!cache[roleLabel]) cache[roleLabel] = {};
+        const roleCache = cache[roleLabel];
+        console.log("connectDgtWithOnchainRDLink cache key", roleLabel, cacheKey);
         const cachedRole = roleCache[cacheKey];
         if (cachedRole) {
-            const { strategyName, delegate } = cachedRole;
-            console.log(`  ✅ 💁 ${roleName}:${strategyName} - from cache `);
+            const {
+                // strategyName,
+                delegate,
+            } = cachedRole;
+            console.log(`  ✅ 💁 ${roleLabel} - from cache `);
             return delegate as DT;
         }
-        console.log(`   🔎delegate 💁 ${roleName}`);
+        console.log(`   🔎delegate 💁 ${roleLabel}`);
         // console.log(`   ----- delegate '${roleName}' cache key `, cacheKey);
 
-        const role = this.delegateRoles[roleName];
-        //!!! work on type-safety with roleName + available roles
         const {
-            strategyName,
+            // strategyName,
             uutName,
             delegateValidatorHash: expectedDvh,
             // addrHint,  //moved to config
             // reqdAddress,  // removed
-            config: configForLink,
-        } = delegateLink;
-        const selectedStrat = role.variants[
-            strategyName
-        ] /*as unknown */ as ConfiguredDelegate<StellarDelegate>;
-        if (!selectedStrat) {
+            config: configBytesFromLink,
+        } = onchainDgtLink;
+
+        // as ConfiguredDelegate<StellarDelegate>;
+        // variants[
+        //     strategyName
+        /* ]as unknown */ if (!selectedDgt) {
             throw new Error(
-                `mismatched strategyName '${strategyName}' in delegate link for role '${roleName}'\n` +
-                    `  ...available strategies: ${Object.keys(
-                        role.variants
-                    ).join(", ")}.\n\n link details: ${this.showDelegateLink(
-                        delegateLink
-                    )}`
+                `no selected dgt for role '${roleLabel}'\n` +
+                    `link details: ${this.showDelegateLink(delegateLink)}`
             );
         }
-        const { delegateClass, fullCapoDgtConfig: stratSettings } =
-            selectedStrat;
+        const {
+            delegateClass,
+            config: { partialConfig: dgtMapSettings },
+        } = role;
         const { defaultParams: defaultParamsFromDelegateClass } = delegateClass;
         const impliedDelegationDetails = this.mkImpliedDelegationDetails(
-            new UutName(roleName, uutName)
+            new UutName(roleLabel, uutName)
         );
 
         const effectiveConfig = {
             ...defaultParamsFromDelegateClass,
-            ...stratSettings,
+            ...dgtMapSettings,
         };
 
         if ((effectiveConfig.rev as bigint | string) === "1") {
@@ -1587,14 +1817,15 @@ export abstract class Capo<
             delegateLinkSerializer,
             4
         );
+        const parsedConfigFromLink = this.parseDgtConfig(delegateLink);
         const serializedCfg2 = JSON.stringify(
-            configForLink,
+            parsedConfigFromLink,
             delegateLinkSerializer,
             4
         );
         if (serializedCfg1 !== serializedCfg2) {
             console.warn(
-                `mismatched or modified delegate configuration for role '${roleName}'\n` +
+                `mismatched or modified delegate configuration for role '${roleLabel}'\n` +
                     `  ...expected: ${serializedCfg1}\n` +
                     `  ...got: ${serializedCfg2}`
             );
@@ -1608,7 +1839,7 @@ export abstract class Capo<
         // ... consider that it might also be needed there.
         const fullCapoDgtConfig: ConfigFor<StellarDelegate> = {
             ...effectiveConfig,
-            ...configForLink,
+            ...parsedConfigFromLink,
             ...impliedDelegationDetails,
             capo: this,
         };
@@ -1627,34 +1858,34 @@ export abstract class Capo<
         const delegate = await this.mustGetDelegate({
             delegateClass,
             fullCapoDgtConfig,
-            roleName,
+            roleName: roleLabel,
             uutName,
-            strategyName,
-            config: configForLink,
+            // strategyName,
+            config: parsedConfigFromLink,
             // reqdAddress,
             // addrHint,
         });
 
-        const dvh = delegate.delegateValidatorHash;
+        const dvh = delegate.delegateValidatorHash!;
 
         if (expectedDvh && dvh && !expectedDvh.isEqual(dvh)) {
             throw new Error(
                 `${
                     this.constructor.name
-                }: ${roleName}: mismatched or modified delegate: expected validator ${expectedDvh?.toHex()}, got ${dvh.toHex()}`
+                }: ${roleLabel}: mismatched or modified delegate: expected validator ${expectedDvh?.toHex()}, got ${dvh.toHex()}`
             );
         }
         console.log(
-            `   ✅ 💁 ${roleName}:${strategyName} (now cached) ` // +Debug info: +` @ key = ${cacheKey}`
+            `   ✅ 💁 ${roleLabel}  (now cached) ` // +Debug info: +` @ key = ${cacheKey}`
         );
         roleCache[cacheKey] = {
             delegate,
-            strategyName,
+            // strategyName,
         };
         return delegate as DT;
     }
 
-    private showDelegateLink(delegateLink: RelativeDelegateLink) {
+    private showDelegateLink(delegateLink: RelativeDelegateLinkLike) {
         return JSON.stringify(delegateLink, null, 2);
     }
 
@@ -1683,11 +1914,11 @@ export abstract class Capo<
         }
     }
 
-    tvForDelegate(dgtLink: RelativeDelegateLink) {
+    tvForDelegate(dgtLink: ErgoRelativeDelegateLink) {
         return this.tokenAsValue(dgtLink.uutName);
     }
 
-    mkDelegatePredicate(dgtLink: RelativeDelegateLink) {
+    mkDelegatePredicate(dgtLink: ErgoRelativeDelegateLink) {
         return this.uh.mkTokenPredicate(this.tvForDelegate(dgtLink));
     }
 
@@ -1735,32 +1966,39 @@ export abstract class Capo<
         return this._delegateRoles;
     }
 
-    _delegateRoles!: ReturnType<this["initDelegateRoles"]>;
+    _delegateRoles!: basicDelegateMap<any> &
+        ReturnType<this["initDelegateRoles"]>;
     abstract initDelegateRoles(): // THISTYPE extends Capo<any>, //<
     // myDelegateRoles extends basicRoleMap
     //        >(
     // this: THISTYPE
-    basicRoleMap<any>; // & myDelegateRoles;
+    basicDelegateMap<any>; // & myDelegateRoles;
 
-    basicDelegateRoles(): basicRoleMap {
+    addressAuthorityConfig(): DelegateConfigDetails<AuthorityPolicy> {
+        return {
+            validateConfig(args): delegateConfigValidation {
+                const { rev, tn, addrHint } = args;
+
+                const errors: ErrorMap = {};
+                if (!rev) errors.rev = ["required"];
+                if (!tn?.length) errors.tn = ["(token-name) required"];
+
+                if (!addrHint?.length)
+                    errors.addrHint = ["destination address required"];
+                if (Object.keys(errors).length > 0) return errors;
+
+                return undefined;
+            },
+        };
+    }
+
+    basicDelegateRoles(): basicDelegateMap {
         const myRoles = delegateRoles({
-            govAuthority: defineRole("capoGov", undefined, {
-                address: {
-                    delegateClass: AnyAddressAuthorityPolicy,
-                    validateConfig(args): strategyValidation {
-                        const { rev, tn, addrHint } = args;
-
-                        const errors: ErrorMap = {};
-                        if (!rev) errors.rev = ["required"];
-                        if (!tn?.length) errors.tn = ["(token-name) required"];
-
-                        if (!addrHint?.length)
-                            errors.addrHint = ["destination address required"];
-                        if (Object.keys(errors).length > 0) return errors;
-
-                        return undefined;
-                    },
-                },
+            govAuthority: defineRole(
+                "authority",
+                AnyAddressAuthorityPolicy,
+                this.addressAuthorityConfig(),
+                "capoGov"
                 // multisig: {
                 //     delegateClass: MultisigAuthorityPolicy,
                 //     validateConfig(args): strategyValidation {
@@ -1773,33 +2011,28 @@ export abstract class Capo<
                 //         return undefined;
                 //     },
                 // },
-            }),
+            ),
             mintDelegate: defineRole("mintDgt", BasicMintDelegate, {
-                defaultV1: {
-                    delegateClass: BasicMintDelegate,
-                    partialConfig: {},
-                    validateConfig(args): strategyValidation {
-                        return undefined;
-                    },
+                partialConfig: {},
+                validateConfig(args): delegateConfigValidation {
+                    return undefined;
                 },
             }),
 
-            spendDelegate: defineRole("spendDgt", ContractBasedDelegate, {
-                defaultV1: {
-                    delegateClass: BasicMintDelegate,
-                    partialConfig: {},
-                    validateConfig(args): strategyValidation {
-                        return undefined;
-                    },
+            spendDelegate: defineRole("spendDgt", BasicMintDelegate, {
+                partialConfig: {},
+                validateConfig(args): delegateConfigValidation {
+                    return undefined;
                 },
             }),
-            namedDelegate: defineRole("namedDgt", 
-                //@ts-expect-error assigning abstract class where it prefers a concrete class
-                StellarDelegate,                 
-                {
-                    // no named delegates by default
-                }
-            ),
+            // otherNamedDelegates: none by default
+            //     namedDelegate: defineRole("namedDgt",
+            //         //@ts-expect-error assigning abstract class where it prefers a concrete class
+            //         StellarDelegate,
+            //         {
+            //             // no named delegates by default
+            //         }
+            //     ),
         });
         return myRoles;
         //as ROLEMAP
@@ -1837,64 +2070,64 @@ export abstract class Capo<
             charter;
 
         return Promise.all([
-            this.connectDelegateWithLink<"mintDelegate", BasicMintDelegate>(
+            this.connectDelegateWithOnchainRDLink<
                 "mintDelegate",
-                mintDelegateLink
-            ),
-            this.connectDelegateWithLink<"govAuthority", AuthorityPolicy>(
+                BasicMintDelegate
+            >("mintDelegate", mintDelegateLink),
+            this.connectDelegateWithOnchainRDLink<
                 "govAuthority",
-                govAuthorityLink
-            ),
-            this.connectDelegateWithLink<"spendDelegate", ContractBasedDelegate>(
+                AuthorityPolicy
+            >("govAuthority", govAuthorityLink),
+            this.connectDelegateWithOnchainRDLink<
                 "spendDelegate",
-                spendDelegateLink
-            )
+                ContractBasedDelegate
+            >("spendDelegate", spendDelegateLink),
         ]);
     }
 
-    mkDelegateLink(dl: RelativeDelegateLink) {
-        const { RelativeDelegateLink: hlRelativeDelegateLink } =
-            this.onChainTypes;
+    // /**
+    //  * @deprecated - use this.mkDatum.CharterData({...}) instead
+    //  */
+    // @datum
+    // async mkDatumCharterData(args: CharterDataLike): Promise<Datum> {
+    //     throw new Error(`obsolete`);
 
-        let {
-            uutName,
-            strategyName,
-            delegateValidatorHash,
-            config,
-            // reqdAddress: canRequireAddr,
-            // addrHint = [],
-        } = dl;
-
-        return {
-            // this.typeToUplc(hlRelativeDelegateLink, {
-            uutName,
-            strategyName,
-            delegateValidatorHash,
-            config: textToBytes(JSON.stringify(config, delegateLinkSerializer)), //, 4)
-        };
-    }
-
-    @datum
-    async mkDatumCharterToken(args: CharterDatumProps): Promise<Datum> {
-        return this.inlineDatum("CharterToken", {
-            govAuthorityLink: this.mkDelegateLink(args.govAuthorityLink),
-            mintDelegateLink: this.mkDelegateLink(args.mintDelegateLink),
-            mintInvariants: args.mintInvariants.map((dl) => {
-                return this.mkDelegateLink(dl);
-            }),
-            spendDelegateLink: this.mkDelegateLink(args.spendDelegateLink),
-            spendInvariants: args.spendInvariants.map((dl) => {
-                return this.mkDelegateLink(dl);
-            }),
-            // settingsUut: this.mkSettingsUutName(args.settingsUut),
-            namedDelegates: new Map<string, any>(
-                Object.entries(args.namedDelegates).map(([k, v]) => {
-                    return [k, this.mkDelegateLink(v)];
-                })
-            ),
-            // typeMapUut: this.mkSettingsUutName(args.typeMapUut),
-        });
-    }
+    //     return this.inlineDatum("CharterData", {
+    //         govAuthorityLink: this.mkDelegateLink(args.govAuthorityLink),
+    //         mintDelegateLink: this.mkDelegateLink(args.mintDelegateLink),
+    //         mintInvariants: args.mintInvariants.map((dl) => {
+    //             return this.mkDelegateLink(dl);
+    //         }),
+    //         spendDelegateLink: this.mkDelegateLink(args.spendDelegateLink),
+    //         spendInvariants: args.spendInvariants.map((dl) => {
+    //             return this.mkDelegateLink(dl);
+    //         }),
+    //         // settingsUut: this.mkSettingsUutName(args.settingsUut),
+    //         otherNamedDelegates: new Map<string, any>(
+    //             Object.entries(args.otherNamedDelegates).map(([k, v]) => {
+    //                 return [k, this.mkDelegateLink(v)];
+    //             })
+    //         ),
+    //         manifest: new Map(
+    //             [...args.manifest.entries()].map(([k, v]) => {
+    //                 if (v.DgDataPolicy) {
+    //                     const { policyLink, refCount } = v.DgDataPolicy;
+    //                     return [
+    //                         k,
+    //                         {
+    //                             DgDataPolicy: {
+    //                                 policyLink: this.mkDelegateLink(policyLink),
+    //                                 refCount,
+    //                             },
+    //                         },
+    //                     ];
+    //                 }
+    //                 return [k, v];
+    //             })
+    //         ),
+    //         // typeMapUut: this.mkSettingsUutName(args.typeMapUut),
+    //     });
+    // }
 
     // mkSettingsUutName(settingsUut: UutName | number[]) {
     //     return settingsUut instanceof UutName
@@ -1908,7 +2141,7 @@ export abstract class Capo<
     }
 
     datumAdapters!: Record<string, DelegatedDatumAdapter<any>> &
-        Awaited<ReturnType<this["initDelegatedDatumAdapters"]>>;
+        Awaited<ReturnType<this["initDelegatedDatumWrappers"]>>;
 
     // @datum
     // async mkDatumSettingsData<THISTYPE extends Capo<any>>(
@@ -1920,21 +2153,19 @@ export abstract class Capo<
     //     return adapter.toOnchainDatum(settings) as any;
     // }
 
-    async findGovDelegate(charterDatum?: CharterDatumProps) {
-        if (!charterDatum) {
-            charterDatum = await this.findCharterDatum();
-        }
+    async findGovDelegate(charterDatum?: CharterData) {
+        const chD = charterDatum || (await this.findCharterDatum());
 
-        const capoGovDelegate = await this.connectDelegateWithLink(
+        const capoGovDelegate = await this.connectDelegateWithOnchainRDLink(
             "govAuthority",
-            charterDatum.govAuthorityLink
+            chD.govAuthorityLink
         );
         console.log(
             "finding charter's govDelegate via link",
-            charterDatum.govAuthorityLink
+            chD.govAuthorityLink
         );
 
-        return capoGovDelegate;
+        return capoGovDelegate; 
     }
 
     async txnAddGovAuthority<TCX extends StellarTxnContext>(
@@ -1942,7 +2173,7 @@ export abstract class Capo<
     ): Promise<TCX & hasGovAuthority> {
         const charterDatumMaybe =
             "charterDatum" in tcx.state
-                ? (tcx.state.charterDatum as CharterDatumProps)
+                ? (tcx.state.charterDatum as CharterData)
                 : undefined;
         //@ts-expect-error on this type-probe
         if (tcx.state.govAuthority) {
@@ -1984,35 +2215,54 @@ export abstract class Capo<
     //     MDT extends BasicMintDelegate & THIS["delegateRoles"]["mintDgt"] extends RoleInfo<any, any, infer DT> ? DT : never
     // >() : Promise<MDT>{
     async getMintDelegate(
-    // <
-    //     T extends BasicMintDelegate=BasicMintDelegate
-    // >(
-        charterDatum?: CharterDatumProps
+        // <
+        //     T extends BasicMintDelegate=BasicMintDelegate
+        // >(
+        charterDatum?: Option<CharterData>
     ): Promise<BasicMintDelegate> {
         if (!this.configIn) {
             throw new Error(`what now?`);
         }
-
         //!!! needs to work also during bootstrapping.
-        if (!charterDatum) {
-            charterDatum = await this.findCharterDatum();
-        }
+        const chD = charterDatum || (await this.findCharterDatum());
 
-        return this.connectDelegateWithLink<"mintDelegate", BasicMintDelegate>(
+        return this.connectDelegateWithOnchainRDLink<
             "mintDelegate",
-            charterDatum.mintDelegateLink
-        )
+            BasicMintDelegate
+        >("mintDelegate", chD.mintDelegateLink);
     }
 
-    async getSpendDelegate(charterDatum?: CharterDatumProps) {
-        if (!charterDatum) {
-            charterDatum = await this.findCharterDatum();
-        }
+    async getSpendDelegate(charterDatum?: Option<CharterData>) {
+        const chD = charterDatum || (await this.findCharterDatum());
+        // if (!charterDatum) {
+        //     charterDatum = await this.findCharterDatum();
+        // }
 
-        return this.connectDelegateWithLink<"spendDelegate", ContractBasedDelegate> (
+        return this.connectDelegateWithOnchainRDLink<
             "spendDelegate",
-            charterDatum.spendDelegateLink
-        );
+            ContractBasedDelegate
+        >("spendDelegate", chD.spendDelegateLink);
+    }
+
+    async getDgDataController(typeName: string, charterDatum?: CharterData) {
+        const chD = charterDatum || (await this.findCharterDatum());
+        const foundME = chD.manifest.get(typeName);
+        if (!foundME) {
+            throw new Error(`no manifest entry found for ${typeName}`);
+        }
+        if (foundME?.entryType.DgDataPolicy) {
+            return this.connectDelegateWithOnchainRDLink<
+                typeof typeName,
+                ContractBasedDelegate
+            >(typeName, foundME.entryType.DgDataPolicy.policyLink);
+        } else {
+            const actualEntryType = Object.keys(foundME.entryType)[0];
+            throw new Error(
+                `invalid data-controller name '${typeName}' is invalid as a data-controller name; \n"+
+                "  ... manifest entry has type '${actualEntryType}', not DgDataPolicy!`
+            );
+        }
+        // return this.connectDelegateWithLink("dgDataPolicy", dgDataPolicy);
     }
 
     /**
@@ -2020,40 +2270,36 @@ export abstract class Capo<
      * @remarks
      * @public
      **/
-    async getNamedDelegate(
+    async getOtherNamedDelegate(
         delegateName: string,
-        charterDatum?: CharterDatumProps
+        charterDatum?: CharterData
     ): Promise<ContractBasedDelegate> {
-        if (!charterDatum) {
-            charterDatum = await this.findCharterDatum();
-        }
+        const chD = charterDatum || (await this.findCharterDatum());
 
-        const foundDelegateLink = charterDatum.namedDelegates[delegateName];
+        const foundDelegateLink = chD.otherNamedDelegates.get(delegateName);
         if (!foundDelegateLink) {
             throw new Error(
                 `${this.constructor.name}: no namedDelegate found: ${delegateName}`
             );
         }
-        return this.connectDelegateWithLink<"namedDelegate", ContractBasedDelegate>(
-            "namedDelegate",
-            foundDelegateLink
-        );
+        return this.connectDelegateWithOnchainRDLink<
+            typeof delegateName,
+            ContractBasedDelegate
+        >(delegateName, foundDelegateLink);
     }
 
-    async getNamedDelegates(charterDatum?: CharterDatumProps) {
-        if (!charterDatum) {
-            charterDatum = await this.findCharterDatum();
-        }
-        const namedDelegates = charterDatum.namedDelegates;
+    async getNamedDelegates(charterDatum?: CharterData) {
+        const chD = charterDatum || (await this.findCharterDatum());
+        const namedDelegates = chD.otherNamedDelegates;
 
-        const allNamedDelegates = Object.entries(namedDelegates).map(
-            async ([k, v]) => {
+        const allNamedDelegates = [...namedDelegates.entries()].map(
+            async ([otherDgtName, v]) => {
                 return [
-                    k,
-                    await this.connectDelegateWithLink<"namedDelegate", ContractBasedDelegate>(
-                        "namedDelegate",
-                        v
-                    ),
+                    otherDgtName,
+                    await this.connectDelegateWithOnchainRDLink<
+                        typeof otherDgtName,
+                        ContractBasedDelegate
+                    >(otherDgtName, v),
                 ] as [string, ContractBasedDelegate];
             }
         );
@@ -2062,8 +2308,8 @@ export abstract class Capo<
         return Object.fromEntries(done);
     }
 
-    async getGovDelegate(charterDatum?: CharterDatumProps) {
-        throw new Error("unused")
+    async getGovDelegate(charterDatum?: CharterData) {
+        throw new Error("unused");
     }
 
     /**
@@ -2201,7 +2447,7 @@ export abstract class Capo<
             "capoGov" as const,
             "mintDgt" as const,
             "spendDgt" as const,
-            "set" as const,
+            // "set" as const,
         ];
         const tcx = await this.txnWillMintUuts(
             tcxWithSeed,
@@ -2211,7 +2457,7 @@ export abstract class Capo<
                 govAuthority: "capoGov",
                 mintDelegate: "mintDgt",
                 spendDelegate: "spendDgt",
-                settings: "set",
+                // settings: "set",
             }
         );
         const { uuts } = tcx.state;
@@ -2235,22 +2481,22 @@ export abstract class Capo<
             this.didDryRun = {} as any;
         }
 
-        const govAuthority = await this.txnCreateDelegateLink(
+        const govAuthority = await this.txnCreateOffchainDelegateLink(
             tcx,
             "govAuthority",
-            charterDatumArgs.govAuthorityLink as any
+            charterDatumArgs.govAuthorityLink
         );
 
-        const mintDelegate = await this.txnCreateDelegateLink(
+        const mintDelegate = await this.txnCreateOffchainDelegateLink(
             tcx,
             "mintDelegate",
-            charterDatumArgs.mintDelegateLink as any
+            charterDatumArgs.mintDelegateLink
         );
 
-        const spendDelegate = await this.txnCreateDelegateLink(
+        const spendDelegate = await this.txnCreateOffchainDelegateLink(
             tcx,
             "spendDelegate",
-            charterDatumArgs.spendDelegateLink as any
+            charterDatumArgs.spendDelegateLink
         );
 
         this.bootstrapping = {
@@ -2258,22 +2504,24 @@ export abstract class Capo<
             mintDelegate,
             spendDelegate,
         };
-        //@ts-expect-error - typescript can't seem to understand that
-        //    <Type> - govAuthorityLink + govAuthorityLink is <Type> again
-        const fullCharterArgs: CharterDatumProps = {
-            ...charterDatumArgs,
-            // settingsUut: uuts.set,
-            govAuthorityLink: govAuthority,
-            mintDelegateLink: mintDelegate,
-            namedDelegates: {}, // can only be empty at charter, for now.
-            spendDelegateLink: spendDelegate,
-        };
-        const datum = await this.mkDatumCharterToken(fullCharterArgs);
-
         const charterOut = new TxOutput(
             this.address,
             this.tvCharter(),
-            datum
+            this.onchain.datum?.CharterData({
+                govAuthorityLink:
+                    this.mkOnchainRelativeDelegateLink(govAuthority),
+                spendDelegateLink:
+                    this.mkOnchainRelativeDelegateLink(spendDelegate),
+                mintDelegateLink:
+                    this.mkOnchainRelativeDelegateLink(mintDelegate),
+
+                // empty items during charter setup:
+                otherNamedDelegates: new Map(),
+                manifest: new Map(),
+                spendInvariants: [],
+                mintInvariants: [],
+                pendingDgtChanges: [],
+            })
             // this.compiledScript
         );
         charterOut.correctLovelace(this.networkParams);
@@ -2547,16 +2795,12 @@ export abstract class Capo<
 
     @txn
     async mkTxnUpdateCharter(
-        args: CharterDatumProps,
+        args: CharterDataLike,
         activity: isActivity = this.activityUpdatingCharter(),
         tcx: StellarTxnContext = new StellarTxnContext(this.setup)
     ): Promise<StellarTxnContext> {
         console.log("update charter", { activity });
-        return this.txnUpdateCharterUtxo(
-            tcx,
-            activity,
-            await this.mkDatumCharterToken(args)
-        );
+        return this.txnUpdateCharterUtxo(tcx, activity, args);
     }
 
     // @txn
@@ -2677,7 +2921,7 @@ export abstract class Capo<
         if ("undefined" !== typeof type) {
             const hasAdapterForIt = this.datumAdapters?.[type];
             if (!this.datumAdapters || (!!type && !hasAdapterForIt)) {
-                const updated = await this.initDelegatedDatumAdapters();
+                const updated = await this.initDelegatedDatumWrappers();
                 console.log(Object.keys(this.datumAdapters));
                 if (!(type in updated) && !this.datumAdapters) {
                     throw new Error(
@@ -2711,21 +2955,22 @@ export abstract class Capo<
                         type &&
                         (this.datumAdapters[type] as unknown as ADAPTER_TYPE);
 
-                    return (
-                        this.readDatum// adapter
+                    return this.readDatum(
+                        // adapter
                         //     ? this.readDatum(adapter, datum, "ignoreOtherTypes") :
-                        ("DelegatedData", datum, "ignoreOtherTypes")
-                            .then(
-                                mkFoundDatum.bind(
-                                    this,
-                                    utxo
-                                ) as any /* allows the error callback to fit the signature */,
-                                (e) => {
-                                    debugger;
-                                    console.log("wtf1", e, utxo.output.datum);
-                                    return null; // we don't care about Datums other than DelegatedData:
-                                }
-                            )
+                        "DelegatedData",
+                        datum,
+                        "ignoreOtherTypes"
+                    ).then(
+                        mkFoundDatum.bind(
+                            this,
+                            utxo
+                        ) as any /* allows the error callback to fit the signature */,
+                        (e) => {
+                            debugger;
+                            console.log("wtf1", e, utxo.output.datum);
+                            return null; // we don't care about Datums other than DelegatedData:
+                        }
                     );
                 })
             )
@@ -2832,13 +3077,16 @@ export abstract class Capo<
                 mintDelegate: "mintDgt",
             }
         );
-        const newMintDelegate = await this.txnCreateDelegateLink(
+        console.warn("updating mint delegate with info", delegateInfo);
+
+        const newMintDelegate = await this.txnCreateOffchainDelegateLink(
             tcx2,
             "mintDelegate",
             // !!! not tested:
-            { ... delegateInfo,
+            {
+                ...delegateInfo,
                 uutName: tcx2.state.uuts.mintDgt.name,
-            } as any
+            }
         );
         // currentDatum.mintDelegateLink);
 
@@ -2848,17 +3096,22 @@ export abstract class Capo<
         // >(tcx, "spendDelegate", charterDatumArgs.spendDelegateLink);
 
         //@xxxts-expect-error "could be instantiated with different subtype"
-        const fullCharterArgs: CharterDatumProps = {
+        const fullCharterArgs: CharterDataLike = {
             ...currentDatum,
-            mintDelegateLink: newMintDelegate,
+            mintDelegateLink:
+                this.mkOnchainRelativeDelegateLink(newMintDelegate),
         };
+        const capoActivity = delegateInfo.forcedUpdate ?
+            this.activity.capoLifecycleActivity.forcingNewMintDelegate(tcx2, { purpose: "mintDgt" })
+            : undefined //use default activity if not forcing
+
         const tcx3 = (await this.mkTxnUpdateCharter(
             fullCharterArgs,
-            undefined,
+            capoActivity,
             await this.txnAddGovAuthority(tcx2)
         )) as TCX & typeof tcx2;
         return tcx3;
-        // const datum = await this.mkDatumCharterToken(fullCharterArgs);
+        // const datum = await this.mkDatumCharterData(fullCharterArgs);
 
         // const charterOut = new TxOutput(
         //     this.address,
@@ -2870,7 +3123,7 @@ export abstract class Capo<
         // return tcx2.addOutput(charterOut);
     }
 
-    mkValuesBurningDelegateUut(current: RelativeDelegateLink) {
+    mkValuesBurningDelegateUut(current: ErgoRelativeDelegateLink) {
         return [mkValuesEntry(current.uutName, -1n)];
     }
 
@@ -2885,19 +3138,20 @@ export abstract class Capo<
     ): Promise<TCX> {
         const currentCharter = await this.mustFindCharterUtxo();
         const currentDatum = await this.findCharterDatum(currentCharter);
-        const spendDelegate = await this.getSpendDelegate();
+        const spendDelegate = await this.getSpendDelegate(currentDatum);
         const tcxWithSeed = await this.tcxWithSeedUtxo(tcx);
 
         const uutOptions: DelegateSetupWithoutMintDelegate = {
             withoutMintDelegate: {
                 omitMintDelegate: true,
                 specialMinterActivity:
-                    this.minter.activityCreatingNewSpendDelegate(
+                    this.minter.activity.CreatingNewSpendDelegate(
                         tcxWithSeed,
-                        delegateInfo.forcedUpdate
+                        { replacingUut: delegateInfo.forcedUpdate
                             ? undefined
                             : // minter will enforce the Burn of this token name
                               spendDelegate.authorityTokenName
+                        }
                     ),
                 additionalMintValues: delegateInfo.forcedUpdate
                     ? undefined
@@ -2941,14 +3195,18 @@ export abstract class Capo<
         );
 
         //@xts-expect-error "could be instantiated with different subtype"
-        const fullCharterArgs: CharterDatumProps = {
+        const fullCharterArgs: CharterDataLike = {
             ...currentDatum,
-            spendDelegateLink: newSpendDelegate,
+            spendDelegateLink:
+                this.mkOnchainRelativeDelegateLink(newSpendDelegate),
         };
 
+        const capoActivity = delegateInfo.forcedUpdate ?
+            this.activity.capoLifecycleActivity.forcingNewSpendDelegate(tcx2, { purpose: "spendDgt" })
+            : undefined //use default activity if not forcing
         return this.mkTxnUpdateCharter(
             fullCharterArgs,
-            undefined,
+            capoActivity,
             await this.txnAddGovAuthority(tcx2b)
         ) as Promise<TCX>;
     }
@@ -2959,60 +3217,63 @@ export abstract class Capo<
         TCX extends hasSeedUtxo = hasSeedUtxo
     >(
         this: THIS,
-        delegateInfo: MinimalDelegateLink,
+        delegateInfo: OffchainPartialDelegateLink,
         tcx: TCX = new StellarTxnContext(this.setup) as TCX
     ): Promise<StellarTxnContext> {
         const currentDatum = await this.findCharterDatum();
 
+        // const spendDelegate = await this.txnCreateOffchainDelegateLink(
+        //     spendDelegateLink: this.mkOnchainRelativeDelegateLink(govAuthority),
+
         throw new Error(`test me!`);
-        const tcxWithSeed = await this.tcxWithSeedUtxo(tcx);
-        const tcx2 = await this.txnMintingUuts(
-            tcxWithSeed,
-            ["mintDgt"],
-            {
-                withoutMintDelegate: {
-                    omitMintDelegate: true,
-                    specialMinterActivity:
-                        this.minter.activityAddingMintInvariant(tcxWithSeed),
-                },
-            },
-            {
-                // role/uut mappings
-                mintDelegate: "mintDgt",
-            }
-        );
-        const mintDelegate = await this.txnCreateDelegateLink(
-            tcx2,
-            "mintDelegate",
-            {
-                ...delegateInfo,
-                uutName: tcx2.state.uuts.mintDgt.name,
-                // !!! not tested:
-                config: { ...(delegateInfo.config || {}), ...this.configIn },
-            }
-        );
-        // currentDatum.mintDelegateLink);
+        // const tcxWithSeed = await this.tcxWithSeedUtxo(tcx);
+        // const tcx2 = await this.txnMintingUuts(
+        //     tcxWithSeed,
+        //     ["mintDgt"],
+        //     {
+        //         withoutMintDelegate: {
+        //             omitMintDelegate: true,
+        //             specialMinterActivity:
+        //                 this.minter.activityAddingMintInvariant(tcxWithSeed),
+        //         },
+        //     },
+        //     {
+        //         // role/uut mappings
+        //         mintDelegate: "mintDgt",
+        //     }
+        // );
+        // const mintDelegate = await this.txnCreateOffchainDelegateLink(
+        //     tcx2,
+        //     "mintDelegate",
+        //     {
+        //         ...delegateInfo,
+        //         uutName: tcx2.state.uuts.mintDgt.name,
+        //         // !!! not tested:
+        //         config: { ...(delegateInfo.config || {}), ...this.configIn },
+        //     }
+        // );
+        // // currentDatum.mintDelegateLink);
 
-        // const spendDelegate = await this.txnCreateDelegateLink<
-        //     StellarDelegate<any>,
-        //     "spendDelegate"
-        // >(tcx, "spendDelegate", charterDatumArgs.spendDelegateLink);
+        // // const spendDelegate = await this.txnCreateDelegateLink<
+        // //     StellarDelegate<any>,
+        // //     "spendDelegate"
+        // // >(tcx, "spendDelegate", charterDatumArgs.spendDelegateLink);
 
-        //x@ts-expect-error "could be instantiated with different subtype"
-        const fullCharterArgs: CharterDatumProps = {
-            ...currentDatum,
-            mintInvariants: [...currentDatum.mintInvariants, mintDelegate],
-        };
-        const datum = await this.mkDatumCharterToken(fullCharterArgs);
+        // //x@ts-expect-error "could be instantiated with different subtype"
+        // const fullCharterArgs: CharterDatumProps = {
+        //     ...currentDatum,
+        //     mintInvariants: [...currentDatum.mintInvariants, mintDelegate],
+        // };
+        // const datum = await this.mkDatumCharterData(fullCharterArgs);
 
-        const charterOut = new TxOutput(
-            this.address,
-            this.tvCharter(),
-            datum
-            // this.compiledScript
-        );
+        // const charterOut = new TxOutput(
+        //     this.address,
+        //     this.tvCharter(),
+        //     datum
+        //     // this.compiledScript
+        // );
 
-        return tcx2.addOutput(charterOut);
+        // return tcx2.addOutput(charterOut);
     }
 
     // How can someone be holding interest in a project?
@@ -3031,7 +3292,7 @@ export abstract class Capo<
         TCX extends hasSeedUtxo = hasSeedUtxo
     >(
         this: THIS,
-        delegateInfo: RelativeDelegateLink,
+        delegateInfo: OffchainPartialDelegateLink,
         tcx: TCX = new StellarTxnContext(this.setup) as TCX
     ) {
         const currentDatum = await this.findCharterDatum();
@@ -3053,7 +3314,7 @@ export abstract class Capo<
                 spendDelegate: "spendDgt",
             }
         );
-        const spendDelegate = await this.txnCreateDelegateLink(
+        const anotherSpendInvariant = await this.txnCreateOffchainDelegateLink(
             tcx2,
             "spendDelegate",
             delegateInfo
@@ -3065,12 +3326,13 @@ export abstract class Capo<
         //     "spendDelegate"
         // >(tcx, "spendDelegate", charterDatumArgs.spendDelegateLink);
 
-        //x@ts-expect-error "could be instantiated with different subtype"
-        const fullCharterArgs: CharterDatumProps = {
+        const datum = this.mkDatum.CharterData({
             ...currentDatum,
-            spendInvariants: [...currentDatum.spendInvariants, spendDelegate],
-        };
-        const datum = await this.mkDatumCharterToken(fullCharterArgs);
+            spendInvariants: [
+                ...currentDatum.spendInvariants,
+                this.mkOnchainRelativeDelegateLink(anotherSpendInvariant),
+            ],
+        });
 
         const charterOut = new TxOutput(
             this.address,
@@ -3105,7 +3367,7 @@ export abstract class Capo<
     >(
         this: thisType,
         delegateName: delegateName,
-        options: NamedDelegateCreationOptions<thisType, DT>,
+        options: OffchainPartialDelegateLink & NamedDelegateCreationOptions<thisType, DT>,
         tcx: TCX = new StellarTxnContext(this.setup) as TCX
     ): Promise<
         hasAddlTxns<TCX & hasSeedUtxo & hasNamedDelegate<DT, delegateName>>
@@ -3124,10 +3386,12 @@ export abstract class Capo<
         const mintDelegate = await this.getMintDelegate();
 
         // TODO improve type of txn with uut purpose more specific than just generic string
-        console.log(options);
+        console.log("  -- 🐞🐞adding named delegate with options", options);
 
         const tcx1 =
-            tcx.state.seedUtxo === undefined ? await this.tcxWithSeedUtxo() : tcx;
+            tcx.state.seedUtxo === undefined
+                ? await this.tcxWithSeedUtxo()
+                : tcx;
 
         const tcx2 = await this.txnMintingUuts(
             tcx1,
@@ -3135,33 +3399,31 @@ export abstract class Capo<
             options.mintSetup,
             {
                 // role / uut map
-                namedDelegate: uutPurpose,
+                [delegateName]: uutPurpose,
             }
         );
 
-        const spendDelegate = await this.txnCreateDelegateLink(
+        const spendDelegate = await this.txnCreateOffchainDelegateLink(
             tcx2,
-            "namedDelegate",
-            options as any
+            delegateName,
+            options 
         );
 
-        //x@ts-expect-error "could be instantiated with different subtype"
-        const fullCharterArgs: CharterDatumProps = {
-            ...currentDatum,
-            namedDelegates: {
-                ...currentDatum.namedDelegates,
-                [delegateName]: spendDelegate,
-            },
-        };
-        const datum = await this.mkDatumCharterToken(fullCharterArgs);
-
-        const tcx4 = (await this.mkTxnUpdateCharter(
-            fullCharterArgs,
+        const tcx4 =
+            (await this.mkTxnUpdateCharter({
+                ...currentDatum,
+                otherNamedDelegates: new Map<string, RelativeDelegateLinkLike>([
+                    ...currentDatum.otherNamedDelegates.entries(),
+                    [delegateName, this.mkOnchainRelativeDelegateLink(spendDelegate) ]
+                ])
+            },            
             undefined,
-            await this.txnAddGovAuthority(tcx2)
-        )) as hasAddlTxns<
-            TCX & hasSeedUtxo & hasNamedDelegate<DT, delegateName>
-        >;
+            await this.txnAddGovAuthority(tcx2))
+        )
+
+        // as hasAddlTxns<
+        //     TCX & hasSeedUtxo & hasNamedDelegate<DT, delegateName>
+        // >;
 
         const DelegateName =
             delegateName[0].toUpperCase() + delegateName.slice(1);
@@ -3169,14 +3431,15 @@ export abstract class Capo<
         tcx4.state[bigDelegateName] = spendDelegate;
 
         const tcx5 = await this.txnMkAddlRefScriptTxn(
-            tcx4,
+            tcx4 as typeof tcx4 & TCX & hasNamedDelegate<DT, delegateName>,
             bigDelegateName,
             spendDelegate.delegate.compiledScript
         );
 
-        return tcx5 as hasAddlTxns<
-            TCX & hasSeedUtxo & hasNamedDelegate<DT, delegateName>
-        >;
+        return tcx5;
+        //  as hasAddlTxns<
+        //     TCX & hasSeedUtxo & hasNamedDelegate<DT, delegateName>
+        // >;
     }
 
     /**
@@ -3747,7 +4010,7 @@ export abstract class Capo<
                 purpose:
                     "allows settings that can evolve to support Capo-related scripts as needed",
                 details: [
-                    "The Settings structure can be stored in the contract, separately from the CharterToken. ",
+                    "The Settings structure can be stored in the contract, separately from the CharterData. ",
                     "It can be updated by the govAuthority, and can be used to store any ",
                     "  ... data needed by the Capo's scripts, such as minting and spending delegates.",
                     "The charter datum references the settings uut, and shouldn't ",
@@ -3760,7 +4023,7 @@ export abstract class Capo<
                     // "has a 'SettingsData' datum variant & utxo in the contract",
                     // "offchain code can read the settings data from the contract",
                     // "TODO: TEST onchain code can read the settings data from the contract",
-                    // "charter creation requires a CharterToken reference to the settings UUT",
+                    // "charter creation requires a CharterData reference to the settings UUT",
                     // "charter creation requires presence of a SettingsData map",
                     // "updatingCharter activity MUST NOT change the set-UUT reference",
                 ],

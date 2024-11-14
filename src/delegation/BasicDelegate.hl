@@ -79,8 +79,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
         isD : IsDelegation{dd} => {
             // MintDelegateDatum::IsDelegation{dd, cfg} = isD;
             showMyTokens : (Value) -> String = mkTokenShow(dd.mph);
-            print("  -- is spending dgTkn ");
-            print( showMyTokens(get_current_input().value ));
+            print("  -- is spending dgTkn "+ showMyTokens(get_current_input().value ));
             print("\n");
 
             activity.switch {
@@ -224,11 +223,10 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                             BURNED
                         );
                     
-                        print("checking ReplacingMe on ");
-                        print(purpose + ": ");
-                        print(dd.tn.decode_utf8());
-                        print("\n");
-                        
+                        print("checking ReplacingMe on "+purpose + ": "+ dd.tn.decode_utf8());
+                        REQT("needs the charter to be approving the the new mint-delegate");
+                        TODO("  ^^^ should queue the new delegate in pendingDgtChanges");
+
                         cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterInput();
                         isUpdatingCharter : Bool = cctx.getCharterRedeemer().switch {
                             // THE CHARTER UPDATE ITSELF WILL CHECK THAT THERE'S A VALID DELEGATE OUTPUT FOR THE NEW DELEGATE
@@ -262,7 +260,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     },
 
                     ValidatingSettings => {
-                        _charter : CapoDatum::CharterToken = getTxCharterDatum(dd.mph);
+                        _charter : CapoDatum::CharterData = getTxCharterDatum(dd.mph);
 
                         // each application-specific delegate must validate the settings
                         // for itself?
@@ -307,7 +305,10 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         commitPendingDgtChanges => DelegateRole::BothMintAndSpendDgt,
                         updatingManifest => DelegateRole::SpendDgt,
 
-                        CreatingDelegate => error("obsolete use of CLA::CreatingDelegate?"),
+                        CreatingDelegate => {
+                            TODO("deprecate use of CLA::CreatingDelegate");
+                            DelegateRole::MintDgt
+                        },
 
                         queuePendingDgtChange => DelegateRole::BothMintAndSpendDgt
                         // we want explicit handling of each case; don't use a default match here.
@@ -330,10 +331,18 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     // to the capo's own triggered lifecycle activity, given that the
                     // capoLifecycleActivity is what's involved on that end.  We
                     // ensure that is true here:
-                    REQT("cross-checks that the Capo's CharterToken is activity-matched with delegate's activity");
+                    REQT("cross-checks that the Capo's CharterData is activity-matched with delegate's activity");
                     cctx.getCharterRedeemer().switch {
-                        capoLifecycleActivity => print("ok, matched with charterToken activity capoLifecycleActivity\n"),
-                        _ => error("this activity must match the capo's own charterToken activity")
+                        capoLifecycleActivity => print("ok, matched with CharterData activity capoLifecycleActivity\n"),
+                        updatingCharter => {
+                            CLA.switch {
+                                CreatingDelegate => {
+                                    print("ok, Capo:updatingCharter works for now with CreatingDelegate\n")
+                                },
+                                _ => error("when Capo is UpdatingCharter, the mintDelegate must be CreatingDelegate")
+                            }
+                        },
+                        _ => error("this activity must match the capo's own CharterData activity")
                     };
 
                     CLA.switch {
@@ -342,8 +351,8 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         // it defers to the specialized minting delegate, if any; the unspecialized mint delegate
                         // rejects all delegate-creation.
                         CreatingDelegate{seed, purpose} => {
-                            print("🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞 !!!!!!!!!!!!!!!!!!! todo: fix this\n");
-                            assert(false, "obsolete CLA::CreatingDelegate?");
+                            // print("🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞 !!!!!!!!!!!!!!!!!!! todo: fix this\n");
+                            // assert(false, "obsolete CLA::CreatingDelegate?");
                             TODO("XXX it should output the new delegate token to the Capo as a PendingDelegate datum");
                             REQT("validates creation of UUT for the new delegate, aligned to the purpose indicated");
 
@@ -359,7 +368,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         },
                         queuePendingDgtChange{action, role, name} => {
                             print("  -- addingPendingDgt");
-                            charterDatum : CapoDatum::CharterToken = cctx.getCharterDatum();
+                            charterDatum : CapoDatum::CharterData = cctx.getCharterDatum();
                             action.switch {
                                 // when it's a Remove action, it's only valid in the spend-delegate.
                                 Remove => {
@@ -627,14 +636,6 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     //         }
                     //     }
                     // };
-                    assert(cctx.
-                        requiresDgDataPolicyInput(dataTypePurpose).
-                        withUniqueSeededMintingActivity(seed).
-                        orFail(), 
-                        "^^^ those can fail, this assert won't."
-                    );
-
-                    assert(false, "^^^ does it implement the generic data-controller re-delegation convention? ^^");
 
                     // no longer TODO :party: // TODO("the mint-delegate specialization MUST re-delegate authority to the right data-controller");
                     TODO("it must check that the data-controller has exactly one minting activity for the indicated recId");
@@ -659,6 +660,10 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     && cctx.mustOutputDelegatedData(
                         newDataId, dataTypePurpose
                     )
+                    && cctx.
+                        requiresDgDataPolicyInput(dataTypePurpose).
+                        withUniqueSeededMintingActivity(seed).
+                        orFail()
                 },
                 // This is a Spend delegate activity on the spendDgt-* token, 
                 // ... used within a Capo's SPEND delegate (which code may also govern 

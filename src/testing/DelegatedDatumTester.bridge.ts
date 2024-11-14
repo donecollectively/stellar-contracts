@@ -52,34 +52,34 @@ import type {hasSeed, isActivity} from "../StellarContract.js"
 
 
 import type {
-    AnyData, AnyDataLike,
-    DelegateDatum$Cip68RefToken, DelegateDatum$Cip68RefTokenLike,
-    DelegationDetail, DelegationDetailLike,
-    DgDatumTestData, DgDatumTestDataLike,
-    DelegateDatum, DelegateDatumLike,
-    CapoLifecycleActivity$CreatingDelegate, CapoLifecycleActivity$CreatingDelegateLike,
-    PendingDelegateAction$Add, PendingDelegateAction$AddLike,
-    PendingDelegateAction$Replace, PendingDelegateAction$ReplaceLike,
-    PendingDelegateAction, PendingDelegateActionLike,
-    DelegateRole, DelegateRoleLike,
-    CapoLifecycleActivity$queuePendingDgtChange, CapoLifecycleActivity$queuePendingDgtChangeLike,
-    CapoLifecycleActivity$removePendingDgtChange, CapoLifecycleActivity$removePendingDgtChangeLike,
-    CapoLifecycleActivity$forcingNewSpendDelegate, CapoLifecycleActivity$forcingNewSpendDelegateLike,
-    CapoLifecycleActivity$forcingNewMintDelegate, CapoLifecycleActivity$forcingNewMintDelegateLike,
-    ManifestActivity$updatingEntry, ManifestActivity$updatingEntryLike,
-    ManifestActivity$addingEntry, ManifestActivity$addingEntryLike,
-    ManifestActivity$forkingThreadToken, ManifestActivity$forkingThreadTokenLike,
-    ManifestActivity, ManifestActivityLike,
-    CapoLifecycleActivity, CapoLifecycleActivityLike,
-    DelegateLifecycleActivity$ReplacingMe, DelegateLifecycleActivity$ReplacingMeLike,
-    DelegateLifecycleActivity, DelegateLifecycleActivityLike,
-    SpendingActivity, SpendingActivityLike,
-    MintingActivity, MintingActivityLike,
-    BurningActivity, BurningActivityLike,
-    DelegateActivity$CreatingDelegatedData, DelegateActivity$CreatingDelegatedDataLike,
-    DelegateActivity$UpdatingDelegatedData, DelegateActivity$UpdatingDelegatedDataLike,
-    DelegateActivity$DeletingDelegatedData, DelegateActivity$DeletingDelegatedDataLike,
-    DelegateActivity, DelegateActivityLike
+    AnyData, ErgoAnyData, AnyDataLike,
+    DelegateDatum$Cip68RefToken, DelegateDatum$Ergo$Cip68RefToken, DelegateDatum$Cip68RefTokenLike,
+    DelegationDetail, ErgoDelegationDetail, DelegationDetailLike,
+    DgDatumTestData, ErgoDgDatumTestData, DgDatumTestDataLike,
+    DelegateDatum, ErgoDelegateDatum, DelegateDatumLike,
+    CapoLifecycleActivity$CreatingDelegate, CapoLifecycleActivity$Ergo$CreatingDelegate, CapoLifecycleActivity$CreatingDelegateLike,
+    PendingDelegateAction$Add, PendingDelegateAction$Ergo$Add, PendingDelegateAction$AddLike,
+    PendingDelegateAction$Replace, PendingDelegateAction$Ergo$Replace, PendingDelegateAction$ReplaceLike,
+    PendingDelegateAction, ErgoPendingDelegateAction, PendingDelegateActionLike,
+    DelegateRole, ErgoDelegateRole, DelegateRoleLike,
+    CapoLifecycleActivity$queuePendingDgtChange, CapoLifecycleActivity$Ergo$queuePendingDgtChange, CapoLifecycleActivity$queuePendingDgtChangeLike,
+    CapoLifecycleActivity$removePendingDgtChange, CapoLifecycleActivity$Ergo$removePendingDgtChange, CapoLifecycleActivity$removePendingDgtChangeLike,
+    CapoLifecycleActivity$forcingNewSpendDelegate, CapoLifecycleActivity$Ergo$forcingNewSpendDelegate, CapoLifecycleActivity$forcingNewSpendDelegateLike,
+    CapoLifecycleActivity$forcingNewMintDelegate, CapoLifecycleActivity$Ergo$forcingNewMintDelegate, CapoLifecycleActivity$forcingNewMintDelegateLike,
+    ManifestActivity$updatingEntry, ManifestActivity$Ergo$updatingEntry, ManifestActivity$updatingEntryLike,
+    ManifestActivity$addingEntry, ManifestActivity$Ergo$addingEntry, ManifestActivity$addingEntryLike,
+    ManifestActivity$forkingThreadToken, ManifestActivity$Ergo$forkingThreadToken, ManifestActivity$forkingThreadTokenLike,
+    ManifestActivity, ErgoManifestActivity, ManifestActivityLike,
+    CapoLifecycleActivity, ErgoCapoLifecycleActivity, CapoLifecycleActivityLike,
+    DelegateLifecycleActivity$ReplacingMe, DelegateLifecycleActivity$Ergo$ReplacingMe, DelegateLifecycleActivity$ReplacingMeLike,
+    DelegateLifecycleActivity, ErgoDelegateLifecycleActivity, DelegateLifecycleActivityLike,
+    SpendingActivity, ErgoSpendingActivity, SpendingActivityLike,
+    MintingActivity, ErgoMintingActivity, MintingActivityLike,
+    BurningActivity, ErgoBurningActivity, BurningActivityLike,
+    DelegateActivity$CreatingDelegatedData, DelegateActivity$Ergo$CreatingDelegatedData, DelegateActivity$CreatingDelegatedDataLike,
+    DelegateActivity$UpdatingDelegatedData, DelegateActivity$Ergo$UpdatingDelegatedData, DelegateActivity$UpdatingDelegatedDataLike,
+    DelegateActivity$DeletingDelegatedData, DelegateActivity$Ergo$DeletingDelegatedData, DelegateActivity$DeletingDelegatedDataLike,
+    DelegateActivity, ErgoDelegateActivity, DelegateActivityLike
 } from "./DelegatedDatumTester.typeInfo.js";
 
 export type * as types from "./DelegatedDatumTester.typeInfo.js";
@@ -112,10 +112,7 @@ export class DelegateDatumTesterDataBridge extends ContractDataBridge {
      */
     DelegateDatum: DelegateDatumHelper = this.datum;
 
-    readDatum : (d: UplcData) => IntersectedEnum<DelegateDatum> = (d) =>  {
-        //XXX@ts-expect-error drilling through the protected accessor.
-        //   ... see more comments about that above
-        //return this.datum.__cast.fromUplcData(d);
+    readDatum : (d: UplcData) => ErgoDelegateDatum = (d) =>  {
         return this.reader.DelegateDatum(d)
     }
 
@@ -245,7 +242,7 @@ class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<DelegateDatum>;        
+        return cast.fromUplcData(d) as ErgoDelegateDatum;        
     } /* enumReader helper */
 
     /**
@@ -267,7 +264,7 @@ class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<PendingDelegateAction>;        
+        return cast.fromUplcData(d) as ErgoPendingDelegateAction;        
     } /* enumReader helper */
 
     /**
@@ -289,7 +286,7 @@ class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<DelegateRole>;        
+        return cast.fromUplcData(d) as ErgoDelegateRole;        
     } /* enumReader helper */
 
     /**
@@ -311,7 +308,7 @@ class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<ManifestActivity>;        
+        return cast.fromUplcData(d) as ErgoManifestActivity;        
     } /* enumReader helper */
 
     /**
@@ -333,7 +330,7 @@ class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<CapoLifecycleActivity>;        
+        return cast.fromUplcData(d) as ErgoCapoLifecycleActivity;        
     } /* enumReader helper */
 
     /**
@@ -355,7 +352,7 @@ class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<DelegateLifecycleActivity>;        
+        return cast.fromUplcData(d) as ErgoDelegateLifecycleActivity;        
     } /* enumReader helper */
 
     /**
@@ -377,7 +374,7 @@ class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<SpendingActivity>;        
+        return cast.fromUplcData(d) as ErgoSpendingActivity;        
     } /* enumReader helper */
 
     /**
@@ -399,7 +396,7 @@ class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<MintingActivity>;        
+        return cast.fromUplcData(d) as ErgoMintingActivity;        
     } /* enumReader helper */
 
     /**
@@ -421,7 +418,7 @@ class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<BurningActivity>;        
+        return cast.fromUplcData(d) as ErgoBurningActivity;        
     } /* enumReader helper */
 
     /**
@@ -443,7 +440,7 @@ class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<DelegateActivity>;        
+        return cast.fromUplcData(d) as ErgoDelegateActivity;        
     } /* enumReader helper */
 
     /**
@@ -453,7 +450,7 @@ class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
-        * Used correctly with data that matches the struct type, this reader
+        * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
         * 
         * On the other hand, reading non-matching data will not give you a valid result.  
@@ -463,7 +460,7 @@ class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
     AnyData(d: UplcData) {
         //@ts-expect-error drilling through the protected accessor.
         const cast = this.bridge.__AnyDataCast;
-        return cast.fromUplcData(d);        
+        return cast.fromUplcData(d) //??? as ErgoAnyData;
     } /* structReader helper */
 
     /**
@@ -473,7 +470,7 @@ class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
-        * Used correctly with data that matches the struct type, this reader
+        * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
         * 
         * On the other hand, reading non-matching data will not give you a valid result.  
@@ -483,7 +480,7 @@ class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
     DelegationDetail(d: UplcData) {
         //@ts-expect-error drilling through the protected accessor.
         const cast = this.bridge.__DelegationDetailCast;
-        return cast.fromUplcData(d);        
+        return cast.fromUplcData(d) //??? as ErgoDelegationDetail;
     } /* structReader helper */
 
     /**
@@ -493,7 +490,7 @@ class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
-        * Used correctly with data that matches the struct type, this reader
+        * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
         * 
         * On the other hand, reading non-matching data will not give you a valid result.  
@@ -503,13 +500,13 @@ class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
     DgDatumTestData(d: UplcData) {
         //@ts-expect-error drilling through the protected accessor.
         const cast = this.bridge.__DgDatumTestDataCast;
-        return cast.fromUplcData(d);        
+        return cast.fromUplcData(d) //??? as ErgoDgDatumTestData;
     } /* structReader helper */
 
 }
 
 /**
- * Helper class for generating UplcData for the ***AnyData*** struct type.
+ * Helper class for generating UplcData for the struct ***AnyData*** type.
  */
 export class AnyDataHelper extends DataBridge {
     isCallable = true
@@ -531,7 +528,7 @@ export class AnyDataHelper extends DataBridge {
 
 
 /**
- * Helper class for generating UplcData for the ***DelegationDetail*** struct type.
+ * Helper class for generating UplcData for the struct ***DelegationDetail*** type.
  */
 export class DelegationDetailHelper extends DataBridge {
     isCallable = true
@@ -553,7 +550,7 @@ export class DelegationDetailHelper extends DataBridge {
 
 
 /**
- * Helper class for generating UplcData for the ***DgDatumTestData*** struct type.
+ * Helper class for generating UplcData for the struct ***DgDatumTestData*** type.
  */
 export class DgDatumTestDataHelper extends DataBridge {
     isCallable = true

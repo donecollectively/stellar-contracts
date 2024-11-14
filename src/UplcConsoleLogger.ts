@@ -48,6 +48,9 @@ export class UplcConsoleLogger implements UplcLoggingI{
         if ("string" != typeof message) {
             console.log("wtf");
         }
+        if (message.at(-1) != "\n") {
+            message += "\n";
+        }
         this.lastMsg = message;
         this.lines.push(message);
         return this;

@@ -43,6 +43,7 @@ import {
 } from CapoHelpers
 
 import {
+    mkUutTnFactory,
     validateUutMinting
 } from CapoMintHelpers
 
@@ -50,7 +51,7 @@ import {
 //     ProtocolSettings
 // } from ProtocolSettings
 
-func requiresAuthorization(ctd: CapoDatum::CharterToken) -> Bool {
+func requiresAuthorization(ctd: CapoDatum::CharterData) -> Bool {
     govDelegate : RelativeDelegateLink = ctd.govAuthorityLink;
 
     govDelegate.hasValidOutput(mph)
@@ -72,7 +73,7 @@ func getCharterOutput(tx: Tx) -> TxOutput {
     }
 }
 
-func preventCharterChange(datum: CapoDatum::CharterToken) -> Bool {
+func preventCharterChange(datum: CapoDatum::CharterData) -> Bool {
     charterOutput : TxOutput = getCharterOutput(tx);
 
     cvh : ValidatorHash = get_current_validator_hash();
@@ -113,21 +114,22 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
 
     showMyTokens : (Value) -> String = mkTokenShow(mph);
     input : TxInput = get_current_input();
-    print("  -- Capo: checks spend of ");
-    print(showMyTokens(input.value));
-    print("\n");
+    print("  -- Capo: checks spend of " + showMyTokens(input.value));
     
     capoDatum : CapoDatum = CapoDatum::from_data(datum);
     allDatumSpecificChecks: Bool = capoDatum.switch {
         // checks that unsupported activities for a datum are rejected promptly 
         // +special things we want to always guard against for specific Datum types:
-        ctd : CharterToken => {
-            invalid : String = "invalid activity on CharterToken";
+        ctd : CharterData => {
+            invalid : String = "invalid activity on CharterData";
             activity.switch {
                 updatingCharter => true,  // more activity-checks happen below.
-                addingSpendInvariant => error("todo"),
+                capoLifecycleActivity => true, // more checks below.
+                // addingSpendInvariant => error("todo: support spendInvariants"),
+                // addingMintInvariant => error("todo: support mintInvariants"),
                 spendingDelegatedDatum => error(invalid),
                 _ => {
+                    print("this charter activity isn't allowed to change the charter");
                     preventCharterChange(ctd)  // throws if bad                
                     // ... plus activity-specific checks below.
                 }
@@ -196,7 +198,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             TODO("VERIFY the above versus the below!");
 
             // the below stuff was already tested
-            charterDatum : CapoDatum::CharterToken = getTxCharterDatum(
+            charterDatum : CapoDatum::CharterData = getTxCharterDatum(
                 mph: mph
             );
             spendDelegate: RelativeDelegateLink = charterDatum.spendDelegateLink;
@@ -308,15 +310,15 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             print( "  ...with activity updatingCharter\n");
             TODO("make this obsolete by implementing capoLifecycleActivity");
             charterOutput : TxOutput = getCharterOutput(tx);
-            newCtDatum = CapoDatum::CharterToken::from_data( 
+            newCtDatum = CapoDatum::CharterData::from_data( 
                 charterOutput.datum.inline
             );
 
-            oldCtDatum : CapoDatum::CharterToken = capoDatum.switch {
-                octd: CharterToken => octd,
-                _ => error("wrong use of updatingCharter action for non-CharterToken datum")                
+            oldCtDatum : CapoDatum::CharterData = capoDatum.switch {
+                octd: CharterData => octd,
+                _ => error("wrong use of updatingCharter action for non-CharterData datum")                
             };
-            CapoDatum::CharterToken{                
+            CapoDatum::CharterData{                
                 spendDelegate, 
                 spendInvariants,
                 otherNamedDelegates,
@@ -327,7 +329,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                 nextPendingPolicies
             } = newCtDatum;
 
-            CharterToken{
+            CharterData{
                 oldSpendDelegate, 
                 oldSpendInvariants, 
                 oldOtherNamedDelegates,
@@ -371,32 +373,32 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
 
             if (true) {
                 print("is spendDgt unchanged? " + unchangedSpendDgt.show());
-                print("\n  - old: "+ oldSpendDelegate.uutName + " => "+ 
+                print("  - old: "+ oldSpendDelegate.uutName + " => "+ 
                     oldSpendDelegate.delegateValidatorHash.switch{
                         Some{v} => v.show(), None => " (any addr)"
                 });
-                print("\n       + cfg " + oldSpendDelegate.config.decode_utf8());
-                print("\n  - new: "+ spendDelegate.uutName + " => "+ 
+                print("       + cfg " + oldSpendDelegate.config.decode_utf8());
+                print("  - new: "+ spendDelegate.uutName + " => "+ 
                     spendDelegate.delegateValidatorHash.switch{
                         Some{v} => v.show(), None => " (any addr)"
                 });
-                print("\n       + cfg " + spendDelegate.config.decode_utf8());
+                print("       + cfg " + spendDelegate.config.decode_utf8());
                 print("\n");
                 // print(" - old: " + oldSpendDelegate.serialize().show());
                 // print(" - new: " + spendDelegate.serialize().show());
 
                 print(" -- is mintDgt unchanged?  " + unchangedMintDgt.show());
-                print("\n  - old: "+ oldMintDelegate.uutName + " => "+ 
+                print("  - old: "+ oldMintDelegate.uutName + " => "+ 
                     oldMintDelegate.delegateValidatorHash.switch{
                         Some{v} => v.show(), None => " (any addr)"
                 });
-                print("\n       + cfg " + oldMintDelegate.config.decode_utf8());
-                print("\n  - new: "+ mintDelegate.uutName + " => "+ 
+                print("       + cfg " + oldMintDelegate.config.decode_utf8());
+                print("  - new: "+ mintDelegate.uutName + " => "+ 
                     mintDelegate.delegateValidatorHash.switch{
                         Some{v} => v.show(), None => " (any addr)"
                 });
-                print("\n       + cfg " + mintDelegate.config.decode_utf8());
-                print("\n")
+                print("       + cfg " + mintDelegate.config.decode_utf8());
+                print("")
                 // print(" - old: " + oldMintDelegate.serialize().show());
                 // print(" - new: " + mintDelegate.serialize().show());
 
@@ -417,9 +419,8 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                 // if ((!unchangedMintDgt).trace("\n -- mintDgt changed? ") ) { 1 } else { 0 } +
                 // if (changedAnyNamedDelegate.trace("\n -- namedDgt changed? ") ) { 1 } else { 0 };
 
-
-            assert(countUpdatedThings == 1, "\n"+countUpdatedThings.show() + 
-              " types of charterUpdate found; expected exactly one"
+            assert(countUpdatedThings == 1, 
+                "expected exactly one item updated in charter, got "+countUpdatedThings.show() + ""
             );            
 
             // mustNotModifySettings &&
@@ -466,16 +467,15 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                 }
             } else {
                 //  the new one has to go to the right place
-                checkpoint("2a") &&
+                REQT("the updated mintDgt token must be deposited to its own script address");
                  mintDelegate.hasValidOutput(mph)
             } && 
-            checkpoint("3") &&
             if ( unchangedSpendDgt) {
                 // unchanged spendDgt must not be included in the tx
                 checkpoint("4b") &&
                 requiresNoDelegateInput(spendDelegate, mph)
             } else {
-                //  the new one has to go to the right place
+                REQT("the updated spendDgt token must be deposited to its own script address");
                 checkpoint("4a") &&
                 spendDelegate.hasValidOutput(mph)
             } &&
@@ -514,13 +514,13 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
         capoLifecycleActivity{myCLActivity} => {
             print( "  ...with activity capoLifecycleActivity\n");
 
-            oldCtDatum : CapoDatum::CharterToken = capoDatum.switch {
-                octd: CharterToken => octd,
-                _ => error("wrong use of updatingCharter action for non-CharterToken datum")                
+            oldCtDatum : CapoDatum::CharterData = capoDatum.switch {
+                octd: CharterData => octd,
+                _ => error("wrong use of updatingCharter action for non-CharterData datum")                
             };
 
             charterOutput : TxOutput = getCharterOutput(tx);
-            newCtDatum : CapoDatum::CharterToken = CapoDatum::CharterToken::from_data( 
+            newCtDatum : CapoDatum::CharterData = CapoDatum::CharterData::from_data( 
                 charterOutput.datum.inline
             );
             REQT("all capoLifecycleActivities require the govAuthority");
@@ -540,19 +540,31 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                     assert(
                         oldCtDatum.countUpdatedThings(newCtDatum) == 1, 
                         "must not update anything except mintDelegate"
-                    );
-
+                    );                    
                     assert(oldCtDatum.mintDelegateLink.uutName != newCtDatum.mintDelegateLink.uutName,
                         "new mintDelegate token must be different from the old one"
                     );
+                    tnFactory = mkUutTnFactory(seed);
+                    REQT("the new mintDgt must have the new dgTkn");
+                    expectedTn = tnFactory(purpose);
+                    assert(
+                        newCtDatum.mintDelegateLink.uutName == expectedTn,
+                        "wrong mintDelegate token name '"+ 
+                            newCtDatum.mintDelegateLink.uutName +
+                            "' added to charter; should be: "+ expectedTn
+                    );
+
                     REQT("the new mintDelegate must be present in its own script address");
                     newCtDatum.mintDelegateLink.hasValidOutput(mph, true, 
                         DgTkn::Created
                     ) &&
+                    bREQT("Ensures the new mintDgt-* uut is minted with a seed") &&
                     validateUutMinting(
                         mph: mph,
                         seed: seed,
-                        purposes: []String{purpose}
+                        purposes: []String{purpose},
+                        mkTokenName: tnFactory,
+                        needsMintDelegateApproval: false 
                     )
                 },
                 forcingNewSpendDelegate{seed, purpose} => {
@@ -570,17 +582,29 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                     assert(oldCtDatum.spendDelegateLink.uutName != newCtDatum.spendDelegateLink.uutName,
                         "new spendDelegate token must be different from the old one"
                     );
+                    tnFactory = mkUutTnFactory(seed);
+                    REQT("the new spendDgt must have the new dgTkn");
+                    expectedTn = tnFactory(purpose);
+                    assert(
+                        newCtDatum.spendDelegateLink.uutName == expectedTn,
+                        "wrong spendDelegate token name '"+ 
+                            newCtDatum.spendDelegateLink.uutName +
+                            "' added to charter; should be: "+ expectedTn
+                    );
+
 
                     REQT("the new spendDelegate must be present in its own script address");
                     newCtDatum.spendDelegateLink.hasValidOutput(mph, true, 
                         DgTkn::Created
                     ) &&
+                    bREQT("Ensures the new spendDgt-* uut is minted with a seed") &&
                     validateUutMinting(
                         mph: mph,
                         seed: seed,
-                        purposes: []String{purpose}
+                        purposes: []String{purpose},
+                        mkTokenName: tnFactory,
+                        needsMintDelegateApproval: false
                     )
-
                 },
                 _ => {
                     // we defer to the spend delegate to implement the policy
@@ -629,8 +653,8 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             print( "  ...with activity usingAuthority\n");
             capoDatum.switch {
                  // throws if bad
-                ctd : CharterToken => requiresAuthorization(ctd),
-                _ => error("wrong use of usingAuthority action for non-CharterToken datum")
+                ctd : CharterData => requiresAuthorization(ctd),
+                _ => error("wrong use of usingAuthority action for non-CharterData datum")
             }
         },
 
@@ -639,7 +663,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
         //     print( "  ...with activity updatingSettings\n");
         //     _isRelevantDatum : Bool = capoDatum.switch {
         //         // SettingsData => true,
-        //         CharterToken => true,
+        //         CharterData => true,
         //         _ => error("wrong use of updatingSettings action; must use only on CharterDatum")
         //     };
 
@@ -650,7 +674,7 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
         //         charterDatum: charterDatum // already resolved
         //     );
 
-        //     CapoDatum::CharterToken{
+        //     CapoDatum::CharterData{
         //         spendDelegate,
         //         spendInvariants,
         //         namedDelegates,

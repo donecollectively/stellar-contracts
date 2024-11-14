@@ -146,7 +146,7 @@ func mkTokenShow(mph: MintingPolicyHash) -> (Value) -> String {
 */      
 
 enum CapoDatum {
-    CharterToken {
+    CharterData {
         spendDelegateLink: RelativeDelegateLink
         spendInvariants: []RelativeDelegateLink
         otherNamedDelegates: Map[String]RelativeDelegateLink
@@ -175,7 +175,7 @@ enum CapoDatum {
     func hasCharterRefInput(
         self,
         mph : MintingPolicyHash
-    ) -> Option[CapoDatum::CharterToken] {
+    ) -> Option[CapoDatum::CharterData] {
         assert(false, "deprecated use of hasCharterRefInput(); use CapoCtx instead.");
 
         assert( // avoid "unused variable self" error
@@ -189,21 +189,21 @@ enum CapoDatum {
         hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
 
         tx.ref_inputs.find_safe(hasCharter).switch{
-            Some{txin} => Option[CapoDatum::CharterToken]::Some{
+            Some{txin} => Option[CapoDatum::CharterData]::Some{
                 CapoDatum::from_data( 
                     txin.datum.inline
                 ).switch{
-                    c : CharterToken => c,
+                    c : CharterData => c,
                     _ => error("wrong enum")
                 }
             },
-            None => Option[CapoDatum::CharterToken]::None
+            None => Option[CapoDatum::CharterData]::None
         }
     }
 
     func countUpdatedThings(self, oldDatum: CapoDatum) -> Int {
         self.switch {
-            CharterToken{ 
+            CharterData{ 
                 nextSpendDelegate, 
                 nextSpendInvariants, 
                 nextNamedDelegates, 
@@ -213,7 +213,7 @@ enum CapoDatum {
                 nextManifest,
                 _nextPendingDgtChanges
             } => {
-                CharterToken {
+                CharterData {
                     oldSpendDelegate,
                     oldSpendInvariants,
                     oldNamedDelegates,
@@ -223,34 +223,34 @@ enum CapoDatum {
                     oldManifest,
                     _oldPendingDgtChanges
                 } = oldDatum;
-                unchangedSpendDgt : Bool = ( nextSpendDelegate.serialize() == oldSpendDelegate.serialize() );
-                unchangedSpendInvariants : Bool = ( nextSpendInvariants == oldSpendInvariants );
-                unchangedNamedDelegate : Bool = ( nextNamedDelegates.serialize() == oldNamedDelegates.serialize() );
+                changedSpendDgt : Bool = ( nextSpendDelegate.serialize() != oldSpendDelegate.serialize() );
+                changedSpendInvariants : Bool = ( nextSpendInvariants != oldSpendInvariants );
+                changedNamedDelegate : Bool = ( nextNamedDelegates.serialize() != oldNamedDelegates.serialize() );
 
-                unchangedMintDgt : Bool = ( nextMintDelegate.serialize() == oldMintDelegate.serialize() );    
-                unchangedMintInvariants : Bool =  ( nextMintInvariants == oldMintInvariants );
-                unchangedGovDelegate : Bool = ( nextGovDelegate.serialize() == oldGovDelegate.serialize() );
-                unchangedManifest : Bool = ( nextManifest.serialize() == oldManifest.serialize() );
+                changedMintDgt : Bool = ( nextMintDelegate.serialize() != oldMintDelegate.serialize() );    
+                changedMintInvariants : Bool =  ( nextMintInvariants != oldMintInvariants );
+                changedGovDelegate : Bool = ( nextGovDelegate.serialize() != oldGovDelegate.serialize() );
+                changedManifest : Bool = ( nextManifest.serialize() != oldManifest.serialize() );
     
-                if ((unchangedSpendDgt).trace("\n -- spendDgt changed? ") ) { 1 } else { 0 } +
-                if ((unchangedSpendInvariants).trace("\n -- spendInvs changed? ") ) { 1 } else { 0 } +
-                if (unchangedNamedDelegate.trace("\n -- namedDgt changed? ") ) { 1 } else { 0 }+
-                if ((unchangedMintDgt).trace("\n -- mintDgt changed? ") ) { 1 } else { 0 } +
-                if ((unchangedMintInvariants).trace("\n -- mintInvs changed? ") ) { 1 } else { 0 } +
-                if ((unchangedGovDelegate).trace("\n -- govDgt changed? ")) { 1 } else { 0 } +
-                if ((unchangedManifest).trace("\n -- manifest changed? ") ) { 1 } else { 0 }
+                if ((changedSpendDgt).trace(" -- spendDgt changed? ") ) { 1 } else { 0 } +
+                if ((changedSpendInvariants).trace(" -- spendInvs changed? ") ) { 1 } else { 0 } +
+                if (changedNamedDelegate.trace(" -- namedDgt changed? ") ) { 1 } else { 0 }+
+                if ((changedMintDgt).trace(" -- mintDgt changed? ") ) { 1 } else { 0 } +
+                if ((changedMintInvariants).trace(" -- mintInvs changed? ") ) { 1 } else { 0 } +
+                if ((changedGovDelegate).trace(" -- govDgt changed? ")) { 1 } else { 0 } +
+                if ((changedManifest).trace(" -- manifest changed? ") ) { 1 } else { 0 }
             },
-            _ => error("only CharterToken datum can count updated things")
+            _ => error("only CharterData datum can count updated things")
         }
     }
 
     // func mustFindSettingsOutput(self, mph: MintingPolicyHash, inAddr: Address) -> outputAndDatum[CapoDatum::SettingsData] {
     //     settingsVal : Value = mkTv(mph: mph, tnBytes: self.switch {
-    //         ct: CharterToken => {
+    //         ct: CharterData => {
     //             print( " ⬅️ 🔎 finding settings output: "+ ct.settingsUut.decode_utf8() + "\n");
     //             ct.settingsUut
     //         },
-    //         _ => error("mustFindSettings - only valid on CharterToken datum")
+    //         _ => error("mustFindSettings - only valid on CharterData datum")
     //     });
         
     //     notFound = Option[outputAndDatum[CapoDatum::SettingsData]]::None;
@@ -308,15 +308,15 @@ enum CapoDatum {
 enum cctx_CharterInputType {
     Unk
     RefInput { 
-        datum: CapoDatum::CharterToken
+        datum: CapoDatum::CharterData
         utxo: TxInput
     }
     Input { 
-        datum: CapoDatum::CharterToken 
+        datum: CapoDatum::CharterData 
         utxo: TxInput 
     }
     // Minting {
-    //     datum: CapoDatum::CharterToken
+    //     datum: CapoDatum::CharterData
     //     address: Address
     // }
 }    
@@ -368,9 +368,9 @@ func getRefCharterUtxo(mph : MintingPolicyHash) -> TxInput {
     charterUtxo
 }
 
-func getRefCharterDatum(mph : MintingPolicyHash) -> CapoDatum::CharterToken {
+func getRefCharterDatum(mph : MintingPolicyHash) -> CapoDatum::CharterData {
     charterUtxo : TxInput = getRefCharterUtxo(mph);
-    ctd : CapoDatum::CharterToken = CapoDatum::CharterToken::from_data( 
+    ctd : CapoDatum::CharterData = CapoDatum::CharterData::from_data( 
         charterUtxo.datum.inline
     );
 
@@ -386,7 +386,7 @@ func getRefCharterDatum(mph : MintingPolicyHash) -> CapoDatum::CharterToken {
 func getTxCharterDatum(
     mph : MintingPolicyHash,
     refInputs : []TxInput = tx.ref_inputs
-) -> CapoDatum::CharterToken {
+) -> CapoDatum::CharterData {
     chVal : Value = tvCharter(mph);
     hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
 
@@ -397,7 +397,7 @@ func getTxCharterDatum(
             None => error("Missing charter inputs / ref_inputs")
         }
     };
-    ctd : CapoDatum::CharterToken = CapoDatum::CharterToken::from_data( 
+    ctd : CapoDatum::CharterData = CapoDatum::CharterData::from_data( 
         charterUtxo.datum.inline
     );
 
@@ -406,7 +406,7 @@ func getTxCharterDatum(
 
 func mustHaveGovAuthority(
     mph : MintingPolicyHash,
-    charterDatum : CapoDatum::CharterToken = getTxCharterDatum(mph)
+    charterDatum : CapoDatum::CharterData = getTxCharterDatum(mph)
 ) -> Bool {
     charterDatum.govAuthorityLink.hasValidOutput(mph)
 }
@@ -446,15 +446,9 @@ struct DelegateInput {
         inputData.switch {
             ConstrData{index, fields} => {
                 // ladybug emoji: "🐞"
-                print("    --🐞 generic delegate activity at index ");
-                print( index.show() );
-                print("\n    ---- from input id:");
-                print(i.output_id.tx_id.show());
-                print("🔹#");
-                print(i.output_id.index.show());
-                print(" = ");
-                print(i.value.show());
-                print("\n");
+                print("    --🐞 generic delegate activity at index "+ index.show() );
+                print("    ---- from input id:" + i.output_id.tx_id.show() + "🔹#" + i.output_id.index.show());
+                print("       = "+i.value.show());
 
                 assert(index==index, "no way"); // must use each destruct field
                 assert(fields.length >0, "no way") // must use each destruct field
@@ -1058,12 +1052,12 @@ struct CapoCtx {
                 );
                 // error-factory:
                 wrongActivity = () -> CapoActivity { 
-                    if (true) { error("non-CharterToken activity") } else { 
+                    if (true) { error("non-CharterData activity") } else { 
                         // unreachable
                         CapoActivity::usingAuthority
                     } 
                 };
-                // returns any activity valid for the CharterToken utxo:
+                // returns any activity valid for the CharterData utxo:
                 activity.switch {
                     retiringRefScript => wrongActivity(),
                     // updatingSettings => wrongActivity(),
@@ -1082,7 +1076,7 @@ struct CapoCtx {
 
     func findManifestEntry(self, key: String) -> Option[CapoManifestEntry] {
         print("    -- looking for capo's manifest entry: "+key);
-        charterDatum : CapoDatum::CharterToken = self.getCharterDatum();
+        charterDatum : CapoDatum::CharterData = self.getCharterDatum();
         charterDatum.manifest.get_safe(key)
     }
 
@@ -1157,7 +1151,7 @@ struct CapoCtx {
     }
 
     func getNextManifestedDatumRaw(self, key: String) -> Data {
-        charterDatum : CapoDatum::CharterToken = self.getCharterDatum();
+        charterDatum : CapoDatum::CharterData = self.getCharterDatum();
         manifestEntry : CapoManifestEntry = charterDatum.manifest.get_safe(key).switch{
             Some{entry} => entry,
             None => error("missing required manifest entry: " + key)
@@ -1174,7 +1168,7 @@ struct CapoCtx {
     }
 
     // func getRefSettingsUtxo(self) -> TxInput {
-    //     charterDatum : CapoDatum::CharterToken = self.getCharterDatum();
+    //     charterDatum : CapoDatum::CharterData = self.getCharterDatum();
     //     settingsValue : Value = mkTv(mph: self.mph, tnBytes: charterDatum.settingsUut);
     //     hasSettings = (txin : TxInput) -> Bool { txin.value.contains(settingsValue) };
 
@@ -1278,7 +1272,7 @@ struct CapoCtx {
     }
 
     // internal / low-level function
-    func getCharterDatum(self) -> CapoDatum::CharterToken {
+    func getCharterDatum(self) -> CapoDatum::CharterData {
         self.charter.switch {
             RefInput{datum, _} => datum,
             Input{datum, _} => datum,
@@ -1286,20 +1280,20 @@ struct CapoCtx {
         }
     }
 
-    // func getNextCharterDatum(self) -> CapoDatum::CharterToken {
-    //     self.charter.switch {
-    //         Input => {
-    //             charterDatum : CapoDatum::CharterToken = CapoDatum::from_data(
-    //                 tx.outputs.find( (txo: TxOutput) => {
-    //                     txo.address == self.resolveCharterUtxo().address &&
-    //                     txo.value.contains(mkTv(self.mph, "charter"))
-    //                 }).datum.inline
-    //             );
-    //             charterDatum
-    //         },
-    //         _ => error("CapoCtx.getNextCharterDatum(): invalid except with charter strategy Input")
-    //     }
-    // }
+    func getNextCharterData(self) -> CapoDatum::CharterData {
+        self.charter.switch {
+            Input => {
+                charterDatum : CapoDatum::CharterData = CapoDatum::from_data(
+                    tx.outputs.find( (txo: TxOutput) -> Bool {
+                        txo.address == self.resolveCharterUtxo().address &&
+                        txo.value.contains(mkTv(self.mph, "charter"))
+                    }).datum.inline
+                );
+                charterDatum
+            },
+            _ => error("CapoCtx.getNextCharterDatum(): invalid except with charter strategy Input")
+        }
+    }
 
     func resolveCharterUtxo(self) -> TxInput {
         self.charter.switch {
@@ -1665,7 +1659,7 @@ struct CapoCtx {
                     Some{charterUtxo} => {
                         print("CapoCtx needsCharter(): found charter ref\n");
 
-                        datum : CapoDatum::CharterToken = CapoDatum::CharterToken::from_data( 
+                        datum : CapoDatum::CharterData = CapoDatum::CharterData::from_data( 
                             charterUtxo.datum.inline
                         );
                         CapoCtx{mph, cctx_CharterInputType::RefInput{datum, charterUtxo}}
@@ -1693,10 +1687,10 @@ struct CapoCtx {
                     Some{ch} => ch,
                     None => error("Missing required charter input")
                 };
-                datum : CapoDatum::CharterToken = CapoDatum::CharterToken::from_data( 
+                datum : CapoDatum::CharterData = CapoDatum::CharterData::from_data( 
                     charterUtxo.datum.inline
                 );
-                // datum : CapoDatum::CharterToken = getTxCharterDatum(self.mph);
+                // datum : CapoDatum::CharterData = getTxCharterDatum(self.mph);
                 CapoCtx{mph, cctx_CharterInputType::Input{datum, charterUtxo}}
                 // self.copy(charter: cctx_CharterInputType::Input{charterUtxo, datum})
             }
@@ -1709,7 +1703,7 @@ struct CapoCtx {
     //         RefInput => error("CapoCtx.nowMinting(): charter is from ref!"),
     //         Unk => {
     //             CapoCtx{mph, _} = self;
-    //             datum: CapoDatum::CharterToken = CapoDatum::CharterToken::from_data( 
+    //             datum: CapoDatum::CharterData = CapoDatum::CharterData::from_data( 
     //                 output.datum.inline
     //             );
     //             CapoCtx{mph, cctx_CharterInputType::Minting{datum, address}}
@@ -1724,7 +1718,7 @@ struct CapoCtx {
             Unk => {
                 CapoCtx{mph, _} = self;
                 utxo : TxInput = getRefCharterUtxo(mph);
-                datum : CapoDatum::CharterToken = CapoDatum::CharterToken::from_data( 
+                datum : CapoDatum::CharterData = CapoDatum::CharterData::from_data( 
                     utxo.datum.inline 
                 );
             
@@ -1744,7 +1738,7 @@ struct CapoCtx {
         //     charterDatum: charterDatum // already resolved
         // );
 
-        CapoDatum::CharterToken{
+        CapoDatum::CharterData{
             spendDelegate,
             spendInvariants,
             otherNamedDelegates,

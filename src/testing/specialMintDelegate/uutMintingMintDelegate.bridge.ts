@@ -52,39 +52,39 @@ import type {hasSeed, isActivity} from "../../StellarContract.js"
 
 
 import type {
-    DelegationDetail, DelegationDetailLike,
-    AnyData, AnyDataLike,
-    SampleStruct, SampleStructLike,
-    SomeEnum$hasNestedFields, SomeEnum$hasNestedFieldsLike,
-    SomeEnum$hasRecursiveFields, SomeEnum$hasRecursiveFieldsLike,
-    SomeEnum, SomeEnumLike,
-    DelegateDatum$MultiFieldVariant, DelegateDatum$MultiFieldVariantLike,
-    DelegateDatum$MultiFieldNestedThings, DelegateDatum$MultiFieldNestedThingsLike,
-    DelegateDatum, DelegateDatumLike,
-    CapoLifecycleActivity$CreatingDelegate, CapoLifecycleActivity$CreatingDelegateLike,
-    PendingDelegateAction$Add, PendingDelegateAction$AddLike,
-    PendingDelegateAction$Replace, PendingDelegateAction$ReplaceLike,
-    PendingDelegateAction, PendingDelegateActionLike,
-    DelegateRole, DelegateRoleLike,
-    CapoLifecycleActivity$queuePendingDgtChange, CapoLifecycleActivity$queuePendingDgtChangeLike,
-    CapoLifecycleActivity$removePendingDgtChange, CapoLifecycleActivity$removePendingDgtChangeLike,
-    CapoLifecycleActivity$forcingNewSpendDelegate, CapoLifecycleActivity$forcingNewSpendDelegateLike,
-    CapoLifecycleActivity$forcingNewMintDelegate, CapoLifecycleActivity$forcingNewMintDelegateLike,
-    ManifestActivity$updatingEntry, ManifestActivity$updatingEntryLike,
-    ManifestActivity$addingEntry, ManifestActivity$addingEntryLike,
-    ManifestActivity$forkingThreadToken, ManifestActivity$forkingThreadTokenLike,
-    ManifestActivity, ManifestActivityLike,
-    CapoLifecycleActivity, CapoLifecycleActivityLike,
-    DelegateLifecycleActivity$ReplacingMe, DelegateLifecycleActivity$ReplacingMeLike,
-    DelegateLifecycleActivity, DelegateLifecycleActivityLike,
-    SpendingActivity, SpendingActivityLike,
-    MintingActivity$mintingUuts, MintingActivity$mintingUutsLike,
-    MintingActivity, MintingActivityLike,
-    BurningActivity, BurningActivityLike,
-    DelegateActivity$CreatingDelegatedData, DelegateActivity$CreatingDelegatedDataLike,
-    DelegateActivity$UpdatingDelegatedData, DelegateActivity$UpdatingDelegatedDataLike,
-    DelegateActivity$DeletingDelegatedData, DelegateActivity$DeletingDelegatedDataLike,
-    DelegateActivity, DelegateActivityLike
+    DelegationDetail, ErgoDelegationDetail, DelegationDetailLike,
+    AnyData, ErgoAnyData, AnyDataLike,
+    SampleStruct, ErgoSampleStruct, SampleStructLike,
+    SomeEnum$hasNestedFields, SomeEnum$Ergo$hasNestedFields, SomeEnum$hasNestedFieldsLike,
+    SomeEnum$hasRecursiveFields, SomeEnum$Ergo$hasRecursiveFields, SomeEnum$hasRecursiveFieldsLike,
+    SomeEnum, ErgoSomeEnum, SomeEnumLike,
+    DelegateDatum$MultiFieldVariant, DelegateDatum$Ergo$MultiFieldVariant, DelegateDatum$MultiFieldVariantLike,
+    DelegateDatum$MultiFieldNestedThings, DelegateDatum$Ergo$MultiFieldNestedThings, DelegateDatum$MultiFieldNestedThingsLike,
+    DelegateDatum, ErgoDelegateDatum, DelegateDatumLike,
+    CapoLifecycleActivity$CreatingDelegate, CapoLifecycleActivity$Ergo$CreatingDelegate, CapoLifecycleActivity$CreatingDelegateLike,
+    PendingDelegateAction$Add, PendingDelegateAction$Ergo$Add, PendingDelegateAction$AddLike,
+    PendingDelegateAction$Replace, PendingDelegateAction$Ergo$Replace, PendingDelegateAction$ReplaceLike,
+    PendingDelegateAction, ErgoPendingDelegateAction, PendingDelegateActionLike,
+    DelegateRole, ErgoDelegateRole, DelegateRoleLike,
+    CapoLifecycleActivity$queuePendingDgtChange, CapoLifecycleActivity$Ergo$queuePendingDgtChange, CapoLifecycleActivity$queuePendingDgtChangeLike,
+    CapoLifecycleActivity$removePendingDgtChange, CapoLifecycleActivity$Ergo$removePendingDgtChange, CapoLifecycleActivity$removePendingDgtChangeLike,
+    CapoLifecycleActivity$forcingNewSpendDelegate, CapoLifecycleActivity$Ergo$forcingNewSpendDelegate, CapoLifecycleActivity$forcingNewSpendDelegateLike,
+    CapoLifecycleActivity$forcingNewMintDelegate, CapoLifecycleActivity$Ergo$forcingNewMintDelegate, CapoLifecycleActivity$forcingNewMintDelegateLike,
+    ManifestActivity$updatingEntry, ManifestActivity$Ergo$updatingEntry, ManifestActivity$updatingEntryLike,
+    ManifestActivity$addingEntry, ManifestActivity$Ergo$addingEntry, ManifestActivity$addingEntryLike,
+    ManifestActivity$forkingThreadToken, ManifestActivity$Ergo$forkingThreadToken, ManifestActivity$forkingThreadTokenLike,
+    ManifestActivity, ErgoManifestActivity, ManifestActivityLike,
+    CapoLifecycleActivity, ErgoCapoLifecycleActivity, CapoLifecycleActivityLike,
+    DelegateLifecycleActivity$ReplacingMe, DelegateLifecycleActivity$Ergo$ReplacingMe, DelegateLifecycleActivity$ReplacingMeLike,
+    DelegateLifecycleActivity, ErgoDelegateLifecycleActivity, DelegateLifecycleActivityLike,
+    SpendingActivity, ErgoSpendingActivity, SpendingActivityLike,
+    MintingActivity$mintingUuts, MintingActivity$Ergo$mintingUuts, MintingActivity$mintingUutsLike,
+    MintingActivity, ErgoMintingActivity, MintingActivityLike,
+    BurningActivity, ErgoBurningActivity, BurningActivityLike,
+    DelegateActivity$CreatingDelegatedData, DelegateActivity$Ergo$CreatingDelegatedData, DelegateActivity$CreatingDelegatedDataLike,
+    DelegateActivity$UpdatingDelegatedData, DelegateActivity$Ergo$UpdatingDelegatedData, DelegateActivity$UpdatingDelegatedDataLike,
+    DelegateActivity$DeletingDelegatedData, DelegateActivity$Ergo$DeletingDelegatedData, DelegateActivity$DeletingDelegatedDataLike,
+    DelegateActivity, ErgoDelegateActivity, DelegateActivityLike
 } from "./uutMintingMintDelegate.typeInfo.js";
 
 export type * as types from "./uutMintingMintDelegate.typeInfo.js";
@@ -117,10 +117,7 @@ export class uutMintingDelegateDataBridge extends ContractDataBridge {
      */
     DelegateDatum: DelegateDatumHelper = this.datum;
 
-    readDatum : (d: UplcData) => IntersectedEnum<DelegateDatum> = (d) =>  {
-        //XXX@ts-expect-error drilling through the protected accessor.
-        //   ... see more comments about that above
-        //return this.datum.__cast.fromUplcData(d);
+    readDatum : (d: UplcData) => ErgoDelegateDatum = (d) =>  {
         return this.reader.DelegateDatum(d)
     }
 
@@ -254,7 +251,7 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<SomeEnum>;        
+        return cast.fromUplcData(d) as ErgoSomeEnum;        
     } /* enumReader helper */
 
     /**
@@ -276,7 +273,7 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<DelegateDatum>;        
+        return cast.fromUplcData(d) as ErgoDelegateDatum;        
     } /* enumReader helper */
 
     /**
@@ -298,7 +295,7 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<PendingDelegateAction>;        
+        return cast.fromUplcData(d) as ErgoPendingDelegateAction;        
     } /* enumReader helper */
 
     /**
@@ -320,7 +317,7 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<DelegateRole>;        
+        return cast.fromUplcData(d) as ErgoDelegateRole;        
     } /* enumReader helper */
 
     /**
@@ -342,7 +339,7 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<ManifestActivity>;        
+        return cast.fromUplcData(d) as ErgoManifestActivity;        
     } /* enumReader helper */
 
     /**
@@ -364,7 +361,7 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<CapoLifecycleActivity>;        
+        return cast.fromUplcData(d) as ErgoCapoLifecycleActivity;        
     } /* enumReader helper */
 
     /**
@@ -386,7 +383,7 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<DelegateLifecycleActivity>;        
+        return cast.fromUplcData(d) as ErgoDelegateLifecycleActivity;        
     } /* enumReader helper */
 
     /**
@@ -408,7 +405,7 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<SpendingActivity>;        
+        return cast.fromUplcData(d) as ErgoSpendingActivity;        
     } /* enumReader helper */
 
     /**
@@ -430,7 +427,7 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<MintingActivity>;        
+        return cast.fromUplcData(d) as ErgoMintingActivity;        
     } /* enumReader helper */
 
     /**
@@ -452,7 +449,7 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<BurningActivity>;        
+        return cast.fromUplcData(d) as ErgoBurningActivity;        
     } /* enumReader helper */
 
     /**
@@ -474,7 +471,7 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
         //@ts-expect-error drilling through the protected accessor.
         const cast = typeHelper.__cast;
 
-        return cast.fromUplcData(d) as IntersectedEnum<DelegateActivity>;        
+        return cast.fromUplcData(d) as ErgoDelegateActivity;        
     } /* enumReader helper */
 
     /**
@@ -484,7 +481,7 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
-        * Used correctly with data that matches the struct type, this reader
+        * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
         * 
         * On the other hand, reading non-matching data will not give you a valid result.  
@@ -494,7 +491,7 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
     DelegationDetail(d: UplcData) {
         //@ts-expect-error drilling through the protected accessor.
         const cast = this.bridge.__DelegationDetailCast;
-        return cast.fromUplcData(d);        
+        return cast.fromUplcData(d) //??? as ErgoDelegationDetail;
     } /* structReader helper */
 
     /**
@@ -504,7 +501,7 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
-        * Used correctly with data that matches the struct type, this reader
+        * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
         * 
         * On the other hand, reading non-matching data will not give you a valid result.  
@@ -514,7 +511,7 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
     AnyData(d: UplcData) {
         //@ts-expect-error drilling through the protected accessor.
         const cast = this.bridge.__AnyDataCast;
-        return cast.fromUplcData(d);        
+        return cast.fromUplcData(d) //??? as ErgoAnyData;
     } /* structReader helper */
 
     /**
@@ -524,7 +521,7 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
         * 
         * This is a low-level data-reader for use in ***advanced development scenarios***.
         * 
-        * Used correctly with data that matches the struct type, this reader
+        * Used correctly with data that matches the type, this reader
         * returns strongly-typed data - your code using these types will be safe.
         * 
         * On the other hand, reading non-matching data will not give you a valid result.  
@@ -534,13 +531,13 @@ class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
     SampleStruct(d: UplcData) {
         //@ts-expect-error drilling through the protected accessor.
         const cast = this.bridge.__SampleStructCast;
-        return cast.fromUplcData(d);        
+        return cast.fromUplcData(d) //??? as ErgoSampleStruct;
     } /* structReader helper */
 
 }
 
 /**
- * Helper class for generating UplcData for the ***DelegationDetail*** struct type.
+ * Helper class for generating UplcData for the struct ***DelegationDetail*** type.
  */
 export class DelegationDetailHelper extends DataBridge {
     isCallable = true
@@ -562,7 +559,7 @@ export class DelegationDetailHelper extends DataBridge {
 
 
 /**
- * Helper class for generating UplcData for the ***AnyData*** struct type.
+ * Helper class for generating UplcData for the struct ***AnyData*** type.
  */
 export class AnyDataHelper extends DataBridge {
     isCallable = true
@@ -584,7 +581,7 @@ export class AnyDataHelper extends DataBridge {
 
 
 /**
- * Helper class for generating UplcData for the ***SampleStruct*** struct type.
+ * Helper class for generating UplcData for the struct ***SampleStruct*** type.
  */
 export class SampleStructHelper extends DataBridge {
     isCallable = true
@@ -798,6 +795,16 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
        return uplc;
     }
 
+/**
+ * (property getter): UplcData for ***"uutMintingDelegate::DelegateDatum.TagOnlyDatum"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#2***
+ */
+    get TagOnlyDatum() {
+        const uplc = this.mkUplcData({ TagOnlyDatum: {} }, 
+            "uutMintingDelegate::DelegateDatum.TagOnlyDatum");
+        return uplc;
+    } /* tagOnly variant accessor */
+
     /**
      * generates  UplcData for ***"uutMintingDelegate::DelegateDatum.capoStoredData"***
      * @remarks - ***AnyDataLike*** is the same as the expanded field-type.
@@ -816,7 +823,7 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
 
 /**
  * (property getter): UplcData for ***"uutMintingDelegate::DelegateDatum.ScriptReference"***
- * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#4***
  */
     get ScriptReference() {
         const uplc = this.mkUplcData({ ScriptReference: {} }, 
@@ -890,13 +897,14 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     MultiFieldNestedThings(fields: DelegateDatum$MultiFieldNestedThingsLike | { 
         nestedStruct: SampleStructLike,
         nestedEnumMaybe: Option<
-        | { justATag: /*minEnumVariant*/ tagOnly }
-        | { justAnInt: /*minEnumVariant*/ IntLike /*singleVariantField ; elided extra { m: IntLike} structure*/
-   }
-        | { oneNestedStruct: /*minEnumVariant*/ SampleStructLike /*singleVariantField ; elided extra { m: SampleStructLike} structure*/
-   }
-        | { hasNestedFields: /*minEnumVariant*/ SomeEnum$hasNestedFieldsLike }
-        | { hasRecursiveFields: /*minEnumVariant*/ SomeEnum$hasRecursiveFieldsLike }> } ) : UplcData {
+        | { justATag: tagOnly /*minEnumVariant*/ }
+        | { justAnInt: /* implied wrapper { m: ... } for singleVariantField */ 
+			IntLike    /*minEnumVariant*/ }
+        | { oneNestedStruct: /* implied wrapper { m: ... } for singleVariantField */ 
+			SampleStructLike    /*minEnumVariant*/ }
+        | { hasNestedFields: SomeEnum$hasNestedFieldsLike /*minEnumVariant*/ }
+        | { hasRecursiveFields: SomeEnum$hasRecursiveFieldsLike /*minEnumVariant*/ }
+> } ) : UplcData {
         const uplc = this.mkUplcData({
             MultiFieldNestedThings: fields 
         }, "uutMintingDelegate::DelegateDatum.MultiFieldNestedThings");
@@ -2452,6 +2460,13 @@ export const DelegateDatumSchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 2,
+            "id": "__module__uutMintingDelegate__DelegateDatum[]__TagOnlyDatum",
+            "name": "TagOnlyDatum",
+            "fieldTypes": []
+        },
+        {
+            "kind": "variant",
+            "tag": 3,
             "id": "__module__uutMintingDelegate__DelegateDatum[]__capoStoredData",
             "name": "capoStoredData",
             "fieldTypes": [
@@ -2486,14 +2501,14 @@ export const DelegateDatumSchema : EnumTypeSchema = {
         },
         {
             "kind": "variant",
-            "tag": 3,
+            "tag": 4,
             "id": "__module__uutMintingDelegate__DelegateDatum[]__ScriptReference",
             "name": "ScriptReference",
             "fieldTypes": []
         },
         {
             "kind": "variant",
-            "tag": 4,
+            "tag": 5,
             "id": "__module__uutMintingDelegate__DelegateDatum[]__SingleDataElement",
             "name": "SingleDataElement",
             "fieldTypes": [
@@ -2508,7 +2523,7 @@ export const DelegateDatumSchema : EnumTypeSchema = {
         },
         {
             "kind": "variant",
-            "tag": 5,
+            "tag": 6,
             "id": "__module__uutMintingDelegate__DelegateDatum[]__SingleNestedStruct",
             "name": "SingleNestedStruct",
             "fieldTypes": [
@@ -2568,7 +2583,7 @@ export const DelegateDatumSchema : EnumTypeSchema = {
         },
         {
             "kind": "variant",
-            "tag": 6,
+            "tag": 7,
             "id": "__module__uutMintingDelegate__DelegateDatum[]__HasNestedEnum",
             "name": "HasNestedEnum",
             "fieldTypes": [
@@ -2757,7 +2772,7 @@ export const DelegateDatumSchema : EnumTypeSchema = {
         },
         {
             "kind": "variant",
-            "tag": 7,
+            "tag": 8,
             "id": "__module__uutMintingDelegate__DelegateDatum[]__MultiFieldVariant",
             "name": "MultiFieldVariant",
             "fieldTypes": [
@@ -2779,7 +2794,7 @@ export const DelegateDatumSchema : EnumTypeSchema = {
         },
         {
             "kind": "variant",
-            "tag": 8,
+            "tag": 9,
             "id": "__module__uutMintingDelegate__DelegateDatum[]__MultiFieldNestedThings",
             "name": "MultiFieldNestedThings",
             "fieldTypes": [
