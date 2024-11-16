@@ -87,7 +87,11 @@ enum SomeEnum {
 }
 
 enum DelegateDatum {
-    Cip68RefToken
+    Cip68RefToken {  
+        cip68meta: AnyData
+        cip68version: Int
+        otherDetails: Data // can be Unit () or anything else
+    }
     IsDelegation {
         dd: DelegationDetail
     }
@@ -96,7 +100,6 @@ enum DelegateDatum {
     capoStoredData {
         data: AnyData
     }
-    ScriptReference
     SingleDataElement {
         aString: String
     }

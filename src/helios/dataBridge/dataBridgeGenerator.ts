@@ -95,14 +95,14 @@ export class dataBridgeGenerator
 
     getMoreStructInfo?(typeDetails: typeDetails): dataBridgeTypeInfo {
         const structName = typeDetails.typeName!;
-        const castMemberName = `__${structName}Cast`;
+        const castMemberName = `ᱺᱺ${structName}Cast`;
         const helperClassName = `${structName}Helper`;
 
         this.namedSchemas[structName] = typeDetails.typeSchema;
 
         return {
             castCode: `
-                 /*unused?*/ protected ${castMemberName}: StellarCast<${structName}Like, ${structName}> = new StellarCast<${structName}Like, ${structName}>(this.schema.${structName}, { isMainnet: true });
+                 /*unused?*/ ${castMemberName}: StellarCast<${structName}Like, ${structName}> = new StellarCast<${structName}Like, ${structName}>(this.schema.${structName}, { isMainnet: true });
             `,
             accessorCode: `${structName}(fields: ${structName}Like}) {
                 return this.${castMemberName}.toUplcData(fields);
@@ -221,11 +221,6 @@ ${imports}
 ${scImports}
 ${this.includeScriptNamedTypes(inputFile)}
 
-//Note about @ts-expect-error drilling through protected accessors: This 
-//   allows the interface for the nested accessor to show only the public details,
-//   while allowing us to collaborate between these two closely-related classes.
-//   Like "friends" in C++.
-
 /**
  * GENERATED data bridge for **${
      this.bundle.program.name
@@ -265,7 +260,7 @@ ${this.includeNamedSchemas()}
     }
 
     generateDataReaderClass(className: string) {
-        return `class ${className} extends DataBridgeReaderClass {
+        return `export class ${className} extends DataBridgeReaderClass {
     constructor(public bridge: ${this.bundle.bridgeClassName}) {
         super();
     }
@@ -303,8 +298,7 @@ ${this.includeStructReaders()}
         */
     ${typeName}(d : UplcData) { 
         const typeHelper = this.bridge.types.${typeName};
-        ${"//"}@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as Ergo${typeName};        
     } /* enumReader helper */\n`;
@@ -328,7 +322,7 @@ ${this.includeStructReaders()}
             })
             .map((typeName) => {
                 const typeDetails = this.typeBundle.namedTypes[typeName];
-                const castMemberName = `__${typeName}Cast`;
+                const castMemberName = `ᱺᱺ${typeName}Cast`;
                 const isDatum = this.datumTypeName === typeName;
                 const func = /*-------------struct-reader-func--------------*/ `    /**
         * reads UplcData *known to fit the **${typeName}*** struct type,
@@ -345,7 +339,6 @@ ${this.includeStructReaders()}
         * causes some error later on in your code, when you try to use it.
         */
     ${typeName}(d: UplcData) {
-        ${"//"}@ts-expect-error drilling through the protected accessor.
         const cast = this.bridge.${castMemberName};
         return cast.fromUplcData(d) //??? as Ergo${typeName};
     } /* structReader helper */\n`;
@@ -422,10 +415,12 @@ ${this.includeStructReaders()}
                     permissiveType,
                     permissiveTypeName,
                 } = typeDetails;
-                const castMemberName = `__${typeName}Cast`;
+                const castMemberName = `ᱺᱺ${typeName}Cast`;
                 this.additionalCastMemberDefs[
                     castMemberName
-                ] = `    protected ${castMemberName} = new StellarCast<
+                ] = `    /**
+                * uses unicode U+1c7a - sorts to the end */\n`+
+                `    ${castMemberName} = new StellarCast<
                 ${canonicalTypeName}, ${permissiveTypeName}
             >(${typeName}Schema, { isMainnet: true });\n`;
                 return (
@@ -515,7 +510,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             activityDetails.permissiveType;
         const activityTypeName = activityDetails.canonicalTypeName!;
         const castDef = `
-    __activityCast = new StellarCast<
+    ᱺᱺactivityCast = new StellarCast<
         ${canonicalType}, ${permissiveType}
     >(${schemaName}, { isMainnet: true }); // activityAccessorCast`;
 
@@ -538,7 +533,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
      * @remarks - same as {@link activity}
      */
     ${activityTypeName}(fields: ${activityTypeName}Like) {
-        return this.__activityCast.toUplcData(fields);
+        return this.ᱺᱺactivityCast.toUplcData(fields);
     }\n\n`; // --------------------------
         } else {
             //  not an enum, not a struct; probably an unnamed type -------------------
@@ -687,9 +682,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             datumAccessorVarietyAnnotation +
             typeNameAccessor +
             `\n\n    readDatum : (d: UplcData) => Ergo${typeName} = (d) =>  {\n` +
-            //            `        ${"//XXX"}@ts-expect-error drilling through the protected accessor.\n` +
-            //            `        //   ... see more comments about that above\n` +
-            //            `        //return this.datum.__cast.fromUplcData(d);\n` +
+            //            `        //return this.datum.ᱺᱺcast.fromUplcData(d);\n` +
             `        return this.reader.${typeName}(d)\n` +
             `    }\n`
         );
@@ -713,11 +706,13 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             );
         }
         const { canonicalType, permissiveType, typeSchema } = details;
-        const castDef = `    protected __cast = new StellarCast<
+        const castDef = `    /**
+        * uses unicode U+1c7a - sorts to the end */\n`+
+         `    ᱺᱺcast = new StellarCast<
         ${canonicalType}, ${permissiveType}
     >(${JSON.stringify(typeSchema)}, { isMainnet: true }); // datumAccessorCast\n`;
 
-        return `class ${helperClassName} extends DataBridge {
+        return `export class ${helperClassName} extends DataBridge {
     isCallable = true
     ${castDef}
     
@@ -729,14 +724,14 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         //      * Generates UplcData for the datum type (${typeName}) for the ${this.bundle.program.name} script
         //      */
         //     datum(x: ${permissiveTypeName}) {
-        //         return this.__datumCast.toUplcData(x);
+        //         return this.ᱺᱺdatumCast.toUplcData(x);
         //     }\n`;
 
         //         const readDatum = `
         //         /**
         //          * reads UplcData for the datum type (${typeName}) for the ${this.bundle.program.name} script
         //          */
-        //         readDatum(d: UplcData) { return this.__datumCast.fromUplcData(d); }\n`;
+        //         readDatum(d: UplcData) { return this.ᱺᱺdatumCast.fromUplcData(d); }\n`;
 
         //         if (details.typeSchema.kind === "struct") {
         //             return (
@@ -750,7 +745,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         //      */
         // ` +
         //                 `    ${details.typeSchema.name}(fields: ${permissiveTypeName}) {\n` +
-        //                 `        return this.__datumCast.toUplcData(fields);\n` +
+        //                 `        return this.ᱺᱺdatumCast.toUplcData(fields);\n` +
         //                 `    } // datumAccessor/byName \n`
         //             );
         //         }
@@ -795,7 +790,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         isActivity: boolean
     ) {
         let helperClassName = typeDetails.moreInfo.helperClassName;
-        if (isActivity && !helperClassName?.match(/Activit/)) {
+        if (isActivity && !helperClassName?.match(/Activit/)) { //acitivties/activity
             helperClassName = `Activity${helperClassName}`;
         }
 
@@ -810,19 +805,21 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             ` */\n` +
             `export class ${structName}Helper extends DataBridge {\n` +
             `    isCallable = true\n` +
-            `    protected __cast = new StellarCast<\n` +
+            `   /**
+            * uses unicode U+1c7a - sorts to the end */\n`+
+            `    ᱺᱺcast = new StellarCast<\n` +
             `        ${typeDetails.canonicalTypeName},\n` +
             `        ${typeDetails.permissiveTypeName}\n` +
             `    >(${structName}Schema, { isMainnet: true });\n` +
             `\n` +
-            `    // You might expect a function as follows, but no.  However, a similar uplc-generating capability\n` +
-            `    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.\n` +
+            `    // You might expect a function as follows.  We provide this interface and result, \n` +
+            `    // using a proxy in the inheritance chain.\n` +
             `    // see the callableDataBridge type on the 'datum' property in the contract bridge.\n` +
             `    //\n` +
             `    //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! \n` +
             `    //\n` +
             `    // ${structName}(fields: ${typeDetails.permissiveTypeName}) {\n` +
-            `    //    return this.__cast.toUplcData(fields);\n` +
+            `    //    return this.ᱺᱺcast.toUplcData(fields);\n` +
             `    //}\n` +
             `} //mkStructHelperClass \n\n`
         );
@@ -839,6 +836,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const parentClass = isActivity
             ? `EnumBridge<isActivity>` // ${maybeNested}>`
             : `EnumBridge<JustAnEnum>`; //${maybeNested}>`;
+        const normalType = isDatum ? "TxOutputDatum" : "UplcData";
 
         const helperClassName = isNested
             ? this.nestedHelperClassName(typeDetails, isActivity)
@@ -846,11 +844,13 @@ import type * as types from "${relativeTypeFile}";\n\n`;
 
         return (
             `/**\n` +
-            ` * Helper class for generating UplcData for variants of the ***${enumName}*** enum type.\n` +
+            ` * Helper class for generating ${normalType} for variants of the ***${enumName}*** enum type.\n` +
             ` */\n` +
             `export class ${helperClassName} extends ${parentClass} {\n` +
             `    /*mkEnumHelperClass*/\n` +
-            `    protected __cast = new StellarCast<\n` +
+            `    /**
+            *  uses unicode U+1c7a - sorts to the end */\n`+
+            `    ᱺᱺcast = new StellarCast<\n` +
             `       ${typeDetails.canonicalTypeName},\n` +
             `       ${typeDetails.permissiveTypeName}\n` +
             `   >(${enumName}Schema, { isMainnet: true });\n` +

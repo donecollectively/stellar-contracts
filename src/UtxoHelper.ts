@@ -14,7 +14,7 @@ import type { SimpleWallet_stellar } from "./testing/StellarNetworkEmulator.js";
 import { dumpAny, utxosAsString } from "./diagnostics.js";
 import { UutName } from "./delegation/UutName.js";
 import { stringToNumberArray } from "./utils.js";
-import type { SetupDetails } from "./StellarContract.js";
+import type { SetupDetails, StellarContract } from "./StellarContract.js";
 import type { NetworkParams } from "@helios-lang/ledger";
 
 export type utxoSortInfo = {
@@ -65,10 +65,12 @@ export type UtxoSearchScopeWithUtxos = UtxoSearchScope & {
  * @public
  */
 export class UtxoHelper {
+    strella?: StellarContract<any>
     setup: SetupDetails;
 
-    constructor(setup: SetupDetails) {
+    constructor(setup: SetupDetails, strella?: StellarContract<any>) {
         this.setup = setup;
+        this.strella = strella;
     }
     get networkParams(): NetworkParams {
         return this.setup.networkParams;
@@ -340,6 +342,22 @@ export class UtxoHelper {
         ): TxInput | undefined {
             return this.hasOnlyAda(value, tcx, utxo);
         }
+    }
+    /**
+     * Creates an asset class for the given token name, for the indicated minting policy
+     */
+    acAuthorityToken(tokenName: string | number[], mph? : MintingPolicyHash): AssetClass {
+        let ourMph = mph
+        if (!ourMph) {
+            if (!this.strella) {
+                throw new Error(`no contract available for resolving minting policy hash; provide to acAuthorityToken or use a UtxoHelper having a strella prop`);
+            }
+            ourMph = this.strella.mintingPolicyHash;
+        }
+        if (!ourMph) {
+            throw new Error(`no minting policy hash available`);
+         }        
+        return new AssetClass(ourMph, tokenName);
     }
 
     /**

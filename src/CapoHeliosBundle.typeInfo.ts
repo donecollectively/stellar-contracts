@@ -261,20 +261,20 @@ export type PendingDelegateAction$AddLike = {
 
 
 export type PendingDelegateAction$Replace = {
-    replacesDgt: AssetClass  /*minVariantField*/ ,
     seed: TxOutputId  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ ,
     delegateValidatorHash: Option<ValidatorHash>  /*minVariantField*/ ,
-    config: number[]  /*minVariantField*/ 
+    config: number[]  /*minVariantField*/ ,
+    replacesDgt: AssetClass  /*minVariantField*/ 
 }
 
 export type PendingDelegateAction$Ergo$Replace = PendingDelegateAction$Replace/*ergo like-canonical-this-variant*/
 export type PendingDelegateAction$ReplaceLike = {
-    replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}  /*minVariantField*/ ,
     seed: TxOutputId | string  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ ,
     delegateValidatorHash: Option<ValidatorHash | string | number[]>  /*minVariantField*/ ,
-    config: number[]  /*minVariantField*/ 
+    config: number[]  /*minVariantField*/ ,
+    replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}  /*minVariantField*/ 
 }
 
 
@@ -289,7 +289,7 @@ export type PendingDelegateActionMeta = EnumTypeMeta<
         >,
         Replace: singleEnumVariantMeta<PendingDelegateActionMeta, "Replace",
             "Constr#2", 
-            "fields", PendingDelegateAction$Replace, "noSpecialFlags"
+            "fields", PendingDelegateAction$Replace, "isSeededActivity"
         >
     }
 >;

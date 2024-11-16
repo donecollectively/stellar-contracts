@@ -134,9 +134,9 @@ const rawDataBridgeProxy = new Proxy({}, {
         // may not be enforced (SWC and vitest, notably)
         if (!THIS.isCallable) throw new Error(`dataBridge ${THIS.constructor.name} is not callable`)
 
-        //@ts-expect-error drilling through the 'protected' attribute - TS can't know about
-        //  the relationship between this object and the DataBridge class
-        return THIS.__cast.toUplcData(x);
+        //x@ts-expect-error drilling through the 'protected' attribute - TS can't know about
+        //x  the relationship between this object and the DataBridge class
+        return THIS.ᱺᱺcast.toUplcData(x);
     }
 })
 
@@ -149,28 +149,33 @@ export type DataBridgeOptions = {
 };
 export type callWith<ARGS, T extends DataBridge> 
     = T & ( 
-        (x: ARGS) => ReturnType<T["_cast"]["toUplcData"]> 
+        (x: ARGS) => ReturnType<T["ᱺᱺcast"]["toUplcData"]> 
     )
 
 export class DataBridge extends (dataBridgeProxyBase as any) {
-    protected __schema : TypeSchema 
-    protected __cast: Cast<any,any>
+    protected ᱺᱺschema : TypeSchema 
     protected isActivity: boolean;
     protected isNested: boolean;
+    // relaxed protected so that GenericDelegateBridge and specific bridges don't have to
+    //   use an inheritance relationship.  Can add that kind of inheritance and make this protected again.
+    ᱺᱺcast: Cast<any,any>
     isCallable = false
 
-    mkData: this["__cast"]["toUplcData"] = 
-        (x: any) => this.__cast.toUplcData(x) 
-    readData: this["__cast"]["fromUplcData"] = 
-        (x: any) => this.__cast.fromUplcData(x) 
+    /**
+     *   uses unicode U+1c7a - sorts to the end */
+    ᱺᱺmkData: this["ᱺᱺcast"]["toUplcData"] = 
+        (x: any) => this.ᱺᱺcast.toUplcData(x) 
+    readData: this["ᱺᱺcast"]["fromUplcData"] = 
+        (x: any) => this.ᱺᱺcast.fromUplcData(x) 
 
     constructor(protected bundle: HeliosScriptBundle, options: DataBridgeOptions = {}) {
         super()
         // these start undefined, but are always forced into existence immediately
         // via getTypeSchema().  Any exceptions means this protocol wasn't followed 
         // correctly.
-        this.__schema = undefined as any
-        this.__cast = undefined as any
+        // uses U+1c7a - sorts to the end
+        this.ᱺᱺschema = undefined as any
+        this.ᱺᱺcast = undefined as any
 
         const { isActivity, isNested } = options
         this.isActivity = isActivity || false;
@@ -204,26 +209,26 @@ export class DataBridge extends (dataBridgeProxyBase as any) {
     }
 
     protected get isEnum() {
-        return "enum" === this.__schema!.kind
+        return "enum" === this.ᱺᱺschema!.kind
     }
     protected getTypeSchema() {
-        if (!this.__schema) {
-            this.__schema = "placeholder" as any // this.__typeDetails.dataType.toSchema() 
-            this.__cast = new Cast(this.__schema, {isMainnet: true})
+        if (!this.ᱺᱺschema) {
+            this.ᱺᱺschema = "placeholder" as any // this.__typeDetails.dataType.toSchema() 
+            this.ᱺᱺcast = new Cast(this.ᱺᱺschema, {isMainnet: true})
         }
-        return this.__schema
+        return this.ᱺᱺschema
     }
     // usesRedeemerWrapper : boolean = false
 
     // toUplc(x: any) {
-    //     return this.__cast.toUplcData(x)
+    //     return this.ᱺᱺcast.toUplcData(x)
     // }
 
     // get __typeName() : string {
     //     return "someTypeName" // this.__typeDetails.dataType.name
 
     //     // //@ts-expect-error not all schemas have names
-    //     // const {name=""} = this.__schema!
+    //     // const {name=""} = this.ᱺᱺschema!
     //     // if (!name) {
     //     //     throw new Error(`can't get typeName for unnamed type: ${this.__schema!.kind}`)
     //     // }
@@ -254,6 +259,8 @@ export class ContractDataBridgeWithEnumDatum extends ContractDataBridge {
     static isAbstract : (true | false) = true as const
     isAbstract : (true | false) = true as const
     declare datum: EnumBridge;
+    declare readDatum : readsUplcData<unknown>
+
     constructor(public bundle: HeliosScriptBundle) {
         super(bundle);
     }
@@ -266,11 +273,12 @@ export class ContractDataBridgeWithOtherDatum extends ContractDataBridge {
     constructor(public bundle: HeliosScriptBundle) {
         super(bundle);
     }
+    declare readDatum : readsUplcData<unknown>
+
 }
 // type DataBridgeReader = DataBridgeReaderClass & {
 //     [key: string]: (x : UplcData) => any
 // }
 export class DataBridgeReaderClass {
-    declare datum: Option<readsUplcTo<any>>
+    declare datum: Option<readsUplcTo<unknown>>
 }
-

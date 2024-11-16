@@ -34,7 +34,7 @@ export class EnumBridge<
             //   value from the redirectTo() callback.
             return this.redirectTo(value)
         }
-        const uplc = this.__cast.toUplcData(value);
+        const uplc = this.ᱺᱺcast.toUplcData(value);
         uplc.dataPath = enumPathExpr;
         if (this.isActivity) {
             return {

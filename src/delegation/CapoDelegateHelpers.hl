@@ -73,12 +73,12 @@ enum PendingDelegateAction {
     }
     Remove
     Replace {
-        replacesDgt: AssetClass
-
         seed: TxOutputId
         purpose: String
         delegateValidatorHash: Option[ValidatorHash]
         config: ByteArray
+
+        replacesDgt: AssetClass
     }
 }
 
@@ -173,9 +173,7 @@ enum DgTknDisposition {
 // data stored in the Capo, representing basic delegate info
 //   about the connection to a delegate.  
 struct RelativeDelegateLink {
-    uutName: String // TODO: use ByteArray instead.
-    // !!! removed strategyName
-    // strategyName: String
+    uutName: String 
 
     // delegate links without a validator hash are "arms-length" delegates,
     // which means they won't be checked for possible auto-upgrades 
@@ -400,7 +398,12 @@ struct DelegationDetail {
 // Delegates can define additional Datum in their enums,
 // but this first Datum is essential
 enum BASE_DELEGATE_Datum {
-    Cip68RefToken
+    Cip68RefToken {  
+        cip68meta: AnyData
+        cip68version: Int
+        otherDetails: Data // can be Unit () or anything else
+    }
+
     IsDelegation {
         dd: DelegationDetail
     }
@@ -521,7 +524,6 @@ enum SomeDelegateDatum[T] {
     capoStoredData {
         data: T
     }
-    ScriptReference
 
     // func validateSettings(self, _settings: ProtocolSettings) -> Bool{
     //   ... get the settings from the manifest via ccts

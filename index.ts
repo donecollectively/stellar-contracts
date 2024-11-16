@@ -101,7 +101,7 @@ export {
 export { StellarDelegate } from "./src/delegation/StellarDelegate.js";
 export {
     ContractBasedDelegate,
-    type NamedDelegateCreationOptions,
+    type NamedPolicyCreationOptions, 
 } from "./src/delegation/ContractBasedDelegate.js";
 
 export { AuthorityPolicy } from "./src/authority/AuthorityPolicy.js";

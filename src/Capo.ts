@@ -55,7 +55,10 @@ import {
     delegateRoles,
     defineRole,
 } from "./delegation/RolesAndDelegates.js";
-import { delegateLinkSerializer, uplcDataSerializer } from "./delegation/jsonSerializers.js";
+import {
+    delegateLinkSerializer,
+    uplcDataSerializer,
+} from "./delegation/jsonSerializers.js";
 
 import { UutName } from "./delegation/UutName.js";
 import type {
@@ -104,7 +107,7 @@ import { AnyAddressAuthorityPolicy } from "./authority/AnyAddressAuthorityPolicy
 import { dumpAny, txAsString, utxosAsString } from "./diagnostics.js";
 // import { MultisigAuthorityPolicy } from "./authority/MultisigAuthorityPolicy.js";
 import CapoHelpers from "./CapoHelpers.hl";
-import { type NamedDelegateCreationOptions } from "./delegation/ContractBasedDelegate.js";
+import { type NamedPolicyCreationOptions } from "./delegation/ContractBasedDelegate.js";
 
 /**
  * Includes key details needed to create a delegate link
@@ -122,8 +125,8 @@ export type MinimalDelegateLink = Partial<OffchainPartialDelegateLink>;
 //     Omit<RelativeDelegateLinkLike, "uutName">
 // >;
 
-        // const spendDelegate = await this.txnCreateOffchainDelegateLink(
-        //     spendDelegateLink: this.mkOnchainRelativeDelegateLink(govAuthority),
+// const spendDelegate = await this.txnCreateOffchainDelegateLink(
+//     spendDelegateLink: this.mkOnchainRelativeDelegateLink(govAuthority),
 
 /**
  * Delegate updates can, in an "escape hatch" scenario, be forced by sole authority
@@ -182,6 +185,15 @@ export type NormalDelegateSetup = {
     skipDelegateReturn?: true;
     mintDelegateActivity: isActivity;
     // withoutMintDelegate: never
+};
+
+export type toQueuePendingDgtChange =
+    CapoLifecycleActivity$queuePendingDgtChangeLike;
+export type toQueueDgtRemoval = Omit<toQueuePendingDgtChange, "action"> & {
+    action: Pick<toQueuePendingDgtChange["action"], "Remove">;
+};
+export type toQueueSeededDgtChange = Omit<toQueuePendingDgtChange, "action"> & {
+    action: Omit<toQueuePendingDgtChange["action"], "Remove">;
 };
 
 /**
@@ -395,8 +407,12 @@ import type {
     RelativeDelegateLinkLike,
     RelativeDelegateLink,
     ManifestEntryType$DgDataPolicyLike,
+    CapoLifecycleActivity$queuePendingDgtChangeLike,
+    PendingDelegateActionLike,
 } from "./CapoHeliosBundle.typeInfo.js";
 import type { IntersectedEnum } from "./helios/typeUtils.js";
+import type { SomeDgtActivityHelper } from "./delegation/GenericDelegateBridge.js";
+import type { PendingDelegateAction$AddLike } from "./delegation/UnspecializedDelegate.typeInfo.js";
 
 export type CapoDatum = ErgoCapoDatum;
 export type CharterData = CapoDatum$Ergo$CharterData;
@@ -454,13 +470,28 @@ export type HeldAssetsArgs = {
 export type hasSettingsRef = StellarTxnContext<
     anyState & { settingsRef: TxInput }
 >;
+export function dgtStateKey<
+    const N extends string,
+    const PREFIX extends string = "dgPoi"
+>(n: N, p: PREFIX = "dgPol" as PREFIX) {
+    return `${p}${n.slice(0, 1).toUpperCase()}${n.slice(1)}` as dgtStateKey<
+        N,
+        PREFIX
+    >;
+}
+
+export type dgtStateKey<
+    N extends string,
+    PREFIX extends string = "dgPol"
+> = `${PREFIX}${Capitalize<N>}`;
 
 export type hasNamedDelegate<
     DT extends StellarDelegate,
-    N extends string
+    N extends string,
+    PREFIX extends string = "namedDelegate"
 > = StellarTxnContext<
     anyState & {
-        [k in `namedDelegate${Capitalize<N>}`]: ConfiguredDelegate<DT> &
+        [k in dgtStateKey<N, PREFIX>]: ConfiguredDelegate<DT> &
             ErgoRelativeDelegateLink;
     }
 >;
@@ -1741,7 +1772,6 @@ export abstract class Capo<
         //!!! OK: using Ergo because the links are from charterData
         delegateLink: RelativeDelegateLinkLike // | OffchainRelativeDelegateLink |
     ): Promise<DT> {
-
         const role = this.delegateRoles[roleLabel] as DelegateSetup<
             any,
             DT,
@@ -1751,7 +1781,7 @@ export abstract class Capo<
         //!!! work on type-safety with roleName + available roles
         const onchainDgtLink = this.reader.RelativeDelegateLink(
             this.onchain.types.RelativeDelegateLink(delegateLink)
-        )
+        );
         const selectedDgt = role.delegateClass;
 
         const cache = this.#_delegateCache;
@@ -1763,7 +1793,11 @@ export abstract class Capo<
 
         if (!cache[roleLabel]) cache[roleLabel] = {};
         const roleCache = cache[roleLabel];
-        console.log("connectDgtWithOnchainRDLink cache key", roleLabel, cacheKey);
+        console.log(
+            "connectDgtWithOnchainRDLink cache key",
+            roleLabel,
+            cacheKey
+        );
         const cachedRole = roleCache[cacheKey];
         if (cachedRole) {
             const {
@@ -2165,7 +2199,7 @@ export abstract class Capo<
             chD.govAuthorityLink
         );
 
-        return capoGovDelegate; 
+        return capoGovDelegate;
     }
 
     async txnAddGovAuthority<TCX extends StellarTxnContext>(
@@ -3101,9 +3135,11 @@ export abstract class Capo<
             mintDelegateLink:
                 this.mkOnchainRelativeDelegateLink(newMintDelegate),
         };
-        const capoActivity = delegateInfo.forcedUpdate ?
-            this.activity.capoLifecycleActivity.forcingNewMintDelegate(tcx2, { purpose: "mintDgt" })
-            : undefined //use default activity if not forcing
+        const capoActivity = delegateInfo.forcedUpdate
+            ? this.activity.capoLifecycleActivity.forcingNewMintDelegate(tcx2, {
+                  purpose: "mintDgt",
+              })
+            : undefined; //use default activity if not forcing
 
         const tcx3 = (await this.mkTxnUpdateCharter(
             fullCharterArgs,
@@ -3145,14 +3181,12 @@ export abstract class Capo<
             withoutMintDelegate: {
                 omitMintDelegate: true,
                 specialMinterActivity:
-                    this.minter.activity.CreatingNewSpendDelegate(
-                        tcxWithSeed,
-                        { replacingUut: delegateInfo.forcedUpdate
+                    this.minter.activity.CreatingNewSpendDelegate(tcxWithSeed, {
+                        replacingUut: delegateInfo.forcedUpdate
                             ? undefined
                             : // minter will enforce the Burn of this token name
-                              spendDelegate.authorityTokenName
-                        }
-                    ),
+                              spendDelegate.authorityTokenName,
+                    }),
                 additionalMintValues: delegateInfo.forcedUpdate
                     ? undefined
                     : this.mkValuesBurningDelegateUut(
@@ -3201,9 +3235,12 @@ export abstract class Capo<
                 this.mkOnchainRelativeDelegateLink(newSpendDelegate),
         };
 
-        const capoActivity = delegateInfo.forcedUpdate ?
-            this.activity.capoLifecycleActivity.forcingNewSpendDelegate(tcx2, { purpose: "spendDgt" })
-            : undefined //use default activity if not forcing
+        const capoActivity = delegateInfo.forcedUpdate
+            ? this.activity.capoLifecycleActivity.forcingNewSpendDelegate(
+                  tcx2,
+                  { purpose: "spendDgt" }
+              )
+            : undefined; //use default activity if not forcing
         return this.mkTxnUpdateCharter(
             fullCharterArgs,
             capoActivity,
@@ -3367,23 +3404,24 @@ export abstract class Capo<
     >(
         this: thisType,
         delegateName: delegateName,
-        options: OffchainPartialDelegateLink & NamedDelegateCreationOptions<thisType, DT>,
-        tcx: TCX = new StellarTxnContext(this.setup) as TCX
+        options: OffchainPartialDelegateLink &
+            NamedPolicyCreationOptions<thisType, DT>,
+        tcx: TCX = this.mkTcx() as TCX
     ): Promise<
         hasAddlTxns<TCX & hasSeedUtxo & hasNamedDelegate<DT, delegateName>>
     > {
-        const currentDatum = await this.findCharterDatum();
+        const currentCharter = await this.findCharterDatum();
         console.log(
             "------------------ TODO SUPPORT OPTIONS.forcedUpdate ----------------"
         );
         const uutPurpose = options.uutName || delegateName;
         if (uutPurpose.length > 13) {
             throw new Error(
-                `uutName ${uutPurpose} is too long.  \n` +
-                    `   ... adjust this separately from the delegateName with option 'uutName'`
+                `uutName ${uutPurpose} can be max 13 chars \n` +
+                    `   ... adjust this separately from the delegateName with options.uutName`
             );
         }
-        const mintDelegate = await this.getMintDelegate();
+        const mintDelegate = await this.getMintDelegate(currentCharter);
 
         // TODO improve type of txn with uut purpose more specific than just generic string
         console.log("  -- 🐞🐞adding named delegate with options", options);
@@ -3403,23 +3441,26 @@ export abstract class Capo<
             }
         );
 
-        const spendDelegate = await this.txnCreateOffchainDelegateLink(
+        const newNamedDelegate = await this.txnCreateOffchainDelegateLink(
             tcx2,
             delegateName,
-            options 
+            options
         );
 
-        const tcx4 =
-            (await this.mkTxnUpdateCharter({
-                ...currentDatum,
+        const tcx4 = await this.mkTxnUpdateCharter(
+            {
+                ...currentCharter,
                 otherNamedDelegates: new Map<string, RelativeDelegateLinkLike>([
-                    ...currentDatum.otherNamedDelegates.entries(),
-                    [delegateName, this.mkOnchainRelativeDelegateLink(spendDelegate) ]
-                ])
-            },            
+                    ...currentCharter.otherNamedDelegates.entries(),
+                    [
+                        delegateName,
+                        this.mkOnchainRelativeDelegateLink(newNamedDelegate),
+                    ],
+                ]),
+            },
             undefined,
-            await this.txnAddGovAuthority(tcx2))
-        )
+            await this.txnAddGovAuthority(tcx2)
+        );
 
         // as hasAddlTxns<
         //     TCX & hasSeedUtxo & hasNamedDelegate<DT, delegateName>
@@ -3428,18 +3469,234 @@ export abstract class Capo<
         const DelegateName =
             delegateName[0].toUpperCase() + delegateName.slice(1);
         const bigDelegateName = `namedDelegate${DelegateName}`;
-        tcx4.state[bigDelegateName] = spendDelegate;
+        tcx4.state[bigDelegateName] = newNamedDelegate;
 
         const tcx5 = await this.txnMkAddlRefScriptTxn(
             tcx4 as typeof tcx4 & TCX & hasNamedDelegate<DT, delegateName>,
             bigDelegateName,
-            spendDelegate.delegate.compiledScript
+            newNamedDelegate.delegate.compiledScript
         );
 
         return tcx5;
         //  as hasAddlTxns<
         //     TCX & hasSeedUtxo & hasNamedDelegate<DT, delegateName>
         // >;
+    }
+
+    async mkTxnQueuingDelegateRemoval<
+        THIS extends Capo<any>,
+        TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>
+    >(this: THIS, pendingChange: toQueueDgtRemoval, tcx = this.mkTcx()) {
+        const currentCharter = await this.findCharterDatum();
+        const mintDelegate = await this.getMintDelegate(currentCharter);
+        const spendDelegate = await this.getSpendDelegate(currentCharter);
+        const tcx1 = await spendDelegate.txnGrantAuthority(
+            tcx,
+            spendDelegate.activity.capoLifecycleActivity.queuePendingDgtChange(
+                pendingChange
+            )
+        );
+        const tcx2 = await this.mkTxnUpdateCharter(
+            {
+                ...currentCharter,
+                pendingDgtChanges: [
+                    pendingChange,
+                    ...currentCharter.pendingDgtChanges,
+                ],
+            },
+            this.activity.capoLifecycleActivity.queuePendingDgtChange(
+                pendingChange
+            ),
+            tcx1
+        );
+
+        return tcx2;
+    }
+
+    async mkTxnQueuingDelegateChange<
+        DT extends StellarDelegate,
+        THIS extends Capo<any>,
+        const policyName extends string,
+        OPTIONS extends OffchainPartialDelegateLink,
+        const PURPOSE extends string = OPTIONS extends { uutName: infer P }
+            ? P
+            : policyName,
+        TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>
+    >(
+        this: THIS,
+        change: "Add" | "Replace",
+        policyName: policyName,
+        options: OPTIONS = { config: {} } as OPTIONS, // & NamedPolicyCreationOptions<THIS, DT>,
+        tcx: TCX = this.mkTcx() as TCX
+    ) {
+        //@ts-expect-error "could" be instantiated with different subtype
+        const purpose: PURPOSE = options.uutName || policyName;
+        if (purpose.length > 13) {
+            throw new Error(
+                `delegate-purpose ${purpose} can be max 13 chars for a UUT-name.  \n` +
+                    `   ... adjust this separately from the policyName with options.uutName`
+            );
+        }
+        // const newDgPolicy = await this.txnCreateOffchainDelegateLink(
+        //     tcx,
+        //     policyName,
+        //     options
+        // );
+
+        const currentCharter = await this.findCharterDatum();
+        const mintDgt = await this.getMintDelegate(currentCharter);
+        const mintDgtActivity = mintDgt.activity as SomeDgtActivityHelper;
+        // const dgtActivity = this.onchain.types.PendingDelegateAction
+        const tcx1 =
+            //@ts-expect-error on checking for possible seedUtxo presence
+            tcx.state.seedUtxo === undefined
+                ? await this.tcxWithSeedUtxo()
+                : (tcx as TCX & hasSeedUtxo);
+
+        const tempDataPolicyLink =
+            await this.tempMkDelegateLinkForQueuingDgtChange(
+                tcx1.state.seedUtxo,
+                mintDgtActivity,
+                purpose,
+                policyName,
+                options
+            );
+        const tempOCDPLink =
+            this.mkOnchainRelativeDelegateLink(tempDataPolicyLink);
+
+        const addDetails: PendingDelegateAction$AddLike = {
+            seed: tcx1.state.seedUtxo.id,
+            purpose,
+            delegateValidatorHash: tempOCDPLink.delegateValidatorHash,
+            config: tempOCDPLink.config,
+        };
+        const policyNameBytes = textToBytes(policyName);
+        const replacesDgtME = [...currentCharter.manifest.values()].find(
+            (m) => {
+                !!m.entryType.DgDataPolicy && m.tokenName == policyNameBytes;
+            }
+        );
+        const acReplacesDgt = replacesDgtME?.tokenName;
+        if (acReplacesDgt) {
+            if ("Add" === change) {
+                throw new Error(
+                    `Cannot add a policy with the same name as an existing one: ${policyName} (use Replace activity)`
+                );
+            }
+            throw new Error(`TODO: delegate-replacement support (test needed)`);
+        } else {
+            if ("Replace" === change) {
+                throw new Error(
+                    `Cannot replace a policy that doesn't exist: ${policyName} (use Add activity)`
+                );
+            }
+        }
+
+        const dgtAction: PendingDelegateActionLike =
+            change === "Add"
+                ? {
+                      Add: addDetails,
+                  }
+                : {
+                      Replace: {
+                          ...addDetails,
+                          replacesDgt:
+                              this.uh.acAuthorityToken(policyNameBytes),
+                      },
+                  };
+
+        const pendingDgtChange = {
+            action: dgtAction,
+            role: { DgDataPolicy: {} },
+            name: policyName,
+        };
+        const tcx2 = await this.txnMintingUuts(
+            tcx1,
+            ["dgPol"] as ["dgPol"],
+            {
+                usingSeedUtxo: tcx1.state.seedUtxo,
+                mintDelegateActivity:
+                    mintDgtActivity.CapoLifecycleActivities.queuePendingDgtChange(
+                        pendingDgtChange
+                    ),
+            },
+            {
+                // role / uut map
+                dgDataPolicy: "dgPol",
+                [`${purpose}Policy`]: "dgPol",
+            }
+        );
+        const newPolicyLink = this.mkOnchainRelativeDelegateLink(
+            await this.txnCreateOffchainDelegateLink(tcx2, "dgPol", options)
+        );
+        const tcx3 = await this.mkTxnUpdateCharter(
+            {
+                ...currentCharter,
+                pendingDgtChanges: [
+                    pendingDgtChange,
+                    ...currentCharter.pendingDgtChanges,
+                ],
+            },
+            this.activity.capoLifecycleActivity.queuePendingDgtChange(
+                pendingDgtChange
+            ),
+            await this.txnAddGovAuthority(tcx2)
+        );
+        const stateKey = dgtStateKey<policyName>(policyName);
+        //@ts-expect-error jamming in a key that's cast into the type just below.
+        tcx3.state[stateKey] = newPolicyLink;
+
+        const tcx4 = await this.txnMkAddlRefScriptTxn(
+            tcx3 as TCX & hasNamedDelegate<DT, policyName, "dgPol">,
+            stateKey,
+            tempDataPolicyLink.delegate.compiledScript
+        );
+        return tcx4 as typeof tcx4 &
+            hasUutContext<"dgPol" | "dgDataPolicy" | `${policyName}Policy`>;
+    }
+    async tempMkDelegateLinkForQueuingDgtChange(
+        seedUtxo: TxInput,
+        mintDgtActivity: SomeDgtActivityHelper,
+        purpose: string,
+        policyName: string,
+        options: OffchainPartialDelegateLink
+    ) {
+        // todo: revisit formation of this Add object with full details
+        // when the cross-dependencies are more easily resolved
+        // e.g. with Helios deferred redeemer (x: TxInfo) => UplcData
+        // ^ that may let us do create the delegate activity without any temp context.
+
+        const ttcx1 = await this.tcxWithSeedUtxo(this.mkTcx(), seedUtxo);
+        const ttcx2 = await this.txnMintingUuts(
+            ttcx1,
+            [purpose],
+            {
+                usingSeedUtxo: seedUtxo,
+                mintDelegateActivity:
+                    mintDgtActivity.CapoLifecycleActivities.queuePendingDgtChange(
+                        {
+                            action: {
+                                Add: {
+                                    seed: ttcx1.state.seedUtxo.id,
+                                    purpose,
+                                    // --------------- 8-] vvvv --------------------
+                                    // mocked details, good enough for getting UUT info for the delegate-link below:
+                                    delegateValidatorHash: null, // options.delegateValidatorHash,
+                                    config: [], //options.config
+                                    // --------------- 8-] ^^^^ --------------------
+                                },
+                            },
+                            role: { DgDataPolicy: {} },
+                            name: policyName,
+                        }
+                    ),
+            },
+            {
+                // role / uut map
+                [policyName]: purpose,
+            }
+        );
+        return this.txnCreateOffchainDelegateLink(ttcx2, policyName, options);
     }
 
     /**

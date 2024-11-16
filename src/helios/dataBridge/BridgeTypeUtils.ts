@@ -19,7 +19,7 @@ import MDWGU_Bridge, * as MDWGU from "../../testing/specialMintDelegate/uutMinti
 // } from "../../testing/specialMintDelegate/uutMintingMintDelegate.bridge.js"
 
 import type {
-    DelegateDatum as MDWGU_DelegateDatum,
+    ErgoDelegateDatum as MDWGU_ErgoDelegateDatum,
     DelegateActivity as MDWGU_DelegateActivity,
 } from "../../testing/specialMintDelegate/uutMintingMintDelegate.typeInfo.js";
 import {
@@ -27,6 +27,7 @@ import {
     ContractDataBridge,
     ContractDataBridgeWithOtherDatum,
     ContractDataBridgeWithEnumDatum,
+    DataBridgeReaderClass
 } from "./DataBridge.js";
 import type { CapoDatum } from "../../CapoHeliosBundle.typeInfo.js";
 import CapoMinterDataBridge, {
@@ -36,10 +37,17 @@ import CapoMinterDataBridge, {
 import type { EnumBridge } from "./EnumBridge.js";
 import type { IntersectedEnum } from "../typeUtils.js";
 import type { StellarDelegate } from "../../delegation/StellarDelegate.js";
-
-type canHaveDataBridge = { dataBridgeClass: Option<typeof ContractDataBridge> };
-type someContractBridgeClass = typeof ContractDataBridge &
-    (abstract new (...args: any) => ContractDataBridge);
+import type { GenericDelegateBridge, GenericDelegateBridgeClass, GenericDelegateDatum, SomeDgtActivityHelper, SomeDgtDatumHelper } from "../../delegation/GenericDelegateBridge.js";
+import UnspecializedDelegateBridge, {
+    DelegateActivityHelper,
+    DelegateDatumHelper,
+    SpendingActivityHelperNested,
+    UnspecializedDelegateBridgeReader,
+} from "../../delegation/UnspecializedDelegate.bridge.js";
+import type { ErgoDelegateDatum } from "../../delegation/UnspecializedDelegate.typeInfo.js";
+type canHaveDataBridge = { dataBridgeClass: Option<AbstractNew<ContractDataBridge>> };
+type someContractBridgeClass = //typeof ContractDataBridge &
+    AbstractNew<ContractDataBridge>;
 type abstractContractBridgeClass = typeof ContractDataBridge & {
     isAbstract: true;
 };
@@ -50,15 +58,18 @@ type abstractContractBridgeType = ContractDataBridge & { isAbstract: true };
 type concreteContractBridgeType = ContractDataBridge & { isAbstract: false };
 type someContractBridgeType = ContractDataBridge;
 
+export type AbstractNew<T=any> = abstract new (...args: any) => T;
+
 type someDataBridgeClass = typeof DataBridge &
-    (abstract new (...args: any) => DataBridge);
+    AbstractNew<DataBridge>;
 
 export type mustFindConcreteContractBridgeType<
     T extends canHaveDataBridge,
     bridgeClassMaybe extends someContractBridgeClass = T["dataBridgeClass"] extends someContractBridgeClass
         ? T["dataBridgeClass"]
         : never,
-    instanceMaybe extends InstanceType<bridgeClassMaybe> = InstanceType<bridgeClassMaybe> extends ContractDataBridge
+    instanceMaybe extends InstanceType<bridgeClassMaybe> = 
+    InstanceType<bridgeClassMaybe> extends ContractDataBridge
         ? InstanceType<bridgeClassMaybe>
         : StellarContract<any> extends T
         ? any
@@ -120,7 +131,7 @@ function typeError<T extends string, moreInfo extends Object = {}>(
 }
 
 export type findDatumType<
-    T extends { dataBridgeClass: Option<typeof ContractDataBridge> },
+    T extends { dataBridgeClass: Option<AbstractNew<ContractDataBridge>> },
     CBT extends possiblyAbstractContractBridgeType<T> = possiblyAbstractContractBridgeType<T>,
     DT = CBT extends { datum: infer D }
         ? D
@@ -195,7 +206,7 @@ export type findActivityTypeOld<
     BI extends bridgeInspector<T> = bridgeInspector<T>
 > = IF<BI["isAbstractBridgeType"], DataBridge, BI["activityHelper"]>;
 
-const fATo_test1: DataBridge extends findActivityTypeOld<BasicMintDelegate>
+const fATo_test1: SomeDgtActivityHelper extends findActivityTypeOld<BasicMintDelegate>
     ? true
     : false = true;
 const fATo_test2: DataBridge extends findActivityTypeOld<StellarContract<any>>
@@ -204,7 +215,7 @@ const fATo_test2: DataBridge extends findActivityTypeOld<StellarContract<any>>
 const fATo_test3: DataBridge extends findActivityTypeOld<StellarDelegate>
     ? true
     : false = true;
-const fATo_test4: DataBridge extends findActivityTypeOld<ContractBasedDelegate>
+const fATo_test4: SomeDgtActivityHelper extends findActivityTypeOld<ContractBasedDelegate>
     ? true
     : false = true;
 const fATo_test5: CapoActivityHelper extends findActivityTypeOld<Capo<any>>
@@ -241,7 +252,7 @@ export type mustFindActivityType<
 
 {
     // high-level checks
-    const fAT_test1: DataBridge extends findActivityType<BasicMintDelegate>
+    const fAT_test1: SomeDgtActivityHelper extends findActivityType<BasicMintDelegate>
         ? true
         : false = true;
     const fAT_test2: DataBridge extends findActivityType<StellarContract<any>>
@@ -250,7 +261,7 @@ export type mustFindActivityType<
     const fAT_test3: DataBridge extends findActivityType<StellarDelegate>
         ? true
         : false = true;
-    const fAT_test4: DataBridge extends findActivityType<ContractBasedDelegate>
+    const fAT_test4: SomeDgtActivityHelper extends findActivityType<ContractBasedDelegate>
         ? true
         : false = true;
     const fAT_test5: CapoActivityHelper extends findActivityType<Capo<any>>
@@ -259,6 +270,11 @@ export type mustFindActivityType<
     const fAT_test6: MDWGU.DelegateActivityHelper extends findActivityType<MintDelegateWithGenericUuts>
         ? true
         : false = true;
+    const fAT_test6b: SomeDgtActivityHelper extends findActivityType<MintDelegateWithGenericUuts>
+        ? true
+        : false = false;
+
+        
 
     // detailed checks / debugging
     type target = MintDelegateWithGenericUuts;
@@ -341,7 +357,7 @@ type bridgeInspector<
         IF<
             isTheBasicMintDgt,
             thatDefinedBridgeType,
-            definesContractBridge<BasicMintDelegate> extends thatDefinedBridgeType
+            someContractBridgeClass extends thatDefinedBridgeType
                 ? dataBridgeError<"BasicMintDelegate">
                 : thatDefinedBridgeType, // not 'never'!
             CANNOT_ERROR /* suppresses unreachable error alternative, given good Bool input to IF */
@@ -433,13 +449,14 @@ type bridgeInspector<
         isAbstractInSubtree<usesOtherBridge>,
         isSCBaseClass
     >,
-    isAbstractBridgeType extends boolean = typeof ContractDataBridge extends thatDefinedBridgeType
+    isAbstractBridgeType extends boolean = IFISNEVER<thatDefinedBridgeType, true, typeof ContractDataBridge extends thatDefinedBridgeType
         ? true
+        // : GenericDelegateBridge extends thatDefinedBridgeType ? true 
         : typeof ContractDataBridgeWithEnumDatum extends thatDefinedBridgeType
         ? true
         : typeof ContractDataBridgeWithOtherDatum extends thatDefinedBridgeType
         ? true
-        : false,
+        : false>,
     // returns the specific bridge type for the contract, if it isn't abstract.
     // returns 'never' if the has only an abstract bridge class.
     bridgeType = NEVERIF<
@@ -507,6 +524,8 @@ if (testing) {
         type fDT = findDatumType<StellarContract<any>>;
         type debugCBridge = debugContractBridgeType<StellarContract<any>>;
         type debugDatum = debugDatumType<StellarContract<any>>;
+        type SCBT = definesContractBridge<StellarContract<any>> 
+        const um : typeof ContractDataBridge extends SCBT ? true : false = true;
 
         type BridgeBools = BridgeBooleanEntries<BISC>;
         const bools: BridgeBools = {
@@ -562,9 +581,9 @@ if (testing) {
         const NoAnysAllowed: BridgeAnyEntries<BI_STD> = {};
         type dCB = definesContractBridge<StellarDelegate>;
 
-        type delegateActivityType = StellarDelegate["activity"];
+        // type delegateActivityType = StellarDelegate["activity"];
         type delegateSubclass = stellarSubclass<StellarDelegate>;
-        type activity = StellarDelegate["activity"];
+        // type activity = StellarDelegate["activity"];
         type foundActivity = findActivityType<StellarDelegate>;
 
         const bools: BridgeBools = {
@@ -603,15 +622,30 @@ if (testing) {
     {
         type BI_CBD = bridgeInspector<ContractBasedDelegate>;
         type BridgeBools = BridgeBooleanEntries<BI_CBD>;
-        const NoAnysAllowed: BridgeAnyEntries<BI_CBD> = {};
+        const MinmalAnysAllowed: BridgeAnyEntries<BI_CBD> = {
+            readsDatumUplcAs: IS_AN_ANY,
+        };
         type dCB = definesContractBridge<ContractBasedDelegate>;
 
-        type delegateActivityType = StellarDelegate["activity"];
+        // type delegateActivityType = StellarDelegate["activity"];
         type CBDactivityType = ContractBasedDelegate["activity"];
         type delegateSubclass = stellarSubclass<StellarDelegate>;
         type CBDgtSubclass = stellarSubclass<ContractBasedDelegate>;
         const t: stellarSubclass<StellarDelegate> = ContractBasedDelegate;
         const t2: StellarDelegate = {} as ContractBasedDelegate;
+
+        const hasReadDatum : BI_CBD["bridgeType"]["readDatum"] extends 
+            readsUplcTo<infer RD> 
+        ? true : false = true;
+
+        type CDB_iType = InstanceType<definesContractBridge<ContractBasedDelegate>>
+
+        const readsDatumToGenericDatum : GenericDelegateDatum extends 
+            BI_CBD["readsDatumUplcAs"] ? IF_ISANY<
+            BI_CBD["readsDatumUplcAs"], 
+            false, true
+        > : false = true;
+
 
         const bools: BridgeBools = {
             isAnyMintDgt: false,
@@ -621,35 +655,42 @@ if (testing) {
             isAbstractCDB: false,
             isAbstractMDB: false,
             isAbstractOB: false,
-            isAbstractBridgeType: true, // maybe should be true
+            isAbstractBridgeType: false, // it's "partially" abstract, in that much of it is well defined
         };
         type NeverEntries = BridgeNeverEntries<BI_CBD>;
         const neverEntries: NeverEntries = {
+            // bridgeType: IS_A_NEVER,
+            // readsDatumUplcAs: IS_A_NEVER,
+            // activityHelper: IS_A_NEVER,
             extendsCapoBridge: IS_A_NEVER,
             usesMintDgtBridge: IS_A_NEVER,
             usesOtherBridge: IS_A_NEVER,
-            bridgeType: IS_A_NEVER,
-            readsDatumUplcAs: IS_A_NEVER,
             hasMkDatum: IS_A_NEVER,
-            activityHelper: IS_A_NEVER,
+            abstractBridgeType: IS_A_NEVER,
         };
 
         type NonNeverEntries = BridgeNonNeverEntries<BI_CBD>;
         const nonNeverEntries: NonNeverEntries = {
-            inspected: {} as BasicMintDelegate,
-            thatDefinedBridgeType: ContractDataBridgeWithEnumDatum,
-            usesContractDgtBridge: ContractDataBridgeWithEnumDatum, // dataBridgeError("BasicMintDelegate"),
-            bridgeClass: ContractDataBridgeWithEnumDatum, // dataBridgeError("BasicMintDelegate"),
-            foundMkDatumType: {} as EnumBridge<any, any>,
-            abstractBridgeType:
-                "" as unknown as ContractDataBridgeWithEnumDatum,
+            inspected: {} as ContractBasedDelegate,
+            thatDefinedBridgeType: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum,
+            usesContractDgtBridge: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum, 
+            bridgeClass: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum, // dataBridgeError("BasicMintDelegate"),
+            foundMkDatumType: {} as SomeDgtDatumHelper,
+            // abstractBridgeType:
+            //     "" as unknown as ContractDataBridgeWithEnumDatum,
+
+            activityHelper: {} as SomeDgtActivityHelper,
+            bridgeType: {} as GenericDelegateBridge,
+            readsDatumUplcAs: {} as SomeDgtDatumHelper,
         };
     }
 
     {
         type BI_BMD = bridgeInspector<BasicMintDelegate>;
         type BridgeBools = BridgeBooleanEntries<BI_BMD>;
-        const NoAnysAllowed: BridgeAnyEntries<BI_BMD> = {};
+        const MinmalAnysAllowed: BridgeAnyEntries<BI_BMD> = {
+            readsDatumUplcAs: IS_AN_ANY,
+        };
         type dCB = definesContractBridge<BasicMintDelegate>;
 
         const bools: BridgeBools = {
@@ -660,39 +701,50 @@ if (testing) {
             isAbstractCDB: false,
             isAbstractMDB: false,
             isAbstractOB: false,
-            isAbstractBridgeType: true, // maybe should be true
+            isAbstractBridgeType: false, // it's "partially" abstract, in that much of it is well defined
         };
         type NeverEntries = BridgeNeverEntries<BI_BMD>;
         const neverEntries: NeverEntries = {
+            // bridgeType: IS_A_NEVER,
+            // readsDatumUplcAs: IS_A_NEVER,
+            // activityHelper: IS_A_NEVER,
             extendsCapoBridge: IS_A_NEVER,
             usesContractDgtBridge: IS_A_NEVER,
             usesOtherBridge: IS_A_NEVER,
-            bridgeType: IS_A_NEVER,
-            readsDatumUplcAs: IS_A_NEVER,
             hasMkDatum: IS_A_NEVER,
-            activityHelper: IS_A_NEVER,
+            abstractBridgeType: IS_A_NEVER,
         };
 
         type NonNeverEntries = BridgeNonNeverEntries<BI_BMD>;
         const nonNeverEntries: NonNeverEntries = {
+            // usesContractDgtBridge: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum, 
+            // abstractBridgeType:
+            //     "" as unknown as ContractDataBridgeWithEnumDatum,
             inspected: {} as BasicMintDelegate,
-            thatDefinedBridgeType: ContractDataBridgeWithEnumDatum,
-            usesMintDgtBridge: ContractDataBridgeWithEnumDatum, // dataBridgeError("BasicMintDelegate"),
-            bridgeClass: ContractDataBridgeWithEnumDatum, // dataBridgeError("BasicMintDelegate"),
-            foundMkDatumType: {} as EnumBridge<any, any>,
-            abstractBridgeType:
-                "" as unknown as ContractDataBridgeWithEnumDatum,
+            thatDefinedBridgeType: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum,
+            usesMintDgtBridge: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum, 
+            bridgeClass: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum, 
+            foundMkDatumType: {} as SomeDgtDatumHelper,
+
+            activityHelper: {} as SomeDgtActivityHelper,
+            bridgeType: {} as GenericDelegateBridge,
+    
+            readsDatumUplcAs: {} as GenericDelegateDatum
         };
     }
 
     {
         type BItestDelegate = bridgeInspector<MintDelegateWithGenericUuts>;
         const BMDisAbstractBridgeTypes: bridgeInspector<BasicMintDelegate>["isAbstractBridgeType"] =
-            true;
+            false;
 
-        const isBasicMintDelegate: MintDelegateWithGenericUuts extends BasicMintDelegate
+        const isBasicMintDelegate: BasicMintDelegate extends MintDelegateWithGenericUuts 
+            ? true
+            : false = false;
+        const isMintDelegateSubclass: MintDelegateWithGenericUuts extends BasicMintDelegate
             ? true
             : false = true;
+
         const testDgt: BasicMintDelegate = {} as MintDelegateWithGenericUuts;
         const isntAbstract: MDWGU_Bridge["isAbstract"] = false;
         //@ts-expect-error - should be false
@@ -741,9 +793,10 @@ if (testing) {
             usesMintDgtBridge: MDWGU_Bridge,
             bridgeClass: MDWGU_Bridge,
             bridgeType: "" as unknown as MDWGU_Bridge,
-            readsDatumUplcAs: {} as IntersectedEnum<MDWGU_DelegateDatum>,
+            readsDatumUplcAs: {} as MDWGU_ErgoDelegateDatum,
             foundMkDatumType: {} as MDWGU.DelegateDatumHelper,
             activityHelper: "" as unknown as MDWGU.DelegateActivityHelper,
+
         };
     }
 
@@ -825,42 +878,48 @@ if (testing) {
         }
         //@ts-expect-error
         const incompleteBridge: BI_IMD["bridgeClass"] = ContractDataBridge;
-        const bridgeClassError: BI_IMD["bridgeClass"] =
-            dataBridgeError("BasicMintDelegate");
+        const bridgeClassError: BI_IMD["bridgeClass"] = {} as GenericDelegateBridgeClass
 
         type BI_IMD = bridgeInspector<incompleteMintDgt>;
         type BridgeBools = BridgeBooleanEntries<BI_IMD>;
         const bools: BridgeBools = {
             isAnyMintDgt: true,
             isTheBasicMintDgt: false,
-            isAbstractBridgeType: true, // maybe should be true
+            isAbstractBridgeType: false, // it's "partially" abstract, in that much of it is well defined
             isTheBaseContractDgt: false,
             isAnyContractDgt: true, // even a mint delegate is SOME sort of contract-having delegate
             isAbstractCDB: false,
             isAbstractMDB: false,
             isAbstractOB: false,
         };
-        const NoAnysAllowed: BridgeAnyEntries<BI_IMD> = {};
+        const MinmalAnysAllowed: BridgeAnyEntries<BI_IMD> = {
+            readsDatumUplcAs: IS_AN_ANY,
+        };
+
         type NeverEntries = BridgeNeverEntries<BI_IMD>;
         const neverEntries: NeverEntries = {
-            activityHelper: IS_A_NEVER,
             extendsCapoBridge: IS_A_NEVER,
-            readsDatumUplcAs: IS_A_NEVER,
             usesOtherBridge: IS_A_NEVER,
             hasMkDatum: IS_A_NEVER,
-            bridgeType: IS_A_NEVER,
             usesContractDgtBridge: IS_A_NEVER,
+            // activityHelper: IS_A_NEVER,
+            // readsDatumUplcAs: IS_A_NEVER,
+            // bridgeType: IS_A_NEVER,
+            abstractBridgeType: IS_A_NEVER,
         };
 
         type NonNeverEntries = BridgeNonNeverEntries<BI_IMD>;
         const nonNeverEntries: NonNeverEntries = {
             inspected: {} as incompleteMintDgt,
-            thatDefinedBridgeType: ContractDataBridgeWithEnumDatum,
-            bridgeClass: dataBridgeError("BasicMintDelegate"),
-            usesMintDgtBridge: dataBridgeError("BasicMintDelegate"),
-            foundMkDatumType: {} as EnumBridge<any, any>,
-            abstractBridgeType:
-                "" as unknown as ContractDataBridgeWithEnumDatum,
+            activityHelper: {} as SomeDgtActivityHelper,
+            thatDefinedBridgeType: {} as GenericDelegateBridgeClass, // ContractDataBridgeWithEnumDatum,           
+            usesMintDgtBridge: {} as GenericDelegateBridgeClass, // dataBridgeError("BasicMintDelegate"),
+            bridgeClass: {} as GenericDelegateBridgeClass, // dataBridgeError("BasicMintDelegate"),
+            foundMkDatumType: {} as SomeDgtDatumHelper,
+            bridgeType: {} as GenericDelegateBridge,
+            readsDatumUplcAs: {} as SomeDgtDatumHelper,
+            // abstractBridgeType: 
+            // "" as unknown as ContractDataBridgeWithEnumDatum,
         };
     }
 

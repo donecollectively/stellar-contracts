@@ -89,7 +89,7 @@ enum DelegateDatum {
 
         cip68meta: AnyData
         cip68version: Int
-        dd: Option[DelegationDetail]
+        otherDetails: Data
         // otherDetails: Data // can be Unit () or anything else
     }
 
@@ -100,7 +100,6 @@ enum DelegateDatum {
     capoStoredData {
         data: AnyData
     }
-    ScriptReference
 
     // func validateSettings(self, settings: ProtocolSettings) -> Bool{
     // ... get the settings object from the contract manifest via cctx

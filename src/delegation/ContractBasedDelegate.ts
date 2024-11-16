@@ -32,10 +32,11 @@ import {
 } from "../helios/HeliosModuleSrc.js";
 import { dumpAny } from "../diagnostics.js";
 import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
-import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
+import type { HeliosScriptBundle, readsUplcData } from "../helios/HeliosScriptBundle.js";
 import type { CapoDelegateBundle, CapoDelegateBundleClass } from "./CapoDelegateBundle.js";
 import type { ContractDataBridge, ContractDataBridgeWithEnumDatum, ContractDataBridgeWithOtherDatum, DataBridge } from "src/helios/dataBridge/DataBridge.js";
-import type { mustFindActivityType, mustFindConcreteContractBridgeType, mustFindDatumType, mustFindReadDatumType } from "../helios/dataBridge/BridgeTypeUtils.js";
+import type { AbstractNew, mustFindActivityType, mustFindConcreteContractBridgeType, mustFindDatumType, mustFindReadDatumType } from "../helios/dataBridge/BridgeTypeUtils.js";
+import type { GenericDelegateBridge, GenericDelegateBridgeClass, GenericDelegateDatum } from "./GenericDelegateBridge.js";
 
 
 /**
@@ -49,7 +50,7 @@ export class ContractBasedDelegate extends StellarDelegate {
      * Each contract-based delegate must define its own dataBridgeClass, but they all
      * use the same essential template for the outer layer of their activity & datum interface.
      */
-    declare dataBridgeClass : typeof ContractDataBridgeWithEnumDatum;
+    declare dataBridgeClass : GenericDelegateBridgeClass;
     static currentRev = 1n;
 
     /**
@@ -669,10 +670,10 @@ export class ContractBasedDelegate extends StellarDelegate {
 /**
  * @public
  */
-export type NamedDelegateCreationOptions<
+export type NamedPolicyCreationOptions<
     thisType extends Capo<any>,
     DT extends StellarDelegate
-> = DelegateCreationOptions & {
+> = PolicyCreationOptions & {
     /**
      * Optional name for the UUT; uses the delegate name if not provided.
      **/
@@ -685,7 +686,7 @@ export type NamedDelegateCreationOptions<
 //     forcedUpdate?: true;
 // };
 
-export type DelegateCreationOptions = MinimalDelegateLink & {
+export type PolicyCreationOptions = MinimalDelegateLink & {
     /**
      * details for creating the delegate
      */

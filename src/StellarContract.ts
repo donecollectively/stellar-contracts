@@ -47,7 +47,7 @@ import {
 } from "./helios/HeliosScriptBundle.js";
 import type { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
 import { DataBridge, ContractDataBridge, DataBridgeReaderClass, ContractDataBridgeWithOtherDatum, ContractDataBridgeWithEnumDatum } from "./helios/dataBridge/DataBridge.js";
-import type { mustFindConcreteContractBridgeType, findActivityType, findDatumType, findReadDatumType, possiblyAbstractContractBridgeType } from "./helios/dataBridge/BridgeTypeUtils.js";
+import type { mustFindConcreteContractBridgeType, findActivityType, findDatumType, findReadDatumType, possiblyAbstractContractBridgeType, AbstractNew } from "./helios/dataBridge/BridgeTypeUtils.js";
 
 type NetworkName = "testnet" | "mainnet";
 let configuredNetwork: NetworkName | undefined = undefined;
@@ -454,7 +454,7 @@ export class StellarContract<
      * note that ***mint delegates*** do in fact have datum types. If you are defining
      * a custom delegate of that kind, you will need to define this attribute.
      */
-    dataBridgeClass: Option<typeof ContractDataBridge> = null;
+    dataBridgeClass: Option<AbstractNew<ContractDataBridge>> = null;
     // dataBridgeClass : Option<typeof ContractDataBridgeWithEnumDatum | typeof ContractDataBridgeWithOtherDatum> = null
 
     /**
@@ -652,7 +652,7 @@ export class StellarContract<
             }
             const datumType = this.getBundle().locateDatumType();
             try {
-                this._dataBridge = new dataBridgeClass(
+                this._dataBridge = new (dataBridgeClass as any)(
                     this.getBundle()
                 ) as any;
             } catch (e) {
@@ -774,7 +774,7 @@ export class StellarContract<
      **/
     constructor(setup: SetupDetails, internal: typeof isInternalConstructor) {
         this.setup = setup;
-        this._utxoHelper = new UtxoHelper(this);
+        this._utxoHelper = new UtxoHelper(this.setup, this);
         if (internal !== isInternalConstructor) {
             throw new Error(
                 `StellarContract: use createWith() factory function`
@@ -2088,10 +2088,11 @@ export class StellarContract<
             return tcx as TCX & hasSeedUtxo;
         }
         if (seedUtxo) {
+            let tcx2 = tcx as TCX & hasSeedUtxo;
             if (!tcx.inputs.find((utxo) => utxo.isEqual(seedUtxo))) {
-                throw new Error(`seedUtxo not found in transaction inputs`);
+                tcx2 = tcx2.addInput(seedUtxo);
+                // throw new Error(`seedUtxo not found in transaction inputs`);
             }
-            const tcx2 = tcx as TCX & hasSeedUtxo;
             tcx2.state.seedUtxo = seedUtxo;
             return tcx2;
         } else {

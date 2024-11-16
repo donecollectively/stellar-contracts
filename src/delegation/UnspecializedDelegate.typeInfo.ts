@@ -53,6 +53,25 @@ export type AnyDataLike = {
 }
 
 
+export type DelegateDatum$Cip68RefToken = {
+    cip68meta: AnyData  /*minVariantField*/ ,
+    cip68version: bigint  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+export type DelegateDatum$Ergo$Cip68RefToken = {
+    cip68meta: ErgoAnyData  /*minVariantField*/ ,
+    cip68version: bigint  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+export type DelegateDatum$Cip68RefTokenLike = {
+    cip68meta: AnyDataLike  /*minVariantField*/ ,
+    cip68version: IntLike  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+
 export type DelegationDetail = {
     capoAddr: /*minStructField*/ Address
     mph: /*minStructField*/ MintingPolicyHash
@@ -64,25 +83,6 @@ export type DelegationDetailLike = {
     capoAddr: /*minStructField*/ Address | string
     mph: /*minStructField*/ MintingPolicyHash | string | number[]
     tn: /*minStructField*/ number[]
-}
-
-
-export type DelegateDatum$Cip68RefToken = {
-    cip68meta: AnyData  /*minVariantField*/ ,
-    cip68version: bigint  /*minVariantField*/ ,
-    dd: Option<DelegationDetail>  /*minVariantField*/ 
-}
-
-export type DelegateDatum$Ergo$Cip68RefToken = {
-    cip68meta: ErgoAnyData  /*minVariantField*/ ,
-    cip68version: bigint  /*minVariantField*/ ,
-    dd: Option<ErgoDelegationDetail>  /*minVariantField*/ 
-}
-
-export type DelegateDatum$Cip68RefTokenLike = {
-    cip68meta: AnyDataLike  /*minVariantField*/ ,
-    cip68version: IntLike  /*minVariantField*/ ,
-    dd: Option<DelegationDetailLike>  /*minVariantField*/ 
 }
 
 
@@ -99,9 +99,6 @@ export type DelegateDatumMeta = EnumTypeMeta<
         capoStoredData: singleEnumVariantMeta<DelegateDatumMeta, "capoStoredData",
             "Constr#2", "singletonField", /* implied wrapper { data: ... } for singleVariantField */ 
 			AnyData   , "noSpecialFlags"
-        >,
-        ScriptReference: singleEnumVariantMeta<DelegateDatumMeta, "ScriptReference",
-            "Constr#3", "tagOnly", tagOnly, "noSpecialFlags"
         >
     }
 >;
@@ -111,7 +108,7 @@ export type DelegateDatumMeta = EnumTypeMeta<
  * DelegateDatum enum variants
  * 
  * @remarks - expresses the essential raw data structures
- * supporting the **4 variant(s)** of the DelegateDatum enum type
+ * supporting the **3 variant(s)** of the DelegateDatum enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `DelegateDatumHelper` class
  *     for generating UPLC data for this enum type
@@ -122,7 +119,6 @@ export type DelegateDatum =
 			DelegationDetail    /*minEnumVariant*/ }
         | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
 			AnyData    /*minEnumVariant*/ }
-        | { ScriptReference: tagOnly /*minEnumVariant*/ }
 
 export type ErgoDelegateDatum = IntersectedEnum<
         | { Cip68RefToken: DelegateDatum$Ergo$Cip68RefToken /*minEnumVariant*/ }
@@ -130,14 +126,13 @@ export type ErgoDelegateDatum = IntersectedEnum<
 			ErgoDelegationDetail    /*minEnumVariant*/ }
         | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
 			ErgoAnyData    /*minEnumVariant*/ }
-        | { ScriptReference: tagOnly /*minEnumVariant*/ }
 >
 
 /**
  * DelegateDatum enum variants (permissive)
  * 
  * @remarks - expresses the allowable data structure
- * for creating any of the **4 variant(s)** of the DelegateDatum enum type
+ * for creating any of the **3 variant(s)** of the DelegateDatum enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `DelegateDatumHelper` class
  *     for generating UPLC data for this enum type
@@ -152,7 +147,6 @@ export type DelegateDatumLike = IntersectedEnum<
 			DelegationDetailLike    /*minEnumVariant*/ }
         | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
 			AnyDataLike    /*minEnumVariant*/ }
-        | { ScriptReference: tagOnly /*minEnumVariant*/ }
 >
 
 export type CapoLifecycleActivity$CreatingDelegate = {
@@ -184,20 +178,20 @@ export type PendingDelegateAction$AddLike = {
 
 
 export type PendingDelegateAction$Replace = {
-    replacesDgt: AssetClass  /*minVariantField*/ ,
     seed: TxOutputId  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ ,
     delegateValidatorHash: Option<ValidatorHash>  /*minVariantField*/ ,
-    config: number[]  /*minVariantField*/ 
+    config: number[]  /*minVariantField*/ ,
+    replacesDgt: AssetClass  /*minVariantField*/ 
 }
 
 export type PendingDelegateAction$Ergo$Replace = PendingDelegateAction$Replace/*ergo like-canonical-this-variant*/
 export type PendingDelegateAction$ReplaceLike = {
-    replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}  /*minVariantField*/ ,
     seed: TxOutputId | string  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ ,
     delegateValidatorHash: Option<ValidatorHash | string | number[]>  /*minVariantField*/ ,
-    config: number[]  /*minVariantField*/ 
+    config: number[]  /*minVariantField*/ ,
+    replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}  /*minVariantField*/ 
 }
 
 
@@ -212,7 +206,7 @@ export type PendingDelegateActionMeta = EnumTypeMeta<
         >,
         Replace: singleEnumVariantMeta<PendingDelegateActionMeta, "Replace",
             "Constr#2", 
-            "fields", PendingDelegateAction$Replace, "noSpecialFlags"
+            "fields", PendingDelegateAction$Replace, "isSeededActivity"
         >
     }
 >;

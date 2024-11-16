@@ -61,11 +61,6 @@ import type * as types from "./CapoMinter.typeInfo.js";
 
 
 
-//Note about @ts-expect-error drilling through protected accessors: This 
-//   allows the interface for the nested accessor to show only the public details,
-//   while allowing us to collaborate between these two closely-related classes.
-//   Like "friends" in C++.
-
 /**
  * GENERATED data bridge for **CapoMinter** script (defined in class ***CapoMinterBundle***)}
  * main: **src/minting/CapoMinter.hl**, project: **stellar-contracts**
@@ -102,7 +97,7 @@ datum=null // no datum type defined for this bundle (minter / rewards script)
 }
 export default CapoMinterDataBridge;
 
-class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
+export class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
     constructor(public bridge: CapoMinterDataBridge) {
         super();
     }
@@ -122,8 +117,7 @@ class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
         */
     MinterActivity(d : UplcData) { 
         const typeHelper = this.bridge.types.MinterActivity;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoMinterActivity;        
     } /* enumReader helper */
@@ -136,7 +130,9 @@ class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
  */
 export class MinterActivityHelper extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        MinterActivity,
        MinterActivityLike
    >(MinterActivitySchema, { isMainnet: true });

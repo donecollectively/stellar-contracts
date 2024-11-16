@@ -95,8 +95,8 @@ struct DgDatumTestData {
 
 enum DelegateDatum {
     Cip68RefToken {  
-        meta: AnyData
-        version: Int
+        cip68meta: AnyData
+        cip68version: Int
         otherDetails: Data // can be Unit () or anything else
     }
     IsDelegation {
@@ -106,7 +106,6 @@ enum DelegateDatum {
     capoStoredData {
         data: DgDatumTestData
     }
-    ScriptReference
 }
 
 enum MintingActivity {

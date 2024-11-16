@@ -41,6 +41,37 @@ import type { IntersectedEnum } from "../../helios/typeUtils.js"
                 
 
 
+export type AnyData = {
+    id: /*minStructField*/ number[]
+    type: /*minStructField*/ string
+}
+
+export type ErgoAnyData = AnyData/*like canon-other*/
+export type AnyDataLike = {
+    id: /*minStructField*/ number[]
+    type: /*minStructField*/ string
+}
+
+
+export type DelegateDatum$Cip68RefToken = {
+    cip68meta: AnyData  /*minVariantField*/ ,
+    cip68version: bigint  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+export type DelegateDatum$Ergo$Cip68RefToken = {
+    cip68meta: ErgoAnyData  /*minVariantField*/ ,
+    cip68version: bigint  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+export type DelegateDatum$Cip68RefTokenLike = {
+    cip68meta: AnyDataLike  /*minVariantField*/ ,
+    cip68version: IntLike  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+
 export type DelegationDetail = {
     capoAddr: /*minStructField*/ Address
     mph: /*minStructField*/ MintingPolicyHash
@@ -52,18 +83,6 @@ export type DelegationDetailLike = {
     capoAddr: /*minStructField*/ Address | string
     mph: /*minStructField*/ MintingPolicyHash | string | number[]
     tn: /*minStructField*/ number[]
-}
-
-
-export type AnyData = {
-    id: /*minStructField*/ number[]
-    type: /*minStructField*/ string
-}
-
-export type ErgoAnyData = AnyData/*like canon-other*/
-export type AnyDataLike = {
-    id: /*minStructField*/ number[]
-    type: /*minStructField*/ string
 }
 
 
@@ -218,7 +237,8 @@ export type DelegateDatum$MultiFieldNestedThingsLike = {
 export type DelegateDatumMeta = EnumTypeMeta<
     {module: "uutMintingDelegate", enumName: "DelegateDatum"}, {
         Cip68RefToken: singleEnumVariantMeta<DelegateDatumMeta, "Cip68RefToken",
-            "Constr#0", "tagOnly", tagOnly, "noSpecialFlags"
+            "Constr#0", 
+            "fields", DelegateDatum$Cip68RefToken, "noSpecialFlags"
         >,
         IsDelegation: singleEnumVariantMeta<DelegateDatumMeta, "IsDelegation",
             "Constr#1", "singletonField", /* implied wrapper { dd: ... } for singleVariantField */ 
@@ -231,27 +251,24 @@ export type DelegateDatumMeta = EnumTypeMeta<
             "Constr#3", "singletonField", /* implied wrapper { data: ... } for singleVariantField */ 
 			AnyData   , "noSpecialFlags"
         >,
-        ScriptReference: singleEnumVariantMeta<DelegateDatumMeta, "ScriptReference",
-            "Constr#4", "tagOnly", tagOnly, "noSpecialFlags"
-        >,
         SingleDataElement: singleEnumVariantMeta<DelegateDatumMeta, "SingleDataElement",
-            "Constr#5", "singletonField", /* implied wrapper { aString: ... } for singleVariantField */ 
+            "Constr#4", "singletonField", /* implied wrapper { aString: ... } for singleVariantField */ 
 			string   , "noSpecialFlags"
         >,
         SingleNestedStruct: singleEnumVariantMeta<DelegateDatumMeta, "SingleNestedStruct",
-            "Constr#6", "singletonField", /* implied wrapper { aStruct: ... } for singleVariantField */ 
+            "Constr#5", "singletonField", /* implied wrapper { aStruct: ... } for singleVariantField */ 
 			SampleStruct   , "noSpecialFlags"
         >,
         HasNestedEnum: singleEnumVariantMeta<DelegateDatumMeta, "HasNestedEnum",
-            "Constr#7", "singletonField", /* implied wrapper { nested: ... } for singleVariantField */ 
+            "Constr#6", "singletonField", /* implied wrapper { nested: ... } for singleVariantField */ 
 			SomeEnum   , "noSpecialFlags"
         >,
         MultiFieldVariant: singleEnumVariantMeta<DelegateDatumMeta, "MultiFieldVariant",
-            "Constr#8", 
+            "Constr#7", 
             "fields", DelegateDatum$MultiFieldVariant, "noSpecialFlags"
         >,
         MultiFieldNestedThings: singleEnumVariantMeta<DelegateDatumMeta, "MultiFieldNestedThings",
-            "Constr#9", 
+            "Constr#8", 
             "fields", DelegateDatum$MultiFieldNestedThings, "noSpecialFlags"
         >
     }
@@ -262,19 +279,18 @@ export type DelegateDatumMeta = EnumTypeMeta<
  * DelegateDatum enum variants
  * 
  * @remarks - expresses the essential raw data structures
- * supporting the **10 variant(s)** of the DelegateDatum enum type
+ * supporting the **9 variant(s)** of the DelegateDatum enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `DelegateDatumHelper` class
  *     for generating UPLC data for this enum type
  */
 export type DelegateDatum = 
-        | { Cip68RefToken: tagOnly /*minEnumVariant*/ }
+        | { Cip68RefToken: DelegateDatum$Cip68RefToken /*minEnumVariant*/ }
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			DelegationDetail    /*minEnumVariant*/ }
         | { TagOnlyDatum: tagOnly /*minEnumVariant*/ }
         | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
 			AnyData    /*minEnumVariant*/ }
-        | { ScriptReference: tagOnly /*minEnumVariant*/ }
         | { SingleDataElement: /* implied wrapper { aString: ... } for singleVariantField */ 
 			string    /*minEnumVariant*/ }
         | { SingleNestedStruct: /* implied wrapper { aStruct: ... } for singleVariantField */ 
@@ -285,13 +301,12 @@ export type DelegateDatum =
         | { MultiFieldNestedThings: DelegateDatum$MultiFieldNestedThings /*minEnumVariant*/ }
 
 export type ErgoDelegateDatum = IntersectedEnum<
-        | { Cip68RefToken: tagOnly /*minEnumVariant*/ }
+        | { Cip68RefToken: DelegateDatum$Ergo$Cip68RefToken /*minEnumVariant*/ }
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			ErgoDelegationDetail    /*minEnumVariant*/ }
         | { TagOnlyDatum: tagOnly /*minEnumVariant*/ }
         | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
 			ErgoAnyData    /*minEnumVariant*/ }
-        | { ScriptReference: tagOnly /*minEnumVariant*/ }
         | { SingleDataElement: /* implied wrapper { aString: ... } for singleVariantField */ 
 			string    /*minEnumVariant*/ }
         | { SingleNestedStruct: /* implied wrapper { aStruct: ... } for singleVariantField */ 
@@ -306,7 +321,7 @@ export type ErgoDelegateDatum = IntersectedEnum<
  * DelegateDatum enum variants (permissive)
  * 
  * @remarks - expresses the allowable data structure
- * for creating any of the **10 variant(s)** of the DelegateDatum enum type
+ * for creating any of the **9 variant(s)** of the DelegateDatum enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `DelegateDatumHelper` class
  *     for generating UPLC data for this enum type
@@ -316,13 +331,12 @@ export type ErgoDelegateDatum = IntersectedEnum<
  * converted by convention to the canonical types used in the on-chain context.
  */
 export type DelegateDatumLike = IntersectedEnum<
-        | { Cip68RefToken: tagOnly /*minEnumVariant*/ }
+        | { Cip68RefToken: DelegateDatum$Cip68RefTokenLike /*minEnumVariant*/ }
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			DelegationDetailLike    /*minEnumVariant*/ }
         | { TagOnlyDatum: tagOnly /*minEnumVariant*/ }
         | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
 			AnyDataLike    /*minEnumVariant*/ }
-        | { ScriptReference: tagOnly /*minEnumVariant*/ }
         | { SingleDataElement: /* implied wrapper { aString: ... } for singleVariantField */ 
 			string    /*minEnumVariant*/ }
         | { SingleNestedStruct: /* implied wrapper { aStruct: ... } for singleVariantField */ 
@@ -362,20 +376,20 @@ export type PendingDelegateAction$AddLike = {
 
 
 export type PendingDelegateAction$Replace = {
-    replacesDgt: AssetClass  /*minVariantField*/ ,
     seed: TxOutputId  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ ,
     delegateValidatorHash: Option<ValidatorHash>  /*minVariantField*/ ,
-    config: number[]  /*minVariantField*/ 
+    config: number[]  /*minVariantField*/ ,
+    replacesDgt: AssetClass  /*minVariantField*/ 
 }
 
 export type PendingDelegateAction$Ergo$Replace = PendingDelegateAction$Replace/*ergo like-canonical-this-variant*/
 export type PendingDelegateAction$ReplaceLike = {
-    replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}  /*minVariantField*/ ,
     seed: TxOutputId | string  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ ,
     delegateValidatorHash: Option<ValidatorHash | string | number[]>  /*minVariantField*/ ,
-    config: number[]  /*minVariantField*/ 
+    config: number[]  /*minVariantField*/ ,
+    replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}  /*minVariantField*/ 
 }
 
 
@@ -390,7 +404,7 @@ export type PendingDelegateActionMeta = EnumTypeMeta<
         >,
         Replace: singleEnumVariantMeta<PendingDelegateActionMeta, "Replace",
             "Constr#2", 
-            "fields", PendingDelegateAction$Replace, "noSpecialFlags"
+            "fields", PendingDelegateAction$Replace, "isSeededActivity"
         >
     }
 >;

@@ -63,11 +63,6 @@ import type * as types from "./StructDatumTester.typeInfo.js";
 
 
 
-//Note about @ts-expect-error drilling through protected accessors: This 
-//   allows the interface for the nested accessor to show only the public details,
-//   while allowing us to collaborate between these two closely-related classes.
-//   Like "friends" in C++.
-
 /**
  * GENERATED data bridge for **StructDatumTester** script (defined in class ***StructDatumTester***)}
  * main: **src/testing/StructDatumTester.hl**, project: **stellar-contracts**
@@ -141,7 +136,7 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
     thirdLevelF1: /*minStructField*/ IntLike
 }
 ) => {
-        return this.__struct3Cast.toUplcData(fields);
+        return this.ᱺᱺstruct3Cast.toUplcData(fields);
     },
       /**
        * generates UplcData for the enum type ***OtherStruct*** for the `StructDatumTester` script
@@ -151,7 +146,7 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
     secondLevelF2: /*minStructField*/ struct3Like
 }
 ) => {
-        return this.__OtherStructCast.toUplcData(fields);
+        return this.ᱺᱺOtherStructCast.toUplcData(fields);
     },
       /**
        * generates UplcData for the enum type ***DatumStruct*** for the `StructDatumTester` script
@@ -163,16 +158,22 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
     field4: /*minStructField*/ SomeKindaEnumLike
 }
 ) => {
-        return this.__DatumStructCast.toUplcData(fields);
+        return this.ᱺᱺDatumStructCast.toUplcData(fields);
     },    }    
 
-    protected __struct3Cast = new StellarCast<
+    /**
+                * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺstruct3Cast = new StellarCast<
                 struct3, struct3Like
             >(struct3Schema, { isMainnet: true });
-    protected __OtherStructCast = new StellarCast<
+    /**
+                * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺOtherStructCast = new StellarCast<
                 OtherStruct, OtherStructLike
             >(OtherStructSchema, { isMainnet: true });
-    protected __DatumStructCast = new StellarCast<
+    /**
+                * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺDatumStructCast = new StellarCast<
                 DatumStruct, DatumStructLike
             >(DatumStructSchema, { isMainnet: true });
 
@@ -180,16 +181,18 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
 }
 export default StructDatumTesterDataBridge;
 
-class OtherActivityTypeHelper extends DataBridge {
+export class OtherActivityTypeHelper extends DataBridge {
     isCallable = true
-        protected __cast = new StellarCast<
+        /**
+        * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
         bigint, IntLike
     >({"kind":"internal","name":"Int"}, { isMainnet: true }); // datumAccessorCast
 
     
     } // mkOtherDatumHelperClass
     
-class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
+export class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
     constructor(public bridge: StructDatumTesterDataBridge) {
         super();
     }
@@ -209,8 +212,7 @@ class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         */
     SomeKindaEnum(d : UplcData) { 
         const typeHelper = this.bridge.types.SomeKindaEnum;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoSomeKindaEnum;        
     } /* enumReader helper */
@@ -230,8 +232,7 @@ class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         * causes some error later on in your code, when you try to use it.
         */
     struct3(d: UplcData) {
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = this.bridge.__struct3Cast;
+        const cast = this.bridge.ᱺᱺstruct3Cast;
         return cast.fromUplcData(d) //??? as Ergostruct3;
     } /* structReader helper */
 
@@ -250,8 +251,7 @@ class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         * causes some error later on in your code, when you try to use it.
         */
     OtherStruct(d: UplcData) {
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = this.bridge.__OtherStructCast;
+        const cast = this.bridge.ᱺᱺOtherStructCast;
         return cast.fromUplcData(d) //??? as ErgoOtherStruct;
     } /* structReader helper */
 
@@ -270,8 +270,7 @@ class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         * causes some error later on in your code, when you try to use it.
         */
     DatumStruct(d: UplcData) {
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = this.bridge.__DatumStructCast;
+        const cast = this.bridge.ᱺᱺDatumStructCast;
         return cast.fromUplcData(d) //??? as ErgoDatumStruct;
     } /* structReader helper */
 
@@ -282,19 +281,21 @@ class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
  */
 export class struct3Helper extends DataBridge {
     isCallable = true
-    protected __cast = new StellarCast<
+   /**
+            * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
         struct3,
         struct3Like
     >(struct3Schema, { isMainnet: true });
 
-    // You might expect a function as follows, but no.  However, a similar uplc-generating capability
-    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.
+    // You might expect a function as follows.  We provide this interface and result, 
+    // using a proxy in the inheritance chain.
     // see the callableDataBridge type on the 'datum' property in the contract bridge.
     //
     //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
     //
     // struct3(fields: struct3Like) {
-    //    return this.__cast.toUplcData(fields);
+    //    return this.ᱺᱺcast.toUplcData(fields);
     //}
 } //mkStructHelperClass 
 
@@ -304,19 +305,21 @@ export class struct3Helper extends DataBridge {
  */
 export class OtherStructHelper extends DataBridge {
     isCallable = true
-    protected __cast = new StellarCast<
+   /**
+            * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
         OtherStruct,
         OtherStructLike
     >(OtherStructSchema, { isMainnet: true });
 
-    // You might expect a function as follows, but no.  However, a similar uplc-generating capability
-    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.
+    // You might expect a function as follows.  We provide this interface and result, 
+    // using a proxy in the inheritance chain.
     // see the callableDataBridge type on the 'datum' property in the contract bridge.
     //
     //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
     //
     // OtherStruct(fields: OtherStructLike) {
-    //    return this.__cast.toUplcData(fields);
+    //    return this.ᱺᱺcast.toUplcData(fields);
     //}
 } //mkStructHelperClass 
 
@@ -326,7 +329,9 @@ export class OtherStructHelper extends DataBridge {
  */
 export class SomeKindaEnumHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        SomeKindaEnum,
        SomeKindaEnumLike
    >(SomeKindaEnumSchema, { isMainnet: true });
@@ -360,19 +365,21 @@ export class SomeKindaEnumHelper extends EnumBridge<JustAnEnum> {
  */
 export class DatumStructHelper extends DataBridge {
     isCallable = true
-    protected __cast = new StellarCast<
+   /**
+            * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
         DatumStruct,
         DatumStructLike
     >(DatumStructSchema, { isMainnet: true });
 
-    // You might expect a function as follows, but no.  However, a similar uplc-generating capability
-    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.
+    // You might expect a function as follows.  We provide this interface and result, 
+    // using a proxy in the inheritance chain.
     // see the callableDataBridge type on the 'datum' property in the contract bridge.
     //
     //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
     //
     // DatumStruct(fields: DatumStructLike) {
-    //    return this.__cast.toUplcData(fields);
+    //    return this.ᱺᱺcast.toUplcData(fields);
     //}
 } //mkStructHelperClass 
 

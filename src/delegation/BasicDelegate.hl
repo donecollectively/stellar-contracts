@@ -42,12 +42,12 @@ import {
 } from CapoMintHelpers
 
 import {
-    returnsValueToScript,
-    // mkTv,
-    outputAndDatum,
-    TODO,
     fromCip68Wrapper,
-    REQT
+    outputAndDatum,
+    returnsValueToScript,
+    TODO,
+    REQT,
+    bREQT
     // tvCharter
 } from StellarHeliosHelpers
 
@@ -58,6 +58,132 @@ import {
     MintingActivity,
     SpendingActivity
 } from specializedDelegate
+
+// formerly was in Capo core contract script
+// func allDelegatesAreValidatingSettings() -> Bool {
+//         // print( "  ...with activity updatingSettings\n");
+//         // _isRelevantDatum : Bool = capoDatum.switch {
+//         //     // SettingsData => true,
+//         //     CharterData => true,
+//         //     _ => error("wrong use of updatingSettings action; must use only on CharterDatum")
+//         // };
+//         // !!! move to SettingsDelegate?  or keep as a baseline check?
+//         // it requires the govAuthority to be present 
+//         REQT( "gov authority must be present to update settings");
+//         hasGovAuthority : Bool = mustHaveGovAuthority(
+//             mph: mph,
+//             charterDatum: charterDatum // already resolved
+//         );
+
+//         CapoDatum::CharterData{
+//             spendDelegate,
+//             spendInvariants,
+//             otherNamedDelegates,
+//             mintDelegate,
+//             mintInvariants,
+//             govDelegate,
+//             manifest
+//         } = capoDatum;
+
+//         //!!! note, this is a hard-coded version of requiring the settings policy script:
+//         REQT("the current Settings must be spent and updated");
+//         settingsDgtLink : RelativeDelegateLink = otherNamedDelegates.get_safe("settingsPol").switch {
+//             None => error("'settings' delegate must be present to do updatingSettings activity"),
+//             Some{dgt} => dgt
+//         };
+
+//         settingsDgtInput = settingsDgtLink.hasDelegateInput(
+//             inputs: tx.inputs,
+//             mph: mph
+//         ).unwrap();
+//         settingsDelegateIsValid : Bool = AbstractDelegateActivitiesEnum::from_data( 
+//             mustFindInputRedeemer(settingsDgtInput)
+//         ).switch {
+//             SpendingActivities => true,
+//             _ => assert("settings delegate must be updating the settings with its SpendingActivities variant")
+//         };
+//         _nextSettings : Data = cctx.getNextManifestedDatumRaw("settings");
+//         isUpdatingSettings : Bool = true;
+        
+//         inputs: []TxInput = tx.inputs;
+
+//         //!!! actually requiring delegates' SettingsValidation starts here.
+//         REQT( "spend delegate must validate settings (wait, that's myself.  Call validate directly?");
+
+//         spendDelegateIsValidating : Bool = 
+//             spendDelegate.validatesUpdatedSettings(
+//                 inputs: inputs,
+//                 mph: mph,
+//                 inputRequired: true
+//             ).unwrap();
+
+//         REQT("mint delegate must validate settings");
+//         mintDelegateIsValidating : Bool = 
+//             mintDelegate.validatesUpdatedSettings(
+//                 inputs: inputs,
+//                 mph: mph,
+//                 inputRequired: true
+//             ).unwrap();
+
+//         // govAuthority is checking the settings
+//         REQT( "govDelegate MAY contribute to settings validation");
+//         govDelegateMaybeValidating : Bool = 
+//             govDelegate.validatesUpdatedSettings(
+//                 inputs: inputs,
+//                 mph: mph,
+//                 inputRequired: false
+//             ).switch{
+//                 Some => true,
+//                 None => {
+//                     print("  -- govAuthority isn't a script-based validator; doesn't validate new settings\n");
+//                     true
+//                 }
+//             };
+//         checkOneInvariant : (RelativeDelegateLink) -> Bool = 
+//         (oneDgt: RelativeDelegateLink) -> Bool {
+//             REQT( "invariant must validate settings");
+//             oneDgt.validatesUpdatedSettings(
+//                 inputs: inputs,
+//                 mph: mph,
+//                 inputRequired: true
+//             ).unwrap()
+//         };
+//         // spendInvariants are checking the settings
+//         REQT( "spend invariants must validate settings");
+//         spendInvariantsAreValidating : Bool = spendInvariants.all( 
+//             checkOneInvariant
+//         );
+//         // mintInvariants are checking the settings
+//         REQT( "mint invariants must validate settings");
+//         mintInvariantsAreValidating : Bool = mintInvariants.all( 
+//             checkOneInvariant
+//         );
+//         // namedDelegates are checking the settings
+//         REQT( "named delegates must validate settings");
+//         namedDelegatesAreValidating : Bool = otherNamedDelegates.fold( 
+//             REQT( "  - each named delegate must validate settings");
+//             (ok: Bool, key: String, dgt: RelativeDelegateLink) -> Bool {
+//                 print("  - named delegate: " + key);
+//                 print("\n");
+//                 ok && dgt.validatesUpdatedSettings(
+//                     inputs: inputs,
+//                     mph: mph,
+//                     inputRequired: true
+//                 ).unwrap()
+//             }, true
+//         );
+
+//         isRelevantDatum &&
+//         settingsDelegateIsValid &&
+//         isUpdatingSettings &&
+//         spendDelegateIsValidating &&
+//         mintDelegateIsValidating &&
+//         govDelegateMaybeValidating &&
+//         spendInvariantsAreValidating &&
+//         mintInvariantsAreValidating &&
+//         namedDelegatesAreValidating &&
+//         hasGovAuthority
+// }
 
 func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
     print(" 🚥❓delegate: "+delegateName + "\n");
@@ -75,7 +201,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
         //! This code path is also used for other authority-bearing tokens in other specialized delegates,
         //  ... such as named delegates that the mintDgt- or spendDgt- policies defer to.
         //  ... each of those cases has separate execution through this base logic, with specialization 
-        //  ... applicable for each.  
+        //  ... applicable for each (see references to "nowActingAs").
         isD : IsDelegation{dd} => {
             // MintDelegateDatum::IsDelegation{dd, cfg} = isD;
             showMyTokens : (Value) -> String = mkTokenShow(dd.mph);
@@ -372,13 +498,13 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                             action.switch {
                                 // when it's a Remove action, it's only valid in the spend-delegate.
                                 Remove => {
-                                    assert(cctx.nowActingAsSpendDgt(), "<----- that can fail, this can't")
+                                    assert(cctx.nowActingAsSpendDgt(), "<----- that can fail, this can't");
+                                    error("unreachable")
                                 }, 
                                 // when it's an Add action or Replace action,
                                 // it's only valid in the mint-delegate 
                                 _ => {
-                                    assert(cctx.nowActingAsMintDgt(), "<----- that can fail, this can't");
-                                    REQT("validates creation of UUT for the new delegate, aligned to the purpose indicated")
+                                    assert(cctx.nowActingAsMintDgt(), "<----- that can fail, this can't")
                                 }
                             };
 
@@ -405,7 +531,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                             //     name: name
                             // );
 
-                            passedAdditionalVerification : Bool = action.switch {
+                            passedAdditionalVerifications : Bool = action.switch {
                                 Remove => {
                                     role.switch {
                                         MintDgt => error("cannot Remove role: MintDgt"),
@@ -428,53 +554,38 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                     TODO("what else should be checked here?");
                                     false
                                 },
-                                Replace{acExistingDgt, seed, purpose, dvho, config} => {
-                                    REQT("invariants cannot be replaced");
+                                _ => {
+                                    if(false/*redundant*/) { assert(cctx.nowActingAsMintDgt(), "<----- that can fail, this can't") };
 
-                                    assert(cctx.nowActingAsMintDgt(), "<----- that can fail, this can't");
-                                    mkSome = (ac: AssetClass) -> Option[AssetClass] { Option[AssetClass]::Some{ac} };
-                                    // None = Option[AssetClass]::None;
-                                    replacesDgTkn : Option[AssetClass] = role.switch {
-                                        MintDgt => mkSome(charterDatum.mintDelegateLink.acAuthorityToken(dd.mph)),
-                                        SpendDgt => mkSome(charterDatum.spendDelegateLink.acAuthorityToken(dd.mph)),
-                                        MintInvariant => error("cannot Replace role: MintInvariant"),
-                                        SpendInvariant => error("cannot Replace role: SpendInvariant"),
-                                        DgDataPolicy => {
-                                            error("todo")
+                                    (seed: TxOutputId, purpose: String, dvh : Option[ValidatorHash], config) = action.switch { 
+                                        Remove => error("unreachable"), 
+                                        Add{seed, purpose, odvh, config} => {
+                                            (seed, purpose, odvh, config)
                                         },
-                                        OtherNamedDgt => {
-                                            error("todo")
-                                        },
-                                        BothMintAndSpendDgt => error(
-                                            "DelegateRole::BothMintAndSpend not applicable in queuePendingDgtChange activity"
-                                        )
+                                        Replace{seed, purpose, odvh, config, _replacesDgt} => {
+                                            (seed, purpose, odvh, config)
+                                        }
                                     };
-                                    REQT("the PendingDelegateAction's role + replacesDgt must match the existing delegate's authority token");
-                                    assert(
-                                        acExistingDgt == replacesDgTkn.unwrap(),
-                                        "the current "+role.switch{
-                                            MintDgt => "mint", SpendDgt => "spend", _ => "‹incontheeiieivable›"
-                                        }+" delegate's authority token doesn't match "+acExistingDgt.show()
-                                    );
-
+                                    
                                     mkTokenName = mkUutTnFactory(seed);
-                                    tn = mkTokenName(purpose);
+                                    dgTknName = mkTokenName(purpose);
 
-                                    REQT("ensures that the indicated uut is being minted in the current transaction");
-                                    mintsDgToken = validateUutMinting(
+                                    
+                                    mintedDgTkn : Bool = bREQT("ensures the new delegate's UUT is minted in this txn")
+                                    && validateUutMinting(
                                         mph: dd.mph,
                                         seed: seed,
                                         purposes: []String{purpose},
                                         // otherMintedValue: ()
-                                        mkTokenName: mkTokenName,
+                                        mkTokenName: mkUutTnFactory(seed),
                                         // WE ARE the mint delegate.
                                         needsMintDelegateApproval: false 
-                                    ); // ^^ failed already if it was going to fail, but returns true if it does return
+                                    );
 
                                     REQT("the new delegate is created with the indicated authority token");
                                     delegate = RelativeDelegateLink{
-                                        uutName: tn,
-                                        delegateValidatorHash: dvho,
+                                        uutName: dgTknName,
+                                        delegateValidatorHash: dvh,
                                         config: config
                                     };
 
@@ -483,53 +594,69 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                         required: true,
                                         createdOrReturned: DgTkn::Created
                                     );
+
                                     isNotADuplicate = false;
-                                    REQT("doesn't allow a Replace to duplicate an Add or Replace or Remove entry");
-                                    TODO("^^^");
+                                    REQT("TODO HERE: doesn't allow a Replace to duplicate an Add or Replace or Remove entry");
+                                    REQT("TODO HERE: enforces the presence of the matching Capo charter activity:CLA.queuePendingDgtChange");
 
-                                    mintsDgToken && delegateTakesOwnership && isNotADuplicate
-                                },                                
-                                Add{seed, purpose, dvho, config} => {
-                                    mkTokenName = mkUutTnFactory(seed);
-                                    tn = mkTokenName(purpose);
+                                    possibleReplacementIsCorrect: Bool = action.switch {
+                                        Remove => error("unreachable"),
+                                        Add => true, // doesn't need to replace anything
+                                        Replace{_seed, _purpose, _dvho, _config, acExistingDgt} => {
+                                            REQT("invariants cannot be replaced");
+                                            role.switch {
+                                                MintInvariant => error("cannot Replace role: MintInvariant"),
+                                                SpendInvariant => error("cannot Replace role: SpendInvariant"),
+                                                _ => print("  -- ok (not trying to replace an invariant)")
+                                            };
 
-                                    REQT("ensures that the indicated uut is being minted in the current transaction");
-                                    mintsDgTkn = validateUutMinting(
-                                        mph: dd.mph,
-                                        seed: seed,
-                                        purposes: []String{purpose},
-                                        // otherMintedValue: ()
-                                        mkTokenName: mkTokenName,
-                                        // WE ARE the mint delegate.
-                                        needsMintDelegateApproval: false 
-                                    );  // ^^ failed already if it was going to fail, but returns true if it does return
+                                            mkSome = (ac: AssetClass) -> Option[AssetClass] { Option[AssetClass]::Some{ac} };
+                                            REQT("when queuing a replacement delegate -- the PendingDelegateAction's role + replacesDgt must match the existing delegate's authority token");
+                                            replacesDgTkn : Option[AssetClass] = role.switch {
+                                                MintDgt => mkSome(charterDatum.mintDelegateLink.acAuthorityToken(dd.mph)),
+                                                SpendDgt => mkSome(charterDatum.spendDelegateLink.acAuthorityToken(dd.mph)),
+                                                DgDataPolicy => {
+                                                    REQT("to Replace a dgDataPolicy, the named policy must be present in the Capo manifest");
+                                                    error("todo: get authority-token for this dgDataPolicy")
 
-                                    REQT("the new delegate is created with the indicated authority token");
-                                    delegate = RelativeDelegateLink{
-                                        uutName: tn,
-                                        delegateValidatorHash: dvho,
-                                        config: config
+                                                },
+                                                OtherNamedDgt => {
+                                                    REQT("to Replace a named delegate, the named delegate must already be present");
+                                                    error("todo: get authority-token for this named delegate")
+                                                },
+                                                BothMintAndSpendDgt => error(
+                                                    "DelegateRole::BothMintAndSpend not applicable in queuePendingDgtChange activity"
+                                                ),
+                                                MintInvariant => error("unreachable"),
+                                                SpendInvariant => error("unreachable")
+                                            };
+                                            assert(
+                                                acExistingDgt == replacesDgTkn.unwrap(),
+                                                "the current "+role.switch{
+                                                    MintDgt => "mint", SpendDgt => "spend", 
+                                                    DgDataPolicy => "dgDataPolicy", OtherNamedDgt => "named",
+                                                    _ => "‹incontheeiieivable›"
+                                                }+" delegate's authority token doesn't match "+acExistingDgt.show()
+                                            );
+
+                                            true
+                                        } // -> possibleReplacementIsCorrect
                                     };
-                                    delegateTakesOwnership = delegate.hasValidOutput(
-                                        mph: dd.mph, 
-                                        required: true,
-                                        createdOrReturned: DgTkn::Created
-                                    );
 
-                                    isNotADuplicate = false;
-                                    REQT("doesn't allow an Add to duplicate a Replace or Add or Remove entry");                                    
-                                    TODO("^^^");
-
-                                    mintsDgTkn && delegateTakesOwnership && isNotADuplicate
+                                    true
+                                    && mintedDgTkn 
+                                    && delegateTakesOwnership 
+                                    && isNotADuplicate 
+                                    && possibleReplacementIsCorrect
                                 }
-                            };
+                            }; // -> passedAdditionalVerifications
                                                     
-                            hasNewPendingEntry && passedAdditionalVerification
+                            hasNewPendingEntry && passedAdditionalVerifications
                         },
                         removePendingDgtChange{_role, _name} => {
                             // this code-path is only found in the spend-delegate
                             TODO("implement removePendDgt");
-                            REQT("allows the removal of a pending delegate change that can't be completed");
+                            REQT("allows the removal of a queued pending-delegate-change that can't be completed");
                             assert(false, "not yet implemented");
                             false
                         },
@@ -539,13 +666,12 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                             REQT("invariants cannot be replaced");
 
                             if (cctx.nowActingAsSpendDgt(required: false)) {
-                                REQT("when committing pending delegates, the spendDgt validates that all the pending delegates are installed");
+                                REQT("spendDgt: committing pending delegates: validates that all the pending delegates are installed");
                                 assert(false, "not yet implemented");
                                 false
                             } else if (cctx.nowActingAsMintDgt(required: false)) {
-                                REQT("when committing pending delegates, the mintDgt validates that all the removed dgTkns are burned");
+                                REQT("mintDgt: committing pending delegates: validates that all the removed dgTkns are burned");
                                 false
-                                // this code-path is only found in the mint-delegate
                             } else {
                                 false
                             }
@@ -554,30 +680,30 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                             REQT("doesn't allow updating anything except the manifest");
                             manifestActivity.switch{
                                 retiringEntry{_key} => {
+                                    assert(false, "TODO: support retirement activity");
                                     REQT("doesn't remove a dgDataPolicy entry from the manifest (use queuePendingDgtChange instead)");
                                     REQT("removes the indicated key from the manifest");
-                                    REQT("delegates MUST be allowed to validate that this doesn't drop something they need");
-                                    assert(false, "TODO: support retirement where possible")
+                                    REQT("delegates MUST be allowed to validate that this doesn't drop something they need")
                                 },
                                 updatingEntry{_key, _tokenName} => {
+                                    assert(false, "TODO: support updatingEntry activity");
                                     REQT("the indicated token MUST be referenced in the transaction");
-                                    REQT("delegates MUST be allowed to validate that the manifest is acceptable for their needs");
-                                    assert(false, "TODO: support updatingEntry where possible")
+                                    REQT("delegates MUST be allowed to validate that the manifest is acceptable for their needs")
                                 },
                                 addingEntry{_key, _tokenName} => {
+                                    assert(false, "TODO: support addingEntry activity");
                                     REQT("the indicated token MUST be referenced in the transaction");
-                                    REQT("delegates MUST be allowed to validate that the manifest is acceptable for their needs");
-                                    assert(false, "TODO: support addingEntry where possible")
+                                    REQT("delegates MUST be allowed to validate that the manifest is acceptable for their needs")
                                 },
                                 forkingThreadToken{_key, _newThreadCount} => {
-                                    assert(cctx.nowActingAsMintDgt(), "<----- that can fail, this can't");                                    
+                                    assert(cctx.nowActingAsMintDgt(), "<----- that can fail, this can't");
+                                    assert(false, "TODO: support forkingThreadToken activity");
                                     REQT("the indicated token MUST be referenced in the transaction");
                                     REQT("validates that another copy of the token name is minted");
                                     REQT("when the key is a DgDataPolicy, the existing manifest entry is updated");
                                     REQT("for mint/spend delegates and otherNamedDelegates, a new manifest entry is created with refCount=1+newThreadCount, if it doesn't exist");
-                                    REQT("when the manifest already has the entry, the refCount is incremented by newThreadCount");
+                                    REQT("when the manifest already has the entry, the refCount is incremented by newThreadCount")
 
-                                    assert(false, "TODO: support forkingThreadToken where possible")
                                 }
                             };
                             true
@@ -664,6 +790,9 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         requiresDgDataPolicyInput(dataTypePurpose).
                         withUniqueSeededMintingActivity(seed).
                         orFail()
+
+                    // assert(false, "^^^ does it implement the generic data-controller re-delegation convention? ^^");
+
                 },
                 // This is a Spend delegate activity on the spendDgt-* token, 
                 // ... used within a Capo's SPEND delegate (which code may also govern 

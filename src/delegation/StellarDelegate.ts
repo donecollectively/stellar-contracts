@@ -13,6 +13,7 @@ import { hasReqts } from "../Requirements.js";
 import { dumpAny } from "../diagnostics.js";
 import type { CapoConfig } from "../Capo.js";
 import type { ContractDataBridgeWithEnumDatum, ContractDataBridgeWithOtherDatum } from "../helios/dataBridge/DataBridge.js";
+import type { AbstractNew } from "../helios/dataBridge/BridgeTypeUtils.js";
 
 /**
  * Base class for modules that can serve as Capo delegates
@@ -29,7 +30,7 @@ export abstract class StellarDelegate extends StellarContract<capoDelegateConfig
     }
     // not required except for Contract-based delegates.  A subclass can represent a delegation
     // relationship without an on-chain contract, resulting in there being no relevant data-bridge.
-    declare dataBridgeClass : Option<typeof ContractDataBridgeWithEnumDatum>;
+    declare dataBridgeClass : Option<AbstractNew<ContractDataBridgeWithEnumDatum>>;
 
     /**
      * Finds and adds the delegate's authority token to the transaction

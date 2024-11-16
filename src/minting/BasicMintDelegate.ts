@@ -12,6 +12,7 @@ import dataBridgeClass from "../delegation/UnspecializedDelegate.bridge.js";
 import type { ContractDataBridgeWithEnumDatum, DataBridge } from "src/helios/dataBridge/DataBridge.js";
 import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
+import type { GenericDelegateBridge, GenericDelegateBridgeClass } from "../delegation/GenericDelegateBridge.js";
 
 /**
  * Serves a delegated minting-policy role for Capo contracts
@@ -22,7 +23,7 @@ import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
  **/
 export class BasicMintDelegate extends ContractBasedDelegate {
     static currentRev = 1n;
-    declare dataBridgeClass : typeof ContractDataBridgeWithEnumDatum // dataBridgeClass  = dataBridgeClass
+    declare dataBridgeClass : GenericDelegateBridgeClass
 
     get delegateName() {
         return "mintDelegate";

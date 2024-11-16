@@ -230,6 +230,11 @@ export class StellarTxnContext<S extends anyState = anyState> {
             : hasAddlTxns<TCX>
     >(this: TCX, txnName: string, txInfo: TxDescription<any>): RETURNS {
         const thisWithMoreType: RETURNS = this as any;
+        if (thisWithMoreType.state.addlTxns?.[txnName]) {
+            throw new Error(
+                `addlTxns['${txnName}'] already included in this transaction`
+            );
+        }
         thisWithMoreType.state.addlTxns = {
             ...(thisWithMoreType.state.addlTxns || {}),
             [txnName]: txInfo,

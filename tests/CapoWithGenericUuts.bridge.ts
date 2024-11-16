@@ -84,11 +84,6 @@ import type * as types from "./CapoWithGenericUuts.typeInfo.js";
 
 
 
-//Note about @ts-expect-error drilling through protected accessors: This 
-//   allows the interface for the nested accessor to show only the public details,
-//   while allowing us to collaborate between these two closely-related classes.
-//   Like "friends" in C++.
-
 /**
  * GENERATED data bridge for **Capo** script (defined in class ***CapoBundleWithGenericUuts***)}
  * main: **src/DefaultCapo.hl**, project: **stellar-contracts**
@@ -165,7 +160,7 @@ export class CapoWithGenericUutsBridge extends ContractDataBridge {
     config: /*minStructField*/ number[]
 }
 ) => {
-        return this.__RelativeDelegateLinkCast.toUplcData(fields);
+        return this.ᱺᱺRelativeDelegateLinkCast.toUplcData(fields);
     },
       /**
        * generates UplcData for the enum type ***CapoManifestEntry*** for the `Capo` script
@@ -176,7 +171,7 @@ export class CapoWithGenericUutsBridge extends ContractDataBridge {
     mph: /*minStructField*/ Option<MintingPolicyHash | string | number[]>
 }
 ) => {
-        return this.__CapoManifestEntryCast.toUplcData(fields);
+        return this.ᱺᱺCapoManifestEntryCast.toUplcData(fields);
     },
       /**
        * generates UplcData for the enum type ***PendingDelegateChange*** for the `Capo` script
@@ -187,7 +182,7 @@ export class CapoWithGenericUutsBridge extends ContractDataBridge {
     name: /*minStructField*/ Option<string>
 }
 ) => {
-        return this.__PendingDelegateChangeCast.toUplcData(fields);
+        return this.ᱺᱺPendingDelegateChangeCast.toUplcData(fields);
     },
       /**
        * generates UplcData for the enum type ***AnyData*** for the `Capo` script
@@ -197,19 +192,27 @@ export class CapoWithGenericUutsBridge extends ContractDataBridge {
     type: /*minStructField*/ string
 }
 ) => {
-        return this.__AnyDataCast.toUplcData(fields);
+        return this.ᱺᱺAnyDataCast.toUplcData(fields);
     },    }    
 
-    protected __RelativeDelegateLinkCast = new StellarCast<
+    /**
+                * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺRelativeDelegateLinkCast = new StellarCast<
                 RelativeDelegateLink, RelativeDelegateLinkLike
             >(RelativeDelegateLinkSchema, { isMainnet: true });
-    protected __CapoManifestEntryCast = new StellarCast<
+    /**
+                * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺCapoManifestEntryCast = new StellarCast<
                 CapoManifestEntry, CapoManifestEntryLike
             >(CapoManifestEntrySchema, { isMainnet: true });
-    protected __PendingDelegateChangeCast = new StellarCast<
+    /**
+                * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺPendingDelegateChangeCast = new StellarCast<
                 PendingDelegateChange, PendingDelegateChangeLike
             >(PendingDelegateChangeSchema, { isMainnet: true });
-    protected __AnyDataCast = new StellarCast<
+    /**
+                * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺAnyDataCast = new StellarCast<
                 AnyData, AnyDataLike
             >(AnyDataSchema, { isMainnet: true });
 
@@ -217,7 +220,7 @@ export class CapoWithGenericUutsBridge extends ContractDataBridge {
 }
 export default CapoWithGenericUutsBridge;
 
-class CapoWithGenericUutsBridgeReader extends DataBridgeReaderClass {
+export class CapoWithGenericUutsBridgeReader extends DataBridgeReaderClass {
     constructor(public bridge: CapoWithGenericUutsBridge) {
         super();
     }
@@ -237,8 +240,7 @@ class CapoWithGenericUutsBridgeReader extends DataBridgeReaderClass {
         */
     DelegateRole(d : UplcData) { 
         const typeHelper = this.bridge.types.DelegateRole;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoDelegateRole;        
     } /* enumReader helper */
@@ -259,8 +261,7 @@ class CapoWithGenericUutsBridgeReader extends DataBridgeReaderClass {
         */
     ManifestEntryType(d : UplcData) { 
         const typeHelper = this.bridge.types.ManifestEntryType;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoManifestEntryType;        
     } /* enumReader helper */
@@ -281,8 +282,7 @@ class CapoWithGenericUutsBridgeReader extends DataBridgeReaderClass {
         */
     PendingDelegateAction(d : UplcData) { 
         const typeHelper = this.bridge.types.PendingDelegateAction;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoPendingDelegateAction;        
     } /* enumReader helper */
@@ -304,8 +304,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
         */
     CapoDatum(d : UplcData) { 
         const typeHelper = this.bridge.types.CapoDatum;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoCapoDatum;        
     } /* enumReader helper */
@@ -326,8 +325,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
         */
     ManifestActivity(d : UplcData) { 
         const typeHelper = this.bridge.types.ManifestActivity;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoManifestActivity;        
     } /* enumReader helper */
@@ -348,8 +346,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
         */
     CapoLifecycleActivity(d : UplcData) { 
         const typeHelper = this.bridge.types.CapoLifecycleActivity;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoCapoLifecycleActivity;        
     } /* enumReader helper */
@@ -370,8 +367,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
         */
     CapoActivity(d : UplcData) { 
         const typeHelper = this.bridge.types.CapoActivity;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoCapoActivity;        
     } /* enumReader helper */
@@ -391,8 +387,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
         * causes some error later on in your code, when you try to use it.
         */
     RelativeDelegateLink(d: UplcData) {
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = this.bridge.__RelativeDelegateLinkCast;
+        const cast = this.bridge.ᱺᱺRelativeDelegateLinkCast;
         return cast.fromUplcData(d) //??? as ErgoRelativeDelegateLink;
     } /* structReader helper */
 
@@ -411,8 +406,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
         * causes some error later on in your code, when you try to use it.
         */
     CapoManifestEntry(d: UplcData) {
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = this.bridge.__CapoManifestEntryCast;
+        const cast = this.bridge.ᱺᱺCapoManifestEntryCast;
         return cast.fromUplcData(d) //??? as ErgoCapoManifestEntry;
     } /* structReader helper */
 
@@ -431,8 +425,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
         * causes some error later on in your code, when you try to use it.
         */
     PendingDelegateChange(d: UplcData) {
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = this.bridge.__PendingDelegateChangeCast;
+        const cast = this.bridge.ᱺᱺPendingDelegateChangeCast;
         return cast.fromUplcData(d) //??? as ErgoPendingDelegateChange;
     } /* structReader helper */
 
@@ -451,8 +444,7 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
         * causes some error later on in your code, when you try to use it.
         */
     AnyData(d: UplcData) {
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = this.bridge.__AnyDataCast;
+        const cast = this.bridge.ᱺᱺAnyDataCast;
         return cast.fromUplcData(d) //??? as ErgoAnyData;
     } /* structReader helper */
 
@@ -463,19 +455,21 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
  */
 export class RelativeDelegateLinkHelper extends DataBridge {
     isCallable = true
-    protected __cast = new StellarCast<
+   /**
+            * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
         RelativeDelegateLink,
         RelativeDelegateLinkLike
     >(RelativeDelegateLinkSchema, { isMainnet: true });
 
-    // You might expect a function as follows, but no.  However, a similar uplc-generating capability
-    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.
+    // You might expect a function as follows.  We provide this interface and result, 
+    // using a proxy in the inheritance chain.
     // see the callableDataBridge type on the 'datum' property in the contract bridge.
     //
     //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
     //
     // RelativeDelegateLink(fields: RelativeDelegateLinkLike) {
-    //    return this.__cast.toUplcData(fields);
+    //    return this.ᱺᱺcast.toUplcData(fields);
     //}
 } //mkStructHelperClass 
 
@@ -485,7 +479,9 @@ export class RelativeDelegateLinkHelper extends DataBridge {
  */
 export class DelegateRoleHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        DelegateRole,
        DelegateRoleLike
    >(DelegateRoleSchema, { isMainnet: true });
@@ -567,7 +563,9 @@ export class DelegateRoleHelper extends EnumBridge<JustAnEnum> {
  */
 export class ManifestEntryTypeHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        ManifestEntryType,
        ManifestEntryTypeLike
    >(ManifestEntryTypeSchema, { isMainnet: true });
@@ -635,19 +633,21 @@ export class ManifestEntryTypeHelper extends EnumBridge<JustAnEnum> {
  */
 export class CapoManifestEntryHelper extends DataBridge {
     isCallable = true
-    protected __cast = new StellarCast<
+   /**
+            * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
         CapoManifestEntry,
         CapoManifestEntryLike
     >(CapoManifestEntrySchema, { isMainnet: true });
 
-    // You might expect a function as follows, but no.  However, a similar uplc-generating capability
-    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.
+    // You might expect a function as follows.  We provide this interface and result, 
+    // using a proxy in the inheritance chain.
     // see the callableDataBridge type on the 'datum' property in the contract bridge.
     //
     //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
     //
     // CapoManifestEntry(fields: CapoManifestEntryLike) {
-    //    return this.__cast.toUplcData(fields);
+    //    return this.ᱺᱺcast.toUplcData(fields);
     //}
 } //mkStructHelperClass 
 
@@ -657,7 +657,9 @@ export class CapoManifestEntryHelper extends DataBridge {
  */
 export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        PendingDelegateAction,
        PendingDelegateActionLike
    >(PendingDelegateActionSchema, { isMainnet: true });
@@ -718,20 +720,52 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
     } /* tagOnly variant accessor */
 
     /**
-     * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Replace"***
-     * @remarks - ***PendingDelegateAction$ReplaceLike*** is the same as the expanded field-types.
+     * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Replace"***, 
+     * given a transaction-context ***with a seed utxo*** and other field details
+     * @remarks
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
+     * to create a context satisfying `hasSeed`.
      */
-    Replace(fields: PendingDelegateAction$ReplaceLike | { 
-        replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]},
-        seed: TxOutputId | string,
+    Replace(value: hasSeed, fields: { 
         purpose: string,
         delegateValidatorHash: Option<ValidatorHash | string | number[]>,
-        config: number[] } ) : UplcData {
-        const uplc = this.mkUplcData({
-            Replace: fields 
-        }, "CapoDelegateHelpers::PendingDelegateAction.Replace");
-       return uplc;
-    } /*multiFieldVariant enum accessor*/
+        config: number[],
+        replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]} 
+    } ) : UplcData
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Replace"*** 
+     * with raw seed details included in fields.
+     */
+    Replace(fields: PendingDelegateAction$ReplaceLike | {
+            seed: TxOutputId | string,
+            purpose: string,
+            delegateValidatorHash: Option<ValidatorHash | string | number[]>,
+            config: number[],
+            replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}
+    } ): UplcData
+    Replace(
+        seedOrUf: hasSeed | PendingDelegateAction$ReplaceLike, 
+        filteredFields?: { 
+            purpose: string,
+            delegateValidatorHash: Option<ValidatorHash | string | number[]>,
+            config: number[],
+            replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}
+    }) : UplcData {
+        if (filteredFields) {
+            const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
+            const uplc = this.mkUplcData({
+                Replace: { seed: seedTxOutputId, ...filteredFields } 
+            }, "CapoDelegateHelpers::PendingDelegateAction.Replace");
+           return uplc;
+        } else {
+            const fields = seedOrUf as PendingDelegateAction$ReplaceLike; 
+           const uplc = this.mkUplcData({
+                Replace: fields 
+            }, "CapoDelegateHelpers::PendingDelegateAction.Replace");
+           return uplc;
+        }
+    } /*multiFieldVariant/seeded enum accessor*/ 
+
 }/*mkEnumHelperClass*/
 
 
@@ -740,19 +774,21 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
  */
 export class PendingDelegateChangeHelper extends DataBridge {
     isCallable = true
-    protected __cast = new StellarCast<
+   /**
+            * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
         PendingDelegateChange,
         PendingDelegateChangeLike
     >(PendingDelegateChangeSchema, { isMainnet: true });
 
-    // You might expect a function as follows, but no.  However, a similar uplc-generating capability
-    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.
+    // You might expect a function as follows.  We provide this interface and result, 
+    // using a proxy in the inheritance chain.
     // see the callableDataBridge type on the 'datum' property in the contract bridge.
     //
     //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
     //
     // PendingDelegateChange(fields: PendingDelegateChangeLike) {
-    //    return this.__cast.toUplcData(fields);
+    //    return this.ᱺᱺcast.toUplcData(fields);
     //}
 } //mkStructHelperClass 
 
@@ -762,29 +798,33 @@ export class PendingDelegateChangeHelper extends DataBridge {
  */
 export class AnyDataHelper extends DataBridge {
     isCallable = true
-    protected __cast = new StellarCast<
+   /**
+            * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
         AnyData,
         AnyDataLike
     >(AnyDataSchema, { isMainnet: true });
 
-    // You might expect a function as follows, but no.  However, a similar uplc-generating capability
-    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.
+    // You might expect a function as follows.  We provide this interface and result, 
+    // using a proxy in the inheritance chain.
     // see the callableDataBridge type on the 'datum' property in the contract bridge.
     //
     //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
     //
     // AnyData(fields: AnyDataLike) {
-    //    return this.__cast.toUplcData(fields);
+    //    return this.ᱺᱺcast.toUplcData(fields);
     //}
 } //mkStructHelperClass 
 
 
 /**
- * Helper class for generating UplcData for variants of the ***CapoDatum*** enum type.
+ * Helper class for generating TxOutputDatum for variants of the ***CapoDatum*** enum type.
  */
 export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        CapoDatum,
        CapoDatumLike
    >(CapoDatumSchema, { isMainnet: true });
@@ -839,7 +879,9 @@ export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
  */
 export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        ManifestActivity,
        ManifestActivityLike
    >(ManifestActivitySchema, { isMainnet: true });
@@ -902,7 +944,9 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
  */
 export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        ManifestActivity,
        ManifestActivityLike
    >(ManifestActivitySchema, { isMainnet: true });
@@ -965,7 +1009,9 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
  */
 export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        CapoLifecycleActivity,
        CapoLifecycleActivityLike
    >(CapoLifecycleActivitySchema, { isMainnet: true });
@@ -1147,7 +1193,9 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
  */
 export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        CapoLifecycleActivity,
        CapoLifecycleActivityLike
    >(CapoLifecycleActivitySchema, { isMainnet: true });
@@ -1329,7 +1377,9 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
  */
 export class CapoActivityHelper extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        CapoActivity,
        CapoActivityLike
    >(CapoActivitySchema, { isMainnet: true });
@@ -1886,13 +1936,6 @@ export const PendingDelegateActionSchema : EnumTypeSchema = {
             "name": "Replace",
             "fieldTypes": [
                 {
-                    "name": "replacesDgt",
-                    "type": {
-                        "kind": "internal",
-                        "name": "AssetClass"
-                    }
-                },
-                {
                     "name": "seed",
                     "type": {
                         "kind": "internal",
@@ -1921,6 +1964,13 @@ export const PendingDelegateActionSchema : EnumTypeSchema = {
                     "type": {
                         "kind": "internal",
                         "name": "ByteArray"
+                    }
+                },
+                {
+                    "name": "replacesDgt",
+                    "type": {
+                        "kind": "internal",
+                        "name": "AssetClass"
                     }
                 }
             ]
@@ -1994,13 +2044,6 @@ export const PendingDelegateChangeSchema : StructTypeSchema = {
                         "name": "Replace",
                         "fieldTypes": [
                             {
-                                "name": "replacesDgt",
-                                "type": {
-                                    "kind": "internal",
-                                    "name": "AssetClass"
-                                }
-                            },
-                            {
                                 "name": "seed",
                                 "type": {
                                     "kind": "internal",
@@ -2029,6 +2072,13 @@ export const PendingDelegateChangeSchema : StructTypeSchema = {
                                 "type": {
                                     "kind": "internal",
                                     "name": "ByteArray"
+                                }
+                            },
+                            {
+                                "name": "replacesDgt",
+                                "type": {
+                                    "kind": "internal",
+                                    "name": "AssetClass"
                                 }
                             }
                         ]
@@ -2629,13 +2679,6 @@ export const CapoDatumSchema : EnumTypeSchema = {
                                                 "name": "Replace",
                                                 "fieldTypes": [
                                                     {
-                                                        "name": "replacesDgt",
-                                                        "type": {
-                                                            "kind": "internal",
-                                                            "name": "AssetClass"
-                                                        }
-                                                    },
-                                                    {
                                                         "name": "seed",
                                                         "type": {
                                                             "kind": "internal",
@@ -2664,6 +2707,13 @@ export const CapoDatumSchema : EnumTypeSchema = {
                                                         "type": {
                                                             "kind": "internal",
                                                             "name": "ByteArray"
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "replacesDgt",
+                                                        "type": {
+                                                            "kind": "internal",
+                                                            "name": "AssetClass"
                                                         }
                                                     }
                                                 ]
@@ -2987,13 +3037,6 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
                                 "name": "Replace",
                                 "fieldTypes": [
                                     {
-                                        "name": "replacesDgt",
-                                        "type": {
-                                            "kind": "internal",
-                                            "name": "AssetClass"
-                                        }
-                                    },
-                                    {
                                         "name": "seed",
                                         "type": {
                                             "kind": "internal",
@@ -3022,6 +3065,13 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
                                         "type": {
                                             "kind": "internal",
                                             "name": "ByteArray"
+                                        }
+                                    },
+                                    {
+                                        "name": "replacesDgt",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "AssetClass"
                                         }
                                     }
                                 ]
@@ -3436,13 +3486,6 @@ export const CapoActivitySchema : EnumTypeSchema = {
                                                     "name": "Replace",
                                                     "fieldTypes": [
                                                         {
-                                                            "name": "replacesDgt",
-                                                            "type": {
-                                                                "kind": "internal",
-                                                                "name": "AssetClass"
-                                                            }
-                                                        },
-                                                        {
                                                             "name": "seed",
                                                             "type": {
                                                                 "kind": "internal",
@@ -3471,6 +3514,13 @@ export const CapoActivitySchema : EnumTypeSchema = {
                                                             "type": {
                                                                 "kind": "internal",
                                                                 "name": "ByteArray"
+                                                            }
+                                                        },
+                                                        {
+                                                            "name": "replacesDgt",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "AssetClass"
                                                             }
                                                         }
                                                     ]

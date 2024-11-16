@@ -53,8 +53,8 @@ import type {hasSeed, isActivity} from "../StellarContract.js"
 
 import type {
     AnyData, ErgoAnyData, AnyDataLike,
-    DelegationDetail, ErgoDelegationDetail, DelegationDetailLike,
     DelegateDatum$Cip68RefToken, DelegateDatum$Ergo$Cip68RefToken, DelegateDatum$Cip68RefTokenLike,
+    DelegationDetail, ErgoDelegationDetail, DelegationDetailLike,
     DelegateDatum, ErgoDelegateDatum, DelegateDatumLike,
     CapoLifecycleActivity$CreatingDelegate, CapoLifecycleActivity$Ergo$CreatingDelegate, CapoLifecycleActivity$CreatingDelegateLike,
     PendingDelegateAction$Add, PendingDelegateAction$Ergo$Add, PendingDelegateAction$AddLike,
@@ -85,11 +85,6 @@ export type * as types from "./UnspecializedDelegate.typeInfo.js";
 import type * as types from "./UnspecializedDelegate.typeInfo.js";
 
 
-
-//Note about @ts-expect-error drilling through protected accessors: This 
-//   allows the interface for the nested accessor to show only the public details,
-//   while allowing us to collaborate between these two closely-related classes.
-//   Like "friends" in C++.
 
 /**
  * GENERATED data bridge for **BasicDelegate** script (defined in class ***UnspecializedDgtBundle***)}
@@ -178,7 +173,7 @@ export class UnspecializedDelegateBridge extends ContractDataBridge {
     type: /*minStructField*/ string
 }
 ) => {
-        return this.__AnyDataCast.toUplcData(fields);
+        return this.ᱺᱺAnyDataCast.toUplcData(fields);
     },
       /**
        * generates UplcData for the enum type ***DelegationDetail*** for the `BasicDelegate` script
@@ -189,13 +184,17 @@ export class UnspecializedDelegateBridge extends ContractDataBridge {
     tn: /*minStructField*/ number[]
 }
 ) => {
-        return this.__DelegationDetailCast.toUplcData(fields);
+        return this.ᱺᱺDelegationDetailCast.toUplcData(fields);
     },    }    
 
-    protected __AnyDataCast = new StellarCast<
+    /**
+                * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺAnyDataCast = new StellarCast<
                 AnyData, AnyDataLike
             >(AnyDataSchema, { isMainnet: true });
-    protected __DelegationDetailCast = new StellarCast<
+    /**
+                * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺDelegationDetailCast = new StellarCast<
                 DelegationDetail, DelegationDetailLike
             >(DelegationDetailSchema, { isMainnet: true });
 
@@ -203,7 +202,7 @@ export class UnspecializedDelegateBridge extends ContractDataBridge {
 }
 export default UnspecializedDelegateBridge;
 
-class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
+export class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
     constructor(public bridge: UnspecializedDelegateBridge) {
         super();
     }
@@ -223,8 +222,7 @@ class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
         */
     DelegateDatum(d : UplcData) { 
         const typeHelper = this.bridge.types.DelegateDatum;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoDelegateDatum;        
     } /* enumReader helper */
@@ -245,8 +243,7 @@ class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
         */
     PendingDelegateAction(d : UplcData) { 
         const typeHelper = this.bridge.types.PendingDelegateAction;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoPendingDelegateAction;        
     } /* enumReader helper */
@@ -267,8 +264,7 @@ class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
         */
     DelegateRole(d : UplcData) { 
         const typeHelper = this.bridge.types.DelegateRole;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoDelegateRole;        
     } /* enumReader helper */
@@ -289,8 +285,7 @@ class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
         */
     ManifestActivity(d : UplcData) { 
         const typeHelper = this.bridge.types.ManifestActivity;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoManifestActivity;        
     } /* enumReader helper */
@@ -311,8 +306,7 @@ class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
         */
     CapoLifecycleActivity(d : UplcData) { 
         const typeHelper = this.bridge.types.CapoLifecycleActivity;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoCapoLifecycleActivity;        
     } /* enumReader helper */
@@ -333,8 +327,7 @@ class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
         */
     DelegateLifecycleActivity(d : UplcData) { 
         const typeHelper = this.bridge.types.DelegateLifecycleActivity;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoDelegateLifecycleActivity;        
     } /* enumReader helper */
@@ -355,8 +348,7 @@ class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
         */
     SpendingActivity(d : UplcData) { 
         const typeHelper = this.bridge.types.SpendingActivity;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoSpendingActivity;        
     } /* enumReader helper */
@@ -377,8 +369,7 @@ class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
         */
     MintingActivity(d : UplcData) { 
         const typeHelper = this.bridge.types.MintingActivity;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoMintingActivity;        
     } /* enumReader helper */
@@ -399,8 +390,7 @@ class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
         */
     BurningActivity(d : UplcData) { 
         const typeHelper = this.bridge.types.BurningActivity;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoBurningActivity;        
     } /* enumReader helper */
@@ -421,8 +411,7 @@ class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
         */
     DelegateActivity(d : UplcData) { 
         const typeHelper = this.bridge.types.DelegateActivity;
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = typeHelper.__cast;
+        const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoDelegateActivity;        
     } /* enumReader helper */
@@ -442,8 +431,7 @@ class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
         * causes some error later on in your code, when you try to use it.
         */
     AnyData(d: UplcData) {
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = this.bridge.__AnyDataCast;
+        const cast = this.bridge.ᱺᱺAnyDataCast;
         return cast.fromUplcData(d) //??? as ErgoAnyData;
     } /* structReader helper */
 
@@ -462,8 +450,7 @@ class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
         * causes some error later on in your code, when you try to use it.
         */
     DelegationDetail(d: UplcData) {
-        //@ts-expect-error drilling through the protected accessor.
-        const cast = this.bridge.__DelegationDetailCast;
+        const cast = this.bridge.ᱺᱺDelegationDetailCast;
         return cast.fromUplcData(d) //??? as ErgoDelegationDetail;
     } /* structReader helper */
 
@@ -474,19 +461,21 @@ class UnspecializedDelegateBridgeReader extends DataBridgeReaderClass {
  */
 export class AnyDataHelper extends DataBridge {
     isCallable = true
-    protected __cast = new StellarCast<
+   /**
+            * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
         AnyData,
         AnyDataLike
     >(AnyDataSchema, { isMainnet: true });
 
-    // You might expect a function as follows, but no.  However, a similar uplc-generating capability
-    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.
+    // You might expect a function as follows.  We provide this interface and result, 
+    // using a proxy in the inheritance chain.
     // see the callableDataBridge type on the 'datum' property in the contract bridge.
     //
     //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
     //
     // AnyData(fields: AnyDataLike) {
-    //    return this.__cast.toUplcData(fields);
+    //    return this.ᱺᱺcast.toUplcData(fields);
     //}
 } //mkStructHelperClass 
 
@@ -496,19 +485,21 @@ export class AnyDataHelper extends DataBridge {
  */
 export class DelegationDetailHelper extends DataBridge {
     isCallable = true
-    protected __cast = new StellarCast<
+   /**
+            * uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
         DelegationDetail,
         DelegationDetailLike
     >(DelegationDetailSchema, { isMainnet: true });
 
-    // You might expect a function as follows, but no.  However, a similar uplc-generating capability
-    // is instead provided, with that same sort of interface, by a proxy in the inheritance chain.
+    // You might expect a function as follows.  We provide this interface and result, 
+    // using a proxy in the inheritance chain.
     // see the callableDataBridge type on the 'datum' property in the contract bridge.
     //
     //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
     //
     // DelegationDetail(fields: DelegationDetailLike) {
-    //    return this.__cast.toUplcData(fields);
+    //    return this.ᱺᱺcast.toUplcData(fields);
     //}
 } //mkStructHelperClass 
 
@@ -518,7 +509,9 @@ export class DelegationDetailHelper extends DataBridge {
  */
 export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        DelegateDatum,
        DelegateDatumLike
    >(DelegateDatumSchema, { isMainnet: true });
@@ -530,12 +523,7 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     Cip68RefToken(fields: DelegateDatum$Cip68RefTokenLike | { 
         cip68meta: AnyDataLike,
         cip68version: IntLike,
-        dd: Option<{
-    capoAddr: /*minStructField*/ Address | string
-    mph: /*minStructField*/ MintingPolicyHash | string | number[]
-    tn: /*minStructField*/ number[]
-}
-> } ) : UplcData {
+        otherDetails: UplcData } ) : UplcData {
         const uplc = this.mkUplcData({
             Cip68RefToken: fields 
         }, "unspecializedDelegate::DelegateDatum.Cip68RefToken");
@@ -574,16 +562,6 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
         }, "unspecializedDelegate::DelegateDatum.capoStoredData"); /*singleField enum variant*/
        return uplc;
     }
-
-/**
- * (property getter): UplcData for ***"unspecializedDelegate::DelegateDatum.ScriptReference"***
- * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#3***
- */
-    get ScriptReference() {
-        const uplc = this.mkUplcData({ ScriptReference: {} }, 
-            "unspecializedDelegate::DelegateDatum.ScriptReference");
-        return uplc;
-    } /* tagOnly variant accessor */
 }/*mkEnumHelperClass*/
 
 
@@ -592,7 +570,9 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
  */
 export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        PendingDelegateAction,
        PendingDelegateActionLike
    >(PendingDelegateActionSchema, { isMainnet: true });
@@ -653,20 +633,52 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
     } /* tagOnly variant accessor */
 
     /**
-     * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Replace"***
-     * @remarks - ***PendingDelegateAction$ReplaceLike*** is the same as the expanded field-types.
+     * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Replace"***, 
+     * given a transaction-context ***with a seed utxo*** and other field details
+     * @remarks
+     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
+     * to create a context satisfying `hasSeed`.
      */
-    Replace(fields: PendingDelegateAction$ReplaceLike | { 
-        replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]},
-        seed: TxOutputId | string,
+    Replace(value: hasSeed, fields: { 
         purpose: string,
         delegateValidatorHash: Option<ValidatorHash | string | number[]>,
-        config: number[] } ) : UplcData {
-        const uplc = this.mkUplcData({
-            Replace: fields 
-        }, "CapoDelegateHelpers::PendingDelegateAction.Replace");
-       return uplc;
-    } /*multiFieldVariant enum accessor*/
+        config: number[],
+        replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]} 
+    } ) : UplcData
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Replace"*** 
+     * with raw seed details included in fields.
+     */
+    Replace(fields: PendingDelegateAction$ReplaceLike | {
+            seed: TxOutputId | string,
+            purpose: string,
+            delegateValidatorHash: Option<ValidatorHash | string | number[]>,
+            config: number[],
+            replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}
+    } ): UplcData
+    Replace(
+        seedOrUf: hasSeed | PendingDelegateAction$ReplaceLike, 
+        filteredFields?: { 
+            purpose: string,
+            delegateValidatorHash: Option<ValidatorHash | string | number[]>,
+            config: number[],
+            replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}
+    }) : UplcData {
+        if (filteredFields) {
+            const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
+            const uplc = this.mkUplcData({
+                Replace: { seed: seedTxOutputId, ...filteredFields } 
+            }, "CapoDelegateHelpers::PendingDelegateAction.Replace");
+           return uplc;
+        } else {
+            const fields = seedOrUf as PendingDelegateAction$ReplaceLike; 
+           const uplc = this.mkUplcData({
+                Replace: fields 
+            }, "CapoDelegateHelpers::PendingDelegateAction.Replace");
+           return uplc;
+        }
+    } /*multiFieldVariant/seeded enum accessor*/ 
+
 }/*mkEnumHelperClass*/
 
 
@@ -675,7 +687,9 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
  */
 export class DelegateRoleHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        DelegateRole,
        DelegateRoleLike
    >(DelegateRoleSchema, { isMainnet: true });
@@ -757,7 +771,9 @@ export class DelegateRoleHelper extends EnumBridge<JustAnEnum> {
  */
 export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        ManifestActivity,
        ManifestActivityLike
    >(ManifestActivitySchema, { isMainnet: true });
@@ -820,7 +836,9 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
  */
 export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        ManifestActivity,
        ManifestActivityLike
    >(ManifestActivitySchema, { isMainnet: true });
@@ -883,7 +901,9 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
  */
 export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        CapoLifecycleActivity,
        CapoLifecycleActivityLike
    >(CapoLifecycleActivitySchema, { isMainnet: true });
@@ -1065,7 +1085,9 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
  */
 export class DelegateLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        DelegateLifecycleActivity,
        DelegateLifecycleActivityLike
    >(DelegateLifecycleActivitySchema, { isMainnet: true });
@@ -1136,7 +1158,9 @@ export class DelegateLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
  */
 export class SpendingActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        SpendingActivity,
        SpendingActivityLike
    >(SpendingActivitySchema, { isMainnet: true });
@@ -1160,7 +1184,9 @@ export class SpendingActivityHelper extends EnumBridge<JustAnEnum> {
  */
 export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        MintingActivity,
        MintingActivityLike
    >(MintingActivitySchema, { isMainnet: true });
@@ -1185,7 +1211,9 @@ export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
  */
 export class BurningActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        BurningActivity,
        BurningActivityLike
    >(BurningActivitySchema, { isMainnet: true });
@@ -1209,7 +1237,9 @@ export class BurningActivityHelper extends EnumBridge<JustAnEnum> {
  */
 export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        CapoLifecycleActivity,
        CapoLifecycleActivityLike
    >(CapoLifecycleActivitySchema, { isMainnet: true });
@@ -1391,7 +1421,9 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
  */
 export class DelegateLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        DelegateLifecycleActivity,
        DelegateLifecycleActivityLike
    >(DelegateLifecycleActivitySchema, { isMainnet: true });
@@ -1462,7 +1494,9 @@ export class DelegateLifecycleActivityHelperNested extends EnumBridge<isActivity
  */
 export class SpendingActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        SpendingActivity,
        SpendingActivityLike
    >(SpendingActivitySchema, { isMainnet: true });
@@ -1486,7 +1520,9 @@ export class SpendingActivityHelperNested extends EnumBridge<isActivity> {
  */
 export class MintingActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        MintingActivity,
        MintingActivityLike
    >(MintingActivitySchema, { isMainnet: true });
@@ -1511,7 +1547,9 @@ export class MintingActivityHelperNested extends EnumBridge<isActivity> {
  */
 export class BurningActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        BurningActivity,
        BurningActivityLike
    >(BurningActivitySchema, { isMainnet: true });
@@ -1535,7 +1573,9 @@ export class BurningActivityHelperNested extends EnumBridge<isActivity> {
  */
 export class DelegateActivityHelper extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
-    protected __cast = new StellarCast<
+    /**
+            *  uses unicode U+1c7a - sorts to the end */
+    ᱺᱺcast = new StellarCast<
        DelegateActivity,
        DelegateActivityLike
    >(DelegateActivitySchema, { isMainnet: true });
@@ -1800,38 +1840,10 @@ export const DelegateDatumSchema : EnumTypeSchema = {
                     }
                 },
                 {
-                    "name": "dd",
+                    "name": "otherDetails",
                     "type": {
-                        "kind": "option",
-                        "someType": {
-                            "kind": "struct",
-                            "format": "list",
-                            "id": "__module__CapoDelegateHelpers__DelegationDetail[]",
-                            "name": "DelegationDetail",
-                            "fieldTypes": [
-                                {
-                                    "name": "capoAddr",
-                                    "type": {
-                                        "kind": "internal",
-                                        "name": "Address"
-                                    }
-                                },
-                                {
-                                    "name": "mph",
-                                    "type": {
-                                        "kind": "internal",
-                                        "name": "MintingPolicyHash"
-                                    }
-                                },
-                                {
-                                    "name": "tn",
-                                    "type": {
-                                        "kind": "internal",
-                                        "name": "ByteArray"
-                                    }
-                                }
-                            ]
-                        }
+                        "kind": "internal",
+                        "name": "Data"
                     }
                 }
             ]
@@ -1910,13 +1922,6 @@ export const DelegateDatumSchema : EnumTypeSchema = {
                     }
                 }
             ]
-        },
-        {
-            "kind": "variant",
-            "tag": 3,
-            "id": "__module__unspecializedDelegate__DelegateDatum[]__ScriptReference",
-            "name": "ScriptReference",
-            "fieldTypes": []
         }
     ]
 };
@@ -1979,13 +1984,6 @@ export const PendingDelegateActionSchema : EnumTypeSchema = {
             "name": "Replace",
             "fieldTypes": [
                 {
-                    "name": "replacesDgt",
-                    "type": {
-                        "kind": "internal",
-                        "name": "AssetClass"
-                    }
-                },
-                {
                     "name": "seed",
                     "type": {
                         "kind": "internal",
@@ -2014,6 +2012,13 @@ export const PendingDelegateActionSchema : EnumTypeSchema = {
                     "type": {
                         "kind": "internal",
                         "name": "ByteArray"
+                    }
+                },
+                {
+                    "name": "replacesDgt",
+                    "type": {
+                        "kind": "internal",
+                        "name": "AssetClass"
                     }
                 }
             ]
@@ -2260,13 +2265,6 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
                                 "name": "Replace",
                                 "fieldTypes": [
                                     {
-                                        "name": "replacesDgt",
-                                        "type": {
-                                            "kind": "internal",
-                                            "name": "AssetClass"
-                                        }
-                                    },
-                                    {
                                         "name": "seed",
                                         "type": {
                                             "kind": "internal",
@@ -2295,6 +2293,13 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
                                         "type": {
                                             "kind": "internal",
                                             "name": "ByteArray"
+                                        }
+                                    },
+                                    {
+                                        "name": "replacesDgt",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "AssetClass"
                                         }
                                     }
                                 ]
@@ -2822,13 +2827,6 @@ export const DelegateActivitySchema : EnumTypeSchema = {
                                                     "name": "Replace",
                                                     "fieldTypes": [
                                                         {
-                                                            "name": "replacesDgt",
-                                                            "type": {
-                                                                "kind": "internal",
-                                                                "name": "AssetClass"
-                                                            }
-                                                        },
-                                                        {
                                                             "name": "seed",
                                                             "type": {
                                                                 "kind": "internal",
@@ -2857,6 +2855,13 @@ export const DelegateActivitySchema : EnumTypeSchema = {
                                                             "type": {
                                                                 "kind": "internal",
                                                                 "name": "ByteArray"
+                                                            }
+                                                        },
+                                                        {
+                                                            "name": "replacesDgt",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "AssetClass"
                                                             }
                                                         }
                                                     ]
