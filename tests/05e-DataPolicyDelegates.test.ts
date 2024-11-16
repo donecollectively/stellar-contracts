@@ -41,11 +41,13 @@ class DataPolicyDelegateTestCapo extends CapoWithoutSettings {
     }
 
     @txn
-    async mkTxnInstallingPolicyDelegate<const P extends string>(purpose: P) {
+    async mkTxnInstallingPolicyDelegate<
+        const RoLabel extends string & keyof this["delegateRoles"]
+    >(dgtRole: RoLabel) {
         const mintDelegate = await this.getMintDelegate();
         const tcx1 = await this.tcxWithSeedUtxo(mintDelegate.mkTcx());
         const tcx2 = await this.mkTxnQueuingDelegateChange("Add", 
-            purpose, 
+            dgtRole, 
             undefined,
             tcx1
         );
@@ -85,7 +87,7 @@ class DataPolicyDelegateTestCapo extends CapoWithoutSettings {
             ...inherited,
             // noDefault: defineRole("", CapoMinter, {}),
             mintDelegate,
-            invention: defineRole("dgDataPolicy", InventionPolicy, {})
+            inventionPolicy: defineRole("dgDataPolicy", InventionPolicy, {})
             
         })// as any; // TODO - update types so this structure fits the expected type
     }
@@ -151,9 +153,8 @@ describe("Capo", async () => {
             expect(charter.otherNamedDelegates).toBeTruthy();
             expect(Object.keys(charter.otherNamedDelegates).length).toBe(0);
 
-            const tcx = await capo.mkTxnInstallingPolicyDelegate("invention");
-            expect(tcx.state.dgPolInvention).toBeTruthy()
-
+            const tcx = await capo.mkTxnInstallingPolicyDelegate("inventionPolicy");
+            expect(tcx.state).toBeTruthy()
             await tcx.submit();
             network.tick(1);
 

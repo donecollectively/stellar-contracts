@@ -3516,21 +3516,18 @@ export abstract class Capo<
     async mkTxnQueuingDelegateChange<
         DT extends StellarDelegate,
         THIS extends Capo<any>,
-        const policyName extends string,
+        const RoLabel extends string & keyof this["delegateRoles"],
+
         OPTIONS extends OffchainPartialDelegateLink,
-        const PURPOSE extends string = OPTIONS extends { uutName: infer P }
-            ? P
-            : policyName,
         TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>
     >(
         this: THIS,
         change: "Add" | "Replace",
-        policyName: policyName,
+        policyName: RoLabel,
         options: OPTIONS = { config: {} } as OPTIONS, // & NamedPolicyCreationOptions<THIS, DT>,
         tcx: TCX = this.mkTcx() as TCX
     ) {
-        //@ts-expect-error "could" be instantiated with different subtype
-        const purpose: PURPOSE = options.uutName || policyName;
+        const purpose: string = options.uutName || "dgPol";
         if (purpose.length > 13) {
             throw new Error(
                 `delegate-purpose ${purpose} can be max 13 chars for a UUT-name.  \n` +
@@ -3612,7 +3609,7 @@ export abstract class Capo<
         };
         const tcx2 = await this.txnMintingUuts(
             tcx1,
-            ["dgPol"] as ["dgPol"],
+            [purpose],
             {
                 usingSeedUtxo: tcx1.state.seedUtxo,
                 mintDelegateActivity:
@@ -3622,12 +3619,12 @@ export abstract class Capo<
             },
             {
                 // role / uut map
-                dgDataPolicy: "dgPol",
-                [`${purpose}Policy`]: "dgPol",
+                dgDataPolicy: purpose,
+                [policyName]: purpose,
             }
         );
         const newPolicyLink = this.mkOnchainRelativeDelegateLink(
-            await this.txnCreateOffchainDelegateLink(tcx2, "dgPol", options)
+            await this.txnCreateOffchainDelegateLink(tcx2, policyName, options)
         );
         const tcx3 = await this.mkTxnUpdateCharter(
             {
@@ -3642,17 +3639,17 @@ export abstract class Capo<
             ),
             await this.txnAddGovAuthority(tcx2)
         );
-        const stateKey = dgtStateKey<policyName>(policyName);
+        const stateKey = dgtStateKey<RoLabel>(policyName);
         //@ts-expect-error jamming in a key that's cast into the type just below.
         tcx3.state[stateKey] = newPolicyLink;
 
         const tcx4 = await this.txnMkAddlRefScriptTxn(
-            tcx3 as TCX & hasNamedDelegate<DT, policyName, "dgPol">,
+            tcx3 as TCX & hasNamedDelegate<DT, RoLabel, "dgData">,
             stateKey,
             tempDataPolicyLink.delegate.compiledScript
         );
         return tcx4 as typeof tcx4 &
-            hasUutContext<"dgPol" | "dgDataPolicy" | `${policyName}Policy`>;
+            hasUutContext<"dgDataPolicy" | RoLabel >;
     }
     async tempMkDelegateLinkForQueuingDgtChange(
         seedUtxo: TxInput,
