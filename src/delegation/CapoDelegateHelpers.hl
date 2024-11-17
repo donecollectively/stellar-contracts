@@ -96,6 +96,7 @@ enum CapoLifecycleActivity {
 
         role: DelegateRole
         name: Option[String]
+        uutName: Option[String]
     }
     removePendingDgtChange {
         role: DelegateRole
@@ -357,6 +358,7 @@ struct PendingDelegateChange {
     action: PendingDelegateAction
     role: DelegateRole
     name: Option[String] // only valid for named delegates and dgDataPolicy
+    uutName: Option[String]
 
     func isValid(self) -> Bool {
         self.role.switch {

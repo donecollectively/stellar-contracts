@@ -180,6 +180,7 @@ export class CapoDataBridge extends ContractDataBridge {
     action: /*minStructField*/ PendingDelegateActionLike
     role: /*minStructField*/ DelegateRoleLike
     name: /*minStructField*/ Option<string>
+    uutName: /*minStructField*/ Option<string>
 }
 ) => {
         return this.ᱺᱺPendingDelegateChangeCast.toUplcData(fields);
@@ -1072,7 +1073,8 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     queuePendingDgtChange(fields: CapoLifecycleActivity$queuePendingDgtChangeLike | { 
         action: PendingDelegateActionLike,
         role: DelegateRoleLike,
-        name: Option<string> } ) : UplcData {
+        name: Option<string>,
+        uutName: Option<string> } ) : UplcData {
         const uplc = this.mkUplcData({
             queuePendingDgtChange: fields 
         }, "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
@@ -1256,7 +1258,8 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     queuePendingDgtChange(fields: CapoLifecycleActivity$queuePendingDgtChangeLike | { 
         action: PendingDelegateActionLike,
         role: DelegateRoleLike,
-        name: Option<string> } ) : isActivity {
+        name: Option<string>,
+        uutName: Option<string> } ) : isActivity {
         const uplc = this.mkUplcData({
             queuePendingDgtChange: fields 
         }, "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
@@ -2192,6 +2195,16 @@ export const PendingDelegateChangeSchema : StructTypeSchema = {
                     "name": "String"
                 }
             }
+        },
+        {
+            "name": "uutName",
+            "type": {
+                "kind": "option",
+                "someType": {
+                    "kind": "internal",
+                    "name": "String"
+                }
+            }
         }
     ]
 };
@@ -2841,6 +2854,16 @@ export const CapoDatumSchema : EnumTypeSchema = {
                                             "name": "String"
                                         }
                                     }
+                                },
+                                {
+                                    "name": "uutName",
+                                    "type": {
+                                        "kind": "option",
+                                        "someType": {
+                                            "kind": "internal",
+                                            "name": "String"
+                                        }
+                                    }
                                 }
                             ]
                         }
@@ -3199,6 +3222,16 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
                 },
                 {
                     "name": "name",
+                    "type": {
+                        "kind": "option",
+                        "someType": {
+                            "kind": "internal",
+                            "name": "String"
+                        }
+                    }
+                },
+                {
+                    "name": "uutName",
                     "type": {
                         "kind": "option",
                         "someType": {
@@ -3662,6 +3695,16 @@ export const CapoActivitySchema : EnumTypeSchema = {
                                     },
                                     {
                                         "name": "name",
+                                        "type": {
+                                            "kind": "option",
+                                            "someType": {
+                                                "kind": "internal",
+                                                "name": "String"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "name": "uutName",
                                         "type": {
                                             "kind": "option",
                                             "someType": {

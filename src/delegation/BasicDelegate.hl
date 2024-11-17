@@ -540,7 +540,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 _ => error("unreachable wrong role for CreatingDelegate")
                             }
                         },
-                        queuePendingDgtChange{action, role, name} => {
+                        queuePendingDgtChange{action, role, name, uutName} => {
                             REQT("... for the addingPendingDgt activity:");
                             charterData : CapoDatum::CharterData = cctx.getCharterData();
                             action.switch {
@@ -598,7 +598,16 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                         
                                         mkTokenName = mkUutTnFactory(seed);
                                         dgTknName = mkTokenName(purpose);
-                                        
+
+                                        REQT("the uutName in the pending-activity matches the minted UUT",
+                                            uutName.switch {
+                                                Some{tn} => {
+                                                    tn == dgTknName
+                                                },
+                                                None => error("uutName must be present")
+                                            }
+                                        );
+
                                         mintedDgTkn : Bool = bREQT("the new delegate is created with the indicated authority token")
                                         && validateUutMinting(
                                             mph: dd.mph,
@@ -641,7 +650,8 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                         PendingDelegateChange{
                                             action: action,
                                             role: role,
-                                            name: name
+                                            name: name,
+                                            uutName: uutName
                                         }
                                     );
                                     nextCharterData = cctx.getNextCharterData();
@@ -655,6 +665,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                     isNotADuplicate = charterData.pendingDgtChanges.all( (pdc: PendingDelegateChange) -> Bool {
                                         pdc.name != name
                                     });
+                                    assert(isNotADuplicate, "already has a pending change for this delegate: "+name.unwrap());
 
                                     possibleReplacementIsCorrect: Bool = action.switch {
                                         Remove => error("unreachable"),

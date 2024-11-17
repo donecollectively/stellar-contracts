@@ -527,19 +527,22 @@ export type DelegateRoleLike = IntersectedEnum<
 export type CapoLifecycleActivity$queuePendingDgtChange = {
     action: PendingDelegateAction  /*minVariantField*/ ,
     role: DelegateRole  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
+    name: Option<string>  /*minVariantField*/ ,
+    uutName: Option<string>  /*minVariantField*/ 
 }
 
 export type CapoLifecycleActivity$Ergo$queuePendingDgtChange = {
     action: ErgoPendingDelegateAction  /*minVariantField*/ ,
     role: ErgoDelegateRole  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
+    name: Option<string>  /*minVariantField*/ ,
+    uutName: Option<string>  /*minVariantField*/ 
 }
 
 export type CapoLifecycleActivity$queuePendingDgtChangeLike = {
     action: PendingDelegateActionLike  /*minVariantField*/ ,
     role: DelegateRoleLike  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
+    name: Option<string>  /*minVariantField*/ ,
+    uutName: Option<string>  /*minVariantField*/ 
 }
 
 

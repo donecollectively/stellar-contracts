@@ -343,18 +343,21 @@ export type PendingDelegateChange = {
     action: /*minStructField*/ PendingDelegateAction
     role: /*minStructField*/ DelegateRole
     name: /*minStructField*/ Option<string>
+    uutName: /*minStructField*/ Option<string>
 }
 
 export type ErgoPendingDelegateChange = {
     action: /*minStructField*/ ErgoPendingDelegateAction
     role: /*minStructField*/ ErgoDelegateRole
     name: /*minStructField*/ Option<string>
+    uutName: /*minStructField*/ Option<string>
 }
 
 export type PendingDelegateChangeLike = {
     action: /*minStructField*/ PendingDelegateActionLike
     role: /*minStructField*/ DelegateRoleLike
     name: /*minStructField*/ Option<string>
+    uutName: /*minStructField*/ Option<string>
 }
 
 
@@ -494,19 +497,22 @@ export type CapoLifecycleActivity$CreatingDelegateLike = {
 export type CapoLifecycleActivity$queuePendingDgtChange = {
     action: PendingDelegateAction  /*minVariantField*/ ,
     role: DelegateRole  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
+    name: Option<string>  /*minVariantField*/ ,
+    uutName: Option<string>  /*minVariantField*/ 
 }
 
 export type CapoLifecycleActivity$Ergo$queuePendingDgtChange = {
     action: ErgoPendingDelegateAction  /*minVariantField*/ ,
     role: ErgoDelegateRole  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
+    name: Option<string>  /*minVariantField*/ ,
+    uutName: Option<string>  /*minVariantField*/ 
 }
 
 export type CapoLifecycleActivity$queuePendingDgtChangeLike = {
     action: PendingDelegateActionLike  /*minVariantField*/ ,
     role: DelegateRoleLike  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
+    name: Option<string>  /*minVariantField*/ ,
+    uutName: Option<string>  /*minVariantField*/ 
 }
 
 

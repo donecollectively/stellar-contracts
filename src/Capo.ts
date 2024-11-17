@@ -3606,6 +3606,7 @@ export abstract class Capo<
             action: dgtAction,
             role: { DgDataPolicy: {} },
             name: policyName,
+            uutName: tempDataPolicyLink.uutName
         };
         const tcx2 = await this.txnMintingUuts(
             tcx1,
@@ -3689,6 +3690,7 @@ export abstract class Capo<
                             },
                             role: { DgDataPolicy: {} },
                             name: policyName,
+                            uutName: ""
                         }
                     ),
             },
