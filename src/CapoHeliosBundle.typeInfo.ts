@@ -251,25 +251,19 @@ export type CapoManifestEntryLike = {
 
 export type PendingDelegateAction$Add = {
     seed: TxOutputId  /*minVariantField*/ ,
-    purpose: string  /*minVariantField*/ ,
-    delegateValidatorHash: Option<ValidatorHash>  /*minVariantField*/ ,
-    config: number[]  /*minVariantField*/ 
+    purpose: string  /*minVariantField*/ 
 }
 
 export type PendingDelegateAction$Ergo$Add = PendingDelegateAction$Add/*ergo like-canonical-this-variant*/
 export type PendingDelegateAction$AddLike = {
     seed: TxOutputId | string  /*minVariantField*/ ,
-    purpose: string  /*minVariantField*/ ,
-    delegateValidatorHash: Option<ValidatorHash | string | number[]>  /*minVariantField*/ ,
-    config: number[]  /*minVariantField*/ 
+    purpose: string  /*minVariantField*/ 
 }
 
 
 export type PendingDelegateAction$Replace = {
     seed: TxOutputId  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ ,
-    delegateValidatorHash: Option<ValidatorHash>  /*minVariantField*/ ,
-    config: number[]  /*minVariantField*/ ,
     replacesDgt: AssetClass  /*minVariantField*/ 
 }
 
@@ -277,8 +271,6 @@ export type PendingDelegateAction$Ergo$Replace = PendingDelegateAction$Replace/*
 export type PendingDelegateAction$ReplaceLike = {
     seed: TxOutputId | string  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ ,
-    delegateValidatorHash: Option<ValidatorHash | string | number[]>  /*minVariantField*/ ,
-    config: number[]  /*minVariantField*/ ,
     replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}  /*minVariantField*/ 
 }
 
@@ -343,21 +335,21 @@ export type PendingDelegateChange = {
     action: /*minStructField*/ PendingDelegateAction
     role: /*minStructField*/ DelegateRole
     name: /*minStructField*/ Option<string>
-    uutName: /*minStructField*/ Option<string>
+    dgtLink: /*minStructField*/ Option<RelativeDelegateLink>
 }
 
 export type ErgoPendingDelegateChange = {
     action: /*minStructField*/ ErgoPendingDelegateAction
     role: /*minStructField*/ ErgoDelegateRole
     name: /*minStructField*/ Option<string>
-    uutName: /*minStructField*/ Option<string>
+    dgtLink: /*minStructField*/ Option<ErgoRelativeDelegateLink>
 }
 
 export type PendingDelegateChangeLike = {
     action: /*minStructField*/ PendingDelegateActionLike
     role: /*minStructField*/ DelegateRoleLike
     name: /*minStructField*/ Option<string>
-    uutName: /*minStructField*/ Option<string>
+    dgtLink: /*minStructField*/ Option<RelativeDelegateLinkLike>
 }
 
 
@@ -497,22 +489,19 @@ export type CapoLifecycleActivity$CreatingDelegateLike = {
 export type CapoLifecycleActivity$queuePendingDgtChange = {
     action: PendingDelegateAction  /*minVariantField*/ ,
     role: DelegateRole  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ ,
-    uutName: Option<string>  /*minVariantField*/ 
+    name: Option<string>  /*minVariantField*/ 
 }
 
 export type CapoLifecycleActivity$Ergo$queuePendingDgtChange = {
     action: ErgoPendingDelegateAction  /*minVariantField*/ ,
     role: ErgoDelegateRole  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ ,
-    uutName: Option<string>  /*minVariantField*/ 
+    name: Option<string>  /*minVariantField*/ 
 }
 
 export type CapoLifecycleActivity$queuePendingDgtChangeLike = {
     action: PendingDelegateActionLike  /*minVariantField*/ ,
     role: DelegateRoleLike  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ ,
-    uutName: Option<string>  /*minVariantField*/ 
+    name: Option<string>  /*minVariantField*/ 
 }
 
 

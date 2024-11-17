@@ -19,6 +19,12 @@ import type { GenericDelegateBridge, GenericDelegateBridgeClass } from "../deleg
  * @remarks
  *
  * shifts detailed minting policy out of the minter and into the delegate.
+ * 
+ * By default, this delegate policy serves also as a spend delegate.  To use a separate
+ * spend delegate, define `get isMintAndSpendDelegate() { return false; }` in the subclass,
+ * define a separate ContractBasedDelegate subclass for the spend delegate, and
+ * register it in the Capo contract's `delegateRoles.spendDelegate`.
+ * 
  * @public
  **/
 export class BasicMintDelegate extends ContractBasedDelegate {

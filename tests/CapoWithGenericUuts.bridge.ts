@@ -180,6 +180,7 @@ export class CapoWithGenericUutsBridge extends ContractDataBridge {
     action: /*minStructField*/ PendingDelegateActionLike
     role: /*minStructField*/ DelegateRoleLike
     name: /*minStructField*/ Option<string>
+    dgtLink: /*minStructField*/ Option<RelativeDelegateLinkLike>
 }
 ) => {
         return this.ᱺᱺPendingDelegateChangeCast.toUplcData(fields);
@@ -555,6 +556,16 @@ export class DelegateRoleHelper extends EnumBridge<JustAnEnum> {
             "CapoDelegateHelpers::DelegateRole.BothMintAndSpendDgt");
         return uplc;
     } /* tagOnly variant accessor */
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.HandledByCapoOnly"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#7***
+ */
+    get HandledByCapoOnly() {
+        const uplc = this.mkUplcData({ HandledByCapoOnly: {} }, 
+            "CapoDelegateHelpers::DelegateRole.HandledByCapoOnly");
+        return uplc;
+    } /* tagOnly variant accessor */
 }/*mkEnumHelperClass*/
 
 
@@ -672,9 +683,7 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
      * to create a context satisfying `hasSeed`.
      */
     Add(value: hasSeed, fields: { 
-        purpose: string,
-        delegateValidatorHash: Option<ValidatorHash | string | number[]>,
-        config: number[] 
+        purpose: string 
     } ) : UplcData
     /**
      * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Add"*** 
@@ -682,16 +691,12 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
      */
     Add(fields: PendingDelegateAction$AddLike | {
             seed: TxOutputId | string,
-            purpose: string,
-            delegateValidatorHash: Option<ValidatorHash | string | number[]>,
-            config: number[]
+            purpose: string
     } ): UplcData
     Add(
         seedOrUf: hasSeed | PendingDelegateAction$AddLike, 
         filteredFields?: { 
-            purpose: string,
-            delegateValidatorHash: Option<ValidatorHash | string | number[]>,
-            config: number[]
+            purpose: string
     }) : UplcData {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
@@ -728,8 +733,6 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
      */
     Replace(value: hasSeed, fields: { 
         purpose: string,
-        delegateValidatorHash: Option<ValidatorHash | string | number[]>,
-        config: number[],
         replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]} 
     } ) : UplcData
     /**
@@ -739,16 +742,12 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
     Replace(fields: PendingDelegateAction$ReplaceLike | {
             seed: TxOutputId | string,
             purpose: string,
-            delegateValidatorHash: Option<ValidatorHash | string | number[]>,
-            config: number[],
             replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}
     } ): UplcData
     Replace(
         seedOrUf: hasSeed | PendingDelegateAction$ReplaceLike, 
         filteredFields?: { 
             purpose: string,
-            delegateValidatorHash: Option<ValidatorHash | string | number[]>,
-            config: number[],
             replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}
     }) : UplcData {
         if (filteredFields) {
@@ -1538,6 +1537,13 @@ export const DelegateRoleSchema : EnumTypeSchema = {
             "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
             "name": "BothMintAndSpendDgt",
             "fieldTypes": []
+        },
+        {
+            "kind": "variant",
+            "tag": 7,
+            "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+            "name": "HandledByCapoOnly",
+            "fieldTypes": []
         }
     ]
 };
@@ -1664,6 +1670,13 @@ export const ManifestEntryTypeSchema : EnumTypeSchema = {
                                 "tag": 6,
                                 "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                                 "name": "BothMintAndSpendDgt",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 7,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                                "name": "HandledByCapoOnly",
                                 "fieldTypes": []
                             }
                         ]
@@ -1826,6 +1839,13 @@ export const CapoManifestEntrySchema : StructTypeSchema = {
                                             "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                                             "name": "BothMintAndSpendDgt",
                                             "fieldTypes": []
+                                        },
+                                        {
+                                            "kind": "variant",
+                                            "tag": 7,
+                                            "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                                            "name": "HandledByCapoOnly",
+                                            "fieldTypes": []
                                         }
                                     ]
                                 }
@@ -1902,23 +1922,6 @@ export const PendingDelegateActionSchema : EnumTypeSchema = {
                         "kind": "internal",
                         "name": "String"
                     }
-                },
-                {
-                    "name": "delegateValidatorHash",
-                    "type": {
-                        "kind": "option",
-                        "someType": {
-                            "kind": "internal",
-                            "name": "ValidatorHash"
-                        }
-                    }
-                },
-                {
-                    "name": "config",
-                    "type": {
-                        "kind": "internal",
-                        "name": "ByteArray"
-                    }
                 }
             ]
         },
@@ -1947,23 +1950,6 @@ export const PendingDelegateActionSchema : EnumTypeSchema = {
                     "type": {
                         "kind": "internal",
                         "name": "String"
-                    }
-                },
-                {
-                    "name": "delegateValidatorHash",
-                    "type": {
-                        "kind": "option",
-                        "someType": {
-                            "kind": "internal",
-                            "name": "ValidatorHash"
-                        }
-                    }
-                },
-                {
-                    "name": "config",
-                    "type": {
-                        "kind": "internal",
-                        "name": "ByteArray"
                     }
                 },
                 {
@@ -2010,23 +1996,6 @@ export const PendingDelegateChangeSchema : StructTypeSchema = {
                                     "kind": "internal",
                                     "name": "String"
                                 }
-                            },
-                            {
-                                "name": "delegateValidatorHash",
-                                "type": {
-                                    "kind": "option",
-                                    "someType": {
-                                        "kind": "internal",
-                                        "name": "ValidatorHash"
-                                    }
-                                }
-                            },
-                            {
-                                "name": "config",
-                                "type": {
-                                    "kind": "internal",
-                                    "name": "ByteArray"
-                                }
                             }
                         ]
                     },
@@ -2055,23 +2024,6 @@ export const PendingDelegateChangeSchema : StructTypeSchema = {
                                 "type": {
                                     "kind": "internal",
                                     "name": "String"
-                                }
-                            },
-                            {
-                                "name": "delegateValidatorHash",
-                                "type": {
-                                    "kind": "option",
-                                    "someType": {
-                                        "kind": "internal",
-                                        "name": "ValidatorHash"
-                                    }
-                                }
-                            },
-                            {
-                                "name": "config",
-                                "type": {
-                                    "kind": "internal",
-                                    "name": "ByteArray"
                                 }
                             },
                             {
@@ -2141,6 +2093,13 @@ export const PendingDelegateChangeSchema : StructTypeSchema = {
                         "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                         "name": "BothMintAndSpendDgt",
                         "fieldTypes": []
+                    },
+                    {
+                        "kind": "variant",
+                        "tag": 7,
+                        "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                        "name": "HandledByCapoOnly",
+                        "fieldTypes": []
                     }
                 ]
             }
@@ -2152,6 +2111,44 @@ export const PendingDelegateChangeSchema : StructTypeSchema = {
                 "someType": {
                     "kind": "internal",
                     "name": "String"
+                }
+            }
+        },
+        {
+            "name": "dgtLink",
+            "type": {
+                "kind": "option",
+                "someType": {
+                    "kind": "struct",
+                    "format": "list",
+                    "id": "__module__CapoDelegateHelpers__RelativeDelegateLink[]",
+                    "name": "RelativeDelegateLink",
+                    "fieldTypes": [
+                        {
+                            "name": "uutName",
+                            "type": {
+                                "kind": "internal",
+                                "name": "String"
+                            }
+                        },
+                        {
+                            "name": "delegateValidatorHash",
+                            "type": {
+                                "kind": "option",
+                                "someType": {
+                                    "kind": "internal",
+                                    "name": "ValidatorHash"
+                                }
+                            }
+                        },
+                        {
+                            "name": "config",
+                            "type": {
+                                "kind": "internal",
+                                "name": "ByteArray"
+                            }
+                        }
+                    ]
                 }
             }
         }
@@ -2556,6 +2553,13 @@ export const CapoDatumSchema : EnumTypeSchema = {
                                                                     "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                                                                     "name": "BothMintAndSpendDgt",
                                                                     "fieldTypes": []
+                                                                },
+                                                                {
+                                                                    "kind": "variant",
+                                                                    "tag": 7,
+                                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                                                                    "name": "HandledByCapoOnly",
+                                                                    "fieldTypes": []
                                                                 }
                                                             ]
                                                         }
@@ -2645,23 +2649,6 @@ export const CapoDatumSchema : EnumTypeSchema = {
                                                             "kind": "internal",
                                                             "name": "String"
                                                         }
-                                                    },
-                                                    {
-                                                        "name": "delegateValidatorHash",
-                                                        "type": {
-                                                            "kind": "option",
-                                                            "someType": {
-                                                                "kind": "internal",
-                                                                "name": "ValidatorHash"
-                                                            }
-                                                        }
-                                                    },
-                                                    {
-                                                        "name": "config",
-                                                        "type": {
-                                                            "kind": "internal",
-                                                            "name": "ByteArray"
-                                                        }
                                                     }
                                                 ]
                                             },
@@ -2690,23 +2677,6 @@ export const CapoDatumSchema : EnumTypeSchema = {
                                                         "type": {
                                                             "kind": "internal",
                                                             "name": "String"
-                                                        }
-                                                    },
-                                                    {
-                                                        "name": "delegateValidatorHash",
-                                                        "type": {
-                                                            "kind": "option",
-                                                            "someType": {
-                                                                "kind": "internal",
-                                                                "name": "ValidatorHash"
-                                                            }
-                                                        }
-                                                    },
-                                                    {
-                                                        "name": "config",
-                                                        "type": {
-                                                            "kind": "internal",
-                                                            "name": "ByteArray"
                                                         }
                                                     },
                                                     {
@@ -2776,6 +2746,13 @@ export const CapoDatumSchema : EnumTypeSchema = {
                                                 "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                                                 "name": "BothMintAndSpendDgt",
                                                 "fieldTypes": []
+                                            },
+                                            {
+                                                "kind": "variant",
+                                                "tag": 7,
+                                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                                                "name": "HandledByCapoOnly",
+                                                "fieldTypes": []
                                             }
                                         ]
                                     }
@@ -2787,6 +2764,44 @@ export const CapoDatumSchema : EnumTypeSchema = {
                                         "someType": {
                                             "kind": "internal",
                                             "name": "String"
+                                        }
+                                    }
+                                },
+                                {
+                                    "name": "dgtLink",
+                                    "type": {
+                                        "kind": "option",
+                                        "someType": {
+                                            "kind": "struct",
+                                            "format": "list",
+                                            "id": "__module__CapoDelegateHelpers__RelativeDelegateLink[]",
+                                            "name": "RelativeDelegateLink",
+                                            "fieldTypes": [
+                                                {
+                                                    "name": "uutName",
+                                                    "type": {
+                                                        "kind": "internal",
+                                                        "name": "String"
+                                                    }
+                                                },
+                                                {
+                                                    "name": "delegateValidatorHash",
+                                                    "type": {
+                                                        "kind": "option",
+                                                        "someType": {
+                                                            "kind": "internal",
+                                                            "name": "ValidatorHash"
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "name": "config",
+                                                    "type": {
+                                                        "kind": "internal",
+                                                        "name": "ByteArray"
+                                                    }
+                                                }
+                                            ]
                                         }
                                     }
                                 }
@@ -3003,23 +3018,6 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
                                             "kind": "internal",
                                             "name": "String"
                                         }
-                                    },
-                                    {
-                                        "name": "delegateValidatorHash",
-                                        "type": {
-                                            "kind": "option",
-                                            "someType": {
-                                                "kind": "internal",
-                                                "name": "ValidatorHash"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "name": "config",
-                                        "type": {
-                                            "kind": "internal",
-                                            "name": "ByteArray"
-                                        }
                                     }
                                 ]
                             },
@@ -3048,23 +3046,6 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
                                         "type": {
                                             "kind": "internal",
                                             "name": "String"
-                                        }
-                                    },
-                                    {
-                                        "name": "delegateValidatorHash",
-                                        "type": {
-                                            "kind": "option",
-                                            "someType": {
-                                                "kind": "internal",
-                                                "name": "ValidatorHash"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "name": "config",
-                                        "type": {
-                                            "kind": "internal",
-                                            "name": "ByteArray"
                                         }
                                     },
                                     {
@@ -3133,6 +3114,13 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
                                 "tag": 6,
                                 "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                                 "name": "BothMintAndSpendDgt",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 7,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                                "name": "HandledByCapoOnly",
                                 "fieldTypes": []
                             }
                         ]
@@ -3210,6 +3198,13 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
                                 "tag": 6,
                                 "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                                 "name": "BothMintAndSpendDgt",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 7,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                                "name": "HandledByCapoOnly",
                                 "fieldTypes": []
                             }
                         ]
@@ -3452,23 +3447,6 @@ export const CapoActivitySchema : EnumTypeSchema = {
                                                                 "kind": "internal",
                                                                 "name": "String"
                                                             }
-                                                        },
-                                                        {
-                                                            "name": "delegateValidatorHash",
-                                                            "type": {
-                                                                "kind": "option",
-                                                                "someType": {
-                                                                    "kind": "internal",
-                                                                    "name": "ValidatorHash"
-                                                                }
-                                                            }
-                                                        },
-                                                        {
-                                                            "name": "config",
-                                                            "type": {
-                                                                "kind": "internal",
-                                                                "name": "ByteArray"
-                                                            }
                                                         }
                                                     ]
                                                 },
@@ -3497,23 +3475,6 @@ export const CapoActivitySchema : EnumTypeSchema = {
                                                             "type": {
                                                                 "kind": "internal",
                                                                 "name": "String"
-                                                            }
-                                                        },
-                                                        {
-                                                            "name": "delegateValidatorHash",
-                                                            "type": {
-                                                                "kind": "option",
-                                                                "someType": {
-                                                                    "kind": "internal",
-                                                                    "name": "ValidatorHash"
-                                                                }
-                                                            }
-                                                        },
-                                                        {
-                                                            "name": "config",
-                                                            "type": {
-                                                                "kind": "internal",
-                                                                "name": "ByteArray"
                                                             }
                                                         },
                                                         {
@@ -3582,6 +3543,13 @@ export const CapoActivitySchema : EnumTypeSchema = {
                                                     "tag": 6,
                                                     "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                                                     "name": "BothMintAndSpendDgt",
+                                                    "fieldTypes": []
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 7,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                                                    "name": "HandledByCapoOnly",
                                                     "fieldTypes": []
                                                 }
                                             ]
@@ -3659,6 +3627,13 @@ export const CapoActivitySchema : EnumTypeSchema = {
                                                     "tag": 6,
                                                     "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                                                     "name": "BothMintAndSpendDgt",
+                                                    "fieldTypes": []
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 7,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                                                    "name": "HandledByCapoOnly",
                                                     "fieldTypes": []
                                                 }
                                             ]

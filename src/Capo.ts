@@ -189,8 +189,10 @@ export type NormalDelegateSetup = {
 
 export type toQueuePendingDgtChange =
     CapoLifecycleActivity$queuePendingDgtChangeLike;
+type pendingActionRemoveDgt = Pick<toQueuePendingDgtChange["action"], "Remove">;
+
 export type toQueueDgtRemoval = Omit<toQueuePendingDgtChange, "action"> & {
-    action: Pick<toQueuePendingDgtChange["action"], "Remove">;
+    action: pendingActionRemoveDgt;
 };
 export type toQueueSeededDgtChange = Omit<toQueuePendingDgtChange, "action"> & {
     action: Omit<toQueuePendingDgtChange["action"], "Remove">;
@@ -3480,41 +3482,72 @@ export abstract class Capo<
         // >;
     }
 
-    async mkTxnQueuingDelegateRemoval<
-        THIS extends Capo<any>,
-        TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>
-    >(this: THIS, pendingChange: toQueueDgtRemoval, tcx = this.mkTcx()) {
-        const currentCharter = await this.findCharterData();
-        const mintDelegate = await this.getMintDelegate(currentCharter);
-        const spendDelegate = await this.getSpendDelegate(currentCharter);
-        const tcx1 = await spendDelegate.txnGrantAuthority(
-            tcx,
-            spendDelegate.activity.capoLifecycleActivity.queuePendingDgtChange(
-                pendingChange
-            )
-        );
-        const tcx2 = await this.mkTxnUpdateCharter(
-            {
-                ...currentCharter,
-                pendingDgtChanges: [
-                    pendingChange,
-                    ...currentCharter.pendingDgtChanges,
-                ],
-            },
-            this.activity.capoLifecycleActivity.queuePendingDgtChange(
-                pendingChange
-            ),
+    /**
+     * Helper for installing a named policy delegate
+     * @remarks
+     *
+     * Creates a transaction for adding a delegate-data-policy to the Capo.
+     * TODO: support also updating an existing delegate to a new policy script.
+     *
+     * The role name mentioned must be defined in the Capo's delegateRoles.
+     */
+    @txn
+    async mkTxnInstallingPolicyDelegate<
+        const RoLabel extends string & keyof this["delegateRoles"]
+    >(dgtRole: RoLabel) {
+        const mintDelegate = await this.getMintDelegate();
+        const spendDelegate = await this.getSpendDelegate();
+
+        const tcx1 = await this.tcxWithSeedUtxo(mintDelegate.mkTcx());
+        const tcx2 = await this.mkTxnQueuingDelegateChange(
+            "Add",
+            dgtRole,
+            undefined,
             tcx1
         );
-
         return tcx2;
+        //     "Add" | "Replace",
+        //     action: dgtAction.(tcx1, {
+        //         purpose,
+        //         delegateValidatorHash,
+        //         config: []
+        //     }}
+        // });
     }
+
+    // async mkTxnQueuingDelegateRemoval<
+    //     THIS extends Capo<any>,
+    //     TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>
+    // >(this: THIS, pendingChange: toQueueDgtRemoval, tcx = this.mkTcx()) {
+    //     const currentCharter = await this.findCharterData();
+    //     const mintDelegate = await this.getMintDelegate(currentCharter);
+    //     const spendDelegate = await this.getSpendDelegate(currentCharter);
+    //     const tcx1 = await spendDelegate.txnGrantAuthority(
+    //         tcx,
+    //         spendDelegate.activity.capoLifecycleActivity.queuePendingDgtChange(
+    //             pendingChange
+    //         )
+    //     );
+    //     const tcx2 = await this.mkTxnUpdateCharter(
+    //         {
+    //             ...currentCharter,
+    //             pendingDgtChanges: [
+    //                 pendingChange,
+    //                 ...currentCharter.pendingDgtChanges,
+    //             ],
+    //         },
+    //         this.activity.capoLifecycleActivity.queuePendingDgtChange(
+    //             pendingChange
+    //         ),
+    //         tcx1
+    //     );
+    //     return tcx2;
+    // }
 
     async mkTxnQueuingDelegateChange<
         DT extends StellarDelegate,
         THIS extends Capo<any>,
         const RoLabel extends string & keyof this["delegateRoles"],
-
         OPTIONS extends OffchainPartialDelegateLink,
         TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>
     >(
@@ -3564,8 +3597,8 @@ export abstract class Capo<
         const addDetails: PendingDelegateAction$AddLike = {
             seed: tcx1.state.seedUtxo.id,
             purpose,
-            delegateValidatorHash: tempOCDPLink.delegateValidatorHash,
-            config: tempOCDPLink.config,
+            // delegateValidatorHash: tempOCDPLink.delegateValidatorHash,
+            // config: tempOCDPLink.config,
         };
         const policyNameBytes = textToBytes(policyName);
         const replacesDgtME = [...currentCharter.manifest.values()].find(
@@ -3606,7 +3639,7 @@ export abstract class Capo<
             action: dgtAction,
             role: { DgDataPolicy: {} },
             name: policyName,
-            uutName: tempDataPolicyLink.uutName
+            dgtLink: tempOCDPLink,
         };
         const tcx2 = await this.txnMintingUuts(
             tcx1,
@@ -3624,12 +3657,14 @@ export abstract class Capo<
                 [policyName]: purpose,
             }
         );
-        const newPolicyLink = this.mkOnchainRelativeDelegateLink(
+        const delegateLink = this.mkOnchainRelativeDelegateLink(
             await this.txnCreateOffchainDelegateLink(tcx2, policyName, options)
         );
         const tcx3 = await spendDgt.txnGrantAuthority(
             tcx2,
-            spendDgtActivity.CapoLifecycleActivities.queuePendingDgtChange(pendingDgtChange)
+            spendDgtActivity.CapoLifecycleActivities.queuePendingDgtChange(
+                pendingDgtChange
+            )
         );
         const tcx4 = await this.mkTxnUpdateCharter(
             {
@@ -3646,15 +3681,14 @@ export abstract class Capo<
         );
         const stateKey = dgtStateKey<RoLabel>(policyName);
         //@ts-expect-error jamming in a key that's cast into the type just below.
-        tcx4.state[stateKey] = newPolicyLink;
+        tcx4.state[stateKey] = delegateLink;
 
         const tcx5 = await this.txnMkAddlRefScriptTxn(
             tcx4 as TCX & hasNamedDelegate<DT, RoLabel, "dgData">,
             stateKey,
             tempDataPolicyLink.delegate.compiledScript
         );
-        return tcx5 as typeof tcx5 &
-            hasUutContext<"dgDataPolicy" | RoLabel >;
+        return tcx5 as typeof tcx5 & hasUutContext<"dgDataPolicy" | RoLabel>;
     }
     async tempMkDelegateLinkForQueuingDgtChange(
         seedUtxo: TxInput,
@@ -3683,14 +3717,14 @@ export abstract class Capo<
                                     purpose,
                                     // --------------- 8-] vvvv --------------------
                                     // mocked details, good enough for getting UUT info for the delegate-link below:
-                                    delegateValidatorHash: null, // options.delegateValidatorHash,
-                                    config: [], //options.config
+                                    // delegateValidatorHash: null, // options.delegateValidatorHash,
+                                    // config: [], //options.config
                                     // --------------- 8-] ^^^^ --------------------
                                 },
                             },
                             role: { DgDataPolicy: {} },
                             name: policyName,
-                            uutName: ""
+                            // dgtLink: null,
                         }
                     ),
             },
@@ -3700,6 +3734,75 @@ export abstract class Capo<
             }
         );
         return this.txnCreateOffchainDelegateLink(ttcx2, policyName, options);
+    }
+    async mkTxnCommittingPendingDgtChanges<TCX extends StellarTxnContext>(
+        tcx: TCX = this.mkTcx() as TCX
+    ) {
+        const currentCharter = await this.findCharterData();
+        const mintDgt = await this.getMintDelegate(currentCharter);
+        const spendDgt = await this.getSpendDelegate(currentCharter);
+        const pendingChanges = currentCharter.pendingDgtChanges;
+        const tcx1 = await spendDgt.txnGrantAuthority(
+            tcx,
+            spendDgt.activity.CapoLifecycleActivities.commitPendingDgtChanges
+        );
+        const currentManifest = currentCharter.manifest;
+        const updatedManifest = new Map(currentManifest);
+        for (const pendingChange of pendingChanges) {
+            const { action: thisAction, role, name, dgtLink } = pendingChange;
+            if (!role.DgDataPolicy) {
+                throw new Error(
+                    `only DgDataPolicy changes are currently supported here`
+                );
+            }
+            if (!name) {
+                console.log("missing name in ", { pendingChange });
+                throw new Error(`missing expected 'name' in pendingChange`);
+            }
+            if (!dgtLink) {
+                throw new Error(`missing expected 'dgtLink' in pendingChange`);
+            }
+            const { uutName } = dgtLink;
+            if (thisAction.Add) {
+                const { purpose, seed } = thisAction.Add!; // , delegateValidatorHash, config } =
+                const ttcx = this.mkTcx();
+                if (currentManifest.get(name)) {
+                    throw new Error(`can't Add conflicting name to manifest`);
+                }
+            } else {
+                if (!thisAction.Replace) {
+                    throw new Error(
+                        `only Add and Replace actions are supported here`
+                    );
+                }
+                if (!currentManifest.get(name)) {
+                    throw new Error(
+                        `can't Replace non-existent name '${name}' in manifest`
+                    );
+                }
+            }
+            updatedManifest.set(name, {
+                tokenName: textToBytes(uutName),
+                mph: null,
+                entryType: {
+                    DgDataPolicy: {
+                        policyLink: dgtLink,
+                        refCount: 1n,
+                    },
+                },
+            });
+        }
+        const tcx2 = await this.mkTxnUpdateCharter(
+            {
+                ...currentCharter,
+                manifest: updatedManifest,
+                pendingDgtChanges: [],
+            },
+            this.activity.capoLifecycleActivity.commitPendingDgtChanges,
+            await this.txnAddGovAuthority(tcx1)
+        );
+
+        return tcx2;
     }
 
     /**

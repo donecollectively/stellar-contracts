@@ -4,14 +4,15 @@ import { CapoTestHelper } from "../src/testing/CapoTestHelper.js";
 import { DefaultCapoTestHelper } from "../src/testing/DefaultCapoTestHelper.js";
 import { StellarTestContext } from "../src/testing/StellarTestContext.js";
 import { ADA, TestHelperState } from "../src/testing/types.js";
+import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts.js";
 
-export let helperState: TestHelperState<CapoWithoutSettings> = {
+export let helperState: TestHelperState<CapoCanMintGenericUuts> = {
     snapshots: {},
 } as any;
 
 
-export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCapoClass(
-    CapoWithoutSettings
+export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCapoClass(
+    CapoCanMintGenericUuts
 ) {
     _start: number;
     constructor(config, helperState) {
@@ -35,7 +36,7 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
 
     //@ts-expect-error - why does it expect this is a property, when it's defined as a getter everywhere?
     get stellarClass() {
-        return CapoWithoutSettings
+        return CapoCanMintGenericUuts
     }
 
     async setupActors() {
@@ -58,7 +59,7 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
 
     }
 
-    get capo(): CapoWithoutSettings {
+    get capo(): CapoCanMintGenericUuts {
         return this.strella;
     }
 
@@ -96,88 +97,37 @@ export class CapoWithoutSettings_testHelper extends DefaultCapoTestHelper.forCap
         return this.strella
     }
 
-    @CapoTestHelper.hasNamedSnapshot("firstReqt", "tina")
-    async snapToFirstReqt() {
+    @CapoTestHelper.hasNamedSnapshot("installingTestDataPolicy", "tina")
+    async snapToInstallingTestDataPolicy() {
         console.log("never called");
-        return this.firstReqt();
+        return this.installingTestDataPolicy();
     }
-
-    async firstReqt() {
-        this.setActor("tina");
-
-        return this.createReqt(sampleReqt);
-    }
-
-    @CapoTestHelper.hasNamedSnapshot("firstDependentReqt", "tina")
-    async snapToFirstDependentReqt() {
-        console.log("never called");
-        return this.firstDependentReqt();
-    }
-
-    async firstDependentReqt() {
-        this.setActor("tina");
-        await this.snapToFirstReqt();
-        const purpose = await this.findFirstReqt();
-        return this.createReqt({
-            ... sampleReqt,
-            purpose: "a reqt depending on another",
-            requires: purpose.id
-        });
-    }
-
-    async findFirstDependentReqt() {
-        const delegate = await this.capo.getReqtsDelegate();
-        const firstReqt = await this.findFirstReqt();
-        const reqts = await this.capo.findReqts({
-            requires: firstReqt.id
-        });
-        if (reqts.length > 1) {
-            throw new Error("expected only one dependent requirement");
-        }
-        return reqts[0];
-    }
-
-    async findFirstReqt() {
-        const purposes = await this.capo.findReqts({
-            requires: null
-        });
-        if (purposes.length > 1) {
-            throw new Error("expected only one purpose");
-        }
-        return purposes[0];
-    }
-
-    async createReqt(
-        reqt: minimalReqtData,
-        options: {
-            submit?: boolean;
-        }={}
-    ) {
-        const {  submit = true } = options;
-        this.requiresActorRole("CapoAdmin", "t");
-
-        console.log(
-            "  -- ⚗️🐞 ⚗️🐞 " +
-                this.relativeTs +
-                " Creating reqt"
-        );
-
-        const delegate = ( await this.capo.getNamedDelegate("reqtCtrl") ) as ReqtsController
-        const tcx = await delegate.mkTxnCreateReqt(reqt);
-
-        if (!submit) return tcx;
+    async installingTestDataPolicy() {
+        const tcx = await this.capo.mkTxnInstallingPolicyDelegate("testDataPolicy");
         return this.submitTxnWithBlock(tcx);
     }
 
+    @CapoTestHelper.hasNamedSnapshot("hasTestDataPolicyDgt", "tina")
+    async snapToInstalledTestDataPolicy() {
+        console.log("never called");
+        return this.installedTestDataPolicy();
+    }
+
+    async installedTestDataPolicy() {
+        await this.snapToInstallingTestDataPolicy();
+
+        const tcx = await this.capo.mkTxnCommittingPendingDgtChanges();
+        return this.submitTxnWithBlock(tcx);
+    }
 
 
 }
 
 
 
-export type TestContext_CapoWithoutSettings = StellarTestContext<CapoWithoutSettings_testHelper> & {
+export type TestContext_CapoForDgData = StellarTestContext<CapoForDgDataPolicy_testHelper> & {
     helperState: typeof helperState;
-    snapshot(this: TestContext_CapoWithoutSettings, snapName: string): void;
-    loadSnapshot(this: TestContext_CapoWithoutSettings, snapName: string): void;
-    reusableBootstrap(this: TestContext_CapoWithoutSettings): Promise<CapoWithoutSettings>;
+    snapshot(this: TestContext_CapoForDgData, snapName: string): void;
+    loadSnapshot(this: TestContext_CapoForDgData, snapName: string): void;
+    reusableBootstrap(this: TestContext_CapoForDgData): Promise<CapoWithoutSettings>;
 };

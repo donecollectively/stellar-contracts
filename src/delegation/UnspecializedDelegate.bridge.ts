@@ -585,9 +585,7 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
      * to create a context satisfying `hasSeed`.
      */
     Add(value: hasSeed, fields: { 
-        purpose: string,
-        delegateValidatorHash: Option<ValidatorHash | string | number[]>,
-        config: number[] 
+        purpose: string 
     } ) : UplcData
     /**
      * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Add"*** 
@@ -595,16 +593,12 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
      */
     Add(fields: PendingDelegateAction$AddLike | {
             seed: TxOutputId | string,
-            purpose: string,
-            delegateValidatorHash: Option<ValidatorHash | string | number[]>,
-            config: number[]
+            purpose: string
     } ): UplcData
     Add(
         seedOrUf: hasSeed | PendingDelegateAction$AddLike, 
         filteredFields?: { 
-            purpose: string,
-            delegateValidatorHash: Option<ValidatorHash | string | number[]>,
-            config: number[]
+            purpose: string
     }) : UplcData {
         if (filteredFields) {
             const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
@@ -641,8 +635,6 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
      */
     Replace(value: hasSeed, fields: { 
         purpose: string,
-        delegateValidatorHash: Option<ValidatorHash | string | number[]>,
-        config: number[],
         replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]} 
     } ) : UplcData
     /**
@@ -652,16 +644,12 @@ export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
     Replace(fields: PendingDelegateAction$ReplaceLike | {
             seed: TxOutputId | string,
             purpose: string,
-            delegateValidatorHash: Option<ValidatorHash | string | number[]>,
-            config: number[],
             replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}
     } ): UplcData
     Replace(
         seedOrUf: hasSeed | PendingDelegateAction$ReplaceLike, 
         filteredFields?: { 
             purpose: string,
-            delegateValidatorHash: Option<ValidatorHash | string | number[]>,
-            config: number[],
             replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}
     }) : UplcData {
         if (filteredFields) {
@@ -964,8 +952,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     queuePendingDgtChange(fields: CapoLifecycleActivity$queuePendingDgtChangeLike | { 
         action: PendingDelegateActionLike,
         role: DelegateRoleLike,
-        name: Option<string>,
-        uutName: Option<string> } ) : UplcData {
+        name: Option<string> } ) : UplcData {
         const uplc = this.mkUplcData({
             queuePendingDgtChange: fields 
         }, "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
@@ -1301,8 +1288,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     queuePendingDgtChange(fields: CapoLifecycleActivity$queuePendingDgtChangeLike | { 
         action: PendingDelegateActionLike,
         role: DelegateRoleLike,
-        name: Option<string>,
-        uutName: Option<string> } ) : isActivity {
+        name: Option<string> } ) : isActivity {
         const uplc = this.mkUplcData({
             queuePendingDgtChange: fields 
         }, "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
@@ -1962,23 +1948,6 @@ export const PendingDelegateActionSchema : EnumTypeSchema = {
                         "kind": "internal",
                         "name": "String"
                     }
-                },
-                {
-                    "name": "delegateValidatorHash",
-                    "type": {
-                        "kind": "option",
-                        "someType": {
-                            "kind": "internal",
-                            "name": "ValidatorHash"
-                        }
-                    }
-                },
-                {
-                    "name": "config",
-                    "type": {
-                        "kind": "internal",
-                        "name": "ByteArray"
-                    }
                 }
             ]
         },
@@ -2007,23 +1976,6 @@ export const PendingDelegateActionSchema : EnumTypeSchema = {
                     "type": {
                         "kind": "internal",
                         "name": "String"
-                    }
-                },
-                {
-                    "name": "delegateValidatorHash",
-                    "type": {
-                        "kind": "option",
-                        "someType": {
-                            "kind": "internal",
-                            "name": "ValidatorHash"
-                        }
-                    }
-                },
-                {
-                    "name": "config",
-                    "type": {
-                        "kind": "internal",
-                        "name": "ByteArray"
                     }
                 },
                 {
@@ -2250,23 +2202,6 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
                                             "kind": "internal",
                                             "name": "String"
                                         }
-                                    },
-                                    {
-                                        "name": "delegateValidatorHash",
-                                        "type": {
-                                            "kind": "option",
-                                            "someType": {
-                                                "kind": "internal",
-                                                "name": "ValidatorHash"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "name": "config",
-                                        "type": {
-                                            "kind": "internal",
-                                            "name": "ByteArray"
-                                        }
                                     }
                                 ]
                             },
@@ -2295,23 +2230,6 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
                                         "type": {
                                             "kind": "internal",
                                             "name": "String"
-                                        }
-                                    },
-                                    {
-                                        "name": "delegateValidatorHash",
-                                        "type": {
-                                            "kind": "option",
-                                            "someType": {
-                                                "kind": "internal",
-                                                "name": "ValidatorHash"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "name": "config",
-                                        "type": {
-                                            "kind": "internal",
-                                            "name": "ByteArray"
                                         }
                                     },
                                     {
@@ -2394,16 +2312,6 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
                 },
                 {
                     "name": "name",
-                    "type": {
-                        "kind": "option",
-                        "someType": {
-                            "kind": "internal",
-                            "name": "String"
-                        }
-                    }
-                },
-                {
-                    "name": "uutName",
                     "type": {
                         "kind": "option",
                         "someType": {
@@ -2836,23 +2744,6 @@ export const DelegateActivitySchema : EnumTypeSchema = {
                                                                 "kind": "internal",
                                                                 "name": "String"
                                                             }
-                                                        },
-                                                        {
-                                                            "name": "delegateValidatorHash",
-                                                            "type": {
-                                                                "kind": "option",
-                                                                "someType": {
-                                                                    "kind": "internal",
-                                                                    "name": "ValidatorHash"
-                                                                }
-                                                            }
-                                                        },
-                                                        {
-                                                            "name": "config",
-                                                            "type": {
-                                                                "kind": "internal",
-                                                                "name": "ByteArray"
-                                                            }
                                                         }
                                                     ]
                                                 },
@@ -2881,23 +2772,6 @@ export const DelegateActivitySchema : EnumTypeSchema = {
                                                             "type": {
                                                                 "kind": "internal",
                                                                 "name": "String"
-                                                            }
-                                                        },
-                                                        {
-                                                            "name": "delegateValidatorHash",
-                                                            "type": {
-                                                                "kind": "option",
-                                                                "someType": {
-                                                                    "kind": "internal",
-                                                                    "name": "ValidatorHash"
-                                                                }
-                                                            }
-                                                        },
-                                                        {
-                                                            "name": "config",
-                                                            "type": {
-                                                                "kind": "internal",
-                                                                "name": "ByteArray"
                                                             }
                                                         },
                                                         {
@@ -2980,16 +2854,6 @@ export const DelegateActivitySchema : EnumTypeSchema = {
                                     },
                                     {
                                         "name": "name",
-                                        "type": {
-                                            "kind": "option",
-                                            "someType": {
-                                                "kind": "internal",
-                                                "name": "String"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "name": "uutName",
                                         "type": {
                                             "kind": "option",
                                             "someType": {

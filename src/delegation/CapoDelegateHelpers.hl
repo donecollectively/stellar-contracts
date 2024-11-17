@@ -69,15 +69,17 @@ enum PendingDelegateAction {
     Add {
         seed: TxOutputId
         purpose: String
-        delegateValidatorHash: Option[ValidatorHash]
-        config: ByteArray
+        // uutName: String
+        // delegateValidatorHash: Option[ValidatorHash]
+        // config: ByteArray
     }
     Remove
     Replace {
         seed: TxOutputId
         purpose: String
-        delegateValidatorHash: Option[ValidatorHash]
-        config: ByteArray
+        // uutName: String
+        // delegateValidatorHash: Option[ValidatorHash]
+        // config: ByteArray
 
         replacesDgt: AssetClass
     }
@@ -96,7 +98,6 @@ enum CapoLifecycleActivity {
 
         role: DelegateRole
         name: Option[String]
-        uutName: Option[String]
     }
     removePendingDgtChange {
         role: DelegateRole
@@ -358,7 +359,7 @@ struct PendingDelegateChange {
     action: PendingDelegateAction
     role: DelegateRole
     name: Option[String] // only valid for named delegates and dgDataPolicy
-    uutName: Option[String]
+    dgtLink: Option[RelativeDelegateLink]
 
     func isValid(self) -> Bool {
         self.role.switch {

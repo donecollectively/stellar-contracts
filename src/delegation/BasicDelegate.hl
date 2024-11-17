@@ -540,13 +540,13 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 _ => error("unreachable wrong role for CreatingDelegate")
                             }
                         },
-                        queuePendingDgtChange{action, role, name, uutName} => {
+                        queuePendingDgtChange{action, role, name} => {
                             REQT("... for the addingPendingDgt activity:");
                             charterData : CapoDatum::CharterData = cctx.getCharterData();
                             action.switch {
                                 Remove => {
                                     print("   -- another delegate-role check would be redundant.");
-                                    // assert(cctx.nowActingAsSpendDgt(), "<----- that can fail, this can't");
+
                                     myCurrentRole.switch {
                                         SpendDgt => {
                                             REQT("verifies that the delegate queued for removal is present in the Capo's charterData");
@@ -556,6 +556,35 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                     }
                                 }, 
                                 _ => assert(true, "no way")
+
+                            };
+
+
+                            REQT("The new pending-delegate action is found at the head of the new change-list");
+                            oldPendingChanges = charterData.pendingDgtChanges;
+                            nextCharterData = cctx.getNextCharterData();
+                            nextChangeList = nextCharterData.pendingDgtChanges;
+                            newChange = nextChangeList.head;
+
+                            REQT("the remainder of the change-list should be unchanged");
+                            assert(
+                                nextChangeList.tail == oldPendingChanges, 
+                                "invalid update of pendingDgtChanges; the new action must be prepended to the existing list."
+                            );
+                            (
+                                seed: TxOutputId, 
+                                purpose: String
+                                // uutName: String, 
+                                // dvh : Option[ValidatorHash], 
+                                // config : ByteArray
+                            ) = action.switch { 
+                                Remove => error("unreachable"), 
+                                Add{seed, purpose} => {
+                                    (seed, purpose) 
+                                },
+                                Replace{seed, purpose, _replacesDgt } => { 
+                                    (seed, purpose ) 
+                                }
                             };
 
                             possibleMintDgtVerifications : Bool = myCurrentRole.switch {
@@ -580,35 +609,16 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                         REQT("doesn't allow a Remove to duplicate an Add or Replace or Remove entry");
                                         TODO("^^^");
 
-                                        TODO("what else should be checked here?");
+                                        assert(false, "what else should be checked here?");
                                         false
                                     },
                                     _ => {
                                         if(false/*redundant*/) { assert(cctx.nowActingAsMintDgt(), "<----- that can fail, this can't") };
 
-                                        (seed: TxOutputId, purpose: String, dvh : Option[ValidatorHash], config) = action.switch { 
-                                            Remove => error("unreachable"), 
-                                            Add{seed, purpose, odvh, config} => {
-                                                (seed, purpose, odvh, config)
-                                            },
-                                            Replace{seed, purpose, odvh, config, _replacesDgt} => {
-                                                (seed, purpose, odvh, config)
-                                            }
-                                        };
-                                        
                                         mkTokenName = mkUutTnFactory(seed);
                                         dgTknName = mkTokenName(purpose);
-
-                                        REQT("the uutName in the pending-activity matches the minted UUT",
-                                            uutName.switch {
-                                                Some{tn} => {
-                                                    tn == dgTknName
-                                                },
-                                                None => error("uutName must be present")
-                                            }
-                                        );
-
-                                        mintedDgTkn : Bool = bREQT("the new delegate is created with the indicated authority token")
+                        
+                                        mintedDgTkn = bREQT("the new delegate is created with the indicated authority token")
                                         && validateUutMinting(
                                             mph: dd.mph,
                                             seed: seed,
@@ -619,18 +629,19 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                             needsMintDelegateApproval: false 
                                         );
                                         
-                                        delegate = RelativeDelegateLink{
-                                            uutName: dgTknName,
-                                            delegateValidatorHash: dvh,
-                                            config: config
-                                        };
-                                        
-                                        delegateTakesOwnership = bREQT("the new delegate takes ownership of the UUT") 
-                                        && delegate.hasValidOutput(
-                                            mph: dd.mph, 
-                                            required: true,
-                                            createdOrReturned: DgTkn::Created
+                                        REQT("The new policy-token must match the seed");
+                                        dgtLink = newChange.dgtLink.unwrap();
+                                        assert(
+                                            dgtLink.uutName == dgTknName,
+                                            "uutName mismatch; expected "+dgTknName+" but found "+dgtLink.uutName
                                         );
+
+                                        delegateTakesOwnership = bREQT("the new delegate takes ownership of the UUT",
+                                            dgtLink.hasValidOutput(
+                                                mph: dd.mph, 
+                                                required: true,
+                                                createdOrReturned: DgTkn::Created
+                                        ));
 
                                         mintedDgTkn && delegateTakesOwnership
                                     }
@@ -643,24 +654,6 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 SpendDgt => {
                                     REQT("(general) the spendDgt checks everything about the charterData update");
 
-                                    REQT("The new pending-delegate action must be added on the front of the existing list of pending actions");
-                                    oldPendingChanges = charterData.pendingDgtChanges;
-
-                                    expectedChanges = oldPendingChanges.prepend(
-                                        PendingDelegateChange{
-                                            action: action,
-                                            role: role,
-                                            name: name,
-                                            uutName: uutName
-                                        }
-                                    );
-                                    nextCharterData = cctx.getNextCharterData();
-                                    newChangePrepended : Bool = nextCharterData.pendingDgtChanges == expectedChanges;
-                                    assert(
-                                        newChangePrepended, 
-                                        "invalid update of pendingDgtChanges; should prepend the new action to the existing list."
-                                    );
-
                                     REQT("doesn't allow a queued change to duplicate any other pending entry for the same delegate name");
                                     isNotADuplicate = charterData.pendingDgtChanges.all( (pdc: PendingDelegateChange) -> Bool {
                                         pdc.name != name
@@ -670,7 +663,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                     possibleReplacementIsCorrect: Bool = action.switch {
                                         Remove => error("unreachable"),
                                         Add => true, // doesn't need to replace anything
-                                        Replace{_seed, _purpose, _dvho, _config, acExistingDgt} => {
+                                        Replace{_seed, _purpose, acExistingDgt} => { 
                                             REQT("... when queuing a replacement delegate: ");
                                             REQT("invariants cannot be replaced");
                                             role.switch {
@@ -715,7 +708,6 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                     }; // -> possibleReplacementIsCorrect
 
                                     true
-                                    && newChangePrepended
                                     && isNotADuplicate 
                                     && possibleReplacementIsCorrect
                                 }, 

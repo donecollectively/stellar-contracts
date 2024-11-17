@@ -1227,32 +1227,38 @@ struct CapoCtx {
 
     func nowActingAsMintDgt(self, required: Bool = true) -> Bool {
         input : TxInput = get_current_input();
-        isMintDgt : Bool = (
-            self.requiresMintDelegateInput(required: required).input.switch {
-                Some{i} => i == input,
-                None => false
-            }
-        ).trace("    -- acting on mintDgt-* right now? ");
+        isUsingMintDgt = input.value.contains(
+            self.getCharterData().mintDelegateLink.tvAuthorityToken(self.mph)
+        ).trace("    -- acting on mintDgt-* token right now? ");
+        // isMintDgt : Bool = (
+        //     self.requiresMintDelegateInput(required: required).input.switch {
+        //         Some{i} => i == input,
+        //         None => false
+        //     }
+        // ).trace("    -- acting on mintDgt-* right now? ");
         assert(
-            isMintDgt || !required
+            isUsingMintDgt || !required
             , "not acting as mint delegate!"
         );
-        isMintDgt
+        isUsingMintDgt
     }
 
     func nowActingAsSpendDgt(self, required: Bool = true) -> Bool {
         input : TxInput = get_current_input();
-        isSpendDgt : Bool = (
-            self.requiresSpendDelegateInput(required: required).input.switch {
-                Some{i} => i == input,
-                None => false
-            }
-        ).trace("    -- acting on spendDgt-* right now? ");
+        isUsingSpendDgt = input.value.contains(
+            self.getCharterData().spendDelegateLink.tvAuthorityToken(self.mph)
+        ).trace("    -- acting on spendDgt-* token right now? ");
+        // isSpendDgt : Bool = (
+        //     self.requiresSpendDelegateInput(required: required).input.switch {
+        //         Some{i} => i == input,
+        //         None => false
+        //     }
+        // ).trace("    -- acting on spendDgt-* right now? ");
         assert(
-             isSpendDgt || !required
+             isUsingSpendDgt || !required
             , "not acting as spend delegate!"
         );
-        isSpendDgt
+        isUsingSpendDgt
     }
 
     func requiresMintDelegateInput(self, required: Bool = true) -> DelegateInput {
