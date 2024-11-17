@@ -63,6 +63,10 @@ enum ManifestActivity {
         key: String // must mint new & create a clone of the existing token
         newThreadCount: Int
     }
+    burningThreadToken {
+        key: String // must burn the token
+        burnedThreadCount: Int // must match the count of the burned token
+    }
 }
 
 enum PendingDelegateAction {

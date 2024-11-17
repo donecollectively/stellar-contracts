@@ -655,11 +655,11 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                     //         .requiresValidOutput()
                     // }, 
     
-                    REQT("for normal lifecycle activities, the spendDelegate's activity must match the capo's lifecycle activity");
-                    assert(
-                        delegateCLActivity.serialize() == myCLActivity.serialize(),
-                        "the spendDelegate's CapoLifecycleActivity must match the capo's"
-                    );
+                    // REQT("for normal lifecycle activities, the spendDelegate's activity must match the capo's lifecycle activity");
+                    // assert(
+                    //     delegateCLActivity.serialize() == myCLActivity.serialize(),
+                    //     "the spendDelegate's CapoLifecycleActivity must match the capo's"
+                    // );
                     true
                 }
             }

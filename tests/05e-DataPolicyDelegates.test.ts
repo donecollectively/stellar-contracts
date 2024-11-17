@@ -13,6 +13,8 @@ import { CapoCanMintGenericUuts } from "./CapoCanMintGenericUuts.js";
 import { CapoForDgDataPolicy_testHelper, helperState, TestContext_CapoForDgData } from "./CapoForDgDataPolicyTestHelper.js";
 
 const it = itWithContext<localTC>;
+function TEST_REQT(s: string) { return it.todo(`TEST: ${s}`, {todo:true})}
+function TODO_REQT(s: string) { return it.todo(`TODO: ${s}`, {todo:true})}
 const fit = it.only;
 const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTestingContext>
 //!!! until then, we need to use if(0) it(...) : (
@@ -99,7 +101,14 @@ describe("Capo", async () => {
             expect(charter.otherNamedDelegates.size).toBe(0);
             expect(charter.manifest.size).toBe(1);
         })
+        it.todo("TODO: test that a delegate can be REPLACED", {todo: true});
 
+        //!!! switch reqts to "FAILS IF" phrasing for ultimate clarity
+        TEST_REQT("the next-changes list must be empty");
+        TEST_REQT("dgt-change: Remove: verifies that the delegate queued for removal is now removed from the Capo manifest");
+        TEST_REQT("verifies that added & replaced entries are present in the updated map (at its next position)");
+        TEST_REQT("Replace: verifies that the next-manifest no longer has the replaced entry");
+        TEST_REQT("verifies that a delegate queued for removal or replacement is burned");
 
     })
 

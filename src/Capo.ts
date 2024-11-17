@@ -3742,10 +3742,16 @@ export abstract class Capo<
         const mintDgt = await this.getMintDelegate(currentCharter);
         const spendDgt = await this.getSpendDelegate(currentCharter);
         const pendingChanges = currentCharter.pendingDgtChanges;
-        const tcx1 = await spendDgt.txnGrantAuthority(
+        const tcx1a = await spendDgt.txnGrantAuthority(
             tcx,
             spendDgt.activity.CapoLifecycleActivities.commitPendingDgtChanges
         );
+        const tcx1b = await mintDgt.txnGrantAuthority(
+            tcx1a,
+            mintDgt.activity.CapoLifecycleActivities.commitPendingDgtChanges
+        );
+        const tcx1c = await this.txnAddGovAuthority(tcx1b);
+        
         const currentManifest = currentCharter.manifest;
         const updatedManifest = new Map(currentManifest);
         for (const pendingChange of pendingChanges) {
@@ -3799,7 +3805,7 @@ export abstract class Capo<
                 pendingDgtChanges: [],
             },
             this.activity.capoLifecycleActivity.commitPendingDgtChanges,
-            await this.txnAddGovAuthority(tcx1)
+            tcx1c
         );
 
         return tcx2;
