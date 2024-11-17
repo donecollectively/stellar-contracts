@@ -12,7 +12,7 @@ import {
 import {tx, get_current_input} from ScriptContext
 
 import {
-    getTxCharterDatum,
+    getTxCharterData,
     CapoCtx,
     mkCapoCtx,
     DelegateInput,
@@ -114,7 +114,7 @@ func requiresDelegateAuthorizingMint(
     // NOTE: DOESN'T CHECK that the AUTHORIZING DELEGATE is returned anywhere specific.
     //    - it's not generally a minting responsibility (however, as an exception the bootstrap charter event DOES 
     //      actually check for valid delegate outputs).  All other cases should have the correct
-    //      delegate outputs checked (e.g. in the Capo's CharterDatum spend checker).
+    //      delegate outputs checked (e.g. in the Capo's CharterData spend checker).
     // maybeCheckDelegateOutput : Bool = if (!checkDelegateOutput) {
     //     print("  -- skipping check for expected delegate output ");
     //     true
@@ -327,7 +327,7 @@ func validateUutMinting(
             _govAuthority,
             _manifest,
             _pendingDelegates
-        } = getTxCharterDatum(mph);
+        } = getTxCharterData(mph);
 
         if (needsMintDelegateApproval) {
             //!!! todo: add explicit activity details in authorization

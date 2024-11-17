@@ -28,7 +28,7 @@ import {
 // } from ProtocolSettings
 
 import {
-    getTxCharterDatum,
+    getTxCharterData,
     mkCapoCtx,
     CapoCtx,
     mkTokenShow,
@@ -65,14 +65,14 @@ import {
 //         // _isRelevantDatum : Bool = capoDatum.switch {
 //         //     // SettingsData => true,
 //         //     CharterData => true,
-//         //     _ => error("wrong use of updatingSettings action; must use only on CharterDatum")
+//         //     _ => error("wrong use of updatingSettings action; must use only on CharterData")
 //         // };
 //         // !!! move to SettingsDelegate?  or keep as a baseline check?
 //         // it requires the govAuthority to be present 
 //         REQT( "gov authority must be present to update settings");
 //         hasGovAuthority : Bool = mustHaveGovAuthority(
 //             mph: mph,
-//             charterDatum: charterDatum // already resolved
+//             charterData: charterData // already resolved
 //         );
 
 //         CapoDatum::CharterData{
@@ -386,7 +386,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     },
 
                     ValidatingSettings => {
-                        _charter : CapoDatum::CharterData = getTxCharterDatum(dd.mph);
+                        _charter : CapoDatum::CharterData = getTxCharterData(dd.mph);
 
                         // each application-specific delegate must validate the settings
                         // for itself?
@@ -419,37 +419,64 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         false
                     }
                 },
-                CapoLifecycleActivities{CLA} => {
+                CapoLifecycleActivities{dCLA} => {
+                    REQT("  ... with any CapoLifecycle activity: ");
                     cctx = mkCapoCtx(dd.mph).
                         withCharterInput().
                         requiresGovAuthority();                    
 
-                    wantsRole : DelegateRole = CLA.switch {
-                        forcingNewSpendDelegate => error("the forcingNewSpendDelegate escape-hatch activity is always handled directly by the Capo"),
-                        forcingNewMintDelegate => error("the forcingNewMintDelegate escape-hatch activity is always handled directly by the Capo"),
-                        removePendingDgtChange => DelegateRole::SpendDgt,
-                        commitPendingDgtChanges => DelegateRole::BothMintAndSpendDgt,
-                        updatingManifest => DelegateRole::SpendDgt,
+                    // wantsRole : DelegateRole = CLA.switch {
+                    //     forcingNewSpendDelegate => error("the forcingNewSpendDelegate escape-hatch activity is always handled directly by the Capo"),
+                    //     forcingNewMintDelegate => error("the forcingNewMintDelegate escape-hatch activity is always handled directly by the Capo"),
+                    //     removePendingDgtChange => DelegateRole::SpendDgt,
+                    //     commitPendingDgtChanges => DelegateRole::BothMintAndSpendDgt,
+                    //     updatingManifest => DelegateRole::SpendDgt,
 
-                        CreatingDelegate => {
-                            TODO("deprecate use of CLA::CreatingDelegate");
-                            DelegateRole::MintDgt
+                    //     CreatingDelegate => {
+                    //         TODO("deprecate use of CLA::CreatingDelegate");
+                    //         DelegateRole::MintDgt
+                    //     },
+
+                    //     queuePendingDgtChange => DelegateRole::BothMintAndSpendDgt
+                    //     // we want explicit handling of each case; don't use a default match here.
+                    //     // _ => error("DO NOT CATCH DEFAULT CASE HERE")
+                    // };
+                    // wantsRole.switch {
+                    neededRole = cctx.dgtRolesForLifecycleActivity(dCLA);
+                    myCurrentRole : DelegateRole = neededRole.switch {
+                        HandledByCapoOnly => {
+                            error("delegate invoked with invalid escape-hatch activity (always handled directly by the Capo)")
                         },
-
-                        queuePendingDgtChange => DelegateRole::BothMintAndSpendDgt
-                        // we want explicit handling of each case; don't use a default match here.
-                        // _ => error("DO NOT CATCH DEFAULT CASE HERE")
-                    };
-                    wantsRole.switch {
                         SpendDgt => {
-                            assert(isSpendDelegate && cctx.nowActingAsSpendDgt(), 
-                                "this Capo lifecycle activity is only valid on spend delegate, not "+ delegateName
-                            )                            
+                            REQT(
+                                "  ... this Capo lifecycle activity is only valid on spend delegate",
+                                isSpendDelegate 
+                            );
+                            assert(cctx.nowActingAsSpendDgt(), "<----- that can fail, this can't");                            
+                            print("  -- ok: spendDgt checking CapoLifecycleActivity");
+                            neededRole
                         },
                         MintDgt => {
-                            assert(isMintDelegate && cctx.nowActingAsMintDgt(),
-                                "this Capo lifecycle activity is only valid on mint delegate, not "+ delegateName
-                        )},
+                            REQT(
+                                "  ... this Capo lifecycle activity is only valid on mint delegate",
+                                isMintDelegate
+                            );
+                            assert(cctx.nowActingAsMintDgt(), "<----- that can fail, this can't");
+                            print("  -- ok: mintDgt checking CapoLifecycleActivity");
+                            neededRole
+                        },
+                        BothMintAndSpendDgt => {
+                            REQT("It EXPECTS the Capo to enforce the presence of the mintDgt (to check the right mint) and spendDgt (to validate the charter-update logic)");
+                            // REQT("  ... it needs the mintDgt to check mints & burns");// the new dgTkn creation");
+                            // REQT("  ... it uses the spendDgt to verify the correct charterData update");
+                            if (cctx.nowActingAsMintDgt(required:false)) {
+                                DelegateRole::MintDgt
+                            } else if (cctx.nowActingAsSpendDgt(required:false)) {
+                                DelegateRole::SpendDgt
+                            } else {
+                                error("this Capo lifecycle activity is only valid on mint/spend delegate, not "+ delegateName)
+                            }
+                        },
                         _ => error("no way") // unreachable
                     };
 
@@ -457,11 +484,18 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     // to the capo's own triggered lifecycle activity, given that the
                     // capoLifecycleActivity is what's involved on that end.  We
                     // ensure that is true here:
-                    REQT("cross-checks that the Capo's CharterData is activity-matched with delegate's activity");
+                    REQT("requires the Capo's CharterData activity to match this delegate's activity");
                     cctx.getCharterRedeemer().switch {
-                        capoLifecycleActivity => print("ok, matched with CharterData activity capoLifecycleActivity\n"),
+                        capoLifecycleActivity{cCLA} => {
+                            assert(
+                                cCLA == dCLA,
+                                "activity mismatch with Capo's CharterData activity"
+                            );
+                            print("  -- ok, CharterData capoLifecycleActivity matches ours\n")
+
+                        },
                         updatingCharter => {
-                            CLA.switch {
+                            dCLA.switch {
                                 CreatingDelegate => {
                                     print("ok, Capo:updatingCharter works for now with CreatingDelegate\n")
                                 },
@@ -471,7 +505,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         _ => error("this activity must match the capo's own CharterData activity")
                     };
 
-                    CLA.switch {
+                    dCLA.switch {
                         // the mint delegate is validating a mint that CREATES A NEW DELEGATE
                         // FOR APPLICATION-SPECIFIC PURPOSES. This can affect the structure of the Capo
                         // it defers to the specialized minting delegate, if any; the unspecialized mint delegate
@@ -482,97 +516,12 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                             TODO("XXX it should output the new delegate token to the Capo as a PendingDelegate datum");
                             REQT("validates creation of UUT for the new delegate, aligned to the purpose indicated");
 
-                            validateUutMinting(
-                                mph: dd.mph,
-                                seed: seed,
-                                purposes: []String{purpose},
-                                // otherMintedValue: ()
-                                mkTokenName: mkUutTnFactory(seed),
-                                // WE ARE the mint delegate.
-                                needsMintDelegateApproval: false 
-                            )
-                        },
-                        queuePendingDgtChange{action, role, name} => {
-                            print("  -- addingPendingDgt");
-                            charterDatum : CapoDatum::CharterData = cctx.getCharterDatum();
-                            action.switch {
-                                // when it's a Remove action, it's only valid in the spend-delegate.
-                                Remove => {
-                                    assert(cctx.nowActingAsSpendDgt(), "<----- that can fail, this can't");
-                                    error("unreachable")
-                                }, 
-                                // when it's an Add action or Replace action,
-                                // it's only valid in the mint-delegate 
-                                _ => {
-                                    assert(cctx.nowActingAsMintDgt(), "<----- that can fail, this can't")
-                                }
-                            };
-
-                            REQT("the new pending-delegate action is added on the front of the existing list of pending actions");
-                            oldPendingChanges = charterDatum.pendingDgtChanges;
-
-                            expectedChanges = oldPendingChanges.prepend(
-                                PendingDelegateChange{
-                                    action: action,
-                                    role: role,
-                                    name: name
-                                }
-                            );
-
-                            assert(
-                                charterDatum.pendingDgtChanges == expectedChanges, 
-                                "invalid update of pendingDgtChanges; should prepend the new action to the existing list."
-                            );
-
-                            hasNewPendingEntry : Bool = false; // finish me
-                            // cctx.mustOutputPendingDelegate(
-                            //     seed: seed,
-                            //     role: role,
-                            //     name: name
-                            // );
-
-                            passedAdditionalVerifications : Bool = action.switch {
-                                Remove => {
-                                    role.switch {
-                                        MintDgt => error("cannot Remove role: MintDgt"),
-                                        SpendDgt => error("cannot Remove role: SpendDgt"),
-                                        MintInvariant => error("cannot Remove role: MintInvariant"),
-                                        SpendInvariant => error("cannot Remove role: SpendInvariant"),
-                                        DgDataPolicy => {
-                                            assert(false, "todo")
-                                        },
-                                        OtherNamedDgt => {
-                                            assert(false, "todo")
-                                        },
-                                        BothMintAndSpendDgt => error(
-                                            "DelegateRole::BothMintAndSpend not applicable in queuePendingDgtChange activity"
-                                        )
-                                    };
-                                    REQT("doesn't allow a Remove to duplicate an Add or Replace or Remove entry");
-                                    TODO("^^^");
-
-                                    TODO("what else should be checked here?");
-                                    false
-                                },
-                                _ => {
-                                    if(false/*redundant*/) { assert(cctx.nowActingAsMintDgt(), "<----- that can fail, this can't") };
-
-                                    (seed: TxOutputId, purpose: String, dvh : Option[ValidatorHash], config) = action.switch { 
-                                        Remove => error("unreachable"), 
-                                        Add{seed, purpose, odvh, config} => {
-                                            (seed, purpose, odvh, config)
-                                        },
-                                        Replace{seed, purpose, odvh, config, _replacesDgt} => {
-                                            (seed, purpose, odvh, config)
-                                        }
-                                    };
-                                    
-                                    mkTokenName = mkUutTnFactory(seed);
-                                    dgTknName = mkTokenName(purpose);
-
-                                    
-                                    mintedDgTkn : Bool = bREQT("ensures the new delegate's UUT is minted in this txn")
-                                    && validateUutMinting(
+                            myCurrentRole.switch {
+                                MintDgt => {
+                                    REQT(
+                                        "validates the new delegate's UUT is minted"
+                                    );
+                                    if (validateUutMinting(
                                         mph: dd.mph,
                                         seed: seed,
                                         purposes: []String{purpose},
@@ -580,41 +529,151 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                         mkTokenName: mkUutTnFactory(seed),
                                         // WE ARE the mint delegate.
                                         needsMintDelegateApproval: false 
-                                    );
-
-                                    REQT("the new delegate is created with the indicated authority token");
-                                    delegate = RelativeDelegateLink{
-                                        uutName: dgTknName,
-                                        delegateValidatorHash: dvh,
-                                        config: config
+                                    )) { 
+                                        print("  -- ok, minted the new delegate's UUT\n") 
                                     };
+                                    REQT(
+                                        "the UUT must have the right disposition (is it checked somewhere else?!?)"
+                                    );
+                                    false // for now
+                                },
+                                _ => error("unreachable wrong role for CreatingDelegate")
+                            }
+                        },
+                        queuePendingDgtChange{action, role, name} => {
+                            REQT("... for the addingPendingDgt activity:");
+                            charterData : CapoDatum::CharterData = cctx.getCharterData();
+                            action.switch {
+                                Remove => {
+                                    print("   -- another delegate-role check would be redundant.");
+                                    // assert(cctx.nowActingAsSpendDgt(), "<----- that can fail, this can't");
+                                    myCurrentRole.switch {
+                                        SpendDgt => {
+                                            REQT("verifies that the delegate queued for removal is present in the Capo's charterData");
+                                            error("implement me")
+                                        },
+                                        _ => error("unreachable")
+                                    }
+                                }, 
+                                _ => assert(true, "no way")
+                            };
 
-                                    delegateTakesOwnership = delegate.hasValidOutput(
-                                        mph: dd.mph, 
-                                        required: true,
-                                        createdOrReturned: DgTkn::Created
+                            possibleMintDgtVerifications : Bool = myCurrentRole.switch {
+                                SpendDgt => /* no-op */ true,
+                                MintDgt => bREQT("(general) the mintDgt checks everything about the mint") && action.switch {
+                                    Remove => {
+                                        role.switch {
+                                            MintDgt => error("cannot Remove role: MintDgt"),
+                                            SpendDgt => error("cannot Remove role: SpendDgt"),
+                                            MintInvariant => error("cannot Remove role: MintInvariant"),
+                                            SpendInvariant => error("cannot Remove role: SpendInvariant"),
+                                            DgDataPolicy => {
+                                                assert(false, "todo")
+                                            },
+                                            OtherNamedDgt => {
+                                                assert(false, "todo")
+                                            },
+                                            BothMintAndSpendDgt => error(
+                                                "DelegateRole::BothMintAndSpend not applicable in queuePendingDgtChange activity"
+                                            )
+                                        };
+                                        REQT("doesn't allow a Remove to duplicate an Add or Replace or Remove entry");
+                                        TODO("^^^");
+
+                                        TODO("what else should be checked here?");
+                                        false
+                                    },
+                                    _ => {
+                                        if(false/*redundant*/) { assert(cctx.nowActingAsMintDgt(), "<----- that can fail, this can't") };
+
+                                        (seed: TxOutputId, purpose: String, dvh : Option[ValidatorHash], config) = action.switch { 
+                                            Remove => error("unreachable"), 
+                                            Add{seed, purpose, odvh, config} => {
+                                                (seed, purpose, odvh, config)
+                                            },
+                                            Replace{seed, purpose, odvh, config, _replacesDgt} => {
+                                                (seed, purpose, odvh, config)
+                                            }
+                                        };
+                                        
+                                        mkTokenName = mkUutTnFactory(seed);
+                                        dgTknName = mkTokenName(purpose);
+                                        
+                                        mintedDgTkn : Bool = bREQT("the new delegate is created with the indicated authority token")
+                                        && validateUutMinting(
+                                            mph: dd.mph,
+                                            seed: seed,
+                                            purposes: []String{purpose},
+                                            // otherMintedValue: ()
+                                            mkTokenName: mkUutTnFactory(seed),
+                                            // WE ARE the mint delegate.
+                                            needsMintDelegateApproval: false 
+                                        );
+                                        
+                                        delegate = RelativeDelegateLink{
+                                            uutName: dgTknName,
+                                            delegateValidatorHash: dvh,
+                                            config: config
+                                        };
+                                        
+                                        delegateTakesOwnership = bREQT("the new delegate takes ownership of the UUT") 
+                                        && delegate.hasValidOutput(
+                                            mph: dd.mph, 
+                                            required: true,
+                                            createdOrReturned: DgTkn::Created
+                                        );
+
+                                        mintedDgTkn && delegateTakesOwnership
+                                    }
+                                },
+                                _ => error("unreachable") // other DelegateRoles 
+                            }; // -> possibleMintDgtVerifications
+
+                            possibleSpendDgtVerifications : Bool = myCurrentRole.switch {
+                                MintDgt => /* no-op */ true,
+                                SpendDgt => {
+                                    REQT("(general) the spendDgt checks everything about the charterData update");
+
+                                    REQT("The new pending-delegate action must be added on the front of the existing list of pending actions");
+                                    oldPendingChanges = charterData.pendingDgtChanges;
+
+                                    expectedChanges = oldPendingChanges.prepend(
+                                        PendingDelegateChange{
+                                            action: action,
+                                            role: role,
+                                            name: name
+                                        }
+                                    );
+                                    nextCharterData = cctx.getNextCharterData();
+                                    newChangePrepended : Bool = nextCharterData.pendingDgtChanges == expectedChanges;
+                                    assert(
+                                        newChangePrepended, 
+                                        "invalid update of pendingDgtChanges; should prepend the new action to the existing list."
                                     );
 
-                                    isNotADuplicate = false;
-                                    REQT("TODO HERE: doesn't allow a Replace to duplicate an Add or Replace or Remove entry");
-                                    REQT("TODO HERE: enforces the presence of the matching Capo charter activity:CLA.queuePendingDgtChange");
+                                    REQT("doesn't allow a queued change to duplicate any other pending entry for the same delegate name");
+                                    isNotADuplicate = charterData.pendingDgtChanges.all( (pdc: PendingDelegateChange) -> Bool {
+                                        pdc.name != name
+                                    });
 
                                     possibleReplacementIsCorrect: Bool = action.switch {
                                         Remove => error("unreachable"),
                                         Add => true, // doesn't need to replace anything
                                         Replace{_seed, _purpose, _dvho, _config, acExistingDgt} => {
+                                            REQT("... when queuing a replacement delegate: ");
                                             REQT("invariants cannot be replaced");
                                             role.switch {
                                                 MintInvariant => error("cannot Replace role: MintInvariant"),
                                                 SpendInvariant => error("cannot Replace role: SpendInvariant"),
+                                                HandledByCapoOnly => error("HandledByCapoOnly role is not applicable in delegate context"),
                                                 _ => print("  -- ok (not trying to replace an invariant)")
                                             };
 
                                             mkSome = (ac: AssetClass) -> Option[AssetClass] { Option[AssetClass]::Some{ac} };
-                                            REQT("when queuing a replacement delegate -- the PendingDelegateAction's role + replacesDgt must match the existing delegate's authority token");
+                                            REQT("the PendingDelegateAction's role + replacesDgt must match the existing delegate's authority token");
                                             replacesDgTkn : Option[AssetClass] = role.switch {
-                                                MintDgt => mkSome(charterDatum.mintDelegateLink.acAuthorityToken(dd.mph)),
-                                                SpendDgt => mkSome(charterDatum.spendDelegateLink.acAuthorityToken(dd.mph)),
+                                                MintDgt => mkSome(charterData.mintDelegateLink.acAuthorityToken(dd.mph)),
+                                                SpendDgt => mkSome(charterData.spendDelegateLink.acAuthorityToken(dd.mph)),
                                                 DgDataPolicy => {
                                                     REQT("to Replace a dgDataPolicy, the named policy must be present in the Capo manifest");
                                                     error("todo: get authority-token for this dgDataPolicy")
@@ -628,7 +687,8 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                                     "DelegateRole::BothMintAndSpend not applicable in queuePendingDgtChange activity"
                                                 ),
                                                 MintInvariant => error("unreachable"),
-                                                SpendInvariant => error("unreachable")
+                                                SpendInvariant => error("unreachable"),
+                                                HandledByCapoOnly => error("unreachable")
                                             };
                                             assert(
                                                 acExistingDgt == replacesDgTkn.unwrap(),
@@ -640,18 +700,20 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                             );
 
                                             true
-                                        } // -> possibleReplacementIsCorrect
-                                    };
+                                        } 
+                                    }; // -> possibleReplacementIsCorrect
 
                                     true
-                                    && mintedDgTkn 
-                                    && delegateTakesOwnership 
+                                    && newChangePrepended
                                     && isNotADuplicate 
                                     && possibleReplacementIsCorrect
-                                }
-                            }; // -> passedAdditionalVerifications
-                                                    
-                            hasNewPendingEntry && passedAdditionalVerifications
+                                }, 
+                                _ => error("unreachable") // other DelegateRoles 
+                            }; // -> possibleSpendDgtVerifications
+                                                 
+                            true
+                            && possibleMintDgtVerifications 
+                            && possibleSpendDgtVerifications
                         },
                         removePendingDgtChange{_role, _name} => {
                             // this code-path is only found in the spend-delegate
@@ -768,7 +830,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     print("    -- e.g. using CapoCtx: cctx\n      .requiresNamedDelegateInput(delegateName)\n      .withSeededMintingActivity(seed)\n");
 
                     //!!! if the thing being created is a Settings record,
-                    //  make sure the capo CharterDatum is also being updated
+                    //  make sure the capo CharterData is also being updated
                     //  with a new manifest entry (settings -> this record-id)
 
                     true

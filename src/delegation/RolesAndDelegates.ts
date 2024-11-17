@@ -110,21 +110,21 @@ export type DelegateMap<KR extends Record<string, DelegateSetup<any, any, any>>>
 };
 
 /**
- * Standalone helper method defining a specific RoleMap; used in a Capo's delegateRoles() instance method
+ * Standalone helper method defining a specific DelegateMap; used in a Capo's delegateRoles() instance method
  * @remarks
  * 
- * Called with a set of literal role defintitions, the full type  of the RoleMap is inferred.
+ * Called with a set of literal role defintitions, the full type  of the DelegateMap is inferred.
  * 
  * Use {@link defineRole}() to create each role entry
  * 
  * @param roleMap - maps role-names to role-definitions
- * @typeParam RM - inferred type of the `roleMap` param
+ * @typeParam RM - inferred type of the `delegateMap` param
  * @public
  **/
 export function delegateRoles<const RM extends DelegateMap<any>>(
-    roleMap: RM
+    delegateMap: RM
 ): DelegateMap<RM> {
-    return roleMap;
+    return delegateMap;
 }
 
 type DelegateTypes = "spendDgt" | "mintDgt" | "authority" | "dgDataPolicy" | "other";

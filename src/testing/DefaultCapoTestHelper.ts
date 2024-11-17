@@ -11,7 +11,7 @@ import { Capo } from "../Capo.js";
 import type {
     CapoConfig,
     CharterDataLike,
-    MinimalCharterDatumArgs,
+    MinimalCharterDataArgs,
     hasBootstrappedCapoConfig,
     hasUutContext,
 } from "../Capo.js";
@@ -130,7 +130,7 @@ export class DefaultCapoTestHelper<
 
     // accesses the delegate roles, iterates the namedDelegate entries,
     // and uses txnCreateConfiguredDelegate() to trigger compilation of the script for each one
-    async checkDelegateScripts(args: Partial<MinimalCharterDatumArgs> = {}) {
+    async checkDelegateScripts(args: Partial<MinimalCharterDataArgs> = {}) {
         const { strella: capo } = this;
         const { delegateRoles } = capo;
         // const { namedDelegate: {
@@ -140,7 +140,7 @@ export class DefaultCapoTestHelper<
         const goodArgs = {
             ...this.mkDefaultCharterArgs(),
             ...args,
-        } as MinimalCharterDatumArgs;
+        } as MinimalCharterDataArgs;
 
         let helperTxn = await capo.mkTxnMintCharterToken(
             goodArgs,
@@ -198,7 +198,7 @@ export class DefaultCapoTestHelper<
         // }
     }
 
-    mkDefaultCharterArgs(): MinimalCharterDatumArgs {
+    mkDefaultCharterArgs(): MinimalCharterDataArgs {
         const addr = this.wallet.address;
         console.log("test helper charter -> actor addr", addr.toBech32());
         return {
@@ -223,7 +223,7 @@ export class DefaultCapoTestHelper<
     }
 
     async mintCharterToken(
-        args?: Partial<MinimalCharterDatumArgs>,
+        args?: Partial<MinimalCharterDataArgs>,
         submitOptions: SubmitOptions = {}
     ) {
         const { delay } = this;
@@ -241,7 +241,7 @@ export class DefaultCapoTestHelper<
         const goodArgs = {
             ...this.mkDefaultCharterArgs(),
             ...(args || {}),
-        } as MinimalCharterDatumArgs;
+        } as MinimalCharterDataArgs;
         // debugger
 
         const tcx = await capo.mkTxnMintCharterToken(goodArgs);

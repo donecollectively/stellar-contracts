@@ -183,7 +183,7 @@ enum CapoDatum {
                 self.serialize() != mph.serialize()
             ), "never thrown"
         );
-        assert(false, "unused?"); // see standalone getRefCharterDatum()
+        assert(false, "unused?"); // see standalone getRefCharterData()
         
         chVal : Value = tvCharter(mph);
         hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
@@ -368,7 +368,7 @@ func getRefCharterUtxo(mph : MintingPolicyHash) -> TxInput {
     charterUtxo
 }
 
-func getRefCharterDatum(mph : MintingPolicyHash) -> CapoDatum::CharterData {
+func getRefCharterData(mph : MintingPolicyHash) -> CapoDatum::CharterData {
     charterUtxo : TxInput = getRefCharterUtxo(mph);
     ctd : CapoDatum::CharterData = CapoDatum::CharterData::from_data( 
         charterUtxo.datum.inline
@@ -380,10 +380,10 @@ func getRefCharterDatum(mph : MintingPolicyHash) -> CapoDatum::CharterData {
 //! retrieves a required Capo Charter datum for the indicated minting-policy - 
 // ... either from the txn's reference inputs  or inputs.
 // prefer mkCapoCtx.needsCharter() for "get from anywhere" semantics
-// and cctx.getCharterDatum() to get the datum
+// and cctx.getCharterData() to get the datum
 //  (... or mkCapoCtx.withCharterRef() to require unchanged charter)
 //  (... or mkCapoCtx.withCharterInput() to require the charter to be spent & maybe updated)
-func getTxCharterDatum(
+func getTxCharterData(
     mph : MintingPolicyHash,
     refInputs : []TxInput = tx.ref_inputs
 ) -> CapoDatum::CharterData {
@@ -406,9 +406,9 @@ func getTxCharterDatum(
 
 func mustHaveGovAuthority(
     mph : MintingPolicyHash,
-    charterDatum : CapoDatum::CharterData = getTxCharterDatum(mph)
+    charterData : CapoDatum::CharterData = getTxCharterData(mph)
 ) -> Bool {
-    charterDatum.govAuthorityLink.hasValidOutput(mph)
+    charterData.govAuthorityLink.hasValidOutput(mph)
 }
 
 /**************************************************************
@@ -1076,8 +1076,8 @@ struct CapoCtx {
 
     func findManifestEntry(self, key: String) -> Option[CapoManifestEntry] {
         print("    -- looking for capo's manifest entry: "+key);
-        charterDatum : CapoDatum::CharterData = self.getCharterDatum();
-        charterDatum.manifest.get_safe(key)
+        charterData : CapoDatum::CharterData = self.getCharterData();
+        charterData.manifest.get_safe(key)
     }
 
     func mustFindManifestEntry(self, key: String) -> CapoManifestEntry {
@@ -1151,8 +1151,8 @@ struct CapoCtx {
     }
 
     func getNextManifestedDatumRaw(self, key: String) -> Data {
-        charterDatum : CapoDatum::CharterData = self.getCharterDatum();
-        manifestEntry : CapoManifestEntry = charterDatum.manifest.get_safe(key).switch{
+        charterData : CapoDatum::CharterData = self.getCharterData();
+        manifestEntry : CapoManifestEntry = charterData.manifest.get_safe(key).switch{
             Some{entry} => entry,
             None => error("missing required manifest entry: " + key)
         };
@@ -1168,8 +1168,8 @@ struct CapoCtx {
     }
 
     // func getRefSettingsUtxo(self) -> TxInput {
-    //     charterDatum : CapoDatum::CharterData = self.getCharterDatum();
-    //     settingsValue : Value = mkTv(mph: self.mph, tnBytes: charterDatum.settingsUut);
+    //     charterData : CapoDatum::CharterData = self.getCharterData();
+    //     settingsValue : Value = mkTv(mph: self.mph, tnBytes: charterData.settingsUut);
     //     hasSettings = (txin : TxInput) -> Bool { txin.value.contains(settingsValue) };
 
     //     print("getting ref_input for settings\n");
@@ -1183,7 +1183,9 @@ struct CapoCtx {
     // }
 
     func requiresGovAuthority(self) -> CapoCtx {
-        assert(self.getCharterDatum().govAuthorityLink.hasValidOutput(
+        REQT("it must have the Capo's govAuthority approval");
+
+        assert(self.getCharterData().govAuthorityLink.hasValidOutput(
             mph: self.mph  
         ) /*always true*/, "no way"); 
 
@@ -1197,7 +1199,7 @@ struct CapoCtx {
     // }
 
     func requiresNamedDelegateInput(self, dgtName: String) -> DelegateInput {
-        self.getCharterDatum().otherNamedDelegates.get_safe(dgtName).switch{
+        self.getCharterData().otherNamedDelegates.get_safe(dgtName).switch{
             None => error("missing required delegate with name: " + dgtName),
 
             Some{dgtLink} => {
@@ -1207,7 +1209,7 @@ struct CapoCtx {
     }
 
     func requiresDgDataPolicyInput(self, typeName: String, required: Bool = true) -> DelegateInput {
-        self.getCharterDatum().manifest.get_safe(typeName).switch{
+        self.getCharterData().manifest.get_safe(typeName).switch{
             None => error("missing required data policy with type: " + typeName),
             Some{entry} => {
                 dgtLink = entry.entryType.switch {
@@ -1230,10 +1232,10 @@ struct CapoCtx {
                 Some{i} => i == input,
                 None => false
             }
-        ).trace("\nacting on mintDgt-* right now? ");
+        ).trace("    -- acting on mintDgt-* right now? ");
         assert(
             isMintDgt || !required
-            , "\nnot acting as mint delegate"
+            , "not acting as mint delegate!"
         );
         isMintDgt
     }
@@ -1245,16 +1247,16 @@ struct CapoCtx {
                 Some{i} => i == input,
                 None => false
             }
-        ).trace("\nacting on spendDgt-* right now? ");
+        ).trace("    -- acting on spendDgt-* right now? ");
         assert(
              isSpendDgt || !required
-            , "not acting as spend delegate"
+            , "not acting as spend delegate!"
         );
         isSpendDgt
     }
 
     func requiresMintDelegateInput(self, required: Bool = true) -> DelegateInput {
-        dgtLink : RelativeDelegateLink = self.getCharterDatum().mintDelegateLink;
+        dgtLink : RelativeDelegateLink = self.getCharterData().mintDelegateLink;
         self.requiresDelegateInput(
             dgtLink: dgtLink, 
             role: DelegateRole::MintDgt,
@@ -1263,7 +1265,8 @@ struct CapoCtx {
     }
 
     func requiresSpendDelegateInput(self, required: Bool = true) -> DelegateInput {
-        dgtLink : RelativeDelegateLink = self.getCharterDatum().spendDelegateLink;
+        dgtLink : RelativeDelegateLink = self.getCharterData().spendDelegateLink;
+
         self.requiresDelegateInput(
             dgtLink: dgtLink, 
             role: DelegateRole::SpendDgt,
@@ -1272,26 +1275,26 @@ struct CapoCtx {
     }
 
     // internal / low-level function
-    func getCharterDatum(self) -> CapoDatum::CharterData {
+    func getCharterData(self) -> CapoDatum::CharterData {
         self.charter.switch {
             RefInput{datum, _} => datum,
             Input{datum, _} => datum,
-            _ => error("CapoCtx.getCharterDatum(): unknown charter strategy; use result of withCharterInput(), withCharterRef(), or needsCharter() to resolve charter datum first")
+            _ => error("CapoCtx.getCharterData(): unknown charter strategy; use result of withCharterInput(), withCharterRef(), or needsCharter() to resolve charter datum first")
         }
     }
 
     func getNextCharterData(self) -> CapoDatum::CharterData {
         self.charter.switch {
             Input => {
-                charterDatum : CapoDatum::CharterData = CapoDatum::from_data(
+                charterData : CapoDatum::CharterData = CapoDatum::from_data(
                     tx.outputs.find( (txo: TxOutput) -> Bool {
                         txo.address == self.resolveCharterUtxo().address &&
                         txo.value.contains(mkTv(self.mph, "charter"))
                     }).datum.inline
                 );
-                charterDatum
+                charterData
             },
-            _ => error("CapoCtx.getNextCharterDatum(): invalid except with charter strategy Input")
+            _ => error("CapoCtx.getNextCharterData(): invalid except with charter strategy Input")
         }
     }
 
@@ -1541,7 +1544,7 @@ struct CapoCtx {
                         print("\n");
                         error("❌ 📎 outDD: bad type: "+data.type)
                     } else {
-                        print(newDataId.decode_utf8());                        
+                        print(newDataId.decode_utf8());
                         print("\n✅ 📎 ^ outDD: ok: ^ outDD to Capo\n");
                         true
                     }
@@ -1641,6 +1644,8 @@ struct CapoCtx {
     
     // doesn't care where the charter info comes from - refinput or input, both OK
     func needsCharter(self) -> CapoCtx {
+        REQT("requires the charter to be available in the transaction (input or ref)");
+
         charter : cctx_CharterInputType = self.charter;
         charter.switch {
             RefInput => self,
@@ -1671,8 +1676,9 @@ struct CapoCtx {
     }
 
     func withCharterInput(self) -> CapoCtx {
-        charter : cctx_CharterInputType = self.charter;
+        REQT("requires the charter to be spent in the inputs");
 
+        charter : cctx_CharterInputType = self.charter;
         charter.switch {
             Input => self,
             RefInput => error("CapoCtx.withCharterInput(): charter is from ref!"),
@@ -1682,7 +1688,7 @@ struct CapoCtx {
                 chVal : Value = tvCharter(mph);
                 hasCharter = (txin : TxInput) -> Bool { txin.value.contains(chVal) };
         
-                print("CapoCtx finding charter in inputs\n");
+                print("    -- CapoCtx finding charter in inputs\n");
                 charterUtxo: TxInput = tx.inputs.find_safe(hasCharter).switch{
                     Some{ch} => ch,
                     None => error("Missing required charter input")
@@ -1690,7 +1696,7 @@ struct CapoCtx {
                 datum : CapoDatum::CharterData = CapoDatum::CharterData::from_data( 
                     charterUtxo.datum.inline
                 );
-                // datum : CapoDatum::CharterData = getTxCharterDatum(self.mph);
+                // datum : CapoDatum::CharterData = getTxCharterData(self.mph);
                 CapoCtx{mph, cctx_CharterInputType::Input{datum, charterUtxo}}
                 // self.copy(charter: cctx_CharterInputType::Input{charterUtxo, datum})
             }
@@ -1711,6 +1717,8 @@ struct CapoCtx {
     // }
 
     func withCharterRef(self) -> CapoCtx {
+        REQT("requires the charter to be referenced in the txn, but unspent");
+
         charter : cctx_CharterInputType = self.charter;
         charter.switch {
             RefInput => self,
@@ -1730,12 +1738,12 @@ struct CapoCtx {
     }
 
     func allDelegatesAreValidatingSettings(self) -> Bool {
-        charterDatum = self.getCharterDatum();
+        charterData = self.getCharterData();
         mph = self.mph;
         // REQT( "gov authority must be present to update settings");
         // hasGovAuthority : Bool = mustHaveGovAuthority(
         //     mph: mph,
-        //     charterDatum: charterDatum // already resolved
+        //     charterData: charterData // already resolved
         // );
 
         CapoDatum::CharterData{
@@ -1747,7 +1755,7 @@ struct CapoCtx {
             govDelegate,
             manifest,
             _pendingDelegates
-        } = charterDatum;
+        } = charterData;
 
         // REQT("the current Settings must be spent and updated");
         // settingsDgtLink : RelativeDelegateLink = manifest.get_safe("settings").switch {
@@ -1869,6 +1877,42 @@ struct CapoCtx {
         spendInvariantsAreValidating &&
         mintInvariantsAreValidating &&
         namedDelegatesAreValidating 
+    }
+
+    func dgtRolesForLifecycleActivity(self, activity: CapoLifecycleActivity) -> DelegateRole {
+        assert(true || /*never executed*/ self == self, "prevent unused var");
+
+        activity.switch {
+            forcingNewSpendDelegate => error("the forcingNewSpendDelegate escape-hatch activity is always handled directly by the Capo"),
+            forcingNewMintDelegate => error("the forcingNewMintDelegate escape-hatch activity is always handled directly by the Capo"),
+
+            updatingManifest => {
+                REQT("... for updating the Capo manifest...");
+                DelegateRole::SpendDgt
+            },
+
+            queuePendingDgtChange => {
+                REQT("... for queuing a pending dgt-change...");
+                DelegateRole::BothMintAndSpendDgt
+            },
+            removePendingDgtChange => {
+                REQT("... for removing a pending dgt-change entry...");
+                DelegateRole::SpendDgt
+            },
+            commitPendingDgtChanges => {
+                REQT("... for committing pending dgt-changes...");
+                 DelegateRole::BothMintAndSpendDgt
+            },
+
+            CreatingDelegate => {
+                REQT("... for creating a new delegate (deprecated path)...");
+                TODO("deprecate use of CLA::CreatingDelegate");
+                DelegateRole::MintDgt
+            }
+
+            // we want explicit handling of each case; don't use a default match here.
+            // _ => error("DO NOT CATCH DEFAULT CASE HERE")
+        }
     }
 
 }

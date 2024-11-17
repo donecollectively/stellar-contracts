@@ -275,7 +275,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         // tell the spend delegate to allow the spend,
         // ... by authority of the delegated-data controller
         const spendDelegate = (await capo.getSpendDelegate(
-            tcx2.state.charterDatum
+            tcx2.state.charterData
         ));
         const typeName = this.recordTypeName;
         const tcx2a = await spendDelegate.txnGrantAuthority(

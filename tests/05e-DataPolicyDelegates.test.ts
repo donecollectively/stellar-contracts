@@ -81,12 +81,18 @@ class DataPolicyDelegateTestCapo extends CapoWithoutSettings {
             delegateClass: MintDelegateWithGenericUuts,
             validateConfig(args) {
             }
-        })
+        });
+        const spendDelegate = defineRole("spendDgt", MintDelegateWithGenericUuts, {
+            delegateClass: MintDelegateWithGenericUuts,
+            validateConfig(args) {
+            }
+        });
 
         return delegateRoles({
             ...inherited,
             // noDefault: defineRole("", CapoMinter, {}),
             mintDelegate,
+            spendDelegate,
             inventionPolicy: defineRole("dgDataPolicy", InventionPolicy, {})
             
         })// as any; // TODO - update types so this structure fits the expected type
@@ -149,7 +155,7 @@ describe("Capo", async () => {
             // prettier-ignore
             const {h, h:{network, actors, delay, state} } = context;
 
-            const charter = await capo.findCharterDatum();
+            const charter = await capo.findCharterData();
             expect(charter.otherNamedDelegates).toBeTruthy();
             expect(Object.keys(charter.otherNamedDelegates).length).toBe(0);
 
@@ -158,11 +164,33 @@ describe("Capo", async () => {
             await tcx.submit();
             network.tick(1);
 
-            const charter2 = await capo.findCharterDatum();
-            expect(charter2.otherNamedDelegates).toBeTruthy();
+            const charter2 = await capo.findCharterData();
+            expect(charter2.pendingDgtChanges).toBeTruthy();
             console.log("charter2.namedDelegates", charter2.otherNamedDelegates);
-            expect(charter2.otherNamedDelegates.size).toBe(1);
+            expect(charter2.pendingDgtChanges.length).toBe(1);
         });
+
+        it ("refuses to queue an additional change for the same policy name", async (context: localTC) => {
+            // prettier-ignore
+            const {h, h:{network, actors, delay, state} } = context;
+
+            const charter = await capo.findCharterData();
+            expect(charter.otherNamedDelegates).toBeTruthy();
+            expect(Object.keys(charter.otherNamedDelegates).length).toBe(0);
+
+            const tcx = await capo.mkTxnInstallingPolicyDelegate("inventionPolicy");
+            expect(tcx.state).toBeTruthy()
+            await tcx.submit();
+            network.tick(1);
+
+            const tcx2 = await capo.mkTxnInstallingPolicyDelegate("inventionPolicy");
+            expect(tcx.state).toBeTruthy()
+            const submitting = tcx.submit();
+            await expect(submitting).rejects.toThrow("already has a pending change for this delegate");
+        })
+
+
+
     })
 
 

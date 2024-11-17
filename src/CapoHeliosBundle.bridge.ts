@@ -555,6 +555,16 @@ export class DelegateRoleHelper extends EnumBridge<JustAnEnum> {
             "CapoDelegateHelpers::DelegateRole.BothMintAndSpendDgt");
         return uplc;
     } /* tagOnly variant accessor */
+
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::DelegateRole.HandledByCapoOnly"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#7***
+ */
+    get HandledByCapoOnly() {
+        const uplc = this.mkUplcData({ HandledByCapoOnly: {} }, 
+            "CapoDelegateHelpers::DelegateRole.HandledByCapoOnly");
+        return uplc;
+    } /* tagOnly variant accessor */
 }/*mkEnumHelperClass*/
 
 
@@ -1538,6 +1548,13 @@ export const DelegateRoleSchema : EnumTypeSchema = {
             "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
             "name": "BothMintAndSpendDgt",
             "fieldTypes": []
+        },
+        {
+            "kind": "variant",
+            "tag": 7,
+            "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+            "name": "HandledByCapoOnly",
+            "fieldTypes": []
         }
     ]
 };
@@ -1664,6 +1681,13 @@ export const ManifestEntryTypeSchema : EnumTypeSchema = {
                                 "tag": 6,
                                 "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                                 "name": "BothMintAndSpendDgt",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 7,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                                "name": "HandledByCapoOnly",
                                 "fieldTypes": []
                             }
                         ]
@@ -1825,6 +1849,13 @@ export const CapoManifestEntrySchema : StructTypeSchema = {
                                             "tag": 6,
                                             "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                                             "name": "BothMintAndSpendDgt",
+                                            "fieldTypes": []
+                                        },
+                                        {
+                                            "kind": "variant",
+                                            "tag": 7,
+                                            "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                                            "name": "HandledByCapoOnly",
                                             "fieldTypes": []
                                         }
                                     ]
@@ -2140,6 +2171,13 @@ export const PendingDelegateChangeSchema : StructTypeSchema = {
                         "tag": 6,
                         "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                         "name": "BothMintAndSpendDgt",
+                        "fieldTypes": []
+                    },
+                    {
+                        "kind": "variant",
+                        "tag": 7,
+                        "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                        "name": "HandledByCapoOnly",
                         "fieldTypes": []
                     }
                 ]
@@ -2556,6 +2594,13 @@ export const CapoDatumSchema : EnumTypeSchema = {
                                                                     "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                                                                     "name": "BothMintAndSpendDgt",
                                                                     "fieldTypes": []
+                                                                },
+                                                                {
+                                                                    "kind": "variant",
+                                                                    "tag": 7,
+                                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                                                                    "name": "HandledByCapoOnly",
+                                                                    "fieldTypes": []
                                                                 }
                                                             ]
                                                         }
@@ -2775,6 +2820,13 @@ export const CapoDatumSchema : EnumTypeSchema = {
                                                 "tag": 6,
                                                 "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                                                 "name": "BothMintAndSpendDgt",
+                                                "fieldTypes": []
+                                            },
+                                            {
+                                                "kind": "variant",
+                                                "tag": 7,
+                                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                                                "name": "HandledByCapoOnly",
                                                 "fieldTypes": []
                                             }
                                         ]
@@ -3134,6 +3186,13 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
                                 "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                                 "name": "BothMintAndSpendDgt",
                                 "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 7,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                                "name": "HandledByCapoOnly",
+                                "fieldTypes": []
                             }
                         ]
                     }
@@ -3210,6 +3269,13 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
                                 "tag": 6,
                                 "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                                 "name": "BothMintAndSpendDgt",
+                                "fieldTypes": []
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 7,
+                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                                "name": "HandledByCapoOnly",
                                 "fieldTypes": []
                             }
                         ]
@@ -3583,6 +3649,13 @@ export const CapoActivitySchema : EnumTypeSchema = {
                                                     "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                                                     "name": "BothMintAndSpendDgt",
                                                     "fieldTypes": []
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 7,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                                                    "name": "HandledByCapoOnly",
+                                                    "fieldTypes": []
                                                 }
                                             ]
                                         }
@@ -3659,6 +3732,13 @@ export const CapoActivitySchema : EnumTypeSchema = {
                                                     "tag": 6,
                                                     "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
                                                     "name": "BothMintAndSpendDgt",
+                                                    "fieldTypes": []
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 7,
+                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
+                                                    "name": "HandledByCapoOnly",
                                                     "fieldTypes": []
                                                 }
                                             ]

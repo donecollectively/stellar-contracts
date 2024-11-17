@@ -101,8 +101,8 @@ func main(r : MinterActivity) -> Bool {
             // ^^ fails if there's no charter output to the right address
 
             // print("defaultMinter @C");
-            charterData : Data = charterOutput.datum.inline;
-            charterDatum = CapoDatum::CharterData::from_data(charterData);
+            rawCharterData : Data = charterOutput.datum.inline;
+            charterData = CapoDatum::CharterData::from_data(rawCharterData);
             CharterData{
                 spendDgt, 
                 spendInvariants,
@@ -112,7 +112,7 @@ func main(r : MinterActivity) -> Bool {
                 authDgt,
                 manifest,
                 pendingDelegates
-            } = charterDatum;
+            } = charterData;
             // settings are not essential to a Capo.
             // ... some Capos could use settings, and it would be
             // ... up to its mint/spend delegate to enforce their presence.
@@ -161,7 +161,7 @@ func main(r : MinterActivity) -> Bool {
                 //     // };
                                     
                 //     outputAndDatum[CapoDatum::DelegatedData] = 
-                //         charterDatum.mustFindSettingsOutput(mph: mph, inAddr: charter.owner);
+                //         charterData.mustFindSettingsOutput(mph: mph, inAddr: charter.owner);
                 //     assert(foundSettings == foundSettings, "no way");
 
                 //     true

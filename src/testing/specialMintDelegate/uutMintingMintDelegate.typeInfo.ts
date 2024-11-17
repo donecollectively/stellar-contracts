@@ -471,6 +471,9 @@ export type DelegateRoleMeta = EnumTypeMeta<
         >,
         BothMintAndSpendDgt: singleEnumVariantMeta<DelegateRoleMeta, "BothMintAndSpendDgt",
             "Constr#6", "tagOnly", tagOnly, "noSpecialFlags"
+        >,
+        HandledByCapoOnly: singleEnumVariantMeta<DelegateRoleMeta, "HandledByCapoOnly",
+            "Constr#7", "tagOnly", tagOnly, "noSpecialFlags"
         >
     }
 >;
@@ -480,7 +483,7 @@ export type DelegateRoleMeta = EnumTypeMeta<
  * DelegateRole enum variants
  * 
  * @remarks - expresses the essential raw data structures
- * supporting the **7 variant(s)** of the DelegateRole enum type
+ * supporting the **8 variant(s)** of the DelegateRole enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `DelegateRoleHelper` class
  *     for generating UPLC data for this enum type
@@ -493,6 +496,7 @@ export type DelegateRole =
         | { DgDataPolicy: tagOnly /*minEnumVariant*/ }
         | { OtherNamedDgt: tagOnly /*minEnumVariant*/ }
         | { BothMintAndSpendDgt: tagOnly /*minEnumVariant*/ }
+        | { HandledByCapoOnly: tagOnly /*minEnumVariant*/ }
 
 export type ErgoDelegateRole = IntersectedEnum<DelegateRole/*like canon enum*/>
 
@@ -500,7 +504,7 @@ export type ErgoDelegateRole = IntersectedEnum<DelegateRole/*like canon enum*/>
  * DelegateRole enum variants (permissive)
  * 
  * @remarks - expresses the allowable data structure
- * for creating any of the **7 variant(s)** of the DelegateRole enum type
+ * for creating any of the **8 variant(s)** of the DelegateRole enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `DelegateRoleHelper` class
  *     for generating UPLC data for this enum type
@@ -517,6 +521,7 @@ export type DelegateRoleLike = IntersectedEnum<
         | { DgDataPolicy: tagOnly /*minEnumVariant*/ }
         | { OtherNamedDgt: tagOnly /*minEnumVariant*/ }
         | { BothMintAndSpendDgt: tagOnly /*minEnumVariant*/ }
+        | { HandledByCapoOnly: tagOnly /*minEnumVariant*/ }
 >
 
 export type CapoLifecycleActivity$queuePendingDgtChange = {

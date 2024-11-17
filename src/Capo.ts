@@ -358,7 +358,7 @@ export type basicDelegateMap<
 export type hasCharterRef = StellarTxnContext<
     anyState & {
         charterRef: TxInput;
-        charterDatum: CharterData;
+        charterData: CharterData;
     }
 >;
 
@@ -424,7 +424,7 @@ export type CharterDataLike = CapoDatum$CharterDataLike;
  * to the on-chain form during mkTxnMintCharterToken().
  * @public
  **/
-export interface MinimalCharterDatumArgs extends configBaseWithRev {
+export interface MinimalCharterDataArgs extends configBaseWithRev {
     spendDelegateLink: OffchainPartialDelegateLink;
     spendInvariants: OffchainPartialDelegateLink[];
     otherNamedDelegates: Map<string, OffchainPartialDelegateLink>;
@@ -444,8 +444,7 @@ export interface MinimalCharterDatumArgs extends configBaseWithRev {
  *
  * @public
  **/
-export type newMinimalCharterDatumArgs_maybeUnneeded = {
-    // RemainingMinimalCharterDatumArgs<DAT> & {
+export type newMinimalCharterDataArgs_maybeUnneeded = {
     govAuthorityLink: MinimalDelegateLink;
     mintDelegateLink: MinimalDelegateLink;
     spendDelegateLink: MinimalDelegateLink;
@@ -453,7 +452,7 @@ export type newMinimalCharterDatumArgs_maybeUnneeded = {
     spendInvariants: MinimalDelegateLink[];
 };
 
-export type RemainingMinimalCharterDatumArgs = Omit<
+export type RemainingMinimalCharterDataArgs = Omit<
     CharterDataLike,
     "govAuthorityLink" | "mintDelegateLink" | "spendDelegateLink"
 >;
@@ -548,8 +547,6 @@ export type hasDelegateMap<
  * standalone multi-sig contract, which can contain all (and only) the multi-sig logic.  Separating the
  * responsibilities makes each part simpler, easing the process of ensuring each part is doing its job
  * perfectly :pray:
- *
- * Inherits from: {@link StellarContract}\<`CharterDatumProps`\> (is this a redundant doc entry?) .
  *
  * @public
  */
@@ -1026,11 +1023,11 @@ export abstract class Capo<
         const ctUtxo = await this.mustFindCharterUtxo();
         tcx.addRefInput(ctUtxo);
 
-        const charterDatum = await this.findCharterDatum(ctUtxo);
+        const charterData = await this.findCharterData(ctUtxo);
 
         const tcx2 = tcx as TCX & hasCharterRef;
         tcx2.state.charterRef = ctUtxo;
-        tcx2.state.charterDatum = charterDatum;
+        tcx2.state.charterData = charterData;
         return tcx2.addRefInput(ctUtxo);
     }
 
@@ -1145,7 +1142,7 @@ export abstract class Capo<
         spendDelegate: ContractBasedDelegate,
         activity: isActivity
     ): Promise<TCX & hasSpendDelegate> {
-        const charterDatum = tcx.state.charterDatum;
+        // const charterData = tcx.state.charterData;
 
         const tcx2 = tcx as TCX & hasSpendDelegate;
         tcx2.state.spendDelegate = spendDelegate;
@@ -1210,7 +1207,7 @@ export abstract class Capo<
 
     /**
      * parses details in a delegate-link
-     * @deprecated - use an adapter for CharterDatum instead?
+     * @deprecated - use an adapter for CharterData instead?
      */
     offchainLink<
         T extends
@@ -1260,7 +1257,7 @@ export abstract class Capo<
     /**
      * @deprecated - use the bridge type directly, and parseDgtConfig iff we ever need that.
      */
-    parseDelegateLinksInCharter(charterDatum: CharterData) {
+    parseDelegateLinksInCharter(charterData: CharterData) {
         // spendDelegateLink: RelativeDelegateLink<ContractBasedDelegate<capoDelegateConfig>>;
         // spendInvariants: RelativeDelegateLink<ContractBasedDelegate<capoDelegateConfig>>[];
         // namedDelegates: Record<string, RelativeDelegateLink<StellarDelegate<capoDelegateConfig>>>;
@@ -1268,21 +1265,21 @@ export abstract class Capo<
         // mintInvariants: RelativeDelegateLink<ContractBasedDelegate<capoDelegateConfig>>[];
         // govAuthorityLink: RelativeDelegateLink<AuthorityPolicy>;
 
-        const { otherNamedDelegates: nDgts, manifest } = charterDatum;
+        const { otherNamedDelegates: nDgts, manifest } = charterData;
         const namedDgtEntries =
             nDgts instanceof Map ? [...nDgts.entries()] : Object.entries(nDgts);
 
         // const withParsedOffchainLinks: CharterDataLike = {
-        //     ...charterDatum,
+        //     ...charterData,
         //     spendDelegateLink: this.offchainLink(
-        //         charterDatum.spendDelegateLink
+        //         charterData.spendDelegateLink
         //     ),
-        //     spendInvariants: charterDatum.spendInvariants.map(
+        //     spendInvariants: charterData.spendInvariants.map(
         //         this.offchainLink
         //     ),
-        //     mintDelegateLink: this.offchainLink(charterDatum.mintDelegateLink),
-        //     mintInvariants: charterDatum.mintInvariants.map(this.offchainLink),
-        //     govAuthorityLink: this.offchainLink(charterDatum.govAuthorityLink),
+        //     mintDelegateLink: this.offchainLink(charterData.mintDelegateLink),
+        //     mintInvariants: charterData.mintInvariants.map(this.offchainLink),
+        //     govAuthorityLink: this.offchainLink(charterData.govAuthorityLink),
         //     otherNamedDelegates: new Map(
         //         namedDgtEntries.map(([k, v]) => [k, this.offchainLink(v)])
         //     ),
@@ -1307,11 +1304,11 @@ export abstract class Capo<
         // return withParsedOffchainLinks;
     }
 
-    async findCharterDatum(currentCharterUtxo?: TxInput): Promise<CharterData> {
+    async findCharterData(currentCharterUtxo?: TxInput): Promise<CharterData> {
         // const ts1 = Date.now();
         // if (globalThis.__profile__) {
         //     debugger
-        //     console.profile("findCharterDatum");
+        //     console.profile("findCharterData");
         // }
         if (!currentCharterUtxo) {
             currentCharterUtxo = await this.mustFindCharterUtxo();
@@ -1323,26 +1320,26 @@ export abstract class Capo<
         if (!charterData) throw Error(`invalid charter UTxO datum`);
         return charterData;
         // if (globalThis.__profile__) {
-        //     console.profileEnd("findCharterDatum")
+        //     console.profileEnd("findCharterData")
         // }
         // const ts2 = Date.now();
-        // console.log(`  ⏱️ findCharterDatum took ${ts2 - ts1}ms`);
-        // return this.parseDelegateLinksInCharter(charterDatum);
+        // console.log(`  ⏱️ findCharterData took ${ts2 - ts1}ms`);
+        // return this.parseDelegateLinksInCharter(charterData);
     }
 
     // async findSettingsUtxo(
-    //     charterRefOrInputOrProps?: hasCharterRef | TxInput | CharterDatumProps
+    //     charterRefOrInputOrProps?: hasCharterRef | TxInput | CharterDataProps
     // ) {
     //     const chUtxo =
     //         charterRefOrInputOrProps || (await this.mustFindCharterUtxo());
-    //     const charterDatum =
+    //     const charterData =
     //         charterRefOrInputOrProps instanceof StellarTxnContext
-    //             ? charterRefOrInputOrProps.state.charterDatum
+    //             ? charterRefOrInputOrProps.state.charterData
     //             : !charterRefOrInputOrProps ||
     //               charterRefOrInputOrProps instanceof TxInput
-    //             ? await this.findCharterDatum(chUtxo as TxInput)
+    //             ? await this.findCharterData(chUtxo as TxInput)
     //             : charterRefOrInputOrProps;
-    //     const uutName = charterDatum.settingsUut;
+    //     const uutName = charterData.settingsUut;
 
     //     const uutValue = this.uutsValue(uutName);
 
@@ -2099,7 +2096,7 @@ export abstract class Capo<
             );
         }
 
-        const charter = await this.findCharterDatum();
+        const charter = await this.findCharterData();
         const { govAuthorityLink, mintDelegateLink, spendDelegateLink } =
             charter;
 
@@ -2187,8 +2184,8 @@ export abstract class Capo<
     //     return adapter.toOnchainDatum(settings) as any;
     // }
 
-    async findGovDelegate(charterDatum?: CharterData) {
-        const chD = charterDatum || (await this.findCharterDatum());
+    async findGovDelegate(charterData?: CharterData) {
+        const chD = charterData || (await this.findCharterData());
 
         const capoGovDelegate = await this.connectDelegateWithOnchainRDLink(
             "govAuthority",
@@ -2205,15 +2202,15 @@ export abstract class Capo<
     async txnAddGovAuthority<TCX extends StellarTxnContext>(
         tcx: TCX
     ): Promise<TCX & hasGovAuthority> {
-        const charterDatumMaybe =
-            "charterDatum" in tcx.state
-                ? (tcx.state.charterDatum as CharterData)
+        const charterDataMaybe =
+            "charterData" in tcx.state
+                ? (tcx.state.charterData as CharterData)
                 : undefined;
         //@ts-expect-error on this type-probe
         if (tcx.state.govAuthority) {
             return tcx as TCX & hasGovAuthority;
         }
-        const capoGovDelegate = await this.findGovDelegate(charterDatumMaybe);
+        const capoGovDelegate = await this.findGovDelegate(charterDataMaybe);
         console.log("adding charter's govAuthority");
 
         // !!! TODO: add a type to the TCX, indicating presence of the govAuthority UUT
@@ -2252,13 +2249,13 @@ export abstract class Capo<
         // <
         //     T extends BasicMintDelegate=BasicMintDelegate
         // >(
-        charterDatum?: Option<CharterData>
+        charterData?: Option<CharterData>
     ): Promise<BasicMintDelegate> {
         if (!this.configIn) {
             throw new Error(`what now?`);
         }
         //!!! needs to work also during bootstrapping.
-        const chD = charterDatum || (await this.findCharterDatum());
+        const chD = charterData || (await this.findCharterData());
 
         return this.connectDelegateWithOnchainRDLink<
             "mintDelegate",
@@ -2266,10 +2263,10 @@ export abstract class Capo<
         >("mintDelegate", chD.mintDelegateLink);
     }
 
-    async getSpendDelegate(charterDatum?: Option<CharterData>) {
-        const chD = charterDatum || (await this.findCharterDatum());
-        // if (!charterDatum) {
-        //     charterDatum = await this.findCharterDatum();
+    async getSpendDelegate(charterData?: Option<CharterData>) {
+        const chD = charterData || (await this.findCharterData());
+        // if (!charterData) {
+        //     charterData = await this.findCharterData();
         // }
 
         return this.connectDelegateWithOnchainRDLink<
@@ -2278,8 +2275,8 @@ export abstract class Capo<
         >("spendDelegate", chD.spendDelegateLink);
     }
 
-    async getDgDataController(typeName: string, charterDatum?: CharterData) {
-        const chD = charterDatum || (await this.findCharterDatum());
+    async getDgDataController(typeName: string, charterData?: CharterData) {
+        const chD = charterData || (await this.findCharterData());
         const foundME = chD.manifest.get(typeName);
         if (!foundME) {
             throw new Error(`no manifest entry found for ${typeName}`);
@@ -2306,9 +2303,9 @@ export abstract class Capo<
      **/
     async getOtherNamedDelegate(
         delegateName: string,
-        charterDatum?: CharterData
+        charterData?: CharterData
     ): Promise<ContractBasedDelegate> {
-        const chD = charterDatum || (await this.findCharterDatum());
+        const chD = charterData || (await this.findCharterData());
 
         const foundDelegateLink = chD.otherNamedDelegates.get(delegateName);
         if (!foundDelegateLink) {
@@ -2322,8 +2319,8 @@ export abstract class Capo<
         >(delegateName, foundDelegateLink);
     }
 
-    async getNamedDelegates(charterDatum?: CharterData) {
-        const chD = charterDatum || (await this.findCharterDatum());
+    async getNamedDelegates(charterData?: CharterData) {
+        const chD = charterData || (await this.findCharterData());
         const namedDelegates = chD.otherNamedDelegates;
 
         const allNamedDelegates = [...namedDelegates.entries()].map(
@@ -2342,7 +2339,7 @@ export abstract class Capo<
         return Object.fromEntries(done);
     }
 
-    async getGovDelegate(charterDatum?: CharterData) {
+    async getGovDelegate(charterData?: CharterData) {
         throw new Error("unused");
     }
 
@@ -2356,7 +2353,7 @@ export abstract class Capo<
         minter: CapoMinter;
         seedUtxo: TxInput;
         configIn: CapoConfig;
-        args: MinimalCharterDatumArgs;
+        args: MinimalCharterDataArgs;
     } = {} as any;
 
     /**
@@ -2367,7 +2364,7 @@ export abstract class Capo<
      * capturing the details for reproducing the contract's settings and on-chain
      * address.
      *
-     * @param charterDatumArgs - initial details for the charter datum
+     * @param charterDataArgs - initial details for the charter datum
      * @param existinTcx - any existing transaction context
      * @typeParam TCX - inferred type of a provided transaction context
      * @public
@@ -2389,7 +2386,7 @@ export abstract class Capo<
                 | "setting"
             >
     >(
-        charterDatumArgs: MinimalCharterDatumArgs,
+        charterDataArgs: MinimalCharterDataArgs,
         existingTcx?: TCX,
         dryRun?: "DRY_RUN"
     ) {
@@ -2403,7 +2400,7 @@ export abstract class Capo<
 
             if (
                 JSON.stringify(dry.args, delegateLinkSerializer) !==
-                JSON.stringify(charterDatumArgs, delegateLinkSerializer)
+                JSON.stringify(charterDataArgs, delegateLinkSerializer)
             ) {
                 throw new Error(`dry-run args mismatch`);
             }
@@ -2506,7 +2503,7 @@ export abstract class Capo<
                 minter,
                 seedUtxo,
                 configIn: this.configIn!,
-                args: charterDatumArgs,
+                args: charterDataArgs,
             };
             console.log(`  🏃  dry-run charter setup done`);
 
@@ -2518,19 +2515,19 @@ export abstract class Capo<
         const govAuthority = await this.txnCreateOffchainDelegateLink(
             tcx,
             "govAuthority",
-            charterDatumArgs.govAuthorityLink
+            charterDataArgs.govAuthorityLink
         );
 
         const mintDelegate = await this.txnCreateOffchainDelegateLink(
             tcx,
             "mintDelegate",
-            charterDatumArgs.mintDelegateLink
+            charterDataArgs.mintDelegateLink
         );
 
         const spendDelegate = await this.txnCreateOffchainDelegateLink(
             tcx,
             "spendDelegate",
-            charterDatumArgs.spendDelegateLink
+            charterDataArgs.spendDelegateLink
         );
 
         this.bootstrapping = {
@@ -2688,7 +2685,7 @@ export abstract class Capo<
 
     //     const settingsUtxo = await this.findSettingsUtxo(
     //         //@ts-expect-error it's ok if it's not there
-    //         tcx.state.charterDatum
+    //         tcx.state.charterData
     //     );
     //     const tcx2 = tcx.addRefInput(settingsUtxo) as TCX & hasSettingsRef;
     //     tcx2.state.settingsRef = settingsUtxo;
@@ -2862,8 +2859,8 @@ export abstract class Capo<
     //         mintDelegate.activityValidatingSettings()
     //     );
 
-    //     const { charterDatum } = tcx2d.state;
-    //     const namedDelegates = charterDatum.namedDelegates;
+    //     const { charterData } = tcx2d.state;
+    //     const namedDelegates = charterData.namedDelegates;
 
     //     let tcx3: typeof tcx2d = tcx2d;
     //     for (const [delegateName, delegate] of Object.entries(
@@ -3077,7 +3074,7 @@ export abstract class Capo<
         tcx: TCX = new StellarTxnContext(this.setup) as TCX
     ) {
         const currentCharter = await this.mustFindCharterUtxo();
-        const currentDatum = await this.findCharterDatum(currentCharter);
+        const currentDatum = await this.findCharterData(currentCharter);
         const mintDelegate = await this.getMintDelegate();
         const { minter } = this;
         const tcxWithSeed = await this.tcxWithSeedUtxo(tcx);
@@ -3127,7 +3124,7 @@ export abstract class Capo<
         // const spendDelegate = await this.txnCreateDelegateLink<
         //     StellarDelegate<any>,
         //     "spendDelegate"
-        // >(tcx, "spendDelegate", charterDatumArgs.spendDelegateLink);
+        // >(tcx, "spendDelegate", charterDataArgs.spendDelegateLink);
 
         //@xxxts-expect-error "could be instantiated with different subtype"
         const fullCharterArgs: CharterDataLike = {
@@ -3173,7 +3170,7 @@ export abstract class Capo<
         tcx: TCX = new StellarTxnContext(this.setup) as TCX
     ): Promise<TCX> {
         const currentCharter = await this.mustFindCharterUtxo();
-        const currentDatum = await this.findCharterDatum(currentCharter);
+        const currentDatum = await this.findCharterData(currentCharter);
         const spendDelegate = await this.getSpendDelegate(currentDatum);
         const tcxWithSeed = await this.tcxWithSeedUtxo(tcx);
 
@@ -3257,7 +3254,7 @@ export abstract class Capo<
         delegateInfo: OffchainPartialDelegateLink,
         tcx: TCX = new StellarTxnContext(this.setup) as TCX
     ): Promise<StellarTxnContext> {
-        const currentDatum = await this.findCharterDatum();
+        const currentDatum = await this.findCharterData();
 
         // const spendDelegate = await this.txnCreateOffchainDelegateLink(
         //     spendDelegateLink: this.mkOnchainRelativeDelegateLink(govAuthority),
@@ -3294,10 +3291,10 @@ export abstract class Capo<
         // // const spendDelegate = await this.txnCreateDelegateLink<
         // //     StellarDelegate<any>,
         // //     "spendDelegate"
-        // // >(tcx, "spendDelegate", charterDatumArgs.spendDelegateLink);
+        // // >(tcx, "spendDelegate", charterDataArgs.spendDelegateLink);
 
         // //x@ts-expect-error "could be instantiated with different subtype"
-        // const fullCharterArgs: CharterDatumProps = {
+        // const fullCharterArgs: CharterDataProps = {
         //     ...currentDatum,
         //     mintInvariants: [...currentDatum.mintInvariants, mintDelegate],
         // };
@@ -3332,7 +3329,7 @@ export abstract class Capo<
         delegateInfo: OffchainPartialDelegateLink,
         tcx: TCX = new StellarTxnContext(this.setup) as TCX
     ) {
-        const currentDatum = await this.findCharterDatum();
+        const currentDatum = await this.findCharterData();
         throw new Error(`test me!`);
 
         const tcxWithSeed = await this.tcxWithSeedUtxo(tcx);
@@ -3361,7 +3358,7 @@ export abstract class Capo<
         // const spendDelegate = await this.txnCreateDelegateLink<
         //     StellarDelegate<any>,
         //     "spendDelegate"
-        // >(tcx, "spendDelegate", charterDatumArgs.spendDelegateLink);
+        // >(tcx, "spendDelegate", charterDataArgs.spendDelegateLink);
 
         const datum = this.mkDatum.CharterData({
             ...currentDatum,
@@ -3410,7 +3407,7 @@ export abstract class Capo<
     ): Promise<
         hasAddlTxns<TCX & hasSeedUtxo & hasNamedDelegate<DT, delegateName>>
     > {
-        const currentCharter = await this.findCharterDatum();
+        const currentCharter = await this.findCharterData();
         console.log(
             "------------------ TODO SUPPORT OPTIONS.forcedUpdate ----------------"
         );
@@ -3487,7 +3484,7 @@ export abstract class Capo<
         THIS extends Capo<any>,
         TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>
     >(this: THIS, pendingChange: toQueueDgtRemoval, tcx = this.mkTcx()) {
-        const currentCharter = await this.findCharterDatum();
+        const currentCharter = await this.findCharterData();
         const mintDelegate = await this.getMintDelegate(currentCharter);
         const spendDelegate = await this.getSpendDelegate(currentCharter);
         const tcx1 = await spendDelegate.txnGrantAuthority(
@@ -3540,9 +3537,12 @@ export abstract class Capo<
         //     options
         // );
 
-        const currentCharter = await this.findCharterDatum();
+        const currentCharter = await this.findCharterData();
         const mintDgt = await this.getMintDelegate(currentCharter);
         const mintDgtActivity = mintDgt.activity as SomeDgtActivityHelper;
+        const spendDgt = await this.getSpendDelegate(currentCharter);
+        const spendDgtActivity = spendDgt.activity as SomeDgtActivityHelper;
+        
         // const dgtActivity = this.onchain.types.PendingDelegateAction
         const tcx1 =
             //@ts-expect-error on checking for possible seedUtxo presence
@@ -3626,7 +3626,11 @@ export abstract class Capo<
         const newPolicyLink = this.mkOnchainRelativeDelegateLink(
             await this.txnCreateOffchainDelegateLink(tcx2, policyName, options)
         );
-        const tcx3 = await this.mkTxnUpdateCharter(
+        const tcx3 = await spendDgt.txnGrantAuthority(
+            tcx2,
+            spendDgtActivity.CapoLifecycleActivities.queuePendingDgtChange(pendingDgtChange)
+        );
+        const tcx4 = await this.mkTxnUpdateCharter(
             {
                 ...currentCharter,
                 pendingDgtChanges: [
@@ -3637,18 +3641,18 @@ export abstract class Capo<
             this.activity.capoLifecycleActivity.queuePendingDgtChange(
                 pendingDgtChange
             ),
-            await this.txnAddGovAuthority(tcx2)
+            await this.txnAddGovAuthority(tcx3)
         );
         const stateKey = dgtStateKey<RoLabel>(policyName);
         //@ts-expect-error jamming in a key that's cast into the type just below.
-        tcx3.state[stateKey] = newPolicyLink;
+        tcx4.state[stateKey] = newPolicyLink;
 
-        const tcx4 = await this.txnMkAddlRefScriptTxn(
-            tcx3 as TCX & hasNamedDelegate<DT, RoLabel, "dgData">,
+        const tcx5 = await this.txnMkAddlRefScriptTxn(
+            tcx4 as TCX & hasNamedDelegate<DT, RoLabel, "dgData">,
             stateKey,
             tempDataPolicyLink.delegate.compiledScript
         );
-        return tcx4 as typeof tcx4 &
+        return tcx5 as typeof tcx5 &
             hasUutContext<"dgDataPolicy" | RoLabel >;
     }
     async tempMkDelegateLinkForQueuingDgtChange(

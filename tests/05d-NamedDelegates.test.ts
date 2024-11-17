@@ -140,7 +140,7 @@ describe("Capo", async () => {
                 // prettier-ignore
                 const {h, h:{network, actors, delay, state} } = context;
 
-                const charter = await capo.findCharterDatum();
+                const charter = await capo.findCharterData();
                 expect(charter.otherNamedDelegates).toBeTruthy();
                 expect(Object.keys(charter.otherNamedDelegates).length).toBe(0);
 
@@ -149,7 +149,7 @@ describe("Capo", async () => {
                 await tcx.submit();
                 network.tick(1);
 
-                const charter2 = await capo.findCharterDatum();
+                const charter2 = await capo.findCharterData();
                 expect(charter2.otherNamedDelegates).toBeTruthy();
                 console.log("charter2.namedDelegates", charter2.otherNamedDelegates);
                 expect(charter2.otherNamedDelegates.size).toBe(1);

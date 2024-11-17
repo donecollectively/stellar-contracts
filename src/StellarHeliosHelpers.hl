@@ -24,19 +24,17 @@ func didSign(a: Address) -> Bool {
 }
 
 func TODO(task: String) -> () {
-    // red checkbox, face, sweat droplets
+    // 🟥  😳💦 red checkbox, face, sweat droplets
     print("  🟥  😳💦  TODO: " + task + "\n")
 }
 
-func REQT(reqt: String) -> () {
-    // red exclamation mark
-    print("❗ "+ reqt)
+func REQT(reqt: String, assertion : Bool=true) -> () {
+    // ❗red exclamation mark
+    print("❗ "+ reqt);
+    assert(assertion, "  ❌❌ ^ failed: " + reqt)
 }
 func bREQT(reqt: String, assertion : Bool=true) -> Bool {
-    REQT(reqt);
-    if (!assertion) {
-        print("  ❌❌ ^ failed: " + reqt)
-    };
+    REQT(reqt, assertion);
     true
 }
 

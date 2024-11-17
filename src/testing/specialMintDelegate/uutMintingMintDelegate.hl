@@ -41,7 +41,10 @@ import {
 //  //  methods defined on any of the types in this file.
 
 import {
-    AnyData
+    AnyData,
+    REQT,
+    bREQT,
+    TODO
 } from StellarHeliosHelpers
 
 import {
@@ -257,8 +260,8 @@ enum DelegateActivity {
                         true
                     },
                     _ => {
-                        print("mint/spend delegates have an option to validate other lifecycle activities here?");
-                        false
+                        REQT("   -- to customize: mint/spend delegates have an option to validate additional lifecycle constraints here");
+                        true
                     }
                 }
             },

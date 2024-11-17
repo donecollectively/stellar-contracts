@@ -52,7 +52,7 @@ describe("Capo", async () => {
             const {h, h:{network, actors, delay, state} } = context;
 
             const capo = await h.bootstrap();
-            const originalDatum = await capo.findCharterDatum();
+            const originalDatum = await capo.findCharterData();
 
             const tcx = await capo.mkTxnUpdatingMintDelegate(
                 {
@@ -62,7 +62,7 @@ describe("Capo", async () => {
             await tcx.submit()
             network.tick(1);
 
-            const updatedDatum = await capo.findCharterDatum();
+            const updatedDatum = await capo.findCharterData();
             expect(updatedDatum.mintDelegateLink.uutName).not.toEqual(
                 originalDatum.mintDelegateLink.uutName
             );
@@ -111,7 +111,7 @@ describe("Capo", async () => {
             const {h, h:{network, actors, delay, state} } = context;
 
             const capo = await h.bootstrap();
-            const originalDatum = await capo.findCharterDatum();
+            const originalDatum = await capo.findCharterData();
             const oldMintDelegate = await capo.getMintDelegate();
             const oldPredicate = oldMintDelegate.mkAuthorityTokenPredicate();
 
@@ -123,7 +123,7 @@ describe("Capo", async () => {
             );
             await tcx.submit();
             network.tick(1);
-            const updatedDatum = await capo.findCharterDatum();
+            const updatedDatum = await capo.findCharterData();
             expect(updatedDatum.mintDelegateLink.uutName).not.toEqual(
                 originalDatum.mintDelegateLink.uutName
             );
@@ -256,7 +256,7 @@ describe("Capo", async () => {
             const {h, h:{network, actors, delay, state} } = context;
 
             const capo = await h.bootstrap();
-            const oldCharterDatum = await capo.findCharterDatum();
+            const oldCharterData = await capo.findCharterData();
             const oldMintDelegate = await capo.getMintDelegate();
             const oldPredicate = oldMintDelegate.mkAuthorityTokenPredicate();
 
@@ -281,8 +281,8 @@ describe("Capo", async () => {
             const fakeDelegate = vi.spyOn(capo, "getMintDelegate").mockImplementation(async () => {
                 return oldMintDelegate;
             });
-            const fakeCharter = vi.spyOn(capo, "findCharterDatum").mockImplementation(async () => {
-                return oldCharterDatum;
+            const fakeCharter = vi.spyOn(capo, "findCharterData").mockImplementation(async () => {
+                return oldCharterData;
             })
             console.log( " ------ 🐞⚗️🐞⚗️ - use the old mint delegate in a new txn")
 
@@ -311,7 +311,7 @@ describe("Capo", async () => {
             const {h, h:{network, actors, delay, state} } = context;
 
             const capo = await h.bootstrap();
-            const originalDatum = await capo.findCharterDatum();
+            const originalDatum = await capo.findCharterData();
             const mintDelegate = await capo.getMintDelegate();
 
             const tcx = await capo.mkTxnUpdatingSpendDelegate(
@@ -322,7 +322,7 @@ describe("Capo", async () => {
             await tcx.submit();
             network.tick(1);
 
-            const updatedDatum = await capo.findCharterDatum();
+            const updatedDatum = await capo.findCharterData();
             expect(updatedDatum.spendDelegateLink.uutName).not.toEqual(
                 originalDatum.spendDelegateLink.uutName
             );
@@ -372,7 +372,7 @@ describe("Capo", async () => {
             const {h, h:{network, actors, delay, state} } = context;
 
             const capo = await h.bootstrap();
-            const originalDatum = await capo.findCharterDatum();
+            const originalDatum = await capo.findCharterData();
             const oldSpendDelegate = await capo.getSpendDelegate();
             const oldPredicate = oldSpendDelegate.mkAuthorityTokenPredicate();
 
@@ -384,7 +384,7 @@ describe("Capo", async () => {
             );
             await tcx.submit();
             network.tick(1);
-            const updatedDatum = await capo.findCharterDatum();
+            const updatedDatum = await capo.findCharterData();
             expect(updatedDatum.spendDelegateLink.uutName).not.toEqual(
                 originalDatum.spendDelegateLink.uutName
             );

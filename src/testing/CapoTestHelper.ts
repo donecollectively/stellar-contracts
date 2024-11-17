@@ -2,7 +2,7 @@ import { Capo } from "../Capo.js";
 import type {
     CapoConfig,
     CharterDataLike,
-    MinimalCharterDatumArgs,
+    MinimalCharterDataArgs,
     MinterBaseMethods,
     anyDatumArgs,
     hasBootstrappedCapoConfig,
@@ -35,7 +35,7 @@ export abstract class CapoTestHelper<
     async initialize({
         randomSeed = 42,
     }: { randomSeed?: number } = {},
-    args?: Partial<MinimalCharterDatumArgs>
+    args?: Partial<MinimalCharterDataArgs>
 )
     : Promise<SC> {
         // Note: This method diverges from the base class impl, due to type difficulties.
@@ -123,7 +123,7 @@ export abstract class CapoTestHelper<
         return strella;
     }
 
-    async checkDelegateScripts(args: Partial<MinimalCharterDatumArgs>={}): Promise<void> {
+    async checkDelegateScripts(args: Partial<MinimalCharterDataArgs>={}): Promise<void> {
         throw new Error(`doesn't fail, because it's implemented by DefaultCapoTestHelper`);
     }
 
@@ -363,7 +363,7 @@ export abstract class CapoTestHelper<
     }
 
     async bootstrap(
-        args?: Partial<MinimalCharterDatumArgs>,
+        args?: Partial<MinimalCharterDataArgs>,
         submitOptions: SubmitOptions = {}
     ) {
         let strella = this.strella || (await this.initialize(undefined, args));
@@ -388,13 +388,13 @@ export abstract class CapoTestHelper<
         return strella;
     }
 
-    async extraBootstrapping(args?: Partial<MinimalCharterDatumArgs>) {
+    async extraBootstrapping(args?: Partial<MinimalCharterDataArgs>) {
         return this.strella;
     }
 
-    abstract mkDefaultCharterArgs(): Partial<MinimalCharterDatumArgs>;
+    abstract mkDefaultCharterArgs(): Partial<MinimalCharterDataArgs>;
     abstract mintCharterToken(
-        args?: Partial<MinimalCharterDatumArgs>,
+        args?: Partial<MinimalCharterDataArgs>,
         submitOptions?: SubmitOptions
     ): Promise<
         hasUutContext<

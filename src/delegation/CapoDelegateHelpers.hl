@@ -44,6 +44,7 @@ enum DelegateRole {
     DgDataPolicy
     OtherNamedDgt
     BothMintAndSpendDgt
+    HandledByCapoOnly
 }
 
 enum ManifestActivity {

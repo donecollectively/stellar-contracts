@@ -72,13 +72,13 @@ describe("Capo", async () => {
         //         // prettier-ignore
         //         const {h, h:{network, actors, delay, state} } = context;
 
-        //         const firstCharter = await capo.findCharterDatum();
+        //         const firstCharter = await capo.findCharterData();
         //         const firstGovDelegate = firstCharter.govAuthorityLink;
 
         //         const tcx = await capo.mkTxnChangingGovDelegate();
         //         await tcx.submit()
         //         network.tick(1);
-        //         const charter = await capo.findCharterDatum();
+        //         const charter = await capo.findCharterData();
         //         expect(charter.govAuthorityLink.uutName).toBeTruthy();
         //         expect(charter.govAuthorityLink.uutName).not.toBe(firstGovDelegate.uutName);
             })
@@ -88,7 +88,7 @@ describe("Capo", async () => {
         //         const {h, h:{network, actors, delay, state} } = context;
     
         //         const tcx = await capo.mkTxnChangingGovDelegate();
-        //         const charter = await capo.findCharterDatum();
+        //         const charter = await capo.findCharterData();
 
         //         const addedGovToken = vi
         //             .spyOn(capo, "txnAddGovAuthority")

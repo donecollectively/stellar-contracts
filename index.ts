@@ -184,7 +184,7 @@ export {
 import type { CharterDataLike } from "./src/Capo.js";
 
 /**
- * @deprecated - use CharterDatumProps instead
+ * @deprecated - use CharterDataLike instead
  * @internal
  */
 export type DefaultCharterDatumArgs = CharterDataLike;

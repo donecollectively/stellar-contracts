@@ -16,6 +16,7 @@ import {
 
 import { 
     AbstractDelegateActivitiesEnum,
+    CapoLifecycleActivity,
     DgTknDisposition as DgTkn,
     requiresNoDelegateInput,    
     RelativeDelegateLink
@@ -34,7 +35,7 @@ import {
 } from StellarHeliosHelpers
 
 import {
-    getTxCharterDatum,
+    getTxCharterData,
     mkCapoCtx,
     mkTokenShow,
     mustHaveGovAuthority,
@@ -198,10 +199,10 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
             TODO("VERIFY the above versus the below!");
 
             // the below stuff was already tested
-            charterDatum : CapoDatum::CharterData = getTxCharterDatum(
+            charterData : CapoDatum::CharterData = getTxCharterData(
                 mph: mph
             );
-            spendDelegate: RelativeDelegateLink = charterDatum.spendDelegateLink;
+            spendDelegate: RelativeDelegateLink = charterData.spendDelegateLink;
             
             // consider allowing this as a refInput, with other stuff to enable more parallelism for populations
             spendDelegateInput: TxInput = spendDelegate.hasDelegateInput(
@@ -607,13 +608,44 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
                     )
                 },
                 _ => {
-                    // we defer to the spend delegate to implement the policy
-                    // for all other lifecycle activities.
-                    delegate = cctx.requiresSpendDelegateInput();
-                    delegateCLActivity = delegate.genericDelegateActivity().switch {
-                        CapoLifecycleActivities{cla} => cla,
-                        _ => error("expected spendDgt.CapoLifecycleActivities")
+                    matchesActivity = (dgtActivity: AbstractDelegateActivitiesEnum) -> Bool {
+                        dgtActivity.switch {
+                            CapoLifecycleActivities{cla} => {
+                                bREQT(
+                                    "  - the delegate's activity must match the capo's lifecycle activity",
+                                    (cla == myCLActivity)
+                                )
+                            },
+                            _ => error("delegate must use CapoLifecycleActivities")                            
+                        }
                     };
+                    needsMintDgt = () -> Bool {
+                        REQT("  - enforces presence of the mint delegate");
+                        mintDgt = cctx.requiresMintDelegateInput();
+                        assert(mintDgt.requiresValidOutput(), "<-- that fails, this doesn't");
+                        matchesActivity(mintDgt.genericDelegateActivity())
+                    };
+                    needsSpendDgt = () -> Bool {
+                        REQT("  - enforces presence of the spend delegate");
+                        spendDgt = cctx.requiresSpendDelegateInput();
+                        assert(spendDgt.requiresValidOutput(), "<-- that fails, this doesn't");
+                        matchesActivity(spendDgt.genericDelegateActivity())
+                    };
+                    cctx.dgtRolesForLifecycleActivity(myCLActivity).switch {
+                        HandledByCapoOnly => error("unreachable"),
+                        MintDgt => {
+                            needsMintDgt()
+                        },
+                        SpendDgt => {
+                            needsSpendDgt()
+                        },
+                        BothMintAndSpendDgt => {
+                            needsMintDgt() &&
+                            needsSpendDgt()
+                        },
+                        _ => error("dgtRolesForLifecycleActivity should indicate only mint/spend/both delegate-roles")
+                    },
+
                     TODO("review updatingManifest case");
                     // updatingManifest => {
                     //     // the spend delegate must be triggered with its updatingManifest activity
@@ -664,14 +696,14 @@ func main(datum: Data, activity: CapoActivity) -> Bool {
         //     _isRelevantDatum : Bool = capoDatum.switch {
         //         // SettingsData => true,
         //         CharterData => true,
-        //         _ => error("wrong use of updatingSettings action; must use only on CharterDatum")
+        //         _ => error("wrong use of updatingSettings action; must use only on CharterData")
         //     };
 
         //     // it requires the govAuthority to be present 
         //     REQT( "gov authority must be present to update settings");
         //     hasGovAuthority : Bool = mustHaveGovAuthority(
         //         mph: mph,
-        //         charterDatum: charterDatum // already resolved
+        //         charterData: charterData // already resolved
         //     );
 
         //     CapoDatum::CharterData{
