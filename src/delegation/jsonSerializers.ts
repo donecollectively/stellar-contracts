@@ -57,12 +57,14 @@ export function uplcDataSerializer(key: string, value: any, depth=0) {
     }
     const keys = Object.keys(value)
     if (keys.length == 0) {
-        return "{}";
+        return key ? "" : "{}";
     }
     if (keys.length == 1) {
-        const singleKey = keys[0]
-        let s = `${singleKey}: { ${uplcDataSerializer("", value[singleKey], Math.max(depth,3))} }`
-        if (key) return `${key}: ${s}`
+        const singleKey = keys[0];
+        let inner = uplcDataSerializer("", value[singleKey], Math.max(depth,3)) || "";
+        if (inner.length) inner = ` ${inner} `
+        let s = `${singleKey}: {${inner}}`
+        // if (key) return `**1k** ${key}: ${s}`
         return s
     }
     const indent = "    ".repeat(depth);
