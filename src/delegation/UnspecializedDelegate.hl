@@ -60,6 +60,10 @@ import {
     mkUutTnFactory
 } from CapoMintHelpers
 
+import {
+    mkCapoCtx
+} from CapoHelpers
+ 
 // import {
 //     ProtocolSettings
 // } from ProtocolSettings
@@ -239,6 +243,8 @@ enum DelegateActivity {
         priorMddd: DelegateDatum::IsDelegation
     ) -> Bool {
         // print("  ----- checking additional delegate validation");
+        mph : MintingPolicyHash = priorMddd.dd.mph;
+
         self.switch {
             // generic DelegateLifecycleActivities is already validated, but 
             //  ... you can add more constraints here if needed
@@ -264,7 +270,7 @@ enum DelegateActivity {
                             None => error("can't mint delegate with unsupported purpose"),
                             Some => {
                                 validateUutMinting(
-                                    mph: priorMddd.dd.mph,
+                                    mph: mph,
                                     seed: seed,
                                     purposes: []String{purpose},
                                     // otherMintedValue: ()
@@ -282,6 +288,8 @@ enum DelegateActivity {
                  }
             },
             MintingActivities => {
+                _cctx = mkCapoCtx(mph).withCharterRef();
+
                 error("unspecialized mint delegate doesn't have any MintingActivities")
             },
             _ => false

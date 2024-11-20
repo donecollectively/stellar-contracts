@@ -40,6 +40,9 @@ export {
     Capo,
     type CapoConfig as CapoBaseConfig,
     type MinimalDelegateLink,
+    type dgtStateKey,
+    type hasNamedDelegate,
+    mkDgtStateKey 
 } from "./src/Capo.js";
 
 export { CapoWithoutSettings } from "./src/CapoWithoutSettings.js";
@@ -103,6 +106,15 @@ export {
     ContractBasedDelegate,
     type NamedPolicyCreationOptions, 
 } from "./src/delegation/ContractBasedDelegate.js";
+
+export type {
+    GenericDelegateBridge,
+    GenericDelegateBridgeClass,
+    GenericDelegateDatum,
+    SomeDgtActivityHelper,
+    SomeDgtBridgeReader,
+    SomeDgtDatumHelper,
+} from "./src/delegation/GenericDelegateBridge.js"
 
 export { AuthorityPolicy } from "./src/authority/AuthorityPolicy.js";
 export { AnyAddressAuthorityPolicy } from "./src/authority/AnyAddressAuthorityPolicy.js";

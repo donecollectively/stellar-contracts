@@ -106,20 +106,19 @@ export type SomeDgtActivityHelper = EnumBridge<isActivity> &
     // >
     Pick<
     DelegateActivityHelper,
-    "CapoLifecycleActivities" | "DelegateLifecycleActivities" | "ManifestActivities" |
+    "CapoLifecycleActivities" | "DelegateLifecycleActivities"  |
     "CreatingDelegatedData" | "UpdatingDelegatedData" | "DeletingDelegatedData" |
     "MultipleDelegateActivities"
-
     >
      & {
         SpendingActivities: EnumBridge<isActivity> & {
-            isAbstract: "NOTE: use a specific delegate to get concrete delegate activities";
+            isAbstract?: "NOTE: use a specific delegate to get concrete delegate activities";
         };
         MintingActivities: EnumBridge<isActivity> & {
-            isAbstract: "NOTE: use a specific delegate to get concrete delegate activities";
+            isAbstract?: "NOTE: use a specific delegate to get concrete delegate activities";
         };
         BurningActivities: EnumBridge<isActivity> & {
-            isAbstract: "NOTE: use a specific delegate to get concrete delegate activities";
+            isAbstract?: "NOTE: use a specific delegate to get concrete delegate activities";
         };
     }
     //  & {

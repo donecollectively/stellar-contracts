@@ -83,28 +83,27 @@ func requiresDelegateAuthorizingMint(
         None => {
             error(err)
         },
-        Some{x} => x.switch {
-            ConstrData{index, fields} => {
-                /* avoids unused-variable warning: */ fields == fields && 
+        Some{x} => AbstractDelegateActivitiesEnum::from_data(x).switch {
+            DelegateLifecycleActivities{DLA} => {
+                TODO("VERIFY we ---------------- don't need the funny redeemer-check skipping");
                 if (!extraMintDelegateRedeemerCheck) {
-                    print("  -- ok, dgTkn spent\n");
-                    print("  ---- skip redeemer check\n");
-                    true
-                } else { 
-                    if (0 == index) {
-                        dgtActivity : DelegateLifecycleActivity = DelegateLifecycleActivity::from_data(fields.head);
-                        dgtActivity.switch {
-                            ReplacingMe => {
-                                print("  -- ok, dgTkn spent\n");
-                                true
-                            },
-                            Retiring => error("DLA::Retiring can't mint!"),
-                            ValidatingSettings => error("DLA::ValidatingSettings can't mint!")
-                        }
-                    } else { true }
+                    error("where is extraMintDelegateRedeemerCheck=false really needed?")
+                //     print("  -- ok, dgTkn spent\n");
+                //     print("  ---- skip redeemer check\n");
+                //     true
+                
+                };
+                DLA.switch {
+                    ReplacingMe => {
+                        print("  -- ok, dgTkn spent\n");
+                        true
+                    },
+                    Retiring => error("DLA::Retiring can't mint!"),
+                    ValidatingSettings => error("DLA::ValidatingSettings can't mint!")
                 }
             },
             _ => {
+                print("yikes, expected DelegateLifecycleActivities!");
                 error(err)
             }
         }

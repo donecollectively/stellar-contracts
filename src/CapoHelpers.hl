@@ -347,7 +347,7 @@ enum CapoActivity {
     // updatingManifest { // variant 5 always delegated to spendDgt
     //     activity: ManifestActivity
     // }
-    updatingCharter // deprecated variant 6
+    updatingCharter // deprecated variant 5
 }
 
 func getRefCharterUtxo(mph : MintingPolicyHash) -> TxInput {
@@ -1101,19 +1101,10 @@ struct CapoCtx {
     func getSettingsId(self, required : Bool = true) -> Option[ByteArray] {
         self.findManifestTokenName("currentSettings", required)
     }
-    //TODO getManifestDatum[ProtocolSettings]("settings")
 
-    func getManifestedDatum[DATUM_TYPE](
-        self, 
-        key: String, 
+    func getManifestedData(self, key: String,
         which : UtxoSource = UtxoSource::RefInput
-    ) -> DATUM_TYPE {
-        DATUM_TYPE::from_data(
-            self.getManifestedDatumRaw(key, which)
-        )
-    }
-
-    func getManifestedDatumRaw(self, key: String, which : UtxoSource) -> Data {
+    ) -> Data {
         manifestEntry : CapoManifestEntry = self.mustFindManifestEntry(key);
         tokenName : ByteArray = manifestEntry.tokenName;
         manifestValue : Value = mkTv(mph: self.mph, tnBytes: tokenName);
@@ -1921,6 +1912,12 @@ struct CapoCtx {
         }
     }
 
+    // syntax sugar.  Implied is that that any other function calls will trip errors,
+    func orFail(self) -> Bool {
+        assert(true || /* never executed */ self.serialize() == self.serialize(), "no way");
+        true
+    }
+    
 }
 
 func mkCapoCtx(mph: MintingPolicyHash) -> CapoCtx {

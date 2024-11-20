@@ -3493,26 +3493,18 @@ export abstract class Capo<
      */
     @txn
     async mkTxnInstallingPolicyDelegate<
-        const RoLabel extends string & keyof this["delegateRoles"]
-    >(dgtRole: RoLabel) {
-        const mintDelegate = await this.getMintDelegate();
-        const spendDelegate = await this.getSpendDelegate();
+        const RoLabel extends string & keyof this["delegateRoles"],
+        THIS extends Capo<any>,
+    >(this: THIS, dgtRole: RoLabel,
+        charter? : CapoDatum$Ergo$CharterData
+    ) {
+        // const mintDelegate = await this.getMintDelegate(charter);
+        // console.log("   --mintDgt", mintDelegate.constructor.name);
+        // const spendDelegate = await this.getSpendDelegate(charter);
+        // console.log("   --spendDgt", spendDelegate.constructor.name);
 
-        const tcx1 = await this.tcxWithSeedUtxo(mintDelegate.mkTcx());
-        const tcx2 = await this.mkTxnQueuingDelegateChange(
-            "Add",
-            dgtRole,
-            undefined,
-            tcx1
-        );
-        return tcx2;
-        //     "Add" | "Replace",
-        //     action: dgtAction.(tcx1, {
-        //         purpose,
-        //         delegateValidatorHash,
-        //         config: []
-        //     }}
-        // });
+        const tcx1 = await this.tcxWithSeedUtxo(this.mkTcx());
+        return this.mkTxnQueuingDelegateChange("Add", dgtRole, undefined, tcx1);
     }
 
     // async mkTxnQueuingDelegateRemoval<
@@ -3679,16 +3671,18 @@ export abstract class Capo<
             ),
             await this.txnAddGovAuthority(tcx3)
         );
-        const stateKey = dgtStateKey<RoLabel>(policyName);
-        //@ts-expect-error jamming in a key that's cast into the type just below.
-        tcx4.state[stateKey] = delegateLink;
+        const stateKey = mkDgtStateKey<RoLabel>(policyName);
+        //@ts-expect-error "could be instantiated with different subtype"
+        const tcx5 : TCX & hasNamedDelegate<DT, RoLabel, "dgData"> = tcx4; 
+        // this type doesn't resolve because of abstract DT ^
+        //  tcx5.state[stateKey] = delegateLink;
 
-        const tcx5 = await this.txnMkAddlRefScriptTxn(
-            tcx4 as TCX & hasNamedDelegate<DT, RoLabel, "dgData">,
+        const tcx6 = await this.txnMkAddlRefScriptTxn(
+            tcx5,
             stateKey,
             tempDataPolicyLink.delegate.compiledScript
         );
-        return tcx5 as typeof tcx5 & hasUutContext<"dgDataPolicy" | RoLabel>;
+        return tcx6 as typeof tcx6 & hasUutContext<"dgDataPolicy" | RoLabel>;
     }
     async tempMkDelegateLinkForQueuingDgtChange(
         seedUtxo: TxInput,

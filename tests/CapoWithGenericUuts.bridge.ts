@@ -74,6 +74,7 @@ import type {
     ManifestActivity$updatingEntry, ManifestActivity$Ergo$updatingEntry, ManifestActivity$updatingEntryLike,
     ManifestActivity$addingEntry, ManifestActivity$Ergo$addingEntry, ManifestActivity$addingEntryLike,
     ManifestActivity$forkingThreadToken, ManifestActivity$Ergo$forkingThreadToken, ManifestActivity$forkingThreadTokenLike,
+    ManifestActivity$burningThreadToken, ManifestActivity$Ergo$burningThreadToken, ManifestActivity$burningThreadTokenLike,
     ManifestActivity, ErgoManifestActivity, ManifestActivityLike,
     CapoLifecycleActivity, ErgoCapoLifecycleActivity, CapoLifecycleActivityLike,
     CapoActivity, ErgoCapoActivity, CapoActivityLike
@@ -935,6 +936,19 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
         }, "CapoDelegateHelpers::ManifestActivity.forkingThreadToken");
        return uplc;
     } /*multiFieldVariant enum accessor*/
+
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.burningThreadToken"***
+     * @remarks - ***ManifestActivity$burningThreadTokenLike*** is the same as the expanded field-types.
+     */
+    burningThreadToken(fields: ManifestActivity$burningThreadTokenLike | { 
+        key: string,
+        burnedThreadCount: IntLike } ) : UplcData {
+        const uplc = this.mkUplcData({
+            burningThreadToken: fields 
+        }, "CapoDelegateHelpers::ManifestActivity.burningThreadToken");
+       return uplc;
+    } /*multiFieldVariant enum accessor*/
 }/*mkEnumHelperClass*/
 
 
@@ -998,6 +1012,19 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
         const uplc = this.mkUplcData({
             forkingThreadToken: fields 
         }, "CapoDelegateHelpers::ManifestActivity.forkingThreadToken");
+       return uplc;
+    } /*multiFieldVariant enum accessor*/
+
+    /**
+     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.burningThreadToken"***
+     * @remarks - ***ManifestActivity$burningThreadTokenLike*** is the same as the expanded field-types.
+     */
+    burningThreadToken(fields: ManifestActivity$burningThreadTokenLike | { 
+        key: string,
+        burnedThreadCount: IntLike } ) : UplcData {
+        const uplc = this.mkUplcData({
+            burningThreadToken: fields 
+        }, "CapoDelegateHelpers::ManifestActivity.burningThreadToken");
        return uplc;
     } /*multiFieldVariant enum accessor*/
 }/*mkEnumHelperClass*/
@@ -2955,6 +2982,28 @@ export const ManifestActivitySchema : EnumTypeSchema = {
                     }
                 }
             ]
+        },
+        {
+            "kind": "variant",
+            "tag": 4,
+            "id": "__module__CapoDelegateHelpers__ManifestActivity[]__burningThreadToken",
+            "name": "burningThreadToken",
+            "fieldTypes": [
+                {
+                    "name": "key",
+                    "type": {
+                        "kind": "internal",
+                        "name": "String"
+                    }
+                },
+                {
+                    "name": "burnedThreadCount",
+                    "type": {
+                        "kind": "internal",
+                        "name": "Int"
+                    }
+                }
+            ]
         }
     ]
 };
@@ -3360,6 +3409,28 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
                                     },
                                     {
                                         "name": "newThreadCount",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "Int"
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "kind": "variant",
+                                "tag": 4,
+                                "id": "__module__CapoDelegateHelpers__ManifestActivity[]__burningThreadToken",
+                                "name": "burningThreadToken",
+                                "fieldTypes": [
+                                    {
+                                        "name": "key",
+                                        "type": {
+                                            "kind": "internal",
+                                            "name": "String"
+                                        }
+                                    },
+                                    {
+                                        "name": "burnedThreadCount",
                                         "type": {
                                             "kind": "internal",
                                             "name": "Int"
@@ -3789,6 +3860,28 @@ export const CapoActivitySchema : EnumTypeSchema = {
                                                         },
                                                         {
                                                             "name": "newThreadCount",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "Int"
+                                                            }
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "kind": "variant",
+                                                    "tag": 4,
+                                                    "id": "__module__CapoDelegateHelpers__ManifestActivity[]__burningThreadToken",
+                                                    "name": "burningThreadToken",
+                                                    "fieldTypes": [
+                                                        {
+                                                            "name": "key",
+                                                            "type": {
+                                                                "kind": "internal",
+                                                                "name": "String"
+                                                            }
+                                                        },
+                                                        {
+                                                            "name": "burnedThreadCount",
                                                             "type": {
                                                                 "kind": "internal",
                                                                 "name": "Int"

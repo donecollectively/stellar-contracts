@@ -121,6 +121,7 @@ export class StellarHeliosProject {
             if (this.capoBundle) {
                 throw new Error(`only one CapoBundle is currently supported`);
             }
+            console.log(`Project: loading CapoBundle ${bundleClassName}`);
             this.capoBundle = new (bundleClass as any)();
             if (this.bundleEntries.size > 0) {
                 throw new Error(`register capo first!! ??`);
@@ -151,6 +152,9 @@ export class StellarHeliosProject {
                 bundleClass
             });
         } else if (isCapoBundle && harmlessSecondCapo) {
+            console.log(`Project: loading CapoBundle ${bundleClassName}`);
+            console.log(`  (replaces existing capo ${this.capoBundle?.constructor.name})`);
+            debugger
             this.bundleEntries.set(filename, {
                 filename,
                 status: "loaded",
@@ -169,6 +173,7 @@ export class StellarHeliosProject {
             };
             // if we have the CapoBundle, we can use it to instantiate this bundle now.
             if (this.capoBundle) {
+                console.log(`instantiating bundle ${bundleClassName} with capo ${this.capoBundle.constructor.name}`);
                 bundle = new (bundleClass as any)(this.capoBundle);
                 bundleEntry.bundle = bundle;
                 bundleEntry.status = "loaded";

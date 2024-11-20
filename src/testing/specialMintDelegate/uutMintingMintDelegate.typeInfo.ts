@@ -611,6 +611,18 @@ export type ManifestActivity$forkingThreadTokenLike = {
 }
 
 
+export type ManifestActivity$burningThreadToken = {
+    key: string  /*minVariantField*/ ,
+    burnedThreadCount: bigint  /*minVariantField*/ 
+}
+
+export type ManifestActivity$Ergo$burningThreadToken = ManifestActivity$burningThreadToken/*ergo like-canonical-this-variant*/
+export type ManifestActivity$burningThreadTokenLike = {
+    key: string  /*minVariantField*/ ,
+    burnedThreadCount: IntLike  /*minVariantField*/ 
+}
+
+
 export type ManifestActivityMeta = EnumTypeMeta<
     {module: "CapoDelegateHelpers", enumName: "ManifestActivity"}, {
         retiringEntry: singleEnumVariantMeta<ManifestActivityMeta, "retiringEntry",
@@ -628,6 +640,10 @@ export type ManifestActivityMeta = EnumTypeMeta<
         forkingThreadToken: singleEnumVariantMeta<ManifestActivityMeta, "forkingThreadToken",
             "Constr#3", 
             "fields", ManifestActivity$forkingThreadToken, "noSpecialFlags"
+        >,
+        burningThreadToken: singleEnumVariantMeta<ManifestActivityMeta, "burningThreadToken",
+            "Constr#4", 
+            "fields", ManifestActivity$burningThreadToken, "noSpecialFlags"
         >
     }
 >;
@@ -637,7 +653,7 @@ export type ManifestActivityMeta = EnumTypeMeta<
  * ManifestActivity enum variants
  * 
  * @remarks - expresses the essential raw data structures
- * supporting the **4 variant(s)** of the ManifestActivity enum type
+ * supporting the **5 variant(s)** of the ManifestActivity enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `ManifestActivityHelper` class
  *     for generating UPLC data for this enum type
@@ -648,6 +664,7 @@ export type ManifestActivity =
         | { updatingEntry: ManifestActivity$updatingEntry /*minEnumVariant*/ }
         | { addingEntry: ManifestActivity$addingEntry /*minEnumVariant*/ }
         | { forkingThreadToken: ManifestActivity$forkingThreadToken /*minEnumVariant*/ }
+        | { burningThreadToken: ManifestActivity$burningThreadToken /*minEnumVariant*/ }
 
 export type ErgoManifestActivity = IntersectedEnum<
         | { retiringEntry: /* implied wrapper { key: ... } for singleVariantField */ 
@@ -655,13 +672,14 @@ export type ErgoManifestActivity = IntersectedEnum<
         | { updatingEntry: ManifestActivity$Ergo$updatingEntry /*minEnumVariant*/ }
         | { addingEntry: ManifestActivity$Ergo$addingEntry /*minEnumVariant*/ }
         | { forkingThreadToken: ManifestActivity$Ergo$forkingThreadToken /*minEnumVariant*/ }
+        | { burningThreadToken: ManifestActivity$Ergo$burningThreadToken /*minEnumVariant*/ }
 >
 
 /**
  * ManifestActivity enum variants (permissive)
  * 
  * @remarks - expresses the allowable data structure
- * for creating any of the **4 variant(s)** of the ManifestActivity enum type
+ * for creating any of the **5 variant(s)** of the ManifestActivity enum type
  * 
  * - **Note**: Stellar Contracts provides a higher-level `ManifestActivityHelper` class
  *     for generating UPLC data for this enum type
@@ -676,6 +694,7 @@ export type ManifestActivityLike = IntersectedEnum<
         | { updatingEntry: ManifestActivity$updatingEntryLike /*minEnumVariant*/ }
         | { addingEntry: ManifestActivity$addingEntryLike /*minEnumVariant*/ }
         | { forkingThreadToken: ManifestActivity$forkingThreadTokenLike /*minEnumVariant*/ }
+        | { burningThreadToken: ManifestActivity$burningThreadTokenLike /*minEnumVariant*/ }
 >
 
 export type CapoLifecycleActivityMeta = EnumTypeMeta<

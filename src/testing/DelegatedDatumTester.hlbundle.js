@@ -7,3 +7,4 @@ export default class DelegatedDatumTesterBundle extends CapoDelegateBundle {
         return TesterPolicy
     }
 }
+

@@ -403,6 +403,15 @@ export abstract class HeliosScriptBundle {
                 // throw e;
             }
             debugger;
+            const [_, notFoundModule] = e.message.match(/module '(.*)' not found/) || []
+            if (notFoundModule) {
+                console.log("module not found; included modules:\n"+ 
+                    this.modules.map((m) => {
+                        const pInfo = m.project ? ` [in ${m.project}]/` : "";
+                        return ` • ${m.moduleName}${pInfo}${m.name} (${m.content.length} bytes)`
+                    }).join("\n")
+                )
+            }
             if (!e.site) {
                 console.warn(
                     "error thrown from helios doesn't have source site info; rethrowing it"

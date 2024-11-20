@@ -10,7 +10,6 @@ export let helperState: TestHelperState<CapoCanMintGenericUuts> = {
     snapshots: {},
 } as any;
 
-
 export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCapoClass(
     CapoCanMintGenericUuts
 ) {
@@ -36,7 +35,7 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
 
     //@ts-expect-error - why does it expect this is a property, when it's defined as a getter everywhere?
     get stellarClass() {
-        return CapoCanMintGenericUuts
+        return CapoCanMintGenericUuts;
     }
 
     async setupActors() {
@@ -55,8 +54,6 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
         // --- NOTE: these actors are better placed in a tokenomics-generic test helper,
         //     - sticking them here only because we don't yet have an intermediate test-helper
         //        subclass for tokenomics that's easy to further subclass for DEMU
-
-
     }
 
     get capo(): CapoCanMintGenericUuts {
@@ -94,7 +91,7 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
         //         );
         //         // throw new Error("hi")
         //     });
-        return this.strella
+        return this.strella;
     }
 
     @CapoTestHelper.hasNamedSnapshot("installingTestDataPolicy", "tina")
@@ -103,7 +100,9 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
         return this.installingTestDataPolicy();
     }
     async installingTestDataPolicy() {
-        const tcx = await this.capo.mkTxnInstallingPolicyDelegate("testDataPolicy");
+        const tcx = await this.capo.mkTxnInstallingPolicyDelegate(
+            "testDataPolicy"
+        );
         return this.submitTxnWithBlock(tcx);
     }
 
@@ -119,15 +118,14 @@ export class CapoForDgDataPolicy_testHelper extends DefaultCapoTestHelper.forCap
         const tcx = await this.capo.mkTxnCommittingPendingDgtChanges();
         return this.submitTxnWithBlock(tcx);
     }
-
-
 }
 
-
-
-export type TestContext_CapoForDgData = StellarTestContext<CapoForDgDataPolicy_testHelper> & {
-    helperState: typeof helperState;
-    snapshot(this: TestContext_CapoForDgData, snapName: string): void;
-    loadSnapshot(this: TestContext_CapoForDgData, snapName: string): void;
-    reusableBootstrap(this: TestContext_CapoForDgData): Promise<CapoWithoutSettings>;
-};
+export type TestContext_CapoForDgData =
+    StellarTestContext<CapoForDgDataPolicy_testHelper> & {
+        helperState: typeof helperState;
+        snapshot(this: TestContext_CapoForDgData, snapName: string): void;
+        loadSnapshot(this: TestContext_CapoForDgData, snapName: string): void;
+        reusableBootstrap(
+            this: TestContext_CapoForDgData
+        ): Promise<CapoWithoutSettings>;
+    };

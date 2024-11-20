@@ -21,23 +21,22 @@ import { DelegatedDataContract } from "../delegation/DelegatedDataContract.js";
 import TDataBundle from "./DelegatedDatumTester.hlbundle.js"
 
 export class DelegatedDatumTester extends DelegatedDataContract {
+    scriptBundle() {
+        return this.mkBundleWithCapo(TDataBundle);
+    }
     get delegateName() {
         return "TestDataDgt";
     }
-
-    get capo(): Capo<any> {
-        // type S = CapoOffchainSettingsType<DEMUTokenomicsCapo>;
-
-        return this.configIn?.capo as unknown as Capo<any>;
-    }
-
     get recordTypeName() {
         return "tdata";
     }
 
-    scriptBundle() {
-        return this.mkBundleWithCapo(TDataBundle);
-    }
+    // get capo(): Capo<any> {
+    //     // type S = CapoOffchainSettingsType<DEMUTokenomicsCapo>;
+
+    //     return this.configIn?.capo as unknown as Capo<any>;
+    // }
+
 
     async txnCreatingTestRecrd<
         TCX extends StellarTxnContext &

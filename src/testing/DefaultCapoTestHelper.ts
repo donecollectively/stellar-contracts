@@ -161,7 +161,7 @@ export class DefaultCapoTestHelper<
                 dgtSetup;
 
             console.log(
-                `  -- checking delegate script: ${dgtLabel} (${delegateType}`
+                `  -- checking delegate script: ${dgtLabel} (${delegateType})`
             );
             // }
 

@@ -1060,7 +1060,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
             // if the callback returns true or void, we execute the txn as already resolved.
             // if it returns an alternative txn, we use that instead.
             const effectiveTcx =
-                true === replacementTcx ? this : replacementTcx || this;
+                true === replacementTcx ? tcx : replacementTcx || tcx;
             await effectiveTcx.submit({
                 addlTxInfo, // just for its description.
             });

@@ -396,7 +396,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         // ... so delegate authors can have fewer hoops to jump through
                         TODO("import settings from delegate and validate them");
 
-                        // foundSettings : ProtocolSettings = cctx.getManifestedDatum[ProtocolSettings]("settings");
+                        // _foundSettings = ProtocolSettings::from_data(cctx.getManifestedData("settings"));
 
                         //xxx foundSettings : outputAndDatum[CapoDatum::SettingsData] = 
                         //xxx     charter.mustFindSettingsOutput(dd.mph, dd.capoAddr);

@@ -224,13 +224,37 @@ export function heliosRollupTypeGen(
                 }
 
                 const SomeBundleClass = await rollupSingleBundleToBundleClass(id);
+
                 let bundle;
                 let replacedCapo = false
                 if (SomeBundleClass.isCapoBundle) {
+                    let skipInstallingThisOne = false; 
                     if (state.hasExplicitCapoBundle) {
-                        console.warn(`${SomeBundleClass.name}: replacing ${state.capoBundle.constructor.name}`);
+                            let existingBundleProtoChainNames : string[]= [];
+                            // if the new class is just a base class for a more specific one, that's ok
+                            // we will still return it, without installing it as "the" Capo bundle
+                            let existingBundleProto = state.capoBundle.constructor;
+                            while (existingBundleProto) {
+                                existingBundleProtoChainNames.push(existingBundleProto.name);
+                                existingBundleProto = Object.getPrototypeOf(existingBundleProto);
+                            }
+                            if (existingBundleProtoChainNames.includes(SomeBundleClass.name)) {
+                                skipInstallingThisOne = true
+                                console.log(
+                                    `Helios project-loader: not adopting ${SomeBundleClass.name} as the project Capo\n`+
+                                    `  ... because it looks like a base class of already-loaded ${
+                                        state.capoBundle.constructor.name
+                                    }`
+                                )
+                            } else {
+                                // console.log({id, x, y})
+                                debugger
+                                console.warn(`${SomeBundleClass.name}: replacing ${state.capoBundle.constructor.name}`);
+                            }
+
+
                     } 
-                    if (state.hasOtherBundles) {
+                    if (state.hasOtherBundles && !skipInstallingThisOne) {
                         const digestExisting = shortHash(JSON.stringify(state.capoBundle.modules));
                         const digestNew = shortHash(JSON.stringify(SomeBundleClass.prototype.modules));
 
@@ -252,8 +276,8 @@ export function heliosRollupTypeGen(
                         }
                     }
                     state.hasExplicitCapoBundle = true;
+
                     bundle =  new SomeBundleClass();
-                    state.capoBundle = bundle;
                     if (!replacedCapo) {
                         // state.project.loadBundleWithClass(id, SomeBundleClass);
                         // state.project.generateBundleTypes(id);
@@ -264,6 +288,9 @@ export function heliosRollupTypeGen(
                         bundle.loadSources();
                     } else {
                         this.warn(`NOTE: checking bundled sources, not filesystem sources`)
+                    }
+                    if (!skipInstallingThisOne) {
+                        state.capoBundle = bundle;
                     }
                 } else {
                     state.hasOtherBundles = true;
