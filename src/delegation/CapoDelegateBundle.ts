@@ -7,6 +7,16 @@ export type CapoDelegateBundleClass = new (
     capoBundle: CapoHeliosBundle
 ) => CapoDelegateBundle;
 
+// this class expresses a "has dependences from the Capo" semantic,
+// ... not because it expects any dynamic code dependencies from an
+// ... application-specific Capo.  Also, this class being abstract, it never
+// ... is used directly.  The direct requirements of its included code from
+// ... BasicDelegate are easily satisfied by the unspecialized Capo bundle.
+//
+// Subclasses of this class MAY have application-specific dependencies
+// ... to be provided by an application-specific Capo.
+
+
 /**
  * for any Capo delegate; combines the BasicDelegate with a
  *  concrete specialization

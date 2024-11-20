@@ -18,11 +18,11 @@ import { dumpAny } from "../diagnostics.js";
 import { hasReqts } from "../Requirements.js";
 import { DelegatedDataContract } from "../delegation/DelegatedDataContract.js";
 
-import TDataBundle from "./DelegatedDatumTester.hlbundle.js"
+import DelegatedDatumTesterBundle from "./DelegatedDatumTester.hlbundle.js"
 
 export class DelegatedDatumTester extends DelegatedDataContract {
     scriptBundle() {
-        return this.mkBundleWithCapo(TDataBundle);
+        return this.mkBundleWithCapo(DelegatedDatumTesterBundle);
     }
     get delegateName() {
         return "TestDataDgt";

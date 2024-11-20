@@ -7,7 +7,7 @@ import { StellarTxnContext } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
  
 import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
-import MintDelegateBundle from "../delegation/UnspecializedDelegate.hlbundle.js";
+import UnspecializedDelegateBundle from "../delegation/UnspecializedDelegate.hlbundle.js";
 import dataBridgeClass from "../delegation/UnspecializedDelegate.bridge.js";
 import type { ContractDataBridgeWithEnumDatum, DataBridge } from "src/helios/dataBridge/DataBridge.js";
 import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
@@ -39,8 +39,19 @@ export class BasicMintDelegate extends ContractBasedDelegate {
         return true;
     }
 
+    /**
+     * the scriptBundle for the BasicMintDelegate looks concrete,
+     * but it's actually just referencing a generic, unspecialized delegate script
+     * that may not provide much value to any specific application.  
+     * 
+     * Subclasses should expect to override this and provide a specialized
+     * `get scriptBundle() { return new ‹YourMintDelegateBundle› }`, using
+     *  a class you derive from CapoDelegateBundle and your own delegate
+     * specialization.  TODO: a generator to make this easier.  Until then,
+     * you can copy the UnspecializedDelegate.hl and specialize it.
+     */
     scriptBundle() {
-        return this.mkBundleWithCapo<MintDelegateBundle>(MintDelegateBundle) as CapoDelegateBundle
+        return this.mkBundleWithCapo<UnspecializedDelegateBundle>(UnspecializedDelegateBundle) as CapoDelegateBundle
     }
 
     // uses the basic delegate script, plus the isMintDelegate param
