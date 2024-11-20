@@ -471,7 +471,7 @@ export type HeldAssetsArgs = {
 export type hasSettingsRef = StellarTxnContext<
     anyState & { settingsRef: TxInput }
 >;
-export function dgtStateKey<
+export function mkDgtStateKey<
     const N extends string,
     const PREFIX extends string = "dgPoi"
 >(n: N, p: PREFIX = "dgPol" as PREFIX) {
@@ -1092,8 +1092,8 @@ export abstract class Capo<
     }
 
     @partialTxn // non-activity partial
-    async txnUpdateCharterUtxo(
-        tcx: StellarTxnContext,
+    async txnUpdateCharterUtxo<TCX extends StellarTxnContext>(
+        tcx: TCX,
         redeemer: isActivity,
         newDatum: CharterDataLike
     ): Promise<StellarTxnContext | never> {
@@ -1707,17 +1707,28 @@ export abstract class Capo<
 
         // console.log({fullCapoDgtConfig});
 
-        const delegateSettings: PreconfiguredDelegate<DT> = {
-            ...delegateInfo,
-            roleName,
-            //@ts-expect-error "could be instantiated with a different type" - TS2352
-            //  ... typescript doesn't see the connection between the input settings and this variable
-            delegateClass: delegateClass as DT,
-            uutName: uut.name,
-            fullCapoDgtConfig,
-            config: configForOnchainRelativeDelegateLink,
-        };
-        let delegate: DT = await this.mustGetDelegate<DT>(delegateSettings);
+        let delegateSettings: PreconfiguredDelegate<DT> = {} as any;
+        let delegate: DT = undefined as any;
+        try {
+            delegateSettings = {
+                ...delegateInfo,
+                roleName,
+                //@ts-expect-error "could be instantiated with a different type" - TS2352
+                //  ... typescript doesn't see the connection between the input settings and this variable
+                delegateClass: delegateClass as DT,
+                uutName: uut.name,
+                fullCapoDgtConfig,
+                config: configForOnchainRelativeDelegateLink,
+            };
+            delegate = await this.mustGetDelegate<DT>(delegateSettings);
+        } catch (e:any) {
+            console.log("error: unable to create delegate: ", e.stack);
+            debugger
+            this.mustGetDelegate<DT>(delegateSettings).catch((sameErrorIgnored) => undefined);
+
+            e.message = `${e.message} (see logged details and/or debugging breakpoint)`
+            throw e
+        }
 
         // const reqdAddress = delegate.delegateReqdAddress();
         // if (reqdAddress) {
@@ -2273,15 +2284,22 @@ export abstract class Capo<
 
         return this.connectDelegateWithOnchainRDLink<
             "spendDelegate",
-            ContractBasedDelegate
+            BasicMintDelegate
         >("spendDelegate", chD.spendDelegateLink);
     }
 
+    /**
+     * Finds the delegated-data controller for a given typeName.
+     * @remarks
+     * REQUIRES that the Capo manifest contains an installed DgDataPolicy
+     * and that the off-chain Capo delegateMap provides an off-chain controller
+     * for that typeName.
+     */
     async getDgDataController(typeName: string, charterData?: CharterData) {
         const chD = charterData || (await this.findCharterData());
         const foundME = chD.manifest.get(typeName);
         if (!foundME) {
-            throw new Error(`no manifest entry found for ${typeName}`);
+            throw new Error(`no manifest entry found with link to installed ${typeName}`);
         }
         if (foundME?.entryType.DgDataPolicy) {
             return this.connectDelegateWithOnchainRDLink<
@@ -2298,6 +2316,11 @@ export abstract class Capo<
         // return this.connectDelegateWithLink("dgDataPolicy", dgDataPolicy);
     }
 
+    /**
+     * @deprecated - use getOtherNamedDelegate() or getDgDataController() instead
+     */
+    getNamedDelegate() {
+    }
     /**
      * Finds a contract's named delegate, given the expected delegateName.
      * @remarks
@@ -2827,10 +2850,10 @@ export abstract class Capo<
     }
 
     @txn
-    async mkTxnUpdateCharter(
+    async mkTxnUpdateCharter<TCX extends StellarTxnContext>(
         args: CharterDataLike,
         activity: isActivity = this.activityUpdatingCharter(),
-        tcx: StellarTxnContext = new StellarTxnContext(this.setup)
+        tcx: TCX = this.mkTcx() as TCX
     ): Promise<StellarTxnContext> {
         console.log("update charter", { activity });
         return this.txnUpdateCharterUtxo(tcx, activity, args);
@@ -2919,7 +2942,7 @@ export abstract class Capo<
      * The `predicate` function, if provided, can implement any logic suitable for a specific case of data-finding.
      */
     async findDelegatedDataUtxos<
-        const T extends undefined | (string & keyof this["datumAdapters"]),
+        const T extends undefined | (string & keyof this["delegateRoles"]),
         // prettier-ignore
         ADAPTER_TYPE extends DelegatedDatumAdapter<any> | undefined
                 = T extends keyof this["datumAdapters"]
