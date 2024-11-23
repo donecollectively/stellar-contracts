@@ -76,6 +76,6 @@ export class BundleBasedGenerator {
     }
 
     get datumTypeName() {
-        return this.bundle.datumTypeName;
+        return this.bundle.effectiveDatumTypeName();
     }
 }

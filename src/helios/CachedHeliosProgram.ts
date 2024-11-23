@@ -38,6 +38,11 @@ export type CacheableProgramProps = ProgramProps & {
      * this script hash, if provided.
      */
     expectedScriptHash?: string;
+    /**
+     * name of the script, which may be different from the name of the script's entry-point 
+     * / main module
+     */
+    name? : string
 };
 
 export type CompileOptionsForCachedHeliosProgram = CompileOptions & {
@@ -406,6 +411,10 @@ export class CachedHeliosProgram extends Program {
                   ) as justOptions
               );
     }
+    
+    get preferredProgramName(): string {
+        return this.props.name || this.name
+    }
 
     getCacheKey(options: CompileOptionsForCachedHeliosProgram): string {
         if (this.props.cacheKey) {
@@ -415,7 +424,7 @@ export class CachedHeliosProgram extends Program {
         const hashString = this.computeInputsHash(options);
         const opt = false == options.optimize ? "-unoptimized" : "";
 
-        return `${this.name}${opt}-${hashString}`;
+        return `${this.preferredProgramName}${opt}-${hashString}`;
     }
 
     /**

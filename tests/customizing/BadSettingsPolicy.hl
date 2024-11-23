@@ -1,0 +1,276 @@
+module BadSettingsPolicy
+
+import {
+    tx, 
+    get_current_input,
+    get_current_validator_hash,
+    get_cont_outputs
+} from ScriptContext
+
+// this module provides the basic interface needed for a Capo delegate.
+
+// it is also packaged (with a unique module name above) to enable access 
+// ...from other helios scopes.
+
+// THIS MODULE has been specialized to ...
+//  - test delegated-datum structures
+// ... more details here
+
+// original notes about (un)specialization follow:
+//  //! provides a basic version, ~~not yet specialized,~~
+//  // of the "specializedDelegate" interface, which simply
+//  // exports a DelegateDatum enum and DelegateActivities (redeemer enum).  
+
+//  //! Your specialization MUST include the enum variants found in this
+//  //  ... unspecialized version.  It MAY include additional Datum variants.
+//  // Any additional Redeemer/Activity variants should be added underneath 
+//  // the SpendingActivity / MintingActivity top-level enum variants, instead 
+//  // of adding new top-level enum variants to DelegateActivity.
+
+//  // The DelegateActivity (redeemer) enum conforms to the 
+//  // Delegate Redeemer protocol, in which enum 0 is reserved for
+//  // lifecycle activities, enum 1 is used for spend-related activities 
+//  // (if the delegate is used as a spend delegate), and enum 2 is called
+//  // for authorizing minting.  Enum 3 and beyond are reserved for
+//  // extensions to the Delegate Redeemer protocol.
+
+//  // Within the minting and spending activities, the specialization can 
+//  // indicate a nested activity enum to support various dApp-specific
+//  // activities.  
+
+//  // Activities that validate minting of UUTs should contain enum fields 
+//  // to identify the seed-transaction details needed for properly validating 
+//  // UUT mints fitting the use-case.
+
+//  //! Your specialization MAY include any additional functions, imports or 
+//  //  methods defined on any of the types in this file.
+
+
+import {
+    DelegationDetail,
+    mustReturnValueToScript,
+    DelegateLifecycleActivity,
+    CapoLifecycleActivity,
+    unmodifiedDelegation
+} from CapoDelegateHelpers
+
+import {
+    validateUutMinting,
+    tnCip68ref100,
+    tnCip68nft222,
+    mkUutTnFactory
+} from CapoMintHelpers
+
+import {
+    ProtocolSettings
+} from ProtocolSettings
+
+import {
+    CapoCtx,
+    mkCapoCtx,
+    mkTv,
+    AnyData 
+} from CapoHelpers
+
+import {
+    TODO,
+    REQT
+} from StellarHeliosHelpers
+
+enum DelegateDatum {
+    Cip68RefToken {  
+        cip68meta: AnyData
+        cip68version: Int
+        otherDetails: Data // can be Unit () or anything else
+    }
+    IsDelegation {
+        dd: DelegationDetail
+    }
+    // same variant-index as Capo's DelegatedData
+    capoStoredData {
+        data: ProtocolSettings
+    }
+}
+
+enum MintingActivity {
+    CreatingSettings {
+        seed: TxOutputId
+    }
+}
+
+enum BurningActivity {
+    RetiringSettings {
+        id: ByteArray
+    }
+}
+
+enum SpendingActivity {
+    UpdatingSettings {
+        id: ByteArray
+    }
+}
+
+enum DelegateActivity {
+    // must ALWAYS be at Enum position 0
+    CapoLifecycleActivities {
+        activity: CapoLifecycleActivity
+    }
+
+    // must ALWAYS be at Enum position 1
+    DelegateLifecycleActivities {
+        // administrative activities for the delegate lifecycle, enforced
+        //  by the basic mint delegate code.  Specializations can add more 
+        //  restrictions, but in many/most cases they will not need to.
+        activity: DelegateLifecycleActivity
+    }
+
+    // application-specific spending activities, ALWAYS at Enum position 2
+    SpendingActivities {
+        activity: SpendingActivity
+    }
+
+    // application-specific minting activities, ALWAYS at Enum position 3
+    MintingActivities {
+        activity: MintingActivity
+    }
+
+    BurningActivities {
+        activity: BurningActivity
+    }
+
+    // not used in non-mint/spend delegate
+    CreatingDelegatedData {
+        seed: TxOutputId
+        dataType: String
+        // id from seed
+    }
+    // not used in non-mint/spend delegate
+    UpdatingDelegatedData {
+        // seed not used
+        dataType: String
+        recId: ByteArray
+    }
+    // not used in non-mint/spend delegate
+    DeletingDelegatedData {
+        // seed not used
+        dataType: String
+        recId: ByteArray
+    }
+
+    MultipleDelegateActivities {
+        activities: []Data
+    }
+    
+    //! used only for validating IsDelegation datum, that is,
+    //   ... to approve minting requests or any customize spending modes 
+    //   ... of that datum.  
+    
+    //  Note that the basic delegate already enforces some basic
+    //    administrative expectations for DelegateLifecycleActivities and CapoLifecycleActivities
+    //    so a specialization doesn't need to re-implement those checks.
+    func additionalDelegateValidation( self,
+        priorMddd: DelegateDatum::IsDelegation
+    ) -> Bool {
+        print("  -- addl dgt val \n");
+        self.switch {
+            // generic DelegateLifecycleActivities is already validated, but 
+            //  ... you can add more constraints here if needed
+            DelegateLifecycleActivities => true,
+            // non-mintDelegate can't trigger these activities
+            CapoLifecycleActivities => error("unreachable"),
+            MintingActivities{VMA} => VMA.switch {
+                CreatingSettings{seed} => {
+                    print("creating Settings record...\n");
+                    mkTn : (String) -> String = mkUutTnFactory(seed);
+
+                    cctx : CapoCtx = mkCapoCtx(priorMddd.dd.mph).withCharterRef();
+                    // settings : ProtocolSettings = cctx.getManifestDatum[ProtocolSettings]("settings");
+                    tokenName = mkTn("set");
+                    depositedValue: Value = mkTv(priorMddd.dd.mph, tokenName);
+
+                    newRec : TxOutput = cctx.delegatedTxOutput( tokenName.encode_utf8() );
+
+                    // print("required listing fee: " + fee.show());
+                    assert(
+                        newRec.value.contains(depositedValue),
+                        "missing id token"
+                    );
+
+                    recData: ProtocolSettings = ProtocolSettings::from_data(
+                        newRec.datum.inline
+                    );
+
+                    recData.validate() &&
+                    validateUutMinting(
+                        mph: priorMddd.dd.mph,
+                        seed: seed,
+                        purposes: []String{"set"},
+                        // otherMintedValue: ... ,
+                        mkTokenName: mkTn,
+                        needsMintDelegateApproval: true
+                    )
+                }
+            },
+            SpendingActivities{VSA} => {
+                print("capo mph: " + priorMddd.dd.mph.show());
+                cctx : CapoCtx = mkCapoCtx(priorMddd.dd.mph).withCharterRef();
+                print( "\ncapo addr" + cctx.resolveCharterUtxo().address.show());
+                print("\n");
+
+                VSA.switch {
+                    UpdatingSettings{recId} => {
+                        hasDD : (TxInput) -> Bool = cctx.mkDelegatedDataPredicate("set", recId);
+                        // settings: ProtocolSettings = cctx.getManifestDatum[ProtocolSettings]("settings");
+                        _hasDDOutput : (TxOutput) -> Bool = cctx.mkDelegatedDataOutputPredicate("tdata", recId);
+    
+                        tx.inputs.filter(hasDD).for_each( (_utxo : TxInput) -> () {
+                            // they're all settings records, because of the above filter
+                            // recData : DgDatumTestData = DgDatumTestData::from_data(utxo.datum.inline);
+                            // updatedUtxo : TxOutput = tx.outputs.find(hasDDOutput);
+                            // updatedTData : DgDatumTestData = DgDatumTestData::from_data(updatedUtxo.datum.inline);
+
+                            // previousDeposit : Int = utxo.value.get_lovelace(); 
+                            // newDepositTotal : Int = updatedUtxo.value.get_lovelace();                                  
+                            assert(true, "no way")
+                        });
+                        true
+                    }
+                }
+            }, 
+            _ => false  
+        } || tx.serialize() == priorMddd.serialize()        
+    }
+
+    func supportedCapoDelegatePurposes(self) -> []String {
+        assert(true || /* prevent unused variable */ self == self, "no way" );
+        []String{ 
+            // "nothingHereYet",
+        }
+    }
+
+    //! Used only for validating non-IsDelegation datum types and activities.
+    // if you have any special admininstrative data structures that inform 
+    // ...  your minting policy, this might be useful.  Otherwise, and typically,
+    // ... you should look to Activity validations above in additionalDelegateValidation,
+    // ...  in which the isDelegation token is being spent with an application-specific
+    // ...  activity/redeemer
+    func otherDatumValidation( self,
+        _priorMdd: DelegateDatum
+    ) -> Bool {
+        neverTriggered = () -> {  error("never called") };
+        self.switch{
+            // Note: this set of DelegateActivities is reserved for the IsDelegation datum.
+            //  Using it on any other Datum type will always fail and execution will never arrive here.
+            DelegateLifecycleActivities => neverTriggered(),
+            CapoLifecycleActivities => neverTriggered(),
+
+            // -- Application-specific activities can be added here 
+            // -- for special & app-specific types of datum in a delegate,
+            // -- for EXCEPTIONAL cases, if you really know what you're doing.  
+            //  -- see above for normal cases
+
+            _ => false  // prevents non-exhaustive match errors, even if you remove the above neverTriggered() calls
+        }
+    }
+}
+

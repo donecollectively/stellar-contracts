@@ -109,7 +109,7 @@ describe("Capo", async () => {
         TEST_REQT("verifies that added & replaced entries are present in the updated map (at its next position)");
         TEST_REQT("Replace: verifies that the next-manifest no longer has the replaced entry");
         TEST_REQT("verifies that a delegate queued for removal or replacement is burned");
-
+        it.todo("enforces ref sripts creating and burning")
     })
 
 

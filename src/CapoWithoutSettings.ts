@@ -5,6 +5,8 @@ import { SettingsAdapter, type ParsedSettings } from "./CapoSettingsTypes.js";
 import type { DelegatedDatumAdapter } from "./delegation/DelegatedDatumAdapter.js";
 import type { StellarTestContext } from "./testing/StellarTestContext.js";
 import { CapoHeliosBundle } from "./CapoHeliosBundle.js";
+import { defineRole } from "./delegation/RolesAndDelegates.js";
+import { ReqtsController } from "./reqts/ReqtsController.js";
 
 // export type BridgeNoSettings = {
 //     none: string;
@@ -51,24 +53,25 @@ export class CapoWithoutSettings extends Capo<CapoWithoutSettings> {
     // initSettingsAdapter() {
     //     return new NoSettingsAdapter(this);
     // }
-    scriptBundle() {
-        return new MyCapoBundle();
-    }
+    // scriptBundle() {
+    //     return new CapoHeliosBundle();
+    // }
     
     initDelegatedDatumWrappers(): Promise<Record<string, DelegatedDatumAdapter<any>>> {
         return {} as any
     }
 
     initDelegateRoles() {
-        return this.basicDelegateRoles();
+        return {
+            ... this.basicDelegateRoles(),
+            reqts: defineRole("dgDataPolicy", ReqtsController, {})
+        }
     }
 
     // async mkInitialSettings() {
     //     return {
     //         none: "🙈" as const,
-    //     } //as NoSettings
+    //     } //as NoSettings5
     // }
 }
 
-export default class MyCapoBundle extends CapoHeliosBundle {
-}

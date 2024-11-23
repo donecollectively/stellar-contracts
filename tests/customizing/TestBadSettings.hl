@@ -1,6 +1,8 @@
-module CustomCapoSettings
+module ProtocolSettings
 
 struct ProtocolSettings {
+    id: String  "@id"    // "set-1234"
+    type: String  "tpe" // "set"
     meaning: Int
     badSpenderSetting: Int "badSettingToSpendDelegate" 
     badMinterSetting : Int "badSettingToMintDelegate"

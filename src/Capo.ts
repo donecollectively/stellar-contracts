@@ -97,6 +97,7 @@ import {
     // type CapoOffchainSettingsType,
     // type CapoSettingsAdapterFor,
     type DatumAdapterOffchainType,
+    type DetectSettingsType,
     type hasSettingsType,
 } from "./CapoSettingsTypes.js";
 
@@ -208,7 +209,8 @@ export type FoundDatumUtxo<
     DelegatedDatumType extends AnyDataTemplate<any, any>
 > = {
     utxo: TxInput;
-    datum: DelegatedDatumType;
+    datum: TxOutputDatum<"Inline">;
+    data?: DelegatedDatumType;
 };
 
 export type UutCreationAttrsWithSeed = {
@@ -381,7 +383,6 @@ import { ContractBasedDelegate } from "./delegation/ContractBasedDelegate.js";
 import { AuthorityPolicy } from "./authority/AuthorityPolicy.js";
 import type {
     AnyDataTemplate,
-    DelegatedDatumAdapter,
     hasAnyDataTemplate,
 } from "./delegation/DelegatedDatumAdapter.js";
 import { Cast } from "@helios-lang/contract-utils";
@@ -411,10 +412,13 @@ import type {
     ManifestEntryType$DgDataPolicyLike,
     CapoLifecycleActivity$queuePendingDgtChangeLike,
     PendingDelegateActionLike,
+    ErgoAnyData,
 } from "./CapoHeliosBundle.typeInfo.js";
 import type { IntersectedEnum } from "./helios/typeUtils.js";
 import type { SomeDgtActivityHelper } from "./delegation/GenericDelegateBridge.js";
 import type { PendingDelegateAction$AddLike } from "./delegation/UnspecializedDelegate.typeInfo.js";
+import type { DelegatedDataContract, DgDataType, MaybeWrappedDataType, someDataWrapper } from "./delegation/DelegatedDataContract.js";
+import { UnspecializedMintDelegate } from "./delegation/UnspecializedMintDelegate.js";
 
 export type CapoDatum = ErgoCapoDatum;
 export type CharterData = CapoDatum$Ergo$CharterData;
@@ -641,21 +645,24 @@ export abstract class Capo<
     }
 
     scriptBundle(): CapoHeliosBundle {
-        throw new Error(
-            `${this.constructor.name}: each Capo must provide a scriptBundle() method.\n` +
+        console.warn(
+            `${this.constructor.name}: each Capo will need to provide a scriptBundle() method.\n` +
                 `It should return an instance of a class defined in a *.hlbundle.js file.  At minimum:\n\n` +
-                `    export default class MyCapoBundle extends CapoHeliosBundle {\n` +
-                `       // get modules() {  // optional\n` +
-                `       //     return [\n` +
-                `       //         ...super.modules,\n` +
-                `       //         // additional custom .hl module imports here\n` +
-                `       //     ];\n` +
-                `       // }\n` +
+                `    export default class MyAppCapo extends CapoHeliosBundle {\n` +
+                `       get modules() { \n` +
+                `           return [\n` +
+                `               ...super.modules,\n` +
+                `               // additional custom .hl module imports here\n` +
+                `           ];\n` +
+                `       }\n` +
                 `    }\n\n` +
+                `! NOTE: make it a .js file, even if you're a typescript user!\n\n`+
                 `We'll generate types for that .js file, based on the types in your Helios sources.\n` +
-                `Your scriptBundle() method can \`return new MyCapoBundle();\``
+                `Your scriptBundle() method can \`return new MyAppCapo();\`\n\n`+
+                `We suggest naming your Capo bundle class with your application's name.\n`
         );
-        // return new CapoBundle();
+        console.warn("using a generic Capo bundle - just enough for getting started.")
+        return new CapoHeliosBundle();
     }
 
     /**
@@ -671,9 +678,6 @@ export abstract class Capo<
             | "spendDelegate"]: ConfiguredDelegate<any>;
     };
 
-    abstract initDelegatedDatumWrappers(): Promise<
-        Record<string, DelegatedDatumAdapter<any>>
-    >;
 
     static parseConfig(rawJsonConfig: {
         mph: { bytes: string };
@@ -798,9 +802,6 @@ export abstract class Capo<
             // this.connectMintingScript(this.getMinterParams());
         }
 
-        //@ts-expect-error - trust the subclass's initDelegatedDatumAdapters() to be type-matchy
-        //   ... based on other abstract methods defined below
-        this.datumAdapters = await this.initDelegatedDatumWrappers();
 
         return this;
     }
@@ -1247,7 +1248,7 @@ export abstract class Capo<
         const config = JSON.parse(bytesToText(inLink.config));
         if (config.rev) config.rev = BigInt(config.rev);
 
-        console.log("    ---- parsed config from RelDgtLink = ", config);
+        // console.log("    ---- parsed config from RelDgtLink = ", config);
         // debugger
         return config;
     }
@@ -1329,27 +1330,31 @@ export abstract class Capo<
         // return this.parseDelegateLinksInCharter(charterData);
     }
 
-    // async findSettingsUtxo(
-    //     charterRefOrInputOrProps?: hasCharterRef | TxInput | CharterDataProps
-    // ) {
-    //     const chUtxo =
-    //         charterRefOrInputOrProps || (await this.mustFindCharterUtxo());
-    //     const charterData =
-    //         charterRefOrInputOrProps instanceof StellarTxnContext
-    //             ? charterRefOrInputOrProps.state.charterData
-    //             : !charterRefOrInputOrProps ||
-    //               charterRefOrInputOrProps instanceof TxInput
-    //             ? await this.findCharterData(chUtxo as TxInput)
-    //             : charterRefOrInputOrProps;
-    //     const uutName = charterData.settingsUut;
+    async findSettingsUtxo(
+        charterRefOrInputOrProps?: hasCharterRef | TxInput | CapoDatum$Ergo$CharterData
+    ) {
+        const chUtxo =
+            charterRefOrInputOrProps || (await this.mustFindCharterUtxo());
+        const charterData =
+            charterRefOrInputOrProps instanceof StellarTxnContext
+                ? charterRefOrInputOrProps.state.charterData
+                : !charterRefOrInputOrProps ||
+                  charterRefOrInputOrProps instanceof TxInput
+                ? await this.findCharterData(chUtxo as TxInput)
+                : charterRefOrInputOrProps;
 
-    //     const uutValue = this.uutsValue(uutName);
+        const currentSettings = charterData.manifest.get("currentSettings")
+        if (!currentSettings) {
+            throw new Error(`there is no currentSettings in the Capo's manifest`)
+        }
+        const uutName = currentSettings?.tokenName;
+        const uutValue = this.uutsValue(uutName);
 
-    //     return await this.mustFindMyUtxo(
-    //         "settings uut",
-    //         this.uh.mkTokenPredicate(uutValue)
-    //     );
-    // }
+        return await this.mustFindMyUtxo(
+            "settings uut",
+            this.uh.mkTokenPredicate(uutValue)
+        );
+    }
 
     async connectMintingScript(
         params: SeedTxnScriptParams
@@ -1540,10 +1545,10 @@ export abstract class Capo<
         if (!uutName) {
             throw new Error(`missing required uutName for delegate link`);
         }
-        console.warn(
-            "  -- mkOnchainRelativeDelegateLink: encoding with JSON-ified config",
-            config
-        );
+        // console.warn(
+        //     "  -- mkOnchainRelativeDelegateLink: encoding with JSON-ified config",
+        //     config
+        // );
         return {
             uutName,
             // strategyName,
@@ -1803,18 +1808,18 @@ export abstract class Capo<
 
         if (!cache[roleLabel]) cache[roleLabel] = {};
         const roleCache = cache[roleLabel];
-        console.log(
-            "connectDgtWithOnchainRDLink cache key",
-            roleLabel,
-            cacheKey
-        );
+        // console.log(
+        //     "connectDgtWithOnchainRDLink cache key",
+        //     roleLabel,
+        //     cacheKey
+        // );
         const cachedRole = roleCache[cacheKey];
         if (cachedRole) {
             const {
                 // strategyName,
                 delegate,
             } = cachedRole;
-            console.log(`  ✅ 💁 ${roleLabel} - from cache `);
+            // console.log(`  ✅ 💁 ${roleLabel} - from cache `);
             return delegate as DT;
         }
         console.log(`   🔎delegate 💁 ${roleLabel}`);
@@ -2056,14 +2061,14 @@ export abstract class Capo<
                 //     },
                 // },
             ),
-            mintDelegate: defineRole("mintDgt", BasicMintDelegate, {
+            mintDelegate: defineRole("mintDgt", UnspecializedMintDelegate, {
                 partialConfig: {},
                 validateConfig(args): delegateConfigValidation {
                     return undefined;
                 },
             }),
 
-            spendDelegate: defineRole("spendDgt", BasicMintDelegate, {
+            spendDelegate: defineRole("spendDgt", UnspecializedMintDelegate, {
                 partialConfig: {},
                 validateConfig(args): delegateConfigValidation {
                     return undefined;
@@ -2184,8 +2189,6 @@ export abstract class Capo<
         return this.inlineDatum("ScriptReference", {});
     }
 
-    datumAdapters!: Record<string, DelegatedDatumAdapter<any>> &
-        Awaited<ReturnType<this["initDelegatedDatumWrappers"]>>;
 
     // @datum
     // async mkDatumSettingsData<THISTYPE extends Capo<any>>(
@@ -2295,21 +2298,25 @@ export abstract class Capo<
      * and that the off-chain Capo delegateMap provides an off-chain controller
      * for that typeName.
      */
-    async getDgDataController(typeName: string, charterData?: CharterData) {
+    async getDgDataController<RN extends string &  keyof this["_delegateRoles"]> (
+        roleName: RN, 
+        // typeName: string, 
+        charterData?: CharterData
+    ) : Promise<DelegatedDataContract> {
         const chD = charterData || (await this.findCharterData());
-        const foundME = chD.manifest.get(typeName);
+        const foundME = chD.manifest.get(roleName);
         if (!foundME) {
-            throw new Error(`no manifest entry found with link to installed ${typeName}`);
+            throw new Error(`no manifest entry found with link to installed ${roleName}`);
         }
         if (foundME?.entryType.DgDataPolicy) {
             return this.connectDelegateWithOnchainRDLink<
-                typeof typeName,
-                ContractBasedDelegate
-            >(typeName, foundME.entryType.DgDataPolicy.policyLink);
+                RN,
+                DelegatedDataContract
+            >(roleName, foundME.entryType.DgDataPolicy.policyLink) // as Promise<>;
         } else {
             const actualEntryType = Object.keys(foundME.entryType)[0];
             throw new Error(
-                `invalid data-controller name '${typeName}' is invalid as a data-controller name; \n"+
+                `invalid data-controller name '${roleName}' is invalid as a data-controller name; \n"+
                 "  ... manifest entry has type '${actualEntryType}', not DgDataPolicy!`
             );
         }
@@ -2638,30 +2645,45 @@ export abstract class Capo<
         return tcxWithCharterMint as TCX3 & Awaited<typeof tcxWithCharterMint>;
     }
 
-    // async findSettingsDatum<thisType extends Capo<any>>(
-    //     this: thisType,
-    //     {
-    //         settingsUtxo,
-    //         tcx,
-    //         charterUtxo,
-    //     }: {
-    //         settingsUtxo?: TxInput;
-    //         tcx?: hasCharterRef;
-    //         charterUtxo?: TxInput;
-    //     } = {}
-    // ): Promise<CapoOffchainSettingsType<thisType>> {
-    //     const foundSettingsUtxo =
-    //         settingsUtxo || (await this.findSettingsUtxo(tcx || charterUtxo));
+    async findSettingsData<thisType extends Capo<any>>(
+        this: thisType,
+        {
+            settingsUtxo,
+            tcx,
+            charterUtxo,
+        }: {
+            settingsUtxo?: TxInput;
+            tcx?: hasCharterRef;
+            charterUtxo?: TxInput;
+        } = {}
+    ): Promise<DetectSettingsType<thisType>> {
+        const foundSettingsUtxo =
+            settingsUtxo || (await this.findSettingsUtxo(tcx || charterUtxo));
+        if (!this.delegateRoles["settings"]) {
+            throw new Error("this Capo doesn't have a delegate role defined for settings");
+        }
+        const delegate = await this.getDgDataController("settings") as DelegatedDataContract;
+        const settingsData = foundSettingsUtxo.output.datum?.data;
+        if (!settingsData) {
+            throw new Error(`missing expected datum on delegated-data utxo: ` + 
+                dumpAny(foundSettingsUtxo)
+            );
+        }
+        const typedData = await delegate.newReadDatum(
+            settingsData
+        ) as ErgoAnyData;
+        debugger
+        console.log("CHECK TYPE NAME", delegate.recordTypeName,
+            typedData)
+        if (!typedData) throw Error(`missing or invalid settings UTxO datum`);
+        if (typedData.type != delegate.recordTypeName) {
+            throw new Error(`record-type mismatch; expected ${
+                delegate.recordTypeName
+            }, got ${typedData.type}`);
+        }
 
-    //     const data = (await this.readDatum(
-    //         this.settingsAdapter,
-    //         foundSettingsUtxo.output.datum as InlineDatum,
-    //         "ignoreOtherTypes"
-    //     )) as CapoOffchainSettingsType<thisType>;
-
-    //     if (!data) throw Error(`missing or invalid settings UTxO datum`);
-    //     return data;
-    // }
+        return typedData as DetectSettingsType<thisType>;
+    }
 
     // async txnAddSettingsOutput<
     //     TCX extends StellarTxnContext<hasAllUuts<"set">>
@@ -2739,22 +2761,23 @@ export abstract class Capo<
             ? TCX
             : hasAddlTxns<TCX>
     >(tcx: TCX, scriptName: string, script: anyUplcProgram): Promise<RETURNS> {
-        const refScriptUtxo = new TxOutput(
-            this.address,
-            new Value(this.ADA(0n)),
-            this.mkDatumScriptReference(),
-            script
-        );
-        refScriptUtxo.correctLovelace(this.networkParams);
-        const nextTcx = this.mkTcx().addOutput(refScriptUtxo);
-
+        const mkRefScript = () => {
+            const refScriptUtxo = new TxOutput(
+                this.address,
+                new Value(this.ADA(0n)),
+                this.mkDatumScriptReference(),
+                script
+            );
+            refScriptUtxo.correctLovelace(this.networkParams);
+            return this.mkTcx().withParent(tcx).addOutput(refScriptUtxo);
+        }
         const sn = scriptName[0].toUpperCase() + scriptName.slice(1);
 
         return tcx.includeAddlTxn(`refScript${sn}`, {
             description: `creates on-chain reference script for ${scriptName}`,
             moreInfo: "saves txn fees and txn space in future txns",
             optional: false,
-            tcx: nextTcx,
+            tcx: mkRefScript,
         }) as RETURNS;
     }
 
@@ -2942,14 +2965,33 @@ export abstract class Capo<
      * The `predicate` function, if provided, can implement any logic suitable for a specific case of data-finding.
      */
     async findDelegatedDataUtxos<
-        const T extends undefined | (string & keyof this["delegateRoles"]),
+        THIS extends Capo<any>,
+        const T extends undefined | (string & keyof THIS["delegateRoles"]) ,
+        RAW_DATUM_TYPE extends ( T extends string & keyof THIS["delegateRoles"] ? (
+            THIS["_delegateRoles"][T] extends DelegateSetup<"dgDataPolicy", infer DT, any> ? 
+                DgDataType<DT & DelegatedDataContract> : never 
+            ) : DgDataType<any>
+        ) = ( T extends string & keyof THIS["delegateRoles"] ? (
+            THIS["_delegateRoles"][T] extends DelegateSetup<"dgDataPolicy", infer DT, any> ? 
+                DgDataType<DT & DelegatedDataContract> : never 
+            ) : DgDataType<any>
+        ),
+        PARSED_DATUM_TYPE extends ( T extends string & keyof THIS["delegateRoles"] ? (
+            THIS["_delegateRoles"][T] extends DelegateSetup<"dgDataPolicy", infer DT, any> ? 
+            MaybeWrappedDataType<DT & DelegatedDataContract> : never 
+            ) : MaybeWrappedDataType<any>
+        ) = ( T extends string & keyof THIS["delegateRoles"] ? (
+            THIS["_delegateRoles"][T] extends DelegateSetup<"dgDataPolicy", infer DT, any> ? 
+            MaybeWrappedDataType<DT & DelegatedDataContract> : never 
+            ) : MaybeWrappedDataType<any>
+        )
         // prettier-ignore
-        ADAPTER_TYPE extends DelegatedDatumAdapter<any> | undefined
-                = T extends keyof this["datumAdapters"]
-                ? this["datumAdapters"][T]
-                : undefined,
-        DATUM_TYPE extends anyDatumProps &
-            AnyDataTemplate<T extends undefined ? any : T, any> = any
+        // ADAPTER_TYPE extends DelegatedDatumAdapter<any> | undefined
+        //         = T extends keyof this["datumAdapters"]
+        //         ? this["datumAdapters"][T]
+        //         : undefined,
+        // DATUM_TYPE extends anyDatumProps &
+        //     AnyDataTemplate<T extends undefined ? any : T, any> = any
         // &DatumAdapterAppType<ADAPTER_TYPE> = DatumAdapterAppType<ADAPTER_TYPE>
     >({
         type,
@@ -2959,9 +3001,9 @@ export abstract class Capo<
     }: {
         type?: T;
         id?: string | UutName;
-        predicate?: DelegatedDataPredicate<DATUM_TYPE>;
+        predicate?: DelegatedDataPredicate<RAW_DATUM_TYPE>;
         query?: never; // todo
-    }): Promise<FoundDatumUtxo<DATUM_TYPE>[]> {
+    }): Promise<FoundDatumUtxo<PARSED_DATUM_TYPE>[]> {
         if (!type && !predicate && !id) {
             throw new Error("Must provide either type, predicate or id");
         }
@@ -2969,23 +3011,28 @@ export abstract class Capo<
             throw new Error("Cannot provide both id and predicate");
         }
         if (id) {
-            predicate = (utxo, data) => data.id == id.toString();
+            const idBytes = textToBytes(id.toString());
+            predicate = (utxo, datum) => equalsBytes(datum.id, idBytes);
         }
         // console.log("\n\n\n\n\n\n\n\n\n======= findDelegatedDataUtxos =======\n\n\n\n\n\n\n\n\n");
         // console.log({ type, types: Object.keys(this.datumAdapters)})
         const hasType = !!type;
         if ("undefined" !== typeof type) {
-            const hasAdapterForIt = this.datumAdapters?.[type];
-            if (!this.datumAdapters || (!!type && !hasAdapterForIt)) {
-                const updated = await this.initDelegatedDatumWrappers();
-                console.log(Object.keys(this.datumAdapters));
-                if (!(type in updated) && !this.datumAdapters) {
-                    throw new Error(
-                        `${this.constructor.name}: no datumAdapter for expected type '${type}' even after re-init.  Check your initDelegatedDatumAdapters()`
-                    );
-                }
-                this.datumAdapters = updated as any;
+            const dgtForType = await this.getDgDataController(type as any);
+            
+            if (!dgtForType) {
+                console.log("no adapter for type", type);
+
+                // const updated = await this.delegatedDataWrappers();
+                // console.log(Object.keys(this.datumAdapters));
+                // if (!(type in updated) && !this.datumAdapters) {
+                //     throw new Error(
+                    //         `${this.constructor.name}: no datumAdapter for expected type '${type}' even after re-init.  Check your initDelegatedDatumAdapters()`
+                //     );
+                // }
+                // this.datumAdapters = updated as any;
             }
+            
         }
         // console.log("findDelegatedDataUtxos", type, predicate);
         const utxos = await this.network.getUtxos(this.address);
@@ -2993,34 +3040,61 @@ export abstract class Capo<
         // console.log("utxos", dumpAny(utxos));
         const utxosWithDatum = (
             await Promise.all(
-                utxos.map((utxo) => {
+                utxos.map(async (utxo : TxInput) => {
                     const { datum } = utxo.output;
                     // console.log("datum", datum);
                     if (!datum) return null;
 
-                    if (
-                        "undefined" !== typeof type &&
-                        !this.datumAdapters[type]
-                    ) {
-                        console.log(
-                            ` ⚠️  WARNING: no adapter for type ${type}; skipping readDatum()`
-                        );
-                        return null;
-                    }
-                    const adapter =
-                        type &&
-                        (this.datumAdapters[type] as unknown as ADAPTER_TYPE);
+                    // if (
+                    //     "undefined" !== typeof type &&
+                    //     !this.dataWrappers[type]
+                    // ) {
+                    //     console.log(
+                    //         ` ⚠️  WARNING: no adapter for type ${type}; skipping readDatum()`
+                    //     );
+                    //     return null;
+                    // }
+                    // const wrapperClass =
+                    //     type &&
+                    //     this.dataWrappers[type] // as unknown as ADAPTER_TYPE);
 
-                    return this.readDatum(
-                        // adapter
-                        //     ? this.readDatum(adapter, datum, "ignoreOtherTypes") :
-                        "DelegatedData",
-                        datum,
-                        "ignoreOtherTypes"
-                    ).then(
+                    let type: string | undefined;
+                    if ( datum.data.kind == "constr") {
+                        const cField = datum.data.fields[0]!
+                        const map = cField.kind == "map" ? cField.items : null;
+                        if (map) {
+                            const typeBytes = textToBytes("type")
+                            const seenTypeBytes = map.find( ( [k, v] ) => { 
+                                return k.kind == "bytes" &&
+                                equalsBytes(k.bytes, typeBytes) 
+                            })?.[1];
+                            if (seenTypeBytes?.kind == "bytes") {
+                                type = bytesToText(seenTypeBytes.bytes);
+                            }
+                        }
+                    }
+                    const dgtForType = type && await this.getDgDataController(type) as DelegatedDataContract;
+                    if (!dgtForType) {
+                        console.log("no type found in datum", datum.data.dataPath,
+                            "in utxo", dumpAny(utxo.id))
+
+                        const msg = type ? `no delegate for type ${type}` : "no type in datum"
+                        return {                            
+                            utxo,
+                            datum,
+                            data: `Error: ${msg}, couldn't parse data` as any
+                        }
+                    }
+                    
+                    const readingDatum = dgtForType.newReadDatum(
+                        datum.data
+                    ) as Promise<RAW_DATUM_TYPE>;
+
+                    return readingDatum.then(
                         mkFoundDatum.bind(
                             this,
-                            utxo
+                            utxo,
+                            dgtForType,
                         ) as any /* allows the error callback to fit the signature */,
                         (e) => {
                             debugger;
@@ -3032,39 +3106,44 @@ export abstract class Capo<
             )
         )
             // filter corrects any possible nulls
-            .filter((x) => !!x) as FoundDatumUtxo<DATUM_TYPE>[];
+            .filter((x) => !!x) as FoundDatumUtxo<any>[];
         console.log(type, `findDelegatedData: `, utxosWithDatum.length);
         return utxosWithDatum;
 
-        function mkFoundDatum(utxo: TxInput, datum: DATUM_TYPE) {
+        function mkFoundDatum(
+            utxo: TxInput, 
+            delegate: DelegatedDataContract, 
+            datumParsed: any
+        ) {
             // console.log("hi mkFoundDatum", datum);
-            if (!datum) {
+            if (!datumParsed) {
                 // console.log("  -- skipped 1 mismatch (non-DelegatedDatum)");
                 return null;
             }
 
-            if (!datum.id || !datum.type) {
+            if (!datumParsed.id || !datumParsed.type) {
                 console.log(
-                    `⚠️  WARNING: missing required 'id' or 'type' field in this delegated datum.  Is the adapter retaining them?\n`,
+                    `⚠️  WARNING: missing required 'id' or 'type' field in this delegated datum\n`,
                     dumpAny(utxo),
-                    datum
+                    datumParsed
                 );
                 debugger;
                 return null;
             }
-            if (type && datum.type != type) {
+            if (type && datumParsed.type != type) {
                 // console.log(`  -- skipped ${datum.type}; need ${type})`);
                 return null;
             }
-            if (predicate && !predicate(utxo, datum)) {
+            if (predicate && !predicate(utxo, datumParsed)) {
                 // console.log("  -- skipped due to predicate");
                 return null;
             }
             // console.log("-- matched: ", datum);
             return {
                 utxo,
-                datum,
-            } as FoundDatumUtxo<DATUM_TYPE>;
+                datum: datumParsed,
+                data: delegate.wrapData(datumParsed),
+            } as FoundDatumUtxo<any>;
         }
     }
 
@@ -3752,6 +3831,7 @@ export abstract class Capo<
         );
         return this.txnCreateOffchainDelegateLink(ttcx2, policyName, options);
     }
+
     async mkTxnCommittingPendingDgtChanges<TCX extends StellarTxnContext>(
         tcx: TCX = this.mkTcx() as TCX
     ) {

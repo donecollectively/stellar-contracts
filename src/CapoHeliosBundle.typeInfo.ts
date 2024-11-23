@@ -32,6 +32,8 @@ import type {
     ByteArrayLike,
  } from "@helios-lang/codec-utils";
 
+ type TimeLike = IntLike;
+ 
 
 import {HeliosScriptBundle, type tagOnly, type EnumTypeMeta, 
     type singleEnumVariantMeta

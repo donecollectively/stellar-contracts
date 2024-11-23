@@ -103,7 +103,7 @@ export class uutMintingDelegateDataBridge extends ContractDataBridge {
     static isAbstract = false as const;
     isAbstract = false as const;
     /**
-     * Helper class for generating TxOutputDatum for the ***datum type ***
+     * Helper class for generating TxOutputDatum for the ***datum type (DelegateDatum)***
      * for this contract script. 
      */
     datum: DelegateDatumHelper
@@ -256,6 +256,7 @@ export class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
         return cast.fromUplcData(d) as ErgoSomeEnum;        
     } /* enumReader helper */
 
+datum = (d: UplcData) => { return this.DelegateDatum(d) }
     /**
         * reads UplcData *known to fit the **DelegateDatum*** enum type,
         * for the BasicDelegate script.
@@ -655,7 +656,8 @@ export class SomeEnumHelper extends EnumBridge<JustAnEnum> {
      */
     hasNestedFields(fields: SomeEnum$hasNestedFieldsLike | { 
         m: SampleStructLike,
-        n: IntLike } ) : UplcData {
+        n: IntLike
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             hasNestedFields: fields 
         }, "uutMintingDelegate::SomeEnum.hasNestedFields");
@@ -668,7 +670,8 @@ export class SomeEnumHelper extends EnumBridge<JustAnEnum> {
      */
     hasRecursiveFields(fields: SomeEnum$hasRecursiveFieldsLike | { 
         placeholder: IntLike,
-        ph2: string } ) : UplcData {
+        ph2: string
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             hasRecursiveFields: fields 
         }, "uutMintingDelegate::SomeEnum.hasRecursiveFields");
@@ -735,7 +738,8 @@ export class SomeEnumHelperNested extends EnumBridge<JustAnEnum> {
      */
     hasNestedFields(fields: SomeEnum$hasNestedFieldsLike | { 
         m: SampleStructLike,
-        n: IntLike } ) : UplcData {
+        n: IntLike
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             hasNestedFields: fields 
         }, "uutMintingDelegate::SomeEnum.hasNestedFields");
@@ -748,7 +752,8 @@ export class SomeEnumHelperNested extends EnumBridge<JustAnEnum> {
      */
     hasRecursiveFields(fields: SomeEnum$hasRecursiveFieldsLike | { 
         placeholder: IntLike,
-        ph2: string } ) : UplcData {
+        ph2: string
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             hasRecursiveFields: fields 
         }, "uutMintingDelegate::SomeEnum.hasRecursiveFields");
@@ -758,7 +763,7 @@ export class SomeEnumHelperNested extends EnumBridge<JustAnEnum> {
 
 
 /**
- * Helper class for generating UplcData for variants of the ***DelegateDatum*** enum type.
+ * Helper class for generating TxOutputDatum for variants of the ***DelegateDatum*** enum type.
  */
 export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
@@ -770,21 +775,22 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
    >(DelegateDatumSchema, { isMainnet: true });
 
     /**
-     * generates  UplcData for ***"uutMintingDelegate::DelegateDatum.Cip68RefToken"***
+     * generates  TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.Cip68RefToken"***
      * @remarks - ***DelegateDatum$Cip68RefTokenLike*** is the same as the expanded field-types.
      */
     Cip68RefToken(fields: DelegateDatum$Cip68RefTokenLike | { 
         cip68meta: AnyDataLike,
         cip68version: IntLike,
-        otherDetails: UplcData } ) : UplcData {
+        otherDetails: UplcData
+    } ) : TxOutputDatum<"Inline"> {
         const uplc = this.mkUplcData({
             Cip68RefToken: fields 
         }, "uutMintingDelegate::DelegateDatum.Cip68RefToken");
-       return uplc;
+        return TxOutputDatum.Inline(uplc);
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates  UplcData for ***"uutMintingDelegate::DelegateDatum.IsDelegation"***
+     * generates  TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.IsDelegation"***
      * @remarks - ***DelegationDetailLike*** is the same as the expanded field-type.
      */
     IsDelegation(
@@ -793,25 +799,25 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     mph: /*minStructField*/ MintingPolicyHash | string | number[]
     tn: /*minStructField*/ number[]
 }
-    ) : UplcData {
+    ) : TxOutputDatum {
         const uplc = this.mkUplcData({ 
            IsDelegation: dd
         }, "uutMintingDelegate::DelegateDatum.IsDelegation"); /*singleField enum variant*/
-       return uplc;
+        return TxOutputDatum.Inline(uplc);
     }
 
 /**
- * (property getter): UplcData for ***"uutMintingDelegate::DelegateDatum.TagOnlyDatum"***
+ * (property getter): TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.TagOnlyDatum"***
  * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#2***
  */
     get TagOnlyDatum() {
         const uplc = this.mkUplcData({ TagOnlyDatum: {} }, 
             "uutMintingDelegate::DelegateDatum.TagOnlyDatum");
-        return uplc;
+        return TxOutputDatum.Inline(uplc);
     } /* tagOnly variant accessor */
 
     /**
-     * generates  UplcData for ***"uutMintingDelegate::DelegateDatum.capoStoredData"***
+     * generates  TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.capoStoredData"***
      * @remarks - ***AnyDataLike*** is the same as the expanded field-type.
      */
     capoStoredData(
@@ -819,27 +825,27 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     id: /*minStructField*/ number[]
     type: /*minStructField*/ string
 }
-    ) : UplcData {
+    ) : TxOutputDatum {
         const uplc = this.mkUplcData({ 
            capoStoredData: data
         }, "uutMintingDelegate::DelegateDatum.capoStoredData"); /*singleField enum variant*/
-       return uplc;
+        return TxOutputDatum.Inline(uplc);
     }
 
     /**
-     * generates  UplcData for ***"uutMintingDelegate::DelegateDatum.SingleDataElement"***
+     * generates  TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.SingleDataElement"***
      */
     SingleDataElement(
         aString: string
-    ) : UplcData {
+    ) : TxOutputDatum {
         const uplc = this.mkUplcData({ 
            SingleDataElement: aString
         }, "uutMintingDelegate::DelegateDatum.SingleDataElement"); /*singleField enum variant*/
-       return uplc;
+        return TxOutputDatum.Inline(uplc);
     }
 
     /**
-     * generates  UplcData for ***"uutMintingDelegate::DelegateDatum.SingleNestedStruct"***
+     * generates  TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.SingleNestedStruct"***
      * @remarks - ***SampleStructLike*** is the same as the expanded field-type.
      */
     SingleNestedStruct(
@@ -849,11 +855,11 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     c: /*minStructField*/ Array<boolean>
     d: /*minStructField*/ Option<UplcData>
 }
-    ) : UplcData {
+    ) : TxOutputDatum {
         const uplc = this.mkUplcData({ 
            SingleNestedStruct: aStruct
         }, "uutMintingDelegate::DelegateDatum.SingleNestedStruct"); /*singleField enum variant*/
-       return uplc;
+        return TxOutputDatum.Inline(uplc);
     }
 
     /**
@@ -873,20 +879,21 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     } /* nested enum accessor */
 
     /**
-     * generates  UplcData for ***"uutMintingDelegate::DelegateDatum.MultiFieldVariant"***
+     * generates  TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.MultiFieldVariant"***
      * @remarks - ***DelegateDatum$MultiFieldVariantLike*** is the same as the expanded field-types.
      */
     MultiFieldVariant(fields: DelegateDatum$MultiFieldVariantLike | { 
         field1: IntLike,
-        field2: string } ) : UplcData {
+        field2: string
+    } ) : TxOutputDatum<"Inline"> {
         const uplc = this.mkUplcData({
             MultiFieldVariant: fields 
         }, "uutMintingDelegate::DelegateDatum.MultiFieldVariant");
-       return uplc;
+        return TxOutputDatum.Inline(uplc);
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates  UplcData for ***"uutMintingDelegate::DelegateDatum.MultiFieldNestedThings"***
+     * generates  TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.MultiFieldNestedThings"***
      * @remarks - ***DelegateDatum$MultiFieldNestedThingsLike*** is the same as the expanded field-types.
      */
     MultiFieldNestedThings(fields: DelegateDatum$MultiFieldNestedThingsLike | { 
@@ -899,11 +906,12 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
 			SampleStructLike    /*minEnumVariant*/ }
         | { hasNestedFields: SomeEnum$hasNestedFieldsLike /*minEnumVariant*/ }
         | { hasRecursiveFields: SomeEnum$hasRecursiveFieldsLike /*minEnumVariant*/ }
-> } ) : UplcData {
+>
+    } ) : TxOutputDatum<"Inline"> {
         const uplc = this.mkUplcData({
             MultiFieldNestedThings: fields 
         }, "uutMintingDelegate::DelegateDatum.MultiFieldNestedThings");
-       return uplc;
+        return TxOutputDatum.Inline(uplc);
     } /*multiFieldVariant enum accessor*/
 }/*mkEnumHelperClass*/
 
@@ -1137,7 +1145,8 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
      */
     updatingEntry(fields: ManifestActivity$updatingEntryLike | { 
         key: string,
-        tokenName: number[] } ) : UplcData {
+        tokenName: number[]
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             updatingEntry: fields 
         }, "CapoDelegateHelpers::ManifestActivity.updatingEntry");
@@ -1150,7 +1159,8 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
      */
     addingEntry(fields: ManifestActivity$addingEntryLike | { 
         key: string,
-        tokenName: number[] } ) : UplcData {
+        tokenName: number[]
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             addingEntry: fields 
         }, "CapoDelegateHelpers::ManifestActivity.addingEntry");
@@ -1163,7 +1173,8 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
      */
     forkingThreadToken(fields: ManifestActivity$forkingThreadTokenLike | { 
         key: string,
-        newThreadCount: IntLike } ) : UplcData {
+        newThreadCount: IntLike
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             forkingThreadToken: fields 
         }, "CapoDelegateHelpers::ManifestActivity.forkingThreadToken");
@@ -1176,7 +1187,8 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
      */
     burningThreadToken(fields: ManifestActivity$burningThreadTokenLike | { 
         key: string,
-        burnedThreadCount: IntLike } ) : UplcData {
+        burnedThreadCount: IntLike
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             burningThreadToken: fields 
         }, "CapoDelegateHelpers::ManifestActivity.burningThreadToken");
@@ -1215,7 +1227,8 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
      */
     updatingEntry(fields: ManifestActivity$updatingEntryLike | { 
         key: string,
-        tokenName: number[] } ) : UplcData {
+        tokenName: number[]
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             updatingEntry: fields 
         }, "CapoDelegateHelpers::ManifestActivity.updatingEntry");
@@ -1228,7 +1241,8 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
      */
     addingEntry(fields: ManifestActivity$addingEntryLike | { 
         key: string,
-        tokenName: number[] } ) : UplcData {
+        tokenName: number[]
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             addingEntry: fields 
         }, "CapoDelegateHelpers::ManifestActivity.addingEntry");
@@ -1241,7 +1255,8 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
      */
     forkingThreadToken(fields: ManifestActivity$forkingThreadTokenLike | { 
         key: string,
-        newThreadCount: IntLike } ) : UplcData {
+        newThreadCount: IntLike
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             forkingThreadToken: fields 
         }, "CapoDelegateHelpers::ManifestActivity.forkingThreadToken");
@@ -1254,7 +1269,8 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
      */
     burningThreadToken(fields: ManifestActivity$burningThreadTokenLike | { 
         key: string,
-        burnedThreadCount: IntLike } ) : UplcData {
+        burnedThreadCount: IntLike
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             burningThreadToken: fields 
         }, "CapoDelegateHelpers::ManifestActivity.burningThreadToken");
@@ -1321,7 +1337,8 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     queuePendingDgtChange(fields: CapoLifecycleActivity$queuePendingDgtChangeLike | { 
         action: PendingDelegateActionLike,
         role: DelegateRoleLike,
-        name: Option<string> } ) : UplcData {
+        name: Option<string>
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             queuePendingDgtChange: fields 
         }, "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
@@ -1334,7 +1351,8 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      */
     removePendingDgtChange(fields: CapoLifecycleActivity$removePendingDgtChangeLike | { 
         role: DelegateRoleLike,
-        name: Option<string> } ) : UplcData {
+        name: Option<string>
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             removePendingDgtChange: fields 
         }, "CapoDelegateHelpers::CapoLifecycleActivity.removePendingDgtChange");
@@ -1705,7 +1723,8 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     queuePendingDgtChange(fields: CapoLifecycleActivity$queuePendingDgtChangeLike | { 
         action: PendingDelegateActionLike,
         role: DelegateRoleLike,
-        name: Option<string> } ) : isActivity {
+        name: Option<string>
+    } ) : isActivity {
         const uplc = this.mkUplcData({
             queuePendingDgtChange: fields 
         }, "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
@@ -1718,7 +1737,8 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      */
     removePendingDgtChange(fields: CapoLifecycleActivity$removePendingDgtChangeLike | { 
         role: DelegateRoleLike,
-        name: Option<string> } ) : isActivity {
+        name: Option<string>
+    } ) : isActivity {
         const uplc = this.mkUplcData({
             removePendingDgtChange: fields 
         }, "CapoDelegateHelpers::CapoLifecycleActivity.removePendingDgtChange");
@@ -2168,7 +2188,8 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
      */
     UpdatingDelegatedData(fields: DelegateActivity$UpdatingDelegatedDataLike | { 
         dataType: string,
-        recId: number[] } ) : isActivity {
+        recId: number[]
+    } ) : isActivity {
         const uplc = this.mkUplcData({
             UpdatingDelegatedData: fields 
         }, "uutMintingDelegate::DelegateActivity.UpdatingDelegatedData");
@@ -2181,7 +2202,8 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
      */
     DeletingDelegatedData(fields: DelegateActivity$DeletingDelegatedDataLike | { 
         dataType: string,
-        recId: number[] } ) : isActivity {
+        recId: number[]
+    } ) : isActivity {
         const uplc = this.mkUplcData({
             DeletingDelegatedData: fields 
         }, "uutMintingDelegate::DelegateActivity.DeletingDelegatedData");

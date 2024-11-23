@@ -31,12 +31,26 @@ import { ContractBasedDelegate } from "../src/delegation/ContractBasedDelegate";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { expectTxnError } from "../src/testing/StellarTestHelper";
 import UnspecializedDelegateBundle from "../src/delegation/UnspecializedDelegate.hlbundle.js"
+import { CapoHeliosBundle } from "../src/CapoHeliosBundle.js";
+
+export class MyAppCapo extends CapoHeliosBundle {
+    get modules() {
+        return [
+            ...super.modules,
+            // additional custom .hl module imports here
+        ];
+    }
+}
 
 class NamedDelegateTestCapo extends CapoWithoutSettings {
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {
         return (await super.getMintDelegate()) as MintDelegateWithGenericUuts;
     }
 
+    scriptBundle() {
+        return new CapoHeliosBundle();
+    }
+    
     @txn
     async mkTxnCreatingTestNamedDelegate<const P extends string>(purpose: P) {
         const mintDelegate = await this.getMintDelegate();
@@ -101,7 +115,7 @@ class NamedDelegateTestCapo extends CapoWithoutSettings {
 export class TestNamedDelegate extends ContractBasedDelegate {
     get delegateName() { return "myNamedDgt" }
     scriptBundle() {
-        return this.mkBundleWithCapo(UnspecializedDelegateBundle)
+        return new UnspecializedDelegateBundle()
     }
 }
 
@@ -109,7 +123,7 @@ type localTC = StellarTestContext<DefaultCapoTestHelper<NamedDelegateTestCapo>>;
 
 const it = itWithContext<localTC>;
 const fit = it.only;
-const xit = it.skip; //!!! todo: update this when vitest can have skip<HeliosTestingContext>
+const xit = it.skip; //!!! todo: update this when vitest can hgave skip<HeliosTestingContext>
 //!!! until then, we need to use if(0) it(...) : (
 // ... or something we make up that's nicer
 

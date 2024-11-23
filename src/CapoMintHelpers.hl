@@ -103,7 +103,7 @@ func requiresDelegateAuthorizingMint(
                 }
             },
             _ => {
-                print("yikes, expected DelegateLifecycleActivities!");
+                print("yikes, expected DelegateLifecycleActivities:ReplacingMe or authorizingDelegate  \n");
                 error(err)
             }
         }

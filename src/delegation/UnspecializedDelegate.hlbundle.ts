@@ -22,23 +22,24 @@ import type {
 } from "@helios-lang/ledger";
 import type { Cast } from "@helios-lang/contract-utils";
 
-import UnspecializedMintDelegate from "../delegation/UnspecializedDelegate.hl"
+import UnspecializedDelegateScript from "../delegation/UnspecializedDelegate.hl"
 import { CapoDelegateBundle } from "./CapoDelegateBundle.js"
 import type { EnumTypeMeta, HeliosScriptBundle, makesUplcActivityEnumData, singleEnumVariantMeta, tagOnly } from "../helios/HeliosScriptBundle.js";
 import type { 
     IntLike,
     ByteArrayLike,
  } from "@helios-lang/codec-utils";
+import { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 
 
-export default class UnspecializedDgtBundle extends CapoDelegateBundle {
-    scriptName : string = "UnspecializedDelegate";
+export default class UnspecializedDgtBundle extends CapoDelegateBundle.using(CapoHeliosBundle) {
+    get moduleName() { return "UnspecializedDelegate" };
     get bridgeClassName(): string {
         return "UnspecializedDelegateBridge";
     }
     
     get specializedDelegateModule() {
-        return UnspecializedMintDelegate
+        return UnspecializedDelegateScript
     }
 }
 

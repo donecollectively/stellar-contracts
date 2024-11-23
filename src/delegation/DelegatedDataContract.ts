@@ -12,29 +12,65 @@ import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { ContractBasedDelegate } from "./ContractBasedDelegate.js";
 import type { UutName } from "./UutName.js";
 import { betterJsonSerializer, dumpAny } from "../diagnostics.js";
+import type { AnyData, ErgoAnyData } from "../CapoHeliosBundle.typeInfo.js";
 
-
-export const NO_ADAPTER = Symbol("no adapter; uses on-chain type directly");
-export type NoAdapter = {
-    [NO_ADAPTER]: true;
-}
+export const NO_WRAPPER = Symbol(
+    "no data-adapter; uses on-chain type directly"
+);
+export type NoWrapper = {
+    [NO_WRAPPER]: true;
+};
 
 type OnchainType = {
-    placeholder: true,
-    id: string,
-    type: string,
-}
+    placeholder: true;
+    id: string;
+    type: string;
+};
+
+export type DgDataType<T extends DelegatedDataContract> = ReturnType<
+    T["exampleData"]
+>;
 
 /**
  * @public
  */
-export type DelegatedDatumType<T extends DelegatedDataContract> = ReturnType<
-    T["mkDatumAdapter"]
-> extends NoAdapter ? OnchainType : ReturnType<
-    T["mkDatumAdapter"]
-> extends DelegatedDatumAdapter<infer D>
-    ? D
-    : never;
+export type DgDataCreationAttrs<
+    T extends DelegatedDataContract // | DelegatedDatumAdapter<any>
+> = Omit<DgDataType<T>, "id" | "type">
+    // T extends DelegatedDatumAdapter<infer D>
+    // ? Omit<D, "id" | "type"> :
+    // T extends DelegatedDataContract
+    //     ? ReturnType<T["mkDataWithWrapper"]> extends DelegatedDatumAdapter<
+    //           infer D
+    //       >
+    //         ? Omit<D, "id" | "type">
+    //         : never
+    //     : never;
+
+
+/**
+ * @public
+ */
+export type MaybeWrappedDataType<
+    T extends DelegatedDataContract,
+    RT extends ReturnType<T["mkDataWithWrapper"]> = ReturnType<
+        T["mkDataWithWrapper"]
+    >
+> = RT extends NoWrapper
+    ? DgDataType<T>
+    : AnyData extends RT
+    ? AnyData
+    : Exclude<Exclude<RT, NoWrapper>, AnyData>;
+
+export type DelegatedDataWrapper<
+    T extends DelegatedDataContract,
+    DDT extends DgDataType<T> = DgDataType<T>,
+    WDT extends MaybeWrappedDataType<T> = MaybeWrappedDataType<T>
+> = DDT extends WDT ? DDT : someDataWrapper<DDT>
+
+export type someDataWrapper<wrappedType extends AnyData> = {
+    unwrapData(): wrappedType;
+}
 
 /**
  * @public
@@ -43,6 +79,8 @@ export type DelegatedDatumTypeName<
     T extends DelegatedDataContract,
     TN extends string = T["recordTypeName"]
 > = TN;
+
+
 
 /**
  * DelegatedDataContract provides a base class for utility functions
@@ -53,43 +91,94 @@ export type DelegatedDatumTypeName<
  *@public
  */
 export abstract class DelegatedDataContract extends ContractBasedDelegate {
+    usesWrappedData?: boolean;
+
     abstract get recordTypeName(): string;
+    /**
+     * Provides a customized label for the delegate, used in place of
+     * a generic script name ("BasicDelegate").  DelegatedDataContract
+     * provides a default name with the record type name and "Pol" suffix.
+     * 
+     * Affects the on-chain logging for the policy and the compiled script
+     * output in the script-cache on-disk or in browser's storage.
+     */
     get delegateName() {
-        return `${this.recordTypeName}Ctrl`;
+        return `${this.recordTypeName}Pol`;
     }
     // abstract get capo(): Capo<any>;
+    abstract exampleData(): ErgoAnyData;
     abstract requirements(): ReqtsMap<any, any> | ReqtsMap<any, never>;
 
-    async findRecord(id: string | UutName) {
-        return this.capo
-            .findDelegatedDataUtxos({
-                type: this.recordTypeName,
-                id,
-            })
-            .then(this.capo.singleItem);
+    // async findRecord(id: string | UutName) {
+    //     return this.capo
+    //         .findDelegatedDataUtxos({
+    //             type: this.recordTypeName,
+    //             id,
+    //         })
+    //         .then(this.capo.singleItem);
+    // }
+
+    wrapData(data: DgDataType<this>): MaybeWrappedDataType<this> {
+        if (false == this.usesWrappedData) {
+            return data as MaybeWrappedDataType<this>;
+        }
+        if (true == this.usesWrappedData) {
+            return this.mkDataWithWrapper(data) as MaybeWrappedDataType<this>;
+        }
+        const maybeWrapped = this.mkDataWithWrapper(data);
+        if (maybeWrapped[NO_WRAPPER]) {
+            this.usesWrappedData = false;
+            return data as MaybeWrappedDataType<this>;
+        }
+        this.usesWrappedData = true;
+        return maybeWrapped as MaybeWrappedDataType<this>;
     }
+
     /**
      * Optional method specifying a class that is used at application runtime
      * for business logic on a record.  If not implemented, the record is
      * returned from the on-chain store as a plain object, and updates are
      * performed based on the plain object.
      */
-    mkDatumAdapter(): DelegatedDatumAdapter<any> | NoAdapter {
+    mkDataWithWrapper(
+        d: DgDataType<this>
+    ): someDataWrapper<any> | NoWrapper {
         return {
-            [NO_ADAPTER]: true,
+            [NO_WRAPPER]: true,
+        };
+    }
+
+    unwrapData(d: Exclude<DelegatedDataWrapper<this>, AnyData>): DgDataType<this> {
+        if ("undefined" == typeof this.usesWrappedData) {
+            // invoke wrapData once with the (typed, delegate-specific sample data )
+            // to populate the "uses adapter" flag
+            this.wrapData(this.exampleData() as any);
         }
+        if (false == this.usesWrappedData) {
+            return d as DgDataType<this>;
+        }
+        if (true == this.usesWrappedData) {
+            return d.unwrapData() as DgDataType<this>;
+        }
+        throw new Error(`incontheieieieievible!`);
     }
 
     async mkDatumDelegatedDataRecord<THIS extends DelegatedDataContract>(
         this: THIS,
-        record: DelegatedDatumType<THIS>
+        record: Exclude<MaybeWrappedDataType<THIS>, AnyData>
     ): Promise<helios.Datum> {
-        const adapter = this.mkDatumAdapter();
-        let data = record
-        throw new Error(`implement on-chain path for DgData`)
-        if (adapter) {
-            // data = record.toOnchain()
-        }
+        return this.mkDatum.capoStoredData(this.unwrapData(
+            //@ts-expect-error because we can't seem to express strongly enough
+            // for TS's needs that only real data-wrappers will be passed to this method
+            record
+        ));
+
+        // const adapter = this.unwrapData(record);
+        // let data = record
+        // throw new Error(`implement on-chain path for DgData`)
+        // if (adapter) {
+        // data = record.toOnchain()
+        // }
     }
 
     /**
@@ -116,13 +205,13 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         THIS extends DelegatedDataContract,
         CAI extends isActivity | SeedActivity<any>,
         TCX extends StellarTxnContext,
-        DDType extends DelegatedDatumType<THIS> = DelegatedDatumType<THIS>,
-        minDDType extends DgDataCreationAttrs<THIS> = DgDataCreationAttrs<THIS>
+        // DDType extends MaybeWrappedDataType<THIS> = MaybeWrappedDataType<THIS>,
+        // minDDType extends DgDataCreationAttrs<THIS> = DgDataCreationAttrs<THIS>
     >(
         this: THIS,
-        record: minDDType,
+        // record: minDDType,
         controllerActivity: CAI,
-        extraCreationOptions?: ExtraCreationOptions<DDType>,
+        options: CreationOptions<THIS>,
         tcx?: TCX
     ): Promise<TCX> {
         // ... it does the setup for the creation activity,
@@ -156,13 +245,13 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         // delegate policy that checks the creation.
         return this.txnCreatingRecord(
             tcx2,
-            record,
+            // record,
             activity,
-            extraCreationOptions
+            options
         );
     }
 
-    creationDefaultDetails(): Partial<DelegatedDatumType<this>> {
+    creationDefaultDetails(): Partial<MaybeWrappedDataType<this>> {
         return {};
     }
 
@@ -173,36 +262,45 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
             hasSeedUtxo &
             // hasSettingsRef &
             hasUutContext<DelegatedDatumTypeName<THIS>>,
-        DDType extends DelegatedDatumType<THIS> = DelegatedDatumType<THIS>,
+        WDT extends MaybeWrappedDataType<THIS> = MaybeWrappedDataType<THIS>,
+        RDT extends DgDataType<THIS> = DgDataType<THIS>,
         minDDType extends DgDataCreationAttrs<THIS> = DgDataCreationAttrs<THIS>
     >(
         this: THIS,
         tcx: TCX,
-        record: minDDType,
+        // record: minDDType,
         controllerActivity: isActivity,
-        extraCreationOptions: ExtraCreationOptions<DDType> = {}
+        options: CreationOptions<THIS>,
     ): Promise<TCX> {
         const newType = this.recordTypeName as DelegatedDatumTypeName<THIS>;
+        debugger
         const {
             addedUtxoValue: extraCreationValue = new helios.Value(0n),
             beforeSave = (x) => x,
-        } = extraCreationOptions;
-        console.log(
-            `🏒 creating ${newType} ->`,
-            JSON.parse(JSON.stringify(record, betterJsonSerializer, 2))
-        );
+            data : typedData,
+            wrappedData,
+        } = options;
 
         const tcx2 = await this.txnGrantAuthority(tcx, controllerActivity);
 
         const uut = tcx.state.uuts[newType];
-        const newRecord: DDType = {
-            ...(record as unknown as DDType),
+        let newRecord: RDT = typedData as any;
+        if (wrappedData) {
+            newRecord = this.unwrapData(newRecord as any) as RDT
+        }
+
+        const fullRecord = {
+            ...newRecord,
             id: uut.toString(),
             type: newType,
             ...this.creationDefaultDetails(),
-        };
+        } as RDT;
         const newDatum = await this.mkDatumDelegatedDataRecord(
-            beforeSave(newRecord)
+            beforeSave(fullRecord) as any
+        );
+        console.log(
+            `🏒 creating ${newType} ->`,
+            JSON.parse(JSON.stringify(fullRecord, betterJsonSerializer, 2))
         );
 
         return tcx2.addOutput(
@@ -254,10 +352,13 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
     >(
         this: THIS,
         txnName: string,
-        item: FoundDatumUtxo<DelegatedDatumType<THIS>>,
-        controllerActivity: CAI,
-        updatedRecord: Partial<DelegatedDatumType<THIS>>,
-        options?: ExtraUpdateOptions<DelegatedDatumType<THIS>>,
+        item: FoundDatumUtxo<MaybeWrappedDataType<THIS>>,
+        options: WrappedDgDataUpdateOptions<
+            THIS,
+            CAI,
+            MaybeWrappedDataType<THIS>,
+            DgDataType<THIS>
+        >,
         tcx?: TCX
     ): Promise<TCX> {
         tcx = tcx || (this.mkTcx(txnName) as TCX);
@@ -266,67 +367,91 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         const /* tcx1a*/ tcx1 = await this.tcxWithCharterRef(tcx);
         // const tcx1 = await this.tcxWithSettingsRef(tcx1a);
 
+        const {
+            activity,
+            addedUtxoValue,
+            beforeSave,            
+            updatedPartial,
+            updatedRecord,
+        } = options;
         // tell Capo to spend the DD record
         const tcx2 = await capo.txnAttachScriptOrRefScript(
             tcx1.addInput(item.utxo, capo.activitySpendingDelegatedDatum()),
             capo.compiledScript
         );
-        const { id } = item.datum;
+        const existingTypedData = this.newReadDatum(item.datum.data);
+        const { id } = existingTypedData
+
         // tell the spend delegate to allow the spend,
         // ... by authority of the delegated-data controller
-        const spendDelegate = (await capo.getSpendDelegate(
+        const spendDelegate = await capo.getSpendDelegate(
             tcx2.state.charterData
-        ));
+        );
         const typeName = this.recordTypeName;
         const tcx2a = await spendDelegate.txnGrantAuthority(
             tcx2,
             spendDelegate.activityUpdatingDelegatedData(id)
         );
 
-        const activity: isActivity =
-            controllerActivity instanceof UpdateActivity
-                ? controllerActivity.mkRedeemer(id)
-                : controllerActivity;
+        const materializedActivity: isActivity =
+            activity instanceof UpdateActivity
+                ? activity.mkRedeemer(id)
+                : activity;
 
-        const recordWithUpdates = {
-            ...item.datum,
-            ...updatedRecord,
-        };
+        let recordWithUpdates: DgDataType<THIS> = {} as any;
+        if (updatedPartial) {
+            recordWithUpdates = {
+                ... existingTypedData,
+                ...updatedPartial,
+            };
+        } else if (updatedRecord) {
+            recordWithUpdates = this.unwrapData(updatedRecord as any);
+        } else {
+            throw new Error(
+                `mkTxnUpdateRecord: must provide either updatedRecord or updatedPartial`
+            );
+        }
 
-        return this.txnUpdatingRecord(
-            tcx2a,
-            id,
-            item,
-            activity,
-            recordWithUpdates,
-            options
-        );
+        return this.txnUpdatingRecord(tcx2a, id, item, {
+            activity: materializedActivity,
+            updatedRecord: recordWithUpdates,
+            addedUtxoValue,
+            beforeSave,            
+        });
     }
 
     async txnUpdatingRecord<
         THIS extends DelegatedDataContract,
-        TCX extends StellarTxnContext &
-            hasCharterRef 
-            // hasSeedUtxo &
-            // hasSettingsRef
+        TCX extends StellarTxnContext & hasCharterRef
+        // hasSeedUtxo &
+        // hasSettingsRef
     >(
         this: THIS,
         tcx: TCX,
         id: hasRecId,
-        item: FoundDatumUtxo<DelegatedDatumType<THIS>>,
-        controllerActivity: isActivity,
-        record: DelegatedDatumType<THIS>,
-        options: ExtraUpdateOptions<DelegatedDatumType<THIS>> = {}
+        item: FoundDatumUtxo<MaybeWrappedDataType<THIS>>,
+        // controllerActivity: isActivity,
+        // record: WrappedDataType<THIS>,
+        options: DgDataUpdateOptions<
+            THIS,
+            any,
+            DgDataType<THIS>
+        >
     ): Promise<TCX> {
         const recType = this.recordTypeName as DelegatedDatumTypeName<THIS>;
+
+        const {
+            addedUtxoValue = new helios.Value(0n),
+            beforeSave = (x) => x,            
+            activity,
+            updatedRecord,
+        } = options;
         console.log(
             `🏒 updating ${recType} ->`,
-            JSON.parse(JSON.stringify(record, betterJsonSerializer, 2))
+            JSON.parse(JSON.stringify(updatedRecord, betterJsonSerializer, 2))
         );
 
-        const tcx2 = await this.txnGrantAuthority(tcx, controllerActivity);
-        const { addedUtxoValue = new helios.Value(0n), beforeSave = (x) => x } =
-            options;
+        const tcx2 = await this.txnGrantAuthority(tcx, activity);
         console.log(
             "    -- prev value in dgData utxo:",
             dumpAny(item.utxo.value)
@@ -341,27 +466,13 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
                 item.utxo.value
                     // .add(this.mkMinTv(this.capo.mph, id))
                     .add(addedUtxoValue),
+                await this.mkDatum.capoStoredData(beforeSave(updatedRecord))
 
-                await this.mkDatumDelegatedDataRecord(beforeSave(record))
+                // this.mkDatumDelegatedDataRecord(beforeSave(record))
             )
         ) as TCX & typeof tcx2;
     }
 }
-
-/**
- * @public
- */
-export type DgDataCreationAttrs<
-    T extends DelegatedDataContract | DelegatedDatumAdapter<any>
-> = T extends DelegatedDatumAdapter<infer D>
-    ? Omit<D, "id" | "type">
-    : T extends DelegatedDataContract
-    ? ReturnType<T["mkDatumAdapter"]> extends DelegatedDatumAdapter<
-          infer D
-      >
-        ? Omit<D, "id" | "type">
-        : never
-    : never;
 
 type SeedActivityArgs<SA extends seedActivityFunc<any>> =
     SA extends seedActivityFunc<infer ARGS> ? ARGS : never;
@@ -428,13 +539,40 @@ class UpdateActivity<
     }
 }
 
-type hasRecId = string | UutName;
-type ExtraCreationOptions<T extends DelegatedDatumType<any>> = {
+type hasRecId = string | number[] | UutName;
+type CreationOptions<
+    DGDC extends DelegatedDataContract,
+    WDT extends MaybeWrappedDataType<DGDC> = MaybeWrappedDataType<DGDC>,
+    DT extends DgDataType<DGDC> = DgDataType<DGDC>
+> = {
     addedUtxoValue?: helios.Value;
-    beforeSave?(x: T): T;
+    wrappedData?: WDT;
+    data?: DT;
+    beforeSave?(x: DT): DT;
 };
 
-type ExtraUpdateOptions<T extends DelegatedDatumType<any>> = {
+type WrappedDgDataUpdateOptions<
+    DGDC extends DelegatedDataContract,
+    CAI extends isActivity | UpdateActivity<any>,
+    WDT extends MaybeWrappedDataType<DGDC> = MaybeWrappedDataType<DGDC>,
+    DT extends DgDataType<DGDC> = DgDataType<DGDC>
+> = {
+    activity: CAI;
+    updatedRecord?: WDT;
+    updatedPartial?: Partial<DT>;
+
     addedUtxoValue?: helios.Value;
-    beforeSave?(x: T): T;
+    beforeSave?(x: DT): DT;
+};
+
+type DgDataUpdateOptions<
+    DGDC extends DelegatedDataContract,
+    CAI extends isActivity | UpdateActivity<any>,
+    DT extends DgDataType<DGDC> = DgDataType<DGDC>
+> = {
+    activity: CAI;
+    updatedRecord: DT;
+
+    addedUtxoValue?: helios.Value;
+    beforeSave?(x: DT): DT;
 };

@@ -18,6 +18,7 @@ import type {
 import type { AbstractNew } from "../helios/dataBridge/BridgeTypeUtils.js";
 import type { ErgoDelegateDatum } from "./UnspecializedDelegate.typeInfo.js";
 import type { Cast } from "@helios-lang/contract-utils";
+import type { TxOutputDatum } from "@helios-lang/ledger-babbage";
 
 export type GenericDelegateBridgeClass = AbstractNew<GenericDelegateBridge>;
 export type GenericDelegateBridge = ContractDataBridgeWithEnumDatum &
@@ -76,7 +77,7 @@ export type GenericDelegateDatum = Pick<ErgoDelegateDatum,
 
 export type SomeDgtDatumHelper = EnumBridge<JustAnEnum> &
     Omit<DelegateDatumHelper, "capoStoredData"> & {
-        capoStoredData(x: unknown): UplcData;
+        capoStoredData(x: unknown): TxOutputDatum<"Inline">;
     };
 
     // Omit<..., "SpendingActivity" | "MintingActivity" | "BurningActivity" | "ᱺᱺcast">

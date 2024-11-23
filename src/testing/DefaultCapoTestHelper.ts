@@ -259,14 +259,17 @@ export class DefaultCapoTestHelper<
             `----- charter token minted at slot ${this.network.currentSlot}`
         );
         this.network.tick(1);
-        await tcx.submitAddlTxns(({ txName, description }) => {
-            this.network.tick(1);
-            console.log(
-                `           ------- submitting addl txn ${txName} at slot ${this.network.currentSlot}:`
-            );
+        
+        await tcx.submitAddlTxns({
+            onSubmitted: ({ txName, description }) => {
+                this.network.tick(1);
+                console.log(
+                    `           ------- submitting addl txn ${txName} at slot ${this.network.currentSlot}:`
+                );
+            }
         });
+        // this.network.tick(1);
 
-        this.network.tick(1);
         this.state.mintedCharterToken = tcx;
         // console.log("mintCharterToken returning tcx", tcx);
         return tcx;
@@ -291,6 +294,53 @@ export class DefaultCapoTestHelper<
                 this.network.tick(1);
                 return tcx;
             });
+    }
+
+    async bootstrapSettings() {
+        const {capo} = this;
+
+        if (!capo.delegateRoles.settings) {
+            console.warn(` 🐞🐞🐞🐞🐞 ${capo.constructor.name} has no settings policy`);
+        } else {
+            const mkSetPolTxn = await capo.mkTxnInstallingPolicyDelegate(
+                "settings"
+            );
+            const commitChanges = () => {
+                return capo.mkTxnCommittingPendingDgtChanges();
+            }
+    
+            mkSetPolTxn.includeAddlTxn(`commitSettings`, {
+                description: `commits settingsPolicy`,
+                moreInfo: "makes the on-chain Settings policy active",
+                optional: false,
+                tcx: commitChanges
+            })
+    
+            return mkSetPolTxn.submit().then(async () => {
+                await mkSetPolTxn.submitAddlTxns();
+
+                //@ts-expect-error probing for optional mkInitialSettings method
+                const initialSettings = (await capo.mkInitialSettings?.()) as AnyData;
+
+                if (!initialSettings) {
+                    throw new Error("a capo with a settings policy must implement mkInitialSettings()");
+                }
+
+                const settingsController = await capo.getDgDataController("settings");
+                console.log("🐞🐞🐞🐞🐞🐞🐞🐞🐞 hurray  🐞🐞🐞🐞🐞🐞🐞🐞🐞");
+                console.log({initialSettings});
+
+                debugger
+                const creationTcx = await settingsController.mkTxnCreateRecord(
+                    settingsController.usesSeedActivity(settingsController.activity.SpendingActivities.CreatingRecord, "...seed"),
+                    {
+                        data: initialSettings,                        
+                    }
+                );
+            })
+        }
+
+
     }
 
     // async updateSettings(args: CapoOffchainSettingsType<CAPO>, submitSettings: SubmitOptions={}) {

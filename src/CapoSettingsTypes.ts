@@ -5,6 +5,7 @@ import type {
     AnyDataTemplate,
     hasAnyDataTemplate,
 } from "./delegation/DelegatedDatumAdapter.js";
+import type { ErgoAnyData } from "./CapoHeliosBundle.typeInfo.js";
 
 // an incantation so that settings adapters don't have to get the finicky details right
 
@@ -60,10 +61,16 @@ export type WrappedSettingsAdapterBridge<
 /**
  * @public
  */
-export interface hasSettingsType<C extends Capo<any>> {
-    mkInitialSettings(): Promise<any>; //OffchainSettingsType<C>;
-    initSettingsAdapter(): DatumAdapter<any,any> | Promise<DatumAdapter<any,any>>;
+export interface hasSettingsType{
+    mkInitialSettings(): Promise<{type:string}>;
+    // initSettingsAdapter(): DatumAdapter<any,any> | Promise<DatumAdapter<any,any>>;
 }
+
+export type DetectSettingsType<
+    C extends Capo<any>,
+    MIS extends hasSettingsType["mkInitialSettings"] = C extends hasSettingsType ? C["mkInitialSettings"] : never 
+> = MIS extends never ? never :
+    Awaited<ReturnType<MIS>>
 
 /**
  * @public

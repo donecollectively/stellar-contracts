@@ -50,6 +50,8 @@ import type { IntersectedEnum } from "../helios/typeUtils.js"
 import { StellarCast } from "../helios/dataBridge/StellarCast.js"
 import type {hasSeed, isActivity} from "../StellarContract.js"
 
+export type TimeLike = IntLike;
+
 
 import type {
     MinterActivity$CreatingNewSpendDelegate, MinterActivity$Ergo$CreatingNewSpendDelegate, MinterActivity$CreatingNewSpendDelegateLike,

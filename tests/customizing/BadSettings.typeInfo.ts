@@ -37,9 +37,9 @@ import type {
 
 import {HeliosScriptBundle, type tagOnly, type EnumTypeMeta, 
     type singleEnumVariantMeta
-} from "../helios/HeliosScriptBundle.js"
+} from "../../src/helios/HeliosScriptBundle.js"
 
-import type { IntersectedEnum } from "../helios/typeUtils.js"
+import type { IntersectedEnum } from "../../src/helios/typeUtils.js"
                 
 
 
@@ -88,8 +88,26 @@ export type DelegationDetailLike = {
 }
 
 
+export type ProtocolSettings = {
+    id: /*minStructField*/ string
+    type: /*minStructField*/ string
+    meaning: /*minStructField*/ bigint
+    badSpenderSetting: /*minStructField*/ bigint
+    badMinterSetting: /*minStructField*/ bigint
+}
+
+export type ErgoProtocolSettings = ProtocolSettings/*like canon-other*/
+export type ProtocolSettingsLike = {
+    id: /*minStructField*/ string
+    type: /*minStructField*/ string
+    meaning: /*minStructField*/ IntLike
+    badSpenderSetting: /*minStructField*/ IntLike
+    badMinterSetting: /*minStructField*/ IntLike
+}
+
+
 export type DelegateDatumMeta = EnumTypeMeta<
-    {module: "unspecializedDelegate", enumName: "DelegateDatum"}, {
+    {module: "BadSettingsPolicy", enumName: "DelegateDatum"}, {
         Cip68RefToken: singleEnumVariantMeta<DelegateDatumMeta, "Cip68RefToken",
             "Constr#0", 
             "fields", DelegateDatum$Cip68RefToken, "noSpecialFlags"
@@ -100,7 +118,7 @@ export type DelegateDatumMeta = EnumTypeMeta<
         >,
         capoStoredData: singleEnumVariantMeta<DelegateDatumMeta, "capoStoredData",
             "Constr#2", "singletonField", /* implied wrapper { data: ... } for singleVariantField */ 
-			AnyData   , "noSpecialFlags"
+			ProtocolSettings   , "noSpecialFlags"
         >
     }
 >;
@@ -120,14 +138,14 @@ export type DelegateDatum =
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			DelegationDetail    /*minEnumVariant*/ }
         | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
-			AnyData    /*minEnumVariant*/ }
+			ProtocolSettings    /*minEnumVariant*/ }
 
 export type ErgoDelegateDatum = IntersectedEnum<
         | { Cip68RefToken: DelegateDatum$Ergo$Cip68RefToken /*minEnumVariant*/ }
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			ErgoDelegationDetail    /*minEnumVariant*/ }
         | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
-			ErgoAnyData    /*minEnumVariant*/ }
+			ErgoProtocolSettings    /*minEnumVariant*/ }
 >
 
 /**
@@ -148,7 +166,7 @@ export type DelegateDatumLike = IntersectedEnum<
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			DelegationDetailLike    /*minEnumVariant*/ }
         | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
-			AnyDataLike    /*minEnumVariant*/ }
+			ProtocolSettingsLike    /*minEnumVariant*/ }
 >
 
 export type CapoLifecycleActivity$CreatingDelegate = {
@@ -656,9 +674,9 @@ export type DelegateLifecycleActivityLike = IntersectedEnum<
 >
 
 export type SpendingActivityMeta = EnumTypeMeta<
-    {module: "unspecializedDelegate", enumName: "SpendingActivity"}, {
-        _placeholder1SA: singleEnumVariantMeta<SpendingActivityMeta, "_placeholder1SA",
-            "Constr#0", "singletonField", /* implied wrapper { recId: ... } for singleVariantField */ 
+    {module: "BadSettingsPolicy", enumName: "SpendingActivity"}, {
+        UpdatingSettings: singleEnumVariantMeta<SpendingActivityMeta, "UpdatingSettings",
+            "Constr#0", "singletonField", /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]   , "noSpecialFlags"
         >
     }
@@ -675,7 +693,7 @@ export type SpendingActivityMeta = EnumTypeMeta<
  *     for generating UPLC data for this enum type
  */
 export type SpendingActivity = 
-        | { _placeholder1SA: /* implied wrapper { recId: ... } for singleVariantField */ 
+        | { UpdatingSettings: /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]    /*minEnumVariant*/ }
 
 export type ErgoSpendingActivity = IntersectedEnum<SpendingActivity/*like canon enum*/>
@@ -694,13 +712,13 @@ export type ErgoSpendingActivity = IntersectedEnum<SpendingActivity/*like canon 
  * converted by convention to the canonical types used in the on-chain context.
  */
 export type SpendingActivityLike = IntersectedEnum<
-        | { _placeholder1SA: /* implied wrapper { recId: ... } for singleVariantField */ 
+        | { UpdatingSettings: /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]    /*minEnumVariant*/ }
 >
 
 export type MintingActivityMeta = EnumTypeMeta<
-    {module: "unspecializedDelegate", enumName: "MintingActivity"}, {
-        _placeholder1MA: singleEnumVariantMeta<MintingActivityMeta, "_placeholder1MA",
+    {module: "BadSettingsPolicy", enumName: "MintingActivity"}, {
+        CreatingSettings: singleEnumVariantMeta<MintingActivityMeta, "CreatingSettings",
             "Constr#0", "singletonField", /* implied wrapper { seed: ... } for singleVariantField */ 
 			TxOutputId   , "isSeededActivity"
         >
@@ -718,7 +736,7 @@ export type MintingActivityMeta = EnumTypeMeta<
  *     for generating UPLC data for this enum type
  */
 export type MintingActivity = 
-        | { _placeholder1MA: /* implied wrapper { seed: ... } for singleVariantField */ 
+        | { CreatingSettings: /* implied wrapper { seed: ... } for singleVariantField */ 
 			TxOutputId    /*minEnumVariant*/ }
 
 export type ErgoMintingActivity = IntersectedEnum<MintingActivity/*like canon enum*/>
@@ -737,14 +755,14 @@ export type ErgoMintingActivity = IntersectedEnum<MintingActivity/*like canon en
  * converted by convention to the canonical types used in the on-chain context.
  */
 export type MintingActivityLike = IntersectedEnum<
-        | { _placeholder1MA: /* implied wrapper { seed: ... } for singleVariantField */ 
+        | { CreatingSettings: /* implied wrapper { seed: ... } for singleVariantField */ 
 			TxOutputId | string    /*minEnumVariant*/ }
 >
 
 export type BurningActivityMeta = EnumTypeMeta<
-    {module: "unspecializedDelegate", enumName: "BurningActivity"}, {
-        _placeholder1BA: singleEnumVariantMeta<BurningActivityMeta, "_placeholder1BA",
-            "Constr#0", "singletonField", /* implied wrapper { recId: ... } for singleVariantField */ 
+    {module: "BadSettingsPolicy", enumName: "BurningActivity"}, {
+        RetiringSettings: singleEnumVariantMeta<BurningActivityMeta, "RetiringSettings",
+            "Constr#0", "singletonField", /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]   , "noSpecialFlags"
         >
     }
@@ -761,7 +779,7 @@ export type BurningActivityMeta = EnumTypeMeta<
  *     for generating UPLC data for this enum type
  */
 export type BurningActivity = 
-        | { _placeholder1BA: /* implied wrapper { recId: ... } for singleVariantField */ 
+        | { RetiringSettings: /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]    /*minEnumVariant*/ }
 
 export type ErgoBurningActivity = IntersectedEnum<BurningActivity/*like canon enum*/>
@@ -780,7 +798,7 @@ export type ErgoBurningActivity = IntersectedEnum<BurningActivity/*like canon en
  * converted by convention to the canonical types used in the on-chain context.
  */
 export type BurningActivityLike = IntersectedEnum<
-        | { _placeholder1BA: /* implied wrapper { recId: ... } for singleVariantField */ 
+        | { RetiringSettings: /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]    /*minEnumVariant*/ }
 >
 
@@ -821,7 +839,7 @@ export type DelegateActivity$DeletingDelegatedDataLike = {
 
 
 export type DelegateActivityMeta = EnumTypeMeta<
-    {module: "unspecializedDelegate", enumName: "DelegateActivity"}, {
+    {module: "BadSettingsPolicy", enumName: "DelegateActivity"}, {
         CapoLifecycleActivities: singleEnumVariantMeta<DelegateActivityMeta, "CapoLifecycleActivities",
             "Constr#0", "singletonField", /* implied wrapper { activity: ... } for singleVariantField */ 
 			CapoLifecycleActivity   , "noSpecialFlags"

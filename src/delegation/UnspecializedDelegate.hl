@@ -257,17 +257,27 @@ enum DelegateActivity {
                 //  assert(isMintingDelegate, "unreachable"); // TODO access this const defined in the main script
 
                 // They're normally rejected in this unspecialized (minting) delegate:
-                assert(false, "unspecialized mint delegate rejecting CapoLifecycleActivities");
                 //   ... but if you have cases for creating new delegates, such as 
                 //   ... named delegates for advanced constellations of contracts 
                 //   ... in your Capo, you can implement checks for that here.
                 //  You can use this construct as-is, or modify it to suit your needs.
                 CLA.switch {
+                    // queuePendingDgtChange{action, role, name} => {
+                    //     print("unspecialized mint delegate allowing queuePendingDgtChange");
+                    // },
+                    // committingPendingDgtChange{action, role, name} => {
+                    //     print("unspecialized mint delegate allowing committingPendingDgtChange");
+                    // },
                     CreatingDelegate{seed, purpose} => {
                         self.supportedCapoDelegatePurposes().find_safe(
                             (p : String) -> Bool { p == purpose } 
                         ).switch {
-                            None => error("can't mint delegate with unsupported purpose"),
+                            None => {
+                                if (self.supportedCapoDelegatePurposes().length == 0) {
+                                    print("note: unspecialized delegate has no supported purposes")
+                                };
+                                error("can't mint delegate with unsupported purpose")
+                            },
                             Some => {
                                 validateUutMinting(
                                     mph: mph,

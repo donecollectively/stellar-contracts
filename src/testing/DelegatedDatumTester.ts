@@ -17,18 +17,37 @@ import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { dumpAny } from "../diagnostics.js";
 import { hasReqts } from "../Requirements.js";
 import { DelegatedDataContract } from "../delegation/DelegatedDataContract.js";
+import {
+    DelegateDatumTesterDataBridge
+} from "./DelegatedDatumTester.bridge.js"
+import type {
+    DgDatumTestDataLike,
+    ErgoDgDatumTestData
+} from "./DelegatedDatumTester.typeInfo.js"
 
 import DelegatedDatumTesterBundle from "./DelegatedDatumTester.hlbundle.js"
+import type { GenericDelegateBridgeClass } from "../delegation/GenericDelegateBridge.js";
 
 export class DelegatedDatumTester extends DelegatedDataContract {
+    dataBridgeClass = DelegateDatumTesterDataBridge
     scriptBundle() {
-        return this.mkBundleWithCapo(DelegatedDatumTesterBundle);
+        return new DelegatedDatumTesterBundle()
     }
+
     get delegateName() {
         return "TestDataDgt";
     }
     get recordTypeName() {
         return "tdata";
+    }
+
+    exampleData() : DgDatumTestDataLike {
+        return {
+            id: helios.textToBytes("tdata-‹replaceMe›"),
+            type: "tdata",
+            name: "Fred",
+            number: 42,
+        }
     }
 
     // get capo(): Capo<any> {

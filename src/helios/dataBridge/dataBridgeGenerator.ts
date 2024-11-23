@@ -219,6 +219,8 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 // NOTE: this file is auto-generated; do not edit directly
 ${imports}
 ${scImports}
+export type TimeLike = IntLike;
+
 ${this.includeScriptNamedTypes(inputFile)}
 
 /**
@@ -833,6 +835,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         const enumName = typeDetails.enumName;
         // const maybeNested = isNested ? ", Nested" : "";
         const isDatum = this.datumTypeName === enumName;
+        // console.log(this.datumTypeName, enumName, isDatum, "-------------------------------------???");
         const parentClass = isActivity
             ? `EnumBridge<isActivity>` // ${maybeNested}>`
             : `EnumBridge<JustAnEnum>`; //${maybeNested}>`;
@@ -940,13 +943,13 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             .map((variantName) => {
                 const variantDetails = enumDetails.variants[variantName];
                 const fieldCount = variantDetails.fieldCount;
+                const normalType = isDatum ? "TxOutputDatum" : "UplcData";
 
                 if (fieldCount === 0) {
                     const enumPathExpr = this.getEnumPathExpr(variantDetails);
                     return (
                         `/**\n` +
-                        ` * (property getter): ${
-                            isDatum ? "TxOutputDatum" : "UplcData"
+                        ` * (property getter): ${normalType                            
                         } for ***${enumPathExpr}***\n` +
                         ` * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#${variantDetails.typeSchema.tag}***\n` +
                         ` */\n` +
@@ -1074,7 +1077,9 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             } for ***${enumPathExpr}***\n` +
             `     * @remarks - ***${permissiveTypeName}*** is the same as the expanded field-types.\n` +
             `     */\n` +
-            `    ${variantName}(fields: ${permissiveTypeName} | { \n${unfilteredFields()} } ) : ${returnType} {\n` +
+            `    ${variantName}(fields: ${permissiveTypeName} | { \n`+
+            unfilteredFields() + `\n`+
+            `    }) : ${returnType} {\n` +
             `        const uplc = this.mkUplcData({\n` +
             `            ${variantName}: fields \n` +
             `        }, ${enumPathExpr});\n` +
@@ -1100,7 +1105,8 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             variantDetails.dataType.asEnumMemberType?.parentType.name;
         const enumPathExpr = this.getEnumPathExpr(variantDetails);
 
-        const returnType = isActivity ? "isActivity" : "UplcData";
+        const returnType = isActivity ? "isActivity" : 
+        isDatum ? "TxOutputDatum" : "UplcData";
 
         if ("enum" == oneField.typeSchema.kind) {
             return this.mkNestedEnumAccessor(

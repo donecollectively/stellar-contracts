@@ -422,7 +422,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     }
                 },
                 CapoLifecycleActivities{dCLA} => {
-                    REQT("  ... with any CapoLifecycle activity: ");
+                    REQT("... with any CapoLifecycle activity: ");
                     cctx = mkCapoCtx(dd.mph).
                         withCharterInput().
                         requiresGovAuthority();                    
@@ -451,7 +451,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         },
                         SpendDgt => {
                             REQT(
-                                "  ... this Capo lifecycle activity is only valid on spend delegate",
+                                "... this Capo lifecycle activity is only valid on spend delegate",
                                 isSpendDelegate 
                             );
                             assert(cctx.nowActingAsSpendDgt(), "<----- that can fail, this can't");                            
@@ -460,7 +460,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                         },
                         MintDgt => {
                             REQT(
-                                "  ... this Capo lifecycle activity is only valid on mint delegate",
+                                "... this Capo lifecycle activity is only valid on mint delegate",
                                 isMintDelegate
                             );
                             assert(cctx.nowActingAsMintDgt(), "<----- that can fail, this can't");

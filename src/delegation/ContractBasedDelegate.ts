@@ -118,27 +118,28 @@ export class ContractBasedDelegate extends StellarDelegate {
         return this.configIn?.capo as unknown as Capo<any>;
     }
 
-    mkBundleWithCapo<T extends HeliosScriptBundle>(BundleClass: new (capo: CapoHeliosBundle) => T) : T {
-        const { capo } = this.configIn || this.partialConfig || {};
-        if (!capo)
-            throw new Error(
-                `missing capo in config or partial-config for ${this.constructor.name}`
-            );
-        const capoBundle = capo.getBundle() as CapoHeliosBundle;
-        return new BundleClass(capoBundle);
-    }
+    // mkBundleWithCapo<T extends HeliosScriptBundle>(BundleClass: new (capo: CapoHeliosBundle) => T) : T {
+    //     const { capo } = this.configIn || this.partialConfig || {};
+    //     if (!capo)
+    //         throw new Error(
+    //             `missing capo in config or partial-config for ${this.constructor.name}`
+    //         );
+    //     const capoBundle = capo.getBundle() as CapoHeliosBundle;
+    //     return new BundleClass(capoBundle);
+    // }
 
     scriptBundle(): CapoDelegateBundle {
         throw new Error(
             `${this.constructor.name}: missing required implementation of scriptBundle()\n` +
                 `...each contract-based delegate must provide a scriptBundle() method.n` +
                 `It should return an instance of a class defined in a *.hlbundle.js file.  At minimum:\n\n` +
-                `    import MySpecializedDelegate from "./MySpecializedDelegate.hl";\n\n` +
-                `    export default class MyDelegateBundle extends CapoDelegateBundle {\n` +
-                `        get specializedDelegateModule() { return MySpecializedDelegate; }\n` +
+                `    import {YourAppCapo} from "./YourAppCapo.js";\n\n` +
+                `    import SomeSpecializedDelegate from "./MySpecializedDelegate.hl";\n\n` +
+                `    export default class SomeDelegateBundle extends CapoDelegateBundle.using(YourAppCapo) {\n` +
+                `        get specializedDelegateModule() { return SomeSpecializedDelegate; }\n` +
                 `    }\n\n` +
                 `We'll generate types for that .js file, based on the types in your Helios sources.\n` +
-                `Your scriptBundle() method can \`return this.mkBundleWithCapo(MyDelegateBundle);\``
+                `Your scriptBundle() method can \`return new SomeDelegateBundle()\``
         );
     }
 
@@ -264,13 +265,14 @@ export class ContractBasedDelegate extends StellarDelegate {
         fromFoundUtxo?: TxInput
     ): Promise<TCX> {
         const datum = this.mkDelegationDatum(fromFoundUtxo);
+        
         const newOutput = new TxOutput(this.address, tokenValue, datum);
-        const separator = `     -----`;
-        console.log(
-            `${separator} delegate script receiving dgTkn\n${separator} ${dumpAny(
-                newOutput
-            )}` // ${dumpAny(tokenValue)} at ${dumpAny(addr)} = ${addr.toBech32()}`
-        );
+        // const separator = `     -----`;
+        // console.log(
+        //     `${separator} delegate script receiving dgTkn\n${separator} ${dumpAny(
+        //         newOutput
+        //     )}` // ${dumpAny(tokenValue)} at ${dumpAny(addr)} = ${addr.toBech32()}`
+        // );
         // const ffu = fromFoundUtxo;
         // const v : Value = ffu?.value || this.mkMinAssetValue(this.configIn!.uut);
         return tcx.addOutput(newOutput);

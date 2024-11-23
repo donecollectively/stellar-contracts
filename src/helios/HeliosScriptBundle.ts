@@ -16,9 +16,11 @@ import { DataReader } from "./dataBridge/DataReader.js";
 import type { TxOutputId } from "@helios-lang/ledger-babbage";
 import type { hasSeedUtxo } from "../StellarTxnContext.js";
 import type { SeedAttrs } from "../delegation/UutName.js";
+import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
 
 export type HeliosBundleClass = new () => HeliosScriptBundle;
-
+export type CapoBundleClass = new () => CapoHeliosBundle;
+export type hasCapoBundle = { capoBundle: CapoHeliosBundle };
 
 export type TypeVariety = "canonical" | "permissive" | "ergonomic";
 export type VariantFlavor = "tagOnly" | "fields" | "singletonField";
@@ -309,9 +311,23 @@ export type HeliosBundleTypes = {
     datum: Option<DataType>;
     redeemer: DataType;
 };
+const defaultNoDefinedModuleName = "‹default-needs-override›";
+
 
 export abstract class HeliosScriptBundle {
     static isCapoBundle = false;
+    abstract capoBundle: CapoHeliosBundle;
+    static using<CB extends CapoBundleClass>(c : CB) {
+        //@ts-expect-error returning a subclass without concrete implementations
+        // of the abstract members; hopefully the subclass will error if they're missing
+        const newClass = class aCapoBoundBundle 
+        extends HeliosScriptBundle {
+        // implements hasCapoBundle {
+            capoBundle = new c()
+        } //as HeliosBundleClass // & hasCapoBundle //& typeof HeliosScriptBundle &  // & typeof newClass
+
+        return newClass
+    }
     /**
      * optional attribute explicitly naming a type for the datum
      * @remarks
@@ -330,25 +346,36 @@ export abstract class HeliosScriptBundle {
      */
     redeemerTypeName?: string;
 
+    constructor() {
+        // this.devReloadModules()
+    }
     abstract get main(): HeliosModuleSrc;
     abstract get modules(): HeliosModuleSrc[];
     
     get bridgeClassName() {
-        return `${this.moduleName}DataBridge`
+        const mName = this.moduleName || this.program.name;
+        return `${mName}DataBridge`
     }
 
     get moduleName() {
-        return this.program.name
+        return this.constructor.name.replace(/Bundle/, "").replace(/Helios/, "")
+        defaultNoDefinedModuleName// overridden in subclasses where relevant
     }
 
     get program(): CachedHeliosProgram {
+        let mName = this.moduleName
+        if (mName === defaultNoDefinedModuleName) {
+            mName = ""
+        }
         try {
             return CachedHeliosProgram.forCurrentPlatform(this.main, {
                 moduleSources: this.modules,
+                name: mName // it will fall back to the program name if this is empty
             });
         } catch (e: any) {
             // !!! probably this stuff needs to move to compileWithScriptParams()
             if (e.message.match(/invalid parameter name/)) {
+                debugger                
                 throw new Error(
                     e.message +
                         `\n   ... this typically occurs when your StellarContract class (${this.constructor.name})` +
@@ -382,6 +409,7 @@ export abstract class HeliosScriptBundle {
 
                     const try2 = CachedHeliosProgram.forCurrentPlatform(this.main, {
                         moduleSources: this.modules,
+                        name: mName // it will fall back to the program name if this is empty
                     });
         
                     // const script2 = new Program(codeModule, {
@@ -496,6 +524,9 @@ export abstract class HeliosScriptBundle {
         // }
     }
 
+    effectiveDatumTypeName() {
+        return this.datumTypeName || this.locateDatumType()?.name || "‹unknown datum-type name›";
+    }
 
     locateDatumType(): Option<DataType> {
         let datumType: DataType | undefined;

@@ -1,4 +1,5 @@
 
+import { CapoHeliosBundle } from "../CapoHeliosBundle.js"
 import { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js"
 import TesterPolicy from "./DelegatedDatumTester.hl"
 
@@ -6,7 +7,8 @@ import TesterPolicy from "./DelegatedDatumTester.hl"
 // ... the test-environment "CapoCanMintGenericUuts"
 
 
-export default class DelegatedDatumTesterBundle extends CapoDelegateBundle {
+export default class DelegatedDatumTesterBundle 
+extends CapoDelegateBundle.using(CapoHeliosBundle){
     get specializedDelegateModule() {
         return TesterPolicy
     }

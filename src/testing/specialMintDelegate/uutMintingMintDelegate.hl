@@ -60,6 +60,10 @@ import {
     mkUutTnFactory
 } from CapoMintHelpers
 
+import {
+    mkCapoCtx
+} from CapoHelpers
+
 // import {
 //     ProtocolSettings
 // } from ProtocolSettings
@@ -231,6 +235,8 @@ enum DelegateActivity {
             mph: dd.mph,
             seed: seed,
             purposes: purposes,
+            // we are the mint delegate:
+            needsMintDelegateApproval: false,
             // otherMintedValue: ()
             mkTokenName: mkUutTnFactory(seed)
         );
@@ -248,6 +254,7 @@ enum DelegateActivity {
         priorMddd: DelegateDatum::IsDelegation
     ) -> Bool {
         print("  ----- uutMinting delegate - checking additional delegate validation\n");
+        mph = priorMddd.dd.mph;
         self.switch {
             // normal  lifecycle activities are already validated, but 
             //  ... you can add more constraints here if needed
@@ -273,6 +280,9 @@ enum DelegateActivity {
             },
             MintingActivities{activity} => {
                 print("uutMinting delegate - checking mintingActivities\n");
+                cctx = mkCapoCtx(mph).withCharterRef();
+
+                cctx.nowActingAsMintDgt() &&
                 activity.switch{
                     mintingUuts => self.genericUutMinting(priorMddd),
                     mockOtherActivity => error("mockOtherActivity is only for testing type-generation")
@@ -296,7 +306,7 @@ enum DelegateActivity {
             // Note: this set of DelegateActivities is reserved for the IsDelegation datum.
             //  Using it on any other Datum type will always fail and execution will never arrive here.
             DelegateLifecycleActivities => neverTriggered(),
-            CapoLifecycleActivities => neverTriggered(),            
+            CapoLifecycleActivities => neverTriggered(),
             // ------------------- application-specific activities can be added here
 
             _ => false  // prevents non-exhaustive match errors, even if you remove the above neverTriggered() calls

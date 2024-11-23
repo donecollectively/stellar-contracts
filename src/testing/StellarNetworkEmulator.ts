@@ -12,7 +12,7 @@ import {
     type NumberGenerator,
     bigIntToBytes,
     type Wallet,
-    type Network,    
+    type Network,
     StakeAddress,
     Signature,
     // PubKeyHash as PKH_h,
@@ -43,7 +43,7 @@ import { Address, PubKey, PubKeyHash } from "@helios-lang/ledger-babbage";
 //     t3,
 //     t4,
 //     t5,
-//     t6, 
+//     t6,
 //     t7,
 //     t8,
 //     t9,
@@ -60,10 +60,7 @@ import {
     SECOND,
     type EmulatorTx,
 } from "@helios-lang/tx-utils";
-import { 
-    StakingAddress,
-    DEFAULT_NETWORK_PARAMS
- } from "@helios-lang/ledger";
+import { StakingAddress, DEFAULT_NETWORK_PARAMS } from "@helios-lang/ledger";
 
 import { dumpAny } from "../diagnostics.js";
 import type { NetworkContext } from "../StellarContract.js";
@@ -276,7 +273,6 @@ export class SimpleWallet_stellar implements Wallet {
     }
 
     get address(): Address {
-        
         return Address.fromHashes(
             this.network.isMainnet(),
             this.spendingPubKeyHash,
@@ -382,8 +378,13 @@ export class StellarNetworkEmulator implements Network {
     /**
      * Instantiates a NetworkEmulator at slot 0.
      * An optional seed number can be specified, from which all emulated randomness is derived.
-      */
-    constructor(seed = 0, {params} : {params: NetworkParams} = {params: DEFAULT_NETWORK_PARAMS()}) {
+     */
+    constructor(
+        seed = 0,
+        { params }: { params: NetworkParams } = {
+            params: DEFAULT_NETWORK_PARAMS(),
+        }
+    ) {
         this.id = i++;
         this.params = params || DEFAULT_NETWORK_PARAMS();
         this.#seed = seed;
@@ -399,7 +400,7 @@ export class StellarNetworkEmulator implements Network {
     }
     /**
      * Each slot is assumed to be 1000 milliseconds
-     * 
+     *
      * returns milliseconds since start of emulation
      */
     get now(): number {
@@ -414,8 +415,8 @@ export class StellarNetworkEmulator implements Network {
         return {
             ...this.params,
             refTipSlot: this.currentSlot,
-            refTipTime: this.now
-        }
+            refTipTime: this.now,
+        };
     }
 
     // retains continuity for the seed and the RNG through one or more snapshots.
@@ -426,10 +427,10 @@ export class StellarNetworkEmulator implements Network {
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
 
-    netPHelper!: NetworkParamsHelper
+    netPHelper!: NetworkParamsHelper;
     initHelper() {
         this.netPHelper = new NetworkParamsHelper(this.parametersSync);
-        return this.netPHelper
+        return this.netPHelper;
     }
 
     snapshot(snapName: string): NetworkSnapshot {
@@ -588,7 +589,7 @@ export class StellarNetworkEmulator implements Network {
         );
     }
 
-    async submitTx(tx: Tx, logger? : UplcLoggingI) {
+    async submitTx(tx: Tx, logger?: UplcLoggingI) {
         this.warnMempool();
 
         assert(
@@ -608,9 +609,13 @@ export class StellarNetworkEmulator implements Network {
 
         this.mempool.push(new RegularTx(tx));
         if (logger) {
-            logger.logPrint(`[EmuNet #${this.id}] +mempool txn = ${this.mempool.length}`);
+            logger.logPrint(
+                `[EmuNet #${this.id}] +mempool txn = ${this.mempool.length}`
+            );
         } else {
-            console.log(`[EmuNet #${this.id}] +mempool txn = ${this.mempool.length}`);
+            console.log(
+                `[EmuNet #${this.id}] +mempool txn = ${this.mempool.length}`
+            );
         }
         return tx.id();
     }
@@ -624,17 +629,25 @@ export class StellarNetworkEmulator implements Network {
 
         const count = this.mempool.length;
         const height = this.blocks.length;
+
+        this.currentSlot += Number(n);
+        const time = new Date(
+            Number(this.netPHelper.slotToTime(this.currentSlot))
+        );
+
         if (this.mempool.length > 0) {
             this.blocks.push(this.mempool);
 
             this.mempool = [];
+
+            console.log("█  #" + this.id);
+            console.log(`███  @h=${height} + ${count}  txns`);
+
+            console.log(
+                `█████ -> slot ${this.currentSlot.toString()} = ${time}`
+            );
+        } else {
+            console.log(`tick -> slot ${this.currentSlot.toString()} = ${time} (no txns)`);
         }
-
-        this.currentSlot += Number(n);
-        console.log("█  #" + this.id);
-        console.log(`███  @h=${height} + ${count}  txns`);
-        const time = new Date(Number(this.netPHelper.slotToTime(this.currentSlot)))
-
-        console.log(`█████ -> slot ${this.currentSlot.toString()} = ${time}`);
     }
 }

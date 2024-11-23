@@ -97,7 +97,7 @@ export class DelegateDatumTesterDataBridge extends ContractDataBridge {
     static isAbstract = false as const;
     isAbstract = false as const;
     /**
-     * Helper class for generating TxOutputDatum for the ***datum type ***
+     * Helper class for generating TxOutputDatum for the ***datum type (DelegateDatum)***
      * for this contract script. 
      */
     datum: DelegateDatumHelper
@@ -225,6 +225,7 @@ export class DelegateDatumTesterDataBridgeReader extends DataBridgeReaderClass {
     constructor(public bridge: DelegateDatumTesterDataBridge) {
         super();
     }
+datum = (d: UplcData) => { return this.DelegateDatum(d) }
     /**
         * reads UplcData *known to fit the **DelegateDatum*** enum type,
         * for the BasicDelegate script.
@@ -567,7 +568,7 @@ export class DgDatumTestDataHelper extends DataBridge {
 
 
 /**
- * Helper class for generating UplcData for variants of the ***DelegateDatum*** enum type.
+ * Helper class for generating TxOutputDatum for variants of the ***DelegateDatum*** enum type.
  */
 export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
@@ -579,21 +580,22 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
    >(DelegateDatumSchema, { isMainnet: true });
 
     /**
-     * generates  UplcData for ***"DelegateDatumTester::DelegateDatum.Cip68RefToken"***
+     * generates  TxOutputDatum for ***"DelegateDatumTester::DelegateDatum.Cip68RefToken"***
      * @remarks - ***DelegateDatum$Cip68RefTokenLike*** is the same as the expanded field-types.
      */
     Cip68RefToken(fields: DelegateDatum$Cip68RefTokenLike | { 
         cip68meta: AnyDataLike,
         cip68version: IntLike,
-        otherDetails: UplcData } ) : UplcData {
+        otherDetails: UplcData
+    } ) : TxOutputDatum<"Inline"> {
         const uplc = this.mkUplcData({
             Cip68RefToken: fields 
         }, "DelegateDatumTester::DelegateDatum.Cip68RefToken");
-       return uplc;
+        return TxOutputDatum.Inline(uplc);
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates  UplcData for ***"DelegateDatumTester::DelegateDatum.IsDelegation"***
+     * generates  TxOutputDatum for ***"DelegateDatumTester::DelegateDatum.IsDelegation"***
      * @remarks - ***DelegationDetailLike*** is the same as the expanded field-type.
      */
     IsDelegation(
@@ -602,15 +604,15 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     mph: /*minStructField*/ MintingPolicyHash | string | number[]
     tn: /*minStructField*/ number[]
 }
-    ) : UplcData {
+    ) : TxOutputDatum {
         const uplc = this.mkUplcData({ 
            IsDelegation: dd
         }, "DelegateDatumTester::DelegateDatum.IsDelegation"); /*singleField enum variant*/
-       return uplc;
+        return TxOutputDatum.Inline(uplc);
     }
 
     /**
-     * generates  UplcData for ***"DelegateDatumTester::DelegateDatum.capoStoredData"***
+     * generates  TxOutputDatum for ***"DelegateDatumTester::DelegateDatum.capoStoredData"***
      * @remarks - ***DgDatumTestDataLike*** is the same as the expanded field-type.
      */
     capoStoredData(
@@ -620,11 +622,11 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     name: /*minStructField*/ string
     number: /*minStructField*/ IntLike
 }
-    ) : UplcData {
+    ) : TxOutputDatum {
         const uplc = this.mkUplcData({ 
            capoStoredData: data
         }, "DelegateDatumTester::DelegateDatum.capoStoredData"); /*singleField enum variant*/
-       return uplc;
+        return TxOutputDatum.Inline(uplc);
     }
 }/*mkEnumHelperClass*/
 
@@ -858,7 +860,8 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
      */
     updatingEntry(fields: ManifestActivity$updatingEntryLike | { 
         key: string,
-        tokenName: number[] } ) : UplcData {
+        tokenName: number[]
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             updatingEntry: fields 
         }, "CapoDelegateHelpers::ManifestActivity.updatingEntry");
@@ -871,7 +874,8 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
      */
     addingEntry(fields: ManifestActivity$addingEntryLike | { 
         key: string,
-        tokenName: number[] } ) : UplcData {
+        tokenName: number[]
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             addingEntry: fields 
         }, "CapoDelegateHelpers::ManifestActivity.addingEntry");
@@ -884,7 +888,8 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
      */
     forkingThreadToken(fields: ManifestActivity$forkingThreadTokenLike | { 
         key: string,
-        newThreadCount: IntLike } ) : UplcData {
+        newThreadCount: IntLike
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             forkingThreadToken: fields 
         }, "CapoDelegateHelpers::ManifestActivity.forkingThreadToken");
@@ -897,7 +902,8 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
      */
     burningThreadToken(fields: ManifestActivity$burningThreadTokenLike | { 
         key: string,
-        burnedThreadCount: IntLike } ) : UplcData {
+        burnedThreadCount: IntLike
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             burningThreadToken: fields 
         }, "CapoDelegateHelpers::ManifestActivity.burningThreadToken");
@@ -936,7 +942,8 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
      */
     updatingEntry(fields: ManifestActivity$updatingEntryLike | { 
         key: string,
-        tokenName: number[] } ) : UplcData {
+        tokenName: number[]
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             updatingEntry: fields 
         }, "CapoDelegateHelpers::ManifestActivity.updatingEntry");
@@ -949,7 +956,8 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
      */
     addingEntry(fields: ManifestActivity$addingEntryLike | { 
         key: string,
-        tokenName: number[] } ) : UplcData {
+        tokenName: number[]
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             addingEntry: fields 
         }, "CapoDelegateHelpers::ManifestActivity.addingEntry");
@@ -962,7 +970,8 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
      */
     forkingThreadToken(fields: ManifestActivity$forkingThreadTokenLike | { 
         key: string,
-        newThreadCount: IntLike } ) : UplcData {
+        newThreadCount: IntLike
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             forkingThreadToken: fields 
         }, "CapoDelegateHelpers::ManifestActivity.forkingThreadToken");
@@ -975,7 +984,8 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
      */
     burningThreadToken(fields: ManifestActivity$burningThreadTokenLike | { 
         key: string,
-        burnedThreadCount: IntLike } ) : UplcData {
+        burnedThreadCount: IntLike
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             burningThreadToken: fields 
         }, "CapoDelegateHelpers::ManifestActivity.burningThreadToken");
@@ -1042,7 +1052,8 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     queuePendingDgtChange(fields: CapoLifecycleActivity$queuePendingDgtChangeLike | { 
         action: PendingDelegateActionLike,
         role: DelegateRoleLike,
-        name: Option<string> } ) : UplcData {
+        name: Option<string>
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             queuePendingDgtChange: fields 
         }, "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
@@ -1055,7 +1066,8 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      */
     removePendingDgtChange(fields: CapoLifecycleActivity$removePendingDgtChangeLike | { 
         role: DelegateRoleLike,
-        name: Option<string> } ) : UplcData {
+        name: Option<string>
+    } ) : UplcData {
         const uplc = this.mkUplcData({
             removePendingDgtChange: fields 
         }, "CapoDelegateHelpers::CapoLifecycleActivity.removePendingDgtChange");
@@ -1378,7 +1390,8 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     queuePendingDgtChange(fields: CapoLifecycleActivity$queuePendingDgtChangeLike | { 
         action: PendingDelegateActionLike,
         role: DelegateRoleLike,
-        name: Option<string> } ) : isActivity {
+        name: Option<string>
+    } ) : isActivity {
         const uplc = this.mkUplcData({
             queuePendingDgtChange: fields 
         }, "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
@@ -1391,7 +1404,8 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      */
     removePendingDgtChange(fields: CapoLifecycleActivity$removePendingDgtChangeLike | { 
         role: DelegateRoleLike,
-        name: Option<string> } ) : isActivity {
+        name: Option<string>
+    } ) : isActivity {
         const uplc = this.mkUplcData({
             removePendingDgtChange: fields 
         }, "CapoDelegateHelpers::CapoLifecycleActivity.removePendingDgtChange");
@@ -1793,7 +1807,8 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
      */
     UpdatingDelegatedData(fields: DelegateActivity$UpdatingDelegatedDataLike | { 
         dataType: string,
-        recId: number[] } ) : isActivity {
+        recId: number[]
+    } ) : isActivity {
         const uplc = this.mkUplcData({
             UpdatingDelegatedData: fields 
         }, "DelegateDatumTester::DelegateActivity.UpdatingDelegatedData");
@@ -1806,7 +1821,8 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
      */
     DeletingDelegatedData(fields: DelegateActivity$DeletingDelegatedDataLike | { 
         dataType: string,
-        recId: number[] } ) : isActivity {
+        recId: number[]
+    } ) : isActivity {
         const uplc = this.mkUplcData({
             DeletingDelegatedData: fields 
         }, "DelegateDatumTester::DelegateActivity.DeletingDelegatedData");

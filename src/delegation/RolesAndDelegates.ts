@@ -12,6 +12,7 @@ import { StellarDelegate } from "./StellarDelegate.js";
 import type { Capo, CapoConfig } from "../Capo.js";
 import type { ContractBasedDelegate } from "./ContractBasedDelegate.js";
 import type { RelativeDelegateLinkLike } from "../CapoHeliosBundle.typeInfo.js";
+import type { DelegatedDataContract } from "./DelegatedDataContract.js";
 
 /**
  * An error type for reflecting configuration problems at time of delegate setup
@@ -143,7 +144,7 @@ type DelegateTypes = "spendDgt" | "mintDgt" | "authority" | "dgDataPolicy" | "ot
  **/
 export type DelegateSetup<
     DT extends DelegateTypes,
-    SC extends StellarDelegate,
+    SC extends (DT extends "dgDataPolicy" ? DelegatedDataContract : StellarDelegate),
     CONFIG extends DelegateConfigDetails<SC>,
     // variantNames extends string = string & keyof Vmap,
 > = {
@@ -171,7 +172,7 @@ export type DelegateSetup<
  **/
 export function defineRole<
     DT extends DelegateTypes,
-    SC extends StellarDelegate,
+    SC extends (DT extends "dgDataPolicy" ? DelegatedDataContract : StellarDelegate),
     const CONFIG extends DelegateConfigDetails<SC>,
     // = CONFIG extends DelegateConfigDetails<infer sc> ? sc : never
     // DelegateClass extends stellarSubclass<infer sc> ? 

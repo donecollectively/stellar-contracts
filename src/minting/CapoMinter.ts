@@ -69,7 +69,7 @@ export class CapoMinter
 {
     currentRev: bigint = 1n;
     scriptBundle() {
-        return this.mkBundleWithCapo(CapoMinterBundle);
+        return new CapoMinterBundle();
     }
     /**
      * the data bridge for this minter is fixed to one particular type
@@ -96,17 +96,17 @@ export class CapoMinter
     //     return this.onchain.datum;
     // }
 
-    mkBundleWithCapo<T extends HeliosScriptBundle>(BundleClass: new (capo: CapoHeliosBundle) => T) : T {
-        const { capo } = this.configIn || this.partialConfig || {};
-        if (!capo)
-            throw new Error(
-                `missing capo in config or partial-config for ${this.constructor.name}`
-            );
+    // mkBundleWithCapo<T extends HeliosScriptBundle>(BundleClass: new (capo: CapoHeliosBundle) => T) : T {
+    //     const { capo } = this.configIn || this.partialConfig || {};
+    //     if (!capo)
+    //         throw new Error(
+    //             `missing capo in config or partial-config for ${this.constructor.name}`
+    //         );
 
-        const capoBundle = capo.getBundle() as CapoHeliosBundle;
-        const t = new BundleClass(capoBundle);
-        return t
-    }
+    //     const capoBundle = capo.getBundle() as CapoHeliosBundle;
+    //     const t = new BundleClass(capoBundle);
+    //     return t
+    // }
 
     getContractScriptParamsUplc(
         config: BasicMinterParams

@@ -98,7 +98,8 @@ export function heliosRollupTypeGen(
             this: PluginContext,
             options: InputOptions
         ): Promise<void> {
-            console.log("heliosTypeGen: buildStart");
+            console.log("heliosTypeGen: buildStart WITHOUT StellarHeliosProject");
+            return;
 
             if (isStellarContracts) {
                 this.warn("building in stellar-contracts project");
@@ -130,14 +131,14 @@ export function heliosRollupTypeGen(
                     // this.warn("  -- ... to enable script validation and type generation");
                     // this.warn("  -- ... (maybe that's happening right now :)");
 
-                    console.log("making minimal rollup of CapoHeliosBundle");
-                    const CapoBundleClass = await makeCapoHeliosBundle();
-                    state.capoBundle = new CapoBundleClass();
+                    // console.log("making minimal rollup of CapoHeliosBundle");
+                    // const CapoBundleClass = await makeCapoHeliosBundle();
+                    // state.capoBundle = new CapoBundleClass();
                     // load the program
-                    const program = state.capoBundle.program;
+                    // const program = state.capoBundle.program;
                     // 
-                    program.entryPoint.mainArgTypes;
-                    console.log("Ok loaded minimal CapoHeliosBundle rollup");
+                    // program.entryPoint.mainArgTypes;
+                    console.log("NO minimal CapoHeliosBundle rollup");
                 }
             } else {
                 //!!! verify this works
@@ -224,10 +225,20 @@ export function heliosRollupTypeGen(
                 }
 
                 const SomeBundleClass = await rollupSingleBundleToBundleClass(id);
+                const relativeFilename = path.relative(projectRoot, id);
+                this.warn(`👁️ checking helios bundle ${SomeBundleClass.name} from ${relativeFilename}`)
+                //??? addWatchFile for all the .hl scripts in the bundle
+                // return null as LoadResult;
 
-                let bundle;
+                debugger
+                let bundle = new SomeBundleClass()
+                // compile the program seen in that bundle!
+                // ... to trigger helios syntax-checking:
+                let program = bundle.program;
+
                 let replacedCapo = false
                 if (SomeBundleClass.isCapoBundle) {
+                    throw new Error(`any use case for this?`);
                     let skipInstallingThisOne = false; 
                     if (state.hasExplicitCapoBundle) {
                             let existingBundleProtoChainNames : string[]= [];
@@ -296,20 +307,27 @@ export function heliosRollupTypeGen(
                     state.hasOtherBundles = true;
                     if (state.project.bundleEntries.size === 0 ) {
                         // just-in-time load of default capoBundle
-                        state.project.loadBundleWithClass("src/CapoHeliosBundle.ts", state.capoBundle.constructor);
-                        state.project.generateBundleTypes("src/CapoHeliosBundle.ts");
+                        const capoName = bundle.capoBundle.constructor.name;
+                        if (capoName !== "CapoHeliosBundle") {
+                            throw new Error(`expected ${capoName} to already be registered`)
+                        }
+                        state.project.loadBundleWithClass(
+                            "src/CapoHeliosBundle.ts", 
+                            bundle.capoBundle.constructor
+                        );
+                        state.project.generateBundleTypes(
+                            "src/CapoHeliosBundle.ts"
+                        );
                     }
 
-                    try {
-                        bundle = new SomeBundleClass(state.capoBundle);
-                        const relativeFilename = path.relative(projectRoot, id);
-                        this.warn(`👁️ checking helios bundle ${SomeBundleClass.name} from ${relativeFilename}`)
-                    } catch (e:any) {
-                        this.error(`Error loading helios bundle ${SomeBundleClass.name}: ${e.message}`);
-                    }
+                    // try {
+                    //     bundle = new SomeBundleClass(state.capoBundle);
+                    //     this.warn(`👁️ checking helios bundle ${SomeBundleClass.name} from ${relativeFilename}`)
+                    // } catch (e:any) {
+                    //     this.error(`Error loading helios bundle ${SomeBundleClass.name}: ${e.message}`);
+                    // }
                     state.project.loadBundleWithClass(id, SomeBundleClass);
                     try {
-                        // triggers helios syntax-checking:
                         state.project.generateBundleTypes(id)
                     } catch(e:any) {
                         if (e.message.match("compilerError")) {
@@ -417,16 +435,21 @@ export function heliosRollupTypeGen(
             );
         }
         bundle.close();
-
         return import(outputFile).then((mod) => {
-            const BundleClass = mod.default;
-            return BundleClass
-            // todo: get Capo bundle first, then instantate non-Capo bundles with it as arg
+            if (mod.default) {
+                const BundleClass = mod.default;
+                return BundleClass
+            } else {
+                throw new Error(`no default export in ${outputFile}`);
+            }
         });
     }
 
     async function makeCapoHeliosBundle() {
         // uses rollup to make a CapoHeliosBundle.mjs in .hltemp/typegen
+
+        throw new Error(`not implemented2`);
+
         const outputFile = path.join(tempDir, "CapoHeliosBundle.mjs");
         console.log(`📦 StellarHeliosProject: making CapoHeliosBundle: ${outputFile}`);
         const buildStartTime = Date.now();

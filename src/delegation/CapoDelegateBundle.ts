@@ -1,10 +1,12 @@
+import type { Capo } from "../Capo.js";
 import {CapoHeliosBundle} from "../CapoHeliosBundle.js";
 import { mkHeliosModule, type HeliosModuleSrc } from "../helios/HeliosModuleSrc.js";
-import { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
+import { HeliosScriptBundle, type CapoBundleClass } from "../helios/HeliosScriptBundle.js";
+import type { stellarSubclass } from "../StellarContract.js";
 import BasicDelegate from "./BasicDelegate.hl";
 
 export type CapoDelegateBundleClass = new (
-    capoBundle: CapoHeliosBundle
+    // capoBundle: CapoHeliosBundle
 ) => CapoDelegateBundle;
 
 // this class expresses a "has dependences from the Capo" semantic,
@@ -16,17 +18,39 @@ export type CapoDelegateBundleClass = new (
 // Subclasses of this class MAY have application-specific dependencies
 // ... to be provided by an application-specific Capo.
 
+const USING_EXTENSION = Symbol("USING_EXTENSION");
 
 /**
  * for any Capo delegate; combines the BasicDelegate with a
  *  concrete specialization
  **/
+//x@ts-expect-error "static using(): cannot assign abstract constructor type to non-abstract class"
 export abstract class CapoDelegateBundle extends HeliosScriptBundle {
     abstract get specializedDelegateModule(): HeliosModuleSrc;
-
-    constructor(public capoBundle: CapoHeliosBundle) {
+    declare capoBundle: CapoHeliosBundle;
+    static using<CB extends CapoBundleClass>(c : CB) {
+        //@ts-expect-error returning a subclass without concrete implementations
+        // of the abstract members; hopefully the subclass will error if they're missing
+        return class aCapoBoundBundle extends CapoDelegateBundle {
+            capoBundle = new c()
+            constructor() {
+                super(USING_EXTENSION);
+            }
+        } // as typeof CapoDelegateBundle & CapoDelegateBundleClass // & CB
+    }
+    constructor(isUsingExtension: typeof USING_EXTENSION) {
+        if (!isUsingExtension) {
+            throw new Error(
+                "CapoDelegateBundle is abstract; create your base class like this:\n"+
+                " class ‹YourBundle› extends CapoDelegateBundle.using(‹some CapoHeliosBundleclass ›) {\n     ... \n}"
+            );
+        }
         super();
     }
+
+    // constructor(public capoBundle: CapoHeliosBundle) {
+    //     super();
+    // }
 
     get main() {
         return BasicDelegate;
@@ -36,6 +60,7 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
         const specialDgt = this.specializedDelegateModule;
         return specialDgt.moduleName
     }
+
 
     get modules() {
         const specialDgt = this.specializedDelegateModule;

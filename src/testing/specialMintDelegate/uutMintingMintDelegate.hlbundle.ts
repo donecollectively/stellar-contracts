@@ -1,13 +1,16 @@
 import uutMintingMintDelegate from "./uutMintingMintDelegate.hl";
 import { CapoDelegateBundle } from "../../delegation/CapoDelegateBundle.js";
+import { CapoHeliosBundle } from "../../CapoHeliosBundle.js";
 
 /**
  * A specialized minting delegate for testing purposes
  */
-export default class BundleMintDelegateWithGenericUuts extends CapoDelegateBundle {
+export default class BundleMintDelegateWithGenericUuts 
+extends CapoDelegateBundle.using(CapoHeliosBundle) {
     get specializedDelegateModule() {
         return uutMintingMintDelegate;
     }
+
 }
 
 // if (false) {

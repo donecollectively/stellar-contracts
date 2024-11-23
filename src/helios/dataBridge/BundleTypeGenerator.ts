@@ -111,6 +111,8 @@ import type {
     ByteArrayLike,
  } from "@helios-lang/codec-utils";
 
+ type TimeLike = IntLike;
+ 
 ${stellarImports}
 
 ${this.generateNamedDependencyTypes()}

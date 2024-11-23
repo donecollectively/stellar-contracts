@@ -384,9 +384,12 @@ export abstract class CapoTestHelper<
         console.log(
             "       --- ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ⚗️ 🐞 ✅ Capo bootstrap with charter"
         );
+        await this.bootstrapSettings();
         await this.extraBootstrapping(args);
         return strella;
     }
+
+    abstract bootstrapSettings(): Promise<any>;
 
     async extraBootstrapping(args?: Partial<MinimalCharterDataArgs>) {
         return this.strella;

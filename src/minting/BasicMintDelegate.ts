@@ -8,7 +8,7 @@ import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
  
 import { ContractBasedDelegate } from "../delegation/ContractBasedDelegate.js";
 import UnspecializedDelegateBundle from "../delegation/UnspecializedDelegate.hlbundle.js";
-import dataBridgeClass from "../delegation/UnspecializedDelegate.bridge.js";
+import dataBridgeClass, { UnspecializedDelegateBridge } from "../delegation/UnspecializedDelegate.bridge.js";
 import type { ContractDataBridgeWithEnumDatum, DataBridge } from "src/helios/dataBridge/DataBridge.js";
 import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
@@ -51,7 +51,7 @@ export class BasicMintDelegate extends ContractBasedDelegate {
      * you can copy the UnspecializedDelegate.hl and specialize it.
      */
     scriptBundle() {
-        return this.mkBundleWithCapo<UnspecializedDelegateBundle>(UnspecializedDelegateBundle) as CapoDelegateBundle
+        return new UnspecializedDelegateBundle()
     }
 
     // uses the basic delegate script, plus the isMintDelegate param

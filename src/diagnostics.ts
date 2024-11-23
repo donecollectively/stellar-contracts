@@ -691,7 +691,9 @@ export function dumpAny(
         | StellarTxnContext
         | Address
         | Value
+        | TxOutputId
         | TxOutput
+        | TxOutput[]
         | TxInput
         | TxInput[]
         | TxId
@@ -705,6 +707,9 @@ export function dumpAny(
     if (Array.isArray(x)) {
         if (x[0] instanceof TxInput) {
             return "utxos: \n" + utxosAsString(x as TxInput[]);
+        }
+        if (x[0] instanceof TxOutput) {
+            return "tx outputs: \n" + (x as TxOutput[]).map((txo : TxOutput) => txOutputAsString(txo));
         }
         if (x[0] instanceof ByteArrayData) {
             return (
