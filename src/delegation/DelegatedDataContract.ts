@@ -7,12 +7,12 @@ import type {
 } from "../Capo.js";
 import type { DelegatedDatumAdapter } from "./DelegatedDatumAdapter.js";
 import type { ReqtsMap } from "../Requirements.js";
-import type { hasSeed, isActivity } from "../StellarContract.js";
 import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { ContractBasedDelegate } from "./ContractBasedDelegate.js";
 import type { UutName } from "./UutName.js";
 import { betterJsonSerializer, dumpAny } from "../diagnostics.js";
 import type { AnyData, ErgoAnyData } from "../CapoHeliosBundle.typeInfo.js";
+import { type seedActivityFunc, type SeedActivityArgs, SeedActivity, type isActivity } from "../ActivityTypes.js";
 
 export const NO_WRAPPER = Symbol(
     "no data-adapter; uses on-chain type directly"
@@ -471,39 +471,6 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
                 // this.mkDatumDelegatedDataRecord(beforeSave(record))
             )
         ) as TCX & typeof tcx2;
-    }
-}
-
-type SeedActivityArgs<SA extends seedActivityFunc<any>> =
-    SA extends seedActivityFunc<infer ARGS> ? ARGS : never;
-
-/**
- * @public
- */
-export type seedActivityFunc<ARGS extends [...any]> = (
-    seed: hasSeed,
-    ...args: ARGS
-) => isActivity;
-
-class SeedActivity<
-    FactoryFunc extends seedActivityFunc<any>,
-    ARGS extends [...any] = FactoryFunc extends seedActivityFunc<infer ARGS>
-        ? ARGS
-        : never
-> {
-    args: ARGS;
-    constructor(
-        private host: ContractBasedDelegate,
-        private factoryFunc,
-        args: ARGS
-    ) {
-        this.args = args;
-    }
-
-    mkRedeemer(seedFrom: hasSeed) {
-        // const seed = this.host.getSeed(thing);
-
-        return this.factoryFunc.call(this.host, seedFrom, ...this.args);
     }
 }
 

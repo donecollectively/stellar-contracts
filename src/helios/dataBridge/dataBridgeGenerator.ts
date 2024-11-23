@@ -161,15 +161,18 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
 
 `; // ---------------------/imports------------------------------
         let scImports = /*--------------stellar-contracts-imports --------------*/ `import {
-    type tagOnly, 
-    type hasSeed, 
     ContractDataBridge,
     DataBridge, 
     DataBridgeReaderClass ,
     EnumBridge,
     StellarCast,
+    withImpliedSeed,
+    type tagOnly, 
+    type hasSeed, 
+    type isActivity, 
+    type WithImpliedSeedVariant,
+    type SeedAttrs,
     type JustAnEnum,
-    type isActivity,
     type callWith,
     type IntersectedEnum,
 } from "@donecollectively/stellar-contracts"\n`;
@@ -203,9 +206,10 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
                     inputFile,
                     "src/helios/dataBridge/StellarCast.js"
                 )}"\n` +
-                `import type {hasSeed, isActivity} from "${this.mkRelativeImport(
+                `import { withImpliedSeed, type hasSeed, type isActivity, type WithImpliedSeedVariant, type SeedAttrs} from "${
+                    this.mkRelativeImport(
                     inputFile,
-                    "src/StellarContract.js"
+                    "src/ActivityTypes.js"
                 )}"\n`;
             //---------------------/sc-imports-----------------------;
         }

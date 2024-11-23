@@ -8,8 +8,6 @@ import { Activity, StellarContract, partialTxn } from "../StellarContract.js";
 import type {
     UplcRecord,
     configBaseWithRev,
-    hasSeed,
-    isActivity,
 } from "../StellarContract.js";
 
 import { StellarTxnContext, type anyState } from "../StellarTxnContext.js";
@@ -30,6 +28,7 @@ import type { HeliosBundleClass, HeliosScriptBundle } from "../helios/HeliosScri
 import CapoMinterDataBridge from "./CapoMinter.bridge.js";
 import type { DataBridge } from "src/helios/dataBridge/DataBridge.js";
 import type { mustFindActivityType, mustFindConcreteContractBridgeType } from "../helios/dataBridge/BridgeTypeUtils.js";
+import type { hasSeed, isActivity } from "../ActivityTypes.js";
 
 type MintCharterActivityArgs<T = {}> = T & {
     owner: Address;

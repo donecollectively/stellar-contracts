@@ -48,7 +48,7 @@ import {
 import type { tagOnly } from "../../src/helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../../src/helios/typeUtils.js"
 import { StellarCast } from "../../src/helios/dataBridge/StellarCast.js"
-import type {hasSeed, isActivity} from "../../src/StellarContract.js"
+import { withImpliedSeed, type hasSeed, type isActivity, type WithImpliedSeedVariant, type SeedAttrs} from "../../src/ActivityTypes.js"
 
 export type TimeLike = IntLike;
 
@@ -194,7 +194,7 @@ export class BadSettingsPolicyDataBridge extends ContractDataBridge {
        * generates UplcData for the enum type ***ProtocolSettings*** for the `BasicDelegate` script
        */
         ProtocolSettings: (fields: ProtocolSettingsLike | {
-    id: /*minStructField*/ string
+    id: /*minStructField*/ number[]
     type: /*minStructField*/ string
     meaning: /*minStructField*/ IntLike
     badSpenderSetting: /*minStructField*/ IntLike
@@ -620,7 +620,7 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
      */
     capoStoredData(
         data: ProtocolSettingsLike | {
-    id: /*minStructField*/ string
+    id: /*minStructField*/ number[]
     type: /*minStructField*/ string
     meaning: /*minStructField*/ IntLike
     badSpenderSetting: /*minStructField*/ IntLike
@@ -1270,14 +1270,13 @@ export class SpendingActivityHelper extends EnumBridge<JustAnEnum> {
    >(SpendingActivitySchema, { isMainnet: true });
 
     /**
-     * generates  UplcData for ***"BadSettingsPolicy::SpendingActivity.UpdatingSettings"***
+     * generates  UplcData for ***"BadSettingsPolicy::SpendingActivity.UpdatingRecord"***
      */
-    UpdatingSettings(
+    UpdatingRecord(
         id: number[]
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           UpdatingSettings: id
-        }, "BadSettingsPolicy::SpendingActivity.UpdatingSettings"); /*singleField enum variant*/
+           UpdatingRecord: id
        return uplc;
     }
 }/*mkEnumHelperClass*/
@@ -1323,14 +1322,14 @@ export class BurningActivityHelper extends EnumBridge<JustAnEnum> {
    >(BurningActivitySchema, { isMainnet: true });
 
     /**
-     * generates  UplcData for ***"BadSettingsPolicy::BurningActivity.RetiringSettings"***
+     * generates  UplcData for ***"BadSettingsPolicy::BurningActivity.DeletingRecord"***
      */
-    RetiringSettings(
+    DeletingRecord(
         id: number[]
     ) : UplcData {
         const uplc = this.mkUplcData({ 
-           RetiringSettings: id
-        }, "BadSettingsPolicy::BurningActivity.RetiringSettings"); /*singleField enum variant*/
+           DeletingRecord: id
+        }, "BadSettingsPolicy::BurningActivity.DeletingRecord"); /*singleField enum variant*/
        return uplc;
     }
 }/*mkEnumHelperClass*/
@@ -1608,14 +1607,14 @@ export class SpendingActivityHelperNested extends EnumBridge<isActivity> {
    >(SpendingActivitySchema, { isMainnet: true });
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for ***"BadSettingsPolicy::SpendingActivity.UpdatingSettings"***
+     * generates isActivity/redeemer wrapper with UplcData for ***"BadSettingsPolicy::SpendingActivity.UpdatingRecord"***
      */
-    UpdatingSettings(
+    UpdatingRecord(
         id: number[]
     ) : isActivity {
         const uplc = this.mkUplcData({ 
-           UpdatingSettings: id
-        }, "BadSettingsPolicy::SpendingActivity.UpdatingSettings"); /*singleField enum variant*/
+           UpdatingRecord: id
+        }, "BadSettingsPolicy::SpendingActivity.UpdatingRecord"); /*singleField enum variant*/
        return uplc;
     }
 }/*mkEnumHelperClass*/
@@ -1634,17 +1633,33 @@ export class MintingActivityHelperNested extends EnumBridge<isActivity> {
    >(MintingActivitySchema, { isMainnet: true });
 
     /**
-    * generates isActivity/redeemer wrapper with UplcData for ***"BadSettingsPolicy::MintingActivity.CreatingSettings"***, 
-    * given a transaction-context with a ***seed utxo*** and other field details
-    * @remarks - to get a transaction context having the seed needed for this argment, 
-    * see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.    */
-    CreatingSettings(value: hasSeed | TxOutputId | string) : isActivity {
-        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
+    * generates isActivity/redeemer wrapper with UplcData for ***"BadSettingsPolicy::MintingActivity.CreatingRecord"***, 
+    * given a transaction-context (or direct arg) with a ***seed utxo*** 
+    * @remarks
+    * ### Seeded activity
+    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
+    *  - to get a transaction context having the seed needed for this argument, 
+    *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
+    *  - or you may use the `CreatingRecord.withImpliedSeed()` variant of this function to serve 
+    *    any context that provides an implicit seed utxo.
+    * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+    *
+     * ### Nested activity: 
+    * this is connected to a nested-activity wrapper, so the details are piped through 
+    * the parent's uplc-encoder, producing a single uplc object with 
+    * a complete wrapper for this inner activity detail.
+    */
+    CreatingRecord : WithImpliedSeedVariant<(thingWithSeed: hasSeed | TxOutputId | string) 
+      => isActivity> = withImpliedSeedVariant((thingWithSeed) => {
+        const seedTxOutputId = "string" == typeof thingWithSeed ? thingWithSeed : this.getSeed(thingWithSeed);
+
+        // piped through parent's uplc-encoder
         const uplc = this.mkUplcData({ 
-           CreatingSettings: seedTxOutputId
-        },"BadSettingsPolicy::MintingActivity.CreatingSettings");  /*singleField/seeded enum variant*/
-       return uplc;
-    }
+           CreatingRecord: seedTxOutputId
+        },"BadSettingsPolicy::MintingActivity.CreatingRecord");  
+        return uplc;
+    })    /*singleField/seeded enum variant*/
+
 }/*mkEnumHelperClass*/
 
 
@@ -1661,14 +1676,14 @@ export class BurningActivityHelperNested extends EnumBridge<isActivity> {
    >(BurningActivitySchema, { isMainnet: true });
 
     /**
-     * generates isActivity/redeemer wrapper with UplcData for ***"BadSettingsPolicy::BurningActivity.RetiringSettings"***
+     * generates isActivity/redeemer wrapper with UplcData for ***"BadSettingsPolicy::BurningActivity.DeletingRecord"***
      */
-    RetiringSettings(
+    DeletingRecord(
         id: number[]
     ) : isActivity {
         const uplc = this.mkUplcData({ 
-           RetiringSettings: id
-        }, "BadSettingsPolicy::BurningActivity.RetiringSettings"); /*singleField enum variant*/
+           DeletingRecord: id
+        }, "BadSettingsPolicy::BurningActivity.DeletingRecord"); /*singleField enum variant*/
        return uplc;
     }
 }/*mkEnumHelperClass*/
@@ -1912,7 +1927,7 @@ export const ProtocolSettingsSchema : StructTypeSchema = {
             "name": "id",
             "type": {
                 "kind": "internal",
-                "name": "String"
+                "name": "ByteArray"
             },
             "key": "@id"
         },
@@ -2062,7 +2077,7 @@ export const DelegateDatumSchema : EnumTypeSchema = {
                                 "name": "id",
                                 "type": {
                                     "kind": "internal",
-                                    "name": "String"
+                                    "name": "ByteArray"
                                 },
                                 "key": "@id"
                             },
@@ -2836,8 +2851,8 @@ export const SpendingActivitySchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 0,
-            "id": "__module__BadSettingsPolicy__SpendingActivity[]__UpdatingSettings",
-            "name": "UpdatingSettings",
+            "id": "__module__BadSettingsPolicy__SpendingActivity[]__UpdatingRecord",
+            "name": "UpdatingRecord",
             "fieldTypes": [
                 {
                     "name": "id",
@@ -2859,8 +2874,8 @@ export const MintingActivitySchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 0,
-            "id": "__module__BadSettingsPolicy__MintingActivity[]__CreatingSettings",
-            "name": "CreatingSettings",
+            "id": "__module__BadSettingsPolicy__MintingActivity[]__CreatingRecord",
+            "name": "CreatingRecord",
             "fieldTypes": [
                 {
                     "name": "seed",
@@ -2882,8 +2897,8 @@ export const BurningActivitySchema : EnumTypeSchema = {
         {
             "kind": "variant",
             "tag": 0,
-            "id": "__module__BadSettingsPolicy__BurningActivity[]__RetiringSettings",
-            "name": "RetiringSettings",
+            "id": "__module__BadSettingsPolicy__BurningActivity[]__DeletingRecord",
+            "name": "DeletingRecord",
             "fieldTypes": [
                 {
                     "name": "id",
@@ -3420,8 +3435,8 @@ export const DelegateActivitySchema : EnumTypeSchema = {
                             {
                                 "kind": "variant",
                                 "tag": 0,
-                                "id": "__module__BadSettingsPolicy__SpendingActivity[]__UpdatingSettings",
-                                "name": "UpdatingSettings",
+                                "id": "__module__BadSettingsPolicy__SpendingActivity[]__UpdatingRecord",
+                                "name": "UpdatingRecord",
                                 "fieldTypes": [
                                     {
                                         "name": "id",
@@ -3453,8 +3468,8 @@ export const DelegateActivitySchema : EnumTypeSchema = {
                             {
                                 "kind": "variant",
                                 "tag": 0,
-                                "id": "__module__BadSettingsPolicy__MintingActivity[]__CreatingSettings",
-                                "name": "CreatingSettings",
+                                "id": "__module__BadSettingsPolicy__MintingActivity[]__CreatingRecord",
+                                "name": "CreatingRecord",
                                 "fieldTypes": [
                                     {
                                         "name": "seed",
@@ -3486,8 +3501,8 @@ export const DelegateActivitySchema : EnumTypeSchema = {
                             {
                                 "kind": "variant",
                                 "tag": 0,
-                                "id": "__module__BadSettingsPolicy__BurningActivity[]__RetiringSettings",
-                                "name": "RetiringSettings",
+                                "id": "__module__BadSettingsPolicy__BurningActivity[]__DeletingRecord",
+                                "name": "DeletingRecord",
                                 "fieldTypes": [
                                     {
                                         "name": "id",

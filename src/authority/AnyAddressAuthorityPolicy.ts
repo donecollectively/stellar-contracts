@@ -5,14 +5,12 @@ import {
     Value,
     bytesToText,
 } from "@hyperionbt/helios";
-import { Activity } from "../StellarContract.js";
-
-import type { isActivity } from "../StellarContract.js";
+import { UplcInt } from "@helios-lang/uplc";
 
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import { AuthorityPolicy } from "./AuthorityPolicy.js";
 import { dumpAny } from "../diagnostics.js";
-import { UplcInt } from "@helios-lang/uplc";
+import type { isActivity } from "../ActivityTypes.js";
 
 /**
  * Token-based authority

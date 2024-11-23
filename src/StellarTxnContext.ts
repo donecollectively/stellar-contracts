@@ -15,16 +15,16 @@ import {
 
 import { dumpAny, txAsString, utxosAsString } from "./diagnostics.js";
 import type { hasUutContext } from "./Capo.js";
-import { UutName, type SeedAttrs } from "./delegation/UutName.js";
+import { UutName } from "./delegation/UutName.js";
 import type {
     ActorContext,
     SetupDetails,
-    isActivity,
 } from "./StellarContract.js";
 import { delegateLinkSerializer } from "./delegation/jsonSerializers.js";
 import type { UplcData } from "@helios-lang/uplc";
 import { UplcConsoleLogger } from "./UplcConsoleLogger.js";
 import { NetworkParamsHelper } from "@helios-lang/ledger-babbage";
+import type { isActivity, SeedAttrs } from "./ActivityTypes.js";
 
 /**
  * A txn context having a seedUtxo in its state

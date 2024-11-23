@@ -19,7 +19,7 @@ import type {
     hasSettingsRef,
 } from "../Capo.js";
 import { type ValidatorHash } from "../HeliosPromotedTypes.js";
-import { Activity, datum, type isActivity } from "../StellarContract.js";
+import { Activity, datum } from "../StellarContract.js";
 import { StellarDelegate } from "./StellarDelegate.js";
 import type {
     DelegationDetail,
@@ -37,6 +37,7 @@ import type { CapoDelegateBundle, CapoDelegateBundleClass } from "./CapoDelegate
 import type { ContractDataBridge, ContractDataBridgeWithEnumDatum, ContractDataBridgeWithOtherDatum, DataBridge } from "src/helios/dataBridge/DataBridge.js";
 import type { AbstractNew, mustFindActivityType, mustFindConcreteContractBridgeType, mustFindDatumType, mustFindReadDatumType } from "../helios/dataBridge/BridgeTypeUtils.js";
 import type { GenericDelegateBridge, GenericDelegateBridgeClass, GenericDelegateDatum } from "./GenericDelegateBridge.js";
+import type { isActivity } from "../ActivityTypes.js";
 
 
 /**

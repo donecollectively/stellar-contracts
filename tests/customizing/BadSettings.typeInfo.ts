@@ -89,7 +89,7 @@ export type DelegationDetailLike = {
 
 
 export type ProtocolSettings = {
-    id: /*minStructField*/ string
+    id: /*minStructField*/ number[]
     type: /*minStructField*/ string
     meaning: /*minStructField*/ bigint
     badSpenderSetting: /*minStructField*/ bigint
@@ -98,7 +98,7 @@ export type ProtocolSettings = {
 
 export type ErgoProtocolSettings = ProtocolSettings/*like canon-other*/
 export type ProtocolSettingsLike = {
-    id: /*minStructField*/ string
+    id: /*minStructField*/ number[]
     type: /*minStructField*/ string
     meaning: /*minStructField*/ IntLike
     badSpenderSetting: /*minStructField*/ IntLike
@@ -675,7 +675,7 @@ export type DelegateLifecycleActivityLike = IntersectedEnum<
 
 export type SpendingActivityMeta = EnumTypeMeta<
     {module: "BadSettingsPolicy", enumName: "SpendingActivity"}, {
-        UpdatingSettings: singleEnumVariantMeta<SpendingActivityMeta, "UpdatingSettings",
+        UpdatingRecord: singleEnumVariantMeta<SpendingActivityMeta, "UpdatingRecord",
             "Constr#0", "singletonField", /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]   , "noSpecialFlags"
         >
@@ -693,7 +693,7 @@ export type SpendingActivityMeta = EnumTypeMeta<
  *     for generating UPLC data for this enum type
  */
 export type SpendingActivity = 
-        | { UpdatingSettings: /* implied wrapper { id: ... } for singleVariantField */ 
+        | { UpdatingRecord: /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]    /*minEnumVariant*/ }
 
 export type ErgoSpendingActivity = IntersectedEnum<SpendingActivity/*like canon enum*/>
@@ -712,13 +712,13 @@ export type ErgoSpendingActivity = IntersectedEnum<SpendingActivity/*like canon 
  * converted by convention to the canonical types used in the on-chain context.
  */
 export type SpendingActivityLike = IntersectedEnum<
-        | { UpdatingSettings: /* implied wrapper { id: ... } for singleVariantField */ 
+        | { UpdatingRecord: /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]    /*minEnumVariant*/ }
 >
 
 export type MintingActivityMeta = EnumTypeMeta<
     {module: "BadSettingsPolicy", enumName: "MintingActivity"}, {
-        CreatingSettings: singleEnumVariantMeta<MintingActivityMeta, "CreatingSettings",
+        CreatingRecord: singleEnumVariantMeta<MintingActivityMeta, "CreatingRecord",
             "Constr#0", "singletonField", /* implied wrapper { seed: ... } for singleVariantField */ 
 			TxOutputId   , "isSeededActivity"
         >
@@ -736,7 +736,7 @@ export type MintingActivityMeta = EnumTypeMeta<
  *     for generating UPLC data for this enum type
  */
 export type MintingActivity = 
-        | { CreatingSettings: /* implied wrapper { seed: ... } for singleVariantField */ 
+        | { CreatingRecord: /* implied wrapper { seed: ... } for singleVariantField */ 
 			TxOutputId    /*minEnumVariant*/ }
 
 export type ErgoMintingActivity = IntersectedEnum<MintingActivity/*like canon enum*/>
@@ -755,13 +755,13 @@ export type ErgoMintingActivity = IntersectedEnum<MintingActivity/*like canon en
  * converted by convention to the canonical types used in the on-chain context.
  */
 export type MintingActivityLike = IntersectedEnum<
-        | { CreatingSettings: /* implied wrapper { seed: ... } for singleVariantField */ 
+        | { CreatingRecord: /* implied wrapper { seed: ... } for singleVariantField */ 
 			TxOutputId | string    /*minEnumVariant*/ }
 >
 
 export type BurningActivityMeta = EnumTypeMeta<
     {module: "BadSettingsPolicy", enumName: "BurningActivity"}, {
-        RetiringSettings: singleEnumVariantMeta<BurningActivityMeta, "RetiringSettings",
+        DeletingRecord: singleEnumVariantMeta<BurningActivityMeta, "DeletingRecord",
             "Constr#0", "singletonField", /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]   , "noSpecialFlags"
         >
@@ -779,7 +779,7 @@ export type BurningActivityMeta = EnumTypeMeta<
  *     for generating UPLC data for this enum type
  */
 export type BurningActivity = 
-        | { RetiringSettings: /* implied wrapper { id: ... } for singleVariantField */ 
+        | { DeletingRecord: /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]    /*minEnumVariant*/ }
 
 export type ErgoBurningActivity = IntersectedEnum<BurningActivity/*like canon enum*/>
@@ -798,7 +798,7 @@ export type ErgoBurningActivity = IntersectedEnum<BurningActivity/*like canon en
  * converted by convention to the canonical types used in the on-chain context.
  */
 export type BurningActivityLike = IntersectedEnum<
-        | { RetiringSettings: /* implied wrapper { id: ... } for singleVariantField */ 
+        | { DeletingRecord: /* implied wrapper { id: ... } for singleVariantField */ 
 			number[]    /*minEnumVariant*/ }
 >
 

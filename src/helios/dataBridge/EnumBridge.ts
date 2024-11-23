@@ -1,7 +1,7 @@
 import type { UplcData } from "@helios-lang/uplc";
-import type { isActivity } from "../../StellarContract.js";
 import { DataBridge, type DataBridgeOptions } from "./DataBridge.js";
 import type { HeliosScriptBundle } from "../HeliosScriptBundle.js";
+import type { isActivity } from "../../ActivityTypes.js";
 
 const JustAnEnum = Symbol("JustAnEnum");
 export type JustAnEnum = typeof JustAnEnum;

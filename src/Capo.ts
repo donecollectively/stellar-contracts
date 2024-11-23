@@ -33,7 +33,6 @@ import {
 
 import type {
     StellarFactoryArgs,
-    isActivity,
     configBaseWithRev,
     stellarSubclass,
     ConfigFor,
@@ -419,6 +418,7 @@ import type { SomeDgtActivityHelper } from "./delegation/GenericDelegateBridge.j
 import type { PendingDelegateAction$AddLike } from "./delegation/UnspecializedDelegate.typeInfo.js";
 import type { DelegatedDataContract, DgDataType, MaybeWrappedDataType, someDataWrapper } from "./delegation/DelegatedDataContract.js";
 import { UnspecializedMintDelegate } from "./delegation/UnspecializedMintDelegate.js";
+import type { isActivity } from "./ActivityTypes.js";
 
 export type CapoDatum = ErgoCapoDatum;
 export type CharterData = CapoDatum$Ergo$CharterData;

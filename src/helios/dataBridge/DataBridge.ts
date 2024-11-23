@@ -1,36 +1,16 @@
 import type { TypeSchema } from "@helios-lang/type-utils"
-import type { 
-    anyTypeDetails,
-    ActivityEnumVariantCreator,
-    EnumId,
-    EnumTypeMeta,
-    makesUplcActivityEnumData,
-    EnumUplcActivityResult,
-    HeliosBundleClass,
-    HeliosBundleTypeDetails,
-    HeliosBundleTypes,
-    HeliosScriptBundle,
-    VariantMap,
-    anySeededActivity,
-    enumTypeDetails,
-    makesSomeActivityData,
-    makesUplcActivityData,
-    readsSomeUplcData,
-    readsUplcData,
-    readsUplcEnumData,
-    singleEnumVariantMeta,
-    typeDetails,
-    uplcDataBridge,
-    variantTypeDetails
-} from "../HeliosScriptBundle.js"
 import { Cast } from "@helios-lang/contract-utils"
-import type { hasSeed } from "../../StellarContract.js"
 import { TxOutputId } from "@helios-lang/ledger-babbage"
-import { StellarTxnContext } from "../../StellarTxnContext.js"
-import type { SeedAttrs } from "../../delegation/UutName.js"
 import type { UplcData } from "@helios-lang/uplc"
+
+import type { 
+    HeliosScriptBundle,
+    readsUplcData,
+} from "../HeliosScriptBundle.js"
+import { StellarTxnContext } from "../../StellarTxnContext.js"
 import type { EnumBridge } from "./EnumBridge.js"
 import type { readsUplcTo } from "./BridgeTypeUtils.js"
+import type { hasSeed, SeedAttrs } from "../../ActivityTypes.js"
 
 // const rawDataMakerProxy = new Proxy(
 //     {},

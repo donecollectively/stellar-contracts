@@ -35,7 +35,6 @@ import {
     HeliosModuleSrc,
     type HeliosModuleOptions,
 } from "./helios/HeliosModuleSrc.js";
-import { type SeedAttrs } from "./delegation/UutName.js";
 import type { Capo } from "./Capo.js";
 import { DatumAdapter, type adapterParsedOnchainData } from "./DatumAdapter.js";
 import { UtxoHelper, type utxoPredicate } from "./UtxoHelper.js";
@@ -48,20 +47,10 @@ import {
 import type { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
 import { DataBridge, ContractDataBridge, DataBridgeReaderClass, ContractDataBridgeWithOtherDatum, ContractDataBridgeWithEnumDatum } from "./helios/dataBridge/DataBridge.js";
 import type { mustFindConcreteContractBridgeType, findActivityType, findDatumType, findReadDatumType, possiblyAbstractContractBridgeType, AbstractNew } from "./helios/dataBridge/BridgeTypeUtils.js";
+import type { hasSeed } from "./ActivityTypes.js";
 
 type NetworkName = "testnet" | "mainnet";
 let configuredNetwork: NetworkName | undefined = undefined;
-
-/**
- * a type for redeemer/activity-factory functions declared with \@Activity.redeemer
- *
- * @public
- */
-export type isActivity = {
-    // redeemer: UplcDataValue | UplcData | T;
-    redeemer: UplcData;
-    details?: string;
-};
 
 export function isUplcData(x: any): x is UplcData {
     return "kind" in x && "toCbor" in x;
@@ -365,11 +354,6 @@ type ComputedScriptProperties = Partial<{
     program: CachedHeliosProgram;
     identity: string;
 }>;
-
-/**
- * @public
- */
-export type hasSeed = SeedAttrs | hasSeedUtxo;
 
 const isInternalConstructor = Symbol("internalConstructor");
 

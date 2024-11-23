@@ -92,20 +92,32 @@ enum DelegateDatum {
     }
 }
 
+/**
+   * delegated datum policies MUST define
+   * a baseline set of activities to support the generic CRUD pattern.
+   * @remarks
+   * The policy MAY define additional activities for specific application
+   * needs, but the basic CRUD activities are required to be present.
+   * The policy MAY decline any or all transactions using any of the 
+   * basic activities.  It's suggested that the CreatingRecord activity
+   * be supported for the sake of first-time record creation for the
+   * most common user-facing activity, with other minting activities
+   * if needed for more specialized application scenarios.
+   */
 enum MintingActivity {
-    CreatingSettings {
+    CreatingRecord {
         seed: TxOutputId
     }
 }
 
 enum BurningActivity {
-    RetiringSettings {
+    DeletingRecord {
         id: ByteArray
     }
 }
 
 enum SpendingActivity {
-    UpdatingSettings {
+    UpdatingRecord {
         id: ByteArray
     }
 }
@@ -179,7 +191,7 @@ enum DelegateActivity {
             // non-mintDelegate can't trigger these activities
             CapoLifecycleActivities => error("unreachable"),
             MintingActivities{VMA} => VMA.switch {
-                CreatingSettings{seed} => {
+                CreatingRecord{seed} => {
                     print("creating Settings record...\n");
                     mkTn : (String) -> String = mkUutTnFactory(seed);
 
@@ -218,7 +230,7 @@ enum DelegateActivity {
                 print("\n");
 
                 VSA.switch {
-                    UpdatingSettings{recId} => {
+                    UpdatingRecord{recId} => {
                         hasDD : (TxInput) -> Bool = cctx.mkDelegatedDataPredicate("set", recId);
                         // settings: ProtocolSettings = cctx.getManifestDatum[ProtocolSettings]("settings");
                         _hasDDOutput : (TxOutput) -> Bool = cctx.mkDelegatedDataOutputPredicate("tdata", recId);

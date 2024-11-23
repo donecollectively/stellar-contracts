@@ -3,17 +3,18 @@ import {
     ValidatorHash,
     Value,
 } from "@hyperionbt/helios";
-import { StellarContract, type configBaseWithRev, type isActivity } from "../StellarContract.js";
+import { StellarContract, type configBaseWithRev } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
-import { mkTv } from "../utils.js";
 import type {
     capoDelegateConfig,
 } from "./RolesAndDelegates.js";
-import { hasReqts } from "../Requirements.js";
-import { dumpAny } from "../diagnostics.js";
-import type { CapoConfig } from "../Capo.js";
 import type { ContractDataBridgeWithEnumDatum, ContractDataBridgeWithOtherDatum } from "../helios/dataBridge/DataBridge.js";
 import type { AbstractNew } from "../helios/dataBridge/BridgeTypeUtils.js";
+
+import type { isActivity } from "../ActivityTypes.js";
+import { hasReqts } from "../Requirements.js";
+import { dumpAny } from "../diagnostics.js";
+import { mkTv } from "../utils.js";
 
 /**
  * Base class for modules that can serve as Capo delegates

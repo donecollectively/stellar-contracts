@@ -1,24 +1,26 @@
 import type { UplcData } from "@helios-lang/uplc";
+import type { TxOutputDatum } from "@helios-lang/ledger-babbage";
+
+import type { isActivity } from "../ActivityTypes.js";
+import type {
+    ContractDataBridgeWithEnumDatum,
+    DataBridge,
+    DataBridgeReaderClass,
+} from "../helios/dataBridge/DataBridge.js";
+import type {
+    EnumBridge,
+    JustAnEnum,
+} from "../helios/dataBridge/EnumBridge.js";
+
+import type { AbstractNew } from "../helios/dataBridge/BridgeTypeUtils.js";
+
 import UnspecializedDelegateBridge, {
     DelegateActivityHelper,
     DelegateDatumHelper,
     SpendingActivityHelperNested,
     UnspecializedDelegateBridgeReader,
 } from "./UnspecializedDelegate.bridge.js";
-import type {
-    EnumBridge,
-    JustAnEnum,
-} from "../helios/dataBridge/EnumBridge.js";
-import type { isActivity } from "../StellarContract.js";
-import type {
-    ContractDataBridgeWithEnumDatum,
-    DataBridge,
-    DataBridgeReaderClass,
-} from "../helios/dataBridge/DataBridge.js";
-import type { AbstractNew } from "../helios/dataBridge/BridgeTypeUtils.js";
 import type { ErgoDelegateDatum } from "./UnspecializedDelegate.typeInfo.js";
-import type { Cast } from "@helios-lang/contract-utils";
-import type { TxOutputDatum } from "@helios-lang/ledger-babbage";
 
 export type GenericDelegateBridgeClass = AbstractNew<GenericDelegateBridge>;
 export type GenericDelegateBridge = ContractDataBridgeWithEnumDatum &

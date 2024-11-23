@@ -35,7 +35,7 @@ export {
     betterJsonSerializer,
 } from "./src/diagnostics.js";
 
-export { UutName, type SeedAttrs } from "./src/delegation/UutName.js";
+export { UutName } from "./src/delegation/UutName.js";
 export {
     Capo,
     type CapoConfig as CapoBaseConfig,
@@ -131,13 +131,22 @@ export {
     type MultiTxnCallback,
 } from "./src/StellarTxnContext.js";
 
+export { 
+    type SeedAttrs,
+    type isActivity,
+    type hasSeed,
+    type seedActivityFunc,
+    type SeedActivityArgs,
+    type WithImpliedSeedVariant,
+    SeedActivity,
+    withImpliedSeed
+} from "./src/ActivityTypes.js"
+
 export type {
     stellarSubclass,
-    isActivity,
     anyDatumProps,
     configBaseWithRev as configBase, // as paramsBase,
     StellarFactoryArgs,
-    hasSeed,
     ConfigFor,
 } from "./src/StellarContract.js";
 
@@ -165,7 +174,6 @@ export {
     type DelegatedDatumType,
     type DelegatedDatumTypeName,
     type updateActivityFunc,
-    type seedActivityFunc,
     DelegatedDataContract,
 } from "./src/delegation/DelegatedDataContract.js";
 

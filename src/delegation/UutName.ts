@@ -4,14 +4,6 @@ export const _uutName = Symbol("uutName");
 export const maxUutName = 32;
 
 /**
- * @public
- */
-export type SeedAttrs = {
-    txId: TxId,
-    idx: bigint,
-}
-
-/**
  * a unique utility token having a unique name
  * @remarks
  *

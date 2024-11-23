@@ -7,11 +7,6 @@ import type {
     hasSettingsRef,
     hasUutContext,
 } from "../Capo.js";
-import {
-    Activity,
-    partialTxn,
-    type hasSeed,
-} from "../StellarContract.js";
 
 import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { dumpAny } from "../diagnostics.js";
@@ -26,7 +21,6 @@ import type {
 } from "./DelegatedDatumTester.typeInfo.js"
 
 import DelegatedDatumTesterBundle from "./DelegatedDatumTester.hlbundle.js"
-import type { GenericDelegateBridgeClass } from "../delegation/GenericDelegateBridge.js";
 
 export class DelegatedDatumTester extends DelegatedDataContract {
     dataBridgeClass = DelegateDatumTesterDataBridge

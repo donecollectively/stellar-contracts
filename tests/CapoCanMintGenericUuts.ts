@@ -2,10 +2,11 @@ import {
     defineRole,
     delegateRoles
 } from "../src/delegation/RolesAndDelegates";
-import CapoBundleWithGenericUuts from "./CapoWithGenericUuts.hlbundle.js";
+// import CapoBundleWithGenericUuts from "./CapoWithGenericUuts.hlbundle.js";
 import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/MintDelegateWithGenericUuts.js";
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { DelegatedDatumTester } from "../src/testing/DelegatedDatumTester.js";
+import { CapoHeliosBundle } from "../src/CapoHeliosBundle.js";
 
 export class CapoCanMintGenericUuts extends CapoWithoutSettings {
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {
@@ -16,7 +17,7 @@ export class CapoCanMintGenericUuts extends CapoWithoutSettings {
     }
     
     scriptBundle() {
-        return new CapoBundleWithGenericUuts();
+        return new CapoHeliosBundle();
     }
     async t() {
         const t = await this.getSpendDelegate()

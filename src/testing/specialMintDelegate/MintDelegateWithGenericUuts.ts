@@ -1,6 +1,7 @@
-import { Activity, type hasSeed } from "../../StellarContract.js";
+import { Activity } from "../../StellarContract.js";
 import { type hasSeedUtxo } from "../../StellarTxnContext.js";
 import { BasicMintDelegate } from "../../minting/BasicMintDelegate.js";
+import type { hasSeed } from "../../ActivityTypes.js";
 
 import uutMintingMintDelegateBundle from "./uutMintingMintDelegate.hlbundle.js";
 import ummdDataBridge from "./uutMintingMintDelegate.bridge.js"

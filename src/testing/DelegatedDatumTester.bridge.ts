@@ -48,7 +48,9 @@ import {
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../helios/typeUtils.js"
 import { StellarCast } from "../helios/dataBridge/StellarCast.js"
-import type {hasSeed, isActivity} from "../StellarContract.js"
+import { withImpliedSeed, type hasSeed, type isActivity, type WithImpliedSeedVariant, type SeedAttrs} from "../ActivityTypes.js"
+
+export type TimeLike = IntLike;
 
 
 import type {
@@ -587,7 +589,7 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
         cip68meta: AnyDataLike,
         cip68version: IntLike,
         otherDetails: UplcData
-    } ) : TxOutputDatum<"Inline"> {
+    }) : TxOutputDatum<"Inline"> {
         const uplc = this.mkUplcData({
             Cip68RefToken: fields 
         }, "DelegateDatumTester::DelegateDatum.Cip68RefToken");
@@ -861,7 +863,7 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
     updatingEntry(fields: ManifestActivity$updatingEntryLike | { 
         key: string,
         tokenName: number[]
-    } ) : UplcData {
+    }) : UplcData {
         const uplc = this.mkUplcData({
             updatingEntry: fields 
         }, "CapoDelegateHelpers::ManifestActivity.updatingEntry");
@@ -875,7 +877,7 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
     addingEntry(fields: ManifestActivity$addingEntryLike | { 
         key: string,
         tokenName: number[]
-    } ) : UplcData {
+    }) : UplcData {
         const uplc = this.mkUplcData({
             addingEntry: fields 
         }, "CapoDelegateHelpers::ManifestActivity.addingEntry");
@@ -889,7 +891,7 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
     forkingThreadToken(fields: ManifestActivity$forkingThreadTokenLike | { 
         key: string,
         newThreadCount: IntLike
-    } ) : UplcData {
+    }) : UplcData {
         const uplc = this.mkUplcData({
             forkingThreadToken: fields 
         }, "CapoDelegateHelpers::ManifestActivity.forkingThreadToken");
@@ -903,7 +905,7 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
     burningThreadToken(fields: ManifestActivity$burningThreadTokenLike | { 
         key: string,
         burnedThreadCount: IntLike
-    } ) : UplcData {
+    }) : UplcData {
         const uplc = this.mkUplcData({
             burningThreadToken: fields 
         }, "CapoDelegateHelpers::ManifestActivity.burningThreadToken");
@@ -943,7 +945,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     updatingEntry(fields: ManifestActivity$updatingEntryLike | { 
         key: string,
         tokenName: number[]
-    } ) : UplcData {
+    }) : UplcData {
         const uplc = this.mkUplcData({
             updatingEntry: fields 
         }, "CapoDelegateHelpers::ManifestActivity.updatingEntry");
@@ -957,7 +959,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     addingEntry(fields: ManifestActivity$addingEntryLike | { 
         key: string,
         tokenName: number[]
-    } ) : UplcData {
+    }) : UplcData {
         const uplc = this.mkUplcData({
             addingEntry: fields 
         }, "CapoDelegateHelpers::ManifestActivity.addingEntry");
@@ -971,7 +973,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     forkingThreadToken(fields: ManifestActivity$forkingThreadTokenLike | { 
         key: string,
         newThreadCount: IntLike
-    } ) : UplcData {
+    }) : UplcData {
         const uplc = this.mkUplcData({
             forkingThreadToken: fields 
         }, "CapoDelegateHelpers::ManifestActivity.forkingThreadToken");
@@ -985,7 +987,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     burningThreadToken(fields: ManifestActivity$burningThreadTokenLike | { 
         key: string,
         burnedThreadCount: IntLike
-    } ) : UplcData {
+    }) : UplcData {
         const uplc = this.mkUplcData({
             burningThreadToken: fields 
         }, "CapoDelegateHelpers::ManifestActivity.burningThreadToken");
@@ -1053,7 +1055,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
         action: PendingDelegateActionLike,
         role: DelegateRoleLike,
         name: Option<string>
-    } ) : UplcData {
+    }) : UplcData {
         const uplc = this.mkUplcData({
             queuePendingDgtChange: fields 
         }, "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
@@ -1067,7 +1069,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     removePendingDgtChange(fields: CapoLifecycleActivity$removePendingDgtChangeLike | { 
         role: DelegateRoleLike,
         name: Option<string>
-    } ) : UplcData {
+    }) : UplcData {
         const uplc = this.mkUplcData({
             removePendingDgtChange: fields 
         }, "CapoDelegateHelpers::CapoLifecycleActivity.removePendingDgtChange");
@@ -1293,16 +1295,26 @@ export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
 
     /**
     * generates  UplcData for ***"DelegateDatumTester::MintingActivity.CreatingTData"***, 
-    * given a transaction-context with a ***seed utxo*** and other field details
-    * @remarks - to get a transaction context having the seed needed for this argment, 
-    * see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.    */
-    CreatingTData(value: hasSeed | TxOutputId | string) : UplcData {
-        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
+    * given a transaction-context (or direct arg) with a ***seed utxo*** 
+    * @remarks
+    * ### Seeded activity
+    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
+    *  - to get a transaction context having the seed needed for this argument, 
+    *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
+    *  - or you may use the `CreatingTData.withImpliedSeed()` variant of this function to serve 
+    *    any context that provides an implicit seed utxo.
+    * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+    *
+     */
+    CreatingTData : WithImpliedSeedVariant<(thingWithSeed: hasSeed | TxOutputId | string) 
+      => UplcData> = withImpliedSeedVariant((thingWithSeed) => {
+        const seedTxOutputId = "string" == typeof thingWithSeed ? thingWithSeed : this.getSeed(thingWithSeed);
         const uplc = this.mkUplcData({ 
            CreatingTData: seedTxOutputId
-        },"DelegateDatumTester::MintingActivity.CreatingTData");  /*singleField/seeded enum variant*/
-       return uplc;
-    }
+        },"DelegateDatumTester::MintingActivity.CreatingTData");  
+        return uplc;
+    })    /*singleField/seeded enum variant*/
+
 }/*mkEnumHelperClass*/
 
 
@@ -1391,7 +1403,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
         action: PendingDelegateActionLike,
         role: DelegateRoleLike,
         name: Option<string>
-    } ) : isActivity {
+    }) : isActivity {
         const uplc = this.mkUplcData({
             queuePendingDgtChange: fields 
         }, "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
@@ -1405,7 +1417,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     removePendingDgtChange(fields: CapoLifecycleActivity$removePendingDgtChangeLike | { 
         role: DelegateRoleLike,
         name: Option<string>
-    } ) : isActivity {
+    }) : isActivity {
         const uplc = this.mkUplcData({
             removePendingDgtChange: fields 
         }, "CapoDelegateHelpers::CapoLifecycleActivity.removePendingDgtChange");
@@ -1631,16 +1643,32 @@ export class MintingActivityHelperNested extends EnumBridge<isActivity> {
 
     /**
     * generates isActivity/redeemer wrapper with UplcData for ***"DelegateDatumTester::MintingActivity.CreatingTData"***, 
-    * given a transaction-context with a ***seed utxo*** and other field details
-    * @remarks - to get a transaction context having the seed needed for this argment, 
-    * see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.    */
-    CreatingTData(value: hasSeed | TxOutputId | string) : isActivity {
-        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
+    * given a transaction-context (or direct arg) with a ***seed utxo*** 
+    * @remarks
+    * ### Seeded activity
+    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
+    *  - to get a transaction context having the seed needed for this argument, 
+    *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
+    *  - or you may use the `CreatingTData.withImpliedSeed()` variant of this function to serve 
+    *    any context that provides an implicit seed utxo.
+    * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+    *
+     * ### Nested activity: 
+    * this is connected to a nested-activity wrapper, so the details are piped through 
+    * the parent's uplc-encoder, producing a single uplc object with 
+    * a complete wrapper for this inner activity detail.
+    */
+    CreatingTData : WithImpliedSeedVariant<(thingWithSeed: hasSeed | TxOutputId | string) 
+      => isActivity> = withImpliedSeedVariant((thingWithSeed) => {
+        const seedTxOutputId = "string" == typeof thingWithSeed ? thingWithSeed : this.getSeed(thingWithSeed);
+
+        // piped through parent's uplc-encoder
         const uplc = this.mkUplcData({ 
            CreatingTData: seedTxOutputId
-        },"DelegateDatumTester::MintingActivity.CreatingTData");  /*singleField/seeded enum variant*/
-       return uplc;
-    }
+        },"DelegateDatumTester::MintingActivity.CreatingTData");  
+        return uplc;
+    })    /*singleField/seeded enum variant*/
+
 }/*mkEnumHelperClass*/
 
 
@@ -1808,7 +1836,7 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
     UpdatingDelegatedData(fields: DelegateActivity$UpdatingDelegatedDataLike | { 
         dataType: string,
         recId: number[]
-    } ) : isActivity {
+    }) : isActivity {
         const uplc = this.mkUplcData({
             UpdatingDelegatedData: fields 
         }, "DelegateDatumTester::DelegateActivity.UpdatingDelegatedData");
@@ -1822,7 +1850,7 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
     DeletingDelegatedData(fields: DelegateActivity$DeletingDelegatedDataLike | { 
         dataType: string,
         recId: number[]
-    } ) : isActivity {
+    }) : isActivity {
         const uplc = this.mkUplcData({
             DeletingDelegatedData: fields 
         }, "DelegateDatumTester::DelegateActivity.DeletingDelegatedData");

@@ -48,7 +48,7 @@ import {
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../helios/typeUtils.js"
 import { StellarCast } from "../helios/dataBridge/StellarCast.js"
-import type {hasSeed, isActivity} from "../StellarContract.js"
+import { withImpliedSeed, type hasSeed, type isActivity, type WithImpliedSeedVariant, type SeedAttrs} from "../ActivityTypes.js"
 
 export type TimeLike = IntLike;
 
@@ -1232,16 +1232,26 @@ export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
 
     /**
     * generates  UplcData for ***"unspecializedDelegate::MintingActivity._placeholder1MA"***, 
-    * given a transaction-context with a ***seed utxo*** and other field details
-    * @remarks - to get a transaction context having the seed needed for this argment, 
-    * see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.    */
-    _placeholder1MA(value: hasSeed | TxOutputId | string) : UplcData {
-        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
+    * given a transaction-context (or direct arg) with a ***seed utxo*** 
+    * @remarks
+    * ### Seeded activity
+    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
+    *  - to get a transaction context having the seed needed for this argument, 
+    *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
+    *  - or you may use the `_placeholder1MA.withImpliedSeed()` variant of this function to serve 
+    *    any context that provides an implicit seed utxo.
+    * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+    *
+     */
+    _placeholder1MA : WithImpliedSeedVariant<(thingWithSeed: hasSeed | TxOutputId | string) 
+      => UplcData> = withImpliedSeedVariant((thingWithSeed) => {
+        const seedTxOutputId = "string" == typeof thingWithSeed ? thingWithSeed : this.getSeed(thingWithSeed);
         const uplc = this.mkUplcData({ 
            _placeholder1MA: seedTxOutputId
-        },"unspecializedDelegate::MintingActivity._placeholder1MA");  /*singleField/seeded enum variant*/
-       return uplc;
-    }
+        },"unspecializedDelegate::MintingActivity._placeholder1MA");  
+        return uplc;
+    })    /*singleField/seeded enum variant*/
+
 }/*mkEnumHelperClass*/
 
 
@@ -1570,16 +1580,32 @@ export class MintingActivityHelperNested extends EnumBridge<isActivity> {
 
     /**
     * generates isActivity/redeemer wrapper with UplcData for ***"unspecializedDelegate::MintingActivity._placeholder1MA"***, 
-    * given a transaction-context with a ***seed utxo*** and other field details
-    * @remarks - to get a transaction context having the seed needed for this argment, 
-    * see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.    */
-    _placeholder1MA(value: hasSeed | TxOutputId | string) : isActivity {
-        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);
+    * given a transaction-context (or direct arg) with a ***seed utxo*** 
+    * @remarks
+    * ### Seeded activity
+    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
+    *  - to get a transaction context having the seed needed for this argument, 
+    *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
+    *  - or you may use the `_placeholder1MA.withImpliedSeed()` variant of this function to serve 
+    *    any context that provides an implicit seed utxo.
+    * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+    *
+     * ### Nested activity: 
+    * this is connected to a nested-activity wrapper, so the details are piped through 
+    * the parent's uplc-encoder, producing a single uplc object with 
+    * a complete wrapper for this inner activity detail.
+    */
+    _placeholder1MA : WithImpliedSeedVariant<(thingWithSeed: hasSeed | TxOutputId | string) 
+      => isActivity> = withImpliedSeedVariant((thingWithSeed) => {
+        const seedTxOutputId = "string" == typeof thingWithSeed ? thingWithSeed : this.getSeed(thingWithSeed);
+
+        // piped through parent's uplc-encoder
         const uplc = this.mkUplcData({ 
            _placeholder1MA: seedTxOutputId
-        },"unspecializedDelegate::MintingActivity._placeholder1MA");  /*singleField/seeded enum variant*/
-       return uplc;
-    }
+        },"unspecializedDelegate::MintingActivity._placeholder1MA");  
+        return uplc;
+    })    /*singleField/seeded enum variant*/
+
 }/*mkEnumHelperClass*/
 
 

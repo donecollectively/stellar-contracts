@@ -2,7 +2,6 @@ import { Datum } from "@hyperionbt/helios";
 import * as helios from "@hyperionbt/helios";
 
 import { Activity, datum } from "../StellarContract.js";
-import type { hasSeed, isActivity } from "../StellarContract.js";
 import { StellarTxnContext } from "../StellarTxnContext.js";
 import type { capoDelegateConfig } from "../delegation/RolesAndDelegates.js";
  
@@ -13,6 +12,7 @@ import type { ContractDataBridgeWithEnumDatum, DataBridge } from "src/helios/dat
 import type { HeliosScriptBundle } from "../helios/HeliosScriptBundle.js";
 import type { CapoDelegateBundle } from "../delegation/CapoDelegateBundle.js";
 import type { GenericDelegateBridge, GenericDelegateBridgeClass } from "../delegation/GenericDelegateBridge.js";
+import type { hasSeed, isActivity } from "../ActivityTypes.js";
 
 /**
  * Serves a delegated minting-policy role for Capo contracts

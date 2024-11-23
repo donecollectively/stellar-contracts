@@ -1,22 +1,20 @@
 import type { UplcData } from "@helios-lang/uplc";
-import { CachedHeliosProgram } from "./CachedHeliosProgram.js";
-import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
-import type { hasSeed, isActivity } from "../StellarContract.js";
+import type { DataType } from "@helios-lang/compiler/src/index.js";
+
 import type {
     EnumTypeSchema,
     TypeSchema,
     VariantTypeSchema,
 } from "@helios-lang/type-utils";
-import type { DataType } from "@helios-lang/compiler/src/index.js";
-import type { EachUnionElement } from "./typeUtils.js";
-import { BundleTypeGenerator } from "./dataBridge/BundleTypeGenerator.js";
-import { EnumBridge } from "./dataBridge/EnumBridge.js";
+import { CachedHeliosProgram } from "./CachedHeliosProgram.js";
+import type { HeliosModuleSrc } from "./HeliosModuleSrc.js";
+
 import { DataBridge } from "./dataBridge/DataBridge.js";
 import { DataReader } from "./dataBridge/DataReader.js";
 import type { TxOutputId } from "@helios-lang/ledger-babbage";
 import type { hasSeedUtxo } from "../StellarTxnContext.js";
-import type { SeedAttrs } from "../delegation/UutName.js";
 import type { CapoHeliosBundle } from "../CapoHeliosBundle.js";
+import type { hasSeed, isActivity, SeedAttrs } from "../ActivityTypes.js";
 
 export type HeliosBundleClass = new () => HeliosScriptBundle;
 export type CapoBundleClass = new () => CapoHeliosBundle;

@@ -1,7 +1,7 @@
 module ProtocolSettings
 
 struct ProtocolSettings {
-    id: String  "@id"    // "set-1234"
+    id: ByteArray  "@id"    // "set-1234"
     type: String  "tpe" // "set"
     meaning: Int
     badSpenderSetting: Int "badSettingToSpendDelegate" 
