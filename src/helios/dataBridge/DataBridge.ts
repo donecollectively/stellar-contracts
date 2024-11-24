@@ -10,7 +10,7 @@ import type {
 import { StellarTxnContext } from "../../StellarTxnContext.js"
 import type { EnumBridge } from "./EnumBridge.js"
 import type { readsUplcTo } from "./BridgeTypeUtils.js"
-import type { hasSeed, SeedAttrs } from "../../ActivityTypes.js"
+import { getSeed, type hasSeed, type SeedAttrs } from "../../ActivityTypes.js"
 
 // const rawDataMakerProxy = new Proxy(
 //     {},
@@ -170,14 +170,8 @@ export class DataBridge extends (dataBridgeProxyBase as any) {
     // //     throw new Error(`each dataBridge makes its own datum`)
     // // }
 
-    protected getSeed(arg: hasSeed | TxOutputId ): TxOutputId {
-        if (arg instanceof TxOutputId) return arg;
-        
-        const seedInfo : SeedAttrs | undefined = ("txId" in arg && "idx" in arg) ? arg
-        : arg instanceof StellarTxnContext ? arg.getSeedUtxoDetails() : undefined;
-        if (!seedInfo) throw new Error(`can't get seed from ${arg}`);
-
-        return new TxOutputId(seedInfo.txId, seedInfo.idx);
+    getSeed(arg: hasSeed | TxOutputId ): TxOutputId {
+        return getSeed(arg)
     }
 
     protected redirectTo?: (value: any) => void;

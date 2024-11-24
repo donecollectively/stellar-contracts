@@ -47,7 +47,7 @@ import {
 import type { CachedHeliosProgram } from "./helios/CachedHeliosProgram.js";
 import { DataBridge, ContractDataBridge, DataBridgeReaderClass, ContractDataBridgeWithOtherDatum, ContractDataBridgeWithEnumDatum } from "./helios/dataBridge/DataBridge.js";
 import type { mustFindConcreteContractBridgeType, findActivityType, findDatumType, findReadDatumType, possiblyAbstractContractBridgeType, AbstractNew } from "./helios/dataBridge/BridgeTypeUtils.js";
-import type { hasSeed } from "./ActivityTypes.js";
+import { getSeed, type hasSeed, type SeedAttrs } from "./ActivityTypes.js";
 
 type NetworkName = "testnet" | "mainnet";
 let configuredNetwork: NetworkName | undefined = undefined;
@@ -1072,11 +1072,8 @@ export class StellarContract<
         return "Activity";
     }
 
-    getSeed(arg: hasSeed): helios.TxOutputId {
-        const { txId, idx } =
-            arg instanceof StellarTxnContext ? arg.getSeedUtxoDetails() : arg;
-
-        return new helios.TxOutputId(txId, idx);
+    getSeed(arg: hasSeed) {
+        return getSeed(arg)
     }
 
     /**

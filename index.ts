@@ -139,7 +139,8 @@ export {
     type SeedActivityArgs,
     type WithImpliedSeedVariant,
     SeedActivity,
-    withImpliedSeed
+    withImpliedSeedVariant,
+    getSeed
 } from "./src/ActivityTypes.js"
 
 export type {

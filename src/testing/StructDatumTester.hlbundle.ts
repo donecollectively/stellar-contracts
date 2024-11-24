@@ -5,7 +5,7 @@ import StructDatumTesterScript from "./StructDatumTester.hl";
 /**
  * A CapoHeliosBundle subclass that can be used with generic UUTs.
  */
-export default class StructDatumTester 
+export default class StructDatumTesterBundle
 extends HeliosScriptBundle.using(CapoHeliosBundle) {
     get main() {
         return StructDatumTesterScript;

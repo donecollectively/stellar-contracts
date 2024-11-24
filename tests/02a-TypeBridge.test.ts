@@ -31,6 +31,15 @@ import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/
 import { expanded, tagOnly } from "../src/helios/HeliosScriptBundle.js";
 import { SomeEnum } from "../src/testing/specialMintDelegate/uutMintingMintDelegate.typeInfo.js";
 
+import CapoMinterBundle from "../src/minting/CapoMinter.hlbundle.js";
+import BadSettingsBundle from "./customizing/BadSettings.hlbundle.js";
+import ReqtsConcreteBundle from "../src/reqts/Reqts.concrete.hlbundle.js";
+import StructDatumTesterBundle from "../src/testing/StructDatumTester.hlbundle.js";
+import DelegatedDatumTesterBundle from "../src/testing/DelegatedDatumTester.hlbundle.js";
+import UnspecializedDgtBundle from "../src/delegation/UnspecializedDelegate.hlbundle.js";
+import BundleMintDelegateWithGenericUuts from "../src/testing/specialMintDelegate/uutMintingMintDelegate.hlbundle.js";
+
+
 type localTC = StellarTestContext<
     DefaultCapoTestHelper<CapoCanMintGenericUuts>
 >;
@@ -179,8 +188,8 @@ describe("Type Bridge", async () => {
             it("creates a valid datum using the tag", async () => {
                 const { mkDatum } = mintDelegate;
 
-                const datum = mkDatum.TagOnlyDatum;
-
+                const txo_datum = mkDatum.TagOnlyDatum;
+                const datum = txo_datum.data
                 expect(datum.
                     rawData.TagOnlyDatum).toStrictEqual({});
                 //@ts-expect-error tags aren't on every UplcData
@@ -202,7 +211,7 @@ describe("Type Bridge", async () => {
                     const { mkDatum } = mintDelegate;
                     const datum = mkDatum.SingleDataElement("hello world");
                     // expect(datum.type).toBe("SingleDataElement");
-                    const backToJS = readDatum(datum);
+                    const backToJS = readDatum(datum.data);
 
                     expect(backToJS).toStrictEqual({
                         SingleDataElement: "hello world",
@@ -219,7 +228,7 @@ describe("Type Bridge", async () => {
                         c: [true],
                         d: undefined,
                     });
-                    const backToJS = readDatum(bridged);
+                    const backToJS = readDatum(bridged.data);
                     expect(backToJS).toStrictEqual({
                         SingleNestedStruct: { 
                             a: 42n,
@@ -347,8 +356,8 @@ describe("Type Bridge", async () => {
                     // nestedEnum: bridgeTo.SomeEnum.justAnInt(42) // right
                 });
                 // expect(datum.type).toBe("SampleDatum");
-                const result2 = readDatum(datum); // !!!!
-                const result = offchain.DelegateDatum(datum);
+                const result2 = readDatum(datum.data); // !!!!
+                const result = offchain.DelegateDatum(datum.data);
                 expect(result.MultiFieldNestedThings).toEqual({
                     nestedStruct: {
                         // nested: {
@@ -381,7 +390,7 @@ describe("Type Bridge", async () => {
                     },
                 });
 
-                const result = offchain.DelegateDatum(datum);
+                const result = offchain.DelegateDatum(datum.data);
                 expect(
                     result.MultiFieldNestedThings!.nestedEnumMaybe!
                 ).toStrictEqual({

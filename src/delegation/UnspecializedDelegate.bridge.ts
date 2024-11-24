@@ -48,7 +48,7 @@ import {
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../helios/typeUtils.js"
 import { StellarCast } from "../helios/dataBridge/StellarCast.js"
-import { withImpliedSeed, type hasSeed, type isActivity, type WithImpliedSeedVariant, type SeedAttrs} from "../ActivityTypes.js"
+import { withImpliedSeedVariant, type hasSeed, type isActivity, type WithImpliedSeedVariant, type SeedAttrs} from "../ActivityTypes.js"
 
 export type TimeLike = IntLike;
 
@@ -1244,8 +1244,8 @@ export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
     *
      */
     _placeholder1MA : WithImpliedSeedVariant<(thingWithSeed: hasSeed | TxOutputId | string) 
-      => UplcData> = withImpliedSeedVariant((thingWithSeed) => {
-        const seedTxOutputId = "string" == typeof thingWithSeed ? thingWithSeed : this.getSeed(thingWithSeed);
+      => UplcData> = withImpliedSeedVariant(this, (thingWithSeed) => {
+        const seedTxOutputId = this.getSeed(thingWithSeed);
         const uplc = this.mkUplcData({ 
            _placeholder1MA: seedTxOutputId
         },"unspecializedDelegate::MintingActivity._placeholder1MA");  
@@ -1596,8 +1596,8 @@ export class MintingActivityHelperNested extends EnumBridge<isActivity> {
     * a complete wrapper for this inner activity detail.
     */
     _placeholder1MA : WithImpliedSeedVariant<(thingWithSeed: hasSeed | TxOutputId | string) 
-      => isActivity> = withImpliedSeedVariant((thingWithSeed) => {
-        const seedTxOutputId = "string" == typeof thingWithSeed ? thingWithSeed : this.getSeed(thingWithSeed);
+      => isActivity> = withImpliedSeedVariant(this, (thingWithSeed) => {
+        const seedTxOutputId = this.getSeed(thingWithSeed);
 
         // piped through parent's uplc-encoder
         const uplc = this.mkUplcData({ 

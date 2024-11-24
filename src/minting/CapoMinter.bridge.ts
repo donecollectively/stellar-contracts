@@ -48,7 +48,7 @@ import {
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../helios/typeUtils.js"
 import { StellarCast } from "../helios/dataBridge/StellarCast.js"
-import { withImpliedSeed, type hasSeed, type isActivity, type WithImpliedSeedVariant, type SeedAttrs} from "../ActivityTypes.js"
+import { withImpliedSeedVariant, type hasSeed, type isActivity, type WithImpliedSeedVariant, type SeedAttrs} from "../ActivityTypes.js"
 
 export type TimeLike = IntLike;
 
@@ -175,8 +175,8 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     *
      */
     addingMintInvariant : WithImpliedSeedVariant<(thingWithSeed: hasSeed | TxOutputId | string) 
-      => isActivity> = withImpliedSeedVariant((thingWithSeed) => {
-        const seedTxOutputId = "string" == typeof thingWithSeed ? thingWithSeed : this.getSeed(thingWithSeed);
+      => isActivity> = withImpliedSeedVariant(this, (thingWithSeed) => {
+        const seedTxOutputId = this.getSeed(thingWithSeed);
         const uplc = this.mkUplcData({ 
            addingMintInvariant: seedTxOutputId
         },"CapoMintHelpers::MinterActivity.addingMintInvariant");  
@@ -198,8 +198,8 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     *
      */
     addingSpendInvariant : WithImpliedSeedVariant<(thingWithSeed: hasSeed | TxOutputId | string) 
-      => isActivity> = withImpliedSeedVariant((thingWithSeed) => {
-        const seedTxOutputId = "string" == typeof thingWithSeed ? thingWithSeed : this.getSeed(thingWithSeed);
+      => isActivity> = withImpliedSeedVariant(this, (thingWithSeed) => {
+        const seedTxOutputId = this.getSeed(thingWithSeed);
         const uplc = this.mkUplcData({ 
            addingSpendInvariant: seedTxOutputId
         },"CapoMintHelpers::MinterActivity.addingSpendInvariant");  
@@ -221,8 +221,8 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     *
      */
     forcingNewMintDelegate : WithImpliedSeedVariant<(thingWithSeed: hasSeed | TxOutputId | string) 
-      => isActivity> = withImpliedSeedVariant((thingWithSeed) => {
-        const seedTxOutputId = "string" == typeof thingWithSeed ? thingWithSeed : this.getSeed(thingWithSeed);
+      => isActivity> = withImpliedSeedVariant(this, (thingWithSeed) => {
+        const seedTxOutputId = this.getSeed(thingWithSeed);
         const uplc = this.mkUplcData({ 
            forcingNewMintDelegate: seedTxOutputId
         },"CapoMintHelpers::MinterActivity.forcingNewMintDelegate");  

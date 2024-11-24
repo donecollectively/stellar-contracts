@@ -48,7 +48,9 @@ import {
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../helios/typeUtils.js"
 import { StellarCast } from "../helios/dataBridge/StellarCast.js"
-import type {hasSeed, isActivity} from "../StellarContract.js"
+import { withImpliedSeedVariant, type hasSeed, type isActivity, type WithImpliedSeedVariant, type SeedAttrs} from "../ActivityTypes.js"
+
+export type TimeLike = IntLike;
 
 
 import type {
@@ -64,7 +66,7 @@ import type * as types from "./StructDatumTester.typeInfo.js";
 
 
 /**
- * GENERATED data bridge for **StructDatumTester** script (defined in class ***StructDatumTester***)}
+ * GENERATED data bridge for **StructDatumTester** script (defined in class ***StructDatumTesterBundle***)}
  * main: **src/testing/StructDatumTester.hl**, project: **stellar-contracts**
  * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
  */
@@ -72,7 +74,7 @@ export class StructDatumTesterDataBridge extends ContractDataBridge {
     static isAbstract = false as const;
     isAbstract = false as const;
     /**
-     * Helper class for generating TxOutputDatum for the ***datum type ***
+     * Helper class for generating TxOutputDatum for the ***datum type (DatumStruct)***
      * for this contract script. 
      * 
      * This accessor object is callable with the indicated argument-type
@@ -255,6 +257,7 @@ export class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
         return cast.fromUplcData(d) //??? as ErgoOtherStruct;
     } /* structReader helper */
 
+datum = (d: UplcData) => { return this.DatumStruct(d) }
     /**
         * reads UplcData *known to fit the **DatumStruct*** struct type,
         * for the StructDatumTester script.

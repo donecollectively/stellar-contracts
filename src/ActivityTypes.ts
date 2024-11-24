@@ -1,12 +1,12 @@
-import type { TxId, TxOutputId } from "@helios-lang/ledger-babbage";
+import { TxOutputId, type TxId } from "@helios-lang/ledger-babbage";
 import type { UplcData } from "@helios-lang/uplc";
-import type { hasSeedUtxo } from "./StellarTxnContext.js";
+import { StellarTxnContext, type hasSeedUtxo } from "./StellarTxnContext.js";
+import type { TxOutputIdLike } from "@helios-lang/ledger-babbage/types/tx/TxOutputId.js";
 
 /**
  * @public
  */
-export type hasSeed = SeedAttrs | hasSeedUtxo;
-
+export type hasSeed = SeedAttrs | hasSeedUtxo | TxOutputIdLike
 
 /**
  * a type for redeemer/activity-factory functions declared with \@Activity.redeemer
@@ -29,20 +29,20 @@ export type SeedAttrs = {
 }
 
 export type SeedActivityArgs<
-    SA extends seedActivityFunc<any>
-> = SA extends seedActivityFunc<infer ARGS> ? ARGS : never;
+    SA extends seedActivityFunc<any, any>
+> = SA extends seedActivityFunc<infer ARGS, any> ? ARGS : never;
 
 /**
  * @public
  */
-export type seedActivityFunc<ARGS extends [...any]> = (
+export type seedActivityFunc<ARGS extends [...any], RV extends isActivity | UplcData> = (
     seed: hasSeed,
     ...args: ARGS
-) => isActivity;
+) => RV;
 
 export class SeedActivity<
-    FactoryFunc extends seedActivityFunc<any>,
-    ARGS extends [...any] = FactoryFunc extends seedActivityFunc<infer ARGS> ? ARGS : never> {
+    FactoryFunc extends seedActivityFunc<any, any>,
+    ARGS extends [...any] = FactoryFunc extends seedActivityFunc<infer ARGS, any> ? ARGS : never> {
     args: ARGS;
     constructor(
         private host: { getSeed(x: hasSeed): TxOutputId },
@@ -59,22 +59,37 @@ export class SeedActivity<
 }
 
 export type WithImpliedSeedVariant<
-    T extends (...args: [ hasSeed, ... ARGS ]) => isActivity,
-    ARGS extends [ ... any] = T extends (...args: [ hasSeed, ... infer ARGS ]) => isActivity ? ARGS : never
-> = T & {
-    withImpliedSeed: (...args: ARGS) => SeedActivity<T, ARGS>
+    FACTORY_FUNC extends (...args: [ hasSeed, ... ARGS ]) => any,
+    ARGS extends [ ... any] = FACTORY_FUNC extends (...args: [ hasSeed, ... infer ARGS ]) => any ? ARGS : never
+> = FACTORY_FUNC & {
+    withImpliedSeed: (...args: ARGS) => SeedActivity<FACTORY_FUNC, ARGS>
 }
 
-export function withImpliedSeed<
-    FactoryFunc extends seedActivityFunc<any>,
+export function withImpliedSeedVariant<
+    FACTORY_FUNC extends seedActivityFunc<any, any>,
     ARGS extends [...any]
 >(
     host: { getSeed(x: hasSeed): TxOutputId },
-    factoryFunc: FactoryFunc,
-    ...args: ARGS
-): WithImpliedSeedVariant<FactoryFunc, ARGS> {
-    const seedActivity = new SeedActivity(host, factoryFunc, args);
-    const withImpliedSeed = (...args: ARGS) => seedActivity;
+    factoryFunc: FACTORY_FUNC,
+): WithImpliedSeedVariant<FACTORY_FUNC, ARGS> {
+    const withImpliedSeed = (...args: ARGS) => {
+        const seedActivity = new SeedActivity(host, factoryFunc, args);
+        return seedActivity;
+    };
     return Object.assign(factoryFunc, { withImpliedSeed });
 }
 
+export function getSeed(arg: hasSeed) : TxOutputId{
+    if (arg instanceof TxOutputId) return arg
+    if (arg instanceof StellarTxnContext) {
+        const { txId, idx } = arg.getSeedUtxoDetails();
+        return new TxOutputId(txId, idx);
+    }
+    //@ts-expect-error on this type probe
+    if (arg.idx && arg.txId) {
+        const attr : SeedAttrs = arg as SeedAttrs;
+        return new TxOutputId(attr.txId, attr.idx)
+    }
+    const txoIdLike = arg as Exclude<typeof arg, SeedAttrs>
+    return TxOutputId.new(txoIdLike);
+}

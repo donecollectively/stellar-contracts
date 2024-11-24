@@ -193,7 +193,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
      * an {@link isActivity} object serializing the `{redeemer}` data as a UplcData object.
      * Normally that's done with {@link ContractBasedDelegate.mkSeededMintingActivity|mkSeededMintingActivity()}
      */
-    usesSeedActivity<SA extends seedActivityFunc<any>>(
+    usesSeedActivity<SA extends seedActivityFunc<any, any>>(
         a: SA,
         seedPlaceholder: "...seed",
         ...args: SeedActivityArgs<SA>

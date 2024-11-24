@@ -166,7 +166,7 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
     DataBridgeReaderClass ,
     EnumBridge,
     StellarCast,
-    withImpliedSeed,
+    withImpliedSeedVariant,
     type tagOnly, 
     type hasSeed, 
     type isActivity, 
@@ -206,7 +206,9 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
                     inputFile,
                     "src/helios/dataBridge/StellarCast.js"
                 )}"\n` +
-                `import { withImpliedSeed, type hasSeed, type isActivity, type WithImpliedSeedVariant, type SeedAttrs} from "${
+                `import { \n`+
+                    `    withImpliedSeedVariant, SeedActivity, type hasSeed, type isActivity, \n`+
+                    `    type WithImpliedSeedVariant, type SeedAttrs\n} from "${
                     this.mkRelativeImport(
                     inputFile,
                     "src/ActivityTypes.js"
@@ -422,11 +424,10 @@ ${this.includeStructReaders()}
                     permissiveTypeName,
                 } = typeDetails;
                 const castMemberName = `ᱺᱺ${typeName}Cast`;
-                this.additionalCastMemberDefs[
-                    castMemberName
-                ] = `    /**
-                * uses unicode U+1c7a - sorts to the end */\n`+
-                `    ${castMemberName} = new StellarCast<
+                this.additionalCastMemberDefs[castMemberName] =
+                    `    /**
+                * uses unicode U+1c7a - sorts to the end */\n` +
+                    `    ${castMemberName} = new StellarCast<
                 ${canonicalTypeName}, ${permissiveTypeName}
             >(${typeName}Schema, { isMainnet: true });\n`;
                 return (
@@ -712,11 +713,14 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             );
         }
         const { canonicalType, permissiveType, typeSchema } = details;
-        const castDef = `    /**
-        * uses unicode U+1c7a - sorts to the end */\n`+
-         `    ᱺᱺcast = new StellarCast<
+        const castDef =
+            `    /**
+        * uses unicode U+1c7a - sorts to the end */\n` +
+            `    ᱺᱺcast = new StellarCast<
         ${canonicalType}, ${permissiveType}
-    >(${JSON.stringify(typeSchema)}, { isMainnet: true }); // datumAccessorCast\n`;
+    >(${JSON.stringify(
+        typeSchema
+    )}, { isMainnet: true }); // datumAccessorCast\n`;
 
         return `export class ${helperClassName} extends DataBridge {
     isCallable = true
@@ -812,7 +816,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `export class ${structName}Helper extends DataBridge {\n` +
             `    isCallable = true\n` +
             `   /**
-            * uses unicode U+1c7a - sorts to the end */\n`+
+            * uses unicode U+1c7a - sorts to the end */\n` +
             `    ᱺᱺcast = new StellarCast<\n` +
             `        ${typeDetails.canonicalTypeName},\n` +
             `        ${typeDetails.permissiveTypeName}\n` +
@@ -856,7 +860,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             `export class ${helperClassName} extends ${parentClass} {\n` +
             `    /*mkEnumHelperClass*/\n` +
             `    /**
-            *  uses unicode U+1c7a - sorts to the end */\n`+
+            *  uses unicode U+1c7a - sorts to the end */\n` +
             `    ᱺᱺcast = new StellarCast<\n` +
             `       ${typeDetails.canonicalTypeName},\n` +
             `       ${typeDetails.permissiveTypeName}\n` +
@@ -1081,8 +1085,9 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             } for ***${enumPathExpr}***\n` +
             `     * @remarks - ***${permissiveTypeName}*** is the same as the expanded field-types.\n` +
             `     */\n` +
-            `    ${variantName}(fields: ${permissiveTypeName} | { \n`+
-            unfilteredFields() + `\n`+
+            `    ${variantName}(fields: ${permissiveTypeName} | { \n` +
+            unfilteredFields() +
+            `\n` +
             `    }) : ${returnType} {\n` +
             `        const uplc = this.mkUplcData({\n` +
             `            ${variantName}: fields \n` +
@@ -1109,8 +1114,11 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             variantDetails.dataType.asEnumMemberType?.parentType.name;
         const enumPathExpr = this.getEnumPathExpr(variantDetails);
 
-        const returnType = isActivity ? "isActivity" : 
-        isDatum ? "TxOutputDatum" : "UplcData";
+        const returnType = isActivity
+            ? "isActivity"
+            : isDatum
+            ? "TxOutputDatum"
+            : "UplcData";
 
         if ("enum" == oneField.typeSchema.kind) {
             return this.mkNestedEnumAccessor(
@@ -1128,17 +1136,33 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `    * generates ${
                     isActivity ? "isActivity/redeemer wrapper with" : ""
                 } UplcData for ***${enumPathExpr}***, \n` +
-                `    * given a transaction-context with a ***seed utxo*** and other field details\n` +
-                `    * @remarks - to get a transaction context having the seed needed for this argment, \n` +
-                `    * see the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass.` +
+                `    * given a transaction-context (or direct arg) with a ***seed utxo*** \n` +
+                `    * @remarks\n`+
+                `    * ### Seeded activity\n` +
+                `    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.\n`+
+                `    *  - to get a transaction context having the seed needed for this argument, \n` +
+                `    *    see the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass.\n` +
+                `    *  - or you may use the \`${variantName}.withImpliedSeed()\` variant of this function to serve \n`+
+                `    *    any context that provides an implicit seed utxo.\n`+
+                `    * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.\n` +
+                `    *\n ` +
+                (isNested
+                    ? `    * ### Nested activity: \n` +
+                      `    * this is connected to a nested-activity wrapper, so the details are piped through \n` +
+                      `    * the parent's uplc-encoder, producing a single uplc object with \n` +
+                      `    * a complete wrapper for this inner activity detail.\n`
+                    : "") +
                 `    */\n` +
-                `    ${variantName}(value: hasSeed | ${oneField.permissiveType}) : ${returnType} {\n` +
-                `        const seedTxOutputId = "string" == typeof value ? value : this.getSeed(value);\n` +
+                `    ${variantName} : WithImpliedSeedVariant<(thingWithSeed: hasSeed | ${oneField.permissiveType}) \n`+
+                `      => ${returnType}> = withImpliedSeedVariant(this, (thingWithSeed) => {\n` +
+                `        const seedTxOutputId = this.getSeed(thingWithSeed);\n` +
+                (isNested ? `\n        // piped through parent's uplc-encoder\n` : "") +
                 `        const uplc = this.mkUplcData({ \n` +
                 `           ${variantName}: seedTxOutputId\n` +
-                `        },${enumPathExpr});  /*singleField/seeded enum variant*/\n` +
-                `       return uplc;\n` +
-                `    }`
+                `        },${enumPathExpr});  \n` +
+                `        return uplc;\n` +
+                `    })`+
+                `    /*singleField/seeded enum variant*/\n`
             );
         }
         let thatType = oneField.permissiveType || "";
