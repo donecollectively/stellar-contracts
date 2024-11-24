@@ -206,10 +206,9 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
                     inputFile,
                     "src/helios/dataBridge/StellarCast.js"
                 )}"\n` +
-                `import { \n`+
-                    `    withImpliedSeedVariant, SeedActivity, type hasSeed, type isActivity, \n`+
-                    `    type WithImpliedSeedVariant, type SeedAttrs\n} from "${
-                    this.mkRelativeImport(
+                `import { \n` +
+                `    withImpliedSeedVariant, SeedActivity, type hasSeed, type isActivity, \n` +
+                `    type WithImpliedSeedVariant, type SeedAttrs\n} from "${this.mkRelativeImport(
                     inputFile,
                     "src/ActivityTypes.js"
                 )}"\n`;
@@ -800,7 +799,8 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         isActivity: boolean
     ) {
         let helperClassName = typeDetails.moreInfo.helperClassName;
-        if (isActivity && !helperClassName?.match(/Activit/)) { //acitivties/activity
+        //  - matches "Activities" or "Activity":
+        if (isActivity && !helperClassName?.match(/Activit/)) {
             helperClassName = `Activity${helperClassName}`;
         }
 
@@ -957,8 +957,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                     const enumPathExpr = this.getEnumPathExpr(variantDetails);
                     return (
                         `/**\n` +
-                        ` * (property getter): ${normalType                            
-                        } for ***${enumPathExpr}***\n` +
+                        ` * (property getter): ${normalType} for ***${enumPathExpr}***\n` +
                         ` * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#${variantDetails.typeSchema.tag}***\n` +
                         ` */\n` +
                         `    get ${variantName}() {\n` +
@@ -1026,22 +1025,26 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             : "UplcData";
         if ("seed" == Object.keys(variantDetails.fields)[0] && !isDatum) {
             // && isSeededActivity
-            function filteredFields(indent = 2) {
+            function filteredFields(indent = 2, callback=mkFieldType, joiner = ",\n") {
                 return Object.keys(variantDetails.fields)
                     .filter((fieldName) => fieldName !== "seed")
-                    .map((x) => mkFieldType(x, indent))
-                    .join(",\n");
+                    .map((x) => callback(x, indent))
+                    .join(joiner);
             }
+
+            const activitySummary =                 `     * generates ${
+                isActivity ? "isActivity/redeemer wrapper with" : ""
+            } UplcData for ***${enumPathExpr}***, \n`;
 
             return (
                 `    /**\n` +
-                `     * generates ${
-                    isActivity ? "isActivity/redeemer wrapper with" : ""
-                } UplcData for ***${enumPathExpr}***, \n` +
+                activitySummary+
                 `     * given a transaction-context ***with a seed utxo*** and other field details\n` +
                 `     * @remarks\n` +
                 `     * See the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass \n` +
                 `     * to create a context satisfying \`hasSeed\`.\n` +
+                `     * See the {@link seeded${variantName}} method for use in a context\n` +
+                `     * providing an implicit seed utxo. \n` +
                 `     */\n` +
                 `    ${variantName}(value: hasSeed, fields: { \n${filteredFields(
                     2
@@ -1073,7 +1076,26 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `            }, ${enumPathExpr});\n` +
                 `           return uplc;\n` +
                 `        }\n` +
-                `    } /*multiFieldVariant/seeded enum accessor*/ \n`
+                `    } /*multiFieldVariant/seeded enum accessor*/ \n\n` +
+                `    /**\n` +
+                activitySummary +
+                `     * @argument fields - { `+ filteredFields(0, undefined, ", ") + ` }\n` +
+                `     * @remarks\n`+
+                `    * ### Seeded activity\n` +
+                `    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.\n` +
+                `     * ### Activity contains implied seed\n`+
+                `     * Creates a SeedActivity based on the provided args, reserving space for a seed to be \n` +
+                `     * provided implicitly by a SeedActivity-supporting library function. \n` +
+                `     *\n`+
+                `     * Use this type of activity in a seed-providing context, such as the delegated-data-controller's\n`+
+                `     * record-creation helper.\n` +
+                `     */\n` +
+                `    $seed${variantName} = withImpliedSeedVariant(this, \n` +
+                `        this.${variantName} as (value: hasSeed, fields: { \n${
+                    filteredFields( 3 )} \n` +
+                `        } ) => ${returnType}\n` +
+                `    )\n` +
+                `    /* coda: seeded helper in same multiFieldVariant/seeded */\n`
             );
         }
         return (
