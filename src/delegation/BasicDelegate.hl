@@ -518,6 +518,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                             TODO("XXX it should output the new delegate token to the Capo as a PendingDelegate datum");
                             REQT("validates creation of UUT for the new delegate, aligned to the purpose indicated");
 
+                            mkTn = mkUutTnFactory(seed);
                             myCurrentRole.switch {
                                 MintDgt => {
                                     REQT(
@@ -528,16 +529,27 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                         seed: seed,
                                         purposes: []String{purpose},
                                         // otherMintedValue: ()
-                                        mkTokenName: mkUutTnFactory(seed),
+                                        mkTokenName: mkTn,
                                         // WE ARE the mint delegate.
                                         needsMintDelegateApproval: false 
-                                    )) { 
+                                    )) {
                                         print("  -- ok, minted the new delegate's UUT\n") 
                                     };
                                     REQT(
                                         "the UUT must have the right disposition (is it checked somewhere else?!?)"
                                     );
-                                    false // for now
+                                    cctx.getNextCharterData().otherNamedDelegates.get_safe(purpose).switch {
+                                        None => error("the new delegate is not present in the Capo's manifest"),
+                                        Some{dgtLink} => {
+                                            assert(dgtLink.uutName == mkTn(purpose), "uutName mismatch");
+
+                                            dgtLink.hasValidOutput(
+                                                mph: dd.mph, 
+                                                required: true,
+                                                createdOrReturned: DgTkn::Created
+                                            )
+                                        }
+                                    }
                                 },
                                 _ => error("unreachable wrong role for CreatingDelegate")
                             }
