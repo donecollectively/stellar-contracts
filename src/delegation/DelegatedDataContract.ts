@@ -12,7 +12,7 @@ import { ContractBasedDelegate } from "./ContractBasedDelegate.js";
 import type { UutName } from "./UutName.js";
 import { betterJsonSerializer, dumpAny } from "../diagnostics.js";
 import type { AnyData, ErgoAnyData } from "../CapoHeliosBundle.typeInfo.js";
-import { type seedActivityFunc, type SeedActivityArgs, SeedActivity, type isActivity } from "../ActivityTypes.js";
+import { type seedActivityFunc, type SeedActivityArg, SeedActivity, type isActivity } from "../ActivityTypes.js";
 
 export const NO_WRAPPER = Symbol(
     "no data-adapter; uses on-chain type directly"
@@ -196,7 +196,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
     usesSeedActivity<SA extends seedActivityFunc<any, any>>(
         a: SA,
         seedPlaceholder: "...seed",
-        ...args: SeedActivityArgs<SA>
+        ...args: SeedActivityArg<SA>
     ) {
         return new SeedActivity(this, a, args);
     }

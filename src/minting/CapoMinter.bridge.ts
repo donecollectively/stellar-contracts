@@ -48,7 +48,10 @@ import {
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../helios/typeUtils.js"
 import { StellarCast } from "../helios/dataBridge/StellarCast.js"
-import { withImpliedSeedVariant, type hasSeed, type isActivity, type WithImpliedSeedVariant, type SeedAttrs} from "../ActivityTypes.js"
+import { 
+    mkImpliedSeedActivity, SeedActivity, type hasSeed, type isActivity, 
+    type funcWithImpliedSeed, type SeedAttrs
+} from "../ActivityTypes.js"
 
 export type TimeLike = IntLike;
 
@@ -169,19 +172,36 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
     *  - to get a transaction context having the seed needed for this argument, 
     *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
-    *  - or you may use the `addingMintInvariant.withImpliedSeed()` variant of this function to serve 
-    *    any context that provides an implicit seed utxo.
     * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+    *  - in a context providing an implicit seed utxo, use 
+    *    the {@link $seed$addingMintInvariant} variant of this activity instead
     *
      */
-    addingMintInvariant : WithImpliedSeedVariant<(thingWithSeed: hasSeed | TxOutputId | string) 
-      => isActivity> = withImpliedSeedVariant(this, (thingWithSeed) => {
+    addingMintInvariant : funcWithImpliedSeed<(thingWithSeed: hasSeed | TxOutputId | string) 
+      => isActivity> = mkImpliedSeedActivity(this, (thingWithSeed) => {
         const seedTxOutputId = this.getSeed(thingWithSeed);
         const uplc = this.mkUplcData({ 
            addingMintInvariant: seedTxOutputId
         },"CapoMintHelpers::MinterActivity.addingMintInvariant");  
         return uplc;
     })    /*singleField/seeded enum variant*/
+
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.addingMintInvariant"***
+     * @remarks
+    * ### Seeded activity
+    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
+     * ### Activity contains implied seed
+     * Creates a SeedActivity based on the provided args, reserving space for a seed to be 
+     * provided implicitly by a SeedActivity-supporting library function. 
+     * ## Usage
+     * Call the method with no arguments: `$seed$addingMintInvariant()`
+     *
+     * Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
+     * record-creation helper.
+     */
+    $seed$addingMintInvariant = mkImpliedSeedActivity(this,this.addingMintInvariant)
+    /* coda: seeded helper in same singleField/seeded enum variant*/
 
 
     /**
@@ -192,19 +212,36 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
     *  - to get a transaction context having the seed needed for this argument, 
     *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
-    *  - or you may use the `addingSpendInvariant.withImpliedSeed()` variant of this function to serve 
-    *    any context that provides an implicit seed utxo.
     * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+    *  - in a context providing an implicit seed utxo, use 
+    *    the {@link $seed$addingSpendInvariant} variant of this activity instead
     *
      */
-    addingSpendInvariant : WithImpliedSeedVariant<(thingWithSeed: hasSeed | TxOutputId | string) 
-      => isActivity> = withImpliedSeedVariant(this, (thingWithSeed) => {
+    addingSpendInvariant : funcWithImpliedSeed<(thingWithSeed: hasSeed | TxOutputId | string) 
+      => isActivity> = mkImpliedSeedActivity(this, (thingWithSeed) => {
         const seedTxOutputId = this.getSeed(thingWithSeed);
         const uplc = this.mkUplcData({ 
            addingSpendInvariant: seedTxOutputId
         },"CapoMintHelpers::MinterActivity.addingSpendInvariant");  
         return uplc;
     })    /*singleField/seeded enum variant*/
+
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.addingSpendInvariant"***
+     * @remarks
+    * ### Seeded activity
+    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
+     * ### Activity contains implied seed
+     * Creates a SeedActivity based on the provided args, reserving space for a seed to be 
+     * provided implicitly by a SeedActivity-supporting library function. 
+     * ## Usage
+     * Call the method with no arguments: `$seed$addingSpendInvariant()`
+     *
+     * Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
+     * record-creation helper.
+     */
+    $seed$addingSpendInvariant = mkImpliedSeedActivity(this,this.addingSpendInvariant)
+    /* coda: seeded helper in same singleField/seeded enum variant*/
 
 
     /**
@@ -215,19 +252,36 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
     *  - to get a transaction context having the seed needed for this argument, 
     *    see the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass.
-    *  - or you may use the `forcingNewMintDelegate.withImpliedSeed()` variant of this function to serve 
-    *    any context that provides an implicit seed utxo.
     * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.
+    *  - in a context providing an implicit seed utxo, use 
+    *    the {@link $seed$forcingNewMintDelegate} variant of this activity instead
     *
      */
-    forcingNewMintDelegate : WithImpliedSeedVariant<(thingWithSeed: hasSeed | TxOutputId | string) 
-      => isActivity> = withImpliedSeedVariant(this, (thingWithSeed) => {
+    forcingNewMintDelegate : funcWithImpliedSeed<(thingWithSeed: hasSeed | TxOutputId | string) 
+      => isActivity> = mkImpliedSeedActivity(this, (thingWithSeed) => {
         const seedTxOutputId = this.getSeed(thingWithSeed);
         const uplc = this.mkUplcData({ 
            forcingNewMintDelegate: seedTxOutputId
         },"CapoMintHelpers::MinterActivity.forcingNewMintDelegate");  
         return uplc;
     })    /*singleField/seeded enum variant*/
+
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.forcingNewMintDelegate"***
+     * @remarks
+    * ### Seeded activity
+    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
+     * ### Activity contains implied seed
+     * Creates a SeedActivity based on the provided args, reserving space for a seed to be 
+     * provided implicitly by a SeedActivity-supporting library function. 
+     * ## Usage
+     * Call the method with no arguments: `$seed$forcingNewMintDelegate()`
+     *
+     * Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
+     * record-creation helper.
+     */
+    $seed$forcingNewMintDelegate = mkImpliedSeedActivity(this,this.forcingNewMintDelegate)
+    /* coda: seeded helper in same singleField/seeded enum variant*/
 
 
     /**
@@ -236,6 +290,8 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
      * @remarks
      * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
      * to create a context satisfying `hasSeed`.
+     * See the {@link $seed$CreatingNewSpendDelegate} method for use in a context
+     * providing an implicit seed utxo. 
      */
     CreatingNewSpendDelegate(value: hasSeed, fields: { 
         replacingUut: Option<number[]> 
@@ -267,6 +323,29 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
            return uplc;
         }
     } /*multiFieldVariant/seeded enum accessor*/ 
+
+    /**
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate"***, 
+     * @argument fields: { replacingUut: Option<number[]> }
+     * @remarks
+    * ### Seeded activity
+    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
+     * ### Activity contains implied seed
+     * Creates a SeedActivity based on the provided args, reserving space for a seed to be 
+     * provided implicitly by a SeedActivity-supporting library function. 
+     *
+     * ## Usage
+     *   1. Call the `$seed$CreatingNewSpendDelegate({ replacingUut: Option<number[]> })`
+      *       method with the indicated (non-seed) details.
+     *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
+     *       record-creation helper.
+     */
+    $seed$CreatingNewSpendDelegate = mkImpliedSeedActivity(this, 
+        this.CreatingNewSpendDelegate as (value: hasSeed, fields: { 
+            replacingUut: Option<number[]> 
+        } ) => isActivity
+    )
+    /* coda: seeded helper in same multiFieldVariant/seeded */
 
 }/*mkEnumHelperClass*/
 

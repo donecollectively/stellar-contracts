@@ -136,10 +136,10 @@ export {
     type isActivity,
     type hasSeed,
     type seedActivityFunc,
-    type SeedActivityArgs,
-    type WithImpliedSeedVariant,
+    type SeedActivityArg,
+    type funcWithImpliedSeed,
     SeedActivity,
-    withImpliedSeedVariant,
+    mkImpliedSeedActivity,
     getSeed
 } from "./src/ActivityTypes.js"
 

@@ -99,3 +99,115 @@ export type IntersectedEnum<
             : never;
     }
 > = Partial<merged>;
+
+
+
+export type ISNEVER<T, ELSE = never> = [T] extends [never] ? true : ELSE;
+export type IFISNEVER<T, IFNEVER, ELSE = never> = [T] extends [never] ? IFNEVER : ELSE;
+export type IF_ISANY<T, IFANY, ELSE = never> = [0] extends [1 & T] ? IFANY : ELSE;
+export type ISSOME<T, ELSE = never> = [T] extends [never] ? ELSE : true;
+export type NEVERIF<T extends boolean | never, ELSE, ifError = unknown> = IF<
+    T,
+    never,
+    ELSE,
+    ifError
+>;
+export  type OR<T1, T2> = [T1] extends [never] ? T2 : T1;
+
+const ISNEVER_TEST: IF<ISNEVER<never>, true> = true;
+const ALSO_IF_TEST: IF<ISNEVER<never>, true> = true;
+const IF_ISANY_TEST: IF_ISANY<never, true, false> = false;
+const IF_ISANY_TEST2: IF_ISANY<any, true, false> = true;
+const IF_ISANY_TEST3: IF_ISANY<unknown, true, false> = false;
+const IF_ISANY_TEST4: IF_ISANY<"hi", true, false> = false;
+
+// const neverExtendsTrueYuck : never extends true ? true : false = true;
+// const trueDOESNTExtendNever : true extends never ? true : false = false;
+// const iF_TEST4 : IF<42, true, false> = true; // not yet with numeric
+const NEVER_ALWAYS_EXTENDS_ANYTHING: never extends any ? true : false = true;
+// const t2 : unknown extends any ? true : false = true;
+// const t3 : any extends unknown ? true : false = true;
+// const t4 : unknown extends never ? true : false = false
+// const t5 : never extends unknown ? true : false = true
+// const t6: never extends true ? true : false = true;
+
+
+
+const b1: true extends boolean ? true : false = true;
+const b2: false extends boolean ? true : false = true;
+const b3: boolean extends true ? true : false = false;
+const b4: boolean extends false ? true : false = false;
+const b5: [true] extends [true] ? true : false = true;
+const b6: [true] extends [false] ? true : false = false;
+const b7: [false] extends [true] ? true : false = false;
+const b8: [false] extends [false] ? true : false = true;
+
+const IfNeedsConstBool =
+    'the IF<...> type only detects constant-typed boolean inputs (such as "true}" as const';
+type needsConstBool = TypeError<typeof IfNeedsConstBool>;
+const lacksConstBool: needsConstBool = typeError(IfNeedsConstBool);
+export type IF<T1 extends boolean | never, T2, ELSE = never, ERR_TYPE = unknown> = [
+    true | false
+] extends [T1]
+    ? ERR_TYPE
+    : true extends T1
+    ? T2
+    : ELSE;
+
+class FooTestIf {
+    static something = true as const;
+    somethingElse = true as const;
+
+    static justBoolStatic = true;
+    justBool = true;
+}
+
+const IF_TEST1: IF<ISNEVER<true>, true, false, needsConstBool> = false;
+const IF_TEST2: IF<never, true, false, needsConstBool> = false;
+const IF_TEST3a: IF<
+    (typeof FooTestIf)["something"],
+    true,
+    false,
+    needsConstBool
+> = true;
+const IF_TEST3b: IF<FooTestIf["somethingElse"], true, false, needsConstBool> =
+    true;
+//@ts-expect-error false is not assignable to true
+const IF_TEST4aNeg: IF<
+    (typeof FooTestIf)["something"],
+    true,
+    false,
+    needsConstBool
+> = false;
+//@ts-expect-error false is not assignable to true
+const IF_TEST4bNeg: IF<
+    FooTestIf["somethingElse"],
+    true,
+    false,
+    needsConstBool
+> = false;
+const IF_TEST4c: IF<FooTestIf["justBool"], true, false, needsConstBool> =
+    lacksConstBool;
+const IF_TEST4cStatic: IF<
+    (typeof FooTestIf)["justBoolStatic"],
+    true,
+    false,
+    needsConstBool
+> = lacksConstBool;
+
+
+const TYPE_ERROR = Symbol("TYPE_ERROR");
+type TYPE_ERROR = typeof TYPE_ERROR;
+export type TypeError<T extends string, moreInfo extends Object = {}> = {
+    [TYPE_ERROR]: T;
+    moreInfo: moreInfo;
+};
+export function typeError<T extends string, moreInfo extends Object = {}>(
+    msg: T,
+    moreInfo?: moreInfo
+): TypeError<T, moreInfo> {
+    return {
+        [TYPE_ERROR]: msg,
+        moreInfo: (moreInfo || {}) as moreInfo,
+    };
+}

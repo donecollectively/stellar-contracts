@@ -166,11 +166,11 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
     DataBridgeReaderClass ,
     EnumBridge,
     StellarCast,
-    withImpliedSeedVariant,
+    mkImpliedSeedActivity,
     type tagOnly, 
     type hasSeed, 
     type isActivity, 
-    type WithImpliedSeedVariant,
+    type funcWithImpliedSeed,
     type SeedAttrs,
     type JustAnEnum,
     type callWith,
@@ -207,8 +207,8 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
                     "src/helios/dataBridge/StellarCast.js"
                 )}"\n` +
                 `import { \n` +
-                `    withImpliedSeedVariant, SeedActivity, type hasSeed, type isActivity, \n` +
-                `    type WithImpliedSeedVariant, type SeedAttrs\n} from "${this.mkRelativeImport(
+                `    mkImpliedSeedActivity, SeedActivity, type hasSeed, type isActivity, \n` +
+                `    type funcWithImpliedSeed, type SeedAttrs\n} from "${this.mkRelativeImport(
                     inputFile,
                     "src/ActivityTypes.js"
                 )}"\n`;
@@ -1025,26 +1025,36 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             : "UplcData";
         if ("seed" == Object.keys(variantDetails.fields)[0] && !isDatum) {
             // && isSeededActivity
-            function filteredFields(indent = 2, callback=mkFieldType, joiner = ",\n") {
+            function filteredFields(
+                indent = 2,
+                callback = mkFieldType,
+                joiner = ",\n"
+            ) {
                 return Object.keys(variantDetails.fields)
                     .filter((fieldName) => fieldName !== "seed")
                     .map((x) => callback(x, indent))
                     .join(joiner);
             }
 
-            const activitySummary =                 `     * generates ${
+            const activitySummary = `     * generates ${
                 isActivity ? "isActivity/redeemer wrapper with" : ""
             } UplcData for ***${enumPathExpr}***, \n`;
 
             return (
                 `    /**\n` +
-                activitySummary+
+                activitySummary +
                 `     * given a transaction-context ***with a seed utxo*** and other field details\n` +
                 `     * @remarks\n` +
                 `     * See the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass \n` +
                 `     * to create a context satisfying \`hasSeed\`.\n` +
-                `     * See the {@link seeded${variantName}} method for use in a context\n` +
+                `     * See the {@link $seed$${variantName}} method for use in a context\n` +
                 `     * providing an implicit seed utxo. \n` +
+                (isNested
+                    ? `    * ### Nested activity: \n` +
+                      `    * this is connected to a nested-activity wrapper, so the details are piped through \n` +
+                      `    * the parent's uplc-encoder, producing a single uplc object with \n` +
+                      `    * a complete wrapper for this inner activity detail.\n`
+                    : "") +
                 `     */\n` +
                 `    ${variantName}(value: hasSeed, fields: { \n${filteredFields(
                     2
@@ -1079,20 +1089,34 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `    } /*multiFieldVariant/seeded enum accessor*/ \n\n` +
                 `    /**\n` +
                 activitySummary +
-                `     * @argument fields - { `+ filteredFields(0, undefined, ", ") + ` }\n` +
-                `     * @remarks\n`+
+                `     * @argument fields: { ` +
+                filteredFields(0, undefined, ", ") +
+                ` }\n` +
+                `     * @remarks\n` +
                 `    * ### Seeded activity\n` +
                 `    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.\n` +
-                `     * ### Activity contains implied seed\n`+
+                `     * ### Activity contains implied seed\n` +
                 `     * Creates a SeedActivity based on the provided args, reserving space for a seed to be \n` +
                 `     * provided implicitly by a SeedActivity-supporting library function. \n` +
-                `     *\n`+
-                `     * Use this type of activity in a seed-providing context, such as the delegated-data-controller's\n`+
-                `     * record-creation helper.\n` +
+                `     *\n` +
+                `     * ## Usage\n` +
+                `     *   1. Call the \`$seed$${variantName}({ ` +
+                filteredFields(0, undefined, ", ") +
+                ` })\`\n ` +
+                `     *       method with the indicated (non-seed) details.\n` +
+                `     *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's\n` +
+                `     *       record-creation helper.\n` +
+                (isNested
+                    ? `    * ## Nested activity: \n` +
+                      `    * this is connected to a nested-activity wrapper, so the details are piped through \n` +
+                      `    * the parent's uplc-encoder, producing a single uplc object with \n` +
+                      `    * a complete wrapper for this inner activity detail.\n`
+                    : "") +
                 `     */\n` +
-                `    $seed${variantName} = withImpliedSeedVariant(this, \n` +
-                `        this.${variantName} as (value: hasSeed, fields: { \n${
-                    filteredFields( 3 )} \n` +
+                `    $seed$${variantName} = mkImpliedSeedActivity(this, \n` +
+                `        this.${variantName} as (value: hasSeed, fields: { \n${filteredFields(
+                    3
+                )} \n` +
                 `        } ) => ${returnType}\n` +
                 `    )\n` +
                 `    /* coda: seeded helper in same multiFieldVariant/seeded */\n`
@@ -1106,6 +1130,12 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 isDatum ? "TxOutputDatum" : "UplcData"
             } for ***${enumPathExpr}***\n` +
             `     * @remarks - ***${permissiveTypeName}*** is the same as the expanded field-types.\n` +
+            (isNested
+                ? `    * ### Nested activity: \n` +
+                  `    * this is connected to a nested-activity wrapper, so the details are piped through \n` +
+                  `    * the parent's uplc-encoder, producing a single uplc object with \n` +
+                  `    * a complete wrapper for this inner activity detail.\n`
+                : "") +
             `     */\n` +
             `    ${variantName}(fields: ${permissiveTypeName} | { \n` +
             unfilteredFields() +
@@ -1159,32 +1189,58 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                     isActivity ? "isActivity/redeemer wrapper with" : ""
                 } UplcData for ***${enumPathExpr}***, \n` +
                 `    * given a transaction-context (or direct arg) with a ***seed utxo*** \n` +
-                `    * @remarks\n`+
+                `    * @remarks\n` +
                 `    * ### Seeded activity\n` +
-                `    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.\n`+
+                `    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.\n` +
                 `    *  - to get a transaction context having the seed needed for this argument, \n` +
                 `    *    see the \`tcxWithSeedUtxo()\` method in your contract's off-chain StellarContracts subclass.\n` +
-                `    *  - or you may use the \`${variantName}.withImpliedSeed()\` variant of this function to serve \n`+
-                `    *    any context that provides an implicit seed utxo.\n`+
                 `    * - or see the {@link hasSeed} type for other ways to feed it with a TxOutputId.\n` +
+                `    *  - in a context providing an implicit seed utxo, use \n` +
+                `    *    the {@link $seed$${variantName}} variant of this activity instead\n` +
                 `    *\n ` +
                 (isNested
-                    ? `    * ### Nested activity: \n` +
+                    ? `    * ## Nested activity: \n` +
                       `    * this is connected to a nested-activity wrapper, so the details are piped through \n` +
                       `    * the parent's uplc-encoder, producing a single uplc object with \n` +
                       `    * a complete wrapper for this inner activity detail.\n`
                     : "") +
                 `    */\n` +
-                `    ${variantName} : WithImpliedSeedVariant<(thingWithSeed: hasSeed | ${oneField.permissiveType}) \n`+
-                `      => ${returnType}> = withImpliedSeedVariant(this, (thingWithSeed) => {\n` +
+                `    ${variantName} : funcWithImpliedSeed<(thingWithSeed: hasSeed | ${oneField.permissiveType}) \n` +
+                `      => ${returnType}> = mkImpliedSeedActivity(this, (thingWithSeed) => {\n` +
                 `        const seedTxOutputId = this.getSeed(thingWithSeed);\n` +
-                (isNested ? `\n        // piped through parent's uplc-encoder\n` : "") +
+                (isNested
+                    ? `\n        // piped through parent's uplc-encoder\n`
+                    : "") +
                 `        const uplc = this.mkUplcData({ \n` +
                 `           ${variantName}: seedTxOutputId\n` +
                 `        },${enumPathExpr});  \n` +
                 `        return uplc;\n` +
-                `    })`+
-                `    /*singleField/seeded enum variant*/\n`
+                `    })` +
+                `    /*singleField/seeded enum variant*/\n\n` +
+                `    /**\n` +
+                `     * generates ${
+                    isActivity ? "isActivity/redeemer wrapper with" : ""
+                } UplcData for ***${enumPathExpr}***\n` +
+                `     * @remarks\n` +
+                `    * ### Seeded activity\n` +
+                `    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.\n` +
+                `     * ### Activity contains implied seed\n` +
+                `     * Creates a SeedActivity based on the provided args, reserving space for a seed to be \n` +
+                `     * provided implicitly by a SeedActivity-supporting library function. \n` +
+                `     * ## Usage\n` +
+                `     * Call the method with no arguments: \`$seed$${variantName}()\`\n` +
+                `     *\n` +
+                `     * Use the resulting activity in a seed-providing context, such as the delegated-data-controller's\n` +
+                `     * record-creation helper.\n` +
+                (isNested
+                    ? `    * ## Nested activity: \n` +
+                      `    * this is connected to a nested-activity wrapper, so the details are piped through \n` +
+                      `    * the parent's uplc-encoder, producing a single uplc object with \n` +
+                      `    * a complete wrapper for this inner activity detail.\n`
+                    : "") +
+                `     */\n` +
+                `    $seed$${variantName} = mkImpliedSeedActivity(this,this.${variantName})\n` +
+                `    /* coda: seeded helper in same singleField/seeded enum variant*/\n`
             );
         }
         let thatType = oneField.permissiveType || "";
@@ -1201,6 +1257,12 @@ import type * as types from "${relativeTypeFile}";\n\n`;
             } ${
                 isDatum ? "TxOutputDatum" : "UplcData"
             } for ***${enumPathExpr}***\n${expandedTypeNote}` +
+            (isNested
+                ? `    * ## Nested activity: \n` +
+                  `    * this is connected to a nested-activity wrapper, so the details are piped through \n` +
+                  `    * the parent's uplc-encoder, producing a single uplc object with \n` +
+                  `    * a complete wrapper for this inner activity detail.\n`
+                : "") +
             `     */\n` +
             `    ${variantName}(\n` +
             `        ${argNameIsFieldName}: ${thatType.trimEnd()}\n` +

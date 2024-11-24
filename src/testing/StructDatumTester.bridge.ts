@@ -48,7 +48,10 @@ import {
 import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../helios/typeUtils.js"
 import { StellarCast } from "../helios/dataBridge/StellarCast.js"
-import { withImpliedSeedVariant, type hasSeed, type isActivity, type WithImpliedSeedVariant, type SeedAttrs} from "../ActivityTypes.js"
+import { 
+    mkImpliedSeedActivity, SeedActivity, type hasSeed, type isActivity, 
+    type funcWithImpliedSeed, type SeedAttrs
+} from "../ActivityTypes.js"
 
 export type TimeLike = IntLike;
 
