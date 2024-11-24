@@ -1056,6 +1056,7 @@ export class StellarTxnContext<S extends anyState = anyState> {
                     ? await addlTxInfo.tcx()
                     : addlTxInfo.tcx
             ) as StellarTxnContext;
+            addlTxInfo.tcx = tcx;
             // if (callback) {
             //     console.log("   -- submitTxns: callback", {
             //         txName,
