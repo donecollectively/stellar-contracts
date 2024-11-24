@@ -31,7 +31,7 @@ export abstract class CapoDelegateBundle extends HeliosScriptBundle {
     static using<CB extends CapoBundleClass>(c : CB) {
         //@ts-expect-error returning a subclass without concrete implementations
         // of the abstract members; hopefully the subclass will error if they're missing
-        return class aCapoBoundBundle extends CapoDelegateBundle {
+        return class aCapoBoundBundle extends this {
             capoBundle = new c()
             constructor() {
                 super(USING_EXTENSION);
