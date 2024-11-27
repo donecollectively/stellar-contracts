@@ -7,6 +7,7 @@ import { MintDelegateWithGenericUuts } from "../src/testing/specialMintDelegate/
 import { CapoWithoutSettings } from "../src/CapoWithoutSettings";
 import { DelegatedDatumTester } from "../src/testing/DelegatedDatumTester.js";
 import { CapoHeliosBundle } from "../src/CapoHeliosBundle.js";
+import StructDatumTester from "../src/testing/StructDatumTester.hlbundle.js";
 
 export class CapoCanMintGenericUuts extends CapoWithoutSettings {
     async getMintDelegate(): Promise<MintDelegateWithGenericUuts> {
@@ -25,8 +26,8 @@ export class CapoCanMintGenericUuts extends CapoWithoutSettings {
     }
     
     initDelegateRoles() {
-        const inherited = super.basicDelegateRoles();
-        const { mintDelegate: parentMintDelegate, ...othersInherited } =
+        const inherited = super.initDelegateRoles()
+        const { reqts, mintDelegate: parentMintDelegate, ...othersInherited } =
             inherited;
         const {
             config,
@@ -55,6 +56,7 @@ export class CapoCanMintGenericUuts extends CapoWithoutSettings {
             // noDefault: defineRole("", CapoMinter, {}),
             mintDelegate,
             spendDelegate,
+            reqts,
             // inventionPolicy: defineRole("dgDataPolicy", InventionPolicy, {})
             testDataPolicy: defineRole("dgDataPolicy", DelegatedDatumTester, {}),
             

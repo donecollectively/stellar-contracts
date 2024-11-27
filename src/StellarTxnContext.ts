@@ -517,8 +517,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
         if (r && !r.redeemer) {
             console.log("activity without redeemer tag: ", r);
             throw new Error(
-                `addInput() redeemer must match the isActivity type {redeemer: ‹activity›}\n` +
-                    JSON.stringify(r, delegateLinkSerializer)
+                `addInput() redeemer must match the isActivity type {redeemer: ‹activity›}\n` 
+                    // JSON.stringify(r, delegateLinkSerializer)
             );
         }
 
@@ -550,8 +550,8 @@ export class StellarTxnContext<S extends anyState = anyState> {
         if (r && !r.redeemer) {
             console.log("activity without redeemer tag: ", r);
             throw new Error(
-                `addInputs() redeemer must match the isActivity type {redeemer: ‹activity›}\n` +
-                    JSON.stringify(r, delegateLinkSerializer)
+                `addInputs() redeemer must match the isActivity type {redeemer: ‹activity›}\n` 
+                    // JSON.stringify(r, delegateLinkSerializer)
             );
         }
         for (const input of inputs) {

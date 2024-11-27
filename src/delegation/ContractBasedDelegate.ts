@@ -641,10 +641,11 @@ export class ContractBasedDelegate extends StellarDelegate {
         redeemer: isActivity
     ): Promise<TCX> {
         const { capo } = this.configIn!;
-        return capo.txnAttachScriptOrRefScript(
-            tcx.addInput(uutxo, redeemer),
+        const tcx2 = await capo.txnAttachScriptOrRefScript(
+            tcx,
             this.compiledScript
         );
+        return tcx2.addInput(uutxo, redeemer);
 
         // return this.txnKeepValue(
         //     tcx,

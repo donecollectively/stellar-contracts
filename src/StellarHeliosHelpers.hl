@@ -161,12 +161,12 @@ struct AnyData {
     // can have other fields; receiver will interpret their target types.
 }
 
-func fromCip68Wrapper[T](value: Data) -> T {
+func fromCip68Wrapper(value: Data) -> Data {
     value.switch {
         // IntData, ByteArrayData, MapData, ListData and ConstrData
         ConstrData{_anyIndex, fields} => {
             fields.head.switch {
-                map: MapData => T::from_data(map),
+                MapData => fields.head,
                 _ => error("bad cast from ConstrData{_, ...fields} to mStruct: first field must be a map")
             }
         },

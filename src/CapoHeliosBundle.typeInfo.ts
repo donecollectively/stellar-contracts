@@ -59,16 +59,19 @@ export type RelativeDelegateLinkLike = {
 
 export type ManifestEntryType$DgDataPolicy = {
     policyLink: RelativeDelegateLink  /*minVariantField*/ ,
+    idPrefix: string  /*minVariantField*/ ,
     refCount: bigint  /*minVariantField*/ 
 }
 
 export type ManifestEntryType$Ergo$DgDataPolicy = {
     policyLink: ErgoRelativeDelegateLink  /*minVariantField*/ ,
+    idPrefix: string  /*minVariantField*/ ,
     refCount: bigint  /*minVariantField*/ 
 }
 
 export type ManifestEntryType$DgDataPolicyLike = {
     policyLink: RelativeDelegateLinkLike  /*minVariantField*/ ,
+    idPrefix: string  /*minVariantField*/ ,
     refCount: IntLike  /*minVariantField*/ 
 }
 
@@ -253,19 +256,22 @@ export type CapoManifestEntryLike = {
 
 export type PendingDelegateAction$Add = {
     seed: TxOutputId  /*minVariantField*/ ,
-    purpose: string  /*minVariantField*/ 
+    purpose: string  /*minVariantField*/ ,
+    idPrefix: string  /*minVariantField*/ 
 }
 
 export type PendingDelegateAction$Ergo$Add = PendingDelegateAction$Add/*ergo like-canonical-this-variant*/
 export type PendingDelegateAction$AddLike = {
     seed: TxOutputId | string  /*minVariantField*/ ,
-    purpose: string  /*minVariantField*/ 
+    purpose: string  /*minVariantField*/ ,
+    idPrefix: string  /*minVariantField*/ 
 }
 
 
 export type PendingDelegateAction$Replace = {
     seed: TxOutputId  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ ,
+    idPrefix: string  /*minVariantField*/ ,
     replacesDgt: AssetClass  /*minVariantField*/ 
 }
 
@@ -273,6 +279,7 @@ export type PendingDelegateAction$Ergo$Replace = PendingDelegateAction$Replace/*
 export type PendingDelegateAction$ReplaceLike = {
     seed: TxOutputId | string  /*minVariantField*/ ,
     purpose: string  /*minVariantField*/ ,
+    idPrefix: string  /*minVariantField*/ ,
     replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}  /*minVariantField*/ 
 }
 
@@ -488,25 +495,6 @@ export type CapoLifecycleActivity$CreatingDelegateLike = {
 }
 
 
-export type CapoLifecycleActivity$queuePendingDgtChange = {
-    action: PendingDelegateAction  /*minVariantField*/ ,
-    role: DelegateRole  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
-}
-
-export type CapoLifecycleActivity$Ergo$queuePendingDgtChange = {
-    action: ErgoPendingDelegateAction  /*minVariantField*/ ,
-    role: ErgoDelegateRole  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
-}
-
-export type CapoLifecycleActivity$queuePendingDgtChangeLike = {
-    action: PendingDelegateActionLike  /*minVariantField*/ ,
-    role: DelegateRoleLike  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
-}
-
-
 export type CapoLifecycleActivity$removePendingDgtChange = {
     role: DelegateRole  /*minVariantField*/ ,
     name: Option<string>  /*minVariantField*/ 
@@ -676,8 +664,7 @@ export type CapoLifecycleActivityMeta = EnumTypeMeta<
             "fields", CapoLifecycleActivity$CreatingDelegate, "isSeededActivity"
         >,
         queuePendingDgtChange: singleEnumVariantMeta<CapoLifecycleActivityMeta, "queuePendingDgtChange",
-            "Constr#1", 
-            "fields", CapoLifecycleActivity$queuePendingDgtChange, "noSpecialFlags"
+            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
         >,
         removePendingDgtChange: singleEnumVariantMeta<CapoLifecycleActivityMeta, "removePendingDgtChange",
             "Constr#2", 
@@ -713,7 +700,7 @@ export type CapoLifecycleActivityMeta = EnumTypeMeta<
  */
 export type CapoLifecycleActivity = 
         | { CreatingDelegate: CapoLifecycleActivity$CreatingDelegate /*minEnumVariant*/ }
-        | { queuePendingDgtChange: CapoLifecycleActivity$queuePendingDgtChange /*minEnumVariant*/ }
+        | { queuePendingDgtChange: tagOnly /*minEnumVariant*/ }
         | { removePendingDgtChange: CapoLifecycleActivity$removePendingDgtChange /*minEnumVariant*/ }
         | { commitPendingDgtChanges: tagOnly /*minEnumVariant*/ }
         | { forcingNewSpendDelegate: CapoLifecycleActivity$forcingNewSpendDelegate /*minEnumVariant*/ }
@@ -723,7 +710,7 @@ export type CapoLifecycleActivity =
 
 export type ErgoCapoLifecycleActivity = IntersectedEnum<
         | { CreatingDelegate: CapoLifecycleActivity$Ergo$CreatingDelegate /*minEnumVariant*/ }
-        | { queuePendingDgtChange: CapoLifecycleActivity$Ergo$queuePendingDgtChange /*minEnumVariant*/ }
+        | { queuePendingDgtChange: tagOnly /*minEnumVariant*/ }
         | { removePendingDgtChange: CapoLifecycleActivity$Ergo$removePendingDgtChange /*minEnumVariant*/ }
         | { commitPendingDgtChanges: tagOnly /*minEnumVariant*/ }
         | { forcingNewSpendDelegate: CapoLifecycleActivity$Ergo$forcingNewSpendDelegate /*minEnumVariant*/ }
@@ -747,7 +734,7 @@ export type ErgoCapoLifecycleActivity = IntersectedEnum<
  */
 export type CapoLifecycleActivityLike = IntersectedEnum<
         | { CreatingDelegate: CapoLifecycleActivity$CreatingDelegateLike /*minEnumVariant*/ }
-        | { queuePendingDgtChange: CapoLifecycleActivity$queuePendingDgtChangeLike /*minEnumVariant*/ }
+        | { queuePendingDgtChange: tagOnly /*minEnumVariant*/ }
         | { removePendingDgtChange: CapoLifecycleActivity$removePendingDgtChangeLike /*minEnumVariant*/ }
         | { commitPendingDgtChanges: tagOnly /*minEnumVariant*/ }
         | { forcingNewSpendDelegate: CapoLifecycleActivity$forcingNewSpendDelegateLike /*minEnumVariant*/ }

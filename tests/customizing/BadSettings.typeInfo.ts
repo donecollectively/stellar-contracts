@@ -106,6 +106,25 @@ export type ProtocolSettingsLike = {
 }
 
 
+export type DelegateDatum$capoStoredData = {
+    data: ProtocolSettings  /*minVariantField*/ ,
+    version: bigint  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+export type DelegateDatum$Ergo$capoStoredData = {
+    data: ErgoProtocolSettings  /*minVariantField*/ ,
+    version: bigint  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+export type DelegateDatum$capoStoredDataLike = {
+    data: ProtocolSettingsLike  /*minVariantField*/ ,
+    version: IntLike  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+
 export type DelegateDatumMeta = EnumTypeMeta<
     {module: "BadSettingsPolicy", enumName: "DelegateDatum"}, {
         Cip68RefToken: singleEnumVariantMeta<DelegateDatumMeta, "Cip68RefToken",
@@ -117,8 +136,8 @@ export type DelegateDatumMeta = EnumTypeMeta<
 			DelegationDetail   , "noSpecialFlags"
         >,
         capoStoredData: singleEnumVariantMeta<DelegateDatumMeta, "capoStoredData",
-            "Constr#2", "singletonField", /* implied wrapper { data: ... } for singleVariantField */ 
-			ProtocolSettings   , "noSpecialFlags"
+            "Constr#2", 
+            "fields", DelegateDatum$capoStoredData, "noSpecialFlags"
         >
     }
 >;
@@ -137,15 +156,13 @@ export type DelegateDatum =
         | { Cip68RefToken: DelegateDatum$Cip68RefToken /*minEnumVariant*/ }
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			DelegationDetail    /*minEnumVariant*/ }
-        | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
-			ProtocolSettings    /*minEnumVariant*/ }
+        | { capoStoredData: DelegateDatum$capoStoredData /*minEnumVariant*/ }
 
 export type ErgoDelegateDatum = IntersectedEnum<
         | { Cip68RefToken: DelegateDatum$Ergo$Cip68RefToken /*minEnumVariant*/ }
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			ErgoDelegationDetail    /*minEnumVariant*/ }
-        | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
-			ErgoProtocolSettings    /*minEnumVariant*/ }
+        | { capoStoredData: DelegateDatum$Ergo$capoStoredData /*minEnumVariant*/ }
 >
 
 /**
@@ -165,8 +182,7 @@ export type DelegateDatumLike = IntersectedEnum<
         | { Cip68RefToken: DelegateDatum$Cip68RefTokenLike /*minEnumVariant*/ }
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			DelegationDetailLike    /*minEnumVariant*/ }
-        | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
-			ProtocolSettingsLike    /*minEnumVariant*/ }
+        | { capoStoredData: DelegateDatum$capoStoredDataLike /*minEnumVariant*/ }
 >
 
 export type CapoLifecycleActivity$CreatingDelegate = {
@@ -180,88 +196,6 @@ export type CapoLifecycleActivity$CreatingDelegateLike = {
     purpose: string  /*minVariantField*/ 
 }
 
-
-export type PendingDelegateAction$Add = {
-    seed: TxOutputId  /*minVariantField*/ ,
-    purpose: string  /*minVariantField*/ 
-}
-
-export type PendingDelegateAction$Ergo$Add = PendingDelegateAction$Add/*ergo like-canonical-this-variant*/
-export type PendingDelegateAction$AddLike = {
-    seed: TxOutputId | string  /*minVariantField*/ ,
-    purpose: string  /*minVariantField*/ 
-}
-
-
-export type PendingDelegateAction$Replace = {
-    seed: TxOutputId  /*minVariantField*/ ,
-    purpose: string  /*minVariantField*/ ,
-    replacesDgt: AssetClass  /*minVariantField*/ 
-}
-
-export type PendingDelegateAction$Ergo$Replace = PendingDelegateAction$Replace/*ergo like-canonical-this-variant*/
-export type PendingDelegateAction$ReplaceLike = {
-    seed: TxOutputId | string  /*minVariantField*/ ,
-    purpose: string  /*minVariantField*/ ,
-    replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}  /*minVariantField*/ 
-}
-
-
-export type PendingDelegateActionMeta = EnumTypeMeta<
-    {module: "CapoDelegateHelpers", enumName: "PendingDelegateAction"}, {
-        Add: singleEnumVariantMeta<PendingDelegateActionMeta, "Add",
-            "Constr#0", 
-            "fields", PendingDelegateAction$Add, "isSeededActivity"
-        >,
-        Remove: singleEnumVariantMeta<PendingDelegateActionMeta, "Remove",
-            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
-        >,
-        Replace: singleEnumVariantMeta<PendingDelegateActionMeta, "Replace",
-            "Constr#2", 
-            "fields", PendingDelegateAction$Replace, "isSeededActivity"
-        >
-    }
->;
-
-
-/**
- * PendingDelegateAction enum variants
- * 
- * @remarks - expresses the essential raw data structures
- * supporting the **3 variant(s)** of the PendingDelegateAction enum type
- * 
- * - **Note**: Stellar Contracts provides a higher-level `PendingDelegateActionHelper` class
- *     for generating UPLC data for this enum type
- */
-export type PendingDelegateAction = 
-        | { Add: PendingDelegateAction$Add /*minEnumVariant*/ }
-        | { Remove: tagOnly /*minEnumVariant*/ }
-        | { Replace: PendingDelegateAction$Replace /*minEnumVariant*/ }
-
-export type ErgoPendingDelegateAction = IntersectedEnum<
-        | { Add: PendingDelegateAction$Ergo$Add /*minEnumVariant*/ }
-        | { Remove: tagOnly /*minEnumVariant*/ }
-        | { Replace: PendingDelegateAction$Ergo$Replace /*minEnumVariant*/ }
->
-
-/**
- * PendingDelegateAction enum variants (permissive)
- * 
- * @remarks - expresses the allowable data structure
- * for creating any of the **3 variant(s)** of the PendingDelegateAction enum type
- * 
- * - **Note**: Stellar Contracts provides a higher-level `PendingDelegateActionHelper` class
- *     for generating UPLC data for this enum type
- *
- * ### Permissive Type
- * This is a permissive type that allows additional input data types, which are 
- * converted by convention to the canonical types used in the on-chain context.
- */
-export type PendingDelegateActionLike = IntersectedEnum<
-        | { Add: PendingDelegateAction$AddLike /*minEnumVariant*/ }
-        | { Remove: tagOnly /*minEnumVariant*/ }
-        | { Replace: PendingDelegateAction$ReplaceLike /*minEnumVariant*/ }
->
 
 export type DelegateRoleMeta = EnumTypeMeta<
     {module: "CapoDelegateHelpers", enumName: "DelegateRole"}, {
@@ -337,25 +271,6 @@ export type DelegateRoleLike = IntersectedEnum<
         | { BothMintAndSpendDgt: tagOnly /*minEnumVariant*/ }
         | { HandledByCapoOnly: tagOnly /*minEnumVariant*/ }
 >
-
-export type CapoLifecycleActivity$queuePendingDgtChange = {
-    action: PendingDelegateAction  /*minVariantField*/ ,
-    role: DelegateRole  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
-}
-
-export type CapoLifecycleActivity$Ergo$queuePendingDgtChange = {
-    action: ErgoPendingDelegateAction  /*minVariantField*/ ,
-    role: ErgoDelegateRole  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
-}
-
-export type CapoLifecycleActivity$queuePendingDgtChangeLike = {
-    action: PendingDelegateActionLike  /*minVariantField*/ ,
-    role: DelegateRoleLike  /*minVariantField*/ ,
-    name: Option<string>  /*minVariantField*/ 
-}
-
 
 export type CapoLifecycleActivity$removePendingDgtChange = {
     role: DelegateRole  /*minVariantField*/ ,
@@ -526,8 +441,7 @@ export type CapoLifecycleActivityMeta = EnumTypeMeta<
             "fields", CapoLifecycleActivity$CreatingDelegate, "isSeededActivity"
         >,
         queuePendingDgtChange: singleEnumVariantMeta<CapoLifecycleActivityMeta, "queuePendingDgtChange",
-            "Constr#1", 
-            "fields", CapoLifecycleActivity$queuePendingDgtChange, "noSpecialFlags"
+            "Constr#1", "tagOnly", tagOnly, "noSpecialFlags"
         >,
         removePendingDgtChange: singleEnumVariantMeta<CapoLifecycleActivityMeta, "removePendingDgtChange",
             "Constr#2", 
@@ -563,7 +477,7 @@ export type CapoLifecycleActivityMeta = EnumTypeMeta<
  */
 export type CapoLifecycleActivity = 
         | { CreatingDelegate: CapoLifecycleActivity$CreatingDelegate /*minEnumVariant*/ }
-        | { queuePendingDgtChange: CapoLifecycleActivity$queuePendingDgtChange /*minEnumVariant*/ }
+        | { queuePendingDgtChange: tagOnly /*minEnumVariant*/ }
         | { removePendingDgtChange: CapoLifecycleActivity$removePendingDgtChange /*minEnumVariant*/ }
         | { commitPendingDgtChanges: tagOnly /*minEnumVariant*/ }
         | { forcingNewSpendDelegate: CapoLifecycleActivity$forcingNewSpendDelegate /*minEnumVariant*/ }
@@ -573,7 +487,7 @@ export type CapoLifecycleActivity =
 
 export type ErgoCapoLifecycleActivity = IntersectedEnum<
         | { CreatingDelegate: CapoLifecycleActivity$Ergo$CreatingDelegate /*minEnumVariant*/ }
-        | { queuePendingDgtChange: CapoLifecycleActivity$Ergo$queuePendingDgtChange /*minEnumVariant*/ }
+        | { queuePendingDgtChange: tagOnly /*minEnumVariant*/ }
         | { removePendingDgtChange: CapoLifecycleActivity$Ergo$removePendingDgtChange /*minEnumVariant*/ }
         | { commitPendingDgtChanges: tagOnly /*minEnumVariant*/ }
         | { forcingNewSpendDelegate: CapoLifecycleActivity$Ergo$forcingNewSpendDelegate /*minEnumVariant*/ }
@@ -597,7 +511,7 @@ export type ErgoCapoLifecycleActivity = IntersectedEnum<
  */
 export type CapoLifecycleActivityLike = IntersectedEnum<
         | { CreatingDelegate: CapoLifecycleActivity$CreatingDelegateLike /*minEnumVariant*/ }
-        | { queuePendingDgtChange: CapoLifecycleActivity$queuePendingDgtChangeLike /*minEnumVariant*/ }
+        | { queuePendingDgtChange: tagOnly /*minEnumVariant*/ }
         | { removePendingDgtChange: CapoLifecycleActivity$removePendingDgtChangeLike /*minEnumVariant*/ }
         | { commitPendingDgtChanges: tagOnly /*minEnumVariant*/ }
         | { forcingNewSpendDelegate: CapoLifecycleActivity$forcingNewSpendDelegateLike /*minEnumVariant*/ }

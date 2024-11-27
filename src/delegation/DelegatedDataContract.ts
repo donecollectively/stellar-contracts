@@ -13,6 +13,7 @@ import type { UutName } from "./UutName.js";
 import { betterJsonSerializer, dumpAny } from "../diagnostics.js";
 import type { AnyData, ErgoAnyData } from "../CapoHeliosBundle.typeInfo.js";
 import { type seedActivityFunc, type SeedActivityArg, SeedActivity, type isActivity } from "../ActivityTypes.js";
+import { encodeBoolData, UplcBool } from "@helios-lang/uplc";
 
 export const NO_WRAPPER = Symbol(
     "no data-adapter; uses on-chain type directly"
@@ -80,6 +81,10 @@ export type DelegatedDatumTypeName<
     TN extends string = T["recordTypeName"]
 > = TN;
 
+export type DelegatedDatumIdPrefix<
+    T extends DelegatedDataContract,
+    TN extends string = T["idPrefix"]
+> = TN;
 
 
 /**
@@ -94,6 +99,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
     usesWrappedData?: boolean;
 
     abstract get recordTypeName(): string;
+    abstract get idPrefix(): string;
     /**
      * Provides a customized label for the delegate, used in place of
      * a generic script name ("BasicDelegate").  DelegatedDataContract
@@ -198,7 +204,9 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         seedPlaceholder: "...seed",
         ...args: SeedActivityArg<SA>
     ) {
-        return new SeedActivity(this, a, args);
+        throw new Error(`unused`);
+        // console.log("seed activity with function ", a.name, a)
+        // return new SeedActivity(this, a, args);
     }
 
     async mkTxnCreateRecord<
@@ -228,12 +236,13 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
 
         // mints the UUT needed to create the record, which triggers the mint delegate
         // to enforce the data delegate creation policy
-        const tcx2 = await capo.txnMintingUuts(tcx1c, [this.recordTypeName], {
+        const tcx2 = await capo.txnMintingUuts(tcx1c, [this.idPrefix], {
             mintDelegateActivity: mintDelegate.activityCreatingDelegatedData(
                 tcx1c,
                 this.recordTypeName
             ),
         });
+        
         const activity: isActivity =
             controllerActivity instanceof SeedActivity
                 ? controllerActivity.mkRedeemer(tcx2)
@@ -248,7 +257,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
             // record,
             activity,
             options
-        );
+        ).then((tcx3) => tcx3);
     }
 
     creationDefaultDetails(): Partial<MaybeWrappedDataType<this>> {
@@ -261,7 +270,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
             hasCharterRef &
             hasSeedUtxo &
             // hasSettingsRef &
-            hasUutContext<DelegatedDatumTypeName<THIS>>,
+            hasUutContext<DelegatedDatumIdPrefix<THIS>>,
         WDT extends MaybeWrappedDataType<THIS> = MaybeWrappedDataType<THIS>,
         RDT extends DgDataType<THIS> = DgDataType<THIS>,
         minDDType extends DgDataCreationAttrs<THIS> = DgDataCreationAttrs<THIS>
@@ -273,7 +282,8 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         options: CreationOptions<THIS>,
     ): Promise<TCX> {
         const newType = this.recordTypeName as DelegatedDatumTypeName<THIS>;
-        debugger
+        const idPrefix = this.idPrefix as DelegatedDatumIdPrefix<THIS>;
+        
         const {
             addedUtxoValue: extraCreationValue = new helios.Value(0n),
             beforeSave = (x) => x,
@@ -283,21 +293,25 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
 
         const tcx2 = await this.txnGrantAuthority(tcx, controllerActivity);
 
-        const uut = tcx.state.uuts[newType];
+        const uut = tcx.state.uuts[idPrefix];
         let newRecord: RDT = typedData as any;
         if (wrappedData) {
             newRecord = this.unwrapData(newRecord as any) as RDT
         }
+        const { id: _id, type: _type, ...rest } = newRecord;
 
         const fullRecord = {
-            ...newRecord,
-            id: uut.toString(),
+            id: helios.textToBytes(uut.toString()),
             type: newType,
+            ...rest,
             ...this.creationDefaultDetails(),
         } as RDT;
-        const newDatum = await this.mkDatumDelegatedDataRecord(
-            beforeSave(fullRecord) as any
-        );
+        const newDatum = this.mkDatum.capoStoredData({
+            // data: new Map(Object.entries(beforeSave(fullRecord) as any)),
+            data: (beforeSave(fullRecord) as any),
+            version: 2,
+            otherDetails: new helios.IntData(0)
+        });
         console.log(
             `🏒 creating ${newType} ->`,
             JSON.parse(JSON.stringify(fullRecord, betterJsonSerializer, 2))

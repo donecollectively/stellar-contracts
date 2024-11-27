@@ -49,7 +49,7 @@ import type { tagOnly } from "../../helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../../helios/typeUtils.js"
 import { StellarCast } from "../../helios/dataBridge/StellarCast.js"
 import { 
-    mkImpliedSeedActivity, SeedActivity, type hasSeed, type isActivity, 
+    impliedSeedActivityMaker, SeedActivity, type hasSeed, type isActivity, 
     type funcWithImpliedSeed, type SeedAttrs
 } from "../../ActivityTypes.js"
 
@@ -68,11 +68,7 @@ import type {
     DelegateDatum$MultiFieldNestedThings, DelegateDatum$Ergo$MultiFieldNestedThings, DelegateDatum$MultiFieldNestedThingsLike,
     DelegateDatum, ErgoDelegateDatum, DelegateDatumLike,
     CapoLifecycleActivity$CreatingDelegate, CapoLifecycleActivity$Ergo$CreatingDelegate, CapoLifecycleActivity$CreatingDelegateLike,
-    PendingDelegateAction$Add, PendingDelegateAction$Ergo$Add, PendingDelegateAction$AddLike,
-    PendingDelegateAction$Replace, PendingDelegateAction$Ergo$Replace, PendingDelegateAction$ReplaceLike,
-    PendingDelegateAction, ErgoPendingDelegateAction, PendingDelegateActionLike,
     DelegateRole, ErgoDelegateRole, DelegateRoleLike,
-    CapoLifecycleActivity$queuePendingDgtChange, CapoLifecycleActivity$Ergo$queuePendingDgtChange, CapoLifecycleActivity$queuePendingDgtChangeLike,
     CapoLifecycleActivity$removePendingDgtChange, CapoLifecycleActivity$Ergo$removePendingDgtChange, CapoLifecycleActivity$removePendingDgtChangeLike,
     CapoLifecycleActivity$forcingNewSpendDelegate, CapoLifecycleActivity$Ergo$forcingNewSpendDelegate, CapoLifecycleActivity$forcingNewSpendDelegateLike,
     CapoLifecycleActivity$forcingNewMintDelegate, CapoLifecycleActivity$Ergo$forcingNewMintDelegate, CapoLifecycleActivity$forcingNewMintDelegateLike,
@@ -100,9 +96,10 @@ import type * as types from "./uutMintingMintDelegate.typeInfo.js";
 
 
 /**
- * GENERATED data bridge for **BasicDelegate** script (defined in class ***BundleMintDelegateWithGenericUuts***)}
+ * GENERATED data bridge for **BasicDelegate** script (defined in class ***BundleMintDelegateWithGenericUuts***)
  * main: **src/delegation/BasicDelegate.hl**, project: **stellar-contracts**
- * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
+ * @remarks - note that you may override `get dataBridgeName() { return "..." }` to customize the name of this bridge class
+* @public
  */
 export class uutMintingDelegateDataBridge extends ContractDataBridge {
     static isAbstract = false as const;
@@ -145,10 +142,6 @@ export class uutMintingDelegateDataBridge extends ContractDataBridge {
        * generates UplcData for the enum type ***DelegateDatum*** for the `BasicDelegate` script
        */
         DelegateDatum: new DelegateDatumHelper(this.bundle),
-      /**
-       * generates UplcData for the enum type ***PendingDelegateAction*** for the `BasicDelegate` script
-       */
-        PendingDelegateAction: new PendingDelegateActionHelper(this.bundle),
       /**
        * generates UplcData for the enum type ***DelegateRole*** for the `BasicDelegate` script
        */
@@ -236,6 +229,9 @@ export class uutMintingDelegateDataBridge extends ContractDataBridge {
 }
 export default uutMintingDelegateDataBridge;
 
+/*
+ * @public
+ */
 export class uutMintingDelegateDataBridgeReader extends DataBridgeReaderClass {
     constructor(public bridge: uutMintingDelegateDataBridge) {
         super();
@@ -281,27 +277,6 @@ datum = (d: UplcData) => { return this.DelegateDatum(d) }
         const cast = typeHelper.ᱺᱺcast;  
 
         return cast.fromUplcData(d) as ErgoDelegateDatum;        
-    } /* enumReader helper */
-
-    /**
-        * reads UplcData *known to fit the **PendingDelegateAction*** enum type,
-        * for the BasicDelegate script.
-        * ### Standard WARNING
-        * 
-        * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
-        * Used correctly with data that matches the enum type, this reader
-        * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
-        * It may throw an error, or it may throw no error, but return a value that
-        * causes some error later on in your code, when you try to use it.
-        */
-    PendingDelegateAction(d : UplcData) { 
-        const typeHelper = this.bridge.types.PendingDelegateAction;
-        const cast = typeHelper.ᱺᱺcast;  
-
-        return cast.fromUplcData(d) as ErgoPendingDelegateAction;        
     } /* enumReader helper */
 
     /**
@@ -533,6 +508,7 @@ datum = (d: UplcData) => { return this.DelegateDatum(d) }
 
 /**
  * Helper class for generating UplcData for the struct ***AnyData*** type.
+ * @public
  */
 export class AnyDataHelper extends DataBridge {
     isCallable = true
@@ -557,6 +533,7 @@ export class AnyDataHelper extends DataBridge {
 
 /**
  * Helper class for generating UplcData for the struct ***DelegationDetail*** type.
+ * @public
  */
 export class DelegationDetailHelper extends DataBridge {
     isCallable = true
@@ -581,6 +558,7 @@ export class DelegationDetailHelper extends DataBridge {
 
 /**
  * Helper class for generating UplcData for the struct ***SampleStruct*** type.
+ * @public
  */
 export class SampleStructHelper extends DataBridge {
     isCallable = true
@@ -605,6 +583,7 @@ export class SampleStructHelper extends DataBridge {
 
 /**
  * Helper class for generating UplcData for variants of the ***SomeEnum*** enum type.
+ * @public
  */
 export class SomeEnumHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
@@ -687,6 +666,7 @@ export class SomeEnumHelper extends EnumBridge<JustAnEnum> {
 
 /**
  * Helper class for generating UplcData for variants of the ***SomeEnum*** enum type.
+ * @public
  */
 export class SomeEnumHelperNested extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
@@ -785,6 +765,7 @@ export class SomeEnumHelperNested extends EnumBridge<JustAnEnum> {
 
 /**
  * Helper class for generating TxOutputDatum for variants of the ***DelegateDatum*** enum type.
+ * @public
  */
 export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
@@ -938,163 +919,8 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
 
 
 /**
- * Helper class for generating UplcData for variants of the ***PendingDelegateAction*** enum type.
- */
-export class PendingDelegateActionHelper extends EnumBridge<JustAnEnum> {
-    /*mkEnumHelperClass*/
-    /**
-            *  uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
-       PendingDelegateAction,
-       PendingDelegateActionLike
-   >(PendingDelegateActionSchema, { isMainnet: true });
-
-    /**
-     * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Add"***, 
-     * given a transaction-context ***with a seed utxo*** and other field details
-     * @remarks
-     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
-     * to create a context satisfying `hasSeed`.
-     * See the {@link $seed$Add} method for use in a context
-     * providing an implicit seed utxo. 
-     */
-    Add(value: hasSeed, fields: { 
-        purpose: string 
-    } ) : UplcData
-    /**
-     * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Add"*** 
-     * with raw seed details included in fields.
-     */
-    Add(fields: PendingDelegateAction$AddLike | {
-            seed: TxOutputId | string,
-            purpose: string
-    } ): UplcData
-    Add(
-        seedOrUf: hasSeed | PendingDelegateAction$AddLike, 
-        filteredFields?: { 
-            purpose: string
-    }) : UplcData {
-        if (filteredFields) {
-            const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
-            const uplc = this.mkUplcData({
-                Add: { seed: seedTxOutputId, ...filteredFields } 
-            }, "CapoDelegateHelpers::PendingDelegateAction.Add");
-           return uplc;
-        } else {
-            const fields = seedOrUf as PendingDelegateAction$AddLike; 
-           const uplc = this.mkUplcData({
-                Add: fields 
-            }, "CapoDelegateHelpers::PendingDelegateAction.Add");
-           return uplc;
-        }
-    } /*multiFieldVariant/seeded enum accessor*/ 
-
-    /**
-     * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Add"***, 
-     * @argument fields: { purpose: string }
-     * @remarks
-    * ### Seeded activity
-    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
-     * ### Activity contains implied seed
-     * Creates a SeedActivity based on the provided args, reserving space for a seed to be 
-     * provided implicitly by a SeedActivity-supporting library function. 
-     *
-     * ## Usage
-     *   1. Call the `$seed$Add({ purpose: string })`
-      *       method with the indicated (non-seed) details.
-     *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
-     *       record-creation helper.
-     */
-    $seed$Add = mkImpliedSeedActivity(this, 
-        this.Add as (value: hasSeed, fields: { 
-            purpose: string 
-        } ) => UplcData
-    )
-    /* coda: seeded helper in same multiFieldVariant/seeded */
-
-
-/**
- * (property getter): UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Remove"***
- * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
- */
-    get Remove() {
-        const uplc = this.mkUplcData({ Remove: {} }, 
-            "CapoDelegateHelpers::PendingDelegateAction.Remove");
-        return uplc;
-    } /* tagOnly variant accessor */
-
-    /**
-     * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Replace"***, 
-     * given a transaction-context ***with a seed utxo*** and other field details
-     * @remarks
-     * See the `tcxWithSeedUtxo()` method in your contract's off-chain StellarContracts subclass 
-     * to create a context satisfying `hasSeed`.
-     * See the {@link $seed$Replace} method for use in a context
-     * providing an implicit seed utxo. 
-     */
-    Replace(value: hasSeed, fields: { 
-        purpose: string,
-        replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]} 
-    } ) : UplcData
-    /**
-     * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Replace"*** 
-     * with raw seed details included in fields.
-     */
-    Replace(fields: PendingDelegateAction$ReplaceLike | {
-            seed: TxOutputId | string,
-            purpose: string,
-            replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}
-    } ): UplcData
-    Replace(
-        seedOrUf: hasSeed | PendingDelegateAction$ReplaceLike, 
-        filteredFields?: { 
-            purpose: string,
-            replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]}
-    }) : UplcData {
-        if (filteredFields) {
-            const seedTxOutputId = this.getSeed(seedOrUf as hasSeed);
-            const uplc = this.mkUplcData({
-                Replace: { seed: seedTxOutputId, ...filteredFields } 
-            }, "CapoDelegateHelpers::PendingDelegateAction.Replace");
-           return uplc;
-        } else {
-            const fields = seedOrUf as PendingDelegateAction$ReplaceLike; 
-           const uplc = this.mkUplcData({
-                Replace: fields 
-            }, "CapoDelegateHelpers::PendingDelegateAction.Replace");
-           return uplc;
-        }
-    } /*multiFieldVariant/seeded enum accessor*/ 
-
-    /**
-     * generates  UplcData for ***"CapoDelegateHelpers::PendingDelegateAction.Replace"***, 
-     * @argument fields: { purpose: string, replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]} }
-     * @remarks
-    * ### Seeded activity
-    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
-     * ### Activity contains implied seed
-     * Creates a SeedActivity based on the provided args, reserving space for a seed to be 
-     * provided implicitly by a SeedActivity-supporting library function. 
-     *
-     * ## Usage
-     *   1. Call the `$seed$Replace({ purpose: string, replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]} })`
-      *       method with the indicated (non-seed) details.
-     *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
-     *       record-creation helper.
-     */
-    $seed$Replace = mkImpliedSeedActivity(this, 
-        this.Replace as (value: hasSeed, fields: { 
-            purpose: string,
-            replacesDgt: AssetClass | string | [string | MintingPolicyHash | number[], string | number[]] | {mph: MintingPolicyHash | string | number[], tokenName: string | number[]} 
-        } ) => UplcData
-    )
-    /* coda: seeded helper in same multiFieldVariant/seeded */
-
-}/*mkEnumHelperClass*/
-
-
-/**
  * Helper class for generating UplcData for variants of the ***DelegateRole*** enum type.
+ * @public
  */
 export class DelegateRoleHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
@@ -1189,6 +1015,7 @@ export class DelegateRoleHelper extends EnumBridge<JustAnEnum> {
 
 /**
  * Helper class for generating UplcData for variants of the ***ManifestActivity*** enum type.
+ * @public
  */
 export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
@@ -1271,6 +1098,7 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
 
 /**
  * Helper class for generating UplcData for variants of the ***ManifestActivity*** enum type.
+ * @public
  */
 export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
@@ -1373,6 +1201,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
 
 /**
  * Helper class for generating UplcData for variants of the ***CapoLifecycleActivity*** enum type.
+ * @public
  */
 export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
@@ -1425,7 +1254,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
 
     /**
      * generates  UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate"***, 
-     * @argument fields: { purpose: string }
+     * @param fields - \{ purpose: string \}
      * @remarks
     * ### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
@@ -1439,7 +1268,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
      *       record-creation helper.
      */
-    $seed$CreatingDelegate = mkImpliedSeedActivity(this, 
+    $seed$CreatingDelegate = impliedSeedActivityMaker(this, 
         this.CreatingDelegate as (value: hasSeed, fields: { 
             purpose: string 
         } ) => UplcData
@@ -1447,20 +1276,15 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     /* coda: seeded helper in same multiFieldVariant/seeded */
 
 
-    /**
-     * generates  UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange"***
-     * @remarks - ***CapoLifecycleActivity$queuePendingDgtChangeLike*** is the same as the expanded field-types.
-     */
-    queuePendingDgtChange(fields: CapoLifecycleActivity$queuePendingDgtChangeLike | { 
-        action: PendingDelegateActionLike,
-        role: DelegateRoleLike,
-        name: Option<string>
-    }) : UplcData {
-        const uplc = this.mkUplcData({
-            queuePendingDgtChange: fields 
-        }, "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
-       return uplc;
-    } /*multiFieldVariant enum accessor*/
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
+ */
+    get queuePendingDgtChange() {
+        const uplc = this.mkUplcData({ queuePendingDgtChange: {} }, 
+            "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
+        return uplc;
+    } /* tagOnly variant accessor */
 
     /**
      * generates  UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.removePendingDgtChange"***
@@ -1528,7 +1352,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
 
     /**
      * generates  UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.forcingNewSpendDelegate"***, 
-     * @argument fields: { purpose: string }
+     * @param fields - \{ purpose: string \}
      * @remarks
     * ### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
@@ -1542,7 +1366,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
      *       record-creation helper.
      */
-    $seed$forcingNewSpendDelegate = mkImpliedSeedActivity(this, 
+    $seed$forcingNewSpendDelegate = impliedSeedActivityMaker(this, 
         this.forcingNewSpendDelegate as (value: hasSeed, fields: { 
             purpose: string 
         } ) => UplcData
@@ -1592,7 +1416,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
 
     /**
      * generates  UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.forcingNewMintDelegate"***, 
-     * @argument fields: { purpose: string }
+     * @param fields - \{ purpose: string \}
      * @remarks
     * ### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
@@ -1606,7 +1430,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
      *       record-creation helper.
      */
-    $seed$forcingNewMintDelegate = mkImpliedSeedActivity(this, 
+    $seed$forcingNewMintDelegate = impliedSeedActivityMaker(this, 
         this.forcingNewMintDelegate as (value: hasSeed, fields: { 
             purpose: string 
         } ) => UplcData
@@ -1634,6 +1458,7 @@ export class CapoLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
 
 /**
  * Helper class for generating UplcData for variants of the ***DelegateLifecycleActivity*** enum type.
+ * @public
  */
 export class DelegateLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
@@ -1686,7 +1511,7 @@ export class DelegateLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
 
     /**
      * generates  UplcData for ***"CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe"***, 
-     * @argument fields: { purpose: string }
+     * @param fields - \{ purpose: string \}
      * @remarks
     * ### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
@@ -1700,7 +1525,7 @@ export class DelegateLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
      *       record-creation helper.
      */
-    $seed$ReplacingMe = mkImpliedSeedActivity(this, 
+    $seed$ReplacingMe = impliedSeedActivityMaker(this, 
         this.ReplacingMe as (value: hasSeed, fields: { 
             purpose: string 
         } ) => UplcData
@@ -1732,6 +1557,7 @@ export class DelegateLifecycleActivityHelper extends EnumBridge<JustAnEnum> {
 
 /**
  * Helper class for generating UplcData for variants of the ***SpendingActivity*** enum type.
+ * @public
  */
 export class SpendingActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
@@ -1770,6 +1596,7 @@ export class SpendingActivityHelper extends EnumBridge<JustAnEnum> {
 
 /**
  * Helper class for generating UplcData for variants of the ***MintingActivity*** enum type.
+ * @public
  */
 export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
@@ -1822,7 +1649,7 @@ export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
 
     /**
      * generates  UplcData for ***"uutMintingDelegate::MintingActivity.mintingUuts"***, 
-     * @argument fields: { purposes: Array<string> }
+     * @param fields - \{ purposes: Array\<string\> \}
      * @remarks
     * ### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
@@ -1836,7 +1663,7 @@ export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
      *       record-creation helper.
      */
-    $seed$mintingUuts = mkImpliedSeedActivity(this, 
+    $seed$mintingUuts = impliedSeedActivityMaker(this, 
         this.mintingUuts as (value: hasSeed, fields: { 
             purposes: Array<string> 
         } ) => UplcData
@@ -1858,6 +1685,7 @@ export class MintingActivityHelper extends EnumBridge<JustAnEnum> {
 
 /**
  * Helper class for generating UplcData for variants of the ***BurningActivity*** enum type.
+ * @public
  */
 export class BurningActivityHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
@@ -1884,6 +1712,7 @@ export class BurningActivityHelper extends EnumBridge<JustAnEnum> {
 
 /**
  * Helper class for generating UplcData for variants of the ***CapoLifecycleActivity*** enum type.
+ * @public
  */
 export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
@@ -1940,7 +1769,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.CreatingDelegate"***, 
-     * @argument fields: { purpose: string }
+     * @param fields - \{ purpose: string \}
      * @remarks
     * ### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
@@ -1958,7 +1787,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     * the parent's uplc-encoder, producing a single uplc object with 
     * a complete wrapper for this inner activity detail.
      */
-    $seed$CreatingDelegate = mkImpliedSeedActivity(this, 
+    $seed$CreatingDelegate = impliedSeedActivityMaker(this, 
         this.CreatingDelegate as (value: hasSeed, fields: { 
             purpose: string 
         } ) => isActivity
@@ -1966,24 +1795,15 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     /* coda: seeded helper in same multiFieldVariant/seeded */
 
 
-    /**
-     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange"***
-     * @remarks - ***CapoLifecycleActivity$queuePendingDgtChangeLike*** is the same as the expanded field-types.
-    * ### Nested activity: 
-    * this is connected to a nested-activity wrapper, so the details are piped through 
-    * the parent's uplc-encoder, producing a single uplc object with 
-    * a complete wrapper for this inner activity detail.
-     */
-    queuePendingDgtChange(fields: CapoLifecycleActivity$queuePendingDgtChangeLike | { 
-        action: PendingDelegateActionLike,
-        role: DelegateRoleLike,
-        name: Option<string>
-    }) : isActivity {
-        const uplc = this.mkUplcData({
-            queuePendingDgtChange: fields 
-        }, "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
-       return uplc;
-    } /*multiFieldVariant enum accessor*/
+/**
+ * (property getter): UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange"***
+ * @remarks - ***tagOnly*** variant accessor returns an empty ***constrData#1***
+ */
+    get queuePendingDgtChange() {
+        const uplc = this.mkUplcData({ queuePendingDgtChange: {} }, 
+            "CapoDelegateHelpers::CapoLifecycleActivity.queuePendingDgtChange");
+        return uplc;
+    } /* tagOnly variant accessor */
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.removePendingDgtChange"***
@@ -2059,7 +1879,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.forcingNewSpendDelegate"***, 
-     * @argument fields: { purpose: string }
+     * @param fields - \{ purpose: string \}
      * @remarks
     * ### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
@@ -2077,7 +1897,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     * the parent's uplc-encoder, producing a single uplc object with 
     * a complete wrapper for this inner activity detail.
      */
-    $seed$forcingNewSpendDelegate = mkImpliedSeedActivity(this, 
+    $seed$forcingNewSpendDelegate = impliedSeedActivityMaker(this, 
         this.forcingNewSpendDelegate as (value: hasSeed, fields: { 
             purpose: string 
         } ) => isActivity
@@ -2131,7 +1951,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::CapoLifecycleActivity.forcingNewMintDelegate"***, 
-     * @argument fields: { purpose: string }
+     * @param fields - \{ purpose: string \}
      * @remarks
     * ### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
@@ -2149,7 +1969,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     * the parent's uplc-encoder, producing a single uplc object with 
     * a complete wrapper for this inner activity detail.
      */
-    $seed$forcingNewMintDelegate = mkImpliedSeedActivity(this, 
+    $seed$forcingNewMintDelegate = impliedSeedActivityMaker(this, 
         this.forcingNewMintDelegate as (value: hasSeed, fields: { 
             purpose: string 
         } ) => isActivity
@@ -2177,6 +1997,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
 
 /**
  * Helper class for generating UplcData for variants of the ***DelegateLifecycleActivity*** enum type.
+ * @public
  */
 export class DelegateLifecycleActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
@@ -2233,7 +2054,7 @@ export class DelegateLifecycleActivityHelperNested extends EnumBridge<isActivity
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::DelegateLifecycleActivity.ReplacingMe"***, 
-     * @argument fields: { purpose: string }
+     * @param fields - \{ purpose: string \}
      * @remarks
     * ### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
@@ -2251,7 +2072,7 @@ export class DelegateLifecycleActivityHelperNested extends EnumBridge<isActivity
     * the parent's uplc-encoder, producing a single uplc object with 
     * a complete wrapper for this inner activity detail.
      */
-    $seed$ReplacingMe = mkImpliedSeedActivity(this, 
+    $seed$ReplacingMe = impliedSeedActivityMaker(this, 
         this.ReplacingMe as (value: hasSeed, fields: { 
             purpose: string 
         } ) => isActivity
@@ -2283,6 +2104,7 @@ export class DelegateLifecycleActivityHelperNested extends EnumBridge<isActivity
 
 /**
  * Helper class for generating UplcData for variants of the ***SpendingActivity*** enum type.
+ * @public
  */
 export class SpendingActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
@@ -2329,6 +2151,7 @@ export class SpendingActivityHelperNested extends EnumBridge<isActivity> {
 
 /**
  * Helper class for generating UplcData for variants of the ***MintingActivity*** enum type.
+ * @public
  */
 export class MintingActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
@@ -2385,7 +2208,7 @@ export class MintingActivityHelperNested extends EnumBridge<isActivity> {
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"uutMintingDelegate::MintingActivity.mintingUuts"***, 
-     * @argument fields: { purposes: Array<string> }
+     * @param fields - \{ purposes: Array\<string\> \}
      * @remarks
     * ### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
@@ -2403,7 +2226,7 @@ export class MintingActivityHelperNested extends EnumBridge<isActivity> {
     * the parent's uplc-encoder, producing a single uplc object with 
     * a complete wrapper for this inner activity detail.
      */
-    $seed$mintingUuts = mkImpliedSeedActivity(this, 
+    $seed$mintingUuts = impliedSeedActivityMaker(this, 
         this.mintingUuts as (value: hasSeed, fields: { 
             purposes: Array<string> 
         } ) => isActivity
@@ -2425,6 +2248,7 @@ export class MintingActivityHelperNested extends EnumBridge<isActivity> {
 
 /**
  * Helper class for generating UplcData for variants of the ***BurningActivity*** enum type.
+ * @public
  */
 export class BurningActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
@@ -2455,6 +2279,7 @@ export class BurningActivityHelperNested extends EnumBridge<isActivity> {
 
 /**
  * Helper class for generating UplcData for variants of the ***DelegateActivity*** enum type.
+ * @public
  */
 export class DelegateActivityHelper extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
@@ -2587,7 +2412,7 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"uutMintingDelegate::DelegateActivity.CreatingDelegatedData"***, 
-     * @argument fields: { dataType: string }
+     * @param fields - \{ dataType: string \}
      * @remarks
     * ### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
@@ -2601,7 +2426,7 @@ export class DelegateActivityHelper extends EnumBridge<isActivity> {
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
      *       record-creation helper.
      */
-    $seed$CreatingDelegatedData = mkImpliedSeedActivity(this, 
+    $seed$CreatingDelegatedData = impliedSeedActivityMaker(this, 
         this.CreatingDelegatedData as (value: hasSeed, fields: { 
             dataType: string 
         } ) => isActivity
@@ -3604,72 +3429,6 @@ export const DelegateDatumSchema : EnumTypeSchema = {
     ]
 };
 
-export const PendingDelegateActionSchema : EnumTypeSchema = {
-    "kind": "enum",
-    "name": "PendingDelegateAction",
-    "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]",
-    "variantTypes": [
-        {
-            "kind": "variant",
-            "tag": 0,
-            "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Add",
-            "name": "Add",
-            "fieldTypes": [
-                {
-                    "name": "seed",
-                    "type": {
-                        "kind": "internal",
-                        "name": "TxOutputId"
-                    }
-                },
-                {
-                    "name": "purpose",
-                    "type": {
-                        "kind": "internal",
-                        "name": "String"
-                    }
-                }
-            ]
-        },
-        {
-            "kind": "variant",
-            "tag": 1,
-            "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Remove",
-            "name": "Remove",
-            "fieldTypes": []
-        },
-        {
-            "kind": "variant",
-            "tag": 2,
-            "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Replace",
-            "name": "Replace",
-            "fieldTypes": [
-                {
-                    "name": "seed",
-                    "type": {
-                        "kind": "internal",
-                        "name": "TxOutputId"
-                    }
-                },
-                {
-                    "name": "purpose",
-                    "type": {
-                        "kind": "internal",
-                        "name": "String"
-                    }
-                },
-                {
-                    "name": "replacesDgt",
-                    "type": {
-                        "kind": "internal",
-                        "name": "AssetClass"
-                    }
-                }
-            ]
-        }
-    ]
-};
-
 export const DelegateRoleSchema : EnumTypeSchema = {
     "kind": "enum",
     "name": "DelegateRole",
@@ -3877,152 +3636,7 @@ export const CapoLifecycleActivitySchema : EnumTypeSchema = {
             "tag": 1,
             "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__queuePendingDgtChange",
             "name": "queuePendingDgtChange",
-            "fieldTypes": [
-                {
-                    "name": "action",
-                    "type": {
-                        "kind": "enum",
-                        "name": "PendingDelegateAction",
-                        "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]",
-                        "variantTypes": [
-                            {
-                                "kind": "variant",
-                                "tag": 0,
-                                "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Add",
-                                "name": "Add",
-                                "fieldTypes": [
-                                    {
-                                        "name": "seed",
-                                        "type": {
-                                            "kind": "internal",
-                                            "name": "TxOutputId"
-                                        }
-                                    },
-                                    {
-                                        "name": "purpose",
-                                        "type": {
-                                            "kind": "internal",
-                                            "name": "String"
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                "kind": "variant",
-                                "tag": 1,
-                                "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Remove",
-                                "name": "Remove",
-                                "fieldTypes": []
-                            },
-                            {
-                                "kind": "variant",
-                                "tag": 2,
-                                "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Replace",
-                                "name": "Replace",
-                                "fieldTypes": [
-                                    {
-                                        "name": "seed",
-                                        "type": {
-                                            "kind": "internal",
-                                            "name": "TxOutputId"
-                                        }
-                                    },
-                                    {
-                                        "name": "purpose",
-                                        "type": {
-                                            "kind": "internal",
-                                            "name": "String"
-                                        }
-                                    },
-                                    {
-                                        "name": "replacesDgt",
-                                        "type": {
-                                            "kind": "internal",
-                                            "name": "AssetClass"
-                                        }
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                },
-                {
-                    "name": "role",
-                    "type": {
-                        "kind": "enum",
-                        "name": "DelegateRole",
-                        "id": "__module__CapoDelegateHelpers__DelegateRole[]",
-                        "variantTypes": [
-                            {
-                                "kind": "variant",
-                                "tag": 0,
-                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintDgt",
-                                "name": "MintDgt",
-                                "fieldTypes": []
-                            },
-                            {
-                                "kind": "variant",
-                                "tag": 1,
-                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendDgt",
-                                "name": "SpendDgt",
-                                "fieldTypes": []
-                            },
-                            {
-                                "kind": "variant",
-                                "tag": 2,
-                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintInvariant",
-                                "name": "MintInvariant",
-                                "fieldTypes": []
-                            },
-                            {
-                                "kind": "variant",
-                                "tag": 3,
-                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendInvariant",
-                                "name": "SpendInvariant",
-                                "fieldTypes": []
-                            },
-                            {
-                                "kind": "variant",
-                                "tag": 4,
-                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__DgDataPolicy",
-                                "name": "DgDataPolicy",
-                                "fieldTypes": []
-                            },
-                            {
-                                "kind": "variant",
-                                "tag": 5,
-                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__OtherNamedDgt",
-                                "name": "OtherNamedDgt",
-                                "fieldTypes": []
-                            },
-                            {
-                                "kind": "variant",
-                                "tag": 6,
-                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
-                                "name": "BothMintAndSpendDgt",
-                                "fieldTypes": []
-                            },
-                            {
-                                "kind": "variant",
-                                "tag": 7,
-                                "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
-                                "name": "HandledByCapoOnly",
-                                "fieldTypes": []
-                            }
-                        ]
-                    }
-                },
-                {
-                    "name": "name",
-                    "type": {
-                        "kind": "option",
-                        "someType": {
-                            "kind": "internal",
-                            "name": "String"
-                        }
-                    }
-                }
-            ]
+            "fieldTypes": []
         },
         {
             "kind": "variant",
@@ -4473,152 +4087,7 @@ export const DelegateActivitySchema : EnumTypeSchema = {
                                 "tag": 1,
                                 "id": "__module__CapoDelegateHelpers__CapoLifecycleActivity[]__queuePendingDgtChange",
                                 "name": "queuePendingDgtChange",
-                                "fieldTypes": [
-                                    {
-                                        "name": "action",
-                                        "type": {
-                                            "kind": "enum",
-                                            "name": "PendingDelegateAction",
-                                            "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]",
-                                            "variantTypes": [
-                                                {
-                                                    "kind": "variant",
-                                                    "tag": 0,
-                                                    "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Add",
-                                                    "name": "Add",
-                                                    "fieldTypes": [
-                                                        {
-                                                            "name": "seed",
-                                                            "type": {
-                                                                "kind": "internal",
-                                                                "name": "TxOutputId"
-                                                            }
-                                                        },
-                                                        {
-                                                            "name": "purpose",
-                                                            "type": {
-                                                                "kind": "internal",
-                                                                "name": "String"
-                                                            }
-                                                        }
-                                                    ]
-                                                },
-                                                {
-                                                    "kind": "variant",
-                                                    "tag": 1,
-                                                    "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Remove",
-                                                    "name": "Remove",
-                                                    "fieldTypes": []
-                                                },
-                                                {
-                                                    "kind": "variant",
-                                                    "tag": 2,
-                                                    "id": "__module__CapoDelegateHelpers__PendingDelegateAction[]__Replace",
-                                                    "name": "Replace",
-                                                    "fieldTypes": [
-                                                        {
-                                                            "name": "seed",
-                                                            "type": {
-                                                                "kind": "internal",
-                                                                "name": "TxOutputId"
-                                                            }
-                                                        },
-                                                        {
-                                                            "name": "purpose",
-                                                            "type": {
-                                                                "kind": "internal",
-                                                                "name": "String"
-                                                            }
-                                                        },
-                                                        {
-                                                            "name": "replacesDgt",
-                                                            "type": {
-                                                                "kind": "internal",
-                                                                "name": "AssetClass"
-                                                            }
-                                                        }
-                                                    ]
-                                                }
-                                            ]
-                                        }
-                                    },
-                                    {
-                                        "name": "role",
-                                        "type": {
-                                            "kind": "enum",
-                                            "name": "DelegateRole",
-                                            "id": "__module__CapoDelegateHelpers__DelegateRole[]",
-                                            "variantTypes": [
-                                                {
-                                                    "kind": "variant",
-                                                    "tag": 0,
-                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintDgt",
-                                                    "name": "MintDgt",
-                                                    "fieldTypes": []
-                                                },
-                                                {
-                                                    "kind": "variant",
-                                                    "tag": 1,
-                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendDgt",
-                                                    "name": "SpendDgt",
-                                                    "fieldTypes": []
-                                                },
-                                                {
-                                                    "kind": "variant",
-                                                    "tag": 2,
-                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__MintInvariant",
-                                                    "name": "MintInvariant",
-                                                    "fieldTypes": []
-                                                },
-                                                {
-                                                    "kind": "variant",
-                                                    "tag": 3,
-                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__SpendInvariant",
-                                                    "name": "SpendInvariant",
-                                                    "fieldTypes": []
-                                                },
-                                                {
-                                                    "kind": "variant",
-                                                    "tag": 4,
-                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__DgDataPolicy",
-                                                    "name": "DgDataPolicy",
-                                                    "fieldTypes": []
-                                                },
-                                                {
-                                                    "kind": "variant",
-                                                    "tag": 5,
-                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__OtherNamedDgt",
-                                                    "name": "OtherNamedDgt",
-                                                    "fieldTypes": []
-                                                },
-                                                {
-                                                    "kind": "variant",
-                                                    "tag": 6,
-                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__BothMintAndSpendDgt",
-                                                    "name": "BothMintAndSpendDgt",
-                                                    "fieldTypes": []
-                                                },
-                                                {
-                                                    "kind": "variant",
-                                                    "tag": 7,
-                                                    "id": "__module__CapoDelegateHelpers__DelegateRole[]__HandledByCapoOnly",
-                                                    "name": "HandledByCapoOnly",
-                                                    "fieldTypes": []
-                                                }
-                                            ]
-                                        }
-                                    },
-                                    {
-                                        "name": "name",
-                                        "type": {
-                                            "kind": "option",
-                                            "someType": {
-                                                "kind": "internal",
-                                                "name": "String"
-                                            }
-                                        }
-                                    }
-                                ]
+                                "fieldTypes": []
                             },
                             {
                                 "kind": "variant",

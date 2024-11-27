@@ -50,6 +50,7 @@ import {
     DelegationDetail,
     mustReturnValueToScript,
     DelegateLifecycleActivity,
+    AbstractDelegateActivitiesEnum,
     CapoLifecycleActivity,
     unmodifiedDelegation
 } from CapoDelegateHelpers
@@ -73,6 +74,7 @@ import {
 } from CapoHelpers
 
 import {
+    fromCip68Wrapper,
     TODO,
     REQT
 } from StellarHeliosHelpers
@@ -89,6 +91,8 @@ enum DelegateDatum {
     // same variant-index as Capo's DelegatedData
     capoStoredData {
         data: ProtocolSettings
+        version: Int // for CIP-68 compatibility
+        otherDetails: Data // abstract additional info
     }
 }
 
@@ -209,7 +213,7 @@ enum DelegateActivity {
                     );
 
                     recData: ProtocolSettings = ProtocolSettings::from_data(
-                        newRec.datum.inline
+                        fromCip68Wrapper( newRec.datum.inline )
                     );
 
                     recData.validate() &&
@@ -219,7 +223,18 @@ enum DelegateActivity {
                         purposes: []String{"set"},
                         // otherMintedValue: ... ,
                         mkTokenName: mkTn,
-                        needsMintDelegateApproval: true
+                        needsMintDelegateApproval: true,
+                        checkMintDgtActivity: (dgtActivity: AbstractDelegateActivitiesEnum) -> Bool {
+                            dgtActivity.switch {
+                                CreatingDelegatedData{mintDgtSeed, dataType} => {
+                                    print("hiya");
+                                    assert(mintDgtSeed == seed, "seed mismatch");
+                                    assert(dataType == "settings", "unexpected data type");
+                                    true
+                                },
+                                _ => error("dg data controller expects only CDD activity at mintDgt")
+                            }
+                        }
                     )
                 }
             },
@@ -233,7 +248,7 @@ enum DelegateActivity {
                     UpdatingRecord{recId} => {
                         hasDD : (TxInput) -> Bool = cctx.mkDelegatedDataPredicate("set", recId);
                         // settings: ProtocolSettings = cctx.getManifestDatum[ProtocolSettings]("settings");
-                        _hasDDOutput : (TxOutput) -> Bool = cctx.mkDelegatedDataOutputPredicate("tdata", recId);
+                        _hasDDOutput : (TxOutput) -> Bool = cctx.mkDelegatedDataOutputPredicate("settings", recId);
     
                         tx.inputs.filter(hasDD).for_each( (_utxo : TxInput) -> () {
                             // they're all settings records, because of the above filter

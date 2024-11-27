@@ -302,7 +302,22 @@ enum DelegateActivity {
 
                 error("unspecialized mint delegate doesn't have any MintingActivities")
             },
-            _ => false
+            CreatingDelegatedData => {
+                print(" ℹ️  unspecialized mint delegate allowing CreatingDelegatedData on the say-so of its policy delegate");
+                true
+            },
+            UpdatingDelegatedData => {
+                print(" ℹ️  unspecialized mint delegate allowing UpdatingDelegatedData on the say-so of its policy delegate");
+                true
+            },
+            DeletingDelegatedData => {
+                print(" ℹ️  unspecialized mint delegate allowing DeletingDelegatedData on the say-so of its policy delegate");
+                true
+            },
+            _ => {
+                assert(false, "unspecialized delegate rejecting other activity");
+                false
+            }
         } || tx.serialize() == priorMddd.serialize()        
     }
     func supportedCapoDelegatePurposes(self) -> []String {

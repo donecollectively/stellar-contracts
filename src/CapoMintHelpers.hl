@@ -44,24 +44,31 @@ func hasSeedUtxo(tx: Tx, seedUtxo: TxOutputId
     true
 }
 
+func noOtherActivitiesSupported( _: AbstractDelegateActivitiesEnum) -> Bool {
+    print("yikes, expected DelegateLifecycleActivities:ReplacingMe or authorizingDelegate  \n");
+    print("   -- note: for other cases, the checkMintDgtActivity( (AbstractDelegateActivitiesEnum) -> Bool): option can provide context-specific checks\n");
+    assert(false, "unexpected delegate activity");
+    false
+}
+
 func requiresDelegateAuthorizingMint(
     delegateLink: RelativeDelegateLink, 
-    mph: MintingPolicyHash, 
-    extraMintDelegateRedeemerCheck: Bool = true
+    mph: MintingPolicyHash,     
+    extraMintDelegateRedeemerCheck: Bool = true,
+    checkMintDgtActivity: (AbstractDelegateActivitiesEnum) -> Bool = noOtherActivitiesSupported
 ) -> Bool {
     authzVal : Value = Value::new(AssetClass::new(mph, delegateLink.uutName.encode_utf8()), 1);
-    print("finding input dgTkn: ");
-    print( delegateLink.uutName);
-    print("\n");
+    REQT("requires the charter's mint-delegate to authorize this mint activity");
+    print("  -- finding input dgTkn: " + delegateLink.uutName);
 
     targetId: TxOutputId = tx.inputs.find_safe((i: TxInput) -> {
         // print("   ?  in "+i.value.show());
         i.value.contains(authzVal) // find my authority token
     }).switch{
         Some{x} => x.output_id,
-        None => error("missing dgTkn "+delegateLink.uutName)
+        None => error("  ❌❌ missing dgTkn "+delegateLink.uutName)
     };
-    print ("    -- found dgTkn^");
+    print ("    -- ✅ ➡️  💁found dgTkn ^");
     spendsAuthorityUut : ScriptPurpose = tx.redeemers.find_key( 
         (purpose : ScriptPurpose) -> { purpose.switch{ 
             sp: Spending => {
@@ -83,28 +90,28 @@ func requiresDelegateAuthorizingMint(
         None => {
             error(err)
         },
-        Some{x} => AbstractDelegateActivitiesEnum::from_data(x).switch {
-            DelegateLifecycleActivities{DLA} => {
-                TODO("VERIFY we ---------------- don't need the funny redeemer-check skipping");
-                if (!extraMintDelegateRedeemerCheck) {
-                    error("where is extraMintDelegateRedeemerCheck=false really needed?")
-                //     print("  -- ok, dgTkn spent\n");
-                //     print("  ---- skip redeemer check\n");
-                //     true
-                
-                };
-                DLA.switch {
-                    ReplacingMe => {
-                        print("  -- ok, dgTkn spent\n");
-                        true
-                    },
-                    Retiring => error("DLA::Retiring can't mint!"),
-                    ValidatingSettings => error("DLA::ValidatingSettings can't mint!")
-                }
-            },
-            _ => {
-                print("yikes, expected DelegateLifecycleActivities:ReplacingMe or authorizingDelegate  \n");
-                error(err)
+        Some{x} => {
+            activity = AbstractDelegateActivitiesEnum::from_data(x);
+            activity.switch {
+                DelegateLifecycleActivities{DLA} => {
+                    TODO("VERIFY we ---------------- don't need the funny redeemer-check skipping");
+                    if (!extraMintDelegateRedeemerCheck) {
+                        print(" vvv wherever it is, probably best it uses the checkMintDgtActivity option");
+                        error("where is extraMintDelegateRedeemerCheck=false really needed?")
+                        //     print("  -- ok, dgTkn spent\n");
+                        //     print("  ---- skip redeemer check\n");
+                        //     true
+                    };
+                    DLA.switch {
+                        ReplacingMe => {
+                            print("  -- ok, dgTkn spent\n");
+                            true
+                        },
+                        Retiring => error("DLA::Retiring can't mint!"),
+                        ValidatingSettings => error("DLA::ValidatingSettings can't mint!")
+                    }
+                },
+                _ => checkMintDgtActivity(activity)
             }
         }
     };
@@ -298,6 +305,7 @@ func tnCip68ref100(tn : String) -> ByteArray {
     #000643b0 + tn.encode_utf8()
 }
 
+
 // checks all of the following:
 //  - there's an approving delegate (or we're bootstrapping)
 //  - the mint includes the seed UTXO
@@ -310,7 +318,8 @@ func validateUutMinting(
     bootstrapCharter:Value = Value::ZERO,
     otherMintedValue: Value = Value::ZERO,
     needsMintDelegateApproval: Bool = true,
-    extraMintDelegateRedeemerCheck: Bool = true
+    extraMintDelegateRedeemerCheck: Bool = true,
+    checkMintDgtActivity: (AbstractDelegateActivitiesEnum) -> Bool = noOtherActivitiesSupported
 ) -> Bool {
     isBootstrapping : Bool = !( bootstrapCharter.is_zero() );
     delegateApproval : Bool = if ( isBootstrapping ) { 
@@ -334,7 +343,8 @@ func validateUutMinting(
             requiresDelegateAuthorizingMint(
                 delegateLink: mintDgt, 
                 mph: mph, 
-                extraMintDelegateRedeemerCheck: extraMintDelegateRedeemerCheck
+                extraMintDelegateRedeemerCheck: extraMintDelegateRedeemerCheck,
+                checkMintDgtActivity: checkMintDgtActivity
             )
         } else {
             true

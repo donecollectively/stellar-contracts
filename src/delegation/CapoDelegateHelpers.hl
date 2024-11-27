@@ -73,6 +73,7 @@ enum PendingDelegateAction {
     Add {
         seed: TxOutputId
         purpose: String
+        idPrefix: String
         // uutName: String
         // delegateValidatorHash: Option[ValidatorHash]
         // config: ByteArray
@@ -81,6 +82,8 @@ enum PendingDelegateAction {
     Replace {
         seed: TxOutputId
         purpose: String
+        idPrefix: String
+
         // uutName: String
         // delegateValidatorHash: Option[ValidatorHash]
         // config: ByteArray
@@ -95,14 +98,14 @@ enum CapoLifecycleActivity {
         seed: TxOutputId
         purpose: String
     }
-    queuePendingDgtChange {
+    queuePendingDgtChange 
         // seed: TxOutputId
         // purpose: String
-        action: PendingDelegateAction
+        // action: PendingDelegateAction
 
-        role: DelegateRole
-        name: Option[String]
-    }
+        // role: DelegateRole
+        // name: Option[String]
+    // }
     removePendingDgtChange {
         role: DelegateRole
         name: Option[String]

@@ -33,9 +33,16 @@ export class BadSettingsController extends DelegatedDataContract {
         return "settingsPolicy";
     }
     get recordTypeName() {
-        return "set";
+        return "settings";
     }
+    get idPrefix() {
+        return "set"
+    }
+
     requirements() {
+        // this.activity.$seed$CreatingDelegatedData({
+        //     dataType: "settings",
+        // })
         return hasReqts({});
     }
 }

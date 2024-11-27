@@ -8,7 +8,7 @@ import type { hasSeed } from "../ActivityTypes.js";
 
 export class UnspecializedMintDelegate extends BasicMintDelegate {
     dataBridgeClass = UnspecializedDelegateBridge;
-    get delegateName() { return "uutMintingDelegate" }
+    get delegateName() { return "unspecialDelegate" }
 
     scriptBundle() {
         if (process.env.NODE_ENV === "development") {

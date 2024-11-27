@@ -187,17 +187,6 @@ export type NormalDelegateSetup = {
     // withoutMintDelegate: never
 };
 
-export type toQueuePendingDgtChange =
-    CapoLifecycleActivity$queuePendingDgtChangeLike;
-type pendingActionRemoveDgt = Pick<toQueuePendingDgtChange["action"], "Remove">;
-
-export type toQueueDgtRemoval = Omit<toQueuePendingDgtChange, "action"> & {
-    action: pendingActionRemoveDgt;
-};
-export type toQueueSeededDgtChange = Omit<toQueuePendingDgtChange, "action"> & {
-    action: Omit<toQueuePendingDgtChange["action"], "Remove">;
-};
-
 /**
  * Pre-parsed results of finding and matching contract-held UTxOs
  * with datum details.
@@ -409,13 +398,13 @@ import type {
     RelativeDelegateLinkLike,
     RelativeDelegateLink,
     ManifestEntryType$DgDataPolicyLike,
-    CapoLifecycleActivity$queuePendingDgtChangeLike,
     PendingDelegateActionLike,
     ErgoAnyData,
+    PendingDelegateChangeLike,
+    PendingDelegateAction$AddLike,
 } from "./CapoHeliosBundle.typeInfo.js";
 import type { IntersectedEnum } from "./helios/typeUtils.js";
 import type { SomeDgtActivityHelper } from "./delegation/GenericDelegateBridge.js";
-import type { PendingDelegateAction$AddLike } from "./delegation/UnspecializedDelegate.typeInfo.js";
 import type { DelegatedDataContract, DgDataType, MaybeWrappedDataType, someDataWrapper } from "./delegation/DelegatedDataContract.js";
 import { UnspecializedMintDelegate } from "./delegation/UnspecializedMintDelegate.js";
 import type { isActivity } from "./ActivityTypes.js";
@@ -3597,7 +3586,7 @@ export abstract class Capo<
     async mkTxnInstallingPolicyDelegate<
         const RoLabel extends string & keyof this["delegateRoles"],
         THIS extends Capo<any>,
-    >(this: THIS, dgtRole: RoLabel,
+    >(this: THIS, dgtRole: RoLabel, idPrefix: string,
         charter? : CapoDatum$Ergo$CharterData
     ) {
         // const mintDelegate = await this.getMintDelegate(charter);
@@ -3606,7 +3595,7 @@ export abstract class Capo<
         // console.log("   --spendDgt", spendDelegate.constructor.name);
 
         const tcx1 = await this.tcxWithSeedUtxo(this.mkTcx());
-        return this.mkTxnQueuingDelegateChange("Add", dgtRole, undefined, tcx1);
+        return this.mkTxnQueuingDelegateChange("Add", dgtRole, idPrefix, undefined, tcx1);
     }
 
     // async mkTxnQueuingDelegateRemoval<
@@ -3648,6 +3637,7 @@ export abstract class Capo<
         this: THIS,
         change: "Add" | "Replace",
         policyName: RoLabel,
+        idPrefix: string,
         options: OPTIONS = { config: {} } as OPTIONS, // & NamedPolicyCreationOptions<THIS, DT>,
         tcx: TCX = this.mkTcx() as TCX
     ) {
@@ -3729,21 +3719,19 @@ export abstract class Capo<
                       },
                   };
 
-        const pendingDgtChange = {
+        const pendingDgtChange : PendingDelegateChangeLike = {
             action: dgtAction,
             role: { DgDataPolicy: {} },
             name: policyName,
             dgtLink: tempOCDPLink,
-        };
+        }
         const tcx2 = await this.txnMintingUuts(
             tcx1,
             [purpose],
             {
                 usingSeedUtxo: tcx1.state.seedUtxo,
                 mintDelegateActivity:
-                    mintDgtActivity.CapoLifecycleActivities.queuePendingDgtChange(
-                        pendingDgtChange
-                    ),
+                    mintDgtActivity.CapoLifecycleActivities.queuePendingDgtChange
             },
             {
                 // role / uut map
@@ -3756,9 +3744,7 @@ export abstract class Capo<
         );
         const tcx3 = await spendDgt.txnGrantAuthority(
             tcx2,
-            spendDgtActivity.CapoLifecycleActivities.queuePendingDgtChange(
-                pendingDgtChange
-            )
+            spendDgtActivity.CapoLifecycleActivities.queuePendingDgtChange
         );
         const tcx4 = await this.mkTxnUpdateCharter(
             {
@@ -3768,9 +3754,7 @@ export abstract class Capo<
                     ...currentCharter.pendingDgtChanges,
                 ],
             },
-            this.activity.capoLifecycleActivity.queuePendingDgtChange(
-                pendingDgtChange
-            ),
+            this.activity.capoLifecycleActivity.queuePendingDgtChange,
             await this.txnAddGovAuthority(tcx3)
         );
         const stateKey = mkDgtStateKey<RoLabel>(policyName);
@@ -3791,6 +3775,7 @@ export abstract class Capo<
         mintDgtActivity: SomeDgtActivityHelper,
         purpose: string,
         policyName: string,
+        idPrefix: string,
         options: OffchainPartialDelegateLink
     ) {
         // todo: revisit formation of this Add object with full details
@@ -3805,24 +3790,7 @@ export abstract class Capo<
             {
                 usingSeedUtxo: seedUtxo,
                 mintDelegateActivity:
-                    mintDgtActivity.CapoLifecycleActivities.queuePendingDgtChange(
-                        {
-                            action: {
-                                Add: {
-                                    seed: ttcx1.state.seedUtxo.id,
-                                    purpose,
-                                    // --------------- 8-] vvvv --------------------
-                                    // mocked details, good enough for getting UUT info for the delegate-link below:
-                                    // delegateValidatorHash: null, // options.delegateValidatorHash,
-                                    // config: [], //options.config
-                                    // --------------- 8-] ^^^^ --------------------
-                                },
-                            },
-                            role: { DgDataPolicy: {} },
-                            name: policyName,
-                            // dgtLink: null,
-                        }
-                    ),
+                    mintDgtActivity.CapoLifecycleActivities.queuePendingDgtChange
             },
             {
                 // role / uut map
@@ -3866,8 +3834,13 @@ export abstract class Capo<
                 throw new Error(`missing expected 'dgtLink' in pendingChange`);
             }
             const { uutName } = dgtLink;
+            let idPrefix : string;
             if (thisAction.Add) {
-                const { purpose, seed } = thisAction.Add!; // , delegateValidatorHash, config } =
+                const { purpose, seed, idPrefix: PAidPrefix } = thisAction.Add!; // , delegateValidatorHash, config } =
+                if (!PAidPrefix) {
+                    throw new Error(`missing expected 'idPrefix' in pendingChange`);
+                }
+                idPrefix = PAidPrefix;
                 const ttcx = this.mkTcx();
                 if (currentManifest.get(name)) {
                     throw new Error(`can't Add conflicting name to manifest`);
@@ -3878,6 +3851,11 @@ export abstract class Capo<
                         `only Add and Replace actions are supported here`
                     );
                 }
+                const { purpose, seed, idPrefix: PRidPrefix } = thisAction.Replace;
+                if (!PRidPrefix) {
+                    throw new Error(`missing expected 'idPrefix' in pendingChange`);
+                }
+                idPrefix = PRidPrefix;
                 if (!currentManifest.get(name)) {
                     throw new Error(
                         `can't Replace non-existent name '${name}' in manifest`
@@ -3889,7 +3867,8 @@ export abstract class Capo<
                 mph: null,
                 entryType: {
                     DgDataPolicy: {
-                        policyLink: dgtLink,
+                        policyLink: dgtLink,                        
+                        idPrefix,
                         refCount: 1n,
                     },
                 },

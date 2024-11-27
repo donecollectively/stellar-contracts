@@ -49,7 +49,7 @@ import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../helios/typeUtils.js"
 import { StellarCast } from "../helios/dataBridge/StellarCast.js"
 import { 
-    mkImpliedSeedActivity, SeedActivity, type hasSeed, type isActivity, 
+    impliedSeedActivityMaker, SeedActivity, type hasSeed, type isActivity, 
     type funcWithImpliedSeed, type SeedAttrs
 } from "../ActivityTypes.js"
 
@@ -69,9 +69,10 @@ import type * as types from "./StructDatumTester.typeInfo.js";
 
 
 /**
- * GENERATED data bridge for **StructDatumTester** script (defined in class ***StructDatumTesterBundle***)}
+ * GENERATED data bridge for **StructDatumTester** script (defined in class ***StructDatumTesterBundle***)
  * main: **src/testing/StructDatumTester.hl**, project: **stellar-contracts**
- * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
+ * @remarks - note that you may override `get dataBridgeName() { return "..." }` to customize the name of this bridge class
+* @public
  */
 export class StructDatumTesterDataBridge extends ContractDataBridge {
     static isAbstract = false as const;
@@ -197,6 +198,9 @@ export class OtherActivityTypeHelper extends DataBridge {
     
     } // mkOtherDatumHelperClass
     
+/*
+ * @public
+ */
 export class StructDatumTesterDataBridgeReader extends DataBridgeReaderClass {
     constructor(public bridge: StructDatumTesterDataBridge) {
         super();
@@ -284,6 +288,7 @@ datum = (d: UplcData) => { return this.DatumStruct(d) }
 
 /**
  * Helper class for generating UplcData for the struct ***struct3*** type.
+ * @public
  */
 export class struct3Helper extends DataBridge {
     isCallable = true
@@ -308,6 +313,7 @@ export class struct3Helper extends DataBridge {
 
 /**
  * Helper class for generating UplcData for the struct ***OtherStruct*** type.
+ * @public
  */
 export class OtherStructHelper extends DataBridge {
     isCallable = true
@@ -332,6 +338,7 @@ export class OtherStructHelper extends DataBridge {
 
 /**
  * Helper class for generating UplcData for variants of the ***SomeKindaEnum*** enum type.
+ * @public
  */
 export class SomeKindaEnumHelper extends EnumBridge<JustAnEnum> {
     /*mkEnumHelperClass*/
@@ -368,6 +375,7 @@ export class SomeKindaEnumHelper extends EnumBridge<JustAnEnum> {
 
 /**
  * Helper class for generating UplcData for the struct ***DatumStruct*** type.
+ * @public
  */
 export class DatumStructHelper extends DataBridge {
     isCallable = true

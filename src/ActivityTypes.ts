@@ -94,12 +94,13 @@ export class SeedActivity<
         private factoryFunc,
         arg: ARG
     ) {
+        // console.log("+ seed activity" + new Error("").stack);
         this.arg = arg;
     }
 
     mkRedeemer(seedFrom: hasSeed) {
         // const seed = this.host.getSeed(thing);
-        return this.factoryFunc.bind(this.host, seedFrom, this.arg);
+        return this.factoryFunc.call(this.host, seedFrom, this.arg);
     }
 }
 
@@ -131,7 +132,7 @@ export type funcWithImpliedSeed<
 const x: [any] extends [] ? true : false = false;
 
 //prettier-ignore
-export function mkImpliedSeedActivity<
+export function impliedSeedActivityMaker<
     FACTORY_FUNC extends seedActivityFunc<any, any>,
     IMPLIED_SEED_FUNC extends funcWithImpliedSeed<FACTORY_FUNC> = 
         funcWithImpliedSeed<FACTORY_FUNC>,
@@ -145,11 +146,11 @@ export function mkImpliedSeedActivity<
     factoryFunc: FACTORY_FUNC,
 // ): WithImpliedSeedVariant<FACTORY_FUNC, ARGS> {
 ): IMPLIED_SEED_FUNC {
-    const withImpliedSeed = ( (arg: ARG) => {
+    const makesActivityWithImplicitSeedAndArgs = ( (arg: ARG) => {
         const seedActivity = new SeedActivity<FACTORY_FUNC>(host, factoryFunc, arg);
         return seedActivity;
     }) as IMPLIED_SEED_FUNC
-    return withImpliedSeed
+    return makesActivityWithImplicitSeedAndArgs
 }
 
 export function getSeed(arg: hasSeed): TxOutputId {

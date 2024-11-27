@@ -42,7 +42,8 @@ export type GenericDelegateBridge = ContractDataBridgeWithEnumDatum &
         readDatum: (d: UplcData) => GenericDelegateDatum;
         types: Pick<
             UnspecializedDelegateBridge["types"],
-             "PendingDelegateAction" | "DelegateRole" |
+            //  "PendingDelegateAction" | 
+             "DelegateRole" |
             "ManifestActivity" | "CapoLifecycleActivity" | "DelegateLifecycleActivity" |
             "DelegationDetail" 
         > & {
@@ -85,7 +86,8 @@ export type SomeDgtDatumHelper = EnumBridge<JustAnEnum> &
     // Omit<..., "SpendingActivity" | "MintingActivity" | "BurningActivity" | "ᱺᱺcast">
 type PartialReader = Pick<
     UnspecializedDelegateBridgeReader,
-    "PendingDelegateAction" | "DelegateRole" | "ManifestActivity" |
+    // "PendingDelegateAction" | 
+    "DelegateRole" | "ManifestActivity" |
     "CapoLifecycleActivity" | "DelegateLifecycleActivity"  |
     "DelegationDetail" 
 >;

@@ -39,8 +39,8 @@ export class CapoCanHaveBadSettings extends Capo<CapoCanHaveBadSettings> {
     mkInitialSettings() : ProtocolSettingsLike {
         return {
             meaning: 42,
-            badSettingToMintDelegate: 0,
-            badSettingToSpendDelegate: 0,
+            badMinterSetting: 0,
+            badSpenderSetting: 0,
             //@ts-expect-error on this bad attribute
             x: 19,
         };

@@ -49,7 +49,7 @@ import type { tagOnly } from "../helios/HeliosScriptBundle.js"
 import type { IntersectedEnum } from "../helios/typeUtils.js"
 import { StellarCast } from "../helios/dataBridge/StellarCast.js"
 import { 
-    mkImpliedSeedActivity, SeedActivity, type hasSeed, type isActivity, 
+    impliedSeedActivityMaker, SeedActivity, type hasSeed, type isActivity, 
     type funcWithImpliedSeed, type SeedAttrs
 } from "../ActivityTypes.js"
 
@@ -67,9 +67,10 @@ import type * as types from "./CapoMinter.typeInfo.js";
 
 
 /**
- * GENERATED data bridge for **CapoMinter** script (defined in class ***CapoMinterBundle***)}
+ * GENERATED data bridge for **CapoMinter** script (defined in class ***CapoMinterBundle***)
  * main: **src/minting/CapoMinter.hl**, project: **stellar-contracts**
- * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
+ * @remarks - note that you may override `get dataBridgeName() { return "..." }` to customize the name of this bridge class
+* @public
  */
 export class CapoMinterDataBridge extends ContractDataBridge {
     static isAbstract = false as const;
@@ -102,6 +103,9 @@ datum=null // no datum type defined for this bundle (minter / rewards script)
 }
 export default CapoMinterDataBridge;
 
+/*
+ * @public
+ */
 export class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
     constructor(public bridge: CapoMinterDataBridge) {
         super();
@@ -132,6 +136,7 @@ export class CapoMinterDataBridgeReader extends DataBridgeReaderClass {
 
 /**
  * Helper class for generating UplcData for variants of the ***MinterActivity*** enum type.
+ * @public
  */
 export class MinterActivityHelper extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
@@ -177,14 +182,14 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     *    the {@link $seed$addingMintInvariant} variant of this activity instead
     *
      */
-    addingMintInvariant : funcWithImpliedSeed<(thingWithSeed: hasSeed | TxOutputId | string) 
-      => isActivity> = mkImpliedSeedActivity(this, (thingWithSeed) => {
+    addingMintInvariant(thingWithSeed: hasSeed | TxOutputId | string) 
+    : isActivity {
         const seedTxOutputId = this.getSeed(thingWithSeed);
         const uplc = this.mkUplcData({ 
            addingMintInvariant: seedTxOutputId
         },"CapoMintHelpers::MinterActivity.addingMintInvariant");  
         return uplc;
-    })    /*singleField/seeded enum variant*/
+    }  /*singleField/seeded enum variant*/
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.addingMintInvariant"***
@@ -200,8 +205,9 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
      * Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
      * record-creation helper.
      */
-    $seed$addingMintInvariant = mkImpliedSeedActivity(this,this.addingMintInvariant)
-    /* coda: seeded helper in same singleField/seeded enum variant*/
+    get $seed$addingMintInvariant() {
+        return impliedSeedActivityMaker(this,this.addingMintInvariant)() // called with no args needed
+    } /* coda: seeded helper in same singleField/seeded enum variant*/
 
 
     /**
@@ -217,14 +223,14 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     *    the {@link $seed$addingSpendInvariant} variant of this activity instead
     *
      */
-    addingSpendInvariant : funcWithImpliedSeed<(thingWithSeed: hasSeed | TxOutputId | string) 
-      => isActivity> = mkImpliedSeedActivity(this, (thingWithSeed) => {
+    addingSpendInvariant(thingWithSeed: hasSeed | TxOutputId | string) 
+    : isActivity {
         const seedTxOutputId = this.getSeed(thingWithSeed);
         const uplc = this.mkUplcData({ 
            addingSpendInvariant: seedTxOutputId
         },"CapoMintHelpers::MinterActivity.addingSpendInvariant");  
         return uplc;
-    })    /*singleField/seeded enum variant*/
+    }  /*singleField/seeded enum variant*/
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.addingSpendInvariant"***
@@ -240,8 +246,9 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
      * Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
      * record-creation helper.
      */
-    $seed$addingSpendInvariant = mkImpliedSeedActivity(this,this.addingSpendInvariant)
-    /* coda: seeded helper in same singleField/seeded enum variant*/
+    get $seed$addingSpendInvariant() {
+        return impliedSeedActivityMaker(this,this.addingSpendInvariant)() // called with no args needed
+    } /* coda: seeded helper in same singleField/seeded enum variant*/
 
 
     /**
@@ -257,14 +264,14 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
     *    the {@link $seed$forcingNewMintDelegate} variant of this activity instead
     *
      */
-    forcingNewMintDelegate : funcWithImpliedSeed<(thingWithSeed: hasSeed | TxOutputId | string) 
-      => isActivity> = mkImpliedSeedActivity(this, (thingWithSeed) => {
+    forcingNewMintDelegate(thingWithSeed: hasSeed | TxOutputId | string) 
+    : isActivity {
         const seedTxOutputId = this.getSeed(thingWithSeed);
         const uplc = this.mkUplcData({ 
            forcingNewMintDelegate: seedTxOutputId
         },"CapoMintHelpers::MinterActivity.forcingNewMintDelegate");  
         return uplc;
-    })    /*singleField/seeded enum variant*/
+    }  /*singleField/seeded enum variant*/
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.forcingNewMintDelegate"***
@@ -280,8 +287,9 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
      * Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
      * record-creation helper.
      */
-    $seed$forcingNewMintDelegate = mkImpliedSeedActivity(this,this.forcingNewMintDelegate)
-    /* coda: seeded helper in same singleField/seeded enum variant*/
+    get $seed$forcingNewMintDelegate() {
+        return impliedSeedActivityMaker(this,this.forcingNewMintDelegate)() // called with no args needed
+    } /* coda: seeded helper in same singleField/seeded enum variant*/
 
 
     /**
@@ -326,7 +334,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
 
     /**
      * generates isActivity/redeemer wrapper with UplcData for ***"CapoMintHelpers::MinterActivity.CreatingNewSpendDelegate"***, 
-     * @argument fields: { replacingUut: Option<number[]> }
+     * @param fields - \{ replacingUut: Option\<number[]\> \}
      * @remarks
     * ### Seeded activity
     * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.
@@ -340,7 +348,7 @@ export class MinterActivityHelper extends EnumBridge<isActivity> {
      *   2. Use the resulting activity in a seed-providing context, such as the delegated-data-controller's
      *       record-creation helper.
      */
-    $seed$CreatingNewSpendDelegate = mkImpliedSeedActivity(this, 
+    $seed$CreatingNewSpendDelegate = impliedSeedActivityMaker(this, 
         this.CreatingNewSpendDelegate as (value: hasSeed, fields: { 
             replacingUut: Option<number[]> 
         } ) => isActivity

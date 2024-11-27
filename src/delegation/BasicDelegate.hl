@@ -233,9 +233,9 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     activities.all( (rawActivity: Data) -> Bool {
                         a : DelegateActivity = DelegateActivity::from_data(rawActivity);
 
-                        if (cctx.nowActingAsMintDgt(required: false)) {
+                        if (isMintDelegate && cctx.nowActingAsMintDgt(required: false)) {
                             // probably can't fail here:
-                            assert(isMintDelegate, "ack! non-MintDelegate can't act as mintDgt");
+                            // assert(isMintDelegate, "ack! non-MintDelegate can't act as mintDgt");
                             print("  -- mintDgt checking multi-activity");
                             REQT("in the mint delegate, only {Create,Delete}DelegatedData activities are valid in multi-activities");
                             a.switch {
@@ -271,9 +271,9 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
     
                                 _ => error("multi:non-minting activities are invalid for mintDgt")
                             }
-                        } else if (cctx.nowActingAsSpendDgt(required: false)) {
+                        } else if (isSpendDelegate && cctx.nowActingAsSpendDgt(required: false)) {
                             // probably can't fail here:
-                            assert(isSpendDelegate, "ack! non-SpendDelegate can't act as spendDgt");
+                            // assert(isSpendDelegate, "ack! non-SpendDelegate can't act as spendDgt");
                             print("  -- spendDgt checking multi-activity");
                             REQT("in the spend delegate, only {Updating,Deleting}DelegatedData activities are valid in multi-activities");
                             a.switch {
@@ -554,9 +554,24 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 _ => error("unreachable wrong role for CreatingDelegate")
                             }
                         },
-                        queuePendingDgtChange{action, role, name} => {
+                        queuePendingDgtChange => {
                             REQT("... for the addingPendingDgt activity:");
+
                             charterData : CapoDatum::CharterData = cctx.getCharterData();
+
+                            REQT("The new pending-delegate action is found at the head of the new change-list");
+                            oldPendingChanges = charterData.pendingDgtChanges;
+                            nextCharterData = cctx.getNextCharterData();
+                            nextChangeList = nextCharterData.pendingDgtChanges;
+                            newChange = nextChangeList.head;
+                            PendingDelegateChange{
+                                action, // PendingDelegateAction
+                                role, // : DelegateRole
+                                Option[String]::Some{
+                                    name
+                                }, //: Option[String] // only valid for named delegates and dgDataPolicy
+                                OdgtLink //: Option[RelativeDelegateLink]
+                            } = newChange;
                             action.switch {
                                 Remove => {
                                     print("   -- another delegate-role check would be redundant.");
@@ -574,11 +589,6 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                             };
 
 
-                            REQT("The new pending-delegate action is found at the head of the new change-list");
-                            oldPendingChanges = charterData.pendingDgtChanges;
-                            nextCharterData = cctx.getNextCharterData();
-                            nextChangeList = nextCharterData.pendingDgtChanges;
-                            newChange = nextChangeList.head;
 
                             REQT("the remainder of the change-list should be unchanged");
                             assert(
@@ -587,23 +597,26 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                             );
                             (
                                 seed: TxOutputId, 
-                                purpose: String
+                                purpose: String,
+                                pendingActionIdPrefix: String
                                 // uutName: String, 
                                 // dvh : Option[ValidatorHash], 
                                 // config : ByteArray
                             ) = action.switch { 
                                 Remove => error("unreachable"), 
-                                Add{seed, purpose} => {
-                                    (seed, purpose) 
+                                Add{seed, purpose, idPrefix} => {
+                                    (seed, purpose, idPrefix) 
                                 },
-                                Replace{seed, purpose, _replacesDgt } => { 
-                                    (seed, purpose ) 
+                                Replace{seed, purpose, idPrefix, _replacesDgt } => { 
+                                    (seed, purpose, idPrefix ) 
                                 }
                             };
 
                             possibleMintDgtVerifications : Bool = myCurrentRole.switch {
                                 SpendDgt => /* no-op */ true,
-                                MintDgt => bREQT("(general) the mintDgt checks everything about the mint") && action.switch {
+                                MintDgt => bREQT(
+                                    "(general) the mintDgt checks everything about the mint"
+                                ) && action.switch {
                                     Remove => {
                                         role.switch {
                                             MintDgt => error("cannot Remove role: MintDgt"),
@@ -626,7 +639,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                         assert(false, "what else should be checked here?");
                                         false
                                     },
-                                    _ => {
+                                    _ => { // Replace or Add
                                         if(false/*redundant*/) { assert(cctx.nowActingAsMintDgt(), "<----- that can fail, this can't") };
 
                                         mkTokenName = mkUutTnFactory(seed);
@@ -636,7 +649,8 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                         && validateUutMinting(
                                             mph: dd.mph,
                                             seed: seed,
-                                            purposes: []String{purpose},
+                                            // "dgtPol", until/unless we get fancy like "settingsPol", "reqtsPol", "mktSalePol", etc:
+                                            purposes: []String{purpose}, 
                                             // otherMintedValue: ()
                                             mkTokenName: mkUutTnFactory(seed),
                                             // WE ARE the mint delegate.
@@ -644,20 +658,49 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                         );
                                         
                                         REQT("The new policy-token must match the seed");
-                                        dgtLink = newChange.dgtLink.unwrap();
+                                        dgtLink = OdgtLink.switch {
+                                            None => error("missing required delegate link in pending dgt change"),
+                                            Some{dl} => dl
+                                        };
                                         assert(
                                             dgtLink.uutName == dgTknName,
                                             "uutName mismatch; expected "+dgTknName+" but found "+dgtLink.uutName
                                         );
 
-                                        delegateTakesOwnership = bREQT("the new delegate takes ownership of the UUT",
+                                        delegateTakesOwnership = bREQT("the new policy-delegate-script must take ownership of the dgTkn",
                                             dgtLink.hasValidOutput(
                                                 mph: dd.mph, 
                                                 required: true,
                                                 createdOrReturned: DgTkn::Created
                                         ));
 
-                                        mintedDgTkn && delegateTakesOwnership
+                                        possibleExtraReplacementCheck = action.switch {
+                                            Replace => {
+                                                REQT("Replace: the queued change must match the idPrefix of the current delegate ");
+                                                TODO("VALIDATE this through a unit-test ^");
+                                                charterData.manifest.get_safe(name).switch {
+                                                    Some{dde} => {
+                                                        CapoManifestEntry{entryType, _tn, _mph} = dde;
+                                                        entryType.switch {
+                                                            DgDataPolicy{_polLink, idPrefix, _refCount} => {
+                                                                REQT("expects the queued idPrefix to match the existing policy's idPrefix");
+                                                                print("   -- expected: " + idPrefix);
+                                                                print("   --     actual:"+pendingActionIdPrefix);
+                                                                assert(
+                                                                    idPrefix == pendingActionIdPrefix,
+                                                                    "idPrefix mismatch"
+                                                                )
+                                                            },
+                                                            _ => error("invalid Replace; the matching manifest entry for '"+name+"' isn't a DgDataPolicy.")
+                                                        }
+                                                    },
+                                                    None => error("no existing dgDataPolicy found with key: "+name)
+                                                };
+                                                true
+                                            },
+                                            _ => true
+                                        };
+                                        mintedDgTkn && delegateTakesOwnership && possibleExtraReplacementCheck
                                     }
                                 },
                                 _ => error("unreachable") // other DelegateRoles 
@@ -669,15 +712,15 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                     REQT("(general) the spendDgt checks everything about the charterData update");
 
                                     REQT("doesn't allow a queued change to duplicate any other pending entry for the same delegate name");
-                                    isNotADuplicate = charterData.pendingDgtChanges.all( (pdc: PendingDelegateChange) -> Bool {
-                                        pdc.name != name
+                                    isNotADuplicate = charterData.pendingDgtChanges.all( (pdChange: PendingDelegateChange) -> Bool {
+                                        pdChange.name.unwrap() != name
                                     });
-                                    assert(isNotADuplicate, "already has a pending change for this delegate: "+name.unwrap());
+                                    assert(isNotADuplicate, "already has a pending change for this delegate: "+name);
 
                                     possibleReplacementIsCorrect: Bool = action.switch {
                                         Remove => error("unreachable"),
                                         Add => true, // doesn't need to replace anything
-                                        Replace{_seed, _purpose, acExistingDgt} => { 
+                                        Replace{_seed, _purpose, _recPrefix, acExistingDgt} => { 
                                             REQT("... when queuing a replacement delegate: ");
                                             REQT("invariants cannot be replaced");
                                             role.switch {
@@ -776,20 +819,20 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                     (
                                         prevManifestRemainder : Map[String]CapoManifestEntry, 
                                         nextCMEs: Map[String]CapoManifestEntry, 
-                                        pdc: PendingDelegateChange
+                                        pdChange: PendingDelegateChange
                                     ) -> ( Map[String]CapoManifestEntry, Map[String]CapoManifestEntry ) {
-                                        pdc.role.switch {
+                                        pdChange.role.switch {
                                             DgDataPolicy => print("  -- ok: DgDataPolicy in commitPendingDgtChanges"),
                                             _ => error("invalid delegate-change role (for now) in commitPendingDgtChanges")
                                         };
                                         //void
-                                        pdc.action.switch {
+                                        pdChange.action.switch {
                                             Remove => {
                                                 REQT("dgt-change: Remove: verifies that the delegate queued for removal is now removed from the Capo manifest");
-                                                nextCMEs.get_safe(pdc.name.unwrap()).switch { 
+                                                nextCMEs.get_safe(pdChange.name.unwrap()).switch { 
                                                     Some => error(
                                                         "queued Remove failed: name still present in next-manifest item: "+ 
-                                                        pdc.name.unwrap()
+                                                        pdChange.name.unwrap()
                                                     )
                                                 }
                                             },
@@ -799,39 +842,46 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                                     error("queued Add/Replace failed: no more items in next-manifest map")
                                                 };
                                                 ( CME_key : String, CapoManifestEntry{ME_type, _tn, _mph} ) = nextCMEs.head;
-                                                ManifestEntryType::DgDataPolicy{ME_policyLink, refCount} = ME_type;
+                                                ManifestEntryType::DgDataPolicy{ME_policyLink, ME_idPrefix, refCount} = ME_type;
                                                 TODO("support minting multiple threads of a dgDataPolicy");
                                                 assert(refCount == 1, "refCount must be 1 when adding a new dgDataPolicy");
-                                                assert(pdc.name.unwrap() == CME_key,
+                                                assert(pdChange.name.unwrap() == CME_key,
                                                     "queued change: name mismatch with next-manifest item"
                                                 );
-                                                assert(ME_policyLink == pdc.dgtLink.unwrap(),
+                                                assert(ME_policyLink == pdChange.dgtLink.unwrap(),
                                                     "queued change: policyLink mismatch with next-manifest item"
                                                 );
 
-                                                pdc.action.switch {
-                                                    Replace => {
+                                                nextIdPrefix = pdChange.action.switch {
+                                                    Replace{_,_,idPrefix,_} => {
                                                         REQT("Replace: verifies that the next-manifest no longer has the replaced entry");
 
-                                                        nextManifest.tail.get_safe(pdc.name.unwrap()).switch {
+                                                        nextManifest.tail.get_safe(pdChange.name.unwrap()).switch {
                                                             Some => error(
                                                                 "queued Replace failed: duplicate name remaining in next-manifest map: "+ 
-                                                                pdc.name.unwrap()
+                                                                pdChange.name.unwrap()
                                                             )
-                                                        }
+                                                        };
+                                                        idPrefix
                                                     },
-                                                    _ => assert(true, "no way")
-                                                }
+                                                    Add{_,_,idPrefix} => idPrefix,
+                                                    _ => error( "unreachable")
+                                                };
+                                                print("     vv @entry: "+CME_key);
+                                                REQT("  -- @each manifest entry: next-manifest's idPrefix must match the queued change");
+                                                assert(nextIdPrefix == ME_idPrefix,
+                                                    "idPrefix mismatch with next-manifest's dgDataPolicy"
+                                                )
                                             }
                                         }; // void assertions; all needed checks are done ^^^^
 
                                         // traverses to next state for the reducer:
-                                        pdc.action.switch {
+                                        pdChange.action.switch {
                                             Add => {
                                                 ( prevManifestRemainder, nextCMEs.tail )
                                             },
                                             _ => { // Remove, Replace => {
-                                                ( prevManifestRemainder.delete(pdc.name.unwrap()), nextCMEs.tail )
+                                                ( prevManifestRemainder.delete(pdChange.name.unwrap()), nextCMEs.tail )
                                             }
                                         }
                                     }, // reducer
@@ -855,13 +905,13 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                 };
 
                                 remainingMint: Map[ByteArray]Int = pendingChangesList.fold[ Map[ByteArray]Int ]( 
-                                    (burning: Map[ByteArray]Int, pdc: PendingDelegateChange) -> Map[ByteArray]Int {
+                                    (burning: Map[ByteArray]Int, pdChange: PendingDelegateChange) -> Map[ByteArray]Int {
                                         REQT("EXPECTS the spendDgt to check details of Replace activities");
                                         // ignores the dgtLink details if present in a Replace activity
-                                        pdc.role.switch {
+                                        pdChange.role.switch {
                                             DgDataPolicy => {
                                                 print("  -- ok: DgDataPolicy in commitPendingDgtChanges");
-                                                PendingDelegateChange{action, role, nameMaybe, _dgtLinkMaybe} = pdc;
+                                                PendingDelegateChange{action, role, nameMaybe, _dgtLinkMaybe} = pdChange;
                                                 REQT("each pending change must have a name, which must be found in the current manifest");
                                                 name = nameMaybe.unwrap();
                                                 print( "     -- ok: name");
@@ -887,7 +937,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                                                         burning
                                                                     },
                                                                     _ => {
-                                                                        ManifestEntryType::DgDataPolicy{_ME_policyLink, refCount} = ME_type;
+                                                                        ManifestEntryType::DgDataPolicy{_ME_policyLink, _ME_recPrefix, refCount} = ME_type;
                                                                         burning.get_safe(tn).switch {
                                                                             None => error("queued Remove/Replace failed: no burn, or double-burn: "+ tn.decode_utf8()),
                                                                             Some{burningCount} => {
@@ -981,10 +1031,15 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                 // ... while processing different tokens for each zone of authority/responsibility.
                 CreatingDelegatedData{seed, dataTypePurpose} => {
                     cctx : CapoCtx = mkCapoCtx(dd.mph).withCharterRef();
+                    REQT("context: CreatingDelegatedData");
                     assert(isMintDelegate && cctx.nowActingAsMintDgt(), "<---- fails in there, not here");
 
+                    policyDelegateInput = cctx.
+                        requiresDgDataPolicyInput(dataTypePurpose);
+
                     tnFactory : (String) -> String = mkUutTnFactory(seed);
-                    newDataId : ByteArray = tnFactory(dataTypePurpose).encode_utf8();
+                    purpose = policyDelegateInput.idPrefix.unwrap();
+                    newDataId : ByteArray = tnFactory( purpose ).encode_utf8();
                     // as a mint delegate, we should see to it that any minting does play by the rules
                     //   ... however, this module is generic, so we can only perform generic checks here.
                     //   ... we additionally call application-provided validation (provided by a specialization)
@@ -1021,7 +1076,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     && validateUutMinting(
                         mph: dd.mph,
                         seed: seed,
-                        purposes: []String{dataTypePurpose},
+                        purposes: []String{purpose},
                         // otherMintedValue: ()
                         mkTokenName: tnFactory,
                         // WE ARE the mint delegate.
@@ -1029,11 +1084,12 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                     // ).trace(
                     //     " ✅ checked basic UUT minting "
                     )
+                    && bREQT("it outputs the new delegated-data record to the Capo address")
                     && cctx.mustOutputDelegatedData(
                         newDataId, dataTypePurpose
                     )
-                    && cctx.
-                        requiresDgDataPolicyInput(dataTypePurpose).
+                    && bREQT("ensures the data-controller is invoked with ONE minting activity for the indicated recId")
+                    && policyDelegateInput.
                         withUniqueSeededMintingActivity(seed).
                         orFail()
 

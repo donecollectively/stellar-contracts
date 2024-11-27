@@ -205,11 +205,12 @@ describe("Capo Minter", async () => {
             // delegated-data controllers in the current test setup
             // ... however, the failure message indicates that the script
             // ... unwrapping the MultipleDelegateActivities, trying to
-            // ... mint the new delegated data record, and failing to make 
-            // ... an expected output
+            // ... mint the new delegated data record, and not finding
+            // ... a workable policy for it.  So that's a good kind of failure.  
+            // We can make this test better and prove the positive use-case end-to-end.
             const submitting = tcx1.submit({ expectError: true });
             await expect(submitting).rejects.toThrow(
-                /no .* delegated-data out/
+                /missing required data policy.*fooPurpose/
             );
         });
 

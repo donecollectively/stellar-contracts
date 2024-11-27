@@ -166,7 +166,7 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
     DataBridgeReaderClass ,
     EnumBridge,
     StellarCast,
-    mkImpliedSeedActivity,
+    impliedSeedActivityMaker,
     type tagOnly, 
     type hasSeed, 
     type isActivity, 
@@ -207,7 +207,7 @@ import type { EnumTypeSchema, StructTypeSchema } from "@helios-lang/type-utils";
                     "src/helios/dataBridge/StellarCast.js"
                 )}"\n` +
                 `import { \n` +
-                `    mkImpliedSeedActivity, SeedActivity, type hasSeed, type isActivity, \n` +
+                `    impliedSeedActivityMaker, SeedActivity, type hasSeed, type isActivity, \n` +
                 `    type funcWithImpliedSeed, type SeedAttrs\n} from "${this.mkRelativeImport(
                     inputFile,
                     "src/ActivityTypes.js"
@@ -231,11 +231,12 @@ ${this.includeScriptNamedTypes(inputFile)}
 /**
  * GENERATED data bridge for **${
      this.bundle.program.name
- }** script (defined in class ***${this.bundle.constructor.name}***)}
+ }** script (defined in class ***${this.bundle.constructor.name}***)
  * main: **${this.bundle.main.name}**, project: **${
             this.bundle.main.project || "‹local proj›"
         }**
- * @remarks - note that you may override get dataBridgeName() { return "..." } to customize the name of this bridge class
+ * @remarks - note that you may override \`get dataBridgeName() { return "..." }\` to customize the name of this bridge class
+* @public
  */
 export class ${bridgeClassName} extends ContractDataBridge {
     static isAbstract = false as const;
@@ -267,7 +268,10 @@ ${this.includeNamedSchemas()}
     }
 
     generateDataReaderClass(className: string) {
-        return `export class ${className} extends DataBridgeReaderClass {
+        return `/*
+ * @public
+ */
+export class ${className} extends DataBridgeReaderClass {
     constructor(public bridge: ${this.bundle.bridgeClassName}) {
         super();
     }
@@ -812,6 +816,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         return (
             `/**\n` +
             ` * Helper class for generating UplcData for the struct ***${structName}*** type.\n` +
+            ` * @public\n`+
             ` */\n` +
             `export class ${structName}Helper extends DataBridge {\n` +
             `    isCallable = true\n` +
@@ -856,6 +861,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         return (
             `/**\n` +
             ` * Helper class for generating ${normalType} for variants of the ***${enumName}*** enum type.\n` +
+            ` * @public\n` +
             ` */\n` +
             `export class ${helperClassName} extends ${parentClass} {\n` +
             `    /*mkEnumHelperClass*/\n` +
@@ -1089,9 +1095,9 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `    } /*multiFieldVariant/seeded enum accessor*/ \n\n` +
                 `    /**\n` +
                 activitySummary +
-                `     * @argument fields: { ` +
-                filteredFields(0, undefined, ", ") +
-                ` }\n` +
+                `     * @param fields - \\{ ` +
+                filteredFields(0, undefined, ", ").replace(/([<>])/g, "\\$1") +
+                ` \\}\n` +
                 `     * @remarks\n` +
                 `    * ### Seeded activity\n` +
                 `    * This activity  uses the pattern of spending a utxo to provide a uniqueness seed.\n` +
@@ -1113,7 +1119,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                       `    * a complete wrapper for this inner activity detail.\n`
                     : "") +
                 `     */\n` +
-                `    $seed$${variantName} = mkImpliedSeedActivity(this, \n` +
+                `    $seed$${variantName} = impliedSeedActivityMaker(this, \n` +
                 `        this.${variantName} as (value: hasSeed, fields: { \n${filteredFields(
                     3
                 )} \n` +
@@ -1205,8 +1211,8 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                       `    * a complete wrapper for this inner activity detail.\n`
                     : "") +
                 `    */\n` +
-                `    ${variantName} : funcWithImpliedSeed<(thingWithSeed: hasSeed | ${oneField.permissiveType}) \n` +
-                `      => ${returnType}> = mkImpliedSeedActivity(this, (thingWithSeed) => {\n` +
+                `    ${variantName}(thingWithSeed: hasSeed | ${oneField.permissiveType}) \n` +
+                `    : ${returnType} {\n` +
                 `        const seedTxOutputId = this.getSeed(thingWithSeed);\n` +
                 (isNested
                     ? `\n        // piped through parent's uplc-encoder\n`
@@ -1215,8 +1221,7 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 `           ${variantName}: seedTxOutputId\n` +
                 `        },${enumPathExpr});  \n` +
                 `        return uplc;\n` +
-                `    })` +
-                `    /*singleField/seeded enum variant*/\n\n` +
+                `    }  /*singleField/seeded enum variant*/\n\n` +
                 `    /**\n` +
                 `     * generates ${
                     isActivity ? "isActivity/redeemer wrapper with" : ""
@@ -1239,8 +1244,9 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                       `    * a complete wrapper for this inner activity detail.\n`
                     : "") +
                 `     */\n` +
-                `    $seed$${variantName} = mkImpliedSeedActivity(this,this.${variantName})\n` +
-                `    /* coda: seeded helper in same singleField/seeded enum variant*/\n`
+                `    get $seed$${variantName}() {\n`+
+                `        return impliedSeedActivityMaker(this,this.${variantName})() // called with no args needed\n` +
+                `    } /* coda: seeded helper in same singleField/seeded enum variant*/\n`
             );
         }
         let thatType = oneField.permissiveType || "";
