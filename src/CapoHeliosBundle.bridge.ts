@@ -68,7 +68,6 @@ import type {
     PendingDelegateAction, ErgoPendingDelegateAction, PendingDelegateActionLike,
     PendingDelegateChange, ErgoPendingDelegateChange, PendingDelegateChangeLike,
     CapoDatum$CharterData, CapoDatum$Ergo$CharterData, CapoDatum$CharterDataLike,
-    AnyData, ErgoAnyData, AnyDataLike,
     CapoDatum$DelegatedData, CapoDatum$Ergo$DelegatedData, CapoDatum$DelegatedDataLike,
     CapoDatum, ErgoCapoDatum, CapoDatumLike,
     CapoLifecycleActivity$CreatingDelegate, CapoLifecycleActivity$Ergo$CreatingDelegate, CapoLifecycleActivity$CreatingDelegateLike,
@@ -190,16 +189,6 @@ export class CapoDataBridge extends ContractDataBridge {
 }
 ) => {
         return this.ᱺᱺPendingDelegateChangeCast.toUplcData(fields);
-    },
-      /**
-       * generates UplcData for the enum type ***AnyData*** for the `Capo` script
-       */
-        AnyData: (fields: AnyDataLike | {
-    id: /*minStructField*/ number[]
-    type: /*minStructField*/ string
-}
-) => {
-        return this.ᱺᱺAnyDataCast.toUplcData(fields);
     },    }    
 
     /**
@@ -217,11 +206,6 @@ export class CapoDataBridge extends ContractDataBridge {
     ᱺᱺPendingDelegateChangeCast = new StellarCast<
                 PendingDelegateChange, PendingDelegateChangeLike
             >(PendingDelegateChangeSchema, { isMainnet: true });
-    /**
-                * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺAnyDataCast = new StellarCast<
-                AnyData, AnyDataLike
-            >(AnyDataSchema, { isMainnet: true });
 
 
 }
@@ -437,25 +421,6 @@ datum = (d: UplcData) => { return this.CapoDatum(d) }
     PendingDelegateChange(d: UplcData) {
         const cast = this.bridge.ᱺᱺPendingDelegateChangeCast;
         return cast.fromUplcData(d) //??? as ErgoPendingDelegateChange;
-    } /* structReader helper */
-
-    /**
-        * reads UplcData *known to fit the **AnyData*** struct type,
-        * for the Capo script.
-        * ### Standard WARNING
-        * 
-        * This is a low-level data-reader for use in ***advanced development scenarios***.
-        * 
-        * Used correctly with data that matches the type, this reader
-        * returns strongly-typed data - your code using these types will be safe.
-        * 
-        * On the other hand, reading non-matching data will not give you a valid result.  
-        * It may throw an error, or it may throw no error, but return a value that
-        * causes some error later on in your code, when you try to use it.
-        */
-    AnyData(d: UplcData) {
-        const cast = this.bridge.ᱺᱺAnyDataCast;
-        return cast.fromUplcData(d) //??? as ErgoAnyData;
     } /* structReader helper */
 
 }
@@ -870,31 +835,6 @@ export class PendingDelegateChangeHelper extends DataBridge {
 
 
 /**
- * Helper class for generating UplcData for the struct ***AnyData*** type.
- * @public
- */
-export class AnyDataHelper extends DataBridge {
-    isCallable = true
-   /**
-            * uses unicode U+1c7a - sorts to the end */
-    ᱺᱺcast = new StellarCast<
-        AnyData,
-        AnyDataLike
-    >(AnyDataSchema, { isMainnet: true });
-
-    // You might expect a function as follows.  We provide this interface and result, 
-    // using a proxy in the inheritance chain.
-    // see the callableDataBridge type on the 'datum' property in the contract bridge.
-    //
-    //Also: if you're reading this, ask in our discord server about a 🎁 for curiosity-seekers! 
-    //
-    // AnyData(fields: AnyDataLike) {
-    //    return this.ᱺᱺcast.toUplcData(fields);
-    //}
-} //mkStructHelperClass 
-
-
-/**
  * Helper class for generating TxOutputDatum for variants of the ***CapoDatum*** enum type.
  * @public
  */
@@ -942,7 +882,7 @@ export class CapoDatumHelper extends EnumBridge<JustAnEnum> {
      * @remarks - ***CapoDatum$DelegatedDataLike*** is the same as the expanded field-types.
      */
     DelegatedData(fields: CapoDatum$DelegatedDataLike | { 
-        data: AnyDataLike,
+        data: Map<string, UplcData>,
         version: IntLike,
         otherDetails: UplcData
     }) : TxOutputDatum<"Inline"> {
@@ -1041,7 +981,7 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
  * Helper class for generating UplcData for variants of the ***ManifestActivity*** enum type.
  * @public
  */
-export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
+export class ManifestActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
@@ -1051,7 +991,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
    >(ManifestActivitySchema, { isMainnet: true });
 
     /**
-     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.retiringEntry"***
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::ManifestActivity.retiringEntry"***
     * ## Nested activity: 
     * this is connected to a nested-activity wrapper, so the details are piped through 
     * the parent's uplc-encoder, producing a single uplc object with 
@@ -1059,7 +999,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
      */
     retiringEntry(
         key: string
-    ) : UplcData {
+    ) : isActivity {
         const uplc = this.mkUplcData({ 
            retiringEntry: key
         }, "CapoDelegateHelpers::ManifestActivity.retiringEntry"); /*singleField enum variant*/
@@ -1067,7 +1007,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     }
 
     /**
-     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.updatingEntry"***
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::ManifestActivity.updatingEntry"***
      * @remarks - ***ManifestActivity$updatingEntryLike*** is the same as the expanded field-types.
     * ### Nested activity: 
     * this is connected to a nested-activity wrapper, so the details are piped through 
@@ -1077,7 +1017,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     updatingEntry(fields: ManifestActivity$updatingEntryLike | { 
         key: string,
         tokenName: number[]
-    }) : UplcData {
+    }) : isActivity {
         const uplc = this.mkUplcData({
             updatingEntry: fields 
         }, "CapoDelegateHelpers::ManifestActivity.updatingEntry");
@@ -1085,7 +1025,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.addingEntry"***
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::ManifestActivity.addingEntry"***
      * @remarks - ***ManifestActivity$addingEntryLike*** is the same as the expanded field-types.
     * ### Nested activity: 
     * this is connected to a nested-activity wrapper, so the details are piped through 
@@ -1095,7 +1035,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     addingEntry(fields: ManifestActivity$addingEntryLike | { 
         key: string,
         tokenName: number[]
-    }) : UplcData {
+    }) : isActivity {
         const uplc = this.mkUplcData({
             addingEntry: fields 
         }, "CapoDelegateHelpers::ManifestActivity.addingEntry");
@@ -1103,7 +1043,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.forkingThreadToken"***
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::ManifestActivity.forkingThreadToken"***
      * @remarks - ***ManifestActivity$forkingThreadTokenLike*** is the same as the expanded field-types.
     * ### Nested activity: 
     * this is connected to a nested-activity wrapper, so the details are piped through 
@@ -1113,7 +1053,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     forkingThreadToken(fields: ManifestActivity$forkingThreadTokenLike | { 
         key: string,
         newThreadCount: IntLike
-    }) : UplcData {
+    }) : isActivity {
         const uplc = this.mkUplcData({
             forkingThreadToken: fields 
         }, "CapoDelegateHelpers::ManifestActivity.forkingThreadToken");
@@ -1121,7 +1061,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.burningThreadToken"***
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::ManifestActivity.burningThreadToken"***
      * @remarks - ***ManifestActivity$burningThreadTokenLike*** is the same as the expanded field-types.
     * ### Nested activity: 
     * this is connected to a nested-activity wrapper, so the details are piped through 
@@ -1131,7 +1071,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     burningThreadToken(fields: ManifestActivity$burningThreadTokenLike | { 
         key: string,
         burnedThreadCount: IntLike
-    }) : UplcData {
+    }) : isActivity {
         const uplc = this.mkUplcData({
             burningThreadToken: fields 
         }, "CapoDelegateHelpers::ManifestActivity.burningThreadToken");
@@ -1669,7 +1609,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      */
     get updatingManifest() {
         const nestedAccessor = new ManifestActivityHelperNested(this.bundle,
-            {isNested: true, isActivity: false 
+            {isNested: true, isActivity: true 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia(
@@ -2509,31 +2449,6 @@ export const PendingDelegateChangeSchema : StructTypeSchema = {
     ]
 };
 
-export const AnyDataSchema : StructTypeSchema = {
-    "kind": "struct",
-    "format": "map",
-    "id": "__module__StellarHeliosHelpers__AnyData[]",
-    "name": "AnyData",
-    "fieldTypes": [
-        {
-            "name": "id",
-            "type": {
-                "kind": "internal",
-                "name": "ByteArray"
-            },
-            "key": "@id"
-        },
-        {
-            "name": "type",
-            "type": {
-                "kind": "internal",
-                "name": "String"
-            },
-            "key": "tpe"
-        }
-    ]
-};
-
 export const CapoDatumSchema : EnumTypeSchema = {
     "kind": "enum",
     "name": "CapoDatum",
@@ -3202,28 +3117,15 @@ export const CapoDatumSchema : EnumTypeSchema = {
                 {
                     "name": "data",
                     "type": {
-                        "kind": "struct",
-                        "format": "map",
-                        "id": "__module__StellarHeliosHelpers__AnyData[]",
-                        "name": "AnyData",
-                        "fieldTypes": [
-                            {
-                                "name": "id",
-                                "type": {
-                                    "kind": "internal",
-                                    "name": "ByteArray"
-                                },
-                                "key": "@id"
-                            },
-                            {
-                                "name": "type",
-                                "type": {
-                                    "kind": "internal",
-                                    "name": "String"
-                                },
-                                "key": "tpe"
-                            }
-                        ]
+                        "kind": "map",
+                        "keyType": {
+                            "kind": "internal",
+                            "name": "String"
+                        },
+                        "valueType": {
+                            "kind": "internal",
+                            "name": "Data"
+                        }
                     }
                 },
                 {

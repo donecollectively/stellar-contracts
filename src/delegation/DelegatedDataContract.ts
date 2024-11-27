@@ -11,9 +11,14 @@ import type { StellarTxnContext, hasSeedUtxo } from "../StellarTxnContext.js";
 import { ContractBasedDelegate } from "./ContractBasedDelegate.js";
 import type { UutName } from "./UutName.js";
 import { betterJsonSerializer, dumpAny } from "../diagnostics.js";
-import type { AnyData, ErgoAnyData } from "../CapoHeliosBundle.typeInfo.js";
-import { type seedActivityFunc, type SeedActivityArg, SeedActivity, type isActivity } from "../ActivityTypes.js";
+import {
+    type seedActivityFunc,
+    type SeedActivityArg,
+    SeedActivity,
+    type isActivity,
+} from "../ActivityTypes.js";
 import { encodeBoolData, UplcBool } from "@helios-lang/uplc";
+import type { AnyData, ErgoAnyData } from "./UnspecializedDelegate.typeInfo.js";
 
 export const NO_WRAPPER = Symbol(
     "no data-adapter; uses on-chain type directly"
@@ -28,26 +33,24 @@ type OnchainType = {
     type: string;
 };
 
-export type DgDataType<T extends DelegatedDataContract> = ReturnType<
-    T["exampleData"]
->;
+export type DgDataType<T extends DelegatedDataContract> = AnyData &
+    ReturnType<T["exampleData"]>;
 
 /**
  * @public
  */
 export type DgDataCreationAttrs<
     T extends DelegatedDataContract // | DelegatedDatumAdapter<any>
-> = Omit<DgDataType<T>, "id" | "type">
-    // T extends DelegatedDatumAdapter<infer D>
-    // ? Omit<D, "id" | "type"> :
-    // T extends DelegatedDataContract
-    //     ? ReturnType<T["mkDataWithWrapper"]> extends DelegatedDatumAdapter<
-    //           infer D
-    //       >
-    //         ? Omit<D, "id" | "type">
-    //         : never
-    //     : never;
-
+> = Omit<DgDataType<T>, "id" | "type">;
+// T extends DelegatedDatumAdapter<infer D>
+// ? Omit<D, "id" | "type"> :
+// T extends DelegatedDataContract
+//     ? ReturnType<T["mkDataWithWrapper"]> extends DelegatedDatumAdapter<
+//           infer D
+//       >
+//         ? Omit<D, "id" | "type">
+//         : never
+//     : never;
 
 /**
  * @public
@@ -59,19 +62,20 @@ export type MaybeWrappedDataType<
     >
 > = RT extends NoWrapper
     ? DgDataType<T>
-    : AnyData extends RT
-    ? AnyData
-    : Exclude<Exclude<RT, NoWrapper>, AnyData>;
+    : RT extends someDataWrapper<any>
+    ? RT
+    : never;
+// : Exclude<Exclude<RT, NoWrapper>, AnyData>;
 
 export type DelegatedDataWrapper<
     T extends DelegatedDataContract,
     DDT extends DgDataType<T> = DgDataType<T>,
     WDT extends MaybeWrappedDataType<T> = MaybeWrappedDataType<T>
-> = DDT extends WDT ? DDT : someDataWrapper<DDT>
+> = DDT extends WDT ? DDT : someDataWrapper<DDT>;
 
 export type someDataWrapper<wrappedType extends AnyData> = {
     unwrapData(): wrappedType;
-}
+};
 
 /**
  * @public
@@ -85,7 +89,6 @@ export type DelegatedDatumIdPrefix<
     T extends DelegatedDataContract,
     TN extends string = T["idPrefix"]
 > = TN;
-
 
 /**
  * DelegatedDataContract provides a base class for utility functions
@@ -104,7 +107,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
      * Provides a customized label for the delegate, used in place of
      * a generic script name ("BasicDelegate").  DelegatedDataContract
      * provides a default name with the record type name and "Pol" suffix.
-     * 
+     *
      * Affects the on-chain logging for the policy and the compiled script
      * output in the script-cache on-disk or in browser's storage.
      */
@@ -146,15 +149,15 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
      * returned from the on-chain store as a plain object, and updates are
      * performed based on the plain object.
      */
-    mkDataWithWrapper(
-        d: DgDataType<this>
-    ): someDataWrapper<any> | NoWrapper {
+    mkDataWithWrapper(d: DgDataType<this>): someDataWrapper<any> | NoWrapper {
         return {
             [NO_WRAPPER]: true,
         };
     }
 
-    unwrapData(d: Exclude<DelegatedDataWrapper<this>, AnyData>): DgDataType<this> {
+    unwrapData(
+        d: Exclude<DelegatedDataWrapper<this>, AnyData>
+    ): DgDataType<this> {
         if ("undefined" == typeof this.usesWrappedData) {
             // invoke wrapData once with the (typed, delegate-specific sample data )
             // to populate the "uses adapter" flag
@@ -173,11 +176,16 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         this: THIS,
         record: Exclude<MaybeWrappedDataType<THIS>, AnyData>
     ): Promise<helios.Datum> {
-        return this.mkDatum.capoStoredData(this.unwrapData(
-            //@ts-expect-error because we can't seem to express strongly enough
-            // for TS's needs that only real data-wrappers will be passed to this method
-            record
-        ));
+        // console.log({record}, "8888888888888888888888888888888888888")
+        return this.mkDatum.capoStoredData({
+            data: this.unwrapData(
+                //@ts-expect-error because we can't seem to express strongly enough
+                // for TS's needs that only real data-wrappers will be passed to this method
+                record
+            ),
+            version: 2n,
+            otherDetails: new helios.IntData(0),
+        });
 
         // const adapter = this.unwrapData(record);
         // let data = record
@@ -212,7 +220,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
     async mkTxnCreateRecord<
         THIS extends DelegatedDataContract,
         CAI extends isActivity | SeedActivity<any>,
-        TCX extends StellarTxnContext,
+        TCX extends StellarTxnContext
         // DDType extends MaybeWrappedDataType<THIS> = MaybeWrappedDataType<THIS>,
         // minDDType extends DgDataCreationAttrs<THIS> = DgDataCreationAttrs<THIS>
     >(
@@ -242,7 +250,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
                 this.recordTypeName
             ),
         });
-        
+
         const activity: isActivity =
             controllerActivity instanceof SeedActivity
                 ? controllerActivity.mkRedeemer(tcx2)
@@ -279,15 +287,15 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         tcx: TCX,
         // record: minDDType,
         controllerActivity: isActivity,
-        options: CreationOptions<THIS>,
+        options: CreationOptions<THIS>
     ): Promise<TCX> {
         const newType = this.recordTypeName as DelegatedDatumTypeName<THIS>;
         const idPrefix = this.idPrefix as DelegatedDatumIdPrefix<THIS>;
-        
+
         const {
             addedUtxoValue: extraCreationValue = new helios.Value(0n),
             beforeSave = (x) => x,
-            data : typedData,
+            data: typedData,
             wrappedData,
         } = options;
 
@@ -296,7 +304,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         const uut = tcx.state.uuts[idPrefix];
         let newRecord: RDT = typedData as any;
         if (wrappedData) {
-            newRecord = this.unwrapData(newRecord as any) as RDT
+            newRecord = this.unwrapData(newRecord as any) as RDT;
         }
         const { id: _id, type: _type, ...rest } = newRecord;
 
@@ -308,9 +316,10 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         } as RDT;
         const newDatum = this.mkDatum.capoStoredData({
             // data: new Map(Object.entries(beforeSave(fullRecord) as any)),
-            data: (beforeSave(fullRecord) as any),
-            version: 2,
-            otherDetails: new helios.IntData(0)
+            data: beforeSave(fullRecord) as any,
+
+            version: 2n,
+            otherDetails: new helios.IntData(0),
         });
         console.log(
             `🏒 creating ${newType} ->`,
@@ -366,7 +375,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
     >(
         this: THIS,
         txnName: string,
-        item: FoundDatumUtxo<MaybeWrappedDataType<THIS>>,
+        item: FoundDatumUtxo<DgDataType<THIS>, MaybeWrappedDataType<THIS>>,
         options: WrappedDgDataUpdateOptions<
             THIS,
             CAI,
@@ -384,7 +393,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         const {
             activity,
             addedUtxoValue,
-            beforeSave,            
+            beforeSave,
             updatedPartial,
             updatedRecord,
         } = options;
@@ -394,7 +403,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
             capo.compiledScript
         );
         const existingTypedData = this.newReadDatum(item.datum.data);
-        const { id } = existingTypedData
+        const { id } = existingTypedData;
 
         // tell the spend delegate to allow the spend,
         // ... by authority of the delegated-data controller
@@ -415,7 +424,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         let recordWithUpdates: DgDataType<THIS> = {} as any;
         if (updatedPartial) {
             recordWithUpdates = {
-                ... existingTypedData,
+                ...existingTypedData,
                 ...updatedPartial,
             };
         } else if (updatedRecord) {
@@ -430,7 +439,7 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
             activity: materializedActivity,
             updatedRecord: recordWithUpdates,
             addedUtxoValue,
-            beforeSave,            
+            beforeSave,
         });
     }
 
@@ -443,20 +452,16 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
         this: THIS,
         tcx: TCX,
         id: hasRecId,
-        item: FoundDatumUtxo<MaybeWrappedDataType<THIS>>,
+        item: FoundDatumUtxo<DgDataType<THIS>, MaybeWrappedDataType<THIS>>,
         // controllerActivity: isActivity,
         // record: WrappedDataType<THIS>,
-        options: DgDataUpdateOptions<
-            THIS,
-            any,
-            DgDataType<THIS>
-        >
+        options: DgDataUpdateOptions<THIS, any, DgDataType<THIS>>
     ): Promise<TCX> {
         const recType = this.recordTypeName as DelegatedDatumTypeName<THIS>;
 
         const {
             addedUtxoValue = new helios.Value(0n),
-            beforeSave = (x) => x,            
+            beforeSave = (x) => x,
             activity,
             updatedRecord,
         } = options;
@@ -480,7 +485,11 @@ export abstract class DelegatedDataContract extends ContractBasedDelegate {
                 item.utxo.value
                     // .add(this.mkMinTv(this.capo.mph, id))
                     .add(addedUtxoValue),
-                await this.mkDatum.capoStoredData(beforeSave(updatedRecord))
+                await this.mkDatum.capoStoredData({
+                    data: beforeSave(updatedRecord),
+                    version: 2n,
+                    otherDetails: new helios.IntData(0),
+                })
 
                 // this.mkDatumDelegatedDataRecord(beforeSave(record))
             )

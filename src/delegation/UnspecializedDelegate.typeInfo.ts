@@ -88,6 +88,25 @@ export type DelegationDetailLike = {
 }
 
 
+export type DelegateDatum$capoStoredData = {
+    data: AnyData  /*minVariantField*/ ,
+    version: bigint  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+export type DelegateDatum$Ergo$capoStoredData = {
+    data: ErgoAnyData  /*minVariantField*/ ,
+    version: bigint  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+export type DelegateDatum$capoStoredDataLike = {
+    data: AnyDataLike  /*minVariantField*/ ,
+    version: IntLike  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+
 export type DelegateDatumMeta = EnumTypeMeta<
     {module: "unspecializedDelegate", enumName: "DelegateDatum"}, {
         Cip68RefToken: singleEnumVariantMeta<DelegateDatumMeta, "Cip68RefToken",
@@ -99,8 +118,8 @@ export type DelegateDatumMeta = EnumTypeMeta<
 			DelegationDetail   , "noSpecialFlags"
         >,
         capoStoredData: singleEnumVariantMeta<DelegateDatumMeta, "capoStoredData",
-            "Constr#2", "singletonField", /* implied wrapper { data: ... } for singleVariantField */ 
-			AnyData   , "noSpecialFlags"
+            "Constr#2", 
+            "fields", DelegateDatum$capoStoredData, "noSpecialFlags"
         >
     }
 >;
@@ -119,15 +138,13 @@ export type DelegateDatum =
         | { Cip68RefToken: DelegateDatum$Cip68RefToken /*minEnumVariant*/ }
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			DelegationDetail    /*minEnumVariant*/ }
-        | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
-			AnyData    /*minEnumVariant*/ }
+        | { capoStoredData: DelegateDatum$capoStoredData /*minEnumVariant*/ }
 
 export type ErgoDelegateDatum = IntersectedEnum<
         | { Cip68RefToken: DelegateDatum$Ergo$Cip68RefToken /*minEnumVariant*/ }
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			ErgoDelegationDetail    /*minEnumVariant*/ }
-        | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
-			ErgoAnyData    /*minEnumVariant*/ }
+        | { capoStoredData: DelegateDatum$Ergo$capoStoredData /*minEnumVariant*/ }
 >
 
 /**
@@ -147,8 +164,7 @@ export type DelegateDatumLike = IntersectedEnum<
         | { Cip68RefToken: DelegateDatum$Cip68RefTokenLike /*minEnumVariant*/ }
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			DelegationDetailLike    /*minEnumVariant*/ }
-        | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
-			AnyDataLike    /*minEnumVariant*/ }
+        | { capoStoredData: DelegateDatum$capoStoredDataLike /*minEnumVariant*/ }
 >
 
 export type CapoLifecycleActivity$CreatingDelegate = {

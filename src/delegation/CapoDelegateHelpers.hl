@@ -412,15 +412,17 @@ enum BASE_DELEGATE_Datum {
     Cip68RefToken {  
         cip68meta: AnyData
         cip68version: Int
-        otherDetails: Data // can be Unit () or anything else
+        otherDetails: Data
     }
 
     IsDelegation {
         dd: DelegationDetail
     }
-    // same variant-index as Capo's DelegatedData
+    // same variant-index and structure as Capo's DelegatedData
     capoStoredData {
         data: AnyData
+        version: Int
+        otherDetails: Data 
     }
 }
 
@@ -534,6 +536,8 @@ enum SomeDelegateDatum[T] {
     // same variant-index as Capo's DelegatedData
     capoStoredData {
         data: T
+        version: Int
+        otherDetails: Data 
     }
 
     // func validateSettings(self, _settings: ProtocolSettings) -> Bool{

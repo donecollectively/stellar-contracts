@@ -88,6 +88,25 @@ export type DelegationDetailLike = {
 }
 
 
+export type DelegateDatum$capoStoredData = {
+    data: AnyData  /*minVariantField*/ ,
+    version: bigint  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+export type DelegateDatum$Ergo$capoStoredData = {
+    data: ErgoAnyData  /*minVariantField*/ ,
+    version: bigint  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+export type DelegateDatum$capoStoredDataLike = {
+    data: AnyDataLike  /*minVariantField*/ ,
+    version: IntLike  /*minVariantField*/ ,
+    otherDetails: UplcData  /*minVariantField*/ 
+}
+
+
 export type SampleStruct = {
     a: /*minStructField*/ bigint
     b: /*minStructField*/ Map<string, number[]>
@@ -250,8 +269,8 @@ export type DelegateDatumMeta = EnumTypeMeta<
             "Constr#2", "tagOnly", tagOnly, "noSpecialFlags"
         >,
         capoStoredData: singleEnumVariantMeta<DelegateDatumMeta, "capoStoredData",
-            "Constr#3", "singletonField", /* implied wrapper { data: ... } for singleVariantField */ 
-			AnyData   , "noSpecialFlags"
+            "Constr#3", 
+            "fields", DelegateDatum$capoStoredData, "noSpecialFlags"
         >,
         SingleDataElement: singleEnumVariantMeta<DelegateDatumMeta, "SingleDataElement",
             "Constr#4", "singletonField", /* implied wrapper { aString: ... } for singleVariantField */ 
@@ -291,8 +310,7 @@ export type DelegateDatum =
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			DelegationDetail    /*minEnumVariant*/ }
         | { TagOnlyDatum: tagOnly /*minEnumVariant*/ }
-        | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
-			AnyData    /*minEnumVariant*/ }
+        | { capoStoredData: DelegateDatum$capoStoredData /*minEnumVariant*/ }
         | { SingleDataElement: /* implied wrapper { aString: ... } for singleVariantField */ 
 			string    /*minEnumVariant*/ }
         | { SingleNestedStruct: /* implied wrapper { aStruct: ... } for singleVariantField */ 
@@ -307,8 +325,7 @@ export type ErgoDelegateDatum = IntersectedEnum<
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			ErgoDelegationDetail    /*minEnumVariant*/ }
         | { TagOnlyDatum: tagOnly /*minEnumVariant*/ }
-        | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
-			ErgoAnyData    /*minEnumVariant*/ }
+        | { capoStoredData: DelegateDatum$Ergo$capoStoredData /*minEnumVariant*/ }
         | { SingleDataElement: /* implied wrapper { aString: ... } for singleVariantField */ 
 			string    /*minEnumVariant*/ }
         | { SingleNestedStruct: /* implied wrapper { aStruct: ... } for singleVariantField */ 
@@ -337,8 +354,7 @@ export type DelegateDatumLike = IntersectedEnum<
         | { IsDelegation: /* implied wrapper { dd: ... } for singleVariantField */ 
 			DelegationDetailLike    /*minEnumVariant*/ }
         | { TagOnlyDatum: tagOnly /*minEnumVariant*/ }
-        | { capoStoredData: /* implied wrapper { data: ... } for singleVariantField */ 
-			AnyDataLike    /*minEnumVariant*/ }
+        | { capoStoredData: DelegateDatum$capoStoredDataLike /*minEnumVariant*/ }
         | { SingleDataElement: /* implied wrapper { aString: ... } for singleVariantField */ 
 			string    /*minEnumVariant*/ }
         | { SingleNestedStruct: /* implied wrapper { aStruct: ... } for singleVariantField */ 

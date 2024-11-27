@@ -20,7 +20,11 @@ import UnspecializedDelegateBridge, {
     SpendingActivityHelperNested,
     UnspecializedDelegateBridgeReader,
 } from "./UnspecializedDelegate.bridge.js";
-import type { ErgoDelegateDatum } from "./UnspecializedDelegate.typeInfo.js";
+import type { 
+    DelegateDatum$capoStoredDataLike, 
+    DelegateDatum$Ergo$capoStoredData, 
+    ErgoDelegateDatum 
+} from "./UnspecializedDelegate.typeInfo.js";
 
 export type GenericDelegateBridgeClass = AbstractNew<GenericDelegateBridge>;
 export type GenericDelegateBridge = ContractDataBridgeWithEnumDatum &
@@ -67,6 +71,12 @@ export type GenericDelegateBridge = ContractDataBridgeWithEnumDatum &
         // };
     };
 
+type AbstractStoredData = DelegateDatum$Ergo$capoStoredData
+type AbstractStoredDataLike = DelegateDatum$capoStoredDataLike
+// , "data"> & {
+//     data: unknown;
+// };
+
     // export type GenericDelegateDatum = Omit<ErgoDelegateDatum, "capoStoredData"> & {
     //     capoStoredData?: unknown;
     // };
@@ -75,13 +85,16 @@ export type GenericDelegateDatum = Pick<ErgoDelegateDatum,
     "Cip68RefToken" | "IsDelegation"
 > & {
     capoStoredData?: unknown;
-};
+    // capoStoredData?: AbstractStoredData;
+}
 // const t : "oo" extends unknown ? "yes" : "no" = "yes";
 
 export type SomeDgtDatumHelper = EnumBridge<JustAnEnum> &
-    Omit<DelegateDatumHelper, "capoStoredData"> & {
-        capoStoredData(x: unknown): TxOutputDatum<"Inline">;
-    };
+Omit<DelegateDatumHelper, "capoStoredData"> & {
+    // capoStoredData(x: AbstractStoredDataLike): TxOutputDatum<"Inline">;
+    capoStoredData(x: unknown): TxOutputDatum<"Inline">;
+};
+// DelegateDatumHelper;
 
     // Omit<..., "SpendingActivity" | "MintingActivity" | "BurningActivity" | "ᱺᱺcast">
 type PartialReader = Pick<

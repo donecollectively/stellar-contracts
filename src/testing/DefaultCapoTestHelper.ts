@@ -26,7 +26,8 @@ import type {
 } from "../delegation/RolesAndDelegates.js";
 import type { UutName } from "../delegation/UutName.js";
 import type { Address } from "@helios-lang/ledger-babbage";
-import type { AnyData } from "../CapoHeliosBundle.typeInfo.js";
+import type { DetectSettingsType } from "../CapoSettingsTypes.js";
+import { bytesToText, textToBytes } from "@hyperionbt/helios";
 
 declare namespace NodeJS {
     interface Global {
@@ -334,11 +335,7 @@ export class DefaultCapoTestHelper<
                             "a capo with a settings policy must implement mkInitialSettings()"
                         );
                     }
-
-                    console.log(
-                        "🐞🐞🐞🐞🐞🐞🐞🐞🐞 hurray  🐞🐞🐞🐞🐞🐞🐞🐞🐞"
-                    );
-                    console.log({ initialSettings });
+                    // console.log({ initialSettings });
 
                     const settingsController = await capo.getDgDataController(
                         "settings"
@@ -348,7 +345,48 @@ export class DefaultCapoTestHelper<
                         settingsController.activity.MintingActivities
                             .$seed$CreatingRecord,
                         {
-                            data: initialSettings,
+                            data: initialSettings,                            
+                        }
+                    );
+                },
+            });
+
+            mkSetPolTxn.includeAddlTxn(`addCurrentSettings`, {
+                description: `adds the current settings record to the Capo manifest`,
+                moreInfo: "provides settings to all the Capo scripts",
+                optional: false,
+                tcx: async () => {
+                    const settingsController = await capo.getDgDataController(
+                        "settings"
+                    );
+                    // settingsController.$find
+
+                    const settingsUtxo = (await capo.findDelegatedDataUtxos({
+                        type: "settings",
+                    }))[0];
+                    if (!settingsUtxo) {
+                        throw new Error("can't find settings record");
+                    }
+
+                    const initialSettings = settingsUtxo.datumParsed
+                    
+                    if (!initialSettings) {
+                        throw new Error("can't extract initial settings record data");
+                    }
+
+                    console.log(
+                        "🐞🐞🐞🐞🐞🐞🐞🐞🐞 hurray  🐞🐞🐞🐞🐞🐞🐞🐞🐞"
+                    );
+                    console.log({ initialSettings });
+
+
+                    return capo.mkTxnAddManifestEntry(
+                        "currentSettings",
+                        settingsUtxo,
+                        {
+                            tokenName: initialSettings.id,
+                            entryType: { NamedTokenRef: {} },
+                            mph: null
                         }
                     );
                 },
@@ -362,7 +400,10 @@ export class DefaultCapoTestHelper<
 
     }
 
-    // async updateSettings(args: CapoOffchainSettingsType<CAPO>, submitSettings: SubmitOptions={}) {
+    // async updateSettings(
+    //     args: DetectSettingsType<CAPO>,
+    //     submitSettings: SubmitOptions = {}
+    // ) {
     //     await this.mintCharterToken();
     //     const capo = this.strella!;
     //     const tcx = await capo.mkTxnUpdateOnchainSettings(args);

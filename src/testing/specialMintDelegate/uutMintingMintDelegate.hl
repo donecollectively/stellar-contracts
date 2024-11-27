@@ -106,6 +106,8 @@ enum DelegateDatum {
     // same variant-index as Capo's DelegatedData
     capoStoredData {
         data: AnyData
+        version: Int
+        otherDetails: Data 
     }
     SingleDataElement {
         aString: String

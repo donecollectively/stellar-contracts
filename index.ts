@@ -139,7 +139,7 @@ export {
     type SeedActivityArg,
     type funcWithImpliedSeed,
     SeedActivity,
-    mkImpliedSeedActivity,
+    impliedSeedActivityMaker,
     getSeed
 } from "./src/ActivityTypes.js"
 

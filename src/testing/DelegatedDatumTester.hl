@@ -105,6 +105,8 @@ enum DelegateDatum {
     // same variant-index as Capo's DelegatedData
     capoStoredData {
         data: DgDatumTestData
+        version: Int
+        otherDetails: Data 
     }
 }
 

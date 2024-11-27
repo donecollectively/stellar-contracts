@@ -15,6 +15,7 @@ export type CapoHeliosBundleClass = new () => CapoHeliosBundle;
 export class CapoHeliosBundle extends HeliosScriptBundle {
     main = mainContract;
     datumTypeName = "CapoDatum"
+    capoBundle = this // ???
 
     get bridgeClassName(): string {
         if (this.constructor === CapoHeliosBundle) {

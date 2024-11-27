@@ -17,7 +17,7 @@ import {
 } from "./DelegatedDatumTester.bridge.js"
 import type {
     DgDatumTestDataLike,
-    ErgoDgDatumTestData
+    ErgoDgDatumTestData    
 } from "./DelegatedDatumTester.typeInfo.js"
 
 import DelegatedDatumTesterBundle from "./DelegatedDatumTester.hlbundle.js"

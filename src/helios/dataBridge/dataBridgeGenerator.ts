@@ -887,10 +887,11 @@ import type * as types from "${relativeTypeFile}";\n\n`;
         variantDetails: variantTypeDetails<dataBridgeTypeInfo>,
         variantName: string,
         fieldName: string,
-        oneField: anyTypeDetails<dataBridgeTypeInfo>
+        oneField: anyTypeDetails<dataBridgeTypeInfo>,
+        isInActivity?: boolean
     ) {
         const enumName = enumTypeDetails.enumName;
-        const isActivity = this.redeemerTypeName === enumName;
+        const isActivity = isInActivity || this.redeemerTypeName === enumName;
 
         const enumPathExpr = this.getEnumPathExpr(variantDetails);
         const nestedEnumDetails = oneField.typeSchema as EnumTypeSchema;
@@ -1184,7 +1185,8 @@ import type * as types from "${relativeTypeFile}";\n\n`;
                 variantDetails,
                 variantName,
                 fieldName,
-                oneField
+                oneField,
+                isActivity
             );
         }
         if ("seed" == fieldName && !isDatum) {

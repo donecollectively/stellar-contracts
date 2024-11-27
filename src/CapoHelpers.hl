@@ -5,6 +5,7 @@ import {
     tvCharter,
     mustFindInputRedeemer,
     outputAndDatum,
+    fromCip68Wrapper,
     AnyData,
     REQT,
     TODO
@@ -38,6 +39,7 @@ enum dgd_DataSrc {
         utxo: TxInput
         txo: TxOutput
     }
+    // Reference { ref: TxInput }
 }
 
 enum ManifestEntryType {
@@ -168,7 +170,7 @@ enum CapoDatum {
 
     // same variant-index as delegate's capoStoredData:
     DelegatedData {  // the Capo redirects control of these to the spend delegate
-        data: AnyData // the spend delegate may redirect control further, depending on what it sees in there
+        data: Map[String]Data // matches pattern of AnyData + other fields // the spend delegate may redirect control further, depending on what it sees in there
         version: Int // for CIP-68 compatibility
         otherDetails: Data // abstract additional info
     }
@@ -1334,6 +1336,29 @@ struct CapoCtx {
         addr    
     }
 
+    func delegatedDataRef(self,
+        recId: String="",
+        recIdBytes: ByteArray=recId.encode_utf8()
+    ) -> TxInput {
+        hasDD : (TxInput) -> Bool = self.mkDelegatedDataPredicate(
+            id: recIdBytes
+        );
+
+        print("  -- expecting refDD ");
+        print(recIdBytes.decode_utf8());
+        print("\n");
+        tx.ref_inputs.find_safe(hasDD).switch {
+            None => {
+                error("❌ 📎 ^ refDD: not found\n")
+            },
+            Some{txin} => {
+                print("✅ 📎 ^ refDD: ok\n");
+
+                txin
+            }
+        }
+    }
+
     func delegatedDataTxInput(self, 
         recId: String="",
         recIdBytes: ByteArray=recId.encode_utf8()
@@ -1370,7 +1395,7 @@ struct CapoCtx {
 
                 CapoDatum::from_data(data).switch {
                     DelegatedData => {
-                        x : AnyData = AnyData::from_data(data);
+                        x = AnyData::from_data(fromCip68Wrapper(data));
                         true 
                         && (typeName == "" || x.type == typeName) 
                         && (id == # || x.id == id)
@@ -1392,7 +1417,7 @@ struct CapoCtx {
                 data : Data = txo.datum.inline;
                 CapoDatum::from_data(data).switch {
                     DelegatedData => {
-                        x : AnyData = AnyData::from_data(data);
+                        x : AnyData = AnyData::from_data(fromCip68Wrapper(data));
                         // print( "found type " + x.type );
                         // print( "found id " + x.id.decode_utf8() );
                         // isMatch : Bool = 
@@ -1533,13 +1558,28 @@ struct CapoCtx {
         dgData : Data = self.internalHasDelegatedDataOutput(
             mkTv(mph: self.mph, tnBytes: newDataId)
         ).datum.inline;
+        // dgData.switch {
+        //     ConstrData{index, f} => {
+        //         print("found index "+index.show());
+        //         print("field count =" + f.length.show());
+        //         f.head.switch {
+        //             MapData{m} => {
+        //                 print("found map data" + m.length.show())
+        //             },
+        //             _ => error("yuck")
+        //         }
+        //     },
+        //     _ => {
+        //         error("not constr data")
+        //     }
+        // };
 
         dgDatum : CapoDatum = CapoDatum::from_data(dgData);
         // ndid: ByteArray = newDataId.encode_utf8();
         REQT("   -- validates that the new record matches the type-name indicated in the dgDataPolicy manifest");
         dgDatum.switch {
-            DelegatedData{data, _version, _other} => {
-                // data : AnyData = AnyData::from_data(mStruct);
+            DelegatedData => {
+                data : AnyData = AnyData::from_data(fromCip68Wrapper(dgData));
                 if (data.id != newDataId) {
                     print("expected id: "+newDataId.decode_utf8());
                     error("❌ 📎 outDD: wrong id: "+data.id.decode_utf8())

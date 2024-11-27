@@ -5,7 +5,6 @@ import type {
     AnyDataTemplate,
     hasAnyDataTemplate,
 } from "./delegation/DelegatedDatumAdapter.js";
-import type { ErgoAnyData } from "./CapoHeliosBundle.typeInfo.js";
 
 // an incantation so that settings adapters don't have to get the finicky details right
 

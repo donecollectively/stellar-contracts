@@ -60,6 +60,7 @@ import type {
     AnyData, ErgoAnyData, AnyDataLike,
     DelegateDatum$Cip68RefToken, DelegateDatum$Ergo$Cip68RefToken, DelegateDatum$Cip68RefTokenLike,
     DelegationDetail, ErgoDelegationDetail, DelegationDetailLike,
+    DelegateDatum$capoStoredData, DelegateDatum$Ergo$capoStoredData, DelegateDatum$capoStoredDataLike,
     SampleStruct, ErgoSampleStruct, SampleStructLike,
     SomeEnum$hasNestedFields, SomeEnum$Ergo$hasNestedFields, SomeEnum$hasNestedFieldsLike,
     SomeEnum$hasRecursiveFields, SomeEnum$Ergo$hasRecursiveFields, SomeEnum$hasRecursiveFieldsLike,
@@ -820,19 +821,18 @@ export class DelegateDatumHelper extends EnumBridge<JustAnEnum> {
 
     /**
      * generates  TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.capoStoredData"***
-     * @remarks - ***AnyDataLike*** is the same as the expanded field-type.
+     * @remarks - ***DelegateDatum$capoStoredDataLike*** is the same as the expanded field-types.
      */
-    capoStoredData(
-        data: AnyDataLike | {
-    id: /*minStructField*/ number[]
-    type: /*minStructField*/ string
-}
-    ) : TxOutputDatum {
-        const uplc = this.mkUplcData({ 
-           capoStoredData: data
-        }, "uutMintingDelegate::DelegateDatum.capoStoredData"); /*singleField enum variant*/
+    capoStoredData(fields: DelegateDatum$capoStoredDataLike | { 
+        data: AnyDataLike,
+        version: IntLike,
+        otherDetails: UplcData
+    }) : TxOutputDatum<"Inline"> {
+        const uplc = this.mkUplcData({
+            capoStoredData: fields 
+        }, "uutMintingDelegate::DelegateDatum.capoStoredData");
         return TxOutputDatum.Inline(uplc);
-    }
+    } /*multiFieldVariant enum accessor*/
 
     /**
      * generates  TxOutputDatum for ***"uutMintingDelegate::DelegateDatum.SingleDataElement"***
@@ -1100,7 +1100,7 @@ export class ManifestActivityHelper extends EnumBridge<JustAnEnum> {
  * Helper class for generating UplcData for variants of the ***ManifestActivity*** enum type.
  * @public
  */
-export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
+export class ManifestActivityHelperNested extends EnumBridge<isActivity> {
     /*mkEnumHelperClass*/
     /**
             *  uses unicode U+1c7a - sorts to the end */
@@ -1110,7 +1110,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
    >(ManifestActivitySchema, { isMainnet: true });
 
     /**
-     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.retiringEntry"***
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::ManifestActivity.retiringEntry"***
     * ## Nested activity: 
     * this is connected to a nested-activity wrapper, so the details are piped through 
     * the parent's uplc-encoder, producing a single uplc object with 
@@ -1118,7 +1118,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
      */
     retiringEntry(
         key: string
-    ) : UplcData {
+    ) : isActivity {
         const uplc = this.mkUplcData({ 
            retiringEntry: key
         }, "CapoDelegateHelpers::ManifestActivity.retiringEntry"); /*singleField enum variant*/
@@ -1126,7 +1126,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     }
 
     /**
-     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.updatingEntry"***
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::ManifestActivity.updatingEntry"***
      * @remarks - ***ManifestActivity$updatingEntryLike*** is the same as the expanded field-types.
     * ### Nested activity: 
     * this is connected to a nested-activity wrapper, so the details are piped through 
@@ -1136,7 +1136,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     updatingEntry(fields: ManifestActivity$updatingEntryLike | { 
         key: string,
         tokenName: number[]
-    }) : UplcData {
+    }) : isActivity {
         const uplc = this.mkUplcData({
             updatingEntry: fields 
         }, "CapoDelegateHelpers::ManifestActivity.updatingEntry");
@@ -1144,7 +1144,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.addingEntry"***
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::ManifestActivity.addingEntry"***
      * @remarks - ***ManifestActivity$addingEntryLike*** is the same as the expanded field-types.
     * ### Nested activity: 
     * this is connected to a nested-activity wrapper, so the details are piped through 
@@ -1154,7 +1154,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     addingEntry(fields: ManifestActivity$addingEntryLike | { 
         key: string,
         tokenName: number[]
-    }) : UplcData {
+    }) : isActivity {
         const uplc = this.mkUplcData({
             addingEntry: fields 
         }, "CapoDelegateHelpers::ManifestActivity.addingEntry");
@@ -1162,7 +1162,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.forkingThreadToken"***
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::ManifestActivity.forkingThreadToken"***
      * @remarks - ***ManifestActivity$forkingThreadTokenLike*** is the same as the expanded field-types.
     * ### Nested activity: 
     * this is connected to a nested-activity wrapper, so the details are piped through 
@@ -1172,7 +1172,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     forkingThreadToken(fields: ManifestActivity$forkingThreadTokenLike | { 
         key: string,
         newThreadCount: IntLike
-    }) : UplcData {
+    }) : isActivity {
         const uplc = this.mkUplcData({
             forkingThreadToken: fields 
         }, "CapoDelegateHelpers::ManifestActivity.forkingThreadToken");
@@ -1180,7 +1180,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     } /*multiFieldVariant enum accessor*/
 
     /**
-     * generates  UplcData for ***"CapoDelegateHelpers::ManifestActivity.burningThreadToken"***
+     * generates isActivity/redeemer wrapper with UplcData for ***"CapoDelegateHelpers::ManifestActivity.burningThreadToken"***
      * @remarks - ***ManifestActivity$burningThreadTokenLike*** is the same as the expanded field-types.
     * ### Nested activity: 
     * this is connected to a nested-activity wrapper, so the details are piped through 
@@ -1190,7 +1190,7 @@ export class ManifestActivityHelperNested extends EnumBridge<JustAnEnum> {
     burningThreadToken(fields: ManifestActivity$burningThreadTokenLike | { 
         key: string,
         burnedThreadCount: IntLike
-    }) : UplcData {
+    }) : isActivity {
         const uplc = this.mkUplcData({
             burningThreadToken: fields 
         }, "CapoDelegateHelpers::ManifestActivity.burningThreadToken");
@@ -1982,7 +1982,7 @@ export class CapoLifecycleActivityHelperNested extends EnumBridge<isActivity> {
      */
     get updatingManifest() {
         const nestedAccessor = new ManifestActivityHelperNested(this.bundle,
-            {isNested: true, isActivity: false 
+            {isNested: true, isActivity: true 
         });
         //@ts-expect-error drilling through the protected accessor.  See more comments about that above
         nestedAccessor.mkDataVia(
@@ -2892,6 +2892,20 @@ export const DelegateDatumSchema : EnumTypeSchema = {
                                 "key": "tpe"
                             }
                         ]
+                    }
+                },
+                {
+                    "name": "version",
+                    "type": {
+                        "kind": "internal",
+                        "name": "Int"
+                    }
+                },
+                {
+                    "name": "otherDetails",
+                    "type": {
+                        "kind": "internal",
+                        "name": "Data"
                     }
                 }
             ]

@@ -982,14 +982,37 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                     REQT("delegates MUST be allowed to validate that this doesn't drop something they need")
                                 },
                                 updatingEntry{_key, _tokenName} => {
+                                    TODO("if delegates need a hook to validate that the updte is acceptable, that might be enforced here");
                                     assert(false, "TODO: support updatingEntry activity");
-                                    REQT("the indicated token MUST be referenced in the transaction");
-                                    REQT("delegates MUST be allowed to validate that the manifest is acceptable for their needs")
+                                    REQT("the indicated token MUST be referenced in the transaction")
                                 },
-                                addingEntry{_key, _tokenName} => {
-                                    assert(false, "TODO: support addingEntry activity");
+                                addingEntry{key, tokenName} => {
+                                    charterData : CapoDatum::CharterData = cctx.getCharterData();
+                                    nextCharterData = cctx.getNextCharterData();
                                     REQT("the indicated token MUST be referenced in the transaction");
-                                    REQT("delegates MUST be allowed to validate that the manifest is acceptable for their needs")
+                                    _refInput = cctx.delegatedDataRef(recIdBytes: tokenName);
+
+                                    REQT("the new entry MUST be found in the new manifest");
+                                    nextCharterData.manifest.get_safe(key).switch {
+                                        None => error("the new manifest entry is missing: "+key),
+                                        Some{CapoManifestEntry{entryType, tn, mph}} => {
+                                            print("   -- ok, found the manifest entry for "+ key);
+                                            REQT("the new entry must have the right token-name");
+                                            assert(tn == tokenName, "token-name mismatch");
+                                            mph.switch { Some => error("other-mph not yet supported") };
+                                            entryType.switch {
+                                                NamedTokenRef => print("   -- ok: matching name, with NamedTokenRef added in updatingManifest"),
+                                                _ => error("addingEntry: the new manifest entry must be a NamedTokenRef for now")                                                
+                                            }
+                                        }
+                                    };
+                                    REQT("the remainder of the manifest must be unchanged");
+                                    // NOTE if you're troubleshooting a txn-building functoin, that the order 
+                                    //   of elements is significant.
+                                    assert(charterData.manifest == nextCharterData.manifest.delete(key),
+                                        "manifest modified in an unexpected way"
+                                    );
+                                    print("  -- ok! new manifest as expected")
                                 },
                                 forkingThreadToken{_key, _newThreadCount} => {
                                     assert(cctx.nowActingAsMintDgt(), "<----- that can fail, this can't");
@@ -1001,7 +1024,7 @@ func main(mdd: DelegateDatum, activity: DelegateActivity) -> Bool {
                                     REQT("when the manifest already has the entry, the refCount is incremented by newThreadCount")
 
                                 }
-                            };
+                            }; // void assertions;
                             true
                         },
                         forcingNewMintDelegate => {

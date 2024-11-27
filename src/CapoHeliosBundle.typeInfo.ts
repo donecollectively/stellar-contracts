@@ -396,32 +396,15 @@ export type CapoDatum$CharterDataLike = {
 }
 
 
-export type AnyData = {
-    id: /*minStructField*/ number[]
-    type: /*minStructField*/ string
-}
-
-export type ErgoAnyData = AnyData/*like canon-other*/
-export type AnyDataLike = {
-    id: /*minStructField*/ number[]
-    type: /*minStructField*/ string
-}
-
-
 export type CapoDatum$DelegatedData = {
-    data: AnyData  /*minVariantField*/ ,
+    data: Map<string, UplcData>  /*minVariantField*/ ,
     version: bigint  /*minVariantField*/ ,
     otherDetails: UplcData  /*minVariantField*/ 
 }
 
-export type CapoDatum$Ergo$DelegatedData = {
-    data: ErgoAnyData  /*minVariantField*/ ,
-    version: bigint  /*minVariantField*/ ,
-    otherDetails: UplcData  /*minVariantField*/ 
-}
-
+export type CapoDatum$Ergo$DelegatedData = CapoDatum$DelegatedData/*ergo like-canonical-this-variant*/
 export type CapoDatum$DelegatedDataLike = {
-    data: AnyDataLike  /*minVariantField*/ ,
+    data: Map<string, UplcData>  /*minVariantField*/ ,
     version: IntLike  /*minVariantField*/ ,
     otherDetails: UplcData  /*minVariantField*/ 
 }

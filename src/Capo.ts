@@ -194,11 +194,13 @@ export type NormalDelegateSetup = {
  */
 
 export type FoundDatumUtxo<
-    DelegatedDatumType extends AnyDataTemplate<any, any>
+    DelegatedDatumType extends AnyData,
+    ParsedDatumType extends any = any
 > = {
     utxo: TxInput;
     datum: TxOutputDatum<"Inline">;
-    data?: DelegatedDatumType;
+    datumParsed? : DelegatedDatumType;  
+    data?: ParsedDatumType; 
 };
 
 export type UutCreationAttrsWithSeed = {
@@ -399,15 +401,18 @@ import type {
     RelativeDelegateLink,
     ManifestEntryType$DgDataPolicyLike,
     PendingDelegateActionLike,
-    ErgoAnyData,
     PendingDelegateChangeLike,
     PendingDelegateAction$AddLike,
+    ManifestEntryTypeLike,
+    CapoManifestEntryLike,
+    CapoDatum$Ergo$DelegatedData,
 } from "./CapoHeliosBundle.typeInfo.js";
 import type { IntersectedEnum } from "./helios/typeUtils.js";
 import type { SomeDgtActivityHelper } from "./delegation/GenericDelegateBridge.js";
 import type { DelegatedDataContract, DgDataType, MaybeWrappedDataType, someDataWrapper } from "./delegation/DelegatedDataContract.js";
 import { UnspecializedMintDelegate } from "./delegation/UnspecializedMintDelegate.js";
 import type { isActivity } from "./ActivityTypes.js";
+import type { AnyData, DelegateDatum$capoStoredDataLike, DelegateDatumLike } from "./delegation/UnspecializedDelegate.typeInfo.js";
 
 export type CapoDatum = ErgoCapoDatum;
 export type CharterData = CapoDatum$Ergo$CharterData;
@@ -568,8 +573,13 @@ type FooUnkYES = { foo: string } extends unknown ? "yes" : "no";
  * @public
  */
 export type DelegatedDataPredicate<
-    DATUM_TYPE extends anyDatumProps & AnyDataTemplate<any, any>
+    DATUM_TYPE extends anyDatumProps & AnyData
 > = (utxo: TxInput, data: DATUM_TYPE) => boolean;
+
+type ManifestEntryTokenRef = Omit<CapoManifestEntryLike, "entryType"> & {
+    entryType:  Pick<CapoManifestEntryLike["entryType"], "NamedTokenRef">
+};
+
 
 /**
  * Base class for a "leader" contract that supports custom settings,
@@ -2658,13 +2668,15 @@ export abstract class Capo<
                 dumpAny(foundSettingsUtxo)
             );
         }
-        const typedData = await delegate.newReadDatum(
+        const storedData = await delegate.newReadDatum(
             settingsData
-        ) as ErgoAnyData;
-        debugger
+        ) as Required<Pick<DelegateDatumLike, "capoStoredData">>
+        if (!storedData?.capoStoredData) throw Error(`missing or invalid settings UTxO datum`);
+        
+        const typedData = storedData.capoStoredData.data;
+        
         console.log("CHECK TYPE NAME", delegate.recordTypeName,
-            typedData)
-        if (!typedData) throw Error(`missing or invalid settings UTxO datum`);
+            typedData.type)
         if (typedData.type != delegate.recordTypeName) {
             throw new Error(`record-type mismatch; expected ${
                 delegate.recordTypeName
@@ -2992,7 +3004,7 @@ export abstract class Capo<
         id?: string | UutName;
         predicate?: DelegatedDataPredicate<RAW_DATUM_TYPE>;
         query?: never; // todo
-    }): Promise<FoundDatumUtxo<PARSED_DATUM_TYPE>[]> {
+    }): Promise<FoundDatumUtxo<RAW_DATUM_TYPE, PARSED_DATUM_TYPE>[]> {
         if (!type && !predicate && !id) {
             throw new Error("Must provide either type, predicate or id");
         }
@@ -3049,17 +3061,33 @@ export abstract class Capo<
 
                     let type: string | undefined;
                     if ( datum.data.kind == "constr") {
-                        const cField = datum.data.fields[0]!
+                        const cField = datum.data.fields[0]
+                        if (!cField) {
+                            // ignore datums with no fields (e.g. ScriptReference)
+                            return undefined
+                        }
                         const map = cField.kind == "map" ? cField.items : null;
                         if (map) {
-                            const typeBytes = textToBytes("type")
+                            const typeBytes = textToBytes("tpe")
                             const seenTypeBytes = map.find( ( [k, v] ) => { 
-                                return k.kind == "bytes" &&
-                                equalsBytes(k.bytes, typeBytes) 
+                                if (k.kind != "bytes") {
+                                    console.log("   - key not bytes", k.kind)
+                                } else {
+                                    console.log("key ", bytesToText(k.bytes));
+                                    return k.kind == "bytes" &&
+                                    equalsBytes(k.bytes, typeBytes) 
+                                }
                             })?.[1];
                             if (seenTypeBytes?.kind == "bytes") {
                                 type = bytesToText(seenTypeBytes.bytes);
                             }
+                        } else {
+                            console.log("   - no map field in datum", datum.data.dataPath)
+                        }
+                        if (!type) {
+                            // ignore datums with no type field
+                            console.log("   - no type field in datum", datum.data.dataPath)
+                            return undefined
                         }
                     }
                     const dgtForType = type && await this.getDgDataController(type) as DelegatedDataContract;
@@ -3075,22 +3103,11 @@ export abstract class Capo<
                         }
                     }
                     
-                    const readingDatum = dgtForType.newReadDatum(
+                    const data = dgtForType.newReadDatum(
                         datum.data
-                    ) as Promise<RAW_DATUM_TYPE>;
-
-                    return readingDatum.then(
-                        mkFoundDatum.bind(
-                            this,
-                            utxo,
-                            dgtForType,
-                        ) as any /* allows the error callback to fit the signature */,
-                        (e) => {
-                            debugger;
-                            console.log("wtf1", e, utxo.output.datum);
-                            return null; // we don't care about Datums other than DelegatedData:
-                        }
-                    );
+                    ) as any // todo: better type? RAW_DATUM_TYPE;
+                    const typedData = data.capoStoredData.data
+                    return mkFoundDatum(utxo, dgtForType, datum, typedData);
                 })
             )
         )
@@ -3102,7 +3119,8 @@ export abstract class Capo<
         function mkFoundDatum(
             utxo: TxInput, 
             delegate: DelegatedDataContract, 
-            datumParsed: any
+            datum: TxOutputDatum<"Inline">,
+            datumParsed: DelegateDatum$capoStoredDataLike["data"]
         ) {
             // console.log("hi mkFoundDatum", datum);
             if (!datumParsed) {
@@ -3123,14 +3141,15 @@ export abstract class Capo<
                 // console.log(`  -- skipped ${datum.type}; need ${type})`);
                 return null;
             }
-            if (predicate && !predicate(utxo, datumParsed)) {
+            if (predicate && !predicate(utxo, datumParsed as RAW_DATUM_TYPE)) {
                 // console.log("  -- skipped due to predicate");
                 return null;
             }
             // console.log("-- matched: ", datum);
             return {
                 utxo,
-                datum: datumParsed,
+                datum,
+                datumParsed,
                 data: delegate.wrapData(datumParsed),
             } as FoundDatumUtxo<any>;
         }
@@ -3627,6 +3646,57 @@ export abstract class Capo<
     //     return tcx2;
     // }
 
+    /**
+     * Adds a new entry to the Capo's manifest
+     * @remarks
+     * Use mkTxnQueueingDelegateChange for changing DgDataPolicy entries.
+     * 
+     * The type exclusions here mean this CURRENTLY works only with the 
+     * NamedTokenRef variety of manifest entry, but that's just pragmatic
+     * because the other types don't yet have an implementation.
+     * Other types can be eligible for adding to this API or to a different call.
+     */
+    async mkTxnAddManifestEntry<
+        THIS extends Capo<any>,
+        TCX extends StellarTxnContext<anyState> = StellarTxnContext<anyState>
+    >(
+        this: THIS, 
+        key: string,
+        utxo: FoundDatumUtxo<any, any>,
+        entry: ManifestEntryTokenRef, 
+        tcx: TCX = this.mkTcx() as TCX
+    ) {
+        const currentCharter = await this.findCharterData();
+        if (!entry.entryType.NamedTokenRef) {
+            throw new Error(`not yet supported for ${Object.keys(entry)}[0]`);
+        }
+        const { tokenName } = entry;
+        const spendDgt = await this.getSpendDelegate(currentCharter);
+        const tcx1a = await this.txnAddGovAuthority(tcx);
+        const tcx1b = tcx1a.addRefInput(utxo.utxo);
+        const tcx1c = await spendDgt.txnGrantAuthority(
+            tcx1b, 
+            spendDgt.activity.CapoLifecycleActivities.updatingManifest.addingEntry({
+                key,
+                tokenName
+            })
+        );
+
+        const tcx2 = await this.mkTxnUpdateCharter(
+            {
+                ...currentCharter,
+                manifest: new Map([...currentCharter.manifest.entries(), [
+                    key, entry
+                ]]),
+            },
+            this.activity.capoLifecycleActivity.updatingManifest.addingEntry({
+                key,
+                tokenName
+            }),
+            tcx1c
+        );
+        return tcx2;
+    }
     async mkTxnQueuingDelegateChange<
         DT extends StellarDelegate,
         THIS extends Capo<any>,
@@ -3673,6 +3743,7 @@ export abstract class Capo<
                 mintDgtActivity,
                 purpose,
                 policyName,
+                idPrefix,
                 options
             );
         const tempOCDPLink =
@@ -3681,6 +3752,7 @@ export abstract class Capo<
         const addDetails: PendingDelegateAction$AddLike = {
             seed: tcx1.state.seedUtxo.id,
             purpose,
+            idPrefix,
             // delegateValidatorHash: tempOCDPLink.delegateValidatorHash,
             // config: tempOCDPLink.config,
         };

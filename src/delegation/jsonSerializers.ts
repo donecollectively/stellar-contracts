@@ -8,6 +8,7 @@ import { Address, ScriptHash, bytesToHex, bytesToText } from "@hyperionbt/helios
  **/
 
 export function delegateLinkSerializer(key: string, value: any) {
+    
     if (typeof value === "bigint") {
         return value.toString();
     } else if ("bytes" == key && Array.isArray(value)) {
@@ -17,7 +18,10 @@ export function delegateLinkSerializer(key: string, value: any) {
     } else if ("tn" == key && Array.isArray(value)) {
         return bytesToText(value);
     }
-    if (key === "capo") return undefined;
+    if ("capo" == key) return undefined;
+    if ("uh" == key) return '"‹utxo helper›"';
+    if ("capoBundle" == key) return '"‹capo bundle›"';
+     
     return value; // return everything else unchanged
 }
 
